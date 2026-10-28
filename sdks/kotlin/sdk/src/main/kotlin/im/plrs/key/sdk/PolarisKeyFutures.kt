@@ -14,7 +14,9 @@
 
 package im.plrs.key.sdk
 
+import im.plrs.key.core.FetchedFile
 import im.plrs.key.core.LicenseState
+import im.plrs.key.core.RegisterResult
 import im.plrs.key.core.SyncResult
 import im.plrs.key.core.UpdateCheck
 import im.plrs.key.identity.AttachResult
@@ -35,17 +37,15 @@ import im.plrs.key.identity.SignInOutcome
 import im.plrs.key.identity.SignInSession
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.LicenseInfo
-import im.plrs.key.core.FetchedFile
-import im.plrs.key.core.RegisterResult
 import im.plrs.key.release.ReleaseTarget
 import im.plrs.key.update.InstallResult
-import java.io.File
-import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.future
 import kotlinx.serialization.json.JsonElement
+import java.io.File
+import java.util.concurrent.CompletableFuture
 
 /** [client]'s suspend API as CompletableFutures, for Java callers; see the file comment. */
 public class PolarisKeyFutures @JvmOverloads constructor(
@@ -88,12 +88,10 @@ public class PolarisKeyFutures @JvmOverloads constructor(
 
     /** `session.wait(once)`: poll until the sign-in settles; a refusal completes it exceptionally with `SignInError`. */
     @JvmOverloads
-    public fun signInWait(session: SignInSession, once: Boolean = false): CompletableFuture<SignInOutcome> =
-        call { session.wait(once) }
+    public fun signInWait(session: SignInSession, once: Boolean = false): CompletableFuture<SignInOutcome> = call { session.wait(once) }
 
     /** Redirect channel: `session.complete(callbackUrl)`; a refusal completes it exceptionally with `SignInError`. */
-    public fun signInComplete(session: SignInSession, callbackUrl: String): CompletableFuture<SignInOutcome> =
-        call { session.complete(callbackUrl) }
+    public fun signInComplete(session: SignInSession, callbackUrl: String): CompletableFuture<SignInOutcome> = call { session.complete(callbackUrl) }
 
     /** `identity.choice.licenses(grant)`: the licences the account can run this device on; a refusal is a `ChoiceResult.Refused`. */
     public fun choiceLicenses(grant: String): CompletableFuture<ChoiceResult<LicenseChoiceView>> = call { client.identity.choice.licenses(grant) }
@@ -102,15 +100,24 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     public fun choiceDevices(grant: String, licenseId: String): CompletableFuture<ChoiceResult<ReplaceView>> =
         call { client.identity.choice.devices(grant, licenseId) }
 
-    /** `identity.choice.complete(grant, choice, consent)`: finish the sign-in with the person's choice and, after an exchange's `PendingConsent`, their consent. */
+    /**
+     * `identity.choice.complete(grant, choice, consent)`: finish the sign-in with the person's choice and, after an
+     * exchange's `PendingConsent`, their consent.
+     */
     @JvmOverloads
-    public fun choiceComplete(grant: String, choice: LicenseChoice?, consent: ConsentInput? = null): CompletableFuture<ChoiceResult<ChoiceCompleted>> =
-        call { client.identity.choice.complete(grant, choice, consent) }
+    public fun choiceComplete(
+        grant: String,
+        choice: LicenseChoice?,
+        consent: ConsentInput? = null,
+    ): CompletableFuture<ChoiceResult<ChoiceCompleted>> = call { client.identity.choice.complete(grant, choice, consent) }
 
     /** `identity.exchangeNonce(kind)`: a single-use nonce for the platform provider to sign into its token. */
     public fun exchangeNonce(kind: ExchangeKind): CompletableFuture<ExchangeNonceResult> = call { client.identity.exchangeNonce(kind) }
 
-    /** `identity.exchange(kind, subjectToken, nonce)`: the platform's ID token for a device token; a Worker refusal fails the future with a PolarisException. */
+    /**
+     * `identity.exchange(kind, subjectToken, nonce)`: the platform's ID token for a device token; a Worker refusal
+     * fails the future with a PolarisException.
+     */
     public fun exchange(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce): CompletableFuture<ExchangeOutcome> =
         call { client.identity.exchange(kind, subjectToken, nonce) }
 

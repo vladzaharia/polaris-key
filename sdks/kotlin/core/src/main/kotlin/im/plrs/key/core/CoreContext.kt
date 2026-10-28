@@ -16,7 +16,6 @@
 
 package im.plrs.key.core
 
-import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +25,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
+import java.io.File
 
 /** What Core needs. Per-service inputs live in that service's own options. */
 public data class CoreOptions @JvmOverloads constructor(
@@ -124,12 +124,19 @@ public data class ImportBundleResult(val bundleId: String, val imported: List<Do
 
 /** How the current device token was obtained in this process. */
 public enum class TokenSource(public val wire: String) {
-    activate("activate"), enroll("enroll"), register("register"), signin("signin"), reacquire("reacquire"),
+    activate("activate"),
+    enroll("enroll"),
+    register("register"),
+    signin("signin"),
+    reacquire("reacquire"),
 }
 
 /** What a stored token stands for, for the automatic ladder: only `signin` is a signed-in person's own. */
 public enum class TokenProvenance(public val wire: String) {
-    signin("signin"), register("register"), key("key");
+    signin("signin"),
+    register("register"),
+    key("key"),
+    ;
 
     public companion object {
         /** A token source's provenance; null (leave the stored one) for an unknown source or a reacquire. */
@@ -146,7 +153,8 @@ public enum class TokenProvenance(public val wire: String) {
 
 /** The two routes §5's single re-acquire can take. */
 public enum class ReacquireRoute(public val wire: String) {
-    licenseToken("license-token"), devicesRegister("devices-register"),
+    licenseToken("license-token"),
+    devicesRegister("devices-register"),
 }
 
 /** Pick the route for §5's single re-acquire (the same rule in every SDK, P1b-06). */
@@ -169,9 +177,11 @@ public class CoreContext(options: CoreOptions) {
 
     /** Throws `insecure-base-url` before anything else happens. */
     public val endpoints: Endpoints = Endpoints(options.baseUrl, options.productSlug)
+
     /** Product-scoped durable state uses this host-aware namespace; API routes keep [product]. */
     public val storageNamespace: String = storeNamespace(options.productSlug, endpoints.baseUrl)
     public val version: String = options.version
+
     /** The channel this build was made for: `CoreOptions.channel`, else derived from the version. */
     public val buildChannel: String = options.channel ?: Semver.channelForVersion(options.version).wire
 
@@ -190,6 +200,7 @@ public class CoreContext(options: CoreOptions) {
         }
 
     @Volatile private var preferred: String? = null
+
     @Volatile private var preferenceLoaded = false
     private val channelSlot: StateSlot by lazy {
         store.stateDirectory?.let { FileStateSlot(File(it, "channel")) } ?: MemoryStateSlot()
@@ -263,8 +274,7 @@ public class CoreContext(options: CoreOptions) {
     private val defaultDeviceNameHook: () -> String? = options.defaultDeviceName ?: ::jvmDefaultDeviceName
 
     /** The label to send (§12.7.1): [override], else `CoreOptions.deviceName`, else the platform default; null sends none. */
-    public suspend fun deviceLabel(override: String? = null): String? =
-        io { resolveDeviceLabel(override, deviceNameOption, defaultDeviceNameHook) }
+    public suspend fun deviceLabel(override: String? = null): String? = io { resolveDeviceLabel(override, deviceNameOption, defaultDeviceNameHook) }
     private val systemClock: () -> Long = options.clock ?: { System.currentTimeMillis() / 1000 }
     private val systemClockMillis: () -> Long =
         options.clock?.let { c -> { c() * 1000 } } ?: { System.currentTimeMillis() }
@@ -293,6 +303,7 @@ public class CoreContext(options: CoreOptions) {
     @Volatile private var packSetIdSource: (suspend () -> String?)? = null
 
     private val startLock = Mutex()
+
     @Volatile private var started = false
 
     /** Blocking state-file work, off the caller's dispatcher (SP-50: main-safe). */
@@ -424,6 +435,7 @@ public class CoreContext(options: CoreOptions) {
     private val explicitSignOutSlot: StateSlot by lazy {
         store.stateDirectory?.let { FileStateSlot(File(it, "explicit-sign-out")) } ?: MemoryStateSlot()
     }
+
     @Volatile private var explicitSignOutMemory = false
     private val signOutGenerationValue = java.util.concurrent.atomic.AtomicLong(0)
     private val warnings = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 8)
@@ -521,6 +533,7 @@ public class CoreContext(options: CoreOptions) {
     public suspend fun now(systemNow: Long? = null): Long = locked { clock.effectiveNow(systemNow ?: systemClock()) }
 
     // ── Trust (§1) ─────────────────────────────────────────────────────────────────────────
+
     /** The effective set: manifest keys UNION pins, pins last. */
     public suspend fun trust(): TrustSet = locked { effectiveTrust() }
 
@@ -546,8 +559,12 @@ public class CoreContext(options: CoreOptions) {
         val result = verifyTrustManifest(
             jws,
             VerifyTrustManifestOptions(
-                pinned = pinnedTrust, tombstones = tombstones, expectedAud = product, now = clock.effectiveNow(systemClock()),
-                lastTrustIssuedAt = manifest?.issuedAt, checkFreshness = checkFreshness,
+                pinned = pinnedTrust,
+                tombstones = tombstones,
+                expectedAud = product,
+                now = clock.effectiveNow(systemClock()),
+                lastTrustIssuedAt = manifest?.issuedAt,
+                checkFreshness = checkFreshness,
             ),
         )
         val doc = result.doc ?: return false
@@ -594,7 +611,10 @@ public class CoreContext(options: CoreOptions) {
         val probe = verifyTrustManifest(
             jws,
             VerifyTrustManifestOptions(
-                pinned = pinnedTrust, tombstones = tombstones, expectedAud = product, now = clock.effectiveNow(systemClock()),
+                pinned = pinnedTrust,
+                tombstones = tombstones,
+                expectedAud = product,
+                now = clock.effectiveNow(systemClock()),
             ),
         )
         val doc = probe.doc ?: return@locked PeerTrustResult(false, PEER_TRUST_INVALID)
@@ -617,7 +637,13 @@ public class CoreContext(options: CoreOptions) {
 
     /** One `GET /<p>/.well-known/polaris-trust.jws[?signer=<kid>]`: the body on a 200, else null. */
     private suspend fun fetchTrustManifest(signer: String?): String? {
-        val url = if (signer == null) endpoints.trustManifest else endpoints.trustManifest + "?signer=" + java.net.URLEncoder.encode(signer, "UTF-8").replace("+", "%20")
+        val url = if (signer ==
+            null
+        ) {
+            endpoints.trustManifest
+        } else {
+            endpoints.trustManifest + "?signer=" + java.net.URLEncoder.encode(signer, "UTF-8").replace("+", "%20")
+        }
         val response = try {
             request(url, headers = mapOf("accept" to "application/jose"))
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -630,11 +656,11 @@ public class CoreContext(options: CoreOptions) {
     }
 
     // ── Capabilities (D-21) ────────────────────────────────────────────────────────────────
+
     /** Discovery this session > `expectedServices` > the suite default. No network. */
     public suspend fun services(): ServicesMap = lock.withLock { servicesLocked() }
 
-    private fun servicesLocked(): ServicesMap =
-        discoveredServices ?: expectedServices?.let { servicesFromList(it) } ?: DEFAULT_SERVICES
+    private fun servicesLocked(): ServicesMap = discoveredServices ?: expectedServices?.let { servicesFromList(it) } ?: DEFAULT_SERVICES
 
     public suspend fun enabled(slug: ServiceSlug): Boolean = services()[slug] == true
 
@@ -653,8 +679,10 @@ public class CoreContext(options: CoreOptions) {
         if (enabled(slug)) return
         val unsupported = Unsupported(feature, UnsupportedReason.product, "the product does not run the ${slug.slug} service")
         throw PolarisException(
-            ErrorCode.serviceUnavailable, "The ${slug.slug} service is not enabled for $product.",
-            detail = unsupported.detail, unsupported = unsupported,
+            ErrorCode.serviceUnavailable,
+            "The ${slug.slug} service is not enabled for $product.",
+            detail = unsupported.detail,
+            unsupported = unsupported,
         )
     }
 
@@ -675,6 +703,7 @@ public class CoreContext(options: CoreOptions) {
     }
 
     // ── Transport (§5) ─────────────────────────────────────────────────────────────────────
+
     /** The `X-PKey-*` metadata every product-scoped call carries. */
     public suspend fun headers(extra: Map<String, String> = emptyMap()): Map<String, String> {
         val out = linkedMapOf(
@@ -716,11 +745,14 @@ public class CoreContext(options: CoreOptions) {
         }
         return when (response.status) {
             304 -> DocumentResult.NotModified
+
             401 -> DocumentResult.Unauthorized
+
             429 -> {
                 val body = JsonText.parseOrNull(response.text).objectValue
                 DocumentResult.DeviceCap(body?.get("limit").longValue, body?.get("deviceCount").longValue)
             }
+
             403 -> {
                 // v3 nests the code and keeps `allowedRange` at the top level (§5). A body that says
                 // nothing falls back to the stricter reason, never the permissive one.
@@ -733,12 +765,17 @@ public class CoreContext(options: CoreOptions) {
                 val error = body?.get("error").objectValue
                 val reason = BlockReason.of(error?.get("reason").stringValue)
                     ?: BlockReason.of(body?.get("reason").stringValue)
-                    ?: if (error?.get("code").stringValue == "channel_not_allowed") BlockReason.channelNotEntitled
-                    else BlockReason.versionTooOld
+                    ?: if (error?.get("code").stringValue == "channel_not_allowed") {
+                        BlockReason.channelNotEntitled
+                    } else {
+                        BlockReason.versionTooOld
+                    }
                 val range = body?.get("allowedRange").objectValue?.let { AllowedRange(it["min"].stringValue, it["max"].stringValue) }
                 DocumentResult.Blocked(reason, range)
             }
+
             200 -> DocumentResult.Ok(response.text, response.header("etag"))
+
             else -> DocumentResult.Error(response.status, response.text)
         }
     }
@@ -815,8 +852,13 @@ public class CoreContext(options: CoreOptions) {
         val inspection = inspectBundle(
             jws,
             BundleOptions(
-                pinned = pinnedTrust, product = product, deviceId = deviceIdValue, now = clock.effectiveNow(systemClock()),
-                floors = BundleFloors.NONE, profile = BundleProfile.reload, tombstones = tombstones,
+                pinned = pinnedTrust,
+                product = product,
+                deviceId = deviceIdValue,
+                now = clock.effectiveNow(systemClock()),
+                floors = BundleFloors.NONE,
+                profile = BundleProfile.reload,
+                tombstones = tombstones,
             ),
         )
         val bundle = (inspection as? BundleInspection.Ok)?.bundle ?: return null
@@ -877,10 +919,14 @@ public class CoreContext(options: CoreOptions) {
         val trust = effectiveTrust()
         val now = clock.effectiveNow(systemClock())
         // A signature-verified peek learns `issuedAt` (never an unauthenticated parse).
-        val peek = verify(jws, VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = null, now = Long.MAX_VALUE / 2, checkFreshness = false))
-            ?: return null
+        val peek =
+            verify(jws, VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = null, now = Long.MAX_VALUE / 2, checkFreshness = false))
+                ?: return null
         if (peek.issuedAt > saturatingAdd(now, MAX_GRACE_SECONDS)) return null
-        return verify(jws, VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = null, now = maxOf(now, peek.issuedAt), checkFreshness = false))
+        return verify(
+            jws,
+            VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = null, now = maxOf(now, peek.issuedAt), checkFreshness = false),
+        )
     }
 
     /** Read-modify-write the whole record: the ONLY mutation path (§4.1). */
@@ -906,6 +952,7 @@ public class CoreContext(options: CoreOptions) {
     }
 
     // ── Offline bundles (§7) ───────────────────────────────────────────────────────────────
+
     /**
      * Verify an offline bundle and, only when every step passed, write it atomically (§7). No token is
      * created. A byte-identical re-import of the bundle this install runs on succeeds with no write.
@@ -918,11 +965,16 @@ public class CoreContext(options: CoreOptions) {
             Triple(tombstones, BundleFloors(loaded.license?.doc?.issuedAt, loaded.config?.doc?.issuedAt), deviceIdValue)
         }
         val inspection = inspectBundle(
-            jws, BundleOptions(pinnedTrust, product, deviceId, now, floors, BundleProfile.import, revoked),
+            jws,
+            BundleOptions(pinnedTrust, product, deviceId, now, floors, BundleProfile.import, revoked),
         )
         val bundle = when (inspection) {
             is BundleInspection.Ok -> inspection.bundle
-            is BundleInspection.Refused -> throw PolarisException(inspection.reason.code, "the offline bundle was refused at ${inspection.reason.code}")
+
+            is BundleInspection.Refused -> throw PolarisException(
+                inspection.reason.code,
+                "the offline bundle was refused at ${inspection.reason.code}",
+            )
         }
         val stored = locked {
             noteRevocations(bundle.trustJws, bundle.revokedPins)
@@ -952,13 +1004,16 @@ public class CoreContext(options: CoreOptions) {
     }
 
     // ── Telemetry ──────────────────────────────────────────────────────────────────────────
+
     /** `POST /devices/report` with [body]; best-effort, never fails a sync. */
     public suspend fun reportSnapshot(body: ByteArray): Boolean {
         val token = token() ?: return false
         return try {
             request(
-                endpoints.devicesReport, method = "POST",
-                headers = mapOf("authorization" to "Bearer $token", "content-type" to "application/json"), body = body,
+                endpoints.devicesReport,
+                method = "POST",
+                headers = mapOf("authorization" to "Bearer $token", "content-type" to "application/json"),
+                body = body,
             ).isOk
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -968,16 +1023,13 @@ public class CoreContext(options: CoreOptions) {
     }
 
     // ── The sync pass (§4.2, §5) ───────────────────────────────────────────────────────────
+
     /**
      * One Core pass: no token ⇒ zero network calls; re-arm the single re-acquire; refresh trust on
      * Core's cadence; fetch the ENABLED documents in parallel; verify each against the effective
      * set with its per-type anti-replay floor; ONE cache write; telemetry, best-effort.
      */
-    public suspend fun sync(
-        force: Boolean = false,
-        reacquire: ReacquireFn? = null,
-        report: (suspend () -> Unit)? = null,
-    ): SyncResult {
+    public suspend fun sync(force: Boolean = false, reacquire: ReacquireFn? = null, report: (suspend () -> Unit)? = null): SyncResult {
         locked {
             if (tokenValue == null) return SyncResult()
             reacquireSpent = false
@@ -1006,13 +1058,17 @@ public class CoreContext(options: CoreOptions) {
             documents[slice] = outcome
             when (outcome) {
                 DocOutcome.Applied -> applied = true
+
                 DocOutcome.Unauthorized -> unauthorized = true
+
                 is DocOutcome.Blocked -> {
                     blocked = true
                     patch = outcome.info
                     patchSet = true
                 }
+
                 is DocOutcome.DeviceCap -> deviceCap = true
+
                 else -> Unit
             }
         }
@@ -1026,11 +1082,15 @@ public class CoreContext(options: CoreOptions) {
         patchCache { rec ->
             var r = rec
             if (trustJws != null) r = r.copy(trustJws = trustJws)
-            if (unauthorized) r = r.copy(lastSyncUnauthorized = true) else if (healthy) r = r.copy(lastSyncUnauthorized = false)
+            if (unauthorized) {
+                r = r.copy(lastSyncUnauthorized = true)
+            } else if (healthy) {
+                r = r.copy(lastSyncUnauthorized = false)
+            }
             if (patchSet) r = r.copy(blocked = finalPatch)
             val dropped = if (blocked) rejected + DocumentSlice.license else rejected
             if (dropped.isNotEmpty()) r = r.copy(docs = r.docs - dropped, etags = r.etags - dropped)
-            
+
             r
         }
         if (applied || !unauthorized) report?.invoke()
@@ -1050,6 +1110,7 @@ public class CoreContext(options: CoreOptions) {
                 markVerified()
                 DocOutcome.Unchanged
             }
+
             DocumentResult.Unauthorized -> {
                 if (allowReacquire && reacquire != null && reacquireOnce(reacquire)) {
                     syncDocument(slice, force, reacquire, false)
@@ -1057,13 +1118,17 @@ public class CoreContext(options: CoreOptions) {
                     DocOutcome.Unauthorized
                 }
             }
+
             is DocumentResult.DeviceCap -> DocOutcome.DeviceCap(result.limit, result.deviceCount)
+
             is DocumentResult.Blocked -> DocOutcome.Blocked(BlockInfoRecord(result.reason, result.allowedRange))
+
             is DocumentResult.Ok -> {
                 if (!applyDocument(slice, result.jws, result.etag)) return DocOutcome.Error
                 markVerified()
                 DocOutcome.Applied
             }
+
             is DocumentResult.Error -> DocOutcome.Error
         }
     }
@@ -1120,14 +1185,17 @@ public class CoreContext(options: CoreOptions) {
         when (slice) {
             DocumentSlice.license -> {
                 val doc = verifyLicenseDoc(
-                    jws, VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = loaded.license?.doc?.issuedAt, now = now),
+                    jws,
+                    VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = loaded.license?.doc?.issuedAt, now = now),
                 ) ?: return@withLock false
                 loaded = loaded.copy(license = CachedDoc(jws, doc))
                 clock.raise(doc.issuedAt)
             }
+
             DocumentSlice.config -> {
                 val doc = verifyConfigDoc(
-                    jws, VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = loaded.config?.doc?.issuedAt, now = now),
+                    jws,
+                    VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = loaded.config?.doc?.issuedAt, now = now),
                 ) ?: return@withLock false
                 loaded = loaded.copy(config = CachedDoc(jws, doc))
                 clock.raise(doc.issuedAt)

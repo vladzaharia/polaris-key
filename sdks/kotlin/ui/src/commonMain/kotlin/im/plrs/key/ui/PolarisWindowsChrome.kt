@@ -8,14 +8,12 @@
 
 package im.plrs.key.ui
 
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.getTextLayoutResult
-import androidx.compose.ui.semantics.text
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -33,18 +31,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -59,41 +62,38 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.shape.CornerBasedShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Typography
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.getTextLayoutResult
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.luminance
-import im.plrs.key.ui.brand.KitTypeRole
-import im.plrs.key.ui.brand.PolarisKitGlyphs
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawOutline
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import im.plrs.key.ui.brand.KitRadius
+import im.plrs.key.ui.brand.KitTypeRole
+import im.plrs.key.ui.brand.PolarisKitGlyphs
 import im.plrs.key.ui.brand.PolarisKitTokens
 
 /** True when this window is drawn in the Windows (Fluent) chrome. */
@@ -109,6 +109,7 @@ internal object PolarisFluent {
 
     /** The ContentDialog's width and padding (windows.html `.dialog`). */
     val dialogWidth: Dp = 480.dp
+
     /** The Fluent spacing steps: the gap between buttons, a label and its field, the button and field insets. */
     val gap: Dp = 8.dp
     val labelGap: Dp = 4.dp
@@ -122,8 +123,7 @@ internal object PolarisFluent {
     val ringInner: Dp = PolarisKitTokens.Windows.focusInner.dp
 
     /** The smoke layer's opacity behind a ContentDialog. */
-    fun smokeAlpha(dark: Boolean): Float =
-        if (dark) PolarisKitTokens.Windows.scrimDarkOpacity else PolarisKitTokens.Windows.scrimLightOpacity
+    fun smokeAlpha(dark: Boolean): Float = if (dark) PolarisKitTokens.Windows.scrimDarkOpacity else PolarisKitTokens.Windows.scrimLightOpacity
 }
 
 // ── Contrast themes: the system colours ─────────────────────────────────────────────────────────
@@ -133,6 +133,7 @@ internal object PolarisFluent {
  * on (`PolarisHostFacts.highContrast`) but not which one, so the kit draws the two stock themes'
  * values: "High contrast black" when the kit is dark, "High contrast white" otherwise.
  */
+
 /** One system colour from its 0xAARRGGBB value (the stock contrast themes' values; a Long, so no colour literal). */
 private fun sys(argb: Long): Color = Color(argb)
 
@@ -148,15 +149,25 @@ internal class FluentSystemColors(
 ) {
     companion object {
         val Black = FluentSystemColors(
-            window = sys(0xFF000000), windowText = sys(0xFFFFFFFF), grayText = sys(0xFF3FF23F),
-            highlight = sys(0xFF1AEBFF), highlightText = sys(0xFF000000),
-            buttonFace = sys(0xFF000000), buttonText = sys(0xFFFFFFFF), hotlight = sys(0xFFFFFF00),
+            window = sys(0xFF000000),
+            windowText = sys(0xFFFFFFFF),
+            grayText = sys(0xFF3FF23F),
+            highlight = sys(0xFF1AEBFF),
+            highlightText = sys(0xFF000000),
+            buttonFace = sys(0xFF000000),
+            buttonText = sys(0xFFFFFFFF),
+            hotlight = sys(0xFFFFFF00),
         )
 
         val White = FluentSystemColors(
-            window = sys(0xFFFFFFFF), windowText = sys(0xFF000000), grayText = sys(0xFF600000),
-            highlight = sys(0xFF37006E), highlightText = sys(0xFFFFFFFF),
-            buttonFace = sys(0xFFFFFFFF), buttonText = sys(0xFF000000), hotlight = sys(0xFF00009F),
+            window = sys(0xFFFFFFFF),
+            windowText = sys(0xFF000000),
+            grayText = sys(0xFF600000),
+            highlight = sys(0xFF37006E),
+            highlightText = sys(0xFFFFFFFF),
+            buttonFace = sys(0xFFFFFFFF),
+            buttonText = sys(0xFF000000),
+            hotlight = sys(0xFF00009F),
         )
 
         fun forTheme(dark: Boolean): FluentSystemColors = if (dark) Black else White
@@ -299,16 +310,31 @@ internal fun PolarisFluentButton(
                 label = sys.grayText
                 edge = if (kind == FluentButtonKind.Subtle) null else BorderStroke(1.dp, sys.grayText)
             }
-            over && kind == FluentButtonKind.Accent -> { fill = sys.highlightText; label = sys.highlight; edge = BorderStroke(1.dp, sys.highlight) }
-            over -> { fill = sys.highlight; label = sys.highlightText; edge = BorderStroke(1.dp, sys.highlightText) }
+
+            over && kind == FluentButtonKind.Accent -> {
+                fill = sys.highlightText
+                label = sys.highlight
+                edge = BorderStroke(1.dp, sys.highlight)
+            }
+
+            over -> {
+                fill = sys.highlight
+                label = sys.highlightText
+                edge = BorderStroke(1.dp, sys.highlightText)
+            }
+
             kind == FluentButtonKind.Accent -> edge = BorderStroke(1.dp, sys.highlightText)
         }
     }
     // Hover and press lay the label colour over the fill at 8 % and 12 %: no new colours.
-    val state = if (sys != null) 0f else when {
-        pressed -> 0.12f
-        hovered -> 0.08f
-        else -> 0f
+    val state = if (sys != null) {
+        0f
+    } else {
+        when {
+            pressed -> 0.12f
+            hovered -> 0.08f
+            else -> 0f
+        }
     }
     val fillNow = if (state > 0f) label.copy(alpha = state).compositeOver(fill.takeIf { it.alpha > 0f } ?: scheme.surface) else fill
     // Links read as links when the accent is plain text colour (ink) or a contrast theme draws them.
@@ -335,14 +361,26 @@ internal fun PolarisFluentButton(
         val content = if (live || busy || sys != null) label else label.copy(alpha = 0.4f)
         // The glyph and the busy ring follow the label's colour (they read LocalContentColor).
         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides content) {
-            if (busy) androidx.compose.material3.CircularProgressIndicator(
-                modifier = Modifier.height(16.dp).widthIn(max = 16.dp), strokeWidth = 2.dp, color = content,
-            )
+            if (busy) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.height(16.dp).widthIn(max = 16.dp),
+                    strokeWidth = 2.dp,
+                    color = content,
+                )
+            }
             // The new-window glyph (↗) ends the label as a character joined to the last word by a no-break space, so it
             // wraps with the text and stays at the end of the last line (an inline icon may break off onto a line of its own).
-            val shown = if (external) androidx.compose.ui.text.AnnotatedString("$text\u00A0\u2197") else androidx.compose.ui.text.AnnotatedString(text)
+            val shown = if (external) {
+                androidx.compose.ui.text.AnnotatedString(
+                    "$text\u00A0\u2197",
+                )
+            } else {
+                androidx.compose.ui.text.AnnotatedString(text)
+            }
             // The glyph is decoration: assistive tech reads the plain label (the control says where it goes).
-            val layout = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
+            val layout = androidx.compose.runtime.remember {
+                androidx.compose.runtime.mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null)
+            }
             Text(
                 shown,
                 style = MaterialTheme.typography.labelLarge.copy(textDecoration = if (underline) TextDecoration.Underline else null),
@@ -350,10 +388,19 @@ internal fun PolarisFluentButton(
                 textAlign = TextAlign.Center,
                 onTextLayout = { layout.value = it },
                 modifier = Modifier.weight(1f, fill = false).then(
-                    if (external) Modifier.clearAndSetSemantics {
-                        this.text = androidx.compose.ui.text.AnnotatedString(text)
-                        getTextLayoutResult { results -> layout.value?.let { results.add(it); true } ?: false }
-                    } else Modifier,
+                    if (external) {
+                        Modifier.clearAndSetSemantics {
+                            this.text = androidx.compose.ui.text.AnnotatedString(text)
+                            getTextLayoutResult { results ->
+                                layout.value?.let {
+                                    results.add(it)
+                                    true
+                                } ?: false
+                            }
+                        }
+                    } else {
+                        Modifier
+                    },
                 ),
                 // A label wraps (the control grows) rather than being cut: a narrow footer or a larger font scale.
             )
@@ -551,8 +598,7 @@ internal fun Modifier.fluentFocusRing(interaction: MutableInteractionSource, sha
     return this.drawBehindContent(focused) { drawFluentFocusRing(shape, outer, inner) }
 }
 
-private fun Modifier.drawBehindContent(show: Boolean, draw: DrawScope.() -> Unit): Modifier =
-    this.drawWithContent {
-        drawContent()
-        if (show) draw()
-    }
+private fun Modifier.drawBehindContent(show: Boolean, draw: DrawScope.() -> Unit): Modifier = this.drawWithContent {
+    drawContent()
+    if (show) draw()
+}

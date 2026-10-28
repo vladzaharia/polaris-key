@@ -7,8 +7,8 @@ import im.plrs.key.identity.PlatformIdentityProvider
 import im.plrs.key.identity.PlatformSubjectToken
 import im.plrs.key.platform.PlatformIdentity
 import im.plrs.key.platform.PlatformIdentityResult
-import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 /**
  * :android's thin adapter over :platform's [PlatformIdentity] (I-45.4): suspend functions for the
@@ -31,7 +31,10 @@ public class PlatformSignIn(
 
     public val kinds: Set<String> get() = identity.kinds
 
-    /** Rung 3: no UI when exactly one previously authorised account exists; with two or more, Credential Manager shows its chooser (see GoogleSignIn). */
+    /**
+     * Rung 3: no UI when exactly one previously authorised account exists; with two or more, Credential Manager shows
+     * its chooser (see GoogleSignIn).
+     */
     public suspend fun silent(serverClientId: String, nonce: String): PlatformIdentityResult =
         ask { a, cb -> identity.silent(a, serverClientId, nonce, cb) }
 

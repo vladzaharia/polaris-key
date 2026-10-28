@@ -40,6 +40,7 @@ internal fun signInScreen(inputs: KitInputs): KitScreen {
     if (signIn.string("outcome") == "signedIn") {
         return when {
             !inputs.isOn("license") -> screen(KitComponent.signIn, "done", listOf(context.line("signin.return.signedInShort")))
+
             signIn.boolean("issuedNow") == true -> screen(
                 KitComponent.signIn,
                 "done",
@@ -49,6 +50,7 @@ internal fun signInScreen(inputs: KitInputs): KitScreen {
                     context.line("signin.done.start", context.productArgs),
                 ),
             )
+
             else -> screen(
                 KitComponent.signIn,
                 "done",
@@ -70,8 +72,11 @@ internal fun signInScreen(inputs: KitInputs): KitScreen {
                 context.line("signin.replace.open"),
                 context.line("signin.replace.lede", mapOf("thisDevice" to context.thisDeviceTitle())),
             )
-            if (inputs.os in setOf("macos", "ios", "visionos")) lines += context.line("signin.replace.openSystem")
-            else lines += context.line("signin.replace.title", mapOf("device" to CopyArgument.Text(replaceTarget(inputs) ?: "")))
+            if (inputs.os in setOf("macos", "ios", "visionos")) {
+                lines += context.line("signin.replace.openSystem")
+            } else {
+                lines += context.line("signin.replace.title", mapOf("device" to CopyArgument.Text(replaceTarget(inputs) ?: "")))
+            }
             return screen(KitComponent.signIn, "replace", lines)
         }
         val lines = mutableListOf(context.line("signin.choice.title"))
@@ -129,8 +134,14 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
             put(
                 "term",
                 CopyArgument.Line(
-                    if (end == null) context.line("signin.term.lifetime")
-                    else context.line("signin.term.until", mapOf("date" to CopyArgument.Text(kitDate(end, java.util.Locale.getDefault().toLanguageTag())))),
+                    if (end == null) {
+                        context.line("signin.term.lifetime")
+                    } else {
+                        context.line(
+                            "signin.term.until",
+                            mapOf("date" to CopyArgument.Text(kitDate(end, java.util.Locale.getDefault().toLanguageTag()))),
+                        )
+                    },
                 ),
             )
         }
@@ -139,7 +150,22 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
         // The line reads on after a separator: a name, else "this Mac" in lower case.
         put("device", auto.string("device")?.let { CopyArgument.Text(it) } ?: context.thisDevice())
     }
-    fun step(state: String, vararg keys: String?) = screen(KitComponent.signIn, state, keys.filterNotNull().map { context.line(it, if (it == "signin.consent.licenseLine") lineArgs else args) })
+    fun step(state: String, vararg keys: String?) = screen(
+        KitComponent.signIn,
+        state,
+        keys.filterNotNull().map {
+            context.line(
+                it,
+                if (it ==
+                    "signin.consent.licenseLine"
+                ) {
+                    lineArgs
+                } else {
+                    args
+                },
+            )
+        },
+    )
     return when (auto.string("step")) {
         "confirm" -> {
             val license = auto.string("license")
@@ -158,6 +184,7 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
                 "signin.auto.confirm.other",
             )
         }
+
         "link-offer" -> step(
             "link-offer",
             "signin.linkOffer.title",
@@ -169,9 +196,19 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
             "signin.linkOffer.primary",
             "signin.linkOffer.decline",
         )
+
         "link-done" -> step("link-done", "signin.linkOffer.done", "common.continue")
-        "link-conflict" -> step("link-conflict", "signin.linkOffer.conflictTitle", "signin.linkOffer.conflict", "signin.linkOffer.join", "common.continue")
+
+        "link-conflict" -> step(
+            "link-conflict",
+            "signin.linkOffer.conflictTitle",
+            "signin.linkOffer.conflict",
+            "signin.linkOffer.join",
+            "common.continue",
+        )
+
         "nearby-prompt" -> step("nearby-prompt", "signin.nearby.promptTitle", "signin.nearby.prePrompt", "common.continue", "common.notNow")
+
         "nearby-wait" -> step(
             "nearby-wait",
             "signin.nearby.title",
@@ -180,6 +217,7 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
             "a11y.nearbyCode".takeIf { auto.string("code") != null },
             "signin.nearby.code",
         )
+
         "device-limit" -> {
             // A device limit with no license rows: its own step, never the key screen. Replace opens
             // the refusal's manageUrl; without a usable link the fix is named in words.
@@ -194,6 +232,7 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
                 "common.cancel",
             )
         }
+
         else -> step("nearby-done", "signin.nearby.done", "common.continue", "signin.nearby.notYou")
     }
 }
@@ -214,15 +253,30 @@ internal fun nearbyApprovalScreen(inputs: KitInputs): KitScreen {
     fun step(state: String, vararg keys: String) = screen(KitComponent.nearbyApproval, state, keys.map { context.line(it, args) })
     return when (approval.string("step")) {
         "ask" -> step("ask", "signin.nearby.ask", "signin.nearby.askBody", "signin.approve.warning", "signin.approve.deny")
+
         "approved" -> step("approved", "signin.nearby.approved", "common.done")
+
         "not-nearby" -> step("not-nearby", "signin.nearby.notNearby", "signin.nearby.notNearbyBody", "common.done")
+
         "mismatch" -> step("mismatch", "signin.nearby.mismatch", "common.done")
+
         "denied" -> step("denied", "signin.approve.deniedDone", "common.done")
+
         "expired" -> step("expired", "core.codes.sign-in-expired.title", "signin.nearby.expiredBody", "common.done")
+
         "device-limit" -> step("device-limit", "core.codes.device_limit.title", "signin.nearby.deviceLimitBody", "devices.manage")
+
         "choose" -> step("choose", "signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.choice.continue")
-        "account-required" -> step("account-required", "core.codes.account_required.title", "core.codes.account_required.message", "signin.key.signIn")
+
+        "account-required" -> step(
+            "account-required",
+            "core.codes.account_required.title",
+            "core.codes.account_required.message",
+            "signin.key.signIn",
+        )
+
         "rate-limited" -> step("rate-limited", "core.codes.rate_limited.title", "signin.nearby.rateLimitedBody", "common.done")
+
         else -> step("entry", "signin.nearby.menu")
     }
 }
@@ -260,8 +314,15 @@ internal fun signInHandoffScreen(inputs: KitInputs): KitScreen {
     if (signIn.string("channel") == "device-code") {
         return when (inputs.obj("deviceCode").string("phase") ?: "starting") {
             "starting" -> screen(KitComponent.signInHandoff, "starting", listOf(context.line("signInHandoff.starting"), context.line("a11y.busy")))
+
             "waiting", "slow-down" -> screen(KitComponent.signInHandoff, "code", signInCodeLines(context))
-            "ok" -> screen(KitComponent.signInHandoff, "finishing", listOf(context.line("signInHandoff.ok"), context.line("signin.handoff.finishing")))
+
+            "ok" -> screen(
+                KitComponent.signInHandoff,
+                "finishing",
+                listOf(context.line("signInHandoff.ok"), context.line("signin.handoff.finishing")),
+            )
+
             "denied" -> screen(
                 KitComponent.signInHandoff,
                 "denied",
@@ -271,6 +332,7 @@ internal fun signInHandoffScreen(inputs: KitInputs): KitScreen {
                     context.line("signInHandoff.newCode"),
                 ),
             )
+
             "failed" -> screen(
                 KitComponent.signInHandoff,
                 "failed",
@@ -280,6 +342,7 @@ internal fun signInHandoffScreen(inputs: KitInputs): KitScreen {
                     context.line("signInHandoff.newCode"),
                 ),
             )
+
             "expired" -> screen(
                 KitComponent.signInHandoff,
                 "expired",
@@ -289,7 +352,13 @@ internal fun signInHandoffScreen(inputs: KitInputs): KitScreen {
                     context.line("signInHandoff.newCode"),
                 ),
             )
-            "cancelled" -> screen(KitComponent.signInHandoff, "cancelled", listOf(context.line("signin.handoff.cancelled"), context.line("signInHandoff.newCode")))
+
+            "cancelled" -> screen(
+                KitComponent.signInHandoff,
+                "cancelled",
+                listOf(context.line("signin.handoff.cancelled"), context.line("signInHandoff.newCode")),
+            )
+
             else -> screen(KitComponent.signInHandoff, "starting", listOf(context.line("signInHandoff.starting"), context.line("a11y.busy")))
         }
     }
@@ -298,7 +367,11 @@ internal fun signInHandoffScreen(inputs: KitInputs): KitScreen {
         return screen(KitComponent.signInHandoff, "starting", listOf(context.line("signInHandoff.starting"), context.line("a11y.busy")))
     }
     if (signIn.string("outcome") == "pending" && signIn.boolean("browserOpened") == false) {
-        if (signIn.string("event") == "copy-link") return screen(KitComponent.signInHandoff, "link-copied", listOf(context.line("signInHandoff.linkCopied")))
+        if (signIn.string("event") ==
+            "copy-link"
+        ) {
+            return screen(KitComponent.signInHandoff, "link-copied", listOf(context.line("signInHandoff.linkCopied")))
+        }
         return screen(
             KitComponent.signInHandoff,
             "no-browser",
@@ -353,8 +426,16 @@ internal fun licenseChoiceScreen(inputs: KitInputs): KitScreen {
     if (!inputs.isOn("identity") || !inputs.isOn("license")) return hidden(KitComponent.licenseChoice)
     val signIn = inputs.obj("signIn") ?: JsonObject(emptyMap())
     val title = context.line("signin.choice.title")
-    if (inputs.boolean("loading") == true) return screen(KitComponent.licenseChoice, "loading", context.delayed(listOf(title, context.line("common.loading"))))
-    if (signIn.boolean("grantExpired") == true) return screen(KitComponent.licenseChoice, "grant-expired", listOf(context.line("signin.handoff.tooLong"), context.line("signin.again")))
+    if (inputs.boolean("loading") ==
+        true
+    ) {
+        return screen(KitComponent.licenseChoice, "loading", context.delayed(listOf(title, context.line("common.loading"))))
+    }
+    if (signIn.boolean("grantExpired") ==
+        true
+    ) {
+        return screen(KitComponent.licenseChoice, "grant-expired", listOf(context.line("signin.handoff.tooLong"), context.line("signin.again")))
+    }
     if (signIn.boolean("raced") == true) {
         val key = if (signIn.string("event") == "confirm-replace") "signin.replace.raced" else "signin.choice.raced"
         return screen(KitComponent.licenseChoice, "raced", listOf(context.line(key)))
@@ -367,18 +448,39 @@ internal fun licenseChoiceScreen(inputs: KitInputs): KitScreen {
             listOf(
                 context.line("signin.replace.open"),
                 context.line("signin.replace.title", mapOf("device" to device)),
-                context.line("signin.replace.consequence", mapOf("device" to device, "product" to context.product, "thisDevice" to context.thisDevice())),
+                context.line(
+                    "signin.replace.consequence",
+                    mapOf(
+                        "device" to device,
+                        "product" to context.product,
+                        "thisDevice" to context.thisDevice(),
+                    ),
+                ),
                 context.line("signin.replace.confirm"),
                 context.line("signin.replace.back"),
             ),
         )
     }
     val view = inputs.obj("choices") ?: return screen(KitComponent.licenseChoice, "loading", listOf(title, context.line("common.loading")))
-    val browserReplace = if (signIn.string("replace") == "browser" && signIn.string("event") == "open-replace") listOf(KitAction.replaceInBrowser) else emptyList()
+    val browserReplace = if (signIn.string("replace") == "browser" &&
+        signIn.string("event") == "open-replace"
+    ) {
+        listOf(KitAction.replaceInBrowser)
+    } else {
+        emptyList()
+    }
     if (view.string("state") == "none") {
         val get = view.obj("getLicense")
         return if (get.boolean("keyEntry") == true) {
-            screen(KitComponent.licenseChoice, "none-keys", listOf(context.line("signin.none.title", context.productArgs), context.line("signin.none.body"), context.line("signin.choice.keyInstead")))
+            screen(
+                KitComponent.licenseChoice,
+                "none-keys",
+                listOf(
+                    context.line("signin.none.title", context.productArgs),
+                    context.line("signin.none.body"),
+                    context.line("signin.choice.keyInstead"),
+                ),
+            )
         } else {
             val lines = mutableListOf(context.line("signin.none.title", context.productArgs), context.line("signin.none.body"))
             if (KitLinks.valid(get.string("purchaseUrl")) != null) lines += context.line("signin.none.get", context.productArgs)
@@ -386,11 +488,17 @@ internal fun licenseChoiceScreen(inputs: KitInputs): KitScreen {
             screen(KitComponent.licenseChoice, "none-no-keys", lines)
         }
     }
-    if (view.string("state") == "autoIssue") return screen(
-        KitComponent.licenseChoice,
-        "new",
-        listOf(context.line("signin.choice.ledeNew", context.productArgs + context.developerArgs), context.line("signin.choice.tag.new"), context.line("signin.choice.metaNew")),
-    )
+    if (view.string("state") == "autoIssue") {
+        return screen(
+            KitComponent.licenseChoice,
+            "new",
+            listOf(
+                context.line("signin.choice.ledeNew", context.productArgs + context.developerArgs),
+                context.line("signin.choice.tag.new"),
+                context.line("signin.choice.metaNew"),
+            ),
+        )
+    }
     if (inputs.string("selected") == "create" && view.obj("create") != null) {
         return screen(KitComponent.licenseChoice, "create", listOf(context.line("signin.choice.create"), context.line("signin.choice.createMeta")))
     }
@@ -403,8 +511,21 @@ internal fun licenseChoiceScreen(inputs: KitInputs): KitScreen {
         }
         return screen(KitComponent.licenseChoice, "all-full", listOf(lead, context.line("signin.choice.tag.full")), browserReplace)
     }
-    if (view.boolean("keep") == true) return screen(KitComponent.licenseChoice, "keep", listOf(context.line("signin.choice.keep"), context.line("signin.choice.keepMeta", context.productArgs)))
-    if (choices.any { it.boolean("current") == true }) return screen(KitComponent.licenseChoice, "current", listOf(context.line("signin.choice.tag.current")))
+    if (view.boolean("keep") ==
+        true
+    ) {
+        return screen(
+            KitComponent.licenseChoice,
+            "keep",
+            listOf(context.line("signin.choice.keep"), context.line("signin.choice.keepMeta", context.productArgs)),
+        )
+    }
+    if (choices.any {
+            it.boolean("current") == true
+        }
+    ) {
+        return screen(KitComponent.licenseChoice, "current", listOf(context.line("signin.choice.tag.current")))
+    }
     val accessKinds = choices.mapNotNull { it.string("access") }.toSet()
     if ("account" in accessKinds && "seats" in accessKinds) return screen(KitComponent.licenseChoice, "mixed")
     val lede = context.line("signin.choice.lede", mapOf("product" to context.product, "device" to context.thisDevice()))
@@ -430,6 +551,8 @@ private fun originKey(choice: JsonObject): String = when (choice.string("origin"
 
 private fun replaceTarget(inputs: KitInputs): String? {
     val devices = inputs.obj("replaceView").array("devices")?.objects() ?: return null
-    return (devices.firstOrNull { it.boolean("leastRecent") == true }
-        ?: devices.minByOrNull { it.integer("lastSeen") ?: Int.MAX_VALUE })?.string("label")
+    return (
+        devices.firstOrNull { it.boolean("leastRecent") == true }
+            ?: devices.minByOrNull { it.integer("lastSeen") ?: Int.MAX_VALUE }
+        )?.string("label")
 }

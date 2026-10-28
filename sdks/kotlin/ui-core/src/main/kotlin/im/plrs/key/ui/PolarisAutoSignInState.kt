@@ -132,8 +132,10 @@ public class PolarisAutoSignInState(
             }
             when {
                 r is ChoiceResult.Ok -> done()
+
                 // The grant ran out: the gate's own screens, the person starts again.
                 r is ChoiceResult.Refused && r.code == ErrorCode.invalidGrant -> idle()
+
                 else -> _ui.value = now.copy(busy = false, failed = true)
             }
         }
@@ -175,7 +177,11 @@ public class PolarisAutoSignInState(
         scope.launch {
             val result = guarded { if (actions.hasProvider) actions.providerSignIn() else actions.autoSignIn() }
             when (result) {
-                is AutoSignInResult.SignedIn, is AutoSignInResult.Confirm, is AutoSignInResult.Choose, is AutoSignInResult.DeviceLimit -> apply(result, fromForm = true)
+                is AutoSignInResult.SignedIn, is AutoSignInResult.Confirm, is AutoSignInResult.Choose, is AutoSignInResult.DeviceLimit -> apply(
+                    result,
+                    fromForm = true,
+                )
+
                 // Nothing new (the seat is still taken, the sheet was dismissed, the call failed): the step they left.
                 else -> _ui.value = before
             }
@@ -192,24 +198,38 @@ public class PolarisAutoSignInState(
     private fun apply(result: AutoSignInResult?, fromForm: Boolean) {
         when (result) {
             null -> if (fromForm) formFailed() else idle()
+
             is AutoSignInResult.SignedIn -> done()
+
             is AutoSignInResult.Confirm -> {
                 grant = result.pending.grant
                 _ui.value = PolarisAutoSignInUi.Confirm(result.pending.consent)
             }
+
             is AutoSignInResult.Choose -> {
                 val state = PolarisLicenseChoiceState(
-                    actions.choiceActions(), scope, result.pending.grant, result.pending.choices,
+                    actions.choiceActions(),
+                    scope,
+                    result.pending.grant,
+                    result.pending.choices,
                     onCompleted = { done() },
                 )
                 _ui.value = PolarisAutoSignInUi.Choose(state)
             }
+
             is AutoSignInResult.DeviceLimit -> _ui.value = PolarisAutoSignInUi.DeviceLimit(result.manageUrl, result.view)
+
             is AutoSignInResult.NeedsSignIn -> when {
                 // The person's own pick of "signed out" and a desktop with no provider: nothing to add to the gate.
-                !fromForm && (result.reason == AutoSignInReason.SignedOut || !actions.hasProvider && result.reason == AutoSignInReason.NoCredential) -> idle()
+                !fromForm &&
+                    (
+                        result.reason == AutoSignInReason.SignedOut ||
+                            (!actions.hasProvider && result.reason == AutoSignInReason.NoCredential)
+                        ) -> idle()
+
                 else -> _ui.value = PolarisAutoSignInUi.SignInForm(provider = actions.hasProvider)
             }
+
             // A refusal falls back silently; on the form it says the sign-in did not finish.
             is AutoSignInResult.Unavailable -> if (fromForm) formFailed() else idle()
         }
@@ -239,18 +259,16 @@ public class PolarisAutoSignInState(
 
     public companion object {
         /** The profile claims the consent lists: what Continue agrees to share. */
-        internal fun claimsOf(consent: ExchangeConsentView): List<String> =
-            consent.items.filter { it.string("kind") == "profile" }
-                .flatMap { it.array("claims")?.mapNotNull { c -> c.string() } ?: emptyList() }
+        internal fun claimsOf(consent: ExchangeConsentView): List<String> = consent.items.filter { it.string("kind") == "profile" }
+            .flatMap { it.array("claims")?.mapNotNull { c -> c.string() } ?: emptyList() }
     }
 }
 
 // ── The kit's inputs for each step ───────────────────────────────────────────────────────────
 
-private fun browserSignIn(vararg extra: Pair<String, JsonPrimitive>): JsonObject =
-    JsonObject(
-        mapOf("presentation" to JsonPrimitive("inline"), "replace" to JsonPrimitive("inline"), "channel" to JsonPrimitive("browser")) + extra,
-    )
+private fun browserSignIn(vararg extra: Pair<String, JsonPrimitive>): JsonObject = JsonObject(
+    mapOf("presentation" to JsonPrimitive("inline"), "replace" to JsonPrimitive("inline"), "channel" to JsonPrimitive("browser")) + extra,
+)
 
 /** The consent as the kit's `autoSignIn` input (the confirm step). */
 public fun ExchangeConsentView.toKitInputs(device: String? = null): KitInputs {
@@ -282,8 +300,12 @@ public fun ExchangeConsentView.toKitInputs(device: String? = null): KitInputs {
 }
 
 /** The sign-in form (`methods` step); a platform provider row says "Continue with Google". */
-public fun signInFormInputs(provider: Boolean): KitInputs =
-    KitInputs.of(buildMap { put("signIn", browserSignIn()); if (provider) put("provider", JsonPrimitive("Google")) })
+public fun signInFormInputs(provider: Boolean): KitInputs = KitInputs.of(
+    buildMap {
+        put("signIn", browserSignIn())
+        if (provider) put("provider", JsonPrimitive("Google"))
+    },
+)
 
 /** The licence choice (`choices` view) for a pending grant. */
 public fun LicenseChoiceView.toKitInputs(): KitInputs =
@@ -297,26 +319,47 @@ public fun LicenseChoiceView.toKitInputs(): KitInputs =
 public fun LicenseChoiceView.toDeviceLimitInputs(): KitInputs {
     val choices = raw.array("choices")?.objects() ?: emptyList()
     val canReplace = choices.any { it.obj("replace").boolean("allowed") == true }
-    val view = if (canReplace) raw else JsonObject(
-        raw + ("choices" to kotlinx.serialization.json.JsonArray(choices.map { JsonObject(it + ("replace" to kotlinx.serialization.json.JsonNull)) })),
-    )
-    val signIn = if (canReplace) browserSignIn("outcome" to JsonPrimitive("choose"), "replace" to JsonPrimitive("browser"), "event" to JsonPrimitive("open-replace"))
-    else browserSignIn("outcome" to JsonPrimitive("choose"))
+    val view = if (canReplace) {
+        raw
+    } else {
+        JsonObject(
+            raw + (
+                "choices" to kotlinx.serialization.json.JsonArray(
+                    choices.map {
+                        JsonObject(it + ("replace" to kotlinx.serialization.json.JsonNull))
+                    },
+                )
+                ),
+        )
+    }
+    val signIn = if (canReplace) {
+        browserSignIn(
+            "outcome" to JsonPrimitive("choose"),
+            "replace" to JsonPrimitive("browser"),
+            "event" to JsonPrimitive("open-replace"),
+        )
+    } else {
+        browserSignIn("outcome" to JsonPrimitive("choose"))
+    }
     return KitInputs.of(mapOf("signIn" to signIn, "choices" to view))
 }
 
 /** The device limit with no license rows (`SignIn/device-limit`): its own step, never the key screen. */
-public fun deviceLimitInputs(manageUrl: String?, provider: Boolean = false): KitInputs =
-    KitInputs.of(
-        buildMap {
-            put("signIn", browserSignIn())
-            if (provider) put("provider", JsonPrimitive("Google"))
-            put(
-                "autoSignIn",
-                JsonObject(buildMap { put("step", JsonPrimitive("device-limit")); manageUrl?.let { put("manageUrl", JsonPrimitive(it)) } }),
-            )
-        },
-    )
+public fun deviceLimitInputs(manageUrl: String?, provider: Boolean = false): KitInputs = KitInputs.of(
+    buildMap {
+        put("signIn", browserSignIn())
+        if (provider) put("provider", JsonPrimitive("Google"))
+        put(
+            "autoSignIn",
+            JsonObject(
+                buildMap {
+                    put("step", JsonPrimitive("device-limit"))
+                    manageUrl?.let { put("manageUrl", JsonPrimitive(it)) }
+                },
+            ),
+        )
+    },
+)
 
 private fun providerName(wire: String): String = when (wire) {
     "google" -> "Google"

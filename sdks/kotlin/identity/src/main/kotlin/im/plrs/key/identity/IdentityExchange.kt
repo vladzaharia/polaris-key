@@ -127,18 +127,14 @@ public class ExchangeNonce @JvmOverloads constructor(public val value: String, p
 /** What an exchange answered. */
 public sealed interface ExchangeOutcome {
     /** A device token is stored, as after any sign-in. */
-    public data class SignedIn(
-        val subject: String,
-        val scope: String,
-        val licenseId: String?,
-        val issuedTokenType: String?,
-    ) : ExchangeOutcome
+    public data class SignedIn(val subject: String, val scope: String, val licenseId: String?, val issuedTokenType: String?) : ExchangeOutcome
 
     /**
      * The link exists but the person has not consented to this app (or what it asks changed). Nothing is
      * stored. Show [consent], then `identity.choice.complete(grant, choice = null, consent)`. `toString` redacts [grant].
      */
-    public class PendingConsent(public val grant: String, public val expiresInSeconds: Double, public val consent: ExchangeConsentView) : ExchangeOutcome {
+    public class PendingConsent(public val grant: String, public val expiresInSeconds: Double, public val consent: ExchangeConsentView) :
+        ExchangeOutcome {
         override fun toString(): String = "PendingConsent(grant=[redacted], expiresInSeconds=$expiresInSeconds)"
     }
 
@@ -146,7 +142,8 @@ public sealed interface ExchangeOutcome {
      * A licence choice is due and consent stands. Nothing is stored. Show [choices], then
      * `identity.choice.complete(grant, choice)`. `toString` redacts [grant].
      */
-    public class PendingSignIn(public val grant: String, public val expiresInSeconds: Double, public val choices: LicenseChoiceView) : ExchangeOutcome {
+    public class PendingSignIn(public val grant: String, public val expiresInSeconds: Double, public val choices: LicenseChoiceView) :
+        ExchangeOutcome {
         override fun toString(): String = "PendingSignIn(grant=[redacted], expiresInSeconds=$expiresInSeconds)"
     }
 
@@ -182,11 +179,15 @@ internal object IdentityExchange {
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
     /** The form body: `grant_type client_id subject_token subject_token_type nonce device_key proof`. */
-    fun form(clientId: String, subjectToken: String, nonce: String, deviceKey: String, proof: String): String =
-        listOf(
-            "grant_type" to GRANT_TYPE, "client_id" to clientId, "subject_token" to subjectToken,
-            "subject_token_type" to ID_TOKEN_TYPE, "nonce" to nonce, "device_key" to deviceKey, "proof" to proof,
-        ).joinToString("&") { (k, v) -> "${enc(k)}=${enc(v)}" }
+    fun form(clientId: String, subjectToken: String, nonce: String, deviceKey: String, proof: String): String = listOf(
+        "grant_type" to GRANT_TYPE,
+        "client_id" to clientId,
+        "subject_token" to subjectToken,
+        "subject_token_type" to ID_TOKEN_TYPE,
+        "nonce" to nonce,
+        "device_key" to deviceKey,
+        "proof" to proof,
+    ).joinToString("&") { (k, v) -> "${enc(k)}=${enc(v)}" }
 
     /** A non-2xx answer's code: flat `{"error":"x"}` or nested `{"error":{"code":"x"}}`. */
     fun errorCode(body: JsonObject?, status: Int): String {
@@ -207,7 +208,11 @@ internal object IdentityExchange {
 
     /** The sign-in card URL: https, or http on a loopback host. */
     fun safeUrl(u: String?): Boolean {
-        val uri = try { java.net.URI(u ?: return false) } catch (e: Exception) { return false }
+        val uri = try {
+            java.net.URI(u ?: return false)
+        } catch (e: Exception) {
+            return false
+        }
         val host = uri.host ?: return false
         return uri.scheme == "https" || (uri.scheme == "http" && (host == "localhost" || host == "127.0.0.1" || host == "[::1]" || host == "::1"))
     }
@@ -270,7 +275,11 @@ internal sealed interface NonceStep {
 }
 
 internal suspend fun IdentityClient.requestExchangeNonce(kind: ExchangeKind, port: DeviceKeyPort): NonceStep {
-    if (port.persistence() == DeviceKeyPersistence.memory) return NonceStep.Ended(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys))
+    if (port.persistence() ==
+        DeviceKeyPersistence.memory
+    ) {
+        return NonceStep.Ended(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys))
+    }
     val (url, why) = exchangeEndpoint(kind, "nonce")
     if (url == null) return NonceStep.Ended(ExchangeOutcome.Unavailable(why!!))
     val keys = try {
@@ -302,13 +311,17 @@ private fun refusalOf(res: PolarisResponse): ExchangeOutcome {
         val terms = b?.get("reason").stringValue == "terms"
         val known = terms || b?.get("reason").stringValue == "no_link"
         return ExchangeOutcome.NeedsSignIn(
-            reason = if (terms) "terms" else "no_link", url = url,
-            linkHandle = if (known) IdentityExchange.handleOf(b!!) else null, expiresInSeconds = b?.get("expiresIn").longValue,
+            reason = if (terms) "terms" else "no_link",
+            url = url,
+            linkHandle = if (known) IdentityExchange.handleOf(b!!) else null,
+            expiresInSeconds = b?.get("expiresIn").longValue,
         )
     }
     val code = IdentityExchange.errorCode(b, res.status)
     throw PolarisException(
-        code, "the exchange was refused ($code).", httpStatus = res.status,
+        code,
+        "the exchange was refused ($code).",
+        httpStatus = res.status,
         retryAfterSeconds = IdentityExchange.retryAfter(res, b),
         view = if (code == ErrorCode.deviceLimit || code == "license_choice_required") b?.get("view").objectValue else null,
         manageUrl = if (code == ErrorCode.deviceLimit) b?.get("manageUrl").stringValue?.takeIf { IdentityExchange.safeUrl(it) } else null,
@@ -343,8 +356,12 @@ internal suspend fun IdentityClient.exchangeTokens(
     }
     val proof = try {
         DeviceProofs.sign(
-            port, DeviceProofPurpose.exchange, core.product, core.deviceId(),
-            value = "$spent.${keys.signKey}", tokenHash = IdentityExchange.tokenHash(subjectToken),
+            port,
+            DeviceProofPurpose.exchange,
+            core.product,
+            core.deviceId(),
+            value = "$spent.${keys.signKey}",
+            tokenHash = IdentityExchange.tokenHash(subjectToken),
         )
     } catch (e: DeviceProofException) {
         throw PolarisException(ErrorCode.invalidArgument, "The exchange proof could not be built.")
@@ -359,14 +376,23 @@ internal suspend fun IdentityClient.exchangeTokens(
             val grant = IdentityExchange.grantOf(o)
             val expires = o["expiresIn"].decimalValue
             val consent = ExchangeConsentView.of(o["consent"].objectValue)
-            if (grant == null || expires == null || consent == null) throw PolarisException(ErrorCode.badResponse, "the exchange answered an incomplete consent.")
+            if (grant == null || expires == null ||
+                consent == null
+            ) {
+                throw PolarisException(ErrorCode.badResponse, "the exchange answered an incomplete consent.")
+            }
             return ExchangeOutcome.PendingConsent(grant, expires.toDouble(), consent)
         }
+
         "choose" -> {
             val grant = IdentityExchange.grantOf(o)
             val expires = o["expiresIn"].decimalValue
             val view = LicenseChoiceView.of(o["choices"].objectValue)
-            if (grant == null || expires == null || view == null) throw PolarisException(ErrorCode.badResponse, "the exchange answered an incomplete choice.")
+            if (grant == null || expires == null ||
+                view == null
+            ) {
+                throw PolarisException(ErrorCode.badResponse, "the exchange answered an incomplete choice.")
+            }
             return ExchangeOutcome.PendingSignIn(grant, expires.toDouble(), view)
         }
     }

@@ -9,9 +9,6 @@
 
 package im.plrs.key.core
 
-import java.io.File
-import java.nio.file.Files
-import java.util.UUID
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -19,6 +16,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
+import java.io.File
+import java.nio.file.Files
+import java.util.UUID
 
 /** A scripted keyring: a map, with switches for every failure mode. */
 class FakeKeyring : KeyringBackend {
@@ -27,6 +27,7 @@ class FakeKeyring : KeyringBackend {
     var failReads = false
     var failWrites = false
     var failDeletes = false
+
     /** A write that "succeeds" but stores something else (Python's mismatched read-back). */
     var corruptWrites = false
     var deletes = 0
@@ -60,7 +61,10 @@ class KeyringStoreTest {
         val dir = tempDir()
         fun context() = CoreContext(
             CoreOptions(
-                productSlug = "demo", version = "1.0.0", pinnedKeys = emptyMap(), trustRefresh = false,
+                productSlug = "demo",
+                version = "1.0.0",
+                pinnedKeys = emptyMap(),
+                trustRefresh = false,
                 store = KeyringStore("demo", dir, FakeKeyring()),
             ),
         )

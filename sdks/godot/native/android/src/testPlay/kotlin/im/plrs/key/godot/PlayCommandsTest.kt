@@ -67,7 +67,7 @@ class PlayCommandsTest {
     private val fake = FakeAppUpdateManager(host.appContext)
     private val packs = OnePackManager()
     private val integrity = InstantIntegrity()
-    private val c = Commands(host) { PlayCommands(it, { fake }, { packs }, { integrity }) }
+    private val c = Commands(host, flavorFactory = { PlayCommands(it, { fake }, { packs }, { integrity }) })
 
     private fun op(name: String, extra: JSONObject = JSONObject()) = c.json(extra.put("op", name))
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()

@@ -29,8 +29,6 @@ import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.TestSigner
 import im.plrs.key.core.testing.path
 import im.plrs.key.license.LicenseClientOptions
-import java.io.File
-import java.nio.file.Files
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -44,6 +42,8 @@ import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
+import java.nio.file.Files
 
 class ConnectTest {
     @get:Rule val tmp = TemporaryFolder()
@@ -83,11 +83,13 @@ class ConnectTest {
                 200,
                 """{"product":"djdl","services":{"connect":{"enabled":$connectOn,"endpoints":{"identity":"x","devices":"y"}}}}""",
             )
+
             r.path.endsWith("/devices/keys") -> {
                 keysPuts++
                 lastPut = JsonText.parseOrNull(r.body!!.toString(Charsets.UTF_8)).objectValue
                 respond(200, """{"keySeq":$keysPuts}""")
             }
+
             r.path.endsWith("/connect/identity") -> {
                 identityGets++
                 if (requireKeysOnce) {
@@ -99,7 +101,12 @@ class ConnectTest {
                     runBlocking { identityBody() }
                 }
             }
-            r.path.endsWith("/connect/devices") -> respond(200, devicesBody ?: """{"devices":[{"deviceId":"$deviceId","label":"Mac","platform":"macos","lastSeen":1700000000,"self":true}]}""")
+
+            r.path.endsWith("/connect/devices") -> respond(
+                200,
+                devicesBody ?: """{"devices":[{"deviceId":"$deviceId","label":"Mac","platform":"macos","lastSeen":1700000000,"self":true}]}""",
+            )
+
             else -> respond(404, "")
         }
 
@@ -120,7 +127,15 @@ class ConnectTest {
                 ),
             )
             val body = JsonObject(
-                mapOf("ring" to JsonPrimitive(ring), "certificate" to JsonPrimitive(cert), "discKeys" to JsonArray(discKeys.map { JsonPrimitive(it) })),
+                mapOf(
+                    "ring" to JsonPrimitive(ring),
+                    "certificate" to JsonPrimitive(cert),
+                    "discKeys" to JsonArray(
+                        discKeys.map {
+                            JsonPrimitive(it)
+                        },
+                    ),
+                ),
             )
             return respond(200, body.toString())
         }
@@ -129,11 +144,21 @@ class ConnectTest {
             "pkey-ring+jws",
             JsonObject(
                 mapOf(
-                    "iss" to JsonPrimitive("key.plrs.im"), "aud" to JsonPrimitive("djdl"), "sub" to JsonPrimitive(subject),
-                    "epoch" to jsonInt(epoch), "issuedAt" to jsonInt(now), "expiresAt" to jsonInt(now + 604_800),
+                    "iss" to JsonPrimitive("key.plrs.im"),
+                    "aud" to JsonPrimitive("djdl"),
+                    "sub" to JsonPrimitive(subject),
+                    "epoch" to jsonInt(epoch),
+                    "issuedAt" to jsonInt(now),
+                    "expiresAt" to jsonInt(now + 604_800),
                     "devices" to JsonArray(
                         devs.map {
-                            JsonObject(mapOf("deviceId" to JsonPrimitive(it.first), "signKey" to JsonPrimitive(it.second), "agreeKey" to JsonPrimitive(it.third)))
+                            JsonObject(
+                                mapOf(
+                                    "deviceId" to JsonPrimitive(it.first),
+                                    "signKey" to JsonPrimitive(it.second),
+                                    "agreeKey" to JsonPrimitive(it.third),
+                                ),
+                            )
                         },
                     ),
                 ),
@@ -155,8 +180,14 @@ class ConnectTest {
         val client = PolarisKeyClient.create(
             PolarisKeyClientOptions(
                 core = CoreOptions(
-                    productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
-                    store = store, transport = transport, clock = { now }, deviceName = "Test Device",
+                    productSlug = "djdl",
+                    version = "1.0.0",
+                    pinnedKeys = signer.trust,
+                    trustRefresh = false,
+                    store = store,
+                    transport = transport,
+                    clock = { now },
+                    deviceName = "Test Device",
                 ),
                 license = LicenseClientOptions(fingerprint = false),
                 connect = options,
@@ -356,8 +387,13 @@ class ConnectTest {
         val client = PolarisKeyClient.create(
             PolarisKeyClientOptions(
                 core = CoreOptions(
-                    productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
-                    store = store, transport = ScriptedTransport(worker::handle), clock = { now },
+                    productSlug = "djdl",
+                    version = "1.0.0",
+                    pinnedKeys = signer.trust,
+                    trustRefresh = false,
+                    store = store,
+                    transport = ScriptedTransport(worker::handle),
+                    clock = { now },
                 ),
                 license = LicenseClientOptions(fingerprint = false),
             ),

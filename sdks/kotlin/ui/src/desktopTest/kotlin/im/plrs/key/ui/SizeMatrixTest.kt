@@ -18,17 +18,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -40,6 +37,9 @@ import im.plrs.key.core.AllowedRange
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.LicenseStatus
 import im.plrs.key.license.ActivationResult
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.io.File
 import javax.imageio.ImageIO
 import kotlin.test.Test
@@ -49,7 +49,13 @@ internal val matrixChromes = listOf("Windows", "Gnome", "MacOS")
 
 /** The §7.1 rows as window sizes, in dp (the frames run at density 1). */
 internal val matrixSizes = listOf(
-    390 to 844, 844 to 390, 640 to 360, 820 to 1180, 1180 to 820, 1440 to 900, 1920 to 1080,
+    390 to 844,
+    844 to 390,
+    640 to 360,
+    820 to 1180,
+    1180 to 820,
+    1440 to 900,
+    1920 to 1080,
 )
 
 /** Font scale 2 at the phone, the phone in landscape and the laptop. */
@@ -58,9 +64,12 @@ internal val matrixLargeFontSizes = listOf(390 to 844, 844 to 390, 1440 to 900)
 private const val NOW = 1_790_000_000L
 
 private val matrixPrompt = PolarisSignInCode(
-    userCode = "WDJB-MJHT", verificationUri = "${BoardFixtures.LOCKER}/device",
-    verificationUriComplete = "${BoardFixtures.LOCKER}/device?user_code=WDJB-MJHT", expiresIn = 600,
-    expiresAt = NOW + 461, deviceName = "Desk PC",
+    userCode = "WDJB-MJHT",
+    verificationUri = "${BoardFixtures.LOCKER}/device",
+    verificationUriComplete = "${BoardFixtures.LOCKER}/device?user_code=WDJB-MJHT",
+    expiresIn = 600,
+    expiresAt = NOW + 461,
+    deviceName = "Desk PC",
 )
 private const val MANAGE = "${BoardFixtures.LOCKER}/activate?product=tidewater&next=free-device&for=Desk%20PC"
 
@@ -100,7 +109,19 @@ internal val matrixScreens: List<MatrixScreen> = listOf(
         PolarisKitScreen(autoStep("nearby-wait", code = "482913"))
     },
     MatrixScreen("nearby-approval", Regex("deny", RegexOption.IGNORE_CASE)) {
-        PolarisKitScreen(KitStates.resolve(KitComponent.nearbyApproval, KitInputs.of(fixture("nearbyApproval" to buildJsonObject { put("step", "ask"); put("device", "Kitchen iPad") }))))
+        PolarisKitScreen(
+            KitStates.resolve(
+                KitComponent.nearbyApproval,
+                KitInputs.of(
+                    fixture(
+                        "nearbyApproval" to buildJsonObject {
+                            put("step", "ask")
+                            put("device", "Kitchen iPad")
+                        },
+                    ),
+                ),
+            ),
+        )
     },
     MatrixScreen("device-limit", Regex("browser|manage|replace", RegexOption.IGNORE_CASE)) {
         PolarisGateScreen(
@@ -119,11 +140,16 @@ internal val matrixScreens: List<MatrixScreen> = listOf(
         BoardFixtures.Product()
         PolarisUpdatePromptDialog(
             PolarisUpdateUi(
-                "2.5.0", currentVersion = "2.4.1", size = 61_000_000L,
+                "2.5.0",
+                currentVersion = "2.4.1",
+                size = 61_000_000L,
                 notes = listOf("Faster sync on slow networks", "Fixes a crash when resuming"),
-                notesUrl = "https://example.com/releases/2.5.0", outlet = "direct",
+                notesUrl = "https://example.com/releases/2.5.0",
+                outlet = "direct",
             ),
-            onUpdate = {}, onLater = {}, onSkip = {},
+            onUpdate = {},
+            onLater = {},
+            onSkip = {},
         )
     },
 )
@@ -132,33 +158,30 @@ internal val matrixScreens: List<MatrixScreen> = listOf(
  * The inputs every v7 kit fixture shares: a named product and developer, a Pro tier (the license line)
  * and Google as the provider (React, SwiftUI and Godot render the same).
  */
-private fun fixture(vararg more: Pair<String, kotlinx.serialization.json.JsonElement>): Map<String, kotlinx.serialization.json.JsonElement> =
-    mapOf(
-        "integrator" to buildJsonObject { put("name", BoardFixtures.PRODUCT); put("developer", BoardFixtures.DEVELOPER) },
-        "account" to buildJsonObject { put("tier", "Pro") },
-        "provider" to JsonPrimitive("Google"),
-    ) + more
+private fun fixture(vararg more: Pair<String, kotlinx.serialization.json.JsonElement>): Map<String, kotlinx.serialization.json.JsonElement> = mapOf(
+    "integrator" to buildJsonObject {
+        put("name", BoardFixtures.PRODUCT)
+        put("developer", BoardFixtures.DEVELOPER)
+    },
+    "account" to buildJsonObject { put("tier", "Pro") },
+    "provider" to JsonPrimitive("Google"),
+) + more
 
-private fun autoStep(
-    step: String,
-    email: String? = null,
-    license: String? = null,
-    alsoGets: Boolean = false,
-    code: String? = null,
-): KitScreen = KitStates.resolve(
-    KitComponent.signIn,
-    KitInputs.of(
-        fixture(
-            "autoSignIn" to buildJsonObject {
-                put("step", step)
-                email?.let { put("email", it) }
-                license?.let { put("license", it) }
-                if (alsoGets) put("alsoGets", true)
-                code?.let { put("code", it) }
-            },
+private fun autoStep(step: String, email: String? = null, license: String? = null, alsoGets: Boolean = false, code: String? = null): KitScreen =
+    KitStates.resolve(
+        KitComponent.signIn,
+        KitInputs.of(
+            fixture(
+                "autoSignIn" to buildJsonObject {
+                    put("step", step)
+                    email?.let { put("email", it) }
+                    license?.let { put("license", it) }
+                    if (alsoGets) put("alsoGets", true)
+                    code?.let { put("code", it) }
+                },
+            ),
         ),
-    ),
-)
+    )
 
 /** What the matrix measures on one frame; every entry is a violation. */
 internal class FrameCheck(val failures: MutableList<String> = mutableListOf(), var primaryFound: Boolean = false)
@@ -204,13 +227,18 @@ internal fun ComposeUiTest.checkFrame(screen: MatrixScreen, minTargetDp: Float):
             if (!shown.isEmpty && shown.bottom <= root.height + 1f && shown.top >= -1f) check.primaryFound = true
         }
     }
-    if (!check.primaryFound) check.failures += "the primary action ${screen.primary} is not in the first viewport (${controls.map { it.matrixLabel() }})"
+    if (!check.primaryFound) {
+        check.failures +=
+            "the primary action ${screen.primary} is not in the first viewport (${controls.map { it.matrixLabel() }})"
+    }
     for (node in onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult)).fetchSemanticsNodes()) {
         val layout = textLayout(node) ?: continue
         val lastEllipsized = layout.lineCount > 0 && layout.isLineEllipsized(layout.lineCount - 1)
         if (layout.didOverflowHeight || lastEllipsized) check.failures += "text '${node.matrixLabel().take(40)}' is cut"
     }
-    for (node in onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).fetchSemanticsNodes()) {
+    for (node in onAllNodes(
+        androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange),
+    ).fetchSemanticsNodes()) {
         val range = node.config[SemanticsProperties.HorizontalScrollAxisRange]
         if (range.maxValue() > 0f) check.failures += "a sideways scroll of ${range.maxValue()}"
     }
@@ -290,9 +318,8 @@ internal val knownMatrixGaps: List<Regex> = listOf(
 )
 
 /** [failures] minus the known gaps; a known gap that matched nothing is reported too. */
-internal fun unexpected(failures: List<String>): List<String> =
-    failures.filterNot { f -> knownMatrixGaps.any { it.matches(f) } } +
-        knownMatrixGaps.filter { gap -> failures.none { gap.matches(it) } }.map { "a known gap no longer occurs: ${it.pattern}" }
+internal fun unexpected(failures: List<String>): List<String> = failures.filterNot { f -> knownMatrixGaps.any { it.matches(f) } } +
+    knownMatrixGaps.filter { gap -> failures.none { gap.matches(it) } }.map { "a known gap no longer occurs: ${it.pattern}" }
 
 class SizeMatrixTest {
     private val out = System.getenv("PKEY_KIT_SHOTS")?.takeIf { it.isNotBlank() }?.let(::File)
@@ -300,16 +327,18 @@ class SizeMatrixTest {
     private fun run(chrome: String, sizes: List<Pair<Int, Int>>, fontScale: Float, touch: Boolean, suffix: String): List<String> {
         val failures = mutableListOf<String>()
         withPlatform(chrome) {
-            for ((rowW, rowH) in sizes) for (screen in matrixScreens) {
-                // The Mac window never lays out under its 480 x 520 floor (a smaller host scrolls the floor-sized content, S7): the Mac is measured at the floor.
-                val mac = chrome == "MacOS"
-                val w = if (mac) maxOf(rowW, 480) else rowW
-                val h = if (mac) maxOf(rowH, 520) else rowH
-                matrixFrame(w, h, dark = true, fontScale = fontScale, touch = touch, content = screen.content, after = {
-                    val check = checkFrame(screen, if (touch) 44f else 24f)
-                    for (f in check.failures) failures += "$chrome ${screen.name} ${w}x$h$suffix: $f"
-                    writeShot(out, chrome, screen.name, w, h, suffix)
-                })
+            for ((rowW, rowH) in sizes) {
+                for (screen in matrixScreens) {
+                    // The Mac window never lays out under its 480 x 520 floor (a smaller host scrolls the floor-sized content, S7): the Mac is measured at the floor.
+                    val mac = chrome == "MacOS"
+                    val w = if (mac) maxOf(rowW, 480) else rowW
+                    val h = if (mac) maxOf(rowH, 520) else rowH
+                    matrixFrame(w, h, dark = true, fontScale = fontScale, touch = touch, content = screen.content, after = {
+                        val check = checkFrame(screen, if (touch) 44f else 24f)
+                        for (f in check.failures) failures += "$chrome ${screen.name} ${w}x$h$suffix: $f"
+                        writeShot(out, chrome, screen.name, w, h, suffix)
+                    })
+                }
             }
         }
         return failures
@@ -320,12 +349,17 @@ class SizeMatrixTest {
     fun theMacScrollsBelowItsFloor() = withPlatform("MacOS") {
         for ((w, h) in matrixSizes.filter { it.first < 480 || it.second < 520 }) {
             matrixFrame(w, h, dark = false, content = matrixScreens[0].content, after = {
-                val scrolls = onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange) or
-                    androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange)).fetchSemanticsNodes()
-                assertTrue(scrolls.any { n ->
-                    (n.config.getOrNull(SemanticsProperties.HorizontalScrollAxisRange)?.maxValue?.invoke() ?: 0f) > 0f ||
-                        (n.config.getOrNull(SemanticsProperties.VerticalScrollAxisRange)?.maxValue?.invoke() ?: 0f) > 0f
-                }, "${w}x$h: the Mac scrolls below its floor")
+                val scrolls = onAllNodes(
+                    androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange) or
+                        androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange),
+                ).fetchSemanticsNodes()
+                assertTrue(
+                    scrolls.any { n ->
+                        (n.config.getOrNull(SemanticsProperties.HorizontalScrollAxisRange)?.maxValue?.invoke() ?: 0f) > 0f ||
+                            (n.config.getOrNull(SemanticsProperties.VerticalScrollAxisRange)?.maxValue?.invoke() ?: 0f) > 0f
+                    },
+                    "${w}x$h: the Mac scrolls below its floor",
+                )
             })
         }
     }

@@ -11,9 +11,6 @@
 package im.plrs.key.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,50 +23,51 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import im.plrs.key.core.Presentation
 import im.plrs.key.core.PresentationSource
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /** The locale tag the catalog formats in: the device's first locale. */
 @Composable
-internal fun kitLocale(): String {
-    return systemLocaleTag()
-}
+internal fun kitLocale(): String = systemLocaleTag()
 
 /** What a line is on screen: a control, an announcement for assistive tech only, or text. */
 internal enum class KitLineRole { Control, Announcement, Text }
@@ -96,7 +94,8 @@ private val controlKeys = setOf(
     "deviceLimit.primary", "deviceLimit.openBrowser", "devices.manage", "activate.submit", "boot.continueOffline",
     "signin.again", "toast.undo", "common.dismiss",
     "signin.key.ownedSignIn", "signin.auto.confirm.primary", "signin.auto.confirm.other", "signin.linkOffer.primary",
-    "signin.linkOffer.decline", "signin.linkOffer.join", "signin.key.signIn", "signin.nearby.code", "signin.nearby.notYou", "signin.approve.deny", "signin.nearby.menu",
+    "signin.linkOffer.decline", "signin.linkOffer.join", "signin.key.signIn", "signin.nearby.code", "signin.nearby.notYou",
+    "signin.approve.deny", "signin.nearby.menu",
 )
 
 /**
@@ -131,10 +130,13 @@ private val sentenceWithoutName = setOf("signIn.methodError")
 
 internal fun kitLineRole(key: String): KitLineRole = when {
     key.startsWith("a11y.") -> KitLineRole.Announcement
+
     // A sentence that ends in "done" is the verdict, not the Done button (`common.done`); "Up to date"
     // after an update is a status, not an action.
     key == "offlineActivation.done" || key == "updateProgress.done" -> KitLineRole.Text
+
     key in controlKeys || KitAction.forCopyKey(key) != null || controlSuffix.containsMatchIn(key) -> KitLineRole.Control
+
     else -> KitLineRole.Text
 }
 
@@ -165,7 +167,9 @@ internal fun KitCopy.isDangling(line: CopyLine): Boolean {
 }
 
 /** The product the screen names: the first non-blank `product` argument any of its lines carries. */
-private fun KitScreen.productName(): String? = copy.firstNotNullOfOrNull { (it.args["product"] as? CopyArgument.Text)?.value?.takeIf(String::isNotBlank) }
+private fun KitScreen.productName(): String? = copy.firstNotNullOfOrNull {
+    (it.args["product"] as? CopyArgument.Text)?.value?.takeIf(String::isNotBlank)
+}
 
 /** [text] with its first letter capitalised, for a line whose leading argument was left out. */
 private fun String.sentenceStart(): String = trim().replaceFirstChar { it.uppercaseChar() }
@@ -195,30 +199,54 @@ public fun PolarisKitScreen(
 ) {
     // The sign-in form and its hand-off (the code, declined, expired) are focused steps: the
     // product header above a start-aligned title.
-    val focused = screen.component == KitComponent.signIn || screen.component == KitComponent.signInHandoff || screen.component == KitComponent.nearbyApproval
+    val focused =
+        screen.component == KitComponent.signIn || screen.component == KitComponent.signInHandoff || screen.component == KitComponent.nearbyApproval
     // The components with a styled part of their own (UI-KITS.md 4.1) draw it from their rows.
     val choices = rows.choices
     when {
         screen.isHidden -> Unit
+
         screen.component == KitComponent.licenseChoice && choices != null && choices.choices.isNotEmpty() && screen.state in LicenseChoiceRowStates ->
-            PolarisLicenseChoice(screen, choices, modifier, onContinue = onContinue, onAction = onAction, catalog = catalog, locale = locale, onUseAnotherAccount = onUseAnotherAccount)
+            PolarisLicenseChoice(
+                screen,
+                choices,
+                modifier,
+                onContinue = onContinue,
+                onAction = onAction,
+                catalog = catalog,
+                locale = locale,
+                onUseAnotherAccount = onUseAnotherAccount,
+            )
+
         screen.component == KitComponent.releaseNotes ->
             PolarisReleaseNotes(screen, rows.releaseNotes, modifier, onRetry = { onAction(KitAction.retry) }, catalog = catalog, locale = locale)
+
         // Not available is the message KitScreenBody draws; every other state is the Paywall.
         screen.component == KitComponent.paywall && screen.state != "not-available" ->
-            PolarisPaywall(screen, rows.features, modifier, onUpgrade = { onAction(null) }, onPortal = { onAction(null) }, onRedeem = { onAction(null) }, onDone = { onAction(null) }, catalog = catalog, locale = locale)
+            PolarisPaywall(screen, rows.features, modifier, onUpgrade = {
+                onAction(null)
+            }, onPortal = { onAction(null) }, onRedeem = { onAction(null) }, onDone = { onAction(null) }, catalog = catalog, locale = locale)
+
         screen.component == KitComponent.entitlementGate -> KitEntitlementGate(screen, modifier, catalog, locale) { onAction(null) }
-        else -> KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode, addKeyUrl = addKeyUrl, progress = rows.progress, onControl = onControl)
+
+        else -> KitScreenBody(
+            screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode,
+            addKeyUrl = addKeyUrl, progress = rows.progress, onControl = onControl,
+        )
     }
 }
 
 /** The EntitlementGate state as a screen: nothing while entitled, the locked card, or the loading line. */
 @Composable
 private fun KitEntitlementGate(screen: KitScreen, modifier: Modifier, catalog: KitCopy, locale: String, onUnlock: () -> Unit) {
-    val tier = screen.copy.firstOrNull { it.key == "entitlement.locked" }?.args?.get("tier").let { (it as? CopyArgument.Text)?.value?.takeIf(String::isNotBlank) }
+    val tier = screen.copy.firstOrNull {
+        it.key == "entitlement.locked"
+    }?.args?.get("tier").let { (it as? CopyArgument.Text)?.value?.takeIf(String::isNotBlank) }
     when (screen.state) {
         "entitled" -> Unit
+
         "loading" -> PolarisProgressScreen(catalog.format("common.loading", locale), modifier)
+
         else -> PolarisScreen(modifier = modifier, showLogo = false) {
             PolarisEntitlementLocked(tier, onUnlock = onUnlock.takeIf { screen.shows("entitlement.unlock") })
         }
@@ -227,7 +255,11 @@ private fun KitEntitlementGate(screen: KitScreen, modifier: Modifier, catalog: K
 
 /** The components whose screens are centred messages or hero screens, not focused steps. */
 private val centredComponents = setOf(
-    KitComponent.welcome, KitComponent.gate, KitComponent.boot, KitComponent.statusScreen, KitComponent.graceBanner,
+    KitComponent.welcome,
+    KitComponent.gate,
+    KitComponent.boot,
+    KitComponent.statusScreen,
+    KitComponent.graceBanner,
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -254,17 +286,25 @@ private fun KitScreenBody(
         // Row fragments are left out unless nothing else would be left to say.
         val all = shown.filterNot { isRowFragment(it.key) }.takeIf { rest -> rest.any { kitLineRole(it.key) == KitLineRole.Text } } ?: shown
         // The restart verb is the downloading state's; an offer lists it only as one platform's verb.
-        val offered = all.filterNot { it.key == "update.restartWhenReady" && screen.state != "downloading" }.filterNot { it.key == "update.skipVersion" }
+        val offered = all.filterNot { it.key == "update.restartWhenReady" && screen.state != "downloading" }.filterNot {
+            it.key ==
+                "update.skipVersion"
+        }
         offered.filterNot { catalog.isDangling(it) }
     }
     // The platform's wording (macOS title case) is for buttons, menu items and window titles only (S4).
     val shapedLines = remember(kept, screen, catalog, locale) {
-        val formatted = kept.map { line -> KitLine(line.key, kitLineRole(line.key), catalog.format(line, locale, variant.takeIf { isMacVariantRole(line.key) }), line.args) }
+        val formatted = kept.map { line ->
+            KitLine(line.key, kitLineRole(line.key), catalog.format(line, locale, variant.takeIf { isMacVariantRole(line.key) }), line.args)
+        }
         // A state whose every sentence lost an argument still says what happened, without the name.
         val fallback = screen.copy.firstOrNull { it.key in sentenceWithoutName }
         if (fallback != null && formatted.none { it.role == KitLineRole.Text }) {
             val args = catalog.argumentNames(fallback.key).associateWith { CopyArgument.Text("") as CopyArgument }
-            return@remember listOf(KitLine(fallback.key, KitLineRole.Text, catalog.format(CopyLine(fallback.key, args), locale).sentenceStart(), args)) + formatted
+            return@remember listOf(
+                KitLine(fallback.key, KitLineRole.Text, catalog.format(CopyLine(fallback.key, args), locale).sentenceStart(), args),
+            ) +
+                formatted
         }
         formatted
     }
@@ -278,7 +318,12 @@ private fun KitScreenBody(
     val lines = if (gnomeReplace || gnomeConfirm) {
         val drop = setOf("signin.replace.title", "signin.replace.consequence", "signin.replace.confirm", "signin.replace.back")
         val rest = shapedLines.filterNot { it.key in drop }
-        if (gnomeReplace) rest + KitLine("signin.replace.openSystem", KitLineRole.Control, catalog.format("signin.replace.openSystem", locale), emptyMap()) else rest
+        if (gnomeReplace) {
+            rest +
+                KitLine("signin.replace.openSystem", KitLineRole.Control, catalog.format("signin.replace.openSystem", locale), emptyMap())
+        } else {
+            rest
+        }
     } else {
         shapedLines
     }
@@ -331,15 +376,33 @@ private fun KitScreenBody(
     // Boot's "Not now" is paired with Download, so it stays a tonal secondary (UI-KITS.md: "never bare
     // text when paired"); everywhere else it is the quiet decline of an automatic step.
     val deviceLimitStep = component == KitComponent.signIn && screen.state == "device-limit"
-    val isTertiary = { key: String -> (key in tertiaryKeys || (deviceLimitStep && key == "common.cancel")) && !(key == "common.notNow" && component == KitComponent.boot) }
+    val isTertiary = { key: String ->
+        (key in tertiaryKeys || (deviceLimitStep && key == "common.cancel")) &&
+            !(key == "common.notNow" && component == KitComponent.boot)
+    }
     val tertiary = if (rowsOnly) emptyList() else controls.filter { isTertiary(it.key) }
     val buttons = if (rowsOnly) emptyList() else controls.filter { !isTertiary(it.key) }
     // macOS: a step screen's actions are a trailing row; the Welcome keeps its stacked hero buttons.
     val macRow = autoPlatformVariant() == PolarisPlatformVariant.MacOS && component != KitComponent.welcome && buttons.isNotEmpty()
     // The automatic steps' quiet links (Use another account, Cancel) share the trailing group's one axis on the Mac.
     val quietInRow = macRow && component == KitComponent.signIn && (screen.state == "confirm" || deviceLimitStep)
-    val onDefault: (() -> Unit)? = if (macRow && !activating) buttons.firstOrNull()?.let { line -> { onControl(line.key); onAction(KitAction.forCopyKey(line.key)) } } else null
-    val actions: (@Composable ColumnScope.() -> Unit)? = if ((controls.isEmpty() || rowsOnly) && !attribution && component != KitComponent.activate) null else {
+    val onDefault: (() -> Unit)? = if (macRow &&
+        !activating
+    ) {
+        buttons.firstOrNull()?.let { line ->
+            {
+                onControl(line.key)
+                onAction(KitAction.forCopyKey(line.key))
+            }
+        }
+    } else {
+        null
+    }
+    val actions: (@Composable ColumnScope.() -> Unit)? = if ((controls.isEmpty() || rowsOnly) && !attribution &&
+        component != KitComponent.activate
+    ) {
+        null
+    } else {
         {
             if (component == KitComponent.activate && screen.state != "done") KitKeyField(lines, busy = activating)
             if (activating) {
@@ -353,16 +416,28 @@ private fun KitScreenBody(
                 PolarisActionGroup(row = true, visualOrder = true) {
                     for (line in if (quietInRow) tertiary.reversed() else emptyList()) {
                         val action = KitAction.forCopyKey(line.key)
-                        PolarisSecondaryButton(line.text, onClick = { onControl(line.key); onAction(action) }, external = KitAction.leavesApp(line.key))
+                        PolarisSecondaryButton(line.text, onClick = {
+                            onControl(line.key)
+                            onAction(action)
+                        }, external = KitAction.leavesApp(line.key))
                     }
                     for ((index, line) in buttons.withIndex().reversed()) {
                         val action = KitAction.forCopyKey(line.key)
                         if (isGoogleProviderLine(line.key, line.args)) {
-                            PolarisGoogleButton(line.text, onClick = { onControl(line.key); onAction(action) }, initialFocus = index == 0)
+                            PolarisGoogleButton(line.text, onClick = {
+                                onControl(line.key)
+                                onAction(action)
+                            }, initialFocus = index == 0)
                         } else if (index == 0) {
-                            PolarisPrimaryButton(line.text, onClick = { onControl(line.key); onAction(action) }, initialFocus = true, external = KitAction.leavesApp(line.key))
+                            PolarisPrimaryButton(line.text, onClick = {
+                                onControl(line.key)
+                                onAction(action)
+                            }, initialFocus = true, external = KitAction.leavesApp(line.key))
                         } else {
-                            PolarisSecondaryButton(line.text, onClick = { onControl(line.key); onAction(action) }, external = KitAction.leavesApp(line.key))
+                            PolarisSecondaryButton(line.text, onClick = {
+                                onControl(line.key)
+                                onAction(action)
+                            }, external = KitAction.leavesApp(line.key))
                         }
                     }
                 }
@@ -370,9 +445,26 @@ private fun KitScreenBody(
                 CompositionLocalProvider(LocalPolarisMacHero provides (polarisWindow.isMac && component == KitComponent.welcome)) {
                     buttons.forEachIndexed { index, line ->
                         val action = KitAction.forCopyKey(line.key)
-                        val click: () -> Unit = if (gnomeReplace && line.key == "signin.replace.openSystem") ({ replaceOpen = true }) else ({ onControl(line.key); onAction(action) })
+                        val click: () -> Unit = if (gnomeReplace &&
+                            line.key == "signin.replace.openSystem"
+                        ) {
+                            ({ replaceOpen = true })
+                        } else {
+                            (
+                                {
+                                    onControl(line.key)
+                                    onAction(action)
+                                }
+                                )
+                        }
                         // One primary, then tonal secondaries (a lone action is always the primary, DL4).
-                        val hero = if (polarisWindow.variant.isDesktop && component == KitComponent.welcome) Modifier.widthIn(max = PolarisMac.heroButtonMaxWidth) else Modifier
+                        val hero = if (polarisWindow.variant.isDesktop &&
+                            component == KitComponent.welcome
+                        ) {
+                            Modifier.widthIn(max = PolarisMac.heroButtonMaxWidth)
+                        } else {
+                            Modifier
+                        }
                         if (isGoogleProviderLine(line.key, line.args)) {
                             PolarisGoogleButton(line.text, onClick = click, modifier = hero)
                         } else if (index == 0) {
@@ -388,7 +480,12 @@ private fun KitScreenBody(
                 Spacer(Modifier.height(if (buttons.isEmpty()) 0.dp else 20.dp))
                 // The extras: one quiet row of links, no divider and no glyph (UI-KITS.md 4.3 Welcome).
                 FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(PolarisSpace.hairline, Alignment.CenterHorizontally)) {
-                    for (line in tertiary) PolarisTextButton(line.text, onClick = { onControl(line.key); onAction(KitAction.forCopyKey(line.key)) })
+                    for (line in tertiary) {
+                        PolarisTextButton(line.text, onClick = {
+                            onControl(line.key)
+                            onAction(KitAction.forCopyKey(line.key))
+                        })
+                    }
                 }
             }
             if (attribution) {
@@ -412,50 +509,74 @@ private fun KitScreenBody(
             // The device-limit step reads: title, count, lede, the meter, then the confirm. The
             // activation hand-off to it leads with the step's own title, not the core refusal's.
             val handoff = component == KitComponent.activate && screen.state == "device-limit"
-            val ordered = if (handoff) text.filterNot { it.key == "core.activation.device-limit.title" }.sortedBy { if (it.key == "deviceLimit.title") 0 else 1 } else text
-            val meters = (component == KitComponent.deviceLimit || handoff) && KitSeatMeterShown(screen)
-            if (component == KitComponent.signIn && screen.state == "confirm") KitConfirmLines(text)
-            else ordered.forEachIndexed { index, line ->
-                // The caption belongs to the meter, which draws it.
-                if (meters && line.key == "part.seatMeter.caption") return@forEachIndexed
-                // The add-key page as a QR on a TV; its caption sits under it, only when the host gave the link (DL14).
-                if (line.key == "signin.key.scan" && addKeyUrl != null) {
-                    lines.firstOrNull { it.key == "a11y.qrAddKey" }?.let {
-                        PolarisQr(addKeyUrl, it.text, Modifier.size(polarisWindow.qrSize))
-                        Spacer(Modifier.height(PolarisSpace.tight))
+            val ordered = if (handoff) {
+                text.filterNot { it.key == "core.activation.device-limit.title" }.sortedBy {
+                    if (it.key ==
+                        "deviceLimit.title"
+                    ) {
+                        0
+                    } else {
+                        1
                     }
                 }
-                val step = if (offline) offlineStep(line.key) else null
-                when {
-                    // The confirm's first line is bold body text, read before the button (4.3 DeviceLimit item 7).
-                    line.key == "deviceLimit.confirmTitle" || line.key == "signin.replace.title" ->
-                        Text(line.text, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth())
-                    index == 0 && component == KitComponent.welcome && polarisWindow.isMac -> PolarisMacWelcomeTitle(line.text)
-                    index == 0 -> PolarisTitle(line.text)
-                    step != null -> PolarisStep(step, line.text)
-                    else -> PolarisBody(line.text)
+            } else {
+                text
+            }
+            val meters = (component == KitComponent.deviceLimit || handoff) && KitSeatMeterShown(screen)
+            if (component == KitComponent.signIn && screen.state == "confirm") {
+                KitConfirmLines(text)
+            } else {
+                ordered.forEachIndexed { index, line ->
+                    // The caption belongs to the meter, which draws it.
+                    if (meters && line.key == "part.seatMeter.caption") return@forEachIndexed
+                    // The add-key page as a QR on a TV; its caption sits under it, only when the host gave the link (DL14).
+                    if (line.key == "signin.key.scan" && addKeyUrl != null) {
+                        lines.firstOrNull { it.key == "a11y.qrAddKey" }?.let {
+                            PolarisQr(addKeyUrl, it.text, Modifier.size(polarisWindow.qrSize))
+                            Spacer(Modifier.height(PolarisSpace.tight))
+                        }
+                    }
+                    val step = if (offline) offlineStep(line.key) else null
+                    when {
+                        // The confirm's first line is bold body text, read before the button (4.3 DeviceLimit item 7).
+                        line.key == "deviceLimit.confirmTitle" || line.key == "signin.replace.title" ->
+                            Text(
+                                line.text,
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+
+                        index == 0 && component == KitComponent.welcome && polarisWindow.isMac -> PolarisMacWelcomeTitle(line.text)
+
+                        index == 0 -> PolarisTitle(line.text)
+
+                        step != null -> PolarisStep(step, line.text)
+
+                        else -> PolarisBody(line.text)
+                    }
+                    Spacer(Modifier.height(if (index == 0) PolarisSpace.tight else 8.dp))
+                    // The request QR sits under step 1, and only when the host gave the code to encode: a
+                    // kit never makes up a code (DL14).
+                    if (step == 1 && requestCode != null && qrLabel != null) {
+                        PolarisQr(requestCode, qrLabel, Modifier.size(polarisWindow.qrSize))
+                        Spacer(Modifier.height(PolarisSpace.tight))
+                    }
+                    val copyLine = lines.firstOrNull { it.key == "offlineActivation.copyCode" }
+                    if (step == 1 && copyLine != null) {
+                        PolarisSecondaryButton(
+                            copyLine.text,
+                            onClick = {
+                                if (requestCode != null) {
+                                    scope.launch { clipboard.setText(copyLine.text, requestCode) }
+                                }
+                                onAction(KitAction.forCopyKey(copyLine.key))
+                            },
+                        )
+                        Spacer(Modifier.height(PolarisSpace.tight))
+                    }
+                    if (meters && line.key in setOf("deviceLimit.lede", "deviceLimit.browser", "deviceLimit.noManage")) KitSeatMeter(screen)
                 }
-                Spacer(Modifier.height(if (index == 0) PolarisSpace.tight else 8.dp))
-                // The request QR sits under step 1, and only when the host gave the code to encode: a
-                // kit never makes up a code (DL14).
-                if (step == 1 && requestCode != null && qrLabel != null) {
-                    PolarisQr(requestCode, qrLabel, Modifier.size(polarisWindow.qrSize))
-                    Spacer(Modifier.height(PolarisSpace.tight))
-                }
-                val copyLine = lines.firstOrNull { it.key == "offlineActivation.copyCode" }
-                if (step == 1 && copyLine != null) {
-                    PolarisSecondaryButton(
-                        copyLine.text,
-                        onClick = {
-                            if (requestCode != null) {
-                                scope.launch { clipboard.setText(copyLine.text, requestCode) }
-                            }
-                            onAction(KitAction.forCopyKey(copyLine.key))
-                        },
-                    )
-                    Spacer(Modifier.height(PolarisSpace.tight))
-                }
-                if (meters && line.key in setOf("deviceLimit.lede", "deviceLimit.browser", "deviceLimit.noManage")) KitSeatMeter(screen)
             }
             // The activation hand-off has no lede line of its own to hang the meter on: it follows the text.
             if (meters && ordered.none { it.key in setOf("deviceLimit.lede", "deviceLimit.browser", "deviceLimit.noManage") }) KitSeatMeter(screen)
@@ -464,7 +585,11 @@ private fun KitScreenBody(
                 Spacer(Modifier.height(PolarisSpace.controls))
                 PolarisProgressBar(progress, percent)
                 Spacer(Modifier.height(PolarisSpace.tight))
-                Text(percent, style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    percent,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             // With no controls, the line closes the content.
             if (attribution && controls.isEmpty()) PolarisPoweredByLine()
@@ -473,18 +598,23 @@ private fun KitScreenBody(
     val asColumn = component in centredComponents
     val screenContent: @Composable () -> Unit = {
         CompositionLocalProvider(LocalPolarisArtName provides (productName ?: product)) {
-        if (!asColumn) {
-            PolarisScaffold(
-                modifier = semanticsModifier.then(if (macRow) Modifier.polarisMacDefaultKeys(onDefault) else Modifier),
-                anchor = PolarisAnchor.Top,
-                contentAlign = TextAlign.Start,
-                actions = actions,
-                dockActionsAtLargeType = focused,
-                content = body,
-            )
-        } else {
-            PolarisScreen(modifier = semanticsModifier.then(if (macRow) Modifier.polarisMacDefaultKeys(onDefault) else Modifier), showLogo = false, actions = actions, content = body)
-        }
+            if (!asColumn) {
+                PolarisScaffold(
+                    modifier = semanticsModifier.then(if (macRow) Modifier.polarisMacDefaultKeys(onDefault) else Modifier),
+                    anchor = PolarisAnchor.Top,
+                    contentAlign = TextAlign.Start,
+                    actions = actions,
+                    dockActionsAtLargeType = focused,
+                    content = body,
+                )
+            } else {
+                PolarisScreen(
+                    modifier = semanticsModifier.then(if (macRow) Modifier.polarisMacDefaultKeys(onDefault) else Modifier),
+                    showLogo = false,
+                    actions = actions,
+                    content = body,
+                )
+            }
         }
     }
     if (gnomeReplace || gnomeConfirm) {
@@ -499,9 +629,17 @@ private fun KitScreenBody(
             screenContent()
             if (gnomeConfirm || replaceOpen) {
                 PolarisReplaceAlertOverlay(
-                    device, thisDevice, product.orEmpty(),
-                    onReplace = { replaceOpen = false; onAction(confirm) },
-                    onBack = { replaceOpen = false; if (gnomeConfirm) onAction(back) },
+                    device,
+                    thisDevice,
+                    product.orEmpty(),
+                    onReplace = {
+                        replaceOpen = false
+                        onAction(confirm)
+                    },
+                    onBack = {
+                        replaceOpen = false
+                        if (gnomeConfirm) onAction(back)
+                    },
                 )
             }
         }
@@ -527,6 +665,7 @@ private fun KitConfirmLines(lines: List<KitLine>) {
                 Text(line.text, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(PolarisSpace.hairline))
             }
+
             "signin.consent.licenseLine", "signin.consent.newLicense", "signin.consent.profile" -> {
                 val strong = line.key != "signin.consent.profile"
                 Text(
@@ -537,13 +676,16 @@ private fun KitConfirmLines(lines: List<KitLine>) {
                 )
                 Spacer(Modifier.height(PolarisSpace.hairline))
             }
+
             "signin.consent.pairwise" -> {
                 Text(line.text, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
             }
+
             "signin.auto.confirm.as", "signin.auto.confirm.asApple" -> {
                 PolarisBody(line.text)
                 Spacer(Modifier.height(PolarisSpace.controls + 4.dp))
             }
+
             else -> {
                 if (index == 0) {
                     PolarisTitle(line.text)
@@ -565,7 +707,9 @@ private fun KitKeyField(lines: List<KitLine>, busy: Boolean) {
     val paste = lines.firstOrNull { it.key == "common.paste" }?.text
     var value by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     // The verdict and the shape errors sit under the field (DL7); only the key's own shape is danger.
-    val error = lines.firstOrNull { it.key == "part.keyField.cutShort" || it.key == "part.keyField.malformed" || it.key == "part.keyField.empty" }?.text
+    val error = lines.firstOrNull {
+        it.key == "part.keyField.cutShort" || it.key == "part.keyField.malformed" || it.key == "part.keyField.empty"
+    }?.text
     val hints = lines.filter { it.key == "part.keyField.forProduct" || it.key == "part.keyField.verdict" }.map { it.text }
     PolarisTextField(
         value = value,
@@ -577,7 +721,11 @@ private fun KitKeyField(lines: List<KitLine>, busy: Boolean) {
         error = error,
         supporting = hints,
         trailing = paste?.let { description -> { PolarisPasteButton(description) { value = it } } },
-        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.None,
+            autoCorrectEnabled = false,
+            keyboardType = KeyboardType.Ascii,
+        ),
     )
     Spacer(Modifier.height(PolarisSpace.controls))
 }
@@ -664,7 +812,13 @@ private fun KitGraceBanner(lines: List<KitLine>, controls: List<KitLine>, onActi
  * own group in danger text.
  */
 @Composable
-private fun ColumnScope.KitAccountBody(lines: List<KitLine>, text: List<KitLine>, controls: List<KitLine>, onAction: (KitAction?) -> Unit, loading: Boolean = false) {
+private fun ColumnScope.KitAccountBody(
+    lines: List<KitLine>,
+    text: List<KitLine>,
+    controls: List<KitLine>,
+    onAction: (KitAction?) -> Unit,
+    loading: Boolean = false,
+) {
     fun has(key: String) = lines.firstOrNull { it.key == key }
     text.firstOrNull { it.key == "account.title" }?.let {
         PolarisTitle(it.text)
@@ -738,7 +892,15 @@ private fun KitRow(label: String, onClick: (() -> Unit)? = null, danger: Boolean
     val color = if (danger) PolarisTheme.status.danger else MaterialTheme.colorScheme.onSurface
     val base = Modifier.fillMaxWidth().heightIn(min = 52.dp)
     Row(
-        modifier = (if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base).polarisExternalSemantics(external).padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.controls),
+        modifier = (
+            if (onClick !=
+                null
+            ) {
+                base.clickable(role = Role.Button, onClick = onClick)
+            } else {
+                base
+            }
+            ).polarisExternalSemantics(external).padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.controls),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = color)
