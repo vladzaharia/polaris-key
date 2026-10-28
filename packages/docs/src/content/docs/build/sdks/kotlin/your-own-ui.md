@@ -76,6 +76,8 @@ import im.plrs.key.sdk.PolarisKeyClient
 
 fun kindOf(r: ActivationResult): String = when (r) {
     is ActivationResult.Ok -> "ok"
+    is ActivationResult.KeyEntryLimit -> "key-entry-limit"
+    is ActivationResult.LicenseOwned -> "license-owned"
     is ActivationResult.DeviceLimit -> "device-limit"
     is ActivationResult.Unauthorized -> "unauthorized"
     is ActivationResult.FingerprintRequired -> "fingerprint-required"
@@ -111,6 +113,8 @@ suspend fun activate(client: PolarisKeyClient, key: String): Refusal? {
 | Result                              | Meaning                                                          | Offer                                                                                    |
 | ----------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `Unauthorized`                      | The key was not accepted                                         | Retry                                                                                    |
+| `KeyEntryLimit`                     | The key has used every entry its product allows                  | `manageUrl`, to add the key to an account                                                |
+| `LicenseOwned`                      | The license is in an account, and a key does not move it         | `signInUrl`, behind a user action                                                        |
 | `DeviceLimit`                       | The device limit is reached                                      | `manageUrl`, then retry the same key                                                     |
 | `LicenseExpired`, `LicenseDisabled` | The license ended or an operator disabled it                     | Renew, or contact the developer                                                          |
 | `HardwareMismatch`                  | The hardware moved past the tier's tolerance                     | Retry: it binds the new hardware and counts toward the limit; `changed` lists what moved |
@@ -140,6 +144,7 @@ suspend fun signIn(client: PolarisKeyClient, show: (code: String, address: Strin
     return try {
         when (session.wait()) {
             is SignInOutcome.SignedIn -> "Signed in as ${client.license.getLicenseUser()?.subject}"
+            is SignInOutcome.Choose -> "Choose the license to use."
             SignInOutcome.Expired -> "The code expired. Start again."
             SignInOutcome.Cancelled -> "Sign-in cancelled."
             is SignInOutcome.Pending -> "Still waiting."
@@ -181,6 +186,7 @@ fun keepFresh(client: PolarisKeyClient, scope: CoroutineScope) {
                 is PolarisEvent.Config -> println("settings changed")
                 is PolarisEvent.UpdateAvailable -> println("an update is offered")
                 is PolarisEvent.Packs -> Unit
+                is PolarisEvent.Identity -> Unit
             }
         }
     }
@@ -407,6 +413,7 @@ fun ActivationForm(client: PolarisKeyClient, headline: String) {
                     message = try {
                         when (session.wait()) {
                             is SignInOutcome.SignedIn -> "Signed in."
+                            is SignInOutcome.Choose -> "Choose the license to use."
                             is SignInOutcome.Pending -> "Still waiting."
                             SignInOutcome.Cancelled -> "Sign-in cancelled."
                             SignInOutcome.Expired -> "The code expired."

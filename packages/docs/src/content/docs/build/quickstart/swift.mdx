@@ -154,7 +154,7 @@ The kit reads its words in nine locales, the device's or `PolarisKeyTheme.locale
   </Fragment>
   <Fragment slot="library">
 
-Call the client and handle each state yourself. Activate with `client.license.activateWithKey(_:)`, read the state with `client.status()` and `client.isLicensed()`, and sign in with `client.signInWithBrowser()`. `ErrorCopy.activationMessage(result.kind)` gives the words for a refusal, in English only. [Your own UI](/docs/build/sdks/swift/your-own-ui/) gives each call with its states, including [UIKit and AppKit](/docs/build/sdks/swift/your-own-ui/#uikit-and-appkit).
+Call the client and handle each state yourself. Activate with `client.license.activateWithKey(_:)`, read the state with `client.status()` and `client.isLicensed()`, and sign in with `client.identity.signIn.start(_:)`. `ErrorCopy.activationMessage(result.kind)` gives the words for a refusal, in English only. [Your own UI](/docs/build/sdks/swift/your-own-ui/) gives each call with its states, including [UIKit and AppKit](/docs/build/sdks/swift/your-own-ui/#uikit-and-appkit).
 
 ```swift title="OwnUI.swift"
 import PolarisKey

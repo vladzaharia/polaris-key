@@ -43,9 +43,10 @@ class NavigationTest {
 
     @Test
     fun aDeepLinkOpensTheAccountScreen() {
-        // "Settings" is a row of the Account list; the home screen has no such text.
+        // The Account screen's title; the home screen has no such text. (The Settings row is drawn only
+        // when the settings pane has content, UK-09 K-3, so it is not a marker of the screen.)
         launch("tidewater://polaris/account").use {
-            waitForText("Settings")
+            waitForText("Account and license")
             assertTrue(!shown("Licensed. Open your account or check for updates."))
         }
     }
@@ -53,9 +54,9 @@ class NavigationTest {
     @Test
     fun aQueryLinkOpensTheDevicesScreen() {
         launch("tidewater://polaris?route=devices").use {
-            // The Devices screen on its own; the Account list would also show the Settings row.
+            // The Devices screen on its own; the Account list would also show its title.
             waitForText("Your devices")
-            assertTrue(!shown("Settings"))
+            assertTrue(!shown("Account and license"))
         }
     }
 
