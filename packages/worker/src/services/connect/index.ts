@@ -26,6 +26,18 @@ import { CONNECT_ROUTES } from "./routes.js";
 import { CONNECT_RINGS_STORE, connectRingsStore } from "./subjectStore.js";
 import { CONNECT_SETTINGS_SLICE } from "./settings.js";
 
+import type { Env } from "../../platform/env.js";
+import { pokeRelayRoom } from "./do/client.js";
+import { setRelayPokePort } from "./relayPoke.js";
+
+/**
+ * CC-07.4: point the ring's poke port at the relay for this deployment. The entry point calls it
+ * on every request and scheduled run (cheap, idempotent), because the port holds the bindings.
+ */
+export function installRelayPoke(env: Env): void {
+  setRelayPokePort((poke) => pokeRelayRoom(env, poke));
+}
+
 /** The relay room class, re-exported for the Worker entry point. */
 export { ConnectRelayDO } from "./do/relayDo.js";
 
