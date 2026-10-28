@@ -106,6 +106,8 @@ public let peerLinkWriteMaxBytes = 8 * 1024 * 1024
 public actor PeerLink: CustomStringConvertible, CustomReflectable {
     public static let handshakeFrameMax = 16_384
     public static let handshakeSeconds: TimeInterval = 30
+    /// How long a finished link gives its writer to flush the CLOSE record before the pipe is closed anyway.
+    public static let pipeGraceSeconds: TimeInterval = 3
     /// The least a deadline timer waits, so a deadline that is due now cannot spin.
     private static let minWake: TimeInterval = 0.05
 
@@ -131,21 +133,25 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
 
     private let events: AsyncStream<PeerSessionEvent>
     private let handshakeLimit: TimeInterval
+    private let pipeGrace: TimeInterval
 
     /// Bind a channel to a pipe. The link's event and deadline tasks start here.
     public static func make(
         pipe: any PeerBytePipe, options: PeerChannelOptions, handlers: PeerLinkHandlers = PeerLinkHandlers(),
-        handshakeSeconds: TimeInterval = PeerLink.handshakeSeconds
+        handshakeSeconds: TimeInterval = PeerLink.handshakeSeconds, pipeGraceSeconds: TimeInterval = PeerLink.pipeGraceSeconds
     ) async throws -> PeerLink {
-        let l = try PeerLink(pipe: pipe, options: options, handlers: handlers, handshakeSeconds: handshakeSeconds)
+        let l = try PeerLink(
+            pipe: pipe, options: options, handlers: handlers, handshakeSeconds: handshakeSeconds,
+            pipeGraceSeconds: pipeGraceSeconds)
         await l.begin()
         return l
     }
 
     private init(
         pipe: any PeerBytePipe, options o: PeerChannelOptions, handlers: PeerLinkHandlers,
-        handshakeSeconds: TimeInterval
+        handshakeSeconds: TimeInterval, pipeGraceSeconds: TimeInterval
     ) throws {
+        pipeGrace = pipeGraceSeconds
         let (ostream, ocont) = AsyncStream<Data>.makeStream()
         let (estream, econt) = AsyncStream<PeerSessionEvent>.makeStream()
         let bl = LockedValue(0)
@@ -355,6 +361,14 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         resolve(.failure(PeerLinkRefused(closeCode: c.code)))
         // Finishing the outbound stream flushes what the CLOSE record wrote, then drops the pipe.
         outbound.finish()
+        // A writer stuck in a write never reaches the end of its stream: close the pipe ourselves, at once for
+        // `peer_busy` (the peer is not reading), after a short grace otherwise so the CLOSE record can go.
+        let p = pipe
+        let grace = c.code == "peer_busy" ? 0 : pipeGrace
+        Task {
+            if grace > 0 { try? await Task.sleep(nanoseconds: UInt64(grace * 1_000_000_000)) }
+            await p.close()
+        }
         inbound.finish()
         setPaused(false)
         handlers.onEnded?()

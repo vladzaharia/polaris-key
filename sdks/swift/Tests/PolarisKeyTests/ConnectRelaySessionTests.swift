@@ -60,12 +60,13 @@ private final class FakeClock: @unchecked Sendable {
 
 private final class World: @unchecked Sendable {
     let a: Dev, b: Dev, c: Dev
-    let room = FakeRoom(members: [idA, idB])
+    let room: FakeRoom
     let key = DiscoveryKey(base64url: Base64URL.encode(Data((0..<32).map { _ in UInt8.random(in: 0...255) })))!
     let ring: String
     var services: [ConnectRelayService] = []
 
-    init() async throws {
+    init(members: Set<String> = [idA, idB]) async throws {
+        room = FakeRoom(members: members)
         a = try await Dev(idA, signByte: 1)
         b = try await Dev(idB, signByte: 2)
         c = try await Dev(idC, signByte: 3)
@@ -326,6 +327,40 @@ final class ConnectRelaySessionTests: XCTestCase {
         for _ in 0..<200 { await a.sendSession(peer: id.peer, session: id.session, noise: Data(count: 60_000)) }
         await until("the session is closed for being over the outbox cap") { s.closed != nil }
         await until("the session left the table") { await a.openLinkIds().isEmpty }
+        await w.close()
+    }
+
+    /// R3: with the outbox full the session holding the most queued bytes is closed, not whichever session
+    /// writes next.
+    func testTheOutboxCapClosesTheSessionOverItsOwnShareNotTheNextWriter() async throws {
+        let w = try await World(members: [idA, idB, idC])
+        let clock = FakeClock()
+        let sleeper = ManualSleep()
+        let pacer = ConnectPacer(rate: 180, burst: 360, clock: { clock.now }, sleep: { try await sleeper.sleep($0) })
+        let a = try await w.start(w.a) { $0.pacer = { pacer } }
+        let b = try await w.start(w.b)
+        let c = try await w.start(w.c)
+        b.onSession { _ in }
+        c.onSession { _ in }
+        let sb = try await a.dial(idB)
+        let sc = try await a.dial(idC)
+        while pacer.tryTake() == 0 {}  // the writer waits on the pacer, so the outbox fills
+        let ids = await a.openLinkIds()
+        let peerC = try XCTUnwrap(Base64URL.decodeStrict(idC))
+        let heavy = try XCTUnwrap(ids.first { $0.peer != peerC })
+        let light = try XCTUnwrap(ids.first { $0.peer == peerC })
+        var n = 0
+        while await a.hasRoom(60_200), n < 400 {
+            await a.sendSession(peer: heavy.peer, session: heavy.session, noise: Data(count: 60_000))
+            n += 1
+        }
+        XCTAssertNil(sb.closed, "the heavy session is still open while there is room")
+        // The light session now writes into a full outbox: the heavy one goes, the light one stays.
+        await a.sendSession(peer: light.peer, session: light.session, noise: Data(count: 60_000))
+        await until("the heavy session is closed") { sb.closed != nil }
+        XCTAssertNil(sc.closed)
+        let left = await a.openLinkIds()
+        XCTAssertTrue(left.contains { $0.peer == peerC })
         await w.close()
     }
 }
