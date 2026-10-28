@@ -115,6 +115,19 @@ final class BonjourBrowseTests: XCTestCase {
         XCTAssertEqual(l.down, [inst(1), inst(2)])
     }
 
+    /// S2: match first, then store. Forged names never take a slot, so they cannot evict a real peer.
+    func testOnlyAcceptedNamesEnterTheTable() throws {
+        let d = FakeDriver()
+        let real = inst(7)
+        let b = BonjourBrowse(driver: d, configurationCheck: { nil }, accept: { $0 == real })
+        let l = Log()
+        try start(b, l)
+        d.send(.upserted([found(7)]))
+        d.send(.upserted((1000..<1600).map { found($0) }))
+        XCTAssertEqual(l.up, [found(7)])
+        XCTAssertEqual(l.down, [], "the real peer is not evicted")
+    }
+
     func testPolicyDeniedAndNoAuthAreClassified() {
         XCTAssertEqual(BonjourErrors.classify(dnsError: -65570), .permissionDenied)
         XCTAssertEqual(BonjourErrors.classify(dnsError: -65555), .notConfigured)

@@ -111,7 +111,7 @@ private final class Directory: @unchecked Sendable {
 
 private final class FakeNet: ConnectLanNetwork, @unchecked Sendable {
     let dir: Directory
-    let listener = BonjourListener()
+    let listener = BonjourListener(policy: BonjourDialPolicy(allowLoopback: true))
     let dialOptions: BonjourDialOptions
     var failListen: BonjourPipeError?
     private let lock = NSLock()
@@ -286,6 +286,53 @@ final class ConnectLanTests: XCTestCase {
         inject(old)
         await until("previous epoch accepted") { await a.currentPeers().map(\.deviceId) == [idB] }
         await w.close()
+    }
+
+    /// S1: a forged name is one dictionary lookup; HMACs run only when the dictionary is built.
+    func testForgedNamesCostNoHmacBeyondThePrecompute() {
+        let calls = LockedValue(0)
+        let index = ConnectBrowseIndex(name: { key, epoch, id in
+            calls.with { $0 += 1 }
+            let tag = String(format: "%02x%d", key[0], epoch % 10) + id
+            let a = Array("abcdefghijklmnopqrstuvwxyz234567")
+            var h = tag.utf8.reduce(UInt64(1469598103934665603)) { ($0 ^ UInt64($1)) &* 1099511628211 }
+            var out = "p1-"
+            for _ in 0..<16 { out.append(a[Int(h % 32)]); h = h / 32 &+ 7919 }
+            return out
+        })
+        let roster = (0..<127).map { "dev\($0)" }
+        let k1 = Data(repeating: 1, count: 32), k2 = Data(repeating: 2, count: 32)
+        index.update(keys: [k1, k2], roster: roster)
+        let now = t0
+        XCTAssertNil(index.lookup("p1-aaaaaaaaaaaaaaaa", now: now))
+        XCTAssertEqual(calls.current, 2 * 2 * 127, "the precompute: epochs x keys x roster")
+        for i in 0..<500 {
+            let forged = "p1-" + String(String(i + 100_000, radix: 32).map { $0 == "0" ? "a" : $0 == "1" ? "b" : $0 }.prefix(16)).padding(toLength: 16, withPad: "a", startingAt: 0)
+            _ = index.lookup(forged, now: now)
+        }
+        XCTAssertEqual(calls.current, 508, "500 forged names did no HMAC work")
+        XCTAssertEqual(index.builds.current, 1)
+        // Unchanged inputs do not rebuild; the next epoch rebuilds once; a changed roster rebuilds.
+        index.update(keys: [k1, k2], roster: roster)
+        _ = index.lookup("p1-aaaaaaaaaaaaaaaa", now: now)
+        XCTAssertEqual(index.builds.current, 1, "unchanged inputs do not rebuild")
+        _ = index.lookup("p1-aaaaaaaaaaaaaaaa", now: now + 900)
+        XCTAssertEqual(index.builds.current, 2)
+        index.update(keys: [k1, k2], roster: Array(roster.dropLast()))
+        _ = index.lookup("p1-aaaaaaaaaaaaaaaa", now: now + 900)
+        XCTAssertEqual(index.builds.current, 3)
+    }
+
+    func testTheIndexFindsRealNamesInPriorityOrder() throws {
+        let index = ConnectBrowseIndex()
+        let k = Data((0..<32).map { UInt8($0) })
+        index.update(keys: [k], roster: [idB])
+        let epoch = peerAdvertEpoch(t0)
+        let cur = try PeerAdvert.accountInstance(discoveryKey: k, epoch: epoch, deviceId: idB)
+        let old = try PeerAdvert.accountInstance(discoveryKey: k, epoch: epoch - 1, deviceId: idB)
+        XCTAssertEqual(index.lookup(cur, now: t0), ConnectBrowseIndex.Hit(deviceId: idB, epochBack: 0, keyIndex: 0))
+        XCTAssertEqual(index.lookup(old, now: t0), ConnectBrowseIndex.Hit(deviceId: idB, epochBack: 1, keyIndex: 0))
+        XCTAssertNil(index.lookup("not-an-instance", now: t0))
     }
 
     func testItRefusesToStartWithoutAnIdentityAndReleasesWhatItOpened() async throws {

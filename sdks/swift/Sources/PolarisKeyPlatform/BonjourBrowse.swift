@@ -195,14 +195,17 @@ public final class BonjourBrowse: Sendable {
     private let options: BonjourBrowseOptions
     private let driver: any BonjourBrowseDriver
     private let configurationCheck: @Sendable () -> BonjourBrowseError?
+    private let accept: (@Sendable (String) -> Bool)?
     private let state = PlatformLock(State())
 
     /// `configurationCheck` defaults to this process's Info.plist; a test passes its own.
     public init(
         options: BonjourBrowseOptions = BonjourBrowseOptions(),
         driver: (any BonjourBrowseDriver)? = nil,
-        configurationCheck: (@Sendable () -> BonjourBrowseError?)? = nil
+        configurationCheck: (@Sendable () -> BonjourBrowseError?)? = nil,
+        accept: (@Sendable (String) -> Bool)? = nil
     ) {
+        self.accept = accept
         self.options = options
         #if canImport(Network)
         self.driver = driver ?? NWBrowserDriver()
@@ -263,7 +266,9 @@ public final class BonjourBrowse: Sendable {
         case .upserted(let found):
             let changes = state.withLock { s -> [BonjourTable.Change] in
                 guard s.running else { return [] }
-                return found.flatMap { s.table.upsert($0) }
+                // Match first, then store: a name the caller does not know never takes a table slot,
+                // so forged names cannot evict real peers.
+                return found.filter { accept?($0.instance) ?? true }.flatMap { s.table.upsert($0) }
             }
             deliver(changes, onUp: onUp, onDown: onDown)
         case .removed(let names):
