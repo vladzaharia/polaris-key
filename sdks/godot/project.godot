@@ -1,6 +1,10 @@
 ; Engine configuration file.
-; The Polaris Key Godot SDK project: the addon under addons/polaris_key/ plus the headless
-; test runner (tests/runner.gd). See README.md.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
@@ -10,6 +14,7 @@ config/name="Polaris Key SDK"
 config/version="0.1.0"
 run/main_scene="res://tests/main.tscn"
 run/main_loop_type="PKeyTestRunner"
+config/features=PackedStringArray("4.7")
 run/flush_stdout_on_print=true
 
 [autoload]
@@ -18,8 +23,6 @@ PolarisKey="*res://addons/polaris_key/polaris_key.gd"
 
 [editor]
 
-; Keep exported .tres as text: tests/fixtures/legacy_options.tres carries pre-0.9 property names that a
-; binary conversion (which saves only the script's current properties) would drop.
 export/convert_text_resources_to_binary=false
 
 [editor_plugins]

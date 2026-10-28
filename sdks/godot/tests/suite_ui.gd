@@ -1,6 +1,8 @@
 extends RefCounted
 # @pkey-feature ui.kit
 # @pkey-feature ui.kit.manage
+# @pkey-feature ui.kit.account
+# @pkey-feature ui.kit.keyentry
 # @pkey-feature core.presentation
 # The UI kit v1 (P1-10), headless. There is no renderer, so the scenes are pinned as structural
 # text: every scene in every state of tests/ui/scenarios.gd against the committed fixtures in
@@ -65,6 +67,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	await _game_look(t)
 	await _settings_open(t)
 	await _key_field(t)
+	await _key_refusals(t)
 	await _layout(t, all)
 	await _spec(t)
 	t.check("coverage: states", all.size() >= 60, str(all.size()))
@@ -86,6 +89,27 @@ func _build(c: Array) -> Control:
 func _free(v: Control) -> void:
 	v.get_parent().remove_child(v)
 	v.queue_free()
+
+
+## The key refusals (identity.keyentry): the entries line on the limit, and Sign in to that account on a
+## license another account holds; both read the shared catalog, and neither shows the other's line.
+func _key_refusals(t: PKeyTestContext) -> void:
+	var lim: Control = _sc.activation_refusal("key-entry-limit", "button")
+	await _tree().process_frame
+	lim.refresh_view()
+	var line := lim.find_child("Entries", true, false) as Label
+	t.check("refusals: the key-entry limit shows its entries line", line != null and line.visible and line.text == "3 of 3 key entries used", line.text if line != null else "none")
+	var sign_in := lim.find_child("TryAgain", true, false) as Button
+	t.check("refusals: the limit's primary is Sign in", sign_in.text == "Sign in", sign_in.text)
+	_free(lim)
+	var owned: Control = _sc.activation_refusal("license-owned", "button")
+	await _tree().process_frame
+	owned.refresh_view()
+	var again := owned.find_child("TryAgain", true, false) as Button
+	var none := owned.find_child("Entries", true, false) as Label
+	t.check("refusals: a license in another account says Sign in to that account, with no entries line", again.text == "Sign in to that account" and not none.visible, again.text)
+	_free(owned)
+	await _tree().process_frame
 
 
 ## The key field: visible and private (drawn in clear, typed on a keyboard that neither corrects

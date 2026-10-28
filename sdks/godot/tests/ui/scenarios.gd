@@ -386,6 +386,8 @@ func activation_refusal(kind: String, how: String) -> Control:
 	add(p)
 	var limit := kind == "key-entry-limit"
 	var r := PKeyActivationResult.of(PKeyActivationResult.KIND_KEY_ENTRY_LIMIT if limit else PKeyActivationResult.KIND_LICENSE_OWNED, PKeyErrors.KEY_ENTRY_LIMIT if limit else PKeyErrors.LICENSE_OWNED, "", 403)
+	if limit:
+		r.key_entries = {"used": 3, "limit": 3}
 	if limit and how != "":
 		r.manage_url = "https://polaris.locker/add-key?product=djdl"
 	p.show_result(r, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")

@@ -134,6 +134,7 @@ var _limit_product: PKeyProductHeader
 var _limit_title: Label
 var _limit_lede: Label
 var _seats: HBoxContainer
+var _entries: Label
 var _remedy: VBoxContainer
 var _manage: Button
 var _manage_qr: PKeyQrRect
@@ -144,6 +145,8 @@ var _other_key: Button
 ## The focused key refusal ("key-entry-limit" or "license-owned"), or "": drawn in the limit view's
 ## box as a step of its own (ui-matrix v7 Activate/key-entry-limit and Activate/license-owned).
 var refusal := ""
+## The key-entry-limit refusal's `{used, limit}` (the entries line), or empty.
+var key_entries: Dictionary = {}
 ## The last result's kind.
 var last_kind: StringName = &""
 var sign_in_dialog: PKeySignInDialog
@@ -232,6 +235,7 @@ func _build() -> void:
 	_limit_title = label(ltitles, "Title", "PKeyTitle")
 	_limit_lede = label(ltitles, "Lede", "PKeyMuted")
 	_seats = hbox(_limit_left, "Seats")
+	_entries = label(_limit_left, "Entries", "PKeyMuted")
 	_remedy = vbox(_limit_right, "Remedy", "PKeyTight")
 	_manage = button(_remedy, "FreeDevice", _on_manage)
 	_manage_qr = qr_tile(_remedy, "FreeDeviceQr")
@@ -604,6 +608,7 @@ func _render_limit(t: PKeyUiCopy) -> void:
 		seg.visible = i < segments
 		seg.theme_type_variation = &"PKeySeatOn" if i < clampi(used, 0, segments) else &"PKeySeatOff"
 	_seats.visible = segments > 0
+	_entries.visible = false
 	var how := manage_presentation()
 	var has_link := manage_url != ""
 	_manage.text = t.text("free_device")
@@ -651,6 +656,12 @@ func _render_refusal(t: PKeyUiCopy) -> void:
 	# when the page still overflows (the last step) does it give way, so Sign in stays on screen.
 	_limit_lede.visible = squeeze_level() < 5
 	_seats.visible = false
+	# The entries line: "{used} of {limit} key entries used", from the server's count; it gives way
+	# with the lede, never before the product header.
+	if limit_kind and not key_entries.is_empty() and squeeze_level() < 5:
+		cat_text(_entries, "signin.key.meter", {"used": int(key_entries["used"]), "limit": int(key_entries["limit"])})
+	else:
+		show_text(_entries, "")
 	var as_qr := manage_presentation() == "qr"
 	var has_link := limit_kind and manage_url != ""
 	_manage.text = t.text("add_in_locker")
@@ -734,6 +745,7 @@ func show_result(r: PKeyActivationResult, key := "", slot := "key") -> void:
 		return
 	limit = {}
 	refusal = ""
+	key_entries = r.key_entries.duplicate() if r != null and r.kind == PKeyActivationResult.KIND_KEY_ENTRY_LIMIT and r.key_entries is Dictionary else {}
 	if r != null and (r.kind == PKeyActivationResult.KIND_KEY_ENTRY_LIMIT or r.kind == PKeyActivationResult.KIND_LICENSE_OWNED):
 		# A refusal a different key cannot fix is a focused step of its own (DL6), not a callout under the field.
 		refusal = String(r.kind)
@@ -751,6 +763,8 @@ func show_result(r: PKeyActivationResult, key := "", slot := "key") -> void:
 		if not done.is_empty():
 			message = c().text(done["copy"], done["args"])
 	message_ok = r != null and r.ok
+	if message_ok and r.key_entries is Dictionary:
+		_toast_entries_left(r.key_entries)
 	message_danger = r == null or r.kind == PKeyActivationResult.KIND_UNAUTHORIZED or r.kind == PKeyActivationResult.KIND_ERROR
 	message_slot = slot
 	refresh_view()
@@ -762,6 +776,15 @@ func show_result(r: PKeyActivationResult, key := "", slot := "key") -> void:
 		_sign_in.grab_focus.call_deferred()
 	else:
 		_free.grab_focus.call_deferred()
+
+
+## "{left} key entries left" once the key works, as the shared toast (the host owns it, so it
+## outlives this panel). Nothing without the server's count or the autoload.
+func _toast_entries_left(entries: Dictionary) -> void:
+	if sdk == null or not is_instance_valid(sdk) or not sdk.has_method("toasts"):
+		return
+	var left := maxi(0, int(entries["limit"]) - int(entries["used"]))
+	sdk.toasts().show_success(String(catalog().format("signin.key.entriesLeftShort", {"left": left})))
 
 
 ## Show a message already worded by the caller (a rejected key the gate reports) under the key

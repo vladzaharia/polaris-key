@@ -1526,8 +1526,8 @@ static func capabilities() -> Dictionary:
 		"ui.boot": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.kit": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.kit.manage": {"status": "implemented", "service": "sdk", "na": []},
-		"ui.kit.keyentry": {"status": "planned", "service": "sdk", "na": []},
-		"ui.kit.account": {"status": "planned", "service": "sdk", "na": []},
+		"ui.kit.keyentry": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.kit.account": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.cli": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"ui.cli.mount": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"ui.cli.contract": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
@@ -1550,4 +1550,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "ed4ea0d09817dacea6657c0cb03ab1fa60ba472c9d8066e4001c1144e8ce6a10"
+const CAPABILITY_DIGEST := "162ab3d134f501219b4f8961d3a8573e2bc427578c5bdaef88b2d47e909808d2"
