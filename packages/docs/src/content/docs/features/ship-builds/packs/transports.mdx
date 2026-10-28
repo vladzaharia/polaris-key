@@ -85,6 +85,13 @@ The secret is the file's bytes in base64. The build goes to the Steam branch nam
 To use `play-pad`, or to run one step yourself, name the transport per channel instead of `auto`:
 
 ```yaml title=".pkey/distribution"
+outlets:
+  app-store: { appleId: "1234567890", bundleId: gg.vlad.tidewater }
+  testflight: { bundleId: gg.vlad.tidewater }
+  play: { packageName: gg.vlad.tidewater }
+  steam:
+    appId: 480
+    depots: { tidewater.foes: "481" }
 transports:
   packs:
     app-store: apple-ba

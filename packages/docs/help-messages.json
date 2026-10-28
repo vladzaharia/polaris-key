@@ -56,8 +56,8 @@
     "disabled": {
       "page": "signing-in",
       "entry": "disabled",
-      "why": "The app's developer hasn't set up sign-in for this app.",
-      "fix": "Use a license key if the app offers one, or ask the app's developer."
+      "why": "The app's developer hasn't set up sign-in.",
+      "fix": "Use a license key if the app offers one, or ask the developer."
     },
     "unavailable": {
       "page": "signing-in",
@@ -72,8 +72,8 @@
     "identity_disabled": {
       "page": "signing-in",
       "entry": "disabled",
-      "why": "The app's developer turned off sign-in for this app. Anything already set up keeps working.",
-      "fix": "Keep using the app. To sign in, ask the app's developer."
+      "why": "The app's developer turned off sign-in.",
+      "fix": "Ask the app's developer."
     },
     "auth_method_disabled": {
       "page": "signing-in",
@@ -158,7 +158,7 @@
     "unknown_app": {
       "page": "signing-in",
       "entry": "disabled",
-      "why": "This app isn't set up for sign-in through Polaris Locker.",
+      "why": "This app isn't set up for sign-in.",
       "fix": "Ask the app's developer."
     },
     "redirect_uri_mismatch": {
@@ -812,9 +812,10 @@
     },
     "license_owned": {
       "page": "accounts",
+      "entry": "license_owned",
       "article": "add-a-license",
-      "why": "This license was added to a Polaris Locker account earlier. A license in an account is used by signing in to that account, never by entering its key.",
-      "fix": "Sign in with the account that holds the license. In your library, you can also select **Use a different key** to try another key. If you don't recognize that account, or have no other key, ask the app's developer."
+      "why": "This license is already in a Polaris Locker account. An account's license is used by signing in, never by its key.",
+      "fix": "Sign in with the account that holds the license. If you don't recognize it, ask the app's developer."
     },
     "email_mismatch": {
       "page": "accounts",
@@ -1056,6 +1057,88 @@
       "page": "other",
       "why": "The app's developer paused Cloud Sync. Your changes stay on this device.",
       "fix": "Nothing. They send once syncing resumes."
+    },
+    "device_keys_invalid": {
+      "page": "devices",
+      "why": "This device's sync setup was refused as not valid, usually because the app is out of date.",
+      "fix": "Update the app, then try again. If it keeps happening, tell the app's developer."
+    },
+    "device_keys_required": {
+      "page": "devices",
+      "why": "This device hasn't been set up to link with your other devices yet, usually because the app is out of date.",
+      "fix": "Update the app, then try again. If it keeps happening, tell the app's developer."
+    },
+    "ring_too_large": {
+      "page": "devices",
+      "why": "Your account has more linked devices than can be connected to each other at once.",
+      "fix": "Remove a device you no longer use, then try again."
+    },
+    "interstitial_required": {
+      "page": "signing-in",
+      "why": "Sign-in has one more step, and it happens on the Polaris Locker page.",
+      "fix": "Finish signing in on that page, then return to the app."
+    },
+    "not_nearby": {
+      "page": "signing-in",
+      "why": "Signing in from a nearby device works only when both devices are on the same network.",
+      "fix": "Move the devices onto the same network, or sign in with a code instead."
+    },
+    "encryption_mismatch": {
+      "page": "other",
+      "why": "The app and the sync service use different encryption, so the app can't sync.",
+      "fix": "Update the app, then try again."
+    },
+    "upload_expired": {
+      "page": "other",
+      "why": "The upload took too long, so it was canceled.",
+      "fix": "Try again. On a slow connection, wait for a better one first."
+    },
+    "upload_incomplete": {
+      "page": "other",
+      "why": "Part of the file didn't arrive, so it wasn't saved.",
+      "fix": "Try again."
+    },
+    "file_too_large": {
+      "page": "other",
+      "why": "The file is over the size limit for synced files.",
+      "fix": "Use a smaller file."
+    },
+    "keyring_conflict": {
+      "page": "accounts",
+      "why": "Encryption for your synced data was already set up for this account, so this device can't set it up again.",
+      "fix": "Unlock sync with another signed-in device or with your recovery code."
+    },
+    "platform-identity-unavailable": {
+      "page": "signing-in",
+      "entry": "disabled",
+      "why": "This device can't offer automatic sign-in.",
+      "fix": "Sign in with a code or your email address."
+    },
+    "sync-locked": {
+      "page": "accounts",
+      "why": "Your synced data is encrypted, and this device doesn't have the key to open it yet.",
+      "fix": "Unlock sync with your recovery code or with another signed-in device."
+    },
+    "recovery-code-invalid": {
+      "page": "accounts",
+      "why": "The recovery code you entered doesn't match the one for this account.",
+      "fix": "Check the code for typing mistakes and try again."
+    },
+    "sync-encryption-pinned": {
+      "page": "other",
+      "why": "The app requires encrypted sync, and encrypted sync isn't available right now. The app keeps sync off rather than send your data unencrypted.",
+      "fix": "Try again later. If it keeps happening, tell the app's developer."
+    },
+    "attach-declined": {
+      "page": "accounts",
+      "why": "The license wasn't added to your account, because the request was declined. Nothing changed.",
+      "fix": "Add the license again if you still want it in your account."
+    },
+    "activation.license-owned": {
+      "page": "accounts",
+      "entry": "license_owned",
+      "why": "It's already in another Polaris Locker account.",
+      "fix": "Sign in with that account."
     }
   },
   "developerOnly": [

@@ -356,7 +356,8 @@ const REFUSALS = {
   "key-entry-limit": {
     status: 403,
     code: "key_entry_limit",
-    sdk: { kind: "refused", status: 403 },
+    // I-10a.9: the SDK names the refusal (`key-entry-limit`) instead of the generic `refused`.
+    sdk: { kind: "key-entry-limit" },
   },
 } satisfies Record<string, Refusal>;
 

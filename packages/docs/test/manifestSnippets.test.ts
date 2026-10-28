@@ -122,6 +122,34 @@ const BASE_RELEASE: Obj = {
   release: { provider: { type: "github", owner: "acme", repo: "tidewater" } },
 };
 
+/** The release a distribution fence reads: the app and the `tidewater.foes` pack the docs' depot maps name. */
+const DISTRIBUTION_RELEASE: Obj = merge(BASE_RELEASE, {
+  release: {
+    deliverables: {
+      app: {
+        kind: "app",
+        content: { contentApi: 3 },
+        artifacts: [
+          {
+            id: "macos",
+            platform: "macos",
+            arch: "universal",
+            format: "dmg",
+            match: "Tidewater-*-macos.dmg",
+          },
+        ],
+      },
+      "tidewater.foes": {
+        kind: "pack",
+        type: "godot.pck",
+        binding: "compatible",
+        handler: { prefixes: ["res://foes/"] },
+        requires: { engine: "godot-4.7", contentApi: { app: ">=3 <4" } },
+      },
+    },
+  },
+});
+
 export function documentsFor(f: Fence): {
   product: Obj;
   schema?: Obj;
@@ -174,7 +202,7 @@ export function documentsFor(f: Fence): {
           },
         }),
         schema: BASE_SCHEMA,
-        release: BASE_RELEASE,
+        release: DISTRIBUTION_RELEASE,
         distribution: parsed,
       };
   }
