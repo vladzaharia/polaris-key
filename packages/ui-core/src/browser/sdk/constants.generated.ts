@@ -23,6 +23,8 @@ export const ErrorCode = {
   documentNotRepresentable: "document_not_representable",
   signingUnavailable: "signing_unavailable",
   deviceKeysInvalid: "device_keys_invalid",
+  deviceKeysRequired: "device_keys_required",
+  ringTooLarge: "ring_too_large",
   deviceLimit: "device_limit",
   keyEntryLimit: "key_entry_limit",
   licenseDisabled: "license_disabled",
@@ -224,6 +226,8 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "document_not_representable",
   "signing_unavailable",
   "device_keys_invalid",
+  "device_keys_required",
+  "ring_too_large",
   "device_limit",
   "key_entry_limit",
   "license_disabled",
@@ -427,6 +431,8 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   document_not_representable: "wire",
   signing_unavailable: "wire",
   device_keys_invalid: "wire",
+  device_keys_required: "wire",
+  ring_too_large: "wire",
   device_limit: "wire",
   key_entry_limit: "wire",
   license_disabled: "wire",
@@ -2071,13 +2077,21 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [{ runtime: "web", reason: "runtime" }],
   },
-  "identity.toggle": { status: "planned", service: "identity", na: [] },
+  "identity.toggle": { status: "implemented", service: "identity", na: [] },
   "identity.keyentry": { status: "implemented", service: "identity", na: [] },
   "identity.attach": { status: "implemented", service: "identity", na: [] },
   "identity.account": { status: "implemented", service: "identity", na: [] },
-  "identity.redirect.web": { status: "planned", service: "identity", na: [] },
+  "identity.redirect.web": {
+    status: "implemented",
+    service: "identity",
+    na: [],
+  },
   "identity.choice": { status: "planned", service: "identity", na: [] },
-  "identity.signin.hints": { status: "planned", service: "identity", na: [] },
+  "identity.signin.hints": {
+    status: "implemented",
+    service: "identity",
+    na: [],
+  },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -2262,4 +2276,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "b2bab102a6f8fff04e80cef65d629889be5e9584e9721456db4ee36a33b397a2";
+  "e69694f218ae27652619ede953f0f9fe79609d26f933b4fdbc720e30238407ce";

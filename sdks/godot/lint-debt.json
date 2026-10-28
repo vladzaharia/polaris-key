@@ -223,13 +223,14 @@
       "gdlint:class-definitions-order": 1
     },
     "sdks/godot/addons/polaris_key/services/identity.gd": {
-      "gdlint:max-returns": 2
+      "gdlint:max-line-length": 1,
+      "gdlint:max-returns": 4
     },
     "sdks/godot/addons/polaris_key/services/identity/account.gd": {
       "gdlint:max-returns": 1
     },
     "sdks/godot/addons/polaris_key/services/identity/sign_in_session.gd": {
-      "gdlint:max-returns": 1,
+      "gdlint:max-returns": 2,
       "gdlint:signal-name": 1
     },
     "sdks/godot/addons/polaris_key/services/license.gd": {
@@ -492,6 +493,11 @@
     "sdks/godot/tests/identity/test_flow.gd": {
       "gdlint:max-line-length": 4
     },
+    "sdks/godot/tests/identity/test_redirect.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-line-length": 9,
+      "gdlint:unused-argument": 1
+    },
     "sdks/godot/tests/license/support.gd": {
       "gdlint:class-variable-name": 1
     },
@@ -638,6 +644,7 @@
       "gdlint:max-line-length": 3
     },
     "sdks/godot/tests/suite_transcripts.gd": {
+      "gdlint:class-definitions-order": 3,
       "gdlint:function-variable-name": 1
     },
     "sdks/godot/tests/suite_transports.gd": {

@@ -4,3 +4,5 @@
 export * from "./crypto.js";
 export * from "./envelope.js";
 export * from "./blind.js";
+export * from "./hpke.js";
+export * from "./recovery.js";

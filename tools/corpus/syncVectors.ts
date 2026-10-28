@@ -1,13 +1,15 @@
 // `sync-vectors.json`: Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 §13.10,
 // §13.8.1; plans/CC-01-cloud-sync.md §2.4). `syncVectorsVersion` 1.
 //
-// Slice U-34.1 holds `hkdfCases`, `envelopeCases`, `blindCases` and `transferPlanCases`. The
-// remaining sections (`wrapCases`, `recoveryCodeCases`, `adoptCases`, `cdcCases`, `chunkCases`,
+// Slice U-34.1 holds `hkdfCases`, `envelopeCases`, `blindCases` and `transferPlanCases`; U-34.2
+// adds `hpkeAnchor`, `wrapCases`, `recoveryCodeCases` and `adoptCases`. The
+// remaining sections (`cdcCases`, `chunkCases`,
 // `fileStreamCases`, `manifestCases`) append in later U-34 slices without changing the version.
 // Every row is recomputed through `reference/syncVectors.ts` (`node:crypto` only; nothing from
 // client-core), and the HKDF rows are cross-checked against `crypto.hkdfSync`.
 
 import { createCipheriv, createHash, hkdfSync } from "node:crypto";
+import { readFileSync } from "node:fs";
 import {
   REF_E2E_OVERHEAD,
   REF_ENVELOPE_FIXED,
@@ -25,10 +27,22 @@ import {
   refKMsg,
   refKNames,
   refKRec,
+  refAdoptAad,
+  refEncodeCode,
+  refHpkeContext,
+  refHpkeSeal,
   refKid,
+  refOpenBlob,
   refOpenValue,
+  refParseCode,
+  refRecoveryAad,
+  refSealBlob,
+  refUnwrap,
+  refWrapInfo,
+  refX25519Public,
   refSealValue,
   refTransferPlan,
+  refBe32,
   toHex,
   utf8,
 } from "./reference/syncVectors.js";
@@ -744,11 +758,495 @@ function buildTransferPlanCases(): unknown[] {
   });
 }
 
+// ── Wrap, recovery and adopt (§13.11) ────────────────────────────────────────────────────────
+
+const ANCHOR_PATH = new URL("./inputs/hpke-anchors.json", import.meta.url);
+
+interface HpkeAnchorFile {
+  description: string;
+  source: { id: string; url: string; sha256: string };
+  sha256: string;
+  vector: Record<string, unknown> & {
+    encryption: { aad: string; ct: string; nonce: string; pt: string };
+  };
+}
+
+function canonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+  if (v !== null && typeof v === "object")
+    return `{${Object.keys(v)
+      .sort()
+      .map(
+        (k) =>
+          `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`,
+      )
+      .join(",")}}`;
+  return JSON.stringify(v);
+}
+
+/** The RFC 9180 vector, hash-checked, and the reference's agreement with every intermediate. */
+function buildHpkeAnchor(): unknown {
+  const f = JSON.parse(readFileSync(ANCHOR_PATH, "utf8")) as HpkeAnchorFile;
+  const sum = createHash("sha256").update(canonical(f.vector)).digest("hex");
+  if (sum !== f.sha256)
+    throw new Error(
+      `hpke anchor: vector hash ${sum} is not the pinned ${f.sha256}`,
+    );
+  const v = f.vector as Record<string, string>;
+  const c = refHpkeContext(
+    fromHex(v.pkRm!),
+    fromHex(v.skEm!),
+    fromHex(v.info!),
+  );
+  const e = f.vector.encryption;
+  const sealed = refHpkeSeal(
+    fromHex(v.pkRm!),
+    fromHex(v.skEm!),
+    fromHex(v.info!),
+    fromHex(e.aad),
+    fromHex(e.pt),
+  );
+  const got = {
+    pkEm: toHex(refX25519Public(fromHex(v.skEm!))),
+    pkRm: toHex(refX25519Public(fromHex(v.skRm!))),
+    enc: toHex(c!.enc),
+    shared_secret: toHex(c!.sharedSecret),
+    key: toHex(c!.key),
+    base_nonce: toHex(c!.baseNonce),
+    ct: toHex(sealed.ct),
+  };
+  const want = {
+    pkEm: v.pkEm,
+    pkRm: v.pkRm,
+    enc: v.enc,
+    shared_secret: v.shared_secret,
+    key: v.key,
+    base_nonce: v.base_nonce,
+    ct: e.ct,
+  };
+  for (const k of Object.keys(want) as (keyof typeof want)[])
+    if (got[k] !== want[k])
+      throw new Error(
+        `hpke anchor ${k}: reference gives ${got[k]}, RFC says ${want[k]}`,
+      );
+  return {
+    note: "RFC 9180 test vector for mode_base, KEM 0x0020, KDF 0x0001 and AEAD 0x0002, copied from the pinned upstream file (sequence 0 only; hex). `source.sha256` pins the whole upstream file, `sha256` the vector as sorted-key compact JSON. A runner checks enc, shared_secret, key, base_nonce and the ciphertext; the raw layout (enc, then ciphertext followed by the tag) is what CryptoKit and Tink expose.",
+    source: f.source,
+    sha256: f.sha256,
+    vector: f.vector,
+  };
+}
+
+const sk = (l: string): Uint8Array => mat(`hpke key ${l}`);
+const WRAP_PRODUCT = "demo";
+const WRAP_DEVICE = "dev_0123456789abcdef";
+const WRAP_EPOCH = 1;
+
+interface WrapCase {
+  id: string;
+  description: string;
+  product: string;
+  deviceId: string;
+  ringId: string;
+  epoch: number;
+  kidHex: string;
+  recipientPrivateHex: string;
+  wrap: { kem: number; encHex: string; ctHex: string };
+  expectRootHex: string | null;
+  seal?: {
+    rootHex: string;
+    recipientPublicHex: string;
+    ephemeralPrivateHex: string;
+    infoHex: string;
+  };
+}
+
+function buildWrapCases(): WrapCase[] {
+  const skR = sk("recipient");
+  const pkR = refX25519Public(skR);
+  const skE = sk("ephemeral");
+  const kid = refKid(ROOT);
+  const info = refWrapInfo(WRAP_PRODUCT, WRAP_DEVICE, RING_ID, WRAP_EPOCH);
+  const good = refHpkeSeal(pkR, skE, info, kid, ROOT);
+  const base = {
+    product: WRAP_PRODUCT,
+    deviceId: WRAP_DEVICE,
+    ringId: RING_ID,
+    epoch: WRAP_EPOCH,
+    kidHex: toHex(kid),
+    recipientPrivateHex: toHex(skR),
+    wrap: { kem: 0x0020, encHex: toHex(good.enc), ctHex: toHex(good.ct) },
+  };
+  const row = (
+    id: string,
+    description: string,
+    over: Partial<Omit<WrapCase, "id" | "description" | "expectRootHex">>,
+    withSeal = false,
+  ): WrapCase => {
+    const r: WrapCase = {
+      id,
+      description,
+      ...base,
+      ...over,
+      expectRootHex: null,
+    };
+    const open = refUnwrap(
+      fromHex(r.recipientPrivateHex),
+      r.product,
+      r.deviceId,
+      r.ringId,
+      r.epoch,
+      fromHex(r.kidHex),
+      {
+        kem: r.wrap.kem,
+        enc: fromHex(r.wrap.encHex),
+        ct: fromHex(r.wrap.ctHex),
+      },
+    );
+    r.expectRootHex = open === null ? null : toHex(open);
+    if (withSeal)
+      r.seal = {
+        rootHex: toHex(ROOT),
+        recipientPublicHex: toHex(pkR),
+        ephemeralPrivateHex: toHex(skE),
+        infoHex: toHex(info),
+      };
+    return r;
+  };
+  const flipHex = (h: string, at: number): string => {
+    const b = fromHex(h);
+    b[at]! ^= 1;
+    return toHex(b);
+  };
+  const w = base.wrap;
+  const rows: WrapCase[] = [
+    row(
+      "wrap-root",
+      "A root wrapped to a device key; sealing it again with the ephemeral key gives the same bytes.",
+      {},
+      true,
+    ),
+    row(
+      "wrap-epoch-2",
+      "Another epoch is another info and another wrap.",
+      {
+        epoch: 2,
+        wrap: (() => {
+          const g = refHpkeSeal(
+            pkR,
+            skE,
+            refWrapInfo(WRAP_PRODUCT, WRAP_DEVICE, RING_ID, 2),
+            kid,
+            ROOT,
+          );
+          return { kem: 0x0020, encHex: toHex(g.enc), ctHex: toHex(g.ct) };
+        })(),
+      },
+      false,
+    ),
+    row("wrong-product", "The product is part of info.", { product: "other" }),
+    row("wrong-device", "The device id is part of info.", {
+      deviceId: "dev_other",
+    }),
+    row("wrong-ring", "The ring id is part of info.", {
+      ringId: "rg_BBBBBBBBBBBBBBBBBBBBBB",
+    }),
+    row("wrong-epoch", "The epoch is part of info.", { epoch: 2 }),
+    row("wrong-kid", "The kid is the associated data.", {
+      kidHex: flipHex(base.kidHex, 0),
+    }),
+    row("wrong-key", "A different recipient key cannot open it.", {
+      recipientPrivateHex: toHex(sk("stranger")),
+    }),
+    row("unknown-kem", "Only kem 32 (X25519) is understood.", {
+      wrap: { ...w, kem: 16 },
+    }),
+    row("tampered-ct", "A flipped ciphertext bit fails authentication.", {
+      wrap: { ...w, ctHex: flipHex(w.ctHex, 0) },
+    }),
+    row("tampered-tag", "A flipped tag bit fails authentication.", {
+      wrap: { ...w, ctHex: flipHex(w.ctHex, 47) },
+    }),
+    row("tampered-enc", "A flipped encapsulated-key bit derives another key.", {
+      wrap: { ...w, encHex: flipHex(w.encHex, 5) },
+    }),
+    row("short-enc", "An encapsulated key must be 32 bytes.", {
+      wrap: { ...w, encHex: w.encHex.slice(2) },
+    }),
+    row("low-order-enc", "An all-zero encapsulated key is refused.", {
+      wrap: { ...w, encHex: "00".repeat(32) },
+    }),
+  ];
+  if (rows[0]!.expectRootHex !== toHex(ROOT))
+    throw new Error("syncVectors: the wrap does not open");
+  return rows;
+}
+
+const CODE_A = mat("recovery code a").subarray(0, 16);
+const NONCE_A = mat("recovery nonce").subarray(0, 12);
+
+function buildRecoveryCodeCases(): unknown[] {
+  const codes: Array<[string, string, Uint8Array]> = [
+    ["code-random", "An arbitrary code.", CODE_A],
+    ["code-zero", "The all-zero code.", new Uint8Array(16)],
+    ["code-ones", "The all-ones code.", new Uint8Array(16).fill(255)],
+    [
+      "code-b",
+      "Another arbitrary code.",
+      mat("recovery code b").subarray(0, 16),
+    ],
+  ];
+  const rows: unknown[] = codes.map(([id, description, code]) => {
+    const text = refEncodeCode(code);
+    if (toHex(refParseCode(text)!) !== toHex(code))
+      throw new Error("syncVectors: code does not round-trip");
+    return { kind: "code", id, description, codeHex: toHex(code), text };
+  });
+  const canon = refEncodeCode(CODE_A);
+  const flat = canon.replaceAll("-", "");
+  const swap = (s: string, from: string, to: string): string =>
+    s.replace(from, to);
+  const parseRow = (
+    id: string,
+    description: string,
+    input: string,
+  ): unknown => {
+    const c = refParseCode(input);
+    return {
+      kind: "parse",
+      id,
+      description,
+      input,
+      expectCodeHex: c === null ? null : toHex(c),
+    };
+  };
+  const zeroText = refEncodeCode(new Uint8Array(16));
+  rows.push(
+    parseRow("parse-lowercase", "Case is ignored.", canon.toLowerCase()),
+    parseRow(
+      "parse-spaces",
+      "Spaces and hyphens are ignored.",
+      canon.replaceAll("-", " "),
+    ),
+    parseRow("parse-no-separators", "No separators at all.", flat),
+    parseRow(
+      "parse-padded",
+      "Leading and trailing whitespace.",
+      ` \n${canon}\t `,
+    ),
+    parseRow("parse-o-is-zero", "O reads as 0.", zeroText.replaceAll("0", "O")),
+    parseRow(
+      "parse-i-l-are-one",
+      "I and L read as 1.",
+      swap(refEncodeCode(mat("recovery code c").subarray(0, 16)), "1", "I"),
+    ),
+    parseRow(
+      "parse-bad-checksum",
+      "Another first character fails the checksum.",
+      (flat[0] === "0" ? "1" : "0") + flat.slice(1),
+    ),
+    parseRow("parse-short", "31 characters.", flat.slice(1)),
+    parseRow("parse-long", "33 characters.", `${flat}0`),
+    parseRow(
+      "parse-bad-char",
+      "U is not in the alphabet.",
+      `U${flat.slice(1)}`,
+    ),
+    parseRow("parse-empty", "Nothing.", ""),
+  );
+  // The recovery blob (K_rec, aad with the ring, epoch and kid).
+  const kid = refKid(ROOT);
+  const blobFor = (
+    code: Uint8Array,
+    ringId: string,
+    epoch: number,
+    k: Uint8Array,
+  ): Uint8Array =>
+    refSealBlob(
+      refKRec(code, ringId),
+      NONCE_A,
+      refRecoveryAad(ringId, epoch, k),
+      ROOT,
+    );
+  const blob = blobFor(CODE_A, RING_ID, 1, kid);
+  const blobRow = (
+    id: string,
+    description: string,
+    over: {
+      codeHex?: string;
+      ringId?: string;
+      epoch?: number;
+      kidHex?: string;
+      blobHex?: string;
+    },
+    withSeal = false,
+  ): unknown => {
+    const r = {
+      kind: "blob",
+      id,
+      description,
+      codeHex: toHex(CODE_A),
+      ringId: RING_ID,
+      epoch: 1,
+      kidHex: toHex(kid),
+      blobHex: toHex(blob),
+      ...over,
+    };
+    const out = refOpenBlob(
+      refKRec(fromHex(r.codeHex), r.ringId),
+      refRecoveryAad(r.ringId, r.epoch, fromHex(r.kidHex)),
+      fromHex(r.blobHex),
+    );
+    return {
+      ...r,
+      expectRootHex: out === null ? null : toHex(out),
+      ...(withSeal
+        ? { seal: { rootHex: toHex(ROOT), nonceHex: toHex(NONCE_A) } }
+        : {}),
+    };
+  };
+  const flip = (h: string, at: number): string => {
+    const b = fromHex(h);
+    b[at]! ^= 1;
+    return toHex(b);
+  };
+  const bh = toHex(blob);
+  rows.push(
+    blobRow(
+      "blob-root",
+      "The root sealed under the code; sealing again with the nonce gives the same bytes.",
+      {},
+      true,
+    ),
+    blobRow("blob-epoch-2", "Another epoch is another blob.", {
+      epoch: 2,
+      blobHex: toHex(blobFor(CODE_A, RING_ID, 2, kid)),
+    }),
+    blobRow("blob-wrong-code", "Another code cannot open it.", {
+      codeHex: toHex(mat("recovery code b").subarray(0, 16)),
+    }),
+    blobRow("blob-wrong-ring", "The ring id is the salt and part of aad.", {
+      ringId: "rg_BBBBBBBBBBBBBBBBBBBBBB",
+    }),
+    blobRow("blob-wrong-epoch", "The epoch is part of aad.", { epoch: 2 }),
+    blobRow("blob-wrong-kid", "The kid is part of aad.", {
+      kidHex: flip(toHex(kid), 3),
+    }),
+    blobRow("blob-bad-version", "Version 2 is refused.", {
+      blobHex: `02${bh.slice(2)}`,
+    }),
+    blobRow("blob-tampered", "A flipped bit fails authentication.", {
+      blobHex: flip(bh, 20),
+    }),
+    blobRow("blob-truncated", "A short blob is refused.", {
+      blobHex: bh.slice(0, bh.length - 2),
+    }),
+  );
+  return rows;
+}
+
+function buildAdoptCases(): unknown[] {
+  const oldRoot = mat("old root");
+  const from = {
+    fromRingId: "rg_BBBBBBBBBBBBBBBBBBBBBB",
+    epoch: 3,
+    kid: refKid(oldRoot),
+  };
+  const nonce = mat("adopt nonce").subarray(0, 12);
+  const blob = refSealBlob(
+    refKAdopt(ROOT),
+    nonce,
+    refAdoptAad(from.fromRingId, from.epoch, from.kid),
+    oldRoot,
+  );
+  const flip = (h: string, at: number): string => {
+    const b = fromHex(h);
+    b[at]! ^= 1;
+    return toHex(b);
+  };
+  const row = (
+    id: string,
+    description: string,
+    over: {
+      currentRootHex?: string;
+      fromRingId?: string;
+      epoch?: number;
+      kidHex?: string;
+      blobHex?: string;
+    },
+    withSeal = false,
+  ): unknown => {
+    const r = {
+      id,
+      description,
+      currentRootHex: toHex(ROOT),
+      fromRingId: from.fromRingId,
+      epoch: from.epoch,
+      kidHex: toHex(from.kid),
+      blobHex: toHex(blob),
+      ...over,
+    };
+    const out = refOpenBlob(
+      refKAdopt(fromHex(r.currentRootHex)),
+      refAdoptAad(r.fromRingId, r.epoch, fromHex(r.kidHex)),
+      fromHex(r.blobHex),
+    );
+    return {
+      ...r,
+      expectRootHex: out === null ? null : toHex(out),
+      ...(withSeal
+        ? { seal: { oldRootHex: toHex(oldRoot), nonceHex: toHex(nonce) } }
+        : {}),
+    };
+  };
+  const bh = toHex(blob);
+  return [
+    row(
+      "adopt-root",
+      "A previous root sealed under K_adopt of the current one; sealing again with the nonce gives the same bytes.",
+      {},
+      true,
+    ),
+    row(
+      "adopt-wrong-current",
+      "Another current root derives another K_adopt.",
+      { currentRootHex: toHex(oldRoot) },
+    ),
+    row("adopt-wrong-ring", "The source ring id is part of aad.", {
+      fromRingId: RING_ID,
+    }),
+    row("adopt-wrong-epoch", "The source epoch is part of aad.", { epoch: 4 }),
+    row("adopt-wrong-kid", "The source kid is part of aad.", {
+      kidHex: flip(toHex(from.kid), 0),
+    }),
+    row("adopt-bad-version", "Version 2 is refused.", {
+      blobHex: `02${bh.slice(2)}`,
+    }),
+    row("adopt-tampered", "A flipped bit fails authentication.", {
+      blobHex: flip(bh, 30),
+    }),
+    row(
+      "adopt-recovery-label",
+      "A blob sealed under K_rec with a recovery aad does not open as an adopt blob.",
+      {
+        blobHex: toHex(
+          refSealBlob(
+            refKRec(CODE_A, from.fromRingId),
+            nonce,
+            refRecoveryAad(from.fromRingId, from.epoch, from.kid),
+            oldRoot,
+          ),
+        ),
+      },
+    ),
+  ];
+}
+
 export function buildSyncVectors(): unknown {
   return {
     syncVectorsVersion: 1,
     description:
-      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
+      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
     constants: {
       envelopeOverheadBytes: REF_E2E_OVERHEAD,
       envelopeFixedBytes: REF_ENVELOPE_FIXED,
@@ -759,5 +1257,9 @@ export function buildSyncVectors(): unknown {
     envelopeCases: buildEnvelopeCases(),
     blindCases: buildBlindCases(),
     transferPlanCases: buildTransferPlanCases(),
+    hpkeAnchor: buildHpkeAnchor(),
+    wrapCases: buildWrapCases(),
+    recoveryCodeCases: buildRecoveryCodeCases(),
+    adoptCases: buildAdoptCases(),
   };
 }

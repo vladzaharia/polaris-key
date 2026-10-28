@@ -799,7 +799,7 @@ describe("POST /<p>/identity/token (§12.5)", () => {
     ).toMatchObject({ error: "invalid_request" });
     for (const g of [
       "refresh_token",
-      "urn:ietf:params:oauth:grant-type:token-exchange",
+      "urn:ietf:params:oauth:grant-type:device_code",
       "password",
     ]) {
       const res = await tokenReq({ grant_type: g, code });

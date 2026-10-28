@@ -104,6 +104,9 @@ export type Route =
   /** `PUT /<p>/devices/keys` (CC-03.2): register or rotate the device's `signKey` and `agreeKey`.
    *  A CORE route, matched ahead of `/devices/<id>`. */
   | { kind: "deviceKeys"; product: string }
+  /** `/<p>/devices/keyring[/…]` (U-36.2): the Core key ring. `rest` is the decoded path after
+   *  `keyring` (`[]`, `["wraps", id]`, `["recovery"]`, …); the handler owns which it serves. */
+  | { kind: "keyring"; product: string; rest: string[] }
   /** HA-06: CI pushes a file into a hosted-asset slot (`POST /<p>/assets`, `assets:write`). */
   | { kind: "assetsPush"; product: string }
   /** A product-scoped request for a service the core router has cut over. `rest` is the path
@@ -279,6 +282,8 @@ export function matchRoute(pathname: string): Route {
       return { kind: "register", product };
     case "/devices/keys":
       return { kind: "deviceKeys", product };
+    case "/devices/keyring":
+      return { kind: "keyring", product, rest: [] };
     case "/devices/attest":
       return { kind: "attest", product };
     case "/devices/attest/challenge":
@@ -344,6 +349,15 @@ export function matchRoute(pathname: string): Route {
   const appcast = rest.match(/^\/([a-z0-9-]+)\/appcast\.xml$/);
   if (appcast && appcast[1])
     return alias("update", product, [appcast[1], "appcast.xml"]);
+
+  // U-36.2: the key ring's sub-paths, ahead of the one-segment device pattern's near misses.
+  const ring = rest.match(/^\/devices\/keyring\/(.+)$/);
+  if (ring?.[1]) {
+    const segs = ring[1].split("/").map(decodeSegment);
+    return segs.some((x) => x === null || x === "")
+      ? { kind: "badRequest" }
+      : { kind: "keyring", product, rest: segs as string[] };
+  }
 
   const devices = rest.match(/^\/devices\/([^/]+)$/);
   if (devices && devices[1]) {

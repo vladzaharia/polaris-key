@@ -31,6 +31,7 @@ import type { ProductCatalog } from "@polaris-key/catalog";
 import { noBusy, noErrors } from "./services.js";
 import type { ActivationOutcome, KeyEntries } from "./activation.js";
 import type { BootAttempt } from "./bootGuard.js";
+import type { SignInNamespace } from "./signIn.js";
 import type { BootResult, BootRunOptions } from "./boot.js";
 import type { CrashTags, CrashTagsOptions } from "./crash.js";
 import type { UpdateEvent } from "../constants.generated.js";
@@ -209,6 +210,8 @@ export class PolarisError extends Error {
   readonly activation?: ActivationOutcome;
   /** The HTTP status behind the refusal, when there was one. */
   readonly status?: number;
+  /** On a `rate_limited` refusal: the seconds the Worker asked the caller to wait. */
+  readonly retryAfterSeconds?: number;
   constructor(
     code: PolarisErrorCode,
     message?: string,
@@ -218,6 +221,7 @@ export class PolarisError extends Error {
       activation?: ActivationOutcome;
       status?: number;
       manageUrl?: string;
+      retryAfterSeconds?: number;
     } = {},
   ) {
     super(message ?? code);
@@ -227,6 +231,8 @@ export class PolarisError extends Error {
     if (detail !== undefined) this.detail = detail;
     if (extra.activation !== undefined) this.activation = extra.activation;
     if (extra.status !== undefined) this.status = extra.status;
+    if (extra.retryAfterSeconds !== undefined)
+      this.retryAfterSeconds = extra.retryAfterSeconds;
     const manageUrl = extra.manageUrl ?? extra.activation?.manageUrl;
     if (manageUrl !== undefined) this.manageUrl = manageUrl;
   }
@@ -341,30 +347,6 @@ export interface OidcSignInHandle {
    *  from a host that cannot stop the wait (additive). */
   cancel?: () => void;
 }
-
-/** A device-code sign-in in progress (identity.devicecode, RFC 8628): what a sign-in screen
- *  shows, plus the wait that completes it. The poll credential never leaves the adapter. */
-export interface DeviceSignIn {
-  /** What the person types on the verification page, e.g. `WDJB-MJHT`. */
-  userCode: string;
-  /** The page to open and type the code into. */
-  verificationUri: string;
-  /** The same page with the code pre-filled: the QR payload and the "Open" link. */
-  verificationUriComplete: string;
-  /** Epoch seconds the code expires at, on this client's clock. */
-  expiresAt: number;
-  /** The minimum seconds between polls. */
-  interval: number;
-  /** Poll until it settles. `ready` carries the signed-in identity when the server named one.
-   *  Rejects with the signal's reason when `signal` aborts. */
-  wait(opts?: { signal?: AbortSignal }): Promise<DeviceSignInResult>;
-}
-
-export type DeviceSignInResult =
-  | { status: "ready"; identity?: { name?: string; email?: string } }
-  | { status: "expired" }
-  | { status: "denied" }
-  | { status: "error"; message: string };
 
 /** A short-lived token edge-mint signed for a third-party API (config.mint). Memory only. */
 export interface MintedToken {
@@ -576,9 +558,11 @@ export interface PolarisAdapter {
   /** `POST /<p>/license/enroll`: a free licence with no key, when the product offers one, then a
    *  sync. Throws `sign-in-failed` with the §3.1 `activation` on a refusal. */
   enroll(): Promise<void>;
-  /** Begin a device-code sign-in (identity.devicecode). Desktop: the bridge's
-   *  `beginSignIn`/`pollSignIn`; browser bearer mode: the CORS-covered device-code routes. */
-  beginSignIn(opts?: { deviceName?: string }): Promise<DeviceSignIn>;
+  /** `signIn.start(opts)` (identity.signIn): a device-code session (browser bearer mode: the
+   *  CORS-covered device-code routes; desktop: the bridge's `beginSignIn`/`pollSignIn`) or a web
+   *  redirect session (bearer mode), and `signIn.complete(callbackUrl)` after the navigation
+   *  back. A cookie page refuses with the typed `UnsupportedError`. */
+  readonly signIn: SignInNamespace;
   /** Edge-mint a short-lived third-party token (config.mint). Memory-cached per device token. */
   mintToken(recipeId: string): Promise<MintedToken>;
   /** The licence's commerce binding (commerce.receipt). */

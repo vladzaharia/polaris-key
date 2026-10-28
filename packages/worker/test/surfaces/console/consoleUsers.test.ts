@@ -638,6 +638,8 @@ describe("actions", () => {
     // too: they hold nothing for Ada yet.
     expect(doc.stores).toEqual({
       "config.accountOverrides": { overrides: null },
+      // CC-06.1: Cloud Connect's roster row, none until the person fetches its identity.
+      "connect.rings": null,
       "core.entitlementEvents": [],
       "core.provisionedSecretMoves": [],
       // U-05.8: Cloud Sync's store answers for a person who never synced.
@@ -649,6 +651,7 @@ describe("actions", () => {
       ok: true,
       stores: [
         "config.accountOverrides",
+        "connect.rings",
         "core.entitlementEvents",
         "core.provisionedSecretMoves",
         "sync.cloudSync",

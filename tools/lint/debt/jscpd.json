@@ -1730,6 +1730,9 @@
     "packages/sdk-node/test/updateMatrixParity.test.ts": {
       "jscpd:duplicate": 4
     },
+    "packages/sdk-react/src/desktop/bridgeSignIn.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-react/src/desktop/desktopAdapter.ts": {
       "jscpd:duplicate": 9
     },
@@ -1761,6 +1764,9 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-react/src/update/useUpdateDecision.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/test/accountCalls.test.ts": {
       "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/backend.test.ts": {
@@ -1910,11 +1916,14 @@
     "packages/sdk-react/test/release.test.tsx": {
       "jscpd:duplicate": 3
     },
+    "packages/sdk-react/test/signInSession.test.ts": {
+      "jscpd:duplicate": 6
+    },
     "packages/sdk-react/test/storeNamespace.test.ts": {
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/transcripts.test.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 16
     },
     "packages/sdk-react/test/trustCustody.test.ts": {
       "jscpd:duplicate": 2
@@ -2043,7 +2052,10 @@
       "jscpd:duplicate": 2
     },
     "packages/ui-core/src/browser/sdk/browser/bearer/session.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 12
+    },
+    "packages/ui-core/src/browser/sdk/browser/bearer/signInSessions.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/boot.ts": {
       "jscpd:duplicate": 1
@@ -2086,6 +2098,9 @@
     },
     "packages/ui-core/src/browser/sdk/core/presentation.ts": {
       "jscpd:duplicate": 6
+    },
+    "packages/ui-core/src/browser/sdk/core/signIn.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/core/types.ts": {
       "jscpd:duplicate": 2

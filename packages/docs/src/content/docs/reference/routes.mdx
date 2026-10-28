@@ -115,6 +115,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/config/mint/{mintId}/token` | config | Mint a third-party token (edge-mint) |
 | POST | `/{product}/config/mint/{mintId}/token` | config | Mint a third-party token (edge-mint) |
 | GET | `/{product}/config/schema` | config | The public config catalog |
+| GET | `/{product}/connect/devices` | connect | The person's linked devices, for display (CC-06.1) |
+| GET | `/{product}/connect/identity` | connect | The device's roster, certificate and discovery keys (CC-06.1) |
 | GET | `/{product}/.well-known/jwks.json` | core | Product signing keys (JWKS) |
 | GET | `/{product}/.well-known/polaris-trust.jws` | core | Signed trust manifest (pkey-trust+jws) |
 | GET | `/{product}/.well-known/polaris.json` | core | Product discovery document |
@@ -124,6 +126,10 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | DELETE | `/{product}/devices/{deviceId}` | core | Deauthorize a device |
 | POST | `/{product}/devices/attest/challenge` | core | A single-use device attestation challenge (P6-02) |
 | POST | `/{product}/devices/attest` | core | Raise the device's trust level with App Attest or Play Integrity (P6-02) |
+| PUT | `/{product}/devices/keyring/wraps/{deviceId}` | core | Store a wrap of the ring root for a device (U-36.2) |
+| DELETE | `/{product}/devices/keyring/wraps/{deviceId}` | core | Remove this device's own wrap (U-36.2) |
+| GET | `/{product}/devices/keyring` | core | Read the person's key ring and this device's wrap (U-36.2) |
+| POST | `/{product}/devices/keyring` | core | Create the person's key ring (U-36.2) |
 | PUT | `/{product}/devices/keys` | core | Register or rotate the device's public keys (CC-03.2) |
 | POST | `/{product}/devices/register` | core | Keyless device registration (policy-gated) |
 | POST | `/{product}/devices/report` | core | Report device facts (software snapshot + declared probes) |

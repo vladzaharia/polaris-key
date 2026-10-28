@@ -5248,6 +5248,26 @@ msgstr "设备未设置"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "无法为同步设置此设备。请更新应用后重试。"
 
+#. Device not linked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_required.title"
+msgstr "设备未关联"
+
+#. This device has not been set up to link with your others. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_required.message"
+msgstr "此设备尚未设置为与你的其他设备关联。请更新应用后重试。"
+
+#. Too many devices
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.ring_too_large.title"
+msgstr "设备过多"
+
+#. This account has more linked devices than can be connected. Remove one and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.ring_too_large.message"
+msgstr "此账户关联的设备超出了可连接的数量。请移除一台后重试。"
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

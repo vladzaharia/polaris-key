@@ -5248,6 +5248,26 @@ msgstr "기기를 설정하지 못했어요"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요."
 
+#. Device not linked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_required.title"
+msgstr "기기가 연결되지 않음"
+
+#. This device has not been set up to link with your others. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_required.message"
+msgstr "이 기기는 다른 기기와 연결하도록 설정되지 않았습니다. 앱을 업데이트한 후 다시 시도하세요."
+
+#. Too many devices
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.ring_too_large.title"
+msgstr "기기가 너무 많음"
+
+#. This account has more linked devices than can be connected. Remove one and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.ring_too_large.message"
+msgstr "이 계정에 연결된 기기가 연결 가능한 수보다 많습니다. 하나를 제거한 후 다시 시도하세요."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

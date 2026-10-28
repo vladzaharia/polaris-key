@@ -141,7 +141,8 @@ public struct PolarisKeyGate<Content: View>: View {
             ActivateView(
                 screen: model.activate, text: $model.keyText,
                 onSubmit: { Task { await model.submitKey() } }, onReplaceDevice: replaceDevice,
-                onCancel: { model.backToWelcome() })
+                onCancel: { model.backToWelcome() }, refusalLink: refusalLink,
+                onRefusalLink: openRefusalLink)
         case .signIn:
             SignInView(model: model, providers: providers)
         }
@@ -168,14 +169,14 @@ public struct PolarisKeyGate<Content: View>: View {
                     ActivateBody(
                         screen: model.activate, text: $model.keyText,
                         onSubmit: { Task { await model.submitKey() } },
-                        onReplaceDevice: replaceDevice)
+                        onReplaceDevice: replaceDevice, refusalLink: refusalLink)
                 }
             },
             inlineActions: {
                 ActivateActions(
                     screen: model.activate, onSubmit: { Task { await model.submitKey() } },
                     onReplaceDevice: replaceDevice, onCancel: nil,
-                    onDifferentKey: { model.keyText = "" })
+                    onDifferentKey: { model.keyText = "" }, onRefusalLink: openRefusalLink)
             },
             refocusUseKey: returnedToWelcome)
     }
@@ -268,6 +269,22 @@ public struct PolarisKeyGate<Content: View>: View {
             manageOpened = true
             openURL(link)
         }
+    }
+
+    /// The fix a key-entry-limit or license-owned refusal points at: the account page the server
+    /// named, or the sign-in of the account that holds the license. Only a valid link counts.
+    private var refusalLink: URL? {
+        ActivateRefusal.link(model.activate, model.inputs.activation)
+    }
+
+    /// Opens the refusal's link behind the person's tap; a TV shows a QR instead.
+    private var openRefusalLink: (() -> Void)? {
+        #if os(tvOS)
+            return nil
+        #else
+            guard let link = refusalLink else { return nil }
+            return { openURL(link) }
+        #endif
     }
 
     private func fix(_ key: String) {

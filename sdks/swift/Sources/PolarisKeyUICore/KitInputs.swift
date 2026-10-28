@@ -334,16 +334,20 @@ public struct KitActivation: Sendable, Codable, Equatable, Hashable {
     public var limit: Int?
     public var deviceCount: Int?
     public var manageUrl: String?
+    /// The product's sign-in page a `license_owned` refusal points at (kit-side: the matrix never
+    /// sets it). The kit shows only a link that passes `KitLinks.valid`.
+    public var signInUrl: String?
 
     public init(
         result: String, code: String? = nil, limit: Int? = nil, deviceCount: Int? = nil,
-        manageUrl: String? = nil
+        manageUrl: String? = nil, signInUrl: String? = nil
     ) {
         self.result = result
         self.code = code
         self.limit = limit
         self.deviceCount = deviceCount
         self.manageUrl = manageUrl
+        self.signInUrl = signInUrl
     }
 }
 
@@ -413,15 +417,21 @@ public struct KitSignIn: Sendable, Codable, Equatable, Hashable {
     /// The method the person picked ("Apple", "Email", "Passkey"), named in a failure's sentence.
     /// A kit-side value; the matrix never sets it.
     public var method: String?
+    /// Who signed in and on which tier, by display name, for the signed-in line (kit-side: the
+    /// matrix never sets them). Without both the line is "You're signed in".
+    public var name: String?
+    public var tier: String?
 
     public init(
         presentation: KitSignInPresentation = .inline, replace: KitReplaceMode = .inline,
         channel: KitSignInChannel = .browser, outcome: KitSignInOutcome? = nil,
         browserOpened: Bool? = nil, redeeming: Bool? = nil, event: KitSignInEvent? = nil,
         issuedNow: Bool? = nil, raced: Bool? = nil, grantExpired: Bool? = nil,
-        method: String? = nil
+        method: String? = nil, name: String? = nil, tier: String? = nil
     ) {
         self.method = method
+        self.name = name
+        self.tier = tier
         self.presentation = presentation
         self.replace = replace
         self.channel = channel

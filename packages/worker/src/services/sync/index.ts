@@ -27,6 +27,7 @@ import type {
 import { SYNC_SETTINGS_SLICE } from "./settings.js";
 
 import { handleSyncAdmin } from "./admin/index.js";
+import { syncKeyring } from "./keyring.js";
 import { syncIntegration } from "./integration.js";
 import { syncProductDeletion, syncProductPurge } from "./productDeletion.js";
 import { syncMaintenance } from "./maintenance.js";
@@ -42,6 +43,8 @@ export const syncService: ServiceDescriptor = {
   slug: "sync",
   contributes: {
     integration: syncIntegration,
+    // U-36.2: Core's key ring is on while the product is in end-to-end mode.
+    keyring: syncKeyring,
     // U-05.3: the directory row joins Core's subject-store merge, delete and export.
     subjectStores: { [CLOUD_SYNC_STORE]: cloudSyncStore },
     // U-05.8: a deleted product's objects are erased (purge), then its rows (statements).

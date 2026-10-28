@@ -2300,7 +2300,7 @@ One ring holds the root `R` of a person's E2E data for one product. The ring is 
 #### 13.11.1 The ring and its wraps
 
 - **Ring.** `ringId` (§8), `epoch` (at least 1), `rootKid` (the `kid` of `R`, §13.10.2), a state, and the creation time. There is one ring per (product, subject). A device accepts a root only when `kid(R)` equals the ring's `rootKid`, and once it holds a root for (`ringId`, `epoch`) it never replaces it.
-- **Wrap to a device** (`pkey-sync-wrap/1`): RFC 9180 HPKE `mode_base` with KEM 0x0020 (X25519), KDF 0x0001 (HKDF-SHA256) and AEAD 0x0002 (AES-256-GCM). `info = "pkey-sync/1 wrap\0" ‖ product ‖ 0x00 ‖ deviceId ‖ 0x00 ‖ ringId ‖ 0x00 ‖ u32be(epoch)`, `aad = kid`, and the plaintext is `R`. The wrap carries its `kem`, so a later key type changes one field.
+- **Wrap to a device** (`pkey-sync-wrap/1`): RFC 9180 HPKE `mode_base` with KEM 0x0020 (X25519), KDF 0x0001 (HKDF-SHA256) and AEAD 0x0002 (AES-256-GCM). `info = "pkey-sync/1 wrap\0" ‖ product ‖ 0x00 ‖ deviceId ‖ 0x00 ‖ ringId ‖ 0x00 ‖ u32be(epoch)`, `aad = kid`, and the plaintext is `R`. The wrap carries its `kem`, so a later key type changes one field. `kem` is the HPKE KEM id as a JSON integer (`32` for 0x0020; a P-256 key would be `16`), `enc` is the 32-byte encapsulated key and `ct` is `R` sealed with its 16-byte tag (48 bytes); a reader refuses any other `kem`, an `enc` that is not 32 bytes and an all-zero DH output. Sequence 0 is the only message, so the nonce is the key schedule's `base_nonce`. `product` is the product slug, `deviceId` and `ringId` are their text forms (§8) and the PSK is empty. `wrapCases` and `hpkeAnchor` (the RFC 9180 vector for this suite) pin all of it.
 - **Server view.** The server stores wraps (`{epoch, kid, kem, enc, ct, by}` per device) and the sealed recovery blob. It holds no key that opens either.
 
 #### 13.11.2 Routes
@@ -2331,10 +2331,10 @@ A device with no root is `locked` (§11.5). It reads the ring (`GET`) to learn `
 
 #### 13.11.4 The recovery code
 
-- **Code.** 16 random bytes and a 4-byte SHA-256 checksum make 32 Crockford base32 characters, shown as 8 groups of 4. The parser ignores case, spaces and hyphens, and maps `I` and `L` to `1` and `O` to `0`. A bad checksum or a failed unwrap is the client code `recovery-code-invalid`. There is one code per product.
+- **Code.** 16 random bytes and a 4-byte SHA-256 checksum make 32 Crockford base32 characters, shown as 8 groups of 4. The parser ignores case, spaces and hyphens, and maps `I` and `L` to `1` and `O` to `0`. The checksum is the first 4 bytes of SHA-256 of the 16 code bytes; the 20 bytes are read as one big-endian 160-bit number, five bits per character from the most significant, over the alphabet `0123456789ABCDEFGHJKMNPQRSTVWXYZ`. The groups are joined by hyphens and shown in upper case. A bad checksum or a failed unwrap is the client code `recovery-code-invalid`. There is one code per product.
 - **Recovery blob.** `recoveryWrap = 0x01 ‖ n12 ‖ AES-256-GCM(K_rec, n, aad = "pkey-sync/1 recovery" ‖ ringId ‖ u32be(epoch) ‖ kid, R)`, stored by the server as `recovery.ct`. 128 random bits cannot be brute-forced offline, so the server learns nothing from the blob; the rate limit and the email guard against a stolen device token.
 - **Reset.** `reset` makes a new ring and a new code. The old ring is kept read-only for 30 days and a device that still holds its root can `adopt` it (re-seal under the new root). After 30 days the server deletes rows whose `kid` belongs to the abandoned ring.
-- **Account merge.** The absorbed subject's ring becomes an `adopted` candidate. A device that holds both roots seals the adoption under `K_adopt`.
+- **Account merge.** The absorbed subject's ring becomes an `adopted` candidate. A device that holds both roots seals the adoption under `K_adopt`. The `ct` of `POST /<p>/devices/keyring/adopt` has the recovery blob's layout: `0x01 ‖ n12 ‖ AES-256-GCM(K_adopt, n, aad = "pkey-sync/1 adopt" ‖ fromRingId ‖ u32be(epoch) ‖ kid, R_old)`, where `K_adopt` is derived from the current root, and `epoch`, `kid` and `fromRingId` name the ring and root being adopted (the request's members). The `recoveryWrap` and adopt blobs are exactly 61 bytes, and a blob of another length or version is refused. `n` is random per blob. `recoveryCodeCases` and `adoptCases` pin both.
 
 #### 13.11.5 Platform backup
 
@@ -2501,6 +2501,8 @@ against the effective set.
 `devices` holds 1 to `MAX_RING_DEVICES` (128) entries, sorted by `deviceId` bytes, with unique ids
 and keys checked as in §15.2 step 4. At 128 entries the payload is about 20 KiB, under the 64 KiB cap.
 
+**Lifetime.** A roster's `expiresAt − issuedAt` is 1 to `RING_SECONDS` (604 800), and the Worker issues every roster at exactly `RING_SECONDS`. The signer refuses to sign one whose `expiresAt` precedes or equals `issuedAt`, or whose span is longer than `RING_SECONDS`, so a roster cannot outlive the horizon on which a removed device's certificate expires (§15.2 step 5 sets the same bound for a certificate). A verifier refusing a roster outside that span is a wire change for every language and is not yet enforced: the corpus case and each verifier's check land together (CC-06.2). Until then a verifier accepts any span, and the bound holds because only the Worker signs rosters.
+
 **Held ring and replacement.** The held ring R is replaced by R′ only when all of these hold:
 
 - R′ verifies;
@@ -2536,6 +2538,7 @@ devices expire on the same horizon.
 - **K_disc.** It is 32 random bytes per `(product, subject)` per ring epoch, stored in
   `connect_rings`. `GET /connect/identity` delivers the current key and the previous one (for 24 h
   after a bump). A device advertises only under the newest key.
+  The previous key is delivered only when every device of the earlier epoch is still a member: a bump in which a device left drops it, so a removed device has no window. A bump that only adds devices keeps it.
 - **Why server-delivered.** This keeps L-13's server-delivered key over a root-key derivation.
   Connect then works without Cloud Sync E2E, and rotation is trivial.
 - **Byte-level choices (`peer-matrix.json` `adverts`).** `deviceId` in the HMAC is the 24 bytes the 32 base64url characters decode to. The instance suffix is the first 16 characters of the RFC 4648 base32 alphabet in lower case (`a-z2-7`), unpadded, of the 32-byte MAC. A browser matches an instance against the current epoch and the one before, newest key first, and against no other. A TXT entry splits at its first `=`; an entry without `=` and a key this section does not define are ignored; keys are case-sensitive; a repeated key refuses the whole advert. `v` must be `1`; `m` must be `a`, `v` or `p`; `h` is read for `v` and `p` only and must be 16 lower-case hex characters.
@@ -2692,7 +2695,7 @@ device-bound nonce (§12.11). They are not generated at launch.
 
 **Corpus.** `cases.json` gains the sections `peerCertCases`, `ringCases` and `peerAdmissionCases` (§15.2, §15.3). Two new files sit beside it: `noise-vectors.json` (X25519 and AES-256-GCM known answers, the low-order points, the three handshake modes with fixed ephemerals, rekey, and external `Noise_XX_25519_AESGCM_SHA256` anchors) and `peer-matrix.json` (adverts, prologue, PSK, SAS with commit and reveal rows, TCP frames, records, relay envelopes and handshake payloads). `noiseVectorsVersion` and `peerMatrixVersion` are 1. The device proof (§15.8) is `device-proof.json`. These are generated by CC-04.3 and CC-05; `corpusVersion` stays 2, and a runner that does not name a section ignores it.
 
-**Errors.** One new error kind, `peer`, sent between SDKs in a `CLOSE` record and never emitted by the Worker: `peer_revoked`, `peer_expired`, `peer_bad_frame`, `peer_unknown_critical`, `peer_not_allowed`, `peer_busy`, `peer_bye`. Worker (`wire`) codes: `device_keys_invalid` (400), `device_keys_required` (409), `relay_disabled` (403), `relay_paused` (503 with `Retry-After`), `relay_quota_exceeded` (429, `scope` person or product) and `relay_ticket_invalid` (401; WebSocket close 4001). Client-only codes: `connect-unavailable`, `nearby-permission-denied`, `nearby-unsupported`, `peer-handshake-failed`, `peer-cert-invalid`, `peer-closed`. The registry is `conformance/parity/errors.json`, which lists a code before any implementation uses it.
+**Errors.** One new error kind, `peer`, sent between SDKs in a `CLOSE` record and never emitted by the Worker: `peer_revoked`, `peer_expired`, `peer_bad_frame`, `peer_unknown_critical`, `peer_not_allowed`, `peer_busy`, `peer_bye`. Worker (`wire`) codes: `device_keys_invalid` (400), `device_keys_required` (409), `ring_too_large` (409, more than 128 devices), `relay_disabled` (403), `relay_paused` (503 with `Retry-After`), `relay_quota_exceeded` (429, `scope` person or product) and `relay_ticket_invalid` (401; WebSocket close 4001). Client-only codes: `connect-unavailable`, `nearby-permission-denied`, `nearby-unsupported`, `peer-handshake-failed`, `peer-cert-invalid`, `peer-closed`. The registry is `conformance/parity/errors.json`, which lists a code before any implementation uses it.
 
 **Discovery.** `services.connect` is `{"enabled":false}` when the service is off. When on, it is `{"enabled":true,"lan":bool,"relay":bool,"interAccount":bool,"endpoints":{"identity","devices","ticket"}}`, and an endpoint is `null` until the release that serves it. The member is unsigned and additive; `DISCOVERY_VERSION` stays 2.
 

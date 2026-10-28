@@ -290,6 +290,15 @@ extension PolarisKeyPreviewState {
         .init(
             .signIn, "done", base { $0.signIn = sign(.signedIn) { $0.issuedNow = true } }),
         .init(
+            .signIn, "done", variant: "tier",
+            base {
+                $0.signIn = sign(.signedIn) {
+                    $0.issuedNow = false
+                    $0.name = "Mara Lindqvist"
+                    $0.tier = "Pro"
+                }
+            }),
+        .init(
             .signIn, "error",
             base {
                 $0.signIn = sign()
@@ -357,6 +366,23 @@ extension PolarisKeyPreviewState {
                 $0.replaceView = replaceView
             }),
         .init(
+            .licenseChoice, "loading",
+            base {
+                $0.signIn = sign(.choose)
+                $0.loading = true
+            }),
+        .init(
+            .licenseChoice, "raced",
+            base {
+                $0.signIn = sign(.choose) { $0.raced = true }
+                $0.choices = KitLicenseChoices(choices: choices, preselected: "lic_pro")
+            }),
+        .init(
+            .licenseChoice, "grant-expired",
+            base {
+                $0.signIn = sign(.choose) { $0.grantExpired = true }
+            }),
+        .init(
             .licenseChoice, "none-keys",
             base {
                 $0.signIn = sign(.choose)
@@ -385,6 +411,20 @@ extension PolarisKeyPreviewState {
             base {
                 $0.keyField = KitKeyField(text: key, submitted: true)
                 $0.activation = KitActivation(result: "license-disabled")
+            }),
+        .init(
+            .activate, "rejected", variant: "key-entry-limit",
+            base {
+                $0.keyField = KitKeyField(text: key, submitted: true)
+                $0.activation = KitActivation(result: "key-entry-limit", manageUrl: manageURL)
+            }),
+        .init(
+            .activate, "rejected", variant: "license-owned",
+            base {
+                $0.keyField = KitKeyField(text: key, submitted: true)
+                $0.activation = KitActivation(
+                    result: "refused", code: "license_owned",
+                    signInUrl: "https://polaris.locker/#/p/tidewater/sign-in")
             }),
         .init(
             .activate, "device-limit",

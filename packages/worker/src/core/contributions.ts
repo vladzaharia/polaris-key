@@ -19,6 +19,8 @@
  *                     (R-7, `core/devices/lifecycle.ts`); run for every mounted service.
  *   maintenance       the service's retention and reconciliation steps; `scheduled.ts` iterates
  *                     descriptors instead of importing them.
+ *   keyring           whether the service needs the Core key ring for a product (U-36.2): Cloud
+ *                     Sync answers yes while it is on and the product's mode is end-to-end;
  *   integration       the service's console prerequisites and domain facts for one product
  *                     (consumed by ST-40).
  *
@@ -178,7 +180,17 @@ export type ProductPurgeContributor = (ctx: {
   now: number;
 }) => Promise<{ done: boolean }>;
 
+/**
+ * Does this service need the Core key ring (`/<p>/devices/keyring`) for the product? Asked only
+ * while the service is enabled for it. A throw is a no.
+ */
+export type KeyringContributor = (ctx: {
+  db: Db;
+  product: string;
+}) => Promise<boolean>;
+
 export interface ServiceContributions {
+  keyring?: KeyringContributor;
   productDeletion?: ProductDeletionContributor;
   productPurge?: ProductPurgeContributor;
   /**
@@ -262,6 +274,25 @@ export function contributedAuthorizationListeners(
       out.push(listener);
   }
   return out;
+}
+
+/**
+ * Is the key ring on for this product? Yes while an enabled service that contributes a `keyring`
+ * answer says it needs one. No service, or none answering yes, is a no (the routes are `404`).
+ */
+export async function keyringWanted(
+  db: Db,
+  product: { slug: string; services: ServicesMap },
+): Promise<boolean> {
+  for (const [slug, c] of contributionsOf()) {
+    if (!c.keyring || !product.services[slug]?.enabled) continue;
+    try {
+      if (await c.keyring({ db, product: product.slug })) return true;
+    } catch {
+      // A service that cannot answer does not switch the ring on.
+    }
+  }
+  return false;
 }
 
 /** Every mounted service's device lifecycle listeners, in canonical slug order. */

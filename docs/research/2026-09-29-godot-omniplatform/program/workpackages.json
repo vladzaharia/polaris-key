@@ -18865,7 +18865,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §2.2-§2.4", "plans/CC-01.md §4"],
       "brief": "wp/CC-06-connect-identity.md",
-      "status": "todo",
+      "status": "in-progress",
       "planRef": "CC-01"
     },
     {

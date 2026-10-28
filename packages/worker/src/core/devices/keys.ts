@@ -9,6 +9,9 @@ import {
   isCanonicalB64url,
 } from "@polaris-key/jws";
 import type { Db, DbStatement } from "../../db/types.js";
+import { resolveSyncPrincipal } from "../accounts/accountSubjects.js";
+import { getLicense } from "../licensing/store.js";
+import { licenseUsable } from "../devices.js";
 import { hexEncode, utf8Encode, toArrayBuffer } from "../../platform/bytes.js";
 
 export interface DeviceKeysRow {
@@ -137,26 +140,41 @@ export async function deviceSignKey(
   return (await getDeviceKeys(db, product, deviceId))?.sign_key ?? null;
 }
 
+interface MemberRow {
+  device_id: string;
+  sign_key: string;
+  agree_key: string;
+  key_seq: number;
+  label: string | null;
+  platform: string | null;
+  last_seen: number;
+}
+
+export interface MemberOptions {
+  /** The licence service is on: a device must also hold a seat and token and a usable licence. */
+  seatsHeld?: boolean;
+  /** Epoch seconds for the licence check; defaults to the clock. */
+  now?: number;
+}
+
 /**
- * The devices bound to a subject that have keys: what Cloud Sync wraps the root key to. Bound means
- * `devices.subject` is the subject, authorized means `status = 'authorized'`. With `seatsHeld` (the
- * licence service is on) a device whose seat and token were released (`releaseDormantSeats`) is left
- * out; with the service off a seat is never held, so the caller leaves it unset.
- * Sorted by `device_id` so two callers see one order.
+ * The devices that hold keys and whose principal is `subject`: exactly those for which
+ * `resolveSyncPrincipal` answers this subject (authorized, bound, licence not floating and not
+ * removed from the account's library). With `seatsHeld` (the licence service is on) a device whose
+ * seat and token were released (`releaseDormantSeats`) or whose licence is not usable (disabled,
+ * expired, gone) is left out; with the service off a seat is never held, so the caller leaves it
+ * unset. Sorted by `device_id` so two callers see one order. The SQL only narrows the candidates;
+ * the principal rule decides.
  */
-export async function accountDeviceKeys(
+async function memberRows(
   db: Db,
   product: string,
   subject: string,
-  opts: { seatsHeld?: boolean } = {},
-): Promise<AccountDeviceKeys[]> {
-  const rows = await db.all<{
-    device_id: string;
-    sign_key: string;
-    agree_key: string;
-    key_seq: number;
-  }>(
-    `SELECT k.device_id, k.sign_key, k.agree_key, k.key_seq
+  opts: MemberOptions,
+): Promise<MemberRow[]> {
+  const rows = await db.all<MemberRow & { status: string; license_id: string }>(
+    `SELECT k.device_id, k.sign_key, k.agree_key, k.key_seq, d.label, d.platform, d.last_seen,
+            d.status, d.license_id
        FROM device_keys k
        JOIN devices d ON d.product = k.product AND d.device_id = k.device_id
       WHERE k.product = ? AND d.subject = ? AND d.status = 'authorized'${
@@ -168,11 +186,62 @@ export async function accountDeviceKeys(
     product,
     subject,
   );
+  const now = opts.now ?? Math.floor(Date.now() / 1000);
+  const members: MemberRow[] = [];
+  for (const r of rows) {
+    const principal = await resolveSyncPrincipal(db, {
+      product,
+      status: r.status,
+      license_id: r.license_id,
+      subject,
+    });
+    if (principal?.subject !== subject) continue;
+    if (opts.seatsHeld) {
+      const licence = await getLicense(db, product, r.license_id);
+      if (!licenseUsable(licence, now)) continue;
+    }
+    members.push(r);
+  }
+  return members;
+}
+
+/** The members with their keys: what Cloud Sync wraps the root key to and Cloud Connect signs. */
+export async function accountDeviceKeys(
+  db: Db,
+  product: string,
+  subject: string,
+  opts: MemberOptions = {},
+): Promise<AccountDeviceKeys[]> {
+  const rows = await memberRows(db, product, subject, opts);
   return rows.map((r) => ({
     deviceId: r.device_id,
     signKey: r.sign_key,
     agreeKey: r.agree_key,
     keySeq: r.key_seq,
+  }));
+}
+
+/** What the linked-devices list shows of one device: display data only, no key. */
+export interface AccountDeviceListing {
+  deviceId: string;
+  label: string | null;
+  platform: string | null;
+  lastSeen: number;
+}
+
+/** The listing for `accountDeviceKeys`' set (same rule), sorted by `device_id`. */
+export async function accountDeviceListing(
+  db: Db,
+  product: string,
+  subject: string,
+  opts: MemberOptions = {},
+): Promise<AccountDeviceListing[]> {
+  const rows = await memberRows(db, product, subject, opts);
+  return rows.map((r) => ({
+    deviceId: r.device_id,
+    label: r.label,
+    platform: r.platform,
+    lastSeen: r.last_seen,
   }));
 }
 
@@ -203,6 +272,12 @@ export async function upsertDeviceKeys(
   keys: DeviceKeyPair,
   now: number,
   popAt?: number,
+  /**
+   * The signing key the caller saw the device hold when it decided to write (`null`: none).
+   * When given, a row that holds any other key by now refuses with `DeviceKeysInvalidError`
+   * instead of being rotated, and the rotation itself only matches that key.
+   */
+  heldSignKey?: string | null,
 ): Promise<UpsertResult> {
   if (!validateDeviceKeys(keys)) throw new DeviceKeysInvalidError();
   const held = await db.first<{ device_id: string }>(
@@ -218,6 +293,12 @@ export async function upsertDeviceKeys(
     current.agree_key === keys.agreeKey
   ) {
     return { keySeq: current.key_seq, changed: false, rotated: false };
+  }
+  if (
+    heldSignKey !== undefined &&
+    (current?.sign_key ?? null) !== heldSignKey
+  ) {
+    throw new DeviceKeysInvalidError();
   }
   const floor = await db.first<{ pop_at: number | null }>(
     "SELECT pop_at FROM device_key_floor WHERE product = ? AND device_id = ?",
@@ -235,8 +316,15 @@ export async function upsertDeviceKeys(
   const write: DbStatement = current
     ? {
         sql: `UPDATE device_keys SET sign_key = ?, agree_key = ?, key_seq = key_seq + 1, rotated_at = ?
-               WHERE product = ? AND device_id = ?`,
-        params: [keys.signKey, keys.agreeKey, now, product, deviceId],
+               WHERE product = ? AND device_id = ? AND sign_key = ?`,
+        params: [
+          keys.signKey,
+          keys.agreeKey,
+          now,
+          product,
+          deviceId,
+          current.sign_key,
+        ],
       }
     : {
         sql: `INSERT INTO device_keys (product, device_id, sign_key, agree_key, key_seq, created_at, rotated_at)
@@ -272,11 +360,30 @@ export async function upsertDeviceKeys(
     throw e;
   }
   const after = await getDeviceKeys(db, product, deviceId);
+  // The guarded rotation matched nothing: another write changed the key since the read above.
+  if (heldSignKey !== undefined && after?.sign_key !== keys.signKey) {
+    throw new DeviceKeysInvalidError();
+  }
   return {
     keySeq: after?.key_seq ?? (current?.key_seq ?? 0) + 1,
     changed: true,
     rotated: current !== null,
   };
+}
+
+/** True when another device of the product already holds this agreement key. */
+export async function agreeKeyHeldElsewhere(
+  db: Db,
+  product: string,
+  agreeKey: string,
+  deviceId: string,
+): Promise<boolean> {
+  const held = await db.first<{ device_id: string }>(
+    "SELECT device_id FROM device_keys WHERE product = ? AND agree_key = ?",
+    product,
+    agreeKey,
+  );
+  return held !== null && held.device_id !== deviceId;
 }
 
 /** The delete as a statement, for a batch that removes the device (purge, licence delete). */
@@ -340,9 +447,18 @@ export async function verifyKeyPop(input: KeyPopInput): Promise<boolean> {
   if (Math.abs(input.issuedAt - input.now) > KEY_POP_SKEW_SECONDS) return false;
   const message = keyPopMessage(input);
   if (!message) return false;
-  if (input.sig.length !== 86 || !isCanonicalB64url(input.sig)) return false;
-  const sig = base64UrlDecode(input.sig);
-  const pub = base64UrlDecode(input.signKey);
+  return verifyEd25519Strict(input.signKey, input.sig, message);
+}
+
+/** A strict Ed25519 verification (V5 §1.1 prechecks first) of a base64url signature by a raw key. */
+export async function verifyEd25519Strict(
+  signKey: string,
+  sigB64: string,
+  message: Uint8Array,
+): Promise<boolean> {
+  if (sigB64.length !== 86 || !isCanonicalB64url(sigB64)) return false;
+  const sig = base64UrlDecode(sigB64);
+  const pub = base64UrlDecode(signKey);
   if (sig.length !== 64 || !ed25519Prechecks(pub, sig)) return false;
   try {
     const key = await crypto.subtle.importKey(

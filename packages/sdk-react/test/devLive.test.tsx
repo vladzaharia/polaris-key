@@ -516,7 +516,8 @@ describe.skipIf(unset.length > 0)("the React SDK on a live pkey dev", () => {
 
   it("B4: device-code sign-in: begin, approve out of band, wait", async () => {
     const page = await openPage("1.0.0");
-    const signIn = await page.adapter.beginSignIn({
+    const signIn = await page.adapter.signIn.start({
+      channel: "device-code",
       deviceName: "React live test",
     });
     expect(new URL(signIn.verificationUri).origin).toBe(base);
@@ -530,7 +531,7 @@ describe.skipIf(unset.length > 0)("the React SDK on a live pkey dev", () => {
       waiting.catch(() => undefined);
     });
     expect(await waiting).toMatchObject({
-      status: "ready",
+      kind: "signedIn",
       identity: info.idp.person,
     });
     await waitFor(() => expect(page.hooks.current.license.status).toBe("ok"));

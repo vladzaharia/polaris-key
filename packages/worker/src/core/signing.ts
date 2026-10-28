@@ -49,6 +49,7 @@ import {
   MAX_RING_DEVICES,
   PEER_CERT_TYP,
   PEER_DEVICE_ID_PATTERN,
+  RING_SECONDS,
   RING_TYP,
 } from "@polaris-key/protocol/connect";
 
@@ -176,11 +177,14 @@ function envelope(typ: string, o: Record<string, unknown>): void {
   if (typeof o.sub !== "string" || !SUBJECT_RE.test(o.sub)) {
     refuse(typ, "sub is not a pairwise subject");
   }
-  // Step 5 is the certificate's; §15.3 sets no span for a roster.
-  if (typ === PEER_CERT_TYP) {
+  // Step 5 is the certificate's. A roster is held to the same span, up to RING_SECONDS (§15.3):
+  // the signer never issues one that is already expired or that outlives the removal horizon.
+  // Verifiers do not yet refuse an over-long roster (CC-06.2 carries that, with its corpus case).
+  if (typ === PEER_CERT_TYP || typ === RING_TYP) {
     const ttl = (o.expiresAt as number) - (o.issuedAt as number);
-    if (ttl < 1 || ttl > MAX_PEER_CERT_SECONDS) {
-      refuse(typ, "expiresAt − issuedAt is outside 1..604800");
+    const max = typ === PEER_CERT_TYP ? MAX_PEER_CERT_SECONDS : RING_SECONDS;
+    if (ttl < 1 || ttl > max) {
+      refuse(typ, `expiresAt − issuedAt is outside 1..${max}`);
     }
   }
 }

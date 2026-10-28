@@ -87,6 +87,9 @@ const OLD_CORS_SERVICE_PATHS = [
   // U-05.12, U-05.13: the Cloud Sync pull and push (device bearer, never ambient).
   "sync",
   "sync/ops",
+  // CC-06.1: the Cloud Connect roster and the linked-devices list (device bearer, never ambient).
+  "connect/identity",
+  "connect/devices",
 ];
 
 const OLD_CORS_CORE_KINDS = [

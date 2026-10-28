@@ -5274,6 +5274,26 @@ msgstr "Appareil non configuré"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez."
 
+#. Device not linked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_required.title"
+msgstr "Appareil non lié"
+
+#. This device has not been set up to link with your others. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_required.message"
+msgstr "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez."
+
+#. Too many devices
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.ring_too_large.title"
+msgstr "Trop d'appareils"
+
+#. This account has more linked devices than can be connected. Remove one and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.ring_too_large.message"
+msgstr "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

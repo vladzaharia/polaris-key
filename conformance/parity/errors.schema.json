@@ -41,7 +41,8 @@
             "release",
             "update",
             "distribution",
-            "sync"
+            "sync",
+            "connect"
           ]
         },
         "plannedBy": {

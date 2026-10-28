@@ -176,11 +176,23 @@ import {
   licenseGateEnabled,
 } from "../core/services.js";
 import { discoverProduct, type DiscoveryDocument } from "./discovery.js";
+import { BearerSession, type AccountDevice } from "./bearer/session.js";
 import {
-  BearerSession,
-  type AccountDevice,
-  type SignInResult,
-} from "./bearer/session.js";
+  BearerDeviceCodeSession,
+  BearerRedirectSession,
+  completeRedirect,
+  type SettleHooks,
+} from "./bearer/signInSessions.js";
+import {
+  callbackState,
+  redirectEndpointsOf,
+  sessionStorageStash,
+  type DeviceCodeSignInSession,
+  type RedirectSignInSession,
+  type SignInNamespace,
+  type SignInOptions,
+  type SignInOutcome,
+} from "../core/signIn.js";
 import {
   indexedDbStore,
   memoryStore,
@@ -233,8 +245,6 @@ import type {
   CommerceClaimResult,
   CommercePayload,
   CommerceStore,
-  DeviceSignIn,
-  DeviceSignInResult,
   MintedToken,
 } from "../core/types.js";
 import {
@@ -705,6 +715,7 @@ export class BrowserAdapter implements PolarisAdapter {
         store: this.bearerStore,
         enabled: (slug) => this.capabilities[slug].enabled,
         identityEndpoints: () => accountEndpointsOf(this.discovery_),
+        redirectEndpoints: () => redirectEndpointsOf(this.discovery_),
         ...(opts.fingerprint ? { fingerprint: opts.fingerprint } : {}),
         ...(opts.deviceName !== undefined
           ? { deviceName: opts.deviceName }
@@ -1209,19 +1220,15 @@ export class BrowserAdapter implements PolarisAdapter {
   async signInWithOidc(): Promise<OidcSignInHandle | void> {
     if (this.configError) throw this.fail("identity", this.configError);
     if (this.bearer) {
-      const flow = await this.beginSignIn();
-      const stop = new AbortController();
-      void flow.wait({ signal: stop.signal }).catch(() => undefined);
+      const flow = await this.signIn.start({ channel: "device-code" });
+      void flow.wait().catch(() => undefined);
       return {
         verificationUrl: flow.verificationUriComplete,
         verificationUri: flow.verificationUri,
         userCode: flow.userCode,
         expiresAt: flow.expiresAt,
         // Cancelling is not a failure: the wait ends and the identity slice goes idle.
-        cancel: () => {
-          stop.abort();
-          this.setBusy("identity", false);
-        },
+        cancel: () => flow.cancel(),
       };
     }
     if (!this.capabilities.identity.enabled) {
@@ -1942,66 +1949,114 @@ export class BrowserAdapter implements PolarisAdapter {
     }
   }
 
-  async beginSignIn(opts: { deviceName?: string } = {}): Promise<DeviceSignIn> {
+  /** `signIn.start` / `signIn.complete` (identity.signIn). */
+  readonly signIn: SignInNamespace = {
+    start: ((opts: SignInOptions) =>
+      this.startSignIn(opts)) as SignInNamespace["start"],
+    complete: (callbackUrl) => this.completeSignIn(callbackUrl),
+  };
+
+  /** What a settled sign-in does to the adapter: the state, the busy flag, the subject. */
+  private signInHooks(): SettleHooks {
+    return {
+      onSettled: async (outcome) => {
+        this.applyBearer({ busy: noBusy(), error: noErrors() });
+        if (outcome.kind !== "signedIn" || outcome.subject !== null)
+          return outcome;
+        // Device code answers no subject: read it when discovery names the endpoint.
+        const subject = accountEndpointsOf(this.discovery_)?.subject
+          ? await this.bearer!.subject().catch(() => null)
+          : null;
+        return { ...outcome, subject };
+      },
+      onFailed: (error) => {
+        this.fail("identity", error);
+      },
+      onStopped: () => this.setBusy("identity", false),
+    };
+  }
+
+  private async startSignIn(
+    opts: SignInOptions,
+  ): Promise<DeviceCodeSignInSession | RedirectSignInSession> {
+    if (this.configError) throw this.fail("identity", this.configError);
+    const feature =
+      opts.channel === "redirect"
+        ? Feature.identityRedirectWeb
+        : Feature.identityDevicecode;
     if (!this.capabilities.identity.enabled)
       throw this.fail(
         "identity",
         new UnsupportedError(
           {
             supported: false,
-            feature: Feature.identityDevicecode,
+            feature,
             reason: "product",
             detail: "the product does not run the identity service",
           },
-          "service-disabled",
+          ErrorCode.serviceUnavailable,
         ),
       );
     const b = this.requireBearer(
-      Feature.identityDevicecode,
-      'A browser on the cookie session signs in by redirect (signInWithOidc); device-code sign-in needs auth: "bearer".',
+      feature,
+      'A browser on the cookie session signs in by redirect (signInWithOidc); signIn.start needs auth: "bearer".',
     );
     this.setBusy("identity", true);
     try {
-      const prompt = await b.beginSignIn(opts);
-      return {
-        userCode: prompt.userCode,
-        verificationUri: prompt.verificationUri,
-        verificationUriComplete: prompt.verificationUriComplete,
-        expiresAt: prompt.expiresAt,
-        interval: prompt.interval,
-        wait: async (w = {}) => {
-          try {
-            const r = await b.waitForSignIn(prompt, w);
-            const out = signInResult(r);
-            // Cancelled while the last poll was in flight: the person has gone on (and may have
-            // started another sign-in), so this result is not theirs to apply.
-            if (w.signal?.aborted) return out;
-            if (out.status === "ready")
-              this.applyBearer({ busy: noBusy(), error: noErrors() });
-            else
-              this.fail(
-                "identity",
-                new PolarisError(
-                  out.status === "expired"
-                    ? ErrorCode.signInExpired
-                    : out.status === "denied"
-                      ? ErrorCode.signInDenied
-                      : ErrorCode.signInFailed,
-                  out.status === "error" ? out.message : out.status,
-                ),
-              );
-            return out;
-          } catch (e) {
-            // A cancel clears the busy flag itself; a late clear here would end the flag of the
-            // sign-in the person started next.
-            if (!w.signal?.aborted) this.setBusy("identity", false);
-            throw e;
-          }
-        },
-      };
+      await this.ensureDiscovery();
+      const hooks = this.signInHooks();
+      if (opts.channel === "device-code")
+        return new BearerDeviceCodeSession(b, await b.beginSignIn(opts), hooks);
+      if (opts.channel !== "redirect")
+        throw new PolarisError(
+          ErrorCode.signInUnavailable,
+          `unknown sign-in channel: ${String((opts as { channel?: unknown }).channel)}`,
+        );
+      const stash = sessionStorageStash(this.product, this.clock);
+      if (!stash)
+        throw new PolarisError(
+          ErrorCode.signInUnavailable,
+          "a redirect sign-in keeps its verifier in sessionStorage across the navigation, and this page has none.",
+        );
+      const pending = await b.startRedirect(opts);
+      const deviceName = b.deviceLabel(opts.deviceName);
+      stash.save({ ...pending, deviceName, at: this.clock() });
+      this.setBusy("identity", false);
+      return new BearerRedirectSession(b, pending, deviceName, hooks, (state) =>
+        stash.drop(state),
+      );
     } catch (e) {
       throw this.fail("identity", asError(e, "sign-in-unavailable"));
     }
+  }
+
+  private async completeSignIn(callbackUrl: string): Promise<SignInOutcome> {
+    if (this.configError) throw this.fail("identity", this.configError);
+    const b = this.requireBearer(
+      Feature.identityRedirectWeb,
+      'A browser on the cookie session signs in by redirect (signInWithOidc); signIn.complete needs auth: "bearer".',
+    );
+    const state = callbackState(callbackUrl);
+    const pending =
+      state === null
+        ? null
+        : (sessionStorageStash(this.product, this.clock)?.take(state) ?? null);
+    if (pending === null)
+      throw this.fail(
+        "identity",
+        new PolarisError(
+          ErrorCode.signInFailed,
+          "no redirect sign-in is waiting for this callback; start a new one.",
+        ),
+      );
+    this.setBusy("identity", true);
+    return completeRedirect(
+      b,
+      pending,
+      callbackUrl,
+      pending.deviceName,
+      this.signInHooks(),
+    );
   }
 
   async mintToken(recipeId: string): Promise<MintedToken> {
@@ -2522,16 +2577,6 @@ function deviceInfo(d: AccountDevice): DeviceInfo {
     sdkName: d.sdkName ?? null,
     sdkVersion: d.sdkVersion ?? null,
   };
-}
-
-function signInResult(r: SignInResult): DeviceSignInResult {
-  if (r.status === "ready")
-    return r.identity
-      ? { status: "ready", identity: r.identity }
-      : { status: "ready" };
-  if (r.status === "expired") return { status: "expired" };
-  if (r.code === ErrorCode.signInDenied) return { status: "denied" };
-  return { status: "error", message: r.message };
 }
 
 function asError(

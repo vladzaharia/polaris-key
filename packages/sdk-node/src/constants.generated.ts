@@ -23,6 +23,8 @@ export const ErrorCode = {
   documentNotRepresentable: "document_not_representable",
   signingUnavailable: "signing_unavailable",
   deviceKeysInvalid: "device_keys_invalid",
+  deviceKeysRequired: "device_keys_required",
+  ringTooLarge: "ring_too_large",
   deviceLimit: "device_limit",
   keyEntryLimit: "key_entry_limit",
   licenseDisabled: "license_disabled",
@@ -224,6 +226,8 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "document_not_representable",
   "signing_unavailable",
   "device_keys_invalid",
+  "device_keys_required",
+  "ring_too_large",
   "device_limit",
   "key_entry_limit",
   "license_disabled",
@@ -427,6 +431,8 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   document_not_representable: "wire",
   signing_unavailable: "wire",
   device_keys_invalid: "wire",
+  device_keys_required: "wire",
+  ring_too_large: "wire",
   device_limit: "wire",
   key_entry_limit: "wire",
   license_disabled: "wire",
@@ -1997,7 +2003,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.saves": { status: "planned", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
-  "connect.protocol": { status: "implemented", service: "connect", na: [] },
+  "connect.protocol": { status: "planned", service: "connect", na: [] },
   "connect.lan": { status: "planned", service: "connect", na: [] },
   "connect.relay": { status: "planned", service: "connect", na: [] },
   "connect.links": { status: "planned", service: "connect", na: [] },
@@ -2155,4 +2161,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "b2b76c04bd8af1bdc27f94c1cce5d4564787a20074a8436712bebdc0d9c2ec18";
+  "43e99c7e4ed2eef6ad4225f64e16d705f29a49a7068265ee3913be8494c5388e";

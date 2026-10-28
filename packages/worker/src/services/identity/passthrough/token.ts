@@ -38,6 +38,7 @@
 
 import {
   CHOICE_GRANT_TTL_SECONDS,
+  TOKEN_EXCHANGE_GRANT_TYPE,
   type PendingSignIn,
   type TokenResponse,
 } from "@polaris-key/protocol/identity";
@@ -49,6 +50,7 @@ import { constantTimeEqual } from "../../../platform/compare.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type { Product } from "../../../core/products.js";
+import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import {
   ErrorCode,
   errorResponse,
@@ -79,11 +81,19 @@ import { customerTierId } from "../../../core/licensing/implicitTier.js";
 import { rankAnchorCandidates } from "../../../core/licensing/anchor.js";
 import { appendAudit } from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
+import {
+  DeviceKeysConflictError,
+  DeviceKeysInvalidError,
+  upsertDeviceKeys,
+  type DeviceKeyPair,
+} from "../../../core/devices/keys.js";
 import { getAccountRow } from "../accounts/repo.js";
 import { redeemAuthorizationCode } from "./code.js";
 import { acceptsKeys, licenseChoiceView, offerFor } from "./choice.js";
 import { issueGrant } from "./grant.js";
 import { bindChoice, type BindRefusal, type BindResult } from "./bind.js";
+import { handleExchange } from "./exchange.js";
+import { markFresh } from "./fresh.js";
 
 /** The token endpoint: 30 a minute per client network, 10 per device id; both fail closed. */
 export const TOKEN_RATE = { bucket: "identityToken", limit: 30, windowSec: 60 };
@@ -100,7 +110,7 @@ const CODE_RE = /^[A-Za-z0-9_-]{43}$/;
 /** RFC 7636 §4.1. */
 const VERIFIER_RE = /^[A-Za-z0-9._~-]{43,128}$/;
 
-const oauth = (
+export const oauth = (
   status: number,
   error: string,
   description?: string,
@@ -147,8 +157,9 @@ export async function handleToken(ctx: {
   db: Db;
   product: Product;
   now: number;
+  settings?: SettingsRegistry;
 }): Promise<Response> {
-  const { req, env, db, product, now } = ctx;
+  const { req, env, db, product, now, settings } = ctx;
   if (req.method !== "POST") return methodNotAllowed();
   if (
     !(await rateLimitOk(
@@ -172,6 +183,8 @@ export async function handleToken(ctx: {
   const grant = form.get("grant_type");
   if (!grant)
     return oauth(400, ErrorCode.InvalidRequest, "grant_type is required.");
+  if (grant === TOKEN_EXCHANGE_GRANT_TYPE)
+    return handleExchange({ req, env, db, product, now, form, settings });
   if (grant !== "authorization_code")
     return oauth(400, ErrorCode.UnsupportedGrantType);
   const clientId = form.get("client_id");
@@ -236,8 +249,64 @@ export async function handleToken(ctx: {
   if ((await erasureVerdict(env, now, account.id)) !== "clear")
     return oauth(400, ErrorCode.InvalidGrant);
 
+  return bindAndAnswer(
+    { req, env, db, product, now },
+    {
+      accountId: account.id,
+      subject,
+      email: account.primary_email,
+      deviceId,
+      scope: record.scope,
+      licenseChoice: record.licenseChoice,
+      choice: record.choice ?? null,
+      deviceName: form.get("device_name") ?? undefined,
+      fresh: true,
+      audit: {
+        action: "signin.token",
+        summary: "Signed in a device through authorize",
+      },
+    },
+  );
+}
+
+/** What `bindAndAnswer` needs about a sign-in that has found its account. */
+export interface SignedIn {
+  accountId: string;
+  subject: string;
+  email: string | null;
+  deviceId: string;
+  scope: string[];
+  licenseChoice: string;
+  /** The licence the person chose at Continue, when they did. */
+  choice: { licenseId: string; replaceDeviceId?: string } | null;
+  deviceName: string | undefined;
+  audit: { action: string; summary: string };
+  /**
+   * The device keys the exchange registers (I-13.4): written once the device is bound, and carried
+   * in the pending grant when a choice is due, for `choice/complete` to write.
+   */
+  keys?: DeviceKeyPair;
+  /** The signing key the device held when the exchange checked it (`null`: none). */
+  heldSignKey?: string | null;
+  /** A same-device grant (I-43.1): marks the step-up once the device is bound. Only `authorization_code` sets it. */
+  fresh?: true;
+}
+
+/**
+ * The tail both grants share: bind the device (or hand over the pending grant when the app has a
+ * choice to make) and answer. `authorization_code` and the token exchange (I-13.4) differ only in
+ * how they found the account.
+ */
+export async function bindAndAnswer(
+  cx: { req: Request; env: Env; db: Db; product: Product; now: number },
+  p: SignedIn,
+): Promise<Response> {
+  const { req, env, db, product, now } = cx;
+  const { deviceId, subject } = p;
+  const account = { id: p.accountId, primary_email: p.email };
+
   const metadata = deviceMetadata(req);
-  const label = normalizeDeviceLabel(form.get("device_name") ?? undefined);
+  const label = normalizeDeviceLabel(p.deviceName);
 
   // A device that presents its own live token proves it holds the device. Only then may a sign-in
   // keep the licence the device runs on, or take over a device id that already has a credential:
@@ -256,7 +325,6 @@ export async function handleToken(ctx: {
       ? proven
       : null;
 
-  const cx = { req, env, db, product, now };
   const who = { accountId: account.id, subject, email: account.primary_email };
   const deviceArgs = {
     id: deviceId,
@@ -267,19 +335,16 @@ export async function handleToken(ctx: {
   };
 
   let bound: BindResult;
-  if (record.choice) {
+  if (p.choice) {
     // The person chose at Continue (a licence, a replace, or the one Continue minted for them).
     bound = await bindChoice(cx, who, deviceArgs, {
       kind: "license",
-      licenseId: record.choice.licenseId,
-      ...(record.choice.replaceDeviceId !== undefined
-        ? { replaceDeviceId: record.choice.replaceDeviceId }
+      licenseId: p.choice.licenseId,
+      ...(p.choice.replaceDeviceId !== undefined
+        ? { replaceDeviceId: p.choice.replaceDeviceId }
         : {}),
     });
-  } else if (
-    record.licenseChoice === "app" &&
-    product.services.license.enabled
-  ) {
+  } else if (p.licenseChoice === "app" && product.services.license.enabled) {
     // App mode: the app runs the choice. If one is due, hand over the grant instead of a token.
     const choiceCx = { env, db, product, now };
     const offer = await offerFor(choiceCx, account.id, deviceId);
@@ -295,7 +360,9 @@ export async function handleToken(ctx: {
           accountId: account.id,
           subject,
           deviceId,
-          scope: record.scope,
+          scope: p.scope,
+          ...(p.keys ? { keys: p.keys } : {}),
+          ...(p.fresh ? { fresh: true as const } : {}),
         },
         now,
       );
@@ -327,6 +394,29 @@ export async function handleToken(ctx: {
   }
   if (!bound.ok) return flatRefusal(bound.refusal);
 
+  if (p.keys) {
+    try {
+      await upsertDeviceKeys(
+        db,
+        product.slug,
+        deviceId,
+        p.keys,
+        now,
+        undefined,
+        p.heldSignKey,
+      );
+    } catch (e) {
+      // A key another device of the product holds, or a malformed one: the same plain refusal.
+      if (
+        e instanceof DeviceKeysInvalidError ||
+        e instanceof DeviceKeysConflictError
+      )
+        return oauth(400, ErrorCode.InvalidGrant);
+      throw e;
+    }
+  }
+
+  if (p.fresh) await markFresh(env, product.slug, deviceId);
   await appendAudit(db, {
     product: product.slug,
     id: randomId("aud"),
@@ -334,14 +424,14 @@ export async function handleToken(ctx: {
     actor_sub: subject,
     actor_name: null,
     actor_email: null,
-    action: "signin.token",
+    action: p.audit.action,
     target_kind: "device",
     target_id: deviceId,
     parent_id: bound.licenseId === NO_LICENSE_ID ? null : bound.licenseId,
-    summary: "Signed in a device through authorize",
+    summary: p.audit.summary,
   });
   return withNoStore(
-    json(await tokenBody(db, product, deviceId, record.scope, subject, bound)),
+    json(await tokenBody(db, product, deviceId, p.scope, subject, bound)),
   );
 }
 

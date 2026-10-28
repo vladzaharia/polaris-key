@@ -1069,6 +1069,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Device not set up",
     "core.codes.device_keys_invalid.message":
       "This device could not be set up for sync. Update the app and try again.",
+    "core.codes.device_keys_required.title": "Device not linked",
+    "core.codes.device_keys_required.message":
+      "This device has not been set up to link with your others. Update the app and try again.",
+    "core.codes.ring_too_large.title": "Too many devices",
+    "core.codes.ring_too_large.message":
+      "This account has more linked devices than can be connected. Remove one and try again.",
     "core.codes.key_entry_limit.title": "No key entries left",
     "core.codes.key_entry_limit.message":
       "This key has no entries left. Add it to your account and sign in instead.",
@@ -2788,6 +2794,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Gerät nicht eingerichtet",
     "core.codes.device_keys_invalid.message":
       "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut.",
+    "core.codes.device_keys_required.title": "Gerät nicht verknüpft",
+    "core.codes.device_keys_required.message":
+      "Dieses Gerät wurde nicht zum Verknüpfen mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut.",
+    "core.codes.ring_too_large.title": "Zu viele Geräte",
+    "core.codes.ring_too_large.message":
+      "Dieses Konto hat mehr verknüpfte Geräte, als verbunden werden können. Entferne eines und versuche es erneut.",
     "core.codes.key_entry_limit.title": "Keine Schlüsseleingaben mehr",
     "core.codes.key_entry_limit.message":
       "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
@@ -4515,6 +4527,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Appareil non configuré",
     "core.codes.device_keys_invalid.message":
       "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez.",
+    "core.codes.device_keys_required.title": "Appareil non lié",
+    "core.codes.device_keys_required.message":
+      "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez.",
+    "core.codes.ring_too_large.title": "Trop d'appareils",
+    "core.codes.ring_too_large.message":
+      "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez.",
     "core.codes.key_entry_limit.title": "Aucune saisie restante",
     "core.codes.key_entry_limit.message":
       "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.",
@@ -6228,6 +6246,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Dispositivo no configurado",
     "core.codes.device_keys_invalid.message":
       "No se pudo configurar este dispositivo para la sincronización. Actualiza la app e inténtalo de nuevo.",
+    "core.codes.device_keys_required.title": "Dispositivo no vinculado",
+    "core.codes.device_keys_required.message":
+      "Este dispositivo no se ha configurado para vincularse con los demás. Actualiza la app e inténtalo de nuevo.",
+    "core.codes.ring_too_large.title": "Demasiados dispositivos",
+    "core.codes.ring_too_large.message":
+      "Esta cuenta tiene más dispositivos vinculados de los que se pueden conectar. Quita uno e inténtalo de nuevo.",
     "core.codes.key_entry_limit.title": "No quedan usos de la clave",
     "core.codes.key_entry_limit.message":
       "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.",
@@ -7929,6 +7953,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Dispositivo não configurado",
     "core.codes.device_keys_invalid.message":
       "Não foi possível configurar este dispositivo para a sincronização. Atualize o app e tente de novo.",
+    "core.codes.device_keys_required.title": "Dispositivo não vinculado",
+    "core.codes.device_keys_required.message":
+      "Este dispositivo não foi configurado para se vincular aos seus outros. Atualize o app e tente novamente.",
+    "core.codes.ring_too_large.title": "Dispositivos demais",
+    "core.codes.ring_too_large.message":
+      "Esta conta tem mais dispositivos vinculados do que é possível conectar. Remova um e tente novamente.",
     "core.codes.key_entry_limit.title": "Nenhum uso restante da chave",
     "core.codes.key_entry_limit.message":
       "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso.",
@@ -9616,6 +9646,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Dispositivo non configurato",
     "core.codes.device_keys_invalid.message":
       "Non è stato possibile configurare questo dispositivo per la sincronizzazione. Aggiorna l’app e riprova.",
+    "core.codes.device_keys_required.title": "Dispositivo non collegato",
+    "core.codes.device_keys_required.message":
+      "Questo dispositivo non è stato configurato per collegarsi agli altri. Aggiorna l'app e riprova.",
+    "core.codes.ring_too_large.title": "Troppi dispositivi",
+    "core.codes.ring_too_large.message":
+      "Questo account ha più dispositivi collegati di quanti se ne possano connettere. Rimuovine uno e riprova.",
     "core.codes.key_entry_limit.title": "Nessun inserimento rimasto",
     "core.codes.key_entry_limit.message":
       "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.",
@@ -11330,6 +11366,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "デバイスを設定できません",
     "core.codes.device_keys_invalid.message":
       "このデバイスを同期用に設定できませんでした。アプリを更新して、もう一度お試しください。",
+    "core.codes.device_keys_required.title": "デバイスがリンクされていません",
+    "core.codes.device_keys_required.message":
+      "このデバイスは、ほかのデバイスとリンクする設定が済んでいません。アプリを更新して、もう一度お試しください。",
+    "core.codes.ring_too_large.title": "デバイスが多すぎます",
+    "core.codes.ring_too_large.message":
+      "このアカウントのリンク済みデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。",
     "core.codes.key_entry_limit.title": "キーの入力回数が残っていません",
     "core.codes.key_entry_limit.message":
       "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。",
@@ -12993,6 +13035,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "기기를 설정하지 못했어요",
     "core.codes.device_keys_invalid.message":
       "이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요.",
+    "core.codes.device_keys_required.title": "기기가 연결되지 않음",
+    "core.codes.device_keys_required.message":
+      "이 기기는 다른 기기와 연결하도록 설정되지 않았습니다. 앱을 업데이트한 후 다시 시도하세요.",
+    "core.codes.ring_too_large.title": "기기가 너무 많음",
+    "core.codes.ring_too_large.message":
+      "이 계정에 연결된 기기가 연결 가능한 수보다 많습니다. 하나를 제거한 후 다시 시도하세요.",
     "core.codes.key_entry_limit.title": "남은 키 등록 횟수 없음",
     "core.codes.key_entry_limit.message":
       "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.",
@@ -14560,6 +14608,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "设备未设置",
     "core.codes.device_keys_invalid.message":
       "无法为同步设置此设备。请更新应用后重试。",
+    "core.codes.device_keys_required.title": "设备未关联",
+    "core.codes.device_keys_required.message":
+      "此设备尚未设置为与你的其他设备关联。请更新应用后重试。",
+    "core.codes.ring_too_large.title": "设备过多",
+    "core.codes.ring_too_large.message":
+      "此账户关联的设备超出了可连接的数量。请移除一台后重试。",
     "core.codes.key_entry_limit.title": "密钥已无剩余输入次数",
     "core.codes.key_entry_limit.message":
       "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。",

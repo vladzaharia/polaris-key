@@ -147,8 +147,15 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     cors: true,
     methods: ["POST"],
     auth: { kind: "code" },
-    handler: ({ req, env, db, product, now }) =>
-      handleToken({ req, env, db, product, now }),
+    handler: ({ req, env, db, product, now, settings }) =>
+      handleToken({
+        req,
+        env,
+        db,
+        product,
+        now,
+        ...(settings ? { settings } : {}),
+      }),
   },
   // I-13.2 (§12.11.2): the native exchange's nonce; the keys in the body are bound, not trusted.
   {

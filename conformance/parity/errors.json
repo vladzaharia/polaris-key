@@ -100,6 +100,18 @@
       "description": "400: the key registration was refused: a key that is not canonical or is of small order, a proof of possession that fails or is outside the 300 s window, or an `agreeKey` another device of the product holds. One code, whichever check failed."
     },
     {
+      "code": "device_keys_required",
+      "kind": "wire",
+      "service": "connect",
+      "description": "409: a Cloud Connect route was called by a device that has registered no keys, or whose keys are not in its roster. Register them with `PUT /<p>/devices/keys`, then retry."
+    },
+    {
+      "code": "ring_too_large",
+      "kind": "wire",
+      "service": "connect",
+      "description": "409: the person has more devices than a roster holds (128). Nothing is issued and the roster epoch does not move. Remove a device, then retry."
+    },
+    {
       "code": "device_limit",
       "kind": "wire",
       "service": "license",
@@ -271,8 +283,7 @@
       "code": "interstitial_required",
       "kind": "wire",
       "service": "identity",
-      "description": "403, flat, from the token-exchange grant on POST /<p>/identity/token (WIRE-CONTRACT-V5 §12.11.3): the app cannot finish the sign-in itself. `reason` is `no_link` (no link exists for the provider token; carries `linkHandle` and `expiresIn`) or `terms` (the product's terms version is unaccepted); `url` is the sign-in card for the product. A client reads an unknown `reason` as `no_link`.",
-      "plannedBy": "I-13.4"
+      "description": "403, flat, from the token-exchange grant on POST /<p>/identity/token (WIRE-CONTRACT-V5 §12.11.3): the app cannot finish the sign-in itself. `reason` is `no_link` (no link exists for the provider token; carries `linkHandle` and `expiresIn`) or `terms` (the product's terms version is unaccepted); `url` is the sign-in card for the product. A client reads an unknown `reason` as `no_link`."
     },
     {
       "code": "not_nearby",
@@ -427,8 +438,7 @@
       "code": "keyring_conflict",
       "kind": "wire",
       "service": "core",
-      "description": "409 from the key ring routes: a ring already exists for the product and subject, or a wrap already exists for the device. The client reads the ring and continues from it (WIRE-CONTRACT-V5 §13.11.2, §13.9; U-36).",
-      "plannedBy": "U-36"
+      "description": "409 from the key ring routes: a ring already exists for the product and subject, or a wrap already exists for the device. The client reads the ring and continues from it (WIRE-CONTRACT-V5 §13.11.2, §13.9; U-36)."
     },
     {
       "code": "email_mismatch",

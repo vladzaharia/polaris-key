@@ -6,6 +6,36 @@
 import PolarisKeyUICore
 import SwiftUI
 
+/// The two refusals of a well-formed key whose fix is an account (never an error, DL6): the
+/// licence has no key entries left, or an account already holds it.
+enum ActivateRefusal: Equatable {
+    case keyEntryLimit, licenseOwned
+
+    static func of(_ screen: KitScreen<ActivateState>) -> ActivateRefusal? {
+        guard screen.state == .rejected else { return nil }
+        if screen.shows("core.activation.key-entry-limit.message") { return .keyEntryLimit }
+        if screen.shows("core.codes.license_owned.message") { return .licenseOwned }
+        return nil
+    }
+
+    /// The refusal's link when the server gave a valid one.
+    static func link(_ screen: KitScreen<ActivateState>, _ activation: KitActivation?) -> URL? {
+        switch of(screen) {
+        case .keyEntryLimit: return KitLinks.valid(activation?.manageUrl)
+        case .licenseOwned: return KitLinks.valid(activation?.signInUrl)
+        case nil: return nil
+        }
+    }
+
+    /// The primary: add the key to an account, or sign in to the one that has it.
+    var actionKey: String {
+        switch self {
+        case .keyEntryLimit: return "signin.key.addTitle"
+        case .licenseOwned: return "signin.key.ownedSignIn"
+        }
+    }
+}
+
 /// The key field step. Return submits; the button keeps its label while busy; a refusal sits under
 /// the control that caused it and is announced (DL7).
 public struct ActivateView: View {
@@ -15,16 +45,22 @@ public struct ActivateView: View {
     var onReplaceDevice: (() -> Void)?
     var onCancel: (() -> Void)?
     var onDone: (() -> Void)?
+    /// The refusal's fix, when the server gave a link: the key-entry limit's account page or the
+    /// owning account's sign-in. Nil hides it (and, on a TV, the QR).
+    var refusalLink: URL?
+    var onRefusalLink: (() -> Void)?
 
     /// `onDone` carries the Done step's one action (Start using <Product>, DL4): a lone action is
     /// always the primary. The drop-in gate leaves it nil because the app opens on success.
     public init(
         screen: KitScreen<ActivateState>, text: Binding<String>, onSubmit: @escaping () -> Void,
         onReplaceDevice: (() -> Void)? = nil, onCancel: (() -> Void)? = nil,
-        onDone: (() -> Void)? = nil
+        onDone: (() -> Void)? = nil, refusalLink: URL? = nil, onRefusalLink: (() -> Void)? = nil
     ) {
         self.screen = screen
         self._text = text
+        self.refusalLink = refusalLink
+        self.onRefusalLink = onRefusalLink
         self.onSubmit = onSubmit
         self.onReplaceDevice = onReplaceDevice
         self.onCancel = onCancel
@@ -51,11 +87,12 @@ public struct ActivateView: View {
         } content: {
             ActivateBody(
                 screen: screen, text: $text, onSubmit: onSubmit, onReplaceDevice: onReplaceDevice,
-                outcomeIsHeading: true)
+                outcomeIsHeading: true, refusalLink: refusalLink)
         } actions: {
             ActivateActions(
                 screen: screen, onSubmit: onSubmit, onReplaceDevice: onReplaceDevice,
-                onCancel: onCancel, onDone: onDone, onDifferentKey: { text = "" })
+                onCancel: onCancel, onDone: onDone, onDifferentKey: { text = "" },
+                onRefusalLink: onRefusalLink)
         }
     }
 }
@@ -69,6 +106,9 @@ struct ActivateBody: View {
     var onReplaceDevice: (() -> Void)?
     /// Activate's own screen titles the outcome; an embedding form shows it here.
     var outcomeIsHeading = false
+    /// The refusal's link, drawn as a QR on a TV (which cannot open it).
+    var refusalLink: URL?
+    @Environment(\.polarisKeyStrings) private var strings
 
     var body: some View {
         kitStyle { style in
@@ -77,6 +117,17 @@ struct ActivateBody: View {
                     KeyField(text: $text, screen: screen, onSubmit: onSubmit)
                 }
                 outcome(style)
+                #if os(tvOS)
+                    if let link = refusalLink, ActivateRefusal.of(screen) != nil {
+                        PolarisQRCode(
+                            link.absoluteString,
+                            accessibilityLabel: strings.string(
+                                ActivateRefusal.of(screen) == .keyEntryLimit
+                                    ? "a11y.qrManage" : "a11y.qr")
+                        )
+                        .frame(width: 200, height: 200)
+                    }
+                #endif
             }
             .animation(style.morph, value: screen.stateName)
         }
@@ -196,6 +247,8 @@ struct ActivateActions: View {
     var onDone: (() -> Void)?
     /// A refused key's way on (macOS): clear the field and focus it.
     var onDifferentKey: (() -> Void)?
+    /// A refusal's fix when the server gave a link (nil on a TV, which shows a QR instead).
+    var onRefusalLink: (() -> Void)?
 
     /// Whether a refusal is the service's answer to a well-formed key (a callout, not the field's
     /// own message): the fix is a different key.
@@ -260,7 +313,21 @@ struct ActivateActions: View {
                     }
                 }
             default:
-                if Self.refusesTheKey(screen), let onDifferentKey {
+                if let refusal = ActivateRefusal.of(screen), let onRefusalLink {
+                    kitStyle { style in
+                        KitButton(
+                            line: CopyLine(
+                                refusal.actionKey, ["product": .text(style.identity.name)]),
+                            kind: .primary, glyph: PolarisKitGlyph.newWindow, action: onRefusalLink
+                        )
+                        .keyboardShortcut(.defaultAction)
+                    }
+                    if let onDifferentKey {
+                        KitButton(
+                            line: CopyLine("signin.key.differentKey"), kind: .quiet,
+                            action: onDifferentKey)
+                    }
+                } else if Self.refusesTheKey(screen), let onDifferentKey {
                     KitButton(
                         line: CopyLine("signin.key.differentKey"), kind: .primary,
                         action: onDifferentKey
