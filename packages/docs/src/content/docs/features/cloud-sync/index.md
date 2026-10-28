@@ -57,6 +57,16 @@ Every `config` key syncs unless its `managementDefault` is `enforced` or `hidden
 
 A `user` block on a locked key does nothing, and `pkey validate` warns. A `secret` or `flag` key is never a setting. A key the catalog doesn't declare is an open setting: it syncs to every device, last write wins, with no schema and at most 8 KiB. Declared and open settings share a budget of 256 keys and 64 KiB per player. Any of the person's devices can set an open setting, so treat its value as untrusted input.
 
+## Who can read it
+
+With `e2e`, the default, the person's devices seal each value before it leaves, with a key ring only
+their devices hold. Polaris Key stores ciphertext. It sees which declared keys exist, when they
+change and how large they are, and open settings under a blinded name; it never sees a value. You
+see the same: the console shows counts, never a person's settings. A person recovers the key on a
+new device from another of their devices or from a recovery code. With neither, nobody can recover
+their synced settings, and Polaris Key can't help. With `server`, Polaris Key can read the values
+and you can use `mapValues` in a migration.
+
 ## Records and saves
 
 A product declares collections in the catalog's `cloudSync` block, authored in `.pkey/schema`.
@@ -145,6 +155,7 @@ The **Usage** page shows how many people have data, the storage they use against
 
 ## Next steps
 
+- In your app: [Node](/docs/build/sdks/node/your-own-ui/#synced-settings) and [Python](/docs/build/sdks/python/your-own-ui/#synced-settings), the calls, states and events.
 - [The catalog](/docs/features/managed-config/catalog/): declare the keys that sync.
 - [Management states](/docs/features/managed-config/management-states/): which keys are locked.
 - [Sign-in](/docs/features/sign-in/): the principal Cloud Sync needs.
