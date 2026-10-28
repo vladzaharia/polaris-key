@@ -204,7 +204,13 @@ export class ReplayServer {
     this.stepIndex = index;
     this.served = step.exchanges.items.map(() => false);
     for (const [k, v] of Object.entries(step.args))
-      if (typeof v === "string") this.bindings[k] = v;
+      // `deviceId` in a key ring step names the TARGET device (the path); the `{deviceId}` in a
+      // header stays the calling device's, which is `initial.deviceId`.
+      if (
+        typeof v === "string" &&
+        !(k === "deviceId" && step.action.startsWith("keyring"))
+      )
+        this.bindings[k] = v;
     return step;
   }
 

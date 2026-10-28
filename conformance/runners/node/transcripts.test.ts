@@ -15,6 +15,7 @@
 // @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 // @pkey-feature core.presentation
 // @pkey-feature ui.cli.portal
+// @pkey-feature sync.keyring
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -64,6 +65,7 @@ import {
   ErrorCode,
   PolarisError,
   PolarisKeyClient,
+  createNodeDeviceKeyStore,
   type CacheRecordV3,
   type RedirectSession,
   type DeviceCodeSession,
@@ -244,6 +246,8 @@ interface Session {
   server: ReplayServer;
   /** The redirect session the last authorize step started (its URL is what the browser opens). */
   redirect: RedirectSession | null;
+  /** The first ring a `keyringCreate` made: the one a later `keyringAdopt` takes the root of. */
+  firstRingId?: string;
 }
 
 /** The `state`, verifier and redirect URI the Worker scenarios use (their `browser` and
@@ -441,6 +445,91 @@ function activation(
   // §12.2: the counts, `null` where the answer carries none (Identity off).
   if (r.kind === "ok" || r.kind === "key-entry-limit")
     out.keyEntries = r.keyEntries ?? null;
+}
+
+/**
+ * The key ring verbs (U-38.1, `sync.keyring`) over `client.keyring`. The transcripts hold no key
+ * material the client could use, so the client makes its own: `create` and `reset` draw a root,
+ * `wrap` seals it to a fresh agreement key for the named device, and `adopt` takes the root of the
+ * first ring this conversation created. A refusal reads as `result: "refused"` with the status
+ * and the code.
+ */
+async function keyringStep(
+  client: PolarisKeyClient,
+  step: Step,
+  session: Session,
+  out: Observed,
+): Promise<void> {
+  const k = client.keyring;
+  try {
+    switch (step.action) {
+      case "keyringGet": {
+        const r = await k.read();
+        out.ring = r.ring
+          ? {
+              ringId: r.ring.ringId,
+              epoch: r.ring.epoch,
+              rootKid: r.ring.rootKid,
+              state: r.ring.state,
+              recoverySet: r.ring.recovery.set,
+              previous: r.ring.previous?.ringId ?? null,
+              adopted: r.ring.adopted.map((a) => a.ringId),
+            }
+          : null;
+        out.wrap = r.wrap
+          ? { epoch: r.wrap.epoch, kid: r.wrap.kid, by: r.wrap.by ?? null }
+          : null;
+        break;
+      }
+      case "keyringCreate":
+      case "keyringReset": {
+        const made =
+          step.action === "keyringCreate" ? await k.create() : await k.reset();
+        if (step.action === "keyringCreate")
+          session.firstRingId ??= made.ringId;
+        // The ring id is the client's own draw and the recording's is a fixture: both must be a
+        // well formed id, and the replay reports the recorded one when ours is.
+        out.ringId = /^rg_[A-Za-z0-9_-]{22}$/.test(made.ringId)
+          ? ((step.expect.ringId as string | undefined) ?? made.ringId)
+          : made.ringId;
+        out.epoch = made.epoch;
+        break;
+      }
+      case "keyringWrap": {
+        const pair = await globalThis.crypto.subtle.generateKey(
+          "X25519",
+          true,
+          ["deriveBits"],
+        );
+        const pub = new Uint8Array(
+          await globalThis.crypto.subtle.exportKey(
+            "raw",
+            (pair as CryptoKeyPair).publicKey,
+          ),
+        );
+        await k.wrapTo(String(step.args.deviceId), pub);
+        break;
+      }
+      case "keyringUnwrap":
+        await k.removeWrap(String(step.args.deviceId));
+        break;
+      case "keyringAdopt":
+        await k.adopt(session.firstRingId ?? "");
+        break;
+      case "keyringRecoverySet":
+        await k.setRecoveryCode();
+        break;
+      case "keyringRecoveryGet":
+        out.ct = (await k.recoveryBlob()).ct;
+        break;
+    }
+    out.result = "ok";
+  } catch (e) {
+    if (!(e instanceof PolarisError)) throw e;
+    out.result = "refused";
+    if (e.status !== undefined) out.status = e.status;
+    out.code = e.code;
+  }
 }
 
 /** THE mapping from transcript verbs and `expect` keys onto the Node SDK. Kept in one place. */
@@ -787,6 +876,16 @@ async function act(
       }
       break;
     }
+    case "keyringGet":
+    case "keyringCreate":
+    case "keyringReset":
+    case "keyringWrap":
+    case "keyringUnwrap":
+    case "keyringAdopt":
+    case "keyringRecoverySet":
+    case "keyringRecoveryGet":
+      await keyringStep(client, step, session, out);
+      break;
     case "downloadUrl":
       out.url = client.release.downloadUrl(
         String(step.args.version),
@@ -881,6 +980,8 @@ async function replay(t: Transcript): Promise<void> {
     // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
     deviceName: t.initial.deviceName ?? "",
     stateDir,
+    // The key ring's device keys: a memory store, since the replay registers none.
+    keyring: { deviceKeys: createNodeDeviceKeyStore({ memory: true }) },
     // The presentation cache (HA-13) too, so a replay never writes into the developer's home.
     cacheDir: stateDir,
     ...(services ? { expectedServices: services as never } : {}),
