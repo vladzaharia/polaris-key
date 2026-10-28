@@ -477,13 +477,22 @@ public fun PolarisEntitlementLocked(tier: String? = null, modifier: Modifier = M
 // ── CloudSyncStatus ──────────────────────────────────────────────────────────────────────────
 
 /** What Cloud Sync is doing (UI-KITS.md 4.1 CloudSyncStatus). */
-public enum class PolarisCloudSync { Synced, Syncing, Offline, Conflict, Error, SignedOut }
+public enum class PolarisCloudSync {
+    Synced, Syncing, Offline, Conflict, Error, SignedOut,
+
+    /** This device holds no sync key: it says so and offers Unlock sync (never a sync time). */
+    Locked,
+
+    /** A different key ring is served: Review confirms it first, Unlock is never offered in its place. */
+    RingChanged,
+}
 
 /**
  * A small status for Cloud Sync: when it last synced, that it is syncing, that changes wait for the
  * connection, that some conflict, or that it could not. An icon and words, never colour alone. It
  * claims nothing it does not know (no "backed up"). [onOpen] makes the whole line open the details;
- * a failed sync offers Try again and a signed-out one offers Sign in to sync.
+ * a failed sync offers Try again, a signed-out one offers Sign in to sync, a locked one Unlock sync
+ * and a changed ring Review (U-42; the host's own status source binds these later, Q-7).
  *
  * @param syncedAtMillis epoch milliseconds of the last sync, for "Synced 5 minutes ago".
  */
@@ -496,6 +505,8 @@ public fun PolarisCloudSyncStatus(
     onOpen: (() -> Unit)? = null,
     onRetry: (() -> Unit)? = null,
     onSignIn: (() -> Unit)? = null,
+    onUnlock: (() -> Unit)? = null,
+    onReview: (() -> Unit)? = null,
 ) {
     val catalog = KitCopy.bundled
     val locale = kitLocale()
@@ -511,11 +522,15 @@ public fun PolarisCloudSyncStatus(
         PolarisCloudSync.Conflict -> catalog.format("cloudSync.conflict", locale)
         PolarisCloudSync.Error -> catalog.format("cloudSync.error", locale)
         PolarisCloudSync.SignedOut -> catalog.format("cloudSync.signedOut", locale)
+        PolarisCloudSync.Locked -> catalog.format("cloudSync.locked", locale)
+        PolarisCloudSync.RingChanged -> catalog.format("cloudSync.ringChanged", locale)
     }
     val (glyph, tint) = when (status) {
         PolarisCloudSync.Synced -> PolarisSymbols.Check to state.success
         PolarisCloudSync.Syncing -> PolarisSymbols.Refresh to scheme.onSurfaceVariant
         PolarisCloudSync.Offline, PolarisCloudSync.SignedOut -> PolarisSymbols.Info to scheme.onSurfaceVariant
+        PolarisCloudSync.Locked -> PolarisSymbols.Lock to scheme.onSurfaceVariant
+        PolarisCloudSync.RingChanged -> PolarisSymbols.Warning to state.warning
         PolarisCloudSync.Conflict -> PolarisSymbols.Warning to state.warning
         PolarisCloudSync.Error -> PolarisSymbols.Warning to state.danger
     }
@@ -534,6 +549,8 @@ public fun PolarisCloudSyncStatus(
         val action = when {
             status == PolarisCloudSync.Error && onRetry != null -> catalog.format("common.tryAgain", locale) to onRetry
             status == PolarisCloudSync.SignedOut && onSignIn != null -> catalog.format("cloudSync.signIn", locale) to onSignIn
+            status == PolarisCloudSync.Locked && onUnlock != null -> catalog.format("cloudSync.unlock", locale) to onUnlock
+            status == PolarisCloudSync.RingChanged && onReview != null -> catalog.format("common.review", locale) to onReview
             else -> null
         }
         if (action != null) {

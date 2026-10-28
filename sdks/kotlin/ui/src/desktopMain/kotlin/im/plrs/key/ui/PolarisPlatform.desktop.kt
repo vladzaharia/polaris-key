@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit
 
 /** The AWT clipboard; [clipboard] is the system one unless a test passes its own. */
 internal class DesktopClipboard(private val clipboard: () -> Clipboard? = ::systemClipboard) : PolarisClipboard {
-    override suspend fun setText(label: String, text: String): Boolean = runCatching {
+    override suspend fun setText(label: String, text: String, sensitive: Boolean): Boolean = runCatching {
         val c = clipboard() ?: return false
         c.setContents(StringSelection(text), null)
         true

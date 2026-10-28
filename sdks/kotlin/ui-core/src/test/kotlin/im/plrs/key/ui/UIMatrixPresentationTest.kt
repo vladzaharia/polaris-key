@@ -1,12 +1,12 @@
 // @pkey-feature ui.gate ui.activate ui.signin ui.devicelimit ui.devices ui.update ui.settings ui.paywall ui.theme ui.i18n
 //
 // The Kotlin presentation core against conformance/corpus/v2/ui-matrix.json (plans/UK-02b.md §5):
-// every row of all ten families, never skipping one. Component rows compare the component, the
+// every row of all eleven families, never skipping one. Component rows compare the component, the
 // state, the sorted copy keys and the sorted actions; a `mustNot` row also asserts that none of its
 // forbidden states, copy keys or actions appear. `theme` rows compare the resolved name, accent
 // source, scheme, icon and preset; `i18n` rows the formatted string.
 //
-// Families: gate, activate, signIn, deviceLimit, devices, update, settings, paywall, theme, i18n.
+// Families: gate, activate, signIn, deviceLimit, devices, update, settings, paywall, cloudSync, theme, i18n.
 package im.plrs.key.ui
 
 import im.plrs.key.core.UI_MATRIX_VERSION
@@ -43,6 +43,8 @@ class UIMatrixPresentationTest {
     @Test fun settingsFamily() = runFamily("settings")
 
     @Test fun paywallFamily() = runFamily("paywall")
+
+    @Test fun cloudSyncFamily() = runFamily("cloudSync")
 
     @Test
     fun themeFamily() {

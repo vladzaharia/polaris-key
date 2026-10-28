@@ -44,6 +44,10 @@ public enum class KitComponent(public val id: String) {
     paywall("Paywall"),
     entitlementGate("EntitlementGate"),
     toast("Toast"),
+    cloudSyncStatus("CloudSyncStatus"),
+    unlockSync("UnlockSync"),
+    recoveryCode("RecoveryCode"),
+    ringChange("RingChange"),
     ;
 
     public companion object {
@@ -62,6 +66,12 @@ public enum class KitAction(public val id: String) {
     copyLink("copy-link"),
     retry("retry"),
     cancel("cancel"),
+    unlock("unlock"),
+    startOver("start-over"),
+    confirmStartOver("confirm-start-over"),
+    acceptRingChange("accept-ring-change"),
+    useRecoveryCode("use-recovery-code"),
+    copyCode("copy-code"),
     ;
 
     public companion object {
@@ -83,6 +93,13 @@ public enum class KitAction(public val id: String) {
             "signin.again" to retry,
             "signInHandoff.newCode" to retry,
             "common.cancel" to cancel,
+            "unlockSync.unlock" to unlock,
+            "cloudSync.unlock" to unlock,
+            "unlockSync.startOver" to startOver,
+            "unlockSync.startOverConfirm" to confirmStartOver,
+            "ringChange.accept" to acceptRingChange,
+            "ringChange.useCode" to useRecoveryCode,
+            "recoveryCode.copy" to copyCode,
         )
 
         /** The action taken by a control with [copyKey], when the catalog assigns one. */
@@ -368,6 +385,10 @@ public object KitStates {
         KitComponent.paywall -> paywallScreen(inputs)
         KitComponent.entitlementGate -> entitlementGateScreen(inputs)
         KitComponent.toast -> toastScreen(inputs)
+        KitComponent.cloudSyncStatus -> cloudSyncStatusScreen(inputs)
+        KitComponent.unlockSync -> unlockSyncScreen(inputs)
+        KitComponent.recoveryCode -> recoveryCodeScreen(inputs)
+        KitComponent.ringChange -> ringChangeScreen(inputs)
     }
 }
 
