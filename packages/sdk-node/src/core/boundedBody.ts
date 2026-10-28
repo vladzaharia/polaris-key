@@ -16,24 +16,13 @@ export async function readCappedText(
     return null;
   }
   if (res.body === null) return "";
-  const reader = res.body.getReader();
-  const chunks: Uint8Array[] = [];
+  const parts: Buffer[] = [];
   let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > max) {
-      await reader.cancel().catch(() => undefined);
-      return null;
-    }
-    chunks.push(value);
+  // Leaving the loop cancels the stream, so an endless body is not read on.
+  for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+    total += chunk.byteLength;
+    if (total > max) return null;
+    parts.push(Buffer.from(chunk));
   }
-  const all = new Uint8Array(total);
-  let at = 0;
-  for (const c of chunks) {
-    all.set(c, at);
-    at += c.byteLength;
-  }
-  return new TextDecoder().decode(all);
+  return Buffer.concat(parts).toString("utf8");
 }
