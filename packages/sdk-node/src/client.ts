@@ -74,6 +74,9 @@ import { DistributionClient } from "./distribution/client.js";
 import { PolarisEventEmitter } from "./core/events.js";
 import { BackendClient, type BackendClientOptions } from "./backend/client.js";
 import { KeyringClient, type KeyringOptions } from "./keyring/client.js";
+import { CloudSyncHost, type CloudSyncHostOptions } from "./cloudSync/host.js";
+import { CloudSyncApi } from "./cloudSync/api.js";
+import { readStoredSubject } from "./identity/account.js";
 import { ConnectClient, type ConnectOptions } from "./connect/client.js";
 import { CloudConnect } from "./connect/cloudConnect.js";
 import { crashTagsFor, type CrashTags } from "./server.js";
@@ -135,6 +138,9 @@ export interface PolarisKeyClientOptions extends CoreOptions {
   /** Cloud Connect (CC-08.1): the device keys (default: the file store, or `keyring.deviceKeys`)
    *  and whether a memory-only key store is allowed. */
   connect?: ConnectOptions;
+  /** Cloud Sync (U-06.2): the product's mode (default `"e2e"`), a compiled catalog and the
+   *  app's renames. App code only: nothing the Worker serves changes them. */
+  cloudSync?: CloudSyncHostOptions;
 }
 
 /**
@@ -204,6 +210,13 @@ export class PolarisKeyClient {
   readonly connect: ConnectClient;
   /** Cloud Connect for the app: start, stop, peers, devices, open and onChannel (CC-08.3). */
   readonly cloudConnect: CloudConnect;
+  /** The Cloud Sync host: the machine, its transport and its state (U-06.2). Idle until `start()`.
+   *  @internal */
+  readonly cloudSyncHost: CloudSyncHost;
+  /** Cloud Sync settings (U-06.3): `status()` and `flush()`; its events arrive on
+   *  `events.on("cloudSync", …)`. A product without the Sync service answers the typed N/A. */
+  readonly cloudSync: Pick<CloudSyncApi, "status" | "flush">;
+  private readonly cloudSyncApi: CloudSyncApi;
 
   private readonly cache: CacheManager;
   private readonly tokens: TokenManager;
@@ -334,6 +347,43 @@ export class PolarisKeyClient {
       },
     );
     this.cloudConnect = new CloudConnect(this.connect);
+    this.cloudSyncHost = new CloudSyncHost(
+      {
+        ctx: this.core,
+        tokens: this.tokens,
+        keyring: this.keyring,
+        discovery: () => this.discoveryDoc,
+        fetchSchema: () => this.config.fetchSchema(),
+        document: () => {
+          const entries = this.config.entries() ?? {};
+          return {
+            values: Object.fromEntries(
+              Object.entries(entries).map(([k, e]) => [k, e.value]),
+            ),
+            locked: Object.entries(entries)
+              .filter(([, e]) => e.state === "enforced" || e.state === "hidden")
+              .map(([k]) => k),
+          };
+        },
+      },
+      opts.cloudSync ?? {},
+    );
+    this.cloudSyncApi = new CloudSyncApi({
+      ctx: this.core,
+      host: this.cloudSyncHost,
+      keyring: this.keyring,
+      config: this.config,
+      subject: () => readStoredSubject(this.core.dirs.state),
+      emit: (e) => this.events.safeEmit("cloudSync", e),
+    });
+    this.cloudSync = {
+      status: () => this.cloudSyncApi.status(),
+      flush: () => this.cloudSyncApi.flush(),
+    };
+    this.events.on("identity", (e) => {
+      void this.cloudSyncApi.onIdentity(e).catch(() => undefined);
+    });
+    this.identity.onBeforeSignOut(() => this.cloudSyncApi.beforeSignOut());
     // Signing out leaves the person's devices: the roster and K_disc are not this device's to keep.
     this.identity.onBeforeSignOut(() => this.connect.leave());
     this.commerce = new CommerceClient(this.core, this.tokens, () =>
@@ -394,6 +444,7 @@ export class PolarisKeyClient {
     this.license.onDeactivated = async () => {
       await this.keyring.forget();
       await this.identity.forget();
+      await this.cloudSyncApi.onDeactivated().catch(() => undefined);
       this.noteLicense();
     };
     this.refreshIntervalSeconds = opts.refreshIntervalSeconds;
@@ -480,6 +531,8 @@ export class PolarisKeyClient {
       this.core.setServices(result.services);
       await this.presentationStore.accept(result.manifest);
       await this.portalStore.accept(result.manifest);
+      this.cloudSyncHost.noteDiscovery();
+      void this.cloudSyncApi.attach().catch(() => undefined);
     }
     return result;
   }
@@ -884,6 +937,7 @@ export class PolarisKeyClient {
   /** Stop the refresh timers and Cloud Connect. Safe to call more than once. */
   close(): void {
     void this.cloudConnect.stop().catch(() => undefined);
+    void this.cloudSyncHost.close().catch(() => undefined);
     if (this.refreshTimer !== null) {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
