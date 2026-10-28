@@ -423,12 +423,33 @@ export interface UiInput {
   error?: { code: string };
   /** The should tier: Cloud Sync's state, and whether the release channel is locked. */
   cloudSync?: {
-    state: "synced" | "syncing" | "offline" | "conflict" | "error";
+    state:
+      | "synced"
+      | "syncing"
+      | "offline"
+      | "conflict"
+      | "error"
+      | "locked"
+      | "ring-changed";
     signedIn?: boolean;
     /** The host handles Review for a conflict; without it the line stands alone. */
     canReview?: boolean;
     /** When it last synced, relative ("2 min ago"). */
     lastSynced?: string;
+  };
+  /** UnlockSync's step (U-42). `nearby` says the host could unlock from a nearby device:
+   *  v0.10.0 never offers it, because NearbyApproval does not ship. */
+  unlockSync?: {
+    step: "code" | "invalid" | "working" | "failed" | "start-over";
+    nearby?: boolean;
+  };
+  /** RecoveryCode (U-42). The code is never an input: the kit draws it from the host, once. */
+  recoveryCode?: { saved?: boolean };
+  /** RingChange (U-42). `by` is the device that wrapped (`changed.by`); `served` is the ring the
+   *  person was shown (`changed.served`), the one value `acceptRingChange` takes. */
+  ringChange?: {
+    by?: string;
+    served?: { ringId: string; epoch: number; rootKid: string };
   };
   /** `store` is the store that fixes the channel ("App Store", "Google Play", "Steam"). */
   channel?: {

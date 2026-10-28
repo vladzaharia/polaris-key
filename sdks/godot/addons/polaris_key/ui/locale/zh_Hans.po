@@ -1912,6 +1912,156 @@ msgctxt "macos"
 msgid "cloudSync.signIn"
 msgstr "登录以同步"
 
+#. Sync is locked.
+#. CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it.
+msgid "cloudSync.locked"
+msgstr "同步已锁定。"
+
+#. Unlock sync
+#. CloudSyncStatus: a small sync status. Opens the screen that asks for the recovery code (UnlockSync).
+msgid "cloudSync.unlock"
+msgstr "解锁同步"
+
+#. macos: Unlock Sync
+msgctxt "macos"
+msgid "cloudSync.unlock"
+msgstr "解锁同步"
+
+#. Your sync key changed.
+#. CloudSyncStatus: a small sync status. The synced data's key is not the one this device knew; Review sits beside it and opens RingChange.
+msgid "cloudSync.ringChanged"
+msgstr "你的同步密钥已更改。"
+
+#. Unlock your synced data
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
+msgid "unlockSync.title"
+msgstr "解锁已同步的数据"
+
+#. Enter the recovery code you saved for your Polaris Locker account.
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
+msgid "unlockSync.lede"
+msgstr "输入你为 Polaris Locker 账户保存的恢复码。"
+
+#. Recovery code
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The field's label. The code is checked on the device before anything is sent.
+msgid "unlockSync.field"
+msgstr "恢复码"
+
+#. Unlock
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The primary action.
+msgid "unlockSync.unlock"
+msgstr "解锁"
+
+#. Start over
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Opens the confirmation that replaces the sync key; the second action beside Unlock.
+msgid "unlockSync.startOver"
+msgstr "重新开始"
+
+#. macos: Start Over
+msgctxt "macos"
+msgid "unlockSync.startOver"
+msgstr "重新开始"
+
+#. That code isn't right. Check it and try again.
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Shown under the field when the code's check characters fail or the server refuses it.
+msgid "unlockSync.invalid"
+msgstr "恢复码不正确。请检查后重试。"
+
+#. Couldn't unlock. Try again later.
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code.
+msgid "unlockSync.failed"
+msgstr "无法解锁。请稍后重试。"
+
+#. Start over?
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
+msgid "unlockSync.startOverTitle"
+msgstr "重新开始？"
+
+#. Your current synced data will be lost. Start over only if you can't find your recovery code.
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22).
+msgid "unlockSync.startOverWarning"
+msgstr "当前已同步的数据将丢失。仅在找不到恢复码时才重新开始。"
+
+#. Start over
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's destructive action.
+msgid "unlockSync.startOverConfirm"
+msgstr "重新开始"
+
+#. macos: Start Over
+msgctxt "macos"
+msgid "unlockSync.startOverConfirm"
+msgstr "重新开始"
+
+#. Save your recovery code
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
+msgid "recoveryCode.title"
+msgstr "保存你的恢复码"
+
+#. You'll need it to unlock your synced data on a new device. It's shown only once.
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
+msgid "recoveryCode.lede"
+msgstr "在新设备上解锁已同步的数据时需要它。它只显示一次。"
+
+#. No one will ever ask for this code. Enter it only in the app.
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. Also shown by UnlockSync (T23): never entered on a web page, in an email or to a person.
+msgid "recoveryCode.noAsk"
+msgstr "任何人都不会向你索要此恢复码。仅在应用内输入。"
+
+#. Copy code
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
+msgid "recoveryCode.copy"
+msgstr "复制恢复码"
+
+#. macos: Copy Code
+msgctxt "macos"
+msgid "recoveryCode.copy"
+msgstr "复制恢复码"
+
+#. I've saved my recovery code
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked.
+msgid "recoveryCode.saved"
+msgstr "我已保存恢复码"
+
+#. Your sync key changed
+#. RingChange: confirm a changed sync key (U-42).
+msgid "ringChange.title"
+msgstr "你的同步密钥已更改"
+
+#. {device} set up a new key for your synced data.
+#. RingChange: confirm a changed sync key (U-42). Arguments: {device} = the name of the device that set the key up (changed.by), as the kit shows device names.
+msgid "ringChange.body"
+msgstr "{device} 为你的已同步数据设置了新密钥。"
+
+#. A device set up a new key for your synced data.
+#. RingChange: confirm a changed sync key (U-42). Used when no device is named.
+msgid "ringChange.bodyUnknown"
+msgstr "有设备为你的已同步数据设置了新密钥。"
+
+#. Continue only if that was you. If not, unlock with your recovery code instead.
+#. RingChange: confirm a changed sync key (U-42).
+msgid "ringChange.warning"
+msgstr "仅当是你本人操作时才继续。否则，请改用恢复码解锁。"
+
+#. That was me
+#. RingChange: confirm a changed sync key (U-42). Passes the ring that was shown (changed.served) to acceptRingChange.
+msgid "ringChange.accept"
+msgstr "是我操作的"
+
+#. macos: That Was Me
+msgctxt "macos"
+msgid "ringChange.accept"
+msgstr "是我操作的"
+
+#. Use recovery code
+#. RingChange: confirm a changed sync key (U-42). Opens UnlockSync.
+msgid "ringChange.useCode"
+msgstr "使用恢复码"
+
+#. macos: Use Recovery Code
+msgctxt "macos"
+msgid "ringChange.useCode"
+msgstr "使用恢复码"
+
 #. About {product}
 #. About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "about.title"

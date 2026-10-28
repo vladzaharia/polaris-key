@@ -1026,7 +1026,7 @@
       "jscpd:duplicate": 7
     },
     "packages/brand/scripts/kit-copy.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "packages/brand/scripts/kit.ts": {
       "jscpd:duplicate": 1
@@ -2301,9 +2301,6 @@
       "jscpd:duplicate": 9
     },
     "packages/ui-core/src/input.ts": {
-      "jscpd:duplicate": 1
-    },
-    "packages/ui-core/src/vocabulary.ts": {
       "jscpd:duplicate": 1
     },
     "packages/ui-core/test/imports.test.ts": {

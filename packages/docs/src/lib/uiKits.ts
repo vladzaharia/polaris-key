@@ -281,4 +281,8 @@ export function frameworkHref(kit: UiKit): string {
 export const COMPONENTS_NOT_BUILT: readonly string[] = [
   // The catalog's states and copy (I-46.1); the kits that draw it follow (I-44, I-45, I-46, I-48).
   "NearbyApproval",
+  // The Cloud Sync screens' catalog entries (U-42.0); the kits that draw them follow (U-42.2-.5).
+  "UnlockSync",
+  "RecoveryCode",
+  "RingChange",
 ];

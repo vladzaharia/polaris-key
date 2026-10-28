@@ -4,12 +4,17 @@
 
 import { contextOf, type UiInput } from "../input.js";
 import type { View } from "../view.js";
-import type { ComponentName } from "../vocabulary.js";
+import type {
+  ComponentName,
+  ScreenName,
+  SyncScreenName,
+} from "../vocabulary.js";
 import {
   activateView,
   offlineActivationView,
   welcomeView,
 } from "./activate.js";
+import { cloudSyncStatusView, SYNC_MODELS } from "./cloudSync.js";
 import { deviceLimitView, devicesView } from "./devices.js";
 import {
   bootView,
@@ -22,7 +27,6 @@ import {
   accountView,
   aboutView,
   channelPickerView,
-  cloudSyncStatusView,
   entitlementGateView,
   paywallView,
   settingsView,
@@ -65,11 +69,24 @@ export const MODELS: Readonly<Record<ComponentName, Model>> = {
 };
 
 /** The view of `component` for `input`. */
-export function viewOf(component: ComponentName, input: UiInput): View {
-  return MODELS[component](contextOf(input));
+export function viewOf(component: ComponentName, input: UiInput): View;
+export function viewOf(
+  component: SyncScreenName,
+  input: UiInput,
+): View<SyncScreenName>;
+export function viewOf(component: ScreenName, input: UiInput): View<ScreenName>;
+export function viewOf(
+  component: ScreenName,
+  input: UiInput,
+): View<ScreenName> {
+  const ctx = contextOf(input);
+  return component in SYNC_MODELS
+    ? SYNC_MODELS[component as SyncScreenName](ctx)
+    : MODELS[component as ComponentName](ctx);
 }
 
 export * from "./activate.js";
+export * from "./cloudSync.js";
 export * from "./devices.js";
 export * from "./keyRefusal.js";
 export * from "./nearby.js";

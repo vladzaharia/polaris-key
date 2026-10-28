@@ -35,6 +35,21 @@ export const COMPONENTS = [
 ] as const;
 export type ComponentName = (typeof COMPONENTS)[number];
 
+/**
+ * The Cloud Sync screens (ui-matrix.json `cloudSync` family, U-42): their models run here and in
+ * no native core yet. They join `COMPONENTS` with the kit slices that draw them (U-42.2 to .5),
+ * which is also when the elements layout and the React kit learn them.
+ */
+export const SYNC_SCREENS = [
+  "UnlockSync",
+  "RecoveryCode",
+  "RingChange",
+] as const;
+export type SyncScreenName = (typeof SYNC_SCREENS)[number];
+
+/** Anything a view can be of: a kit component or a Cloud Sync screen. */
+export type ScreenName = ComponentName | SyncScreenName;
+
 /** The reserved state of a component its service turns off: the drop-in renders nothing and a
  *  styled part renders empty (plans/UK-02b.md §4.3). */
 export const HIDDEN = "hidden";
@@ -49,6 +64,12 @@ export const ACTIONS = [
   "copy-link",
   "retry",
   "cancel",
+  "unlock",
+  "start-over",
+  "confirm-start-over",
+  "accept-ring-change",
+  "use-recovery-code",
+  "copy-code",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -73,6 +94,12 @@ export const ACTION_KEYS: Readonly<Record<Action, readonly string[]>> = {
     "signInHandoff.newCode",
   ],
   cancel: ["common.cancel"],
+  unlock: ["unlockSync.unlock", "cloudSync.unlock"],
+  "start-over": ["unlockSync.startOver"],
+  "confirm-start-over": ["unlockSync.startOverConfirm"],
+  "accept-ring-change": ["ringChange.accept"],
+  "use-recovery-code": ["ringChange.useCode"],
+  "copy-code": ["recoveryCode.copy"],
 };
 
 /** The opt-in services (tools/services.json), and what each requires (ST-38's closure rule). */

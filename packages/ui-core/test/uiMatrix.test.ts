@@ -57,12 +57,22 @@ describe(`${MATRIX_FILE}: the version`, () => {
   });
 
   it("holds every family, theme and i18n included", () => {
-    for (const family of [...Object.keys(FAMILIES), "theme", "i18n"])
+    for (const family of [
+      ...Object.keys(FAMILIES),
+      "cloudSync",
+      "theme",
+      "i18n",
+    ])
       expect(Array.isArray(matrix[family]), family).toBe(true);
   });
 });
 
-for (const [family, feature] of Object.entries(FAMILIES)) {
+for (const [family, feature] of Object.entries({
+  ...FAMILIES,
+  // U-42.0: the Cloud Sync screens. Only ui-core runs it for now: Swift, Kotlin, Godot and
+  // Python name the families they implement, and learn this one with U-42.3 to U-42.5.
+  cloudSync: "ui.settings",
+})) {
   const rows = matrix[family] as Row[];
   describe(`${MATRIX_FILE} ${family} (${feature})`, () => {
     it.each(rows.map((r) => [r.name, r] as const))("%s", (_name, row) => {
@@ -308,7 +318,7 @@ function unfilled(view: View): Record<string, string[]> {
 }
 
 describe(`${MATRIX_FILE} no raw placeholder`, () => {
-  const rows = Object.keys(FAMILIES).flatMap(
+  const rows = [...Object.keys(FAMILIES), "cloudSync"].flatMap(
     (family) => matrix[family] as Row[],
   );
   const seen: Record<string, Record<string, string[]>> = {};
