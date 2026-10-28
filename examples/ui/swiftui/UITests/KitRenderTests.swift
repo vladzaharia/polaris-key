@@ -158,8 +158,8 @@ final class KitRenderTests: XCTestCase {
     static let full = [
         "Welcome.default", "Activate.parsed", "Activate.device-limit", "SignIn.methods",
         "SignInHandoff.code", "StatusScreen.revoked", "AccountAndLicense.signed-in",
-        "UpdatePrompt.store", "Activate.rejected.key-entry-limit",
-        "Activate.rejected.license-owned", "SignIn.done.tier", "LicenseChoice.raced",
+        "UpdatePrompt.store", "Activate.key-entry-limit",
+        "Activate.license-owned", "SignIn.key-refused", "SignIn.done.tier", "LicenseChoice.raced",
     ]
 
     static let all = [
@@ -167,11 +167,17 @@ final class KitRenderTests: XCTestCase {
         "Welcome.default.drift-kart", "Welcome.default.no-presentation", "Welcome.busy",
         "Welcome.capability-limited", "Activate.empty", "Activate.typing", "Activate.parsed",
         "Activate.cut-short", "Activate.busy", "Activate.rejected",
-        "Activate.rejected.key-entry-limit", "Activate.rejected.license-owned",
-        "Activate.device-limit",
+        "Activate.key-entry-limit", "Activate.license-owned", "Activate.device-limit",
         "Activate.done", "OfflineActivation.default", "OfflineActivation.loaded",
         "OfflineActivation.rejected-signature", "OfflineActivation.done", "SignIn.methods", "SignIn.handoff", "SignIn.finishing", "SignIn.choose",
-        "SignIn.replace", "SignIn.key", "SignIn.done", "SignIn.done.tier", "SignIn.error", "SignIn.expired",
+        "SignIn.replace", "SignIn.key", "SignIn.key-refused", "SignIn.key-refused.license-owned",
+        "SignIn.confirm", "SignIn.confirm.apple", "SignIn.link-offer", "SignIn.link-offer.global",
+        "SignIn.link-done", "SignIn.link-conflict", "SignIn.nearby-prompt", "SignIn.nearby-wait",
+        "SignIn.nearby-done", "NearbyApproval.entry", "NearbyApproval.ask",
+        "NearbyApproval.approved", "NearbyApproval.not-nearby", "NearbyApproval.mismatch",
+        "NearbyApproval.denied", "NearbyApproval.expired", "NearbyApproval.device-limit",
+        "NearbyApproval.choose", "NearbyApproval.account-required", "NearbyApproval.rate-limited",
+        "SignIn.done", "SignIn.done.tier", "SignIn.done.issued-tier", "SignIn.error", "SignIn.expired",
         "SignInHandoff.no-browser", "SignInHandoff.starting", "SignInHandoff.waiting",
         "SignInHandoff.code",
         "SignInHandoff.denied", "SignInHandoff.expired", "LicenseChoice.many", "LicenseChoice.one",
@@ -318,7 +324,7 @@ final class KitRenderTests: XCTestCase {
             upright, state: state, name: name,
             isDefault: locale == nil && isDefaultRow(type, orientation, preset))
 
-        var issues: [String] = []
+        var issues: [String] = Self.textOutsideItsButton(app)
         // The audit's frames are in the app's coordinates, the upright render's.
         let pixels = upright.cgImage
         let scale = upright.scale
@@ -377,6 +383,28 @@ final class KitRenderTests: XCTestCase {
     }
 
     var baselineFailures: [String] = []
+
+    /// A wrapped label must grow its capsule: a button whose text extends outside the button's
+    /// frame (by more than a point) is a finding (I-10b.13 R1, the stacked actions at AX3).
+    @MainActor
+    static func textOutsideItsButton(_ app: XCUIApplication) -> [String] {
+        let window = app.windows.firstMatch.frame
+        var found: [String] = []
+        for button in app.buttons.allElementsBoundByIndex where button.exists {
+            let frame = button.frame
+            guard !frame.isEmpty, window.contains(frame) else { continue }
+            for text in button.staticTexts.allElementsBoundByIndex where text.exists {
+                let t = text.frame
+                guard !t.isEmpty else { continue }
+                if t.minX < frame.minX - 1 || t.maxX > frame.maxX + 1 || t.minY < frame.minY - 1
+                    || t.maxY > frame.maxY + 1
+                {
+                    found.append("text outside its button [button '\(button.label)' \(frame) text \(t)]")
+                }
+            }
+        }
+        return found
+    }
 
     /// The default row (portrait, L, the Polaris Key preset): the docs subset, flat at the top of
     /// the baseline directory as `<component>-<state>[-variant]-<scheme>.png` (ui-qa's and the docs'

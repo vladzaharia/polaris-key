@@ -15,6 +15,9 @@ public enum ActivateState: String, KitStateID {
     case cutShort = "cut-short"
     case busy, rejected
     case deviceLimit = "device-limit"
+    /// A refusal a different key cannot fix: a focused step, without the field (UI-KITS DL6).
+    case keyEntryLimit = "key-entry-limit"
+    case licenseOwned = "license-owned"
     case done
     public static let component = KitComponent.activate
 }
@@ -95,7 +98,49 @@ public struct KeyVerdict: Sendable, Equatable {
     }
 }
 
+/// A refusal only an account fixes: the license has no key entries left, or another account holds
+/// it. It is its own focused step, in Activate and in the sign-in form's key step.
+public enum KitKeyRefusal: Sendable, Equatable {
+    case keyEntryLimit, licenseOwned
+
+    /// The refusal an activation answer is, or nil: a refusal a different key can fix stays
+    /// stacked under the field.
+    public static func of(_ a: KitActivation?) -> KitKeyRefusal? {
+        guard let a else { return nil }
+        if a.result == "key-entry-limit" { return .keyEntryLimit }
+        if a.result == "license-owned"
+            || ((a.result == "refused" || a.result == "error") && a.code == "license_owned")
+        {
+            return .licenseOwned
+        }
+        return nil
+    }
+}
+
 extension KitStates {
+    /// The focused refusal step's copy: no field, lede or paste; Sign in is the primary; for the
+    /// limit, the add-key page (a QR with its caption on a TV), then Use a different key.
+    static func keyRefusalLines(_ refusal: KitKeyRefusal, _ a: KitActivation, _ c: Ctx)
+        -> [CopyLine]
+    {
+        let limit = refusal == .keyEntryLimit
+        var lines = [
+            c.line(limit ? "core.activation.key-entry-limit.title" : "core.codes.license_owned.title"),
+            c.line(
+                limit
+                    ? "core.activation.key-entry-limit.message" : "core.codes.license_owned.message"),
+            c.line(limit ? "signin.key.signIn" : "signin.key.ownedSignIn"),
+        ]
+        if limit, KitLinks.valid(a.manageUrl) != nil {
+            lines +=
+                c.i.platform.isTV
+                ? [c.line("signin.key.scan"), c.line("a11y.qrAddKey")]
+                : [c.line("signin.key.addInLocker"), c.line("a11y.externalLink")]
+        }
+        lines.append(c.line("signin.key.differentKey"))
+        return lines
+    }
+
     /// What every field-state Activate screen carries: its heading, lede and the key field
     /// (ui-matrix version 4).
     static func activateBase(_ c: Ctx) -> [CopyLine] {
@@ -197,6 +242,11 @@ extension KitStates {
     static func activationOutcome(
         _ a: KitActivation, verdict: KeyVerdict, _ c: Ctx
     ) -> KitScreen<ActivateState> {
+        if let refusal = KitKeyRefusal.of(a) {
+            return KitScreen(
+                refusal == .keyEntryLimit ? .keyEntryLimit : .licenseOwned,
+                keyRefusalLines(refusal, a, c))
+        }
         switch a.result {
         case "ok":
             return KitScreen(

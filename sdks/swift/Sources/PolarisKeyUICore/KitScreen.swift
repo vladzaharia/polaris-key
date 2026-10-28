@@ -12,6 +12,7 @@ public enum KitComponent: String, Sendable, CaseIterable, Codable {
     case welcome = "Welcome"
     case signIn = "SignIn"
     case signInHandoff = "SignInHandoff"
+    case nearbyApproval = "NearbyApproval"
     case activate = "Activate"
     case offlineActivation = "OfflineActivation"
     case deviceLimit = "DeviceLimit"
@@ -39,6 +40,8 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
     case replaceInBrowser = "replace-in-browser"
     /// Open the refusal's `manageUrl` or the account's device page.
     case openManageURL = "open-manage-url"
+    /// Start the kit's own sign-in, from a refusal that only a sign-in fixes.
+    case startSignIn = "start-sign-in"
     /// Copy the sign-in link or the address.
     case copyLink = "copy-link"
     /// Repeat the step that failed or lapsed.
@@ -58,6 +61,9 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
         "signin.handoff.openBrowser": .openBrowser,
         "deviceLimit.openBrowser": .openManageURL,
         "devices.manage": .openManageURL,
+        "signin.key.addInLocker": .openManageURL,
+        "signin.key.ownedSignIn": .startSignIn,
+        "signin.key.signIn": .startSignIn,
         "signin.handoff.copyLink": .copyLink,
         "a11y.copyAddress": .copyLink,
         "common.tryAgain": .retry,

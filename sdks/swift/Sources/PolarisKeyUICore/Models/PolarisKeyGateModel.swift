@@ -196,6 +196,11 @@ public final class PolarisKeyGateModel {
     }
     /// The request code of offline step 1 (this device's id), once known.
     public private(set) var offlineRequestCode: String = ""
+    /// Automatic sign-in's step, drawn in the sign-in form's body. The host (or the nearby
+    /// protocol, CC-15) sets it; nil is the plain form.
+    public var autoSignIn: KitAutoSignIn? { didSet { rebuild() } }
+    /// The provider the person signed in with, named in the auto steps ("Apple", "Google").
+    public var signInProvider: String? { didSet { rebuild() } }
     /// The sign-in request in flight, or nil.
     public private(set) var request: KitSignInRequest?
     /// Whether the first reload has finished: before it the gate is `booting`, never Welcome.
@@ -959,6 +964,8 @@ public final class PolarisKeyGateModel {
                 verified: offlineVerified)
         }
         i.signIn = signIn
+        i.autoSignIn = autoSignIn
+        i.provider = signInProvider
         if i.signIn?.outcome == .signedIn {
             i.signIn?.name = signedInName
             i.signIn?.tier = signedInTier
@@ -967,7 +974,9 @@ public final class PolarisKeyGateModel {
         if route == .signIn { i.error = signInError }
         if let choice { i = choice.inputs(base: i) }
         i.update = update
-        i.account = KitAccount(signedIn: accountSignedIn, holder: accountSignedIn ? "account" : nil)
+        i.account = KitAccount(
+            signedIn: accountSignedIn, holder: accountSignedIn ? "account" : nil,
+            tier: signIn?.outcome == .signedIn ? signedInTier : nil)
         inputs = i
     }
 

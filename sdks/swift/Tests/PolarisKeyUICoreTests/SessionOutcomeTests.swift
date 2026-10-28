@@ -25,7 +25,7 @@ final class SessionOutcomeTests: XCTestCase {
         var inputs = PolarisKeyPreviewState.base { $0.activation = a }
         inputs.keyField = KitKeyField(text: PolarisKeyPreviewState.key, submitted: true)
         let screen = KitStates.activate(inputs)
-        XCTAssertEqual(screen.state, .rejected)
+        XCTAssertEqual(screen.state, .keyEntryLimit)
         XCTAssertTrue(screen.shows("core.activation.key-entry-limit.message"))
     }
 
@@ -38,7 +38,7 @@ final class SessionOutcomeTests: XCTestCase {
         var inputs = PolarisKeyPreviewState.base { $0.activation = a }
         inputs.keyField = KitKeyField(text: PolarisKeyPreviewState.key, submitted: true)
         let screen = KitStates.activate(inputs)
-        XCTAssertEqual(screen.state, .rejected)
+        XCTAssertEqual(screen.state, .licenseOwned)
         XCTAssertTrue(screen.shows("core.codes.license_owned.message"))
     }
 

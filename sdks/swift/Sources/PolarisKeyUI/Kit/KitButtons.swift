@@ -32,6 +32,8 @@ struct KitButton: View {
     var hero = false
     /// A leading-slot button of a Mac action row (Paste), kept at the row's left edge.
     var leading = false
+    /// Whether a quiet Cancel answers Escape; off where another button in the group owns it.
+    var escapes = true
     let action: () -> Void
 
     @Environment(\.polarisKeyStrings) private var strings
@@ -47,7 +49,7 @@ struct KitButton: View {
             .modifier(
                 KitMacKeys(
                     defaultAction: kind == .primary && !busy,
-                    cancelAction: kind == .quiet && line.key == "common.cancel")
+                    cancelAction: escapes && kind == .quiet && line.key == "common.cancel")
             )
             .layoutValue(key: KitActionSlotKey.self, value: KitActionSlot(kind: kind, leading: leading))
             .accessibilityAddTraits(busy ? .updatesFrequently : [])
@@ -470,11 +472,14 @@ struct KitActionStack<Content: View>: View {
                     KitMacActionRow(spacing: style.space(.sm)) { content() }
                     VStack(spacing: style.space(.sm)) { content() }
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
             #else
                 VStack(spacing: style.space(.sm)) {
                     content()
                 }
+                // A wrapped label grows its capsule; a pinned page never squeezes the stack.
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
             #endif
         }

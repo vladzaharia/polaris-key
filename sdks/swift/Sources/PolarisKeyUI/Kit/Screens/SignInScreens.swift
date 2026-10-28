@@ -20,19 +20,27 @@ public enum KitProvider: String, Sendable, CaseIterable {
     var name: String { "Apple" }
 }
 
+/// What a control of an automatic sign-in step does: its primary (Continue, Link) or its secondary
+/// (Use another account, No thanks, Not now, Use a code instead, Not you?).
+public enum KitAutoSignInAction: Sendable { case primary, secondary }
+
 /// The one sign-in form over a gate model.
 public struct SignInView: View {
     @Bindable var model: PolarisKeyGateModel
     var providers: [KitProvider]
     var onClose: (() -> Void)?
+    /// Told when a control of an automatic sign-in step is chosen; the host drives the flow.
+    var onAutoSignIn: ((KitAutoSignInAction) -> Void)?
 
     @AccessibilityFocusState private var headingFocused: Bool
     @Environment(\.openURL) private var openURL
+    @Environment(\.polarisKeyStrings) private var strings
 
     public init(
         model: PolarisKeyGateModel, providers: [KitProvider] = [.apple],
-        onClose: (() -> Void)? = nil
+        onClose: (() -> Void)? = nil, onAutoSignIn: ((KitAutoSignInAction) -> Void)? = nil
     ) {
+        self.onAutoSignIn = onAutoSignIn
         self.model = model
         self.providers = providers
         self.onClose = onClose
@@ -90,7 +98,11 @@ public struct SignInView: View {
         case .key:
             return screen.lineOrKey("signin.key.addTitle")
         case .done:
-            return CopyLine("signin.return.signedInShort")
+            return screen.line("signin.return.signedInTier") ?? CopyLine("signin.return.signedInShort")
+        case .confirm, .linkOffer, .linkDone, .linkConflict, .nearbyPrompt, .nearbyWait,
+            .nearbyDone, .keyRefused:
+            // The first line names the step (the sentence, or the refusal's title).
+            return screen.copy.first ?? CopyLine("signIn.title", productArg)
         case .expired:
             return screen.line("core.codes.sign-in-expired.title")
                 ?? CopyLine("signin.handoff.tooLong")
@@ -176,6 +188,36 @@ public struct SignInView: View {
             ActivateBody(
                 screen: model.activate, text: $model.keyText,
                 onSubmit: { Task { await model.submitKey() } }, onReplaceDevice: nil)
+        case .keyRefused:
+            VStack(alignment: .leading, spacing: style.space(.md)) {
+                if let message = screen.copy.first(where: { $0.key.hasSuffix(".message") }) {
+                    KitText(message, .body, color: .default)
+                }
+                #if os(tvOS)
+                    if let link = refusalLink(screen) {
+                        PolarisQRCode(
+                            link.absoluteString,
+                            accessibilityLabel: strings.string(
+                                "a11y.qrAddKey"))
+                        .frame(width: 200, height: 200)
+                        KitText(CopyLine("signin.key.scan"), .meta, color: .muted)
+                    }
+                #endif
+            }
+        case .confirm, .linkOffer, .nearbyWait, .linkConflict, .nearbyPrompt:
+            // The step's sentences under its title; the controls are the actions.
+            VStack(alignment: .leading, spacing: style.space(.sm)) {
+                ForEach(
+                    Array(screen.copy.dropFirst().filter { !Self.autoControls.contains($0.key) }),
+                    id: \.key
+                ) { line in
+                    KitText(
+                        line, line.key == "a11y.nearbyCode" ? .title : .body,
+                        color: line.key == "signin.nearby.match" ? .muted : .default)
+                }
+            }
+        case .linkDone, .nearbyDone:
+            EmptyView()
         case .done:
             if screen.shows("signin.desktop.toast") {
                 // "Signed in as <name> · <Tier> license"; without both, the plain sentence.
@@ -196,6 +238,23 @@ public struct SignInView: View {
                 KitText(message, .body, color: .default)
             }
         }
+    }
+
+    /// The keys of an automatic step's controls: not body text.
+    private static let autoControls: Set<String> = [
+        "signin.auto.confirm.primary", "signin.auto.confirm.other", "signin.linkOffer.primary",
+        "signin.linkOffer.decline", "common.notNow", "signin.nearby.code", "signin.nearby.notYou",
+        "common.continue", "signin.linkOffer.join",
+    ]
+
+    /// The refusal's page when the server gave a valid one: the add-key page for the limit, the
+    /// product's sign-in for a license another account holds (only when the kit cannot sign in).
+    private func refusalLink(_ screen: KitScreen<SignInState>) -> URL? {
+        let a = model.inputs.activation
+        if screen.shows("core.activation.key-entry-limit.message") {
+            return KitLinks.valid(a?.manageUrl)
+        }
+        return KitLinks.valid(a?.signInUrl)
     }
 
     /// The methods, for a failed method's screen.
@@ -279,7 +338,7 @@ public struct SignInView: View {
                 }
                 // A raced list keeps its primary: the person picks again and goes on.
                 if model.licenseChoice.shows("signin.choice.continue")
-                    || (model.licenseChoice.state == .raced
+                    || (model.licenseChoice.state == .raced && model.inputs.selected != nil
                         && model.inputs.choices?.choices.contains { !$0.isFull } == true)
                 {
                     KitButton(
@@ -296,6 +355,48 @@ public struct SignInView: View {
                     }
                 }
                 cancelButton
+            case .confirm:
+                autoButton("signin.auto.confirm.primary", .primary)
+                autoButton("signin.auto.confirm.other", .quiet)
+            case .linkOffer:
+                autoButton("signin.linkOffer.primary", .primary, screen: screen)
+                autoButton("signin.linkOffer.decline", .quiet)
+            case .nearbyPrompt:
+                autoButton("common.continue", .primary)
+                autoButton("common.notNow", .quiet)
+            case .nearbyWait:
+                autoButton("signin.nearby.code", .quiet)
+                cancelButton
+            case .nearbyDone:
+                autoButton("common.continue", .primary)
+                autoButton("signin.nearby.notYou", .quiet)
+            case .linkDone:
+                autoButton("common.continue", .primary)
+            case .linkConflict:
+                autoButton("common.continue", .primary)
+                autoButton("signin.linkOffer.join", .quiet)
+            case .keyRefused:
+                // Sign in finishes in the app (the account that holds the license); the page is a
+                // secondary, and the primary only where the kit has no sign-in to start.
+                KitButton(
+                    line: screen.shows("core.activation.key-entry-limit.message")
+                        ? CopyLine("signin.key.signIn") : CopyLine("signin.key.ownedSignIn"),
+                    kind: .primary
+                ) {
+                    model.beginSignIn()
+                }
+                .keyboardShortcut(.defaultAction)
+                #if !os(tvOS)
+                    if screen.shows("signin.key.addInLocker"), let link = refusalLink(screen) {
+                        KitButton(
+                            line: CopyLine("signin.key.addInLocker"), kind: .secondary,
+                            glyph: PolarisKitGlyph.newWindow
+                        ) { open(link) }
+                    }
+                #endif
+                KitButton(line: CopyLine("signin.key.differentKey"), kind: .quiet) {
+                    model.keyText = ""
+                }
             case .key:
                 KitButton(
                     line: CopyLine("signin.key.addAndUse"), kind: .primary,
@@ -312,12 +413,23 @@ public struct SignInView: View {
                     }
                 )
                 .keyboardShortcut(.cancelAction)
-                KitButton(line: CopyLine("common.cancel"), kind: .quiet) {
+                KitButton(line: CopyLine("common.cancel"), kind: .quiet, escapes: false) {
                     model.cancelSignIn()
                     onClose?()
                 }
             }
         }
+    }
+
+    /// A control of an automatic step: the line's label, the host told which it was.
+    @ViewBuilder private func autoButton(
+        _ key: String, _ kind: KitButtonKind, screen: KitScreen<SignInState>? = nil
+    ) -> some View {
+        let line = screen?.line(key) ?? model.signInScreen.line(key) ?? CopyLine(key)
+        KitButton(line: line, kind: kind) {
+            onAutoSignIn?(kind == .primary ? .primary : .secondary)
+        }
+        .keyboardShortcut(kind == .primary ? .defaultAction : .cancelAction)
     }
 
     /// Replace in the app: the choice's own call when it runs here, else the host's handler.
@@ -676,7 +788,17 @@ public struct LicenseChoiceView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
                             RoundedRectangle(cornerRadius: style.groupRadius, style: .continuous)
-                                .fill(style.palette.sunken))
+                                .fill(style.palette.sunken)
+                        )
+                        // Its own tint and hairline, so in light mode it never reads as a row.
+                        .background(
+                            RoundedRectangle(cornerRadius: style.groupRadius, style: .continuous)
+                                .fill(style.palette.accentSolid.opacity(0.12))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: style.groupRadius, style: .continuous)
+                                .strokeBorder(style.palette.accentSolid.opacity(0.35), lineWidth: 1)
+                        )
                         .accessibilityFocused($racedFocused)
                         .onAppear { racedFocused = true }
                 }

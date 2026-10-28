@@ -139,7 +139,7 @@ extension PolarisKeyPreviewState {
 
     /// Every preview, component by component.
     public static let all: [PolarisKeyPreviewState] =
-        gate + welcome + signIn + activate + offlineActivation + deviceLimit + statusAndGrace + update + settings
+        gate + welcome + signIn + nearby + activate + offlineActivation + deviceLimit + statusAndGrace + update + settings
         + devicesAndPaywall
 
     /// The previews of one component.
@@ -290,6 +290,12 @@ extension PolarisKeyPreviewState {
         .init(
             .signIn, "done", base { $0.signIn = sign(.signedIn) { $0.issuedNow = true } }),
         .init(
+            .signIn, "done", variant: "issued-tier",
+            base {
+                $0.signIn = sign(.signedIn) { $0.issuedNow = true }
+                $0.account = KitAccount(signedIn: true, holder: "account", tier: "Pro")
+            }),
+        .init(
             .signIn, "done", variant: "tier",
             base {
                 $0.signIn = sign(.signedIn) {
@@ -391,6 +397,80 @@ extension PolarisKeyPreviewState {
             }),
     ]
 
+    private static func auto(
+        _ step: KitAutoSignInStep, provider: String = "Google", email: String? = nil,
+        reach: KitLinkReach? = nil, license: String? = nil, also: Bool? = nil, code: String? = nil
+    ) -> KitInputs {
+        base {
+            $0.signIn = sign()
+            $0.provider = provider
+            $0.autoSignIn = KitAutoSignIn(
+                step: step, email: email, reach: reach, license: license, alsoGets: also, code: code)
+        }
+    }
+
+    static let nearby: [PolarisKeyPreviewState] = [
+        .init(
+            .signIn, "confirm", auto(.confirm, email: "maya@example.com", license: "new", also: true)),
+        .init(.signIn, "confirm", variant: "apple", auto(.confirm, provider: "Apple")),
+        .init(.signIn, "link-offer", variant: "global", auto(.linkOffer, reach: .global)),
+        .init(.signIn, "link-offer", auto(.linkOffer, reach: .developer)),
+        .init(.signIn, "link-done", auto(.linkDone)),
+        .init(.signIn, "link-conflict", auto(.linkConflict)),
+        .init(.signIn, "nearby-prompt", auto(.nearbyPrompt)),
+        .init(.signIn, "nearby-wait", auto(.nearbyWait, code: "482 913")),
+        .init(.signIn, "nearby-done", auto(.nearbyDone, email: "maya@example.com")),
+        .init(
+            .signIn, "key-refused",
+            base {
+                $0.signIn = sign(.choose, event: .haveKey)
+                $0.choices = KitLicenseChoices(choices: choices, preselected: "lic_pro")
+                $0.activation = KitActivation(result: "key-entry-limit", manageUrl: manageURL)
+            }),
+        .init(
+            .signIn, "key-refused", variant: "license-owned",
+            base {
+                $0.signIn = sign(.choose, event: .haveKey)
+                $0.choices = KitLicenseChoices(choices: choices, preselected: "lic_pro")
+                $0.activation = KitActivation(result: "refused", code: "license_owned")
+            }),
+        .init(.nearbyApproval, "entry", base { _ in }),
+        .init(
+            .nearbyApproval, "ask",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .ask, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "approved",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .approved, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "mismatch",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .mismatch, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "denied",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .denied, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "expired",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .expired) }),
+        .init(
+            .nearbyApproval, "device-limit",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .deviceLimit, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "choose",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .choose, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "account-required",
+            base {
+                $0.nearbyApproval = KitNearbyApproval(step: .accountRequired, device: "Kitchen iPad")
+            }),
+        .init(
+            .nearbyApproval, "rate-limited",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .rateLimited, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "not-nearby",
+            base {
+                $0.nearbyApproval = KitNearbyApproval(step: .notNearby, device: "Kitchen iPad")
+            }),
+    ]
+
     static let activate: [PolarisKeyPreviewState] = [
         .init(.activate, "empty", base { $0.keyField = KitKeyField(text: "") }),
         .init(.activate, "typing", base { $0.keyField = KitKeyField(text: "pkey_tidewater_Q2xv") }),
@@ -413,13 +493,13 @@ extension PolarisKeyPreviewState {
                 $0.activation = KitActivation(result: "license-disabled")
             }),
         .init(
-            .activate, "rejected", variant: "key-entry-limit",
+            .activate, "key-entry-limit",
             base {
                 $0.keyField = KitKeyField(text: key, submitted: true)
                 $0.activation = KitActivation(result: "key-entry-limit", manageUrl: manageURL)
             }),
         .init(
-            .activate, "rejected", variant: "license-owned",
+            .activate, "license-owned",
             base {
                 $0.keyField = KitKeyField(text: key, submitted: true)
                 $0.activation = KitActivation(
