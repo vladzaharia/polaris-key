@@ -875,7 +875,7 @@
       "code": "store-failed",
       "kind": "client",
       "service": "core",
-      "description": "Godot: The credential or cache store could not be read or written."
+      "description": "The credential, cache or Cloud Connect state store could not be read or written, or its device keys could not be used."
     },
     {
       "code": "connect-unavailable",

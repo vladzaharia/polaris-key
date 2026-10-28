@@ -2604,7 +2604,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_title">Problème de stockage</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_store_failed_message">L’app n’a pas pu lire ou enregistrer sa licence sur cet appareil. Vérifiez qu’elle peut écrire dans son dossier de données.</string>
+    <string name="core_codes_store_failed_message">Enregistrement impossible sur cet appareil. Vérifiez le stockage et réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_connect_unavailable_title">Connexion indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

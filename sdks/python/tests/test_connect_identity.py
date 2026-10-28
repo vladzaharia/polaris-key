@@ -207,7 +207,7 @@ def test_connect_off_is_the_typed_product_refusal(worker, tmp_path) -> None:
     c = device(worker, tmp_path, expected_services=["license", "config"])
     with pytest.raises(UnsupportedError) as e:
         c.connect.identity()
-    assert e.value.reason == "product" and e.value.code == "service-unavailable" and worker.requests == []
+    assert e.value.reason == "product" and e.value.code == "connect-unavailable" and worker.requests == []
 
 
 def test_no_token_refuses(worker, tmp_path) -> None:
@@ -243,7 +243,7 @@ def test_an_unsigned_or_foreign_signed_roster_is_refused_and_nothing_is_stored(w
     c = device(worker, tmp_path)
     with pytest.raises(PolarisError) as e:
         c.connect.identity()
-    assert e.value.code == "bad_response"
+    assert e.value.code == "peer-cert-invalid"
     assert c.connect.current() is None and c.connect.discovery_keys() is None
     assert not os.path.exists(os.path.join(c.core.dirs.state, CONNECT_STATE_FILE))
 
@@ -255,7 +255,7 @@ def test_a_certificate_for_other_keys_or_another_roster_epoch_is_refused(worker,
     worker.cert_epoch = 1
     with pytest.raises(PolarisError) as e:
         c.connect.identity(refresh=True)
-    assert e.value.code == "bad_response"
+    assert e.value.code == "peer-cert-invalid"
     worker.cert_epoch = None
     worker.cert_keys = {"signKey": other_device(1)["signKey"], "agreeKey": other_device(1)["agreeKey"]}
     with pytest.raises(PolarisError):
@@ -268,7 +268,7 @@ def test_a_roster_without_this_device_is_refused(worker, tmp_path) -> None:
     c = device(worker, tmp_path)
     with pytest.raises(PolarisError) as e:
         c.connect.identity()
-    assert e.value.code == "bad_response"
+    assert e.value.code == "peer-cert-invalid"
 
 
 def test_stale_and_foreign_rosters_are_refused_and_the_held_state_stays(worker, tmp_path) -> None:
@@ -278,7 +278,7 @@ def test_stale_and_foreign_rosters_are_refused_and_the_held_state_stays(worker, 
     worker.epoch = 4
     with pytest.raises(PolarisError) as e:
         c.connect.identity(refresh=True)
-    assert e.value.code == "bad_response"
+    assert e.value.code == "peer-cert-invalid"
     worker.epoch = 6
     worker.sub = OTHER_SUB
     with pytest.raises(PolarisError):

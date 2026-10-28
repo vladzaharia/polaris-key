@@ -6804,10 +6804,10 @@ msgstr "El servicio envió una respuesta que la app no pudo usar. Vuelve a inten
 msgid "core.codes.store-failed.title"
 msgstr "Problema de almacenamiento"
 
-#. The app couldn't read or save its license on this device. Check that the app can write its data folder.
+#. Couldn't save on this device. Check storage and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.store-failed.message"
-msgstr "La app no pudo leer ni guardar su licencia en este dispositivo. Comprueba que la app puede escribir en su carpeta de datos."
+msgstr "No se pudo guardar en este dispositivo. Comprueba el almacenamiento e inténtalo de nuevo."
 
 #. Connect unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).

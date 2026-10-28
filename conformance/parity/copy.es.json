@@ -587,7 +587,7 @@
     },
     "store-failed": {
       "title": "Problema de almacenamiento",
-      "message": "La app no pudo leer ni guardar su licencia en este dispositivo. Comprueba que la app puede escribir en su carpeta de datos."
+      "message": "No se pudo guardar en este dispositivo. Comprueba el almacenamiento e inténtalo de nuevo."
     },
     "connect-unavailable": {
       "title": "Conexión no disponible",

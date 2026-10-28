@@ -379,13 +379,13 @@ class CoreContext:
     def enabled(self, slug: str) -> bool:
         return bool(self.services().get(slug, {}).get("enabled", False))
 
-    def require_service(self, slug: str, feature: str) -> None:
+    def require_service(self, slug: str, feature: str, code: str = ErrorCode.SERVICE_UNAVAILABLE) -> None:
         """Refuse a sub-client whose service this product does not run (D-21).
 
         The refusal is the typed ``product`` N/A (PARITY §2.2, P1b-10): an
         :class:`~polaris_key.core.caps.UnsupportedError` with ``feature``, ``reason="product"``
         and ``detail``, as ``client.supports(feature)`` reports it, keeping the code
-        ``service-unavailable`` that callers already match on."""
+        ``service-unavailable`` (or ``code``, e.g. ``connect-unavailable``) that callers already match on."""
         if not self.enabled(slug):
             raise UnsupportedError(
                 Unsupported(
@@ -393,7 +393,7 @@ class CoreContext:
                     UnsupportedReason.PRODUCT,
                     f"the product does not run the {slug} service",
                 ),
-                ErrorCode.SERVICE_UNAVAILABLE,
+                code,
             )
 
     # ── Transport ───────────────────────────────────────────────────────────────────

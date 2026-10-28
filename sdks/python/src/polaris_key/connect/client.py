@@ -12,7 +12,7 @@ Rules this module keeps:
   change and the Worker allows 4 a day;
 * a roster or certificate that does not verify is never stored. A roster that is expired, for another
   subject or device, certifies other keys than this device's, or would replace the held roster with a
-  lower epoch (stale) or a different subject (foreign) is refused with ``bad_response`` and the held
+  lower epoch (stale) or a different subject (foreign) is refused with ``peer-cert-invalid`` and the held
   state is unchanged;
 * K_disc is stored exactly as the latest answer delivered it, never merged with older answers. The
   previous key is dropped when the roster lost a device or changed a device's keys since the held one
@@ -110,8 +110,13 @@ class DiscoveryKeys:
         raise TypeError("discovery keys cannot be pickled")
 
 
-def _refuse(reason: str) -> PolarisError:
+def _malformed(reason: str) -> PolarisError:
+    """An answer that is not in the contract's shape (``bad_response``), apart from one that fails verification."""
     return PolarisError(ErrorCode.BAD_RESPONSE, f"The Cloud Connect identity was refused: {reason}.")
+
+
+def _refuse(reason: str) -> PolarisError:
+    return PolarisError(ErrorCode.PEER_CERT_INVALID, f"The Cloud Connect identity was refused: {reason}.")
 
 
 def _valid_disc_key(v: Any) -> bool:
@@ -176,10 +181,10 @@ class ConnectClient:
         """The held identity, fetching it first when none is held, when it is nearing its end (the
         certificate has less than ``PEER_CERT_RENEW_SECONDS`` left, or the roster expired), when this
         device's keys changed, or when ``refresh`` is set. Makes and registers the device keys on first
-        need. Raises :class:`~polaris_key.core.errors.PolarisError`: ``service-unavailable`` (Connect
+        need. Raises :class:`~polaris_key.core.errors.PolarisError`: ``connect-unavailable`` (Connect
         off here), ``invalid-options`` (a memory-only key store the host did not allow), ``no-token``,
         the Worker's own refusals (``account_required``, ``device_keys_required``, ``ring_too_large``)
-        and ``bad_response`` for an answer that fails verification."""
+        and ``peer-cert-invalid`` for an answer that fails verification."""
         with self._lock:
             return self._identity(refresh)
 
@@ -209,7 +214,7 @@ class ConnectClient:
                 body = None
             rows = body.get("devices") if isinstance(body, dict) else None
             if not isinstance(rows, list) or len(rows) > MAX_RING_DEVICES:
-                raise _refuse("the device list is not in the contract shape")
+                raise _malformed("the device list is not in the contract shape")
             out: List[ConnectDevice] = []
             for d in rows:
                 if (
@@ -217,7 +222,7 @@ class ConnectClient:
                     or not isinstance(d.get("deviceId"), str)
                     or not isinstance(d.get("self"), bool)
                 ):
-                    raise _refuse("a device entry is not in the contract shape")
+                    raise _malformed("a device entry is not in the contract shape")
                 out.append(
                     ConnectDevice(
                         device_id=d["deviceId"],
@@ -309,7 +314,7 @@ class ConnectClient:
         held: Optional[ConnectStateRecord],
         now: int,
     ) -> Tuple[ConnectStateRecord, ConnectIdentity]:
-        """Verify the answer and decide what to store. Raises ``bad_response`` on any refusal; nothing is
+        """Verify the answer and decide what to store. Raises ``peer-cert-invalid`` on any refusal; nothing is
         written before this returns."""
         ring_jws, cert_jws, disc_keys = answer
         trust = self._trust()
@@ -419,7 +424,7 @@ class ConnectClient:
     def _available(self) -> None:
         """Connect must be on for this product (discovery's ``connect`` member, else the build's
         ``expected_services``), refused as the typed ``product`` N/A."""
-        self._ctx.require_service("connect", Feature.CONNECT_IDENTITY)
+        self._ctx.require_service("connect", Feature.CONNECT_IDENTITY, ErrorCode.CONNECT_UNAVAILABLE)
 
     def _use_port(self) -> DeviceKeyPort:
         if self._port is None:
@@ -524,5 +529,5 @@ def _parse_answer(body: Any) -> Tuple[str, str, List[str]]:
         or not all(_valid_disc_key(k) for k in keys)
         or (len(keys) == 2 and keys[0] == keys[1])
     ):
-        raise _refuse("the answer is not in the contract shape")
+        raise _malformed("the answer is not in the contract shape")
     return body["ring"], body["certificate"], list(keys)
