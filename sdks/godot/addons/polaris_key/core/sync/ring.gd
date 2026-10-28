@@ -50,6 +50,11 @@ var _vault: PKeySyncRingVault
 var _memory := _Memory.new()
 var _ring: Dictionary = {}
 var _busy := false
+## Bumped by `forget`; a verb that began before it cannot hold a root (S-4).
+var _forgot_gen := 0
+var _gen_at_enter := 0
+var _refuse_until := 0
+const SIGN_OUT_WINDOW_MS := 60000
 var _ring_id_re: RegEx
 
 
@@ -204,6 +209,7 @@ func _status_locked() -> PKeyResult:
 		"pinned": pin.detail,
 		"root_stored": stored.ok and stored.detail != null,
 		"root_persistence": _vault.persistence(),
+		"root_protection": _vault.protection(),
 	})
 
 
@@ -222,11 +228,23 @@ func lock() -> void:
 ## Sign-out: forgets every root, in memory and in storage, and drops the pin, so the next person on
 ## this device starts clean. A record that cannot be deleted is a failure, so the sign-out stops.
 func forget() -> PKeyResult:
+	_forgot_gen += 1  # a verb in flight must not take a root back after this (S-4)
 	await _enter()
 	lock()
 	var r := _vault.clear()
 	_leave()
 	return r
+
+
+## A sign-out has begun (PKeyCloudSync calls it before the chain): until `allow_holds()`, a sign-in
+## event, or a minute, no verb takes a root, so an unlock racing the sign-out cannot re-store it (S-4).
+func begin_sign_out() -> void:
+	_refuse_until = Time.get_ticks_msec() + SIGN_OUT_WINDOW_MS
+
+
+## The sign-out ended (it failed, or the next person signed in): verbs may hold a root again.
+func allow_holds() -> void:
+	_refuse_until = 0
 
 
 # ── Reads ────────────────────────────────────────────────────────────────────────────────
@@ -597,6 +615,8 @@ func _make_ring(path: String, with_recovery: bool) -> PKeyResult:
 ## Takes a freshly acquired root: pinned first (no root is held without a pin; a pin that cannot be
 ## written leaves nothing held), then stored (a failure there leaves the root in memory only), then held.
 func _hold(h: _Held, store: bool) -> PKeyResult:
+	if _gen_at_enter != _forgot_gen or Time.get_ticks_msec() < _refuse_until:
+		return _locked()
 	var want := {"ring_id": h.ring_id, "epoch": h.epoch, "root_kid": h.kid.hex_encode()}
 	var cur := _vault.read_pin()
 	if not cur.ok or cur.detail == null or not _same_pin(cur.detail, want):
@@ -781,6 +801,7 @@ func _enter() -> void:
 	while _busy:
 		await (Engine.get_main_loop() as SceneTree).process_frame
 	_busy = true
+	_gen_at_enter = _forgot_gen
 
 
 func _leave() -> void:

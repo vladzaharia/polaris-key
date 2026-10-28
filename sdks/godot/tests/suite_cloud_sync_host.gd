@@ -48,6 +48,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_state(t)
 	await _host(t)
 	await _bounds(t)
+	await PKeyTestFixtures.frames(20)  # let abandoned coroutines resume and finish
 	return true
 
 
@@ -73,6 +74,10 @@ func _transport(t: PKeyTestContext) -> void:
 				return {"status": 200, "body": "{\"a\":1,}"}
 			"/diceroll/sync?errpage":
 				return {"status": 502, "body": "<html>"}
+			"/diceroll/sync?nul":
+				return {"status": 200, "body": "{\"changes\":[{\"setting\":\"a\\u0000b\",\"version\":1}]}"}
+			"/diceroll/sync?nulvalue":
+				return {"status": 200, "body": "{\"changes\":[{\"setting\":\"a.x\",\"version\":1,\"value\":\"p\\u0000q\"}]}"}
 			"/diceroll/sync?ints":
 				return {"status": 200, "body": "{\"cursor\":5,\"x\":1.5}"}
 		return {"status": 404})
@@ -89,6 +94,10 @@ func _transport(t: PKeyTestContext) -> void:
 	t.check("H-3: a body over 8 MiB is not an answer", r == Transport.TRANSPORT_ERROR, str(r).left(80))
 	r = await Transport.send_sync(tr, ctx, {"method": "GET", "path": "/diceroll/sync?bad"})
 	t.check("H-3: a 200 that is not strict JSON is not an answer", r == Transport.TRANSPORT_ERROR)
+	r = await Transport.send_sync(tr, ctx, {"method": "GET", "path": "/diceroll/sync?nul"})
+	t.check("S-2/HC-4: a served name with a \\u0000 escape is not an answer (it would read as another name)", r == Transport.TRANSPORT_ERROR)
+	r = await Transport.send_sync(tr, ctx, {"method": "GET", "path": "/diceroll/sync?nulvalue"})
+	t.check("R-1: a served VALUE with a \\u0000 escape still pulls (it reads as U+FFFD)", r.get("status") == 200 and r["body"]["changes"][0]["value"] == "p\ufffdq", str(r))
 	r = await Transport.send_sync(tr, ctx, {"method": "GET", "path": "/diceroll/sync?errpage"})
 	t.check("an error page keeps its status", r == {"status": 502})
 	r = await Transport.send_sync(tr, ctx, {"method": "GET", "path": "/diceroll/sync?ints"})
@@ -132,6 +141,9 @@ func _state(t: PKeyTestContext) -> void:
 	stray.store_string("x")
 	stray.close()
 	t.check("H-6: remove deletes the file and sweeps temporary siblings", s.remove() and not FileAccess.file_exists(s.path()) and not FileAccess.file_exists(s.path() + ".tmp-abc"))
+	var noid := State.new(dir.path_join("c"), PRODUCT, null)
+	noid.unique_id = ""
+	t.check("S-6: with no sealer and no device id the journal is not written", noid.protection() == "none" and not noid.save(file) and not FileAccess.file_exists(noid.path()))
 	var e := State.new(dir.path_join("b"), PRODUCT, null)
 	e.unique_id = "test-unique-id"
 	t.check("H-6: without a sealer the engine-encrypted file is used", e.save(file))

@@ -22,8 +22,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Node | `node` | 98 | 12 | 24 | 0 |
 | React | `web`, `desktop-bridge` | 101 | 22 | 11 | 0 |
 | Python | `python` | 94 | 12 | 28 | 0 |
-| Swift | `macos`, `ios` | 108 | 9 | 16 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 100 | 9 | 25 | 0 |
+| Swift | `macos`, `ios` | 105 | 9 | 19 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 103 | 9 | 22 | 0 |
 | Kotlin | `android`, `jvm` | 106 | 8 | 19 | 1 |
 
 ## Core
@@ -71,21 +71,21 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `config.mint` | Edge-mint of third-party tokens | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.mirror` | Typed catalog mirrors | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.local` | Persisted device-local overrides: config.set, config.setting, onConfigChange | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `config.sync` | Synced settings on config.*: setting(key).sync(), routes from syncedSettings, the config.local import | `sync-scenarios.json` `settingCases` + transcripts (U-05) | ✓ | ✓ | planned (U-06) | ✓ | planned (U-21) | planned (U-07) | — |
+| `config.sync` | Synced settings on config.*: setting(key).sync(), routes from syncedSettings, the config.local import | `sync-scenarios.json` `settingCases` + transcripts (U-05) | ✓ | ✓ | planned (U-06) | planned (U-07) | ✓ | planned (U-07) | — |
 
 ## Cloud Sync
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `sync.scenarios` | The Cloud Sync client machine: journal, HLC, partitions, open settings, import, paused and parked edits | `sync-scenarios.json` | ✓ | planned (U-20) | planned (U-06) | ✓ | planned (U-21) | planned (U-07) | — |
-| `sync.settings` | Settings over /sync: pull, push, cloudSync.status() and cloudSync.flush() | transcripts | ✓ | ✓ | planned (U-06) | ✓ | planned (U-21) | planned (U-07) | — |
+| `sync.scenarios` | The Cloud Sync client machine: journal, HLC, partitions, open settings, import, paused and parked edits | `sync-scenarios.json` | ✓ | planned (U-20) | planned (U-06) | planned (U-07) | ✓ | planned (U-07) | — |
+| `sync.settings` | Settings over /sync: pull, push, cloudSync.status() and cloudSync.flush() | transcripts | ✓ | ✓ | planned (U-06) | planned (U-07) | ✓ | planned (U-07) | — |
 | `sync.conflict` | One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records | unit + transcripts (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | — |
 | `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
 | `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.records` | cloudSync records: collections with put, update, compare-and-set and union merge | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
 | `sync.files` | cloudSync files: single and multipart upload, resume, progress and ranged download | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
 | `sync.files.delta` | cloudSync file delta: content-defined chunks, only the missing chunks travel | `sync-vectors.json` `cdcCases` + transcripts (U-37) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
-| `sync.e2e.recovery` | The recovery code, and the platform backup of the root where the OS has one | `sync-vectors.json` `recoveryCodeCases` + transcripts (U-36) | planned (U-38) | planned (U-20) | planned (U-06) | planned (U-39) | planned (U-21) | planned (U-07) | web, node, python, jvm, windows, linux: runtime |
+| `sync.e2e.recovery` | The recovery code, and the platform backup of the root where the OS has one | `sync-vectors.json` `recoveryCodeCases` + transcripts (U-36) | planned (U-38) | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-40) | planned (U-07) | web, node, python, jvm, windows, linux: runtime |
 | `sync.transfer.background` | Background transfer: an upload or download that continues when the app is suspended | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (U-41) | planned (U-41); N/A (web: runtime) | planned (U-41); N/A (jvm: runtime) | web, desktop-bridge, node, python, jvm: runtime |
 | `sync.e2e` | End-to-end encrypted Cloud Sync on the client: envelope, blinding, root wrap and the encryption-mode machine | `sync-vectors.json` + `sync-scenarios.json` + transcripts (U-33) | ✓ | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
 

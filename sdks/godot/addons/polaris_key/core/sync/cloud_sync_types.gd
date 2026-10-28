@@ -154,6 +154,8 @@ static func json_equal(a: Variant, b: Variant) -> bool:
 ## Strict-parse JSON text (U-40.1's parser: never `JSON.parse_string`) and restore integer
 ## types. `{"ok": true, "value": v}` or `{"ok": false, "error": why}`.
 static func load_json_text(text: String) -> Dictionary:
+	if _nul_in_name(text):
+		return {"ok": false, "error": "a \\u0000 escape in a name"}
 	var parsed := JsonStrict.parse(text)
 	if not parsed["ok"]:
 		return {"ok": false, "error": parsed["error"]}
@@ -163,6 +165,8 @@ static func load_json_text(text: String) -> Dictionary:
 
 ## As `load_json_text`, for UTF-8 bytes (a served body): ill-formed UTF-8, a BOM and a raw NUL are refused.
 static func load_json_bytes(bytes: PackedByteArray) -> Dictionary:
+	if _nul_in_name(bytes.get_string_from_utf8()):
+		return {"ok": false, "error": "a \\u0000 escape in a name"}
 	var parsed := JsonStrict.parse_bytes(bytes)
 	if not parsed["ok"]:
 		return {"ok": false, "error": parsed["error"]}
@@ -174,6 +178,27 @@ static func load_json_file(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return {"ok": false, "error": "missing file %s" % path}
 	return load_json_text(FileAccess.get_file_as_string(path))
+
+
+static var _name_re: RegEx
+
+
+## A real `\u0000` escape inside a NAME: the string of a `setting`, `member`, `key`, `renamedTo` or
+## `k` member, or the strings of a `record` array or an `aliases` map. A GDScript String cannot hold
+## NUL, so such a name would read as U+FFFD and collide with a different name (HC-4): refuse the
+## text. A value keeps the U+FFFD replacement (the wire contract), so a value with NUL, which
+## another SDK may legitimately write, still pulls. (A member NAME with the escape is refused by
+## the strict parser itself.)
+static func _nul_in_name(text: String) -> bool:
+	if not text.contains("\\u0000"):
+		return false
+	if _name_re == null:
+		_name_re = RegEx.create_from_string("\"(?:setting|member|key|renamedTo|k|record|aliases)\"\\s*:\\s*(\"(?:[^\"\\\\]|\\\\.)*\"|\\[[^\\]]*\\]|\\{[^}]*\\})")
+	for m in _name_re.search_all(text):
+		var g := m.get_string(1)
+		if JsonStrict.nul_as_fffd(g) != g:
+			return true
+	return false
 
 
 static func _restore(v: Variant, pointer: String, non_wire: Variant) -> Variant:

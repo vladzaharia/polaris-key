@@ -190,6 +190,8 @@ menu open yourself). `config_changed(keys)` fires when a value changes. `config.
 reads the catalog's schema for an editor of your own. Precedence, the player's saved values, the
 `PKEY_CONFIG_*` environment layer and secrets are in [Config](#config-polariskeyconfig).
 
+**Cloud Sync settings.** With the Sync service on, a signed-in person's `config.set_value` and `clear` go through Cloud Sync and follow them to their other devices (`config.setting(key).sync()` says `local`, `pending` or `synced`). `PolarisKey.cloud_sync.status()` and `flush()` read and send the queue, and `PolarisKey.event("cloudSync", data)` reports sign-outs, sign-in offers and rejected edits. The mode is yours: `PKeyOptions.cloud_sync_encryption` is `e2e` (the default) or `server`. Signing out sends what is waiting, forgets the key ring and deletes the synced copy on the device; a ring that cannot forget its root stops the sign-out.
+
 ### Devices
 
 ```gdscript

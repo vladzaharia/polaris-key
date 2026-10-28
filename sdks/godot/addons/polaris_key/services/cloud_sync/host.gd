@@ -83,6 +83,7 @@ var _gen := 0
 ## How long `purge` waits for a pump in progress (ms); a test may shorten it.
 var purge_wait_ms := 2000
 var _closing_flush := false
+var _save_warned := false
 var _timer: Timer
 var _sync_key_re: RegEx
 
@@ -109,6 +110,11 @@ func configure(deps: Dictionary, opts: Dictionary = {}) -> void:
 	_codec = deps.get("codec", CodecPort.new())
 	_file = State.new(deps["state_dir"], deps["product"], deps.get("sealer"))
 	_sync_key_re = RegEx.create_from_string(PKeyConstants.SYNC_KEY_PATTERN)
+
+
+## How the journal is kept: "sealed", "encrypted-file" or "none" (see state.gd).
+func state_protection() -> String:
+	return _file.protection() if _file != null else "none"
 
 
 func is_started() -> bool:
@@ -560,7 +566,8 @@ func _save(persisted: Variant = null) -> void:
 		"catalog": null,
 		"openKeys": _open_keys.keys(),
 	})
-	if not ok:
+	if not ok and not _save_warned:
+		_save_warned = true
 		push_warning("Cloud Sync host: the journal could not be saved")
 
 
@@ -658,11 +665,21 @@ func flush(max_ms: int = PKeyConstants.SYNC_SIGNOUT_FLUSH_MS) -> bool:
 func _notification(what: int) -> void:
 	if what != NOTIFICATION_WM_CLOSE_REQUEST and what != NOTIFICATION_APPLICATION_PAUSED:
 		return
-	if not is_started() or _closing_flush:
+	if not is_started():
+		return
+	# First, synchronously (no await before it): the engine may quit at the next await, and a debounced
+	# edit lives only in memory until a save commits it. The save is local and sealed, no network.
+	_save()
+	if _closing_flush:
 		return
 	_closing_flush = true
 	await flush(PKeyConstants.SYNC_SIGNOUT_FLUSH_MS)
 	_closing_flush = false
+
+
+func _exit_tree() -> void:
+	if is_started():
+		_save()
 
 
 ## Stop the timer and detach from the codec; save the journal. Safe to call more than once.

@@ -2945,9 +2945,7 @@
         "kotlin": {
           "planned": "U-07"
         },
-        "godot": {
-          "planned": "U-21"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3722,9 +3720,7 @@
         "kotlin": {
           "planned": "U-07"
         },
-        "godot": {
-          "planned": "U-21"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3746,9 +3742,7 @@
         "kotlin": {
           "planned": "U-07"
         },
-        "godot": {
-          "planned": "U-21"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3773,7 +3767,7 @@
           "planned": "U-07"
         },
         "godot": {
-          "planned": "U-21"
+          "spelling": "cloud_sync_encryption"
         }
       },
       "layer": "client"
@@ -3804,7 +3798,9 @@
           "planned": "U-07"
         },
         "godot": {
-          "planned": "U-21"
+          "spelling": "client.event",
+          "shape": "signal",
+          "reason": "Godot observes the one event signal, kind cloudSync"
         }
       },
       "layer": "client"

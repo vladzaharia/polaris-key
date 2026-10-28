@@ -111,8 +111,8 @@
       "note": "PKeyConfig.set_value/clear/clear_all/setting (S-17 §5.11's Godot names; set is Object's) write through the persisted PKeyConfigFileStore, check the value against the catalog entry's schema (type by value, not Variant: 40.0 is a valid integer), else the document value's JSON type, refuse an enforced or hidden key managed_by_admin, and emit config_changed once per write; setting(key) is a PKeyConfigSetting handle with changed(value, source) (tests/config/test_local.gd)."
     },
     "config.sync": {
-      "status": "planned",
-      "wp": "U-21"
+      "status": "implemented",
+      "note": "PKeyConfig routes set_value/clear through Cloud Sync's machine while a person is signed in (the machine's order of refusals: invalid-options, then managed_by_admin), and PKeyConfigSetting.sync() answers local, pending or synced. The synced value sits in the local layer, below enforced and hidden (tests/suite_cloud_sync_settings.gd)."
     },
     "devices.fingerprint": {
       "status": "implemented",
@@ -589,12 +589,12 @@
       "note": "PolarisKey.commerce (services/commerce.gd, P6-01): binding() (the licence's purchase binding — P5-05 PKeyApple's appAccountToken, godot-google-play-billing's obfuscatedAccountId, GodotSteam's getAuthTicketForWebApi identity — and the mapped store products) and claim(store, payload) for the StoreKit JWS, the Play purchase token or the Steam web-API ticket; the Worker verifies with the store and grants the licence flag. hidden_here() applies App Store 3.1.3(b) on Apple outlets. suite_commerce and the commerce-claim transcript (suite_transcripts)."
     },
     "sync.scenarios": {
-      "status": "planned",
-      "wp": "U-21"
+      "status": "implemented",
+      "note": "core/sync/cloud_sync_machine.gd replays every sync-scenarios.json scenario with no skip list, and sync_routes.gd the settingCases (tests/suite_sync_scenarios.gd; the corpus is read through the strict parser, ints stay ints)."
     },
     "sync.settings": {
-      "status": "planned",
-      "wp": "U-21"
+      "status": "implemented",
+      "note": "PolarisKey.cloud_sync (PKeyCloudSync: status(), flush(), the cloudSync event) over services/cloud_sync/ (host, sealed state file, transport with no redirects, a 15 s timeout and an 8 MiB cap, the codec port) and the machine. Sign-out runs flush, machine sign-out, ring forget, purge in that order and stops when the ring cannot forget (suite_cloud_sync_host, suite_cloud_sync_settings). The journal is sealed by the platform lane or the engine-encrypted file keyed from the device id; with neither a sealer nor a device id it is not written."
     },
     "sync.conflict": {
       "status": "planned",
@@ -622,7 +622,7 @@
     },
     "sync.e2e.recovery": {
       "status": "planned",
-      "wp": "U-21"
+      "wp": "U-40"
     },
     "sync.transfer.background": {
       "status": "planned",
