@@ -735,27 +735,6 @@ def _update_options(u: Dict[str, Any]) -> UpdateClientOptions:
     )
 
 
-def _recorded_kem(request: httpx.Request) -> httpx.Request:
-    """Disabled-until-moved shim: the keyring recordings pin ``kem`` as a string, the client sends
-    the contract's integer 32. Show the replay server the recorded spelling (lead decision
-    2026-10-27: the Worker and the transcripts move to 32 in their own slice; delete this then)."""
-    if "/devices/keyring" not in request.url.path or not request.content:
-        return request
-    try:
-        body = json.loads(request.content)
-    except ValueError:
-        return request
-    changed = False
-    for holder in (body, body.get("wrap") if isinstance(body, dict) else None):
-        if isinstance(holder, dict) and holder.get("kem") == 32:
-            holder["kem"] = "x25519"
-            changed = True
-    if not changed:
-        return request
-    headers = {k: v for k, v in request.headers.items() if k.lower() != "content-length"}
-    return httpx.Request(request.method, request.url, headers=headers, content=json.dumps(body).encode("utf-8"))
-
-
 def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
     clock = {"now": float(t["now"])}
     monkeypatch.setattr(time, "time", lambda: clock["now"])
@@ -796,7 +775,7 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
                 headers={"content-type": "application/json"},
                 content=json.dumps(_standard_discovery(t)).encode("utf-8"),
             )
-        return server(_recorded_kem(request))
+        return server(request)
 
     client = PolarisKeyClient(
         product_slug=t["product"],
