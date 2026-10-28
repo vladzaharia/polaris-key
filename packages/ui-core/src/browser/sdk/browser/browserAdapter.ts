@@ -182,7 +182,11 @@ import {
   type ServicesMap,
   licenseGateEnabled,
 } from "../core/services.js";
-import { discoverProduct, type DiscoveryDocument } from "./discovery.js";
+import {
+  discoverProduct,
+  exchangeDiscoveryOf,
+  type DiscoveryDocument,
+} from "./discovery.js";
 import { BearerSession, type AccountDevice } from "./bearer/session.js";
 import {
   BearerDeviceCodeSession,
@@ -738,6 +742,7 @@ export class BrowserAdapter implements PolarisAdapter {
         identityEndpoints: () => accountEndpointsOf(this.discovery_),
         redirectEndpoints: () => redirectEndpointsOf(this.discovery_),
         choiceEndpoints: () => choiceEndpointsOf(this.discovery_),
+        exchangeEndpoints: () => exchangeDiscoveryOf(this.discovery_),
         ...(opts.fingerprint ? { fingerprint: opts.fingerprint } : {}),
         ...(opts.deviceName !== undefined
           ? { deviceName: opts.deviceName }
@@ -1477,9 +1482,9 @@ export class BrowserAdapter implements PolarisAdapter {
     licenses: (grant) => this.choiceCall((b) => b.choiceLicenses(grant)),
     devices: (grant, licenseId) =>
       this.choiceCall((b) => b.choiceDevices(grant, licenseId)),
-    complete: (grant, choice) =>
+    complete: (grant, choice, opts) =>
       this.choiceCall(async (b) => {
-        const r = await b.choiceComplete(grant, choice);
+        const r = await b.choiceComplete(grant, choice, opts);
         if (r.kind === "ok")
           this.applyBearer({ busy: noBusy(), error: noErrors() });
         return r;

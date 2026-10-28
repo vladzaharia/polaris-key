@@ -60,6 +60,8 @@ import {
   type TrustManifestResult,
 } from "@polaris-key/client-core";
 import { reloadBundle, type CachedBundle } from "../offline.js";
+import type { ExchangeDiscovery } from "../discovery.js";
+import type { ExchangeOptions, ExchangeOutcome } from "./exchange.js";
 import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import {
   HEADER_ARCH,
@@ -117,6 +119,7 @@ import {
 import { UnsupportedError } from "../../core/caps.js";
 import {
   choiceRefusal,
+  type ChoiceCompleteOptions,
   isChoiceCount,
   isLicenseChoiceView,
   isReplaceView,
@@ -349,6 +352,9 @@ export interface BearerSessionOptions {
   /** The `choice*` endpoints discovery named (`identity.endpoints`). A choice call whose endpoint
    *  is absent answers the typed unavailable and dials nothing; the default answers none. */
   choiceEndpoints?: () => ChoiceEndpoints | null;
+  /** The platform sign-in discovery named (`identity.exchange`, `nonce`, `token`). An exchange
+   *  with none answers `unavailable` and dials nothing; the default answers none. */
+  exchangeEndpoints?: () => ExchangeDiscovery | null;
   /** Conformance replay only: the exact `state` and verifier of a recorded conversation. */
   redirectEntropy?: () => { state?: string; codeVerifier?: string };
   /** A hashed hardware fingerprint. A browser has none; the default answers null. */
@@ -1153,10 +1159,14 @@ export class BearerSession {
   async choiceComplete(
     grant: string,
     choice: LicenseChoice,
+    opts: ChoiceCompleteOptions = {},
   ): Promise<ChoiceCompleteResult> {
     const { res, json } = await this.choicePost("choiceComplete", {
       grant,
       choice,
+      ...(opts.consent
+        ? { consent: { claims: [...opts.consent.claims] } }
+        : {}),
     });
     if (res.status !== 200) return this.refused(res, json);
     const answer = parseTokenAnswer(200, json);
@@ -1198,6 +1208,40 @@ export class BearerSession {
     const { res, json } = await this.choicePost("choiceCancel", { grant });
     if (res.status === 204 || res.status === 200) return { kind: "ok" };
     return this.refused(res, json);
+  }
+
+  // ── The platform sign-in (identity.exchange, WIRE-CONTRACT-V5 §12.11.2-.3) ─────────────────
+
+  /**
+   * Sign in with a platform identity: a fresh nonce, the provider's token for it, the token
+   * exchange with the `exchange` proof. A token is stored like any sign-in; every other answer
+   * comes back as an outcome (`exchange.ts`). The nonce is spent by the attempt.
+   */
+  async exchange(
+    port: DeviceKeyPort,
+    opts: ExchangeOptions,
+  ): Promise<ExchangeOutcome> {
+    await this.init();
+    // Lazy: the exchange is the ladder's rung, not the first paint's.
+    const { runExchange } = await import("./exchange.js");
+    return runExchange(
+      {
+        product: this.opts.product,
+        deviceId: this.deviceIdValue,
+        endpoints: this.opts.exchangeEndpoints?.() ?? null,
+        identityEnabled: this.opts.enabled("identity"),
+        headers: (extra) => this.headers(extra),
+        fetchImpl: this.opts.fetchImpl,
+        now: () => this.now(),
+        accept: async (token, subject) => {
+          await this.setToken(token, "signin");
+          await this.syncAfterSignIn();
+          this.subjectValue = subject;
+        },
+      },
+      port,
+      opts,
+    );
   }
 
   // ── The §5 single re-acquire ─────────────────────────────────────────────────────────────

@@ -113,6 +113,52 @@ export function parseDiscovery(
   };
 }
 
+/** What the identity fragment says about the platform sign-in (WIRE-CONTRACT-V5 §12.11.6): the
+ *  kinds the product accepts, the Google server client id the provider must ask for, and the
+ *  `nonce`, `token` and `link` endpoints. An endpoint is used only when discovery names it. */
+export interface ExchangeDiscovery {
+  kinds: readonly ("google" | "apple")[];
+  google?: { serverClientId: string };
+  nonceEndpoint: string;
+  tokenEndpoint: string;
+  linkEndpoint?: string;
+}
+
+const nonEmpty = (v: unknown): v is string => typeof v === "string" && v !== "";
+
+/** The platform sign-in a discovery document offers, or `null`: identity off, no `exchange`
+ *  member, no known kind, or no `nonce` or `token` endpoint. Unknown kinds are dropped. */
+export function exchangeDiscoveryOf(
+  discovery: Record<string, unknown> | null | undefined,
+): ExchangeDiscovery | null {
+  const services = discovery?.services;
+  if (!isRecord(services)) return null;
+  const identity = services.identity;
+  if (!isRecord(identity) || identity.enabled !== true) return null;
+  const exchange = identity.exchange;
+  if (!isRecord(exchange) || !Array.isArray(exchange.kinds)) return null;
+  const kinds = (["google", "apple"] as const).filter((k) =>
+    (exchange.kinds as unknown[]).includes(k),
+  );
+  const endpoints = isRecord(identity.endpoints) ? identity.endpoints : {};
+  if (
+    kinds.length === 0 ||
+    !nonEmpty(endpoints.nonce) ||
+    !nonEmpty(endpoints.token)
+  )
+    return null;
+  const google = exchange.google;
+  return {
+    kinds,
+    ...(isRecord(google) && nonEmpty(google.serverClientId)
+      ? { google: { serverClientId: google.serverClientId } }
+      : {}),
+    nonceEndpoint: endpoints.nonce,
+    tokenEndpoint: endpoints.token,
+    ...(nonEmpty(endpoints.link) ? { linkEndpoint: endpoints.link } : {}),
+  };
+}
+
 export interface DiscoverOptions {
   baseUrl: string;
   product: string;
