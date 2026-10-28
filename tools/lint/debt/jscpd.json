@@ -45,7 +45,7 @@
       "jscpd:duplicate": 3
     },
     "conformance/runners/node/transcripts.test.ts": {
-      "jscpd:duplicate": 18
+      "jscpd:duplicate": 26
     },
     "examples/node-electron/src/main.ts": {
       "jscpd:duplicate": 1
@@ -1458,13 +1458,13 @@
       "jscpd:duplicate": 10
     },
     "packages/elements/test/browser/polish.browser.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 5
     },
     "packages/elements/test/browser/poweredby.browser.test.ts": {
       "jscpd:duplicate": 3
     },
     "packages/elements/test/browser/render.browser.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 5
     },
     "packages/elements/test/browser/visual.browser.test.ts": {
       "jscpd:duplicate": 5
@@ -1541,8 +1541,11 @@
     "packages/sdk-node/src/client.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/sdk-node/src/cloudSync/api.ts": {
+      "jscpd:duplicate": 4
+    },
     "packages/sdk-node/src/cloudSync/host.ts": {
-      "jscpd:duplicate": 14
+      "jscpd:duplicate": 12
     },
     "packages/sdk-node/src/cloudSync/state.ts": {
       "jscpd:duplicate": 1
@@ -1551,7 +1554,7 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-node/src/config/client.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/sdk-node/src/connect/channel.ts": {
       "jscpd:duplicate": 7
@@ -2052,7 +2055,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/transcripts.test.ts": {
-      "jscpd:duplicate": 19
+      "jscpd:duplicate": 27
     },
     "packages/sdk-react/test/trustCustody.test.ts": {
       "jscpd:duplicate": 2
@@ -2198,11 +2201,14 @@
     "packages/ui-core/src/browser/sdk/browser/browserAdapter.ts": {
       "jscpd:duplicate": 10
     },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/api.ts": {
+      "jscpd:duplicate": 5
+    },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/create.ts": {
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/host.ts": {
-      "jscpd:duplicate": 15
+      "jscpd:duplicate": 14
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/store.ts": {
       "jscpd:duplicate": 1
@@ -2280,7 +2286,7 @@
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/core/localConfig.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/ui-core/src/browser/sdk/core/presentation.ts": {
       "jscpd:duplicate": 7
