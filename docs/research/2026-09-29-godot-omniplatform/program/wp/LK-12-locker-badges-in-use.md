@@ -39,10 +39,19 @@ The role agent sets `--set LK-12 in-review` when it hands off; the lead sets `do
 
 ## Progress and continuation (2026-10-28)
 
-Built: the Worker route and the download page's badge. Correction to the plan text: `/<slug>` is
-not a new route kind. It is the existing bare-slug alias (`/{product}` in the spec); on the
-customer host it now answers `302 /#/discover/<slug>` (no database read, no oracle). The download
-page (bytes host) draws the 320 x 104 "Available on Polaris Locker" badge, linked to
-`<customer origin>/<slug>`, only with a customer site and a direct download (text link under
-360 px). Not built: destinations for the other 14 labels (they need their own real actions;
-console "Get a badge" is LK-10) and the plrs.im website part (owner step OS-25).
+Built: the customer-host route. `/<slug>` is not a new route kind: it is the existing bare-slug alias
+(`/{product}` in the spec); on the customer host `GET`/`HEAD` of `/<slug>` (also `/<slug>/` and any
+case) answers `302 /#/discover/<slug>` with no database read (no oracle).
+
+Dropped after UX review: the download page's "Available on Polaris Locker" badge. It would send
+visitors of unlisted or purchase-only products to the storefront's not-found, and the page already
+names Polaris Locker.
+
+Follow-ups:
+
+- LK-12b: an "Add to your Polaris Locker library" row in the page's "Every way to get", shown only
+  when the product is visible in Discover to a new account. It needs a read-only Core hook
+  (`src/core/hooks.ts`) because the settings sit in Identity's table (AGENTS.md rule 6).
+- LK-12c: a signed-out visitor at `/#/discover/<slug>` sees a sign-in card that names the product
+  (review J2).
+- The other 14 badge labels stay with LK-10; the plrs.im website part is owner step OS-25.

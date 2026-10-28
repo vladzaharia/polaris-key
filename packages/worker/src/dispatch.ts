@@ -195,10 +195,18 @@ async function routeRequest(
   if (onCustomerHost && isCustomerHostOwnPath(url.pathname))
     return customerHostOwnResponse(req, env, url.pathname);
   const route = matchRoute(url.pathname);
-  // LK-12: `polaris.locker/<slug>` is the badges' destination (the product's storefront page).
-  if (onCustomerHost && url.pathname.split("/").length === 2) {
-    const toStorefront = customerSlugRedirect(req, route);
-    if (toStorefront) return toStorefront;
+  // LK-12: `polaris.locker/<slug>` is the badges' destination (the product's storefront page);
+  // `/<slug>/` and any case reach it too. The slug is the lower-cased match, so a reserved slug or
+  // a customer route (`/Activate`, `/login/`) never gets here.
+  if (onCustomerHost) {
+    const bare = /^\/([A-Za-z0-9-]+)\/?$/.exec(url.pathname);
+    if (bare) {
+      const toStorefront = customerSlugRedirect(
+        req,
+        matchRoute(`/${bare[1]!.toLowerCase()}`),
+      );
+      if (toStorefront) return toStorefront;
+    }
   }
   if (
     onCustomerHost &&

@@ -10252,7 +10252,8 @@ paths:
 
         On the customer host (`polaris.locker/<slug>`, LK-12) it is the destination of the "Available
         on" and "Open in" Polaris Locker badges: `GET` and `HEAD` answer `302` to
-        `/#/discover/<slug>`, the product's storefront page. The answer reads no database, so it is
+        `/#/discover/<slug>`, the product's storefront page; `/<slug>/` and any letter case answer the
+        same, on the lower-cased slug. The answer reads no database, so it is
         the same for every well-formed slug; the page shows its one not-found for a product that is
         unknown, unlisted or withdrawn. Any other method is the plain not-found.
       parameters: [{ $ref: "#/components/parameters/Product" }]

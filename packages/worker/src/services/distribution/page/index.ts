@@ -314,9 +314,6 @@ async function handlePage(
     iconUrl,
     coverUrl,
     helpOrigin: feedOriginOf(env),
-    lockerUrl: customerSiteOrigin(env)
-      ? `${customerSiteOrigin(env)}/${product.slug}`
-      : null,
   });
   return new Response(req.method === "HEAD" ? null : html, {
     status: 200,

@@ -147,7 +147,8 @@ export function helpAliasResponse(
  * unknown, unlisted or withdrawn (S-21 D5), so this answers the same for every well-formed slug
  * and reads no database: it is no oracle for which products exist. The target is built from the
  * matched slug alone (`[a-z0-9-]`, never a reserved platform slug), never from the request's
- * host, query or fragment. Only GET and HEAD; `null` for any other route.
+ * host, query or fragment. The caller lower-cases the slug and accepts a trailing slash. Only GET
+ * and HEAD; `null` for any other route.
  */
 export function customerSlugRedirect(
   req: Request,
