@@ -100,14 +100,16 @@ import {
   type UpdateCheckContent,
   type VerifiedRevocation,
 } from "@polaris-key/client-core";
-import {
-  createWebDeviceKeyStore,
-  type CapabilityContext,
-  type DeviceKeyPort,
+import type {
+  CapabilityContext,
+  DeviceKeyPort,
 } from "@polaris-key/client-core";
-import { RingEngine } from "./ring/engine.js";
-import { indexedDbRootVault, type RootVault } from "./ring/rootVault.js";
-import { unsupportedKeyring, type KeyringClient } from "../core/keyring.js";
+import type { RootVault } from "./ring/rootVault.js";
+import {
+  lazyKeyring,
+  unsupportedKeyring,
+  type KeyringClient,
+} from "../core/keyring.js";
 import { clientBackendAction } from "@polaris-key/client-core/backend";
 import type {
   BinaryMethod,
@@ -208,13 +210,11 @@ import {
 } from "./bearer/store.js";
 import { browserFacts } from "./bearer/facts.js";
 import { bearerBootDriver } from "./boot.js";
-import {
-  fetchReleaseBuild,
-  fetchVerifiedRecord,
-  type FetchTarget,
-  type PartStore,
-  type ReleaseFetchOptions,
-  type ReleaseFetchResult,
+import type {
+  FetchTarget,
+  PartStore,
+  ReleaseFetchOptions,
+  ReleaseFetchResult,
 } from "./releaseFetch.js";
 import {
   browserPlatform,
@@ -255,11 +255,8 @@ import type {
   CommerceStore,
   MintedToken,
 } from "../core/types.js";
-import {
-  buildDownloadUrlFor,
-  decideBrowserUpdate,
-  type UpdateSlices,
-} from "./update.js";
+import { buildDownloadUrlFor } from "./urls.js";
+import type { UpdateSlices } from "./update.js";
 import { fetchCatalog } from "./catalog.js";
 import {
   LocalConfigEngine,
@@ -1683,7 +1680,9 @@ export class BrowserAdapter implements PolarisAdapter {
       const content = u.packs
         ? await u.packs.contentInput().catch(() => null)
         : null;
-      const result = await decideBrowserUpdate({
+      const result = await (
+        await import("./update.js")
+      ).decideBrowserUpdate({
         ...opts,
         baseUrl: this.base,
         product: this.product,
@@ -2010,20 +2009,14 @@ export class BrowserAdapter implements PolarisAdapter {
     const b = this.bearer;
     if (!b) return (this.ring_ = unsupportedKeyring("runtime", COOKIE_DETAIL));
     const o = this.ringOptions ?? {};
-    const keys = o.deviceKeys ?? createWebDeviceKeyStore();
-    return (this.ring_ = new RingEngine({
-      product: this.product,
-      deviceId: () => b.deviceId,
-      transport: { request: (path, init) => b.ringRequest(path, init) },
-      keys,
-      ensureKeysRegistered: async () => {
-        await b.registerKeys(keys);
-      },
-      vault: o.vault ?? indexedDbRootVault(`pkey-sync-ring-${this.product}`),
-      ...(o.sessionRootSeconds !== undefined
-        ? { sessionRootSeconds: o.sessionRootSeconds }
-        : {}),
-    }));
+    // The engine, its crypto and the default device key store load on the first ring call.
+    return (this.ring_ = lazyKeyring(async () =>
+      (await import("./ring/create.js")).createRingEngine({
+        product: this.product,
+        bearer: b,
+        options: o,
+      }),
+    ));
   }
 
   /**
@@ -2399,7 +2392,9 @@ export class BrowserAdapter implements PolarisAdapter {
       "record" in target ? target.record : await this.verifiedRecord(target);
     const buildId = "action" in target ? target.build : target.buildId;
     try {
-      return await fetchReleaseBuild({
+      return await (
+        await import("./releaseFetch.js")
+      ).fetchReleaseBuild({
         baseUrl: this.base,
         product: this.product,
         fetchImpl: this.fetchImpl,
@@ -2434,7 +2429,7 @@ export class BrowserAdapter implements PolarisAdapter {
         "not-configured",
         "Fetching a release record by hash needs update.pinnedReleaseKeys and trust.pinnedKeys; pass the verified record instead.",
       );
-    return fetchVerifiedRecord({
+    return (await import("./releaseFetch.js")).fetchVerifiedRecord({
       baseUrl: this.base,
       product: this.product,
       fetchImpl: this.fetchImpl,

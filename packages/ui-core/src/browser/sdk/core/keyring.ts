@@ -140,3 +140,57 @@ export function bindRingToMachine(
   machine.setRoot(ring.hasRoot());
   return ring.subscribe(() => machine.setRoot(ring.hasRoot()));
 }
+
+/**
+ * A ring client whose engine loads on the first call that needs it (the engine, the recovery
+ * crypto and the device keys are about 40 KB a page that never opens the ring does not fetch).
+ * `hasRoot()` is false until the engine is loaded: a root exists only after `status`, `create`
+ * or `recover` ran, and each of them loads it first.
+ */
+export function lazyKeyring(load: () => Promise<KeyringClient>): KeyringClient {
+  let engine: KeyringClient | null = null;
+  let loading: Promise<KeyringClient> | null = null;
+  const listeners = new Set<() => void>();
+  const ready = (): Promise<KeyringClient> =>
+    (loading ??= load().then(
+      (e) => {
+        engine = e;
+        e.subscribe(() => {
+          for (const l of [...listeners]) l();
+        });
+        return e;
+      },
+      (err) => {
+        loading = null;
+        throw err;
+      },
+    ));
+  const via =
+    <A extends unknown[], R>(
+      f: (e: KeyringClient) => (...a: A) => Promise<R>,
+    ) =>
+    async (...a: A): Promise<R> =>
+      f(await ready())(...a);
+  return {
+    unsupported: null,
+    status: via((e) => () => e.status()),
+    create: via((e) => () => e.create()),
+    recover: via((e) => (code: string) => e.recover(code)),
+    setRecoveryCode: via((e) => () => e.setRecoveryCode()),
+    reset: via((e) => () => e.reset()),
+    adoptPrevious: via((e) => () => e.adoptPrevious()),
+    wrapTo: via(
+      (e) => (deviceId: string, agreeKey: string | Uint8Array) =>
+        e.wrapTo(deviceId, agreeKey),
+    ),
+    removeWrap: via((e) => (deviceId: string) => e.removeWrap(deviceId)),
+    lock: via((e) => () => e.lock()),
+    forget: via((e) => () => e.forget()),
+    acceptRingChange: via((e) => (c: RingIdentity) => e.acceptRingChange(c)),
+    hasRoot: () => engine?.hasRoot() ?? false,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+}

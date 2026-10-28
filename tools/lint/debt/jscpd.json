@@ -2120,7 +2120,7 @@
     "packages/ui-core/src/browser/sdk/browser/offline.ts": {
       "jscpd:duplicate": 3
     },
-    "packages/ui-core/src/browser/sdk/browser/update.ts": {
+    "packages/ui-core/src/browser/sdk/browser/urls.ts": {
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/core/backend.ts": {
