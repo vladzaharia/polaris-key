@@ -4,7 +4,7 @@
 // The Kotlin runner for conformance/corpus/v2/sync-scenarios.json (read in place), mirroring the
 // Python test_sync_scenarios.py. `settingCases` runs in full. The scenario replays are the shell the
 // machine slices fill in: PENDING lists every scenario until its slice ports it (D-N1), by name, with
-// the slice that ports it, and the `e2e-` prefix rule holds the E2E scenarios until the last machine
+// the slice that ports it (K2 ported the local half), and the `e2e-` prefix rule holds the E2E scenarios until the last machine
 // slice. The last machine slice deletes PENDING and the prefix rule, so a scenario X-1.1 adds runs
 // without an edit here. The machine has no crypto, so the JCA and Tink passes both run this suite.
 
@@ -61,10 +61,11 @@ class SyncScenariosTest : ConformanceSuite() {
 
     @Test
     fun everyScenarioIsHeldOrDriven() {
-        // The driver is the machine slices' to fill in. Until then every scenario is held, but its shape
-        // must read (an init block, steps of known kinds), and a scenario that is neither held nor driven
-        // fails: a new corpus row is never silently skipped.
+        // A scenario that is held (PENDING, or the `e2e-` rule) is not replayed; every other one is, and a
+        // new corpus row is never silently skipped. A held scenario must still read: an init block and
+        // steps of known kinds.
         val kinds = setOf("local", "advance", "network", "respond", "root", "signIn", "signOut", "relaunch", "assert")
+        var driven = 0
         for (sc in scenarios) {
             val name = sc["name"].stringValue!!
             assertTrue("$name: init", sc["init"] is JsonObject)
@@ -72,8 +73,11 @@ class SyncScenariosTest : ConformanceSuite() {
                 val kind = (step as JsonObject).keys.single()
                 assertTrue("$name: unknown step $kind", kind in kinds)
             }
-            assertTrue("$name: no machine drives it and PENDING does not hold it", pending(name))
+            if (pending(name)) continue
+            SyncScenarioDriver(corpus["product"].stringValue!!, sc).run()
+            driven++
         }
+        assertTrue("some scenarios are replayed", driven > 0)
     }
 
     @Test
@@ -128,10 +132,6 @@ class SyncScenariosTest : ConformanceSuite() {
          * K4 deletes this set and the `e2e-` prefix rule.
          */
         val PENDING: Set<String> = setOf(
-            // U-07.K2 (the local half: no `respond` step).
-            "key-activated-device-local-only",
-            "sign-out-discard-unsynced",
-            "pending-expire-after-30-days",
             // U-07.K3 (the exchange half).
             "optimistic-read-pending",
             "max-policy-optimistic",

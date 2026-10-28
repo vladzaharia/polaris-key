@@ -167,22 +167,3 @@ public enum class SyncOp(public val wire: String) {
     Add("add"),
     Remove("remove"),
 }
-
-/**
- * One account's (or the device's) journal slice. The machine slices fill in the behaviour; the shape is
- * the Python `_new_partition`: the client id, the next mutation id, the pull cursor, the pending
- * mutations (wire objects), the held and settled values, and the sealed latch.
- */
-public class SyncPartition(public var clientId: String?) {
-    public var nextMutationId: Long = 1
-    public var cursor: Long = 0
-    public val pending: MutableList<JsonObject> = mutableListOf()
-    public val held: MutableMap<String, JsonElement> = linkedMapOf()
-    public val settings: MutableMap<String, JsonObject> = linkedMapOf()
-    public val records: MutableMap<String, JsonObject> = linkedMapOf()
-    public val device: MutableMap<String, JsonElement> = linkedMapOf()
-    public var signedOutAt: Long? = null
-    public var headroom: Long? = null
-    public var encryptionSince: Long? = null
-    public val sealedKeys: MutableSet<String> = linkedSetOf()
-}
