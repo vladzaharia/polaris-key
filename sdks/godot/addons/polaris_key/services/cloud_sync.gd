@@ -59,6 +59,9 @@ var _attaching := false
 var _listening := false
 var _subject: Variant = null
 var _forgot := false
+## True while the sign-out chain runs: a ring that cannot forget then skips the purge and stops the sign-out (D-13).
+var _in_sign_out := false
+var _forget_error: PKeyResult = null
 var _forgets := 0
 var _queue: Array = []
 var _running := false
@@ -201,12 +204,17 @@ func on_deactivated() -> void:
 
 
 ## The identity client's pre-sign-out hook (A-3): [Connect leave], flush (bounded), the machine signs
-## out, the ring forgets, the data is purged. The flush comes first, while the root is held.
-func before_sign_out() -> void:
+## out, the ring forgets, the data is purged. The flush comes first, while the root is held. A ring
+## that cannot forget its root stops the sign-out (D-13): the failing result is returned, nothing is
+## purged and the identity session stays; a retry forgets again. A purge failure is reported as
+## `purgeFailed` and never changes the result.
+func before_sign_out() -> PKeyResult:
 	if before_leave.is_valid():
 		await before_leave.call()
 	await _drain()
 	_forgot = false
+	_forget_error = null
+	_in_sign_out = true
 	if host != null and host.is_started() and _subject != null:
 		var m: Object = host.machine()
 		if m.subject() != null:
@@ -218,7 +226,11 @@ func before_sign_out() -> void:
 	await _join_chain()
 	if not _forgot:
 		await _forget()
+	_in_sign_out = false
+	if _forget_error != null:
+		return _forget_error
 	_subject = null
+	return PKeyResult.success()
 
 
 func close() -> void:
@@ -379,6 +391,10 @@ func _forget() -> void:
 		var r: Variant = await _keyring.forget()
 		if r is PKeyResult and not r.ok:
 			push_warning("Cloud Sync: the key ring pin could not be removed")
+			if _in_sign_out:
+				# D-13: a root that cannot be deleted must not be left behind under a signed-out device.
+				_forget_error = r
+				return
 	if host != null and is_instance_valid(host):
 		var removed: bool = await host.purge()
 		if not removed:

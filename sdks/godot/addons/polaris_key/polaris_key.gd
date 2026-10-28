@@ -217,12 +217,14 @@ func _build_keyring(opts: PKeyOptions) -> void:
 
 
 ## The sign-out chain (A-3): Cloud Sync flushes, signs the machine out, forgets the ring, purges, in
-## that order (the final E2E flush still has the root). Without Cloud Sync, the ring alone.
-func _forget_ring() -> void:
+## that order (the final E2E flush still has the root). Without Cloud Sync, the ring alone. A ring
+## that cannot forget its root stops the sign-out (D-13): the failing PKeyResult is returned.
+func _forget_ring() -> Variant:
 	if cloud_sync != null:
-		await cloud_sync.before_sign_out()
-	elif keyring != null:
-		await keyring.forget()
+		return await cloud_sync.before_sign_out()
+	if keyring != null:
+		return await keyring.forget()
+	return null
 
 
 func _build_cloud_sync(opts: PKeyOptions) -> void:

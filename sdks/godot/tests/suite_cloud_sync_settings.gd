@@ -30,6 +30,14 @@ class FakeRing:
 		return PKeyResult.failure(&"store-failed", "x") if fail else PKeyResult.success()
 
 
+## A state file whose delete fails (a purge that cannot finish).
+class FailingState:
+	extends "res://addons/polaris_key/services/cloud_sync/state.gd"
+
+	func remove() -> bool:
+		return false
+
+
 class OpenCodec:
 	extends CodecPort
 
@@ -45,6 +53,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _elsewhere_and_offers(t)
 	await _import_and_document(t)
 	_licence_free(t)
+	await PKeyTestFixtures.frames(3)  # queued frees run before the next suite and the exit
 	return true
 
 
@@ -233,17 +242,35 @@ func _sign_out_chain(t: PKeyTestContext) -> void:
 	t.check("chain: the app hears signedOut, and no offer for a voluntary sign-out", types.has("signedOut") and not types.has("signInOffered"), str(types))
 	_done(c)
 
-	# A failing ring forget is logged and never stops the purge; a failing purge never replaces the error.
+	# D-13: a ring that cannot forget its root stops the sign-out: the error is returned, nothing is
+	# purged, the identity session stays; a retry (the ring healthy again) completes it.
 	log.clear()
 	var c2 := await _make(_handler(log, version))
 	await _sign_in(c2, "ps_a")
-	var ring2 := FakeRing.new(log, c2["sdk"].cloud_sync.host._file.path())
+	var state2: String = c2["sdk"].cloud_sync.host._file.path()
+	var ring2 := FakeRing.new(log, state2)
 	ring2.fail = true
 	c2["sdk"].cloud_sync._keyring = ring2
 	c2["sdk"].config.set_value(KEY, 8)
-	await c2["sdk"].cloud_sync.before_sign_out()
-	t.check("A-3: each of forget and purge is tried whatever the other did", log.has("ring.forget") and not FileAccess.file_exists(c2["sdk"].cloud_sync.host._file.path()))
+	var stopped: Variant = await c2["sdk"]._forget_ring()
+	t.check("D-13: a failing ring.forget returns its error to the sign-out", stopped is PKeyResult and not stopped.ok and stopped.code == &"store-failed", str(stopped))
+	t.check("D-13: nothing is purged and the session's subject is kept", ring2.file_seen_at_forget and FileAccess.file_exists(state2) and c2["sdk"].core.cache.subject == "ps_a")
+	ring2.fail = false
+	var retried: Variant = await c2["sdk"]._forget_ring()
+	t.check("D-13: a retry with a healthy ring completes the chain", retried is PKeyResult and retried.ok and not FileAccess.file_exists(state2))
 	_done(c2)
+
+	# A-3: a purge that fails is reported as purgeFailed and does not change the sign-out's result.
+	log.clear()
+	var c4 := await _make(_handler(log, version))
+	await _sign_in(c4, "ps_a")
+	var h4: Node = c4["sdk"].cloud_sync.host
+	h4._file = FailingState.new(h4._file.dir, PRODUCT, null)
+	c4["sdk"].cloud_sync._keyring = FakeRing.new(log, h4._file.path())
+	var res4: Variant = await c4["sdk"]._forget_ring()
+	var failed_evt: bool = c4["events"].any(func(e: Dictionary) -> bool: return e.get("type") == "purgeFailed")
+	t.check("A-3: a purge failure emits purgeFailed and the sign-out's own result is unchanged", failed_evt and res4 is PKeyResult and res4.ok, str(res4))
+	_done(c4)
 
 	# Purge also runs when Sync is off, and the ring is still forgotten.
 	log.clear()
