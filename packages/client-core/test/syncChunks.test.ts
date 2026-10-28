@@ -168,7 +168,7 @@ describe("chunk ids and objects", () => {
   it("seals and opens a raw chunk", async () => {
     const id = await chunkId(port, root, "saves", plain);
     const obj = await sealChunk(port, root, "saves", id, 0, plain);
-    expect(obj.length).toBe(2 + plain.length + 16);
+    expect(obj.length).toBe(2 + 12 + plain.length + 16);
     expect([obj[0], obj[1]]).toEqual([1, 0]);
     const r = await openChunk(port, root, "saves", id, obj);
     expect(r.ok && r.plain).toEqual(plain);
@@ -231,7 +231,7 @@ describe("chunk ids and objects", () => {
     const id = await chunkId(port, root, "saves", plain);
     const obj = await sealChunk(port, root, "saves", id, 0, plain);
     const open = (o: Uint8Array) => openChunk(port, root, "saves", id, o);
-    expect(await open(obj.subarray(0, 17))).toEqual({
+    expect(await open(obj.subarray(0, 29))).toEqual({
       ok: false,
       reason: "shape",
     });
@@ -246,6 +246,45 @@ describe("chunk ids and objects", () => {
     t[t.length - 1] = t[t.length - 1]! ^ 1;
     expect(await open(t)).toEqual({ ok: false, reason: "auth" });
     expect(await openChunk(port, noise(32, 8), "saves", id, obj)).toEqual({
+      ok: false,
+      reason: "auth",
+    });
+  });
+
+  it("seals one id under two codecs with different nonces, and refuses a non-synthetic nonce", async () => {
+    // The same id sealed raw and as a zstd frame has two bodies: a shared nonce would reuse the
+    // key stream. Both objects open, and their nonces (bytes 2..14) differ.
+    const a = new Uint8Array([0x41]);
+    const frame = Uint8Array.of(
+      0x28,
+      0xb5,
+      0x2f,
+      0xfd,
+      0x20,
+      1,
+      0x09,
+      0,
+      0,
+      0x41,
+    );
+    const id = await chunkId(port, root, "saves", a);
+    const raw = await sealChunk(port, root, "saves", id, 0, a);
+    const z = await sealChunk(port, root, "saves", id, 1, frame);
+    expect(Array.from(raw.subarray(2, 14))).not.toEqual(
+      Array.from(z.subarray(2, 14)),
+    );
+    expect(await openChunk(port, root, "saves", id, raw)).toMatchObject({
+      ok: true,
+    });
+    expect(await openChunk(port, root, "saves", id, z, () => a)).toMatchObject({
+      ok: true,
+    });
+    // Deterministic: the same body seals to the same object.
+    expect(await sealChunk(port, root, "saves", id, 0, a)).toEqual(raw);
+    // A flipped nonce byte fails the tag first; the reader never trusts the nonce it was given.
+    const n = raw.slice();
+    n[2] = n[2]! ^ 1;
+    expect(await openChunk(port, root, "saves", id, n)).toEqual({
       ok: false,
       reason: "auth",
     });

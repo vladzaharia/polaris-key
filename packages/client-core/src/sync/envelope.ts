@@ -49,15 +49,27 @@ export type OpenedValue =
 const NONCE = new Uint8Array(12);
 const utf8 = new TextEncoder();
 
-/** Canonical JSON: sorted keys at every level, no whitespace, non-ASCII text as UTF-8. */
+const LONE_SURROGATE =
+  /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+
+/**
+ * Canonical JSON (WIRE-CONTRACT-V5 §13.10.3): sorted keys at every level (UTF-16 code-unit
+ * order), no whitespace, non-ASCII text as itself, numbers as ECMAScript `Number::toString`.
+ * A number that is not finite and a string or key with a lone surrogate are refused with a
+ * `RangeError`, so every SDK refuses what it cannot spell identically.
+ */
 export function canonicalJson(v: SyncJson): string {
   if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
   if (v !== null && typeof v === "object") {
     return `{${Object.keys(v)
       .sort()
-      .map((k) => `${JSON.stringify(k)}:${canonicalJson(v[k] as SyncJson)}`)
+      .map((k) => `${canonicalJson(k)}:${canonicalJson(v[k] as SyncJson)}`)
       .join(",")}}`;
   }
+  if (typeof v === "number" && !Number.isFinite(v))
+    throw new RangeError("canonical json: number is not finite");
+  if (typeof v === "string" && LONE_SURROGATE.test(v))
+    throw new RangeError("canonical json: lone surrogate");
   return JSON.stringify(v);
 }
 
