@@ -8,6 +8,10 @@
 
 package im.plrs.key.ui
 
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.getTextLayoutResult
+import androidx.compose.ui.semantics.text
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -334,16 +338,34 @@ internal fun PolarisFluentButton(
             if (busy) androidx.compose.material3.CircularProgressIndicator(
                 modifier = Modifier.height(16.dp).widthIn(max = 16.dp), strokeWidth = 2.dp, color = content,
             )
-            // The new-window glyph leads the label, one 8 dp gap from it (the row's spacing).
-            if (external) Icon(PolarisKitGlyphs.NewWindow, contentDescription = null, modifier = Modifier.size(16.dp))
+            // The new-window glyph leads the label as inline content, so it stays beside the first word of a wrapped label.
+            val glyph = "external"
+            val size = with(androidx.compose.ui.platform.LocalDensity.current) { 16.dp.toSp() }
+            val shown = if (external) androidx.compose.ui.text.buildAnnotatedString {
+                appendInlineContent(glyph, " ")
+                append(" ")
+                append(text)
+            } else androidx.compose.ui.text.AnnotatedString(text)
+            // The placeholder is decoration: assistive tech reads the plain label (the control says where it goes).
+            val layout = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
             Text(
-                text,
+                shown,
                 style = MaterialTheme.typography.labelLarge.copy(textDecoration = if (underline) TextDecoration.Underline else null),
                 color = content,
                 textAlign = TextAlign.Center,
-                // The glyph stays beside the label's own width when it wraps.
-                modifier = Modifier.weight(1f, fill = false),
+                onTextLayout = { layout.value = it },
+                modifier = Modifier.weight(1f, fill = false).then(
+                    if (external) Modifier.clearAndSetSemantics {
+                        this.text = androidx.compose.ui.text.AnnotatedString(text)
+                        getTextLayoutResult { results -> layout.value?.let { results.add(it); true } ?: false }
+                    } else Modifier,
+                ),
                 // A label wraps (the control grows) rather than being cut: a narrow footer or a larger font scale.
+                inlineContent = if (external) mapOf(
+                    glyph to androidx.compose.foundation.text.InlineTextContent(
+                        androidx.compose.ui.text.Placeholder(size, size, androidx.compose.ui.text.PlaceholderVerticalAlign.TextCenter),
+                    ) { Icon(PolarisKitGlyphs.NewWindow, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                ) else emptyMap(),
             )
         }
     }

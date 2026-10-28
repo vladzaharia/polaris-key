@@ -18,6 +18,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
@@ -77,6 +80,19 @@ internal val matrixScreens: List<MatrixScreen> = listOf(
     MatrixScreen("sign-in", Regex("open browser|copy link", RegexOption.IGNORE_CASE)) {
         PolarisSignInScreen(PolarisSignInUi.Showing(matrixPrompt, NOW))
     },
+    // The v7 sign-in steps and the approving device's prompt, resolved from the matrix's own inputs.
+    MatrixScreen("sign-in-confirm", Regex("continue", RegexOption.IGNORE_CASE)) {
+        PolarisKitScreen(autoStep("confirm", email = "maya@example.com"))
+    },
+    MatrixScreen("link-offer", Regex("link google", RegexOption.IGNORE_CASE)) {
+        PolarisKitScreen(autoStep("link-offer"))
+    },
+    MatrixScreen("nearby-wait", Regex("use a code instead", RegexOption.IGNORE_CASE)) {
+        PolarisKitScreen(autoStep("nearby-wait"))
+    },
+    MatrixScreen("nearby-approval", Regex("not now", RegexOption.IGNORE_CASE)) {
+        PolarisKitScreen(KitStates.resolve(KitComponent.nearbyApproval, KitInputs.of(mapOf("nearbyApproval" to buildJsonObject { put("step", "ask"); put("device", "Kitchen iPad") }))))
+    },
     MatrixScreen("device-limit", Regex("browser|manage|replace", RegexOption.IGNORE_CASE)) {
         PolarisGateScreen(
             gateUi(LicenseStatus.needsActivation),
@@ -101,6 +117,16 @@ internal val matrixScreens: List<MatrixScreen> = listOf(
             onUpdate = {}, onLater = {}, onSkip = {},
         )
     },
+)
+
+private fun autoStep(step: String, email: String? = null): KitScreen = KitStates.resolve(
+    KitComponent.signIn,
+    KitInputs.of(
+        mapOf(
+            "provider" to JsonPrimitive("Google"),
+            "autoSignIn" to buildJsonObject { put("step", step); email?.let { put("email", it) } },
+        ),
+    ),
 )
 
 /** What the matrix measures on one frame; every entry is a violation. */

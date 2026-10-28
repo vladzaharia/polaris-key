@@ -95,6 +95,8 @@ private val controlKeys = setOf(
     "offlineActivation.copyCode", "offlineActivation.loadFile", "offlineActivation.submit",
     "deviceLimit.primary", "deviceLimit.openBrowser", "devices.manage", "activate.submit", "boot.continueOffline",
     "signin.again", "toast.undo", "common.dismiss",
+    "signin.key.ownedSignIn", "signin.auto.confirm.primary", "signin.auto.confirm.other", "signin.linkOffer.primary",
+    "signin.linkOffer.decline", "signin.nearby.code", "signin.nearby.notYou", "signin.nearby.deny", "signin.nearby.menu",
 )
 
 /**
@@ -104,6 +106,8 @@ private val controlKeys = setOf(
 private val tertiaryKeys = setOf(
     "welcome.trial", "welcome.continueFree", "welcome.restore", "welcome.offline", "paywall.redeem",
     "signin.choice.keyInstead", "signin.handoff.useCode", "update.skipVersion", "update.allChanges", "signin.choice.freeDevice",
+    "signin.key.differentKey", "signin.auto.confirm.other", "signin.linkOffer.decline", "signin.nearby.code",
+    "signin.nearby.notYou", "signin.nearby.deny", "common.notNow",
 )
 
 /**
@@ -181,13 +185,14 @@ public fun PolarisKitScreen(
     catalog: KitCopy = KitCopy.bundled,
     locale: String = kitLocale(),
     requestCode: String? = null,
+    addKeyUrl: String? = null,
     onAction: (KitAction?) -> Unit = {},
     rows: KitRowData = KitRowData(),
     onContinue: (String) -> Unit = {},
 ) {
     // The sign-in form and its hand-off (the code, declined, expired) are focused steps: the
     // product header above a start-aligned title.
-    val focused = screen.component == KitComponent.signIn || screen.component == KitComponent.signInHandoff
+    val focused = screen.component == KitComponent.signIn || screen.component == KitComponent.signInHandoff || screen.component == KitComponent.nearbyApproval
     // The components with a styled part of their own (UI-KITS.md 4.1) draw it from their rows.
     val choices = rows.choices
     when {
@@ -200,7 +205,7 @@ public fun PolarisKitScreen(
         screen.component == KitComponent.paywall && screen.state != "not-available" ->
             PolarisPaywall(screen, rows.features, modifier, onUpgrade = { onAction(null) }, onPortal = { onAction(null) }, onRedeem = { onAction(null) }, onDone = { onAction(null) }, catalog = catalog, locale = locale)
         screen.component == KitComponent.entitlementGate -> KitEntitlementGate(screen, modifier, catalog, locale) { onAction(null) }
-        else -> KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode, progress = rows.progress)
+        else -> KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode, addKeyUrl = addKeyUrl, progress = rows.progress)
     }
 }
 
@@ -233,6 +238,7 @@ private fun KitScreenBody(
     focused: Boolean,
     productName: String?,
     requestCode: String? = null,
+    addKeyUrl: String? = null,
     progress: Float? = null,
 ) {
     if (screen.isHidden) return
@@ -277,7 +283,7 @@ private fun KitScreenBody(
     val controls = lines.filter { it.role == KitLineRole.Control && !(offline && it.key == "offlineActivation.copyCode") }
     // OfflineActivation's request QR label belongs to the code, not to a live announcement.
     val qrLabel = lines.firstOrNull { it.key == "a11y.qrRequest" }?.text
-    val announcement = lines.filter { it.role == KitLineRole.Announcement && !(offline && it.key == "a11y.qrRequest") }
+    val announcement = lines.filter { it.role == KitLineRole.Announcement && !(offline && it.key == "a11y.qrRequest") && it.key != "a11y.qrAddKey" }
         .joinToString(". ") { it.text }
     // Busy keeps the button's label and adds the indicator (DL4), so "Activating…" is not a sentence.
     val activating = component == KitComponent.activate && screen.state == "busy"
@@ -421,6 +427,13 @@ private fun KitScreenBody(
                         },
                     )
                     Spacer(Modifier.height(8.dp))
+                }
+                // The add-key page as a QR on a TV, under its caption; only when the host gave the link (DL14).
+                if (line.key == "signin.key.scan" && addKeyUrl != null) {
+                    lines.firstOrNull { it.key == "a11y.qrAddKey" }?.let {
+                        PolarisQr(addKeyUrl, it.text, Modifier.size(polarisWindow.qrSize))
+                        Spacer(Modifier.height(8.dp))
+                    }
                 }
                 if (meters && line.key in setOf("deviceLimit.lede", "deviceLimit.browser", "deviceLimit.noManage")) KitSeatMeter(screen)
             }

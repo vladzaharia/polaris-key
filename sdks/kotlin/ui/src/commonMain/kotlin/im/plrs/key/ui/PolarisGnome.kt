@@ -77,6 +77,7 @@ import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
 /** The GNOME measures that are not in the generated tokens (those hold the control height and radius). */
@@ -145,8 +146,11 @@ internal fun polarisActionShape(suggested: Boolean, aux: Boolean = false): Shape
 
 /** The padding inside a button: GNOME's 34 px control is its height, so the label adds no vertical padding. */
 @Composable
-internal fun polarisButtonPadding(): PaddingValues =
-    if (polarisWindow.isGnome) PaddingValues(horizontal = 16.dp, vertical = 0.dp) else PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+internal fun polarisButtonPadding(): PaddingValues {
+    // A pill that grows with a larger font scale or a long label keeps air above and below its text.
+    val grows = LocalDensity.current.fontScale > 1f || LocalPolarisActionGrows.current
+    return if (polarisWindow.isGnome) PaddingValues(horizontal = 16.dp, vertical = if (grows) 4.dp else 0.dp) else PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+}
 
 /** An AdwDialog's surface: opaque, radius 12, a soft shadow, and in light a 7 % edge (no outline in dark). */
 @Composable
