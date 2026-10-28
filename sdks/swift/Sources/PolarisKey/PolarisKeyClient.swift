@@ -53,6 +53,9 @@ public struct PolarisKeyClientOptions: Sendable {
     /// `backend.origins`: the exact origins `client.backend.data(for:)` may send the licence to
     /// (https, or http on loopback). Empty refuses every URL.
     public let backendOrigins: [String]
+    /// Cloud Sync's app-owned settings: the mode (default end-to-end), the compiled catalog mirror and the
+    /// renames. Never read from the Worker.
+    public let cloudSync: CloudSyncOptions
 
     public init(
         core: CoreOptions,
@@ -64,8 +67,10 @@ public struct PolarisKeyClientOptions: Sendable {
         attest: AttestOptions = AttestOptions(),
         storeClient: (any StoreClient)? = nil,
         backendOrigins: [String] = [],
-        connect: ConnectOptions = ConnectOptions()
+        connect: ConnectOptions = ConnectOptions(),
+        cloudSync: CloudSyncOptions = CloudSyncOptions()
     ) {
+        self.cloudSync = cloudSync
         self.connect = connect
         self.backendOrigins = backendOrigins
         self.core = core
@@ -100,8 +105,10 @@ public struct PolarisKeyClientOptions: Sendable {
         keychainAccessGroup: String? = nil,
         appGroup: String? = nil,
         backendOrigins: [String] = [],
-        connect: ConnectOptions = ConnectOptions()
+        connect: ConnectOptions = ConnectOptions(),
+        cloudSync: CloudSyncOptions = CloudSyncOptions()
     ) {
+        self.cloudSync = cloudSync
         self.connect = connect
         self.backendOrigins = backendOrigins
         self.pinnedReleaseKeys = pinnedReleaseKeys
@@ -190,6 +197,10 @@ public actor PolarisKeyClient {
     /// Cloud Connect: peers, sessions to the person's other devices (LAN first, then the relay), and the
     /// pushed-document notices. Sign-out stops it before the credential goes.
     public nonisolated let cloudConnect: CloudConnect
+    /// Cloud Sync's settings API: `status()`, `flush()`, `newRecoveryCode()`; its events are `.cloudSync` on
+    /// `events`. A product without the Sync service gets the typed N/A.
+    public nonisolated let cloudSync: CloudSyncClient
+    let cloudSyncApi: CloudSyncApi
     /// Store purchases to licence flags: binding, claim, and the StoreKit one-calls.
     public nonisolated let commerce: CommerceClient
     /// The download page's model (`downloadModel()`, `thisPlatform()`).
@@ -239,6 +250,7 @@ public actor PolarisKeyClient {
                 await PolarisKeyClient.observe(core: core, license: licenseBox.current, config: config)
             },
             source: { await config.getConfigSource($0) },
+            origin: { await config.takeSyncOrigin($0) },
             deliver: { config.deliver($0) })
         self.publisher = publisher
         // A local `config.set` / `clear` is observed by the same publisher, so `events` and
@@ -297,12 +309,26 @@ public actor PolarisKeyClient {
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
         let connect = ConnectClient(core: core, options: options.connect, accessGroup: options.core.keychainAccessGroup)
         self.connect = connect
-        // The key ring forgets its root and pin with the seat; filled below, once `attachments` is usable.
-        let forgetRing = LockedValue<(@Sendable () async throws -> Void)?>(nil)
         let cloudConnect = CloudConnect(
             connect: connect, discovery: { await core.discoveryDocument },
             applyTrust: { await core.applyPeerTrust($0) })
         self.cloudConnect = cloudConnect
+        let attachments = self.attachments
+        let ring: @Sendable () -> SyncKeyring = { PolarisKeyClient.keyring(core: core, attachments: attachments) }
+        let syncOptions = options.cloudSync
+        let api = CloudSyncApi(
+            core: core, config: config,
+            host: {
+                CloudSyncHost(
+                    deps: .live(
+                        core: core, keyring: ring(), fetchSchema: { await config.schemaJSON() },
+                        document: { await config.syncDocument() }, subject: { identityClient.account }),
+                    options: syncOptions)
+            },
+            account: { identityClient.account }, emit: { hub.emit(.cloudSync($0)) },
+            forgetRing: { try await ring().forget() }, recovery: { try await ring().setRecoveryCode() })
+        self.cloudSyncApi = api
+        self.cloudSync = CloudSyncClient(api: api)
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
         // does NOT fire it — a keyless registration is a provisioning step a host may want to
         // take long before it wants documents (an installer that registers at setup and syncs on
@@ -323,7 +349,9 @@ public actor PolarisKeyClient {
             beforeRelease: {
                 await cloudConnect.stop()  // Connect stops before the roster and the credential go
                 try await connect.leave()
-                try await forgetRing.current?()
+                // The principal leaves with the device: the ring forgets (a failure stops the release),
+                // then the synced data is purged.
+                try await api.beforeRelease()
             })
         self.entitlements = EntitlementsClient(license: self.license)
         let license = self.license
@@ -341,15 +369,18 @@ public actor PolarisKeyClient {
         // facade wipes the credential and raises `license` (the seat is already released).
         identity.installIdentityEvents { change in
             hub.emit(.identity(kind: change.kind, subject: change.subject, previous: change.previous))
+            api.onIdentity(change)
         }
         // Every sign-out, released or not, ends this person's Cloud Sync and Connect state on the
         // device, before the Worker is asked and before anything else is wiped: Connect stops
-        // (bounded, 15 s), the roster and K_disc go, then the key ring forgets its root and pin. A
-        // root that cannot be deleted (a locked Keychain) stops the sign-out.
+        // (bounded, 15 s), the roster and K_disc go, then Cloud Sync flushes (bounded) and signs the
+        // machine out while the root is still held, the key ring forgets its root and pin, and the
+        // synced data is purged (A-3). A root that cannot be deleted (a locked Keychain) stops the
+        // sign-out.
         identity.onBeforeSignOut {
             await cloudConnect.stop()
             try await connect.leave()
-            try await forgetRing.current?()
+            try await api.beforeSignOut()
         }
         identity.installSignOut { [core] in
             do {
@@ -364,8 +395,6 @@ public actor PolarisKeyClient {
             }
             await publisher.publish()
         }
-        let attachments = self.attachments
-        forgetRing.set { try await PolarisKeyClient.keyring(core: core, attachments: attachments).forget() }
         backendSync.set { [weak self] force in
             guard let self else { return false }
             let result = await self.sync(force: force)
@@ -420,12 +449,15 @@ public actor PolarisKeyClient {
             eventHub.emit(.store(reason: degraded.reason.rawValue, detail: degraded.detail))
         }
         startRefresh()
+        cloudSyncApi.attachSoon()
     }
 
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────
     @discardableResult
     public func discover() async -> DiscoveryResult {
-        await core.discover()
+        let result = await core.discover()
+        cloudSyncApi.attachSoon()
+        return result
     }
 
     // ── Presentation (plans/HA-13.md) ────────────────────────────────────────────────────
@@ -494,6 +526,8 @@ public actor PolarisKeyClient {
             onChange?(await license.status())
         }
         await publisher.publish()
+        // A refreshed document may change the keys the operator locks: the machine hears of it.
+        if result.applied { await cloudSyncApi.noteDocumentRefreshed() }
         return result
     }
 
@@ -837,7 +871,8 @@ extension PolarisKeyClient {
                 core: local, license: options.license, config: options.config,
                 probes: options.probes, refreshIntervalSeconds: nil,
                 pinnedReleaseKeys: options.pinnedReleaseKeys, attest: options.attest,
-                storeClient: options.storeClient, connect: options.connect))
+                storeClient: options.storeClient, connect: options.connect,
+                cloudSync: options.cloudSync))
     }
 
     /// A local-only client provisioned from an offline activation bundle in one step.

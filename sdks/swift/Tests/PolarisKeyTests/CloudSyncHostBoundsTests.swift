@@ -1,3 +1,4 @@
+// @pkey-feature sync.settings
 // The Cloud Sync host's bounds (U-07.7): H-7 purge, H-8 re-entrancy, H-9 a bounded flush, `close()` and
 // the lifecycle flush (Q-5). One test per rule; each names below how the naive version fails.
 

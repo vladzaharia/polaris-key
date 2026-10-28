@@ -240,10 +240,14 @@ public struct ChoiceNamespace: Sendable {
             case .token(let accessToken, let scope, let subject, _, _, let license) =
                 IdentityRedirect.parseTokenAnswer(status: 200, body: body)
         else { throw Self.badResponse("choice/complete answered without a sign-in.") }
-        try await client.core.setToken(accessToken, source: .signin, person: true)
+        let previous = client.holdSubjectFirst(subject)
+        do { try await client.core.setToken(accessToken, source: .signin, person: true) } catch {
+            client.restoreSubject(previous, ifHeld: subject)
+            throw error
+        }
         await client.platformSessionCompleted(grant: grant)
         if client.redirectAcquisitionSync.current { await client.onAcquired?() }
-        client.updateSubject(subject)
+        client.announceSubject(subject, previous: previous)
         client.notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
         let object = body?.objectValue ?? [:]
         let wire = (try? JSONEncoder().encode(object["keyEntries"] ?? .null))

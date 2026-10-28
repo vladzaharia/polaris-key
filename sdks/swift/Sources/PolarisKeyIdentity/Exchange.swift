@@ -393,15 +393,21 @@ extension IdentityClient {
                 PendingSignIn(
                     grant: grant, expiresIn: lifetime, expiresAt: await core.now() + lifetime, view: view))
         case .token(let accessToken, let scope, let subject, _, _, let license):
-            if let generation = ladderGeneration {
-                guard try await core.setTokenUnlessSignedOut(accessToken, generation: generation) else {
-                    throw SignedOutDuringLadder()
+            let previous = holdSubjectFirst(subject)
+            do {
+                if let generation = ladderGeneration {
+                    guard try await core.setTokenUnlessSignedOut(accessToken, generation: generation) else {
+                        throw SignedOutDuringLadder()
+                    }
+                } else {
+                    try await core.setToken(accessToken, source: .signin, person: true)
                 }
-            } else {
-                try await core.setToken(accessToken, source: .signin, person: true)
+            } catch {
+                restoreSubject(previous, ifHeld: subject)
+                throw error
             }
             if redirectAcquisitionSync.current { await onAcquired?() }
-            updateSubject(subject)
+            announceSubject(subject, previous: previous)
             notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
             return .signedIn(
                 SignInReady(

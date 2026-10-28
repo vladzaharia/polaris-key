@@ -110,8 +110,8 @@
       "note": "config.set, clear and clearAll persist through a LocalConfigStore (UserDefaults by default), validate against the catalog and raise client.events .config; config.setting(key) returns a handle whose current() gives the effective value, its source and lock, and onConfigChange(key | \"*\", listener) returns a cancellable ConfigSubscription (configChanges(key) is the AsyncStream form), fed by the same change observation as client.events for local writes and syncs (LocalConfigTests)."
     },
     "config.sync": {
-      "status": "planned",
-      "wp": "U-07"
+      "status": "implemented",
+      "note": "config.set, clear and setting(key).sync() route through the Cloud Sync machine while a person is signed in (SyncPort over CloudSyncHost, PolarisKey/CloudSyncApi.swift); setting(key).sync() reports the setting's sync state and changes carry an origin, local or remote (CloudSyncSettingsTests)."
     },
     "devices.fingerprint": {
       "status": "implemented"
@@ -451,12 +451,12 @@
       "note": "client.commerce (PolarisKey/CommerceClient.swift): binding() and claim(store:payload:) with claimAppStore/claimSteam/claimPlay, a forced sync after a granted claim, attest-and-retry on attestation_required; purchase(productID:) runs binding, StoreKit 2 purchase(appAccountToken: bindingId), claim, finish only after the claim, sync; restore() and the Transaction.updates loop claim and finish after the claim. Without StoreKit purchase/restore answer the typed runtime N/A."
     },
     "sync.scenarios": {
-      "status": "planned",
-      "wp": "U-07"
+      "status": "implemented",
+      "note": "The machine (PolarisKeyCore/Sync/CloudSyncMachine*.swift) runs conformance/corpus/v2/sync-scenarios.json through SyncScenariosTests and CloudSyncMachineTests, with the host codec cases in HostCodecTests."
     },
     "sync.settings": {
-      "status": "planned",
-      "wp": "U-07"
+      "status": "implemented",
+      "note": "client.cloudSync: status(), flush(), newRecoveryCode() and recoveryCode, and the cloudSync case of client.events. CloudSyncHost (PolarisKey/CloudSyncHost.swift) owns one machine, the transport (no redirect, 8 MiB cap, 15 s), the state file and the sign-out chain (flush, machine sign-out, key ring forget, purge; a ring that cannot forget stops the sign-out and keeps the data). Cloud Sync is off on Linux (FoundationNetworking). The cloudsync-* transcripts replay in TranscriptTests; CloudSyncHostTests, CloudSyncHostBoundsTests, CloudSyncHostFixesTests and CloudSyncSettingsTests."
     },
     "sync.conflict": {
       "status": "planned",
@@ -484,7 +484,7 @@
     },
     "sync.e2e.recovery": {
       "status": "planned",
-      "wp": "U-07"
+      "wp": "U-39"
     },
     "sync.transfer.background": {
       "status": "planned",

@@ -1,4 +1,4 @@
-// @pkey-feature core.discover core.sync core.cache license.activate license.enroll
+// @pkey-feature core.discover core.sync sync.settings core.cache license.activate license.enroll
 // @pkey-feature core.presentation
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
@@ -1000,6 +1000,11 @@ final class TranscriptTests: XCTestCase {
         // Printed so a run shows which conversations Swift is held to today.
         print("transcripts replayed by Swift: \(replayed.joined(separator: ", "))")
         XCTAssertFalse(replayed.isEmpty)
+        // The Cloud Sync conversations are required, not optional: a regression in the manifest or the
+        // replayer must not quietly drop them.
+        let cloud = try transcripts().filter { $0.id.hasPrefix("cloudsync-") }.map(\.id)
+        XCTAssertFalse(cloud.isEmpty)
+        for id in cloud { XCTAssertTrue(replayed.contains(id), "\(id) was not replayed") }
     }
 
     // ── The replayer fails on a doctored transcript ────────────────────────────────────

@@ -147,7 +147,7 @@ final class EventsAndSignInTests: XCTestCase {
     func testEventKindsMatchTheSharedVocabulary() {
         XCTAssertEqual(
             PolarisKeyEvent.kinds,
-            ["license", "entitlement", "config", "updateAvailable", "packs", "store", "identity"])
+            ["license", "entitlement", "config", "updateAvailable", "packs", "store", "identity", "cloudSync"])
         let samples: [PolarisKeyEvent] = [
             .license(status: .ok, previous: .needsActivation),
             .entitlement(name: "pro", value: .bool(true), previous: nil),
@@ -156,6 +156,7 @@ final class EventsAndSignInTests: XCTestCase {
             .packs(pack: "p", phase: "download", done: 1, total: 2),
             .store(reason: "store-failed", detail: nil),
             .identity(kind: "signedIn", subject: nil, previous: nil),
+            .cloudSync(.purgeFailed),
         ]
         XCTAssertEqual(samples.map(\.kind), PolarisKeyEvent.kinds)
     }

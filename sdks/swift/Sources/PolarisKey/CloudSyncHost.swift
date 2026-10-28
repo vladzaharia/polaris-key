@@ -116,7 +116,14 @@ public struct CloudSyncHostDeps: Sendable {
         return CloudSyncHostDeps(
             product: core.product, stateDir: core.dirs.state, send: { await transport.send($0) },
             codec: keyring.codec, keyringUnlocked: { keyring.unlocked }, attachKeyring: { keyring.attach($0) },
-            syncEnabled: { await core.enabled(.sync) },
+            syncEnabled: {
+                #if canImport(FoundationNetworking)
+                // S-4: this build cannot refuse a redirect or stream under the body cap; Cloud Sync is off.
+                return false
+                #else
+                return await core.enabled(.sync)
+                #endif
+            },
             discovery: {
                 guard let f = await core.discoveryDocument?.services[.sync], f.enabled else { return nil }
                 switch f.extras["encryption"] {
@@ -198,6 +205,9 @@ public actor CloudSyncHost {
     private var closed = false
     /// After a purge the journal stays unsaved until a principal signs in again.
     private var purged = false
+    /// Purges in progress: the machine is gone and touch, rebuild and sign-in wait for the end (S-2).
+    private var purging = 0
+    private var purgeWaiters: [CheckedContinuation<Void, Never>] = []
     private var listeners: [(id: Int, fn: @Sendable ([SyncEvent]) -> Void)] = []
     private var nextListener = 0
 
@@ -234,9 +244,11 @@ public actor CloudSyncHost {
         let saved = file.load()
         openKeys = saved.openKeys
         mirror = Self.vetted(options.catalog)
-        served = Self.vetted(saved.catalog)
+        // N-1: a served catalog is never persisted; the mirror is authoritative and a fresh start asks
+        // the Worker again when there is no mirror.
+        served = nil
         try await build(saved.persisted)
-        if saved.catalog == nil && options.catalog == nil {
+        if options.catalog == nil {
             used = 0
             await refetchCatalog(nil)
         }
@@ -282,10 +294,22 @@ public actor CloudSyncHost {
         return .object(o)
     }
 
-    /// (Re)build the machine from the journal, the catalog and the document.
-    private func build(_ persisted: SyncMachineState?) async throws {
+    /// (Re)build the machine from the journal, the catalog and the document. Both awaits come FIRST;
+    /// the snapshot (`fromCurrent`: the machine now held) and the new machine are made with no
+    /// suspension between them, so an edit accepted while the awaits ran is in the snapshot (S-1). A
+    /// build that finds the generation moved (a purge, another build) installs nothing and answers
+    /// false.
+    @discardableResult
+    private func build(_ persisted: SyncMachineState?, fromCurrent: Bool = false) async throws -> Bool {
+        let gen = generation
         let document = await deps.document()
         let advertised = await deps.discovery()
+        guard generation == gen, !closed else { return false }
+        var snapshot = persisted
+        if fromCurrent, let old = machine {
+            snapshot = old.persist()
+            emit(old)
+        }
         detach?()
         detach = nil
         catalog = effective()
@@ -297,13 +321,14 @@ public actor CloudSyncHost {
         o.encryption = options.encryption
         o.hasRoot = deps.keyringUnlocked()
         o.discovery = advertised
-        let m = try CloudSyncMachine(o, persisted: persisted)
+        let m = try CloudSyncMachine(o, persisted: snapshot)
         machine = m
         generation += 1
         let f = RootFeed(wake: { [weak self] in Task { await self?.touch() } })
         feed = f
         detach = deps.attachKeyring(f)
         f.arm()
+        return true
     }
 
     private static func dump(_ document: SyncMachineDocument) -> String {
@@ -335,7 +360,9 @@ public actor CloudSyncHost {
         if dt > 0 { m.advance(dt) }
     }
 
-    public func signIn(_ subject: String) throws -> CallResult {
+    public func signIn(_ subject: String) async throws -> CallResult {
+        // A purge that is still running ends first, so the new person's machine is not replaced under it.
+        if purging > 0 { await withCheckedContinuation { purgeWaiters.append($0) } }
         guard let m = machine else { return .failed("not-started") }
         purged = false
         return try m.signIn(subject)
@@ -362,6 +389,25 @@ public actor CloudSyncHost {
         return r
     }
 
+    /// The person the machine is signed in as; nil while signed out or not started.
+    public func machineSubject() -> String? { machine?.subject }
+
+    /// Offer the legacy local values to the machine (once per install; the caller keeps the marker).
+    public func importLocal(_ values: [String: JSONValue]) -> CallResult {
+        machine?.importLocal(values) ?? .failed("not-started")
+    }
+
+    /// A document that changed since the machine was built is routed through a rebuild first, so the
+    /// locked list the machine checks is the current one (A-6). A no-op when nothing changed.
+    public func refreshDocumentIfChanged() async {
+        guard let m = machine else { return }
+        _ = m.refresh()
+        if Self.dump(await deps.document()) != documentJSON {
+            rebuildWanted = true
+            await touch()
+        }
+    }
+
     public func get(_ key: String) -> SyncEffectiveValue? { machine?.get(key) }
     public func settingState(_ key: String) -> SyncSettingState? { machine?.settingState(key) }
     public func status() -> SyncStatus? { machine?.status() }
@@ -383,7 +429,7 @@ public actor CloudSyncHost {
     /// A touch that arrives while a pump runs sets `again` and returns at once (H-8): the running pump
     /// goes round once more, so no wake-up is lost and no second pump starts.
     public func touch() async {
-        guard started, !closed, await deps.syncEnabled() else { return }
+        guard started, !closed, purging == 0, await deps.syncEnabled() else { return }
         if pumpTask != nil {
             again = true
             return
@@ -540,11 +586,9 @@ public actor CloudSyncHost {
     /// New catalog or document: the machine is rebuilt from its own journal (never mid-request).
     private func rebuild() async {
         rebuildWanted = false
-        guard let old = machine else { return }
-        let persisted = old.persist()
-        emit(old)
-        guard (try? await build(persisted)) != nil else { return }
-        save(persisted)
+        guard machine != nil, purging == 0 else { return }
+        guard (try? await build(nil, fromCurrent: true)) == true else { return }
+        save()
     }
 
     // MARK: open keys (H-5)
@@ -590,7 +634,7 @@ public actor CloudSyncHost {
         guard !purged, let m = machine else { return }
         let snapshot = persisted ?? m.persist()
         // A failure to persist never fails the call that produced it.
-        try? file.save(CloudSyncFile(persisted: snapshot, catalog: served, openKeys: openKeys))
+        try? file.save(CloudSyncFile(persisted: snapshot, catalog: nil, openKeys: openKeys))
     }
 
     // MARK: bounds: flush, purge, close (H-7, H-9)
@@ -616,7 +660,7 @@ public actor CloudSyncHost {
     /// for the pump in progress and the trailing touch together (H-9): a pump already running is asked
     /// to go round once more, and the wait ends at the deadline whatever the network does.
     public func flush(maxMs: Int = SYNC_SIGNOUT_FLUSH_MS) async {
-        guard isStarted, !purged, let m = machine else { return }
+        guard isStarted, !purged, purging == 0, let m = machine else { return }
         catchUp()
         _ = m.flush()
         if await deps.syncEnabled() {
@@ -638,16 +682,31 @@ public actor CloudSyncHost {
     /// is gone either way.
     public func purge() async throws {
         purged = true
+        // The old machine is gone before anything is awaited (S-2): a touch, a timer or a key-ring wake
+        // finds none, and a rebuild already under way finds the generation moved.
+        purging += 1
+        defer {
+            purging -= 1
+            if purging == 0 {
+                let waiting = purgeWaiters
+                purgeWaiters = []
+                for w in waiting { w.resume() }
+            }
+        }
+        machine = nil
+        detach?()
+        detach = nil
+        feed = nil
+        generation += 1
         var failure: (any Error)?
         do { try file.remove() } catch { failure = error }
-        generation += 1
         openKeys = []
         timer?.cancel()
         timer = nil
         if started && !closed {
             if let t = pumpTask { await waitBounded(t, ms: pumpWaitMs) }
             // Rebuilt whatever the wait found; a purge never leaves the old machine in place.
-            if (try? await build(nil)) != nil, let m = machine {
+            if (try? await build(nil)) == true, let m = machine {
                 _ = m.importLocal([:])
                 emit(m)
             }
@@ -729,7 +788,7 @@ public actor CloudSyncHost {
 }
 
 /// Resumes a continuation once, from whichever of two tasks gets there first.
-private final class Once: @unchecked Sendable {
+final class Once: @unchecked Sendable {
     private let lock = NSLock()
     private var cont: CheckedContinuation<Void, Never>?
     var sleeper: Task<Void, Never>?
