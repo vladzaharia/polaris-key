@@ -8,10 +8,13 @@ extends RefCounted
 # driver below is complete, but no machine exists yet (U-21.2 to U-21.5 port it), so PENDING skips
 # a scenario by name with a reason, as sync.scenarios is still `planned`:
 #
-#   stage 0  every scenario is pending (now)
-#   stage 1  U-21.2 ported the local half: a scenario with a `respond` step is pending
+#   stage 0  every scenario is pending
+#   stage 1  U-21.2 ported the local half: a scenario with a `respond` step is pending (now)
 #   stage 2  U-21.3/.4 ported the exchanges: only the `e2e-` scenarios are pending
 #   deleted  U-21.5 ported E2E and X-1; every scenario runs
+#
+# Note for U-21.3 (stage 2): `server-mode-unchanged` is an E2E-related scenario without the `e2e-`
+# prefix, so the prefix rule alone does not hold it back; it may need special handling there.
 #
 # The machine contract the driver calls (snake_case; `set`/`get` are Object methods, so the value
 # calls are `set_value`/`get_value`/`clear_value`): the constructor takes the opts Dictionary
@@ -25,8 +28,8 @@ const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const Routes := preload("res://addons/polaris_key/core/sync/sync_routes.gd")
 
 const CORPUS := "res://tests/corpus/v2/sync-scenarios.json"
-const PENDING_STAGE := 0
-const PENDING_REASON := "machine not ported yet (U-21.2 to U-21.5)"
+const PENDING_STAGE := 1
+const PENDING_REASON := "exchange half not ported yet (U-21.3 to U-21.5)"
 const STEP_KINDS := ["local", "advance", "network", "respond", "signIn", "signOut", "relaunch", "root", "assert"]
 const CALLS := ["set", "clear", "put", "add", "remove", "flush", "refresh"]
 
