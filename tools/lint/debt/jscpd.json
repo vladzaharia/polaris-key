@@ -1542,7 +1542,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/cloudSync/api.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 3
     },
     "packages/sdk-node/src/cloudSync/host.ts": {
       "jscpd:duplicate": 12
@@ -1958,6 +1958,9 @@
     "packages/sdk-react/test/cloudSyncHost.test.ts": {
       "jscpd:duplicate": 40
     },
+    "packages/sdk-react/test/cloudSyncSettings.test.tsx": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-react/test/configMatrix.test.ts": {
       "jscpd:duplicate": 3
     },
@@ -2202,7 +2205,7 @@
       "jscpd:duplicate": 10
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/api.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/create.ts": {
       "jscpd:duplicate": 1
