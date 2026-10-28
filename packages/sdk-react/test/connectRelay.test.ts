@@ -40,7 +40,6 @@ import {
   RelayError,
   assertRelayMode,
   createCloudConnect,
-  createConnect,
   unsupportedCloudConnect,
   type ConnectNotice,
   type ConnectSession,
@@ -55,6 +54,7 @@ import {
   type RelaySource,
 } from "@polaris-key/ui-core/browser/sdk/browser/connect/relay.js";
 import { QUEUE_MAX_BYTES } from "@polaris-key/ui-core/browser/sdk/browser/connect/session.js";
+import { createConnect } from "../src/browser/connect/create.js";
 import { indexedDbConnectState } from "../src/browser/connect/state.js";
 import { discoveryBody, services } from "./fixtures.js";
 
@@ -730,14 +730,16 @@ describe("pushed RING and TRUST", () => {
       },
     });
     for (let i = 0; i < 12; i += 1) x.d.trust(`m${i}`);
-    expect(x.notices.filter((n) => n.type === "trust")).toHaveLength(4);
-    expect(
-      x.notices.every((n) => n.type === "trust" && n.outcome === "refused"),
-    ).toBe(true);
-    expect(x.notices[0]).toMatchObject({ reason: "busy" });
-    // The same document twice is one.
+    // A flood is one notice a second, not one per refused document.
+    expect(x.notices).toEqual([
+      { type: "trust", outcome: "refused", reason: "busy" },
+    ]);
+    // The same document twice is one, and quietly so inside the second.
     x.d.trust("m0");
-    expect(x.notices).toHaveLength(5);
+    expect(x.notices).toHaveLength(1);
+    // One slot is kept for a roster: seven manifests wait and a RING is still taken.
+    x.d.ring("r-late");
+    expect(x.notices).toHaveLength(1);
     release();
   });
 
@@ -792,6 +794,9 @@ class FakeWorker {
   ticket: () => Response = () => this.okTicket();
   reqs: string[] = [];
   withOther = true;
+  delay = 0;
+  inFlight = 0;
+  maxInFlight = 0;
   okTicket(url = `wss://key.plrs.im/${PRODUCT}/connect/relay`): Response {
     return new Response(
       JSON.stringify({
@@ -827,6 +832,12 @@ class FakeWorker {
       this.registered = true;
       return j({ keySeq: 1 });
     }
+    if (path === "connect/identity") {
+      this.inFlight += 1;
+      this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
+      if (this.delay > 0) await sleep(this.delay);
+      this.inFlight -= 1;
+    }
     if (path === "connect/identity")
       return j({
         ring: await this.ring(),
@@ -839,9 +850,12 @@ class FakeWorker {
   }) as typeof fetch;
 }
 
-async function adapterWorld(auth: "bearer" | "cookie" = "bearer") {
-  const worker = new FakeWorker();
-  const factory = new IDBFactory();
+async function adapterWorld(
+  auth: "bearer" | "cookie" = "bearer",
+  share?: { worker: FakeWorker; factory: IDBFactory },
+) {
+  const worker = share?.worker ?? new FakeWorker();
+  const factory = share?.factory ?? new IDBFactory();
   (globalThis as { indexedDB?: unknown }).indexedDB = factory;
   await indexedDbOfflineStore(factory)!.write(PRODUCT, { deviceId: ME });
   const bearer = indexedDbStore(PRODUCT, { factory })!;
@@ -998,25 +1012,38 @@ describe("leave() and the database", () => {
     expect(await adapter.connect.current()).toBeNull();
   });
 
-  it("a store without databases() falls back to a marker, not an open", async () => {
-    const factory = new IDBFactory();
-    Object.defineProperty(factory, "databases", { value: undefined });
-    const store = indexedDbConnectState("pkey-connect-marker", factory);
-    const ls = new Map<string, string>();
+  it("fails closed: only a databases() list that confirms absence lets sign-out skip the store", async () => {
+    const mk = (databases: unknown) => {
+      const factory = new IDBFactory();
+      Object.defineProperty(factory, "databases", { value: databases });
+      return indexedDbConnectState("pkey-connect-x", factory);
+    };
+    // No databases() (older engines) and a failing one: may hold, whatever a marker says.
     (globalThis as { localStorage?: unknown }).localStorage = {
-      getItem: (k: string) => ls.get(k) ?? null,
-      setItem: (k: string, v: string) => void ls.set(k, v),
-      removeItem: (k: string) => void ls.delete(k),
+      getItem: () => null,
+      setItem: () => undefined,
+      removeItem: () => undefined,
     };
     try {
-      expect(await store.mayHold!()).toBe(false);
-      await store.put("x");
-      expect(await store.mayHold!()).toBe(true);
-      await store.clear();
-      expect(await store.mayHold!()).toBe(false);
+      expect(await mk(undefined).mayHold!()).toBe(true);
+      expect(
+        await mk(async () => {
+          throw new Error("no");
+        }).mayHold!(),
+      ).toBe(true);
     } finally {
       delete (globalThis as { localStorage?: unknown }).localStorage;
     }
+    expect(await mk(async () => []).mayHold!()).toBe(false);
+    expect(
+      await mk(async () => [{ name: "pkey-connect-x", version: 1 }]).mayHold!(),
+    ).toBe(true);
+    // And the facade's leave() really clears a record when databases() is missing.
+    const { factory, adapter } = await adapterWorld();
+    Object.defineProperty(factory, "databases", { value: undefined });
+    await adapter.connect.identity();
+    await adapter.connect.leave();
+    expect(await adapter.connect.current()).toBeNull();
   });
 });
 
@@ -1107,5 +1134,253 @@ describe("adapter.cloudConnect", () => {
     await cc.stop();
     expect(calls).toEqual([]);
     await expect(cc.start()).rejects.toMatchObject({ code: "no-token" });
+  });
+});
+
+// ── Two tabs on one database (R-6w) ───────────────────────────────────────────────────────────
+
+/** Web Locks as a browser has them, shared by every "tab" of the test. */
+function installLocks(): () => void {
+  const state = new Map<string, { busy: boolean; q: (() => void)[] }>();
+  const locks = {
+    request(name: string, a: unknown, b?: unknown): Promise<unknown> {
+      const opts = (typeof a === "function" ? {} : a) as {
+        ifAvailable?: boolean;
+        signal?: AbortSignal;
+      };
+      const fn = (typeof a === "function" ? a : b) as (l: unknown) => unknown;
+      let st = state.get(name);
+      if (!st) state.set(name, (st = { busy: false, q: [] }));
+      const q = st;
+      return new Promise((resolve, reject) => {
+        const run = async () => {
+          q.busy = true;
+          try {
+            resolve(await fn({ name }));
+          } catch (e) {
+            reject(e);
+          } finally {
+            q.busy = false;
+            q.q.shift()?.();
+          }
+        };
+        if (!q.busy) return void run();
+        if (opts.ifAvailable) {
+          Promise.resolve(fn(null)).then(resolve, reject);
+          return;
+        }
+        q.q.push(run);
+        opts.signal?.addEventListener("abort", () => {
+          const i = q.q.indexOf(run);
+          if (i >= 0) {
+            q.q.splice(i, 1);
+            reject(new Error("AbortError"));
+          }
+        });
+      });
+    },
+  };
+  const was = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", {
+    value: { locks },
+    configurable: true,
+  });
+  return () => {
+    if (was) Object.defineProperty(globalThis, "navigator", was);
+    else delete (globalThis as { navigator?: unknown }).navigator;
+  };
+}
+
+describe("two tabs of one app", () => {
+  let undo = () => {};
+  afterEach(() => undo());
+
+  it("serialise the record across tabs: one identity fetch at a time, and a leave is not resurrected", async () => {
+    undo = installLocks();
+    const t1 = await adapterWorld();
+    const t2 = await adapterWorld("bearer", t1);
+    t1.worker.delay = 15;
+    await Promise.all([
+      t1.adapter.connect.identity({ refresh: true }),
+      t2.adapter.connect.identity({ refresh: true }),
+    ]);
+    expect(t1.worker.maxInFlight).toBe(1);
+    // Tab 2's fetch is in flight when tab 1 leaves: the fetch finishes first, the leave clears.
+    const slow = t2.adapter.connect.identity({ refresh: true });
+    await sleep(2);
+    await t1.adapter.connect.leave();
+    await slow;
+    expect(await t1.adapter.connect.current()).toBeNull();
+    expect(await t2.adapter.connect.current()).toBeNull();
+  });
+
+  it("keep a stale K_disc stale and never roll a roster back", async () => {
+    undo = installLocks();
+    const t1 = await adapterWorld();
+    const t2 = await adapterWorld("bearer", t1);
+    await t1.adapter.connect.identity();
+    const src2 = t2.adapter.connect.relaySource();
+    // Tab 2 adopts a pushed roster that dropped a device: K_disc is stale for both tabs.
+    expect(await src2.adoptRing!(await t1.worker.ring(2, false))).toEqual({
+      stored: true,
+      epoch: 2,
+    });
+    expect(await t1.adapter.connect.discoveryKeys()).toBeNull();
+    // Tab 1 asks the Worker, which is still on epoch 1: refused as stale; nothing was rolled back.
+    await expect(t1.adapter.connect.identity()).rejects.toMatchObject({
+      code: "peer-cert-invalid",
+    });
+    expect(await t1.adapter.connect.discoveryKeys()).toBeNull();
+    // A later push of the same roster in either tab cannot clear the mark.
+    expect(
+      await t1.adapter.connect.relaySource().adoptRing!(
+        await t1.worker.ring(3, false),
+      ),
+    ).toEqual({ stored: true, epoch: 3 });
+    expect(await t2.adapter.connect.discoveryKeys()).toBeNull();
+    // Only an identity fetch at the same or a higher epoch brings keys back.
+    t1.worker.epoch = 3;
+    t1.worker.withOther = false;
+    await t2.adapter.connect.identity({ refresh: true });
+    expect(await t1.adapter.connect.discoveryKeys()).not.toBeNull();
+  });
+
+  it("hold the relay socket in one tab; the other reports elsewhere and takes over when it stops", async () => {
+    undo = installLocks();
+    const t1 = await adapterWorld();
+    const t2 = await adapterWorld("bearer", t1);
+    const room = new FakeRoom();
+    room.members.add(ME);
+    const sock = (url: string, protocols: string[]): RelaySocket => {
+      room.tickets.set(protocols[1]!, ME);
+      return room.webSocket(url, protocols);
+    };
+    const opts = { relay: { webSocket: sock, timer: new ManualTimer().timer } };
+    await t1.adapter.cloudConnect.start(opts);
+    await until(() => t1.adapter.cloudConnect.status().relay === "open");
+    await t2.adapter.cloudConnect.start(opts);
+    expect(t2.adapter.cloudConnect.status().relay).toBe("elsewhere");
+    await sleep(30);
+    expect(room.made).toHaveLength(1);
+    await t1.adapter.cloudConnect.stop();
+    await until(() => t2.adapter.cloudConnect.status().relay === "open");
+    expect(room.made).toHaveLength(2);
+    await t2.adapter.cloudConnect.stop();
+  });
+});
+
+// ── Aggregate bounds, an unreachable relay, inbound sessions (R-6w) ───────────────────────────
+
+describe("bounds and the unreachable relay", () => {
+  it("closes a session whose bytes would pass the budget shared by every session", async () => {
+    const w = await world();
+    const ta = new ManualTimer();
+    const tb = new ManualTimer();
+    const ra = await w.svc(w.a, ta, { queueBudgetBytes: 1_500_000 });
+    const rb = await w.svc(w.b, tb);
+    const inn: ConnectSession[] = [];
+    ra.onSession((s) => inn.push(s));
+    await ra.ready();
+    await rb.ready();
+    await until(() => rb.members().includes(A));
+    const o1 = await rb.dial(A);
+    const o2 = await rb.dial(A);
+    await until(() => inn.length === 2);
+    await o1.send(new Uint8Array(1_000_000));
+    await sleep(60);
+    expect(inn.every((s) => s.closed === null)).toBe(true);
+    await o2.send(new Uint8Array(1_000_000));
+    await until(() => inn.some((s) => s.closed !== null));
+    const closed = inn.filter((s) => s.closed !== null);
+    expect(closed).toHaveLength(1);
+    expect(closed[0]!.closed!.code).toBe("peer_busy");
+  });
+
+  it("closes the socket 1013 when received envelopes pile up unhandled", async () => {
+    const w = await world();
+    const id = await w.identity(w.a);
+    let open!: () => void;
+    const gate = new Promise<void>((r) => (open = r));
+    const r = await w.svc(
+      w.a,
+      new ManualTimer(),
+      { maxPendingBytes: 100_000 },
+      { load: async () => (await gate, id) },
+    );
+    await r.ready();
+    const sock = w.room.made[0]!;
+    for (let i = 0; i < 3; i += 1)
+      w.room.inject(B, A, i + 1, new Uint8Array(60_000).fill(1));
+    await until(() => sock.closeCode === 1013);
+    open();
+  });
+
+  it("reports unavailable after five never-opened attempts, points at CSP, and slows to 5 minutes", async () => {
+    const w = await world();
+    const t = new ManualTimer();
+    const r = await w.svc(
+      w.a,
+      t,
+      {},
+      {
+        // A ticket the room does not know: the socket is shut and never opens, as a CSP block does.
+        ticket: async () => ({
+          ticket: `pkeyrt_${b64(randomBytes(24))}`,
+          url: `wss://key.plrs.im/${PRODUCT}/connect/relay`,
+          protocol: "pkey-relay.1",
+          expiresAt: T0 + 60,
+        }),
+      },
+    );
+    const backoffs = () => t.delays.filter(isBackoff);
+    for (let i = 1; i <= 5; i += 1) {
+      await until(() => backoffs().length === i);
+      if (i < 5) {
+        expect(r.status.error?.reason).not.toBe("unavailable");
+        t.fire(isBackoff);
+      }
+    }
+    expect(r.status.error).toMatchObject({
+      reason: "unavailable",
+      code: "network-error",
+    });
+    expect(r.status.error!.message).toContain("connect-src wss://");
+    expect(backoffs()[4]).toBe(300_000);
+  });
+
+  it("closes an inbound session at once when nothing listens to onChannel", async () => {
+    const w = await world();
+    const { CloudConnect } =
+      await import("@polaris-key/ui-core/browser/sdk/browser/connect/cloud.js");
+    const ta = new ManualTimer();
+    const tb = new ManualTimer();
+    let listening = false;
+    const connect = {
+      lockName: "pkey-connect:test",
+      identity: async () => ({ deviceId: A }),
+      relaySource: () => ({}) as RelaySource,
+      listDevices: async () => [],
+    };
+    const src = await w.source(w.a);
+    connect.relaySource = () => src;
+    const cc = new CloudConnect(connect as never, {
+      channel: () => listening,
+      notice: () => undefined,
+      change: () => undefined,
+    });
+    await cc.start({
+      relay: { webSocket: w.room.webSocket, timer: ta.timer },
+    });
+    const rb = await w.svc(w.b, tb);
+    await rb.ready();
+    await until(() => rb.members().includes(A));
+    const out = await rb.dial(A);
+    await until(() => out.closed !== null);
+    // With a listener the session stays.
+    listening = true;
+    const kept = await rb.dial(A);
+    await sleep(80);
+    expect(kept.closed).toBeNull();
+    await cc.stop();
   });
 });

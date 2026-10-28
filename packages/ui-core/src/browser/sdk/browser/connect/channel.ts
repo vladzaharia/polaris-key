@@ -110,6 +110,7 @@ export class PeerDocs {
   #retry: (() => void) | null = null;
   #retrying = false;
   #tries = 0;
+  #lastBusy = -Infinity;
   #fns = new Set<(n: ConnectNotice) => void>();
   readonly #src: PeerSource;
   readonly #onStored: () => void;
@@ -242,8 +243,15 @@ export class PeerDocs {
    *  queued twice: the excess is refused visibly, not worked on. */
   #run(type: "ring" | "trust", jws: string, f: () => Promise<void>): void {
     const key = `${type}:${jws}`;
-    if (this.#queued.has(key) || this.#queued.size >= MAX_DOCS_QUEUED)
+    // One slot is kept for a roster: a flood of manifests cannot starve it.
+    const room = type === "ring" ? MAX_DOCS_QUEUED : MAX_DOCS_QUEUED - 1;
+    if (this.#queued.has(key) || this.#queued.size >= room) {
+      // Refused visibly, but a flood is one notice a second, not one callback per document.
+      const t = performance.now();
+      if (t - this.#lastBusy < 1000) return;
+      this.#lastBusy = t;
       return this.#emit({ type, outcome: "refused", reason: "busy" });
+    }
     this.#queued.add(key);
     this.#tail = this.#tail
       .then(f)

@@ -2163,8 +2163,9 @@ export class BrowserAdapter implements PolarisAdapter {
     const b = this.bearer;
     if (!b) return (this.connect_ = unsupportedConnect(COOKIE_DETAIL));
     const o = this.connectOptions ?? {};
+    const name = `pkey-connect-${storeNamespace(this.product, this.base)}`;
     return (this.connect_ = lazyConnect(
-      () => this.clock(),
+      { now: () => this.clock(), lockName: `pkey-connect:${name}` },
       async () =>
         (await import("./connect/create.js")).createBrowserConnect({
           product: this.product,
@@ -2172,6 +2173,7 @@ export class BrowserAdapter implements PolarisAdapter {
           bearer: b,
           options: o,
           now: () => this.clock(),
+          lockName: `pkey-connect:${name}`,
           discovery: async () => {
             await this.ensureDiscovery().catch(() => undefined);
             return this.discovery_;

@@ -1551,7 +1551,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/connect/relay.ts": {
-      "jscpd:duplicate": 20
+      "jscpd:duplicate": 24
     },
     "packages/sdk-node/src/connect/session.ts": {
       "jscpd:duplicate": 5
@@ -2184,7 +2184,7 @@
       "jscpd:duplicate": 2
     },
     "packages/ui-core/src/browser/sdk/browser/connect/relay.ts": {
-      "jscpd:duplicate": 18
+      "jscpd:duplicate": 22
     },
     "packages/ui-core/src/browser/sdk/browser/connect/session.ts": {
       "jscpd:duplicate": 5

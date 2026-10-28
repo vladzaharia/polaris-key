@@ -45,7 +45,12 @@ import {
   type SessionCloseCode,
 } from "./errors.js";
 import { defaultTimer, printAs } from "./redact.js";
-import { ConnectSession, routeRecord, type SessionClosed } from "./session.js";
+import {
+  ConnectSession,
+  QueueBudget,
+  routeRecord,
+  type SessionClosed,
+} from "./session.js";
 
 export {
   RELAY_MODES,
@@ -99,6 +104,14 @@ export interface RelayOptions {
   handshakeMs?: number;
   rekeyMessages?: number;
   rekeySeconds?: number;
+  /** Bytes queued across all sessions before a session is closed `peer_busy` (default 32 MiB). */
+  queueBudgetBytes?: number;
+  /** Bytes of received envelopes waiting to be handled before the socket is closed (default 8 MiB). */
+  maxPendingBytes?: number;
+  /** Never-opened attempts in a row before the relay reports `unavailable` (default 5). */
+  unreachableAfter?: number;
+  /** The slowest retry once it does (default 5 minutes). */
+  unreachableRetryMs?: number;
 }
 
 export type RelayState =
@@ -149,6 +162,7 @@ class RelayLink {
       onRingWanted(): void;
       onEstablished(s: ConnectSession): void;
       onEnded(l: RelayLink): void;
+      budget: QueueBudget;
     },
     handshakeMs: number,
   ) {
@@ -194,6 +208,7 @@ class RelayLink {
           e.caps,
           e.hello as PeerHello,
           this.role,
+          this.cb.budget,
         );
         this.cb.onEstablished(this.#session);
         this.#settle.resolve(this.#session);
@@ -261,12 +276,17 @@ export class RelayService {
   #wake: (() => void) | null = null;
   #lastLimit: number | null = null;
   #chain: Promise<unknown> = Promise.resolve();
+  #pendingBytes = 0;
+  #didOpen = false;
+  #neverOpened = 0;
+  readonly #budget: QueueBudget;
   #docs: PeerDocs;
   #id: { at: number; v: PeerIdentity } | null = null;
 
   readonly #src: RelaySource;
   constructor(src: RelaySource, o: RelayOptions = {}) {
     this.#src = src;
+    this.#budget = new QueueBudget(o.queueBudgetBytes);
     this.#o = o;
     this.#docs = new PeerDocs(
       src,
@@ -429,10 +449,12 @@ export class RelayService {
       this.#set("connecting");
       let closeCode: number | null = null;
       let waitS = 0;
+      this.#didOpen = false;
       try {
         const grant = await this.#src.ticket();
         if (this.#stopped) return;
         closeCode = await this.#session(grant);
+        this.#neverOpened = this.#didOpen ? 0 : this.#neverOpened + 1;
       } catch (e) {
         if (this.#stopped) return;
         const err =
@@ -443,15 +465,28 @@ export class RelayService {
         if (err.reason === "disabled" || err.reason === "quota")
           return this.#block(err);
         waitS = err.retryAfterSeconds ?? 0;
+        if (err.reason === "unavailable") this.#neverOpened += 1;
       }
       if (this.#stopped) return;
       const stop = this.#afterClose(closeCode);
       if (stop !== null) return this.#block(stop);
       this.#attempts++;
+      // A socket that never opens again and again is a blocked network or a Content-Security-Policy
+      // that forbids the relay's host: say so, and slow down instead of burning tickets.
+      const unreachable = this.#neverOpened >= (this.#o.unreachableAfter ?? 5);
+      if (unreachable)
+        this.#error = new RelayError(
+          "unavailable",
+          "The relay never opened after several tries. Check the network and that the page's Content-Security-Policy allows connect-src wss://<Worker host>.",
+        );
       this.#set("backoff");
       // Retry-After is the server's hint, capped so a bad value cannot stall or spin the loop.
       await this.#sleep(
-        Math.max(this.#backoff(), Math.min(waitS, MAX_RETRY_AFTER_S) * 1000),
+        Math.max(
+          this.#backoff(),
+          Math.min(waitS, MAX_RETRY_AFTER_S) * 1000,
+          unreachable ? (this.#o.unreachableRetryMs ?? 300_000) : 0,
+        ),
       );
     }
   }
@@ -541,6 +576,7 @@ export class RelayService {
         if (this.#stopped) return;
         cancelOpen();
         this.#open = true;
+        this.#didOpen = true;
         // A socket that is accepted and then dropped must not reset the backoff: only a stable
         // one does (see `finish`).
         openedAt = performance.now();
@@ -557,21 +593,40 @@ export class RelayService {
           this.#refuse(ws);
           return;
         }
+        // Envelopes wait their turn, but only so many bytes of them: a room (or a path to it)
+        // that outpaces the handler gets the socket closed, not an unbounded queue.
+        if (
+          this.#pendingBytes + bytes.length >
+          (this.#o.maxPendingBytes ?? 8 * 1024 * 1024)
+        ) {
+          this.#refuse(ws, 1013);
+          return;
+        }
+        this.#pendingBytes += bytes.length;
         this.#chain = this.#chain
           .then(() => (this.#ws === ws ? this.#handle(ws, bytes) : undefined))
-          .catch(() => this.#refuse(ws));
+          .catch(() => this.#refuse(ws))
+          .finally(() => {
+            this.#pendingBytes -= bytes.length;
+          });
       };
       ws.onerror = () => undefined;
       ws.onclose = (ev) => finish(typeof ev.code === "number" ? ev.code : null);
     });
   }
 
-  #refuse(ws: RelaySocket): void {
-    // A refused envelope: close 1002, treat later frames as lost.
+  #refuse(ws: RelaySocket, code = 1002): void {
+    // A refused envelope: close 1002 (1013 for overload), treat later frames as lost. A browser
+    // WebSocket may only close with 1000 or 3000 to 4999 and throws on the rest: the socket is
+    // closed 1000 then, and the refusal is the same.
     try {
-      ws.close(1002);
+      ws.close(code);
     } catch {
-      // gone
+      try {
+        ws.close(1000);
+      } catch {
+        // gone
+      }
     }
   }
 
@@ -700,6 +755,7 @@ export class RelayService {
         onEstablished: (s) => {
           if (role === "responder") for (const f of [...this.#onSession]) f(s);
         },
+        budget: this.#budget,
         onEnded: (l) => {
           this.#links.delete(l.key);
           this.#ended.push(l.key);

@@ -55,6 +55,8 @@ export interface ConnectClient {
   relaySource(): RelaySource;
   /** `POST /<p>/connect/relay/ticket`. @internal */
   relayTicket(): Promise<RelayGrant>;
+  /** The record's Web Lock name; the relay lock is derived from it. @internal */
+  readonly lockName: string;
 }
 
 /** A cookie page holds no device token, so it has no Connect identity. */
@@ -76,20 +78,19 @@ export function unsupportedConnect(detail: string): ConnectClient {
     listDevices: async () => no(),
     discoveryKeys: async () => null,
     leave: async () => undefined,
+    lockName: "pkey-connect:unsupported",
     relaySource: () => no(),
     relayTicket: async () => no(),
   };
 }
 
-export { createConnect } from "./create.js";
-
 /**
  * The page's `connect`, before its engine is loaded: every call loads `create.ts` (the engine's
  * wiring and its stores) first, so a page that never uses Connect pays only for this facade.
- * `now` is the one sync member the relay reads.
+ * `now` and `lockName` are the sync members the relay reads.
  */
 export function lazyConnect(
-  now: () => number,
+  host: { now: () => number; lockName: string },
   load: () => Promise<ConnectClient>,
 ): ConnectClient {
   let client: Promise<ConnectClient> | null = null;
@@ -99,6 +100,7 @@ export function lazyConnect(
       throw e;
     }));
   return {
+    lockName: host.lockName,
     identity: async (opts) => (await ready()).identity(opts),
     current: async () => (await ready()).current(),
     listDevices: async () => (await ready()).listDevices(),
@@ -106,7 +108,7 @@ export function lazyConnect(
     relayTicket: async () => (await ready()).relayTicket(),
     leave: async () => (await ready()).leave(),
     relaySource: () => ({
-      now,
+      now: host.now,
       load: async () => (await ready()).relaySource().load(),
       refresh: async () => (await ready()).relaySource().refresh?.(),
       adoptRing: async (jws) => (await ready()).relaySource().adoptRing!(jws),
@@ -219,6 +221,7 @@ export function createCloudConnect(connect: ConnectClient): CloudConnectClient {
         (engine = new m.CloudConnect(connect, {
           channel: (s) => {
             for (const f of [...channel]) f(s);
+            return channel.size > 0;
           },
           notice: (n) => {
             for (const f of [...notice]) f(n);

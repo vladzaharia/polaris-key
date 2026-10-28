@@ -1,7 +1,8 @@
 // Cloud Connect over the relay as a hook (connect.app, CC-09.2): `useCloudConnect()` follows the
 // relay's state and the devices online, and hands back the verbs. A browser has no LAN; the relay
 // is its only path. Nothing here starts on its own: the app calls `start()`, and `stop()` when it
-// is done (a sign-out stops it too). The relay code loads on the first `start()`.
+// is done: call `stop()` in the cleanup of the effect that started it, because unmounting does not
+// stop it (a sign-out does). The relay code loads on the first `start()`.
 
 import { useEffect, useMemo, useReducer } from "react";
 import type { Unsupported } from "@polaris-key/client-core";

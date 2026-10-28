@@ -167,37 +167,15 @@ export function indexedDbConnectState(
       tx.onabort = () => rej(tx.error ?? new Error("indexeddb"));
     });
   };
-  const markerKey = `pkey-connect-used:${name}`;
-  const ls = (): Storage | null => {
-    try {
-      return (globalThis as { localStorage?: Storage }).localStorage ?? null;
-    } catch {
-      return null;
-    }
-  };
-  const mark = (on: boolean): void => {
-    try {
-      if (on) ls()?.setItem(markerKey, "1");
-      else ls()?.removeItem(markerKey);
-    } catch {
-      // A marker is a hint; the database stays the truth.
-    }
-  };
   return {
     persistence: "durable",
     async mayHold() {
-      // Never open the database just to look: an open creates it.
-      if (typeof idb.databases === "function") {
-        try {
-          return (await idb.databases()).some((d) => d.name === name);
-        } catch {
-          // Fall through to the marker.
-        }
-      }
-      const store = ls();
-      if (store === null) return true;
+      // Never open the database just to look: an open creates it. Only a list that confirms the
+      // database is absent lets a caller skip it; a missing or failing `databases()` means "may
+      // hold", so a sign-out never leaves a record behind on a guess.
+      if (typeof idb.databases !== "function") return true;
       try {
-        return store.getItem(markerKey) !== null;
+        return (await idb.databases()).some((d) => d.name === name);
       } catch {
         return true;
       }
@@ -212,11 +190,9 @@ export function indexedDbConnectState(
       await run("readwrite", (s) => s.put(text, KEY_NAME));
       if ((await run("readonly", (s) => s.get(KEY_NAME))) !== text)
         throw new Error("indexeddb dropped the record");
-      mark(true);
     },
     async clear() {
       await run("readwrite", (s) => s.delete(KEY_NAME));
-      mark(false);
     },
   };
 }

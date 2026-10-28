@@ -14,6 +14,7 @@ import type { ConnectNotice } from "./channel.js";
 import { LanError, RelayError } from "./errors.js";
 import { RelayService, type RelayOptions, type RelayStatus } from "./relay.js";
 import { serialQueue } from "./redact.js";
+import { locks } from "./lock.js";
 import type { ConnectSession } from "./session.js";
 
 export interface CloudConnectOptions {
@@ -34,7 +35,8 @@ export interface CloudConnectStatus {
   /** A browser has no LAN. */
   lan: "off";
   lanError: null;
-  relay: "off" | RelayStatus["state"];
+  /** `elsewhere`: another tab of this app holds the relay socket; this one takes over if it closes. */
+  relay: "off" | "elsewhere" | RelayStatus["state"];
   relayError: RelayError | null;
 }
 
@@ -44,12 +46,16 @@ export class CloudConnect {
   #running = false;
   #unsub: (() => void)[] = [];
   #sessions = new Set<ConnectSession>();
+  #elsewhere = false;
+  #release: (() => void) | null = null;
+  #abort: AbortController | null = null;
   readonly #serial = serialQueue();
 
   constructor(
     private readonly connect: ConnectClient,
     private readonly hooks: {
-      channel: (s: ConnectSession) => void;
+      /** True when something listens; an inbound session nobody listens to is closed. */
+      channel: (s: ConnectSession) => boolean;
       notice: (n: ConnectNotice) => void;
       change: () => void;
     },
@@ -61,7 +67,7 @@ export class CloudConnect {
       running: this.#running,
       lan: "off",
       lanError: null,
-      relay: r === null ? "off" : r.state,
+      relay: r === null ? (this.#elsewhere ? "elsewhere" : "off") : r.state,
       relayError: r?.error ?? null,
     };
   }
@@ -73,17 +79,63 @@ export class CloudConnect {
       if (this.#running) return;
       const id = await this.connect.identity();
       this.#self = id.deviceId;
-      const relay = new RelayService(this.connect.relaySource(), opts.relay);
-      this.#relay = relay;
-      this.#unsub.push(
-        relay.onSession((s) => this.#inbound(s)),
-        relay.onNotice((n) => this.hooks.notice(n)),
-        relay.onState(() => this.hooks.change()),
-        relay.onMembers(() => this.hooks.change()),
-      );
-      relay.start();
       this.#running = true;
+      const lock = locks();
+      if (lock === null) this.#startRelay(opts);
+      else {
+        // One tab holds the socket: the room replaces a device's third socket (4009), so tabs
+        // that each opened one would fight. The others report `elsewhere` and wait their turn.
+        const key = `pkey-connect-relay:${this.connect.lockName.replace(/^pkey-connect:/, "")}`;
+        if (await this.#hold(key, true)) this.#startRelay(opts);
+        else {
+          this.#elsewhere = true;
+          this.#abort = new AbortController();
+          void this.#hold(key, false).then((got) => {
+            if (!got) return;
+            if (!this.#running) {
+              this.#release?.();
+              return;
+            }
+            this.#elsewhere = false;
+            this.#startRelay(opts);
+            this.hooks.change();
+          });
+        }
+      }
       this.hooks.change();
+    });
+  }
+
+  #startRelay(opts: CloudConnectOptions): void {
+    const relay = new RelayService(this.connect.relaySource(), opts.relay);
+    this.#relay = relay;
+    this.#unsub.push(
+      relay.onSession((s) => this.#inbound(s)),
+      relay.onNotice((n) => this.hooks.notice(n)),
+      relay.onState(() => this.hooks.change()),
+      relay.onMembers(() => this.hooks.change()),
+    );
+    relay.start();
+  }
+
+  /** Hold the relay-socket lock until `stop()`. Resolves true once held, false when it is not
+   *  available (`ifAvailable`) or the request was aborted. */
+  #hold(key: string, ifAvailable: boolean): Promise<boolean> {
+    const l = locks()!;
+    return new Promise((decide) => {
+      const options = ifAvailable
+        ? { ifAvailable: true }
+        : { signal: this.#abort!.signal };
+      l.request(key, options, (lock: unknown) => {
+        if (lock === null) {
+          decide(false);
+          return undefined;
+        }
+        decide(true);
+        return new Promise<void>((release) => {
+          this.#release = release;
+        });
+      }).catch(() => decide(false));
     });
   }
 
@@ -92,6 +144,11 @@ export class CloudConnect {
     return this.#serial(async () => {
       if (!this.#running && this.#relay === null) return;
       this.#running = false;
+      this.#elsewhere = false;
+      this.#abort?.abort();
+      this.#abort = null;
+      this.#release?.();
+      this.#release = null;
       for (const u of this.#unsub.splice(0)) u();
       const relay = this.#relay;
       this.#relay = null;
@@ -133,7 +190,8 @@ export class CloudConnect {
 
   #inbound(s: ConnectSession): void {
     this.#track(s);
-    this.hooks.channel(s);
+    // Nothing listens: an inbound session would only sit and fill its queue.
+    if (!this.hooks.channel(s)) void s.close().catch(() => undefined);
   }
 
   #track(s: ConnectSession): ConnectSession {

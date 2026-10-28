@@ -101,10 +101,10 @@ import { webCryptoSyncPort } from "@polaris-key/client-core/sync";
 import { RingEngine } from "../src/browser/ring/engine.js";
 import { memoryRootVault } from "../src/browser/ring/rootVault.js";
 import {
-  createConnect,
   type ConnectClient,
   RelayError,
 } from "../src/browser/connect/index.js";
+import { createConnect } from "../src/browser/connect/create.js";
 import { memoryConnectState } from "../src/browser/connect/state.js";
 import { browserObjectFetch } from "../src/packs/browserPacks.js";
 import { newTestKey, signCompact } from "./fixtures.js";

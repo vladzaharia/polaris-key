@@ -10,6 +10,7 @@ import type { BrowserAdapterOptions } from "../browserAdapter.js";
 import type { RingAdoption, TrustApplication } from "./channel.js";
 import type { ConnectEnv } from "./client.js";
 import type { ConnectClient } from "./index.js";
+import { withLock } from "./lock.js";
 import { indexedDbConnectState, memoryConnectState } from "./state.js";
 
 export function createConnect(env: ConnectEnv): ConnectClient {
@@ -22,9 +23,14 @@ export function createConnect(env: ConnectEnv): ConnectClient {
   let engine: Promise<import("./client.js").ConnectEngine> | null = null;
   const load = (): Promise<import("./client.js").ConnectEngine> =>
     (engine ??= import("./client.js").then((m) => new m.ConnectEngine(env)));
+  const lockName = env.lockName ?? `pkey-connect:${env.product}`;
+  /** One call at a time in this tab, and one at a time across tabs for the record. */
+  const locked = <T>(f: () => Promise<T>): Promise<T> =>
+    serial(() => withLock(lockName, f));
   return {
+    lockName,
     identity: (opts = {}) =>
-      serial(async () => (await load()).identity(opts.refresh === true)),
+      locked(async () => (await load()).identity(opts.refresh === true)),
     current: () => serial(async () => (await load()).current()),
     listDevices: () => serial(async () => (await load()).listDevices()),
     discoveryKeys: () => serial(async () => (await load()).discoveryKeys()),
@@ -33,16 +39,16 @@ export function createConnect(env: ConnectEnv): ConnectClient {
       now: () => env.now(),
       load: () => serial(async () => (await load()).peerIdentity()),
       refresh: async () => {
-        await serial(async () => (await load()).identity(true));
+        await locked(async () => (await load()).identity(true));
       },
       adoptRing: (jws: string): Promise<RingAdoption> =>
-        serial(async () => (await load()).adoptRing(jws)),
+        locked(async () => (await load()).adoptRing(jws)),
       applyTrust: (jws: string): Promise<TrustApplication> =>
         serial(async () => (await load()).applyTrust(jws)),
       ticket: () => serial(async () => (await load()).relayTicket()),
     }),
     leave: () =>
-      serial(async () => {
+      locked(async () => {
         try {
           for (const store of [env.stores.memory, env.stores.durable()]) {
             // Nothing held means nothing to forget; an unreadable record is cleared too. A store
@@ -69,6 +75,7 @@ export function createBrowserConnect(a: {
   bearer: BearerSession;
   options: NonNullable<BrowserAdapterOptions["connect"]>;
   now: () => number;
+  lockName: string;
   discovery: () => Promise<Record<string, unknown> | null>;
   deviceKeys: () => Promise<DeviceKeyPort>;
 }): ConnectClient {
@@ -78,6 +85,7 @@ export function createBrowserConnect(a: {
   return createConnect({
     product: a.product,
     baseUrl: a.base,
+    lockName: a.lockName,
     applyTrust: (jws) => b.acceptPeerTrust(jws),
     device: async () => {
       await b.init();

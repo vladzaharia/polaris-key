@@ -27,6 +27,12 @@ Declare it with `modules: { connect: { enabled: true } }` in `.pkey/product`. It
 
 The `connect:` block in `.pkey/product` sets `relay` (on by default) and `interAccount` (off by default); see [Cloud Connect settings](/docs/build/manifest/product/#cloud-connect-settings-connect). Nothing reads them until the relay ships. A person's relay bytes per day are the `pkey.cloudConnect.relayBytes` entitlement: 256 MiB when unset, 16 MiB without a usable license, at most 4 GiB. A product's relay is capped at 500 GiB a month.
 
+## In a web app
+
+A page has no LAN, so the relay is its only path. In React, `useCloudConnect()` gives `start()`, `open(deviceId)`, `peers`, `onChannel()` and `status`. Start it in an effect and call `stop()` in that effect's cleanup: nothing stops it for you on unmount, and a session another device opens is closed at once when nothing listens to `onChannel()`.
+
+The page's Content-Security-Policy must allow the relay: add `connect-src wss://<Worker host>`. Without it the socket never opens, and after five tries `status.relayError` says so and retries slow to every five minutes. With the app open in several tabs, one tab holds the socket and the others report `elsewhere`.
+
 ## In the console
 
 The **Cloud Connect** section has one page today, with nothing to set up. Setup, Usage and Linked devices come later.
