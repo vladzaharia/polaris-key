@@ -188,6 +188,18 @@ export function feedOriginOf(env: Env): string | null {
   return consoleOriginOf(env);
 }
 
+/**
+ * The customer site's origin for a link into Polaris Locker, or `null` with none usable (or the
+ * bytes host itself, which serves no Locker). `feedOriginOf` without the console fallback.
+ */
+export function customerOriginOf(env: Env): string | null {
+  const customer = customerSiteOrigin(env);
+  return customer !== null &&
+    normalizeHostname(new URL(customer).hostname) !== bytesHostname(env)
+    ? customer
+    : null;
+}
+
 function bytesOriginOf(env: Env): string | null {
   return bytesHostname(env) && env.BLOB_ORIGIN
     ? new URL(env.BLOB_ORIGIN).origin
@@ -310,10 +322,18 @@ async function handlePage(
   const model = JSON.parse(text) as DownloadModel;
   const iconUrl = await pageIcon(env, db, product.slug);
   const coverUrl = await pageCover(env, db, product.slug);
+  // LK-12b: the "Add to library" row only for a product Discover offers a new account. Asked
+  // per request, never cached with the model: the settings behind it change without a feed stamp.
+  const customerOrigin = customerOriginOf(env);
+  const libraryUrl =
+    customerOrigin !== null && (await hooks.discoverVisibility()) === true
+      ? `${customerOrigin}/${product.slug}`
+      : null;
   const html = renderDownloadPage(model, detectPlatform(req.headers), {
     iconUrl,
     coverUrl,
     helpOrigin: feedOriginOf(env),
+    libraryUrl,
   });
   return new Response(req.method === "HEAD" ? null : html, {
     status: 200,

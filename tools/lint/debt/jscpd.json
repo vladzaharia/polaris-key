@@ -3096,7 +3096,7 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test-workerd/runtime.test.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 8
     },
     "packages/worker/test-workerd/seed.ts": {
       "jscpd:duplicate": 2

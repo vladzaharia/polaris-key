@@ -475,6 +475,11 @@ export interface PageExtras {
    * `feedOriginOf`). `null` leaves the links out: the bytes host serves no docs.
    */
   helpOrigin?: string | null;
+  /**
+   * LK-12b: where "Add to library" goes (`<customer origin>/<slug>`), or `null` for no row.
+   * Set only when Identity says a new account would see the product in Discover.
+   */
+  libraryUrl?: string | null;
 }
 
 /** Render the page. */
@@ -541,6 +546,16 @@ export function renderDownloadPage(
         : "";
     })
     .join("");
+
+  const library = link(
+    extras.libraryUrl ?? null,
+    "Add to library",
+    "obtn",
+    "Polaris Locker",
+  );
+  const libraryCard = library
+    ? `<ul class="rows card">${row("locker-library", "Polaris Locker", [], [], "", [library])}</ul>`
+    : "";
 
   const rows = model.platforms
     .flatMap((g) => g.builds)
@@ -617,8 +632,8 @@ export function renderDownloadPage(
         : ""
     }</header>`,
     `<main>${lead}${release}${
-      ways
-        ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Every way to get ${esc(name)}</h2>${ways}</section>`
+      ways || libraryCard
+        ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Every way to get ${esc(name)}</h2>${ways}${libraryCard}</section>`
         : ""
     }${files}${keys}${about}</main>`,
     `<footer><p>${

@@ -23,6 +23,9 @@
  *                            one tap or bucket repository, for Distribution's CI token exchange
  *                            (A-32.7). Not a read, and the one hook that hands out a credential:
  *                            see the interface;
+ *   - `discoverVisibility`  (implemented by Identity): whether a new signed-in account with no
+ *                            licence would see this product in Discover, for the download
+ *                            page's "Add to library" row (LK-12b);
  *   - `storeProducts`       (implemented by Commerce): the product's store-product map, read-only,
  *                            for Distribution's App Store Connect catalog flows (CM-29).
  *
@@ -1407,6 +1410,20 @@ export interface StoreProducts {
   ): Promise<StoreProductMapping | null>;
 }
 
+// ── discoverVisibility (Identity) ───────────────────────────────────────────────────────────
+
+/**
+ * Would a NEW account, signed in with the platform IdP and holding nothing, be offered this
+ * product to add in Discover (LK-12b)? Identity answers it with the storefront engine's persona
+ * preview, so it is the same policy function Discover runs, not a copy of it: `true` only when
+ * the deployment's storefront is on, the product's portal is on, it is `listed` (not unlisted),
+ * and an obtain path with an Add action applies to an account with no groups and no licence
+ * (audience `eligible`: the free-with-account rule or an open listing). Purchase-only and
+ * operator-issued products, and audience-`everyone` links with nothing to add, answer `false`.
+ * Read-only: nothing is written and no account row is read.
+ */
+export type DiscoverVisibility = boolean;
+
 // ── githubPrToken (Release) ─────────────────────────────────────────────────────────────────
 
 /** A GitHub token for a tap or bucket repository: the secret, and when GitHub expires it. */
@@ -1462,6 +1479,7 @@ export interface DescriptorHooks {
   ): Promise<OutletCapabilities | null>;
   licenseProvenance?(ctx: HookContext): LicenseProvenance;
   storeProducts?(ctx: HookContext): StoreProducts;
+  discoverVisibility?(ctx: HookContext): Promise<DiscoverVisibility>;
   githubPrToken?(ctx: HookContext): GithubPrToken;
 }
 
@@ -1475,6 +1493,8 @@ export interface ServiceHooks {
   licenseProvenance(): LicenseProvenance | null;
   /** Commerce's store-product map; `null` while Commerce is off. */
   storeProducts(): StoreProducts | null;
+  /** Identity's Discover visibility for a new account; `null` while Identity is off. */
+  discoverVisibility(): Promise<DiscoverVisibility | null>;
   /** Release's GitHub token minting for CI pull requests; `null` while Release is off. */
   githubPrToken(): GithubPrToken | null;
 }
@@ -1526,6 +1546,7 @@ export function buildHooks(
     outletCapabilities: hookProvider(registry, "outletCapabilities"),
     licenseProvenance: hookProvider(registry, "licenseProvenance"),
     storeProducts: hookProvider(registry, "storeProducts"),
+    discoverVisibility: hookProvider(registry, "discoverVisibility"),
     githubPrToken: hookProvider(registry, "githubPrToken"),
   };
   let catalog: ReleaseCatalog | null | undefined;
@@ -1567,6 +1588,11 @@ export function buildHooks(
       storeProducts =
         p?.storeProducts && enabled(p.slug) ? p.storeProducts(ctx) : null;
       return storeProducts;
+    },
+    async discoverVisibility() {
+      const p = providers.discoverVisibility;
+      if (!p?.discoverVisibility || !enabled(p.slug)) return null;
+      return p.discoverVisibility(ctx);
     },
     githubPrToken() {
       const p = providers.githubPrToken;
