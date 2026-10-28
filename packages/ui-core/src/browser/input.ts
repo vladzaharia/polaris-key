@@ -3,6 +3,7 @@
 // screen and nothing here draws.
 
 import type { UiInput } from "../input.js";
+import { activationFromOutcome } from "../errors.js";
 import type { Pending } from "../vocabulary.js";
 import { isSignInRefusal } from "./sdk/core/adapter.js";
 import type { OidcSignInHandle, PolarisState } from "./sdk/core/index.js";
@@ -22,6 +23,9 @@ export interface ErrorLike {
     limit?: number;
     deviceCount?: number;
     retryAfterSeconds?: number;
+    manageUrl?: string;
+    signInUrl?: string;
+    keyEntries?: { used: number; limit: number };
   };
 }
 
@@ -34,6 +38,17 @@ function resultOf(kind: string): string {
 function refusalOf(err: ErrorLike | null | undefined) {
   const a = err?.activation;
   if (!err || !a || a.kind === "ok") return undefined;
+  // UK-02b D3: the SDK's typed outcomes in the views' vocabulary (the same mapping the sign-in
+  // form's model applies to a thrown activation).
+  if (a.kind === "keyEntryLimit" || a.kind === "licenseOwned") {
+    const m = activationFromOutcome(a);
+    return {
+      ...m,
+      ...(m.manageUrl === undefined && err.manageUrl
+        ? { manageUrl: err.manageUrl }
+        : {}),
+    };
+  }
   return {
     result: resultOf(a.kind),
     code: a.code,

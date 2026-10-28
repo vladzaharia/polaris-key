@@ -1,4 +1,4 @@
-// @pkey-feature ui.kit ui.kit.manage license.activate
+// @pkey-feature ui.kit ui.kit.manage ui.kit.keyentry ui.kit.account license.activate
 //
 // UK-05's UX review fixes, held in place: the gate's way back (Back on every step, Escape, the
 // platform's Back, a refusal that does not outlive the step, a different key after a device
@@ -31,6 +31,7 @@ import {
   entry,
   services,
   makeConfig,
+  makeDoc,
   makeFakeBridge,
   okBridgeState,
 } from "./fixtures.js";
@@ -501,5 +502,127 @@ describe("a host-fed part reports the payloads a host needs", () => {
     expect(rows[0]!.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(rows[1]!);
     expect(onSelect).toHaveBeenCalledWith("beta");
+  });
+});
+
+const OWNED_SIGN_IN = "https://key.plrs.im/signin?product=acme";
+const ADD_KEY = "https://key.plrs.im/activate?product=acme&next=add-key";
+
+/** Mount the gate, take a key to the refusal `answer` and wait for its focused step. */
+async function refused(answer: () => BridgeActivation) {
+  const m = mountGate(answer);
+  const field = await toActivate(m.container);
+  fireEvent.change(field, { target: { value: KEY } });
+  fireEvent.click(control(m.container, "activate.submit")!);
+  await waitFor(() =>
+    expect(control(m.container, "signin.key.differentKey")).not.toBeNull(),
+  );
+  return m;
+}
+
+describe("the key refusals no other key can fix", () => {
+  it("key-entry-limit is one focused step: title, a sentence, Sign in, the manage link, Use a different key", async () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const { container, adapter } = await refused(() => ({
+      kind: "key-entry-limit",
+      manageUrl: ADD_KEY,
+      keyEntries: { used: 3, limit: 3 },
+    }));
+    // No key field, no lede: typing this key again cannot help.
+    expect(container.querySelector("#pk-key")).toBeNull();
+    expect(container.querySelector('[data-key="activate.lede"]')).toBeNull();
+    expect(container.textContent).toContain("No key entries left");
+    expect(container.querySelector(".callout")).toBeNull();
+    expect(control(container, "welcome.signIn")?.dataset.variant).toBe(
+      "primary",
+    );
+    const manage = control(container, "signin.key.addTitle")!;
+    expect(manage.dataset.variant).toBe("secondary");
+    expect(manage.querySelector("svg")).not.toBeNull();
+    const hint = container.querySelector(
+      `#${manage.getAttribute("aria-describedby")}`,
+    );
+    expect(hint?.textContent).toBe("Opens Polaris Locker in your browser");
+    expect(control(container, "signin.key.differentKey")?.dataset.variant).toBe(
+      "link",
+    );
+    fireEvent.click(manage);
+    expect(String(open.mock.calls[0]![0])).toBe(ADD_KEY);
+    // Use a different key goes back to the field.
+    fireEvent.click(control(container, "signin.key.differentKey")!);
+    await waitFor(() =>
+      expect(container.querySelector("#pk-key")).not.toBeNull(),
+    );
+    adapter.dispose();
+  });
+
+  it("license-owned says the product-named sentence and offers Sign in, with no manage link", async () => {
+    const { container, adapter } = await refused(() => ({
+      kind: "license-owned",
+      signInUrl: OWNED_SIGN_IN,
+    }));
+    expect(container.querySelector("#pk-key")).toBeNull();
+    expect(container.textContent).toContain("License in another account");
+    expect(container.textContent).toContain(
+      "Acme Studio license is already in another Polaris Locker account",
+    );
+    expect(control(container, "welcome.signIn")?.dataset.variant).toBe(
+      "primary",
+    );
+    expect(control(container, "signin.key.addTitle")).toBeNull();
+    adapter.dispose();
+  });
+});
+
+describe("what a finished activation or sign-in leaves over the app", () => {
+  it("toasts the entries a key activation leaves", async () => {
+    let push: () => void = () => undefined;
+    const m = mountGate(() => {
+      push();
+      return { kind: "ok", keyEntries: { used: 1, limit: 3 } };
+    });
+    push = () => m.bridge.push(okBridgeState());
+    const field = await toActivate(m.container);
+    fireEvent.change(field, { target: { value: KEY } });
+    fireEvent.click(control(m.container, "activate.submit")!);
+    const toast = await waitFor(() => {
+      const t = m.container.querySelector('[data-part="toast"]');
+      expect(t).not.toBeNull();
+      return t!;
+    });
+    expect(toast.textContent).toContain("2 key entries left");
+    expect(m.container.querySelector('[data-testid="app"]')).not.toBeNull();
+    m.adapter.dispose();
+  });
+
+  it("names who signed in and the license's tier once a sign-in lands", async () => {
+    const m = mountGate(() => ({ kind: "ok" }));
+    m.bridge.pollSignIn = () => new Promise(() => {});
+    await waitFor(() =>
+      expect(control(m.container, "welcome.signIn")).not.toBeNull(),
+    );
+    fireEvent.click(control(m.container, "welcome.signIn")!);
+    await waitFor(() =>
+      expect(
+        m.container.querySelector('[data-key="a11y.code"]'),
+      ).not.toBeNull(),
+    );
+    m.bridge.push(
+      okBridgeState({
+        doc: makeDoc({
+          entitlements: {
+            tier: { state: "enforced", value: "Pro", updatedAt: 950 },
+          },
+        }),
+      }),
+    );
+    const toast = await waitFor(() => {
+      const t = m.container.querySelector('[data-part="toast"]');
+      expect(t).not.toBeNull();
+      return t!;
+    });
+    expect(toast.textContent).toContain("Signed in as Ada Lovelace");
+    expect(toast.textContent).toContain("Pro license");
+    m.adapter.dispose();
   });
 });
