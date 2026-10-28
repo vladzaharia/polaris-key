@@ -800,6 +800,57 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it("lists the reasons to keep the licence: Cloud Sync when the app has it, plus recover and devices", async () => {
+    await enter(true, preview());
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Keep Diceroll in an account",
+    });
+    expect(
+      screen.getByText(
+        "Cloud Sync keeps your settings and saves on every device",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Get your license back if you lose the key or this device",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Move it to a new device yourself, without asking Example Games",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("leaves the Cloud Sync reason out when the app has no Cloud Sync, and on the standalone on-ramp", async () => {
+    mockFetch({
+      "/api/me": { status: 401 },
+      "/api/capabilities": CAPS_ALL,
+      [REQUEST]: {
+        ...VIEW,
+        client: {
+          ...VIEW.client,
+          services: { license: true, cloudSync: false },
+        },
+      },
+      "POST /api/key/preview": preview(),
+    });
+    renderPortal();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Have a license key?" }),
+    );
+    await userEvent.click(await screen.findByRole("textbox"));
+    await userEvent.paste(KEY);
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Keep Diceroll in an account",
+    });
+    expect(screen.queryByText(/Cloud Sync keeps/)).toBeNull();
+    expect(screen.getByText(/Get your license back/)).toBeTruthy();
+  });
+
   it("Sign in instead keeps the key: the sign-in card says it is carried", async () => {
     await enter(false, preview());
     await userEvent.click(

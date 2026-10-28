@@ -379,6 +379,19 @@ export const REQUEST_STATES: ShippedState[] = [
   },
   {
     section: "3.9",
+    id: "app-key-reasons",
+    title:
+      "Key on-ramp: the reasons to keep the licence in an account (frame 48)",
+    scenario: "signedOut",
+    path: PATH,
+    routes: { ...signedOutRoutes(VIEW), "POST /api/key/preview": preview({}) },
+    ready: async (p) => {
+      await keyStep(p, "Keep Diceroll in an account");
+      await p.getByText("Cloud Sync keeps your settings").waitFor();
+    },
+  },
+  {
+    section: "3.9",
     id: "app-key-forced",
     title: "Key on-ramp: no entries left, an account is required",
     scenario: "signedOut",

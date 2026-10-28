@@ -511,6 +511,7 @@ export function SignInPage({
       ) : step.kind === "upgrade" ? (
         <AccountUpgrade
           preview={step.preview}
+          cloudSync={request.data?.client.services.cloudSync === true}
           onCreate={() => {
             setParams({ activate: step.key });
             go({ kind: "methods" });

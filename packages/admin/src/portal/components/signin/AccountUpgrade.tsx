@@ -1,5 +1,6 @@
 import * as React from "react";
 import { CircleCheck, Clock } from "lucide-react";
+import { recommendReasons } from "@polaris-key/ui-core";
 import type { KeyPreview } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
 import { AuthTitle, QuietLink, QuietLinks } from "../../../ui/auth/index.js";
@@ -17,15 +18,20 @@ import {
  * from `POST /api/key/preview`, before anyone signs in. The key card ("Key works"), then "Keep
  * <Product> in an account" with the entries meter in ink (never amber: auth-10) and **Create
  * account** and the quiet **Sign in instead**; both carry the key to the sign-in card. Forced
- * when a new device would be refused `key_entry_limit`: then a neutral callout. **Skip for now**
- * (S-24 D13) waits for the floating-key return to an app (SIGN-IN.md §3.9).
+ * when a new device would be refused `key_entry_limit`: then a neutral callout. Under the lede
+ * the reasons to add the licence to an account (frame 48, LK-SKIP.1): ui-core's `recommendReasons`,
+ * plain text; Cloud Sync only when the requesting app has it. **Skip for now** (S-24 D13) waits
+ * for the floating-key return to an app (SIGN-IN.md §3.9).
  */
 export function AccountUpgrade({
   preview,
+  cloudSync = false,
   onCreate,
   onSignIn,
 }: {
   preview: KeyPreview;
+  /** The requesting app's Cloud Sync (`client.services.cloudSync`); a signed-out standalone has none. */
+  cloudSync?: boolean;
   /** Create account: on to the sign-in card with the key carried. */
   onCreate: () => void;
   /** Sign in instead: the same card, the key carried too (LK-polish M5). */
@@ -76,6 +82,18 @@ export function AccountUpgrade({
           <p className="text-fg-muted">{t("signin.key.upgradeLede")}</p>
         )}
       </div>
+      <ul className="space-y-1.5 text-sm text-fg-muted" data-reasons>
+        {recommendReasons({ identity: true, sync: cloudSync }).map((key) => (
+          <li key={key} className="flex items-start gap-2">
+            <CircleCheck aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <span>
+              {t(key as Parameters<typeof t>[0], {
+                developer: preview.product.developerName ?? name,
+              })}
+            </span>
+          </li>
+        ))}
+      </ul>
       {forced ? (
         <NeutralCallout icon={<Clock />}>
           <p>{t("signin.key.noEntries", { product: name })}</p>
