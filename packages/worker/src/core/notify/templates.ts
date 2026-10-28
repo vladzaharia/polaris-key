@@ -1150,6 +1150,41 @@ export function accessChangedNotice(input: {
   };
 }
 
+/**
+ * ST-34.12: a Superadmin or Platform admin signed a member out everywhere. Sent as Polaris Key to
+ * the member only. It names who did it and what stopped, and carries no link and no token.
+ */
+export function memberSignedOutNotice(input: {
+  /** How many of the member's admin tokens stopped. */
+  tokens: number;
+  by: string | null | undefined;
+  name: string | null | undefined;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const who = operatorText(input.name, "A member");
+  const by = operatorText(input.by, "An operator");
+  const subject = "You were signed out of the Polaris Key console";
+  const count =
+    input.tokens === 0
+      ? "No admin tokens were active."
+      : `${input.tokens} admin ${input.tokens === 1 ? "token" : "tokens"} stopped working.`;
+  const footer =
+    "Sign in again to continue. Your package tokens and your access are unchanged. " +
+    "If you did not expect this, ask a Superadmin.";
+  const line = `${by} signed ${who} out of the Polaris Key console on every device. ${count}`;
+  return {
+    subject,
+    text: `${subject}\n\n${line}\n\n${footer}`,
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line],
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}
+
 /** The invite's link: the console sign-in page with the address as a hint. No secret, no token. */
 export function consoleInviteLink(
   origin: string | null | undefined,

@@ -31,6 +31,7 @@
   "GET /me/methods": "console",
   "GET /members": "members",
   "GET /members/:memberId": "members",
+  "GET /members/:memberId/sign-out": "members",
   "GET /products/:slug/members": "members",
   "GET /me/personal-tokens": "console",
   "GET /platform/activity": "platform",
@@ -192,6 +193,7 @@
   "POST /bindings": "members",
   "PATCH /bindings/:id": "members",
   "DELETE /bindings/:id": "members",
+  "POST /members/:memberId/sign-out": "members",
   "POST /products/:slug/members": "members",
   "PATCH /products/:slug/members/:bindingId": "members",
   "DELETE /products/:slug/members/:bindingId": "members"

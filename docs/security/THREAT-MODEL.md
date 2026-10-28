@@ -8020,6 +8020,26 @@ revoking the token recalls no bundle.
 **Residual.** A holder without a grant can still make requests that write at most the budgeted rows.
 A token whose holder holds no grant cannot end itself (`current` is not a no-grant row, so 403): the holder revokes it in the console instead, where `GET /me/personal-tokens` and `DELETE /me/personal-tokens/:id` are no-grant rows (session only, own tokens only, a revoke only narrows, no product data read), so a holder with no grants can still find and end their own tokens. Two concurrent revokes of one token write one `account_token.revoke` row (the UPDATE's change count decides).
 
+### Members: sign out everywhere (ST-34.12)
+
+`POST /manage/api/members/<memberId>/sign-out` (and its `GET` dry run) ends one member's console access
+without touching their grants. It ends the member's `account_sessions` rows, writes the member's
+`admin-revoked` mark (the one a sign-out writes, keyed by the member id), and revokes the account's `admin`-scope
+personal tokens (reason `access_removed`). The session ends within 30 s on every isolate (the console's
+live check is cached that long); the admin tokens end at once. `packages` tokens are left alone. It is audited as `rbac.signout`
+and the member is mailed.
+
+- **Who may.** Area `members`, level `edit`, platform scope, on the `GET` as well as the `POST`, because the
+  preview names token labels. No step-up: it only narrows (G4). The caller must pass `mayRevoke` over every
+  grant the target holds, and a holder of the root rule is signed out by a Superadmin alone. A member cannot
+  use it on themselves.
+- **What the answer says.** An unknown, stale, forged or erased member is the same 404, found by computing
+  each candidate's member id (as `GET /members/<id>`), so the route is no lookup for anyone who holds no
+  binding. A body names a token by label and times, never by id, hint or value, and never names an account id.
+- **Limits.** The mark is the existing one, so a cookie minted before the sign-out ends and one minted after
+  it does not. The account's sessions are shared with the portal, so a portal session ends too. A later
+  change to the mark's format changes its one writer, and this route follows it.
+
 ### Console roles read feeds, and creators manage what they make (ST-31.9)
 
 **What arrived.** Two changes, one each way. (1) **G6, the creator rule.** After a successful

@@ -37,6 +37,7 @@ export {
   type ConsolePasskeyRefusal,
   type ConsolePasskeySignInResult,
   endConsoleSession,
+  endConsoleSessionsForAccount,
   type ConsoleIdentity,
   type ConsoleRefusal,
   type ConsoleSignInResult,

@@ -20498,6 +20498,84 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/members/{memberId}/sign-out:
+    get:
+      operationId: previewMemberSignOutAdmin
+      tags: [admin]
+      summary: Preview signing a member out everywhere
+      description: >
+        ST-34.12. The dry run of the POST: the admin tokens that would stop, by label and last use.
+        Writes nothing. Needs `edit` on `members` (platform scope), and the same standing as the
+        POST. A token never reaches it.
+      security:
+        - adminSession: []
+      parameters:
+        - $ref: "#/components/parameters/MemberSignOutId"
+      responses:
+        "200":
+          description: The admin tokens a sign-out would stop.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [memberId, tokens]
+                properties:
+                  memberId: { type: string }
+                  tokens: { $ref: "#/components/schemas/MemberSignOutTokens" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such member.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    post:
+      operationId: signOutMemberAdmin
+      tags: [admin]
+      summary: Sign a member out everywhere
+      description: >
+        ST-34.12. Ends the member's console sessions (on every device, within 30 seconds at the
+        latest) and their `admin`-scope personal tokens (at once). `packages`-scope tokens are not
+        touched. Audited as `rbac.signout`; the member is told by mail. Needs `edit` on `members`
+        (platform scope) and no step-up. The caller must be allowed to take back every grant the
+        member holds, and a holder of the root rule is signed out by a Superadmin alone (`403`,
+        `reason: grant_refused`). You cannot sign yourself out here (`reason: self_sign_out`).
+      security:
+        - adminSession: []
+      parameters:
+        - $ref: "#/components/parameters/MemberSignOutId"
+      responses:
+        "200":
+          description: Done.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, memberId, sessions, tokens, notified]
+                properties:
+                  ok: { type: boolean }
+                  memberId: { type: string }
+                  sessions:
+                    type: integer
+                    description: How many session rows ended.
+                  tokens: { $ref: "#/components/schemas/MemberSignOutTokens" }
+                  notified:
+                    type: boolean
+                    description: The member's mail was sent.
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such member.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+        "503":
+          description: The revocation store could not be reached; nothing changed. Try again.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/bindings:
     post:
       operationId: createBindingAdmin
@@ -23307,6 +23385,12 @@ components:
         and the holder's own role is checked on every request. It has no step-up, so no route that
         needs one accepts it. A `packages:read` token is not accepted here.
   parameters:
+    MemberSignOutId:
+      name: memberId
+      in: path
+      required: true
+      description: The opaque member id (`mbr_…`), from the Members list.
+      schema: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
     TokenId:
       name: tokenId
       in: path
@@ -24025,6 +24109,18 @@ components:
           examples:
             unauthorized: { value: { error: unauthorized } }
   schemas:
+    MemberSignOutTokens:
+      type: array
+      description: >
+        The member's admin tokens that stop (or, on the preview, would stop): a label and times,
+        never a token, a hint or an id.
+      items:
+        type: object
+        required: [label, lastUsedAt, expiresAt]
+        properties:
+          label: { type: string }
+          lastUsedAt: { type: [integer, "null"], description: Epoch seconds. }
+          expiresAt: { type: integer, description: Epoch seconds. }
     GoVersionInfo:
       type: object
       description: >

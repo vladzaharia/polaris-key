@@ -66,6 +66,7 @@ import {
 import { signIn, type SignInResult } from "./accounts/signIn.js";
 import {
   openAccountSessionRow,
+  revokeAllAccountSessions,
   sessionIdHash,
 } from "./portal/accountSessions.js";
 import { portalIdentityIssuerKey, recordLinkGroups } from "./portal/repo.js";
@@ -520,6 +521,20 @@ export async function endConsoleSession(
     now,
     await sessionIdHash(env, sid),
   );
+}
+
+/**
+ * End every live session row of the account now (ST-34.12, "Sign out everywhere"). The rows are
+ * shared with the portal, so this ends both. The console's 30 s session cache elsewhere ends
+ * within its window, and the caller writes the operator's revocation mark for the cookie itself.
+ * Answers how many rows ended.
+ */
+export async function endConsoleSessionsForAccount(
+  db: Db,
+  accountId: string,
+  now: number,
+): Promise<number> {
+  return revokeAllAccountSessions(db, accountId, now);
 }
 
 /**

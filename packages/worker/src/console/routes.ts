@@ -89,6 +89,10 @@ import {
   handleBindingRevoke,
 } from "./handlers/bindings.js";
 import { handleMemberGet, handleMembersList } from "./handlers/members.js";
+import {
+  handleMemberSignOut,
+  handleMemberSignOutPreview,
+} from "./handlers/memberSignOut.js";
 
 /** What every handler receives once the dispatcher has authorized the request. */
 export interface AdminCtx {
@@ -410,6 +414,21 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // Read-only here; `./handlers/members.ts`. Session only, like the rosters above.
   ...rows(["GET"], "/members", "members", handleMembersList),
   ...rows(["GET"], "/members/:memberId", "members", handleMemberGet),
+  // ST-34.12: sign a member out everywhere. The GET is the dry run; both need `edit` (it names
+  // token labels). No step-up: it only narrows (G4). The handler asks the grant rules.
+  ...rows(
+    ["GET"],
+    "/members/:memberId/sign-out",
+    "members",
+    handleMemberSignOutPreview,
+    { level: "edit" },
+  ),
+  ...rows(
+    ["POST"],
+    "/members/:memberId/sign-out",
+    "members",
+    handleMemberSignOut,
+  ),
   // ST-31.6: the grant writes (`./handlers/bindings.ts`). A new grant is a step-up write; an edit
   // checks it in the handler, only when the change widens (G4); taking access back needs none.
   // The route table cannot tell a Platform admin from a Superadmin: the handler asks the grant
