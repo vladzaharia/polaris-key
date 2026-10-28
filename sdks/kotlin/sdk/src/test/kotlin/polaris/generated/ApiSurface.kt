@@ -58,6 +58,7 @@ internal suspend fun apiSurface() {
     ChoiceClient::devices  // identity.choice.devices
     ChoiceClient::complete  // identity.choice.complete
     ChoiceClient::cancel  // identity.choice.cancel
+    IdentityClient::autoSignIn  // identity.autoSignIn
     IdentityClient::choice  // identity.useLicenseChoice
     IdentityClient::attach  // identity.attachLicense
     IdentityClient::openAccount  // identity.openAccount
