@@ -5,8 +5,7 @@ extends RefCounted
 # `floating` (a bulk key with no account) activate. `expired`, `disabled` and `revoked` all answer
 # 401 `unauthorized`, so a caller cannot tell a dead key from an unknown one. `device-limit-full`
 # (its one seat is held by another device) answers 403 `device_limit` with a manage link, and
-# `key-entry-limit` 403 `key_entry_limit`; the Godot SDK carries that code on a `refused` result
-# (a typed kind for it is PX-W9b).
+# `key-entry-limit` 403 `key_entry_limit`, a typed kind of its own (identity.keyentry, I-10b.14).
 #
 # What is checked is the code, the status and the shape of the answer: the manage link is on the
 # server's own origin here and on the production one elsewhere, and the counters depend on how
@@ -22,7 +21,7 @@ const ROWS := [
 	{"key": "disabled", "device": "refused", "kind": &"unauthorized", "status": 401, "code": &"unauthorized"},
 	{"key": "revoked", "device": "refused", "kind": &"unauthorized", "status": 401, "code": &"unauthorized"},
 	{"key": "device-limit-full", "device": "refused", "kind": &"device-limit", "status": 403, "code": &"device_limit"},
-	{"key": "key-entry-limit", "device": "refused", "kind": &"refused", "status": 403, "code": &"key_entry_limit"},
+	{"key": "key-entry-limit", "device": "refused", "kind": &"key-entry-limit", "status": 403, "code": &"key_entry_limit"},
 ]
 
 

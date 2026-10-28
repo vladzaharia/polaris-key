@@ -6,7 +6,7 @@ extends RefCounted
 #
 #   pieces   sign_in.start() starts the flow, one poll is `pending` before anyone approves, the
 #            approver confirms, wait() ends `signed_in` with the person, the token stored and the
-#            forced sync run, and sign_out() releases the seat
+#            forced sync run, and sign_out() ends the sign-in (see _signed_out)
 #   begin    wait() running in the background while the approver confirms: the `outcome` signal
 #            carries the same `signed_in`
 #
@@ -49,7 +49,7 @@ func _pieces(t: PKeyTestContext, bed: PKeyDevLive) -> void:
 	if result.ok:
 		_signed_in(t, bed, sdk, result, "pieces")
 	var out: PKeyResult = await sdk.identity.sign_out()
-	t.check("pieces: sign_out() releases the seat and the gate closes", out.ok and not sdk.is_licensed() and not sdk.core.tokens.has_token(), str(out))
+	_signed_out(t, sdk, out, "pieces")
 	bed.drop(sdk)
 
 
@@ -83,8 +83,18 @@ func _begin(t: PKeyTestContext, bed: PKeyDevLive) -> void:
 	t.check("begin: the session is no longer waiting", not prompt.is_waiting())
 	_signed_in(t, bed, sdk, finished[0], "begin")
 	var out: PKeyResult = await sdk.identity.sign_out()
-	t.check("begin: sign_out() releases the seat and the gate closes", out.ok and not sdk.is_licensed() and not sdk.core.tokens.has_token(), str(out))
+	_signed_out(t, sdk, out, "begin")
 	bed.drop(sdk)
+
+
+## What sign_out() leaves. The Worker releases the seat only when the account owns the device's
+## licence (`released` true); then the token and the gate go with it. Otherwise (the dev server's
+## provider person owns no licence) the device keeps its licence and token and only the sign-in
+## ends (WIRE-CONTRACT-V4 §12.3, transcript identity-subject-signout). The SDK follows the answer.
+func _signed_out(t: PKeyTestContext, sdk: Node, out: PKeyResult, group: String) -> void:
+	var released: bool = out.ok and out.detail is Dictionary and out.detail.get("released") == true
+	var held: bool = sdk.core.tokens.has_token()
+	t.check("%s: sign_out() ends the sign-in and the SDK follows the Worker's `released`" % group, out.ok and out.detail is Dictionary and out.detail.get("released") is bool and held == not released and sdk.is_licensed() == not released and String(sdk.core.cache.subject) == "", "%s %s" % [out, out.detail])
 
 
 ## The prompt's shape: a code, both links on the server's own origin (a sign-in never leaves the
