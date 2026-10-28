@@ -641,6 +641,8 @@ describe("actions", () => {
       // CC-06.1: Cloud Connect's roster row, none until the person fetches its identity.
       "connect.rings": null,
       "core.entitlementEvents": [],
+      // U-36.2: the key ring store; no ring for Ada yet.
+      "core.keyring": null,
       "core.provisionedSecretMoves": [],
       // U-05.8: Cloud Sync's store answers for a person who never synced.
       "sync.cloudSync": { settings: null, directory: null },
@@ -653,6 +655,7 @@ describe("actions", () => {
         "config.accountOverrides",
         "connect.rings",
         "core.entitlementEvents",
+        "core.keyring",
         "core.provisionedSecretMoves",
         "sync.cloudSync",
         "test-store",
