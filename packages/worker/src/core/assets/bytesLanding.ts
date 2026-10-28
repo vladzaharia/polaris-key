@@ -48,7 +48,7 @@
 import { FONT, THEME_TOKENS } from "@polaris-key/brand";
 import { PORTAL_COPY_EN } from "@polaris-key/brand/kit-copy/portal";
 import type { Env } from "../../platform/env.js";
-import { bytesHostname, customerSiteOrigin } from "../hosts.js";
+import { bytesHostname, customerOrigin, customerSiteOrigin } from "../hosts.js";
 import { BRAND_LOCKUP_HEIGHT } from "../brandHtml.js";
 import { escapeHtml } from "../../platform/html.js";
 import { sha256Base64 } from "../../platform/hash.js";
@@ -260,12 +260,15 @@ export async function expiredLinkResponse(
   env: Env,
   productSlug: string,
 ): Promise<Response> {
-  const lockerOrigin = customerSiteOrigin(env);
+  // Only a deployment with a customer site has a page to go back to (`customerOrigin` is the one
+  // source of customer URLs).
+  const customer =
+    customerSiteOrigin(env) === null ? null : customerOrigin(env, "");
   const environment = landingEnvironment(env);
   const { lockups, faviconHref } = landingShell(environment);
   const title = PORTAL_COPY_EN["locker.error.downloadLink.title"];
-  const back = lockerOrigin
-    ? `${lockerOrigin}/#/p/${encodeURIComponent(productSlug)}`
+  const back = customer
+    ? `${customer}/#/p/${encodeURIComponent(productSlug)}`
     : null;
   const html = renderDocument(
     `${title} · Polaris Locker`,
