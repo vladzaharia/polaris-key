@@ -37,6 +37,10 @@ import {
   exchangeLinkRef,
   type ExchangeLinkRecord,
 } from "../../../src/services/identity/passthrough/exchange.js";
+import { loadProductPublic } from "../../../src/core/products.js";
+import { askedScopeHash } from "../../../src/services/identity/passthrough/routes.js";
+import { withMintClaim } from "../../../src/services/identity/passthrough/mint.js";
+import { seedTier } from "../../seed.js";
 import { artefactRef, getArtefact } from "../../../src/core/singleUse.js";
 import {
   EXCHANGE_SUBJECT_TOKEN_TYPE,
@@ -229,12 +233,29 @@ const apple =
   (nonce: string) =>
     h.signApple(appleClaims(nonce, { aud: BUNDLE, sub: APPLE_SUB, ...over }));
 
+/** The app consent a linked person has already given (L-1): without it the exchange asks. */
+async function seedConsent(accountId: string): Promise<void> {
+  const pub = (await loadProductPublic(h.db, SLUG))!;
+  await h.db.run(
+    `INSERT INTO account_product_grants
+       (account_id, product, claims_json, granted_at, modified_at, scope_hash)
+     VALUES (?, ?, '["profile","email"]', ?, ?, ?)
+     ON CONFLICT (account_id, product) DO UPDATE SET scope_hash = excluded.scope_hash`,
+    accountId,
+    SLUG,
+    NOW,
+    NOW,
+    await askedScopeHash(pub),
+  );
+}
+
 async function link(
   issuerKey: string,
   tenantScope: string,
   subject: string,
   kind: "google" | "apple",
   email = "ada@example.com",
+  consented = true,
 ): Promise<string> {
   const r = await signIn(
     h.db,
@@ -243,6 +264,7 @@ async function link(
     { unfenced: true, product: { slug: SLUG, tenantScopes: [tenantScope] } },
   );
   if (r.status !== "signed_in") throw new Error("seed link failed");
+  if (consented) await seedConsent(r.account.id);
   return r.account.id;
 }
 
@@ -514,5 +536,206 @@ describe("one refusal for every verifier failure", () => {
     expect(seen[0]!.text).not.toMatch(/azp|nonce|audience|aud\b|expired/i);
     // A failed exchange writes no audit row.
     expect(await count("audit")).toBe(0);
+  });
+});
+
+// ── I-13.5: L-1, the `confirm` status and consent on choice/complete ────────────────────────────
+
+const complete = (body: unknown, device = DEVICE) =>
+  route(`/${SLUG}/identity/choice/complete`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-pkey-device": device },
+    body: JSON.stringify(body),
+  });
+
+async function expectInvalidGrant(grant: string): Promise<void> {
+  const res = await complete({ grant, consent: { claims: ["profile"] } });
+  expect(res.status).toBe(400);
+  expect(await res.json()).toMatchObject({ error: { code: "invalid_grant" } });
+}
+
+const grantRow = (accountId: string) =>
+  h.db.first<{ claims_json: string; scope_hash: string }>(
+    "SELECT claims_json, scope_hash FROM account_product_grants WHERE account_id = ? AND product = ?",
+    accountId,
+    SLUG,
+  );
+
+async function confirmed(opts: { license?: boolean } = {}) {
+  if (opts.license) {
+    await services({ license: true });
+    await seedTier(h.db, SLUG, "free", { deviceLimit: 2 });
+    await h.db.run(
+      "UPDATE products SET auto_issue_json = ? WHERE slug = ?",
+      JSON.stringify({
+        enabled: true,
+        tierId: "free",
+        mode: "oidcDefault",
+        rateLimitPerHour: 100,
+      }),
+      SLUG,
+    );
+  }
+  const accountId = await link(
+    "https://accounts.google.com",
+    "",
+    GOOGLE_SUB,
+    "google",
+    "ada@example.com",
+    false,
+  );
+  const r = await exchange(google());
+  expect(r.status).toBe(200);
+  expect(r.body.status).toBe("confirm");
+  return { accountId, r, grant: r.body.grant as string };
+}
+
+describe("L-1: consent on the exchange", () => {
+  it("a linked account with no grant row gets confirm, never a token; nothing is bound or written", async () => {
+    const { accountId, r } = await confirmed();
+    expect(r.body.access_token).toBeUndefined();
+    const consent = r.body.consent as Record<string, unknown>;
+    expect(consent.firstTime).toBe(true);
+    expect(consent.changed).toBe(false);
+    expect(consent.as).toEqual({
+      provider: "google",
+      email: "ada@example.com",
+    });
+    expect(await grantRow(accountId)).toBeNull();
+    expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();
+    expect(await count("devices")).toBe(0);
+  });
+
+  it("a changed scope hash asks again", async () => {
+    const accountId = await link(
+      "https://accounts.google.com",
+      "",
+      GOOGLE_SUB,
+      "google",
+    );
+    await h.db.run(
+      "UPDATE account_product_grants SET scope_hash = 'old' WHERE account_id = ?",
+      accountId,
+    );
+    const r = await exchange(google());
+    expect(r.body.status).toBe("confirm");
+    expect((r.body.consent as { changed: boolean }).changed).toBe(true);
+  });
+
+  it("confirm then complete writes the grant row, the keys and answers the token", async () => {
+    const { accountId, r, grant } = await confirmed();
+    const res = await complete({
+      grant,
+      consent: { claims: ["profile", "email"] },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { access_token?: string; scope: string };
+    expect(typeof body.access_token).toBe("string");
+    expect(body.scope).toBe("profile email");
+    const row = await grantRow(accountId);
+    expect(JSON.parse(row!.claims_json)).toEqual(["profile", "email"]);
+    expect(row!.scope_hash).toBe(
+      (r.body.consent as { scopeHash: string }).scopeHash,
+    );
+    const held = await getDeviceKeys(h.db, SLUG, DEVICE);
+    expect(held?.sign_key).toBe(r.keys.signKey);
+    expect(held?.agree_key).toBe(r.keys.agreeKey);
+    // The next device's exchange is silent: consent stands.
+    const again = await exchange(google(), { device: DEVICE_2 });
+    expect(again.text.slice(0, 200)).toContain("access_token");
+  });
+
+  it("a narrowed consent stays narrowed on every later exchange, and the grant is audited without a token", async () => {
+    const { grant } = await confirmed();
+    const res = await complete({ grant, consent: { claims: ["email"] } });
+    expect(((await res.json()) as { scope: string }).scope).toBe("email");
+    const next = await exchange(google(), { device: DEVICE_2 });
+    expect(next.body.scope).toBe("email");
+    const audit = await h.db.all<{ summary: string; actor_sub: string }>(
+      "SELECT summary, actor_sub FROM audit WHERE action = 'signin.consent.granted'",
+    );
+    expect(audit).toHaveLength(1);
+    expect(audit[0]!.summary).toContain("email");
+    expect(JSON.stringify(audit)).not.toContain(GOOGLE_SUB);
+  });
+
+  it("a missing or foreign consent is 400 bad_request and leaves the grant open", async () => {
+    const { accountId, grant } = await confirmed();
+    for (const bad of [undefined, { claims: "profile" }, { claims: ["x"] }]) {
+      const res = await complete({ grant, consent: bad });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({
+        error: { code: "bad_request" },
+      });
+    }
+    expect(await grantRow(accountId)).toBeNull();
+    expect(
+      (await complete({ grant, consent: { claims: ["profile"] } })).status,
+    ).toBe(200);
+  });
+
+  it("an agreement key registered by another device in the grant window is refused", async () => {
+    const { accountId, r, grant } = await confirmed();
+    const other = await newKeys(base64UrlDecode(r.keys.agreeKey));
+    await upsertDeviceKeys(h.db, SLUG, DEVICE_2, other, NOW);
+    await expectInvalidGrant(grant);
+    expect(await grantRow(accountId)).toBeNull();
+    expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();
+  });
+
+  it("a different signing key registered for the device in the grant window is refused", async () => {
+    const { accountId, grant } = await confirmed();
+    await upsertDeviceKeys(h.db, SLUG, DEVICE, await newKeys(), NOW);
+    await expectInvalidGrant(grant);
+    expect(await grantRow(accountId)).toBeNull();
+  });
+
+  it("create with the mint claim held is 409, the store down is 503; the grant stays and no consent is written", async () => {
+    const { accountId, grant } = await confirmed({ license: true });
+    const body = {
+      grant,
+      choice: { kind: "create" },
+      consent: { claims: ["profile", "email"] },
+    };
+    const held = await withMintClaim(
+      h.env,
+      { slug: SLUG },
+      accountId,
+      async () => complete(body),
+    );
+    expect(held.won && held.value.status).toBe(409);
+    expect(await grantRow(accountId)).toBeNull();
+
+    const real = h.env.SINGLE_USE!;
+    (h.env as { SINGLE_USE: unknown }).SINGLE_USE = {
+      ...real,
+      idFromName: real.idFromName.bind(real),
+      get: (id: unknown) => {
+        const stub = real.get(id as never);
+        return {
+          fetch: async (url: string, init?: RequestInit) => {
+            const k = init?.body
+              ? (JSON.parse(String(init.body)) as { key?: string }).key
+              : undefined;
+            if (k?.startsWith("license-mint:")) throw new Error("store down");
+            return stub.fetch(url, init);
+          },
+        };
+      },
+    };
+    const down = await complete(body);
+    expect(down.status).toBe(503);
+    expect(await grantRow(accountId)).toBeNull();
+    (h.env as { SINGLE_USE: unknown }).SINGLE_USE = real;
+
+    const ok = await complete(body);
+    expect(ok.status).toBe(200);
+    expect(await grantRow(accountId)).not.toBeNull();
+    const lic = await h.db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM licenses WHERE product = ? AND account_id = ?",
+      SLUG,
+      accountId,
+    );
+    expect(lic!.n).toBe(1);
   });
 });

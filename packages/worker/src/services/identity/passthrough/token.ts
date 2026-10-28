@@ -290,6 +290,11 @@ export interface SignedIn {
   heldSignKey?: string | null;
   /** A same-device grant (I-43.1): marks the step-up once the device is bound. Only `authorization_code` sets it. */
   fresh?: true;
+  /**
+   * The exchange found the person's app consent standing (I-13.5, plan D-A2): exactly one licence
+   * with a free seat then binds with no tap. Never set by `authorization_code`.
+   */
+  silentSingle?: boolean;
 }
 
 /**
@@ -352,7 +357,19 @@ export async function bindAndAnswer(
       offer.candidates.length > 0 ||
       offer.keep ||
       (!offer.granted && acceptsKeys(product));
-    if (due) {
+    const only = offer.candidates[0];
+    const silent =
+      p.silentSingle === true &&
+      offer.candidates.length === 1 &&
+      !offer.keep &&
+      only !== undefined &&
+      only.state === "free";
+    if (silent && only) {
+      bound = await bindChoice(cx, who, deviceArgs, {
+        kind: "license",
+        licenseId: only.licenseId,
+      });
+    } else if (due) {
       const grant = await issueGrant(
         env,
         {
@@ -375,14 +392,15 @@ export async function bindAndAnswer(
         }),
       };
       return withNoStore(json(pending));
+    } else {
+      bound = await bindWithoutChoice(
+        cx,
+        who,
+        deviceArgs,
+        keepable !== null,
+        proven !== null,
+      );
     }
-    bound = await bindWithoutChoice(
-      cx,
-      who,
-      deviceArgs,
-      keepable !== null,
-      proven !== null,
-    );
   } else {
     bound = await bindWithoutChoice(
       cx,
@@ -441,7 +459,7 @@ export async function bindAndAnswer(
  * silent. The device's own proof keeps its licence; with none to choose, the device is bound
  * licence-less.
  */
-async function bindWithoutChoice(
+export async function bindWithoutChoice(
   cx: { req: Request; env: Env; db: Db; product: Product; now: number },
   who: { accountId: string; subject: string; email: string | null },
   device: {

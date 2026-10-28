@@ -56,8 +56,15 @@ import {
   type GrantRecord,
 } from "./grant.js";
 import { bindChoice, type BindRefusal } from "./bind.js";
-import { tokenBody } from "./token.js";
+import { bindWithoutChoice, tokenBody } from "./token.js";
 import { markFresh } from "./fresh.js";
+import {
+  DeviceKeysConflictError,
+  DeviceKeysInvalidError,
+  agreeKeyHeldElsewhere,
+  deviceSignKey,
+  upsertDeviceKeys,
+} from "../../../core/devices/keys.js";
 
 /** The grant routes: 60 a minute per client network (a guess at a grant or a key is not free). */
 export const CHOICE_RATE = {
@@ -240,7 +247,25 @@ export async function handleChoice(
   // ── complete ──────────────────────────────────────────────────────────────────────────────────
   const raw = (body as Partial<ChoiceCompleteRequest>).choice;
   const choice = raw === undefined ? null : parseChoice(raw);
-  if (!choice) {
+  // A grant issued with `confirm` needs the person's consent (§12.11.3 rule 2): its absence or a
+  // malformed one is 400 with the grant left open. Nothing is taken or burned here.
+  const early = await peekGrant(env, product.slug, grant, deviceId);
+  if (!early.ok) return invalidGrant();
+  const rawConsent = (body as Partial<ChoiceCompleteRequest>).consent;
+  let granted: string[] | null = null;
+  if (early.record.consent) {
+    const claims = (rawConsent as { claims?: unknown } | undefined)?.claims;
+    if (
+      !Array.isArray(claims) ||
+      !claims.every(
+        (c) => typeof c === "string" && early.record.scope.includes(c),
+      )
+    )
+      return fail(400, ErrorCode.BadRequest);
+    granted = early.record.scope.filter((s) => claims.includes(s));
+  }
+  // On a confirm grant an absent choice means none was due; bind will say if one still is.
+  if (!choice && !(early.record.consent && raw === undefined)) {
     // No choice is a choice still owed (409); a malformed one is the caller's mistake (400).
     // Neither burns the grant.
     const peek = await peekGrant(env, product.slug, grant, deviceId);
@@ -250,7 +275,7 @@ export async function handleChoice(
       : fail(400, ErrorCode.BadRequest);
   }
   // A key is an online oracle for licence keys: each attempt is a read of the grant's budget.
-  if (choice.kind === "key") {
+  if (choice?.kind === "key") {
     const spent = await spendRead(env, product.slug, grant as string, deviceId);
     if (!spent.ok)
       return spent.reason === "reads_exhausted"
@@ -289,23 +314,46 @@ export async function handleChoice(
       ? { token: presented, row: heldRes.device }
       : null;
 
-  const bound = await bindChoice(
-    {
-      req,
-      env,
-      db,
-      product,
-      now,
-      ...(ctx.settings ? { settings: ctx.settings } : {}),
-    },
-    {
-      accountId: account.id,
-      subject: taken.subject,
-      email: account.primary_email,
-    },
-    { id: deviceId, metadata, label, held },
-    choice,
-  );
+  // Never trust the keys the grant carries: it lived up to 300 s. Re-run the held-key rule and the
+  // agree-key check against the store now; any failure is the one `invalid_grant`.
+  let heldSignKey: string | null = null;
+  if (taken.keys) {
+    heldSignKey = await deviceSignKey(db, product.slug, deviceId);
+    if (
+      (heldSignKey !== null && heldSignKey !== taken.keys.signKey) ||
+      (await agreeKeyHeldElsewhere(
+        db,
+        product.slug,
+        taken.keys.agreeKey,
+        deviceId,
+      ))
+    )
+      return invalidGrant();
+  }
+
+  const bcx = {
+    req,
+    env,
+    db,
+    product,
+    now,
+    ...(ctx.settings ? { settings: ctx.settings } : {}),
+  };
+  const who = {
+    accountId: account.id,
+    subject: taken.subject,
+    email: account.primary_email,
+  };
+  const device = { id: deviceId, metadata, label, held };
+  const bound = choice
+    ? await bindChoice(bcx, who, device, choice)
+    : await bindWithoutChoice(
+        bcx,
+        who,
+        device,
+        held !== null,
+        heldRes !== null && !("error" in heldRes),
+      );
   if (!bound.ok) {
     const r = bound.refusal;
     if (RETRYABLE.has(r.reason)) await putBack();
@@ -324,6 +372,61 @@ export async function handleChoice(
     return nestedRefusal(r, extra);
   }
 
+  if (taken.keys) {
+    try {
+      await upsertDeviceKeys(
+        db,
+        product.slug,
+        deviceId,
+        taken.keys,
+        now,
+        undefined,
+        heldSignKey,
+      );
+    } catch (e) {
+      // A key another device registered inside the grant window, or a malformed one.
+      if (
+        e instanceof DeviceKeysInvalidError ||
+        e instanceof DeviceKeysConflictError
+      )
+        return invalidGrant();
+      throw e;
+    }
+  }
+  if (taken.consent && granted) {
+    await db.batch([
+      {
+        sql: `INSERT INTO account_product_grants
+                (account_id, product, claims_json, granted_at, modified_at, scope_hash)
+              VALUES (?, ?, ?, ?, ?, ?)
+              ON CONFLICT (account_id, product) DO UPDATE SET
+                claims_json = excluded.claims_json,
+                modified_at = excluded.modified_at,
+                scope_hash = excluded.scope_hash`,
+        params: [
+          account.id,
+          product.slug,
+          JSON.stringify(granted),
+          now,
+          now,
+          taken.consent.scopeHash,
+        ],
+      },
+    ]);
+    await appendAudit(db, {
+      product: product.slug,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: taken.subject,
+      actor_name: null,
+      actor_email: null,
+      action: "signin.consent.granted",
+      target_kind: "product",
+      target_id: product.slug,
+      parent_id: null,
+      summary: `Granted ${granted.join(", ") || "no claims"} to the app (scope ${taken.consent.scopeHash})`,
+    });
+  }
   if (taken.fresh) await markFresh(env, product.slug, deviceId);
   await appendAudit(db, {
     product: product.slug,
@@ -336,11 +439,20 @@ export async function handleChoice(
     target_kind: "device",
     target_id: deviceId,
     parent_id: bound.licenseId === NO_LICENSE_ID ? null : bound.licenseId,
-    summary: `Chose a license in the app (${choice.kind})`,
+    summary: choice
+      ? `Chose a license in the app (${choice.kind})`
+      : "Confirmed consent",
   });
   return noStore(
     json(
-      await tokenBody(db, product, deviceId, taken.scope, taken.subject, bound),
+      await tokenBody(
+        db,
+        product,
+        deviceId,
+        granted ?? taken.scope,
+        taken.subject,
+        bound,
+      ),
     ),
   );
 }

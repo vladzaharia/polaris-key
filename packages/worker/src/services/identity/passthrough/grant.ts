@@ -54,6 +54,11 @@ export interface GrantRecord {
   keys?: { signKey: string; agreeKey: string };
   /** Earned by a same-device `authorization_code` (I-43.1): `choice/complete` then marks the step-up. */
   fresh?: true;
+  /**
+   * Set when the exchange answered `confirm` (I-13.5): `choice/complete` then needs the person's
+   * `consent` and writes the app consent against this hash, the one the person was shown.
+   */
+  consent?: { scopeHash: string };
   /** Reads spent so far. */
   reads: number;
   /** Epoch seconds the grant ends, for restoring it after a retryable refusal. */
