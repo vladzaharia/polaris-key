@@ -4,7 +4,7 @@
 // demand by the gate (component.tsx), so a page that signs in silently never fetches it. The SDK's
 // calls are mapped to ui-core's `SignInPrimitives` here; the model decides every step.
 
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AutoOutcome } from "@polaris-key/ui-core";
 import { primitivesOf } from "@polaris-key/ui-core/browser/sdk/autoPrimitives.js";
 
@@ -38,6 +38,13 @@ export default function AutoForm(props: AutoFormProps): ReactNode {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [adapter],
   );
+  // A line left after the sheet ("Google linked") keeps the form mounted, closed, for its time.
+  const [lingering, setLingering] = useState(false);
+  useEffect(() => {
+    if (!lingering) return;
+    const t = setTimeout(onBack, 6000);
+    return () => clearTimeout(t);
+  }, [lingering]);
   return (
     <SignIn
       primitives={primitives}
@@ -45,12 +52,13 @@ export default function AutoForm(props: AutoFormProps): ReactNode {
       input={GOOGLE}
       presentation={props.sheet ? "sheet" : "inline"}
       replace="inline"
-      {...(props.sheet ? { open: true } : { fill: true })}
+      {...(props.sheet ? { open: !lingering } : { fill: true })}
       {...(seed ? { seed } : {})}
       {...(props.theme ? { theme: props.theme } : {})}
       {...(props.className ? { className: props.className } : {})}
-      onClose={onBack}
-      onDone={onBack}
+      onClose={(toast) => (toast ? setLingering(true) : onBack())}
+      // The link sheet ends through its own close (Done, or the toast's time), not on the sign-in.
+      onDone={props.sheet ? undefined : onBack}
     />
   );
 }

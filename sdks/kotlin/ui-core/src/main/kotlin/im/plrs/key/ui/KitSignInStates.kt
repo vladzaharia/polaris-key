@@ -197,14 +197,14 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
             "signin.linkOffer.decline",
         )
 
-        "link-done" -> step("link-done", "signin.linkOffer.done", "common.continue")
+        "link-done" -> step("link-done", "signin.linkOffer.done", "common.done")
 
         "link-conflict" -> step(
             "link-conflict",
             "signin.linkOffer.conflictTitle",
             "signin.linkOffer.conflict",
             "signin.linkOffer.join",
-            "common.continue",
+            "common.done",
         )
 
         "nearby-prompt" -> step("nearby-prompt", "signin.nearby.promptTitle", "signin.nearby.prePrompt", "common.continue", "common.notNow")

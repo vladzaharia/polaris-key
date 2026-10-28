@@ -222,14 +222,14 @@
           ]
         },
         "link-done": {
-          "copy": ["signin.linkOffer.done", "common.continue"]
+          "copy": ["signin.linkOffer.done", "common.done"]
         },
         "link-conflict": {
           "copy": [
             "signin.linkOffer.conflictTitle",
             "signin.linkOffer.conflict",
             "signin.linkOffer.join",
-            "common.continue"
+            "common.done"
           ]
         },
         "nearby-prompt": {
