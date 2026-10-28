@@ -258,6 +258,26 @@
 // `scope` "person" | "product"; on a 503, `retryAfter`). The ticket value is random and never
 // asserted beyond its `pkeyrt_` shape.
 //
+// connectIdentity / connectDevices (CC-06.4, WIRE-CONTRACT-V5 §15.2 to §15.4, §15.9) — the SDK's
+// Cloud Connect identity (`client.connect.identity()` and `.listDevices()`), replayed only by an SDK
+// that marks `connect.identity` implemented. The transcript opens with a `discover` step, because a
+// client sends nothing to a product whose discovery names no `connect` service. `args`:
+// `keyLabel` (the device's fixture keys, see below) and, on connectIdentity, `refresh`. The device
+// keys are a fixture derived from the label (`providers.ts` `fixtureDeviceKeys`): the Ed25519 signing
+// key is seeded by SHA-256(label), the agreement key's 32 bytes are SHA-256(label + ":agree") with
+// the top bit of the last byte clear, so the `PUT /<p>/devices/keys` the client sends first (a
+// `keys` proof, no token) is the recorded bytes at the step's clock. A step whose `keyLabel`
+// differs from the one before it is a key rotation: the replayer hands the client the new keys. A
+// step may record a `PUT /<p>/devices/keys` after a refused GET (the Worker forgot the keys: the
+// client registers once more and asks again).
+//   connectIdentity `expect`: `result` "ok" | "refused" (with `code`, the wire code the Worker
+//     answered, as a refusal) | "unavailable" (the client refused to send: discovery names no
+//     Cloud Connect). On "ok": `epoch`, `devices` (the roster's device ids, in order), `deviceId`
+//     (the certificate's) and `discKeys` (1, or 2 while the previous K_disc is held). The keys
+//     themselves are never in `expect`.
+//   connectDevices `expect`: `result` "ok" with `devices`, the answer's list by value
+//     ({deviceId, label, platform, lastSeen, self}), or "refused" with `code`.
+//
 // chunkRange (P4-32, plans/P4-32.md §4) — `{ bundle, offset, length }`: the SDK's chunk-range
 // fetch (client-core `chunkRangeFetch`, Python `chunk_range_fetch`, Swift `chunkRangeFetch`,
 // Kotlin `chunkRangeFetch`, Godot `PKeyPackChunks.chunk_range_fetch`) of `length` bytes at
@@ -385,7 +405,10 @@ export type Action =
   | "keyringAdopt"
   | "keyringReset"
   /** CC-07.3 (WIRE-CONTRACT-V5 §15.7): the Cloud Connect relay ticket of the `connect-relay-*` transcripts. */
-  | "relayTicket";
+  | "relayTicket"
+  /** CC-06.4 (WIRE-CONTRACT-V5 §15.2 to §15.4): the Cloud Connect identity of the `connect-identity*` transcripts. */
+  | "connectIdentity"
+  | "connectDevices";
 
 export interface Step {
   action: Action;

@@ -1,0 +1,318 @@
+{
+  "transcriptVersion": 1,
+  "id": "connect-identity",
+  "description": "The Cloud Connect identity (WIRE-CONTRACT-V5 §15.2 to §15.4). Discovery names the connect service. The SDK's first identity call makes the device's keys and registers them (PUT devices/keys, the keys proof), then asks GET connect/identity: the signed roster of the person's devices at its epoch, this device's certificate, and K_disc (one key until a device has joined or left). The device list is display data only, with no key, and marks this device self.",
+  "features": ["connect.identity"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_4IubUp3BtIu4n4UvRERSGauSm2ULeDTR_EJa0grq3BA",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "note": "Discovery names Cloud Connect.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 5,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "requires-license",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "deviceKeys": "https://key.plrs.im/djdl/devices/keys"
+                  },
+                  "portal": {
+                    "enabled": true,
+                    "activate": "https://key.plrs.im/activate?product=djdl"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": {
+                    "enabled": true,
+                    "endpoints": {
+                      "activate": "https://key.plrs.im/djdl/license/activate",
+                      "enroll": "https://key.plrs.im/djdl/license/enroll",
+                      "token": "https://key.plrs.im/djdl/license/token",
+                      "deauthorize": "https://key.plrs.im/djdl/license/deauthorize",
+                      "document": "https://key.plrs.im/djdl/license/document"
+                    }
+                  },
+                  "config": { "enabled": false },
+                  "release": { "enabled": false },
+                  "distribution": { "enabled": false },
+                  "update": { "enabled": false },
+                  "identity": {
+                    "enabled": true,
+                    "configured": true,
+                    "issuer": "https://key.plrs.im/djdl/identity",
+                    "account": true,
+                    "keyEntryLimit": 10,
+                    "endpoints": {
+                      "session": "https://key.plrs.im/djdl/identity/session",
+                      "sessionLicense": "https://key.plrs.im/djdl/identity/session/license",
+                      "authStart": "https://key.plrs.im/djdl/identity/auth/start",
+                      "authCallback": "https://key.plrs.im/djdl/identity/auth/callback",
+                      "authLogout": "https://key.plrs.im/djdl/identity/auth/logout",
+                      "authDeviceStart": "https://key.plrs.im/djdl/identity/auth/device/start",
+                      "authDeviceEntry": "https://key.plrs.im/djdl/identity/auth/device",
+                      "authDeviceVerify": "https://key.plrs.im/djdl/identity/auth/device/verify",
+                      "authDevicePoll": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                      "authorize": "https://key.plrs.im/djdl/identity/authorize",
+                      "token": "https://key.plrs.im/djdl/identity/token",
+                      "choiceLicenses": "https://key.plrs.im/djdl/identity/choice/licenses",
+                      "choiceDevices": "https://key.plrs.im/djdl/identity/choice/devices",
+                      "choiceComplete": "https://key.plrs.im/djdl/identity/choice/complete",
+                      "choiceCancel": "https://key.plrs.im/djdl/identity/choice/cancel",
+                      "attach": "https://key.plrs.im/djdl/identity/attach",
+                      "subject": "https://key.plrs.im/djdl/identity/subject",
+                      "signout": "https://key.plrs.im/djdl/identity/signout",
+                      "nonce": "https://key.plrs.im/djdl/identity/nonce",
+                      "link": "https://key.plrs.im/djdl/identity/link",
+                      "accountPortal": "https://key.plrs.im/#/p/djdl"
+                    }
+                  },
+                  "sync": { "enabled": false },
+                  "commerce": { "enabled": false },
+                  "connect": {
+                    "enabled": true,
+                    "lan": true,
+                    "relay": false,
+                    "interAccount": false,
+                    "endpoints": {
+                      "identity": "https://key.plrs.im/djdl/connect/identity",
+                      "devices": "https://key.plrs.im/djdl/connect/devices",
+                      "ticket": null
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "ok" }
+    },
+    {
+      "action": "connectIdentity",
+      "note": "The first call: register the keys, fetch the identity.",
+      "args": { "keyLabel": "transcript-connect-key-1" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "PUT",
+              "path": "/djdl/devices/keys",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "vnV00dDZEKK4P5vlDt0tITCeBORkgedd8cexMNOA31w",
+                  "agreeKey": "z9EE67vsnQkPEIWr4YL4qDFqIj2nZTan9l67gPiUU1A",
+                  "issuedAt": 1700000000,
+                  "sig": "s16ZlO47sKF4tOKeF_3Ib_ww1UGQqgajm7gOvsMZ9hArl0oWK_xsL4n_uWZUULfeDneOx2TthYOa6vau3UnJDg"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "keySeq": 1 }
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/connect/identity",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ring": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19oclIwek12b3B2M3RfSWFSa2FhYlJBIiwiZXBvY2giOjEsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDA2MDQ4MDAsImRldmljZXMiOlt7ImRldmljZUlkIjoiVFJBTlNDUklQVERFVklDRTAwMDAwMDAwMDAwMDAwMDEiLCJzaWduS2V5Ijoidm5WMDBkRFpFS0s0UDV2bER0MHRJVENlQk9Sa2dlZGQ4Y2V4TU5PQTMxdyIsImFncmVlS2V5IjoiejlFRTY3dnNuUWtQRUlXcjRZTDRxREZxSWoyblpUYW45bDY3Z1BpVVUxQSJ9LHsiZGV2aWNlSWQiOiJUUkFOU0NSSVBUREVWSUNFMDAwMDAwMDAwMDAwMDAwMiIsInNpZ25LZXkiOiItXzVVS1pkRlhxR0lUUGF2TG5YaHpPV1h2T0JoeWRqclk2R1VOY3UxZnhNIiwiYWdyZWVLZXkiOiJFZjlTVG1UcHRoVmQ0YXQ0djFnTy1RY3AyUmd5QnFacFRBek9wYTlSekdVIn1dfQ.ZMaTmFOR_OnAaAO7yTosQuBjX_k_jVs_ZJtp8D7hoDeMQTlWboRGmg5QS0w1d5UMIVn-cTuupnb6xeGVgwLPBQ",
+                "certificate": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcGVlcitqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19oclIwek12b3B2M3RfSWFSa2FhYlJBIiwiZGV2aWNlSWQiOiJUUkFOU0NSSVBUREVWSUNFMDAwMDAwMDAwMDAwMDAwMSIsInNpZ25LZXkiOiJ2blYwMGREWkVLSzRQNXZsRHQwdElUQ2VCT1JrZ2VkZDhjZXhNTk9BMzF3IiwiYWdyZWVLZXkiOiJ6OUVFNjd2c25Ra1BFSVdyNFlMNHFERnFJajJuWlRhbjlsNjdnUGlVVTFBIiwicmluZ0Vwb2NoIjoxLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwNjA0ODAwfQ.Bjv38h2w3v1Lytn0aC7nmBNEuMA_7RUqwnvd1MrMcyiQZHnq49wgsU9zgI5jFCT0y5_Zni3yKnM1mjTIBRSyBw",
+                "discKeys": ["hdTlKiix1iUhsPB6iMsuv_rFJ4-pnpjTuIPRkQPC-IQ"]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "epoch": 1,
+        "devices": [
+          "TRANSCRIPTDEVICE0000000000000001",
+          "TRANSCRIPTDEVICE0000000000000002"
+        ],
+        "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+        "discKeys": 1
+      }
+    },
+    {
+      "action": "connectDevices",
+      "note": "The person's devices.",
+      "args": { "keyLabel": "transcript-connect-key-1" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/connect/devices",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "devices": [
+                  {
+                    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+                    "label": null,
+                    "platform": null,
+                    "lastSeen": 1700000000,
+                    "self": true
+                  },
+                  {
+                    "deviceId": "TRANSCRIPTDEVICE0000000000000002",
+                    "label": null,
+                    "platform": null,
+                    "lastSeen": 1700000000,
+                    "self": false
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "devices": [
+          {
+            "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+            "label": null,
+            "platform": null,
+            "lastSeen": 1700000000,
+            "self": true
+          },
+          {
+            "deviceId": "TRANSCRIPTDEVICE0000000000000002",
+            "label": null,
+            "platform": null,
+            "lastSeen": 1700000000,
+            "self": false
+          }
+        ]
+      }
+    }
+  ]
+}
