@@ -198,7 +198,8 @@ class CloudSyncApi:
         host = self._host
         if not host.started:
             return
-        # Another person: the first one is signed out (flushed, then forgotten) before this one starts.
+        # Another person: the first one leaves (unsent edits dropped, then forgotten) before this one
+        # starts. The device credential is already the new person's, so nothing is sent for the old one.
         if self._subject is not None and self._subject != subject:
             self._sign_out_now()
         # Once per install (the machine ignores a second call), before the first principal arrives so
@@ -224,13 +225,14 @@ class CloudSyncApi:
     # ── Leaving ──────────────────────────────────────────────────────────────────────────────
 
     def _sign_out_now(self) -> None:
-        """Sign the machine out: send what is waiting (bounded), then it leaves and the events forget."""
+        """The person changed: the credential in use is already the new person's, so this never talks
+        to the server. Unsynced edits are discarded and the old synced values leave memory before
+        anything waits. The only flush is ``before_sign_out``, while the old credential is current."""
         host = self._host
+        self._subject = None
         with host.locked() as m:
-            m.sign_out()
-        # No `touch()` here: the flush's own pump reported the events, and a trailing one would wait
-        # for a pump the flush already gave up on.
-        host.flush(SYNC_SIGNOUT_FLUSH_MS)
+            m.sign_out(discard_unsynced=True)
+        host.touch()
         self._join_chain()
 
     def before_sign_out(self) -> None:
