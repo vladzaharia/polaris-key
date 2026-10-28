@@ -53,7 +53,8 @@ public final class CloudSyncStateFile: @unchecked Sendable {
     /// the file stays.
     public func remove() throws {
         try lock.withLock {
-            do { try FileManager.default.removeItem(at: url) } catch let e as CocoaError where e.code == .fileNoSuchFile {}
+            do { try FileManager.default.removeItem(at: url) } catch let e as CocoaError where e.code == .fileNoSuchFile
+            {}
             sweepTemporaries()
         }
     }
@@ -101,7 +102,10 @@ public final class CloudSyncStateFile: @unchecked Sendable {
             try data.withUnsafeBytes { (buf: UnsafeRawBufferPointer) in
                 while offset < buf.count {
                     let n = write(fd, buf.baseAddress! + offset, buf.count - offset)
-                    if n < 0 { if errno == EINTR { continue }; throw CocoaError(.fileWriteUnknown) }
+                    if n < 0 {
+                        if errno == EINTR { continue }
+                        throw CocoaError(.fileWriteUnknown)
+                    }
                     offset += n
                 }
             }
@@ -116,8 +120,8 @@ public final class CloudSyncStateFile: @unchecked Sendable {
         values.isExcludedFromBackup = true
         try? kept.setResourceValues(values)
         #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
-        try? FileManager.default.setAttributes(
-            [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: tmp.path)
+            try? FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: tmp.path)
         #endif
         guard rename(tmp.path, url.path) == 0 else { throw CocoaError(.fileWriteUnknown) }
         done = true
@@ -241,7 +245,9 @@ extension SyncRow {
     }
 
     init?(fileJSON v: JSONValue) {
-        guard case .object(let o) = v, let value = o["value"], case .int(let version)? = o["version"] else { return nil }
+        guard case .object(let o) = v, let value = o["value"], case .int(let version)? = o["version"] else {
+            return nil
+        }
         self.init(value: value, version: version, bad: o["bad"]?.boolValue ?? false, plain: o["plain"]?.intValue)
     }
 }
@@ -269,9 +275,13 @@ extension SyncOp {
             case .string(let opName)? = o["op"], let op = SyncOpName(rawValue: opName)
         else { return nil }
         let target: SyncTarget
-        if case .string(let key)? = t["setting"], case .string(let sc)? = t["scope"], let scope = SyncScope(rawValue: sc) {
+        if case .string(let key)? = t["setting"], case .string(let sc)? = t["scope"],
+            let scope = SyncScope(rawValue: sc)
+        {
             target = .setting(key, scope)
-        } else if case .array(let r)? = t["record"], r.count == 2, case .string(let c) = r[0], case .string(let i) = r[1] {
+        } else if case .array(let r)? = t["record"], r.count == 2, case .string(let c) = r[0],
+            case .string(let i) = r[1]
+        {
             target = .record(c, i)
         } else {
             return nil

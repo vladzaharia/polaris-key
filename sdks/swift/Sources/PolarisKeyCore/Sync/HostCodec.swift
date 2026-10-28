@@ -229,9 +229,12 @@ public enum HostCodec {
                 if clean["renamedTo"] != nil {
                     // Kept only for an alias the app declares.
                     var keep = false
-                    if case .string(let to)? = clean["renamedTo"], let from = conflictSetting(mutations, ro["mutationId"]),
+                    if case .string(let to)? = clean["renamedTo"],
+                        let from = conflictSetting(mutations, ro["mutationId"]),
                         let app = aliases[from]
-                    { keep = bytesEqual(app, to) }
+                    {
+                        keep = bytesEqual(app, to)
+                    }
                     if !keep { clean["renamedTo"] = nil }
                 }
                 if case .string("conflict")? = ro["status"], case .object(let server)? = ro["server"] {

@@ -197,8 +197,14 @@ public enum CanonicalJSON {
                     a.append(try value())
                     ws()
                     guard i < b.count else { throw fail() }
-                    if b[i] == 0x2C { i += 1; continue }
-                    if b[i] == 0x5D { i += 1; return .array(a) }
+                    if b[i] == 0x2C {
+                        i += 1
+                        continue
+                    }
+                    if b[i] == 0x5D {
+                        i += 1
+                        return .array(a)
+                    }
                     throw fail()
                 }
             case 0x7B:
@@ -223,8 +229,14 @@ public enum CanonicalJSON {
                     o[k] = try value()  // a repeated key: the last wins, as JSON.parse does
                     ws()
                     guard i < b.count else { throw fail() }
-                    if b[i] == 0x2C { i += 1; continue }
-                    if b[i] == 0x7D { i += 1; return .object(o) }
+                    if b[i] == 0x2C {
+                        i += 1
+                        continue
+                    }
+                    if b[i] == 0x7D {
+                        i += 1
+                        return .object(o)
+                    }
                     throw fail()
                 }
             default: return try number()

@@ -113,7 +113,11 @@ private final class RingGate: PolarisTransport, @unchecked Sendable {
 
     func send(_ request: PolarisRequest) async throws -> PolarisResponse {
         let first = lock.withLock { () -> Bool in
-            if request.method == "POST", !reached { reached = true; held = true; return true }
+            if request.method == "POST", !reached {
+                reached = true
+                held = true
+                return true
+            }
             return false
         }
         if first {
@@ -167,7 +171,8 @@ final class SyncKeyringTests: XCTestCase {
             let core = try CoreContext(
                 options: CoreOptions(
                     productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0", pinnedKeys: [:],
-                    trustRefresh: false, store: InMemoryStore(productSlug: "djdl", deviceId: "dev_x"), keychainAccessGroup: group))
+                    trustRefresh: false, store: InMemoryStore(productSlug: "djdl", deviceId: "dev_x"),
+                    keychainAccessGroup: group))
             return PolarisKeyClient.keyring(core: core, attachments: LockedValue([:]))
         }
         XCTAssertEqual(try ring("TEAM.group.shared").options.accessGroup, "TEAM.group.shared")
@@ -194,8 +199,9 @@ final class SyncKeyringTests: XCTestCase {
         XCTAssertTrue(status.rootStored)
         // The codec round-trips, with the name inside the envelope.
         let env = try a.keyring.codec.seal(collection: "$settings", name: "theme", value: .string("dark"))
-        guard case .ok(let name, let value) = try a.keyring.codec.open(
-            collection: "$settings", name: "theme", envelope: env)
+        guard
+            case .ok(let name, let value) = try a.keyring.codec.open(
+                collection: "$settings", name: "theme", envelope: env)
         else { return XCTFail("did not open") }
         XCTAssertEqual(name, "theme")
         XCTAssertEqual(value, .string("dark"))

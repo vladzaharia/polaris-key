@@ -20,7 +20,10 @@ private func docOf(_ v: Double) -> SyncMachineDocument {
         let calls = LockedValue<Int>(0)
         let value = LockedValue<Double>(0)
         deps.document = {
-            let n = calls.with { $0 += 1; return $0 }
+            let n = calls.with {
+                $0 += 1
+                return $0
+            }
             // Calls: 1 the first build, then the change check, then the rebuild's: that one is slow.
             if n >= 3 { try? await Task.sleep(nanoseconds: 500_000_000) }
             return docOf(value.current)

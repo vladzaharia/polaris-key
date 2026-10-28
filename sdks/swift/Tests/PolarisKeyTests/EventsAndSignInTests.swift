@@ -11,8 +11,9 @@
 import Foundation
 import PolarisKey
 import PolarisKeyCore
-@testable import PolarisKeyIdentity
 import XCTest
+
+@testable import PolarisKeyIdentity
 
 @MainActor
 final class FakeBrowser: SignInBrowser {
@@ -112,7 +113,10 @@ final class EventsAndSignInTests: XCTestCase {
         await server.reply("/djdl/identity/signout", body: #"{"released":true}"#)
         let out = try await c.identity.signOut()
         XCTAssertTrue(out.released)
-        let seen = await collect(&it) { if case .entitlement(let n, _, _) = $0 { return n == "pro" }; return false }
+        let seen = await collect(&it) {
+            if case .entitlement(let n, _, _) = $0 { return n == "pro" }
+            return false
+        }
         XCTAssertEqual(
             seen,
             [
@@ -130,7 +134,10 @@ final class EventsAndSignInTests: XCTestCase {
         let c = try await licensedClient(token: false, services: [.license])
         var it = c.events.makeAsyncIterator()
         _ = await c.license.activateWithKey("PKEY-1")
-        let seen = await collect(&it) { if case .entitlement(let n, _, _) = $0 { return n == "pro" }; return false }
+        let seen = await collect(&it) {
+            if case .entitlement(let n, _, _) = $0 { return n == "pro" }
+            return false
+        }
         XCTAssertEqual(seen.first, .license(status: .ok, previous: .needsActivation))
         XCTAssertTrue(seen.contains(.entitlement(name: "pro", value: .bool(true), previous: nil)))
     }
@@ -240,17 +247,22 @@ final class EventsAndSignInTests: XCTestCase {
     private func startFlow() async {
         await server.reply(
             "/djdl/identity/auth/device/start",
-            body: #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1}"#)
+            body:
+                #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1}"#
+        )
     }
 
     func testTheAttachOptInRidesThePoll() async throws {
         await startFlow()
         await server.route("/djdl/identity/auth/device/poll") { req in
-            let body = (try? JSONDecoder().decode(JSONValue.self, from: req.body ?? Data()))?
+            let body =
+                (try? JSONDecoder().decode(JSONValue.self, from: req.body ?? Data()))?
                 .objectValue ?? [:]
             if body["attachLicense"] == .bool(true) {
                 return StubServer.Reply(
-                    body: #"{"status":"ready","token":"pkeyt_signed","schemaVersion":1,"identity":{"name":"Ada","email":"a@e.com"},"attached":"claimed"}"#)
+                    body:
+                        #"{"status":"ready","token":"pkeyt_signed","schemaVersion":1,"identity":{"name":"Ada","email":"a@e.com"},"attached":"claimed"}"#
+                )
             }
             return StubServer.Reply(
                 body: #"{"status":"confirm","identity":{"name":"Ada","email":"a@e.com"},"attachable":true}"#)

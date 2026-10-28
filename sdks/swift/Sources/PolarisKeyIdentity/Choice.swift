@@ -220,8 +220,7 @@ public struct ChoiceNamespace: Sendable {
     /// Finish the sign-in with the person's choice. On success the device token is stored and the
     /// post-acquisition sync has run, exactly as after a sign-in; the grant is consumed. A nil
     /// `choice` sends none, which the Worker refuses with `license_choice_required` (fresh `view`).
-    public func complete(grant: String, choice: LicenseChoiceInput?) async throws -> ChoiceCompletion
-    {
+    public func complete(grant: String, choice: LicenseChoiceInput?) async throws -> ChoiceCompletion {
         try await complete(grant: grant, choice: choice, consent: nil)
     }
 
@@ -333,9 +332,11 @@ extension IdentityClient {
             object["error"]?.objectValue?["code"]?.stringValue
             ?? object["error"]?.stringValue
         var retry = wholeSeconds(object["retryAfter"]?.doubleValue)
-        if retry == nil, let header = response.headers.first(where: {
-            $0.key.lowercased() == "retry-after"
-        })?.value.trimmingCharacters(in: .whitespaces), let seconds = Int(header) {
+        if retry == nil,
+            let header = response.headers.first(where: {
+                $0.key.lowercased() == "retry-after"
+            })?.value.trimmingCharacters(in: .whitespaces), let seconds = Int(header)
+        {
             retry = seconds
         }
         let entries = (try? JSONEncoder().encode(object["keyEntries"] ?? .null))

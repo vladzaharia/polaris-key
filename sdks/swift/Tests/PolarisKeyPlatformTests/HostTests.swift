@@ -34,13 +34,15 @@ final class HostTests: XCTestCase {
         let ok = call(h, "{\"op\":\"exclude_from_backup\",\"path\":\"\(dir.path)\"}")
         XCTAssertEqual(ok["ok"], true)
         XCTAssertEqual(try dir.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
-        XCTAssertEqual(call(h, "{\"op\":\"exclude_from_backup\",\"path\":\"\(dir.path)/missing\"}")["error"], "not_found")
+        XCTAssertEqual(
+            call(h, "{\"op\":\"exclude_from_backup\",\"path\":\"\(dir.path)/missing\"}")["error"], "not_found")
         XCTAssertEqual(call(h, #"{"op":"exclude_from_backup","path":"relative"}"#)["error"], "bad_path")
         XCTAssertEqual(call(h, #"{"op":"exclude_from_backup"}"#)["error"], "bad_path")
     }
 
     func testPingAndCapabilities() {
-        let (h, _) = host(fakeServices(availability: .iOS17_4, store: FakeStoreClient(catalog: []), keychain: FakeKeychain()))
+        let (h, _) = host(
+            fakeServices(availability: .iOS17_4, store: FakeStoreClient(catalog: []), keychain: FakeKeychain()))
         let ping = call(h, #"{"op":"ping"}"#)
         XCTAssertEqual(ping["ok"], true)
         XCTAssertEqual(ping["protocol"], 1)
@@ -75,7 +77,8 @@ final class HostTests: XCTestCase {
 
     func testStoreThroughJSON() async {
         let store = FakeStoreClient(catalog: [
-            ProductInfo(id: "pack.foes", type: "Non-Consumable", displayName: "Foes", displayPrice: "$4.99", price: "4.99")
+            ProductInfo(
+                id: "pack.foes", type: "Non-Consumable", displayName: "Foes", displayPrice: "$4.99", price: "4.99")
         ])
         let (h, log) = host(fakeServices(store: store))
         let listening = await log.result(call(h, #"{"op":"listen"}"#)["req"])
@@ -85,10 +88,14 @@ final class HostTests: XCTestCase {
         guard case .array(let ps)? = products["products"] else { return XCTFail() }
         XCTAssertEqual(ps.count, 1)
 
-        XCTAssertEqual(call(h, #"{"op":"purchase","product":"pack.foes","appAccountToken":"nope"}"#)["error"], "bad_app_account_token")
+        XCTAssertEqual(
+            call(h, #"{"op":"purchase","product":"pack.foes","appAccountToken":"nope"}"#)["error"],
+            "bad_app_account_token")
         store.willPurchase(.success(transaction(42), confirmIn: "scene"))
         let bought = await log.result(
-            call(h, #"{"op":"purchase","product":"pack.foes","appAccountToken":"6F2C3B1A-0000-4000-8000-00000000C0DE"}"#)["req"])
+            call(
+                h, #"{"op":"purchase","product":"pack.foes","appAccountToken":"6F2C3B1A-0000-4000-8000-00000000C0DE"}"#)[
+                    "req"])
         XCTAssertEqual(bought["result"], "success")
         guard case .object(let t)? = bought["transaction"] else { return XCTFail() }
         XCTAssertEqual(t["id"], "42")
@@ -124,19 +131,29 @@ final class HostTests: XCTestCase {
     }
 
     #if canImport(Security)
-    func testKeychainThroughJSON() {
-        let (h, _) = host(fakeServices(keychain: FakeKeychain()))
-        XCTAssertEqual(call(h, #"{"op":"kc_set","product":"diceroll","account":"device","value":"abc"}"#)["ok"], true)
-        XCTAssertEqual(call(h, #"{"op":"kc_get","product":"diceroll","account":"device"}"#), ["ok": true, "value": "abc"])
-        XCTAssertEqual(call(h, #"{"op":"kc_delete","product":"diceroll","account":"device"}"#), ["ok": true])
-        XCTAssertEqual(call(h, #"{"op":"kc_get","product":"diceroll"}"#)["error"], "missing_product_or_account")
-        XCTAssertEqual(call(h, #"{"op":"kc_set","product":"diceroll","account":"device"}"#)["error"], "missing_value")
-        XCTAssertEqual(call(h, #"{"op":"kc_set","product":"diceroll","account":"device-token","value":"t","keychain":"login"}"#)["ok"], true)
-        XCTAssertEqual(call(h, #"{"op":"kc_get","product":"diceroll","account":"device-token","keychain":"login"}"#), ["ok": true, "value": "t"])
-        XCTAssertEqual(call(h, #"{"op":"kc_get","product":"diceroll","account":"device","keychain":"icloud"}"#)["error"], "invalid_keychain")
-        let (none, _) = host(fakeServices(keychain: nil))
-        XCTAssertEqual(call(none, #"{"op":"kc_get","product":"diceroll","account":"device"}"#)["reason"], "runtime")
-    }
+        func testKeychainThroughJSON() {
+            let (h, _) = host(fakeServices(keychain: FakeKeychain()))
+            XCTAssertEqual(
+                call(h, #"{"op":"kc_set","product":"diceroll","account":"device","value":"abc"}"#)["ok"], true)
+            XCTAssertEqual(
+                call(h, #"{"op":"kc_get","product":"diceroll","account":"device"}"#), ["ok": true, "value": "abc"])
+            XCTAssertEqual(call(h, #"{"op":"kc_delete","product":"diceroll","account":"device"}"#), ["ok": true])
+            XCTAssertEqual(call(h, #"{"op":"kc_get","product":"diceroll"}"#)["error"], "missing_product_or_account")
+            XCTAssertEqual(
+                call(h, #"{"op":"kc_set","product":"diceroll","account":"device"}"#)["error"], "missing_value")
+            XCTAssertEqual(
+                call(
+                    h, #"{"op":"kc_set","product":"diceroll","account":"device-token","value":"t","keychain":"login"}"#)[
+                        "ok"], true)
+            XCTAssertEqual(
+                call(h, #"{"op":"kc_get","product":"diceroll","account":"device-token","keychain":"login"}"#),
+                ["ok": true, "value": "t"])
+            XCTAssertEqual(
+                call(h, #"{"op":"kc_get","product":"diceroll","account":"device","keychain":"icloud"}"#)["error"],
+                "invalid_keychain")
+            let (none, _) = host(fakeServices(keychain: nil))
+            XCTAssertEqual(call(none, #"{"op":"kc_get","product":"diceroll","account":"device"}"#)["reason"], "runtime")
+        }
     #endif
 
     func testPacksThroughJSON() async {
@@ -145,7 +162,8 @@ final class HostTests: XCTestCase {
         packs.files = ["/staging/foes/content.pck"]
         let (h, log) = host(fakeServices(packs: packs))
         let ev = await log.result(
-            call(h, #"{"op":"packs_ensure","packs":[{"id":"foes-c3","path":"foes/content.pck"}],"latest":true}"#)["req"])
+            call(h, #"{"op":"packs_ensure","packs":[{"id":"foes-c3","path":"foes/content.pck"}],"latest":true}"#)["req"]
+        )
         XCTAssertEqual(ev["ev"], "packs_ensure")
         XCTAssertEqual(log.named("pack_ready").first?["path"], "/staging/foes/content.pck")
         let watched = await log.result(call(h, #"{"op":"packs_watch","id":"foes-c3"}"#)["req"])
@@ -172,7 +190,8 @@ final class HostTests: XCTestCase {
 
     func testJSONRoundTrip() {
         let o: PlatformObject = [
-            "s": "a/b", "i": 3, "d": .double(1.5), "b": true, "n": .null, "a": .array([1, "x"]), "o": .object(["k": false]),
+            "s": "a/b", "i": 3, "d": .double(1.5), "b": true, "n": .null, "a": .array([1, "x"]),
+            "o": .object(["k": false]),
         ]
         let text = encodePlatformJSON(o)
         XCTAssertTrue(text.contains(#""s":"a/b""#), "slashes are not escaped: \(text)")

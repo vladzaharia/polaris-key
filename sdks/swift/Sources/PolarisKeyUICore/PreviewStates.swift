@@ -139,7 +139,8 @@ extension PolarisKeyPreviewState {
 
     /// Every preview, component by component.
     public static let all: [PolarisKeyPreviewState] =
-        gate + welcome + signIn + nearby + activate + offlineActivation + deviceLimit + statusAndGrace + update + settings
+        gate + welcome + signIn + nearby + activate + offlineActivation + deviceLimit + statusAndGrace + update
+        + settings
         + devicesAndPaywall + cloudSync
 
     /// The previews of one component.

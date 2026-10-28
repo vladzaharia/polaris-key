@@ -30,7 +30,9 @@ final class SignInSessionTests: XCTestCase {
     private func startFlow() async {
         await server.reply(
             "/djdl/identity/auth/device/start",
-            body: #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1,"deviceName":"Deck"}"#)
+            body:
+                #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1,"deviceName":"Deck"}"#
+        )
     }
 
     func testStartExposesTheCodeAndNothingElse() async throws {
@@ -109,7 +111,9 @@ final class SignInSessionTests: XCTestCase {
         await startFlow()
         await server.reply(
             "/djdl/identity/auth/device/poll",
-            body: #"{"status":"ready","token":"pkeyt_signed","schemaVersion":1,"subject":"acct_1","identity":{"name":"Ada"}}"#)
+            body:
+                #"{"status":"ready","token":"pkeyt_signed","schemaVersion":1,"subject":"acct_1","identity":{"name":"Ada"}}"#
+        )
         let c = try await client()
         var events = c.events.makeAsyncIterator()
         let session = try await c.identity.signIn.start()

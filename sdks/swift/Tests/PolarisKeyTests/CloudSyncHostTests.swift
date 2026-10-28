@@ -10,7 +10,6 @@ import Testing
 @testable import PolarisKey
 @testable import PolarisKeyCore
 
-
 private let VOL = "audio.volume"
 private let BIND = "input.bindings"
 private let OPEN = "my.private.key"
@@ -20,7 +19,9 @@ private func sealedCt(_ name: String, _ v: JSONValue) -> JSONValue {
     .string(Base64URL.encode(try! SyncEnvelope.seal(root: hRoot, collection: C, name: name, value: v)))
 }
 private func blinded(_ n: String) -> String { SyncBlind.blind(root: hRoot, kind: .setting, ctx: C, n: n) }
-private func signedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptions(catalog: hMirror)) async throws -> CloudSyncHost {
+private func signedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptions(catalog: hMirror)) async throws
+    -> CloudSyncHost
+{
     try await hSignedIn(rig, options: options)
 }
 
@@ -107,7 +108,9 @@ private func signedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptio
     private final class FakeNet: PolarisTransport, @unchecked Sendable {
         private let lock = NSLock()
         private(set) var requests: [PolarisRequest] = []
-        var answer: @Sendable (PolarisRequest) throws -> PolarisResponse = { _ in PolarisResponse(status: 200, body: Data("{}".utf8)) }
+        var answer: @Sendable (PolarisRequest) throws -> PolarisResponse = { _ in
+            PolarisResponse(status: 200, body: Data("{}".utf8))
+        }
         func send(_ r: PolarisRequest) async throws -> PolarisResponse {
             lock.withLock { requests.append(r) }
             return try answer(r)
@@ -154,7 +157,10 @@ private func signedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptio
 
     @Test func h3SendsNothingForAPathOutsideSyncOrWithoutAToken() async {
         let n = FakeNet()
-        for path in ["/demo/config", "/other/sync/ops", "/demo/sync?cursor=0&x=a b", "/demo/syncx", "//evil.example/demo/sync/ops"] {
+        for path in [
+            "/demo/config", "/other/sync/ops", "/demo/sync?cursor=0&x=a b", "/demo/syncx",
+            "//evil.example/demo/sync/ops",
+        ] {
             #expect(await net(n).send(SyncRequest(method: .get, path: path)) == .transport)
         }
         #expect(await net(n, token: nil).send(SyncRequest(method: .get, path: "/demo/sync?cursor=0")) == .transport)
@@ -194,12 +200,15 @@ private func signedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptio
         let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
         #expect((attrs[.posixPermissions] as? Int) == 0o600)
         #expect(try url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
-        let leftovers = try FileManager.default.contentsOfDirectory(atPath: rig.dir.path).filter { $0.hasSuffix(".tmp") }
+        let leftovers = try FileManager.default.contentsOfDirectory(atPath: rig.dir.path).filter {
+            $0.hasSuffix(".tmp")
+        }
         #expect(leftovers.isEmpty)
         // The root never reaches the file.
         let text = try Data(contentsOf: url)
         #expect(text.range(of: hRoot) == nil)
-        #expect(String(decoding: text, as: UTF8.self).range(of: hRoot.map { String(format: "%02x", $0) }.joined()) == nil)
+        #expect(
+            String(decoding: text, as: UTF8.self).range(of: hRoot.map { String(format: "%02x", $0) }.joined()) == nil)
         // A relaunch gets the journal back.
         let loaded = CloudSyncStateFile(stateDir: rig.dir, product: "demo").load()
         #expect(loaded.persisted?.subject == hALICE)
@@ -212,7 +221,9 @@ private func signedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptio
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("pk-state-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }
         let f = CloudSyncStateFile(stateDir: dir, product: "demo")
-        var st = SyncMachineState(subject: nil, partitions: [syncLocalPartition: SyncPartition(clientId: nil)], hlc: (1, 2), offsetMs: 3, contacted: true)
+        var st = SyncMachineState(
+            subject: nil, partitions: [syncLocalPartition: SyncPartition(clientId: nil)], hlc: (1, 2), offsetMs: 3,
+            contacted: true)
         st.aliases = ["a": "b"]
         try f.save(CloudSyncFile(persisted: st, catalog: hMirror, openKeys: ["k"]))
         #expect(f.load().persisted == st)
@@ -233,10 +244,13 @@ private func signedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptio
         let target = dir.appendingPathComponent("victim.txt")
         try Data("keep".utf8).write(to: target)
         // The state file itself is a symlink: the rename replaces the link, the victim is untouched.
-        try FileManager.default.createSymbolicLink(at: dir.appendingPathComponent(cloudSyncFileName), withDestinationURL: target)
+        try FileManager.default.createSymbolicLink(
+            at: dir.appendingPathComponent(cloudSyncFileName), withDestinationURL: target)
         try CloudSyncStateFile(stateDir: dir, product: "demo").save(CloudSyncFile())
         #expect(try Data(contentsOf: target) == Data("keep".utf8))
-        #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: dir.appendingPathComponent(cloudSyncFileName).path)) == nil)
+        #expect(
+            (try? FileManager.default.destinationOfSymbolicLink(
+                atPath: dir.appendingPathComponent(cloudSyncFileName).path)) == nil)
     }
 
     // MARK: H-1, H-2: the catalog
@@ -267,12 +281,15 @@ private func signedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptio
         let rig = HostRig()
         rig.responder = { req, _ in
             if req.method == .get { return .answer(status: 200, body: hReply()) }
-            let ids = (req.body?.objectValue?["mutations"]?.arrayValue ?? []).compactMap { $0.objectValue?["mutationId"] }
+            let ids = (req.body?.objectValue?["mutations"]?.arrayValue ?? []).compactMap {
+                $0.objectValue?["mutationId"]
+            }
             return .answer(
                 status: 200,
                 body: hReply([
                     "catalogVersion": .int(2),
-                    "results": .array(ids.map { .object(["mutationId": $0, "status": .string("ok"), "version": .int(2)]) }),
+                    "results": .array(
+                        ids.map { .object(["mutationId": $0, "status": .string("ok"), "version": .int(2)]) }),
                 ]))
         }
         rig.setSchema(served("{\"key\":\"\(OPEN)\",\"kind\":\"config\",\"user\":{\"sync\":\"user\"}}"))
@@ -369,9 +386,13 @@ private func signedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptio
                             "ct": sealedCt("sealed.open.key", .int(1)), "version": .int(5),
                         ]),
                         // A plaintext row and an unopenable one name keys too: neither enters the set.
-                        .object(["setting": .string("plain.liar"), "scope": .string("user"), "value": .int(1), "version": .int(6)]),
                         .object([
-                            "setting": .string(blinded("x")), "scope": .string("user"), "ct": .string("AAAA"), "version": .int(7),
+                            "setting": .string("plain.liar"), "scope": .string("user"), "value": .int(1),
+                            "version": .int(6),
+                        ]),
+                        .object([
+                            "setting": .string(blinded("x")), "scope": .string("user"), "ct": .string("AAAA"),
+                            "version": .int(7),
                         ]),
                     ]),
                 ]))

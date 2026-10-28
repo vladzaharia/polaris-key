@@ -9,9 +9,10 @@
 import CryptoKit
 import Foundation
 import PolarisKey
+import XCTest
+
 @testable import PolarisKeyCore
 @testable import PolarisKeyIdentity
-import XCTest
 
 /// The fixture device keys of `label` (format.ts "exchange"): the signing seed is SHA-256(label),
 /// the agreement key SHA-256(label + ":agree") with bit 255 clear. Durable or memory by choice.
@@ -154,7 +155,10 @@ final class ExchangeTests: XCTestCase {
         await discovery()
         let counter = LockedValue(0)
         await server.route("/djdl/identity/nonce") { _ in
-            let n = counter.with { $0 += 1; return $0 }
+            let n = counter.with {
+                $0 += 1
+                return $0
+            }
             let value = String(repeating: n == 1 ? "A" : "B", count: 43)
             return StubServer.Reply(body: #"{"nonce":"\#(value)","expiresIn":300}"#)
         }
@@ -170,7 +174,8 @@ final class ExchangeTests: XCTestCase {
         let nonces = await server.requests(forPath: "/djdl/identity/nonce")
         XCTAssertEqual(nonces.count, 2)
         let body = try JSONDecoder().decode(
-            JSONValue.self, from: try XCTUnwrap(nonces.first?.body)).objectValue
+            JSONValue.self, from: try XCTUnwrap(nonces.first?.body)
+        ).objectValue
         XCTAssertEqual(body?["signKey"]?.stringValue, keys.keys.signKey)
         XCTAssertEqual(body?["agreeKey"]?.stringValue, keys.keys.agreeKey)
         let sent = await server.requests(forPath: "/djdl/identity/token").map { form($0)["nonce"] }
@@ -197,7 +202,10 @@ final class ExchangeTests: XCTestCase {
         XCTAssertFalse(pending.consent.changed)
         let heldBefore = await c.core.token
         XCTAssertNil(heldBefore, "no token before the person consents")
-        for text in ["\(pending)", String(reflecting: pending), String(describing: Mirror(reflecting: pending).children.map { "\($0.value)" })] {
+        for text in [
+            "\(pending)", String(reflecting: pending),
+            String(describing: Mirror(reflecting: pending).children.map { "\($0.value)" }),
+        ] {
             XCTAssertFalse(text.contains(grant), text)
         }
 
@@ -271,8 +279,9 @@ final class ExchangeTests: XCTestCase {
             body:
                 #"{"error":"interstitial_required","reason":"newer","url":"\#(api)/x","linkHandle":"\#(handle)","expiresIn":600}"#
         )
-        guard case .needsSignIn(let m) = try await c.identity.exchange(
-            kind: .google, subjectToken: providerToken, nonce: nonce)
+        guard
+            case .needsSignIn(let m) = try await c.identity.exchange(
+                kind: .google, subjectToken: providerToken, nonce: nonce)
         else { return XCTFail("not needsSignIn") }
         XCTAssertEqual(m.reason, .noLink)
         XCTAssertNil(m.linkHandle, "only a literal no_link carries a handle")
@@ -281,8 +290,9 @@ final class ExchangeTests: XCTestCase {
         await server.reply(
             "/djdl/identity/token", status: 403,
             body: #"{"error":"interstitial_required","reason":"no_link","url":"\#(api)/identity/authorize"}"#)
-        guard case .needsSignIn(let k) = try await c.identity.exchange(
-            kind: .google, subjectToken: providerToken, nonce: nonce)
+        guard
+            case .needsSignIn(let k) = try await c.identity.exchange(
+                kind: .google, subjectToken: providerToken, nonce: nonce)
         else { return XCTFail("not needsSignIn") }
         XCTAssertEqual(k.reason, .noLink)
         XCTAssertNil(k.linkHandle)

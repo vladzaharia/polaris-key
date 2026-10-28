@@ -99,7 +99,9 @@ private func pull(
                 "mutationId": .int(4), "target": obj(["setting": str(BIND), "scope": str("user")]),
                 "op": str("removeMember"), "member": str("run"),
             ]),
-            obj(["mutationId": .int(5), "target": obj(["setting": str(VOL), "scope": str("user")]), "op": str("clear")]),
+            obj([
+                "mutationId": .int(5), "target": obj(["setting": str(VOL), "scope": str("user")]), "op": str("clear"),
+            ]),
         ])
         let out = try HostCodec.sealPush(body, codec: codec, declared: declared)
         let ms = (out.objectValue?["mutations"]?.arrayValue ?? []).map { $0.objectValue ?? [:] }
@@ -110,23 +112,33 @@ private func pull(
         }
         #expect(target(ms[0]) == VOL)
         #expect(ms[0]["value"] == nil)
-        guard case .ok(let n0, let v0) = open(ms[0], VOL) else { Issue.record("a"); return }
+        guard case .ok(let n0, let v0) = open(ms[0], VOL) else {
+            Issue.record("a")
+            return
+        }
         #expect(n0 == VOL && v0 == .double(0.5))
         #expect(target(ms[1]) == bl(.setting, C, OPEN))
         #expect(SyncBlind.isBlindedName(target(ms[1])!))
-        guard case .ok(_, let v1) = open(ms[1], OPEN) else { Issue.record("b"); return }
+        guard case .ok(_, let v1) = open(ms[1], OPEN) else {
+            Issue.record("b")
+            return
+        }
         #expect(v1 == str("secret-value"))
         #expect(target(ms[2]) == BIND)
         #expect(ms[2]["member"] == str(bl(.member, BIND, "jump")))
         guard case .ok(let n2, let v2) = open(ms[2], HostCodec.memberEnvelopeName(BIND, "jump")) else {
-            Issue.record("c"); return
+            Issue.record("c")
+            return
         }
         #expect(n2 == "\(BIND)\u{0}jump" && v2 == str("space"))
         #expect(ms[3]["member"] == str(bl(.member, BIND, "run")))
         #expect(ms[3]["ct"] == nil)
         #expect(
             ms[4]
-                == ["mutationId": .int(5), "target": obj(["setting": str(VOL), "scope": str("user")]), "op": str("clear")])
+                == [
+                    "mutationId": .int(5), "target": obj(["setting": str(VOL), "scope": str("user")]),
+                    "op": str("clear"),
+                ])
         let wire = String(decoding: try JSONEncoder().encode(out), as: UTF8.self)
         for plain in ["secret-value", "space", OPEN, "\"jump\"", "\"run\""] { #expect(!wire.contains(plain)) }
     }
@@ -144,7 +156,9 @@ private func pull(
         #expect(throws: PolarisError.self) {
             try HostCodec.sealPush(push([set(1, VOL, .int(1))]), codec: c, declared: declared)
         }
-        do { _ = try HostCodec.sealPush(push([set(1, VOL, .int(1))]), codec: c, declared: declared) } catch let e as PolarisError {
+        do { _ = try HostCodec.sealPush(push([set(1, VOL, .int(1))]), codec: c, declared: declared) } catch let e
+            as PolarisError
+        {
             #expect(e.code == ErrorCode.syncLocked)
         } catch { Issue.record("not a PolarisError") }
         #expect(c.seals == 0)
@@ -156,7 +170,10 @@ private func pull(
     // HC-6: a seal failure sends nothing, and a half-valid batch returns nothing.
     @Test func hc6RefusesRecordMutationHalfValidBatchAndUnsealableValue() {
         func code(_ f: () throws -> JSONValue) -> String? {
-            do { _ = try f(); return nil } catch let e as PolarisError { return e.code } catch { return "other" }
+            do {
+                _ = try f()
+                return nil
+            } catch let e as PolarisError { return e.code } catch { return "other" }
         }
         let record = obj([
             "mutationId": .int(2), "target": obj(["record": .array([str("slots"), str("a")])]), "op": str("set"),
@@ -167,7 +184,9 @@ private func pull(
             code { try HostCodec.sealPush(push([set(1, VOL, .int(1)), record]), codec: c, declared: declared) }
                 == ErrorCode.invalidOptions)
         // The valid mutation before it is not returned: the call threw.
-        #expect(code { try HostCodec.sealPush(push([set(1, VOL, .double(.nan))]), codec: c, declared: declared) } == "other")
+        #expect(
+            code { try HostCodec.sealPush(push([set(1, VOL, .double(.nan))]), codec: c, declared: declared) } == "other"
+        )
     }
 
     @Test func refusesAMemberOpOnAnOpenKey() {
@@ -232,7 +251,10 @@ private func pull(
                     ])
                 ]),
                 "results": .array([
-                    obj(["mutationId": .int(1), "status": str("ok"), "version": .int(1), "sealed": .bool(true), "seq": .int(1)])
+                    obj([
+                        "mutationId": .int(1), "status": str("ok"), "version": .int(1), "sealed": .bool(true),
+                        "seq": .int(1),
+                    ])
                 ]),
             ]))
         #expect(r.body.objectValue?["sealed"] == nil)
@@ -257,7 +279,8 @@ private func pull(
                 obj([
                     "changes": .array([
                         obj([
-                            "setting": str(VOL), "scope": str("user"), "ct": str(ct), "value": .int(7), "version": .int(3),
+                            "setting": str(VOL), "scope": str("user"), "ct": str(ct), "value": .int(7),
+                            "version": .int(3),
                         ])
                     ])
                 ]))
@@ -272,7 +295,11 @@ private func pull(
         let honest = bl(.setting, C, OPEN)
         let ct = sealedCt(OPEN, str("v"))
         func change(_ name: String, extra: [String: JSONValue]) -> JSONValue {
-            obj(["changes": .array([obj(["setting": str(name), "scope": str("user"), "version": .int(1)].merging(extra) { $1 })])])
+            obj([
+                "changes": .array([
+                    obj(["setting": str(name), "scope": str("user"), "version": .int(1)].merging(extra) { $1 })
+                ])
+            ])
         }
         let ok = try pull(change(honest, extra: ["ct": str(ct)]))
         #expect(changes(ok.body)[0]["setting"] == str(OPEN))
@@ -293,7 +320,11 @@ private func pull(
             ])
         }
         func body(_ members: [JSONValue]) -> JSONValue {
-            obj(["changes": .array([obj(["setting": str(BIND), "scope": str("user"), "members": .array(members), "version": .int(5)])])])
+            obj([
+                "changes": .array([
+                    obj(["setting": str(BIND), "scope": str("user"), "members": .array(members), "version": .int(5)])
+                ])
+            ])
         }
         let members = [mk("jump", str("space")), mk("run", str("shift"))]
         let r = try pull(body(members))
@@ -322,7 +353,9 @@ private func pull(
                 "results": .array([
                     obj([
                         "mutationId": .int(7), "status": str("conflict"),
-                        "server": obj(["ct": str(sealedCt(VOL, .double(0.9))), "version": .int(40), "sealed": .bool(true)]),
+                        "server": obj([
+                            "ct": str(sealedCt(VOL, .double(0.9))), "version": .int(40), "sealed": .bool(true),
+                        ]),
                     ]),
                     obj([
                         "mutationId": .int(8), "status": str("conflict"),
@@ -358,7 +391,9 @@ private func pull(
     @Test func hc3RenamesComeFromTheAppNeverTheServedBody() throws {
         let ct = sealedCt("old.name", .int(1))
         let served = obj([
-            "changes": .array([obj(["setting": str("new.name"), "scope": str("user"), "ct": str(ct), "version": .int(1)])]),
+            "changes": .array([
+                obj(["setting": str("new.name"), "scope": str("user"), "ct": str(ct), "version": .int(1)])
+            ]),
             "aliases": obj(["old.name": str("new.name")]),
         ])
         #expect(try pull(served).opened.changes == [invalidRow])
@@ -403,7 +438,10 @@ private func pull(
     // HC-4 (SEC-SYNC-HOST 9)
     @Test func hc4RefusesU0000InASettingOrMemberNameOnPushAndPull() throws {
         func code(_ f: () throws -> JSONValue) -> String? {
-            do { _ = try f(); return nil } catch let e as PolarisError { return e.code } catch { return "other" }
+            do {
+                _ = try f()
+                return nil
+            } catch let e as PolarisError { return e.code } catch { return "other" }
         }
         #expect(
             code { try HostCodec.sealPush(push([set(1, "a\u{0}b", .int(1))]), codec: codec, declared: declared) }
@@ -416,7 +454,9 @@ private func pull(
             "mutationId": .int(1), "target": obj(["setting": str(BIND), "scope": str("user")]),
             "op": str("setMember"), "member": str("j\u{0}k"), "value": .int(1),
         ])
-        #expect(code { try HostCodec.sealPush(push([setMember]), codec: codec, declared: declared) } == ErrorCode.invalidOptions)
+        #expect(
+            code { try HostCodec.sealPush(push([setMember]), codec: codec, declared: declared) }
+                == ErrorCode.invalidOptions)
         // An open key sealed with a NUL by a hostile peer.
         let nul = "a\u{0}b"
         let r = try pull(
@@ -465,7 +505,11 @@ private func pull(
 
     private struct VectorFile: Decodable {
         struct Case: Decodable {
-            struct Expect: Decodable { let result: String; let name: String?; let reason: String? }
+            struct Expect: Decodable {
+                let result: String
+                let name: String?
+                let reason: String?
+            }
             let id, rootHex, name, envelopeHex: String
             let expect: Expect
         }
@@ -526,8 +570,12 @@ private func pull(
 
         let bare = try Self.vector("member-name-only")
         #expect(bare.name == "gold")
-        guard case .invalid(.name) = SyncEnvelope.open(
-            root: Self.unhex(bare.rootHex), collection: C, name: bare.name, envelope: Self.unhex(bare.envelopeHex))
-        else { Issue.record("bare member name opened"); return }
+        guard
+            case .invalid(.name) = SyncEnvelope.open(
+                root: Self.unhex(bare.rootHex), collection: C, name: bare.name, envelope: Self.unhex(bare.envelopeHex))
+        else {
+            Issue.record("bare member name opened")
+            return
+        }
     }
 }

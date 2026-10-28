@@ -9,9 +9,10 @@
 import Foundation
 import PolarisKey
 import PolarisKeyCore
-@testable import PolarisKeyIdentity
 import PolarisKeyUICore
 import XCTest
+
+@testable import PolarisKeyIdentity
 
 @MainActor
 final class IdentityChoiceTests: XCTestCase {
@@ -25,7 +26,8 @@ final class IdentityChoiceTests: XCTestCase {
     }
 
     private func discovery(choice: Bool) async {
-        let routes = choice
+        let routes =
+            choice
             ? #","choiceLicenses":"\#(api)/identity/choice/licenses","choiceDevices":"\#(api)/identity/choice/devices","choiceComplete":"\#(api)/identity/choice/complete","choiceCancel":"\#(api)/identity/choice/cancel""#
             : ""
         await server.reply(

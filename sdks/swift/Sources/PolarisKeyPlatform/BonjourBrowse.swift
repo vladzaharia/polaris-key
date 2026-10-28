@@ -21,7 +21,7 @@
 import Foundation
 
 #if canImport(Network)
-import Network
+    import Network
 #endif
 
 /// The Bonjour service type of a Polaris Key peer.
@@ -33,21 +33,23 @@ public struct BonjourEndpoint: Sendable, Hashable {
     public let type: String
     public let domain: String
     #if canImport(Network)
-    /// The endpoint to hand to `NWConnection`. Nil only in tests.
-    public let network: NWEndpoint?
+        /// The endpoint to hand to `NWConnection`. Nil only in tests.
+        public let network: NWEndpoint?
 
-    public init(name: String, type: String = bonjourPeerServiceType, domain: String = "local.", network: NWEndpoint? = nil) {
-        self.name = name
-        self.type = type
-        self.domain = domain
-        self.network = network
-    }
+        public init(
+            name: String, type: String = bonjourPeerServiceType, domain: String = "local.", network: NWEndpoint? = nil
+        ) {
+            self.name = name
+            self.type = type
+            self.domain = domain
+            self.network = network
+        }
     #else
-    public init(name: String, type: String = bonjourPeerServiceType, domain: String = "local.") {
-        self.name = name
-        self.type = type
-        self.domain = domain
-    }
+        public init(name: String, type: String = bonjourPeerServiceType, domain: String = "local.") {
+            self.name = name
+            self.type = type
+            self.domain = domain
+        }
     #endif
 }
 
@@ -164,8 +166,9 @@ struct BonjourTable {
             instance: found.instance, txt: Array(found.txt.prefix(Self.maxTxt)), endpoint: found.endpoint)
         var out: [Change] = []
         let existing = rows[row.instance]
-        if existing != nil { order.removeAll { $0 == row.instance } }
-        else {
+        if existing != nil {
+            order.removeAll { $0 == row.instance }
+        } else {
             while rows.count >= Self.maxInstances, let oldest = order.first {
                 order.removeFirst()
                 rows[oldest] = nil
@@ -184,7 +187,10 @@ struct BonjourTable {
         return [.down(instance)]
     }
 
-    mutating func clear() { order = []; rows = [:] }
+    mutating func clear() {
+        order = []
+        rows = [:]
+    }
 }
 
 // MARK: - The browser
@@ -216,18 +222,18 @@ public final class BonjourBrowse: Sendable {
         self.accept = accept
         self.options = options
         #if canImport(Network)
-        self.driver = driver ?? NWBrowserDriver()
+            self.driver = driver ?? NWBrowserDriver()
         #else
-        self.driver = driver ?? UnavailableDriver()
+            self.driver = driver ?? UnavailableDriver()
         #endif
         self.configurationCheck = configurationCheck ?? Self.processConfigurationCheck
     }
 
     @Sendable private static func processConfigurationCheck() -> BonjourBrowseError? {
         #if os(iOS) || os(tvOS) || os(visionOS)
-        return BonjourErrors.configurationError(infoDictionary: Bundle.main.infoDictionary, requiresPlist: true)
+            return BonjourErrors.configurationError(infoDictionary: Bundle.main.infoDictionary, requiresPlist: true)
         #else
-        return nil
+            return nil
         #endif
     }
 
@@ -250,7 +256,10 @@ public final class BonjourBrowse: Sendable {
             handle(event, onUp: onUp, onDown: onDown, onError: onError)
         }
         let stopNow = state.withLock { s -> Bool in
-            if s.running { s.stop = stop; return false }
+            if s.running {
+                s.stop = stop
+                return false
+            }
             return true  // stop() ran while the driver was starting
         }
         if stopNow { stop() }
@@ -261,7 +270,8 @@ public final class BonjourBrowse: Sendable {
     public func rescan() {
         guard let accept else { return }
         let results = driver.snapshot()
-        let (changes, up, down) = state.withLock { s -> ([BonjourTable.Change], (@Sendable (BonjourFound) -> Void)?, (@Sendable (String) -> Void)?) in
+        let (changes, up, down) = state.withLock {
+            s -> ([BonjourTable.Change], (@Sendable (BonjourFound) -> Void)?, (@Sendable (String) -> Void)?) in
             guard s.running else { return ([], nil, nil) }
             return (results.filter { accept($0.instance) }.flatMap { s.table.upsert($0) }, s.onUp, s.onDown)
         }
@@ -321,95 +331,98 @@ public final class BonjourBrowse: Sendable {
 }
 
 #if !canImport(Network)
-private struct UnavailableDriver: BonjourBrowseDriver {
-    func start(includePeerToPeer: Bool, emit: @escaping @Sendable (BonjourDriverEvent) -> Void) -> @Sendable () -> Void {
-        emit(.failed(.unavailable("Network.framework is not available")))
-        return {}
+    private struct UnavailableDriver: BonjourBrowseDriver {
+        func start(includePeerToPeer: Bool, emit: @escaping @Sendable (BonjourDriverEvent) -> Void)
+            -> @Sendable () -> Void
+        {
+            emit(.failed(.unavailable("Network.framework is not available")))
+            return {}
+        }
     }
-}
 #endif
 
 // MARK: - NWBrowser
 
 #if canImport(Network)
-/// The system driver: `NWBrowser(for: .bonjourWithTXTRecord(type: "_pkeypeer._tcp", domain: nil))`.
-public struct NWBrowserDriver: BonjourBrowseDriver {
-    private let current = PlatformLock<NWBrowser?>(nil)
+    /// The system driver: `NWBrowser(for: .bonjourWithTXTRecord(type: "_pkeypeer._tcp", domain: nil))`.
+    public struct NWBrowserDriver: BonjourBrowseDriver {
+        private let current = PlatformLock<NWBrowser?>(nil)
 
-    public init() {}
+        public init() {}
 
-    public func snapshot() -> [BonjourFound] {
-        guard let b = current.withLock({ $0 }) else { return [] }
-        return b.browseResults.compactMap { Self.found($0) }
-    }
-
-    public func start(
-        includePeerToPeer: Bool, emit: @escaping @Sendable (BonjourDriverEvent) -> Void
-    ) -> @Sendable () -> Void {
-        let params = NWParameters()
-        params.includePeerToPeer = includePeerToPeer
-        let browser = NWBrowser(for: .bonjourWithTXTRecord(type: bonjourPeerServiceType, domain: nil), using: params)
-        let queue = DispatchQueue(label: "im.plrs.key.bonjour-browse")
-        browser.stateUpdateHandler = { state in
-            switch state {
-            case .failed(let e):
-                emit(.failed(Self.classify(e)))
-            case .waiting(let e):
-                // Offline is the OS's to retry; a refused permission is not going to fix itself.
-                let c = Self.classify(e)
-                if c == .permissionDenied || c == .notConfigured { emit(.failed(c)) }
-            default:
-                break
-            }
+        public func snapshot() -> [BonjourFound] {
+            guard let b = current.withLock({ $0 }) else { return [] }
+            return b.browseResults.compactMap { Self.found($0) }
         }
-        browser.browseResultsChangedHandler = { _, changes in
-            var up: [BonjourFound] = []
-            var gone: [String] = []
-            for change in changes {
-                switch change {
-                case .added(let r), .changed(old: _, new: let r, flags: _):
-                    if let f = Self.found(r) { up.append(f) }
-                case .removed(let r):
-                    if case .service(let name, _, _, _) = r.endpoint { gone.append(name) }
-                case .identical:
-                    break
-                @unknown default:
+
+        public func start(
+            includePeerToPeer: Bool, emit: @escaping @Sendable (BonjourDriverEvent) -> Void
+        ) -> @Sendable () -> Void {
+            let params = NWParameters()
+            params.includePeerToPeer = includePeerToPeer
+            let browser = NWBrowser(
+                for: .bonjourWithTXTRecord(type: bonjourPeerServiceType, domain: nil), using: params)
+            let queue = DispatchQueue(label: "im.plrs.key.bonjour-browse")
+            browser.stateUpdateHandler = { state in
+                switch state {
+                case .failed(let e):
+                    emit(.failed(Self.classify(e)))
+                case .waiting(let e):
+                    // Offline is the OS's to retry; a refused permission is not going to fix itself.
+                    let c = Self.classify(e)
+                    if c == .permissionDenied || c == .notConfigured { emit(.failed(c)) }
+                default:
                     break
                 }
             }
-            if !up.isEmpty { emit(.upserted(up)) }
-            if !gone.isEmpty { emit(.removed(gone)) }
-        }
-        current.withLock { $0 = browser }
-        browser.start(queue: queue)
-        return { [current] in
-            current.withLock { $0 = nil }
-            browser.cancel()
-        }
-    }
-
-    static func classify(_ e: NWError) -> BonjourBrowseError {
-        if case .dns(let code) = e { return BonjourErrors.classify(dnsError: code) }
-        return .unavailable("\(e)")
-    }
-
-    static func found(_ r: NWBrowser.Result) -> BonjourFound? {
-        guard case .service(let name, let type, let domain, _) = r.endpoint else { return nil }
-        var txt: [String] = []
-        if case .bonjour(let record) = r.metadata {
-            for (key, value) in record {
-                switch value {
-                case .string(let v): txt.append("\(key)=\(v)")
-                case .data(let d): if let v = String(data: d, encoding: .utf8) { txt.append("\(key)=\(v)") }
-                case .empty: txt.append("\(key)=")
-                case .none: txt.append(key)
-                @unknown default: break
+            browser.browseResultsChangedHandler = { _, changes in
+                var up: [BonjourFound] = []
+                var gone: [String] = []
+                for change in changes {
+                    switch change {
+                    case .added(let r), .changed(old: _, new: let r, flags: _):
+                        if let f = Self.found(r) { up.append(f) }
+                    case .removed(let r):
+                        if case .service(let name, _, _, _) = r.endpoint { gone.append(name) }
+                    case .identical:
+                        break
+                    @unknown default:
+                        break
+                    }
                 }
+                if !up.isEmpty { emit(.upserted(up)) }
+                if !gone.isEmpty { emit(.removed(gone)) }
+            }
+            current.withLock { $0 = browser }
+            browser.start(queue: queue)
+            return { [current] in
+                current.withLock { $0 = nil }
+                browser.cancel()
             }
         }
-        return BonjourFound(
-            instance: name, txt: txt,
-            endpoint: BonjourEndpoint(name: name, type: type, domain: domain, network: r.endpoint))
+
+        static func classify(_ e: NWError) -> BonjourBrowseError {
+            if case .dns(let code) = e { return BonjourErrors.classify(dnsError: code) }
+            return .unavailable("\(e)")
+        }
+
+        static func found(_ r: NWBrowser.Result) -> BonjourFound? {
+            guard case .service(let name, let type, let domain, _) = r.endpoint else { return nil }
+            var txt: [String] = []
+            if case .bonjour(let record) = r.metadata {
+                for (key, value) in record {
+                    switch value {
+                    case .string(let v): txt.append("\(key)=\(v)")
+                    case .data(let d): if let v = String(data: d, encoding: .utf8) { txt.append("\(key)=\(v)") }
+                    case .empty: txt.append("\(key)=")
+                    case .none: txt.append(key)
+                    @unknown default: break
+                    }
+                }
+            }
+            return BonjourFound(
+                instance: name, txt: txt,
+                endpoint: BonjourEndpoint(name: name, type: type, domain: domain, network: r.endpoint))
+        }
     }
-}
 #endif

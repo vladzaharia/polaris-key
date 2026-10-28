@@ -145,7 +145,9 @@ extension CloudSyncMachine {
                 s.partitions[name]!.pending[i].preContact = false
             }
             for k in Array(s.partitions[name]!.device.keys) where s.partitions[name]!.device[k]!.preContact {
-                if restamp { s.partitions[name]!.device[k]!.editedHlc = shift(s.partitions[name]!.device[k]!.editedHlc) }
+                if restamp {
+                    s.partitions[name]!.device[k]!.editedHlc = shift(s.partitions[name]!.device[k]!.editedHlc)
+                }
                 s.partitions[name]!.device[k]!.preContact = false
             }
         }
@@ -193,7 +195,9 @@ extension CloudSyncMachine {
         // A parked edit that a later edit of the same value already replaces is dropped.
         for op in parkedNow {
             let later = batch + s.partitions[name]!.pending
-            if later.contains(where: { $0.mutationId != op.mutationId && $0.mutationId > op.mutationId && sameValue(op, $0) }) {
+            if later.contains(where: {
+                $0.mutationId != op.mutationId && $0.mutationId > op.mutationId && sameValue(op, $0)
+            }) {
                 s.partitions[name]!.pending.removeAll { $0.mutationId == op.mutationId }
             }
         }
@@ -217,7 +221,8 @@ extension CloudSyncMachine {
                 settingKey = k
                 latchKey = "s:\(k)"
             } else if let rec = c["record"]?.arrayValue, rec.count == 2 {
-                recordKey = syncRecordKey(rec[0].stringValue ?? rec[0].description, rec[1].stringValue ?? rec[1].description)
+                recordKey = syncRecordKey(
+                    rec[0].stringValue ?? rec[0].description, rec[1].stringValue ?? rec[1].description)
                 latchKey = "r:" + recordKey!
             }
             let bad = rowBad(name, latchKey, version, openRow, cursor: req.cursor)
@@ -234,7 +239,9 @@ extension CloudSyncMachine {
                 s.partitions[name]!.settings.removeValue(forKey: k)
                 dropParkedByRemote(name, k, t["editedHlc"]?.stringValue)
             } else if let rec = t["record"]?.arrayValue, rec.count == 2 {
-                s.partitions[name]!.records.removeValue(forKey: syncRecordKey(rec[0].stringValue ?? rec[0].description, rec[1].stringValue ?? rec[1].description))
+                s.partitions[name]!.records.removeValue(
+                    forKey: syncRecordKey(
+                        rec[0].stringValue ?? rec[0].description, rec[1].stringValue ?? rec[1].description))
             }
         }
         if let cur = wholeInt(body["cursor"]) { s.partitions[name]!.cursor = cur }

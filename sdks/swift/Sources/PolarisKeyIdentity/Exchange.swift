@@ -236,8 +236,7 @@ extension IdentityClient {
     func exchange(
         kind: ExchangeKind, subjectToken: String, optionalNonce nonce: String?,
         ladderGeneration: Int? = nil
-    ) async throws -> ExchangeOutcome
-    {
+    ) async throws -> ExchangeOutcome {
         guard !subjectToken.isEmpty else {
             throw PolarisError(code: ErrorCode.invalidArgument, message: "subjectToken is empty.")
         }
@@ -347,8 +346,7 @@ extension IdentityClient {
     // ── Transport and answers ────────────────────────────────────────────────────────────
 
     /// No bearer: the proof and the nonce are the credentials, bound to this device.
-    private func exchangeSend(_ url: URL, contentType: String, body: Data) async throws -> PolarisResponse
-    {
+    private func exchangeSend(_ url: URL, contentType: String, body: Data) async throws -> PolarisResponse {
         do {
             return try await core.request(
                 url, method: "POST", headers: ["content-type": contentType], body: body)
@@ -460,8 +458,9 @@ extension IdentityClient {
         let object = exchangeBody(response)?.objectValue ?? [:]
         let code = object["error"]?.stringValue ?? object["error"]?.objectValue?["code"]?.stringValue
         var retry = wholeSeconds(object["retryAfter"]?.doubleValue)
-        if retry == nil, let header = response.headers.first(where: { $0.key.lowercased() == "retry-after" })?
-            .value.trimmingCharacters(in: .whitespaces), let seconds = Int(header)
+        if retry == nil,
+            let header = response.headers.first(where: { $0.key.lowercased() == "retry-after" })?
+                .value.trimmingCharacters(in: .whitespaces), let seconds = Int(header)
         {
             retry = seconds
         }

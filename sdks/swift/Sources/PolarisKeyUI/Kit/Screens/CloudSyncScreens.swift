@@ -163,7 +163,8 @@ public struct UnlockSyncView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
                     .strokeBorder(
-                        invalid ? style.palette.danger
+                        invalid
+                            ? style.palette.danger
                             : (fieldFocused ? style.palette.focus : .clear),
                         lineWidth: 2)
             )
@@ -467,7 +468,8 @@ public struct CloudSyncStatusView: View {
             }()
             kitStyle { style in
                 // One row at normal sizes; the button drops under the text at accessibility sizes.
-                let layout = dynamicType.isAccessibilitySize
+                let layout =
+                    dynamicType.isAccessibilitySize
                     ? AnyLayout(VStackLayout(alignment: .leading, spacing: style.space(.xs)))
                     : AnyLayout(HStackLayout(alignment: .center, spacing: style.space(.sm)))
                 layout {
@@ -542,12 +544,12 @@ public struct CloudSyncKitView: View {
                 get: { host.screen != nil }, set: { if !$0 { host.dismiss() } })
         ) {
             Group {
-            switch host.screen {
-            case .unlock: if let m = host.unlockModel { UnlockSyncView(model: m) }
-            case .ringChange: if let m = host.ringModel { RingChangeView(model: m) }
-            case .recoveryCode: if let m = host.recoveryModel { RecoveryCodeView(model: m) }
-            case nil: EmptyView()
-            }
+                switch host.screen {
+                case .unlock: if let m = host.unlockModel { UnlockSyncView(model: m) }
+                case .ringChange: if let m = host.ringModel { RingChangeView(model: m) }
+                case .recoveryCode: if let m = host.recoveryModel { RecoveryCodeView(model: m) }
+                case nil: EmptyView()
+                }
             }
             .interactiveDismissDisabled(host.unlockModel?.minting == true || host.screen == .recoveryCode)
         }

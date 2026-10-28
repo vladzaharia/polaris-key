@@ -138,7 +138,9 @@ public enum IdentityRedirect {
         guard let raw, !raw.isEmpty, raw.utf16.count <= 2048 else { return false }
         if raw.unicodeScalars.contains(where: {
             $0.properties.isWhitespace || $0.value < 0x20 || $0.value == 0x7F || $0 == "\\"
-        }) { return false }
+        }) {
+            return false
+        }
         guard raw.hasPrefix("https://"), !raw.contains("#") else { return false }
         let rest = raw.dropFirst("https://".count)
         let authority = rest.prefix(while: { $0 != "/" && $0 != "?" })
@@ -433,8 +435,9 @@ extension IdentityClient {
                 message: "the token endpoint answered without a complete sign-in.")
         case .refused(let error, let status, let retryAfter):
             var retry = retryAfter
-            if retry == nil, let header = response.headers.first(where: { $0.key.lowercased() == "retry-after" })?
-                .value.trimmingCharacters(in: .whitespaces), let seconds = Int(header)
+            if retry == nil,
+                let header = response.headers.first(where: { $0.key.lowercased() == "retry-after" })?
+                    .value.trimmingCharacters(in: .whitespaces), let seconds = Int(header)
             {
                 retry = seconds
             }

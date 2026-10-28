@@ -21,7 +21,7 @@
 import Foundation
 
 #if canImport(AuthenticationServices) && (os(iOS) || os(macOS) || os(tvOS) || os(visionOS))
-import AuthenticationServices
+    import AuthenticationServices
 #endif
 
 /// What Apple granted. The identity token (a JWT) and the code are secrets.
@@ -152,116 +152,119 @@ public struct AppleSignIn: Sendable {
 
 #if canImport(AuthenticationServices) && (os(iOS) || os(macOS) || os(tvOS) || os(visionOS))
 
-/// The real thing: `ASAuthorizationController`, driven on the main actor.
-public struct SystemAppleIDAuthorizer: AppleIDAuthorizing {
-    public init() {}
+    /// The real thing: `ASAuthorizationController`, driven on the main actor.
+    public struct SystemAppleIDAuthorizer: AppleIDAuthorizing {
+        public init() {}
 
-    public func authorize(nonce: String, immediate: Bool) async throws -> AppleSignInGrant {
-        try await AppleAuthorizationRun.perform(nonce: nonce, immediate: immediate)
-    }
+        public func authorize(nonce: String, immediate: Bool) async throws -> AppleSignInGrant {
+            try await AppleAuthorizationRun.perform(nonce: nonce, immediate: immediate)
+        }
 
-    public func credentialState(forUserID userID: String) async -> AppleCredentialState {
-        await withCheckedContinuation { cont in
-            ASAuthorizationAppleIDProvider().getCredentialState(forUserID: userID) { state, _ in
-                switch state {
-                case .authorized: cont.resume(returning: .authorized)
-                case .revoked: cont.resume(returning: .revoked)
-                case .transferred: cont.resume(returning: .transferred)
-                // `.notFound` and any state added later: the caller treats both as "no credential".
-                default: cont.resume(returning: .notFound)
+        public func credentialState(forUserID userID: String) async -> AppleCredentialState {
+            await withCheckedContinuation { cont in
+                ASAuthorizationAppleIDProvider().getCredentialState(forUserID: userID) { state, _ in
+                    switch state {
+                    case .authorized: cont.resume(returning: .authorized)
+                    case .revoked: cont.resume(returning: .revoked)
+                    case .transferred: cont.resume(returning: .transferred)
+                    // `.notFound` and any state added later: the caller treats both as "no credential".
+                    default: cont.resume(returning: .notFound)
+                    }
                 }
             }
         }
+
+        /// ASAuthorizationError → cancelled | unavailable.
+        static func typed(_ error: Error) -> AppleSignInFailure {
+            if let failure = error as? AppleSignInFailure { return failure }
+            let ns = error as NSError
+            if ns.domain == ASAuthorizationError.errorDomain,
+                let code = ASAuthorizationError.Code(rawValue: ns.code)
+            {
+                switch code {
+                case .canceled, .notInteractive: return .cancelled
+                default: return .unavailable("ASAuthorizationError \(ns.code)")
+                }
+            }
+            return .unavailable("\(ns.domain) \(ns.code)")
+        }
     }
 
-    /// ASAuthorizationError → cancelled | unavailable.
-    static func typed(_ error: Error) -> AppleSignInFailure {
-        if let failure = error as? AppleSignInFailure { return failure }
-        let ns = error as NSError
-        if ns.domain == ASAuthorizationError.errorDomain,
-            let code = ASAuthorizationError.Code(rawValue: ns.code)
-        {
-            switch code {
-            case .canceled, .notInteractive: return .cancelled
-            default: return .unavailable("ASAuthorizationError \(ns.code)")
+    @MainActor
+    private final class AppleAuthorizationRun: NSObject, ASAuthorizationControllerDelegate {
+        private var continuation: CheckedContinuation<AppleSignInGrant, Error>?
+        private var controller: ASAuthorizationController?
+
+        static func perform(nonce: String, immediate: Bool) async throws -> AppleSignInGrant {
+            let run = AppleAuthorizationRun()
+            return try await run.start(nonce: nonce, immediate: immediate)
+        }
+
+        private func start(nonce: String, immediate: Bool) async throws -> AppleSignInGrant {
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<AppleSignInGrant, Error>) in
+                self.continuation = cont
+                let request = ASAuthorizationAppleIDProvider().createRequest()
+                request.nonce = nonce
+                request.requestedScopes = [.email]
+                let controller = ASAuthorizationController(authorizationRequests: [request])
+                controller.delegate = self
+                self.controller = controller
+                #if os(tvOS)
+                    // tvOS has no `performRequests(options:)`: both modes use the plain call (the TV sheet).
+                    controller.performRequests()
+                #else
+                    if immediate {
+                        controller.performRequests(options: .preferImmediatelyAvailableCredentials)
+                    } else {
+                        controller.performRequests()
+                    }
+                #endif
             }
         }
-        return .unavailable("\(ns.domain) \(ns.code)")
-    }
-}
 
-@MainActor
-private final class AppleAuthorizationRun: NSObject, ASAuthorizationControllerDelegate {
-    private var continuation: CheckedContinuation<AppleSignInGrant, Error>?
-    private var controller: ASAuthorizationController?
+        private func finish(_ result: Result<AppleSignInGrant, Error>) {
+            let cont = continuation
+            continuation = nil
+            controller = nil
+            cont?.resume(with: result)
+        }
 
-    static func perform(nonce: String, immediate: Bool) async throws -> AppleSignInGrant {
-        let run = AppleAuthorizationRun()
-        return try await run.start(nonce: nonce, immediate: immediate)
-    }
-
-    private func start(nonce: String, immediate: Bool) async throws -> AppleSignInGrant {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<AppleSignInGrant, Error>) in
-            self.continuation = cont
-            let request = ASAuthorizationAppleIDProvider().createRequest()
-            request.nonce = nonce
-            request.requestedScopes = [.email]
-            let controller = ASAuthorizationController(authorizationRequests: [request])
-            controller.delegate = self
-            self.controller = controller
-            #if os(tvOS)
-            // tvOS has no `performRequests(options:)`: both modes use the plain call (the TV sheet).
-            controller.performRequests()
-            #else
-            if immediate {
-                controller.performRequests(options: .preferImmediatelyAvailableCredentials)
+        nonisolated func authorizationController(
+            controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization
+        ) {
+            let result: Result<AppleSignInGrant, Error>
+            if let cred = authorization.credential as? ASAuthorizationAppleIDCredential,
+                let tokenData = cred.identityToken, let token = String(data: tokenData, encoding: .utf8)
+            {
+                let code = cred.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
+                result = .success(
+                    AppleSignInGrant(
+                        userID: cred.user, identityToken: token, authorizationCode: code, email: cred.email))
             } else {
-                controller.performRequests()
+                result = .failure(AppleSignInFailure.unavailable("no identity token"))
             }
-            #endif
+            Task { @MainActor in self.finish(result) }
+        }
+
+        nonisolated func authorizationController(
+            controller: ASAuthorizationController, didCompleteWithError error: Error
+        ) {
+            let typed = SystemAppleIDAuthorizer.typed(error)
+            Task { @MainActor in self.finish(.failure(typed)) }
         }
     }
-
-    private func finish(_ result: Result<AppleSignInGrant, Error>) {
-        let cont = continuation
-        continuation = nil
-        controller = nil
-        cont?.resume(with: result)
-    }
-
-    nonisolated func authorizationController(
-        controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization
-    ) {
-        let result: Result<AppleSignInGrant, Error>
-        if let cred = authorization.credential as? ASAuthorizationAppleIDCredential,
-            let tokenData = cred.identityToken, let token = String(data: tokenData, encoding: .utf8)
-        {
-            let code = cred.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
-            result = .success(
-                AppleSignInGrant(userID: cred.user, identityToken: token, authorizationCode: code, email: cred.email))
-        } else {
-            result = .failure(AppleSignInFailure.unavailable("no identity token"))
-        }
-        Task { @MainActor in self.finish(result) }
-    }
-
-    nonisolated func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        let typed = SystemAppleIDAuthorizer.typed(error)
-        Task { @MainActor in self.finish(.failure(typed)) }
-    }
-}
 
 #else
 
-/// No AuthenticationServices on this platform.
-public struct SystemAppleIDAuthorizer: AppleIDAuthorizing {
-    public init() {}
+    /// No AuthenticationServices on this platform.
+    public struct SystemAppleIDAuthorizer: AppleIDAuthorizing {
+        public init() {}
 
-    public func authorize(nonce: String, immediate: Bool) async throws -> AppleSignInGrant {
-        throw AppleSignInFailure.unavailable("Sign in with Apple is not available on this platform.")
+        public func authorize(nonce: String, immediate: Bool) async throws -> AppleSignInGrant {
+            throw AppleSignInFailure.unavailable("Sign in with Apple is not available on this platform.")
+        }
+
+        public func credentialState(forUserID userID: String) async -> AppleCredentialState { .notFound }
     }
-
-    public func credentialState(forUserID userID: String) async -> AppleCredentialState { .notFound }
-}
 
 #endif

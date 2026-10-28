@@ -199,7 +199,10 @@ public struct SyncOp: Sendable, Equatable {
 
 /// A request the machine would send.
 public struct SyncRequest: Sendable, Equatable {
-    public enum Method: String, Sendable { case get = "GET", post = "POST" }
+    public enum Method: String, Sendable {
+        case get = "GET"
+        case post = "POST"
+    }
     public var method: Method
     public var path: String
     public var body: JSONValue?

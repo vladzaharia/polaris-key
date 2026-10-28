@@ -119,7 +119,10 @@ enum DeterministicEd25519 {
         let b = mulP(addP(p.y, p.x), addP(q.y, q.x))
         let c = mulP(mulP(p.t, addP(D, D)), q.t)
         let d = mulP(addP(p.z, p.z), q.z)
-        let e = subP(b, a), f = subP(d, c), g = addP(d, c), h = addP(b, a)
+        let e = subP(b, a)
+        let f = subP(d, c)
+        let g = addP(d, c)
+        let h = addP(b, a)
         return Pt(x: mulP(e, f), y: mulP(g, h), z: mulP(f, g), t: mulP(e, h))
     }
 
@@ -131,7 +134,8 @@ enum DeterministicEd25519 {
             if bit(k, i) { q = padd(q, base) }
         }
         let zi = invP(q.z)
-        let x = mulP(q.x, zi), y = mulP(q.y, zi)
+        let x = mulP(q.x, zi)
+        let y = mulP(q.y, zi)
         var out = le32(y)
         out[31] |= UInt8(x[0] & 1) << 7
         return out

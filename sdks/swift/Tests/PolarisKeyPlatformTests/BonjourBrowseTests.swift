@@ -14,8 +14,13 @@ private final class FakeDriver: BonjourBrowseDriver, @unchecked Sendable {
     private(set) var starts = 0
     private(set) var stops = 0
 
-    func start(includePeerToPeer: Bool, emit: @escaping @Sendable (BonjourDriverEvent) -> Void) -> @Sendable () -> Void {
-        lock.withLock { _emit = emit; p2p = includePeerToPeer; starts += 1 }
+    func start(includePeerToPeer: Bool, emit: @escaping @Sendable (BonjourDriverEvent) -> Void) -> @Sendable () -> Void
+    {
+        lock.withLock {
+            _emit = emit
+            p2p = includePeerToPeer
+            starts += 1
+        }
         return { [self] in lock.withLock { stops += 1 } }
     }
 
@@ -44,7 +49,10 @@ private func inst(_ i: Int) -> String {
     let a = Array("abcdefghijklmnopqrstuvwxyz234567")
     var s = "p1-"
     var n = i
-    for _ in 0..<16 { s.append(a[n % 32]); n /= 32 }
+    for _ in 0..<16 {
+        s.append(a[n % 32])
+        n /= 32
+    }
     return s
 }
 
@@ -91,7 +99,10 @@ final class BonjourBrowseTests: XCTestCase {
         let d = FakeDriver()
         let (b, l) = make(d)
         try start(b, l)
-        let bad = ["", "p1-", "p2-aaaaaaaaaaaaaaaa", "p1-AAAAAAAAAAAAAAAA", "p1-aaaaaaaaaaaaaaa1", "p1-aaaaaaaaaaaaaaaaa", "MacBook"]
+        let bad = [
+            "", "p1-", "p2-aaaaaaaaaaaaaaaa", "p1-AAAAAAAAAAAAAAAA", "p1-aaaaaaaaaaaaaaa1", "p1-aaaaaaaaaaaaaaaaa",
+            "MacBook",
+        ]
         d.send(.upserted(bad.map { BonjourFound(instance: $0, txt: [], endpoint: BonjourEndpoint(name: $0)) }))
         XCTAssertTrue(l.up.isEmpty)
     }
@@ -137,7 +148,8 @@ final class BonjourBrowseTests: XCTestCase {
     func testRescanAdmitsAPeerSeenBeforeItWasKnown() throws {
         let d = FakeDriver()
         let known = PlatformLock(Set<String>())
-        let b = BonjourBrowse(driver: d, configurationCheck: { nil }, accept: { name in known.withLock { s in s.contains(name) } })
+        let b = BonjourBrowse(
+            driver: d, configurationCheck: { nil }, accept: { name in known.withLock { s in s.contains(name) } })
         let l = Log()
         try start(b, l)
         d.send(.upserted([found(7), found(8)]))
@@ -181,11 +193,13 @@ final class BonjourBrowseTests: XCTestCase {
             "NSBonjourServices": ["_pkeypeer._tcp"], "NSLocalNetworkUsageDescription": "Find your other devices.",
         ]
         XCTAssertNil(BonjourErrors.configurationError(infoDictionary: ok, requiresPlist: true))
-        XCTAssertNil(BonjourErrors.configurationError(infoDictionary: nil, requiresPlist: false), "macOS needs neither key")
+        XCTAssertNil(
+            BonjourErrors.configurationError(infoDictionary: nil, requiresPlist: false), "macOS needs neither key")
         XCTAssertEqual(BonjourErrors.configurationError(infoDictionary: nil, requiresPlist: true), .notConfigured)
         XCTAssertEqual(
             BonjourErrors.configurationError(
-                infoDictionary: ["NSBonjourServices": ["_other._tcp"], "NSLocalNetworkUsageDescription": "x"], requiresPlist: true),
+                infoDictionary: ["NSBonjourServices": ["_other._tcp"], "NSLocalNetworkUsageDescription": "x"],
+                requiresPlist: true),
             .notConfigured)
         XCTAssertEqual(
             BonjourErrors.configurationError(
@@ -219,14 +233,15 @@ final class BonjourBrowseTests: XCTestCase {
     }
 
     #if canImport(Network)
-    func testLiveBrowseStartsAndStops() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["PKEY_LIVE_BONJOUR"] == "1", "set PKEY_LIVE_BONJOUR=1")
-        let b = BonjourBrowse(configurationCheck: { nil })
-        let l = Log()
-        try start(b, l)
-        Thread.sleep(forTimeInterval: 2)
-        b.stop()
-        XCTAssertTrue(l.err.isEmpty, "\(l.err)")
-    }
+        func testLiveBrowseStartsAndStops() throws {
+            try XCTSkipUnless(
+                ProcessInfo.processInfo.environment["PKEY_LIVE_BONJOUR"] == "1", "set PKEY_LIVE_BONJOUR=1")
+            let b = BonjourBrowse(configurationCheck: { nil })
+            let l = Log()
+            try start(b, l)
+            Thread.sleep(forTimeInterval: 2)
+            b.stop()
+            XCTAssertTrue(l.err.isEmpty, "\(l.err)")
+        }
     #endif
 }

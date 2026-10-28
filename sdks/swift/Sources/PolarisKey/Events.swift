@@ -76,7 +76,9 @@ public enum PolarisKeyEvent: Sendable, Equatable {
     }
 
     /// Every kind name, in the shared order.
-    public static let kinds = ["license", "entitlement", "config", "updateAvailable", "packs", "store", "identity", "cloudSync"]
+    public static let kinds = [
+        "license", "entitlement", "config", "updateAvailable", "packs", "store", "identity", "cloudSync",
+    ]
 }
 
 /// The fan-out behind `client.events`.
@@ -152,7 +154,10 @@ actor ChangePublisher {
 
     private func publish(emitting: Bool) async {
         let previous = tail
-        let task = Task { await previous?.value; await self.run(emitting: emitting) }
+        let task = Task {
+            await previous?.value
+            await self.run(emitting: emitting)
+        }
         tail = task
         await task.value
     }

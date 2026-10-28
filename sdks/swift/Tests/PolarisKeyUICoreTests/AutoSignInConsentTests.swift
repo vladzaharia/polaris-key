@@ -72,7 +72,8 @@ final class AutoSignInConsentTests: XCTestCase {
 
     func testTheDeviceLimitFixturesCoverNoLinkAndAFullRowThatAllowsReplace() throws {
         let ids = Set(PolarisKeyPreviewState.all.map(\.id))
-        XCTAssertTrue(ids.isSuperset(of: ["SignIn.device-limit", "SignIn.device-limit.no-link", "SignIn.choose.device-limit"]))
+        XCTAssertTrue(
+            ids.isSuperset(of: ["SignIn.device-limit", "SignIn.device-limit.no-link", "SignIn.choose.device-limit"]))
         let rows = try XCTUnwrap(
             PolarisKeyPreviewState.all.first { $0.id == "SignIn.choose.device-limit" })
         XCTAssertTrue(

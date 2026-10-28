@@ -50,19 +50,19 @@ public struct PlatformServices: Sendable {
             availability: availability, distributor: SystemDistributor(), bundleEvidence: { .mainBundle() },
             appTransaction: nil, store: nil, keychain: nil, assetPacks: UnavailableAssetPackClient())
         #if canImport(StoreKit)
-        services.appTransaction = SystemAppTransaction()
-        services.store = SystemStoreClient(availability: availability)
+            services.appTransaction = SystemAppTransaction()
+            services.store = SystemStoreClient(availability: availability)
         #endif
         #if canImport(Security)
-        services.keychain = SystemKeychainBackend()
+            services.keychain = SystemKeychainBackend()
         #endif
         #if os(iOS) && canImport(DeviceCheck)
-        services.appAttest = SystemAppAttestClient()
+            services.appAttest = SystemAppAttestClient()
         #endif
         #if compiler(>=6.3) && canImport(BackgroundAssets) && (os(iOS) || os(macOS))
-        if availability.managedAssetPacks, #available(iOS 26.4, macOS 26.4, *) {
-            services.assetPacks = SystemAssetPackClient()
-        }
+            if availability.managedAssetPacks, #available(iOS 26.4, macOS 26.4, *) {
+                services.assetPacks = SystemAssetPackClient()
+            }
         #endif
         return services
     }
@@ -71,9 +71,9 @@ public struct PlatformServices: Sendable {
 /// A keychain backend, or nothing where Security does not exist (it lets `PlatformServices`
 /// compile where `KeychainBackend` is absent).
 #if canImport(Security)
-public typealias KeychainBackendBox = KeychainBackend
+    public typealias KeychainBackendBox = KeychainBackend
 #else
-public protocol KeychainBackendBox: Sendable {}
+    public protocol KeychainBackendBox: Sendable {}
 #endif
 
 /// The router. `PlatformHost.shared` serves the C surface; tests and Swift hosts build their own
@@ -166,7 +166,9 @@ public final class PlatformHost: Sendable {
             }
 
         case "app_transaction":
-            guard let source = services.appTransaction else { return Self.unsupported("runtime", "StoreKit is not available here.") }
+            guard let source = services.appTransaction else {
+                return Self.unsupported("runtime", "StoreKit is not available here.")
+            }
             let refresh = q["refresh"]?.boolValue ?? false
             return later(op) { await readAppTransaction(source: source, refresh: refresh) }
 
@@ -296,11 +298,11 @@ public final class PlatformHost: Sendable {
     private func capabilities() -> PlatformObject {
         let a = services.availability
         #if os(iOS)
-        let platform = "ios"
+            let platform = "ios"
         #elseif os(macOS)
-        let platform = "macos"
+            let platform = "macos"
         #else
-        let platform = "other"
+            let platform = "other"
         #endif
         return [
             "ok": true, "protocol": .int(Self.protocolVersion), "platform": .string(platform),
@@ -318,57 +320,67 @@ public final class PlatformHost: Sendable {
     /// `dk_destroy` {product}. Bytes are base64; `keychain: "login"` as for kc_*.
     private func deviceKeySealer(_ op: String, _ q: PlatformObject) -> PlatformObject {
         #if canImport(Security) && canImport(CryptoKit)
-        guard let backend = services.keychain else { return Self.unsupported("runtime", "The Keychain is not available here.") }
-        guard let product = q["product"]?.stringValue else { return ["ok": false, "error": "missing_product_or_account"] }
-        var flavor = SecureStore.Keychain.dataProtection
-        if let raw = q["keychain"] {
-            guard let name = raw.stringValue, let k = SecureStore.Keychain(rawValue: name) else {
-                return ["ok": false, "error": "invalid_keychain"]
+            guard let backend = services.keychain else {
+                return Self.unsupported("runtime", "The Keychain is not available here.")
             }
-            flavor = k
-        }
-        guard SecureStore.validProduct(product) else { return ["ok": false, "error": "invalid_name"] }
-        let sealer = DeviceKeySealer(product: product, backend: backend, keychain: flavor)
-        func bytes(_ k: String) -> Data? { q[k]?.stringValue.flatMap { Data(base64Encoded: $0) } }
-        switch op {
-        case "dk_seal":
-            guard let plain = bytes("plain"), let context = bytes("context") else { return ["ok": false, "error": "bad_input"] }
-            return sealer.seal(plain: plain, context: context)
-        case "dk_open":
-            guard let blob = bytes("blob"), let context = bytes("context") else { return ["ok": false, "error": "bad_input"] }
-            return sealer.open(blob: blob, context: context)
-        default:
-            return sealer.destroy()
-        }
+            guard let product = q["product"]?.stringValue else {
+                return ["ok": false, "error": "missing_product_or_account"]
+            }
+            var flavor = SecureStore.Keychain.dataProtection
+            if let raw = q["keychain"] {
+                guard let name = raw.stringValue, let k = SecureStore.Keychain(rawValue: name) else {
+                    return ["ok": false, "error": "invalid_keychain"]
+                }
+                flavor = k
+            }
+            guard SecureStore.validProduct(product) else { return ["ok": false, "error": "invalid_name"] }
+            let sealer = DeviceKeySealer(product: product, backend: backend, keychain: flavor)
+            func bytes(_ k: String) -> Data? { q[k]?.stringValue.flatMap { Data(base64Encoded: $0) } }
+            switch op {
+            case "dk_seal":
+                guard let plain = bytes("plain"), let context = bytes("context") else {
+                    return ["ok": false, "error": "bad_input"]
+                }
+                return sealer.seal(plain: plain, context: context)
+            case "dk_open":
+                guard let blob = bytes("blob"), let context = bytes("context") else {
+                    return ["ok": false, "error": "bad_input"]
+                }
+                return sealer.open(blob: blob, context: context)
+            default:
+                return sealer.destroy()
+            }
         #else
-        return Self.unsupported("runtime", "The Keychain is not available here.")
+            return Self.unsupported("runtime", "The Keychain is not available here.")
         #endif
     }
 
     private func keychain(_ op: String, _ q: PlatformObject) -> PlatformObject {
         #if canImport(Security)
-        guard let backend = services.keychain else { return Self.unsupported("runtime", "The Keychain is not available here.") }
-        guard let product = q["product"]?.stringValue, let account = q["account"]?.stringValue else {
-            return ["ok": false, "error": "missing_product_or_account"]
-        }
-        // `keychain: "login"` asks for the macOS login keychain (the Godot desktop store, SP-27).
-        var flavor = SecureStore.Keychain.dataProtection
-        if let raw = q["keychain"] {
-            guard let name = raw.stringValue, let k = SecureStore.Keychain(rawValue: name) else {
-                return ["ok": false, "error": "invalid_keychain"]
+            guard let backend = services.keychain else {
+                return Self.unsupported("runtime", "The Keychain is not available here.")
             }
-            flavor = k
-        }
-        let store = SecureStore(product: product, backend: backend, keychain: flavor)
-        switch op {
-        case "kc_get": return store.get(account: account)
-        case "kc_set":
-            guard let value = q["value"]?.stringValue else { return ["ok": false, "error": "missing_value"] }
-            return store.set(account: account, value: value)
-        default: return store.delete(account: account)
-        }
+            guard let product = q["product"]?.stringValue, let account = q["account"]?.stringValue else {
+                return ["ok": false, "error": "missing_product_or_account"]
+            }
+            // `keychain: "login"` asks for the macOS login keychain (the Godot desktop store, SP-27).
+            var flavor = SecureStore.Keychain.dataProtection
+            if let raw = q["keychain"] {
+                guard let name = raw.stringValue, let k = SecureStore.Keychain(rawValue: name) else {
+                    return ["ok": false, "error": "invalid_keychain"]
+                }
+                flavor = k
+            }
+            let store = SecureStore(product: product, backend: backend, keychain: flavor)
+            switch op {
+            case "kc_get": return store.get(account: account)
+            case "kc_set":
+                guard let value = q["value"]?.stringValue else { return ["ok": false, "error": "missing_value"] }
+                return store.set(account: account, value: value)
+            default: return store.delete(account: account)
+            }
         #else
-        return Self.unsupported("runtime", "The Keychain is not available here.")
+            return Self.unsupported("runtime", "The Keychain is not available here.")
         #endif
     }
 }

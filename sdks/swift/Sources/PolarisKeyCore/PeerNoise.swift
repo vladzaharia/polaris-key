@@ -444,7 +444,7 @@ public actor PeerNoiseHandshake: CustomStringConvertible, CustomReflectable {
         return t
     }
 
-    private func guarded<T>(_ turn: Bool, _ body: () async throws -> T) async throws -> T {
+    private func guarded<T: Sendable>(_ turn: Bool, _ body: () async throws -> T) async throws -> T {
         if dead || finished || initiator != turn { throw PeerNoiseError.state }
         do { return try await body() } catch let err as PeerNoiseError {
             kill()

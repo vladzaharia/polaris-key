@@ -158,7 +158,8 @@ final class DeviceKeyStoreTests: XCTestCase {
 
     func testTwoStoresOverOneVaultAgree() async throws {
         let v = MemoryDeviceKeyVault()
-        let a = store(v), b = store(v)
+        let a = store(v)
+        let b = store(v)
         async let x = a.ensure()
         async let y = b.ensure()
         let (kx, ky) = try await (x, y)
@@ -580,7 +581,8 @@ final class DeviceProofSignerTests: XCTestCase {
         let s = mem()
         _ = try await s.ensure()
         let b = try await s.rotate()
-        let r = try await DeviceProofs.signKeys(s, product: "djdl", deviceId: device, issuedAt: now, allowEphemeral: true)
+        let r = try await DeviceProofs.signKeys(
+            s, product: "djdl", deviceId: device, issuedAt: now, allowEphemeral: true)
         XCTAssertEqual(r.keys, b)
         XCTAssertEqual(r.proof.signKey, b.signKey)
     }
@@ -635,7 +637,8 @@ final class DeviceProofConformanceTests: XCTestCase {
         for k in try XCTUnwrap(c["keyValueCases"] as? [[String: Any]]) {
             XCTAssertEqual(
                 DeviceProofs.keysValue(
-                    signKey: k["signKey"] as! String, agreeKey: k["agreeKey"] as! String, issuedAt: k["issuedAt"] as! Int),
+                    signKey: k["signKey"] as! String, agreeKey: k["agreeKey"] as! String,
+                    issuedAt: k["issuedAt"] as! Int),
                 k["value"] as? String)
         }
         for t in cases {
@@ -659,7 +662,8 @@ final class DeviceProofConformanceTests: XCTestCase {
     func testSignsEveryValidPurposeWithAFreshKey() async throws {
         let cases = try XCTUnwrap(corpus()["cases"] as? [[String: Any]])
             .filter { ($0["id"] as? String)?.hasPrefix("valid-") == true }
-        XCTAssertEqual(Set(cases.compactMap { $0["purpose"] as? String }), Set(DeviceProofPurpose.allCases.map(\.rawValue)))
+        XCTAssertEqual(
+            Set(cases.compactMap { $0["purpose"] as? String }), Set(DeviceProofPurpose.allCases.map(\.rawValue)))
         for t in cases {
             let id = t["id"] as! String
             let purpose = DeviceProofPurpose(rawValue: t["purpose"] as! String)!
@@ -682,9 +686,10 @@ final class DeviceProofConformanceTests: XCTestCase {
                 proof = r.proof
                 let value = DeviceProofs.keysValue(
                     signKey: r.keys.signKey, agreeKey: r.keys.agreeKey, issuedAt: (t["now"] as! Int) - 10)
-                expected = Data(
-                    "pkey-proof/1\nkeys\n\(t["product"] as! String)\n\(t["deviceId"] as! String)\n\(value)\n-".utf8
-                ).hexString
+                expected =
+                    Data(
+                        "pkey-proof/1\nkeys\n\(t["product"] as! String)\n\(t["deviceId"] as! String)\n\(value)\n-".utf8
+                    ).hexString
             } else {
                 proof = try await DeviceProofs.sign(
                     port, purpose: purpose, product: t["product"] as! String, deviceId: t["deviceId"] as! String,
@@ -697,9 +702,9 @@ final class DeviceProofConformanceTests: XCTestCase {
     }
 }
 
-private extension Data {
-    var hexString: String { map { String(format: "%02x", $0) }.joined() }
-    init(hexString h: String) {
+extension Data {
+    fileprivate var hexString: String { map { String(format: "%02x", $0) }.joined() }
+    fileprivate init(hexString h: String) {
         let c = Array(h.utf8)
         func nib(_ b: UInt8) -> UInt8 { b >= 97 ? b - 87 : b - 48 }
         self.init(stride(from: 0, to: c.count, by: 2).map { nib(c[$0]) << 4 | nib(c[$0 + 1]) })

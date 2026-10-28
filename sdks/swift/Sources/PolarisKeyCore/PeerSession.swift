@@ -253,9 +253,11 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
 
     public init(
         role: Role, slug: String, staticKey: any PeerNoiseStaticKey, account: PeerAccountContext? = nil,
-        admission: HandshakeLimiter? = nil, caps: [String] = [], hello: (label: String?, platform: String, app: String, maxMessage: Int?),
+        admission: HandshakeLimiter? = nil, caps: [String] = [],
+        hello: (label: String?, platform: String, app: String, maxMessage: Int?),
         send: @escaping @Sendable (Data) -> Void, onEvent: @escaping @Sendable (PeerSessionEvent) -> Void,
-        mode: PeerNoiseMode = .a, random: (@Sendable (Int) -> Data)? = nil, now: (@Sendable () -> Int)? = nil, mono: (@Sendable () -> TimeInterval)? = nil,
+        mode: PeerNoiseMode = .a, random: (@Sendable (Int) -> Data)? = nil, now: (@Sendable () -> Int)? = nil,
+        mono: (@Sendable () -> TimeInterval)? = nil,
         rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600
     ) throws {
         guard (mode == .a) == (account != nil) else { throw PeerChannelError.mode }
@@ -359,7 +361,9 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         await acquire()
         defer { releaseGate() }
         guard phase == .open else { throw PeerChannelError.notOpen }
-        guard !owned.contains(type), !(type == PeerRecordType.confirm && mode == .p) else { throw PeerChannelError.ownedRecord }
+        guard !owned.contains(type), !(type == PeerRecordType.confirm && mode == .p) else {
+            throw PeerChannelError.ownedRecord
+        }
         guard body.count <= maxSend else { throw PeerChannelError.messageTooLarge }
         try emit(type, body)
     }
@@ -638,7 +642,8 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             settle()
             queued = []
             wipe()
-            onEvent(.closed(knownClose.contains(code) ? PeerClosedReason(rawValue: code)! : .peerBadFrame, byPeer: true))
+            onEvent(
+                .closed(knownClose.contains(code) ? PeerClosedReason(rawValue: code)! : .peerBadFrame, byPeer: true))
         case PeerRecordType.trust:
             guard let (o, _) = PeerPayload.parseStrictObject(body), case .string(let t)? = o["trust"] else {
                 throw Fail(.peerBadFrame)
@@ -683,7 +688,8 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         }
         if type == PeerRecordType.sasReveal && !initiator && sasStep == 1 {
             // `revealOK` compares the commitment in constant time.
-            guard let d = PeerSAS.parseBody(.nD, body), let c = commit, PeerSAS.revealOK(commit: c, nD: try PeerSAS.encodeValue(d))
+            guard let d = PeerSAS.parseBody(.nD, body), let c = commit,
+                PeerSAS.revealOK(commit: c, nD: try PeerSAS.encodeValue(d))
             else { throw Fail(.peerBadFrame) }
             nD = d
             try await finishSas()
@@ -736,7 +742,8 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     private func maybeRekey(_ tp: PeerNoiseTransport) throws {
         if sent < rekeyMessages && mono() - keyedAt < rekeySeconds { return }
         sendNoise(
-            try tp.send.encrypt(ad: Data(), PeerRecords.encode(PeerRecord(type: PeerRecordType.rekey, flags: 0, body: Data()))))
+            try tp.send.encrypt(
+                ad: Data(), PeerRecords.encode(PeerRecord(type: PeerRecordType.rekey, flags: 0, body: Data()))))
         try tp.send.rekey()
         sent = 0
         keyedAt = mono()

@@ -1,10 +1,11 @@
 import Foundation
 import XCTest
-#if canImport(AuthenticationServices)
-import AuthenticationServices
-#endif
 
 @testable import PolarisKeyPlatform
+
+#if canImport(AuthenticationServices)
+    import AuthenticationServices
+#endif
 
 private final class MemoryUserIDs: AppleUserIDStoring, @unchecked Sendable {
     private let box = PlatformLock<String?>(nil)
@@ -134,20 +135,20 @@ final class AppleSignInTests: XCTestCase {
     }
 
     #if canImport(AuthenticationServices) && (os(iOS) || os(macOS) || os(tvOS) || os(visionOS))
-    func testSystemErrorsMapToCancelledOrUnavailable() {
-        func err(_ code: ASAuthorizationError.Code) -> Error {
-            NSError(domain: ASAuthorizationError.errorDomain, code: code.rawValue)
-        }
-        XCTAssertEqual(SystemAppleIDAuthorizer.typed(err(.canceled)), .cancelled)
-        XCTAssertEqual(SystemAppleIDAuthorizer.typed(err(.notInteractive)), .cancelled)
-        for c: ASAuthorizationError.Code in [.unknown, .failed, .invalidResponse, .notHandled] {
-            guard case .unavailable = SystemAppleIDAuthorizer.typed(err(c)) else {
-                return XCTFail("\(c) should be unavailable")
+        func testSystemErrorsMapToCancelledOrUnavailable() {
+            func err(_ code: ASAuthorizationError.Code) -> Error {
+                NSError(domain: ASAuthorizationError.errorDomain, code: code.rawValue)
+            }
+            XCTAssertEqual(SystemAppleIDAuthorizer.typed(err(.canceled)), .cancelled)
+            XCTAssertEqual(SystemAppleIDAuthorizer.typed(err(.notInteractive)), .cancelled)
+            for c: ASAuthorizationError.Code in [.unknown, .failed, .invalidResponse, .notHandled] {
+                guard case .unavailable = SystemAppleIDAuthorizer.typed(err(c)) else {
+                    return XCTFail("\(c) should be unavailable")
+                }
+            }
+            guard case .unavailable = SystemAppleIDAuthorizer.typed(NSError(domain: "other", code: 1)) else {
+                return XCTFail("a foreign error should be unavailable")
             }
         }
-        guard case .unavailable = SystemAppleIDAuthorizer.typed(NSError(domain: "other", code: 1)) else {
-            return XCTFail("a foreign error should be unavailable")
-        }
-    }
     #endif
 }

@@ -189,7 +189,8 @@ public enum DeviceProofs {
     ) async throws -> DeviceProof {
         guard purpose != .keys else { throw DeviceProofError.useSignKeysProof }
         return try await signAny(
-            port, DeviceProofFields(
+            port,
+            DeviceProofFields(
                 purpose: purpose.rawValue, product: product, deviceId: deviceId, value: value,
                 tokenHash: tokenHash),
             now: now)
@@ -239,7 +240,8 @@ public enum DeviceProofs {
             port, product: product, deviceId: deviceId, issuedAt: issuedAt, allowEphemeral: allowEphemeral)
         return (
             "/\(product)/devices/keys",
-            DeviceKeysRequest(signKey: r.keys.signKey, agreeKey: r.keys.agreeKey, issuedAt: r.issuedAt, sig: r.proof.sig)
+            DeviceKeysRequest(
+                signKey: r.keys.signKey, agreeKey: r.keys.agreeKey, issuedAt: r.issuedAt, sig: r.proof.sig)
         )
     }
 }

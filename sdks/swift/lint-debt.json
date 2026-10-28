@@ -11,23 +11,28 @@
     "sdks/swift/Sources/PolarisKey/ClientBundle.swift": {
       "swift-format:AddLines": 1
     },
+    "sdks/swift/Sources/PolarisKey/CloudSyncHost.swift": {
+      "swift-format:NoBlockComments": 1
+    },
+    "sdks/swift/Sources/PolarisKey/ConnectChannel.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 1
+    },
+    "sdks/swift/Sources/PolarisKey/ConnectSession.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 1
+    },
     "sdks/swift/Sources/PolarisKey/DevicesClient.swift": {
       "swift-format:LineLength": 1
-    },
-    "sdks/swift/Sources/PolarisKey/Events.swift": {
-      "swift-format:AddLines": 2,
-      "swift-format:DoNotUseSemicolons": 4
     },
     "sdks/swift/Sources/PolarisKey/PolarisKeyClient.swift": {
       "swift-format:AddLines": 1,
       "swift-format:AlwaysUseLowerCamelCase": 1,
       "swift-format:Indentation": 1
     },
+    "sdks/swift/Sources/PolarisKey/SyncKeyring.swift": {
+      "swift-format:OneCasePerLine": 3
+    },
     "sdks/swift/Sources/PolarisKeyConfig/ConfigClient.swift": {
-      "swift-format:AddLines": 2,
-      "swift-format:AlwaysUseLowerCamelCase": 1,
-      "swift-format:Indentation": 3,
-      "swift-format:LineLength": 1
+      "swift-format:AlwaysUseLowerCamelCase": 1
     },
     "sdks/swift/Sources/PolarisKeyConfig/Facts.swift": {
       "swift-format:Indentation": 4
@@ -41,10 +46,6 @@
     "sdks/swift/Sources/PolarisKeyCore/ContentDecision.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 3,
       "swift-format:LineLength": 1
-    },
-    "sdks/swift/Sources/PolarisKeyCore/CoreContext.swift": {
-      "swift-format:AddLines": 2,
-      "swift-format:Indentation": 1
     },
     "sdks/swift/Sources/PolarisKeyCore/DeviceID.swift": {
       "swift-format:Indentation": 29
@@ -74,6 +75,9 @@
     "sdks/swift/Sources/PolarisKeyCore/OutletDetection.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 3
     },
+    "sdks/swift/Sources/PolarisKeyCore/PeerCert.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 3
+    },
     "sdks/swift/Sources/PolarisKeyCore/Platform.swift": {
       "swift-format:Indentation": 26
     },
@@ -95,9 +99,6 @@
     "sdks/swift/Sources/PolarisKeyCore/Store.swift": {
       "swift-format:AddLines": 2,
       "swift-format:Indentation": 54
-    },
-    "sdks/swift/Sources/PolarisKeyCore/Transport.swift": {
-      "swift-format:Indentation": 62
     },
     "sdks/swift/Sources/PolarisKeyCore/Trust.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 1
@@ -220,21 +221,12 @@
     "sdks/swift/Sources/PolarisKeyPlatform/Distributor.swift": {
       "swift-format:Indentation": 14
     },
-    "sdks/swift/Sources/PolarisKeyPlatform/Host.swift": {
-      "swift-format:Indentation": 33,
-      "swift-format:LineLength": 2
-    },
     "sdks/swift/Sources/PolarisKeyPlatform/PlatformJSON.swift": {
       "swift-format:Indentation": 7
     },
     "sdks/swift/Sources/PolarisKeyPlatform/SecureStore.swift": {
       "swift-format:Indentation": 108,
       "swift-format:LineLength": 1
-    },
-    "sdks/swift/Sources/PolarisKeyPlatform/Store.swift": {
-      "swift-format:Indentation": 114,
-      "swift-format:LineLength": 2,
-      "swift-format:TrailingComma": 1
     },
     "sdks/swift/Sources/PolarisKeyPlatformC/CSurface.swift": {
       "swift-format:AddLines": 1,
@@ -259,20 +251,11 @@
       "swift-format:AddLines": 4,
       "swift-format:Indentation": 1
     },
-    "sdks/swift/Sources/PolarisKeyUI/Kit/PolarisKeyPreview.swift": {
-      "swift-format:RemoveLine": 1
-    },
     "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/AccountScreens.swift": {
       "swift-format:AddLines": 4
     },
-    "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/ActivateScreens.swift": {
-      "swift-format:RemoveLine": 1
-    },
     "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/GateScreens.swift": {
       "swift-format:Indentation": 1
-    },
-    "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/SignInScreens.swift": {
-      "swift-format:AddLines": 1
     },
     "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/UpdateScreens.swift": {
       "swift-format:Indentation": 14
@@ -302,6 +285,9 @@
       "swift-format:Indentation": 13,
       "swift-format:LineLength": 1
     },
+    "sdks/swift/Tests/PolarisKeyPlatformTests/AppleSignInTests.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 2
+    },
     "sdks/swift/Tests/PolarisKeyPlatformTests/AssetPackTests.swift": {
       "swift-format:AddLines": 1,
       "swift-format:LineLength": 4,
@@ -319,11 +305,6 @@
       "swift-format:AlwaysUseLowerCamelCase": 4,
       "swift-format:Indentation": 48,
       "swift-format:LineLength": 5
-    },
-    "sdks/swift/Tests/PolarisKeyPlatformTests/HostTests.swift": {
-      "swift-format:AddLines": 1,
-      "swift-format:Indentation": 13,
-      "swift-format:LineLength": 11
     },
     "sdks/swift/Tests/PolarisKeyPlatformTests/SecureStoreTests.swift": {
       "swift-format:Indentation": 70,
@@ -370,6 +351,15 @@
       "swift-format:OrderedImports": 1,
       "swift-format:TrailingComma": 1
     },
+    "sdks/swift/Tests/PolarisKeyTests/CloudSyncHostBoundsTests.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 2
+    },
+    "sdks/swift/Tests/PolarisKeyTests/CloudSyncHostTests.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 4
+    },
+    "sdks/swift/Tests/PolarisKeyTests/CloudSyncSettingsTests.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 3
+    },
     "sdks/swift/Tests/PolarisKeyTests/CommerceTests.swift": {
       "swift-format:LineLength": 1,
       "swift-format:OrderedImports": 3,
@@ -378,6 +368,9 @@
     "sdks/swift/Tests/PolarisKeyTests/ConformanceTests.swift": {
       "swift-format:LineLength": 1,
       "swift-format:TrailingComma": 1
+    },
+    "sdks/swift/Tests/PolarisKeyTests/ConnectSessionTests.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 6
     },
     "sdks/swift/Tests/PolarisKeyTests/ContentConformanceTests.swift": {
       "swift-format:AddLines": 2,
@@ -393,6 +386,9 @@
       "swift-format:LineLength": 1,
       "swift-format:TrailingComma": 1
     },
+    "sdks/swift/Tests/PolarisKeyTests/DeterministicEd25519.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 5
+    },
     "sdks/swift/Tests/PolarisKeyTests/DirectoriesTests.swift": {
       "swift-format:Indentation": 13
     },
@@ -405,13 +401,11 @@
     "sdks/swift/Tests/PolarisKeyTests/ErrorCopyTests.swift": {
       "swift-format:LineLength": 1
     },
-    "sdks/swift/Tests/PolarisKeyTests/EventsAndSignInTests.swift": {
-      "swift-format:AddLines": 1,
-      "swift-format:DoNotUseSemicolons": 8,
-      "swift-format:LineLength": 4
-    },
     "sdks/swift/Tests/PolarisKeyTests/FactsTests.swift": {
       "swift-format:AddLines": 1
+    },
+    "sdks/swift/Tests/PolarisKeyTests/HostCodecTests.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 4
     },
     "sdks/swift/Tests/PolarisKeyTests/IdentityMintTests.swift": {
       "swift-format:OrderedImports": 1
@@ -473,9 +467,11 @@
       "swift-format:LineLength": 6,
       "swift-format:TrailingComma": 1
     },
-    "sdks/swift/Tests/PolarisKeyTests/PkeyDevLiveTests.swift": {
-      "swift-format:AddLines": 1,
-      "swift-format:LineLength": 4
+    "sdks/swift/Tests/PolarisKeyTests/PeerNoiseTests.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 1
+    },
+    "sdks/swift/Tests/PolarisKeyTests/PeerSessionTests.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 26
     },
     "sdks/swift/Tests/PolarisKeyTests/PlatformTransportTests.swift": {
       "swift-format:LineLength": 2
@@ -500,6 +496,9 @@
       "swift-format:AddLines": 3,
       "swift-format:Indentation": 3
     },
+    "sdks/swift/Tests/PolarisKeyTests/RelayFakeRoom.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 1
+    },
     "sdks/swift/Tests/PolarisKeyTests/RevocationTests.swift": {
       "swift-format:AddLines": 3,
       "swift-format:AlwaysUseLowerCamelCase": 1,
@@ -518,8 +517,8 @@
     "sdks/swift/Tests/PolarisKeyTests/StageMatrixTests.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 2
     },
-    "sdks/swift/Tests/PolarisKeyTests/TranscriptTests.swift": {
-      "swift-format:OrderedImports": 3
+    "sdks/swift/Tests/PolarisKeyTests/SyncVectorsTests.swift": {
+      "swift-format:AlwaysUseLowerCamelCase": 2
     },
     "sdks/swift/Tests/PolarisKeyTests/UpdateHealthTests.swift": {
       "swift-format:AddLines": 2,

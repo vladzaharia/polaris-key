@@ -145,7 +145,8 @@ extension AutoSignInResult: CustomStringConvertible, CustomDebugStringConvertibl
         case .confirm(let p): return "AutoSignInResult.confirm(\(p))"
         case .choose(let p): return "AutoSignInResult.choose(\(p))"
         case .needsSignIn(let h, let r):
-            return "AutoSignInResult.needsSignIn(linkHandle: \(h == nil ? "nil" : redactedCredential), reason: \(r.rawValue))"
+            return
+                "AutoSignInResult.needsSignIn(linkHandle: \(h == nil ? "nil" : redactedCredential), reason: \(r.rawValue))"
         case .deviceLimit: return "AutoSignInResult.deviceLimit"
         case .unavailable(let c): return "AutoSignInResult.unavailable(\(c))"
         }

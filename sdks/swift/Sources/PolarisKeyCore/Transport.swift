@@ -17,7 +17,7 @@
 import Foundation
 
 #if canImport(FoundationNetworking)
-import FoundationNetworking
+    import FoundationNetworking
 #endif
 
 /// The one error type the SDK throws. Everything on the VERIFICATION path fails closed by
@@ -219,21 +219,21 @@ public struct URLSessionTransport: PolarisTransport {
             (data, response) = try await capped(req, limit: limit, delegate: policy)
         } else {
             #if canImport(FoundationNetworking)
-            (data, response) = try await session.data(for: req)
+                (data, response) = try await session.data(for: req)
             #else
-            (data, response) = try await session.data(for: req, delegate: policy)
+                (data, response) = try await session.data(for: req, delegate: policy)
             #endif
         }
         try policy.throwIfRefused()
         #if canImport(FoundationNetworking)
-        // Linux: FoundationNetworking gives no per-request redirect hook, so a redirect is FOLLOWED by
-        // the session before this code sees the answer, and the request (bearer included, as the
-        // session's own cross-origin rules allow) has already reached the target. All this can do is
-        // refuse to treat that answer as the control plane's: a final URL that differs from the
-        // request's is no answer. It does not refuse the redirect and does not undo the exposure.
-        if !request.followRedirects, let final = response.url, final.absoluteString != request.url.absoluteString {
-            throw PolarisError(code: "transport", message: "A redirect was followed where none is allowed.")
-        }
+            // Linux: FoundationNetworking gives no per-request redirect hook, so a redirect is FOLLOWED by
+            // the session before this code sees the answer, and the request (bearer included, as the
+            // session's own cross-origin rules allow) has already reached the target. All this can do is
+            // refuse to treat that answer as the control plane's: a final URL that differs from the
+            // request's is no answer. It does not refuse the redirect and does not undo the exposure.
+            if !request.followRedirects, let final = response.url, final.absoluteString != request.url.absoluteString {
+                throw PolarisError(code: "transport", message: "A redirect was followed where none is allowed.")
+            }
         #endif
         guard let http = response as? HTTPURLResponse else {
             throw PolarisError(code: "transport", message: "non-http response")
@@ -247,51 +247,51 @@ public struct URLSessionTransport: PolarisTransport {
 
     public func stream(_ request: PolarisRequest) async throws -> PolarisStreamResponse {
         #if canImport(FoundationNetworking)
-        return try await send(request).streamed
+            return try await send(request).streamed
         #else
-        var req = URLRequest(url: request.url)
-        req.httpMethod = request.method
-        if request.timeoutSeconds > 0 { req.timeoutInterval = request.timeoutSeconds }
-        for (key, value) in request.headers { req.setValue(value, forHTTPHeaderField: key) }
-        req.httpBody = request.body
-        let policy = RedirectPolicy.Delegate(follow: request.followRedirects)
-        let (bytes, response) = try await session.bytes(for: req, delegate: policy)
-        if let refusal = policy.refusal {
-            bytes.task.cancel()
-            throw refusal
-        }
-        guard let http = response as? HTTPURLResponse else {
-            bytes.task.cancel()
-            throw PolarisError(code: "transport", message: "non-http response")
-        }
-        var headers: [String: String] = [:]
-        for (key, value) in http.allHeaderFields {
-            if let key = key as? String, let value = value as? String { headers[key] = value }
-        }
-        let body = AsyncThrowingStream<Data, Error> { c in
-            let task = Task {
-                var buffer = Data()
-                buffer.reserveCapacity(1 << 16)
-                do {
-                    for try await byte in bytes {
-                        buffer.append(byte)
-                        if buffer.count >= 1 << 16 {
-                            c.yield(buffer)
-                            buffer.removeAll(keepingCapacity: true)
+            var req = URLRequest(url: request.url)
+            req.httpMethod = request.method
+            if request.timeoutSeconds > 0 { req.timeoutInterval = request.timeoutSeconds }
+            for (key, value) in request.headers { req.setValue(value, forHTTPHeaderField: key) }
+            req.httpBody = request.body
+            let policy = RedirectPolicy.Delegate(follow: request.followRedirects)
+            let (bytes, response) = try await session.bytes(for: req, delegate: policy)
+            if let refusal = policy.refusal {
+                bytes.task.cancel()
+                throw refusal
+            }
+            guard let http = response as? HTTPURLResponse else {
+                bytes.task.cancel()
+                throw PolarisError(code: "transport", message: "non-http response")
+            }
+            var headers: [String: String] = [:]
+            for (key, value) in http.allHeaderFields {
+                if let key = key as? String, let value = value as? String { headers[key] = value }
+            }
+            let body = AsyncThrowingStream<Data, Error> { c in
+                let task = Task {
+                    var buffer = Data()
+                    buffer.reserveCapacity(1 << 16)
+                    do {
+                        for try await byte in bytes {
+                            buffer.append(byte)
+                            if buffer.count >= 1 << 16 {
+                                c.yield(buffer)
+                                buffer.removeAll(keepingCapacity: true)
+                            }
                         }
+                        if !buffer.isEmpty { c.yield(buffer) }
+                        c.finish()
+                    } catch {
+                        c.finish(throwing: error)
                     }
-                    if !buffer.isEmpty { c.yield(buffer) }
-                    c.finish()
-                } catch {
-                    c.finish(throwing: error)
+                }
+                c.onTermination = { _ in
+                    task.cancel()
+                    bytes.task.cancel()
                 }
             }
-            c.onTermination = { _ in
-                task.cancel()
-                bytes.task.cancel()
-            }
-        }
-        return PolarisStreamResponse(status: http.statusCode, headers: headers, body: body)
+            return PolarisStreamResponse(status: http.statusCode, headers: headers, body: body)
         #endif
     }
 
@@ -301,22 +301,22 @@ public struct URLSessionTransport: PolarisTransport {
         _ req: URLRequest, limit: Int, delegate: RedirectPolicy.Delegate
     ) async throws -> (Data, URLResponse) {
         #if canImport(FoundationNetworking)
-        let (data, response) = try await session.data(for: req)
-        return (data.prefix(limit), response)
+            let (data, response) = try await session.data(for: req)
+            return (data.prefix(limit), response)
         #else
-        let (bytes, response) = try await session.bytes(for: req, delegate: delegate)
-        var data = Data()
-        if response.expectedContentLength > 0 {
-            data.reserveCapacity(Int(min(response.expectedContentLength, Int64(limit))))
-        }
-        for try await byte in bytes {
-            data.append(byte)
-            if data.count >= limit {
-                bytes.task.cancel()
-                break
+            let (bytes, response) = try await session.bytes(for: req, delegate: delegate)
+            var data = Data()
+            if response.expectedContentLength > 0 {
+                data.reserveCapacity(Int(min(response.expectedContentLength, Int64(limit))))
             }
-        }
-        return (data, response)
+            for try await byte in bytes {
+                data.append(byte)
+                if data.count >= limit {
+                    bytes.task.cancel()
+                    break
+                }
+            }
+            return (data, response)
         #endif
     }
 }

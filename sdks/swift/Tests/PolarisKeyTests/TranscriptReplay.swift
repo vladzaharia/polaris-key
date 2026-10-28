@@ -11,8 +11,9 @@
 // RECORDED and answered with a 599, and `endStep()` fails with the full list.
 
 import Foundation
-@testable import PolarisKey
 import PolarisKeyCore
+
+@testable import PolarisKey
 @testable import PolarisKeyPacks
 
 // ── The format ─────────────────────────────────────────────────────────────────────────────

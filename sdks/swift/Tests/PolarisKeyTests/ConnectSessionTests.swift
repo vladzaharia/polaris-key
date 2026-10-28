@@ -28,7 +28,10 @@ private final class MemPipe: PeerBytePipe, @unchecked Sendable {
     let remoteAddress = "10.0.0.2"
     private(set) var written = LockedValue<[Data]>([])
 
-    init(incoming: AsyncStream<Data>, incomingCont: AsyncStream<Data>.Continuation, outgoing: AsyncStream<Data>.Continuation) {
+    init(
+        incoming: AsyncStream<Data>, incomingCont: AsyncStream<Data>.Continuation,
+        outgoing: AsyncStream<Data>.Continuation
+    ) {
         self.incoming = incoming
         self.incomingCont = incomingCont
         self.outgoing = outgoing
@@ -112,13 +115,16 @@ private func openPair(
 ) async throws -> Open {
     let (pa, pb) = MemPipe.pair()
     let k = rnd()
-    let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+    let A = Dev(idA, signByte: 1)
+    let B = Dev(idB, signByte: 2)
     let ha = ConnectSessionHandlers(role: "initiator", budget: budget)
     let hb = ConnectSessionHandlers(role: "responder", budget: budget)
     let la = try await PeerLink.make(
-        pipe: pa, options: options(.initiator, A, keysA ?? [k]), handlers: ha.handlers, handshakeSeconds: handshakeSeconds)
+        pipe: pa, options: options(.initiator, A, keysA ?? [k]), handlers: ha.handlers,
+        handshakeSeconds: handshakeSeconds)
     let lb = try await PeerLink.make(
-        pipe: pb, options: options(.responder, B, keysB ?? [k]), handlers: hb.handlers, handshakeSeconds: handshakeSeconds)
+        pipe: pb, options: options(.responder, B, keysB ?? [k]), handlers: hb.handlers,
+        handshakeSeconds: handshakeSeconds)
     ha.attach(la)
     hb.attach(lb)
     Task { await la.run() }
@@ -139,7 +145,8 @@ private final class Fake: ConnectSessionLink, @unchecked Sendable {
 
 private func fakeSession(_ link: Fake, budget: ConnectQueueBudget? = nil) -> ConnectSession {
     ConnectSession(
-        link: link, peerDeviceId: idB, caps: [], hello: PeerHello(label: nil, platform: "t", app: "a", maxMessage: 1 << 20),
+        link: link, peerDeviceId: idB, caps: [],
+        hello: PeerHello(label: nil, platform: "t", app: "a", maxMessage: 1 << 20),
         role: "initiator", remoteAddress: "10.0.0.2", budget: budget)
 }
 
@@ -167,7 +174,11 @@ private final class StallPipe: PeerBytePipe, @unchecked Sendable {
     func close() async {
         closeCalls.with { $0 += 1 }
         await inner.close()
-        let w = gate.with { g -> [CheckedContinuation<Void, Never>] in let x = g; g = []; return x }
+        let w = gate.with { g -> [CheckedContinuation<Void, Never>] in
+            let x = g
+            g = []
+            return x
+        }
         for c in w { c.resume() }
     }
 }
@@ -177,7 +188,8 @@ final class ConnectSessionTests: XCTestCase {
         let (pa, pb) = MemPipe.pair()
         let stall = StallPipe(pa)
         let k = rnd()
-        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
         let ha = ConnectSessionHandlers(role: "initiator")
         let hb = ConnectSessionHandlers(role: "responder")
         let la = try await PeerLink.make(pipe: stall, options: options(.initiator, A, [k]), handlers: ha.handlers)
@@ -207,7 +219,8 @@ final class ConnectSessionTests: XCTestCase {
         let (pa, pb) = MemPipe.pair()
         let stall = StallPipe(pa)
         let k = rnd()
-        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
         let ha = ConnectSessionHandlers(role: "initiator")
         let hb = ConnectSessionHandlers(role: "responder")
         let la = try await PeerLink.make(
@@ -276,7 +289,8 @@ final class ConnectSessionTests: XCTestCase {
 
     func testAWrongDiscoveryKeyIsNotAdmittedAndTheResponderStaysSilent() async throws {
         let (pa, pb) = MemPipe.pair()
-        let ha = ConnectSessionHandlers(role: "initiator"), hb = ConnectSessionHandlers(role: "responder")
+        let ha = ConnectSessionHandlers(role: "initiator")
+        let hb = ConnectSessionHandlers(role: "responder")
         let la = try await PeerLink.make(
             pipe: pa, options: options(.initiator, Dev(idA, signByte: 1), [rnd()]), handlers: ha.handlers)
         let lb = try await PeerLink.make(
@@ -310,7 +324,8 @@ final class ConnectSessionTests: XCTestCase {
         let (pa, pb) = MemPipe.pair()
         let h = ConnectSessionHandlers(role: "responder")
         let l = try await PeerLink.make(
-            pipe: pb, options: options(.responder, Dev(idB, signByte: 2), [rnd()]), handlers: h.handlers, handshakeSeconds: 0.2)
+            pipe: pb, options: options(.responder, Dev(idB, signByte: 2), [rnd()]), handlers: h.handlers,
+            handshakeSeconds: 0.2)
         h.attach(l)
         Task { await l.run() }
         do {
@@ -387,7 +402,8 @@ final class ConnectSessionTests: XCTestCase {
         XCTAssertTrue(link.log.current.isEmpty)
         routeConnectRecord(link: link, session: s, type: 0x8100, body: Data([5]))
         XCTAssertEqual(link.log.current, ["close:peer_unknown_critical"])
-        let a = try await s.receive(), b = try await s.receive()
+        let a = try await s.receive()
+        let b = try await s.receive()
         XCTAssertEqual([a.body, b.body], [Data([2]), Data([3])])
     }
 
@@ -424,8 +440,10 @@ final class ConnectSessionTests: XCTestCase {
 
     func testAllSessionsShareAByteBudget() {
         let budget = ConnectQueueBudget(limit: 3)
-        let l1 = Fake(), l2 = Fake()
-        let s1 = fakeSession(l1, budget: budget), s2 = fakeSession(l2, budget: budget)
+        let l1 = Fake()
+        let l2 = Fake()
+        let s1 = fakeSession(l1, budget: budget)
+        let s2 = fakeSession(l2, budget: budget)
         s1.deliver(ConnectMessage(type: 0x0100, body: Data(count: 2)))
         s2.deliver(ConnectMessage(type: 0x0100, body: Data(count: 1)))
         XCTAssertTrue(l1.log.current.isEmpty && l2.log.current.isEmpty)
@@ -509,15 +527,18 @@ final class ConnectSessionTests: XCTestCase {
                 : RingAdoption(stored: true, epoch: 4, reason: nil)
         }
         let trustFn: @Sendable (String) async -> PeerTrustResult = { jws in
-            jws == "bad" ? PeerTrustResult(applied: false, reason: "invalid") : PeerTrustResult(applied: true, reason: nil)
+            jws == "bad"
+                ? PeerTrustResult(applied: false, reason: "invalid") : PeerTrustResult(applied: true, reason: nil)
         }
         let src = ConnectPeerDocsSource(
             now: { c.now.current }, refresh: refresh ? refreshFn : nil, adoptRing: adopt ? adoptFn : nil,
             applyTrust: trust ? trustFn : nil)
-        let d = ConnectPeerDocs(source: src, timer: { s, fn in
-            c.timers.with { $0.append((s, fn)) }
-            return {}
-        })
+        let d = ConnectPeerDocs(
+            source: src,
+            timer: { s, fn in
+                c.timers.with { $0.append((s, fn)) }
+                return {}
+            })
         d.onNotice { n in c.notices.with { $0.append(n) } }
         return d
     }
@@ -569,7 +590,8 @@ final class ConnectSessionTests: XCTestCase {
             while !gate.current { try? await Task.sleep(nanoseconds: 5_000_000) }
             return PeerTrustResult(applied: true, reason: nil)
         }
-        let ringFn: @Sendable (String) async -> RingAdoption = { _ in RingAdoption(stored: true, epoch: 2, reason: nil) }
+        let ringFn: @Sendable (String) async -> RingAdoption = { _ in RingAdoption(stored: true, epoch: 2, reason: nil)
+        }
         let notices = LockedValue<[ConnectNotice]>([])
         let d = ConnectPeerDocs(source: ConnectPeerDocsSource(now: { 0 }, adoptRing: ringFn, applyTrust: trustFn))
         d.onNotice { n in notices.with { $0.append(n) } }
@@ -581,11 +603,13 @@ final class ConnectSessionTests: XCTestCase {
         XCTAssertEqual(notices.current.filter { $0.reason == "busy" }.count, 1)
         gate.set(true)
         await d.drain()
-        XCTAssertEqual(notices.current.filter { $0.type == "trust" && $0.outcome == "applied" }.count, connectMaxDocsQueued - 1)
+        XCTAssertEqual(
+            notices.current.filter { $0.type == "trust" && $0.outcome == "applied" }.count, connectMaxDocsQueued - 1)
         XCTAssertEqual(notices.current.filter { $0.type == "ring" && $0.outcome == "stored" }.count, 1)
         d.trust("doc9")  // the slots are free again
         await d.drain()
-        XCTAssertEqual(notices.current.filter { $0.type == "trust" && $0.outcome == "applied" }.count, connectMaxDocsQueued)
+        XCTAssertEqual(
+            notices.current.filter { $0.type == "trust" && $0.outcome == "applied" }.count, connectMaxDocsQueued)
     }
 
     func testCloseStopsQueuedJobsAndLateRefreshes() async {

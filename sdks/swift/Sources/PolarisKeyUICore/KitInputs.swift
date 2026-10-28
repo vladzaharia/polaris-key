@@ -943,7 +943,8 @@ public struct KitAutoSignIn: Sendable, Codable, Equatable, Hashable {
 /// The approving device's side of nearby sign-in: where it is, and the device asking.
 public struct KitNearbyApproval: Sendable, Codable, Equatable, Hashable {
     public enum Step: String, Sendable, Codable, CaseIterable {
-        case entry, ask, approved, mismatch, denied, expired, choose, rateLimited = "rate-limited"
+        case entry, ask, approved, mismatch, denied, expired, choose
+        case rateLimited = "rate-limited"
         case notNearby = "not-nearby"
         case deviceLimit = "device-limit"
         case accountRequired = "account-required"

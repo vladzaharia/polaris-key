@@ -65,7 +65,8 @@ extension PeerAccountContext {
     public init(source src: PeerSource, ring: @escaping @Sendable () -> (jws: String, epoch: Int)? = { nil }) {
         self.init(
             trust: src.trust, expectedAud: src.slug, certJws: src.certJws, ownSub: src.sub, ownDeviceId: src.deviceId,
-            heldRing: { ring() ?? (src.ringJws, src.ringEpoch) }, discKeys: [src.keys.current.bytes, src.keys.previous?.bytes])
+            heldRing: { ring() ?? (src.ringJws, src.ringEpoch) },
+            discKeys: [src.keys.current.bytes, src.keys.previous?.bytes])
     }
 }
 
@@ -86,15 +87,15 @@ extension PeerChannelOptions {
 /// The HELLO `platform` of this process.
 public let connectPlatformName: String = {
     #if os(macOS)
-    return "macos"
+        return "macos"
     #elseif os(iOS)
-    return "ios"
+        return "ios"
     #elseif os(tvOS)
-    return "tvos"
+        return "tvos"
     #elseif os(visionOS)
-    return "visionos"
+        return "visionos"
     #else
-    return "swift"
+        return "swift"
     #endif
 }()
 
@@ -299,7 +300,11 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
     private func run(_ kind: String, _ jws: String, _ job: @escaping @Sendable () async -> Void) {
         let key = kind + ":" + jws
         let now = src.now()
-        enum Gate { case run, busy(notify: Bool), closed }
+        enum Gate {
+            case run
+            case busy(notify: Bool)
+            case closed
+        }
         let gate: Gate = state.with { s in
             if s.closed { return .closed }
             // One slot is kept for RING: a flood of TRUST documents cannot starve a roster (G11).
