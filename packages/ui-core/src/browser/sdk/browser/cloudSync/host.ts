@@ -107,6 +107,9 @@ export interface BrowserSyncHostDeps {
   fetchSchema: () => Promise<ProductCatalog | null>;
   /** The signed config document's values and the keys it locks. */
   document: () => CloudSyncDocument;
+  /** The person the session's token is for now, or null when not known. A request queued for
+   *  another person is dropped, not sent under this token. */
+  subject?: () => string | null;
   /** Whether the product runs the Sync service. */
   enabled: () => boolean;
   store: SyncStateStore;
@@ -250,6 +253,7 @@ export class BrowserCloudSyncHost {
   #forgetting: Promise<void> = Promise.resolve();
   #offPage: Array<() => void> = [];
   readonly #principal = new Set<() => void>();
+  #bound: string | null = null;
   readonly #statusListeners = new Set<() => void>();
 
   constructor(deps: BrowserSyncHostDeps, opts: CloudSyncHostOptions = {}) {
@@ -313,6 +317,11 @@ export class BrowserCloudSyncHost {
   onPrincipal(fn: () => void): () => void {
     this.#principal.add(fn);
     return () => this.#principal.delete(fn);
+  }
+
+  /** The person the machine's queued requests belong to (null for none). */
+  bindSubject(subject: string | null): void {
+    this.#bound = subject;
   }
 
   /** Tell the other tabs the person changed here. */
@@ -600,6 +609,7 @@ export class BrowserCloudSyncHost {
   /** One request: seal it (E2E), send it, open the answer, hand both to the machine. */
   async #exchange(req: SyncRequest): Promise<void> {
     const m = this.machine;
+    const bound = this.#bound;
     const codec: HostCodec | null = this.#deps.ring.codec();
     const e2e = m.encryptionMode() === "e2e";
     // S3: a locked ring sends nothing, a pull included.
@@ -627,6 +637,10 @@ export class BrowserCloudSyncHost {
       }
     }
 
+    // Queued for one person: if the token is another person's now, nothing is sent.
+    const now = this.#deps.subject?.() ?? null;
+    if (bound !== null && now !== null && now !== bound)
+      return m.receive({ error: "transport" });
     const res = await sendSync(
       this.#deps.product,
       this.#deps.request,

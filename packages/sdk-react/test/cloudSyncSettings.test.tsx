@@ -497,8 +497,42 @@ describe("SEC-HOST3", () => {
     expect(safeSignInUrl("http://k.test/in", o)).toBeNull();
     expect(safeSignInUrl("//evil.test/in", o)).toBeNull();
     expect(safeSignInUrl("https://k.test/in", o)).toBe("https://k.test/in");
-    expect(safeSignInUrl("/signin", o)).toBe("/signin");
+    expect(safeSignInUrl("/signin", o)).toBe("https://k.test/signin");
     expect(safeSignInUrl(null, o)).toBeNull();
+    expect(safeSignInUrl("/in", undefined)).toBeNull();
+  });
+
+  it("R-1: control characters never turn a path into another host", () => {
+    const o = "https://k.test";
+    for (const bad of [
+      "/\t/evil.test",
+      "/\n/evil.test",
+      "/\r/evil.test",
+      "/ /evil.test",
+      "/\u0000/evil.test",
+      "\t//evil.test",
+      "/a\u0085b",
+    ])
+      expect(safeSignInUrl(bad, o)).toBeNull();
+  });
+
+  it("S-3: a follower whose record another tab purged signs in again without an identity note", async () => {
+    const w = new World();
+    const b = new Browser();
+    const who = { current: SUBJECT as string | null | undefined };
+    const writer = await tab(w, b, who);
+    await writer.api.attach();
+    const follower = await tab(w, b, who);
+    await follower.api.attach();
+    expect(follower.host.machine.persist().subject).toBe(SUBJECT);
+    // The person is unchanged: only the purge message tells the follower its record went.
+    await writer.host.purge();
+    await settle();
+    await settle();
+    expect(follower.host.machine.persist().subject).toBe(SUBJECT);
+    expect(follower.api.status().state).not.toBe("local");
+    await writer.host.close();
+    await follower.host.close();
   });
 
   it("S-4: a hostile signInUrl never reaches the app", async () => {

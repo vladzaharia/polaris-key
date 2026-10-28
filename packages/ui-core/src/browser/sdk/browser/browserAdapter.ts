@@ -2193,6 +2193,7 @@ export class BrowserAdapter implements PolarisAdapter {
     b.onBeforeSignOut(() => this.cloudSync.beforeSignOut());
     return (this.cloudSync_ = lazyCloudSync({
       dbName,
+      signInOrigin: new URL(this.base).origin,
       enabled: () => this.capabilities.sync.enabled,
       load: async () =>
         (await import("./cloudSync/create.js")).createBrowserCloudSync(

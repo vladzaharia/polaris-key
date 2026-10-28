@@ -27,6 +27,8 @@ export type IdentityNote =
 export interface CloudSyncClient {
   /** Why Cloud Sync is unavailable on this transport, or null when it runs. */
   readonly unsupported: Unsupported | null;
+  /** The Worker's origin: a sign-in offer is only handed on when it is on it. */
+  readonly signInOrigin?: string;
   /** Loads the host, restores the journal and joins the writer election. Idempotent. Throws the
    *  typed `UnsupportedError` where it cannot run (no Web Locks; a product without Sync). */
   host(): Promise<BrowserCloudSyncHost>;
@@ -93,6 +95,8 @@ export interface LazyCloudSyncSource {
   enabled(): boolean;
   /** The IndexedDB database the host's record lives in (`pkey-sync-<product>`). */
   dbName: string;
+  /** The Worker's origin. */
+  signInOrigin?: string;
 }
 
 /** A thin stub: nothing but forwarding. The first call that needs the host loads the client. */
@@ -120,6 +124,9 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
       : (off().host() as Promise<never>);
   return {
     unsupported: null,
+    ...(src.signInOrigin !== undefined
+      ? { signInOrigin: src.signInOrigin }
+      : {}),
     host: async () => (await ready()).host(),
     status: () =>
       !src.enabled()
