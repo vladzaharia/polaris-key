@@ -59,6 +59,13 @@ const KB = 1000;
  * paywall, offline). The kit now hands `useKit` the model of the component it draws
  * (`BareViewModel`), and the gate names only the six screens it draws, so the other models load
  * with the components that use them. No lazy chunk, so no second copy of shared state: 70.9 KB.
+ *
+ * polaris-key-gate 71.0 -> 71.2 KB and provider+use-license 88.0 -> 89.5 KB (STAB-2a, measured
+ * 71.04 and 89.15): the identity v2 client the provider bundles grew with the activation outcomes
+ * and account calls (I-10a.9), signIn.start for the device code and the web redirect (I-10a.10)
+ * and identity.choice (I-10a.11). It is the engine every provider ships, not kit chrome; the
+ * gate entry carries only what its sign-in step reaches. To take back out: the redirect and
+ * choice steps, on demand.
  */
 export const BUDGETS = JSON.parse(
   readFileSync(join(here, "size-budget.json"), "utf8"),

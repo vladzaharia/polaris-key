@@ -79,6 +79,9 @@ const OLD_CORS_SERVICE_PATHS = [
   // I-13.2: the native exchange's nonce. The keys in the body are bound, not trusted, and no ambient
   // credential exists to ride on; a web app's automatic sign-in asks for it from a listed page.
   "identity/nonce",
+  // I-43.2: the account-link offer. Device bearer only (never ambient), so a listed origin reaches
+  // what its own device token already can.
+  "identity/link",
   // I-09: the account on the device wire. Each takes the device bearer (never ambient), so a
   // listed origin reaches only what that page's own device token already can.
   "identity/attach",

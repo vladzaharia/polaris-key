@@ -6,8 +6,8 @@ data (a `.pkey/` manifest, no redeploy) and turn on only the services they use. 
 the Worker signs is a compact EdDSA JWS that each SDK verifies offline, byte for byte alike.
 
 An always-on **Core** (product registry, device principal, trust and signing, discovery, rate
-limiting, audit) carries eight opt-in services: **License**, **Config**, **Release**,
-**Distribution**, **Update**, **Identity**, **Cloud Sync** and **Commerce**. The concepts page defines the
+limiting, audit) carries nine opt-in services: **License**, **Config**, **Release**,
+**Distribution**, **Update**, **Identity**, **Cloud Sync**, **Commerce** and **Cloud Connect**. The concepts page defines the
 terms: [Concepts](https://key.plrs.im/docs/start/concepts/).
 
 ## Start here

@@ -138,16 +138,23 @@ describe("CloudSyncDO under workerd (U-05.7)", () => {
       expect(await state.storage.getAlarm()).not.toBeNull();
     });
     await callCloudSync<"deleteAll">(env, pin, { op: "deleteAll" });
+    // U-19.2: the erasure leaves a marker with a cleanup alarm a day out, and the marker refuses a
+    // push that was already on its way.
     await runInDurableObject(stub, async (_obj, state) => {
-      expect(await state.storage.getAlarm()).toBeNull();
+      const due = await state.storage.getAlarm();
+      expect(due).toBeGreaterThan(Date.now() + 23 * 3_600_000);
+      expect(due).toBeLessThanOrEqual(Date.now() + 24 * 3_600_000);
     });
     expect(
       (await callCloudSync<"usage">(env, pin, { op: "usage" })).empty,
     ).toBe(true);
-    await pushTo(pin, "again");
+    await expect(pushTo(pin, "again")).rejects.toMatchObject({
+      status: 410,
+      code: "absorbed",
+    });
     expect(
       (await callCloudSync<"usage">(env, pin, { op: "usage" })).empty,
-    ).toBe(false);
+    ).toBe(true);
   });
 });
 
@@ -207,9 +214,13 @@ describe("account-merge absorb under workerd (U-05.8)", () => {
     );
     expect(due).toBeGreaterThan(Date.now() + 23 * 3_600_000);
     expect(due).toBeLessThanOrEqual(Date.now() + 24 * 3_600_000);
-    // An erasure removes the marker.
+    // An erasure replaces the merge marker with the erasure marker (U-19.2): no data, and writes
+    // stay refused for the day.
     await callCloudSync<"deleteAll">(env, from, { op: "deleteAll" });
-    expect((await pushTo(from, "again")).outcome.ok).toBe(true);
+    await expect(pushTo(from, "again")).rejects.toMatchObject({
+      status: 410,
+      code: "absorbed",
+    });
   });
 });
 
@@ -362,7 +373,8 @@ describe("directory flush alarm under workerd (U-05.9)", () => {
     )
       .bind(pin.product, pin.subject)
       .run();
-    expect(await runDurableObjectAlarm(stub)).toBe(false);
+    // The erasure marker's own alarm (a day out) may run; it must not bring the row or the data back.
+    await runDurableObjectAlarm(stub);
     expect(await rowOf(pin)).toBeNull();
     expect(
       (await callCloudSync<"usage">(env, pin, { op: "usage" })).empty,

@@ -908,7 +908,10 @@ describe("absorb: isolation", () => {
     ]);
     // U-05.12, U-05.13: the device routes (the pull and the push) call the object too, and
     // `handlers/common.ts` maps its refusals. `absorbCloudSync` above stays the merge hook's alone.
-    expect(users(/do\/client\.js"/)).toEqual([
+    // (Scoped to Sync's own files: Cloud Connect has a `do/client.js` of its own.)
+    expect(
+      users(/do\/client\.js"/).filter((f) => f.startsWith("services/sync/")),
+    ).toEqual([
       "services/sync/handlers/common.ts",
       "services/sync/handlers/pull.ts",
       "services/sync/handlers/push.ts",

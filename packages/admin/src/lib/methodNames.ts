@@ -2,6 +2,7 @@
  * How a sign-in method is named (shared by the Locker and the console's Sign-in methods page).
  * Pure; the words match the Worker's `methodLabel` (`services/identity/accounts/links.ts`).
  */
+import { channelLabel } from "@polaris-key/manifest";
 
 /** A method kind in words, as the Worker names it. Never print the raw kind. */
 export const KIND_LABEL: Readonly<Record<string, string>> = {
@@ -9,7 +10,7 @@ export const KIND_LABEL: Readonly<Record<string, string>> = {
   passkey: "Passkey",
   google: "Google",
   apple: "Apple",
-  steam: "Steam",
+  steam: channelLabel("steam"),
   gamecenter: "Game Center",
   pgs: "Google Play Games",
   eos: "Epic Online Services",

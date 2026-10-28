@@ -279,7 +279,7 @@ describe("stamping", () => {
     expect(files).toContain("packages/server/package.json");
     // The agent kit is private (D-K1): a stamp target, never a public package.
     expect(files).not.toContain("packages/agent-kit/package.json");
-    expect(files).toHaveLength(12);
+    expect(files).toHaveLength(13); // UK-04b: elements joined the public set
   });
 
   it("a json target sets its key and refuses a non-object", () => {
@@ -314,7 +314,7 @@ describe("stamping", () => {
       version: "0.8.13-main.7",
       pep440: "0.8.13.dev7",
     });
-    expect(written).toHaveLength(STAMP_TARGETS.length + 12);
+    expect(written).toHaveLength(STAMP_TARGETS.length + 13);
     const read = (f: string) => readFileSync(join(root, f), "utf8");
     expect(read("sdks/python/pyproject.toml")).toMatch(
       /^version = "0\.8\.13\.dev7"$/m,

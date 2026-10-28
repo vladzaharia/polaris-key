@@ -150,6 +150,11 @@ function renderNode(api: Api): string {
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in ${cls}.prototype).toBe(true));`,
       );
+    } else if (r.id.startsWith("identity.choice.")) {
+      // The licence choice an app shows itself: licenses, devices, complete, cancel live on `identity.choice`.
+      lines.push(
+        `it(${q(r.id)}, () => expect(${q(r.name)} in ChoiceClient.prototype).toBe(true));`,
+      );
     } else if (NODE_CLASS[r.ns]) {
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in ${NODE_CLASS[r.ns]}.prototype).toBe(true));`,
@@ -171,6 +176,7 @@ function renderNode(api: Api): string {
     BANNER("//"),
     `import { expect, it } from "vitest";`,
     `import {`,
+    `  ChoiceClient,`,
     `  ConfigClient,`,
     `  DeviceCodeSession,`,
     `  EntitlementsClient,`,

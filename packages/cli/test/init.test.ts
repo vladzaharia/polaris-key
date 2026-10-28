@@ -139,8 +139,10 @@ describe("pkey init on a terminal (ST-46.3)", () => {
       {
         keys: [
           key("up"),
+          key("up"), // up wraps: Cloud Connect, then Commerce
           SPACE, // tick Commerce
           key("down"),
+          key("down"), // down wraps: Cloud Connect, then Licensing
           SPACE, // untick Licensing -> clears Commerce
           ENTER,
         ],

@@ -41,10 +41,10 @@ from it. A new code needs an entry there first.
 | `unauthorized` | `ErrorCode.Unauthorized` | [Help](/docs/help/messages/license-status/#unauthorized) |
 | `not_entitled` | `ErrorCode.NotEntitled` | [Help](/docs/help/messages/license-status/#not_entitled) |
 | `device_limit` | `ErrorCode.DeviceLimit` | [Help](/docs/help/messages/devices/#device_limit) |
-| `device_keys_invalid` | `ErrorCode.DeviceKeysInvalid` | developer only |
-| `keyring_conflict` | `ErrorCode.KeyringConflict` | developer only |
-| `device_keys_required` | `ErrorCode.DeviceKeysRequired` | developer only |
-| `ring_too_large` | `ErrorCode.RingTooLarge` | developer only |
+| `device_keys_invalid` | `ErrorCode.DeviceKeysInvalid` | [Help](/docs/help/messages/devices/#device_keys_invalid) |
+| `keyring_conflict` | `ErrorCode.KeyringConflict` | [Help](/docs/help/messages/accounts/#keyring_conflict) |
+| `device_keys_required` | `ErrorCode.DeviceKeysRequired` | [Help](/docs/help/messages/devices/#device_keys_required) |
+| `ring_too_large` | `ErrorCode.RingTooLarge` | [Help](/docs/help/messages/devices/#ring_too_large) |
 | `relay_disabled` | `ErrorCode.RelayDisabled` | developer only |
 | `relay_paused` | `ErrorCode.RelayPaused` | developer only |
 | `relay_quota_exceeded` | `ErrorCode.RelayQuotaExceeded` | developer only |
@@ -125,10 +125,10 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `sign-in-expired` | `identity` | Godot: a device-code sign-in ended because its code expired: the client's expires_at passed (no poll is sent after it) or the server answered `timeout`. Begin again. | [Help](/docs/help/messages/signing-in/#sign-in-expired) |
 | `sign-in-denied` | `identity` | A device-code sign-in poll answered `error` with `reason: access_denied`: a person pressed Deny (or Not you?, or Cancel) on the Polaris Locker approval page. Begin again (I-37, I-37b, DENY-01). Builds before DENY-01 also raise it for a bare `error`. | [Help](/docs/help/messages/signing-in/#sign-in-denied) |
 | `sign-in-unavailable` | `identity` | Node, Python, Swift: starting a device-code sign-in was refused and the response carried no code of its own. | [Help](/docs/help/messages/signing-in/#sign-in-unavailable) |
-| `platform-identity-unavailable` | `identity` | The platform sign-in rung cannot run: no Play services, no declared provider kind for the product, or the OS refused the request (WIRE-CONTRACT-V5 §12.11.6). The client falls to the next rung. | developer only |
-| `sync-locked` | `sync` | Cloud Sync E2E: this device holds no root for the current key ring, so it cannot read or write synced values until it is unlocked by a nearby device, the recovery code or a platform backup (WIRE-CONTRACT-V5 §11.5, §13.11). | developer only |
-| `recovery-code-invalid` | `sync` | Cloud Sync E2E: the recovery code's checksum or its unwrap failed (WIRE-CONTRACT-V5 §13.11.4). | developer only |
-| `sync-encryption-pinned` | `sync` | Cloud Sync E2E: the app requires end-to-end encryption and the Worker offers server mode, or none; sync stays off rather than downgrade (WIRE-CONTRACT-V5 §11.5, §13.10.6). | developer only |
+| `platform-identity-unavailable` | `identity` | The platform sign-in rung cannot run: no Play services, no declared provider kind for the product, or the OS refused the request (WIRE-CONTRACT-V5 §12.11.6). The client falls to the next rung. | [Help](/docs/help/messages/signing-in/#platform-identity-unavailable) |
+| `sync-locked` | `sync` | Cloud Sync E2E: this device holds no root for the current key ring, so it cannot read or write synced values until it is unlocked by a nearby device, the recovery code or a platform backup (WIRE-CONTRACT-V5 §11.5, §13.11). | [Help](/docs/help/messages/accounts/#sync-locked) |
+| `recovery-code-invalid` | `sync` | Cloud Sync E2E: the recovery code's checksum or its unwrap failed (WIRE-CONTRACT-V5 §13.11.4). | [Help](/docs/help/messages/accounts/#recovery-code-invalid) |
+| `sync-encryption-pinned` | `sync` | Cloud Sync E2E: the app requires end-to-end encryption and the Worker offers server mode, or none; sync stays off rather than downgrade (WIRE-CONTRACT-V5 §11.5, §13.10.6). | [Help](/docs/help/messages/other/#sync-encryption-pinned) |
 | `invalid-options` | `core` | The client's options failed validation when it was constructed or configured (Godot: at configure): a bad product slug, version, base URL or pin, an invalid outlet, or a pinned release key that is also a trust pin. Godot's `config.set_value` also answers it for a value its catalog schema refuses and for a secret key, the refusal the other SDKs and `sync-scenarios.json` name with the canonical `bad_request`; Godot's runners map that canonical code to this one. | developer only |
 | `invalid-argument` | `core` | The Electron desktop bridge refused a call because an argument was missing, of the wrong type, or out of bounds (an absolute or escaping download path, an unknown store or kind). One spelling for every verb; the renderer adapter surfaces it as a typed error. | developer only |
 | `invoke-not-allowed` | `core` | The Electron desktop bridge's generic invoke named a service method the host does not expose to the renderer. | developer only |
@@ -196,7 +196,7 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `pack-revoked` | `update` | The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5), or a delegated release whose delegation a verified revocation names (detail `delegation`, plans/P4-19.md §2.6). | [Help](/docs/help/messages/downloads-and-updates/#pack-revoked) |
 | `pack-not-data-only` | `update` | A pack release signed by a delegated content key holds a file the data-only rule refuses (plans/P4-19.md §2.5): its extension is not in `DATA_ONLY_EXTENSIONS` (detail `extension`, checked over the files index before any payload object is fetched), or its first 64 or last 65,557 decoded bytes carry a Godot resource, pack, script, archive or native-binary magic (detail `content`). The plan is aborted and staging discarded; `path` names the file. | [Help](/docs/help/messages/downloads-and-updates/#pack-not-data-only) |
 | `marker-rejected` | `release` | An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8). | developer only |
-| `attach-declined` | `identity` | `identity.attach` ended without attaching the device's licence because the user declined the preview (WIRE-CONTRACT-V4 §12.3, `confirm: false` writes nothing). Not an error on the wire: the SDK keeps its state. The Worker's own refusals (`account_required`, `license_owned`, `license_email_bound`) keep their wire codes. | developer only |
+| `attach-declined` | `identity` | `identity.attach` ended without attaching the device's licence because the user declined the preview (WIRE-CONTRACT-V4 §12.3, `confirm: false` writes nothing). Not an error on the wire: the SDK keeps its state. The Worker's own refusals (`account_required`, `license_owned`, `license_email_bound`) keep their wire codes. | [Help](/docs/help/messages/accounts/#attach-declined) |
 
 ## Backend codes (`conformance/parity/errors.json`)
 
