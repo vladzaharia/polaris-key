@@ -101,23 +101,23 @@ describe("the lockup", () => {
   };
   it("is the Key lockup unless brand is locker (operator mail)", () => {
     const html = renderEmail(base);
-    expect(html).toContain("/assets/branding/key/key-horizontal-light-944.png");
+    expect(html).toContain("/assets/branding/key/key-compact-light-444.png");
     expect(html).toContain('alt="Polaris Key"');
     expect(html).not.toContain("Locker");
   });
-  it("is the Locker lockup at 230 x 64, light and dark, with neutral actions", () => {
+  it("is the Locker lockup at 217 x 26, light and dark, with neutral actions", () => {
     const html = renderEmail({
       ...base,
       brand: "locker",
       action: { label: "Go", url: `${API}/manage` },
     });
     expect(html).toContain(
-      `${API}/assets/branding/locker/locker-horizontal-light-640.png`,
+      `${API}/assets/branding/locker/locker-lockup-light-2x.png`,
     );
     expect(html).toContain(
-      `${API}/assets/branding/locker/locker-horizontal-dark-640.png`,
+      `${API}/assets/branding/locker/locker-lockup-dark-2x.png`,
     );
-    expect(html).toContain('width="230" height="64" alt="Polaris Locker"');
+    expect(html).toContain('width="217" height="26" alt="Polaris Locker"');
     expect(html).not.toContain("Polaris Key");
     expect(html).not.toContain("#9a5cff");
     expect(html).not.toContain("#7a2fff");
@@ -158,7 +158,7 @@ describe("customer templates", () => {
       // The product-hero key mail shows no platform lockup unless it has a second link.
       if (name !== "keyEmail")
         expect(m.html, name).toContain(
-          "/assets/branding/locker/locker-horizontal-light-640.png",
+          "/assets/branding/locker/locker-lockup-light-2x.png",
         );
     }
     expect(

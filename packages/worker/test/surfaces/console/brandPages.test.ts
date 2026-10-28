@@ -401,10 +401,10 @@ describe("the portal email", () => {
     const escaped = link.replace(/&/g, "&amp;");
     expect(html.split(`href="${escaped}"`)).toHaveLength(3);
     expect(html).toContain(
-      `<img class="pk-logo-light" src="${ORIGIN}/assets/branding/locker/locker-horizontal-light-640.png" width="230" height="64" alt="Polaris Locker"`,
+      `<img class="pk-logo-light" src="${ORIGIN}/assets/branding/locker/locker-lockup-light-2x.png" width="217" height="26" alt="Polaris Locker"`,
     );
     expect(html).toContain(
-      `<img class="pk-logo-dark" src="${ORIGIN}/assets/branding/locker/locker-horizontal-dark-640.png" width="230" height="64" alt="Polaris Locker"`,
+      `<img class="pk-logo-dark" src="${ORIGIN}/assets/branding/locker/locker-lockup-dark-2x.png" width="217" height="26" alt="Polaris Locker"`,
     );
     expect(html).toContain(".pk-logo-dark{display:block !important");
     expect(html).not.toMatch(/app-icon|powered by/i);
@@ -719,9 +719,9 @@ describe("the console sign-in error cards", () => {
 });
 
 describe("the phone header rules are scoped to the Locker card", () => {
-  it("the console card keeps its Key lockup at the brand size (no unscoped 36 px rule)", () => {
+  it("the console card keeps its Key lockup at the brand size (no unscoped 23 px rule)", () => {
     const css = BRAND_PAGE_CSS_CONSOLE;
-    expect(css).not.toContain(".ac-brand svg{height:36px");
-    expect(BRAND_PAGE_CSS_LOCKER).toContain(".ac-brand svg{height:36px");
+    expect(css).not.toContain(".ac-brand svg{height:23px");
+    expect(BRAND_PAGE_CSS_LOCKER).toContain(".ac-brand svg{height:23px");
   });
 });

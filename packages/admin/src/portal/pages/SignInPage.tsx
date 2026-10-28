@@ -151,7 +151,7 @@ function resendDelay(out: { resendIn?: number } | undefined): number {
 }
 
 /**
- * The brand row (SIGN-IN.md §3.1): the Locker lockup, 36 px on a phone and 48 px from `sm` (BRAND.md), the same as
+ * The brand row (SIGN-IN.md §3.1): the Locker lockup, 23 px on a phone and 26 px from `sm` (BRAND.md §1.4), the same as
  * the Worker's pages; muted in an app or product context so the product reads first. The size
  * never changes between steps.
  */

@@ -87,6 +87,7 @@
     "./marks/delivery/*": "./marks/delivery/*",
     "./marks/*": "./kit/01-marks/*",
     "./lockups/delivery/*": "./lockups/delivery/*",
+    "./lockups/mail/*": "./lockups/mail/*",
     "./lockups/*": "./kit/02-lockups/*",
     "./icons/*": "./icons/*",
     "./powered-by/*": "./kit/03-powered-by/*",
@@ -126,6 +127,7 @@
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json && tsx scripts/build-preview.ts",
     "gen": "tsx scripts/gen.ts",
+    "lockup-mail-png": "tsx scripts/lockup-mail-png.ts",
     "proofs": "tsx scripts/render-proofs.ts && tsx scripts/render-accent-proofs.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -148,7 +150,7 @@
     "prettier": "^3.5.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "sharp": "^0.35.4",
+    "sharp": "0.35.5",
     "tailwindcss": "^4.1.4",
     "tsx": "^4.19.0"
   }

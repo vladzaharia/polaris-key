@@ -337,7 +337,7 @@ const AUTH_CARD_RULES = [
   `[data-brand=locker] .tv .button{min-height:4.5rem;font-size:1.75rem;line-height:2rem}`,
   `.tv .ic{width:2rem;height:2rem}`,
   // On a phone the lockup drops to the BRAND phone size (36 px) in the media query at the end of this list; this rule (more specific than the phone one in the Locker tail) is the TV size.
-  `.tv .ac-brand svg{height:72px;width:auto}`,
+  `.tv .ac-brand svg{height:44px;width:auto}`,
   `.tv .ac-head img,.tv .ac-head .ac-mono{width:64px;height:64px}`,
   `.tv .ac-head-title{font-size:1.5rem;line-height:2rem}`,
   `.tv .ac-head-sub{font-size:1.25rem;line-height:1.75rem}`,
@@ -352,11 +352,11 @@ const LOCKER_PAGE_CSS_TAIL = [
   `:root[data-brand=locker]{${lockerPalette("dark")}}`,
   `@media (prefers-color-scheme: light){:root[data-brand=locker]{${lockerPalette("light")}}}`,
   ...AUTH_CARD_RULES,
-  // Phones: the Locker lockup drops to 36 px in its 56 px bar. Only here, not in `AUTH_CARD_RULES`,
+  // Phones: the Locker lockup drops to 23 px (the portal header's) in its 56 px bar. Only here, not in `AUTH_CARD_RULES`,
   // which the console card shares with its brand attribute swapped: the console card keeps its
-  // compact Key lockup at the brand size (BRAND_LOCKUP_HEIGHT.key). `/tv`'s 72 px TV lockup drops
-  // to the same 36 px, inside the gutter.
-  `@media (max-width: 30rem){.ac-brand svg{height:36px;width:auto}.tv .ac-brand svg{height:36px;max-width:calc(100% - 2rem)}}`,
+  // compact Key lockup at the brand size (BRAND_LOCKUP_HEIGHT.key). `/tv`'s 44 px TV lockup drops
+  // to the same 23 px, which needs no width cap.
+  `@media (max-width: 30rem){.ac-brand svg{height:23px;width:auto}.tv .ac-brand svg{height:23px}}`,
 ].join("");
 
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */
@@ -680,10 +680,10 @@ let consoleLockup: string | null = null;
 export const BRAND_LOCKUP_HEIGHT = {
   /** Key: the kit's compact lockup as supplied (222 x 64), 52 px tall, 180 px wide: plrs.im's size. */
   key: 52,
-  /** Locker: 437 x 80 canvas, so about 262 px wide (guide p.7 minimum 180). */
-  locker: 48,
-  /** Locker in a top bar or on a bare landing: the portal header's 33 px (180 px wide, the guide's floor). */
-  lockerBar: 33,
+  /** Locker above a card: the trimmed lockup, 26 px tall (the name at about 25 px, 214 px wide). */
+  locker: 26,
+  /** Locker in a top bar or on a bare landing: the portal header's 23 px (the name at about 22 px, 191 px wide, over the guide p.7 floor of 180). */
+  lockerBar: 23,
 } as const;
 
 /**
@@ -818,7 +818,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
             ...(opts.passport.glyph ? { glyph: opts.passport.glyph } : {}),
           })
         : "");
-  // One trimmed Locker lockup (48 px tall, 262 wide) on every page (no size jump between steps): muted in an app's
+  // One trimmed Locker lockup (26 px tall, 214 wide) on every page (no size jump between steps): muted in an app's
   // context, full on `/tv` and on pages with no app (SIGN-IN.md §3.1).
   const inApp =
     (header !== "" || opts.passport !== undefined) && opts.variant !== "tv";

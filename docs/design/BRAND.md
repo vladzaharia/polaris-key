@@ -108,6 +108,15 @@ without gold; `opticalCut()` and `<PolarisMark>` do the same.
   small internal margin is not a substitute (`clearSpace()` computes it).
 - Use the **compact lockup** when the full wordmark would make its mark smaller than 48 px
   (Brand-Guide p.2).
+- **Lockup proportion (owner 2026-10-27; `LOCKUP_PROPORTION`, `LOCKER_HORIZONTAL`).** In a
+  horizontal lockup the mark is **1.5 x the wordmark's cap height** (never above 1.7 x), centred
+  on the cap height rather than the line box, with a gap of **0.45–0.6 x the mark's height** to the
+  wordmark (the Locker lockup 0.45 x; the Key compact lockup's 0.57 x complies). The kit's own Locker horizontal file draws the mark at 2.5 x, which makes the name
+  read small: `lockupSvg` and `<PolarisLockup>` re-lay the kit's outlined art to the rule (nothing
+  is redrawn) and `lockerKitLockupSvg` keeps the kit's file byte for byte. Size a lockup by its
+  wordmark: the cap is 0.667 x the trimmed Locker lockup's height, so 23 px tall sets the name at
+  about 22 px (the portal and docs header, 191 px wide), 26 px above a card, 23 px on a phone card's
+  56 px bar (the same as the portal header). The Key compact lockup is 1.54 x and holds the rule.
 - Preserve proportions and internal gaps. Do not stretch, rotate the stationary star, replace it
   with a sparkle emoji, add a shield or padlock, or attach an unapproved service name (kit README).
   "Delivery" is the owner-approved service name for the Star Cut (2026-10-03); use the generated
@@ -821,7 +830,7 @@ route that is not a byte route):
 The per-product download page (`dl.plrs.im/<product>`) is customer-facing, so it is **Polaris Locker**
 (§15), not Delivery (lead decision, 2026-10-20):
 
-- One 33 px Locker lockup in a top bar with a rule under it; the page title is "Download <Product> ·
+- One 23 px Locker lockup in a top bar with a rule under it; the page title is "Download <Product> ·
   Polaris Locker". No Delivery service row, no Star Cut, no Distribution green.
 - Actions and links are neutral ink: the filled primary is ink, the other actions are outlined, and links are
   `text-strong` with a 2 px coral underline (the lockup's coral is identity only, never a state).
@@ -832,7 +841,7 @@ The per-product download page (`dl.plrs.im/<product>`) is customer-facing, so it
   cover band (decorative, never under text) and a 56 px identity row, the h1 at the display step (48/52,
   32/36 under 640 px), then the recommendation and one outlined card per platform.
 
-The bare landing (`/` on the bytes host) follows the same rule: the Locker lockup at 33 px (§15), the
+The bare landing (`/` on the bytes host) follows the same rule: the Locker lockup at 23 px (§15), the
 Locker favicon and no Delivery service row. The registry host's landing is Polaris Key.
 
 ### The registry host, pkg.plrs.im
@@ -1279,12 +1288,11 @@ never rendered under 120 px wide (kit p.7).
 **Lockups in product chrome (BR-lockups, owner 2026-10-20).** A header or brand block draws the
 outlined lockup, never the name in live text beside a mark (§1.4 Don'ts). Locker guide
 p.7: the horizontal lockup is at least 180 px wide, so `lockupSvg({ kind: "locker", trim: true })`
-(`LOCKER_TRIM`, a 437 × 80 canvas cropped to the mark art and the wordmark) is drawn from 33 px
-tall: 33 px (180 px wide) in the portal header at every width and in the download page's top bar,
-48 px (262 px) above a card. Where a row has no room for 180 px, the mark stands alone with an accessible name (p.7: "for
+(`LOCKER_TRIM`, the re-laid lockup (§1.4) cropped to the mark art and the wordmark, 380 × 46) is drawn
+from 22 px tall: 23 px (191 px wide) in the portal header at every width and in the download page's
+top bar, 26 px (214 px) above a card. Where a row has no room for 180 px, the mark stands alone with an accessible name (p.7: "for
 crowded navigation use the mark alone"). Key guide p.2: where the full wordmark would make the mark smaller than 48 px (every header), use
 the kit's compact lockup as supplied, uncropped (222 × 64 canvas), at 52 px tall (180 px wide) in the
 64 px bar, the size plrs.im draws; its 26 px mark has no room for the section bit. Below the width
-that holds it the Pinned K stands alone at 48 px. The Locker trimmed lockup is at the guide's 180 px floor in a header (its wordmark is 3.7 × the
-lockup height, 122 px at 33 px). `test/core/brandLockupGuard.test.ts` (Worker) and `test/brandLockups.test.tsx` (admin) fail on a brand
+that holds it the Pinned K stands alone at 48 px. The Locker trimmed lockup clears the guide's 180 px floor in a header. `test/core/brandLockupGuard.test.ts` (Worker) and `test/brandLockups.test.tsx` (admin) fail on a brand
 block that sets the name as text.

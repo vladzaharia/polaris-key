@@ -237,6 +237,7 @@ h6,
 
 .pk-site-title {
   align-items: center;
+  min-block-size: 1.5rem;
   min-width: 0;
   color: var(--pk-text-strong);
   text-decoration: none;
@@ -270,7 +271,7 @@ h6,
   }
 }
 
-/* Large text: the lockup is a fixed 218 px, so a header that text size has shrunk to under 18 em
+/* Large text: the Locker lockup is a fixed 191 px (23 px tall), so a header that text size has shrunk to under 18 em
    (a 390 px window at 200 %, a 320 px one at 100 %) takes the mark alone rather than a scaled-down
    lockup. The em is the header's own, so it follows the reader's text size, which a window-width
    media query cannot. */

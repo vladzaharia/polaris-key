@@ -140,14 +140,76 @@ export type BadgeLayout = keyof typeof KEY_POWERED_BY.minimum;
 export const LOCKUP_TRIM = { x: 16, y: 32, height: 96, right: 40 } as const;
 
 /**
- * The trimmed Locker horizontal lockup (`lockupSvg({ kind: "locker", trim: true })`): the kit's
- * 460 x 128 canvas cropped to the mark's art (x 8..120, y 23.67..102, measured in Chromium) on
- * the left, top and bottom and to the end of the outlined "Polaris Locker" (x 443) on the right.
- * Nothing is redrawn; only the viewBox moves, so the mark-to-wordmark ratio is the kit's. The
- * kit's own canvas leaves 8 to 25 units of margin that make the lockup read small in a header:
- * the host supplies the clear space (guide p.7: at least a quarter of the glyph height).
+ * The Locker horizontal lockup's proportions (docs/design/BRAND.md §1.4, owner 2026-10-27): the
+ * mark is `markToCap` x the wordmark's cap height (never more than `markToCapMax`), centred on the
+ * cap height, with `gapToMark` x the mark's height between mark and wordmark. The kit's own file
+ * has the mark at 2.5 x the cap height, which makes the name read small; `lockerLockupTemplate`
+ * re-lays the kit's outlined artwork to this rule (nothing is redrawn) and `kitLockupSvg` keeps the
+ * kit's file byte for byte. Of the Key lockups only the compact one holds the rule (1.54 x, gap 0.57 x).
  */
-export const LOCKER_TRIM = { x: 8, y: 23, width: 437, height: 80 } as const;
+export const LOCKUP_PROPORTION = {
+  markToCap: 1.5,
+  markToCapMax: 1.7,
+  gapToMark: 0.45,
+} as const;
+
+/**
+ * The kit's Locker horizontal geometry, in its 460 x 128 canvas: the mark art (x 8..120, y
+ * 23.67..102, measured in Chromium), the wordmark's baseline, scale and first-glyph ink edge, and
+ * the end of the outlined "Polaris Locker" (x 443).
+ */
+export const LOCKER_KIT_HORIZONTAL = {
+  markX: 8,
+  markY: 23.67,
+  markWidth: 112,
+  markHeight: 78.33,
+  baseline: 80,
+  textScale: 0.044,
+  /** Cap height of the outlined P, in font units (the glyph is 700 high). */
+  capUnits: 700,
+  /** Left side bearing of the P, in font units. */
+  bearingUnits: 78.15625,
+  textX: 144,
+  inkRight: 443,
+} as const;
+
+const K = LOCKER_KIT_HORIZONTAL;
+const capHeight = K.capUnits * K.textScale;
+const markScale = (capHeight * LOCKUP_PROPORTION.markToCap) / K.markHeight;
+const markH = K.markHeight * markScale;
+const markW = K.markWidth * markScale;
+const markTop = K.baseline - capHeight / 2 - markH / 2;
+const inkLeft = K.markX + markW + LOCKUP_PROPORTION.gapToMark * markH;
+const textX = inkLeft - K.bearingUnits * K.textScale;
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * The re-laid Locker horizontal lockup: the mark scaled to 1.5 x the cap height and centred on it,
+ * the wordmark pulled up to a gap of 0.45 x the mark. `markTransform` and `textX` are what
+ * `lockerLockupTemplate` writes into the kit's body.
+ */
+export const LOCKER_HORIZONTAL = {
+  /** The kit's mark scale in the re-laid lockup (0.59: 128 grid units draw 75.5). */
+  markScale,
+  markTransform: `translate(${r2(K.markX - K.markX * markScale)} ${r2(markTop - K.markY * markScale)}) scale(${r2(markScale * 1e4) / 1e4})`,
+  textX: r2(textX),
+  /** Cap height of the wordmark over the lockup's height: size a lockup by its wordmark with it. */
+  capToHeight: capHeight / markH,
+} as const;
+
+/**
+ * The trimmed Locker horizontal lockup (`lockupSvg({ kind: "locker", trim: true })`): the re-laid
+ * lockup cropped to the mark's art on the left, top and bottom and to the end of the outlined
+ * "Polaris Locker" on the right, so `height` is the mark's height and the wordmark's cap height is
+ * 0.667 of it (a 23 px lockup sets the name at about 22 px). The host supplies the clear space
+ * (guide p.7: at least a quarter of the glyph height).
+ */
+export const LOCKER_TRIM = {
+  x: K.markX,
+  y: r2(markTop),
+  width: r2(K.inkRight + 2 - K.markX - (K.textX - textX)),
+  height: r2(markH),
+} as const;
 
 /** Clear space around standalone marks and lockups, as a fraction of the glyph height. */
 export const CLEAR_SPACE_RATIO = 0.25;
