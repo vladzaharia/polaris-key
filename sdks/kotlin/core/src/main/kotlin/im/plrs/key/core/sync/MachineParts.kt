@@ -17,6 +17,14 @@ internal class MachineParts(val core: MachineCore) {
     val edits = MachineEdits(this)
     val reads = MachineReads(this)
     val session = MachineSession(this)
+    val rows = MachineRows(this)
+    val results = MachineResults(this)
+    val exchange = MachineExchange(this)
+    val receiver = MachineReceive(this)
+    val records = MachineRecords(this)
+    val puts = MachineRecordPuts(this)
+    val contact = MachineContact(this)
+    val recordResults = MachineRecordResults(this)
 
     /** The constructor's tail: the subject's partition, expiry, and the first pull. */
     fun start() {
@@ -31,7 +39,9 @@ internal class MachineParts(val core: MachineCore) {
 public class CloudSyncMachine private constructor(private val parts: MachineParts) :
     SyncEdits by parts.edits,
     SyncReads by parts.reads,
-    SyncSession by parts.session {
+    SyncSession by parts.session,
+    SyncExchange by parts.receiver,
+    SyncRecords by parts.records {
     /** A machine for [opts], restored from [persisted] (a relaunch) when given. */
     public constructor(opts: CloudSyncOptions, persisted: MachineState? = null) : this(
         MachineParts(

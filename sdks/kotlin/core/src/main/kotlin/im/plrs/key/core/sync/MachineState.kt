@@ -32,7 +32,7 @@ internal class Op(
     var mutationId: Long,
     val target: OpTarget,
     val op: String,
-    val value: JsonElement? = null,
+    var value: JsonElement? = null,
     val member: String? = null,
     val element: JsonElement? = null,
 ) {
@@ -62,7 +62,8 @@ internal class Op(
     }
 
     /** A copy for a re-send: no mutation id and no `parked` mark (the id is assigned on enqueue). */
-    fun resend(): Op = Op(0, target, op, value, member, element).also {
+    fun resend(keepParked: Boolean = false): Op = Op(0, target, op, value, member, element).also {
+        if (keepParked) it.parked = parked
         it.editedHlc = editedHlc
         it.baseVersion = baseVersion
         it.observedSeq = observedSeq

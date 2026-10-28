@@ -62,7 +62,7 @@ internal class MachinePump(private val p: MachineParts) {
     }
 
     /** `max` and `min` are decided by the client in E2E mode. */
-    private fun clientDecides(policy: String): Boolean = core.requiresE2e() && policy in listOf("max", "min")
+    fun clientDecides(policy: String): Boolean = core.requiresE2e() && policy in listOf("max", "min")
 
     private fun needsBaseVersion(op: Op, t: OpTarget.Setting): Boolean =
         op.op == "set" && op.baseVersion == null && clientDecides(p.routing.policyOf(t.key))

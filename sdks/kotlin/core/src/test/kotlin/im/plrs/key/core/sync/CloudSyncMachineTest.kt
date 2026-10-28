@@ -66,4 +66,30 @@ class CloudSyncMachineTest {
         assertTrue(pending, pending.contains("\"moved\":true"))
         assertEquals(1, m.status().pending)
     }
+
+    /** X-1 (SEC-HOST2's reproduction): a conflict copy with no `ct` is legacy plaintext only below `encryptionSince` at the push's own cursor. */
+    private fun conflictCopyRead(cursor: Long): ReadResult {
+        val opts = options("sub_alice").also {
+            it.encryption = "e2e"
+            it.hasRoot = true
+            it.discovery = SyncDiscovery("e2e")
+        }
+        val m = CloudSyncMachine(opts)
+        val pull = Json.parseToJsonElement("""{"encryption":"e2e","cursor":$cursor,"encryptionSince":1}""")
+        m.receive(SyncResponse(200, pull))
+        m.takeRequests()
+        m.set("a.num", JsonPrimitive(1))
+        m.flush()
+        val conflict = Json.parseToJsonElement(
+            """{"encryption":"e2e","results":[{"mutationId":1,"status":"conflict","server":{"version":0,"value":"evil"}}]}""",
+        )
+        m.receive(SyncResponse(200, conflict), OpenedBody(conflicts = mapOf(1L to OpenedRow(seq = 0))))
+        return m.get("a.num")
+    }
+
+    @Test
+    fun conflictCopyPlaintextNeedsCursorBelowSince() {
+        assertEquals(ReadResult(JsonPrimitive("evil"), "cloud"), conflictCopyRead(0))
+        assertEquals("document", conflictCopyRead(50).from)
+    }
 }

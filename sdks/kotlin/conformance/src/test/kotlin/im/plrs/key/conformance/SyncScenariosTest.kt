@@ -2,11 +2,9 @@
 // @pkey-feature sync.settings
 //
 // The Kotlin runner for conformance/corpus/v2/sync-scenarios.json (read in place), mirroring the
-// Python test_sync_scenarios.py. `settingCases` runs in full. The scenario replays are the shell the
-// machine slices fill in: PENDING lists every scenario until its slice ports it (D-N1), by name, with
-// the slice that ports it (K2 ported the local half), and the `e2e-` prefix rule holds the E2E scenarios until the last machine
-// slice. The last machine slice deletes PENDING and the prefix rule, so a scenario X-1.1 adds runs
-// without an edit here. The machine has no crypto, so the JCA and Tink passes both run this suite.
+// Python test_sync_scenarios.py. `settingCases` runs in full and every scenario replays (the skip list
+// of D-N1 is gone), so a row X-1.1 adds runs without an edit. The machine has no crypto, so the JCA and
+// Tink passes both run this suite.
 
 package im.plrs.key.conformance
 
@@ -54,18 +52,9 @@ class SyncScenariosTest : ConformanceSuite() {
     }
 
     @Test
-    fun everyPendingNameIsACorpusScenario() {
-        val names = scenarios.map { it["name"].stringValue }.toSet()
-        assertTrue("PENDING names a scenario the corpus does not have", names.containsAll(PENDING))
-    }
-
-    @Test
-    fun everyScenarioIsHeldOrDriven() {
-        // A scenario that is held (PENDING, or the `e2e-` rule) is not replayed; every other one is, and a
-        // new corpus row is never silently skipped. A held scenario must still read: an init block and
-        // steps of known kinds.
+    fun everyScenarioReplays() {
+        // No skip list: a scenario X-1.1 adds runs here without an edit.
         val kinds = setOf("local", "advance", "network", "respond", "root", "signIn", "signOut", "relaunch", "assert")
-        var driven = 0
         for (sc in scenarios) {
             val name = sc["name"].stringValue!!
             assertTrue("$name: init", sc["init"] is JsonObject)
@@ -73,11 +62,8 @@ class SyncScenariosTest : ConformanceSuite() {
                 val kind = (step as JsonObject).keys.single()
                 assertTrue("$name: unknown step $kind", kind in kinds)
             }
-            if (pending(name)) continue
             SyncScenarioDriver(corpus["product"].stringValue!!, sc).run()
-            driven++
         }
-        assertTrue("some scenarios are replayed", driven > 0)
     }
 
     @Test
@@ -122,64 +108,5 @@ class SyncScenariosTest : ConformanceSuite() {
         // UTF-16 code-unit order: U+FF5E sorts above the surrogate pair of U+1F600.
         val o = JsonObject(mapOf("～" to JsonPrimitive(1), "😀" to JsonPrimitive(2)))
         assertEquals(listOf("😀", "～"), SyncJson.sortedKeys(o))
-    }
-
-    private fun pending(name: String): Boolean = name in PENDING || name.startsWith("e2e-")
-
-    private companion object {
-        /**
-         * The scenarios no slice has ported yet; each machine slice removes the names it ports (D-N1).
-         * K4 deletes this set and the `e2e-` prefix rule.
-         */
-        val PENDING: Set<String> = setOf(
-            // U-07.K3 (the exchange half).
-            "optimistic-read-pending",
-            "max-policy-optimistic",
-            "debounce-slider",
-            "clock-offset-folded",
-            "clock-slow-precontact-restamp",
-            "clock-fast-precontact-restamp",
-            "lww-conflict-server-wins",
-            "conflict-then-ok-one-push",
-            "request-failure-keeps-journal",
-            "conflict-rebase-new-mutation",
-            "one-outstanding-cas",
-            "account-switch-partition",
-            "first-sign-in-empty-cloud",
-            "first-sign-in-newer-and-older-cloud",
-            "sign-out-local-edit-sign-in-other",
-            "account-required-on-push",
-            "relink-clears-binding",
-            "merge-alias-subject-change",
-            "unauthorized-pauses",
-            "sign-out-flush-succeeds",
-            "sign-out-flush-timeout",
-            "on-sign-out-keep",
-            "journal-loss-new-client-id",
-            "client-mismatch-regenerates",
-            "cursor-expired-with-pending",
-            "member-merge",
-            "union-add-remove",
-            "renamed-and-dropped-keys",
-            "locked-key-refused",
-            "invalid-stored-value",
-            "rejected-result-reverts",
-            "relaunch-commits-and-pushes",
-            "open-setting-synced",
-            "open-setting-too-large",
-            "local-key-stays-local",
-            "secret-key-refused",
-            "platform-scope-target",
-            "config-local-import-loses-to-cloud",
-            "record-max-field-conflict",
-            "attestation-required-blocks",
-            "other-403-blocks",
-            "writes-paused-keeps-journal",
-            "quota-rejected-keeps-value",
-            "quota-raised-retries",
-            "quota-lowered-deletes-nothing",
-            "terminal-rejection-reverts",
-            "server-mode-unchanged",
-        )
     }
 }

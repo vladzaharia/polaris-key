@@ -34,7 +34,7 @@ internal object SyncValues {
         return hlc.substring(0, HLC_PHYSICAL_DIGITS).toLong(HEX) to hlc.substring(HLC_PHYSICAL_DIGITS + 1).toLong(HEX)
     }
 
-    private fun number(v: JsonElement?): Double? = if (SyncJson.isNumber(v)) v.decimalValue!!.toDouble() else null
+    private fun number(v: JsonElement?): Double? = SyncNum.double(v)
 
     /** Whether [value] satisfies the schema subset (an absent or empty schema: anything). */
     fun valueValid(value: JsonElement, schema: JsonObject?): Boolean {
@@ -77,6 +77,18 @@ internal object SyncValues {
         }
         return v
     }
+
+    /** One record operation applied to a value. */
+    fun applyRecordOp(base: JsonElement?, op: Op): JsonElement? = when (op.op) {
+        "set" -> op.value ?: JsonNull
+        "setMember", "removeMember" -> applySettingOp("merge", base, op.op, op.value, op.member)
+        "add" -> addTo((base as? JsonArray) ?: JsonArray(emptyList()), op.element!!)
+        "remove" -> JsonArray(((base as? JsonArray) ?: JsonArray(emptyList())).filterNot { SyncJson.jsonEqual(it, op.element) })
+        else -> base
+    }
+
+    private fun addTo(arr: JsonArray, element: JsonElement): JsonArray =
+        if (arr.any { SyncJson.jsonEqual(it, element) }) arr else JsonArray(arr + element)
 
     fun objectOf(v: JsonElement?): JsonObject = v.objectValue ?: JsonObject(emptyMap())
 }

@@ -10,7 +10,10 @@ import im.plrs.key.core.stringValue
 import im.plrs.key.core.sync.CallResult
 import im.plrs.key.core.sync.CloudSyncMachine
 import im.plrs.key.core.sync.CloudSyncOptions
+import im.plrs.key.core.sync.OpenedBody
+import im.plrs.key.core.sync.OpenedRow
 import im.plrs.key.core.sync.SyncJson
+import im.plrs.key.core.sync.SyncResponse
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -59,6 +62,7 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
     private fun step(kind: String, raw: JsonObject, where: String) {
         when (kind) {
             "local" -> local(raw, where)
+            "respond" -> respond(raw)
             "advance" -> machine.advance(raw["ms"].longValue!!)
             "network" -> machine.setNetwork(raw["state"].stringValue!!)
             "root" -> machine.setRoot(raw["has"].boolValue == true)
@@ -70,11 +74,27 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
         }
     }
 
+    private fun respond(raw: JsonObject) {
+        val res = if (raw["error"] != null) SyncResponse.TRANSPORT else SyncResponse(raw["status"].longValue!!.toInt(), raw["body"])
+        machine.receive(res, (raw["opened"] as? JsonObject)?.let { opened(it) })
+    }
+
+    private fun row(v: JsonElement?): OpenedRow? =
+        (v as? JsonObject)?.let { OpenedRow(it["sealed"].boolValue == true, it["invalid"].boolValue == true, it["seq"].longValue) }
+
+    private fun opened(o: JsonObject): OpenedBody = OpenedBody(
+        o["changes"].arrayValue.orEmpty().map { row(it) },
+        (o["conflicts"] as? JsonObject).orEmpty().entries.associate { it.key.toLong() to row(it.value) },
+    )
+
     private fun local(raw: JsonObject, where: String) {
         val args = raw["args"].arrayValue ?: JsonArray(emptyList())
         val result = when (val call = raw["call"].stringValue) {
             "set" -> machine.set(args[0].stringValue!!, args[1])
             "clear" -> machine.clear(args[0].stringValue!!)
+            "put" -> machine.put(args[0].stringValue!!, args[1].stringValue!!, args[2])
+            "add" -> machine.add(args[0].stringValue!!, args[1].stringValue!!, args[2])
+            "remove" -> machine.remove(args[0].stringValue!!, args[1].stringValue!!, args[2])
             "flush" -> machine.flush()
             "refresh" -> machine.refresh()
             else -> fail("$where: the machine slice that ports `$call` has not landed").let { CallResult.Ok }
@@ -92,7 +112,10 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
         raw["events"]?.let { same(where, "events", it, events) }
         (raw["values"] as? JsonObject)?.forEach { (k, want) -> same(where, "values.$k", want, machine.get(k).toJson()) }
         (raw["states"] as? JsonObject)?.forEach { (k, want) -> same(where, "states.$k", want, machine.settingState(k).toJson()) }
-        if (raw["records"] != null) fail("$where: records belong to a later machine slice")
+        (raw["records"] as? JsonObject)?.forEach { (k, want) ->
+            val (collection, id) = k.split("/", limit = 2)
+            same(where, "records.$k", want, machine.record(collection, id)?.toJson() ?: JsonNull)
+        }
         raw["journal"]?.let { same(where, "journal", it, machine.journal()) }
         raw["status"]?.let { same(where, "status", it, machine.status().toJson()) }
         if (raw.containsKey("encryptionSince")) {
