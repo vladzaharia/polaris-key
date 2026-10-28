@@ -475,15 +475,15 @@
     },
     "connect.protocol": {
       "status": "implemented",
-      "note": "client-core's peer/ codecs (advert, sas, frame, record, relay, payload) and the PeerChannel session machine for modes a, v and p, which the Node SDK consumes directly; the Node runner drives every peer-matrix.json section (CC-05.4). LAN sockets, the relay client and the cloudConnect API follow in CC-08."
+      "note": "client-core's peer/ codecs (advert, sas, frame, record, relay, payload) and the PeerChannel session machine for modes a, v and p, which the Node SDK consumes directly; the Node runner drives every peer-matrix.json section (CC-05.4). The LAN sockets (connect.lan), the relay client (connect.relay) and the cloudConnect API (connect.app) are built on it."
     },
     "connect.lan": {
       "status": "implemented",
-      "note": "client.connect.lan() (packages/sdk-node/src/connect, CC-08.2): LanService listens on TCP (random port, bounded unauthenticated sockets, a handshake deadline, frames over 16 KiB refused before the handshake), advertises the account instance name on the epoch timer through an MdnsAdapter (multicast-dns 7.2.5, optional, behind an interface; adverts that do not verify against the roster, K_disc and two epochs are dropped; non-LAN addresses are never dialled) and dials with client-core's PeerChannel (Noise XXpsk0, certificate and roster admission, HELLO, MORE reassembly to 1 MiB, rekey). The device's X25519 key stays behind DeviceKeyPort.dh. ConnectSession gives send, receive, onMessage, onClose and close with typed LanError reasons. test/lan.e2e.test.ts and test/connectMdns.test.ts (@pkey-feature connect.lan). Not yet: the relay fallback and the cloudConnect facade (CC-08.3)."
+      "note": "client.connect.lan() (packages/sdk-node/src/connect, CC-08.2): LanService listens on TCP (random port, bounded unauthenticated sockets, a handshake deadline, frames over 16 KiB refused before the handshake), advertises the account instance name on the epoch timer through an MdnsAdapter (multicast-dns 7.2.5, optional, behind an interface; adverts that do not verify against the roster, K_disc and two epochs are dropped; non-LAN addresses are never dialled) and dials with client-core's PeerChannel (Noise XXpsk0, certificate and roster admission, HELLO, MORE reassembly to 1 MiB, rekey). The device's X25519 key stays behind DeviceKeyPort.dh. ConnectSession gives send, receive, onMessage, onClose and close with typed LanError reasons. test/lan.e2e.test.ts and test/connectMdns.test.ts (@pkey-feature connect.lan)."
     },
     "connect.relay": {
-      "status": "planned",
-      "wp": "CC-08"
+      "status": "implemented",
+      "note": "client.connect.relay() / client.cloudConnect (packages/sdk-node/src/connect/relay.ts, CC-08.3): connect.relayTicket() trades the bearer for a single-use pkeyrt_ ticket (shape-checked, wss and the Worker's own host only; typed RelayError for relay_disabled, relay_paused with Retry-After, relay_quota_exceeded with its scope); RelayService opens the WebSocket with pkey-relay.1 and the ticket, frames SEND, RECV, LIST, MEMBERS, RING, PING and LIMIT with client-core's envelope codec, runs one PeerChannel per (peer, session) in mode a only with the LAN's admission, reconnects with exponential backoff and jitter on a fresh ticket each time, and stops with a typed error on a spent quota, a disabled relay or a replaced socket (4009). Modes v and p never cross it (assertRelayMode; tested). A relay RING op above the held epoch, or a peer on a newer roster, fetches identity({refresh:true}); a pushed RING is stored under the identity fetch's rules and a pushed TRUST is verified and applied or refused with a reason. test/relay.test.ts (@pkey-feature connect.relay) runs against an in-process room with the CC-07 engine's framing; the connect-relay-ticket and connect-relay-quota transcripts replay in the Node runner."
     },
     "connect.links": {
       "status": "planned",
@@ -494,8 +494,8 @@
       "wp": "CC-20"
     },
     "connect.app": {
-      "status": "planned",
-      "wp": "CC-08"
+      "status": "implemented",
+      "note": "client.cloudConnect (packages/sdk-node/src/connect/cloudConnect.ts, CC-08.3): start({lan, relay, lanAttemptMs}), stop(), peers() with the paths each device has, refreshPeers(), devices(), open(deviceId) (LAN first, the relay after a failed or timed-out LAN attempt unless the host disabled it; session.path says which was used), onChannel(), onNotice() and status(). A LAN service that cannot start is not fatal while the relay is on. test/relay.test.ts (@pkey-feature connect.app). Nearby (mode v) and links (mode p) are later work packages."
     },
     "server.license": {
       "status": "implemented",

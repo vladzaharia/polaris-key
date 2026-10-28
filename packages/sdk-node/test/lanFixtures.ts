@@ -105,6 +105,15 @@ export class MultiWorker {
   /** Rings and certificates are issued at this time. */
   issuedAt = T0;
   certSpan = 604_800;
+  /** The relay ticket route: what it answers, and the tickets it issued (ticket to device). */
+  relay: "ok" | "disabled" | "paused" | "quota-person" | "quota-product" = "ok";
+  tickets = new Map<string, string>();
+  ticketsAsked = 0;
+  /** The `url` the ticket answer carries. */
+  relayUrl = `wss://k.test/${PRODUCT}/connect/relay`;
+  /** Count and switch for the identity route. */
+  identityCalls = 0;
+  failIdentity = false;
 
   add(deviceId: string, token: string): void {
     this.tokens.set(token, deviceId);
@@ -157,12 +166,48 @@ export class MultiWorker {
     }
     if (!this.members.has(deviceId))
       return j({ error: { code: "device_keys_required" } }, 409);
-    if (path === "connect/identity")
+    if (method === "POST" && path === "connect/relay/ticket") {
+      this.ticketsAsked++;
+      const hdr = (extra: Record<string, string> = {}) => ({
+        headers: extra,
+      });
+      if (this.relay === "disabled")
+        return j({ error: { code: "relay_disabled" } }, 403);
+      if (this.relay === "paused")
+        return new Response(
+          JSON.stringify({ error: { code: "relay_paused" } }),
+          {
+            status: 503,
+            ...hdr({ "retry-after": "300" }),
+          },
+        );
+      if (this.relay === "quota-person" || this.relay === "quota-product")
+        return j(
+          {
+            error: { code: "relay_quota_exceeded" },
+            scope: this.relay === "quota-person" ? "person" : "product",
+          },
+          429,
+        );
+      const ticket = `pkeyrt_${base64UrlEncodeBytes(randomBytes(24))}`;
+      this.tickets.set(ticket, deviceId);
+      return j({
+        ticket,
+        url: this.relayUrl,
+        protocol: "pkey-relay.1",
+        expiresAt: Math.floor(Date.now() / 1000) + 60,
+      });
+    }
+    if (path === "connect/identity" && this.failIdentity)
+      return j({ error: { code: "server_error" } }, 500);
+    if (path === "connect/identity") {
+      this.identityCalls++;
       return j({
         ring: await this.ring(sub),
         certificate: await this.cert(deviceId, sub),
         discKeys: [this.disc],
       });
+    }
     return j({}, 404);
   }) as typeof fetch;
 }
@@ -177,6 +222,7 @@ export async function makeClient(
   worker: MultiWorker,
   n: string,
   dirs: string[],
+  extra: { trustRefresh?: boolean } = {},
 ): Promise<PolarisKeyClient> {
   const deviceId = devId(n);
   const token = tokenOf(n);
@@ -191,7 +237,7 @@ export async function makeClient(
     baseUrl: BASE,
     version: "1.0.0",
     trust: { pinnedKeys: { [TEST_KID]: TEST_PUB } },
-    trustRefresh: false,
+    trustRefresh: extra.trustRefresh ?? false,
     license: { fingerprint: false },
     devices: { fingerprint: false },
     store,
@@ -204,3 +250,28 @@ export async function makeClient(
   await client.init();
   return client;
 }
+
+export const sleep = (ms: number): Promise<void> =>
+  new Promise((r) => setTimeout(r, ms));
+
+/** Poll until `f` holds. Date is frozen in these tests, so it counts turns, not milliseconds. */
+export async function until(
+  f: () => boolean | Promise<boolean>,
+  ms = 3000,
+): Promise<void> {
+  for (let i = 0; i < ms / 5; i++) {
+    if (await f()) return;
+    await sleep(5);
+  }
+  throw new Error("timed out");
+}
+
+/** LAN options for tests: this network, loopback allowed. */
+export const loopLan = (net: MemoryMdnsNetwork) => ({
+  mdns: net.adapter(),
+  host: "127.0.0.1",
+  allowLoopback: true,
+});
+
+export const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
+export const text = (b: Uint8Array): string => new TextDecoder().decode(b);

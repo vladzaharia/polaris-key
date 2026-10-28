@@ -24,20 +24,14 @@ import {
   T0,
   devId,
   makeClient,
+  sleep,
+  text,
+  until,
+  utf8,
 } from "./lanFixtures.js";
 
 const A = devId("1");
 const B = devId("2");
-const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
-const text = (b: Uint8Array): string => new TextDecoder().decode(b);
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-async function until(f: () => boolean, ms = 3000): Promise<void> {
-  const t = Date.now();
-  while (!f()) {
-    if (Date.now() - t > ms) throw new Error("timed out");
-    await sleep(10);
-  }
-}
 
 let dirs: string[] = [];
 let services: LanService[] = [];

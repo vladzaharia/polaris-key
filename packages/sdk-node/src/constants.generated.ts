@@ -2031,10 +2031,10 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "connect.noise": { status: "implemented", service: "connect", na: [] },
   "connect.protocol": { status: "implemented", service: "connect", na: [] },
   "connect.lan": { status: "implemented", service: "connect", na: [] },
-  "connect.relay": { status: "planned", service: "connect", na: [] },
+  "connect.relay": { status: "implemented", service: "connect", na: [] },
   "connect.links": { status: "planned", service: "connect", na: [] },
   "connect.transfer": { status: "planned", service: "connect", na: [] },
-  "connect.app": { status: "planned", service: "connect", na: [] },
+  "connect.app": { status: "implemented", service: "connect", na: [] },
   "devices.fingerprint": { status: "implemented", service: "core", na: [] },
   "devices.facts": { status: "implemented", service: "core", na: [] },
   "devices.register": { status: "implemented", service: "core", na: [] },
@@ -2192,4 +2192,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "3a2acf5e2fd913fcf4400973e82eee888d390d858d46c3d1e18dfcccfbc7de1f";
+  "cd146f8910d27c0f8c26e005485850a439dc0f25fb826e5d775b0e2d26dc7ccb";

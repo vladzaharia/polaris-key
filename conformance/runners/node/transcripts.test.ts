@@ -16,6 +16,7 @@
 // @pkey-feature core.presentation
 // @pkey-feature ui.cli.portal
 // @pkey-feature sync.keyring
+// @pkey-feature connect.relay
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -65,6 +66,7 @@ import {
   ErrorCode,
   PolarisError,
   PolarisKeyClient,
+  RelayError,
   createNodeDeviceKeyStore,
   type CacheRecordV3,
   type RedirectSession,
@@ -723,6 +725,30 @@ async function act(
     case "deactivate":
       await client.license.deactivate();
       break;
+    case "relayTicket": {
+      // CC-08.3: `client.connect.relayTicket()`. A refusal reads as `result: "refused"` with the
+      // status, the Worker's code and, where it answers them, `retryAfter` and `scope`.
+      try {
+        const g = await client.connect.relayTicket();
+        out.result = "ok";
+        out.protocol = g.protocol;
+        out.url = g.url;
+        out.expiresIn = g.expiresAt - Math.floor(Date.now() / 1000);
+      } catch (e) {
+        out.result = "refused";
+        if (e instanceof RelayError) {
+          out.status = e.status ?? null;
+          out.code = e.wireCode ?? e.reason;
+          if (e.retryAfterSeconds !== undefined)
+            out.retryAfter = e.retryAfterSeconds;
+          if (e.scope !== undefined) out.scope = e.scope;
+        } else if (e instanceof PolarisError) {
+          out.status = e.status ?? null;
+          out.code = e.code;
+        } else throw e;
+      }
+      break;
+    }
     case "report":
       out.result = await client.devices.report();
       out.updatesPending = (await client.update.journal.all()).length;

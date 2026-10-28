@@ -89,6 +89,11 @@
       {
         "ns": "boot",
         "file": "packages/sdk-node/src/boot.ts"
+      },
+      {
+        "ns": "cloudConnect",
+        "type": "CloudConnect",
+        "file": "packages/sdk-node/src/connect/cloudConnect.ts"
       }
     ],
     "react": [
@@ -525,7 +530,7 @@
     {
       "sdk": "swift",
       "path": "client.connect",
-      "reason": "Cloud Connect identity (CC-11.1): its api.json concepts (cloudConnect.*) land with the Node API slice (CC-08.3); until then the Swift namespace is held back from the registry"
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
       "path": "client-core",
@@ -2283,6 +2288,11 @@
       "sdk": "swift",
       "path": "identity.installIdentityEvents",
       "reason": "wiring the client installs (the `identity` event's sink); not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "client.cloudConnect",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     }
   ],
   "concepts": [
@@ -5828,6 +5838,204 @@
           "sdkOnly": true,
           "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
           "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.start",
+      "kind": "method",
+      "feature": "connect.app",
+      "sdks": {
+        "node": {},
+        "react": {
+          "planned": "CC-09"
+        },
+        "python": {
+          "planned": "CC-10"
+        },
+        "swift": {
+          "planned": "CC-11"
+        },
+        "kotlin": {
+          "planned": "CC-12"
+        },
+        "godot": {
+          "planned": "CC-14"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.stop",
+      "kind": "method",
+      "feature": "connect.app",
+      "sdks": {
+        "node": {},
+        "react": {
+          "planned": "CC-09"
+        },
+        "python": {
+          "planned": "CC-10"
+        },
+        "swift": {
+          "planned": "CC-11"
+        },
+        "kotlin": {
+          "planned": "CC-12"
+        },
+        "godot": {
+          "planned": "CC-14"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.peers",
+      "kind": "method",
+      "feature": "connect.app",
+      "sdks": {
+        "node": {},
+        "react": {
+          "planned": "CC-09"
+        },
+        "python": {
+          "planned": "CC-10"
+        },
+        "swift": {
+          "planned": "CC-11"
+        },
+        "kotlin": {
+          "planned": "CC-12"
+        },
+        "godot": {
+          "planned": "CC-14"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.devices",
+      "kind": "method",
+      "feature": "connect.app",
+      "sdks": {
+        "node": {},
+        "react": {
+          "planned": "CC-09"
+        },
+        "python": {
+          "planned": "CC-10"
+        },
+        "swift": {
+          "planned": "CC-11"
+        },
+        "kotlin": {
+          "planned": "CC-12"
+        },
+        "godot": {
+          "planned": "CC-14"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.open",
+      "kind": "method",
+      "feature": "connect.app",
+      "sdks": {
+        "node": {},
+        "react": {
+          "planned": "CC-09"
+        },
+        "python": {
+          "planned": "CC-10"
+        },
+        "swift": {
+          "planned": "CC-11"
+        },
+        "kotlin": {
+          "planned": "CC-12"
+        },
+        "godot": {
+          "planned": "CC-14"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "deviceId",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.onChannel",
+      "kind": "method",
+      "feature": "connect.app",
+      "sdks": {
+        "node": {},
+        "react": {
+          "planned": "CC-09"
+        },
+        "python": {
+          "planned": "CC-10"
+        },
+        "swift": {
+          "planned": "CC-11"
+        },
+        "kotlin": {
+          "planned": "CC-12"
+        },
+        "godot": {
+          "planned": "CC-14"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.refreshPeers",
+      "kind": "method",
+      "feature": "connect.app",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; the other SDKs' spelling follows in their own packages"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.status",
+      "kind": "method",
+      "feature": "connect.app",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; the other SDKs' spelling follows in their own packages"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.onNotice",
+      "kind": "method",
+      "feature": "connect.app",
+      "sdks": {
+        "node": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; the other SDKs' spelling follows in their own packages"
         }
       },
       "layer": "client"
