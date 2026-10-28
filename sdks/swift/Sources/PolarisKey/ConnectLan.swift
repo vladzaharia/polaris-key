@@ -65,17 +65,20 @@ final class ConnectBrowseIndex: Sendable {
     ) { self.name = name }
 
     /// The identity just loaded; a change of keys or roster drops the dictionary.
-    func update(_ ident: PeerSource) {
+    @discardableResult
+    func update(_ ident: PeerSource) -> Bool {
         update(keys: ident.keys.all.map(\.bytes), roster: ident.roster.filter { $0 != ident.deviceId })
     }
 
-    func update(keys: [Data], roster: [String]) {
+    @discardableResult
+    func update(keys: [Data], roster: [String]) -> Bool {
         state.with { s in
-            if s.loaded && s.keys == keys && s.roster == roster { return }
+            if s.loaded && s.keys == keys && s.roster == roster { return false }
             s.keys = keys
             s.roster = roster
             s.loaded = true
             s.built = nil
+            return true
         }
     }
 
@@ -158,6 +161,12 @@ public protocol ConnectLanNetwork: Sendable {
     /// Connect; the pipe is handed back only after the address passed the dial policy.
     func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe
     func stop() async
+    /// The roster or keys changed: offer the browser's current results to the name filter again.
+    func rescan()
+}
+
+extension ConnectLanNetwork {
+    public func rescan() {}
 }
 
 /// The OS network: `NWListener`, `NWBrowser` and `NWConnection` through `PolarisKeyPlatform`.
@@ -166,6 +175,7 @@ public final class SystemConnectLanNetwork: ConnectLanNetwork, @unchecked Sendab
     private let browseOptions: BonjourBrowseOptions
     private let dialOptions: BonjourDialOptions
     private let browseAccept: (@Sendable (String) -> Bool)?
+    private let browsing = LockedValue<BonjourBrowse?>(nil)
 
     /// `peerToPeer` is AWDL (D-5), off by default. `allowLoopback` is for tests and same-host use.
     public convenience init(peerToPeer: Bool = false, allowLoopback: Bool = false) {
@@ -194,7 +204,11 @@ public final class SystemConnectLanNetwork: ConnectLanNetwork, @unchecked Sendab
     ) throws -> @Sendable () -> Void {
         let b = BonjourBrowse(options: browseOptions, accept: browseAccept)
         try b.start(onUp: onUp, onDown: onDown, onError: onError)
-        return { b.stop() }
+        browsing.set(b)
+        return { [browsing] in
+            browsing.set(nil)
+            b.stop()
+        }
     }
 
     public func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe {
@@ -202,6 +216,8 @@ public final class SystemConnectLanNetwork: ConnectLanNetwork, @unchecked Sendab
     }
 
     public func stop() async { listener.stop() }
+
+    public func rescan() { browsing.current?.rescan() }
 }
 
 /// `NWPipe` as the engine's byte pipe.
@@ -463,7 +479,7 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
         do { v = try await src.load() } catch let e as ConnectLanError { throw e } catch {
             throw ConnectLanError(.noIdentity, "No Cloud Connect identity is held.")
         }
-        index.update(v)
+        if index.update(v) { network.rescan() }
         held = (now, v)
         return v
     }

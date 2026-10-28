@@ -92,6 +92,12 @@ public enum BonjourDriverEvent: Sendable, Equatable {
 /// The seam. `start` begins browsing and returns the function that stops it.
 public protocol BonjourBrowseDriver: Sendable {
     func start(includePeerToPeer: Bool, emit: @escaping @Sendable (BonjourDriverEvent) -> Void) -> @Sendable () -> Void
+    /// Everything the browser holds right now (`NWBrowser.browseResults`); empty when it is not running.
+    func snapshot() -> [BonjourFound]
+}
+
+extension BonjourBrowseDriver {
+    public func snapshot() -> [BonjourFound] { [] }
 }
 
 // MARK: - Classification
@@ -190,6 +196,8 @@ public final class BonjourBrowse: Sendable {
         var table = BonjourTable()
         var stop: (@Sendable () -> Void)?
         var running = false
+        var onUp: (@Sendable (BonjourFound) -> Void)?
+        var onDown: (@Sendable (String) -> Void)?
     }
 
     private let options: BonjourBrowseOptions
@@ -233,6 +241,8 @@ public final class BonjourBrowse: Sendable {
         let first = state.withLock { s -> Bool in
             if s.running { return false }
             s.running = true
+            s.onUp = onUp
+            s.onDown = onDown
             return true
         }
         guard first else { return }
@@ -246,9 +256,24 @@ public final class BonjourBrowse: Sendable {
         if stopNow { stop() }
     }
 
+    /// The accept filter's answer changed (a roster or key arrived): offer the browser's current results
+    /// to it again, so a peer seen before it was known enters the table now, with no new browse event.
+    public func rescan() {
+        guard let accept else { return }
+        let results = driver.snapshot()
+        let (changes, up, down) = state.withLock { s -> ([BonjourTable.Change], (@Sendable (BonjourFound) -> Void)?, (@Sendable (String) -> Void)?) in
+            guard s.running else { return ([], nil, nil) }
+            return (results.filter { accept($0.instance) }.flatMap { s.table.upsert($0) }, s.onUp, s.onDown)
+        }
+        guard let up, let down else { return }
+        deliver(changes, onUp: up, onDown: down)
+    }
+
     public func stop() {
         let stop = state.withLock { s -> (@Sendable () -> Void)? in
             s.running = false
+            s.onUp = nil
+            s.onDown = nil
             s.table.clear()
             defer { s.stop = nil }
             return s.stop
@@ -309,7 +334,14 @@ private struct UnavailableDriver: BonjourBrowseDriver {
 #if canImport(Network)
 /// The system driver: `NWBrowser(for: .bonjourWithTXTRecord(type: "_pkeypeer._tcp", domain: nil))`.
 public struct NWBrowserDriver: BonjourBrowseDriver {
+    private let current = PlatformLock<NWBrowser?>(nil)
+
     public init() {}
+
+    public func snapshot() -> [BonjourFound] {
+        guard let b = current.withLock({ $0 }) else { return [] }
+        return b.browseResults.compactMap { Self.found($0) }
+    }
 
     public func start(
         includePeerToPeer: Bool, emit: @escaping @Sendable (BonjourDriverEvent) -> Void
@@ -348,8 +380,12 @@ public struct NWBrowserDriver: BonjourBrowseDriver {
             if !up.isEmpty { emit(.upserted(up)) }
             if !gone.isEmpty { emit(.removed(gone)) }
         }
+        current.withLock { $0 = browser }
         browser.start(queue: queue)
-        return { browser.cancel() }
+        return { [current] in
+            current.withLock { $0 = nil }
+            browser.cancel()
+        }
     }
 
     static func classify(_ e: NWError) -> BonjourBrowseError {
