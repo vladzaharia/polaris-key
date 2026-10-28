@@ -280,6 +280,11 @@ func now() -> int:
 	return _now
 
 
+## The signed-in subject (the partition requests are bound to), or null.
+func subject() -> Variant:
+	return _s["subject"]
+
+
 func network_state() -> String:
 	return _network
 

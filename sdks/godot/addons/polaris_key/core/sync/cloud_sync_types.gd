@@ -161,6 +161,14 @@ static func load_json_text(text: String) -> Dictionary:
 	return {"ok": true, "value": _restore(parsed["value"], "", non_wire)}
 
 
+## As `load_json_text`, for UTF-8 bytes (a served body): ill-formed UTF-8, a BOM and a raw NUL are refused.
+static func load_json_bytes(bytes: PackedByteArray) -> Dictionary:
+	var parsed := JsonStrict.parse_bytes(bytes)
+	if not parsed["ok"]:
+		return {"ok": false, "error": parsed["error"]}
+	return {"ok": true, "value": _restore(parsed["value"], "", parsed["non_wire_integers"])}
+
+
 ## As `load_json_text`, for a file (a missing file is `ok: false`).
 static func load_json_file(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
