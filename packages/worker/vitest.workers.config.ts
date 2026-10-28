@@ -93,6 +93,9 @@ export default defineConfig(async () => {
             // HA-02: an image host for its isolation and serving smoke test, likewise.
             IMG_ORIGIN: "https://img.workerd.test",
             TEST_MIGRATIONS: migrations,
+            // CC-07.4: the relay's launch gate, on for the relay smoke (wrangler.toml leaves it
+            // to the runtime setting at the top level).
+            LAUNCH_RELAY: "on",
             // 32 zero bytes, base64 — the same constant the Node lane seeds with.
             PLATFORM_KEK: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
           },

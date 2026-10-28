@@ -10,6 +10,8 @@ export { RateLimitDO } from "./rateLimitDo.js";
 export { UpdateHealthDO } from "./core/updateHealthDo.js";
 export { SingleUseDO } from "./singleUseDo.js";
 export { CloudSyncDO } from "./services/sync/index.js";
+import { installRelayPoke } from "./services/connect/index.js";
+
 export { ConnectRelayDO } from "./services/connect/index.js";
 
 /**
@@ -69,6 +71,7 @@ export default {
     // Plain http is never served on a deployed environment: a 308 to the same URL over https,
     // before anything is read from the request (both hosts; the method and body are not replayed
     // by this response). Off a deployed environment (tests, `wrangler dev`) nothing changes.
+    installRelayPoke(env);
     const insecure = httpsRedirect(req, env);
     if (insecure) return secureResponse(insecure);
     const bad = configProblems(env);
@@ -114,6 +117,7 @@ export default {
     // Two crons (P5-02): the nightly maintenance sweep and the 15-minute store-connector poll.
     // `handleScheduled` dispatches on `event.cron`; anything that is not the connector cron is
     // the sweep, so a trigger added without code still runs maintenance, never a poll.
+    installRelayPoke(env);
     await handleScheduled(env, undefined, event.cron);
   },
 

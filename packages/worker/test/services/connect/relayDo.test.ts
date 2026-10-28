@@ -17,8 +17,14 @@ import {
 } from "../../../src/services/connect/do/admission.js";
 import {
   forwardToRelay,
+  pokeRelayRoom,
   purgeRelay,
 } from "../../../src/services/connect/do/client.js";
+import { installRelayPoke } from "../../../src/services/connect/index.js";
+import {
+  pokeRelay,
+  setRelayPokePort,
+} from "../../../src/services/connect/relayPoke.js";
 import {
   ConnectRelayDO,
   type ConnectRelayDoOptions,
@@ -196,6 +202,12 @@ async function joined(w: ReturnType<typeof world>): Promise<ConnectRelayDO> {
   await room.fetch(upgrade(adm(B)));
   return room;
 }
+
+const pokeReq = (body: unknown) =>
+  new Request("https://connect-relay.do/", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
 
 describe("ConnectRelayDO", () => {
   it("is unreachable while launch.relay is off, and on an unreadable gate", async () => {
@@ -555,5 +567,130 @@ describe("ConnectRelayDO", () => {
     expect([...w.state.store.keys()]).toEqual(["erasedAt"]);
     expect(w.state.alarmAt).toBeNull();
     await purgeRelay({}, "djdl", "ps_AAAAAAAAAAAAAAAAAAAAAA");
+  });
+
+  describe("the ring poke (CC-07.4)", () => {
+    const nsOf = (room: ConnectRelayDO, calls: Request[] = []) =>
+      ({
+        idFromName: (n: string) => n,
+        get: () => ({
+          fetch: (r: Request) => {
+            calls.push(r.clone());
+            return room.fetch(r);
+          },
+        }),
+      }) as unknown as DurableObjectNamespace;
+    const poke = {
+      product: "djdl",
+      subject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
+      epoch: 7,
+    };
+    const ringEpochs = (s: FakeSocket) =>
+      s.sent
+        .map((d) => decodeRelay("toClient", d))
+        .filter((f) => f?.op === "ring")
+        .map((f) => (f as unknown as { epoch: number }).epoch);
+
+    it("closes a removed member at once (4003), announces it gone and sends RING to the rest", async () => {
+      const w = world();
+      const room = await joined(w);
+      await seedRoster(w);
+      await w.db.run(
+        "UPDATE devices SET status = 'deauthorized' WHERE product = 'djdl' AND device_id = ?",
+        idOf(B),
+      );
+      await pokeRelayRoom(
+        { ...w.env, CONNECT_RELAY: nsOf(room) } as Env,
+        poke,
+        w.db,
+      );
+      expect(w.pairs[1]!.server.closed).toBe(4003);
+      expect(w.pairs[0]!.server.closed).toBeNull();
+      expect(frames(w.pairs[0]!.server)).toContain("gone");
+      expect(ringEpochs(w.pairs[0]!.server)).toEqual([7]);
+      expect(ringEpochs(w.pairs[1]!.server)).toEqual([]);
+      // The shrunken roster is what the room keeps.
+      await room.webSocketMessage(w.pairs[0]!.server as never, send(B));
+      expect(w.pairs[0]!.server.closed).toBe(4003);
+    });
+
+    it("sends RING with the new epoch to every socket on a rotation, closing none", async () => {
+      const w = world();
+      const room = await joined(w);
+      await seedRoster(w);
+      await pokeRelayRoom(
+        { ...w.env, CONNECT_RELAY: nsOf(room) } as Env,
+        poke,
+        w.db,
+      );
+      expect(ringEpochs(w.pairs[0]!.server)).toEqual([7]);
+      expect(ringEpochs(w.pairs[1]!.server)).toEqual([7]);
+      expect(w.pairs.map((p) => p.server.closed)).toEqual([null, null]);
+    });
+
+    it("pokes nothing with launch.relay off or unbound; a failing room never throws", async () => {
+      const w = world();
+      const room = await joined(w);
+      await seedRoster(w);
+      const calls: Request[] = [];
+      const env = { ...w.env, CONNECT_RELAY: nsOf(room, calls) } as Env;
+      (env as unknown as Record<string, string>).LAUNCH_RELAY = "off";
+      await pokeRelayRoom(env, poke, w.db);
+      await pokeRelayRoom({ ...w.env } as Env, poke, w.db);
+      expect(calls).toHaveLength(0);
+      const failing = {
+        idFromName: (n: string) => n,
+        get: () => ({
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        }),
+      } as unknown as DurableObjectNamespace;
+      (env as unknown as Record<string, string>).LAUNCH_RELAY = "on";
+      await expect(
+        pokeRelayRoom({ ...env, CONNECT_RELAY: failing } as Env, poke, w.db),
+      ).resolves.toBeUndefined();
+    });
+
+    it("installRelayPoke points a ring bump at the room, and a failing room never fails the bump", async () => {
+      const w = world();
+      const room = await joined(w);
+      await seedRoster(w);
+      const env = { ...w.env, CONNECT_RELAY: nsOf(room) } as Env;
+      try {
+        installRelayPoke(env);
+        // The port reads the gate through the env's own DB; the room answers 204 either way.
+        await pokeRelay(poke);
+        const failing = {
+          ...env,
+          CONNECT_RELAY: {
+            idFromName: () => {
+              throw new Error("x");
+            },
+          },
+        } as unknown as Env;
+        installRelayPoke(failing);
+        await expect(pokeRelay(poke)).resolves.toBeUndefined();
+      } finally {
+        setRelayPokePort(null);
+      }
+    });
+
+    it("does not create a room, refuses another pair and a bad epoch, and answers 404 with the gate off", async () => {
+      const w = world();
+      const fresh = w.make();
+      expect((await fresh.fetch(pokeReq(poke))).status).toBe(204);
+      expect(w.state.store.size).toBe(0);
+      const room = await joined(w);
+      expect(
+        (await room.fetch(pokeReq({ ...poke, subject: "ps_other" }))).status,
+      ).toBe(403);
+      expect((await room.fetch(pokeReq({ ...poke, epoch: -1 }))).status).toBe(
+        400,
+      );
+      (w.env as unknown as Record<string, string>).LAUNCH_RELAY = "off";
+      expect((await room.fetch(pokeReq(poke))).status).toBe(404);
+      expect(ringEpochs(w.pairs[0]!.server)).toEqual([]);
+    });
   });
 });
