@@ -1,6 +1,6 @@
 /**
  * The header Cloud Connect's pages share: one row in the sidebar, one h1, and route tabs for
- * Setup, Linked devices and Usage (ADMIN.md §2.8), as Cloud Sync's `SyncHeader`.
+ * Setup, Usage and Linked devices (ADMIN.md §2.8), as Cloud Sync's `SyncHeader`.
  */
 
 import * as React from "react";
@@ -23,12 +23,12 @@ export function ConnectHeader({
 }): React.ReactElement {
   const items = [
     { value: "connect-setup", label: "Setup", to: r.connectSetup(slug) },
+    { value: "connect-usage", label: "Usage", to: r.connectUsage(slug) },
     {
       value: "connect-devices",
       label: "Linked devices",
       to: r.connectDevices(slug),
     },
-    { value: "connect-usage", label: "Usage", to: r.connectUsage(slug) },
   ];
   return (
     <PageHeader

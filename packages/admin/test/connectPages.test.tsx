@@ -4,7 +4,13 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import type { ConnectPeoplePage, ConnectUsageResponse } from "../src/api.js";
@@ -13,6 +19,7 @@ import { KitProviders } from "../src/kit/KitProviders.js";
 
 const people = vi.fn<(c?: string | null) => Promise<ConnectPeoplePage>>();
 const usage = vi.fn<() => Promise<ConnectUsageResponse>>();
+const productSettings = vi.fn();
 
 vi.mock("../src/api.js", async () => {
   const actual =
@@ -22,6 +29,7 @@ vi.mock("../src/api.js", async () => {
     api: {
       connectPeople: (_s: string, c?: string | null) => people(c),
       connectUsage: () => usage(),
+      productSettings: () => productSettings(),
     },
   };
 });
@@ -65,6 +73,10 @@ const view = (ui: React.ReactElement) =>
 beforeEach(() => {
   people.mockReset();
   usage.mockReset();
+  productSettings.mockReset();
+  productSettings.mockResolvedValue({
+    settings: [{ key: "cloudConnect.ceiling.relayBytes", value: 500 * GiB }],
+  });
 });
 afterEach(cleanup);
 
@@ -84,15 +96,15 @@ describe("Linked devices", () => {
     unmount();
     const r = view(<ConnectDevicesPage slug="acme" />);
     const heads = await headers();
-    expect(heads).toEqual(["Device", "Platform", "Keys since", "Last seen"]);
-    expect(screen.getByText(/roster epoch 3/)).toBeTruthy();
+    expect(heads).toEqual(["Device", "Platform", "Keys issued", "Last seen"]);
+    expect(screen.getByText(/2 devices/)).toBeTruthy();
     // The label falls back to the id for an unnamed device; named devices link to Devices.
     const link = screen.getByRole("link", { name: "Laptop 1" });
     expect(link.getAttribute("href")).toContain("devices/dev_1_");
-    // The person is the subject, truncated, linking to their user record.
-    const who = screen.getByTitle(/^ps_01abc/);
+    // The person is the subject in full, linking to their user record.
+    const who = screen.getByRole("link", { name: /^ps_01abc/ });
     expect(who.getAttribute("href")).toContain("users/ps_01abc");
-    expect(who.textContent).toContain("…");
+    expect(who.textContent).toBe(person(1).subject);
     // Read-only: nothing here writes, so no button.
     expect(screen.queryAllByRole("button")).toHaveLength(0);
     expect((await axe(r.container)).violations).toEqual([]);
@@ -130,14 +142,16 @@ describe("Linked devices", () => {
     );
     view(<ConnectDevicesPage slug="acme" />);
     expect(await screen.findByText(/1 person so far/)).toBeTruthy();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Show more people" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Load more" }));
     expect(await screen.findByText(/2 people\./)).toBeTruthy();
     expect(people).toHaveBeenLastCalledWith("ps_01");
-    expect(
-      screen.queryByRole("button", { name: "Show more people" }),
-    ).toBeNull();
+    // Focus lands on the first new person's link, not <body>.
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("data-person-link")).toBe(
+        person(2).subject,
+      ),
+    );
+    expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
   });
 
   it("answers a failed read once, with Retry", async () => {
@@ -163,7 +177,7 @@ describe("Linked devices", () => {
       within(nav)
         .getAllByRole("link")
         .map((l) => l.textContent),
-    ).toEqual(["Setup", "Linked devices", "Usage"]);
+    ).toEqual(["Setup", "Usage", "Linked devices"]);
     expect(
       within(nav)
         .getByRole("link", { name: "Linked devices" })
@@ -187,16 +201,48 @@ describe("Usage", () => {
       people: 41,
     });
     const { container } = view(<ConnectUsagePage slug="acme" />);
-    expect((await screen.findAllByText(/^2\.3\sGiB$/)).length).toBe(2);
+    // The month tile, the 30-day tile and the day's row; the month tile is against the ceiling.
+    expect((await screen.findAllByText(/^2\.3\sGiB$/)).length).toBe(3);
+    expect(screen.getByText("This month")).toBeTruthy();
+    expect(await screen.findByText(/^Of 500\sGiB/)).toBeTruthy();
     expect(screen.getByText("Relay sessions")).toBeTruthy();
     expect(screen.getByText("41")).toBeTruthy();
     const table = screen.getByRole("table", { name: "Relay use per day" });
+    // Column order: Day, Sessions, Data, then the bar.
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["Day", "Sessions", "Data", "Share of the busiest day"]);
     expect(within(table).getAllByRole("row")).toHaveLength(31);
     // Newest first.
     expect(within(table).getAllByRole("rowheader")[0]!.textContent).toBe(
-      "2026-10-30",
+      "Fri, Oct 30",
     );
     expect((await axe(container)).violations).toEqual([]);
+  });
+
+  it("totals this UTC month and the last 30 days from one 31-day read", async () => {
+    const days = Array.from({ length: 31 }, (_, i) => {
+      const d = new Date(Date.UTC(2026, 8, 30 + i));
+      return {
+        day: d.toISOString().slice(0, 10),
+        bytes: i === 0 ? 5 * GiB : i === 30 ? GiB : 0,
+        sessions: i === 0 ? 3 : 0,
+      };
+    });
+    usage.mockResolvedValue({
+      enabled: true,
+      days,
+      totals: { bytes: 6 * GiB, sessions: 3 },
+      people: 2,
+    });
+    view(<ConnectUsagePage slug="acme" />);
+    // 2026-09-30 is outside both the month and the last 30 days.
+    expect(
+      (await screen.findAllByText(/^1\sGiB$/)).length,
+    ).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText(/^5\sGiB$/)).toBeNull();
   });
 
   it("loads with one status", async () => {

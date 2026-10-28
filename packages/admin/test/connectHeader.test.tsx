@@ -8,7 +8,7 @@ import { ConnectHeader } from "../src/console/sections/connect/ConnectHeader.js"
 afterEach(cleanup);
 
 describe("ConnectHeader", () => {
-  it("draws the title and the Setup, Linked devices and Usage tabs", () => {
+  it("draws the title and the Setup, Usage and Linked devices tabs", () => {
     render(
       <KitProviders>
         <ConnectHeader slug="acme" tab="connect-setup" />
@@ -22,6 +22,6 @@ describe("ConnectHeader", () => {
       within(nav)
         .getAllByRole("link")
         .map((l) => l.textContent),
-    ).toEqual(["Setup", "Linked devices", "Usage"]);
+    ).toEqual(["Setup", "Usage", "Linked devices"]);
   });
 });

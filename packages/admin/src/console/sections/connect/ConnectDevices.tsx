@@ -1,14 +1,13 @@
 /**
  * Cloud Connect → Linked devices (CC-16.3). The people who have linked a device, paged by subject
- * (50 a page, "Show more people"), each with their device roster: label, platform, keys since,
- * last seen and the roster's epoch. Read-only; a person opens their user record and a device its
- * record on Devices, where
- * Deauthorize lives.
+ * (50 a page, "Load more"), each with their device roster: label, platform, keys issued and last
+ * seen, newest first. Read-only; a person opens their user record and a device its record on
+ * Devices, where Deauthorize lives.
  *
- * A person's label is not stored, so the subject stands in (mono, middle-truncated, the full
- * value in the title). Certificate expiry and last relay use are drawn only when some device on the
- * page has one: the Worker answers `null` until it stores them, and an always-empty column is
- * noise (D1).
+ * A person's label is not stored, so the subject stands in, in full. Certificate expiry and last
+ * relay use are drawn only when some device on the page has one: the Worker answers `null` until
+ * it stores them, and an always-empty column is noise (D1). The columns share one width plan, so
+ * they line up from card to card.
  */
 
 import * as React from "react";
@@ -20,6 +19,7 @@ import {
   fromSeconds,
   truncateMiddle,
 } from "../../../lib/format.js";
+import { DOCS_LINKS } from "../../../lib/docsLinks.js";
 import { platformName } from "../../../lib/vocab/platforms.js";
 import { cn } from "../../../lib/cn.js";
 import { Button } from "../../../ui/Button.js";
@@ -32,13 +32,45 @@ import { Panel } from "../../templates/Dashboard.js";
 import { LABEL } from "../sync/pages/usageParts.js";
 import { ConnectHeader } from "./ConnectHeader.js";
 import { connectPeopleQuery } from "./data.js";
-import { DOCS_LINKS } from "../../../lib/docsLinks.js";
 
 const th =
   "px-4 py-2 text-start text-xs font-semibold text-fg-strong max-sm:sr-only";
 const td = `px-4 py-2 align-middle text-sm max-sm:flex max-sm:flex-wrap max-sm:gap-x-3 max-sm:py-1 ${LABEL}`;
+const LINK =
+  "inline-flex min-h-6 items-center text-accent-fg underline underline-offset-2 [overflow-wrap:anywhere]";
 
 const ago = (sec: number): string => formatRelative(fromSeconds(sec));
+
+/** Focus a person's link once it is drawn (the Load more button that had focus is gone or moved). */
+function focusPerson(subject: string | undefined): void {
+  if (!subject) return;
+  requestAnimationFrame(() =>
+    [...document.querySelectorAll<HTMLElement>("[data-person-link]")]
+      .find((el) => el.dataset.personLink === subject)
+      ?.focus(),
+  );
+}
+
+function PeopleSkeleton(): React.ReactElement {
+  return (
+    <div className="space-y-4" aria-busy="true">
+      <p role="status" className="sr-only">
+        Loading linked devices
+      </p>
+      {["a", "b"].map((k) => (
+        <div
+          key={k}
+          aria-hidden
+          className="space-y-3 rounded-xl border border-border p-5"
+        >
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function ConnectDevicesPage({
   slug,
@@ -49,17 +81,17 @@ export function ConnectDevicesPage({
   const people: ConnectPerson[] = (list.data?.pages ?? []).flatMap((p) =>
     p.enabled ? p.people : [],
   );
+  const more = async (): Promise<void> => {
+    const seen = new Set(people.map((p) => p.subject));
+    const res = await list.fetchNextPage();
+    const next = (res.data?.pages ?? [])
+      .flatMap((p) => (p.enabled ? p.people : []))
+      .find((p) => !seen.has(p.subject));
+    focusPerson(next?.subject);
+  };
   let body: React.ReactNode;
   if (list.isPending) {
-    body = (
-      <div className="space-y-4" aria-busy="true">
-        <p role="status" className="sr-only">
-          Loading linked devices
-        </p>
-        <Skeleton className="h-40 w-full rounded-xl" />
-        <Skeleton className="h-40 w-full rounded-xl" />
-      </div>
-    );
+    body = <PeopleSkeleton />;
   } else if (list.isError && people.length === 0) {
     body = (
       <ErrorState
@@ -76,7 +108,7 @@ export function ConnectDevicesPage({
         headingLevel={2}
         docs={DOCS_LINKS.connect}
         title="No linked devices yet"
-        description="A person's devices appear here once they link their first."
+        description="A person appears here once they link a device from your app."
       />
     );
   } else {
@@ -85,7 +117,7 @@ export function ConnectDevicesPage({
     const relay = all.some((d) => d.lastRelayAt !== null);
     body = (
       <>
-        <p className="text-sm text-fg-muted">
+        <p aria-live="polite" className="text-sm text-fg-muted">
           {formatCount(people.length)}{" "}
           {people.length === 1 ? "person" : "people"}
           {list.hasNextPage ? " so far" : ""}.
@@ -104,20 +136,19 @@ export function ConnectDevicesPage({
         {list.isError ? (
           <ErrorState
             compact
-            error={list.error}
-            onRetry={() => void list.fetchNextPage()}
             thing="More people"
             context={{ read: true }}
+            error={list.error}
+            onRetry={() => void more()}
           />
-        ) : null}
-        {list.hasNextPage ? (
+        ) : list.hasNextPage ? (
           <div>
             <Button
               variant="outline"
               loading={list.isFetchingNextPage}
-              onClick={() => void list.fetchNextPage()}
+              onClick={() => void more()}
             >
-              Show more people
+              Load more
             </Button>
           </div>
         ) : null}
@@ -150,28 +181,34 @@ function PersonCard({
   relay: boolean;
 }): React.ReactElement {
   const n = person.devices.length;
+  // One width plan for every card: the device column, then the rest in equal shares.
+  const rest = 2 + Number(cert) + Number(relay) + 1;
+  const share = `${(70 / rest).toFixed(2)}%`;
+  const devices = [...person.devices].sort((a, b) => b.lastSeen - a.lastSeen);
   return (
     <Panel
       title={
         <Link
           to={r.user(slug, person.subject)}
-          className="underline-offset-2 hover:underline"
-          title={person.subject}
+          data-person-link={person.subject}
+          className={cn(LINK, "font-mono text-sm font-medium")}
         >
-          {person.label ?? (
-            <code className="font-mono text-sm font-medium">
-              {truncateMiddle(person.subject, 10, 6)}
-            </code>
-          )}
+          {person.label ?? person.subject}
         </Link>
       }
-      description={`${formatCount(n)} ${n === 1 ? "device" : "devices"} · roster epoch ${formatCount(person.ringEpoch)}`}
+      description={`${formatCount(n)} ${n === 1 ? "device" : "devices"}`}
     >
       <div className="pk-scroll -m-5 overflow-x-auto">
-        <table className="w-full border-collapse max-sm:block">
+        <table className="w-full table-fixed border-collapse max-sm:block">
           <caption className="sr-only">
             Devices of {person.label ?? person.subject}
           </caption>
+          <colgroup className="max-sm:hidden">
+            <col className="w-[30%]" />
+            {Array.from({ length: rest }, (_, i) => (
+              <col key={i} style={{ width: share }} />
+            ))}
+          </colgroup>
           <thead className="max-sm:contents">
             <tr className="border-b border-border max-sm:sr-only">
               <th scope="col" className={th}>
@@ -181,7 +218,7 @@ function PersonCard({
                 Platform
               </th>
               <th scope="col" className={th}>
-                Keys since
+                Keys issued
               </th>
               {cert ? (
                 <th scope="col" className={th}>
@@ -199,7 +236,7 @@ function PersonCard({
             </tr>
           </thead>
           <tbody className="max-sm:block">
-            {person.devices.map((d) => (
+            {devices.map((d) => (
               <DeviceRow
                 key={d.deviceId}
                 slug={slug}
@@ -235,10 +272,7 @@ function DeviceRow({
       >
         <Link
           to={r.device(slug, d.deviceId)}
-          className={cn(
-            "font-medium text-accent-fg underline underline-offset-2 [overflow-wrap:anywhere]",
-            !d.label && "font-mono text-xs",
-          )}
+          className={cn(LINK, "font-medium", !d.label && "font-mono text-xs")}
           title={d.deviceId}
         >
           {d.label ?? truncateMiddle(d.deviceId, 8, 4)}
@@ -249,7 +283,7 @@ function DeviceRow({
           {d.platform ? platformName(d.platform) : "Not reported"}
         </span>
       </td>
-      <td data-label="Keys since" className={td}>
+      <td data-label="Keys issued" className={td}>
         <span className={muted}>{ago(d.keysSince)}</span>
       </td>
       {cert ? (

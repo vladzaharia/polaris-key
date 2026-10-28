@@ -9,7 +9,10 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { cn } from "../../../lib/cn.js";
 import { formatCount } from "../../../lib/format.js";
+import { Button } from "../../../ui/Button.js";
+import { reads } from "../../data/reads.js";
 import { DOCS_LINKS } from "../../../lib/docsLinks.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
@@ -17,14 +20,35 @@ import { StatTile } from "../../../ui/charts/StatTile.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { Panel } from "../../templates/Dashboard.js";
-import { formatBinaryBytes } from "../sync/pages/SyncData.js";
-import { TILES, UsageSkeleton } from "../sync/pages/usageParts.js";
+import { Scroller, TILES, UsageSkeleton } from "../sync/pages/usageParts.js";
 import { ConnectHeader } from "./ConnectHeader.js";
+import { CONNECT_AREA } from "./ConnectSetup.js";
 import { USAGE_DAYS, connectUsageQuery } from "./data.js";
 
-const NBSP = "\u00a0";
-const bytes = (n: number): string =>
-  formatBinaryBytes(Math.max(0, n)).replace(" ", NBSP);
+const CEILING = "cloudConnect.ceiling.relayBytes";
+
+const UNITS = ["KiB", "MiB", "GiB", "TiB"] as const;
+
+/** Binary bytes to one decimal, unit kept to its number: "2.3 GiB", "512 bytes". */
+function bytes(n: number): string {
+  let v = Math.max(0, n);
+  if (v < 1024) return `${Math.round(v)}\u00a0bytes`;
+  let u = -1;
+  while (v >= 1024 && u < UNITS.length - 1) {
+    v /= 1024;
+    u++;
+  }
+  return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(v)}\u00a0${UNITS[u]}`;
+}
+
+/** "Wed, Oct 28" for a UTC day. */
+const dayLabel = (day: string): string =>
+  new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${day}T00:00:00Z`));
 
 export function ConnectUsagePage({
   slug,
@@ -32,10 +56,35 @@ export function ConnectUsagePage({
   slug: string;
 }): React.ReactElement {
   const usage = useQuery(connectUsageQuery(slug));
-  const data = usage.data?.enabled ? usage.data : null;
+  const read = usage.data?.enabled ? usage.data : null;
+  const settings = useQuery({
+    ...reads.productSettings(slug, CONNECT_AREA),
+    retry: false,
+  });
+  const ceiling = Number(
+    settings.data?.settings.find((x) => x.key === CEILING)?.value,
+  );
+  // The read covers a whole month; the page shows and totals the last 30 days.
+  const data = read && {
+    ...read,
+    days: read.days.slice(-USAGE_DAYS),
+    totals: read.days
+      .slice(-USAGE_DAYS)
+      .reduce(
+        (t, d) => ({
+          bytes: t.bytes + d.bytes,
+          sessions: t.sessions + d.sessions,
+        }),
+        { bytes: 0, sessions: 0 },
+      ),
+  };
+  const month = read?.days.at(-1)?.day.slice(0, 7);
+  const monthBytes = (read?.days ?? [])
+    .filter((d) => d.day.startsWith(month ?? "-"))
+    .reduce((n, d) => n + d.bytes, 0);
   let body: React.ReactNode;
   if (usage.isPending) {
-    body = <UsageSkeleton tiles={3} />;
+    body = <UsageSkeleton tiles={4} />;
   } else if (usage.isError) {
     body = (
       <ErrorState
@@ -50,7 +99,11 @@ export function ConnectUsagePage({
       <>
         {data && data.people > 0 ? (
           <div className={TILES}>
-            <StatTile label="People" value={formatCount(data.people)} />
+            <StatTile
+              label="People with linked devices"
+              value={formatCount(data.people)}
+              href={r.connectDevices(slug)}
+            />
           </div>
         ) : null}
         <EmptyState
@@ -58,14 +111,11 @@ export function ConnectUsagePage({
           headingLevel={2}
           docs={DOCS_LINKS.connect}
           title="No relay traffic yet"
-          description="Devices on the same network connect directly. The relay carries the rest."
+          description="Relay traffic appears here once devices on different networks connect."
           primaryAction={
-            <Link
-              to={r.connectSetup(slug)}
-              className="py-1 text-accent-fg underline underline-offset-2"
-            >
-              See Setup
-            </Link>
+            <Button asChild variant="outline">
+              <Link to={r.connectSetup(slug)}>See Setup</Link>
+            </Button>
           }
         />
       </>
@@ -75,6 +125,15 @@ export function ConnectUsagePage({
     body = (
       <>
         <div className={TILES}>
+          <StatTile
+            label="This month"
+            value={bytes(monthBytes)}
+            secondary={
+              Number.isFinite(ceiling)
+                ? `Of ${bytes(ceiling)}, UTC month`
+                : "UTC month"
+            }
+          />
           <StatTile
             label="Relay data"
             value={bytes(data.totals.bytes)}
@@ -87,10 +146,14 @@ export function ConnectUsagePage({
             secondary={`Last ${USAGE_DAYS} days`}
             sparkline={data.days.map((d) => d.sessions)}
           />
-          <StatTile label="People" value={formatCount(data.people)} />
+          <StatTile
+            label="People with linked devices"
+            value={formatCount(data.people)}
+            href={r.connectDevices(slug)}
+          />
         </div>
         <Panel title="Per day" description="UTC, newest first">
-          <div className="pk-scroll -m-5 max-h-[32rem] overflow-auto">
+          <Scroller label="Per day table" className="-m-5">
             <table className="w-full border-collapse text-sm">
               <caption className="sr-only">Relay use per day</caption>
               <thead>
@@ -105,13 +168,13 @@ export function ConnectUsagePage({
                     scope="col"
                     className="px-4 py-2 text-end text-xs font-semibold text-fg-strong"
                   >
-                    Data
+                    Sessions
                   </th>
                   <th
                     scope="col"
                     className="px-4 py-2 text-end text-xs font-semibold text-fg-strong"
                   >
-                    Sessions
+                    Data
                   </th>
                   <th scope="col" className="w-1/3 max-sm:hidden">
                     <span className="sr-only">Share of the busiest day</span>
@@ -122,19 +185,22 @@ export function ConnectUsagePage({
                 {[...data.days].reverse().map((d) => (
                   <tr
                     key={d.day}
-                    className="border-b border-border last:border-b-0"
+                    className={cn(
+                      "border-b border-border last:border-b-0",
+                      d.bytes === 0 && d.sessions === 0 && "text-fg-muted",
+                    )}
                   >
                     <th
                       scope="row"
                       className="px-4 py-2 text-start font-normal tabular-nums"
                     >
-                      {d.day}
+                      <time dateTime={d.day}>{dayLabel(d.day)}</time>
                     </th>
-                    <td className="px-4 py-2 text-end tabular-nums whitespace-nowrap">
-                      {bytes(d.bytes)}
-                    </td>
                     <td className="px-4 py-2 text-end tabular-nums">
                       {formatCount(d.sessions)}
+                    </td>
+                    <td className="px-4 py-2 text-end tabular-nums whitespace-nowrap">
+                      {bytes(d.bytes)}
                     </td>
                     <td aria-hidden className="py-2 pe-4 max-sm:hidden">
                       <div className="h-2 rounded-full bg-surface-raised">
@@ -148,7 +214,7 @@ export function ConnectUsagePage({
                 ))}
               </tbody>
             </table>
-          </div>
+          </Scroller>
         </Panel>
       </>
     );

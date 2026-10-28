@@ -132,7 +132,7 @@ function tierRows(data: Usage, licensing: boolean): TierRow[] {
 }
 
 /** A scroller that is a tab stop only while it overflows. */
-function Scroller({
+export function Scroller({
   label,
   className,
   children,

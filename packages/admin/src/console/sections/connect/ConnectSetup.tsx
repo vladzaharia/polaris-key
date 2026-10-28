@@ -137,7 +137,6 @@ export function ConnectSetupPage({
       <ConnectHeader
         slug={slug}
         tab="connect-setup"
-        description="Link a person's devices and move data between them."
         refetching={platform.isFetching && !platform.isPending}
       />
       <div className="max-w-4xl space-y-6 min-[1280px]:max-w-none">

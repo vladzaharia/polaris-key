@@ -332,8 +332,8 @@ export const SYNC_PAGES: readonly ProductPageId[] = [
 /** Cloud Connect's route tabs, the first the default; one sidebar row, `connect-setup`. */
 export const CONNECT_PAGES: readonly ProductPageId[] = [
   "connect-setup",
-  "connect-devices",
   "connect-usage",
+  "connect-devices",
 ];
 
 /** A feed page's route tabs (F-11), the first the default. */
@@ -901,20 +901,20 @@ export const SECTIONS: NavSection[] = [
       },
       {
         // A tab of Cloud Connect, not a sidebar item.
-        page: "connect-devices",
+        page: "connect-usage",
         tile: "service",
-        label: "Linked devices",
-        path: "connect/devices",
+        label: "Usage",
+        path: "connect/usage",
         icon: Radar,
         docs: "/docs/features/cloud-connect/",
         inNav: false,
       },
       {
         // A tab of Cloud Connect, not a sidebar item.
-        page: "connect-usage",
+        page: "connect-devices",
         tile: "service",
-        label: "Usage",
-        path: "connect/usage",
+        label: "Linked devices",
+        path: "connect/devices",
         icon: Radar,
         docs: "/docs/features/cloud-connect/",
         inNav: false,
