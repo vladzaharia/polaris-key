@@ -306,6 +306,75 @@ Lovelace <ada@example.com>" with a way out: the kit's sign-in form does, ending 
 `MintedToken` prints (`print`, `String(describing:)`, `debugPrint`, `dump`) with `token` as
 `[redacted]`; the property itself reads normally.
 
+### Automatic sign-in
+
+`client.identity.autoSignIn()` signs the person in from what the device already has, with no form. It
+needs the Identity service and a product that publishes the Apple exchange (the product's
+`identity.platformSignIn` setting); otherwise it answers `.unavailable`. It runs a ladder and stops at the
+first rung that answers:
+
+| Rung | What it does                                            | Runs when                                                |
+| ---- | ------------------------------------------------------- | -------------------------------------------------------- |
+| 1    | A stored sign-in and a license: `.signedIn`, no network | Always                                                   |
+| 2    | Silent restore of a saved sign-in                       | Not in this SDK yet                                      |
+| 3    | The platform provider with no UI, then the exchange     | The provider has a silent mode (Apple has none: skipped) |
+| 4    | The provider's one account sheet, then the exchange     | `prompt: .optional`                                      |
+
+Past rung 4 the sign-in form is yours (or the kit's). A refusal is a result, not a throw; only
+cancelling the task throws (a cancellation error).
+
+```swift
+import PolarisKey
+import PolarisKeyIdentity
+
+func signInAutomatically(_ client: PolarisKeyClient) async throws {
+    // PolarisKeyClient installs Sign in with Apple. Apple has no silent mode, so `.optional`
+    // is what shows its sheet; the default `.never` runs rungs 1 and 3 only.
+    let result = try await client.identity.autoSignIn(AutoSignInOptions(prompt: .optional))
+    switch result {
+    case .signedIn(let ready):
+        _ = ready.identity            // who signed in, when the Worker said
+    case .confirm(let pending):
+        // First use of this app with the account: show pending.consent (the app, the account, the
+        // license line), then complete with the person's yes.
+        _ = try await client.identity.choice.complete(
+            grant: pending.grant, choice: nil, consent: ChoiceConsent(claims: []))
+    case .choose(let pending):
+        _ = pending                   // two or more licenses: the choice screen (`identity.choice`)
+    case .deviceLimit(let manageUrl, let view):
+        _ = (manageUrl, view)         // every seat is taken: offer Replace a device
+    case .needsSignIn(_, let reason):
+        _ = reason                    // .noLink, .terms, .signedOut, .noCredential: the regular form
+    case .unavailable(let code):
+        _ = code                      // no exchange here; the regular form
+    }
+}
+```
+
+- **Signing out sticks.** `identity.signOut()` sets a flag that keeps rungs 3 and 4 quiet until the
+  person starts a sign-in themselves (`reason: .signedOut`). A sign-out during the Apple sheet wins
+  too: nothing is stored.
+- **Revoked in Settings.** If the person revokes the app's Apple credential, the next
+  `autoSignIn()` signs the device out. If the Worker cannot be reached the check repeats at the next
+  launch.
+- **First use asks.** `.confirm` carries what the app and account will share; a new account never
+  binds without the person's yes. `.needsSignIn(linkHandle:reason:)` with `.noLink` means the Apple
+  account is not linked to a Polaris Locker account yet.
+- **Nothing secret prints.** A result, a token, a grant and a link handle show `[redacted]`.
+
+A custom provider conforms to `PlatformIdentityProvider` and is passed as
+`AutoSignInOptions(provider:)` or set with `client.identity.installPlatformIdentity(_:)`.
+
+**Setup for Sign in with Apple.** Add the _Sign in with Apple_ capability to every target that
+signs in (the `com.apple.developer.applesignin` entitlement) and note your Apple **Team ID**: the
+product's `identity.platformSignIn.apple.teamId` setting names it, with the bundle ids. The full
+walkthrough is planned.
+
+In the SwiftUI kit the gate runs the ladder once at launch with no sheet, and the provider row's
+Sign in with Apple button opens the sheet and then the exchange. Pass
+`.polarisKeyGate(client, autoSignIn: false)` (or `.polarisKey(client, autoSignIn: false)`) to turn
+the launch attempt off.
+
 ### Edge-mint
 
 `try await client.config.mintToken("musickit")` asks the Worker to sign a short-lived
