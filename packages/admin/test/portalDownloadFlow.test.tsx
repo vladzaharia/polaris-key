@@ -211,6 +211,21 @@ const builds = (): HTMLElement =>
 const names = (list: HTMLElement): string[] =>
   [...list.querySelectorAll("[data-build-name]")].map((n) => n.textContent!);
 
+describe("a download that fails after the click (HA-09F)", () => {
+  it("lands on the product page with the message and drops the parameter", async () => {
+    mockFetch(routes(view([mac])));
+    go("#/p/orbit-survey?download=failed");
+    renderPortal();
+    expect(await screen.findByText("The download didn't start")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "The link expired or was already used. Choose Download again.",
+      ),
+    ).toBeTruthy();
+    await waitFor(() => expect(window.location.hash).toBe("#/p/orbit-survey"));
+  });
+});
+
 describe("the focused download on a computer", () => {
   it("names the build before the one primary, then the details and the folded rest", async () => {
     const assign = vi.spyOn(browser, "go").mockImplementation(() => undefined);
@@ -299,7 +314,9 @@ describe("the focused download on a computer", () => {
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(primary);
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("/download/tok"));
+    await waitFor(() =>
+      expect(assign).toHaveBeenCalledWith("/download/tok?p=orbit-survey"),
+    );
   });
 
   it("opens the other builds: the platform's own first, then the others, each with its action", async () => {
@@ -361,7 +378,9 @@ describe("the focused download on a computer", () => {
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(winDownload);
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("/download/win"));
+    await waitFor(() =>
+      expect(assign).toHaveBeenCalledWith("/download/win?p=orbit-survey"),
+    );
 
     // Closing it again hides the rows.
     await userEvent.click(toggle());
@@ -824,7 +843,9 @@ describe("the focused download on a phone", () => {
         .map((b) => b.textContent),
     ).toEqual(["Download for Android"]);
     await userEvent.click(primary);
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("/download/apk"));
+    await waitFor(() =>
+      expect(assign).toHaveBeenCalledWith("/download/apk?p=orbit-survey"),
+    );
     expect(await axeViolations()).toEqual([]);
   });
 
@@ -1046,7 +1067,9 @@ describe("when the license doesn't cover the platform", () => {
         name: "Download for macOS: Orbit Survey 1.3.9, Universal",
       }),
     );
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("/download/old"));
+    await waitFor(() =>
+      expect(assign).toHaveBeenCalledWith("/download/old?p=orbit-survey"),
+    );
     expect(await axeViolations()).toEqual([]);
   });
 

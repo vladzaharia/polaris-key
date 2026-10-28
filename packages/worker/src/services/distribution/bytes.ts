@@ -104,6 +104,11 @@ import {
 } from "../../core/assets/blobs.js";
 import { isBytesHost } from "../../core/assets/bytesHost.js";
 import {
+  ERROR_DOCUMENT_HEADER,
+  expiredLinkResponse,
+} from "../../core/assets/bytesLanding.js";
+import { isBrowserNavigation } from "../../core/http/navigation.js";
+import {
   DOWNLOAD_TICKET_PARAM,
   verifyDownloadTicket,
 } from "../../core/downloadTicket.js";
@@ -315,6 +320,35 @@ async function ticketClears(
       sha256: file.artifact.sha256,
     },
     now,
+    // HA-09F: a browser's Resume sends `Range`; that keeps a started download alive past `exp`.
+    { range: req.headers.get("range") },
+  );
+}
+
+/** Is a download ticket on the request (a bytes-host file URL carrying `?ticket=`)? */
+function presentsTicket({ req, env }: ByteContext): boolean {
+  const url = new URL(req.url);
+  return url.searchParams.has(DOWNLOAD_TICKET_PARAM) && isBytesHost(url, env);
+}
+
+/**
+ * HA-09F: what a request that presented a ticket and was refused gets. A browser navigation
+ * meets a branded "link expired" page with a way back. Any other caller keeps its JSON; a
+ * `licensed` deliverable's flat error now names the link, not a licence (the licence was judged
+ * when the link was minted). `entitled` keeps its wire `unauthorized` answer unchanged.
+ */
+async function ticketRefusal(
+  ctx: ByteContext,
+  denied: Response,
+  mode: ReleaseAccess,
+): Promise<Response> {
+  if (isBrowserNavigation(ctx.req))
+    return expiredLinkResponse(ctx.env, ctx.product.slug);
+  if (mode === "entitled") return denied;
+  return errorResponse(
+    401,
+    "download_auth_required",
+    "this download link expired or is not valid; start the download again",
   );
 }
 
@@ -324,6 +358,7 @@ export async function serveDistributionBytes(
   target: ByteTarget,
 ): Promise<Response> {
   const { req, env, db, product, hooks, now } = ctx;
+  let ticketPresented = false;
   // P2-05's three routes answer only GET and HEAD; the legacy installer and download never
   // checked the method, and still do not.
   if (
@@ -411,6 +446,7 @@ export async function serveDistributionBytes(
       // ticket is treated as absent: the request gets the no-credential answer below, so a
       // probe cannot tell a bad ticket from a missing one. The mode stays non-public, so the
       // answer is still private, sandboxed and forced to download.
+      ticketPresented = presentsTicket(ctx);
       if (await ticketClears(ctx, target, file)) decided = null;
       break;
     }
@@ -450,7 +486,19 @@ export async function serveDistributionBytes(
           pinned,
           now,
         );
-  if (denied) return harden(denied);
+  if (denied) {
+    // A refused request that carried a ticket was a download link that no longer works (a bearer
+    // that the ticket stood in front of still wins above). Other refusals keep their answers.
+    if (ticketPresented && denied.status === 401) {
+      const refusal = await ticketRefusal(ctx, denied, mode);
+      // The expired-link page carries its own inert document policy, which `harden` would
+      // replace with the app's; the bytes host checks it and adds its headers (`bytesHost.ts`).
+      return refusal.headers.has(ERROR_DOCUMENT_HEADER)
+        ? refusal
+        : harden(refusal);
+    }
+    return harden(denied);
+  }
 
   return harden(await compute(ctx, target, cleared as Cleared));
 }

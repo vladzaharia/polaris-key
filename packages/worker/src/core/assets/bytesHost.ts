@@ -47,7 +47,12 @@ import { errorResponse, notFound } from "../errors.js";
 import { BLOB_CSP, BYTES_HOST_TYPES } from "./blobs.js";
 import { corsPreflight, withCors } from "../cors.js";
 import { loadProductPublic, type ProductPublic } from "../products.js";
-import { isLandingPath, landingResponse } from "./bytesLanding.js";
+import {
+  ERROR_DOCUMENT_HEADER,
+  ERROR_DOCUMENT_STATUS,
+  isLandingPath,
+  landingResponse,
+} from "./bytesLanding.js";
 import { hostedImageOrigin } from "./hostedImages.js";
 import { cspImageOrigin } from "../securityHeaders.js";
 import {
@@ -265,13 +270,21 @@ async function documentPolicy(
   res: Response,
   env: Env,
   db: Db,
+  /** HA-09F: the one error status an error document may carry (`ERROR_DOCUMENT_STATUS`). */
+  errorStatus?: number,
 ): Promise<string | null> {
-  if (res.status !== 200 && res.status !== 304) return null;
+  if (errorStatus !== undefined) {
+    if (res.status !== errorStatus) return null;
+  } else if (res.status !== 200 && res.status !== 304) return null;
   if (res.status === 304 && res.body !== null) return null;
   const type = (res.headers.get("content-type") ?? "")
     .toLowerCase()
     .replace(/\s+/g, "");
-  if (res.status === 200 && type !== "text/html;charset=utf-8") return null;
+  if (
+    (res.status === 200 || errorStatus !== undefined) &&
+    type !== "text/html;charset=utf-8"
+  )
+    return null;
   if (res.headers.has("content-disposition")) return null;
   const csp = res.headers.get("content-security-policy");
   // HA-07: the image host may be an image source, only while hosted copies are served.
@@ -417,6 +430,15 @@ async function answer(
       now,
       hooks: buildHooks(registry, product.services, { env, db, product, now }),
     });
+    // HA-09F: an error document (the expired-link page) is the one HTML answer admitted at a
+    // 4xx status, only under the same inert policy as the landing page; its marker never leaves.
+    if (res.headers.has(ERROR_DOCUMENT_HEADER)) {
+      const clean = withoutHeader(res, ERROR_DOCUMENT_HEADER);
+      const csp = await documentPolicy(clean, env, db, ERROR_DOCUMENT_STATUS);
+      if (csp !== null) return { res: stripCors(clean), documentCsp: csp };
+      await clean.body?.cancel().catch(() => undefined);
+      return plain(notFound());
+    }
     // A refused type is replaced silently: the worker logs nothing (R12), and the not-found
     // answer is indistinguishable from a route that does not exist.
     if (refusedType(res)) {
@@ -459,6 +481,16 @@ async function answerDocument(
     return { res: stripCors(res), documentCsp: null };
   await res.body?.cancel().catch(() => undefined);
   return { res: notFound(), documentCsp: null };
+}
+
+function withoutHeader(res: Response, name: string): Response {
+  const headers = new Headers(res.headers);
+  headers.delete(name);
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
+  });
 }
 
 /** A route's own `Access-Control-*` headers dropped (CORS is `core/cors.ts`'s alone). */

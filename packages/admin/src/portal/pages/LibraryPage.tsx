@@ -22,6 +22,7 @@ import {
   type DeviceInHand,
   type LibraryProduct,
 } from "../model/library.js";
+import { useDownloadFailedNotice } from "../downloadNotice.js";
 import { href, setParams, useDocumentTitle } from "../router.js";
 import { LiveRegion } from "../../ui/LiveRegion.js";
 import { LibraryList } from "../components/LibraryList.js";
@@ -57,6 +58,7 @@ export function LibraryPage({
   params: URLSearchParams;
 }): React.ReactElement {
   useDocumentTitle(t("locker.library.title"));
+  useDownloadFailedNotice(params);
   const lib = useLibrary();
   const count = lib.isPending ? 0 : (lib.products?.length ?? 0);
   // Only the document's first load staggers: never a return (Back from a product), never inside

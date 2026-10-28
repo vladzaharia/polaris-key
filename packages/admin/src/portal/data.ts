@@ -597,6 +597,8 @@ export function useStartDownload() {
       releaseId: string;
       artifactId: string;
     }): [string, string, string] => [v.product, v.releaseId, v.artifactId],
-    onSuccess: (res) => browser.go(res.url),
+    // `p` names the product, so a link that no longer works lands back on its page (HA-09F).
+    onSuccess: (res, v) =>
+      browser.go(`${res.url}?p=${encodeURIComponent(v.product)}`),
   });
 }
