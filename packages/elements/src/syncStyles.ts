@@ -31,9 +31,37 @@ export const SYNC_CSS = `
 [data-part="code"] > .recovery-groups + .btn {
   margin-block-start: var(--pk-space-3);
 }
-.note {
+.field[hidden] {
+  display: none;
+}
+.body.note {
   color: var(--pk-text-strong);
   font-weight: 500;
+}
+/* The one fact to check on a changed ring: the device that set it up. */
+[data-key="ringChange.body"] bdi {
+  color: var(--pk-text-strong);
+  font-weight: 600;
+}
+/* A two-line field, upper-cased as it shows, that wraps a 39-character code. */
+.field-paste textarea {
+  padding-inline-end: var(--pk-kit-control-height);
+  resize: none;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+  padding-block: var(--pk-space-3);
+  font-family: var(--pk-font-mono);
+  letter-spacing: 0.02em;
+}
+.field textarea[aria-invalid="true"] {
+  box-shadow: inset 0 0 0 1px var(--pk-danger-border);
+  --pk-ring: var(--pk-danger);
+}
+/* The destructive confirm: the brand's danger with its own label colour (never white on any red). */
+.btn[data-variant="danger"][data-key="unlockSync.startOverConfirm"] {
+  background: var(--pk-danger);
+  color: var(--pk-danger-on);
 }
 .field-error {
   margin: var(--pk-space-2) 0 0;

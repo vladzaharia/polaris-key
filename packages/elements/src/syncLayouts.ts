@@ -15,6 +15,8 @@ export const SYNC_LAYOUTS: Readonly<Record<SyncScreenName, Layout>> = {
     content: [
       "unlockSync.field",
       "unlockSync.invalid",
+      "unlockSync.failed",
+      "unlockSync.startOverWarning",
       "recoveryCode.noAsk",
       "unlockSync.unlock",
       "unlockSync.startOver",
@@ -38,6 +40,11 @@ export const SYNC_LAYOUTS: Readonly<Record<SyncScreenName, Layout>> = {
     kind: "screen",
     header: "compact",
     controls: [],
-    content: ["ringChange.accept", "ringChange.useCode", "common.cancel"],
+    content: [
+      "ringChange.failed",
+      "ringChange.accept",
+      "ringChange.useCode",
+      "common.cancel",
+    ],
   },
 };

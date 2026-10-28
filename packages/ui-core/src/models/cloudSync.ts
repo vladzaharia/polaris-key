@@ -180,7 +180,8 @@ export function recoveryCodeView(
       saved && "common.done",
     ],
     primary: saved ? "common.done" : null,
-    focus: saved ? undefined : "heading",
+    // Checking the box keeps focus on it: Done arrives announced, never under a second Space.
+    focus: saved ? null : "heading",
   });
 }
 

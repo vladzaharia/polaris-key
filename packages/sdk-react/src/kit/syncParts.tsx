@@ -5,10 +5,22 @@
 // view or the input (the host hands it to the screen as a prop), and a typed code leaves only in
 // the `onAction` of Unlock (S13).
 
-import { useInsertionEffect, useRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useInsertionEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
-import { lightDomSyncCss, SYNC_LAYOUTS } from "./syncAssets.js";
-import { button, GLYPHS, plain, text, type KitCtx } from "./parts.js";
+import {
+  copyForm,
+  lightDomSyncCss,
+  recoveryGroups,
+  spokenForm,
+  SYNC_LAYOUTS,
+} from "./syncAssets.js";
+import { button, callout, GLYPHS, plain, text, type KitCtx } from "./parts.js";
 
 export { SYNC_LAYOUTS };
 
@@ -53,40 +65,79 @@ function noAsk(c: KitCtx): ReactNode {
   ) : null;
 }
 
-/** The screen's controls: the primary first, the rest after; a destructive confirm is danger. */
-function row(c: KitCtx, keys: string[]): ReactNode {
-  const present = keys.filter((k) => shown(c, k));
+/** The screen's controls: the primary first, the rest after; a destructive confirm is danger, and
+ *  a quiet Cancel (a link) leaves the steps that are not a confirmation. `busy` carries progress;
+ *  `waiting` ignores presses and reads as unavailable until it is armed. */
+function Row(props: {
+  c: KitCtx;
+  keys: string[];
+  busy?: string;
+  waiting?: string;
+  quiet?: boolean;
+  group?: boolean;
+}): ReactNode {
+  const { c, keys, busy, waiting } = props;
+  const ref = useRef<HTMLDivElement | null>(null);
+  // The React button has no unavailable state of its own; the armed delay marks it here.
+  useEffect(() => {
+    const el = waiting
+      ? ref.current?.querySelector<HTMLElement>(`[data-key="${waiting}"]`)
+      : null;
+    el?.setAttribute("aria-disabled", "true");
+    return () => el?.removeAttribute("aria-disabled");
+  }, [waiting]);
+  const present = keys.filter((k) => shown(c, k) || k === busy);
   if (!present.length) return null;
   const primary = c.view.decisions.primary;
   const sorted = [...present].sort(
-    (a, b) => Number(b === primary) - Number(a === primary),
+    (a, b) =>
+      Number(b === primary || b === busy) - Number(a === primary || a === busy),
   );
   return (
-    <div className="actions" data-layout="stack" data-part="actions">
+    <div
+      ref={ref}
+      className="actions"
+      data-layout="stack"
+      data-part="actions"
+      role={props.group ? "group" : undefined}
+      aria-labelledby={props.group ? "pk-title" : undefined}
+      aria-describedby={props.group ? "pk-start-warning" : undefined}
+    >
       {sorted.map((k) =>
         button(
           c,
           k,
           k === "unlockSync.startOverConfirm"
             ? "danger"
-            : k === primary
+            : k === primary || k === busy
               ? "primary"
-              : "secondary",
+              : k === "common.cancel" && props.quiet
+                ? "link"
+                : "secondary",
+          { busy: k === busy },
         ),
       )}
     </div>
   );
 }
+const row = (
+  c: KitCtx,
+  keys: string[],
+  o: Omit<Parameters<typeof Row>[0], "c" | "keys"> = {},
+): ReactNode => <Row c={c} keys={keys} {...o} />;
 
 /** The clipboard's text goes straight into the field: nothing keeps or sends it (S13). React reads
  *  the value through its tracker, so it is set the way a keystroke sets it. */
-function pasteInto(input: HTMLInputElement | null, edited: () => void): void {
+function pasteInto(
+  input: HTMLTextAreaElement | null,
+  edited: () => void,
+): void {
   void navigator.clipboard
     ?.readText()
     .then((t) => {
       if (!input) return;
       Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
+        HTMLTextAreaElement.prototype,
         "value",
       )?.set?.call(input, t.trim());
       edited();
@@ -96,50 +147,79 @@ function pasteInto(input: HTMLInputElement | null, edited: () => void): void {
     });
 }
 
-/** The recovery code field and the unlock row. The field is uncontrolled: its text stays in the
- *  field until Unlock reads it at the press, and is in no state, input or view (S13). Editing it
- *  tells the host only that it changed (`recoveryEdited`), never what it holds. */
+/** True from 500 ms after `on` turned true: the Start over confirm takes no press before that, so
+ *  a double-click on Start over cannot also confirm it. */
+function useArmed(on: boolean): boolean {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    setArmed(false);
+    if (!on) return;
+    const t = setTimeout(() => setArmed(true), 500);
+    return () => clearTimeout(t);
+  }, [on]);
+  return armed;
+}
+
+/** Every UnlockSync step, in one tree: the field keeps its text (read-only while working, hidden on
+ *  the warning and the failure) and the pressed control keeps focus from step to step. The field is
+ *  uncontrolled: its text stays in the field until Unlock reads it at the press, and is in no
+ *  state, input or view (S13). Editing tells the host only that it changed (`recoveryEdited`). */
 function UnlockBody(props: { c: KitCtx }): ReactNode {
-  const ref = useRef<HTMLInputElement | null>(null);
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  const s = props.c.view.state;
+  const armed = useArmed(s === "start-over");
   const c: KitCtx = {
     ...props.c,
-    act: (key, extra) =>
-      props.c.act(
-        key,
-        key === "unlockSync.unlock"
-          ? { ...extra, value: ref.current?.value.trim() ?? "" }
-          : extra,
-      ),
+    act: (key, extra) => {
+      if (key === "unlockSync.startOverConfirm" && !armed) return;
+      if (key !== "unlockSync.unlock") return props.c.act(key, extra);
+      // An empty field sends nothing and keeps focus in it.
+      const value = (ref.current?.value ?? "").replace(/\s+/g, " ").trim();
+      if (value === "") ref.current?.focus();
+      else props.c.act(key, { ...extra, value });
+    },
   };
+  const mode =
+    s === "code" || s === "invalid"
+      ? "edit"
+      : s === "working"
+        ? "busy"
+        : "hidden";
   const invalid = shown(c, "unlockSync.invalid");
   const edited = () => c.edit("recoveryEdited", "1");
+  const busy =
+    c.input.unlockSync?.busy === "start-over"
+      ? "unlockSync.startOverConfirm"
+      : "unlockSync.unlock";
   return (
     <>
-      <div className="field" data-part="key-field">
+      <div className="field" data-part="key-field" hidden={mode === "hidden"}>
         <label className="label" htmlFor="pk-recovery">
           {text(c, "unlockSync.field")}
         </label>
         <div className="field-row field-paste">
-          <input
+          <textarea
             ref={ref}
             id="pk-recovery"
             data-key="unlockSync.field"
             data-mono=""
-            type="text"
-            inputMode="text"
+            rows={2}
             autoComplete="off"
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}
             enterKeyHint="go"
+            readOnly={mode === "busy"}
             aria-invalid={invalid ? "true" : "false"}
             aria-describedby={invalid ? "pk-recovery-error" : undefined}
             onChange={edited}
             onKeyDown={(e) => {
-              if (e.key === "Enter") c.act("unlockSync.unlock");
+              if (e.key !== "Enter" || e.shiftKey) return;
+              e.preventDefault();
+              if (mode === "edit") c.act("unlockSync.unlock");
             }}
           />
-          {c.copy.has("common.paste") ? (
+          {c.copy.has("common.paste") && mode === "edit" ? (
             <button
               type="button"
               className="btn paste"
@@ -164,31 +244,75 @@ function UnlockBody(props: { c: KitCtx }): ReactNode {
           </p>
         ) : null}
       </div>
-      {noAsk(c)}
-      {row(c, ["unlockSync.unlock", "unlockSync.startOver", "common.cancel"])}
+      {s === "code" || s === "invalid" ? noAsk(c) : null}
+      {s === "start-over" ? (
+        <p
+          className="body"
+          id="pk-start-warning"
+          data-key="unlockSync.startOverWarning"
+        >
+          {text(c, "unlockSync.startOverWarning")}
+        </p>
+      ) : null}
+      {s === "failed" ? callout(c, ["unlockSync.failed"]) : null}
+      {s === "working"
+        ? row(c, [busy], { busy })
+        : s === "failed"
+          ? row(c, ["common.tryAgain", "common.cancel"], { quiet: true })
+          : s === "no-code"
+            ? row(c, ["unlockSync.startOver", "common.cancel"], { quiet: true })
+            : s === "start-over"
+              ? row(c, ["unlockSync.startOverConfirm", "common.cancel"], {
+                  group: true,
+                  waiting: armed ? undefined : "unlockSync.startOverConfirm",
+                })
+              : row(
+                  c,
+                  [
+                    "unlockSync.unlock",
+                    "unlockSync.startOver",
+                    "common.cancel",
+                  ],
+                  { quiet: true },
+                )}
     </>
   );
 }
 
-/** The code as eight groups of four, for the eye; read out whole, group by group.
- *  TODO(U-42.2, Swift fix round): the label becomes the catalog's `a11y.recoveryCode`
- *  ("Recovery code {code}") once that key is on this branch. */
-function codeBlock(c: KitCtx, code: string): ReactNode {
-  const groups = code.trim().split(/\s+/).filter(Boolean);
+/** The code as groups of four, for the eye; spelled out group by group for a screen reader (an
+ *  image with a label: Chromium and Firefox read it, a `text` role they do not know). Copy writes
+ *  the hyphenated form and says so for two seconds. */
+function CodeBlock(props: { c: KitCtx; code: string }): ReactNode {
+  const { c } = props;
+  const groups = recoveryGroups(props.code);
+  const spoken = spokenForm(groups);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
+  const said = copied && c.copy.has("common.copied");
   return (
     <div className="field" data-part="code">
-      <div
-        className="recovery-groups"
-        data-key="recoveryCode.title"
-        role="text"
-        aria-label={groups.join(", ")}
-      >
-        {groups.map((g, i) => (
-          <span key={i} className="g" aria-hidden="true">
-            {g}
-          </span>
-        ))}
-      </div>
+      {groups.length ? (
+        <div
+          className="recovery-groups"
+          data-key="recoveryCode.title"
+          role="img"
+          aria-label={
+            c.copy.has("a11y.recoveryCode")
+              ? plain(c, "a11y.recoveryCode", { code: spoken })
+              : spoken
+          }
+        >
+          {groups.map((g, i) => (
+            <span key={i} className="g" aria-hidden="true">
+              {g}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <button
         type="button"
         className="btn"
@@ -198,21 +322,24 @@ function codeBlock(c: KitCtx, code: string): ReactNode {
         aria-disabled={groups.length ? undefined : "true"}
         onClick={() => {
           if (!groups.length) return;
-          void navigator.clipboard?.writeText(groups.join(" "))?.catch(() => {
+          void navigator.clipboard?.writeText(copyForm(groups))?.catch(() => {
             // A refused write leaves the code on screen to copy by hand.
           });
+          setCopied(true);
           c.act("recoveryCode.copy");
         }}
       >
         {GLYPHS.copy()}
-        {text(c, "recoveryCode.copy")}
+        <span>{text(c, said ? "common.copied" : "recoveryCode.copy")}</span>
       </button>
+      <span className="visually-hidden" role="status">
+        {said ? text(c, "common.copied") : ""}
+      </span>
     </div>
   );
 }
 
-/** UnlockSync, RecoveryCode and RingChange draw their fields and actions here.
- *  TODO(U-42.2, Swift fix round): RingChange gets a `failed` state (ui-matrix row) beside `confirm`. `code` is the
+/** UnlockSync, RecoveryCode and RingChange draw their fields and actions here. `code` is the
  *  recovery code the host handed RecoveryCode (it is in no input). */
 export function syncContent(c: KitCtx, code: string): ReactNode {
   return (
@@ -225,22 +352,11 @@ export function syncContent(c: KitCtx, code: string): ReactNode {
 
 function screenContent(c: KitCtx, code: string): ReactNode {
   const { view } = c;
-  if (view.component === "UnlockSync")
-    switch (view.state) {
-      case "code":
-      case "invalid":
-        return <UnlockBody c={c} />;
-      case "failed":
-        return row(c, ["common.tryAgain", "common.cancel"]);
-      case "start-over":
-        return row(c, ["unlockSync.startOverConfirm", "common.cancel"]);
-      default:
-        return null;
-    }
+  if (view.component === "UnlockSync") return <UnlockBody c={c} />;
   if (view.component === "RecoveryCode")
     return (
       <>
-        {codeBlock(c, code)}
+        <CodeBlock c={c} code={code} />
         {noAsk(c)}
         {shown(c, "recoveryCode.saved") ? (
           <label className="check-row" data-key="recoveryCode.saved">
@@ -258,6 +374,16 @@ function screenContent(c: KitCtx, code: string): ReactNode {
       </>
     );
   if (view.component === "RingChange")
-    return row(c, ["ringChange.useCode", "ringChange.accept", "common.cancel"]);
+    return (
+      <>
+        {shown(c, "ringChange.failed")
+          ? callout(c, ["ringChange.failed"])
+          : null}
+        {row(c, ["ringChange.useCode", "ringChange.accept", "common.cancel"], {
+          busy: c.input.ringChange?.busy ? "ringChange.accept" : undefined,
+          quiet: true,
+        })}
+      </>
+    );
   return null;
 }

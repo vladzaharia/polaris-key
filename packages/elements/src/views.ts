@@ -912,8 +912,36 @@ const CHOICE_STATES: ReadonlySet<string> = new Set([
 
 /** Drop every key whose own arguments the input leaves unfilled: a missing fact is never drawn
  *  as `{name}`. */
+const HOST_ONLY: Readonly<Record<string, string>> = {
+  "CloudSyncStatus/cloudSync.unlock": "unlock",
+  // A conflict's Review is the host's own (`canReview` says it handles it); a changed ring's opens
+  // the kit's RingChange.
+  "CloudSyncStatus.ring-changed/common.review": "review",
+  "RingChange/ringChange.useCode": "use-code",
+};
+
 function fillable(c: RenderCtx): View {
-  const view = withRenew(withBase(c), c.input);
+  const base = withRenew(withBase(c), c.input);
+  // A control only a host can act on (it opens another screen) draws only when the host says it
+  // answers it (`handles`), so no press goes nowhere.
+  const gone = base.copy.filter((k) => {
+    const need =
+      HOST_ONLY[`${base.component}.${base.state}/${k}`] ??
+      HOST_ONLY[`${base.component}/${k}`];
+    return need !== undefined && !(c.handles ?? []).includes(need);
+  });
+  const view = gone.length
+    ? {
+        ...base,
+        copy: base.copy.filter((k) => !gone.includes(k)),
+        decisions: {
+          ...base.decisions,
+          primary: gone.includes(base.decisions.primary ?? "")
+            ? null
+            : base.decisions.primary,
+        },
+      }
+    : base;
   if (view.component === "ReleaseNotes") return view;
   // A content key is drawn by the component's own rows, which pass its arguments at the call.
   const content = new Set(LAYOUTS[view.component].content ?? []);
@@ -1954,7 +1982,11 @@ function accountRows(c: RenderCtx): TemplateResult | typeof nothing {
   }
   if (keys.has("account.cloudSync")) {
     const state = i.cloudSync?.state;
-    const k = state ? `cloudSync.${state}` : "";
+    const k = state
+      ? state === "ring-changed"
+        ? "cloudSync.ringChanged"
+        : `cloudSync.${state}`
+      : "";
     rows.push(
       accountRow(
         "account.cloudSync",

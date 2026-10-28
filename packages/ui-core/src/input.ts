@@ -442,6 +442,9 @@ export interface UiInput {
   unlockSync?: {
     step: "code" | "invalid" | "working" | "failed" | "no-code" | "start-over";
     nearby?: boolean;
+    /** While `working`: which control carries the progress (default Unlock). Draw-only: the
+     *  model's view does not read it. */
+    busy?: "unlock" | "start-over";
   };
   /** RecoveryCode (U-42). The code is never an input: the kit draws it from the host, once. */
   recoveryCode?: { saved?: boolean };
@@ -452,6 +455,8 @@ export interface UiInput {
     served?: { ringId: string; epoch: number; rootKid: string };
     /** Accepting did not open a root: the screen says so; Accept stays available. */
     failed?: boolean;
+    /** Accept is running: its control shows progress and ignores presses. Draw-only. */
+    busy?: boolean;
   };
   /** `store` is the store that fixes the channel ("App Store", "Google Play", "Steam"). */
   channel?: {

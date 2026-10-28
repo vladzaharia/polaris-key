@@ -2,6 +2,7 @@
 // Its own entry (`./sync`): the React kit imports it on demand, with the screens, so the gate's
 // entry carries neither.
 
+export { copyForm, recoveryGroups, spokenForm } from "./recoveryCode.js";
 export { SYNC_LAYOUTS } from "./syncLayouts.js";
 
 import { scopeCss } from "./scopeCss.js";

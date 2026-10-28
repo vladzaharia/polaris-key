@@ -289,6 +289,8 @@ for (const family of FAMILIES) {
           ...(component === "SignIn" ? ["signin.done.start"] : []),
           // A standalone Activate draws its own Done (as the elements do).
           ...(component === "Activate" ? ["common.done"] : []),
+          // Working keeps the pressed control, busy, so focus stays on it.
+          ...(component === "UnlockSync" ? ["unlockSync.unlock"] : []),
         ]).toContain(filled[0]!.getAttribute("data-key"));
       // DL4/DL6: a view with a primary draws it as the one filled control.
       if (

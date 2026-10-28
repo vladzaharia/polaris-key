@@ -67,7 +67,7 @@ export class PkGate extends PkElement {
   /** The one config object, as the attribute's JSON or an object (`product` is required). */
   config?: string | GateConfig;
   /** Host actions this page answers: `trial`, `restore`, `continue-free`, `renew`. */
-  handles?: string;
+  override handles?: string;
   /** Embedding and test seams: a built client, or the fetch and navigation the client uses. */
   seams?: GateSeams;
   /** `off` turns automatic sign-in off: no ladder at boot, Welcome opens the hosted sign-in. */

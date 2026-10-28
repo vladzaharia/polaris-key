@@ -104,7 +104,7 @@ const SIZES = [
 const SCHEMES = ["dark", "light"] as const;
 
 /** The recovery code the host hands RecoveryCode: a property, never in the input (U-42.2). */
-const RECOVERY_CODE = "ABCD EFGH JKLM NPQR STUV WXYZ 2345 6789";
+const RECOVERY_CODE = "K7QF-2M9D-XR4T-8WHB-3JNC-6PEZ-V5GD-HT0S";
 
 beforeAll(async () => {
   fixtureTheme(__PKEY_FONTS__);
@@ -127,6 +127,7 @@ async function mount(
   el.fill = fill;
   // The recovery code reaches RecoveryCode as a property, never in the input (U-42.2).
   if (row.expect.component === "RecoveryCode") el.code = RECOVERY_CODE;
+  el.handles = "unlock review use-code";
   el.input = { elapsedMs: 60_000, ...withDefaults(row.input), ...extras(row) };
   el.style.minBlockSize = `${height}px`;
   el.style.display = "grid";
