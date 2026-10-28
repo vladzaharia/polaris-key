@@ -241,6 +241,18 @@
 // consent, the choice) is the one the recording sent; its `expect` is an exchange `ok`.
 // A `discover` step in these transcripts also pins `exchange` (the fragment's member or null)
 // and `nonceEndpoint` (whether the identity endpoints name `nonce`).
+// linkOffer / link (I-43.3, WIRE-CONTRACT-V5 §12.11.4, `identity.link`) — the link offer after a
+// same-device sign-in, both calls with the device token as the bearer. `linkOffer` is
+// `GET …/identity/link`; `expect`: `result` "ok" and `offer`, the [{kind, reach}] the answer
+// lists (reach null; an empty list while no step-up is live). `link` is `POST …/identity/link`
+// with the body {linkHandle, proof}: `args.linkHandle` is a handle an `exchange` step answered,
+// `args.keyLabel` names the fixture device keys (see `exchange`) and `args.proofValue`, when
+// present, is the value the proof covers instead of the handle (a proof that is not the
+// handle's). The proof is `pkey-proof/1` with purpose `link`, the handle as value and `-` as the
+// token hash. `expect`: `result` "ok" with `linked` {kind, reach} ("global" | "developer"), or
+// "refused" with `status` and `code` (`step_up_required`, `link_conflict`, `not_found`,
+// `invalid_grant`). A transcript whose feature is `identity.link` is replayed only by an SDK
+// that marks it implemented.
 // keyringGet / keyringCreate / keyringWrap / keyringUnwrap / keyringRecoverySet /
 // keyringRecoveryGet / keyringAdopt / keyringReset (U-36.4, WIRE-CONTRACT-V5 §13.11.2) — the
 // `keyring-*` calls, replayed only by an SDK that marks `sync.keyring` implemented. They are
@@ -375,6 +387,10 @@ export type Action =
   | "cloudSyncPush"
   /** I-13.7 (WIRE-CONTRACT-V5 §12.11.3): the native-token exchange, nonce then grant. */
   | "exchange"
+  /** I-43.3 (WIRE-CONTRACT-V5 §12.11.4): `GET …/identity/link`, the link offer (`identity.link`). */
+  | "linkOffer"
+  /** I-43.3 (§12.11.4): `POST …/identity/link` with a link handle (`identity.link`). */
+  | "link"
   /** U-36.4 (WIRE-CONTRACT-V5 §13.11.2): the key ring calls of the `keyring-*` transcripts. */
   | "keyringGet"
   | "keyringCreate"

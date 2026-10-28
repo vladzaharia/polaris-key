@@ -49,12 +49,12 @@ import {
 
 type Json = Record<string, JsonValue>;
 
-const KEY_LABEL = "transcript-device-key-1";
+export const KEY_LABEL = "transcript-device-key-1";
 const GOOGLE_SUB = "g-sub-1";
 const APPLE_SUB = "a-sub-1";
 const FEATURES = ["identity.exchange"];
 
-async function exchangeWorld(
+export async function exchangeWorld(
   on: ServiceSlug[] = ["config", "identity"],
 ): Promise<World> {
   const w = await productWorld(servicesOn(...on));
@@ -117,7 +117,7 @@ async function linkedGoogle(w: World, consented: boolean): Promise<string> {
   return r.account.id;
 }
 
-function recorder(
+export function recorder(
   w: World,
   pin: Pin,
   id: string,
@@ -224,7 +224,7 @@ const google =
   (over: Record<string, unknown> = {}) =>
   (nonce: string) =>
     googleToken(nonce, GOOGLE_SUB, over);
-const apple =
+export const apple =
   (over: Record<string, unknown> = {}) =>
   (nonce: string) =>
     appleToken(nonce, APPLE_SUB, over);
@@ -268,7 +268,7 @@ async function identityFragment(
 }
 
 /** One recorded `exchange` call; `check` asserts the Worker's answers as an ordinary test. */
-function exchangeStep(
+export function exchangeStep(
   r: Recorder,
   o: {
     kind?: "google" | "apple";

@@ -72,6 +72,7 @@ import { CONNECT_SCENARIOS } from "./connect.js";
 import { KEYRING_SCENARIOS } from "./keyring.js";
 import { LOCKER_SCENARIOS } from "./locker.js";
 import { EXCHANGE_SCENARIOS } from "./exchange.js";
+import { LINK_SCENARIOS } from "./link.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -122,6 +123,7 @@ export const SCENARIOS: Scenario[] = [
   ...CHOICE_SCENARIOS,
   ...LOCKER_SCENARIOS,
   ...EXCHANGE_SCENARIOS,
+  ...LINK_SCENARIOS,
   ...CLOUD_SYNC_SCENARIOS,
   ...KEYRING_SCENARIOS,
   ...CONNECT_SCENARIOS,
