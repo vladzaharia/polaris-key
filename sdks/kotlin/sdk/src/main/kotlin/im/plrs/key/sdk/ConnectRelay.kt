@@ -1,6 +1,6 @@
 // The relay half of Cloud Connect, socket side (CC-12.13; WIRE-CONTRACT-V5 section 15.7). One WebSocket
 // to the account room carries envelopes. Mirrors the socket half of sdk-node's `connect/relay.ts` and the
-// Python `connect/relay.py`. The peer sessions that ride the socket are CC-12.14.
+// Python `connect/relay.py`. Peer sessions (`dial`, inbound RECV) and outgoing pacing (D-9) ride the socket (CC-12.14).
 //
 // WebSocket API: OkHttp 4.12 (plan section 3; `:core` already depends on it), so the same code runs on
 // the JVM and on Android. The JDK's `java.net.http.WebSocket` is not available on Android API 24.
@@ -28,10 +28,16 @@ package im.plrs.key.sdk
 
 import im.plrs.key.core.Base64Url
 import im.plrs.key.core.PolarisException
+import im.plrs.key.core.peer.LinkHandlers
+import im.plrs.key.core.peer.NoiseRole
+import im.plrs.key.core.peer.PeerCloseCode
+import im.plrs.key.core.peer.PeerLinkPort
 import im.plrs.key.core.peer.RELAY_MAX_MESSAGE
 import im.plrs.key.core.peer.RelayDirection
 import im.plrs.key.core.peer.RelayMessage
+import im.plrs.key.core.peer.SessionEvent
 import im.plrs.key.core.peer.decodeRelay
+import im.plrs.key.core.peer.deviceIdBytes
 import im.plrs.key.core.peer.encodeRelay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -60,6 +66,12 @@ import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import java.security.SecureRandom
 import java.util.concurrent.CopyOnWriteArrayList
+
+/** Ended sessions remembered, so a late message for one is dropped without work. */
+internal const val ENDED_MEMORY: Int = 256
+private const val MAX_SESSION_ID = 0xFFFFFFFFL
+private const val DRAIN_MILLIS = 1000L
+private const val ID_BYTES = 4
 
 /** The only mode that may cross the relay (G16). */
 internal val RELAY_MODES: List<String> = listOf("a")
@@ -146,6 +158,10 @@ internal class RelayOptions(
     val handshakeSeconds: Double = 30.0,
     val rekeyMessages: Int? = null,
     val rekeySeconds: Double? = null,
+    /** Makes the outgoing pacer of each socket (default [Pacer]). */
+    val pacer: (() -> Pacer)? = null,
+    /** Bytes the queue behind the socket may hold (8 MiB). */
+    val outboxBytes: Long = OUTBOX_MAX_BYTES,
 )
 
 // -- the default opener (OkHttp) ---------------------------------------------------------------------
@@ -335,7 +351,13 @@ internal class RelayService(
     private var held: HeldIdentity? = null
 
     @Volatile
-    private var outbox: Channel<ByteArray>? = null
+    private var outbox: Outbox? = null
+
+    @Volatile
+    private var pacer: Pacer? = null
+    private val links = LinkedHashMap<String, RelayLink>()
+    private val endedKeys = java.util.ArrayDeque<String>()
+    private val sessionFns = CopyOnWriteArrayList<(ConnectSession) -> Unit>()
     private val docs = PeerDocs(
         PeerDocsSource(src.now, src.refresh, src.adoptRing, src.applyTrust),
         onStored = { held = null },
@@ -369,6 +391,15 @@ internal class RelayService(
     }
 
     fun onNotice(fn: (ConnectNotice) -> Unit): () -> Unit = docs.onNotice(fn)
+
+    /** Sessions open or still shaking hands. */
+    val sessionCount: Int get() = synchronized(lock) { links.size }
+
+    /** Called for each inbound session once it is open and admitted. */
+    fun onSession(fn: (ConnectSession) -> Unit): () -> Unit {
+        sessionFns += fn
+        return { sessionFns -= fn }
+    }
 
     /** The person's devices online in the room, as of the last MEMBERS (this device included). */
     fun members(): List<String> = synchronized(lock) { memberSet.sorted() }
@@ -428,7 +459,14 @@ internal class RelayService(
             stopped = true
         }
         docs.close()
+        val q = outbox
+        val open = synchronized(lock) { links.values.toList() }
         set(RelayState.stopped)
+        withTimeoutOrNull(STOP_TIMEOUT_MILLIS) {
+            // Say goodbye to open sessions before the socket goes.
+            for (l in open) quiet { l.close(PeerCloseCode.peer_bye) }
+            if (q != null && openNow) q.drained(DRAIN_MILLIS)
+        }
         loseLinks()
         val s = ws
         ws = null
@@ -564,14 +602,21 @@ internal class RelayService(
         val openedAt = o.clock()
         lastLimit = null
         errorNow = null
-        val q = Channel<ByteArray>(Channel.UNLIMITED)
+        val q = Outbox(o.outboxBytes)
         outbox = q
+        val pc = (o.pacer ?: { Pacer() })()
+        pacer = pc
         set(RelayState.open)
         val ready = synchronized(lock) { waiters.toList().also { waiters.clear() } }
         for (w in ready) w.complete(Unit)
         val writer = scope.launch {
             try {
-                for (b in q) s.send(b)
+                while (true) {
+                    val data = q.get() ?: break
+                    pc.acquire()
+                    s.send(data)
+                    q.sent()
+                }
             } catch (e: SocketClosed) {
                 // the reader sees the close
             } catch (e: CancellationException) {
@@ -610,8 +655,9 @@ internal class RelayService(
             openNow = false
             if (ws === s) ws = null
             outbox = null
+            pacer = null
             synchronized(lock) { memberSet.clear() }
-            loseLinks()
+            withContext(NonCancellable) { loseLinks() }
             if (was) emitMembers()
         }
         return code
@@ -637,7 +683,7 @@ internal class RelayService(
         val q = outbox ?: return
         if (!openNow) return
         try {
-            q.trySend(encodeRelay(m))
+            q.put(encodeRelay(m), force = true)
         } catch (e: IllegalArgumentException) {
             // a value the layout cannot hold is never sent
         }
@@ -677,6 +723,7 @@ internal class RelayService(
 
     private fun limit(reason: Int) {
         lastLimit = reason
+        if (reason == LIMIT_RATE) pacer?.halve()
         val why = when (reason) {
             LIMIT_RATE -> RelayErrorReason.rate_limited
             LIMIT_PAUSED -> RelayErrorReason.paused
@@ -698,19 +745,117 @@ internal class RelayService(
 
     // -- sessions (CC-12.14) -----------------------------------------------------------------------
 
-    /** A RECV envelope. Peer sessions are CC-12.14; until then it is dropped. */
-    @Suppress("UNUSED_PARAMETER")
+    /**
+     * Dial a device of the person over the relay and run the handshake. Throws [RelayException]:
+     * `unknown_peer`, `busy`, `handshake_failed`, `wrong_peer`, or the reason the relay is not connected.
+     */
+    suspend fun dial(deviceId: String): ConnectSession {
+        ready()
+        val peer = try {
+            deviceIdBytes(deviceId)
+        } catch (e: IllegalArgumentException) {
+            throw RelayException(RelayErrorReason.unknown_peer, "That is not a device id.")
+        }
+        val ident = identity(false) ?: throw RelayException(RelayErrorReason.not_connected, "The relay is not connected.")
+        if (deviceId == ident.deviceId || deviceId !in ident.roster) {
+            throw RelayException(RelayErrorReason.unknown_peer, "That device is not one of this person's devices.")
+        }
+        val link = makeLink(peer, newSessionId(peer), NoiseRole.initiator, ident)
+            ?: throw RelayException(RelayErrorReason.busy, "Too many relay sessions are open.")
+        link.start()
+        try {
+            return link.opened.await()
+        } catch (e: RelayException) {
+            throw e
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            throw RelayException(RelayErrorReason.handshake_failed, "The handshake failed.")
+        }
+    }
+
+    /** A RECV envelope: a message of a known session, or the first message of one a peer opened. */
     private suspend fun onRecv(from: ByteArray, session: Long, noise: ByteArray) {
+        val key = sessionKey(from, session)
+        val known = synchronized(lock) { links[key] }
+        if (known != null) {
+            known.receive(noise)
+            return
+        }
+        if (synchronized(lock) { key in endedKeys }) return
+        // A first message of a session the peer opened. Only the person's own devices may.
+        val ident = identity(false, quiet = true)
+        if (ident == null || stopped || !openNow) return
+        val fromId = Base64Url.encode(from)
+        if (fromId == ident.deviceId || fromId !in ident.roster) return
+        val pending = synchronized(lock) { links.values.count { !it.ended && it.peer.contentEquals(from) } }
+        if (pending >= o.maxPendingPerPeer) return
+        makeLink(from, session, NoiseRole.responder, ident)?.receive(noise)
     }
 
-    /** The room dropped a device: its sessions end (CC-12.14). */
-    @Suppress("UNUSED_PARAMETER")
-    private fun onGone(device: ByteArray) {
+    private fun sessionKey(peer: ByteArray, session: Long): String = peer.joinToString("") { "%02x".format(it) } + ":" + session
+
+    private fun makeLink(peer: ByteArray, sessionId: Long, role: NoiseRole, ident: PeerSource): RelayLink? {
+        val key = sessionKey(peer, sessionId)
+        val handlers = sessionHandlers(
+            role,
+            docs,
+            onEstablished = { s ->
+                if (role == NoiseRole.responder) {
+                    for (f in sessionFns) {
+                        try {
+                            f(s)
+                        } catch (e: Exception) {
+                            // a host callback never ends a session
+                        }
+                    }
+                }
+            },
+            path = "relay",
+        )
+        val base = ChannelBase(ident, o.caps, o.label, { docs.pushed }, src.now, o.rekeyMessages, o.rekeySeconds)
+        assertRelayMode("a")
+        synchronized(lock) {
+            if (links.size >= o.maxSessions) return null
+            val link = RelayLink(this, peer, sessionId, key, role, base, handlers, o.handshakeSeconds, scope)
+            links[key] = link
+            return link
+        }
     }
 
-    /** The socket is gone: every session ends without a word (CC-12.14). */
-    private fun loseLinks() {
+    internal fun linkEnded(link: RelayLink) {
+        synchronized(lock) {
+            if (links[link.key] === link) links.remove(link.key)
+            endedKeys.addLast(link.key)
+            while (endedKeys.size > ENDED_MEMORY) endedKeys.removeFirst()
+        }
     }
+
+    private fun newSessionId(peer: ByteArray): Long {
+        while (true) {
+            val n = rng.nextLong() and MAX_SESSION_ID
+            val k = sessionKey(peer, n)
+            if (synchronized(lock) { k !in links && k !in endedKeys }) return n
+        }
+    }
+
+    /** The room dropped a device: its sessions end. */
+    private suspend fun onGone(device: ByteArray) {
+        val gone = synchronized(lock) { links.values.filter { it.peer.contentEquals(device) } }
+        for (l in gone) l.lost()
+    }
+
+    /** The socket is gone: every session ends without a word. */
+    private suspend fun loseLinks() {
+        val all = synchronized(lock) { links.values.toList() }
+        for (l in all) l.lost()
+    }
+
+    internal fun sendSession(peer: ByteArray, session: Long, noise: ByteArray) {
+        sendEnv(RelayMessage.Send(peer, session, noise))
+    }
+
+    internal fun hasRoom(n: Int): Boolean = outbox?.roomFor(n) == true
 
     // -- identity and documents --------------------------------------------------------------------
 
@@ -780,4 +925,163 @@ internal class RelayService(
     }
 
     private fun stoppedError() = RelayException(RelayErrorReason.stopped, "The relay is stopped.")
+}
+
+/**
+ * One session inside the room: a mode-a channel whose Noise messages ride SEND and RECV envelopes. It has
+ * the surface [ConnectSession] needs of a link. The room has no flow control, so there is no pause: a peer
+ * that sends faster than the host reads ends with `peer_busy` at the byte caps (G10).
+ */
+internal class RelayLink(
+    private val svc: RelayService,
+    val peer: ByteArray,
+    val sessionId: Long,
+    val key: String,
+    private val role: NoiseRole,
+    base: ChannelBase,
+    private val handlers: LinkHandlers<ConnectSession>,
+    handshakeSeconds: Double,
+    private val scope: CoroutineScope,
+) : PeerLinkPort {
+    @Volatile
+    var ended = false
+        private set
+    private val lock = Any()
+    private var lostAlready = false
+    private var open = false
+    private var why = RelayErrorReason.handshake_failed
+    private var wake: Job? = null
+    private var deadline: Job? = null
+    val opened: CompletableDeferred<ConnectSession> = CompletableDeferred()
+    val channel = base.channel(role, { svc.sendSession(peer, sessionId, it) }, ::onEvent)
+
+    override val remoteAddress: String = "relay"
+
+    init {
+        deadline = scope.launch {
+            delay((handshakeSeconds * MILLIS).toLong())
+            fail()
+        }
+    }
+
+    override fun toString(): String = "RelayLink(session=$sessionId)"
+
+    /** Initiator: write message 1. */
+    suspend fun start() {
+        channel.start()
+        arm()
+    }
+
+    suspend fun receive(noise: ByteArray) {
+        if (ended) return
+        channel.receive(noise)
+        arm()
+    }
+
+    /** The socket is gone or the room dropped the peer: end without a word. */
+    suspend fun lost() {
+        if (ended) return
+        lostAlready = true
+        channel.close(PeerCloseCode.peer_bye)
+        finish(SessionEvent.Closed("connection_lost", false))
+    }
+
+    override suspend fun sendRecord(type: Int, body: ByteArray) {
+        // Refuse before the channel encrypts: a message dropped after encryption would break the stream.
+        if (!svc.hasRoom(body.size + OVERHEAD * (body.size / CHUNK + 1))) {
+            throw RelayException(RelayErrorReason.rate_limited, "The relay queue is full; slow down.")
+        }
+        channel.sendRecord(type, body)
+    }
+
+    override suspend fun close(code: PeerCloseCode) {
+        channel.close(code)
+    }
+
+    override fun closeNow(code: PeerCloseCode) {
+        scope.launch { channel.close(code) }
+    }
+
+    override fun pause(on: Boolean) = Unit
+
+    // -- internals ---------------------------------------------------------------------------------
+
+    private suspend fun arm() {
+        synchronized(lock) {
+            wake?.cancel()
+            wake = null
+        }
+        if (ended) return
+        val w = channel.wakeIn() ?: return
+        val job = scope.launch {
+            delay((maxOf(w, MIN_WAKE) * MILLIS).toLong())
+            synchronized(lock) { wake = null }
+            channel.tick()
+            arm()
+        }
+        synchronized(lock) {
+            wake?.cancel()
+            wake = job
+        }
+    }
+
+    private suspend fun fail() {
+        if (ended || open) return
+        channel.close(PeerCloseCode.peer_bye)
+        finish(SessionEvent.Closed(HANDSHAKE, false))
+    }
+
+    private fun onEvent(e: SessionEvent) {
+        when (e) {
+            is SessionEvent.Established -> {
+                val id = e.peerDeviceId ?: return
+                // The certificate, not the room's stamp, names the peer; they must agree (G8).
+                if (id != Base64Url.encode(peer)) {
+                    why = RelayErrorReason.wrong_peer
+                    scope.launch { channel.close(PeerCloseCode.peer_bye) }
+                    finish(SessionEvent.Closed(HANDSHAKE, false))
+                    return
+                }
+                deadline?.cancel()
+                deadline = null
+                open = true
+                opened.complete(handlers.onEstablished(this, e))
+            }
+
+            is SessionEvent.Record -> handlers.onRecord(this, e.recordType, e.body)
+
+            is SessionEvent.RingReceived -> handlers.onRing(e.jws, e.epoch)
+
+            is SessionEvent.TrustUnverified -> handlers.onTrust(e.jws)
+
+            SessionEvent.RingWanted -> handlers.onRingWanted()
+
+            is SessionEvent.Sas -> Unit
+
+            is SessionEvent.Closed -> finish(if (lostAlready && !e.byPeer) SessionEvent.Closed("connection_lost", false) else e)
+        }
+    }
+
+    private fun finish(c: SessionEvent.Closed) {
+        synchronized(lock) {
+            if (ended) return
+            ended = true
+            deadline?.cancel()
+            wake?.cancel()
+            deadline = null
+            wake = null
+        }
+        handlers.onClosed(c)
+        opened.completeExceptionally(RelayException(why, "The peer was not admitted over the relay.", closeCode = c.code))
+        svc.linkEnded(this)
+        handlers.onEnded()
+    }
+
+    private companion object {
+        const val MILLIS = 1000
+        const val MIN_WAKE = 0.05
+        const val OVERHEAD = 128
+        const val CHUNK = 60_000
+        const val HANDSHAKE = "handshake_failed"
+    }
 }

@@ -297,7 +297,7 @@ internal fun sessionHandlers(
 ): LinkHandlers<ConnectSession> {
     var box: ConnectSession? = null
     return LinkHandlers(
-        onEstablished = { link: PeerLink<ConnectSession>, e: SessionEvent.Established ->
+        onEstablished = { link: PeerLinkPort, e: SessionEvent.Established ->
             val s = ConnectSession(link, e.peerDeviceId!!, e.caps, e.hello, role, link.remoteAddress, path, budget ?: sharedBudget)
             box = s
             onEstablished(s)

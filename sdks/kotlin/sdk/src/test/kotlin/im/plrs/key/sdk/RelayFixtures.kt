@@ -86,6 +86,9 @@ internal class FakeRoom(members: Set<String>) {
     @Volatile var rejectWith: Int? = null
 
     @Volatile var issued = 0
+
+    /** Stamp a device's SENDs as another device (a hostile or confused room). */
+    val stampAs = java.util.concurrent.ConcurrentHashMap<String, String>()
     private val rng = SecureRandom()
 
     fun issue(device: String, url: String = "wss://k.test/djdl/connect/relay"): RelayGrant {
@@ -128,7 +131,7 @@ internal class FakeRoom(members: Set<String>) {
             is RelayMessage.Send -> {
                 val to = Base64Url.encode(m.to)
                 for (t in sockets.filter { it.device == to }) {
-                    t.deliver(RelayMessage.Recv(Base64Url.decodeStrict(dev)!!, m.session, m.noise))
+                    t.deliver(RelayMessage.Recv(Base64Url.decodeStrict(stampAs[dev] ?: dev)!!, m.session, m.noise))
                 }
             }
 
@@ -204,8 +207,10 @@ internal class TestWorld(val signer: TestSigner = TestSigner()) {
         Device(id, port, keys.signKey, keys.agreeKey)
     }
 
+    val idC = "CCCCDDDDEEEEFFFFGGGGHHHHAAAABBBB"
     val a = device(idA)
     val b = device(idB)
+    val c = device(idC)
 
     fun ring(devs: List<Device>, epoch: Long, subject: String = sub): String = signer.sign(
         "pkey-ring+jws",
@@ -232,7 +237,7 @@ internal class TestWorld(val signer: TestSigner = TestSigner()) {
         ),
     )
 
-    val ring = ring(listOf(a, b), 1)
+    val ring = ring(listOf(a, b, c), 1)
 
     @Volatile var now = now0
 
@@ -249,7 +254,7 @@ internal class TestWorld(val signer: TestSigner = TestSigner()) {
         )
         return PeerSource(
             slug = "djdl", trust = signer.trust, sub = sub, deviceId = d.id, certificate = cert, certificateExpiresAt = certExp,
-            ring = ringJws, ringEpoch = ringEpoch, roster = listOf(idA, idB), discovery = DiscoveryKeys(keys, null),
+            ring = ringJws, ringEpoch = ringEpoch, roster = listOf(idA, idB, idC), discovery = DiscoveryKeys(keys, null),
             agreePublic = Base64Url.decodeStrict(d.agreeKey)!!, keys = d.port,
         )
     }

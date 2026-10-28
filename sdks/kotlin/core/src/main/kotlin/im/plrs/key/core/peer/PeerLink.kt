@@ -82,8 +82,8 @@ public class LinkRefused(public val closeCode: String) : Exception("peer not adm
 
 /** What a link reports. [onEstablished] returns the host object that [PeerLink.opened] resolves to. */
 public class LinkHandlers<H>(
-    public val onEstablished: (PeerLink<H>, SessionEvent.Established) -> H,
-    public val onRecord: (PeerLink<H>, Int, ByteArray) -> Unit = { _, _, _ -> },
+    public val onEstablished: (PeerLinkPort, SessionEvent.Established) -> H,
+    public val onRecord: (PeerLinkPort, Int, ByteArray) -> Unit = { _, _, _ -> },
     public val onRing: (String, Long) -> Unit = { _, _ -> },
     public val onTrust: (String) -> Unit = {},
     public val onRingWanted: () -> Unit = {},
