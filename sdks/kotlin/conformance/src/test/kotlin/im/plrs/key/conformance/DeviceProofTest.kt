@@ -1,3 +1,4 @@
+// @pkey-feature core.devicekeys
 package im.plrs.key.conformance
 
 import im.plrs.key.core.Base64Url

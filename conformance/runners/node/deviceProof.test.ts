@@ -1,3 +1,4 @@
+// @pkey-feature core.devicekeys
 // The Node conformance runner for `conformance/corpus/v2/device-proof.json` (WIRE-CONTRACT-V5
 // §12.11.1, §15.8). It covers React too, since both JS SDKs share `@polaris-key/client-core`.
 //
