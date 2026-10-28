@@ -144,6 +144,14 @@ function gcmOpen(
   }
 }
 
+/**
+ * The `k` a value envelope is bound to (§13.10.4): a merge member's is `setting ‖ U+0000 ‖ member`,
+ * so one setting's member cannot be served as another's; an open key's `k` is the key itself.
+ */
+export function refMemberName(setting: string, member: string): string {
+  return `${setting}\u0000${member}`;
+}
+
 /** `pkey-sync-value/1` seal with a given salt (§13.10.4). */
 export function refSealValue(
   root: Uint8Array,
