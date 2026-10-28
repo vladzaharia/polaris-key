@@ -36,6 +36,10 @@
 //     is kept per partition in the persisted state, only ever lowered, and held at or below the
 //     lowest version this machine has itself pushed sealed or opened sealed. A host that supplies
 //     no `seq` leaves every plaintext row invalid.
+//     Three more guards keep a hostile Worker's plaintext row from posing as legacy data: a change
+//     at or below the request's cursor (above 0) is ignored; a plaintext row needs a request
+//     cursor below `encryptionSince`; and a key ever pushed or opened sealed (`sealedKeys`,
+//     persisted, bounded, kept across a snapshot reset) refuses plaintext. Threat T26.
 //   - `max` and `min` are decided here: on `conflict` the server copy is taken, and a better local
 //     value is re-pushed on the server's `version` (origin `merge`), with no prompt.
 //
@@ -226,7 +230,14 @@ interface Partition {
   encryptionSince?: number;
   /** E2E: the lowest version this machine has pushed sealed or opened sealed. */
   sealedFloor?: number;
+  /** E2E: keys (`s:<server key>`, `r:<collection/id>`) this machine has ever pushed or opened
+   *  sealed. A plaintext row for one is bad. Survives a snapshot reset; bounded to
+   *  `SEALED_LATCH_MAX`, oldest first out. */
+  sealedKeys?: Record<string, true>;
 }
+
+/** The most keys a partition's "ever sealed" latch holds. */
+const SEALED_LATCH_MAX = 4096;
 
 type Blocked =
   | null
@@ -1774,7 +1785,23 @@ export class CloudSyncMachine {
     for (let i = 0; i < changes.length; i++) {
       const c = changes[i];
       if (!isObject(c) || typeof c.version !== "number") continue;
-      const bad = this.rowBad(p, c.version, opened.changes?.[i]);
+      // E2E guard (a): inside one partition a served change is newer than the cursor the request
+      // carried, so an older one is a replay or a forgery. Only a snapshot (cursor 0) has no floor.
+      if (this.requiresE2e() && req.cursor > 0 && c.version <= req.cursor)
+        continue;
+      const latchKey =
+        typeof c.setting === "string"
+          ? `s:${c.setting}`
+          : Array.isArray(c.record) && c.record.length === 2
+            ? `r:${recordKey(String(c.record[0]), String(c.record[1]))}`
+            : "";
+      const bad = this.rowBad(
+        p,
+        latchKey,
+        c.version,
+        opened.changes?.[i],
+        req.cursor,
+      );
       if (typeof c.setting === "string") {
         p.settings[c.setting] = {
           value: clone(c.value ?? null),
@@ -1827,23 +1854,35 @@ export class CloudSyncMachine {
    */
   private rowBad(
     p: Partition,
+    latchKey: string,
     version: number,
     open: OpenedRow | undefined,
+    cursor?: number,
   ): { bad?: true; plain?: number } {
     if (!this.requiresE2e()) return {};
     if (open?.invalid === true) return { bad: true };
     if (open?.sealed === true) {
-      this.noteSealed(p, version);
+      this.noteSealed(p, version, latchKey);
       return {};
     }
-    return typeof open?.seq === "number" && Number.isFinite(open.seq)
-      ? { plain: open.seq }
-      : { bad: true };
+    if (typeof open?.seq !== "number" || !Number.isFinite(open.seq))
+      return { bad: true };
+    // Guard (c): a key this machine has seen sealed never reads as legacy plaintext.
+    if (latchKey !== "" && p.sealedKeys?.[latchKey] === true)
+      return { bad: true };
+    // Guard (b): legacy only if the request's cursor was still below the boundary.
+    if (
+      cursor !== undefined &&
+      (p.encryptionSince === undefined || cursor >= p.encryptionSince)
+    )
+      return { bad: true };
+    return { plain: open.seq };
   }
 
   /** A conflict's `server` copy as a held row. */
   private copyRow(
     p: Partition,
+    latchKey: string,
     server: { [k: string]: Json },
     open: OpenedRow | undefined,
   ): Versioned {
@@ -1851,7 +1890,7 @@ export class CloudSyncMachine {
     return {
       value: clone(server.value ?? null),
       version,
-      ...this.rowBad(p, version, open),
+      ...this.rowBad(p, latchKey, version, open),
     };
   }
 
@@ -1865,8 +1904,18 @@ export class CloudSyncMachine {
 
   /** This machine pushed, or opened, a sealed row at `version`: no plaintext at or above it is
    *  legacy, whatever a Worker serves. */
-  private noteSealed(p: Partition, version: number): void {
+  private noteSealed(p: Partition, version: number, latchKey = ""): void {
     if (!this.requiresE2e() || !Number.isFinite(version)) return;
+    if (latchKey !== "") {
+      const keys = (p.sealedKeys ??= {});
+      if (keys[latchKey] !== true) {
+        keys[latchKey] = true;
+        const all = Object.keys(keys);
+        if (all.length > SEALED_LATCH_MAX)
+          for (const k of all.slice(0, all.length - SEALED_LATCH_MAX))
+            delete keys[k];
+      }
+    }
     p.sealedFloor = Math.min(p.sealedFloor ?? version, version);
     if (p.encryptionSince !== undefined)
       p.encryptionSince = Math.min(p.encryptionSince, p.sealedFloor);
@@ -1907,7 +1956,7 @@ export class CloudSyncMachine {
         typeof r.renamedTo === "string" ? r.renamedTo : this.alias(key);
       if (op.moved) overrides.set(key, "merge");
       if (status === "ok" && typeof r.version === "number")
-        this.noteSealed(p, r.version);
+        this.noteSealed(p, r.version, `s:${serverKey}`);
       if (status === "ok") {
         if (r.dropped === true) {
           overrides.set(key, "migration");
@@ -1929,6 +1978,7 @@ export class CloudSyncMachine {
         if (typeof server.version === "number") {
           const sbad = (p.settings[serverKey] = this.copyRow(
             p,
+            `s:${serverKey}`,
             server,
             opened.conflicts?.[op.mutationId],
           ));
@@ -1966,7 +2016,7 @@ export class CloudSyncMachine {
     let rebaseOn: number | "*" | null = null;
     let rebaseValue: Json | undefined;
     if (status === "ok" && typeof r.version === "number") {
-      this.noteSealed(p, r.version);
+      this.noteSealed(p, r.version, `r:${rk}`);
       const value = applyRecordOp(p.records[rk]?.value, op);
       if (value !== undefined) p.records[rk] = { value, version: r.version };
       if (rk in p.held) rebaseOn = r.version;
@@ -1975,6 +2025,7 @@ export class CloudSyncMachine {
       if (typeof server.version === "number") {
         const sbad = (p.records[rk] = this.copyRow(
           p,
+          `r:${rk}`,
           server,
           opened.conflicts?.[op.mutationId],
         ));
