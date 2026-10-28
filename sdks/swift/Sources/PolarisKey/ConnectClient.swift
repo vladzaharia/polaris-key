@@ -357,7 +357,7 @@ public actor ConnectClient {
 
     // ── Relay ticket, peer source, pushed roster (CC-11.4) ───────────────────────────────
 
-    private static let ticketShape = try! NSRegularExpression(pattern: #"^pkeyrt_[A-Za-z0-9_-]{32}$"#)
+    private static let ticketShape = try! NSRegularExpression(pattern: #"\Apkeyrt_[A-Za-z0-9_-]{32}\z"#)
 
     /// `POST /<p>/connect/relay/ticket`: a single-use `pkeyrt_` ticket for the WebSocket. A new one
     /// every call. The four relay refusals come back typed; see `ConnectRelayTicketResult`.
