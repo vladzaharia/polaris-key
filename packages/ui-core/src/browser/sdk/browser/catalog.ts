@@ -36,7 +36,11 @@ export async function fetchCatalog(
       headers: { accept: "application/json", ...(opts.headers ?? {}) },
     });
     if (!res.ok) return null;
-    const body: unknown = await res.json();
+    // Read under a byte cap: an answer past it is not a catalog.
+    const { readCappedText } = await import("./boundedBody.js");
+    const text = await readCappedText(res);
+    if (text === null) return null;
+    const body: unknown = JSON.parse(text);
     return isCatalog(body) ? body : null;
   } catch {
     return null;

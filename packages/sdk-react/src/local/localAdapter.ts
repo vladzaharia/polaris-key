@@ -80,6 +80,10 @@ import {
 import { createStore, type Store } from "../core/store.js";
 import type { ChoiceNamespace } from "../core/choice.js";
 import type { AutoSignInResult, SignInNamespace } from "../core/signIn.js";
+import {
+  unsupportedCloudSync,
+  type CloudSyncClient,
+} from "../core/cloudSync.js";
 import { unsupportedKeyring, type KeyringClient } from "../core/keyring.js";
 import {
   unsupportedCloudConnect,
@@ -467,6 +471,12 @@ export class LocalAdapter implements PolarisAdapter {
   readonly keyring: KeyringClient = unsupportedKeyring(
     "runtime",
     "A local-only page holds no device token, so it has no Cloud Sync key ring.",
+  );
+
+  /** Cloud Sync for settings (sync.settings): the typed N/A here (D-6). */
+  readonly cloudSync: CloudSyncClient = unsupportedCloudSync(
+    "runtime",
+    "A local-only page holds no device token, so it has no Cloud Sync.",
   );
 
   /** Cloud Connect (connect.app): the typed N/A here. */

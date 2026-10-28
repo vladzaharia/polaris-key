@@ -1734,16 +1734,18 @@ export class BearerSession {
   // ── Cloud Sync key ring and device keys (sync.keyring, U-38.2) ──────────────────────────────
 
   /**
-   * One authenticated request under `/<p>/` for the key ring engine: the device bearer and the
+   * One authenticated request under `/<p>/` for the key ring engine and the Cloud Sync host
+   * (`keepalive` lets the last flush of a closing page finish): the device bearer and the
    * seven `X-PKey-*` headers, no cookie. The caller reads the status; nothing here logs a body.
    */
   async ringRequest(
     path: string,
-    init: { method: string; body?: string },
+    init: { method: string; body?: string; keepalive?: boolean },
   ): Promise<Response> {
     await this.init();
     return this.send(path, {
       method: init.method,
+      ...(init.keepalive ? { keepalive: true } : {}),
       headers: this.headers({
         authorization: `Bearer ${this.requireToken()}`,
         ...(init.body !== undefined
