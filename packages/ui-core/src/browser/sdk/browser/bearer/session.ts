@@ -60,6 +60,9 @@ import {
   type TrustManifestResult,
 } from "@polaris-key/client-core";
 import { reloadBundle, type CachedBundle } from "../offline.js";
+import type { ExchangeDiscovery } from "../discovery.js";
+import type { BrowserStore, TokenProvenance } from "./store.js";
+import type { ExchangeOptions, ExchangeOutcome } from "./exchange.js";
 import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import {
   HEADER_ARCH,
@@ -117,6 +120,7 @@ import {
 import { UnsupportedError } from "../../core/caps.js";
 import {
   choiceRefusal,
+  type ChoiceCompleteOptions,
   isChoiceCount,
   isLicenseChoiceView,
   isReplaceView,
@@ -349,6 +353,9 @@ export interface BearerSessionOptions {
   /** The `choice*` endpoints discovery named (`identity.endpoints`). A choice call whose endpoint
    *  is absent answers the typed unavailable and dials nothing; the default answers none. */
   choiceEndpoints?: () => ChoiceEndpoints | null;
+  /** The platform sign-in discovery named (`identity.exchange`, `nonce`, `token`). An exchange
+   *  with none answers `unavailable` and dials nothing; the default answers none. */
+  exchangeEndpoints?: () => ExchangeDiscovery | null;
   /** Conformance replay only: the exact `state` and verifier of a recorded conversation. */
   redirectEntropy?: () => { state?: string; codeVerifier?: string };
   /** A hashed hardware fingerprint. A browser has none; the default answers null. */
@@ -417,6 +424,8 @@ export class BearerSession {
   private deviceIdValue = "";
   private token: string | null = null;
   private tokenSource: TokenSource | null = null;
+  /** Persisted beside the token: only "signin" is a signed-in account (rung 1). */
+  private provenanceValue: TokenProvenance | null = null;
   private record: CacheRecordV3 | null = null;
   private license: Held<LicenseDoc> | null = null;
   private config: Held<ConfigDoc> | null = null;
@@ -466,6 +475,10 @@ export class BearerSession {
   }
 
   /** How the current token was obtained in this page; null after a reload. */
+  get provenance(): TokenProvenance | null {
+    return this.token === null ? null : this.provenanceValue;
+  }
+
   get source(): TokenSource | null {
     return this.tokenSource;
   }
@@ -525,6 +538,12 @@ export class BearerSession {
     );
   }
 
+  /** The effective trust set, for documents verified outside the session (Connect's roster and
+   *  certificate). */
+  effectiveTrust(): TrustSet {
+    return this.trust;
+  }
+
   /** Record a verified manifest's new tombstones, with the manifest as their evidence. */
   private noteRevocations(jws: string, revokedPins: readonly string[]): void {
     if (revokedPins.length === 0) return;
@@ -567,6 +586,12 @@ export class BearerSession {
     this.deviceIdValue = await s.getDeviceId();
     this.token = await s.getToken();
     this.tokenSource = null;
+    this.provenanceValue =
+      this.token === null
+        ? null
+        : ((await this.store()
+            .provenance?.get()
+            .catch(() => null)) ?? null);
     this.discovered = {};
     this.manifestIssuedAt = undefined;
     this.license = null;
@@ -682,7 +707,12 @@ export class BearerSession {
     return `${this.opts.baseUrl}/${this.opts.product}/${path}`;
   }
 
-  private async send(path: string, init: RequestInit): Promise<Response> {
+  private send(path: string, init: RequestInit): Promise<Response> {
+    return this.sendTo(this.url(path), init);
+  }
+
+  /** `fetch` with no ambient credential and the request deadline, to an absolute URL. */
+  private async sendTo(url: string, init: RequestInit): Promise<Response> {
     // Bearer mode never sends an ambient credential: no cookie, ever. Every request carries a
     // deadline (Node's 15 s), so a hung connection fails like a dropped one instead of
     // stalling the sync forever. Like `AbortSignal.timeout`, it also covers reading the body.
@@ -694,14 +724,33 @@ export class BearerSession {
           : new Error("The request timed out."),
       );
     }, REQUEST_TIMEOUT_MS);
-    return this.opts.fetchImpl(this.url(path), {
+    return this.opts.fetchImpl(url, {
       credentials: "omit",
       signal: deadline.signal,
       ...init,
     });
   }
 
-  private async setToken(token: string, source: TokenSource): Promise<void> {
+  private store(): Partial<BrowserStore> {
+    return this.opts.store as Partial<BrowserStore>;
+  }
+
+  private async setToken(
+    token: string,
+    source: TokenSource,
+    keepProvenance = false,
+  ): Promise<void> {
+    const keep = keepProvenance || source === "reacquire";
+    // A rotation keeps what the token already was; every other source says what it is now.
+    const next: TokenProvenance | null =
+      source === "signin"
+        ? "signin"
+        : source === "register"
+          ? "register"
+          : keep
+            ? this.provenanceValue
+            : "key";
+    if (!keep) this.provenanceValue = null;
     // A token just arrived from the server, so it is reachable: drop any sync backoff.
     this.syncFailures = 0;
     this.syncNotBefore = 0;
@@ -709,7 +758,11 @@ export class BearerSession {
     this.token = token;
     this.tokenSource = source;
     try {
+      // Cleared first and written last: a crash between leaves "not signed in", never a stale yes.
+      if (!keep) await this.store().provenance?.set(null);
       await this.opts.store.setToken(token);
+      if (!keep) await this.store().provenance?.set(next);
+      this.provenanceValue = next;
     } catch (e) {
       throw new PolarisError(
         "store-failed",
@@ -878,6 +931,7 @@ export class BearerSession {
     this.subjectValue = null;
     this.token = null;
     this.tokenSource = null;
+    this.provenanceValue = null;
     this.mints.clear();
     await this.opts.store.clearToken().catch(() => undefined);
     const carried: Partial<CacheRecordV3> = {};
@@ -985,7 +1039,16 @@ export class BearerSession {
         "sign-out answered without `released`.",
       );
     if (b.released) await this.wipeLocal();
-    else this.subjectValue = null;
+    else {
+      this.subjectValue = null;
+      // The device keeps its token but is no longer the person's sign-in.
+      this.provenanceValue = "key";
+      try {
+        await this.store().provenance?.set("key");
+      } catch {
+        // The in-memory value holds for this page; a stale "signin" is the store's to fail closed.
+      }
+    }
     return { released: b.released };
   }
 
@@ -1025,7 +1088,8 @@ export class BearerSession {
         "bad_response",
         "attach answered without a token.",
       );
-    await this.setToken(b.token, "activate");
+    // Attaching never upgrades what the token was: a sign-out may have downgraded it.
+    await this.setToken(b.token, "activate", true);
     this.subjectValue = isString(b.subject) ? b.subject : null;
     return {
       kind: "ok",
@@ -1152,11 +1216,15 @@ export class BearerSession {
    *  `license_choice_required`) leaves the grant open. */
   async choiceComplete(
     grant: string,
-    choice: LicenseChoice,
+    choice?: LicenseChoice,
+    opts: ChoiceCompleteOptions = {},
   ): Promise<ChoiceCompleteResult> {
     const { res, json } = await this.choicePost("choiceComplete", {
       grant,
-      choice,
+      ...(choice ? { choice } : {}),
+      ...(opts.consent
+        ? { consent: { claims: [...opts.consent.claims] } }
+        : {}),
     });
     if (res.status !== 200) return this.refused(res, json);
     const answer = parseTokenAnswer(200, json);
@@ -1189,7 +1257,7 @@ export class BearerSession {
       subject: answer.subject,
       scope: answer.scope,
       ...(keyEntries ? { keyEntries } : {}),
-      ...(choice.kind === "keep" ? { attachable: true as const } : {}),
+      ...(choice?.kind === "keep" ? { attachable: true as const } : {}),
     };
   }
 
@@ -1198,6 +1266,53 @@ export class BearerSession {
     const { res, json } = await this.choicePost("choiceCancel", { grant });
     if (res.status === 204 || res.status === 200) return { kind: "ok" };
     return this.refused(res, json);
+  }
+
+  // ── The platform sign-in (identity.exchange, WIRE-CONTRACT-V5 §12.11.2-.3) ─────────────────
+
+  /**
+   * Sign in with a platform identity: a fresh nonce, the provider's token for it, the token
+   * exchange with the `exchange` proof. A token is stored like any sign-in; every other answer
+   * comes back as an outcome (`exchange.ts`). The nonce is spent by the attempt.
+   */
+  async exchange(
+    port: DeviceKeyPort,
+    opts: ExchangeOptions,
+  ): Promise<ExchangeOutcome> {
+    await this.init();
+    // Lazy: the exchange is the ladder's rung, not the first paint's.
+    const { runExchange } = await import("./exchange.js");
+    return runExchange(
+      {
+        product: this.opts.product,
+        deviceId: this.deviceIdValue,
+        endpoints: this.opts.exchangeEndpoints?.() ?? null,
+        identityEnabled: this.opts.enabled("identity"),
+        headers: (extra) => this.headers(extra),
+        baseUrl: this.opts.baseUrl,
+        send: (url, init) => this.sendTo(url, init),
+        now: () => this.now(),
+        accept: async (token, subject) => {
+          if (opts.mayStore && !(await opts.mayStore()))
+            throw Object.assign(new Error("the sign-in was abandoned."), {
+              name: "ExchangeAborted",
+            });
+          await this.setToken(token, "signin");
+          this.subjectValue = subject;
+          // The session is stored: a sync failure is reported beside the sign-in, not instead.
+          try {
+            await this.syncAfterSignIn();
+          } catch (e) {
+            return e instanceof PolarisError
+              ? e
+              : new PolarisError(ErrorCode.networkError, (e as Error).message);
+          }
+          return null;
+        },
+      },
+      port,
+      opts,
+    );
   }
 
   // ── The §5 single re-acquire ─────────────────────────────────────────────────────────────
@@ -1328,6 +1443,52 @@ export class BearerSession {
    * (WIRE-CONTRACT-V4 §2.3).
    */
   private async refreshTrust(): Promise<string | null> {
+    return this.trustLocked(() => this.refreshTrustNow());
+  }
+
+  /** One manifest change at a time: a refresh and a peer's manifest do not interleave. */
+  private trustLock: Promise<unknown> = Promise.resolve();
+  private trustLocked<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.trustLock.then(fn, fn);
+    this.trustLock = run.catch(() => undefined);
+    return run;
+  }
+
+  /**
+   * A trust manifest a connected peer pushed (Connect, WIRE-CONTRACT-V5 §15.5): verified against
+   * the usable pins under the rules the Worker's own manifest meets (signed by a usable pin, bound
+   * to this product, fresh, newer than the one held: anti-rollback) and installed under the trust
+   * lock, then persisted in the same slice a sync writes. Refused with the reason otherwise.
+   */
+  acceptPeerTrust(
+    jws: string,
+  ): Promise<{ applied: true } | { applied: false; reason: string }> {
+    return this.trustLocked(async () => {
+      await this.init();
+      const m = await verifyTrustManifest(jws, {
+        pinned: this.opts.pinned,
+        tombstones: this.tombstones,
+        expectedAud: this.opts.product,
+        now: this.now(),
+      });
+      if (!m.doc) return { applied: false as const, reason: "invalid" };
+      if (
+        this.manifestIssuedAt !== undefined &&
+        m.doc.issuedAt <= this.manifestIssuedAt
+      )
+        return { applied: false as const, reason: "not_newer" };
+      this.installManifest(jws, m);
+      await this.writeRecord({
+        trustJws: jws,
+        ...(Object.keys(this.evidence).length > 0
+          ? { pinRevocations: { ...this.evidence } }
+          : {}),
+      });
+      return { applied: true as const };
+    });
+  }
+
+  private async refreshTrustNow(): Promise<string | null> {
     const fetchManifest = async (signer: string | null) => {
       const res = await this.send(
         signer === null

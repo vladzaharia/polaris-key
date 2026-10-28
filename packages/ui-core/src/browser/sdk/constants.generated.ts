@@ -2055,9 +2055,9 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.saves": { status: "planned", service: "sync", na: [] },
   "sync.keyring": { status: "implemented", service: "sync", na: [] },
   "sync.e2e": { status: "planned", service: "sync", na: [] },
-  "connect.identity": { status: "planned", service: "connect", na: [] },
-  "connect.noise": { status: "planned", service: "connect", na: [] },
-  "connect.protocol": { status: "planned", service: "connect", na: [] },
+  "connect.identity": { status: "implemented", service: "connect", na: [] },
+  "connect.noise": { status: "implemented", service: "connect", na: [] },
+  "connect.protocol": { status: "implemented", service: "connect", na: [] },
   "connect.lan": {
     status: "na",
     service: "connect",
@@ -2066,7 +2066,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "connect.relay": { status: "planned", service: "connect", na: [] },
+  "connect.relay": { status: "implemented", service: "connect", na: [] },
   "connect.links": {
     status: "na",
     service: "connect",
@@ -2076,7 +2076,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     ],
   },
   "connect.transfer": { status: "planned", service: "connect", na: [] },
-  "connect.app": { status: "planned", service: "connect", na: [] },
+  "connect.app": { status: "implemented", service: "connect", na: [] },
   "devices.fingerprint": {
     status: "na",
     service: "core",
@@ -2132,7 +2132,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [],
   },
   "identity.exchange": {
-    status: "planned",
+    status: "implemented",
     service: "identity",
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
@@ -2326,4 +2326,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "d55678f4ea0da2241529adf1a668bdd19bb361ad07a9a3be0f9558f14dd2b8e7";
+  "b0819878fb65be178e93d884f7e219d56c3182088709b3241f8cba126eb391f7";
