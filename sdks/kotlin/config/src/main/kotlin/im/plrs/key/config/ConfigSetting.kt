@@ -28,8 +28,11 @@ public class ConfigSubscription internal constructor(private val onCancel: () ->
 /** The shared, mutable side of one key's handle; `ConfigClient` keeps one per key. */
 internal class SettingState {
     val value = MutableStateFlow<JsonElement?>(null)
+
     @Volatile var source: ConfigSource = ConfigSource.fallback
+
     @Volatile var locked: Boolean = false
+
     @Volatile var visibility: String = SettingVisibility.editable
     val listeners = CopyOnWriteArrayList<(ConfigChange) -> Unit>()
 
@@ -46,11 +49,7 @@ internal class SettingState {
 }
 
 /** A handle on one key: `client.config.setting(key)`. */
-public class ConfigSetting internal constructor(
-    public val key: String,
-    private val client: ConfigClient,
-    private val state: SettingState,
-) {
+public class ConfigSetting internal constructor(public val key: String, private val client: ConfigClient, private val state: SettingState) {
     /** The effective value; null when no layer has one (the source is then `fallback`). */
     public val value: JsonElement? get() = state.value.value
 

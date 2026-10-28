@@ -350,7 +350,7 @@ public fun PolarisRecoveryCodeScreen(
                 // The box grows with the text size, so it stays in proportion to its label at large type.
                 val grow = LocalDensity.current.fontScale.coerceIn(1f, 2f)
                 Checkbox(checked = saved, onCheckedChange = null, modifier = Modifier.scale(grow))
-                Spacer(Modifier.width(12.dp + 8.dp * (grow - 1f)))
+                Spacer(Modifier.width(PolarisSpace.controls + PolarisSpace.tight * (grow - 1f)))
                 Text(
                     lines.text("recoveryCode.saved").orEmpty(),
                     style = MaterialTheme.typography.bodyLarge,
@@ -383,7 +383,7 @@ private fun PolarisCodeGrid(groups: List<String>, lines: KitLines) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     val gap = PolarisSpace.medium
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(16.dp)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(PolarisSpace.medium)) {
         val groupWidth = with(density) { groups.maxOf { measurer.measure(it, style).size.width }.toDp() }
         val perRow = listOf(4, 2).firstOrNull { groupWidth * it + gap * (it - 1) <= maxWidth } ?: 1
         // Spoken as the catalog line with the groups apart, not as one run of characters.
@@ -526,7 +526,7 @@ private fun PolarisSyncStep(
 private fun PolarisErrorLine(text: String) {
     Row(
         Modifier.fillMaxWidth().semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Assertive },
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls),
         verticalAlignment = Alignment.Top,
     ) {
         Icon(PolarisSymbols.Warning, contentDescription = null, tint = PolarisTheme.status.danger, modifier = Modifier.size(20.dp))

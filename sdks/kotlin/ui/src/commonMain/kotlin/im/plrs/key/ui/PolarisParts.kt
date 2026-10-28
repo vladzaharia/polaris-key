@@ -57,8 +57,7 @@ import kotlinx.coroutines.launch
 /** The catalog lines of one [KitScreen], formatted for one locale, with the dangling ones left out. */
 internal class KitLines(private val screen: KitScreen, private val catalog: KitCopy, private val locale: String) {
     /** The formatted line [key], or null when the screen does not carry it or would show an unfilled argument. */
-    fun text(key: String): String? =
-        screen.copy.firstOrNull { it.key == key }?.takeUnless(catalog::isDangling)?.let { catalog.format(it, locale) }
+    fun text(key: String): String? = screen.copy.firstOrNull { it.key == key }?.takeUnless(catalog::isDangling)?.let { catalog.format(it, locale) }
 
     fun has(key: String): Boolean = text(key) != null
 
@@ -100,7 +99,9 @@ public fun PolarisLicenseChoice(
 ) {
     val lines = remember(screen, catalog, locale) { KitLines(screen, catalog, locale) }
     val firstFree = choices.choices.firstOrNull { !it.isFull }?.id
-    var selected by rememberSaveable(choices) { mutableStateOf(choices.preselected?.takeIf { id -> choices.choices.any { it.id == id && !it.isFull } } ?: firstFree) }
+    var selected by rememberSaveable(choices) {
+        mutableStateOf(choices.preselected?.takeIf { id -> choices.choices.any { it.id == id && !it.isFull } } ?: firstFree)
+    }
     val theme = PolarisTheme.current
     val developer = theme.developer ?: productName(theme.copy) ?: ""
     val product = productName(theme.copy).orEmpty()
@@ -129,7 +130,7 @@ public fun PolarisLicenseChoice(
                 val outer = MaterialTheme.shapes.medium
                 choices.choices.forEachIndexed { i, choice ->
                     if (i > 0 && connected) Spacer(Modifier.height(PolarisConnectedGap))
-                    if (i > 0 && !connected) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                    if (i > 0 && !connected) HorizontalDivider(Modifier.padding(horizontal = PolarisSpace.medium), color = MaterialTheme.colorScheme.outlineVariant)
                     PolarisLicenseRow(
                         choice = choice,
                         title = choice.name ?: product.ifEmpty { choice.tierName },
@@ -218,12 +219,20 @@ internal fun PolarisLicenseRow(
     } else {
         base.selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
     }
-    Row(clickable.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(clickable.padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.controls), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(PolarisSpace.tight),
+                verticalArrangement = Arrangement.spacedBy(PolarisSpace.hairline),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
                 if (choice.tierName.isNotBlank()) KitTag(choice.tierName)
-                if (seats != null) Text(seats, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"), color = scheme.onSurfaceVariant)
+                if (seats !=
+                    null
+                ) {
+                    Text(seats, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"), color = scheme.onSurfaceVariant)
+                }
                 if (tag != null) Text(tag, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
             }
             choice.seats?.takeIf { it.limit > 0 }?.let { s ->
@@ -231,14 +240,17 @@ internal fun PolarisLicenseRow(
                     used = s.used,
                     limit = s.limit,
                     caption = null,
-                    description = lines.format("a11y.seatMeter", mapOf("used" to CopyArgument.Number(s.used), "limit" to CopyArgument.Number(s.limit))),
+                    description = lines.format(
+                        "a11y.seatMeter",
+                        mapOf("used" to CopyArgument.Number(s.used), "limit" to CopyArgument.Number(s.limit)),
+                    ),
                     modifier = Modifier.width(112.dp),
                 )
             }
             Text(meta, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
         }
         if (selected) {
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(PolarisSpace.controls))
             Icon(PolarisSymbols.Check, contentDescription = null, tint = PolarisTheme.accentText, modifier = Modifier.size(24.dp))
         }
     }
@@ -247,8 +259,12 @@ internal fun PolarisLicenseRow(
 /** The quiet neutral tag of the kit (`k-tag`: 12 px 500, full radius, the strongest text at 9 %). */
 @Composable
 internal fun KitTag(text: String) {
-    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f), contentColor = MaterialTheme.colorScheme.onSurface) {
-        Text(text, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Text(text, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = PolarisSpace.tight, vertical = 2.dp))
     }
 }
 
@@ -279,6 +295,7 @@ public fun PolarisPaywall(
     val copy = PolarisTheme.copy
     when (screen.state) {
         "loading" -> PolarisProgressScreen(lines.text("common.loading") ?: copy.loading, modifier)
+
         "purchased" -> PolarisMessageLayout(
             modifier = modifier,
             emblem = { PolarisIconBadge(PolarisSymbols.Check, PolarisTheme.status.successContainer, PolarisTheme.status.success) },
@@ -286,6 +303,7 @@ public fun PolarisPaywall(
             body = null,
             actions = { PolarisPrimaryButton(lines.text("common.done").orEmpty(), onDone, initialFocus = true) },
         )
+
         else -> PolarisScreen(
             modifier = modifier,
             showLogo = false,
@@ -293,15 +311,19 @@ public fun PolarisPaywall(
                 val busy = screen.state == "purchasing" || screen.state == "restore"
                 when (screen.state) {
                     "purchasing" -> PolarisPrimaryButton(lines.text("paywall.purchasing").orEmpty(), onClick = {}, busy = true)
+
                     "restore" -> PolarisSecondaryButton(lines.text("paywall.restore").orEmpty(), onClick = {}, busy = true)
+
                     else -> {
                         lines.text("paywall.upgrade")?.let { PolarisPrimaryButton(it, onUpgrade, initialFocus = true) }
                         lines.text("paywall.portal")?.let { PolarisPrimaryButton(it, onPortal, initialFocus = true, external = true) }
                     }
                 }
-                if (!busy) lines.text("paywall.redeem")?.let {
-                    Spacer(Modifier.height(PolarisSpace.controls))
-                    PolarisTextButton(it, onRedeem)
+                if (!busy) {
+                    lines.text("paywall.redeem")?.let {
+                        Spacer(Modifier.height(PolarisSpace.controls))
+                        PolarisTextButton(it, onRedeem)
+                    }
                 }
             },
         ) {
@@ -312,9 +334,9 @@ public fun PolarisPaywall(
                 Spacer(Modifier.height(polarisWindow.section))
                 PolarisSection(title = includes) {
                     for (feature in features) {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.Top) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.tight), verticalAlignment = Alignment.Top) {
                             Icon(PolarisSymbols.Check, contentDescription = null, tint = PolarisTheme.accentText, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(PolarisSpace.controls))
                             Text(feature, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
@@ -361,14 +383,19 @@ public fun PolarisReleaseNotes(
         PolarisProductHeader()
         when (screen.state) {
             "error" -> PolarisBody(lines.text("releaseNotes.error").orEmpty())
+
             "empty" -> PolarisBody(lines.text("releaseNotes.empty").orEmpty())
+
             else -> {
                 PolarisTitle(lines.text("releaseNotes.title") ?: "")
                 Spacer(Modifier.height(polarisWindow.section))
                 notes.forEachIndexed { i, note ->
                     if (i > 0) Spacer(Modifier.height(PolarisSpace.controls))
                     PolarisSection(title = null) {
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(
+                            Modifier.fillMaxWidth().padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.tight),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
                             // The date wraps under the version when they do not fit one line, so no word is cut (DL11).
                             FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
@@ -420,9 +447,11 @@ public fun PolarisEntitlementGate(
 ) {
     when (entitled) {
         true -> content()
-        null -> Row(modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.Center) {
+
+        null -> Row(modifier.fillMaxWidth().padding(PolarisSpace.medium), horizontalArrangement = Arrangement.Center) {
             PolarisProgress(PolarisTheme.copy.loading)
         }
+
         false -> if (locked != null) locked() else PolarisEntitlementLocked(tier, modifier, onUnlock)
     }
 }
@@ -453,12 +482,12 @@ public fun PolarisEntitlementLocked(tier: String? = null, modifier: Modifier = M
         val base = Modifier.fillMaxWidth().heightIn(min = 52.dp)
         Row(
             (if (actsItself) base.clickable(role = Role.Button, onClick = onUnlock!!) else base)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.controls)
                 .semantics(mergeDescendants = true) {},
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(PolarisSymbols.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(PolarisSpace.controls))
             Text(
                 sentence ?: catalog.format("entitlement.unlock", locale),
                 style = MaterialTheme.typography.bodyLarge,
@@ -479,7 +508,12 @@ public fun PolarisEntitlementLocked(tier: String? = null, modifier: Modifier = M
 
 /** What Cloud Sync is doing (UI-KITS.md 4.1 CloudSyncStatus). */
 public enum class PolarisCloudSync {
-    Synced, Syncing, Offline, Conflict, Error, SignedOut,
+    Synced,
+    Syncing,
+    Offline,
+    Conflict,
+    Error,
+    SignedOut,
 
     /** This device holds no sync key: it says so and offers Unlock sync (never a sync time). */
     Locked,
@@ -516,14 +550,30 @@ public fun PolarisCloudSyncStatus(
     val copy = PolarisTheme.copy
     val text = when (status) {
         PolarisCloudSync.Synced ->
-            if (syncedAtMillis != null) catalog.format("cloudSync.synced", locale, mapOf("time" to CopyArgument.Text(copy.ago(((nowMillis - syncedAtMillis) / 1000).coerceAtLeast(0)))))
-            else catalog.format("account.cloudSync", locale)
+            if (syncedAtMillis !=
+                null
+            ) {
+                catalog.format(
+                    "cloudSync.synced",
+                    locale,
+                    mapOf("time" to CopyArgument.Text(copy.ago(((nowMillis - syncedAtMillis) / 1000).coerceAtLeast(0)))),
+                )
+            } else {
+                catalog.format("account.cloudSync", locale)
+            }
+
         PolarisCloudSync.Syncing -> catalog.format("cloudSync.syncing", locale)
+
         PolarisCloudSync.Offline -> catalog.format("cloudSync.offline", locale)
+
         PolarisCloudSync.Conflict -> catalog.format("cloudSync.conflict", locale)
+
         PolarisCloudSync.Error -> catalog.format("cloudSync.error", locale)
+
         PolarisCloudSync.SignedOut -> catalog.format("cloudSync.signedOut", locale)
+
         PolarisCloudSync.Locked -> catalog.format("cloudSync.locked", locale)
+
         PolarisCloudSync.RingChanged -> catalog.format("cloudSync.ringChanged", locale)
     }
     val (glyph, tint) = when (status) {
@@ -539,14 +589,19 @@ public fun PolarisCloudSyncStatus(
         val row = Modifier.fillMaxWidth().heightIn(min = 52.dp)
         Row(
             (if (onOpen != null) row.clickable(role = Role.Button, onClick = onOpen) else row)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.controls)
                 .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
             verticalAlignment = Alignment.Top,
         ) {
             // The glyph sits on the first line of the label, not centred on a wrapped one (large fonts).
             val line = with(LocalDensity.current) { MaterialTheme.typography.bodyLarge.lineHeight.toDp() }
-            Icon(glyph, contentDescription = null, tint = tint, modifier = Modifier.padding(top = ((line - 20.dp) / 2).coerceAtLeast(0.dp)).size(20.dp))
-            Spacer(Modifier.width(12.dp))
+            Icon(
+                glyph,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.padding(top = ((line - 20.dp) / 2).coerceAtLeast(0.dp)).size(20.dp),
+            )
+            Spacer(Modifier.width(PolarisSpace.controls))
             Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface, modifier = Modifier.weight(1f))
         }
         val action = when {
@@ -557,7 +612,7 @@ public fun PolarisCloudSyncStatus(
             else -> null
         }
         if (action != null) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) { PolarisTextButton(action.first, action.second) }
+            Row(Modifier.fillMaxWidth().padding(horizontal = PolarisSpace.tight)) { PolarisTextButton(action.first, action.second) }
         }
     }
 }
@@ -613,7 +668,15 @@ public fun PolarisAbout(
     val name = productName(copy)
     PolarisScaffold(modifier = modifier, anchor = PolarisAnchor.Top, contentAlign = TextAlign.Start) {
         PolarisProductHeader()
-        PolarisTitle(if (name != null) catalog.format("about.title", locale, mapOf("product" to CopyArgument.Text(name))) else catalog.format("about.nav", locale))
+        PolarisTitle(
+            if (name !=
+                null
+            ) {
+                catalog.format("about.title", locale, mapOf("product" to CopyArgument.Text(name)))
+            } else {
+                catalog.format("about.nav", locale)
+            },
+        )
         Spacer(Modifier.height(PolarisSpace.tight))
         val version = catalog.format("about.version", locale, mapOf("version" to CopyArgument.Text(info.version)))
         PolarisBody(listOfNotNull(version, info.build?.takeIf { it.isNotBlank() }).joinToString(" · "))
@@ -631,9 +694,14 @@ public fun PolarisAbout(
                 },
             )
             rows.forEachIndexed { i, (label, external, action) ->
-                if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                if (i > 0) HorizontalDivider(Modifier.padding(horizontal = PolarisSpace.medium), color = MaterialTheme.colorScheme.outlineVariant)
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button, onClick = action).polarisExternalSemantics(external).padding(horizontal = 16.dp, vertical = 12.dp),
+                    Modifier.fillMaxWidth().heightIn(
+                        min = 52.dp,
+                    ).clickable(
+                        role = Role.Button,
+                        onClick = action,
+                    ).polarisExternalSemantics(external).padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.controls),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)

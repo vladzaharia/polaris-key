@@ -285,7 +285,9 @@ class SyncScreensTest {
         var startOver = 0
         var confirmed = 0
         show { PolarisUnlockSync(unlock("no-code"), onStartOver = { startOver++ }, onConfirmStartOver = { confirmed++ }) }
-        rule.onNodeWithText("This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over.").assertIsDisplayed()
+        rule.onNodeWithText(
+            "This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over.",
+        ).assertIsDisplayed()
         rule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
         rule.onNodeWithText("Start over").performClick()
         assertEquals(1, startOver)

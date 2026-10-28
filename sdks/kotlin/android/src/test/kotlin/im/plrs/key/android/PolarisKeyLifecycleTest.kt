@@ -37,7 +37,10 @@ class PolarisKeyLifecycleTest {
             PolarisKeyClient.create(
                 PolarisKeyClientOptions(
                     core = CoreOptions(
-                        productSlug = "diceroll", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
+                        productSlug = "diceroll",
+                        version = "1.0.0",
+                        pinnedKeys = signer.trust,
+                        trustRefresh = false,
                         store = InMemoryStore("diceroll", "dev1").also { it.setToken("pkeyt_held") },
                         expectedServices = listOf(ServiceSlug.license),
                         transport = ScriptedTransport { r ->
@@ -96,9 +99,10 @@ class PolarisKeyLifecycleCloudSyncTest {
     private val ctx: android.content.Context = androidx.test.core.app.ApplicationProvider.getApplicationContext()
     private val pushes = java.util.concurrent.atomic.AtomicInteger()
 
-    private val pull = """{"encryption":"server","subject":"ps_AliceAliceAliceAlice1","cursor":1,"more":false,"serverNow":${System.currentTimeMillis()},""" +
-        """"catalogVersion":1,"lastMutationId":0,"changes":[],"tombstones":[],"aliases":{},""" +
-        """"usage":{"bytes":0,"settings":0,"records":0,"files":0},"quota":{"bytes":268435456,"files":true}}"""
+    private val pull =
+        """{"encryption":"server","subject":"ps_AliceAliceAliceAlice1","cursor":1,"more":false,"serverNow":${System.currentTimeMillis()},""" +
+            """"catalogVersion":1,"lastMutationId":0,"changes":[],"tombstones":[],"aliases":{},""" +
+            """"usage":{"bytes":0,"settings":0,"records":0,"files":0},"quota":{"bytes":268435456,"files":true}}"""
 
     private fun handle(r: im.plrs.key.core.PolarisRequest) = when {
         r.path.endsWith("/.well-known/polaris.json") -> respond(
@@ -106,12 +110,16 @@ class PolarisKeyLifecycleCloudSyncTest {
             """{"product":"diceroll","services":{"license":{"enabled":true},"config":{"enabled":true},"sync":{"enabled":true,"encryption":"server"},""" +
                 """"identity":{"enabled":true,"account":true,"endpoints":{"subject":"https://key.example/diceroll/identity/subject"}}}}""",
         )
+
         r.path.endsWith("/identity/subject") -> respond(200, """{"subject":"ps_AliceAliceAliceAlice1"}""")
+
         r.path.endsWith("/sync/ops") -> {
             pushes.incrementAndGet()
             respond(200, pull.replace(""""changes":[""", """"results":[],"changes":["""))
         }
+
         r.path.contains("/sync") -> respond(200, pull)
+
         else -> respond(404)
     }
 
@@ -128,8 +136,13 @@ class PolarisKeyLifecycleCloudSyncTest {
             ctx,
             PolarisKeyClientOptions(
                 core = CoreOptions(
-                    productSlug = "diceroll", baseUrl = "https://key.example", version = "1.0.0", pinnedKeys = signer.trust,
-                    trustRefresh = false, store = im.plrs.key.core.FileStore("diceroll", noBackup), transport = ScriptedTransport(::handle),
+                    productSlug = "diceroll",
+                    baseUrl = "https://key.example",
+                    version = "1.0.0",
+                    pinnedKeys = signer.trust,
+                    trustRefresh = false,
+                    store = im.plrs.key.core.FileStore("diceroll", noBackup),
+                    transport = ScriptedTransport(::handle),
                     expectedServices = listOf(ServiceSlug.license, ServiceSlug.config, ServiceSlug.identity, ServiceSlug.sync),
                 ),
                 license = LicenseClientOptions(fingerprint = false),

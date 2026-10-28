@@ -8,8 +8,8 @@
 
 package im.plrs.key.sdk
 
-import im.plrs.key.config.ConfigSource
 import im.plrs.key.config.ConfigChange
+import im.plrs.key.config.ConfigSource
 import im.plrs.key.config.SettingSyncState
 import im.plrs.key.core.Base64Url
 import im.plrs.key.core.CoreOptions
@@ -22,6 +22,8 @@ import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisRequest
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.ServiceSlug
+import im.plrs.key.core.sync.SyncCodecPort
+import im.plrs.key.core.sync.SyncEvent
 import im.plrs.key.core.sync.SyncKeys
 import im.plrs.key.core.sync.SyncState
 import im.plrs.key.core.testing.ScriptedTransport
@@ -29,6 +31,7 @@ import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.TestSigner
 import im.plrs.key.core.testing.path
 import im.plrs.key.license.LicenseClientOptions
+import im.plrs.key.sdk.SyncRootRecord
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -49,9 +52,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
-import im.plrs.key.core.sync.SyncCodecPort
-import im.plrs.key.core.sync.SyncEvent
-import im.plrs.key.sdk.SyncRootRecord
 
 private const val VOL = "audio.volume"
 private const val ALICE = "ps_AliceAliceAliceAlice1"
@@ -268,7 +268,10 @@ class CloudSyncSettingsTest {
         r.client.identity.subject()
         eventually("the machine left") { r.client.cloudSync.status().state == SyncState.Local }
         eventually("the person's data is deleted at once, whatever the ring did") { !r.stateFile.exists() }
-        assertNotNull("the root is still there: the forget failed and is owed", RingVault(r.client.core, KeyringOptions(rootStorage = locked.inner)).load())
+        assertNotNull(
+            "the root is still there: the forget failed and is owed",
+            RingVault(r.client.core, KeyringOptions(rootStorage = locked.inner)).load(),
+        )
         // The keystore heals; the next touch retries the ring.
         locked.failing = false
         r.client.cloudSync.touch()
@@ -309,7 +312,11 @@ class CloudSyncSettingsTest {
         val r = Rig()
         r.client.core.setSubject(BOB)
         val before = r.transport.requests().size
-        val res = CloudSyncTransport.send(r.client.core, Json.parseToJsonElement("""{"method":"GET","path":"/djdl/sync?cursor=0"}""") as JsonObject, ALICE)
+        val res = CloudSyncTransport.send(
+            r.client.core,
+            Json.parseToJsonElement("""{"method":"GET","path":"/djdl/sync?cursor=0"}""") as JsonObject,
+            ALICE,
+        )
         assertTrue(res.transportError)
         assertEquals(before, r.transport.requests().size)
     }
@@ -320,8 +327,13 @@ class CloudSyncSettingsTest {
         val client = PolarisKeyClient.create(
             PolarisKeyClientOptions(
                 core = CoreOptions(
-                    productSlug = "djdl", baseUrl = "https://key.example", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
-                    store = store, transport = ScriptedTransport(::handle),
+                    productSlug = "djdl",
+                    baseUrl = "https://key.example",
+                    version = "1.0.0",
+                    pinnedKeys = signer.trust,
+                    trustRefresh = false,
+                    store = store,
+                    transport = ScriptedTransport(::handle),
                     expectedServices = listOf(ServiceSlug.license, ServiceSlug.config, ServiceSlug.identity, ServiceSlug.sync),
                 ),
                 license = LicenseClientOptions(fingerprint = false),
@@ -381,8 +393,13 @@ class CloudSyncSettingsTest {
         }
         val core = im.plrs.key.core.CoreContext(
             CoreOptions(
-                productSlug = "djdl", baseUrl = "https://key.example", version = "1.0.0", pinnedKeys = signer.trust,
-                trustRefresh = false, store = store, transport = ScriptedTransport(::handle),
+                productSlug = "djdl",
+                baseUrl = "https://key.example",
+                version = "1.0.0",
+                pinnedKeys = signer.trust,
+                trustRefresh = false,
+                store = store,
+                transport = ScriptedTransport(::handle),
             ),
         )
         core.setSubject(ALICE)

@@ -4,14 +4,6 @@
 // (§1.2, §3.1, §3.4), so Compose hosts and headless integrations use one model.
 package im.plrs.key.ui
 
-import java.net.URI
-import java.net.URISyntaxException
-import java.text.BreakIterator
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
-import kotlin.math.roundToInt
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -20,6 +12,14 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
+import java.net.URI
+import java.net.URISyntaxException
+import java.text.BreakIterator
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
+import kotlin.math.roundToInt
 
 /** The UI-KITS components whose states the presentation core resolves. */
 public enum class KitComponent(public val id: String) {
@@ -113,11 +113,10 @@ public enum class KitAction(public val id: String) {
         )
 
         /** Whether the control with [copyKey] leaves the app, so it carries the new-window glyph (UI-KITS.md 1.5 rule 11). */
-        public fun leavesApp(copyKey: String): Boolean =
-            when (forCopyKey(copyKey)) {
-                openCard, openBrowser, openManageUrl -> true
-                else -> copyKey in alsoLeaving
-            }
+        public fun leavesApp(copyKey: String): Boolean = when (forCopyKey(copyKey)) {
+            openCard, openBrowser, openManageUrl -> true
+            else -> copyKey in alsoLeaving
+        }
     }
 }
 
@@ -134,10 +133,7 @@ public sealed interface CopyArgument {
 }
 
 /** One visible catalog string, retained as a key and arguments until the host formats it. */
-public data class CopyLine(
-    public val key: String,
-    public val args: Map<String, CopyArgument> = emptyMap(),
-)
+public data class CopyLine(public val key: String, public val args: Map<String, CopyArgument> = emptyMap())
 
 /** A resolved kit screen. `hidden` means the component renders no UI for these inputs. */
 public data class KitScreen(
@@ -249,11 +245,7 @@ public data class ResolvedIdentity(
 }
 
 /** The resolved visual theme for one kit. */
-public data class ResolvedTheme(
-    public val identity: ResolvedIdentity,
-    public val colorScheme: KitColorScheme,
-    public val preset: KitPreset,
-) {
+public data class ResolvedTheme(public val identity: ResolvedIdentity, public val colorScheme: KitColorScheme, public val preset: KitPreset) {
     public val name: String
         get() = identity.name
     public val accentSource: AccentSource
@@ -269,11 +261,7 @@ public object KitIdentity {
     public const val coreAccentDark: String = "#9a5cff"
 
     /** Resolves the product identity field by field without any discovery fetch or icon cache. */
-    public fun resolve(
-        inputs: KitInputs,
-        preset: KitPreset = KitPreset.polarisKey,
-        kit: KitKind = KitKind.compose,
-    ): ResolvedIdentity {
+    public fun resolve(inputs: KitInputs, preset: KitPreset = KitPreset.polarisKey, kit: KitKind = KitKind.compose): ResolvedIdentity {
         val integrator = inputs.obj("integrator")
         val presentation = inputs.obj("presentation")
         val bundle = inputs.obj("bundle")
@@ -286,7 +274,13 @@ public object KitIdentity {
             ?: nonEmpty(presentation.string("developerName"))
         val hasIcon = integrator.boolean("icon") == true || presentation.boolean("icon") == true ||
             bundle.boolean("icon") == true
-        val icon = if (kit == KitKind.terminal) IconKind.none else if (hasIcon) IconKind.image else IconKind.monogram
+        val icon = if (kit == KitKind.terminal) {
+            IconKind.none
+        } else if (hasIcon) {
+            IconKind.image
+        } else {
+            IconKind.monogram
+        }
         val integratorAccent = nonEmpty(integrator.string("accent"))
         val presentationAccent = nonEmpty(presentation.string("accent"))
         val source: AccentSource
@@ -298,26 +292,31 @@ public object KitIdentity {
                 light = coreAccentLight
                 dark = coreAccentDark
             }
+
             integratorAccent != null -> {
                 source = AccentSource.integrator
                 light = integratorAccent
                 dark = nonEmpty(integrator.string("accentDark")) ?: integratorAccent
             }
+
             preset == KitPreset.native -> {
                 source = AccentSource.host
                 light = null
                 dark = null
             }
+
             presentationAccent != null -> {
                 source = AccentSource.product
                 light = presentationAccent
                 dark = nonEmpty(presentation.string("accentDark")) ?: presentationAccent
             }
+
             hasIcon -> {
                 source = AccentSource.icon
                 light = null
                 dark = null
             }
+
             else -> {
                 source = AccentSource.ink
                 light = null
@@ -337,12 +336,7 @@ public object KitIdentity {
     }
 
     /** Resolves identity plus a kit's default color scheme. */
-    public fun theme(
-        inputs: KitInputs,
-        kit: KitKind,
-        preset: KitPreset = KitPreset.polarisKey,
-        colorScheme: KitColorScheme? = null,
-    ): ResolvedTheme {
+    public fun theme(inputs: KitInputs, kit: KitKind, preset: KitPreset = KitPreset.polarisKey, colorScheme: KitColorScheme? = null): ResolvedTheme {
         val scheme = colorScheme ?: if (kit == KitKind.godot || inputs.isTv) {
             KitColorScheme.dark
         } else {
@@ -410,15 +404,14 @@ internal class KitContext(internal val inputs: KitInputs) {
         return if (elapsed < KIT_LOADING_DELAY_MS) emptyList() else lines
     }
 
-    internal fun codeLines(code: String?): List<CopyLine> =
-        if (code != null && KitCopy.bundled.has("core.codes.$code.title")) {
-            listOf(
-                line("core.codes.$code.title", productArgs),
-                line("core.codes.$code.message", productArgs),
-            )
-        } else {
-            listOf(line("core.fallback.title"), line("core.fallback.message"))
-        }
+    internal fun codeLines(code: String?): List<CopyLine> = if (code != null && KitCopy.bundled.has("core.codes.$code.title")) {
+        listOf(
+            line("core.codes.$code.title", productArgs),
+            line("core.codes.$code.message", productArgs),
+        )
+    } else {
+        listOf(line("core.fallback.title"), line("core.fallback.message"))
+    }
 
     internal fun progressArgs(): Map<String, CopyArgument> {
         val progress = inputs.obj("update").obj("progress") ?: return emptyMap()
@@ -482,6 +475,7 @@ internal val KitInputs.os: String
     get() = platform.string("os") ?: "macos"
 internal val KitInputs.formFactor: String
     get() = platform.string("formFactor") ?: "mac"
+
 /** A TV or other screen that cannot browse: the only place a sign-in QR appears (DL14). */
 internal val KitInputs.isTv: Boolean
     get() = formFactor == "tv" || os == "tvos"
@@ -493,11 +487,10 @@ internal val KitInputs.isDesktop: Boolean
 /** A phone or tablet (Apple or Android). */
 internal val KitInputs.isHandheld: Boolean
     get() = !isTv && (os == "ios" || os == "android" || os == "visionos")
-internal fun KitInputs.capability(name: String): Boolean =
-    obj("capabilities").boolean(name) ?: when (name) {
-        "signIn", "keyEntry", "deviceCode" -> true
-        else -> false
-    }
+internal fun KitInputs.capability(name: String): Boolean = obj("capabilities").boolean(name) ?: when (name) {
+    "signIn", "keyEntry", "deviceCode" -> true
+    else -> false
+}
 internal fun KitInputs.isOn(service: String): Boolean {
     val services = array("services") ?: return true
     return service in services.strings()
@@ -601,6 +594,5 @@ internal object KitLinks {
     internal fun deviceCodePage(identity: ResolvedIdentity, isTv: Boolean): String =
         valid(identity.deviceCodeUrl) ?: if (isTv) im.plrs.key.core.TV_CODE_PAGE else im.plrs.key.core.DEVICE_CODE_PAGE
 
-    internal fun display(url: String): String =
-        url.removePrefix("https://").removePrefix("http://").removeSuffix("/")
+    internal fun display(url: String): String = url.removePrefix("https://").removePrefix("http://").removeSuffix("/")
 }

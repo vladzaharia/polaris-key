@@ -71,7 +71,7 @@
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
       "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisParts.kt",
-      "count": 17
+      "count": 4
     },
     {
       "kit": "compose",

@@ -36,8 +36,12 @@ class CloudSyncTransportOkHttpTest {
         runBlocking { store.setToken("pkeyt_L7Z_jTR0YsyzhMxHLBdEwKZ4yW2Uu4m6CANM1oHQiUA") }
         return CoreContext(
             CoreOptions(
-                productSlug = "djdl", baseUrl = server.url("/").toString().trimEnd('/'), version = "1.0.0",
-                pinnedKeys = TestSigner().trust, trustRefresh = false, store = store,
+                productSlug = "djdl",
+                baseUrl = server.url("/").toString().trimEnd('/'),
+                version = "1.0.0",
+                pinnedKeys = TestSigner().trust,
+                trustRefresh = false,
+                store = store,
             ),
         )
     }

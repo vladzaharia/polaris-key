@@ -69,8 +69,24 @@ internal fun bothLooks(size: ResponsiveSize): List<SnapshotVariant> {
     // TV is dark in both looks (UI-KITS.md: games and TV default to dark).
     val polarisDark = if (size.tv) true else !nativeDark
     return listOf(
-        SnapshotVariant("${size.name}-native-${theme(nativeDark)}", PolarisBranding.None, nativeDark, size.widthDp, size.heightDp, size.fontScale, size.tv),
-        SnapshotVariant("${size.name}-polaris-${theme(polarisDark)}", PolarisBranding.PolarisKey, polarisDark, size.widthDp, size.heightDp, size.fontScale, size.tv),
+        SnapshotVariant(
+            "${size.name}-native-${theme(nativeDark)}",
+            PolarisBranding.None,
+            nativeDark,
+            size.widthDp,
+            size.heightDp,
+            size.fontScale,
+            size.tv,
+        ),
+        SnapshotVariant(
+            "${size.name}-polaris-${theme(polarisDark)}",
+            PolarisBranding.PolarisKey,
+            polarisDark,
+            size.widthDp,
+            size.heightDp,
+            size.fontScale,
+            size.tv,
+        ),
     )
 }
 
@@ -134,11 +150,16 @@ internal val messageScreens: List<String> = listOf(
 
 /** Where the layout test checks controls: the control groups and every message screen. */
 internal val controlScreens: List<String> =
-    (listOf("signInHandoff-code", "polarisKeyGate-needs-activation", "activate-device-limit", "deviceLimit-browser-mode", "statusScreen-revoked", "updatePrompt-available",
-        "unlockSync-code", "unlockSync-start-over", "recoveryCode-show", "recoveryCode-saved", "ringChange-confirm") + messageScreens).distinct()
+    (
+        listOf(
+            "signInHandoff-code", "polarisKeyGate-needs-activation", "activate-device-limit", "deviceLimit-browser-mode", "statusScreen-revoked", "updatePrompt-available",
+            "unlockSync-code", "unlockSync-start-over", "recoveryCode-show", "recoveryCode-saved", "ringChange-confirm",
+        ) + messageScreens
+        ).distinct()
 
 /** The Cloud Sync screens: their panes scroll in a short window. */
-internal val syncScreens: Set<String> = setOf("unlockSync-code", "unlockSync-start-over", "recoveryCode-show", "recoveryCode-saved", "ringChange-confirm")
+internal val syncScreens: Set<String> =
+    setOf("unlockSync-code", "unlockSync-start-over", "recoveryCode-show", "recoveryCode-saved", "ringChange-confirm")
 
 internal fun kitScreen(name: String): @Composable () -> Unit = kitScreens.first { it.first == name }.second
 
@@ -188,7 +209,11 @@ class TvSnapshotTest {
             "statusScreen-revoked" to kitScreen("statusScreen-revoked"),
             "statusScreen-expired" to kitScreen("statusScreen-expired"),
         )
-        for (variant in bothLooks(tvSize)) for ((name, content) in screens) rule.capture("$name/${variant.name}", variant, settle = true, content = content)
+        for (variant in bothLooks(
+            tvSize,
+        )) {
+            for ((name, content) in screens) rule.capture("$name/${variant.name}", variant, settle = true, content = content)
+        }
     }
 }
 
@@ -206,11 +231,19 @@ class FocusSnapshotTest {
     @Test
     fun theFocusRing() {
         val tv = bothLooks(tvSize)[1]
-        rule.capture("focus/tv-sign-in-polaris-dark", tv, settle = true) { PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW), onUseKey = {}) }
+        rule.capture("focus/tv-sign-in-polaris-dark", tv, settle = true) {
+            PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW), onUseKey = {})
+        }
         rule.capture("focus/tv-gate-activation-polaris-dark", tv, settle = true, content = kitScreen("polarisKeyGate-needs-activation"))
         rule.capture("focus/tv-gate-expired-polaris-dark", tv, settle = true, content = kitScreen("statusScreen-expired"))
         val phone = SnapshotVariant("phone-native-light", PolarisBranding.None, dark = false)
-        rule.capture("focus/phone-gate-activation-keyboard-native-light", phone, keyboard = true, settle = true, content = kitScreen("polarisKeyGate-needs-activation"))
+        rule.capture(
+            "focus/phone-gate-activation-keyboard-native-light",
+            phone,
+            keyboard = true,
+            settle = true,
+            content = kitScreen("polarisKeyGate-needs-activation"),
+        )
     }
 }
 
@@ -234,7 +267,13 @@ class AccentSnapshotTest {
             surfaceContainerHighest = Color(0xFF555861),
         )
         val variant = SnapshotVariant("phone-native-dark", PolarisBranding.None, dark = true)
-        rule.capture("accent/navy-over-3a3d45-native-dark", variant, accent = Color(0xFF1B2A6B), host = host, content = kitScreen("polarisKeyGate-needs-activation"))
+        rule.capture(
+            "accent/navy-over-3a3d45-native-dark",
+            variant,
+            accent = Color(0xFF1B2A6B),
+            host = host,
+            content = kitScreen("polarisKeyGate-needs-activation"),
+        )
     }
 }
 
@@ -245,8 +284,7 @@ class ResponsiveLayoutTest(private val variant: SnapshotVariant) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun variants(): List<Array<Any>> =
-            (responsiveSizes + wideSizes + layoutOnlySizes + tvSize).flatMap(::bothLooks).map { arrayOf<Any>(it) }
+        fun variants(): List<Array<Any>> = (responsiveSizes + wideSizes + layoutOnlySizes + tvSize).flatMap(::bothLooks).map { arrayOf<Any>(it) }
 
         /** The sizes the update dialog is checked at (where it lost Later). */
         private val dialogSizes = setOf("landscape-891x411-font150", "small-landscape-640x360", "small-landscape-640x360-font150", "window-800x600")
@@ -260,28 +298,34 @@ class ResponsiveLayoutTest(private val variant: SnapshotVariant) {
         val failures = mutableListOf<String>()
         val screens = controlScreens.map { it to kitScreen(it) } +
             (if (variant.tv) listOf("deviceLimit-browser-mode-tv" to deviceLimitTv) else emptyList())
-        for ((name, content) in screens) show(content) {
-            checkControls(name, failures, scrolls = name in syncScreens)
-            if (name == "signInHandoff-code") {
-                // The code itself is whole: the mono text is never cut at the side or the foot.
-                val code = onAllNodes(hasText(samplePrompt.userCode), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
-                val layout = textLayout(code)
-                if (layout == null) failures += "sign-in: the code has no text layout"
-                else if (layout.didOverflowWidth || layout.didOverflowHeight) failures += "sign-in: the code is cut (${layout.size})"
-                checkWhole("signInHandoff-code", "the code", code, failures)
-            }
-            if (name == "recoveryCode-show") {
-                // The recovery code is whole too: every group is drawn complete and unsplit (it may scroll into view, never be cut).
-                for (group in sampleRecoveryCode.reveal().split('-')) {
-                    val node = onAllNodes(hasText(group), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
-                    val layout = textLayout(node)
-                    if (layout == null) failures += "recovery code: '$group' has no text layout"
-                    else if (layout.lineCount != 1) {
-                        failures += "recovery code: '$group' is cut or split (${layout.size}, lines ${layout.lineCount})"
+        for ((name, content) in screens) {
+            show(content) {
+                checkControls(name, failures, scrolls = name in syncScreens)
+                if (name == "signInHandoff-code") {
+                    // The code itself is whole: the mono text is never cut at the side or the foot.
+                    val code = onAllNodes(hasText(samplePrompt.userCode), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
+                    val layout = textLayout(code)
+                    if (layout == null) {
+                        failures += "sign-in: the code has no text layout"
+                    } else if (layout.didOverflowWidth || layout.didOverflowHeight) {
+                        failures += "sign-in: the code is cut (${layout.size})"
                     }
-                    val shown = node?.boundsInRoot
-                    if (node != null && shown != null && !shown.isEmpty && shown.width < node.size.width - 1f) {
-                        failures += "recovery code: '$group' is clipped at the side ($shown of ${node.size})"
+                    checkWhole("signInHandoff-code", "the code", code, failures)
+                }
+                if (name == "recoveryCode-show") {
+                    // The recovery code is whole too: every group is drawn complete and unsplit (it may scroll into view, never be cut).
+                    for (group in sampleRecoveryCode.reveal().split('-')) {
+                        val node = onAllNodes(hasText(group), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
+                        val layout = textLayout(node)
+                        if (layout == null) {
+                            failures += "recovery code: '$group' has no text layout"
+                        } else if (layout.lineCount != 1) {
+                            failures += "recovery code: '$group' is cut or split (${layout.size}, lines ${layout.lineCount})"
+                        }
+                        val shown = node?.boundsInRoot
+                        if (node != null && shown != null && !shown.isEmpty && shown.width < node.size.width - 1f) {
+                            failures += "recovery code: '$group' is clipped at the side ($shown of ${node.size})"
+                        }
                     }
                 }
             }
@@ -349,7 +393,11 @@ class ResponsiveLayoutTest(private val variant: SnapshotVariant) {
         for (node in controls) {
             if (scrolls) {
                 val shown = node.boundsInRoot
-                if (!shown.isEmpty && (shown.width < node.size.width - 1f || shown.left < -1f)) failures += "$screen: '${node.label()}' is cut at the side ($shown)"
+                if (!shown.isEmpty &&
+                    (shown.width < node.size.width - 1f || shown.left < -1f)
+                ) {
+                    failures += "$screen: '${node.label()}' is cut at the side ($shown)"
+                }
             } else {
                 checkWhole(screen, node.label(), node, failures)
             }

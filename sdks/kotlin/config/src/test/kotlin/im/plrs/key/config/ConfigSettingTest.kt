@@ -18,7 +18,6 @@ import im.plrs.key.core.testing.ScriptedTransport
 import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.TestSigner
 import im.plrs.key.core.testing.path
-import java.nio.file.Files
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -28,12 +27,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.fail
 import org.junit.Test
+import java.nio.file.Files
 
 class ConfigSettingTest {
     private val now = 1_700_000_000L
     private val signer = TestSigner()
     private val doc = signer.configDoc(
-        "djdl", "dev1", now,
+        "djdl",
+        "dev1",
+        now,
         config = mapOf("ui.theme" to JsonPrimitive("dark"), "run.concurrency" to JsonPrimitive(4), "admin.lock" to JsonPrimitive(true)),
         states = mapOf("admin.lock" to "enforced"),
     )
@@ -44,8 +46,12 @@ class ConfigSettingTest {
     private fun config(slot: StateSlot = MemoryStateSlot()): ConfigClient = runBlocking {
         val core = CoreContext(
             CoreOptions(
-                productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
-                store = InMemoryStore("djdl", "dev1").also { it.setToken("pkeyt_held") }, clock = { now },
+                productSlug = "djdl",
+                version = "1.0.0",
+                pinnedKeys = signer.trust,
+                trustRefresh = false,
+                store = InMemoryStore("djdl", "dev1").also { it.setToken("pkeyt_held") },
+                clock = { now },
                 transport = ScriptedTransport { r ->
                     when (r.path) {
                         "/djdl/config/document" -> respond(200, doc)
@@ -77,7 +83,13 @@ class ConfigSettingTest {
         assertEquals(JsonPrimitive("dark"), theme.value)
         sub.cancel()
         theme.set(JsonPrimitive("light"))
-        assertEquals(listOf(JsonPrimitive("light") to ConfigSource.local, JsonPrimitive("dark") to ConfigSource.remoteDefault), seen.map { it.value to it.source })
+        assertEquals(
+            listOf(JsonPrimitive("light") to ConfigSource.local, JsonPrimitive("dark") to ConfigSource.remoteDefault),
+            seen.map {
+                it.value to
+                    it.source
+            },
+        )
         assertEquals(true, sub.isCancelled)
     }
 

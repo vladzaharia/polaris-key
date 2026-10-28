@@ -5,32 +5,32 @@
 package im.plrs.key.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.graphics.toAwtImage
+import kotlinx.coroutines.flow.first
+import java.awt.Desktop
 import java.awt.GraphicsEnvironment
 import java.awt.RenderingHints
-import java.awt.image.BufferedImage
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import java.util.prefs.Preferences
 import java.awt.Toolkit
 import java.awt.datatransfer.Clipboard
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
-import kotlinx.coroutines.flow.first
-import java.awt.Desktop
+import java.awt.image.BufferedImage
 import java.net.URI
 import java.util.concurrent.TimeUnit
+import java.util.prefs.Preferences
 
 /** The AWT clipboard; [clipboard] is the system one unless a test passes its own. */
 internal class DesktopClipboard(private val clipboard: () -> Clipboard? = ::systemClipboard) : PolarisClipboard {
@@ -48,8 +48,7 @@ internal class DesktopClipboard(private val clipboard: () -> Clipboard? = ::syst
     }.getOrNull()
 }
 
-private fun systemClipboard(): Clipboard? =
-    if (GraphicsEnvironment.isHeadless()) null else Toolkit.getDefaultToolkit().systemClipboard
+private fun systemClipboard(): Clipboard? = if (GraphicsEnvironment.isHeadless()) null else Toolkit.getDefaultToolkit().systemClipboard
 
 @Composable
 public actual fun rememberPolarisClipboard(): PolarisClipboard = remember { DesktopClipboard() }
@@ -60,12 +59,12 @@ public actual fun rememberPolarisClipboard(): PolarisClipboard = remember { Desk
  * check behind [PolarisOpener]; [xdgOpen] gets the parsed link, never anything else, as one argv entry.
  * Called from click handlers, so it never waits on a launcher: see [awtBrowse] and [runXdgOpen].
  */
-internal fun launchOnDesktop(
-    url: String,
-    browse: (URI) -> Boolean = ::awtBrowse,
-    xdgOpen: (String) -> Boolean = ::runXdgOpen,
-): Boolean {
-    val uri = try { URI(url) } catch (e: Exception) { return false }
+internal fun launchOnDesktop(url: String, browse: (URI) -> Boolean = ::awtBrowse, xdgOpen: (String) -> Boolean = ::runXdgOpen): Boolean {
+    val uri = try {
+        URI(url)
+    } catch (e: Exception) {
+        return false
+    }
     if (!"https".equals(uri.scheme, ignoreCase = true) || uri.host.isNullOrEmpty() || uri.userInfo != null) return false
     if (browseBounded(uri, browse)) return true
     return xdgOpen(uri.toASCIIString())
@@ -82,7 +81,11 @@ internal const val BROWSE_GRACE_MS: Long = 200
 private fun browseBounded(uri: URI, browse: (URI) -> Boolean): Boolean {
     val result = java.util.concurrent.CompletableFuture<Boolean>()
     val t = Thread { result.complete(runCatching { browse(uri) }.getOrDefault(false)) }
-        .apply { isDaemon = true; name = "pkey-browse"; start() }
+        .apply {
+            isDaemon = true
+            name = "pkey-browse"
+            start()
+        }
     return try {
         result.get(BROWSE_GRACE_MS, TimeUnit.MILLISECONDS)
     } catch (e: java.util.concurrent.TimeoutException) {
@@ -117,7 +120,11 @@ internal fun startAndReap(argv: List<String>, reapMs: Long = XDG_OPEN_REAP_MS): 
     val p = ProcessBuilder(argv)
         .redirectErrorStream(true)
         .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-        .redirectInput(ProcessBuilder.Redirect.from(java.io.File(if (System.getProperty("os.name").orEmpty().lowercase().contains("win")) "NUL" else "/dev/null")))
+        .redirectInput(
+            ProcessBuilder.Redirect.from(
+                java.io.File(if (System.getProperty("os.name").orEmpty().lowercase().contains("win")) "NUL" else "/dev/null"),
+            ),
+        )
         .start()
     Thread {
         try {
@@ -128,7 +135,11 @@ internal fun startAndReap(argv: List<String>, reapMs: Long = XDG_OPEN_REAP_MS): 
         } catch (e: InterruptedException) {
             p.destroyForcibly()
         }
-    }.apply { isDaemon = true; name = "pkey-xdg-reap"; start() }
+    }.apply {
+        isDaemon = true
+        name = "pkey-xdg-reap"
+        start()
+    }
     true
 }.getOrDefault(false)
 
@@ -157,8 +168,11 @@ internal actual fun isTelevision(): Boolean = false
 internal actual fun decodeIcon(bytes: ByteArray, targetPx: Int, maxSide: Int): ImageBitmap? = runCatching {
     val image = org.jetbrains.skia.Image.makeFromEncoded(bytes)
     try {
-        if (image.width < 1 || image.height < 1 || image.width > maxSide || image.height > maxSide) null
-        else image.toComposeImageBitmap()
+        if (image.width < 1 || image.height < 1 || image.width > maxSide || image.height > maxSide) {
+            null
+        } else {
+            image.toComposeImageBitmap()
+        }
     } finally {
         image.close()
     }
@@ -215,13 +229,12 @@ internal actual fun polarisPromptDialogProperties(
     dismissible: Boolean,
     scrim: Boolean,
     dismissOnClickOutside: Boolean,
-): androidx.compose.ui.window.DialogProperties =
-    androidx.compose.ui.window.DialogProperties(
-        dismissOnBackPress = dismissible,
-        dismissOnClickOutside = dismissOnClickOutside,
-        usePlatformDefaultWidth = false,
-        scrimColor = if (scrim) androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f) else androidx.compose.ui.graphics.Color.Transparent, // polaris-lint: allow-colour (the desktop dialog's own default scrim)
-    )
+): androidx.compose.ui.window.DialogProperties = androidx.compose.ui.window.DialogProperties(
+    dismissOnBackPress = dismissible,
+    dismissOnClickOutside = dismissOnClickOutside,
+    usePlatformDefaultWidth = false,
+    scrimColor = if (scrim) androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f) else androidx.compose.ui.graphics.Color.Transparent, // polaris-lint: allow-colour (the desktop dialog's own default scrim)
+)
 
 @Composable
 internal actual fun rememberHeldSignIn(key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit): PolarisSignInState {

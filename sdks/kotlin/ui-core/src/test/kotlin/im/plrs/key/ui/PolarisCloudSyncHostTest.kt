@@ -72,10 +72,14 @@ class PolarisCloudSyncHostTest {
         val fake = Fake()
         val host = host(fake)
         val expected = mapOf(
-            SyncState.Idle to PolarisCloudSyncRow.Synced, SyncState.Pending to PolarisCloudSyncRow.Synced,
-            SyncState.Syncing to PolarisCloudSyncRow.Syncing, SyncState.Offline to PolarisCloudSyncRow.Offline,
-            SyncState.Paused to PolarisCloudSyncRow.Offline, SyncState.Blocked to PolarisCloudSyncRow.Error,
-            SyncState.Local to null, SyncState.Unsupported to null,
+            SyncState.Idle to PolarisCloudSyncRow.Synced,
+            SyncState.Pending to PolarisCloudSyncRow.Synced,
+            SyncState.Syncing to PolarisCloudSyncRow.Syncing,
+            SyncState.Offline to PolarisCloudSyncRow.Offline,
+            SyncState.Paused to PolarisCloudSyncRow.Offline,
+            SyncState.Blocked to PolarisCloudSyncRow.Error,
+            SyncState.Local to null,
+            SyncState.Unsupported to null,
         )
         for ((state, row) in expected) {
             fake.status = { SyncStatus(state, 0) }

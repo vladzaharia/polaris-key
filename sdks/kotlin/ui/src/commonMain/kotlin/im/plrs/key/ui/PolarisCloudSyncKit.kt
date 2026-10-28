@@ -36,8 +36,12 @@ public fun PolarisCloudSyncKit(host: PolarisCloudSyncHost, modifier: Modifier = 
             PolarisCloudSyncRow.RingChanged -> PolarisCloudSync.RingChanged
         }
         PolarisCloudSyncStatus(
-            row, modifier, syncedAtMillis = shown.syncedAtMillis,
-            onUnlock = host::openUnlock, onReview = host::openReview, onSignIn = onSignIn,
+            row,
+            modifier,
+            syncedAtMillis = shown.syncedAtMillis,
+            onUnlock = host::openUnlock,
+            onReview = host::openReview,
+            onSignIn = onSignIn,
         )
     }
 }

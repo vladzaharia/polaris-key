@@ -55,71 +55,58 @@
 package im.plrs.key.conformance
 
 import im.plrs.key.core.Base64Url
+import im.plrs.key.core.BinaryMethod
+import im.plrs.key.core.CacheRecord
 import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.DeviceKeyPort
-import im.plrs.key.core.DevicePublicKeys
-import im.plrs.key.core.InMemoryDeviceKeyStorage
 import im.plrs.key.core.DeviceKeyStore
-import im.plrs.key.sdk.ConnectOptions
-import im.plrs.key.sdk.KeyringOptions
-import im.plrs.key.sdk.RelayException
+import im.plrs.key.core.DevicePublicKeys
 import im.plrs.key.core.DiscoveryResult
 import im.plrs.key.core.DocOutcome
+import im.plrs.key.core.ERROR_CODE_VALUES
 import im.plrs.key.core.FingerprintSource
 import im.plrs.key.core.HardwareFingerprint
-import im.plrs.key.core.ERROR_CODE_VALUES
+import im.plrs.key.core.HostOutlet
+import im.plrs.key.core.InMemoryDeviceKeyStorage
 import im.plrs.key.core.InMemoryStore
+import im.plrs.key.core.JsonText
+import im.plrs.key.core.PolarisException
+import im.plrs.key.core.PolarisRequest
+import im.plrs.key.core.RegisterResult
 import im.plrs.key.core.ReleaseRecordArtifact
 import im.plrs.key.core.ReleaseRecordBuild
 import im.plrs.key.core.ReleaseRecordDoc
-import im.plrs.key.core.Store
-import im.plrs.key.core.PolarisException
-import im.plrs.key.sdk.ClientBootOptions
-import im.plrs.key.sdk.boot
-import im.plrs.key.core.RegisterResult
 import im.plrs.key.core.ServiceSlug
+import im.plrs.key.core.StagedUpdate
+import im.plrs.key.core.Store
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.boolValue
 import im.plrs.key.core.jsonEquals
 import im.plrs.key.core.jsonInt
 import im.plrs.key.core.longValue
+import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
 import im.plrs.key.identity.AttachResult
 import im.plrs.key.identity.ChoiceResult
+import im.plrs.key.identity.ConformanceReplayOnly
 import im.plrs.key.identity.ConsentInput
 import im.plrs.key.identity.ExchangeKind
 import im.plrs.key.identity.ExchangeNonce
 import im.plrs.key.identity.ExchangeOutcome
 import im.plrs.key.identity.LicenseChoice
-import im.plrs.key.identity.ConformanceReplayOnly
 import im.plrs.key.identity.RedirectEntropy
-import im.plrs.key.identity.redirectAcquisitionSync
-import im.plrs.key.identity.redirectEntropy
 import im.plrs.key.identity.SignInChannel
-import im.plrs.key.identity.SignInPurpose
 import im.plrs.key.identity.SignInError
 import im.plrs.key.identity.SignInOptions
 import im.plrs.key.identity.SignInOutcome
+import im.plrs.key.identity.SignInPurpose
+import im.plrs.key.identity.SignInSession
 import im.plrs.key.identity.SignOutResult
 import im.plrs.key.identity.SubjectResult
-import im.plrs.key.identity.SignInSession
+import im.plrs.key.identity.redirectAcquisitionSync
+import im.plrs.key.identity.redirectEntropy
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.LicenseClientOptions
-import im.plrs.key.core.JsonText
-import im.plrs.key.release.ChangelogEntry
-import im.plrs.key.release.DownloadBuild
-import im.plrs.key.release.ReleaseTarget
-import im.plrs.key.sdk.ClaimResult
-import im.plrs.key.sdk.CommerceClient
-import im.plrs.key.sdk.PolarisKeyClient
-import im.plrs.key.sdk.PolarisKeyClientOptions
-import im.plrs.key.core.BinaryMethod
-import im.plrs.key.core.CacheRecord
-import im.plrs.key.core.HostOutlet
-import im.plrs.key.core.StagedUpdate
-import im.plrs.key.core.objectValue
-import im.plrs.key.update.UpdateClientOptions
-import im.plrs.key.core.PolarisRequest
 import im.plrs.key.packs.ByteStream
 import im.plrs.key.packs.ChunkRangeRequest
 import im.plrs.key.packs.ChunkRangeResponse
@@ -129,9 +116,19 @@ import im.plrs.key.packs.ObjectResponse
 import im.plrs.key.packs.PackObjectTransport
 import im.plrs.key.packs.PacksClient
 import im.plrs.key.packs.chunkRangeFetch
-import java.lang.reflect.InvocationTargetException
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn
+import im.plrs.key.release.ChangelogEntry
+import im.plrs.key.release.DownloadBuild
+import im.plrs.key.release.ReleaseTarget
+import im.plrs.key.sdk.ClaimResult
+import im.plrs.key.sdk.ClientBootOptions
+import im.plrs.key.sdk.CommerceClient
+import im.plrs.key.sdk.ConnectOptions
+import im.plrs.key.sdk.KeyringOptions
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.sdk.PolarisKeyClientOptions
+import im.plrs.key.sdk.RelayException
+import im.plrs.key.sdk.boot
+import im.plrs.key.update.UpdateClientOptions
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -142,6 +139,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import java.lang.reflect.InvocationTargetException
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn
 
 /** A fixed hashed fingerprint, so a replay does not depend on what this host can read. */
 val replayFingerprint: FingerprintSource = FingerprintSource {
@@ -166,7 +166,10 @@ class ReplayPackObjectTransport(private val server: ReplayServer) : PackObjectTr
 /** The packs facet's private `fetchObject(transport, req)` over [transport], by reflection. */
 fun packsObjectFetch(packs: PacksClient, transport: PackObjectTransport): ObjectFetch {
     val m = PacksClient::class.java.getDeclaredMethod(
-        "fetchObject", PackObjectTransport::class.java, ObjectRequest::class.java, Continuation::class.java,
+        "fetchObject",
+        PackObjectTransport::class.java,
+        ObjectRequest::class.java,
+        Continuation::class.java,
     ).apply { isAccessible = true }
     return { req ->
         suspendCoroutineUninterceptedOrReturn<ObjectResponse> { cont ->
@@ -249,6 +252,7 @@ object KotlinReplay {
         val args = step["args"]!!.obj
         when (val action = step["action"].stringValue) {
             "cloudSyncPull", "cloudSyncPush" -> CloudSyncReplay.run(client.core, step, session, out)
+
             "browser" -> if (server?.transcript?.id == "cloudsync-cors") {
                 CloudSyncReplay.cors(client.core, step, session.tap ?: throw AssertionError("no header tap"))
             } else {
@@ -271,6 +275,7 @@ object KotlinReplay {
                 // Facts the recorder read off the browser's pages; nothing of the SDK's.
                 for ((key, value) in step["expect"]!!.obj) out[key] = value
             }
+
             "redirectComplete" -> {
                 val s = redirectSession(client, args, server?.transcript)
                 try {
@@ -281,8 +286,11 @@ object KotlinReplay {
                             out["subject"] = o.subject?.let { JsonPrimitive(it) } ?: JsonNull
                             out["licenseId"] = o.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
                         }
+
                         is SignInOutcome.Choose -> out["result"] = JsonPrimitive("choose")
+
                         SignInOutcome.Cancelled -> out["result"] = JsonPrimitive("cancelled")
+
                         else -> out["result"] = JsonPrimitive("error")
                     }
                 } catch (e: SignInError) {
@@ -293,6 +301,7 @@ object KotlinReplay {
                     out["code"] = JsonPrimitive(e.code)
                 }
             }
+
             "choiceLicenses", "choiceDevices", "choiceComplete", "choiceCancel" -> {
                 // The grant routes (I-10b.19): `client.identity.choice.*`, a refusal being a result.
                 val grant = args["grant"].stringValue ?: ""
@@ -304,12 +313,15 @@ object KotlinReplay {
                             out["state"] = JsonPrimitive(r.value.state)
                             out["licenses"] = JsonArray(r.value.licenseIds.map { JsonPrimitive(it) })
                         }
+
                         is ChoiceResult.Refused -> refused = r
                     }
+
                     "choiceDevices" -> when (val r = choice.devices(grant, args["licenseId"].stringValue ?: "")) {
                         is ChoiceResult.Ok -> out["devices"] = JsonArray(r.value.deviceIds.map { JsonPrimitive(it) })
                         is ChoiceResult.Refused -> refused = r
                     }
+
                     "choiceComplete" -> {
                         // The step's own `choice` arg, else the one the recording's request carries; a recording with
                         // none is the Worker's 409 `license_choice_required`, sent as recorded (no `choice`).
@@ -320,18 +332,30 @@ object KotlinReplay {
                         val consent = step["exchanges"]!!.obj["items"]!!.arrayValue!!.firstOrNull()?.obj?.get("request")?.obj
                             ?.get("body").objectValue?.get("json").objectValue?.get("consent").objectValue
                             ?.get("claims")?.arrayValue?.map { it.stringValue!! }?.let { ConsentInput(it) }
-                        val r = if (consent != null) choice.complete(grant, recorded?.let { LicenseChoice.fromJson(it)!! }, consent)
-                        else if (recorded == null) choice.completeRecorded(grant, null) else choice.complete(grant, LicenseChoice.fromJson(recorded)!!)
+                        val r = if (consent != null) {
+                            choice.complete(grant, recorded?.let { LicenseChoice.fromJson(it)!! }, consent)
+                        } else if (recorded ==
+                            null
+                        ) {
+                            choice.completeRecorded(grant, null)
+                        } else {
+                            choice.complete(grant, LicenseChoice.fromJson(recorded)!!)
+                        }
                         when (r) {
                             is ChoiceResult.Ok -> {
                                 out["licenseId"] = r.value.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
                                 out["subject"] = JsonPrimitive(r.value.subject)
                                 out["scope"] = JsonPrimitive(r.value.scope)
-                                r.value.keyEntries?.let { out["keyEntries"] = JsonObject(mapOf("used" to jsonInt(it.used), "limit" to jsonInt(it.limit))) }
+                                r.value.keyEntries?.let {
+                                    out["keyEntries"] =
+                                        JsonObject(mapOf("used" to jsonInt(it.used), "limit" to jsonInt(it.limit)))
+                                }
                             }
+
                             is ChoiceResult.Refused -> refused = r
                         }
                     }
+
                     else -> when (val r = choice.cancel(grant)) {
                         is ChoiceResult.Ok -> Unit
                         is ChoiceResult.Refused -> refused = r
@@ -340,6 +364,7 @@ object KotlinReplay {
                 out["result"] = JsonPrimitive(if (refused != null) "refused" else "ok")
                 refused?.let { out["code"] = JsonPrimitive(it.code) }
             }
+
             "chunkRange" -> {
                 val transport = objects ?: throw AssertionError("chunkRange without a pack object transport")
                 val fetchRange = chunkRangeFetch(packsObjectFetch(client.packs, transport))
@@ -348,6 +373,7 @@ object KotlinReplay {
                 )
                 when (r) {
                     ChunkRangeResponse.Refused -> out["range"] = JsonPrimitive("refused")
+
                     is ChunkRangeResponse.Ok -> {
                         val bytes = java.io.ByteArrayOutputStream()
                         while (true) bytes.write(r.body.next() ?: break)
@@ -356,6 +382,7 @@ object KotlinReplay {
                     }
                 }
             }
+
             "updateDecide" -> {
                 val staged = args["staged"].objectValue?.let { st ->
                     val v = st["version"].stringValue
@@ -371,6 +398,7 @@ object KotlinReplay {
                     out["code"] = JsonPrimitive(e.code)
                 }
             }
+
             "discover" -> {
                 out["result"] = JsonPrimitive(
                     when (client.discover()) {
@@ -389,6 +417,7 @@ object KotlinReplay {
                     out["nonceEndpoint"] = JsonPrimitive(identity?.enabled == true && identity.endpoints["nonce"] != null)
                 }
             }
+
             // `client.identity.exchange` (I-45.3, `identity.exchange`): a platform ID token for a device token. A step with
             // no `nonce` asks for its own (the recordings do); one with a `nonce` spends that recorded one. A refusal is thrown.
             "exchange" -> {
@@ -413,6 +442,7 @@ object KotlinReplay {
                             out["issuedTokenType"] = outcome.issuedTokenType?.let { JsonPrimitive(it) } ?: JsonNull
                             out["licenseId"] = outcome.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
                         }
+
                         is ExchangeOutcome.PendingConsent -> {
                             out["result"] = JsonPrimitive("confirm")
                             out["firstTime"] = JsonPrimitive(outcome.consent.firstTime)
@@ -424,7 +454,9 @@ object KotlinReplay {
                                 ),
                             )
                         }
+
                         is ExchangeOutcome.PendingSignIn -> out["result"] = JsonPrimitive("choose")
+
                         is ExchangeOutcome.NeedsSignIn -> {
                             out["result"] = JsonPrimitive("interstitial-required")
                             out["reason"] = JsonPrimitive(outcome.reason)
@@ -432,6 +464,7 @@ object KotlinReplay {
                             out["linkHandle"] = outcome.linkHandle?.let { JsonPrimitive(it) } ?: JsonNull
                             out["expiresIn"] = outcome.expiresInSeconds?.let { JsonPrimitive(it) } ?: JsonNull
                         }
+
                         is ExchangeOutcome.Unavailable -> out["result"] = JsonPrimitive("unavailable")
                     }
                 } catch (e: PolarisException) {
@@ -440,6 +473,7 @@ object KotlinReplay {
                 }
                 out["tokenHeld"] = JsonPrimitive(store.getToken().let { it != null && it != before })
             }
+
             // `client.connect` (CC-06.4, `connect.identity`): the identity and the device list.
             "connectIdentity", "connectDevices" -> {
                 val label = args["keyLabel"].stringValue!!
@@ -481,6 +515,7 @@ object KotlinReplay {
                     }
                 }
             }
+
             // The key ring verbs (U-39.9, `sync.keyring`) over `client.keyring`. The transcripts hold no key material
             // the client could use, so the client makes its own: create and reset draw a root, wrap seals it to a
             // fresh agreement key for the named device (`deviceId` is the TARGET), and adopt takes the root of the
@@ -488,6 +523,7 @@ object KotlinReplay {
             "keyringGet", "keyringCreate", "keyringReset", "keyringWrap", "keyringUnwrap", "keyringAdopt",
             "keyringRecoverySet", "keyringRecoveryGet",
             -> keyring(client, step, session, out)
+
             // `client.connect.relayTicket()` (CC-12.4, `connect.relay`). A refusal reads as `result: "refused"`
             // with the status, the Worker's code and, where it answers them, `retryAfter` and `scope`.
             "relayTicket" -> {
@@ -505,6 +541,7 @@ object KotlinReplay {
                     (e as? RelayException)?.scope?.let { out["scope"] = JsonPrimitive(it.name) }
                 }
             }
+
             "sync" -> {
                 val r = client.sync(force = args["force"].boolValue == true)
                 out["applied"] = JsonPrimitive(r.applied)
@@ -525,6 +562,7 @@ object KotlinReplay {
                 }
                 out["documents"] = JsonObject(docs)
             }
+
             "activate", "enroll" -> {
                 val r = if (action == "activate") client.license.activateWithKey(args["key"].stringValue ?: "") else client.enroll()
                 out["result"] = JsonPrimitive(activationKind(r))
@@ -542,7 +580,9 @@ object KotlinReplay {
                     out["keyEntries"] = entries?.let { JsonObject(mapOf("used" to jsonInt(it.used), "limit" to jsonInt(it.limit))) } ?: JsonNull
                 }
             }
+
             "releaseFetch" -> out.putAll(releaseFetch(client, args, session))
+
             "downloadModel" -> {
                 val here = client.distribution.thisPlatform(session.platform)
                 out["result"] = JsonPrimitive("ok")
@@ -550,7 +590,8 @@ object KotlinReplay {
                 out["current"] = here.current?.let { c ->
                     JsonObject(
                         mapOf(
-                            "platform" to JsonPrimitive(c.platform), "label" to JsonPrimitive(c.label),
+                            "platform" to JsonPrimitive(c.platform),
+                            "label" to JsonPrimitive(c.label),
                             "primary" to (c.primary?.let { JsonPrimitive(it) } ?: JsonNull),
                             "actions" to JsonArray(c.actions.map { JsonPrimitive(it) }),
                             "builds" to JsonArray(c.builds.map(::buildValue)),
@@ -558,9 +599,12 @@ object KotlinReplay {
                     )
                 } ?: JsonNull
             }
+
             "deactivate" -> client.deactivate()
+
             // SP-20: the one-call boot, to its first stop (no delayed launch confirmation in a replay).
             "boot" -> out["bootOutcome"] = JsonPrimitive(client.boot(ClientBootOptions(autoConfirm = false)).outcome.wire)
+
             "register" -> out["result"] = JsonPrimitive(
                 when (client.register()) {
                     is RegisterResult.Ok -> "ok"
@@ -570,11 +614,14 @@ object KotlinReplay {
                     is RegisterResult.Error -> "error"
                 },
             )
+
             "report" -> {
                 out["result"] = JsonPrimitive(client.report())
                 out["updatesPending"] = JsonPrimitive(client.updateEvents.events().size)
             }
+
             "fetchSchema" -> out["catalog"] = client.config.fetchSchema()?.let { JsonText.parse(it.toString(Charsets.UTF_8)) } ?: JsonNull
+
             "mintToken" -> try {
                 val minted = client.config.mintToken(args["recipeId"].stringValue ?: "")
                 out["result"] = JsonPrimitive("ok")
@@ -583,6 +630,7 @@ object KotlinReplay {
             } catch (e: PolarisException) {
                 out["result"] = JsonPrimitive(e.code)
             }
+
             // D-6: the recorded action names map onto the session (`signIn.start`, `wait`).
             "beginSignIn" -> try {
                 val p = client.identity.signIn.start(SignInOptions(deviceName = args["deviceName"].stringValue))
@@ -601,6 +649,7 @@ object KotlinReplay {
                 // identity-disabled: the refusal is the step's result.
                 out["result"] = JsonPrimitive(e.code)
             }
+
             "pollSignIn" -> {
                 val sess = session.prompt ?: throw AssertionError("pollSignIn before beginSignIn")
                 try {
@@ -608,10 +657,16 @@ object KotlinReplay {
                         is SignInOutcome.Pending -> if (o.slowDown) {
                             out["result"] = JsonPrimitive("slow-down")
                             out["interval"] = jsonInt(o.interval)
-                        } else out["result"] = JsonPrimitive("pending")
+                        } else {
+                            out["result"] = JsonPrimitive("pending")
+                        }
+
                         is SignInOutcome.SignedIn -> out["result"] = JsonPrimitive("ready")
+
                         SignInOutcome.Expired -> out["result"] = JsonPrimitive("expired")
+
                         SignInOutcome.Cancelled -> out["result"] = JsonPrimitive("cancelled")
+
                         is SignInOutcome.Choose -> out["result"] = JsonPrimitive("choose")
                     }
                 } catch (e: SignInError) {
@@ -624,16 +679,19 @@ object KotlinReplay {
                     out["code"] = JsonPrimitive(e.code)
                 }
             }
+
             // identity.account: the subject the device reports (null for a key-only device), and the sign-out.
             "subject" -> out["subject"] = when (val r = client.identity.subject()) {
                 is SubjectResult.Subject -> JsonPrimitive(r.subject)
                 SubjectResult.None -> JsonNull
                 SubjectResult.Unavailable -> JsonPrimitive("unavailable")
             }
+
             "signOut" -> when (val r = client.identity.signOut()) {
                 is SignOutResult.SignedOut -> out["released"] = JsonPrimitive(r.released)
                 SignOutResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
             }
+
             // identity.attach: the preview, the confirm, and the typed refusals.
             "attach" -> when (val r = client.identity.attach(args["confirm"].boolValue == true)) {
                 is AttachResult.Confirm -> {
@@ -646,17 +704,21 @@ object KotlinReplay {
                         ),
                     )
                 }
+
                 is AttachResult.Ok -> {
                     out["result"] = JsonPrimitive("ok")
                     out["attached"] = r.attached?.let { JsonPrimitive(it) } ?: JsonNull
                     out["subject"] = r.subject?.let { JsonPrimitive(it) } ?: JsonNull
                 }
+
                 is AttachResult.Refused -> {
                     out["result"] = JsonPrimitive("refused")
                     out["code"] = JsonPrimitive(r.code)
                 }
+
                 AttachResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
             }
+
             "waitForSignIn" -> {
                 val sess = session.prompt ?: throw AssertionError("waitForSignIn before beginSignIn")
                 try {
@@ -669,6 +731,7 @@ object KotlinReplay {
                     out["code"] = JsonPrimitive(e.code)
                 }
             }
+
             "changelog" -> try {
                 out["entries"] = JsonArray(client.release.changelog().map(::entryValue))
                 out["result"] = JsonPrimitive("ok")
@@ -676,6 +739,7 @@ object KotlinReplay {
                 out["result"] = JsonPrimitive("error")
                 out["code"] = JsonPrimitive(e.code)
             }
+
             "commerceBinding" -> try {
                 val b = client.commerce.binding()
                 out["result"] = JsonPrimitive("ok")
@@ -684,8 +748,10 @@ object KotlinReplay {
                     b.products.map {
                         JsonObject(
                             mapOf(
-                                "store" to JsonPrimitive(it.store), "productId" to JsonPrimitive(it.productId),
-                                "flag" to JsonPrimitive(it.flag), "deliverable" to JsonPrimitive(it.deliverable),
+                                "store" to JsonPrimitive(it.store),
+                                "productId" to JsonPrimitive(it.productId),
+                                "flag" to JsonPrimitive(it.flag),
+                                "deliverable" to JsonPrimitive(it.deliverable),
                             ),
                         )
                     },
@@ -693,6 +759,7 @@ object KotlinReplay {
             } catch (e: PolarisException) {
                 out["result"] = JsonPrimitive(e.code)
             }
+
             "commerceClaim" -> {
                 val payload = args["payload"].objectValue?.mapValues { it.value.stringValue ?: it.value.toString() } ?: emptyMap()
                 when (val r = client.commerce.claim(args["store"].stringValue ?: "", payload)) {
@@ -702,19 +769,25 @@ object KotlinReplay {
                         out["state"] = r.state?.let { JsonPrimitive(it) } ?: JsonNull
                         out["granted"] = JsonPrimitive(r.granted)
                     }
+
                     is ClaimResult.NotOwned -> {
                         out["result"] = JsonPrimitive(r.code)
                         out["reason"] = JsonPrimitive(CommerceClient.NOT_OWNED)
                     }
+
                     ClaimResult.AttestationRequired -> out["result"] = JsonPrimitive("attestation_required")
+
                     is ClaimResult.Refused -> {
                         out["result"] = JsonPrimitive(r.code)
                         out["reason"] = r.reason?.let { JsonPrimitive(it) } ?: JsonNull
                     }
+
                     is ClaimResult.Error -> out["result"] = JsonPrimitive(r.code)
                 }
             }
+
             "installUrl" -> out["url"] = JsonPrimitive(client.release.installUrl())
+
             "downloadUrl" -> out["url"] = JsonPrimitive(
                 client.release.downloadUrl(
                     version = args["version"].stringValue ?: "",
@@ -724,6 +797,7 @@ object KotlinReplay {
                     dmg = args["dmg"].boolValue == true,
                 ),
             )
+
             else -> throw AssertionError("the Kotlin replayer has no mapping for \"$action\" (a later slice adds it)")
         }
         out["services"] = JsonObject(client.capabilities().entries.associate { it.key.slug to JsonPrimitive(it.value) })
@@ -742,12 +816,15 @@ object KotlinReplay {
     @OptIn(ConformanceReplayOnly::class)
     private suspend fun redirectSession(client: PolarisKeyClient, args: JsonObject, transcript: Transcript?): SignInSession {
         client.identity.redirectEntropy = RedirectEntropy(
-            args["state"].stringValue ?: RECORDED_STATE, args["codeVerifier"].stringValue ?: RECORDED_VERIFIER,
+            args["state"].stringValue ?: RECORDED_STATE,
+            args["codeVerifier"].stringValue ?: RECORDED_VERIFIER,
         )
         return client.identity.signIn.start(
             SignInOptions(
-                channel = SignInChannel.Redirect, redirectUri = args["redirectUri"].stringValue ?: RECORDED_REDIRECT,
-                loginHint = args["loginHint"].stringValue, nameHint = args["nameHint"].stringValue,
+                channel = SignInChannel.Redirect,
+                redirectUri = args["redirectUri"].stringValue ?: RECORDED_REDIRECT,
+                loginHint = args["loginHint"].stringValue,
+                nameHint = args["nameHint"].stringValue,
                 purpose = SignInPurpose.entries.firstOrNull { it.wire == args["purpose"].stringValue },
                 // The recorded authorize request asked the app to show the licence choice.
                 licenseChoice = if (transcript?.asksAppChoice() == true) "app" else null,
@@ -795,7 +872,13 @@ object KotlinReplay {
             schemaVersion = 1, aud = client.core.product, deliverable = "app", kind = "app", version = args["version"].stringValue!!,
             seq = 1, issuedAt = 1, tag = null,
             builds = listOf(
-                ReleaseRecordBuild(buildId, args["platform"].stringValue!!, args["arch"].stringValue!!, "tar.gz", artifacts = listOf(ReleaseRecordArtifact("payload", "payload", sha, size))),
+                ReleaseRecordBuild(
+                    buildId,
+                    args["platform"].stringValue!!,
+                    args["arch"].stringValue!!,
+                    "tar.gz",
+                    artifacts = listOf(ReleaseRecordArtifact("payload", "payload", sha, size)),
+                ),
             ),
             json = JsonObject(emptyMap()),
         )
@@ -821,7 +904,8 @@ object KotlinReplay {
     /** A changelog entry in the transcript's JSON vocabulary (null ⇒ `null`). */
     private fun entryValue(e: ChangelogEntry): JsonElement = JsonObject(
         mapOf(
-            "version" to JsonPrimitive(e.version), "tag" to JsonPrimitive(e.tag),
+            "version" to JsonPrimitive(e.version),
+            "tag" to JsonPrimitive(e.tag),
             "date" to (e.date?.let { JsonPrimitive(it) } ?: JsonNull),
             "summary" to (e.summary?.let { JsonPrimitive(it) } ?: JsonNull),
             "url" to JsonPrimitive(e.url),
@@ -830,30 +914,39 @@ object KotlinReplay {
 
     private fun activationKind(r: ActivationResult): String = when (r) {
         is ActivationResult.Ok -> "ok"
+
         is ActivationResult.DeviceLimit -> "device-limit"
+
         is ActivationResult.KeyEntryLimit -> "key-entry-limit"
+
         // Recorded as a plain refusal carrying `code: license_owned` (keyentry-owned).
         is ActivationResult.LicenseOwned -> "refused"
+
         ActivationResult.Unauthorized -> "unauthorized"
+
         ActivationResult.FingerprintRequired -> "fingerprint-required"
+
         is ActivationResult.HardwareMismatch -> "hardware-mismatch"
+
         ActivationResult.EnrollDisabled -> "enroll-disabled"
+
         ActivationResult.EnrollClaimed -> "enroll-claimed"
+
         ActivationResult.LicenseDisabled -> "license-disabled"
+
         ActivationResult.LicenseExpired -> "license-expired"
+
         ActivationResult.AttestationRequired -> "attestation-required"
+
         is ActivationResult.RateLimited -> "rate-limited"
+
         is ActivationResult.Refused -> "refused"
+
         is ActivationResult.Error -> "error"
     }
 
     /** The key ring verbs of [act]; see there. */
-    private suspend fun keyring(
-        client: PolarisKeyClient,
-        step: JsonObject,
-        session: ReplaySession,
-        out: MutableMap<String, JsonElement>,
-    ) {
+    private suspend fun keyring(client: PolarisKeyClient, step: JsonObject, session: ReplaySession, out: MutableMap<String, JsonElement>) {
         val k = client.keyring
         val action = step["action"].stringValue
         val args = step["args"]!!.obj
@@ -864,8 +957,11 @@ object KotlinReplay {
                     out["ring"] = r.ring?.let { g ->
                         JsonObject(
                             mapOf(
-                                "ringId" to JsonPrimitive(g.ringId), "epoch" to jsonInt(g.epoch.toLong()), "rootKid" to JsonPrimitive(g.rootKid),
-                                "state" to JsonPrimitive(g.state), "recoverySet" to JsonPrimitive(g.recoverySet),
+                                "ringId" to JsonPrimitive(g.ringId),
+                                "epoch" to jsonInt(g.epoch.toLong()),
+                                "rootKid" to JsonPrimitive(g.rootKid),
+                                "state" to JsonPrimitive(g.state),
+                                "recoverySet" to JsonPrimitive(g.recoverySet),
                                 "previous" to (g.previous?.let { JsonPrimitive(it.ringId) } ?: JsonNull),
                                 "adopted" to JsonArray(g.adopted.map { JsonPrimitive(it.ringId) }),
                             ),
@@ -874,12 +970,14 @@ object KotlinReplay {
                     out["wrap"] = r.wrap?.let { w ->
                         JsonObject(
                             mapOf(
-                                "epoch" to jsonInt(w.epoch.toLong()), "kid" to JsonPrimitive(w.kid),
+                                "epoch" to jsonInt(w.epoch.toLong()),
+                                "kid" to JsonPrimitive(w.kid),
                                 "by" to (w.by?.let { JsonPrimitive(it) } ?: JsonNull),
                             ),
                         )
                     } ?: JsonNull
                 }
+
                 "keyringCreate", "keyringReset" -> {
                     val made = if (action == "keyringCreate") k.create() else k.reset()
                     if (action == "keyringCreate" && session.firstRingId == null) session.firstRingId = made.ringId
@@ -889,10 +987,15 @@ object KotlinReplay {
                     out["ringId"] = if (ok) (step["expect"]!!.obj["ringId"] ?: JsonPrimitive(made.ringId)) else JsonPrimitive(made.ringId)
                     out["epoch"] = jsonInt(made.epoch.toLong())
                 }
+
                 "keyringWrap" -> k.wrapTo(args["deviceId"].stringValue ?: "", DeviceKeyStore(InMemoryDeviceKeyStorage()).ensure().agreeKey)
+
                 "keyringUnwrap" -> k.removeWrap(args["deviceId"].stringValue ?: "")
+
                 "keyringAdopt" -> k.adopt(session.firstRingId ?: "")
+
                 "keyringRecoverySet" -> k.setRecoveryCode()
+
                 else -> out["ct"] = JsonPrimitive(k.recoveryBlob().ct)
             }
             out["result"] = JsonPrimitive("ok")
@@ -925,7 +1028,13 @@ object KotlinReplay {
         val redirects = t.id != "cloudsync-cors" && t.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }
         val services = (
             t.initial["services"]?.arrayValue?.map { it.stringValue!! }
-                ?: if (u != null) listOf("release", "distribution", "update") else if (redirects) listOf("license", "config", "identity") else null
+                ?: if (u != null) {
+                    listOf("release", "distribution", "update")
+                } else if (redirects) {
+                    listOf("license", "config", "identity")
+                } else {
+                    null
+                }
             )
             ?.mapNotNull { ServiceSlug.of(it) }
         val installed = u?.get("installed").objectValue
@@ -1081,8 +1190,18 @@ class TranscriptTest : ConformanceSuite() {
     /** The update transcripts are held as tightly: an `UpdateCheck` member that disagrees fails. */
     @Test
     fun aDoctoredUpdateDecisionFails() {
-        assertReplayFails(transcripts.first { it.id == "update-feed-rollback" }.withExpect(0, "channel", JsonPrimitive("latest")), "step 0 (updateDecide): channel")
-        assertReplayFails(transcripts.first { it.id == "update-record-by-hash" }.withExpect(1, "record", JsonPrimitive("network")), "step 1 (updateDecide): record")
+        assertReplayFails(
+            transcripts.first {
+                it.id == "update-feed-rollback"
+            }.withExpect(0, "channel", JsonPrimitive("latest")),
+            "step 0 (updateDecide): channel",
+        )
+        assertReplayFails(
+            transcripts.first {
+                it.id == "update-record-by-hash"
+            }.withExpect(1, "record", JsonPrimitive("network")),
+            "step 1 (updateDecide): record",
+        )
     }
 
     /** `packs-chunk-range` passes only when the SDK reads the exact run: a recorded `Content-Range`
