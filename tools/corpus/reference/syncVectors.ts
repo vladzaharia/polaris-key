@@ -593,7 +593,16 @@ export function refChunkId(
     : hmac(refKCid(root, collection), plain);
 }
 
-/** `0x01 ‖ codec ‖ AES-256-GCM(K_chunk, nonce 0¹², aad = 0x01 ‖ codec ‖ id, body)`. */
+/** The synthetic nonce: `HMAC-SHA256(K_chunk, 0x01 ‖ codec ‖ body)[0:12]`. */
+export function refChunkNonce(
+  key: Uint8Array,
+  codec: number,
+  body: Uint8Array,
+): Uint8Array {
+  return hmac(key, cat(Uint8Array.of(0x01, codec), body)).subarray(0, 12);
+}
+
+/** `0x01 ‖ codec ‖ nonce(12) ‖ AES-256-GCM(K_chunk, nonce, aad = 0x01 ‖ codec ‖ id, body)`. */
 export function refSealChunk(
   root: Uint8Array,
   collection: string,
@@ -603,7 +612,22 @@ export function refSealChunk(
 ): Uint8Array {
   const aad = cat(Uint8Array.of(REF_CHUNK_VERSION, codec), id);
   const key = refKChunk(refKColl(root, collection), id);
-  return cat(aad.subarray(0, 2), gcmSeal(key, new Uint8Array(12), aad, body));
+  const nonce = refChunkNonce(key, codec, body);
+  return cat(aad.subarray(0, 2), nonce, gcmSeal(key, nonce, aad, body));
+}
+
+/** A chunk object under a chosen nonce: only for the vectors that a reader must refuse. */
+export function refSealChunkWithNonce(
+  root: Uint8Array,
+  collection: string,
+  id: Uint8Array,
+  codec: number,
+  body: Uint8Array,
+  nonce: Uint8Array,
+): Uint8Array {
+  const aad = cat(Uint8Array.of(REF_CHUNK_VERSION, codec), id);
+  const key = refKChunk(refKColl(root, collection), id);
+  return cat(aad.subarray(0, 2), nonce, gcmSeal(key, nonce, aad, body));
 }
 
 /** One zstd frame that stores `data` in raw blocks, with its content size in the header. */
@@ -681,6 +705,7 @@ export type ChunkInvalid =
   | "version"
   | "codec"
   | "auth"
+  | "nonce"
   | "decode"
   | "size"
   | "id";
@@ -697,14 +722,17 @@ export function refOpenChunk(
   obj: Uint8Array,
 ): RefChunkOpen {
   const fail = (reason: ChunkInvalid): RefChunkOpen => ({ ok: false, reason });
-  if (obj.length < 2 + REF_TAG) return fail("shape");
+  if (obj.length < 2 + 12 + REF_TAG) return fail("shape");
   if (obj[0] !== REF_CHUNK_VERSION) return fail("version");
   const codec = obj[1]!;
   if (codec !== REF_CODEC_RAW && codec !== REF_CODEC_ZSTD) return fail("codec");
   const aad = cat(obj.subarray(0, 2), id);
   const key = refKChunk(refKColl(root, collection), id);
-  const body = gcmOpen(key, new Uint8Array(12), aad, obj.subarray(2));
+  const nonce = obj.subarray(2, 14);
+  const body = gcmOpen(key, nonce, aad, obj.subarray(14));
   if (body === null) return fail("auth");
+  if (toHex(refChunkNonce(key, codec, body)) !== toHex(nonce))
+    return fail("nonce");
   let plain: Uint8Array;
   if (codec === REF_CODEC_RAW) {
     plain = body;

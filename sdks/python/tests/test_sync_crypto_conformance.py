@@ -1,7 +1,7 @@
 # @pkey-feature sync.keyring
 """The Cloud Sync E2E crypto against ``conformance/corpus/v2/sync-vectors.json`` (U-38.3;
 WIRE-CONTRACT-V5 §13.10, §13.11): hkdfCases, envelopeCases, blindCases, hpkeAnchor, wrapCases,
-recoveryCodeCases and adoptCases. cdc, chunk, file-stream, manifest and transfer-plan sections are
+recoveryCodeCases, adoptCases and canonicalJsonCases. cdc, chunk, file-stream, manifest and transfer-plan sections are
 other work packages and are not read here (the table is inert to a runner that skips them).
 """
 
@@ -154,3 +154,25 @@ def test_adopt(c: Dict[str, Any]) -> None:
 def test_a_repr_never_shows_a_value() -> None:
     o = sc.OpenedValue(ok=True, name="theme", value="secret-value")
     assert "secret-value" not in repr(o)
+
+
+@pytest.mark.parametrize("c", V["canonicalJsonCases"], ids=ids(V["canonicalJsonCases"]))
+def test_canonical_json(c: Dict[str, Any]) -> None:
+    if "special" in c:
+        value: Any = float(c["special"].lower().replace("infinity", "inf"))
+    else:
+        # Every number is an IEEE double, as JSON.parse reads it.
+        value = json.loads(c["inputJson"], parse_int=float)
+    if c["expect"]["result"] == "ok":
+        assert sc.canonical_json(value) == c["expect"]["canonical"]
+    else:
+        with pytest.raises(ValueError):
+            sc.canonical_json(value)
+
+
+def test_canonical_json_refuses_ints_beyond_2_pow_53() -> None:
+    assert sc.canonical_json(2**53) == "9007199254740992"
+    assert sc.canonical_json(-(2**53)) == "-9007199254740992"
+    for v in (2**53 + 1, 2**70, -(2**53) - 1):
+        with pytest.raises(ValueError):
+            sc.canonical_json(v)

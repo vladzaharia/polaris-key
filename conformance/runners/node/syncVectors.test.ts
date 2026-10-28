@@ -53,6 +53,7 @@ import {
   webCryptoSyncPort as port,
   type BlindKind,
   type SyncCryptoPort,
+  canonicalJson,
   type SyncJson,
 } from "@polaris-key/client-core/sync";
 
@@ -152,6 +153,7 @@ interface Vectors {
   cdcCases: CdcCase[];
   chunkCases: ChunkRow[];
   manifestCases: ManifestCase[];
+  canonicalJsonCases: CanonicalJsonCase[];
 }
 type Verdict<T> =
   | ({ result: "ok" } & T)
@@ -185,7 +187,25 @@ type ChunkRow =
       objectHex: string;
       seal?: { codec: number; bodyHex: string };
       expect: Verdict<{ plainHex: string; codec: number }>;
+    }
+  | {
+      kind: "pair";
+      id: string;
+      rootHex: string;
+      collection: string;
+      idHex: string;
+      plainHex: string;
+      rawObjectHex: string;
+      zstdObjectHex: string;
+      rawNonceHex: string;
+      zstdNonceHex: string;
     };
+interface CanonicalJsonCase {
+  id: string;
+  inputJson?: string;
+  special?: "NaN" | "Infinity" | "-Infinity";
+  expect: { result: "ok"; canonical: string } | { result: "invalid" };
+}
 interface ManifestCase {
   id: string;
   manifestHex: string;
@@ -486,6 +506,30 @@ describe("sync-vectors.json: chunkCases", () => {
         );
         return;
       }
+      if (c.kind === "pair") {
+        expect(c.rawNonceHex).not.toBe(c.zstdNonceHex);
+        for (const [objHex, nonceHex, codec] of [
+          [c.rawObjectHex, c.rawNonceHex, 0],
+          [c.zstdObjectHex, c.zstdNonceHex, 1],
+        ] as const) {
+          const object = unhex(objHex);
+          expect(hex(object.subarray(2, 14))).toBe(nonceHex);
+          const o = await openChunk(
+            port,
+            root,
+            c.collection,
+            unhex(c.idHex),
+            object,
+            zstdDecode,
+          );
+          expect(o.ok).toBe(true);
+          if (o.ok) {
+            expect(hex(o.plain)).toBe(c.plainHex);
+            expect(o.codec).toBe(codec);
+          }
+        }
+        return;
+      }
       const opened = await openChunk(
         port,
         root,
@@ -537,6 +581,21 @@ describe("sync-vectors.json: manifestCases", () => {
         })),
       ).toEqual(c.expect.records);
       expect(hex(encodeManifest(parsed.manifest))).toBe(c.manifestHex);
+    });
+  }
+});
+
+describe("sync-vectors.json: canonicalJsonCases", () => {
+  for (const c of vectors.canonicalJsonCases) {
+    it(c.id, () => {
+      const input = (
+        c.special !== undefined ? Number(c.special) : JSON.parse(c.inputJson!)
+      ) as SyncJson;
+      if (c.expect.result === "ok") {
+        expect(canonicalJson(input)).toBe(c.expect.canonical);
+      } else {
+        expect(() => canonicalJson(input)).toThrow(RangeError);
+      }
     });
   }
 });

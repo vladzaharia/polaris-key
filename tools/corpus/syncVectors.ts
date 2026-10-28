@@ -53,6 +53,7 @@ import {
   refOpenChunk,
   refParseManifest,
   refSealChunk,
+  refSealChunkWithNonce,
   refStream,
   refZstdRawFrame,
   type RefManifest,
@@ -1379,8 +1380,24 @@ interface ChunkObjectCase {
     | { result: "invalid"; reason: string };
 }
 
-function buildChunkCases(): Array<ChunkIdCase | ChunkObjectCase> {
-  const rows: Array<ChunkIdCase | ChunkObjectCase> = [];
+interface ChunkPairCase {
+  id: string;
+  description: string;
+  kind: "pair";
+  rootHex: string;
+  collection: string;
+  idHex: string;
+  plainHex: string;
+  rawObjectHex: string;
+  zstdObjectHex: string;
+  rawNonceHex: string;
+  zstdNonceHex: string;
+}
+
+function buildChunkCases(): Array<
+  ChunkIdCase | ChunkObjectCase | ChunkPairCase
+> {
+  const rows: Array<ChunkIdCase | ChunkObjectCase | ChunkPairCase> = [];
   const idRow = (id: string, description: string, plain: Uint8Array) => {
     rows.push({
       id,
@@ -1457,7 +1474,7 @@ function buildChunkCases(): Array<ChunkIdCase | ChunkObjectCase> {
   };
   obj(
     "object-raw",
-    "codec 0: 0x01 0x00, then AES-256-GCM of the chunk under K_chunk(id), nonce zero, aad = 0x01 0x00 id.",
+    "codec 0: 0x01 0x00, the 12-byte synthetic nonce HMAC-SHA256(K_chunk, 0x01 0x00 body)[0:12], then AES-256-GCM of the chunk under K_chunk(id), aad = 0x01 0x00 id.",
     idA,
     rawA,
     { result: "ok", plainHex: toHex(plainA), codec: 0 },
@@ -1477,10 +1494,16 @@ function buildChunkCases(): Array<ChunkIdCase | ChunkObjectCase> {
     c[i] = c[i]! ^ 1;
     return c;
   };
-  obj("refuse-shape", "Fewer than 2 + 16 bytes.", idA, rawA.subarray(0, 17), {
-    result: "invalid",
-    reason: "shape",
-  });
+  obj(
+    "refuse-shape",
+    "Fewer than 2 + 12 + 16 bytes.",
+    idA,
+    rawA.subarray(0, 29),
+    {
+      result: "invalid",
+      reason: "shape",
+    },
+  );
   obj(
     "refuse-version",
     "Version byte 0x02.",
@@ -1538,6 +1561,20 @@ function buildChunkCases(): Array<ChunkIdCase | ChunkObjectCase> {
     "other",
   );
   obj(
+    "refuse-nonce-not-synthetic",
+    "Sealed correctly under a zero nonce: the tag verifies, but the nonce is not HMAC-SHA256(K_chunk, 0x01 codec body)[0:12], so the reader refuses it before the frame.",
+    idA,
+    refSealChunkWithNonce(
+      CHUNK_ROOT,
+      CHUNK_COLL,
+      idA,
+      REF_CODEC_RAW,
+      plainA,
+      new Uint8Array(12),
+    ),
+    { result: "invalid", reason: "nonce" },
+  );
+  obj(
     "refuse-decode-garbage",
     "Codec 1 whose body is not a zstd frame.",
     idA,
@@ -1577,6 +1614,25 @@ function buildChunkCases(): Array<ChunkIdCase | ChunkObjectCase> {
     refSealChunk(CHUNK_ROOT, CHUNK_COLL, idA, REF_CODEC_RAW, plainB),
     { result: "invalid", reason: "id" },
   );
+  // The same id sealed with both codecs: the bodies differ, so the nonces differ and both open.
+  const nonceRaw = rawA.subarray(2, 14);
+  const nonceZstd = zstdA.subarray(2, 14);
+  if (toHex(nonceRaw) === toHex(nonceZstd))
+    throw new Error("syncVectors chunk pair: nonces must differ");
+  rows.push({
+    id: "pair-codecs-same-id",
+    description:
+      "One chunk id sealed with codec 0 and with codec 1: the bodies differ, so the synthetic nonces differ (a shared key and nonce would leak both plaintexts) and each object opens to the same chunk.",
+    kind: "pair",
+    rootHex: toHex(CHUNK_ROOT),
+    collection: CHUNK_COLL,
+    idHex: toHex(idA),
+    plainHex: toHex(plainA),
+    rawObjectHex: toHex(rawA),
+    zstdObjectHex: toHex(zstdA),
+    rawNonceHex: toHex(nonceRaw),
+    zstdNonceHex: toHex(nonceZstd),
+  });
   return rows;
 }
 
@@ -1770,11 +1826,218 @@ function buildManifestCases(): ManifestCase[] {
   return rows;
 }
 
+// ── Canonical JSON (§13.10.3): the input of a blinded element name ──────────────────────────
+
+interface CanonicalJsonCase {
+  id: string;
+  description: string;
+  /** JSON text. A runner reads every number as an IEEE double (Python: parse_int=float). */
+  inputJson?: string;
+  /** A number JSON text cannot spell. */
+  special?: "NaN" | "Infinity" | "-Infinity";
+  expect: { result: "ok"; canonical: string } | { result: "invalid" };
+}
+
+const LONE_SURROGATE =
+  /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+
+// The oracle is the engine's own JSON.stringify, with the two refusals the contract adds.
+function oracleCanonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(oracleCanonical).join(",")}]`;
+  if (v !== null && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o)
+      .sort()
+      .map((k) => `${oracleCanonical(k)}:${oracleCanonical(o[k])}`)
+      .join(",")}}`;
+  }
+  if (typeof v === "number" && !Number.isFinite(v))
+    throw new RangeError("not finite");
+  if (typeof v === "string" && LONE_SURROGATE.test(v))
+    throw new RangeError("lone surrogate");
+  return JSON.stringify(v);
+}
+
+function buildCanonicalJsonCases(): CanonicalJsonCase[] {
+  const rows: CanonicalJsonCase[] = [];
+  const ok = (
+    id: string,
+    description: string,
+    inputJson: string,
+    canonical: string,
+  ) => {
+    const got = oracleCanonical(JSON.parse(inputJson));
+    if (got !== canonical)
+      throw new Error(`syncVectors canonicalJson ${id}: oracle says ${got}`);
+    rows.push({
+      id,
+      description,
+      inputJson,
+      expect: { result: "ok", canonical },
+    });
+  };
+  const bad = (id: string, description: string, inputJson: string) => {
+    let threw = false;
+    try {
+      oracleCanonical(JSON.parse(inputJson));
+    } catch {
+      threw = true;
+    }
+    if (!threw) throw new Error(`syncVectors canonicalJson ${id}: not refused`);
+    rows.push({ id, description, inputJson, expect: { result: "invalid" } });
+  };
+  const special = (
+    id: string,
+    description: string,
+    s: "NaN" | "Infinity" | "-Infinity",
+  ) =>
+    rows.push({ id, description, special: s, expect: { result: "invalid" } });
+
+  ok("int", "Integers print as digits.", "[0,1,-1,42,100]", "[0,1,-1,42,100]");
+  ok(
+    "float",
+    "Shortest round-trip digits.",
+    "[0.1,1.5,0.30000000000000004]",
+    "[0.1,1.5,0.30000000000000004]",
+  );
+  ok(
+    "integral-float",
+    "An integral float is an integer.",
+    "[2.0,100.0,-3.0]",
+    "[2,100,-3]",
+  );
+  ok("negative-zero", "-0 prints 0.", "[-0,-0.0]", "[0,0]");
+  ok(
+    "exp-small-1e-5",
+    "1e-5 is decimal: 0.00001 (Python repr says 1e-05).",
+    "1e-5",
+    "0.00001",
+  );
+  ok(
+    "exp-boundary-1e-6",
+    "1e-6 is the smallest decimal spelling.",
+    "1e-6",
+    "0.000001",
+  );
+  ok(
+    "exp-small-1e-7",
+    "Below 1e-6 the exponent has no padding: 1e-7.",
+    "1e-7",
+    "1e-7",
+  );
+  ok(
+    "exp-small-mantissa",
+    "A mantissa with digits: 1.5e-7.",
+    "1.5e-7",
+    "1.5e-7",
+  );
+  ok(
+    "exp-small-negative",
+    "A negative number keeps its sign.",
+    "-1e-7",
+    "-1e-7",
+  );
+  ok("exp-min-denormal", "The smallest double.", "5e-324", "5e-324");
+  ok(
+    "integral-2-pow-53",
+    "2**53 is exact.",
+    "9007199254740992",
+    "9007199254740992",
+  );
+  ok(
+    "integral-2-pow-53-plus-1",
+    "9007199254740993 reads as the nearest double, 2**53.",
+    "9007199254740993",
+    "9007199254740992",
+  );
+  ok("integral-1e16", "1e16 prints in full.", "1e16", "10000000000000000");
+  ok(
+    "integral-2-pow-60",
+    "2**60: the shortest digits padded with zeros, not the exact integer.",
+    "1152921504606846976",
+    "1152921504606847000",
+  );
+  ok(
+    "integral-large-float",
+    "123456789012345678901.0: shortest digits, zero padded.",
+    "123456789012345678901.0",
+    "123456789012345680000",
+  );
+  ok(
+    "integral-exponent-spelling",
+    "The same value spelled with an exponent.",
+    "1.2345678901234568e20",
+    "123456789012345680000",
+  );
+  ok(
+    "exp-large-1e21",
+    "From 1e21 the exponent form carries a plus sign.",
+    "1e21",
+    "1e+21",
+  );
+  ok(
+    "exp-large-mantissa",
+    "1.5e21 keeps its mantissa digits.",
+    "1.5e21",
+    "1.5e+21",
+  );
+  ok("exp-large-1e300", "1e300.", "1e300", "1e+300");
+  ok(
+    "exp-max-double",
+    "The largest double.",
+    "1.7976931348623157e308",
+    "1.7976931348623157e+308",
+  );
+  ok(
+    "keys-sorted",
+    "Keys sort at every level.",
+    '{"b":1,"a":{"d":[{"z":1,"y":2}],"c":2}}',
+    '{"a":{"c":2,"d":[{"y":2,"z":1}]},"b":1}',
+  );
+  ok(
+    "keys-utf16-order",
+    "Keys sort by UTF-16 code unit: U+1F600 (D83D DE00) sorts before U+FFFF.",
+    '{"\\uffff":1,"\\ud83d\\ude00":2,"a":3}',
+    '{"a":3,"\u{1F600}":2,"￿":1}',
+  );
+  ok(
+    "string-escapes",
+    "Only quote, backslash and C0 controls are escaped (lowercase hex); DEL, U+2028 and non-ASCII stay raw.",
+    '"\\u0000\\u001f\\u007f\\u2028\\"\\\\/\\b\\f\\n\\r\\t\\u00e9"',
+    '"\\u0000\\u001f\u007f \\"\\\\/\\b\\f\\n\\r\\té"',
+  );
+  ok(
+    "literals",
+    "true, false, null, an empty array and an empty object.",
+    "[true,false,null,[],{}]",
+    "[true,false,null,[],{}]",
+  );
+  special("refuse-nan", "NaN is refused (not null).", "NaN");
+  special("refuse-infinity", "Infinity is refused.", "Infinity");
+  special("refuse-negative-infinity", "-Infinity is refused.", "-Infinity");
+  bad(
+    "refuse-lone-high-surrogate",
+    "A lone high surrogate in a string is refused.",
+    '["\\ud800"]',
+  );
+  bad(
+    "refuse-lone-low-surrogate",
+    "A lone low surrogate in a string is refused.",
+    '"a\\udc00b"',
+  );
+  bad(
+    "refuse-lone-surrogate-key",
+    "A lone surrogate in a key is refused.",
+    '{"\\ud800":1}',
+  );
+  return rows;
+}
+
 export function buildSyncVectors(): unknown {
   return {
     syncVectorsVersion: 1,
     description:
-      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames). manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
+      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes, 0x01 codec nonce(12) then the sealed body, the nonce being HMAC-SHA256(K_chunk, 0x01 codec body)[0:12]: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, nonce, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames); kind pair (one id sealed with codec 0 and codec 1: both objects open to plainHex and their nonces, bytes 2 to 14, differ)). manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. canonicalJsonCases: canonical JSON, the input of a blinded element name: a runner parses inputJson with every number an IEEE double (Python: parse_int=float), or builds the number named by special, canonicalises it and expects canonical, or a refusal (invalid) for a number that is not finite and a string or key with a lone surrogate. Numbers print per ECMAScript Number::toString. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
     constants: {
       envelopeOverheadBytes: REF_E2E_OVERHEAD,
       envelopeFixedBytes: REF_ENVELOPE_FIXED,
@@ -1792,5 +2055,6 @@ export function buildSyncVectors(): unknown {
     cdcCases: buildCdcCases(),
     chunkCases: buildChunkCases(),
     manifestCases: buildManifestCases(),
+    canonicalJsonCases: buildCanonicalJsonCases(),
   };
 }

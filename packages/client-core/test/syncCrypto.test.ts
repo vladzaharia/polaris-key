@@ -250,6 +250,12 @@ describe("canonicalJson", () => {
       canonicalJson({ z: 1, a: [true, null, "é"], m: { b: 2, a: 1 } }),
     ).toBe('{"a":[true,null,"é"],"m":{"a":1,"b":2},"z":1}');
   });
+
+  it("refuses a number that is not finite and a lone surrogate", () => {
+    for (const bad of [NaN, Infinity, -Infinity, "\ud800", [{ "\udc00": 1 }]])
+      expect(() => canonicalJson(bad as never)).toThrow(RangeError);
+    expect(canonicalJson("\ud83d\ude00")).toBe('"\u{1F600}"');
+  });
 });
 
 describe("blind", () => {
