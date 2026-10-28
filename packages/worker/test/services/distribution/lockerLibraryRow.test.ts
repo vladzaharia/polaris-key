@@ -1,5 +1,5 @@
 /**
- * LK-12b: the download page's "Add to library" row. Drawn in "Every way to get" only when
+ * LK-12b: the download page's "Add to my library" row. Drawn in "Every way to get" only when
  * Identity says a new account would see the product in Discover and a customer origin exists;
  * the link is `<customer origin>/<slug>`, built from the slug alone.
  */
@@ -70,15 +70,15 @@ async function page(w: World): Promise<string> {
 
 const ROW = 'data-action="locker-library"';
 
-describe("the Add to library row (LK-12b)", () => {
+describe("the Add to my library row (LK-12b)", () => {
   it("shows for a product Discover offers, linking to <customer origin>/<slug>", async () => {
     const html = await page(await world());
     expect(html).toContain(ROW);
     expect(html).toContain(`href="${CUSTOMER}/${SLUG}"`);
-    expect(html).toContain(">Add to library</a>");
+    expect(html).toContain(">Add to my library</a>");
     const ways = html.slice(html.indexOf('id="ways-title"'));
     expect(ways).toContain(ROW);
-    expect(ways).toContain('<span class="row-title">Polaris Locker</span>');
+    expect(ways).toContain('<h3 class="row-title">Polaris Locker</h3>');
   });
 
   it("draws no row for an unlisted product", async () => {
@@ -138,11 +138,11 @@ describe("renderDownloadPage libraryUrl", () => {
     });
     expect(withRow).toContain("Every way to get Tidewater");
     expect(withRow).toContain(
-      '<a class="obtn" href="https://locker.example.test/tidewater" title="Polaris Locker" aria-label="Add to library, Polaris Locker">Add to library</a>',
+      '<a class="obtn" href="https://locker.example.test/tidewater" title="Polaris Locker" aria-label="Add to my library, Polaris Locker">Add to my library</a>',
     );
     const without = renderDownloadPage(model, detected, { libraryUrl: null });
     expect(without).not.toContain("Every way to get");
-    expect(without).not.toContain("Add to library");
+    expect(without).not.toContain("Add to my library");
   });
 
   it("refuses an unsafe URL", () => {
@@ -150,6 +150,6 @@ describe("renderDownloadPage libraryUrl", () => {
       renderDownloadPage(model, detected, {
         libraryUrl: "javascript:alert(1)",
       }),
-    ).not.toContain("Add to library");
+    ).not.toContain("Add to my library");
   });
 });
