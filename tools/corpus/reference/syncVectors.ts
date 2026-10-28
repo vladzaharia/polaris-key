@@ -843,3 +843,185 @@ export function refParseManifest(b: Uint8Array): RefManifestParse {
     manifest: { plainSize, plainSha256: b.slice(32, 64), records },
   };
 }
+
+// ── `pkey-sync-file/1` (§13.10.4) ────────────────────────────────────────────────────────────
+// Restated from the spec as whole-buffer functions (the client streams). The 64-byte header is
+// little-endian (`PKSYNCF1`, version u16 1, flags u16 0, segmentBytes u32 1 MiB, kid, salt); only
+// the segment counter in the nonce is big-endian. A file of n >= 1 segments: the first n - 1 hold
+// exactly 1 MiB of plaintext, the last 1..1 MiB (an empty file is one empty last segment).
+
+export const REF_FILE = {
+  magic: "PKSYNCF1",
+  headerBytes: 64,
+  segmentBytes: 1048576,
+  tag: 16,
+} as const;
+
+export function refFileHeader(
+  kid: Uint8Array,
+  salt: Uint8Array,
+  over: { segmentBytes?: number; flags?: number; version?: number } = {},
+): Uint8Array {
+  const h = new Uint8Array(64);
+  const v = new DataView(h.buffer);
+  h.set(utf8(REF_FILE.magic), 0);
+  v.setUint16(8, over.version ?? 1, true);
+  v.setUint16(10, over.flags ?? 0, true);
+  v.setUint32(12, over.segmentBytes ?? REF_FILE.segmentBytes, true);
+  h.set(kid, 16);
+  h.set(salt, 32);
+  return h;
+}
+
+function refFileNonce(index: number, last: boolean): Uint8Array {
+  const n = new Uint8Array(12);
+  n[0] = last ? 1 : 0;
+  new DataView(n.buffer).setBigUint64(4, BigInt(index), false);
+  return n;
+}
+
+/** The sealed stream of `plain` under `root`/`collection` with a 32-byte `salt`. */
+export function refSealFile(
+  root: Uint8Array,
+  collection: string,
+  salt: Uint8Array,
+  plain: Uint8Array,
+): Uint8Array {
+  const header = refFileHeader(refKid(root), salt);
+  const key = refKFile(refKColl(root, collection), salt);
+  const n = Math.max(1, Math.ceil(plain.length / REF_FILE.segmentBytes));
+  const out: Uint8Array[] = [header];
+  for (let i = 0; i < n; i++) {
+    const seg = plain.subarray(
+      i * REF_FILE.segmentBytes,
+      (i + 1) * REF_FILE.segmentBytes,
+    );
+    out.push(gcmSeal(key, refFileNonce(i, i === n - 1), header, seg));
+  }
+  return cat(...out);
+}
+
+/** The plaintext size a sealed size implies, or null when no stream has that size. */
+export function refFilePlainSize(sealed: number): number | null {
+  const body = sealed - REF_FILE.headerBytes;
+  const seg = REF_FILE.segmentBytes + REF_FILE.tag;
+  if (body < REF_FILE.tag) return null;
+  const n = Math.ceil(body / seg);
+  const lastLen = body - (n - 1) * seg; // tag + 0..1 MiB of the last segment
+  if (lastLen < REF_FILE.tag) return null;
+  if (n > 1 && lastLen === REF_FILE.tag) return null;
+  return body - n * REF_FILE.tag;
+}
+
+export type FileInvalid =
+  | "shape"
+  | "magic"
+  | "version"
+  | "flags"
+  | "segmentSize"
+  | "kid"
+  | "size"
+  | "auth"
+  | "range";
+
+export type RefFileOpen =
+  | { ok: true; plain: Uint8Array }
+  | { ok: false; reason: FileInvalid };
+
+function refFileHeaderCheck(
+  s: Uint8Array,
+  expectKid: Uint8Array,
+): FileInvalid | null {
+  if (s.length < REF_FILE.headerBytes) return "shape";
+  const v = new DataView(s.buffer, s.byteOffset, s.length);
+  if (Buffer.from(s.subarray(0, 8)).toString("latin1") !== REF_FILE.magic)
+    return "magic";
+  if (v.getUint16(8, true) !== 1) return "version";
+  if (v.getUint16(10, true) !== 0) return "flags";
+  if (v.getUint32(12, true) !== REF_FILE.segmentBytes) return "segmentSize";
+  if (toHex(s.subarray(16, 32)) !== toHex(expectKid)) return "kid";
+  return null;
+}
+
+/** Opens a whole stream; the checks run in the order of `FileInvalid`. */
+export function refOpenFile(
+  root: Uint8Array,
+  collection: string,
+  expectKid: Uint8Array,
+  s: Uint8Array,
+): RefFileOpen {
+  const bad = refFileHeaderCheck(s, expectKid);
+  if (bad !== null) return { ok: false, reason: bad };
+  const header = s.subarray(0, 64);
+  const key = refKFile(refKColl(root, collection), s.subarray(32, 64));
+  const body = s.subarray(64);
+  const seg = REF_FILE.segmentBytes + REF_FILE.tag;
+  if (body.length < REF_FILE.tag) return { ok: false, reason: "shape" };
+  const n = Math.ceil(body.length / seg);
+  const lastLen = body.length - (n - 1) * seg;
+  if (lastLen < REF_FILE.tag) return { ok: false, reason: "shape" };
+  if (n > 1 && lastLen === REF_FILE.tag) return { ok: false, reason: "size" };
+  const out: Uint8Array[] = [];
+  for (let i = 0; i < n; i++) {
+    const p = gcmOpen(
+      key,
+      refFileNonce(i, i === n - 1),
+      header,
+      body.subarray(i * seg, Math.min(body.length, (i + 1) * seg)),
+    );
+    if (p === null) return { ok: false, reason: "auth" };
+    out.push(p);
+  }
+  return { ok: true, plain: cat(...out) };
+}
+
+export type RefFileRange =
+  | { ok: true; plain: Uint8Array; reads: Array<[number, number]> }
+  | { ok: false; reason: FileInvalid };
+
+/**
+ * Bytes `[start, end)` of the plaintext of a stored stream: the header read, then one read per
+ * overlapping segment. Only those segments are authenticated; the size alone says which is last.
+ */
+export function refOpenFileRange(
+  root: Uint8Array,
+  collection: string,
+  expectKid: Uint8Array,
+  stored: Uint8Array,
+  start: number,
+  end: number,
+): RefFileRange {
+  const plainSize = refFilePlainSize(stored.length);
+  if (plainSize === null) return { ok: false, reason: "shape" };
+  if (start < 0 || start > end || end > plainSize)
+    return { ok: false, reason: "range" };
+  const reads: Array<[number, number]> = [[0, 64]];
+  const bad = refFileHeaderCheck(stored.subarray(0, 64), expectKid);
+  if (bad !== null) return { ok: false, reason: bad };
+  if (start === end) return { ok: true, plain: new Uint8Array(0), reads };
+  const header = stored.subarray(0, 64);
+  const key = refKFile(refKColl(root, collection), stored.subarray(32, 64));
+  const n = Math.max(1, Math.ceil(plainSize / REF_FILE.segmentBytes));
+  const S = REF_FILE.segmentBytes;
+  const out: Uint8Array[] = [];
+  for (let i = Math.floor(start / S); i <= Math.floor((end - 1) / S); i++) {
+    const last = i === n - 1;
+    const len = (last ? plainSize - i * S : S) + REF_FILE.tag;
+    const off = 64 + i * (S + REF_FILE.tag);
+    reads.push([off, len]);
+    const p = gcmOpen(
+      key,
+      refFileNonce(i, last),
+      header,
+      stored.subarray(off, off + len),
+    );
+    if (p === null) return { ok: false, reason: "auth" };
+    out.push(
+      p.subarray(
+        Math.max(start, i * S) - i * S,
+        Math.min(end, i * S + p.length) - i * S,
+      ),
+    );
+  }
+  return { ok: true, plain: cat(...out), reads };
+}

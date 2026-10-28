@@ -20,6 +20,15 @@ import {
   ENVELOPE_PAD_BLOCK,
   CdcChunker,
   blind,
+  FileStreamError,
+  openFile,
+  openFileRange,
+  openFileStream,
+  plainFileSize,
+  planTransfer,
+  sealFile,
+  sealFileStream,
+  sealedFileSize,
   chunkIdHex,
   cdcParams,
   encodeManifest,
@@ -153,8 +162,70 @@ interface Vectors {
   cdcCases: CdcCase[];
   chunkCases: ChunkRow[];
   manifestCases: ManifestCase[];
+  transferPlanCases: TransferPlanCase[];
+  fileStreamCases: FileRow[];
   canonicalJsonCases: CanonicalJsonCase[];
 }
+interface TransferPlanCase {
+  id: string;
+  size: number;
+  delta: boolean;
+  expect: { mode: string; partBytes: number | null; parts: number | null };
+}
+type FileOp =
+  | { op: "truncate"; length: number }
+  | { op: "dropSegment"; index: number }
+  | { op: "swapSegments"; a: number; b: number }
+  | { op: "appendSegment"; from: number }
+  | { op: "xor"; offset: number; value: number }
+  | { op: "setHex"; offset: number; hex: string }
+  | { op: "appendHex"; hex: string };
+type FileRow = { id: string; description: string } & (
+  | {
+      kind: "seal";
+      rootHex: string;
+      collection: string;
+      saltHex: string;
+      plain: { label: string; length: number };
+      expect: {
+        sealedSize: number;
+        headerHex: string;
+        sealedSha256Hex: string;
+        plainSha256Hex: string;
+        sealedHex?: string;
+      };
+    }
+  | {
+      kind: "sizes";
+      plainToSealed: Array<[number, number]>;
+      sealedToPlain: Array<[number, number | null]>;
+    }
+  | {
+      kind: "open";
+      base: string;
+      mutate: FileOp[];
+      openCollection?: string;
+      expectKidHex?: string;
+      expect:
+        | { result: "ok"; plainSha256Hex: string }
+        | { result: "invalid"; reason: string };
+    }
+  | {
+      kind: "range";
+      base: string;
+      mutate: FileOp[];
+      start: number;
+      end: number;
+      expect:
+        | {
+            result: "ok";
+            length: number;
+            sha256Hex: string;
+            reads: Array<[number, number]>;
+          }
+        | { result: "invalid"; reason: string };
+    }
+);
 type Verdict<T> =
   | ({ result: "ok" } & T)
   | { result: "invalid"; reason: string };
@@ -582,6 +653,218 @@ describe("sync-vectors.json: manifestCases", () => {
       ).toEqual(c.expect.records);
       expect(hex(encodeManifest(parsed.manifest))).toBe(c.manifestHex);
     });
+  }
+});
+
+describe("sync-vectors.json: transferPlanCases", () => {
+  for (const c of vectors.transferPlanCases) {
+    it(c.id, () => {
+      expect(planTransfer(c.size, c.delta)).toEqual(c.expect);
+    });
+  }
+});
+
+const sha = (b: Uint8Array): string =>
+  createHash("sha256").update(b).digest("hex");
+
+/** The plaintext of a seal row (SHA-256 counter blocks of the label). */
+function filePlain(label: string, length: number): Uint8Array {
+  const out = new Uint8Array(length);
+  for (let at = 0, n = 0; at < length; n++, at += 32) {
+    const ctr = new Uint8Array(4);
+    new DataView(ctr.buffer).setUint32(0, n);
+    const block = createHash("sha256")
+      .update(`pkey-sync vector file ${label}`)
+      .update(ctr)
+      .digest();
+    out.set(block.subarray(0, Math.min(32, length - at)), at);
+  }
+  return out;
+}
+
+const FSEG = 1_048_576;
+const FSTRIDE = FSEG + 16;
+
+function applyOps(stream: Uint8Array, ops: FileOp[]): Uint8Array {
+  let b: Uint8Array = Uint8Array.from(stream);
+  const seg = (s: Uint8Array, i: number): [number, number] => {
+    const a = 64 + i * FSTRIDE;
+    return [a, Math.min(s.length, a + FSTRIDE)];
+  };
+  const cat = (...p: Uint8Array[]): Uint8Array =>
+    new Uint8Array(Buffer.concat(p));
+  for (const o of ops) {
+    if (o.op === "truncate") b = b.slice(0, o.length);
+    else if (o.op === "dropSegment") {
+      const [x, y] = seg(b, o.index);
+      b = cat(b.subarray(0, x), b.subarray(y));
+    } else if (o.op === "swapSegments") {
+      const [lo, hi] = o.a < o.b ? [o.a, o.b] : [o.b, o.a];
+      const [x1, y1] = seg(b, lo);
+      const [x2, y2] = seg(b, hi);
+      b = cat(
+        b.subarray(0, x1),
+        b.subarray(x2, y2),
+        b.subarray(y1, x2),
+        b.subarray(x1, y1),
+        b.subarray(y2),
+      );
+    } else if (o.op === "appendSegment") {
+      const [x, y] = seg(b, o.from);
+      b = cat(b, b.subarray(x, y));
+    } else if (o.op === "xor") b[o.offset] = b[o.offset]! ^ o.value;
+    else if (o.op === "setHex") b.set(unhex(o.hex), o.offset);
+    else b = cat(b, unhex(o.hex));
+  }
+  return b;
+}
+
+describe("sync-vectors.json: fileStreamCases", () => {
+  const rows = vectors.fileStreamCases;
+  const sealRows = rows.filter(
+    (r): r is Extract<FileRow, { kind: "seal" }> => r.kind === "seal",
+  );
+  const streams = new Map<string, Uint8Array>();
+
+  for (const r of sealRows) {
+    it(`${r.id}: seals to the pinned bytes, whole and streamed`, async () => {
+      const root = unhex(r.rootHex);
+      const collKey = await deriveCollKey(port, root, r.collection);
+      const kid = await deriveKid(port, root);
+      const salt = unhex(r.saltHex);
+      const plain = filePlain(r.plain.label, r.plain.length);
+      expect(sha(plain)).toBe(r.expect.plainSha256Hex);
+      const sealed = await sealFile(port, collKey, kid, plain, salt);
+      expect(sealed.length).toBe(r.expect.sealedSize);
+      expect(sealedFileSize(plain.length)).toBe(r.expect.sealedSize);
+      expect(plainFileSize(sealed.length)).toBe(plain.length);
+      expect(hex(sealed.subarray(0, 64))).toBe(r.expect.headerHex);
+      expect(sha(sealed)).toBe(r.expect.sealedSha256Hex);
+      if (r.expect.sealedHex !== undefined)
+        expect(hex(sealed)).toBe(r.expect.sealedHex);
+      // The same bytes from a source that arrives in awkward pieces.
+      const pieces: Uint8Array[] = [];
+      const source = (async function* () {
+        for (let at = 0; at < plain.length; at += 100_003)
+          yield plain.subarray(at, at + 100_003);
+      })();
+      for await (const p of sealFileStream(port, collKey, kid, source, salt))
+        pieces.push(p);
+      expect(sha(new Uint8Array(Buffer.concat(pieces)))).toBe(
+        r.expect.sealedSha256Hex,
+      );
+      streams.set(r.id, sealed);
+    });
+  }
+
+  const byId = (id: string): Extract<FileRow, { kind: "seal" }> =>
+    sealRows.find((s) => s.id === id)!;
+  const stored = async (
+    base: string,
+    mutate: FileOp[],
+  ): Promise<{ bytes: Uint8Array; root: Uint8Array; coll: string }> => {
+    const row = byId(base);
+    const root = unhex(row.rootHex);
+    if (!streams.has(base)) {
+      const salt = unhex(row.saltHex);
+      streams.set(
+        base,
+        await sealFile(
+          port,
+          await deriveCollKey(port, root, row.collection),
+          await deriveKid(port, root),
+
+          filePlain(row.plain.label, row.plain.length),
+          salt,
+        ),
+      );
+    }
+    return {
+      bytes: applyOps(streams.get(base)!, mutate),
+      root,
+      coll: row.collection,
+    };
+  };
+
+  for (const r of rows) {
+    if (r.kind === "sizes") {
+      it(`${r.id}: the size maps`, () => {
+        for (const [p, s] of r.plainToSealed) expect(sealedFileSize(p)).toBe(s);
+        for (const [s, p] of r.sealedToPlain) expect(plainFileSize(s)).toBe(p);
+      });
+    } else if (r.kind === "open") {
+      it(r.id, async () => {
+        const { bytes, root, coll } = await stored(r.base, r.mutate);
+        const collKey = await deriveCollKey(
+          port,
+          root,
+          r.openCollection ?? coll,
+        );
+        const kid =
+          r.expectKidHex === undefined
+            ? await deriveKid(port, root)
+            : unhex(r.expectKidHex);
+        // Whole, then streamed in awkward pieces: the verdict does not depend on how it arrives.
+        const whole = await openFile(port, collKey, kid, bytes);
+        const piecewise = await (async () => {
+          const out: Uint8Array[] = [];
+          try {
+            const src = (async function* () {
+              for (let at = 0; at < bytes.length; at += 300_007)
+                yield bytes.subarray(at, at + 300_007);
+            })();
+            for await (const p of openFileStream(port, collKey, kid, src))
+              out.push(p);
+          } catch (e) {
+            if (e instanceof FileStreamError) return e.reason;
+            throw e;
+          }
+          return sha(new Uint8Array(Buffer.concat(out)));
+        })();
+        if (r.expect.result === "ok") {
+          expect(whole.ok && sha(whole.plain)).toBe(r.expect.plainSha256Hex);
+          expect(piecewise).toBe(r.expect.plainSha256Hex);
+        } else {
+          expect(whole).toEqual({ ok: false, reason: r.expect.reason });
+          expect(piecewise).toBe(r.expect.reason);
+        }
+      });
+    } else if (r.kind === "range") {
+      it(r.id, async () => {
+        const { bytes, root, coll } = await stored(r.base, r.mutate);
+        const collKey = await deriveCollKey(port, root, coll);
+        const kid = await deriveKid(port, root);
+        const reads: Array<[number, number]> = [];
+        const read = async (offset: number, length: number) => {
+          reads.push([offset, length]);
+          return bytes.slice(offset, offset + length);
+        };
+        let got: { reason: string } | { plain: Uint8Array };
+        try {
+          got = {
+            plain: await openFileRange(
+              port,
+              collKey,
+              kid,
+              read,
+              bytes.length,
+              r.start,
+              r.end,
+            ),
+          };
+        } catch (e) {
+          if (!(e instanceof FileStreamError)) throw e;
+          got = { reason: e.reason };
+        }
+        if (r.expect.result === "ok") {
+          expect("plain" in got && got.plain.length).toBe(r.expect.length);
+          expect("plain" in got && sha(got.plain)).toBe(r.expect.sha256Hex);
+          expect(reads).toEqual(r.expect.reads);
+        } else {
+          expect(got).toEqual({ reason: r.expect.reason });
+        }
+      });
+    }
   }
 });
 

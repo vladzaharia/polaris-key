@@ -1,6 +1,6 @@
 {
   "syncVectorsVersion": 1,
-  "description": "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes, 0x01 codec nonce(12) then the sealed body, the nonce being HMAC-SHA256(K_chunk, 0x01 codec body)[0:12]: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, nonce, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames); kind pair (one id sealed with codec 0 and codec 1: both objects open to plainHex and their nonces, bytes 2 to 14, differ)). manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. canonicalJsonCases: canonical JSON, the input of a blinded element name: a runner parses inputJson with every number an IEEE double (Python: parse_int=float), or builds the number named by special, canonicalises it and expects canonical, or a refusal (invalid) for a number that is not finite and a string or key with a lone surrogate. Numbers print per ECMAScript Number::toString. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
+  "description": "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes, 0x01 codec nonce(12) then the sealed body, the nonce being HMAC-SHA256(K_chunk, 0x01 codec body)[0:12]: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, nonce, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames); kind pair (one id sealed with codec 0 and codec 1: both objects open to plainHex and their nonces, bytes 2 to 14, differ)). fileStreamCases: pkey-sync-file/1 (header little-endian, nonce counter big-endian; the plaintext of a seal row is SHA-256(UTF-8 of `pkey-sync vector file ` + label, u32be counter) blocks cut to length; the salt is in the row). kind seal: seal that plaintext under rootHex and collection with saltHex and expect sealedSize, headerHex, sealedSha256Hex and plainSha256Hex (and sealedHex when present). kind sizes: plainToSealed pairs and sealedToPlain pairs (null: no stream has that size). kind open: take the sealed stream of the row named by base (a seal row), apply the mutate ops in order (truncate length; dropSegment index; swapSegments a b; appendSegment from; xor offset value; setHex offset hex; appendHex hex; segment i starts at 64 + i * (1 MiB + 16)), open it under openCollection (default collection) expecting the kid derived from the root unless expectKidHex is given, and expect ok with plainSha256Hex or a refusal; the reasons are shape, magic, version, flags, segmentSize, kid, size and auth in that order (auth covers truncation, reordering, a missing last flag and a tampered header). kind range: the same stored stream, open plaintext [start, end) through a reader that sees only offset and length; expect ok with length, sha256Hex and the exact reads (the header first, then one per segment overlapped, in order) or a refusal (range adds to the reasons). Only the segments read are authenticated; the stored size alone says which is last. manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. canonicalJsonCases: canonical JSON, the input of a blinded element name: a runner parses inputJson with every number an IEEE double (Python: parse_int=float), or builds the number named by special, canonicalises it and expects canonical, or a refusal (invalid) for a number that is not finite and a string or key with a lone surrogate. Numbers print per ECMAScript Number::toString. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
   "constants": {
     "envelopeOverheadBytes": 113,
     "envelopeFixedBytes": 49,
@@ -1472,6 +1472,644 @@
       "zstdObjectHex": "0101f656cd18001073a731b40ce011af21b68a2ea1f4c7c9026e480504a9188df779a036022cfb78b9a394b5bf2b7c5566a03c0c3a86de10516b2f4f222d4a2bca605c203d8248c866370e5696afe33b7bb3b51eea0aa4b635438c823b1ee882ae8ca4279627f82fc20c1a916ef46b6f14e4adfa6ceb96ed9a824a71a90b4775efbfa52c9782a2c4dbc1e70d29c3372c5064c7988d61b78f7a529ba63ead8a5ff8445a1ecfe5ba3235c14a8508f7533451c8ffda3fe895f88d0b9949d7372d0ba107fcc317c603922a4b9cddc9927e9472795dd0dfc478b36c871f8b5305769e5fd1923fe94a027def951c3566305ef2bce831ae778c46a8b41bcb7ad4b76dbab8d3412da2085efe980c065d0305f24baf35ac710e5eccfeecff1e29911d34ac60d5c574dd61306c3749fad3c97b214f72f800bcd737d3950a881ba9ec00172adf1354969dc627bfbcea79542619247688a32996",
       "rawNonceHex": "1092fb61522fe502c74e836d",
       "zstdNonceHex": "f656cd18001073a731b40ce0"
+    }
+  ],
+  "fileStreamCases": [
+    {
+      "id": "seal-empty",
+      "description": "An empty file is one empty last segment: the header and a 16-byte tag.",
+      "kind": "seal",
+      "rootHex": "c86d733689e76c8ecaa157e7b807d741c0539b71dec98d45970c54845479b274",
+      "collection": "saves",
+      "saltHex": "a576dfb87fd70488b338a19615793dcaf7b33050800ea39e637cc33f4a0bdef0",
+      "plain": { "label": "empty", "length": 0 },
+      "expect": {
+        "sealedSize": 80,
+        "headerHex": "504b53594e43463101000000000010008ac4c52a0b35c8c2766e03cf3befcbb7a576dfb87fd70488b338a19615793dcaf7b33050800ea39e637cc33f4a0bdef0",
+        "sealedSha256Hex": "3f7d9c31f77ea82543fcf553c23f389ca13e4081d2e403f9949369491bcba3b4",
+        "plainSha256Hex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sealedHex": "504b53594e43463101000000000010008ac4c52a0b35c8c2766e03cf3befcbb7a576dfb87fd70488b338a19615793dcaf7b33050800ea39e637cc33f4a0bdef09e868ac98416601da47b370de0c848b5"
+      }
+    },
+    {
+      "id": "seal-one-byte",
+      "description": "One byte: one last segment.",
+      "kind": "seal",
+      "rootHex": "c86d733689e76c8ecaa157e7b807d741c0539b71dec98d45970c54845479b274",
+      "collection": "saves",
+      "saltHex": "c69337fac2da9aac115fd49ec79c16aba7f4b5cf91c0cda5ff7c6c1e91593f27",
+      "plain": { "label": "one", "length": 1 },
+      "expect": {
+        "sealedSize": 81,
+        "headerHex": "504b53594e43463101000000000010008ac4c52a0b35c8c2766e03cf3befcbb7c69337fac2da9aac115fd49ec79c16aba7f4b5cf91c0cda5ff7c6c1e91593f27",
+        "sealedSha256Hex": "f2958f5f1b7fcf73638aba3398ee48abe5185c1eb7c7237a9f40cb62f3e3acde",
+        "plainSha256Hex": "19152ddfba193b5b09fcb80d1bba5248f36027c06e81670db5a7146fb654d4ec",
+        "sealedHex": "504b53594e43463101000000000010008ac4c52a0b35c8c2766e03cf3befcbb7c69337fac2da9aac115fd49ec79c16aba7f4b5cf91c0cda5ff7c6c1e91593f2707c5231538174e87a571de2de6973238fd"
+      }
+    },
+    {
+      "id": "seal-segment-minus-one",
+      "description": "1 MiB - 1: one short last segment.",
+      "kind": "seal",
+      "rootHex": "c86d733689e76c8ecaa157e7b807d741c0539b71dec98d45970c54845479b274",
+      "collection": "saves",
+      "saltHex": "21fb00e20c3e020750b91845e645492127052c8641417e8b5a68dc268d6e88c0",
+      "plain": { "label": "segm1", "length": 1048575 },
+      "expect": {
+        "sealedSize": 1048655,
+        "headerHex": "504b53594e43463101000000000010008ac4c52a0b35c8c2766e03cf3befcbb721fb00e20c3e020750b91845e645492127052c8641417e8b5a68dc268d6e88c0",
+        "sealedSha256Hex": "257660f94d595f0292beaefeebb5b0659d33582fdda6b55450b616f1deeb0425",
+        "plainSha256Hex": "04ff40b264f53bb1db4cd060300bfddccd62bf486fc0862077af9cad3a1e2967"
+      }
+    },
+    {
+      "id": "seal-segment-exact",
+      "description": "Exactly 1 MiB: one full segment that is the last; no empty segment follows.",
+      "kind": "seal",
+      "rootHex": "c86d733689e76c8ecaa157e7b807d741c0539b71dec98d45970c54845479b274",
+      "collection": "saves",
+      "saltHex": "eac604681a7f143d30dd623fdff2010da30ae51751c357f309eaaa218d1871b9",
+      "plain": { "label": "seg", "length": 1048576 },
+      "expect": {
+        "sealedSize": 1048656,
+        "headerHex": "504b53594e43463101000000000010008ac4c52a0b35c8c2766e03cf3befcbb7eac604681a7f143d30dd623fdff2010da30ae51751c357f309eaaa218d1871b9",
+        "sealedSha256Hex": "44410241415a2200b158e3b40f25974dc14edf4f4b2872220f8a009db2b71e8b",
+        "plainSha256Hex": "806dc52f8a2ea9f13d66915e93891583f6fd7e608219f7647333a5cc043d9a28"
+      }
+    },
+    {
+      "id": "seal-segment-plus-one",
+      "description": "1 MiB + 1: a full segment (flag 0, counter 0) and a one-byte last segment (flag 1, counter 1).",
+      "kind": "seal",
+      "rootHex": "c86d733689e76c8ecaa157e7b807d741c0539b71dec98d45970c54845479b274",
+      "collection": "saves",
+      "saltHex": "78bc48c120fe8d48c59a8481da889e3fbb7601e1bf82499ab81feb2fc02c94b3",
+      "plain": { "label": "segp1", "length": 1048577 },
+      "expect": {
+        "sealedSize": 1048673,
+        "headerHex": "504b53594e43463101000000000010008ac4c52a0b35c8c2766e03cf3befcbb778bc48c120fe8d48c59a8481da889e3fbb7601e1bf82499ab81feb2fc02c94b3",
+        "sealedSha256Hex": "fc75a9f5dba18d7583a670c3e9be3906137a213583a534885cb9e61c5278ac63",
+        "plainSha256Hex": "d8cd61c9ad898069db80ff8140fe42b0131afacbfd9af7183cf6521641932ce3"
+      }
+    },
+    {
+      "id": "seal-two-segments-exact",
+      "description": "Exactly 2 MiB: two full segments, only the second last.",
+      "kind": "seal",
+      "rootHex": "c86d733689e76c8ecaa157e7b807d741c0539b71dec98d45970c54845479b274",
+      "collection": "saves",
+      "saltHex": "6b890fa634372497357f0de92a55ab9eb89883c68fad7afc0d187755667fcc3e",
+      "plain": { "label": "two", "length": 2097152 },
+      "expect": {
+        "sealedSize": 2097248,
+        "headerHex": "504b53594e43463101000000000010008ac4c52a0b35c8c2766e03cf3befcbb76b890fa634372497357f0de92a55ab9eb89883c68fad7afc0d187755667fcc3e",
+        "sealedSha256Hex": "e4225fea7ca7bafffbc9ae160582bde747d44bda3e0ee11a568f6254ac03c579",
+        "plainSha256Hex": "e411470da49fe473573798a87c956a50f27eede3746942149de65295f897afa4"
+      }
+    },
+    {
+      "id": "seal-three-segments",
+      "description": "2.5 MiB: two full segments and a half-size last.",
+      "kind": "seal",
+      "rootHex": "c86d733689e76c8ecaa157e7b807d741c0539b71dec98d45970c54845479b274",
+      "collection": "saves",
+      "saltHex": "881c5c143957b8bdaead71c6110cd138224bd732bc8529b2a95328188e730dd4",
+      "plain": { "label": "three", "length": 2621440 },
+      "expect": {
+        "sealedSize": 2621552,
+        "headerHex": "504b53594e43463101000000000010008ac4c52a0b35c8c2766e03cf3befcbb7881c5c143957b8bdaead71c6110cd138224bd732bc8529b2a95328188e730dd4",
+        "sealedSha256Hex": "adefe78778080afd61b22beb5624b706c9777704519b3b1e03143f6a3ec9a5b9",
+        "plainSha256Hex": "b841d370ebf02d23071832807ac263bb8fd181c4d32ff874c41e6b1152c61128"
+      }
+    },
+    {
+      "id": "sizes",
+      "description": "plainSize -> sealedSize = 64 + plainSize + 16 * max(1, ceil(plainSize / 1 MiB)); a sealed size no stream has maps to null.",
+      "kind": "sizes",
+      "plainToSealed": [
+        [0, 80],
+        [1, 81],
+        [1048575, 1048655],
+        [1048576, 1048656],
+        [1048577, 1048673],
+        [2097152, 2097248],
+        [1073741824, 1073758272]
+      ],
+      "sealedToPlain": [
+        [80, 0],
+        [81, 1],
+        [1048656, 1048576],
+        [1048673, 1048577],
+        [0, null],
+        [63, null],
+        [64, null],
+        [79, null],
+        [1048672, null],
+        [1048661, null]
+      ]
+    },
+    {
+      "id": "open-empty",
+      "description": "Opens seal-empty.",
+      "kind": "open",
+      "base": "seal-empty",
+      "mutate": [],
+      "expect": {
+        "result": "ok",
+        "plainSha256Hex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "id": "open-one-byte",
+      "description": "Opens seal-one-byte.",
+      "kind": "open",
+      "base": "seal-one-byte",
+      "mutate": [],
+      "expect": {
+        "result": "ok",
+        "plainSha256Hex": "19152ddfba193b5b09fcb80d1bba5248f36027c06e81670db5a7146fb654d4ec"
+      }
+    },
+    {
+      "id": "open-segment-minus-one",
+      "description": "Opens seal-segment-minus-one.",
+      "kind": "open",
+      "base": "seal-segment-minus-one",
+      "mutate": [],
+      "expect": {
+        "result": "ok",
+        "plainSha256Hex": "04ff40b264f53bb1db4cd060300bfddccd62bf486fc0862077af9cad3a1e2967"
+      }
+    },
+    {
+      "id": "open-segment-exact",
+      "description": "Opens seal-segment-exact.",
+      "kind": "open",
+      "base": "seal-segment-exact",
+      "mutate": [],
+      "expect": {
+        "result": "ok",
+        "plainSha256Hex": "806dc52f8a2ea9f13d66915e93891583f6fd7e608219f7647333a5cc043d9a28"
+      }
+    },
+    {
+      "id": "open-segment-plus-one",
+      "description": "Opens seal-segment-plus-one.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [],
+      "expect": {
+        "result": "ok",
+        "plainSha256Hex": "d8cd61c9ad898069db80ff8140fe42b0131afacbfd9af7183cf6521641932ce3"
+      }
+    },
+    {
+      "id": "open-two-segments-exact",
+      "description": "Opens seal-two-segments-exact.",
+      "kind": "open",
+      "base": "seal-two-segments-exact",
+      "mutate": [],
+      "expect": {
+        "result": "ok",
+        "plainSha256Hex": "e411470da49fe473573798a87c956a50f27eede3746942149de65295f897afa4"
+      }
+    },
+    {
+      "id": "open-three-segments",
+      "description": "Opens seal-three-segments.",
+      "kind": "open",
+      "base": "seal-three-segments",
+      "mutate": [],
+      "expect": {
+        "result": "ok",
+        "plainSha256Hex": "b841d370ebf02d23071832807ac263bb8fd181c4d32ff874c41e6b1152c61128"
+      }
+    },
+    {
+      "id": "refuse-truncated-at-boundary",
+      "description": "The last segment dropped: the new final segment was sealed with last = 0, so its tag fails as the last.",
+      "kind": "open",
+      "base": "seal-three-segments",
+      "mutate": [{ "op": "dropSegment", "index": 2 }],
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-truncated-mid-segment",
+      "description": "The stream cut inside the last segment.",
+      "kind": "open",
+      "base": "seal-three-segments",
+      "mutate": [{ "op": "truncate", "length": 2097348 }],
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-truncated-to-header",
+      "description": "Only the header remains: no segment at all.",
+      "kind": "open",
+      "base": "seal-three-segments",
+      "mutate": [{ "op": "truncate", "length": 64 }],
+      "expect": { "result": "invalid", "reason": "shape" }
+    },
+    {
+      "id": "refuse-truncated-header",
+      "description": "Fewer than 64 bytes.",
+      "kind": "open",
+      "base": "seal-three-segments",
+      "mutate": [{ "op": "truncate", "length": 63 }],
+      "expect": { "result": "invalid", "reason": "shape" }
+    },
+    {
+      "id": "refuse-truncated-in-tag",
+      "description": "A tail shorter than a tag.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [{ "op": "truncate", "length": 1048663 }],
+      "expect": { "result": "invalid", "reason": "shape" }
+    },
+    {
+      "id": "refuse-reordered",
+      "description": "The two full segments swapped: each was sealed under its own counter.",
+      "kind": "open",
+      "base": "seal-two-segments-exact",
+      "mutate": [{ "op": "swapSegments", "a": 0, "b": 1 }],
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-reordered-with-last",
+      "description": "The first and the last segment swapped (the stream length changes too).",
+      "kind": "open",
+      "base": "seal-three-segments",
+      "mutate": [{ "op": "swapSegments", "a": 0, "b": 2 }],
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-duplicated-segment",
+      "description": "A full segment appended after the last: the old last now fails as a non-last.",
+      "kind": "open",
+      "base": "seal-two-segments-exact",
+      "mutate": [{ "op": "appendSegment", "from": 0 }],
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-dropped-first-segment",
+      "description": "The first segment removed: the rest are one counter short.",
+      "kind": "open",
+      "base": "seal-three-segments",
+      "mutate": [{ "op": "dropSegment", "index": 0 }],
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-empty-trailing-segment",
+      "description": "An empty last segment after a full one is refused before any tag is tried: only the empty file has one.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [
+        { "op": "truncate", "length": 1048656 },
+        { "op": "appendHex", "hex": "00000000000000000000000000000000" }
+      ],
+      "expect": { "result": "invalid", "reason": "size" }
+    },
+    {
+      "id": "refuse-last-flag-missing",
+      "description": "The first segment of a two-segment file standing alone: it was sealed with last = 0, so it fails as a last segment.",
+      "kind": "open",
+      "base": "seal-two-segments-exact",
+      "mutate": [{ "op": "truncate", "length": 1048656 }],
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-tampered-ciphertext",
+      "description": "One bit flipped in the first segment.",
+      "kind": "open",
+      "base": "seal-two-segments-exact",
+      "mutate": [{ "op": "xor", "offset": 164, "value": 1 }],
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-tampered-tag",
+      "description": "One bit flipped in the last tag.",
+      "kind": "open",
+      "base": "seal-three-segments",
+      "mutate": [{ "op": "xor", "offset": 2621551, "value": 1 }],
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-tampered-header-salt",
+      "description": "A flipped salt byte changes K_file, so every segment fails.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [{ "op": "xor", "offset": 40, "value": 1 }],
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-wrong-collection",
+      "description": "Opened under another collection's K_coll.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [],
+      "openCollection": "other",
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-bad-magic",
+      "description": "The magic is not PKSYNCF1.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [{ "op": "xor", "offset": 0, "value": 1 }],
+      "expect": { "result": "invalid", "reason": "magic" }
+    },
+    {
+      "id": "refuse-bad-version",
+      "description": "version u16 (little-endian) is 2.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [{ "op": "setHex", "offset": 8, "hex": "0200" }],
+      "expect": { "result": "invalid", "reason": "version" }
+    },
+    {
+      "id": "refuse-flags-set",
+      "description": "flags u16 is not 0: no flag is defined.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [{ "op": "setHex", "offset": 10, "hex": "0100" }],
+      "expect": { "result": "invalid", "reason": "flags" }
+    },
+    {
+      "id": "refuse-segment-size-smaller",
+      "description": "segmentBytes u32 (little-endian) is 64 KiB, not 1 MiB.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [{ "op": "setHex", "offset": 12, "hex": "00000100" }],
+      "expect": { "result": "invalid", "reason": "segmentSize" }
+    },
+    {
+      "id": "refuse-segment-size-big-endian",
+      "description": "segmentBytes written big-endian (00 10 00 00) reads as 4096 little-endian and is refused.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [{ "op": "setHex", "offset": 12, "hex": "00100000" }],
+      "expect": { "result": "invalid", "reason": "segmentSize" }
+    },
+    {
+      "id": "refuse-wrong-kid",
+      "description": "The header's kid is not the kid of the ring the reader holds.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [],
+      "expectKidHex": "7b00edc77a186810646cdac4170e5ab4",
+      "expect": { "result": "invalid", "reason": "kid" }
+    },
+    {
+      "id": "refuse-header-kid-tampered",
+      "description": "A flipped kid byte in the header.",
+      "kind": "open",
+      "base": "seal-segment-plus-one",
+      "mutate": [{ "op": "xor", "offset": 16, "value": 1 }],
+      "expect": { "result": "invalid", "reason": "kid" }
+    },
+    {
+      "id": "range-first-bytes",
+      "description": "Bytes 0..100 read the header and segment 0 only.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [],
+      "start": 0,
+      "end": 100,
+      "expect": {
+        "result": "ok",
+        "length": 100,
+        "sha256Hex": "3d3367d83b7954d7cae6987345a93ef0cfc619ea3bd62c5a6fa437babb71faa3",
+        "reads": [
+          [0, 64],
+          [64, 1048592]
+        ]
+      }
+    },
+    {
+      "id": "range-empty",
+      "description": "start = end reads only the header.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [],
+      "start": 5,
+      "end": 5,
+      "expect": {
+        "result": "ok",
+        "length": 0,
+        "sha256Hex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reads": [[0, 64]]
+      }
+    },
+    {
+      "id": "range-inside-one-segment",
+      "description": "A range inside segment 1.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [],
+      "start": 1048586,
+      "end": 1052576,
+      "expect": {
+        "result": "ok",
+        "length": 3990,
+        "sha256Hex": "5176b40c322b0cb2b5fa11298d89b47a6a7855d57471f59debd0ba9ba6bbd908",
+        "reads": [
+          [0, 64],
+          [1048656, 1048592]
+        ]
+      }
+    },
+    {
+      "id": "range-across-boundary",
+      "description": "A range across the segment 0 / 1 boundary reads two segments.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [],
+      "start": 1048568,
+      "end": 1048584,
+      "expect": {
+        "result": "ok",
+        "length": 16,
+        "sha256Hex": "97fdc89f4bafd893abeae032b367a824d2f2094a708967d92ad3c0e53fec2a02",
+        "reads": [
+          [0, 64],
+          [64, 1048592],
+          [1048656, 1048592]
+        ]
+      }
+    },
+    {
+      "id": "range-ends-at-boundary",
+      "description": "end exactly at a boundary reads only segment 0.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [],
+      "start": 1048476,
+      "end": 1048576,
+      "expect": {
+        "result": "ok",
+        "length": 100,
+        "sha256Hex": "e794c440a76464525705fbda28c5582af891c48b8292650beaae23595260f5d9",
+        "reads": [
+          [0, 64],
+          [64, 1048592]
+        ]
+      }
+    },
+    {
+      "id": "range-starts-at-boundary",
+      "description": "start exactly at a boundary reads only segment 1.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [],
+      "start": 1048576,
+      "end": 1048676,
+      "expect": {
+        "result": "ok",
+        "length": 100,
+        "sha256Hex": "5f41a5c90da08b0ca567391792d33480d7f8fd6145493a9dc7e9b7d24af1fb25",
+        "reads": [
+          [0, 64],
+          [1048656, 1048592]
+        ]
+      }
+    },
+    {
+      "id": "range-last-segment",
+      "description": "The tail of a short last segment: its read length is its actual length.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [],
+      "start": 2097157,
+      "end": 2621440,
+      "expect": {
+        "result": "ok",
+        "length": 524283,
+        "sha256Hex": "827dacccd5c7392e5ddaf8d3ea8543d7d1d0faa4619d179e7d73695d6c56c2f5",
+        "reads": [
+          [0, 64],
+          [2097248, 524304]
+        ]
+      }
+    },
+    {
+      "id": "range-whole-file",
+      "description": "The whole plaintext reads every segment.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [],
+      "start": 0,
+      "end": 2621440,
+      "expect": {
+        "result": "ok",
+        "length": 2621440,
+        "sha256Hex": "b841d370ebf02d23071832807ac263bb8fd181c4d32ff874c41e6b1152c61128",
+        "reads": [
+          [0, 64],
+          [64, 1048592],
+          [1048656, 1048592],
+          [2097248, 524304]
+        ]
+      }
+    },
+    {
+      "id": "range-exact-single-segment",
+      "description": "A file of exactly 1 MiB: segment 0 is the last.",
+      "kind": "range",
+      "base": "seal-segment-exact",
+      "mutate": [],
+      "start": 10,
+      "end": 1048576,
+      "expect": {
+        "result": "ok",
+        "length": 1048566,
+        "sha256Hex": "e7fdb493e5519ba4aa95dc4e849ad32ea547304eeded612e4a16d04bf44ccd14",
+        "reads": [
+          [0, 64],
+          [64, 1048592]
+        ]
+      }
+    },
+    {
+      "id": "range-empty-file",
+      "description": "The empty file has an empty range only.",
+      "kind": "range",
+      "base": "seal-empty",
+      "mutate": [],
+      "start": 0,
+      "end": 0,
+      "expect": {
+        "result": "ok",
+        "length": 0,
+        "sha256Hex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reads": [[0, 64]]
+      }
+    },
+    {
+      "id": "refuse-range-past-end",
+      "description": "end is past the plaintext size.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [],
+      "start": 0,
+      "end": 2621441,
+      "expect": { "result": "invalid", "reason": "range" }
+    },
+    {
+      "id": "refuse-range-inverted",
+      "description": "start is after end.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [],
+      "start": 10,
+      "end": 5,
+      "expect": { "result": "invalid", "reason": "range" }
+    },
+    {
+      "id": "range-ignores-tampered-other-segment",
+      "description": "A flipped bit in segment 2 does not touch a range inside segment 0: only the segments read are authenticated.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [{ "op": "xor", "offset": 2097251, "value": 1 }],
+      "start": 0,
+      "end": 100,
+      "expect": {
+        "result": "ok",
+        "length": 100,
+        "sha256Hex": "3d3367d83b7954d7cae6987345a93ef0cfc619ea3bd62c5a6fa437babb71faa3",
+        "reads": [
+          [0, 64],
+          [64, 1048592]
+        ]
+      }
+    },
+    {
+      "id": "refuse-range-in-tampered-segment",
+      "description": "The same flip, with a range that reads segment 2.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [{ "op": "xor", "offset": 2097251, "value": 1 }],
+      "start": 2097152,
+      "end": 2097162,
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-range-truncated-stream",
+      "description": "A stream cut at a segment boundary has another size, so the size alone moves the last flag: a range in segment 1 now fails.",
+      "kind": "range",
+      "base": "seal-three-segments",
+      "mutate": [{ "op": "dropSegment", "index": 2 }],
+      "start": 1048576,
+      "end": 1048586,
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-range-impossible-size",
+      "description": "A stored size no stream has is refused before any read.",
+      "kind": "range",
+      "base": "seal-segment-plus-one",
+      "mutate": [{ "op": "truncate", "length": 1048663 }],
+      "start": 0,
+      "end": 10,
+      "expect": { "result": "invalid", "reason": "shape" }
     }
   ],
   "manifestCases": [
