@@ -15,7 +15,12 @@ import { STORE_ADAPTERS } from "../stores/adapters.js";
 import type { ConnectorKind } from "../stores/adapter.js";
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
-import { RUN_SUMMARY_STEP, truncateSummary } from "./platformOps.js";
+import {
+  RUN_SUMMARY_STEP,
+  stepFamily,
+  truncateSummary,
+} from "./platformOps.js";
+import { SERVICE_SLUGS, parseServices } from "../services.js";
 
 /** A probe that has not answered after this long reads as failed. */
 export const PROBE_TIMEOUT_MS = 3000;
@@ -373,6 +378,42 @@ async function lazyDeltaRefusals(db: Db, now: number) {
   ).map((r) => ({ reason: r.reason ?? "unknown", count: r.n, lastAt: r.last }));
 }
 
+/**
+ * One row per opt-in service: how many live products run it, and the newest failed cron step
+ * named for the service (`release:acme`, `poll:acme:distribution`). Read-only; no table of its own.
+ */
+async function serviceHealth(
+  db: Db,
+  failures: readonly {
+    step: string;
+    startedAt: number;
+    error: string | null;
+  }[],
+) {
+  const rows = await db.all<{ services_json: string | null }>(
+    "SELECT services_json FROM products WHERE deleted_at IS NULL",
+  );
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const { services } = parseServices(row.services_json);
+    for (const slug of SERVICE_SLUGS)
+      if (services[slug].enabled) counts.set(slug, (counts.get(slug) ?? 0) + 1);
+  }
+  return SERVICE_SLUGS.map((slug) => {
+    const last = failures.find((f) => {
+      const parts = f.step.split(":");
+      return stepFamily(f.step) === slug || parts[parts.length - 1] === slug;
+    });
+    return {
+      slug,
+      productsEnabled: counts.get(slug) ?? 0,
+      lastError: last
+        ? { step: last.step, at: last.startedAt, error: last.error }
+        : null,
+    };
+  });
+}
+
 export interface OperationsDeps {
   /** `missingRequiredIndexes` (from `scheduled.ts`, injected so this module stays a leaf). */
   missingIndexes(db: Db): Promise<string[]>;
@@ -404,6 +445,10 @@ export async function operationsSnapshot(
     safe(() => connectors(db, now), null),
     safe(() => lazyDeltaRefusals(db, now), null),
   ]);
+  const services = await safe(
+    () => serviceHealth(db, jobRuns?.failures ?? []),
+    null,
+  );
   return {
     generatedAt: now,
     probes: {
@@ -427,6 +472,7 @@ export async function operationsSnapshot(
       r2: blobs,
     },
     indexes: { missing },
+    services,
     connectors: conns,
     recentErrors: {
       jobFailures: jobRuns?.failures ?? null,

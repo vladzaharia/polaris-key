@@ -31,6 +31,7 @@ import {
   HealthByArea,
   JobsCard,
   QueuesCard,
+  ServicesCard,
   StorageCard,
 } from "./platformStatusParts.js";
 import { ChecksTable, buildChecks } from "./platformStatusChecks.js";
@@ -133,6 +134,11 @@ export function PlatformStatus(): React.ReactElement {
           onRetry={() => void ops.refetch()}
         />
         <QueuesCard
+          op={op}
+          error={ops.isError ? ops.error : null}
+          onRetry={() => void ops.refetch()}
+        />
+        <ServicesCard
           op={op}
           error={ops.isError ? ops.error : null}
           onRetry={() => void ops.refetch()}

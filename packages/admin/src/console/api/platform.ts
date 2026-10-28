@@ -783,6 +783,16 @@ export interface PlatformOperations {
     } | null;
   };
   indexes: { missing: string[] | null };
+  /** One row per opt-in service; `null` when it could not be read. */
+  services:
+    | {
+        slug: string;
+        /** Live products that run the service. */
+        productsEnabled: number;
+        /** The newest failed cron step in the service's family (`at` is epoch milliseconds). */
+        lastError: { step: string; at: number; error: string | null } | null;
+      }[]
+    | null;
   connectors: {
     items: OperationsConnector[];
     lastPollFailure: {
