@@ -241,6 +241,13 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // ── Cloud Sync ─────────────────────────────────────────────────────────────────────────────
   // U-05.20: Cloud Sync → Setup → Product limits (the meter and its Change dialog).
   "cloudSync.ceiling.bytes": at("sync-setup", "Product limits"),
+
+  // ── Cloud Connect ──────────────────────────────────────────────────────────────────────────
+  // The Setup page is a stub until CC-16, so neither value has a console control yet. The relay
+  // switch is declared in the product file's `connect:` block; the ceiling is operator-owned and
+  // only the admin API writes it. CC-16 moves both onto `connect-setup`.
+  "cloudConnect.relay.enabled": manifest("product"),
+  "cloudConnect.ceiling.relayBytes": API,
 };
 
 /**
