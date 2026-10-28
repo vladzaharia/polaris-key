@@ -55,6 +55,26 @@ class KeyringStoreTest {
 
     private val key = "pkey:demo" to "device-token"
 
+    @Test
+    fun theSignInStateSurvivesANewCoreContext() = runTest {
+        val dir = tempDir()
+        fun context() = CoreContext(
+            CoreOptions(
+                productSlug = "demo", version = "1.0.0", pinnedKeys = emptyMap(), trustRefresh = false,
+                store = KeyringStore("demo", dir, FakeKeyring()),
+            ),
+        )
+        val first = context()
+        first.start()
+        first.setToken("tok", TokenSource.signin)
+        first.setExplicitSignOut(true)
+        // A restart: a new context over the same directory reads the provenance and the flag back.
+        val second = context()
+        second.start()
+        assertEquals(TokenProvenance.signin, second.tokenProvenance())
+        assertTrue(second.explicitSignOut())
+    }
+
     // ── The storage contract, run against any keyring backend ─────────────────────────────────
 
     private suspend fun storageContract(store: KeyringStore, dir: File, expectKeyring: Boolean) {

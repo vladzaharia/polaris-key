@@ -302,7 +302,7 @@ extension IdentityClient {
     private func exchangePort() async throws -> (any DeviceKeyPort)? {
         var held = deviceKeys.current
         if held == nil {
-            let made = try DeviceKeyStore(productSlug: core.product)
+            let made = try DeviceKeyStore(productSlug: core.product, accessGroup: core.keychainAccessGroup)
             held = deviceKeys.with { slot -> any DeviceKeyPort in
                 if let existing = slot { return existing }
                 slot = made

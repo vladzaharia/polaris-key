@@ -67,12 +67,12 @@ public struct MonogramIcon: View {
     }
 }
 
-/// The product header of a focused step (UI-KITS §1.2): the 32 pt icon beside the name in the
-/// strong text colour at weight 500, the tier after it in muted text as one run.
+/// The product header of a focused step (UI-KITS §1.2): the 28 pt icon beside the name in the
+/// strong text colour at weight 600 (LOGO-2: tile-to-cap about 2.3; the tile is no control), the tier after it in muted text as one run.
 public struct ProductHeader: View {
     var tier: String?
     var showsIcon = true
-    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 32
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 28
 
     public init(tier: String? = nil, showsIcon: Bool = true) {
         self.tier = tier
@@ -92,6 +92,7 @@ public struct ProductHeader: View {
                     }
                 }
                 .font(style.font(.label))
+                .fontWeight(.semibold)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
             }

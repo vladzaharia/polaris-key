@@ -51,6 +51,47 @@ class PolarisKeyAndroidTest {
     }
 
     @Test
+    fun clientGetsTheAndroidDeviceKeysSoTheExchangeReachesTheNonceRoute() = runBlocking {
+        val server = MockWebServer()
+        val base = "http://localhost"
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse = when (request.path) {
+                "/diceroll/.well-known/polaris.json" -> MockResponse().setBody(
+                    """{"product":"diceroll","services":{"identity":{"enabled":true,"configured":true,"account":true,""" +
+                        """"exchange":{"kinds":["google"],"google":{"serverClientId":"1234-web.apps.googleusercontent.com"}},""" +
+                        """"endpoints":{"nonce":"$base/diceroll/identity/nonce","token":"$base/diceroll/identity/token"}}}}""",
+                )
+                else -> MockResponse().setResponseCode(404).setBody("""{"error":{"code":"not_found"}}""")
+            }
+        }
+        server.start()
+        try {
+            val client = PolarisKeyAndroid.client(
+                ctx,
+                PolarisKeyClientOptions(
+                    core = CoreOptions(
+                        productSlug = "diceroll",
+                        baseUrl = server.url("/").toString().trimEnd('/'),
+                        version = "1.0.0",
+                        pinnedKeys = signer.trust,
+                    ),
+                    update = UpdateClientOptions(pinnedReleaseKeys = releaseSigner.trust),
+                ),
+            )
+            // K1: with no device keys the call answered Ended(Unavailable(noDeviceKeys)) before any request;
+            // with them it goes on to the product's discovery (here a scripted refusal throws).
+            val answer = try {
+                client.identity.exchangeNonce(im.plrs.key.identity.ExchangeKind.google)
+            } catch (e: PolarisException) {
+                null
+            }
+            assertTrue("device keys are set: $answer", server.requestCount > 0)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun localClientNamespacesTheDefaultAndroidStore() {
         val local = PolarisKeyAndroid.client(
             ctx,

@@ -234,7 +234,13 @@ function portOver(handle: CryptoKey, base: SyncCryptoPort): SyncCryptoPort {
   return {
     ...base,
     async hkdf(ikm, salt, info, length) {
-      if (ikm !== ROOT_IKM) return base.hkdf(ikm, salt, info, length);
+      if (ikm !== ROOT_IKM) {
+        // The placeholder is recognised by identity. A copy of it (slice, Uint8Array.from, a new
+        // use of the root) would derive from 32 zero bytes, a publicly known key: refuse instead.
+        if (ikm.length === 32 && ikm.every((b) => b === 0))
+          throw new Error("the placeholder root reached a derivation by value");
+        return base.hkdf(ikm, salt, info, length);
+      }
       return new Uint8Array(
         await globalThis.crypto.subtle.deriveBits(
           {

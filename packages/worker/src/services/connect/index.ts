@@ -20,6 +20,7 @@ import type {
 } from "../../core/registry.js";
 import { CONNECT_RING_LISTENER, connectRingListener } from "./ringListener.js";
 import { launchGateOn } from "../../core/settings/platformRead.js";
+import { handleConnectAdmin } from "./admin/index.js";
 import { connectIntegration } from "./integration.js";
 import { connectProductDeletion } from "./productDeletion.js";
 import { CONNECT_ROUTES } from "./routes.js";
@@ -56,6 +57,8 @@ export const connectService: ServiceDescriptor = {
       ? CONNECT_ROUTES.handle(ctx)
       : null,
   surface: CONNECT_ROUTES.surface,
+  /** CC-16.W: `/manage/api/products/<slug>/connect/{people,usage}`, read-only. */
+  adminHandle: handleConnectAdmin,
   /** CC-02.2: the manifest switches and the product ceiling; CC-07.3 reads them. */
   settings: CONNECT_SETTINGS_SLICE,
   /**

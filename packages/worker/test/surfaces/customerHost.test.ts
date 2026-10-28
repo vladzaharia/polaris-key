@@ -277,7 +277,7 @@ describe("customer host confinement", () => {
       "/djdl/.well-known/polaris.json",
       "/djdl/identity/auth/device",
       "/webhooks/github",
-      "/djdl",
+      "/djdl/devices",
     ])
       expect((await get(`${CUSTOMER}${path}`)).status, path).toBe(404);
   });
@@ -405,6 +405,44 @@ describe("customer host confinement", () => {
     expect((await get(`${API}/.well-known/polaris-host.json`)).status).toBe(
       404,
     );
+  });
+
+  it("polaris.locker/<slug> is the badges' destination: the storefront page, no lookup (LK-12)", async () => {
+    for (const slug of ["djdl", "no-such-product"]) {
+      const res = await get(`${CUSTOMER}/${slug}`);
+      expect(res.status, slug).toBe(302);
+      expect(res.headers.get("location"), slug).toBe(`/#/discover/${slug}`);
+      expect(res.headers.get("set-cookie"), slug).toBeNull();
+    }
+    expect((await get(`${CUSTOMER}/djdl`, { method: "HEAD" })).status).toBe(
+      302,
+    );
+    // A trailing slash and any case reach the same page, on the lower-cased slug.
+    for (const path of ["/djdl/", "/DJDL", "/DjDl/"]) {
+      const res = await get(`${CUSTOMER}${path}`);
+      expect(res.status, path).toBe(302);
+      expect(res.headers.get("location"), path).toBe("/#/discover/djdl");
+    }
+    // Reserved slugs and customer routes win, in any case.
+    for (const path of ["/Activate", "/MANAGE", "/manage/", "/Docs", "/api/"])
+      expect(
+        (await get(`${CUSTOMER}${path}`)).headers.get("location"),
+        path,
+      ).not.toBe(
+        "/#/discover/" + path.slice(1).replace(/\//g, "").toLowerCase(),
+      );
+    // Not a write, not a deeper product path, not a reserved or malformed slug.
+    expect((await get(`${CUSTOMER}/djdl`, { method: "POST" })).status).toBe(
+      404,
+    );
+    expect((await get(`${CUSTOMER}/djdl/devices`)).status).toBe(404);
+    expect((await get(`${CUSTOMER}/djdl/distribution/download`)).status).toBe(
+      404,
+    );
+    expect((await get(`${CUSTOMER}/manage`)).status).toBe(404);
+    expect((await get(`${CUSTOMER}/Bad_Slug`)).status).toBe(404);
+    // The console host keeps its own answer (the page lives on the bytes host).
+    expect((await get(`${API}/djdl`)).status).toBe(404);
   });
 
   it("robots.txt keeps crawlers off the sign-in and API paths", async () => {

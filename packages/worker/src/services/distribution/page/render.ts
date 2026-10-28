@@ -146,6 +146,7 @@ export const PAGE_CSS = [
   `.row-lead .row-title{color:var(--muted);font-weight:400;font-size:.875rem}`,
   `.row-text{flex:1 1 14rem;min-width:0;display:flex;flex-direction:column;gap:.25rem}`,
   `.row-title{color:var(--strong);font-weight:500}`,
+  `h3.row-title{margin:0;font-size:inherit}`,
   `.row-meta{display:flex;flex-wrap:wrap;gap:.25rem .75rem;color:var(--muted);font-size:.875rem}`,
   `.row-qr{flex:none;width:4rem;height:4rem}`,
   `.row-qr .qr{display:block;width:4rem;height:4rem;border-radius:4px}`,
@@ -349,12 +350,13 @@ function row(
   extra: string[],
   qr: string,
   actions: string[],
+  titleTag: "span" | "h3" = "span",
 ): string {
   const metaHtml = meta.length
     ? `<span class="row-meta">${meta.join("")}</span>`
     : "";
   const act = actions.filter((x) => x !== "");
-  return `<li class="row" data-action="${esc(kind)}"><div class="row-text"><span class="row-title">${esc(title)}</span>${metaHtml}</div>${
+  return `<li class="row" data-action="${esc(kind)}"><div class="row-text"><${titleTag} class="row-title">${esc(title)}</${titleTag}>${metaHtml}</div>${
     qr ? `<div class="row-qr">${qr}</div>` : ""
   }${act.length ? `<div class="row-act">${act.join("")}</div>` : ""}${
     extra.length ? `<div class="row-extra">${extra.join("")}</div>` : ""
@@ -475,6 +477,11 @@ export interface PageExtras {
    * `feedOriginOf`). `null` leaves the links out: the bytes host serves no docs.
    */
   helpOrigin?: string | null;
+  /**
+   * LK-12b: where "Add to my library" goes (`<customer origin>/<slug>`), or `null` for no row.
+   * Set only when Identity says a new account would see the product in Discover.
+   */
+  libraryUrl?: string | null;
 }
 
 /** Render the page. */
@@ -541,6 +548,16 @@ export function renderDownloadPage(
         : "";
     })
     .join("");
+
+  const library = link(
+    extras.libraryUrl ?? null,
+    "Add to my library",
+    "obtn",
+    "Polaris Locker",
+  );
+  const libraryCard = library
+    ? `<ul class="rows card">${row("locker-library", "Polaris Locker", [], [], "", [library], "h3")}</ul>`
+    : "";
 
   const rows = model.platforms
     .flatMap((g) => g.builds)
@@ -617,8 +634,8 @@ export function renderDownloadPage(
         : ""
     }</header>`,
     `<main>${lead}${release}${
-      ways
-        ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Every way to get ${esc(name)}</h2>${ways}</section>`
+      ways || libraryCard
+        ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Every way to get ${esc(name)}</h2>${ways}${libraryCard}</section>`
         : ""
     }${files}${keys}${about}</main>`,
     `<footer><p>${

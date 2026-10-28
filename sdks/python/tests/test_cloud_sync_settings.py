@@ -489,3 +489,39 @@ def test_s9_a_failed_purge_reaches_the_app_as_an_event_without_values(
     sign_out_hook(r)
     failed = [dict(e.data) for e in seen if e["type"] == "purgeFailed"]
     assert failed == [{"type": "purgeFailed"}]
+
+
+def test_a_touch_landing_as_the_pump_finishes_still_sends(
+    rigs: Callable[..., Rig], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The lost wake-up (Node 796c0240d): a touch after the pump's last check of its again-flag, before
+    it releases the lock, must not be dropped."""
+    import threading
+    import time
+
+    w = World()
+    r = signed_in(rigs, w)
+    r.m("set", "theme", "first")
+    r.m("flush")
+    before = len(w.pushes())
+    real_save = r.host._save
+    waiter: List[threading.Thread] = []
+    state = {"done": False}
+
+    def late_save(*a: Any, **k: Any) -> None:
+        if not state["done"]:
+            state["done"] = True
+            # Past the pump's last check, still holding its lock: a new edit and a touch arrive.
+            r.m("set", "theme", "late")
+            r.m("flush")
+            t = threading.Thread(target=r.host.touch, daemon=True)
+            t.start()
+            waiter.append(t)
+            time.sleep(0.2)  # the touch is now blocked on the pump
+        real_save(*a, **k)
+
+    monkeypatch.setattr(r.host, "_save", late_save)
+    assert within(10, r.host.touch)
+    waiter[0].join(10)
+    assert not waiter[0].is_alive()
+    assert len(w.pushes()) == before + 2

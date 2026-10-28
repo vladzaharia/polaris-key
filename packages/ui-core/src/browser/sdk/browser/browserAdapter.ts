@@ -111,6 +111,13 @@ import {
   type KeyringClient,
 } from "../core/keyring.js";
 import {
+  lazyCloudSync,
+  unsupportedCloudSync,
+  type CloudSyncClient,
+} from "../core/cloudSync.js";
+import type { CloudSyncHostOptions } from "./cloudSync/host.js";
+import type { CloudSyncOwner } from "./cloudSync/create.js";
+import {
   createCloudConnect,
   lazyConnect,
   unsupportedCloudConnect,
@@ -446,6 +453,13 @@ export interface BrowserAdapterOptions {
    */
   platformIdentity?: PlatformIdentityProvider | null;
   /**
+   * Cloud Sync for settings (sync.settings, bearer mode only). `encryption` is the product's mode
+   * (default `"e2e"`; app code only, never read from the Worker), `catalog` the compiled mirror
+   * (`pkey mirror`, authoritative for every key it names) and `aliases` the renames the app
+   * declares. Nothing loads until `adapter.cloudSync.host()`.
+   */
+  cloudSync?: CloudSyncHostOptions;
+  /**
    * The Cloud Sync key ring (sync.keyring, bearer mode only). `deviceKeys` is the device key store
    * (default `createWebDeviceKeyStore()`, IndexedDB with a memory fallback); a memory-only store
    * makes the ring unlock-only (recovery code), with the root held in memory. `vault` is where the
@@ -729,6 +743,8 @@ export class BrowserAdapter implements PolarisAdapter {
     this.authMode = resolveAuthMode(opts.auth, this.base, opts.pageOrigin);
     this.autoRegister = opts.autoRegister !== false;
     this.ringOptions = opts.keyring;
+    this.cloudSyncOptions = opts.cloudSync;
+    this.catalogOption = opts.catalog ?? undefined;
     this.platformIdentity = opts.platformIdentity;
     this.connectOptions = opts.connect;
     if (this.authMode === "bearer" && !this.pinned) {
@@ -2044,6 +2060,9 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   private ring_: KeyringClient | null = null;
+  private cloudSync_: CloudSyncClient | null = null;
+  private readonly cloudSyncOptions: CloudSyncHostOptions | undefined;
+  private readonly catalogOption: ProductCatalog | undefined;
   private readonly ringOptions: BrowserAdapterOptions["keyring"];
   private deviceKeys_: Promise<DeviceKeyPort> | null = null;
 
@@ -2157,6 +2176,29 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   /**
+   * Cloud Sync for settings (sync.settings). Bearer mode runs the host, loaded on first use, with
+   * the state in IndexedDB `pkey-sync-<product>` and one writer tab; a cookie page holds no device
+   * token and gets the typed runtime N/A, as does a browser without Web Locks.
+   */
+  get cloudSync(): CloudSyncClient {
+    if (this.cloudSync_) return this.cloudSync_;
+    const b = this.bearer;
+    if (!b)
+      return (this.cloudSync_ = unsupportedCloudSync("runtime", COOKIE_DETAIL));
+    const dbName = `pkey-sync-${storeNamespace(this.product, this.base)}`;
+    return (this.cloudSync_ = lazyCloudSync({
+      dbName,
+      enabled: () => this.capabilities.sync.enabled,
+      load: async () =>
+        (await import("./cloudSync/create.js")).createBrowserCloudSync(
+          this as unknown as CloudSyncOwner,
+          b,
+          dbName,
+        ),
+    }));
+  }
+
+  /**
    * The Cloud Connect identity (connect.identity). Bearer mode runs the engine; a cookie page
    * holds no device token and gets the typed runtime N/A.
    */
@@ -2209,9 +2251,14 @@ export class BrowserAdapter implements PolarisAdapter {
     try {
       await this.keyring.forget();
     } finally {
-      // The relay stops first: a session must not outlive the roster it was admitted under.
-      await this.cloudConnect.stop().catch(() => undefined);
-      await this.connect.leave();
+      try {
+        // The person's synced settings go with the ring (a failure reaches the caller).
+        await this.cloudSync.purge();
+      } finally {
+        // The relay stops first: a session must not outlive the roster it was admitted under.
+        await this.cloudConnect.stop().catch(() => undefined);
+        await this.connect.leave();
+      }
     }
   }
 
