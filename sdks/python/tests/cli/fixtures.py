@@ -222,6 +222,7 @@ NOT_DRAWN = {
     ("SignIn", "nearby-prompt"): "automatic sign-in is the platform ladder of an app (I-44, I-45, I-46, I-48); the terminal signs in by browser or code",
     ("SignIn", "nearby-wait"): "automatic sign-in is the platform ladder of an app (I-44, I-45, I-46, I-48); the terminal signs in by browser or code",
     ("SignIn", "nearby-done"): "automatic sign-in is the platform ladder of an app (I-44, I-45, I-46, I-48); the terminal signs in by browser or code",
+    ("SignIn", "device-limit"): "a device limit with no license rows follows an automatic or provider sign-in; the terminal's device limit is Activate device-limit, drawn by the activate verb",
     ("SignIn", "expired"): "the terminal's sign-in expires with its code: SignInHandoff expired",
     ("SignInHandoff", "finishing"): "the SDK redeems the code inside wait_for_sign_in; SignIn finishing is drawn",
     ("DeviceLimit", "default"): "no device list for a key in layer 1 (UI-KITS §4.3); browser mode is drawn",

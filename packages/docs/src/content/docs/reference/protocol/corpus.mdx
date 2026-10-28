@@ -106,7 +106,7 @@ WIRE-CONTRACT-V4 §5.7 (DISC-01): discovery's unsigned `core.portal`, parsed as 
 
 WIRE-CONTRACT-V4 §14 (SP-53): a server core's six-step verdict on `X-PKey-License` (signed licence documents, header fields, the server's clock, the products served, `maxAgeSeconds` and the route's requirements, to a status, a code and the attached context), the refusal's problem body with its `WWW-Authenticate` challenge and its locale from `Accept-Language`, and the client half's refresh-and-retry rule. A reference in `tools/corpus/reference/backend.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/backend` is checked against the file by the Node and browser runners. Server cores replay `verdict` and `problem`, client halves `client`.
 
-## UI state matrix (`ui-matrix.json`): 412 component rows, 27 theme rows, 78 i18n rows
+## UI state matrix (`ui-matrix.json`): 416 component rows, 27 theme rows, 78 i18n rows
 
 The UI kits' layer (c), pinned once for every language (`plans/UK-02b.md`): each row drives the headless model of one component with an input (SDK results, `plans/I-04.md`'s license-choice views, kit-side values) and names its state, the copy keys it shows and its actions. `hidden` means the drop-in renders nothing because a service it depends on is off. Inline sign-in rows have a sheet twin, every component has a presentation-absent row, and the negative rows carry UI-KITS §4.1's Must not. The `theme` rows pin the accent, scheme, icon and preset resolution; the `i18n` rows the catalog lookup and the ICU subset, computed from the kit copy by the generator. No reference state machine: ui-core, the Swift presentation core, Kotlin `commonMain`, the Godot controllers and `polaris_key.ui.core` each run every row.
 
@@ -114,7 +114,7 @@ The UI kits' layer (c), pinned once for every language (`plans/UK-02b.md`): each
 | --- | --- | --- |
 | `gate` | PolarisKeyGate, Boot, StatusScreen, GraceBanner, Toast | 62 |
 | `activate` | Welcome, Activate, OfflineActivation | 38 |
-| `signIn` | SignIn, NearbyApproval, SignInHandoff, LicenseChoice | 194 |
+| `signIn` | SignIn, NearbyApproval, SignInHandoff, LicenseChoice | 198 |
 | `deviceLimit` | DeviceLimit | 8 |
 | `devices` | Devices | 16 |
 | `update` | UpdatePrompt, UpdateProgress, ReleaseNotes | 44 |
@@ -212,6 +212,7 @@ Every state a kit, or an app drawing its own UI, handles, with the copy keys the
 | SignIn | `link-offer` | `signin.linkOffer.bodyApp`, `signin.linkOffer.bodyDeveloper`, `signin.linkOffer.bodyGlobal`, `signin.linkOffer.decline`, `signin.linkOffer.primary`, `signin.linkOffer.title` |
 | SignIn | `link-done` | `common.continue`, `signin.linkOffer.done` |
 | SignIn | `link-conflict` | `common.continue`, `signin.linkOffer.conflict`, `signin.linkOffer.conflictTitle`, `signin.linkOffer.join` |
+| SignIn | `device-limit` | `a11y.externalLink`, `common.cancel`, `core.codes.device_limit.message`, `core.codes.device_limit.title`, `deviceLimit.noManage`, `signin.auto.confirm.other`, `signin.deviceLimit.replace` |
 | SignIn | `nearby-prompt` | `common.continue`, `common.notNow`, `signin.nearby.prePrompt`, `signin.nearby.promptTitle` |
 | SignIn | `nearby-wait` | `a11y.nearbyCode`, `signin.nearby.body`, `signin.nearby.code`, `signin.nearby.match`, `signin.nearby.title` |
 | SignIn | `nearby-done` | `common.continue`, `signin.nearby.done`, `signin.nearby.notYou` |

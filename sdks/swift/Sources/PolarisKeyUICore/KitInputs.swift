@@ -886,6 +886,8 @@ public enum KitAutoSignInStep: String, Sendable, Codable, CaseIterable {
     case nearbyPrompt = "nearby-prompt"
     case nearbyWait = "nearby-wait"
     case nearbyDone = "nearby-done"
+    /// A device limit with no license rows (KFA-0): its own step, never the key screen.
+    case deviceLimit = "device-limit"
 }
 
 /// Whose identity a provider link covers: `global` is shared across apps, `developer` is this
@@ -914,13 +916,16 @@ public struct KitAutoSignIn: Sendable, Codable, Equatable, Hashable {
     public var device: String?
     public var position: Int?
     public var limit: Int?
+    /// The device-limit step: the refusal's `manageUrl`, where a device is replaced.
+    public var manageUrl: String?
 
     public init(
         step: KitAutoSignInStep, email: String? = nil, reach: KitLinkReach? = nil,
         license: String? = nil, alsoGets: Bool? = nil, code: String? = nil,
         licenseName: String? = nil, term: Int? = nil, device: String? = nil,
-        position: Int? = nil, limit: Int? = nil
+        position: Int? = nil, limit: Int? = nil, manageUrl: String? = nil
     ) {
+        self.manageUrl = manageUrl
         self.licenseName = licenseName
         self.term = term
         self.device = device

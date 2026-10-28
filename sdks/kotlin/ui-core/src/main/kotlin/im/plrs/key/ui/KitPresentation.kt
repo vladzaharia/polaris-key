@@ -73,6 +73,7 @@ public enum class KitAction(public val id: String) {
             "deviceLimit.openBrowser" to openManageUrl,
             "devices.manage" to openManageUrl,
             "signin.key.addInLocker" to openManageUrl,
+            "signin.deviceLimit.replace" to openManageUrl,
             "signin.key.ownedSignIn" to startSignIn,
             "signin.key.signIn" to startSignIn,
             "signin.handoff.copyLink" to copyLink,

@@ -1046,6 +1046,63 @@ web numbers above apply to the web):
 The prototype in [`sign-in/prototype/`](sign-in/prototype/) demonstrates every pattern on the
 integrated web flow (§4.16).
 
+### 3.19 Automatic sign-in: the confirm step and the device limit
+
+Reference for every kit (ui-matrix v7; the review `UXR-kit-autosignin` and its lead decisions of
+2026-10-28). The states are `SignIn/confirm`, `link-offer`, `link-done`, `link-conflict`,
+`nearby-*` and `device-limit`.
+
+**Methods step.** The primary is the model's, not the kit's: **Continue in browser**
+(`signin.desktop.continue`) on desktop, and **Continue with {provider}** (`signin.provider.continue`)
+on every other platform, where the provider is the one the row names (default Polaris Locker).
+**Continue with email** (`signin.email.continue`) is a secondary row, never the primary. Cancel is
+the quiet exit. A kit does not choose a different primary label.
+
+**Confirm step.** A confirm has two actions and no Cancel: **Continue** (`signin.auto.confirm.primary`,
+the only primary) and **Use another account** (`signin.auto.confirm.other`, quiet). Escape, and the
+gate's own back, are the way out. The hierarchy, top to bottom:
+
+1. The h1 is "Continue to {app}", with **"as {email}"** (or "with your Apple Account" when the
+   provider shared none) as its subtitle, directly under it.
+2. **Overline labels** group the body: "License for this device", then (first sign-in or a changed
+   consent) "{app} will also get". A label is small, muted and uppercase-free; it names its group
+   and is never a second heading.
+3. The **license line is strong** (body weight 500, the text colour): the license name, the term and
+   the seat ("Pro · Lifetime · this Mac becomes device 2 of 3"). The device reads in lower case
+   mid-line ("this Mac", "this device"; `part.thisDevice`, never the capitalised
+   `part.thisDeviceTitle`), or is the device's own name. A seat the view does not know leaves the
+   line out.
+4. **Grouped spacing:** the title and subtitle sit together; each labelled group is separated from
+   the next by one step of the spacing scale more than its own lines are; the actions are separated
+   from the body by the largest gap.
+5. The pairwise line says "apps", not "products": "It gets its own id for you, and won't see your
+   other apps or how you sign in."
+
+**Device limit with no license rows (`SignIn/device-limit`).** An account that signed in
+automatically, or with a provider, and whose only license has no free device gets its own step. It
+never lands on the key screen, and never shows the key field or "Use a different key". The h1 is the
+refusal's title ("Device limit reached"), the lede its message, and the actions are, in order:
+
+- **Replace a device ↗** (`signin.deviceLimit.replace`, the primary): opens the refusal's
+  `manageUrl` in the browser, drawn with the new-window glyph and described by `a11y.externalLink`.
+  With no valid `manageUrl` this action and the glyph are absent, and the lede is followed by
+  `deviceLimit.noManage` instead.
+- **Use another account** (`signin.auto.confirm.other`): drops the grant and returns to the methods.
+- **Cancel** (`common.cancel`): leaves the form to the gate's Welcome.
+
+When the person returns to the app after Replace, the kit runs the provider sign-in once more (no new
+system sheet where the platform allows it); they do not start again by hand.
+
+**Device limit with license rows (LicenseChoice).** SwiftUI's full row is the reference layout: the
+title, then the tier pill, the device count and the tag on one line, then the seat meter and the
+meta. The lede sits above the rows in every kit. Replace is offered only when some full row has
+`replace.allowed`; otherwise the lede is `signin.choice.noneReplaceable` with Cancel and Use another
+account, and no Replace button.
+
+**Large type.** At the largest text sizes (Dynamic Type AX5, Android font scale 2) the actions dock
+to the bottom edge of the form, outside the scrolling body, so the primary stays in the first
+viewport. SwiftUI's docked actions are the reference; every kit follows.
+
 ## 4. Storyboards
 
 Each path lists its frames in order. Frame numbers refer to [§9](#9-mockups). PORTAL numbers refer
@@ -1627,6 +1684,7 @@ keys (`conformance/parity/copy.en.json`) for refusal codes instead of duplicatin
 | `signin.none.get`                    | Get {product}                                                                                                                                                                                 |
 | `signin.none.otherAccount`           | Use another account                                                                                                                                                                           |
 | `signin.replace.open`                | Replace a device                                                                                                                                                                              |
+| `signin.deviceLimit.replace`         | Replace a device (device limit with no license rows; the new-window glyph beside it)                                                                                                          |
 | `signin.replace.meta`                | {platform} · last used {when}                                                                                                                                                                 |
 | `signin.replace.leastRecent`         | Least recent                                                                                                                                                                                  |
 | `signin.replace.activeNow`           | Active now                                                                                                                                                                                    |
@@ -1648,7 +1706,7 @@ keys (`conformance/parity/copy.en.json`) for refusal codes instead of duplicatin
 | `signin.consent.continue`            | Continue to {app}                                                                                                                                                                             |
 | `signin.consent.alsoGets`            | {app} will also get                                                                                                                                                                           |
 | `signin.consent.profile`             | Your profile and email                                                                                                                                                                        |
-| `signin.consent.pairwise`            | It gets its own id for you, and won't see your other products or how you sign in.                                                                                                             |
+| `signin.consent.pairwise`            | It gets its own id for you, and won't see your other apps or how you sign in.                                                                                                                 |
 | `signin.notYou`                      | Not you?                                                                                                                                                                                      |
 | `signin.cancel`                      | Cancel                                                                                                                                                                                        |
 | `signin.key.addTitle`                | Add {product} to your account                                                                                                                                                                 |

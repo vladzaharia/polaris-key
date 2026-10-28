@@ -155,7 +155,8 @@ export type AutoSignInStep =
   | "link-conflict"
   | "nearby-prompt"
   | "nearby-wait"
-  | "nearby-done";
+  | "nearby-done"
+  | "device-limit";
 
 export interface AutoSignInInput {
   step: AutoSignInStep;
@@ -170,6 +171,9 @@ export interface AutoSignInInput {
   alsoGets?: boolean;
   /** The code the waiting device shows, which the person taps on the approving device. */
   code?: string;
+  /** The `device-limit` step: the refusal's `manageUrl`, where a device is replaced. Absent or
+   *  invalid: the step names the fix in words and offers no Replace. */
+  manageUrl?: string;
   /** The license an existing-license confirm names: the arguments of its license line
    *  (`signin.consent.licenseLine`). `term` is `perpetual` or the end as epoch seconds. */
   anchor?: {

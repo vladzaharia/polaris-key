@@ -22,6 +22,15 @@ import {
   KIT_GLYPHS,
 } from "../src/tokens/glyphs.js";
 import {
+  GOOGLE_BUTTON_COPY_KEY,
+  GOOGLE_BUTTON_FILLS,
+  GOOGLE_BUTTON_FOR_SCHEME,
+  GOOGLE_G_GRID,
+  GOOGLE_G_HEIGHT_RATIO,
+  GOOGLE_G_LABEL_GAP,
+  GOOGLE_G_PATHS,
+} from "../src/tokens/providerMarks.js";
+import {
   DERIVE_VECTORS,
   RESOLVE_VECTORS,
 } from "../src/tokens/accent-vectors.js";
@@ -833,6 +842,14 @@ export const KIT_ICONS: Record<
     size: [24, 24],
     svg: '<circle cx="12" cy="12" r="9" fill="{bg}"/><path d="M9 9l6 6M15 9l-6 6" fill="none" stroke="{fg}" stroke-width="2" stroke-linecap="round"/>',
   },
+  // The Google "G" (UI-KITS.md §3.6), from src/tokens/providerMarks.ts: fixed brand fills, so
+  // {fg} and {bg} are not used.
+  google_g: {
+    size: [GOOGLE_G_GRID, GOOGLE_G_GRID],
+    svg: GOOGLE_G_PATHS.map((p) => `<path fill="${p.fill}" d="${p.d}"/>`).join(
+      "",
+    ),
+  },
   // The new-window glyph (UI-KITS.md §1.5 rule 11), from src/tokens/glyphs.ts.
   new_window: {
     size: [KIT_GLYPH_GRID, KIT_GLYPH_GRID],
@@ -844,6 +861,19 @@ export const KIT_ICONS: Record<
       .join(""),
   },
 };
+
+/** A GDScript dictionary literal of strings (and null), keys in order. */
+function gdDict(v: Record<string, unknown>): string {
+  const lit = (x: unknown): string =>
+    x === null
+      ? "null"
+      : typeof x === "object"
+        ? gdDict(x as Record<string, unknown>)
+        : JSON.stringify(x);
+  return `{${Object.entries(v)
+    .map(([k, x]) => `${JSON.stringify(k)}: ${lit(x)}`)
+    .join(", ")}}`;
+}
 
 export function gdIcons(ctx: KitGenContext): string {
   const entries = Object.entries(KIT_ICONS)
@@ -864,6 +894,16 @@ extends RefCounted
 const ICONS := {
 ${entries}
 }
+
+## Google's sign-in button fills (UI-KITS.md §3.6): the fill, border (null: none) and label of
+## each, and the fill each colour scheme uses by default. The "google_g" icon is drawn at
+## GOOGLE_G_HEIGHT_RATIO of the button's height, GOOGLE_G_LABEL_GAP px before the label, whose
+## copy key is GOOGLE_LABEL_KEY. Never tinted with the product accent.
+const GOOGLE_BUTTON := ${gdDict(GOOGLE_BUTTON_FILLS)}
+const GOOGLE_BUTTON_FOR_SCHEME := ${gdDict(GOOGLE_BUTTON_FOR_SCHEME)}
+const GOOGLE_G_HEIGHT_RATIO := ${GOOGLE_G_HEIGHT_RATIO}
+const GOOGLE_G_LABEL_GAP := ${GOOGLE_G_LABEL_GAP}
+const GOOGLE_LABEL_KEY := "${GOOGLE_BUTTON_COPY_KEY}"
 
 
 ## The names of every icon.
@@ -1081,6 +1121,17 @@ CONCENTRIC_MIN = ${KIT_CONCENTRIC_MIN}
 GLYPH_GRID = ${KIT_GLYPH_GRID}
 GLYPH_STROKE = ${KIT_GLYPH_STROKE}
 GLYPHS = ${pyLiteral({ new_window: { paths: [...KIT_GLYPHS.newWindow.paths], copy_key: KIT_GLYPHS.newWindow.copyKey } })}
+
+#: Google's sign-in mark and button (UI-KITS.md 3.6): the "G" as (fill, path data) layers on a
+#: ${GOOGLE_G_GRID}-unit grid, never tinted; the three button fills ("border" None: no border); the
+#: fill each scheme uses by default; the G's height as a fraction of the button's; the gap to the label.
+GOOGLE_G_GRID = ${GOOGLE_G_GRID}
+GOOGLE_G = ${pyLiteral(GOOGLE_G_PATHS.map((p) => ({ fill: p.fill, d: p.d })))}
+GOOGLE_BUTTON = ${pyLiteral(GOOGLE_BUTTON_FILLS)}
+GOOGLE_BUTTON_FOR_SCHEME = ${pyLiteral(GOOGLE_BUTTON_FOR_SCHEME)}
+GOOGLE_G_HEIGHT_RATIO = ${GOOGLE_G_HEIGHT_RATIO}
+GOOGLE_G_LABEL_GAP = ${GOOGLE_G_LABEL_GAP}
+GOOGLE_LABEL_KEY = "${GOOGLE_BUTTON_COPY_KEY}"
 
 #: Component measures per desktop platform (px; points on macOS).
 KIT = ${pyLiteral(Object.fromEntries(PY_PLATFORMS.map((p) => [p, pyComponents(p)])))}
@@ -1731,6 +1782,238 @@ ${resolve}
     val danger: List<DangerVector> = listOf(
 ${danger}
     )
+}
+`;
+}
+
+// ── Provider marks: Swift and Compose (UI-KITS.md §3.6) ─────────────────────────────────────────
+
+type AbsSeg =
+  | ["M" | "L", number, number]
+  | ["C", number, number, number, number, number, number]
+  | ["Z"];
+
+/** SVG path data (M m L l H h V v C c S s Z z only, which the provider artwork uses) as absolute
+ *  move, line, cubic and close segments. */
+export function absoluteSegments(d: string): AbsSeg[] {
+  const tokens = d.match(/[MmLlHhVvCcSsZz]|-?\d*\.?\d+(?:e-?\d+)?/g) ?? [];
+  const out: AbsSeg[] = [];
+  let i = 0;
+  let cmd = "";
+  let x = 0;
+  let y = 0;
+  let sx = 0;
+  let sy = 0;
+  /** The previous cubic's second control point, which S reflects (null after any other command). */
+  let ctl: [number, number] | null = null;
+  const num = () => Number(tokens[i++]!);
+  while (i < tokens.length) {
+    if (/^[A-Za-z]$/.test(tokens[i]!)) cmd = tokens[i++]!;
+    const rel = cmd === cmd.toLowerCase();
+    const k = cmd.toUpperCase();
+    const prevCtl = ctl;
+    ctl = null;
+    if (k === "Z") {
+      out.push(["Z"]);
+      x = sx;
+      y = sy;
+      continue;
+    }
+    if (k === "M" || k === "L") {
+      const nx = num() + (rel ? x : 0);
+      const ny = num() + (rel ? y : 0);
+      out.push([k, nx, ny]);
+      x = nx;
+      y = ny;
+      if (k === "M") {
+        sx = x;
+        sy = y;
+        cmd = rel ? "l" : "L";
+      }
+    } else if (k === "H") {
+      x = num() + (rel ? x : 0);
+      out.push(["L", x, y]);
+    } else if (k === "V") {
+      y = num() + (rel ? y : 0);
+      out.push(["L", x, y]);
+    } else if (k === "C") {
+      const v = [0, 1, 2, 3, 4, 5].map(() => num());
+      const abs = v.map((n, j) => n + (rel ? (j % 2 === 0 ? x : y) : 0));
+      const [a, b, c, d, e, f] = abs as [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+      ];
+      out.push(["C", a, b, c, d, e, f]);
+      ctl = [c, d];
+      x = e;
+      y = f;
+    } else if (k === "S") {
+      const v = [0, 1, 2, 3].map(() => num());
+      const abs = v.map((n, j) => n + (rel ? (j % 2 === 0 ? x : y) : 0));
+      const c1: [number, number] = prevCtl
+        ? [2 * x - prevCtl[0], 2 * y - prevCtl[1]]
+        : [x, y];
+      const [a, b, c, d] = abs as [number, number, number, number];
+      out.push(["C", c1[0], c1[1], a, b, c, d]);
+      ctl = [a, b];
+      x = c;
+      y = d;
+    } else throw new Error(`providerMarks: unsupported path command ${cmd}`);
+  }
+  return out;
+}
+
+const round = (n: number) => Number(n.toFixed(4));
+const hexInt = (hex: string) => `0x${hex.slice(1).toUpperCase()}`;
+
+export function swiftProviderMarks(ctx: KitGenContext): string {
+  const layers = GOOGLE_G_PATHS.map((p) => {
+    const segs = absoluteSegments(p.d)
+      .map((s) =>
+        s[0] === "Z"
+          ? ".close"
+          : s[0] === "C"
+            ? `.curve(${s
+                .slice(1)
+                .map((n) => round(n as number))
+                .join(", ")})`
+            : `.${s[0] === "M" ? "move" : "line"}(${round(s[1])}, ${round(s[2])})`,
+      )
+      .join(", ");
+    return `        Layer(fill: ${hexInt(p.fill)}, segments: [${segs}]),`;
+  }).join("\n");
+  const fill = (name: keyof typeof GOOGLE_BUTTON_FILLS) => {
+    const f = GOOGLE_BUTTON_FILLS[name] as {
+      fill: string;
+      border: string | null;
+      label: string;
+    };
+    return `    public static let google${cap(name)} = ButtonFill(fill: ${hexInt(f.fill)}, border: ${f.border ? hexInt(f.border) : "nil"}, label: ${hexInt(f.label)})`;
+  };
+  return `${ctx.banner("//")}
+
+/// The provider sign-in marks (docs/design/UI-KITS.md §3.6): the logo a "Continue with <provider>"
+/// button carries and the fills and label colours the provider's branding rules require. Apple is
+/// not here: the kit draws the system Sign in with Apple control. Colours are 0xRRGGBB; the
+/// product accent never tints a provider mark.
+public enum PolarisProviderMark {
+    /// One drawing step of a mark's outline, in the mark's own grid, absolute coordinates.
+    public enum Segment: Equatable, Sendable {
+        case move(Double, Double)
+        case line(Double, Double)
+        /// Control point 1, control point 2, end point.
+        case curve(Double, Double, Double, Double, Double, Double)
+        case close
+    }
+
+    /// One filled outline of a mark.
+    public struct Layer: Sendable {
+        public let fill: UInt32
+        public let segments: [Segment]
+    }
+
+    /// A provider button's colours; \`border\` nil draws none.
+    public struct ButtonFill: Sendable {
+        public let fill: UInt32
+        public let border: UInt32?
+        public let label: UInt32
+    }
+
+    /// The Google "G" grid (a square viewBox).
+    public static let googleGrid: Double = ${GOOGLE_G_GRID}
+
+    /// The Google "G", in drawing order. Draw it unmodified: never recoloured, stretched or tinted.
+    public static let googleG: [Layer] = [
+${layers}
+    ]
+
+${fill("light")}
+${fill("dark")}
+${fill("neutral")}
+
+    /// The fill each colour scheme uses by default.
+    public static func googleButton(dark: Bool) -> ButtonFill { dark ? googleDark : googleLight }
+
+    /// The G's height as a fraction of the button's height.
+    public static let googleGHeightRatio: Double = ${GOOGLE_G_HEIGHT_RATIO}
+    /// The gap between the G and the label, in points.
+    public static let googleGLabelGap: Double = ${GOOGLE_G_LABEL_GAP}
+    /// The kit-copy key of the label ("Continue with {provider}", provider "Google").
+    public static let googleLabelCopyKey = "${GOOGLE_BUTTON_COPY_KEY}"
+}
+`;
+}
+
+export function kotlinProviderMarks(ctx: KitGenContext): string {
+  const paths = GOOGLE_G_PATHS.map(
+    (p) =>
+      `            addPath(\n                pathData = addPathNodes("${p.d}"),\n                fill = SolidColor(Color(0xFF${p.fill.slice(1).toUpperCase()})),\n            )`,
+  ).join("\n");
+  const fill = (name: keyof typeof GOOGLE_BUTTON_FILLS) => {
+    const f = GOOGLE_BUTTON_FILLS[name] as {
+      fill: string;
+      border: string | null;
+      label: string;
+    };
+    const c = (h: string) => `Color(0xFF${h.slice(1).toUpperCase()})`;
+    return `        public val ${cap(name)}: ProviderButtonFill = ProviderButtonFill(${c(f.fill)}, ${f.border ? c(f.border) : "null"}, ${c(f.label)})`;
+  };
+  return `${ctx.banner("//")}
+
+@file:Suppress("MagicNumber", "MaxLineLength")
+
+package im.plrs.key.ui.brand
+
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
+import androidx.compose.ui.unit.dp
+
+/** A provider button's colours; [border] null draws none. */
+public data class ProviderButtonFill(val fill: Color, val border: Color?, val label: Color)
+
+/**
+ * The provider sign-in marks (docs/design/UI-KITS.md §3.6): the logo a "Continue with <provider>"
+ * button carries, with the fills and label colours the provider's branding rules require. Apple is
+ * not here: the kit draws the system control. The product accent never tints a provider mark.
+ */
+public object PolarisProviderMarks {
+    /** The Google "G" on its ${GOOGLE_G_GRID}-unit grid, in Google's four colours. Draw it unmodified; never tint it. */
+    public val GoogleG: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "PolarisGoogleG",
+            defaultWidth = ${GOOGLE_G_GRID}.dp,
+            defaultHeight = ${GOOGLE_G_GRID}.dp,
+            viewportWidth = ${GOOGLE_G_GRID}f,
+            viewportHeight = ${GOOGLE_G_GRID}f,
+        ).apply {
+${paths}
+        }.build()
+    }
+
+    /** Google's three button fills. */
+    public object GoogleButton {
+${fill("light")}
+${fill("dark")}
+${fill("neutral")}
+
+        /** The fill each colour scheme uses by default. */
+        public fun forScheme(dark: Boolean): ProviderButtonFill = if (dark) Dark else Light
+    }
+
+    /** The G's height as a fraction of the button's height. */
+    public const val GOOGLE_G_HEIGHT_RATIO: Float = ${GOOGLE_G_HEIGHT_RATIO}f
+
+    /** The gap between the G and the label, in dp. */
+    public const val GOOGLE_G_LABEL_GAP: Float = ${GOOGLE_G_LABEL_GAP}f
+
+    /** The kit-copy key of the label ("Continue with {provider}", provider "Google"). */
+    public const val GOOGLE_LABEL_COPY_KEY: String = "${GOOGLE_BUTTON_COPY_KEY}"
 }
 `;
 }

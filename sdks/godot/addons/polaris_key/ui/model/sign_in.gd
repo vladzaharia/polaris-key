@@ -63,7 +63,7 @@ static func verification_target(ctx: RefCounted, shown: String) -> String:
 # ── SignIn ─────────────────────────────────────────────────────────────────────────────────────
 
 ## `SignInState`.
-const SIGN_IN_STATES := ["methods", "handoff", "code", "finishing", "choose", "replace", "key", "key-refused", "done", "error", "expired", "confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done", "hidden"]
+const SIGN_IN_STATES := ["methods", "handoff", "code", "finishing", "choose", "replace", "key", "key-refused", "done", "error", "expired", "confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done", "device-limit", "hidden"]
 
 
 ## The copy key of the first sign-in method, the methods step's primary (DL9).
@@ -292,6 +292,22 @@ static func _auto_step_view(ctx: RefCounted, auto: Dictionary, base_args: Dictio
 				"a11y.nearbyCode" if View.truthy(auto.get("code")) else null,
 				"signin.nearby.code",
 			]
+		"device-limit":
+			# A device limit with no license rows: its own step, never the key screen. Replace opens
+			# the refusal's manageUrl; without a usable link the fix is named in words.
+			var link := Link.verdict(auto.get("manageUrl"), ctx.platform, "replace-device")
+			var replace: bool = link["url"] != null
+			copy = [
+				"core.codes.device_limit.title",
+				"core.codes.device_limit.message",
+				"signin.deviceLimit.replace" if replace else "deviceLimit.noManage",
+				"a11y.externalLink" if replace else null,
+				"signin.auto.confirm.other",
+				"common.cancel",
+			]
+			primary = "signin.deviceLimit.replace" if replace else null
+			tone = "neutral"
+			return View.make(ctx, "SignIn", {"state": step, "copy": copy, "args": args, "primary": primary, "tone": tone, "focus": "heading", "link": link})
 		_:
 			step = "nearby-done"
 			copy = ["signin.nearby.done", "common.continue", "signin.nearby.notYou"]

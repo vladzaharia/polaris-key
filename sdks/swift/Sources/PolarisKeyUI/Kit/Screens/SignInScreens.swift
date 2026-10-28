@@ -100,7 +100,7 @@ public struct SignInView: View {
         case .done:
             return screen.line("signin.return.signedInTier") ?? CopyLine("signin.return.signedInShort")
         case .confirm, .linkOffer, .linkDone, .linkConflict, .nearbyPrompt, .nearbyWait,
-            .nearbyDone, .keyRefused:
+            .nearbyDone, .deviceLimit, .keyRefused:
             // The first line names the step (the sentence, or the refusal's title).
             return screen.copy.first ?? CopyLine("signIn.title", productArg)
         case .expired:
@@ -212,7 +212,7 @@ public struct SignInView: View {
                     }
                 #endif
             }
-        case .confirm, .linkOffer, .nearbyWait, .linkConflict, .nearbyPrompt:
+        case .confirm, .linkOffer, .nearbyWait, .linkConflict, .nearbyPrompt, .deviceLimit:
             // The step's sentences under its title; the controls are the actions.
             VStack(alignment: .leading, spacing: style.space(.sm)) {
                 ForEach(
@@ -260,7 +260,8 @@ public struct SignInView: View {
     private static let autoControls: Set<String> = [
         "signin.auto.confirm.primary", "signin.auto.confirm.other", "signin.linkOffer.primary",
         "signin.linkOffer.decline", "common.notNow", "signin.nearby.code", "signin.nearby.notYou",
-        "common.continue", "signin.linkOffer.join",
+        "common.continue", "signin.linkOffer.join", "signin.deviceLimit.replace",
+        "a11y.externalLink", "common.cancel",
     ]
 
     /// The refusal's page when the server gave a valid one: the add-key page for the limit, the
@@ -386,6 +387,21 @@ public struct SignInView: View {
             case .nearbyDone:
                 autoButton("common.continue", .primary)
                 autoButton("signin.nearby.notYou", .quiet)
+            case .deviceLimit:
+                // Replace a device opens the refusal's manageUrl; the SwiftUI slice (KFA-swift)
+                // owns the full-row layout and the resume on return.
+                #if !os(tvOS)
+                    if screen.shows("signin.deviceLimit.replace"),
+                        let link = KitLinks.valid(model.inputs.autoSignIn?.manageUrl)
+                    {
+                        KitButton(
+                            line: CopyLine("signin.deviceLimit.replace"), kind: .primary,
+                            glyph: PolarisKitGlyph.newWindow
+                        ) { open(link) }
+                    }
+                #endif
+                autoButton("signin.auto.confirm.other", .quiet)
+                cancelButton
             case .linkDone:
                 autoButton("common.continue", .primary)
             case .linkConflict:

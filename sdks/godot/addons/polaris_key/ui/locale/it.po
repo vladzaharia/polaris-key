@@ -2631,6 +2631,16 @@ msgid "signin.none.otherAccount"
 msgstr "Usa un altro account"
 
 #. Replace a device
+#. Device limit with no license rows, reached from automatic sign-in or a provider sign-in (KFA-0): opens the page that replaces a device. The kit draws the new-window glyph beside it; its description is a11y.externalLink.
+msgid "signin.deviceLimit.replace"
+msgstr "Sostituisci un dispositivo"
+
+#. macos: Replace a Device
+msgctxt "macos"
+msgid "signin.deviceLimit.replace"
+msgstr "Sostituisci un dispositivo"
+
+#. Replace a device
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.open"
 msgstr "Sostituisci un dispositivo"
@@ -2745,7 +2755,7 @@ msgid "signin.consent.license"
 msgstr "Licenza per questo dispositivo"
 
 #. {license} · {term} · {device} becomes device {position} of {limit}
-#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
+#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”, or, when the kit has no name, the lower-case part.thisDevice phrase (“this device”), never the capitalised part.thisDeviceTitle, because the line reads on after a separator; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
 msgid "signin.consent.licenseLine"
 msgstr "{license} · {term} · {device} diventa il dispositivo {position} di {limit}"
 
@@ -2779,10 +2789,10 @@ msgstr "{app} riceverà anche"
 msgid "signin.consent.profile"
 msgstr "Il tuo profilo e la tua email"
 
-#. It gets its own id for you, and won't see your other products or how you sign in.
+#. It gets its own id for you, and won't see your other apps or how you sign in.
 #. Consent step before returning to the app (SIGN-IN.md §3.8).
 msgid "signin.consent.pairwise"
-msgstr "Riceve un identificativo dedicato per te e non vedrà gli altri tuoi prodotti né come accedi."
+msgstr "Riceve un identificativo dedicato per te e non vedrà le tue altre app né come accedi."
 
 #. Not you?
 #. Hosted sign-in card (SIGN-IN.md).

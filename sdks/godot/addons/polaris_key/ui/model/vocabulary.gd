@@ -25,7 +25,7 @@ const ACTION_KEYS := {
 	"open-card": ["signin.desktop.continue", "signin.email.continue"],
 	"open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
 	"replace-in-browser": [],
-	"open-manage-url": ["deviceLimit.openBrowser", "devices.manage", "signin.key.addInLocker"],
+	"open-manage-url": ["deviceLimit.openBrowser", "devices.manage", "signin.key.addInLocker", "signin.deviceLimit.replace"],
 	"start-sign-in": ["signin.key.ownedSignIn", "signin.key.signIn"],
 	"copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
 	"retry": ["common.tryAgain", "common.reconnect", "signin.again", "signInHandoff.newCode"],

@@ -973,6 +973,9 @@
     <!-- No license in this account (SIGN-IN.md §3.6). -->
     <string name="signin_none_otherAccount">Usar outra conta</string>
     <string name="signin_none_otherAccount__macos">Usar outra conta</string>
+    <!-- Device limit with no license rows, reached from automatic sign-in or a provider sign-in (KFA-0): opens the page that replaces a device. The kit draws the new-window glyph beside it; its description is a11y.externalLink. -->
+    <string name="signin_deviceLimit_replace">Substituir um dispositivo</string>
+    <string name="signin_deviceLimit_replace__macos">Substituir um dispositivo</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_open">Substituir um dispositivo</string>
     <string name="signin_replace_open__macos">Substituir um dispositivo</string>
@@ -1019,7 +1022,7 @@
     <string name="signin_consent_title">Continuar para %1$s como %2$s?</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_license">Licença para este dispositivo</string>
-    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”, or, when the kit has no name, the lower-case part.thisDevice phrase (“this device”), never the capitalised part.thisDeviceTitle, because the line reads on after a separator; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s será o dispositivo %4$s de %5$s</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · substitui %2$s</string>
@@ -1034,7 +1037,7 @@
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_profile">Seu perfil e e-mail</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
-    <string name="signin_consent_pairwise">Ele recebe um ID próprio para você e não verá seus outros produtos nem como você entra.</string>
+    <string name="signin_consent_pairwise">Ele recebe um ID próprio para você e não verá seus outros apps nem como você entra.</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_notYou">Não é você?</string>
     <string name="signin_notYou__macos">Não é você?</string>
