@@ -1,5 +1,12 @@
 import * as React from "react";
-import { CircleCheck, Clock } from "lucide-react";
+import {
+  CircleCheck,
+  Clock,
+  KeyRound,
+  MonitorSmartphone,
+  RefreshCw,
+  type LucideIcon,
+} from "lucide-react";
 import { recommendReasons } from "@polaris-key/ui-core";
 import type { KeyPreview } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
@@ -12,6 +19,20 @@ import {
   Pill,
   PRIMARY_CLASS,
 } from "./requestParts.js";
+
+type ReasonKey =
+  | "activate.recommend.sync"
+  | "activate.recommend.recover"
+  | "activate.recommend.devices"
+  | "activate.recommend.portal";
+
+/** One icon per reason, by copy key: a new reason must pick one. */
+const REASON_ICONS: Record<ReasonKey, LucideIcon> = {
+  "activate.recommend.sync": RefreshCw,
+  "activate.recommend.recover": KeyRound,
+  "activate.recommend.devices": MonitorSmartphone,
+  "activate.recommend.portal": CircleCheck,
+};
 
 /**
  * AccountUpgrade (SIGN-IN.md §3.9, PX-12; WIRE-CONTRACT-V4 §12.2 rule 8): what a key leads to,
@@ -72,33 +93,31 @@ export function AccountUpgrade({
           </p>
         </div>
       </div>
-      <div className="space-y-2">
-        <AuthTitle>
-          {forced
-            ? t("signin.key.noEntriesTitle", { product: name })
-            : t("signin.key.upgradeTitle", { product: name })}
-        </AuthTitle>
-        {forced ? null : (
-          <p className="text-fg-muted">{t("signin.key.upgradeLede")}</p>
-        )}
-      </div>
-      <ul className="space-y-1.5 text-sm text-fg-muted" data-reasons>
-        {recommendReasons({ identity: true, sync: cloudSync }).map((key) => (
-          <li key={key} className="flex items-start gap-2">
-            <CircleCheck aria-hidden className="mt-0.5 size-4 shrink-0" />
-            <span>
-              {t(key as Parameters<typeof t>[0], {
-                developer: preview.product.developerName ?? name,
-              })}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <AuthTitle>
+        {forced
+          ? t("signin.key.noEntriesTitle", { product: name })
+          : t("signin.key.upgradeTitle", { product: name })}
+      </AuthTitle>
       {forced ? (
         <NeutralCallout icon={<Clock />}>
           <p>{t("signin.key.noEntries", { product: name })}</p>
         </NeutralCallout>
       ) : null}
+      <ul className="space-y-1.5 text-sm text-fg-muted" data-reasons>
+        {recommendReasons({ identity: true, sync: cloudSync }).map((key) => {
+          const Icon = REASON_ICONS[key as ReasonKey];
+          return (
+            <li key={key} className="flex items-start gap-2">
+              <Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span className="text-pretty">
+                {t(key as Parameters<typeof t>[0], {
+                  developer: preview.product.developerName ?? name,
+                })}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
       {entries && left !== null ? (
         <div className="space-y-2">
           <InkMeter

@@ -1066,6 +1066,7 @@ function FinishForm({
                 }}
                 maxLength={64}
                 autoComplete="name"
+                dir="auto"
                 aria-invalid={nameError || undefined}
                 aria-describedby={`${nameId}-hint${nameError ? ` ${nameId}-err` : ""}`}
                 className="h-12 text-base"
