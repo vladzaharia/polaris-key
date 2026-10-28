@@ -28,7 +28,7 @@ private func withPendingEdit(_ rig: HostRig, _ h: CloudSyncHost) async {
         let rig = HostRig()
         let h = try await hSignedIn(rig)
         await withPendingEdit(rig, h)
-        await h.setPumpWait(5_000)
+        await h.setPumpWait(50)  // the purge stops waiting before the slow answer lands
         let gen = await h.generationCount()
         let go = LockedValue<Bool>(false)
         rig.onSend = { r in
@@ -50,6 +50,7 @@ private func withPendingEdit(_ rig: HostRig, _ h: CloudSyncHost) async {
             if req.method == .post {
                 let end = Date().addingTimeInterval(2)
                 while Date() < end, !r.purgeStarted.current { Thread.sleep(forTimeInterval: 0.01) }
+                Thread.sleep(forTimeInterval: 0.4)  // lands after the purge has finished
             }
             // The answer carries a sealed open-key row of the person being purged.
             let leak: JSONValue = .object([
@@ -69,6 +70,8 @@ private func withPendingEdit(_ rig: HostRig, _ h: CloudSyncHost) async {
         }
         await h.touch()
         try await Task.sleep(nanoseconds: 300_000_000)
+        #expect(rig.sent.contains { $0.method == .post })  // the push was really in flight
+        #expect(rig.purgeStarted.current)
         #expect(!stateFileExists(rig))  // not re-saved by the stale pump
         #expect(await h.openKeyNames().isEmpty)  // the purged person's name did not come back
         #expect(await h.status()?.state == .local)  // a fresh, signed-out machine
