@@ -3119,8 +3119,7 @@
           "spelling": "SignInSession.complete"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeySignInSession.complete"
         }
       },
       "layer": "client"

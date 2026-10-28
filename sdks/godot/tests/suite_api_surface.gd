@@ -44,6 +44,7 @@ const ROWS := [
 	["identity.signIn.session.accept", "res://addons/polaris_key/services/identity/sign_in_session.gd", "method", "accept"],
 	["identity.signIn.session.isWaiting", "res://addons/polaris_key/services/identity/sign_in_session.gd", "method", "is_waiting"],
 	["identity.signIn.session.outcome", "res://addons/polaris_key/services/identity/sign_in_session.gd", "signal", "outcome"],
+	["identity.signIn.session.complete", "res://addons/polaris_key/services/identity/sign_in_session.gd", "method", "complete"],
 	["identity.attachLicense", "res://addons/polaris_key/services/identity.gd", "method", "attach"],
 	["identity.openAccount", "res://addons/polaris_key/services/identity.gd", "method", "open_account"],
 	["events", SDK, "signal", "event"],
