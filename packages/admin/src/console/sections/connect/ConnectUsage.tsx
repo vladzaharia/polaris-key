@@ -68,15 +68,13 @@ export function ConnectUsagePage({
   const data = read && {
     ...read,
     days: read.days.slice(-USAGE_DAYS),
-    totals: read.days
-      .slice(-USAGE_DAYS)
-      .reduce(
-        (t, d) => ({
-          bytes: t.bytes + d.bytes,
-          sessions: t.sessions + d.sessions,
-        }),
-        { bytes: 0, sessions: 0 },
-      ),
+    totals: read.days.slice(-USAGE_DAYS).reduce(
+      (t, d) => ({
+        bytes: t.bytes + d.bytes,
+        sessions: t.sessions + d.sessions,
+      }),
+      { bytes: 0, sessions: 0 },
+    ),
   };
   const month = read?.days.at(-1)?.day.slice(0, 7);
   const monthBytes = (read?.days ?? [])

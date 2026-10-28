@@ -832,6 +832,141 @@ msgstr ""
 msgid "activate.busy"
 msgstr ""
 
+#. {product} is ready
+#. ActivateDone: the step after a license key activates. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "activate.done.title"
+msgstr ""
+
+#. {tier} · {term} · this {deviceKind} is device {n} of {limit}.
+#. ActivateDone: the license line. Arguments: {tier} = the tier's name (never translated), {term} = the term (Lifetime, Renews 3 Mar), {deviceKind} = the device kind already worded (computer, phone), {n} and {limit} = integers.
+msgid "activate.done.device"
+msgstr ""
+
+#. Keep {product} in your account
+#. ActivateDone: the quiet recommendation card. Arguments: {product} = the product's name (never translated).
+msgid "activate.recommend.title"
+msgstr ""
+
+#. Recommended
+#. ActivateDone: the badge on the recommendation card.
+msgid "activate.recommend.badge"
+msgstr ""
+
+#. Cloud Sync keeps your settings and saves on every device
+#. ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them.
+msgid "activate.recommend.sync"
+msgstr ""
+
+#. Get your license back if you lose the key or this device
+#. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
+msgid "activate.recommend.recover"
+msgstr ""
+
+#. Move it to a new device yourself, without asking {developer}
+#. ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them.
+msgid "activate.recommend.devices"
+msgstr ""
+
+#. Add your name and email
+#. ActivateDone: the recommendation card's action; opens AddToAccount.
+msgid "activate.recommend.action"
+msgstr ""
+
+#. macos: Add Your Name and Email
+msgctxt "macos"
+msgid "activate.recommend.action"
+msgstr ""
+
+#. Or continue without an account. {product} works the same.
+#. ActivateDone: under the recommendation card. Arguments: {product} = the product's name (never translated).
+msgid "activate.recommend.skip"
+msgstr ""
+
+#. Keep your license safe in Polaris Locker
+#. ActivateDone: the single reason line when Identity is off; the action opens the portal.
+msgid "activate.recommend.portal"
+msgstr ""
+
+#. Your license and its devices stay as they are. You'll confirm the email with a code in your browser.
+#. AddToAccount: under the name and email fields.
+msgid "activate.attach.lede"
+msgstr ""
+
+#. We send a code to this email in your browser. {product} never sees it.
+#. AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated).
+msgid "activate.attach.fine"
+msgstr ""
+
+#. {product} is in your account
+#. AddToAccount: added. Arguments: {product} = the product's name (never translated).
+msgid "activate.attach.done"
+msgstr ""
+
+#. Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.
+#. AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone).
+msgid "activate.attach.syncOn"
+msgstr ""
+
+#. This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.
+#. ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated).
+msgid "activate.waiting"
+msgstr ""
+
+#. Sign in as {maskedEmail}
+#. ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated).
+msgid "activate.waitingSignIn"
+msgstr ""
+
+#. macos: Sign In as {maskedEmail}
+msgctxt "macos"
+msgid "activate.waitingSignIn"
+msgstr ""
+
+#. This license is in a Polaris Locker account
+#. AddToAccount: someone attached the license while this screen was open.
+msgid "activate.owned.title"
+msgstr ""
+
+#. Sign in with the email it was sent to. {product} starts on this {deviceKind} as soon as you do.
+#. AddToAccount: under the owned title. Arguments: {product} = the product's name (never translated), {deviceKind} = the device kind already worded (computer, phone).
+msgid "activate.owned.lede"
+msgstr ""
+
+#. This license was sent to another email
+#. AddToAccount: the license's email does not match the account.
+msgid "activate.otherEmail.title"
+msgstr ""
+
+#. It was sent to {maskedEmail}. Sign in with that email, or add it to this account and verify it.
+#. AddToAccount: under the otherEmail title. Arguments: {maskedEmail} = the email with its middle hidden (never translated).
+msgid "activate.otherEmail.body"
+msgstr ""
+
+#. Verify that email
+#. AddToAccount: opens the portal's sign-in methods.
+msgid "activate.otherEmail.verify"
+msgstr ""
+
+#. macos: Verify That Email
+msgctxt "macos"
+msgid "activate.otherEmail.verify"
+msgstr ""
+
+#. Not in an account
+#. AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email.
+msgid "account.notInAccount"
+msgstr ""
+
+#. Add {product} to your account
+#. The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated).
+msgid "signin.attach.header"
+msgstr ""
+
+#. {product} works the same. Add it to an account any time.
+#. License key step: under Continue without an account. Arguments: {product} = the product's name (never translated).
+msgid "signin.key.skipNote"
+msgstr ""
+
 #. Offline activation
 #. OfflineActivation: activation by exchanging a request code and a response file.
 msgid "offlineActivation.title"
@@ -3018,12 +3153,12 @@ msgstr[1] ""
 msgid "signin.key.noEntries"
 msgstr ""
 
-#. Skip for now
+#. Continue without an account
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"
 msgstr ""
 
-#. macos: Skip for Now
+#. macos: Continue Without an Account
 msgctxt "macos"
 msgid "signin.key.skip"
 msgstr ""

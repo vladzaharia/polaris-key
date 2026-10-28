@@ -759,6 +759,7 @@ public enum Feature {
     public static let uiKitManage = "ui.kit.manage"
     public static let uiKitKeyentry = "ui.kit.keyentry"
     public static let uiKitAccount = "ui.kit.account"
+    public static let uiKitHolders = "ui.kit.holders"
     public static let uiCli = "ui.cli"
     public static let uiCliMount = "ui.cli.mount"
     public static let uiCliContract = "ui.cli.contract"
@@ -897,6 +898,7 @@ public let FEATURE_VALUES: [String] = [
     "ui.kit.manage",
     "ui.kit.keyentry",
     "ui.kit.account",
+    "ui.kit.holders",
     "ui.cli",
     "ui.cli.mount",
     "ui.cli.contract",
@@ -2035,6 +2037,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.kit.manage": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit.keyentry": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit.account": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.kit.holders": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.cli.mount": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.cli.contract": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
@@ -2057,4 +2060,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "f6edabe7c05405e1d5348cb99387edf4adffc30ba52e93cd4537a6c81227c759"
+public let CAPABILITY_DIGEST = "f322906029dcbeaa08cb401da57e7d6cdb1b6248053161961244bc3c8983a3f3"

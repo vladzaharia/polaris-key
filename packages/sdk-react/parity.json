@@ -446,6 +446,11 @@
       "status": "implemented",
       "note": "I-10a.12: License in another account is one focused step on the gate's Activate and the sign-in form's key step (the product header, the product-named title and sentence, then Sign in as the primary, which starts the kit's own sign-in with signInUrl only as the fallback, and Use a different key); the signed-in toast names who signed in and the tier (Signed in as <name> · <Tier> license). SignInModel maps the SDK's activation outcomes into the views' vocabulary (activationFromOutcome, UK-02b D3) and differentKey() clears a refusal (test/kitRefusal.test.tsx; test/browser/kit.browser.test.tsx renders each state in Chromium at every size, both schemes)."
     },
+    "ui.kit.holders": {
+      "status": "planned",
+      "wp": "UK-42",
+      "note": "UK-42.10 flips this row: the Done step, the recommendation, Add your name and email and the floating License row, over ui-core's holders models."
+    },
     "ui.kit.keyentry": {
       "status": "implemented",
       "note": "I-10a.12: the key-entry-limit refusal is one focused step with no key field (the Worker's words, Sign in, the manage link labelled signin.key.addTitle with the new-window glyph and the opens-in-browser hint, Use a different key), and the entries left toast (N key entries left) follows a key activation over the app (test/kitRefusal.test.tsx; Chromium scenes Activate.key-entry-limit and Gate.toast-entries)."
