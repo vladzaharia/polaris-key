@@ -20,6 +20,10 @@ var tokens: Array = []
 var token_requests: Array = []
 ## Every device-flow request with the clock reading when it arrived: {path, at, body, headers}.
 var flow_requests: Array = []
+## Answers for `POST …/identity/choice/<name>` by name (`licenses`, `devices`, `complete`, `cancel`):
+## a Dictionary or a Callable `func(req) -> Dictionary`. Every request: {path, body (parsed), headers}.
+var choice_answers: Dictionary = {}
+var choice_requests: Array = []
 var sdk: Node = null
 
 
@@ -78,6 +82,13 @@ func _answer(req: Dictionary) -> Dictionary:
 			return {"status": 500}
 		var t = tokens[0] if tokens.size() == 1 else tokens.pop_front()
 		return t.call(req) if t is Callable else t
+	if path.contains("/identity/choice/"):
+		var parsed := PKeyJson.parse_bytes(req["body"])
+		choice_requests.append({"path": path, "body": parsed["value"] if parsed["ok"] else null, "headers": req["headers"]})
+		var a = choice_answers.get(path.get_file(), null)
+		if a == null:
+			return json(404, {"error": {"code": "not_found"}})
+		return a.call(req) if a is Callable else a
 	if path.ends_with("/.well-known/polaris-trust.jws"):
 		return {"status": 200, "headers": {"Content-Type": "application/jose"}, "body": F["trust_jws"]}
 	if path.ends_with("/license/document"):

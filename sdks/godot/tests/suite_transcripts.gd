@@ -5,7 +5,7 @@ extends RefCounted
 # @pkey-feature commerce.receipt
 # @pkey-feature packs.apply.chunk
 # @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
-# @pkey-feature license.manage identity.keyentry identity.redirect.web identity.signin.hints
+# @pkey-feature license.manage identity.keyentry identity.redirect.web identity.signin.hints identity.choice
 # @pkey-feature release.fetch
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
@@ -299,11 +299,15 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 						out["scope"] = o.scope
 						out["subject"] = o.subject if o.subject != "" else null
 						out["licenseId"] = o.license_id if o.license_id != "" else null
+					PKeySignInOutcome.KIND_LICENSE_CHOICE:
+						out["result"] = "choose"
 					PKeySignInOutcome.KIND_CANCELLED:
 						out["result"] = "cancelled"
 					_:
 						out["result"] = _redirect_result(String(o.code))
 						out["code"] = String(o.code)
+		"choiceLicenses", "choiceDevices", "choiceComplete", "choiceCancel":
+			out.merge(await _choice_step(sdk.identity.choice, step), true)
 		# The recorded action names stay (plans/I-10-slices.md D-6); they drive the session.
 		"beginSignIn":
 			var prompt: PKeySignInSession = await sdk.identity.sign_in.start({"device_name": String(step["args"].get("deviceName", ""))})
@@ -521,10 +525,58 @@ static func _redirect_session(sdk: Node, step: Dictionary) -> PKeySignInSession:
 	var a: Dictionary = step["args"]
 	sdk.identity.redirect_entropy = {"state": String(a.get("state", RECORDED_STATE)), "code_verifier": String(a.get("codeVerifier", RECORDED_VERIFIER))}
 	var opts := {"channel": "redirect", "redirect_uri": String(a.get("redirectUri", RECORDED_REDIRECT))}
+	# The recorded authorize request asked the app to show the licence choice.
+	var ctx = sdk.get_meta("pkey_replay", null)
+	if ctx is Dictionary and _asks_app_choice(ctx["tr"]):
+		opts["license_choice"] = "app"
 	for pair in [["loginHint", "login_hint"], ["nameHint", "name_hint"], ["purpose", "purpose"]]:
 		if a.get(pair[0]) is String:
 			opts[pair[1]] = a[pair[0]]
 	return await sdk.identity.sign_in.start(opts)
+
+
+static func _asks_app_choice(tr: Dictionary) -> bool:
+	for step in tr["steps"]:
+		for item in step["exchanges"]["items"]:
+			if String(item["request"]["path"]).contains("license_choice=app"):
+				return true
+	return false
+
+
+## The grant routes: `identity.choice.*`, a refusal being a result. `choiceComplete` sends the
+## `choice` the recording's request carries; a recording with none is the Worker's 409
+## `license_choice_required`, sent as recorded (no `choice`).
+static func _choice_step(choice: PKeyIdentityChoice, step: Dictionary) -> Dictionary:
+	var out := {}
+	var grant := String(step["args"].get("grant", ""))
+	var r: PKeyChoiceResult
+	match step["action"]:
+		"choiceLicenses":
+			r = await choice.licenses(grant)
+			if r.ok:
+				out["state"] = r.view["state"]
+				out["licenses"] = r.view["choices"].map(func(c): return c.get("id"))
+		"choiceDevices":
+			r = await choice.devices(grant, String(step["args"].get("licenseId", "")))
+			if r.ok:
+				out["devices"] = r.view["devices"].map(func(d): return d.get("id"))
+		"choiceComplete":
+			var recorded = null
+			var items: Array = step["exchanges"]["items"]
+			if not items.is_empty() and items[0]["request"]["body"] is Dictionary:
+				recorded = items[0]["request"]["body"]["json"].get("choice")
+			r = await choice._complete(grant, recorded)
+			if r.ok:
+				out["licenseId"] = r.license_id if r.license_id != "" else null
+				out["subject"] = r.subject
+				if not r.key_entries.is_empty():
+					out["keyEntries"] = r.key_entries
+		_:
+			r = await choice.cancel(grant)
+	out["result"] = "ok" if r.ok else ("refused" if r.kind == PKeyChoiceResult.KIND_REFUSED else "failed")
+	if not r.ok:
+		out["code"] = String(r.code)
+	return out
 
 
 ## `redirectComplete`'s `result` for a refusal's code (format.ts).
@@ -549,7 +601,11 @@ static func _redirect_discovery(base: String, tr: Dictionary) -> Dictionary:
 				break
 	return {
 		"product": tr["product"],
-		"services": {"identity": {"enabled": true, "configured": true, "issuer": issuer, "endpoints": {"authorize": root + "/authorize", "token": root + "/token"}}},
+		"services": {"identity": {"enabled": true, "configured": true, "issuer": issuer, "endpoints": {
+			"authorize": root + "/authorize", "token": root + "/token",
+			"choiceLicenses": root + "/choice/licenses", "choiceDevices": root + "/choice/devices",
+			"choiceComplete": root + "/choice/complete", "choiceCancel": root + "/choice/cancel",
+		}}},
 	}
 
 

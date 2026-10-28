@@ -45,6 +45,11 @@ const ROWS := [
 	["identity.signIn.session.isWaiting", "res://addons/polaris_key/services/identity/sign_in_session.gd", "method", "is_waiting"],
 	["identity.signIn.session.outcome", "res://addons/polaris_key/services/identity/sign_in_session.gd", "signal", "outcome"],
 	["identity.signIn.session.complete", "res://addons/polaris_key/services/identity/sign_in_session.gd", "method", "complete"],
+	["identity.choice", "res://addons/polaris_key/services/identity.gd", "property", "choice"],
+	["identity.choice.licenses", "res://addons/polaris_key/services/identity/choice.gd", "method", "licenses"],
+	["identity.choice.devices", "res://addons/polaris_key/services/identity/choice.gd", "method", "devices"],
+	["identity.choice.complete", "res://addons/polaris_key/services/identity/choice.gd", "method", "complete"],
+	["identity.choice.cancel", "res://addons/polaris_key/services/identity/choice.gd", "method", "cancel"],
 	["identity.attachLicense", "res://addons/polaris_key/services/identity.gd", "method", "attach"],
 	["identity.openAccount", "res://addons/polaris_key/services/identity.gd", "method", "open_account"],
 	["events", SDK, "signal", "event"],
@@ -169,13 +174,6 @@ const ROWS := [
 	["packs.packReady", "res://addons/polaris_key/services/packs.gd", "signal", "pack_ready"],
 	["packs.packFailed", "res://addons/polaris_key/services/packs.gd", "signal", "pack_failed"],
 	["packs.setChanged", "res://addons/polaris_key/services/packs.gd", "signal", "set_changed"],
-	["identity.isSigningIn", "res://addons/polaris_key/services/identity.gd", "method", "is_signing_in"],
-	["identity.cancel", "res://addons/polaris_key/services/identity.gd", "method", "cancel"],
-	["identity.signedInIdentity", "res://addons/polaris_key/services/identity.gd", "method", "signed_in_identity"],
-	["identity.requestSignIn", "res://addons/polaris_key/services/identity.gd", "method", "request_sign_in"],
-	["identity.signInPending", "res://addons/polaris_key/services/identity.gd", "signal", "sign_in_pending"],
-	["identity.signInConfirm", "res://addons/polaris_key/services/identity.gd", "signal", "sign_in_confirm"],
-	["identity.signInFinished", "res://addons/polaris_key/services/identity.gd", "signal", "sign_in_finished"],
 ]
 
 ## [concept, script, name]
@@ -194,7 +192,6 @@ const REMOVED := [
 	["identity.poll_sign_in", "res://addons/polaris_key/services/identity.gd", "poll_sign_in"],
 	["identity.wait_for_sign_in", "res://addons/polaris_key/services/identity.gd", "wait_for_sign_in"],
 	["identity.accept_sign_in", "res://addons/polaris_key/services/identity.gd", "accept_sign_in"],
-	["identity.cancel", "res://addons/polaris_key/services/identity.gd", "cancel"],
 	["identity.is_signing_in", "res://addons/polaris_key/services/identity.gd", "is_signing_in"],
 	["identity.signed_in_identity", "res://addons/polaris_key/services/identity.gd", "signed_in_identity"],
 	["identity.sign_in_pending", "res://addons/polaris_key/services/identity.gd", "sign_in_pending"],

@@ -3132,8 +3132,9 @@
           "reason": "a property returning the choice client"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeyIdentity.choice",
+          "shape": "property",
+          "reason": "a property returning the choice client"
         }
       },
       "layer": "client"
@@ -3166,8 +3167,7 @@
           "spelling": "ChoiceClient.licenses"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeyIdentityChoice.licenses"
         }
       },
       "layer": "client"
@@ -3204,8 +3204,7 @@
           "spelling": "ChoiceClient.devices"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeyIdentityChoice.devices"
         }
       },
       "layer": "client"
@@ -3242,8 +3241,7 @@
           "spelling": "ChoiceClient.complete"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeyIdentityChoice.complete"
         }
       },
       "layer": "client"
@@ -3276,8 +3274,7 @@
           "spelling": "ChoiceClient.cancel"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeyIdentityChoice.cancel"
         }
       },
       "layer": "client"
@@ -3305,6 +3302,11 @@
         },
         "swift": {
           "spelling": "LicenseChoiceModel"
+        },
+        "godot": {
+          "spelling": "identity.choice",
+          "shape": "property",
+          "reason": "no hook: Godot calls the identity.choice primitives"
         },
         "kotlin": {
           "spelling": "identity.choice",

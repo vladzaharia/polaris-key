@@ -153,7 +153,7 @@ static func _scope_string(scope: Variant) -> String:
 ## [login_hint] [name_hint] [purpose] [license_choice]`. A hint that is empty is not sent; a hint
 ## is sent verbatim (the Worker normalises, and drops a login hint that is not an email).
 ## Returns {ok: true, pending: {authorize_url, state, code_verifier, redirect_uri, client_id,
-## issuer, token_endpoint}} or {ok: false, message}.
+## issuer, token_endpoint, license_choice}} or {ok: false, message}.
 static func start(opts: Dictionary) -> Dictionary:
 	if not is_redirect_uri(opts.get("redirect_uri")):
 		return _bad("redirect_uri must be an absolute https URL with no fragment.")
@@ -199,6 +199,8 @@ static func start(opts: Dictionary) -> Dictionary:
 		"client_id": opts["client_id"],
 		"issuer": opts["issuer"],
 		"token_endpoint": opts["token_endpoint"],
+		# The authorize request asked for `license_choice=app`: the token endpoint may answer `choose`.
+		"license_choice": opts.get("license_choice") == "app" and opts.get("choice_available") == true,
 	}}
 
 
