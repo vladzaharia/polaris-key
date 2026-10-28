@@ -263,6 +263,32 @@ class CloudSyncHostBoundsTest {
     }
 
     @Test
+    fun aFlushThatTimesOutLeavesTheMachineAbleToSendOnceTheNetworkIsBack() = runBlocking {
+        val r = Rig()
+        r.signIn("sub_alice")
+        r.host.touch()
+        var hang = true
+        r.answer = {
+            if (hang) delay(60_000)
+            okFor(it)
+        }
+        r.edit(1)
+        val started = System.nanoTime()
+        r.host.flush(300)
+        val ms = (System.nanoTime() - started) / 1_000_000
+        assertTrue("one deadline, not two: $ms ms", ms < 1_200)
+        // The network is back; a new edit is sent (the cancelled request did not stay in flight).
+        hang = false
+        val before = r.pushes()
+        r.edit(2)
+        r.host.touch()
+        r.host.touch()
+        assertTrue("a push went out after the timeout", r.pushes() > before)
+        assertTrue(r.host.withMachine { it.status().pending } == 0)
+        r.host.close()
+    }
+
+    @Test
     fun h9ATouchThatLandsAsThePumpEndsStillSends() = runBlocking {
         val r = Rig()
         r.signIn("sub_alice")

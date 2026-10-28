@@ -148,6 +148,7 @@ internal class CloudSyncApi(
     private val emit: (CloudSyncEvent) -> Unit,
     private val forgetRing: suspend () -> Unit,
     private val recovery: suspend () -> String,
+    private val cleanup: () -> Unit = {},
 ) {
     private sealed interface Work {
         class Identity(val subject: String?) : Work
@@ -212,7 +213,7 @@ internal class CloudSyncApi(
     /** Start the host and sign the machine in as the held subject. Idempotent; a no-op while the product does not run the Sync service. */
     suspend fun attach() {
         withContext(dispatcher) {
-            if (forgetPending) startForget()
+            if (forgetPending && subject == null) startForget()
             if (attached || !core.enabled(ServiceSlug.sync)) return@withContext
             attachLock.withLock {
                 if (attached) return@withContext
@@ -237,6 +238,7 @@ internal class CloudSyncApi(
         withContext(dispatcher) {
             queue.close()
             hostValue?.close()
+            cleanup()
         }
         scope.coroutineContext[Job]?.cancel()
     }
@@ -320,6 +322,17 @@ internal class CloudSyncApi(
         // credential is already the new person's, so nothing is sent for the old one.
         val old = subject
         if (old != null && old != target) leave(h)
+        // A forget still owed for the previous person is done first: nobody starts on the previous person's root, and a
+        // retry never reaches this person's. If it still fails, the machine stays signed out (Sync stays local).
+        if (forgetPending) {
+            startForget().join()
+            if (forgetPending) {
+                waitingSignIn = target
+                return
+            }
+            // The job that just ended signed the held person in already.
+            if (subject == target) return
+        }
         // Once per install, before the first principal arrives so the values enter at the floor and a newer cloud
         // value wins. The marker is written after the sign-in succeeded (A-6).
         val importing = h.offerLocal(config.importable())
@@ -393,8 +406,10 @@ internal class CloudSyncApi(
     private suspend fun onEvents(events: List<SyncEvent>) {
         val leftReasons = events.filterIsInstance<SyncEvent.SignedOut>().map { it.reason }
         val left = leftReasons.isNotEmpty()
+        // The person is gone before anything else runs, so a forget (and its purge) never takes them for the signed-in one.
+        if (left) subject = null
         // The root leaves memory before anything else runs.
-        val forgotten = if (left && !explicitForget) startForget() else null
+        val forgotten = if (left && !explicitForget) startForget(purgeFirst = true) else null
         for (e in events) {
             when (e) {
                 is SyncEvent.SignedOut -> subject = null
@@ -427,18 +442,24 @@ internal class CloudSyncApi(
         return "$scheme://$host" + if (u.port != -1) ":${u.port}" else ""
     }
 
-    /** Set while a forget the machine's own sign-out asked for has not succeeded: retried, never dropped silently (D-13). */
+    /** Set from the moment the machine's own sign-out asks for a forget until it succeeds: retried, never dropped silently (D-13). */
     private var forgetPending = false
     private var forgetAttempts = 0
 
+    /** The person whose sign-in waited on an owed forget; signed in when it succeeds. */
+    private var waitingSignIn: String? = null
+
     /**
-     * Ring first, then the purge; single-flight so two events never forget twice at once. A forget that fails
-     * (a locked keystore) leaves the root where it was, purges nothing, logs a static line and is retried: after
-     * a delay (three times) and at the next attach, touch or flush.
+     * The person left (a sign-out elsewhere, a person change): their synced data is deleted at once, then the ring
+     * forgets. Single-flight. A forget that fails (a locked keystore) leaves the root where it was, logs a static line
+     * and is retried: after a delay (three times) and at the next attach or touch, but only while nobody is signed in,
+     * so a retry never reaches the next person's session. The next person's sign-in waits for it.
      */
-    private fun startForget(): Job {
+    private fun startForget(purgeFirst: Boolean = false): Job {
         forgetJob?.let { return it }
+        forgetPending = true
         val job = scope.launch {
+            if (purgeFirst && subject == null) withContext(NonCancellable) { purge() }
             val ok = withContext(NonCancellable) {
                 try {
                     forgetRing()
@@ -450,19 +471,21 @@ internal class CloudSyncApi(
             if (ok) {
                 forgetPending = false
                 forgetAttempts = 0
-                withContext(NonCancellable) { purge() }
             } else {
-                forgetPending = true
                 java.util.logging.Logger.getLogger("im.plrs.key.sdk").warning("Cloud Sync: the key ring root could not be removed; it will be retried.")
                 if (forgetAttempts < RETRY_DELAYS_MS.size) {
                     val wait = RETRY_DELAYS_MS[forgetAttempts++]
                     scope.launch {
                         delay(wait)
-                        if (forgetPending) startForget()
+                        if (forgetPending && subject == null) startForget()
                     }
                 }
             }
             forgetJob = null
+            // Back from a failed forget with a person waiting on it: they sign in now.
+            val waiting = waitingSignIn
+            waitingSignIn = null
+            if (ok && subject == null && waiting != null) signIn(waiting)
         }
         forgetJob = job
         return job
@@ -473,7 +496,7 @@ internal class CloudSyncApi(
         withContext(dispatcher) {
             if (!core.enabled(ServiceSlug.sync)) return@withContext
             attach()
-            if (forgetPending) startForget()
+            if (forgetPending && subject == null) startForget()
             startedHost()?.kick()
         }
     }
@@ -531,6 +554,7 @@ internal fun liveCloudSyncDeps(
     keyring.codec,
     { config.syncDocument() },
 ).also { d ->
+    d.sendFor = { req, bound -> CloudSyncTransport.send(core, req, bound) }
     d.keyringUnlocked = { keyring.unlocked }
     d.attachKeyring = { keyring.attach(it) }
     d.syncEnabled = { core.enabled(ServiceSlug.sync) }
@@ -543,9 +567,14 @@ internal fun liveCloudSyncDeps(
     d.subject = { core.storedSubject() }
 }
 
-/** A state directory for a store without one (memory): private to the process, removed on exit. */
+/**
+ * A state directory for a store without one (memory): private to the process. The client's close deletes the tree,
+ * and a daemon shutdown hook does the same at exit, so the person's snapshot never outlives the process.
+ */
 internal fun privateTempDir(): java.io.File {
     val dir = java.nio.file.Files.createTempDirectory("pkey-sync-").toFile()
-    dir.deleteOnExit()
+    val hook = Thread { dir.deleteRecursively() }
+    hook.isDaemon = true
+    runCatching { Runtime.getRuntime().addShutdownHook(hook) }
     return dir
 }

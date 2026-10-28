@@ -208,6 +208,8 @@ class CloudSyncSettingsTest {
         }
     }
 
+    private fun File(parent: File, a: String, b: String) = java.io.File(java.io.File(parent, a), b)
+
     private fun json(v: Double) = JsonPrimitive(v)
 
     // ── A-3 ──────────────────────────────────────────────────────────────────────────────────────
@@ -256,7 +258,7 @@ class CloudSyncSettingsTest {
     // ── a sign-out elsewhere (onSubject(null)) follows D-13 too ────────────────────────────────────
 
     @Test
-    fun aRootThatCannotBeForgottenAfterASignOutElsewhereIsRetriedAndNothingIsPurgedMeanwhile() = runBlocking {
+    fun aRootThatCannotBeForgottenAfterASignOutElsewhereIsRetriedAndTheDataIsPurgedAtOnce() = runBlocking {
         val locked = LockedStorage(InMemoryDeviceKeyStorage())
         val r = Rig(roots = locked)
         r.signIn()
@@ -265,14 +267,83 @@ class CloudSyncSettingsTest {
         who = ""
         r.client.identity.subject()
         eventually("the machine left") { r.client.cloudSync.status().state == SyncState.Local }
-        delay(300)
-        assertTrue("the forget failed, so nothing is purged", r.stateFile.exists())
-        // The keystore heals; the next touch retries, and only then is the data purged.
+        eventually("the person's data is deleted at once, whatever the ring did") { !r.stateFile.exists() }
+        assertNotNull("the root is still there: the forget failed and is owed", RingVault(r.client.core, KeyringOptions(rootStorage = locked.inner)).load())
+        // The keystore heals; the next touch retries the ring.
         locked.failing = false
         r.client.cloudSync.touch()
-        eventually("retried") { !r.stateFile.exists() }
+        eventually("retried") { RingVault(r.client.core, KeyringOptions(rootStorage = locked.inner)).load() == null }
         assertFalse(r.client.keyring.unlocked)
+    }
+
+    @Test
+    fun theForgetRetryNeverReachesTheNextPersonsSession() = runBlocking {
+        // The reviewer's p2 shape: Alice leaves while the keystore refuses, Bob signs in with an unsynced edit while it
+        // still refuses, the keystore heals and the retry runs.
+        val locked = LockedStorage(InMemoryDeviceKeyStorage())
+        val r = Rig(roots = locked)
+        r.signIn()
+        r.client.config.set(VOL, json(0.3))
+        who = ""
+        r.client.identity.subject()
+        eventually("the machine left") { r.client.cloudSync.status().state == SyncState.Local }
+        // Bob's sign-in cannot start on Alice's root: the forget is still owed, so the machine stays signed out.
+        who = BOB
+        r.client.identity.subject()
+        delay(500)
+        assertEquals(SyncState.Local, r.client.cloudSync.status().state)
+        locked.failing = false
+        r.client.cloudSync.touch()
+        // The owed forget runs first, then Bob signs in; his edit afterwards is kept and sent.
+        eventually("bob signed in after the forget") { r.client.cloudSync.status().state != SyncState.Local }
         assertNull(RingVault(r.client.core, KeyringOptions(rootStorage = locked.inner)).load())
+        r.client.config.set(VOL, json(0.9))
+        assertEquals(json(0.9), r.client.config.get(VOL, JsonNull))
+        r.client.cloudSync.flush()
+        assertNotEquals(SyncState.Local, r.client.cloudSync.status().state)
+        assertEquals("bob's value survived the retry", json(0.9), r.client.config.get(VOL, JsonNull))
+    }
+
+    @Test
+    fun aRequestBoundToAnotherPersonIsNotSentUnderTheTokenInUse() = runBlocking {
+        val r = Rig()
+        r.client.core.setSubject(BOB)
+        val before = r.transport.requests().size
+        val res = CloudSyncTransport.send(r.client.core, Json.parseToJsonElement("""{"method":"GET","path":"/djdl/sync?cursor=0"}""") as JsonObject, ALICE)
+        assertTrue(res.transportError)
+        assertEquals(before, r.transport.requests().size)
+    }
+
+    @Test
+    fun theStateOfAMemoryStoreIsDeletedWhenTheClientCloses() = runBlocking {
+        val tmpRoot = File(System.getProperty("java.io.tmpdir"))
+        fun dirs() = tmpRoot.listFiles { f -> f.name.startsWith("pkey-sync-") }.orEmpty().map { it.name }.toSet()
+        val before = dirs()
+        val store = im.plrs.key.core.InMemoryStore("djdl", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").also { it.setToken("pkeyt_alice") }
+        val client = PolarisKeyClient.create(
+            PolarisKeyClientOptions(
+                core = CoreOptions(
+                    productSlug = "djdl", baseUrl = "https://key.example", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
+                    store = store, transport = ScriptedTransport(::handle),
+                    expectedServices = listOf(ServiceSlug.license, ServiceSlug.config, ServiceSlug.identity, ServiceSlug.sync),
+                ),
+                license = LicenseClientOptions(fingerprint = false),
+                cloudSync = CloudSyncHostOptions().also {
+                    it.encryption = "server"
+                    it.catalog = mirror
+                },
+            ),
+        )
+        keyringRef = client.keyring
+        who = ALICE
+        client.identity.subject()
+        eventually("signed in") { client.cloudSync.status().state != SyncState.Local }
+        client.config.set(VOL, json(0.3))
+        client.cloudSync.flush()
+        val made = dirs() - before
+        assertTrue("a private directory holds the snapshot", made.isNotEmpty() && made.any { File(tmpRoot, it, CLOUD_SYNC_FILE).exists() })
+        client.close()
+        eventually("the tree is gone") { (dirs() - before).isEmpty() }
     }
 
     // ── A-1 ──────────────────────────────────────────────────────────────────────────────────────

@@ -54,6 +54,20 @@ public class CloudSyncFileContents(public val persisted: JsonObject?, public val
 /** The catalog's outer shape; the host derives routes from it with `SyncRoutes.syncedSettings`. */
 internal fun isCatalogShape(v: JsonElement?): Boolean = v is JsonObject && v["schemaVersion"].longValue != null && v["entries"] is JsonArray
 
+/** Test seam: take the java.io path of an Android below API 26 on any runtime. */
+internal var forceLegacyIo: Boolean = false
+
+private val nioAvailable: Boolean by lazy {
+    try {
+        Class.forName("java.nio.file.Files")
+        true
+    } catch (e: Throwable) {
+        false
+    }
+}
+
+private fun legacyIo(): Boolean = forceLegacyIo || !nioAvailable
+
 public class CloudSyncStateFile(private val dir: File, private val product: String) {
     public val file: File = File(dir, CLOUD_SYNC_FILE)
     private val lock = Any()
@@ -61,7 +75,12 @@ public class CloudSyncStateFile(private val dir: File, private val product: Stri
     /** Delete the file (after any write in progress). Throws if it stays. */
     public fun remove() {
         synchronized(lock) {
-            Files.deleteIfExists(file.toPath())
+            // java.nio.file arrives on API 26 and the minimum is 24: Android below that deletes through java.io.
+            if (legacyIo()) {
+                if (file.exists() && !file.delete()) throw IOException("could not remove the Cloud Sync state")
+            } else {
+                Files.deleteIfExists(file.toPath())
+            }
         }
     }
 
@@ -106,6 +125,11 @@ public class CloudSyncStateFile(private val dir: File, private val product: Stri
     }
 
     private fun readJson(): JsonElement? = runCatching {
+        if (legacyIo()) {
+            // No symlink API below 26: a file whose canonical path is not its own path is a link and reads as empty.
+            val plain = file.isFile && file.canonicalFile.path == File(file.parentFile.canonicalFile, file.name).path
+            return@runCatching if (plain) JsonText.parseOrNull(file.readText(Charsets.UTF_8)) else null
+        }
         val p = file.toPath()
         val plain = !Files.isSymbolicLink(p) && Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)
         if (plain) JsonText.parseOrNull(file.readText(Charsets.UTF_8)) else null
