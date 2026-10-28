@@ -1,13 +1,18 @@
 /**
- * Cloud Connect → Setup (CC-16, first slice). Over reads the API already serves (D1):
+ * Cloud Connect → Setup (CC-16, first slice). One "Relay" card over reads the API already serves
+ * (D1):
  *
  *  - the relay switch `cloudConnect.relay.enabled`, a product setting with its own control (the
  *    manifest's `connect.relay` is the default; a save here claims it, as on every product setting);
- *  - the monthly relay ceiling `cloudConnect.ceiling.relayBytes`, operator-owned: read-only, with
- *    the operator's value and where it comes from;
- *  - the launch gates `launch.connect` and `launch.relay`, said in words while one is off. They are
- *    platform settings, so only a member who can read the platform list sees them; for anyone else
- *    nothing is drawn (the page never guesses a gate).
+ *  - the monthly relay ceiling `cloudConnect.ceiling.relayBytes`, a product setting a member with
+ *    Cloud Connect edit changes with `CeilingDialog` (as Cloud Sync's storage ceiling);
+ *  - the platform's default per-person quota `cloudConnect.quota.defaultRelayBytes`, read-only.
+ *
+ * Under the card, one notice while the platform holds the feature back: a launch gate
+ * (`launch.connect`, `launch.relay`) or the relay pause (`cloudConnect.relayPaused`). They are
+ * platform settings, so only a member who can read the platform list sees them (and the quota
+ * row); for anyone else nothing is drawn: the page never guesses. A product with Cloud Connect off
+ * never reaches this page (the shell's service-off page answers).
  *
  * Usage and Linked devices are later CC-16 slices.
  */
@@ -15,40 +20,64 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  type PlatformIntegerSetting,
   type PlatformSwitchSetting,
   type ProductSetting,
 } from "../../../api.js";
+import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
-import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { PageHeader } from "../../../ui/PageHeader.js";
-import { Skeleton } from "../../../ui/Skeleton.js";
-import { SourceBadge } from "../../../ui/SourceBadge.js";
+import { SourceBadge, type Source } from "../../../ui/SourceBadge.js";
 import { useWriteGate } from "../../access/useCan.js";
 import { ProductSettingsSection } from "../../components/ProductSettingsSection.js";
-import { useProduct } from "../../data/hooks.js";
 import { reads } from "../../data/reads.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsRow, SettingsSection } from "../../templates/Settings.js";
 import { useSettingTarget } from "../../useSettingTarget.js";
+import { CeilingDialog, type CeilingCopy } from "../sync/CeilingDialog.js";
+import { PlatformPill, WhoLine } from "../sync/SetupParts.js";
 import { formatBinaryBytes } from "../sync/pages/SyncData.js";
 
 export const CONNECT_AREA = "cloudConnect";
 const RELAY = "cloudConnect.relay.enabled";
 const CEILING = "cloudConnect.ceiling.relayBytes";
+const DEFAULT_QUOTA = "cloudConnect.quota.defaultRelayBytes";
+const PAUSED = "cloudConnect.relayPaused";
 const GATE_CONNECT = "launch.connect";
 const GATE_RELAY = "launch.relay";
 
-/** Whether a launch gate is off, `null` while the platform list does not say. */
-function gateOff(
-  settings: readonly { key: string; kind: string; value?: unknown }[],
+const BADGE: Record<ProductSetting["source"], Source> = {
+  manifest: "manifest",
+  console: "admin",
+  default: "default",
+};
+
+const CEILING_COPY: CeilingCopy = {
+  title: "Change the relay ceiling",
+  field: "Relay data per month for this product (GiB)",
+  same: "Everyone on this product shares the ceiling.",
+  raise: (c) => `Everyone on this product can use up to ${c} of relay a month.`,
+  lower: (c, bytes) => [
+    bytes === 0
+      ? "The relay refuses every new connection until you raise it."
+      : `The relay refuses new connections once the product reaches ${c} in a UTC month.`,
+    "Devices on the same network keep connecting.",
+  ],
+  set: (c) => `Relay ceiling set to ${c}`,
+  reset: "Relay ceiling is the platform default",
+};
+
+/** One platform setting of a kind, from the list. */
+function platformSetting<
+  T extends PlatformSwitchSetting | PlatformIntegerSetting,
+>(
+  settings: readonly { key: string; kind: string }[],
   key: string,
-): boolean | null {
-  const s = settings.find(
-    (x): x is PlatformSwitchSetting => x.key === key && x.kind === "switch",
-  );
-  return s ? s.value === "off" : null;
+  kind: T["kind"],
+): T | undefined {
+  return settings.find((s): s is T => s.key === key && s.kind === kind);
 }
 
 export function ConnectSetupPage({
@@ -56,7 +85,6 @@ export function ConnectSetupPage({
 }: {
   slug: string;
 }): React.ReactElement {
-  const product = useProduct(slug);
   const platformGate = useWriteGate("platform", null, "Platform");
   const platform = useQuery({
     ...reads.platformSettings(),
@@ -64,124 +92,176 @@ export function ConnectSetupPage({
     enabled: platformGate.allowed,
   });
   const settings = platform.data?.settings ?? [];
-  const connectOff = gateOff(settings, GATE_CONNECT);
-  const relayOff = gateOff(settings, GATE_RELAY);
-
-  const header = (
-    <PageHeader
-      title="Cloud Connect"
-      description="Link a person's devices and move data between them."
-      refetching={platform.isFetching && !platform.isPending}
-    />
+  const off = (key: string): boolean =>
+    platformSetting<PlatformSwitchSetting>(settings, key, "switch")?.value ===
+    "off";
+  const paused =
+    platformSetting<PlatformSwitchSetting>(settings, PAUSED, "switch")
+      ?.value === "on";
+  const quota = platformSetting<PlatformIntegerSetting>(
+    settings,
+    DEFAULT_QUOTA,
+    "integer",
   );
 
-  if (product.data?.services?.connect?.enabled === false)
-    return (
-      <div className="space-y-6" data-template="record">
-        {header}
-        <EmptyState
-          kind="service-off"
-          service="connect"
-          headingLevel={2}
-          title="Cloud Connect is off for this product"
-          description="Devices link only while it is on."
-          docs="/docs/features/cloud-connect/"
-          primaryAction={
-            <Link
-              to={r.services(slug)}
-              className="py-1 text-accent-fg underline underline-offset-2"
-            >
-              Open Features
-            </Link>
-          }
-        />
-      </div>
-    );
+  const open = (
+    <Link
+      to={r.platformSettings()}
+      className="inline-flex py-1 text-sm text-accent-fg underline underline-offset-2"
+    >
+      Open Platform settings
+    </Link>
+  );
+  const notice = off(GATE_CONNECT) ? (
+    <Callout tone="warning" title="Cloud Connect is not live yet" action={open}>
+      Devices can&apos;t link until Launch gate: Cloud Connect is on. Your
+      settings apply then.
+    </Callout>
+  ) : off(GATE_RELAY) ? (
+    <Callout tone="warning" title="The relay is not live yet" action={open}>
+      Devices connect on the same network only until Launch gate: Cloud Connect
+      relay is on.
+    </Callout>
+  ) : paused ? (
+    <Callout
+      tone="warning"
+      title="The relay is paused for every product"
+      action={open}
+    >
+      Devices connect on the same network only.
+    </Callout>
+  ) : null;
 
   return (
     <div className="space-y-6" data-template="record">
-      {header}
-      <div className="max-w-4xl space-y-6">
-        {connectOff ? (
-          <Callout tone="warning" title="Cloud Connect is not live yet">
-            Devices can&apos;t link until the platform turns it on. Your
-            settings are saved and apply then.
-          </Callout>
-        ) : relayOff ? (
-          <Callout tone="warning" title="The relay is not live yet">
-            Devices connect on the same network only until the platform turns it
-            on.
-          </Callout>
-        ) : null}
-        <ProductSettingsSection
-          slug={slug}
-          area={CONNECT_AREA}
-          id="connect-relay"
-          title="Relay"
-          description="Carries device traffic when the local network can't."
-          keys={[RELAY]}
-        />
-        <RelayCeiling slug={slug} />
+      <PageHeader
+        title="Cloud Connect"
+        description="Link a person's devices and move data between them."
+        refetching={platform.isFetching && !platform.isPending}
+      />
+      <div className="max-w-4xl space-y-6 min-[1280px]:max-w-none">
+        <SettingsSection id="connect-relay" title="Relay">
+          <ProductSettingsSection
+            bare
+            slug={slug}
+            area={CONNECT_AREA}
+            id="connect-relay"
+            title="Relay"
+            keys={[RELAY]}
+            copy={{
+              [RELAY]: {
+                consequences: (to) =>
+                  to === false
+                    ? [
+                        "Devices on different networks stop connecting. Devices on the same network keep connecting.",
+                      ]
+                    : [],
+              },
+            }}
+          />
+          <RelayCeiling slug={slug} />
+          {quota ? <DefaultQuota setting={quota} /> : null}
+          {platformGate.allowed && platform.isError ? (
+            <div className="px-5 py-4">
+              <ErrorState
+                compact
+                thing="Platform settings"
+                error={platform.error}
+                onRetry={() => void platform.refetch()}
+              />
+            </div>
+          ) : null}
+        </SettingsSection>
+        {notice}
       </div>
     </div>
   );
 }
 
-/** The operator's monthly relay ceiling: a read-only fact, with who owns it. */
+/** The product's monthly relay ceiling, with Change… for a member who can edit Cloud Connect. */
 function RelayCeiling({ slug }: { slug: string }): React.ReactElement | null {
   const q = useQuery(reads.productSettings(slug, CONNECT_AREA));
+  const gate = useWriteGate("connect", slug, "Cloud Connect");
+  const [dialog, setDialog] = React.useState(false);
   useSettingTarget(!q.isPending);
+  // A failed read is drawn once, by the relay row above.
   const row: ProductSetting | undefined = q.data?.settings.find(
     (s) => s.key === CEILING,
   );
-  const card = (body: React.ReactNode): React.ReactElement => (
-    <SettingsSection
-      id="connect-limits"
-      title="Relay ceiling"
-      description="All people on the product, together, per UTC month."
-    >
-      {body}
-    </SettingsSection>
-  );
-  if (q.isPending)
-    return card(<Skeleton className="m-5 h-6 w-3/4" aria-busy="true" />);
-  if (!q.data)
-    return card(
-      <ErrorState
-        error={q.error}
-        onRetry={() => void q.refetch()}
-        compact
-        className="p-5"
-      />,
-    );
   if (!row || (row.visibleWhen?.offBehaviour === "hide" && !row.serviceEnabled))
     return null;
   const value = Number(row.value);
-  return card(
-    <SettingsRow
-      id={`setting-${CEILING}`}
-      label={row.label}
-      help={row.description}
-      source={
-        <SourceBadge
-          source={row.source === "default" ? "default" : "runtime"}
-          label={row.source === "default" ? "Default" : undefined}
-          by={row.updatedBy ?? undefined}
-          at={row.updatedAt ? row.updatedAt * 1000 : undefined}
-        />
-      }
-      aside={
-        <p className="text-sm text-fg-muted">Set by the platform operator.</p>
-      }
-    >
-      <p
-        className="tabular-nums text-fg-strong"
-        data-testid="connect-ceiling-value"
+  return (
+    <>
+      <SettingsRow
+        id={`setting-${CEILING}`}
+        label={row.label}
+        help={row.description}
+        source={
+          <SourceBadge
+            source={BADGE[row.source]}
+            label={row.source === "default" ? "Platform default" : undefined}
+            by={row.updatedBy ?? undefined}
+            at={row.updatedAt ? row.updatedAt * 1000 : undefined}
+          />
+        }
+        footer={
+          !gate.allowed && gate.disabledReason ? (
+            <WhoLine text={gate.disabledReason} />
+          ) : undefined
+        }
       >
-        {Number.isFinite(value)
-          ? `${formatBinaryBytes(value)} a month`
-          : "Not set"}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p
+            className="tabular-nums text-fg-strong"
+            data-testid="connect-ceiling-value"
+          >
+            {!Number.isFinite(value)
+              ? "Not set"
+              : value === 0
+                ? "0 GiB: no relay traffic"
+                : `${formatBinaryBytes(value)} a month`}
+          </p>
+          {gate.allowed ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Change the relay ceiling"
+              onClick={() => setDialog(true)}
+            >
+              Change…
+            </Button>
+          ) : null}
+        </div>
+      </SettingsRow>
+      <CeilingDialog
+        open={dialog}
+        onOpenChange={setDialog}
+        slug={slug}
+        setting={row}
+        usedBytes={null}
+        copy={CEILING_COPY}
+      />
+    </>
+  );
+}
+
+/** The platform's default relay bytes per person per day: read-only, a platform setting. */
+function DefaultQuota({
+  setting,
+}: {
+  setting: PlatformIntegerSetting;
+}): React.ReactElement {
+  return (
+    <SettingsRow
+      id={`setting-${DEFAULT_QUOTA}`}
+      label="Default relay quota"
+      help="Per person per day, for those whose tier sets none. Changed in Platform settings."
+      source={<PlatformPill />}
+    >
+      <p className="tabular-nums text-fg-strong">
+        {formatBinaryBytes(setting.value)} a day
       </p>
-    </SettingsRow>,
+    </SettingsRow>
   );
 }

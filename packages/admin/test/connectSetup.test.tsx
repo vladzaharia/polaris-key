@@ -5,6 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import type {
   PlatformSettingsView,
@@ -13,13 +14,17 @@ import type {
 } from "../src/api.js";
 import { KitProviders } from "../src/kit/KitProviders.js";
 
-const platformAdmin = vi.hoisted(() => ({ allowed: true }));
+const platformAdmin = vi.hoisted(() => ({ allowed: true, connect: true }));
 vi.mock("../src/console/access/useCan.js", () => ({
-  useWriteGate: () => ({
-    allowed: platformAdmin.allowed,
-    canView: true,
-    disabledReason: platformAdmin.allowed ? undefined : "No.",
-  }),
+  useWriteGate: (area: string) => {
+    const allowed =
+      area === "connect" ? platformAdmin.connect : platformAdmin.allowed;
+    return {
+      allowed,
+      canView: true,
+      disabledReason: allowed ? undefined : "Ask Ana for Cloud Connect edit.",
+    };
+  },
   useCan: () => platformAdmin.allowed,
 }));
 
@@ -104,7 +109,7 @@ const view = (...s: unknown[]) =>
     deployTime: [],
     secrets: [],
   }) as unknown as PlatformSettingsView;
-const detail = (connect: boolean): ProductDetail =>
+const detail = (connect = true): ProductDetail =>
   ({
     slug: "djdl",
     name: "DJDL",
@@ -123,6 +128,7 @@ function renderPage() {
 
 beforeEach(() => {
   platformAdmin.allowed = true;
+  platformAdmin.connect = true;
   for (const m of Object.values(reads)) m.mockReset();
   product.mockResolvedValue({ product: detail(true) });
   products.mockResolvedValue({ products: [detail(true)] });
@@ -136,22 +142,81 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+const quota = {
+  key: "cloudConnect.quota.defaultRelayBytes",
+  kind: "integer",
+  value: 2 * GiB,
+  default: 2 * GiB,
+  min: 0,
+  max: 1024 ** 5,
+  unit: "bytes",
+  label: "Default relay quota",
+  area: "cloudConnect",
+  version: 0,
+  stored: null,
+  confirm: { raise: "L2", lower: "L2" },
+};
+
 describe("Cloud Connect → Setup", () => {
-  it("shows the relay switch and the operator's ceiling read-only", async () => {
+  it("shows the relay switch and the ceiling with Change…, in one Relay card", async () => {
     const { container } = renderPage();
     expect(await screen.findByRole("switch")).toBeTruthy();
-    expect(screen.getByText("Monthly relay ceiling")).toBeTruthy();
     expect(
       (await screen.findByTestId("connect-ceiling-value")).textContent,
     ).toBe("500 GiB a month");
-    expect(screen.getByText("Set by the platform operator.")).toBeTruthy();
-    // The ceiling has no control; the one switch is the relay's.
-    expect(screen.getAllByRole("switch")).toHaveLength(1);
-    expect(screen.queryByText(/not live yet/)).toBeNull();
+    expect(screen.getAllByRole("heading", { name: "Relay" })).toHaveLength(1);
+    expect(screen.queryByText(/platform operator/)).toBeNull();
+    expect(screen.getByText("Platform default")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Change the relay ceiling" }),
+    ).toBeTruthy();
+    expect(screen.queryByText(/not live yet|is paused/)).toBeNull();
     expect((await axe(container)).violations).toEqual([]);
   });
 
-  it("says plainly that Cloud Connect is not live while its gate is off", async () => {
+  it("opens the ceiling dialog with the relay's own title and field", async () => {
+    renderPage();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Change the relay ceiling" }),
+    );
+    expect(await screen.findByText("Change the relay ceiling")).toBeTruthy();
+    expect(
+      screen.getByLabelText("Relay data per month for this product (GiB)"),
+    ).toBeTruthy();
+  });
+
+  it("says what a ceiling of 0 means", async () => {
+    productSettings.mockResolvedValue({
+      settings: [RELAY, { ...CEILING, value: 0 }],
+    });
+    renderPage();
+    expect(
+      (await screen.findByTestId("connect-ceiling-value")).textContent,
+    ).toBe("0 GiB: no relay traffic");
+  });
+
+  it("gates Change… on Cloud Connect edit and says who can", async () => {
+    platformAdmin.connect = false;
+    renderPage();
+    await screen.findByTestId("connect-ceiling-value");
+    expect(
+      screen.queryByRole("button", { name: "Change the relay ceiling" }),
+    ).toBeNull();
+    expect(
+      screen.getAllByText("Ask Ana for Cloud Connect edit.").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("names the consequence of turning the relay off", async () => {
+    renderPage();
+    await userEvent.click(await screen.findByRole("switch"));
+    await userEvent.click(await screen.findByRole("button", { name: /^Save/ }));
+    expect(
+      await screen.findByText(/Devices on different networks stop connecting/),
+    ).toBeTruthy();
+  });
+
+  it("says plainly that Cloud Connect is not live while its gate is off, with a way forward", async () => {
     platformSettings.mockResolvedValue(
       view(
         gateSetting("launch.connect", "off"),
@@ -161,6 +226,10 @@ describe("Cloud Connect → Setup", () => {
     renderPage();
     expect(
       await screen.findByText("Cloud Connect is not live yet"),
+    ).toBeTruthy();
+    expect(screen.getByText(/Launch gate: Cloud Connect is on/)).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open Platform settings" }),
     ).toBeTruthy();
     expect(screen.queryByText("The relay is not live yet")).toBeNull();
   });
@@ -176,20 +245,33 @@ describe("Cloud Connect → Setup", () => {
     expect(await screen.findByText("The relay is not live yet")).toBeTruthy();
   });
 
-  it("draws no gate notice for a member who cannot read the platform list", async () => {
+  it("says the relay is paused while the kill switch is on", async () => {
+    platformSettings.mockResolvedValue(
+      view(
+        gateSetting("launch.connect", "on"),
+        gateSetting("launch.relay", "on"),
+        gateSetting("cloudConnect.relayPaused", "on"),
+      ),
+    );
+    renderPage();
+    expect(
+      await screen.findByText("The relay is paused for every product"),
+    ).toBeTruthy();
+  });
+
+  it("shows the platform's default per-person quota read-only to a platform admin", async () => {
+    platformSettings.mockResolvedValue(view(quota));
+    renderPage();
+    expect(await screen.findByText("2 GiB a day")).toBeTruthy();
+    expect(screen.getByText("Default relay quota")).toBeTruthy();
+  });
+
+  it("draws no platform rows or notices for a member who cannot read the platform list", async () => {
     platformAdmin.allowed = false;
     renderPage();
     await screen.findByText("Monthly relay ceiling");
     expect(platformSettings).not.toHaveBeenCalled();
-    expect(screen.queryByText(/not live yet/)).toBeNull();
-  });
-
-  it("explains a product with Cloud Connect off", async () => {
-    product.mockResolvedValue({ product: detail(false) });
-    renderPage();
-    expect(
-      await screen.findByText("Cloud Connect is off for this product"),
-    ).toBeTruthy();
-    expect(screen.queryByText("Monthly relay ceiling")).toBeNull();
+    expect(screen.queryByText(/not live yet|is paused/)).toBeNull();
+    expect(screen.queryByText("Default relay quota")).toBeNull();
   });
 });
