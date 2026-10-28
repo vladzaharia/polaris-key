@@ -195,8 +195,8 @@ describe("keyring: create and unlock", () => {
     expect(flags).toEqual([false, true]);
     const post = s.reqs.at(-1)!;
     expect(post.method).toBe("POST");
-    const wrap = post.body!.wrap as { kem: string; enc: string; ct: string };
-    expect(wrap.kem).toBe("x25519");
+    const wrap = post.body!.wrap as { kem: number; enc: string; ct: string };
+    expect(wrap.kem).toBe(32);
     expect(base64UrlDecode(wrap.enc)).toHaveLength(32);
     expect(base64UrlDecode(wrap.ct)).toHaveLength(48);
     const rec = post.body!.recovery as { ct: string };

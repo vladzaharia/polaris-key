@@ -139,6 +139,8 @@ public let COPY_CODES: [String: CopyEntry] = [
     "bundle-import-unsupported": CopyEntry(title: "Not available here", message: "Offline activation isn't available here."),
     "report-unsupported": CopyEntry(title: "Not available here", message: "Device reports aren't available here."),
     "device-management-unsupported": CopyEntry(title: "Not available here", message: "Devices can't be managed from here. Manage them in your account."),
+    "device-keys-unreadable": CopyEntry(title: "Device keys unreadable", message: "This device's saved keys can't be read. Reset them to continue."),
+    "device-key-store-error": CopyEntry(title: "Device keys unavailable", message: "This device's keys can't be reached right now. Try again."),
     "device_list_failed": CopyEntry(title: "Couldn't load devices", message: "Your devices couldn't be loaded. Check your connection and try again."),
     "device_rename_failed": CopyEntry(title: "Couldn't rename", message: "The device couldn't be renamed. Try again."),
     "device_deauthorize_failed": CopyEntry(title: "Couldn't remove device", message: "The device couldn't be removed. Try again."),

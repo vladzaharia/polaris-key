@@ -461,6 +461,14 @@
       "title": "No disponible aquí",
       "message": "Los dispositivos no se pueden administrar desde aquí. Adminístralos en tu cuenta."
     },
+    "device-keys-unreadable": {
+      "title": "Claves del dispositivo ilegibles",
+      "message": "Las claves guardadas de este dispositivo no se pueden leer. Restablécelas para continuar."
+    },
+    "device-key-store-error": {
+      "title": "Claves del dispositivo no disponibles",
+      "message": "Las claves de este dispositivo no están accesibles ahora. Inténtalo de nuevo."
+    },
     "device_list_failed": {
       "title": "No se pudieron cargar los dispositivos",
       "message": "No se pudieron cargar tus dispositivos. Revisa tu conexión y vuelve a intentarlo."

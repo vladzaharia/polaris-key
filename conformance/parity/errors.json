@@ -686,6 +686,18 @@
       "description": "Remote device management needs a credential or backend this client does not have."
     },
     {
+      "code": "device-keys-unreadable",
+      "kind": "client",
+      "service": "core",
+      "description": "Node, client-core: the stored device key record exists but cannot be used. It is never replaced; only wiping the device keys resets it."
+    },
+    {
+      "code": "device-key-store-error",
+      "kind": "client",
+      "service": "core",
+      "description": "Node: the device key store could not be used right now (an I/O fault, a refused path or a lock timeout). Nothing was changed."
+    },
+    {
       "code": "device_list_failed",
       "kind": "client",
       "service": "core",

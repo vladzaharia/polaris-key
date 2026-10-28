@@ -532,6 +532,14 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Not available here",
     message: "Devices can't be managed from here. Manage them in your account.",
   },
+  "device-keys-unreadable": {
+    title: "Device keys unreadable",
+    message: "This device's saved keys can't be read. Reset them to continue.",
+  },
+  "device-key-store-error": {
+    title: "Device keys unavailable",
+    message: "This device's keys can't be reached right now. Try again.",
+  },
   device_list_failed: {
     title: "Couldn't load devices",
     message:

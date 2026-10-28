@@ -72,7 +72,7 @@ const ringIdOf = (label: string): string =>
 const kidOf = (label: string): string =>
   digest(label).toString("hex").slice(0, 32);
 const wrapOf = (label: string) => ({
-  kem: "x25519",
+  kem: 32,
   enc: stretch(`enc:${label}`, 32).toString("base64url"),
   ct: stretch(`ct:${label}`, 48).toString("base64url"),
 });
@@ -194,7 +194,7 @@ type Action =
 
 type Expect = Record<string, JsonValue>;
 
-const WRAP_SHAPE = { kem: "", enc: "", ct: "" };
+const WRAP_SHAPE = { kem: 0, enc: "", ct: "" };
 const RING_BODY = (recovery: boolean) => ({
   json: {
     ringId: "",

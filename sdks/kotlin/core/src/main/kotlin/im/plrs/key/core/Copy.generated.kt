@@ -137,6 +137,8 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "bundle-import-unsupported" to CopyEntry("Not available here", "Offline activation isn't available here."),
     "report-unsupported" to CopyEntry("Not available here", "Device reports aren't available here."),
     "device-management-unsupported" to CopyEntry("Not available here", "Devices can't be managed from here. Manage them in your account."),
+    "device-keys-unreadable" to CopyEntry("Device keys unreadable", "This device's saved keys can't be read. Reset them to continue."),
+    "device-key-store-error" to CopyEntry("Device keys unavailable", "This device's keys can't be reached right now. Try again."),
     "device_list_failed" to CopyEntry("Couldn't load devices", "Your devices couldn't be loaded. Check your connection and try again."),
     "device_rename_failed" to CopyEntry("Couldn't rename", "The device couldn't be renamed. Try again."),
     "device_deauthorize_failed" to CopyEntry("Couldn't remove device", "The device couldn't be removed. Try again."),

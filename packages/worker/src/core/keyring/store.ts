@@ -27,7 +27,7 @@ export const KEYRING_STORE = "core.keyring";
 export const PREVIOUS_RING_SECONDS = 30 * 86_400;
 
 export interface Wrap {
-  kem: string;
+  kem: number;
   enc: string;
   ct: string;
 }
@@ -79,7 +79,7 @@ interface WrapDb {
   ring_id: string;
   epoch: number;
   kid: string;
-  kem: string;
+  kem: string | number;
   enc: string;
   ct: string;
   by_device: string;
@@ -89,12 +89,16 @@ interface WrapDb {
 const WRAP_COLS =
   "device_id, ring_id, epoch, kid, kem, enc, ct, by_device, created_at";
 
+/** Rows written before the integer form hold "x25519"; the column is TEXT, so 32 reads back "32". */
+const kemOf = (v: string | number): number =>
+  v === "x25519" ? 32 : Number(v);
+
 const toWrap = (r: WrapDb): WrapRow => ({
   deviceId: r.device_id,
   ringId: r.ring_id,
   epoch: r.epoch,
   kid: r.kid,
-  kem: r.kem,
+  kem: kemOf(r.kem),
   enc: r.enc,
   ct: r.ct,
   by: r.by_device,

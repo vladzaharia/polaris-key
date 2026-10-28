@@ -46,7 +46,7 @@
                 "json": {
                   "ringId": "",
                   "rootKid": "",
-                  "wrap": { "kem": "", "enc": "", "ct": "" }
+                  "wrap": { "kem": 0, "enc": "", "ct": "" }
                 },
                 "match": "shape",
                 "allowedKeys": ["ringId", "rootKid", "wrap", "recovery"]

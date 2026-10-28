@@ -124,6 +124,8 @@ public enum ErrorCode {
     public static let bundleImportUnsupported = "bundle-import-unsupported"
     public static let reportUnsupported = "report-unsupported"
     public static let deviceManagementUnsupported = "device-management-unsupported"
+    public static let deviceKeysUnreadable = "device-keys-unreadable"
+    public static let deviceKeyStoreError = "device-key-store-error"
     public static let deviceListFailed = "device_list_failed"
     public static let deviceRenameFailed = "device_rename_failed"
     public static let deviceDeauthorizeFailed = "device_deauthorize_failed"
@@ -330,6 +332,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "bundle-import-unsupported",
     "report-unsupported",
     "device-management-unsupported",
+    "device-keys-unreadable",
+    "device-key-store-error",
     "device_list_failed",
     "device_rename_failed",
     "device_deauthorize_failed",
@@ -536,6 +540,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "bundle-import-unsupported": "client",
     "report-unsupported": "client",
     "device-management-unsupported": "client",
+    "device-keys-unreadable": "client",
+    "device-key-store-error": "client",
     "device_list_failed": "client",
     "device_rename_failed": "client",
     "device_deauthorize_failed": "client",

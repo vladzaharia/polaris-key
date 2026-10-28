@@ -86,7 +86,7 @@
                 "json": {
                   "ringId": "",
                   "rootKid": "",
-                  "wrap": { "kem": "", "enc": "", "ct": "" },
+                  "wrap": { "kem": 0, "enc": "", "ct": "" },
                   "recovery": { "ct": "" }
                 },
                 "match": "shape",
@@ -156,7 +156,7 @@
                 "wrap": {
                   "epoch": 1,
                   "kid": "c880980dc634960e442f3b67e7db3c99",
-                  "kem": "x25519",
+                  "kem": 32,
                   "enc": "QPYEeai2pZZhhf-NJ_cfY75qI7EgVJQSRk0U4LuavpI",
                   "ct": "PLGbWBUKCeUbVulHE_FXbrBiZ-dXEUBa6T3qkNfIWs0jQ_D3AB0G-9cyLTMFCPkc",
                   "by": "TRANSCRIPTDEVICE0000000000000001"
@@ -214,7 +214,7 @@
                 "json": {
                   "ringId": "",
                   "rootKid": "",
-                  "wrap": { "kem": "", "enc": "", "ct": "" },
+                  "wrap": { "kem": 0, "enc": "", "ct": "" },
                   "recovery": { "ct": "" }
                 },
                 "match": "shape",
