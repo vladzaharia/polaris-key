@@ -1,3 +1,4 @@
+// @pkey-feature core.devicekeys
 import { describe, expect, it } from "vitest";
 import { base64UrlDecode, base64UrlEncodeBytes } from "@polaris-key/jws";
 import {

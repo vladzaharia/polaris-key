@@ -630,6 +630,7 @@ export const Feature = {
   coreStore: "core.store",
   coreCopy: "core.copy",
   coreBackend: "core.backend",
+  coreDevicekeys: "core.devicekeys",
   licenseGate: "license.gate",
   licenseSignedinuser: "license.signedinuser",
   licenseActivate: "license.activate",
@@ -760,6 +761,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "core.store",
   "core.copy",
   "core.backend",
+  "core.devicekeys",
   "license.gate",
   "license.signedinuser",
   "license.activate",
@@ -1983,6 +1985,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "core.copy": { status: "implemented", service: "sdk", na: [] },
   "core.backend": { status: "implemented", service: "license", na: [] },
+  "core.devicekeys": { status: "planned", service: "core", na: [] },
   "license.gate": { status: "implemented", service: "license", na: [] },
   "license.signedinuser": { status: "implemented", service: "license", na: [] },
   "license.activate": { status: "implemented", service: "license", na: [] },
@@ -2286,4 +2289,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "1b2b731000ae2b2358b2da655f7ab8d18c58337b1b18ec39257be43ed663a198";
+  "52c5240572e70b4937e2dff49b761a0a3ed8fbce42903f6feb1a348f3fef2a07";

@@ -1,3 +1,4 @@
+// @pkey-feature core.devicekeys
 // Mirrors packages/client-core/test/deviceKeys.test.ts for the Kotlin device key store (CC-26.5):
 // generation, rotate, wipe, low-order refusal, the file store's permissions, and the proof signer.
 package im.plrs.key.core

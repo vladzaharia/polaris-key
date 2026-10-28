@@ -74,6 +74,9 @@
       "status": "implemented",
       "note": "client.backend (im.plrs.key.sdk.BackendClient): install(OkHttpClient.Builder) adds interceptor() (origin check, pre-sync, one forced retry at least 10 s after the last, typed not_entitled/sign_in_required) and networkInterceptor() (every hop's origin checked before it is sent, then X-PKey-License and X-PKey-Device attached; an application interceptor alone attaches nothing); headers() is raw. backendOrigins: exact, https except loopback. ClientBackendMatrixTest replays backend-matrix.json's client rows; BackendTest covers the rest."
     },
+    "core.devicekeys": {
+      "status": "implemented"
+    },
     "license.gate": {
       "status": "implemented"
     },

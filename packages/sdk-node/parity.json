@@ -62,6 +62,10 @@
       "status": "implemented",
       "note": "client.backend (packages/sdk-node/src/backend/client.ts): fetch() and headers() send X-PKey-License and X-PKey-Device only; backend.origins (exact, HTTPS except loopback) is checked on every hop, so a redirect cannot carry the licence elsewhere; the freshness pre-sync, one shared concurrent sync, one retry on license_stale/license_invalid, and not_entitled/sign_in_required thrown typed. Bridge v4 host verb core.backendHeaders. test/backend.test.ts replays backend-matrix.json's client rows."
     },
+    "core.devicekeys": {
+      "status": "implemented",
+      "note": "createNodeDeviceKeyStore (src/devices/deviceKeys.ts) over node:crypto: a 0600 file in a 0700 state directory, cross-process lock file, atomic replace; an unreadable record is an error that only wipe() resets; PolarisKeyClient.devices.registerKeys sends PUT /devices/keys. The pkey-proof/1 signer is client-core's."
+    },
     "license.gate": {
       "status": "implemented"
     },

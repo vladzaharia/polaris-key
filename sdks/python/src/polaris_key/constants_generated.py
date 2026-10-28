@@ -843,6 +843,7 @@ class Feature:
     CORE_STORE: Final = "core.store"
     CORE_COPY: Final = "core.copy"
     CORE_BACKEND: Final = "core.backend"
+    CORE_DEVICEKEYS: Final = "core.devicekeys"
     LICENSE_GATE: Final = "license.gate"
     LICENSE_SIGNEDINUSER: Final = "license.signedinuser"
     LICENSE_ACTIVATE: Final = "license.activate"
@@ -972,6 +973,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "core.store",
     "core.copy",
     "core.backend",
+    "core.devicekeys",
     "license.gate",
     "license.signedinuser",
     "license.activate",
@@ -2362,6 +2364,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "core.store": CapabilityRow("implemented", "core", (CapabilityNa("python", "dependency"),)),
         "core.copy": CapabilityRow("implemented", "sdk", ()),
         "core.backend": CapabilityRow("implemented", "license", ()),
+        "core.devicekeys": CapabilityRow("planned", "core", ()),
         "license.gate": CapabilityRow("implemented", "license", ()),
         "license.signedinuser": CapabilityRow("implemented", "license", ()),
         "license.activate": CapabilityRow("implemented", "license", ()),
@@ -2478,4 +2481,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "05148313c8262834ef5dfa484d78039e9c62f9e7a99d7a69bf5ebe58b62f0be3"
+CAPABILITY_DIGEST: Final[str] = "d41652a76a6b55a395ffcb4d7954b4668ff7ec61ca1d26871b50d797649a1780"
