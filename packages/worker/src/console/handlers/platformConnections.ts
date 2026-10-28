@@ -58,6 +58,7 @@ import {
   type ConnectionRefusal,
   type DomainAction,
 } from "../../services/identity/public.js";
+import { isSuperadmin } from "../../core/rbac/can.js";
 import type { AdminCtx } from "../routes.js";
 
 const BUILTIN_LABELS = {
@@ -127,13 +128,15 @@ async function route(c: AdminCtx): Promise<Response> {
   const { req, env, db, session, now } = c;
   const actor = actorOf(session);
   const rest = c.segments.slice(2); // after platform/connections
+  // An operator-audience connection is what access rules trust: only a Superadmin writes one.
+  const gate = { superadmin: isSuperadmin(session.principal) };
   const method = req.method;
   const [a, b, d] = rest;
 
   if (rest.length === 0) {
     if (method === "GET") return page(c);
     const body = await readBody(req);
-    const r = await createConnection(env, db, body, actor, now);
+    const r = await createConnection(env, db, body, actor, now, gate);
     return r.ok
       ? adminJson({ ok: true, connection: r.connection }, 201)
       : refusal(r);
@@ -210,6 +213,7 @@ async function route(c: AdminCtx): Promise<Response> {
         await readBody(req),
         actor,
         now,
+        gate,
       );
       return r.ok
         ? adminJson({ ok: true, connection: r.connection })
@@ -251,7 +255,7 @@ async function route(c: AdminCtx): Promise<Response> {
       };
     }
     if (!action) return err(404, ErrorCode.NotFound);
-    const r = await changeDomain(db, id, action, actor, now);
+    const r = await changeDomain(db, id, action, actor, now, gate);
     return r.ok
       ? adminJson({
           ok: true,

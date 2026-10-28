@@ -132,6 +132,31 @@ describe("routing", () => {
     ]);
   });
 
+  it("an operators-only connection's domain is no oracle: a known operator and an unknown address answer the ordinary bytes", async () => {
+    const w = await seededWorld();
+    await connectionWith(w, {
+      domain: "ops.example",
+      enforce: true,
+      audience: "operators",
+    });
+    await getOrCreateAccountByEmail(w.db, "op@ops.example", NOW);
+    const known = await new Device(w, "198.51.100.1").send("POST", START, {
+      email: "op@ops.example",
+    });
+    const unknown = await new Device(w, "198.51.100.2").send("POST", START, {
+      email: "nobody@ops.example",
+    });
+    const plain = await new Device(w, "198.51.100.3").send("POST", START, {
+      email: "nobody@plain.example",
+    });
+    const knownShape = (await shape(known)) as { body: string };
+    expect(knownShape).toEqual(await shape(unknown));
+    // The domain's own name aside, a plain domain answers the same bytes.
+    const plainShape = (await shape(plain)) as { body: string };
+    expect(plainShape.body).toBe(knownShape.body);
+    expect(JSON.parse(knownShape.body).next).toBeUndefined();
+  });
+
   it("picking the code: resend sends it at once, and the code signs in", async () => {
     const w = await seededWorld();
     await connectionWith(w, { domain: "acme.example" });

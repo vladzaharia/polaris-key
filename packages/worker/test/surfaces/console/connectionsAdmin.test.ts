@@ -26,6 +26,12 @@ import { plainProviderText } from "../../../src/services/identity/connections/te
 import { challengeName } from "../../../src/services/identity/connections/domains.js";
 import { adminOidcConfig } from "../../../src/platform/platformOidc.js";
 import { consoleTestSession } from "../../consoleSessionHelper.js";
+import {
+  newBindingId,
+  stmtInsertBinding,
+} from "../../../src/core/rbac/bindings.js";
+import { operatorRouteForEmail } from "../../../src/core/rbac/operatorConnections.js";
+import { routeForDomain } from "../../../src/core/oidc/connections.js";
 
 const ISSUER = "https://sso.corp.example";
 const SECRET = "s3cr3t-value-that-must-never-come-back";
@@ -282,13 +288,8 @@ describe("add", () => {
     expect(body.code).toBe("discovery_unreachable");
   });
 
-  it("refuses operator audiences until the Superadmin gate exists, and a duplicate", async () => {
+  it("refuses a duplicate", async () => {
     const w = await world();
-    for (const audience of ["operators", "both"]) {
-      const { res, body } = await add(w, { audience });
-      expect(res.status).toBe(403);
-      expect(body.code).toBe("audience_not_available");
-    }
     expect((await add(w)).res.status).toBe(201);
     const dup = await add(w);
     expect(dup.res.status).toBe(409);
@@ -795,5 +796,217 @@ describe("review fixes", () => {
       ).json()) as any
     ).connection;
     expect(v.hasSecret).toBe(true);
+  });
+});
+
+// ST-32.4: an operator-audience connection is what console access rules trust, so only a
+// Superadmin (with the step-up the routes already demand) writes one.
+describe("operator audience", () => {
+  /** A Platform admin who is not a Superadmin: a stored binding and no root group. */
+  async function platformAdmin(w: CardWorld): Promise<As> {
+    // Sign in once as an operator so the account and its strong link exist, then drop the group.
+    await consoleTestSession(
+      w.env,
+      w.db,
+      { sub: "pa1", name: "Pat", email: "pa1@x.io", groups: ["admins"] },
+      NOW,
+    );
+    const acct = await w.db.first<{ account_id: string }>(
+      "SELECT account_id FROM account_links WHERE subject = 'pa1'",
+    );
+    const st = stmtInsertBinding({
+      id: newBindingId(),
+      accountId: acct!.account_id,
+      emailNorm: null,
+      role: "platform_admin",
+      scope: "platform",
+      areas: null,
+      source: "grant",
+      grantedBy: null,
+      grantedAt: NOW - 10,
+    });
+    await w.db.run(st.sql, ...st.params);
+    return { sub: "pa1", groups: [], stepUp: true };
+  }
+
+  const operatorActions = async (w: CardWorld) =>
+    (
+      await w.db.all<{ action: string }>(
+        "SELECT action FROM platform_audit WHERE action = 'rbac.operator_connection'",
+      )
+    ).length;
+
+  it("a Superadmin with step-up creates and widens one, audited", async () => {
+    const w = await world();
+    const { res, body } = await add(w, { audience: "operators" });
+    expect(res.status).toBe(201);
+    expect(body.connection.audience).toBe("operators");
+    expect(await operatorActions(w)).toBe(1);
+    const id = body.connection.id as string;
+    const widen = await api(
+      w,
+      "PATCH",
+      `/platform/connections/${id}`,
+      { audience: "both" },
+      STEP,
+    );
+    expect(widen.status).toBe(200);
+    expect((await resolveConnection(w.db, id))!.audience).toBe("both");
+    expect(await operatorActions(w)).toBe(2);
+    const bad = await add(w, { audience: "everyone", clientId: "c2" });
+    expect(bad.res.status).toBe(422);
+  });
+
+  it("refuses a Superadmin without step-up", async () => {
+    const w = await world();
+    const res = await api(w, "POST", "/platform/connections", {
+      ...draft,
+      audience: "operators",
+    });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe(
+      "step_up_required",
+    );
+    expect(await operatorActions(w)).toBe(0);
+  });
+
+  it("refuses a Platform admin on create and on widening a customers connection", async () => {
+    const w = await world();
+    const { body } = await add(w);
+    const id = body.connection.id as string;
+    const pa = await platformAdmin(w);
+    for (const audience of ["operators", "both"]) {
+      const c = await api(
+        w,
+        "POST",
+        "/platform/connections",
+        { ...draft, clientId: "c9", audience },
+        pa,
+      );
+      expect(c.status).toBe(403);
+      expect(((await c.json()) as { code: string }).code).toBe(
+        "audience_not_available",
+      );
+      const p = await api(
+        w,
+        "PATCH",
+        `/platform/connections/${id}`,
+        { audience },
+        pa,
+      );
+      expect(p.status).toBe(403);
+    }
+    expect((await resolveConnection(w.db, id))!.audience).toBe("customers");
+    expect(await operatorActions(w)).toBe(0);
+    // An ordinary customers connection stays a Platform admin's.
+    const ok = await api(
+      w,
+      "PATCH",
+      `/platform/connections/${id}`,
+      { label: "Renamed" },
+      pa,
+    );
+    expect(ok.status).toBe(200);
+  });
+
+  it("the patch path: a Platform admin cannot move an operator connection's issuer, client, claims, secret or domains", async () => {
+    const w = await world();
+    const { body } = await add(w, { audience: "operators" });
+    const id = body.connection.id as string;
+    const pa = await platformAdmin(w);
+    const attempts: Record<string, unknown>[] = [
+      { issuer: "https://evil.example" },
+      { clientId: "other" },
+      { jwksUri: "https://sso.corp.example/other-keys" },
+      { claimMap: { groups: "roles" } },
+      { clientSecret: "another-secret" },
+      { audience: "customers" },
+    ];
+    for (const patch of attempts) {
+      const r = await api(w, "PATCH", `/platform/connections/${id}`, patch, pa);
+      expect(r.status, JSON.stringify(patch)).toBe(403);
+    }
+    const dom = await api(
+      w,
+      "POST",
+      `/platform/connections/${id}/domains`,
+      { domain: "corp.example" },
+      pa,
+    );
+    expect(dom.status).toBe(403);
+    const before = await resolveConnection(w.db, id);
+    expect(before!.issuer).toBe(ISSUER);
+    expect(before!.audience).toBe("operators");
+    // A Platform admin may still rename it and switch it off, but not back on.
+    expect(
+      (await api(w, "PATCH", `/platform/connections/${id}`, { label: "R" }, pa))
+        .status,
+    ).toBe(200);
+    expect(
+      (
+        await api(
+          w,
+          "PATCH",
+          `/platform/connections/${id}`,
+          { status: "disabled" },
+          pa,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await api(
+          w,
+          "PATCH",
+          `/platform/connections/${id}`,
+          { status: "active" },
+          pa,
+        )
+      ).status,
+    ).toBe(403);
+    // The Superadmin can move the claim map, and it is audited as an operator change.
+    const n = await operatorActions(w);
+    const su = await api(
+      w,
+      "PATCH",
+      `/platform/connections/${id}`,
+      { claimMap: { groups: "roles" } },
+      STEP,
+    );
+    expect(su.status).toBe(200);
+    expect(await operatorActions(w)).toBeGreaterThan(n);
+  });
+
+  it("routes an operator email only to an allow-listed operator connection, the same for any address", async () => {
+    const w = await world();
+    const { body } = await add(w, { audience: "operators" });
+    const id = body.connection.id as string;
+    await w.db.run(
+      `INSERT INTO identity_connection_domains (connection_id, scope, domain, token, verified_at, checked_at, enforce)
+       VALUES (?, 'platform', 'corp.example', 't', ?, ?, 1)`,
+      id,
+      NOW,
+      NOW,
+    );
+    // Not on the allowlist: fail closed.
+    expect(
+      await operatorRouteForEmail(w.env, w.db, "ada@corp.example"),
+    ).toBeNull();
+    w.env.OIDC_ISSUER_ALLOWLIST = "sso.corp.example";
+    const known = await operatorRouteForEmail(w.env, w.db, "ada@corp.example");
+    const other = await operatorRouteForEmail(
+      w.env,
+      w.db,
+      "nobody@corp.example",
+    );
+    expect(known?.connection.id).toBe(id);
+    expect(other?.connection.id).toBe(id);
+    expect(
+      await operatorRouteForEmail(w.env, w.db, "ada@elsewhere.example"),
+    ).toBeNull();
+    // The customer card's surface never sees it.
+    expect(
+      await routeForDomain(w.db, "corp.example", ["platform"], "customers"),
+    ).toBeNull();
   });
 });
