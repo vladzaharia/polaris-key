@@ -219,7 +219,7 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
     focus: "heading",
   }),
   "NearbyApproval.rate-limited": () => ({
-    ...refusal("common.tryAgain"),
+    ...refusal("common.done"),
     focus: "heading",
   }),
   "SignIn.done": (i) =>

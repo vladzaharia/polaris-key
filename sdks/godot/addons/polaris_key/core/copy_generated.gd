@@ -78,7 +78,7 @@ const COPY_CODES := {
 	"code_expired": {"title": "Code expired", "message": "That code has expired. Send a new code."},
 	"email_in_use": {"title": "Email already in use", "message": "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email."},
 	"terms_required": {"title": "Terms not accepted", "message": "Agree to the terms to continue."},
-	"license_owned": {"title": "License in another account", "message": "This {product} license is already in another Polaris Locker account. A license never moves by its key."},
+	"license_owned": {"title": "License in another account", "message": "Sign in to the Polaris Locker account that has this {product} license to use it."},
 	"license_email_bound": {"title": "Email not verified", "message": "This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again."},
 	"account_required": {"title": "Sign-in needed", "message": "Sign in to your Polaris Locker account on this device, then try again."},
 	"cursor_expired": {"title": "Sync out of date", "message": "This device hasn't synced in too long. It will start over from your saved data."},
@@ -253,7 +253,7 @@ const COPY_ACTIVATION := {
 	"unauthorized": {"title": "Key not accepted", "message": "That license key wasn't accepted. Check it and try again."},
 	"enroll-disabled": {"title": "No free license", "message": "This app doesn't offer a free license. Enter a license key or sign in."},
 	"key-entry-limit": {"title": "No key entries left", "message": "Sign in and add this key to your Polaris Locker account instead."},
-	"license-owned": {"title": "License in another account", "message": "This license is already in another Polaris Locker account. A license never moves by its key."},
+	"license-owned": {"title": "License in another account", "message": "Sign in to the Polaris Locker account that has this license to use it."},
 	"refused": {"title": "Activation refused", "message": "Activation was refused ({code})."},
 	"error": {"title": "Activation failed", "message": "Activation didn't finish. Check your connection and try again."},
 }

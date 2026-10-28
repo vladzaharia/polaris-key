@@ -100,7 +100,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "code_expired": CopyEntry("Code expired", "That code has expired. Send a new code."),
         "email_in_use": CopyEntry("Email already in use", "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email."),
         "terms_required": CopyEntry("Terms not accepted", "Agree to the terms to continue."),
-        "license_owned": CopyEntry("License in another account", "This {product} license is already in another Polaris Locker account. A license never moves by its key."),
+        "license_owned": CopyEntry("License in another account", "Sign in to the Polaris Locker account that has this {product} license to use it."),
         "license_email_bound": CopyEntry("Email not verified", "This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again."),
         "account_required": CopyEntry("Sign-in needed", "Sign in to your Polaris Locker account on this device, then try again."),
         "cursor_expired": CopyEntry("Sync out of date", "This device hasn't synced in too long. It will start over from your saved data."),
@@ -281,7 +281,7 @@ COPY_ACTIVATION: Mapping[str, CopyEntry] = MappingProxyType(
         "unauthorized": CopyEntry("Key not accepted", "That license key wasn't accepted. Check it and try again."),
         "enroll-disabled": CopyEntry("No free license", "This app doesn't offer a free license. Enter a license key or sign in."),
         "key-entry-limit": CopyEntry("No key entries left", "Sign in and add this key to your Polaris Locker account instead."),
-        "license-owned": CopyEntry("License in another account", "This license is already in another Polaris Locker account. A license never moves by its key."),
+        "license-owned": CopyEntry("License in another account", "Sign in to the Polaris Locker account that has this license to use it."),
         "refused": CopyEntry("Activation refused", "Activation was refused ({code})."),
         "error": CopyEntry("Activation failed", "Activation didn't finish. Check your connection and try again."),
     }

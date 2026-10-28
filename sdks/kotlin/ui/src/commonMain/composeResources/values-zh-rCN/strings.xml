@@ -1118,6 +1118,16 @@
     <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
     <string name="signin_nearby_menu">批准附近的设备</string>
     <string name="signin_nearby_menu__macos">批准附近的设备</string>
+    <!-- Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_chooseTitle">为 %1$s 选择许可证</string>
+    <!-- Nearby approval: choose a license. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_nearby_chooseLede">%1$s将使用它。</string>
+    <!-- Nearby approval: the license is on all its devices. Body under the Device limit reached title; the action opens the device list. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_deviceLimitBody">此许可证已用于全部设备。请移除一台设备，为 %1$s 腾出位置。</string>
+    <!-- Nearby approval: too many attempts. Body under the Too many attempts title; the action is Done, because the retry happens on the new device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_rateLimitedBody">请稍候，然后在 %1$s 上重试。</string>
+    <!-- Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_expiredBody">请在 %1$s 上重新开始。</string>
     <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
     <string name="signin_key_addInLocker">在 Polaris Locker 中添加</string>
     <string name="signin_key_addInLocker__macos">在 Polaris Locker 中添加</string>
@@ -2232,7 +2242,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">许可证在另一个账户中</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_license_owned_message">此%1$s许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。</string>
+    <string name="core_codes_license_owned_message">要使用此%1$s许可证，请登录持有它的Polaris Locker账户。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_email_bound_title">电子邮件未验证</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2900,7 +2910,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_license_owned_title">许可证在另一个账户中</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_license_owned_message">此许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。</string>
+    <string name="core_activation_license_owned_message">要使用此许可证，请登录持有它的Polaris Locker账户。</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">激活被拒绝</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

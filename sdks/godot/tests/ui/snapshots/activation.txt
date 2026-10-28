@@ -150,6 +150,6 @@ Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a differ
 Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Title: Label "License in another account"
-Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Lede: Label "This Polaris Key SDK license is already in another Polaris Locker account. A license never moves by its key."
+Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Lede: Label "Sign in to the Polaris Locker account that has this Polaris Key SDK license to use it."
 Card/Scroll/Stack/Limit/Columns/Right/Actions/TryAgain: Button "Sign in" [focus 1]
 Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a different key" [focus 2]

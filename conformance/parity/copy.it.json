@@ -251,7 +251,7 @@
     },
     "license_owned": {
       "title": "Licenza in un altro account",
-      "message": "Questa licenza di {product} è già in un altro account Polaris Locker. Una licenza non si sposta mai tramite la sua chiave."
+      "message": "Accedi all’account Polaris Locker che ha questa licenza di {product} per usarla."
     },
     "license_email_bound": {
       "title": "Email non verificata",
@@ -923,7 +923,7 @@
     },
     "license-owned": {
       "title": "Licenza in un altro account",
-      "message": "Questa licenza è già in un altro account Polaris Locker. Una licenza non si sposta mai tramite la sua chiave."
+      "message": "Accedi all’account Polaris Locker che ha questa licenza per usarla."
     },
     "refused": {
       "title": "Attivazione rifiutata",

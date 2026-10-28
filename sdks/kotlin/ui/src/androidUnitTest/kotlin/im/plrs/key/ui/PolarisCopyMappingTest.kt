@@ -106,7 +106,7 @@ class PolarisCopyMappingTest {
     fun refusalsTheKitHasNoFieldForReadTheCoreCatalog() {
         // core.copy: a code the catalog knows reads Copy.message, never the raw body.
         assertEquals(
-            "This Diceroll license is already in another Polaris Locker account. A license never moves by its key.",
+            "Sign in to the Polaris Locker account that has this Diceroll license to use it.",
             copy.activationMessage(ActivationResult.Refused("license_owned", 403, "raw body")),
         )
         // Without a product name the placeholder drops; the sentence is the catalog's.

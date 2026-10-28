@@ -573,7 +573,7 @@ describe("the key refusals no other key can fix", () => {
     expect(container.querySelector("#pk-key")).toBeNull();
     expect(container.textContent).toContain("License in another account");
     expect(container.textContent).toContain(
-      "Acme Studio license is already in another Polaris Locker account",
+      "Polaris Locker account that has this Acme Studio license",
     );
     // The primary names the account that holds the license; no manage link.
     expect(control(container, "signin.key.ownedSignIn")?.dataset.variant).toBe(

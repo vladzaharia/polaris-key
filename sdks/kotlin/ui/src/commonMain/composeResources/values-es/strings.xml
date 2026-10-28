@@ -1136,6 +1136,16 @@
     <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
     <string name="signin_nearby_menu">Aprobar un dispositivo cercano</string>
     <string name="signin_nearby_menu__macos">Aprobar un dispositivo cercano</string>
+    <!-- Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_chooseTitle">Elige una licencia para %1$s</string>
+    <!-- Nearby approval: choose a license. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_nearby_chooseLede">%1$s la usará.</string>
+    <!-- Nearby approval: the license is on all its devices. Body under the Device limit reached title; the action opens the device list. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_deviceLimitBody">Esta licencia está en todos sus dispositivos. Quita uno para dejar sitio a %1$s.</string>
+    <!-- Nearby approval: too many attempts. Body under the Too many attempts title; the action is Done, because the retry happens on the new device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_rateLimitedBody">Espera un momento y vuelve a intentarlo en %1$s.</string>
+    <!-- Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_expiredBody">Empieza de nuevo en %1$s.</string>
     <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
     <string name="signin_key_addInLocker">Añadirla en Polaris Locker</string>
     <string name="signin_key_addInLocker__macos">Añadirla en Polaris Locker</string>
@@ -2258,7 +2268,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">Licencia en otra cuenta</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_license_owned_message">Esta licencia de %1$s ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave.</string>
+    <string name="core_codes_license_owned_message">Inicia sesión en la cuenta de Polaris Locker que tiene esta licencia de %1$s para usarla.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_email_bound_title">Correo no verificado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2926,7 +2936,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_license_owned_title">Licencia en otra cuenta</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_license_owned_message">Esta licencia ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave.</string>
+    <string name="core_activation_license_owned_message">Inicia sesión en la cuenta de Polaris Locker que tiene esta licencia para usarla.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">Activación rechazada</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

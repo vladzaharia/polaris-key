@@ -665,8 +665,8 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
    terms ("lifetime · up to 3 devices"), the key echoed with **Change key**, and the entries notice
    when the key has used its entries (frame 4). Verdicts, inline under the field:
    - format errors and the cut-short message (UX-05);
-   - **`license_owned`** (I-09; on the portal path for every product): "This Tidewater Studio license
-     is already in another Polaris Locker account. A license never moves by its key." with **Sign in to
+   - **`license_owned`** (I-09; on the portal path for every product): "Sign in to the Polaris
+     Locker account that has this Tidewater Studio license to use it." with **Sign in to
      that account** (the `signInUrl` flow) and **Use a different key** (frame 5);
    - **`key_entry_limit`** (I-09, Identity-on products): the app sends the person here with its
      `manageUrl` (`/activate?product=<slug>`); the card shows PORTAL.md §4.18's notice ("This key has

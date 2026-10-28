@@ -2470,6 +2470,31 @@
       "role": "menu",
       "note": "Account menu entry: opens the nearby approval list on the signed-in device."
     },
+    "signin.nearby.chooseTitle": {
+      "value": "Choose a license for {device}",
+      "role": "title",
+      "note": "Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated)."
+    },
+    "signin.nearby.chooseLede": {
+      "value": "{product} will use it.",
+      "role": "body",
+      "note": "Nearby approval: choose a license. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.nearby.deviceLimitBody": {
+      "value": "This license is on all its devices. Remove one to make room for {device}.",
+      "role": "body",
+      "note": "Nearby approval: the license is on all its devices. Body under the Device limit reached title; the action opens the device list. Arguments: {device} = the new device's friendly name (never translated)."
+    },
+    "signin.nearby.rateLimitedBody": {
+      "value": "Wait a moment, then try again on {device}.",
+      "role": "body",
+      "note": "Nearby approval: too many attempts. Body under the Too many attempts title; the action is Done, because the retry happens on the new device. Arguments: {device} = the new device's friendly name (never translated)."
+    },
+    "signin.nearby.expiredBody": {
+      "value": "Start again on {device}.",
+      "role": "body",
+      "note": "Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated)."
+    },
     "signin.key.addInLocker": {
       "value": "Add it in Polaris Locker",
       "role": "button",

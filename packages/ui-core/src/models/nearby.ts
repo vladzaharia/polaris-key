@@ -91,7 +91,7 @@ export function nearbyApprovalView(
         "expired",
         [
           "core.codes.sign-in-expired.title",
-          "core.codes.sign-in-expired.message",
+          "signin.nearby.expiredBody",
           "common.done",
         ],
         "common.done",
@@ -103,7 +103,7 @@ export function nearbyApprovalView(
         "device-limit",
         [
           "core.codes.device_limit.title",
-          "core.codes.device_limit.message",
+          "signin.nearby.deviceLimitBody",
           "devices.manage",
         ],
         "devices.manage",
@@ -113,7 +113,11 @@ export function nearbyApprovalView(
       // The license is chosen on the approving device (D-A10), never on the new one.
       return outcome(
         "choose",
-        ["signin.choice.title", "signin.choice.lede", "signin.choice.continue"],
+        [
+          "signin.nearby.chooseTitle",
+          "signin.nearby.chooseLede",
+          "signin.choice.continue",
+        ],
         "signin.choice.continue",
       );
     case "account-required":
@@ -132,10 +136,10 @@ export function nearbyApprovalView(
         "rate-limited",
         [
           "core.codes.rate_limited.title",
-          "core.codes.rate_limited.message",
-          "common.tryAgain",
+          "signin.nearby.rateLimitedBody",
+          "common.done",
         ],
-        "common.tryAgain",
+        "common.done",
         "neutral",
       );
     default:

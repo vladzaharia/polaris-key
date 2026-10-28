@@ -251,7 +251,7 @@
     },
     "license_owned": {
       "title": "许可证在另一个账户中",
-      "message": "此{product}许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。"
+      "message": "要使用此{product}许可证，请登录持有它的Polaris Locker账户。"
     },
     "license_email_bound": {
       "title": "电子邮件未验证",
@@ -923,7 +923,7 @@
     },
     "license-owned": {
       "title": "许可证在另一个账户中",
-      "message": "此许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。"
+      "message": "要使用此许可证，请登录持有它的Polaris Locker账户。"
     },
     "refused": {
       "title": "激活被拒绝",

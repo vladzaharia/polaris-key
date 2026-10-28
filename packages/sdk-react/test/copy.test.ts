@@ -154,7 +154,7 @@ describe("copy catalog (§3.2)", () => {
         code: "sign-in-failed",
         activation: { kind: "refused", code: "license_owned" },
       }),
-    ).toMatch(/already in another Polaris Locker account/);
+    ).toMatch(/Sign in to the Polaris Locker account that has this/);
     expect(
       describeError({
         code: "release-refused",
@@ -228,8 +228,12 @@ describe("core.copy: English is the generated module", () => {
         expect(COPY_PLACEHOLDERS).toContain(m[1]);
     expect(
       copyMessage("license_owned", { params: { product: "DJDL" } }),
-    ).toMatch(/^This DJDL license is already/);
-    expect(copyMessage("license_owned")).toMatch(/^This license is already/);
+    ).toMatch(
+      /^Sign in to the Polaris Locker account that has this DJDL license/,
+    );
+    expect(copyMessage("license_owned")).toMatch(
+      /^Sign in to the Polaris Locker account that has this license/,
+    );
     expect(copyMessage("license_owned")).not.toMatch(/\{/);
   });
 

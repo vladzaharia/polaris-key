@@ -111,7 +111,7 @@ const DEFAULTS := {
 	"refusal_limit_title": "No key entries left",
 	"refusal_limit_lede": "Sign in and add this key to your Polaris Locker account instead.",
 	"refusal_owned_title": "License in another account",
-	"refusal_owned_lede": "This {product} license is already in another Polaris Locker account. A license never moves by its key.",
+	"refusal_owned_lede": "Sign in to the Polaris Locker account that has this {product} license to use it.",
 	"add_in_locker": "Add it in Polaris Locker",
 	"add_in_locker_scan": "Scan to add this key in Polaris Locker on your phone.",
 	"use_another_license": "Use another license",
