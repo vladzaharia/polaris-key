@@ -1550,6 +1550,9 @@
     "packages/sdk-node/src/electron/main.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/sdk-node/src/identity/choice.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-node/src/identity/redirect.ts": {
       "jscpd:duplicate": 2
     },
@@ -2115,6 +2118,9 @@
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/core/caps.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/core/choice.ts": {
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/core/crash.ts": {
