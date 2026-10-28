@@ -55,6 +55,7 @@ import {
   type CallResult,
   type CloudSyncOptions,
   type Json,
+  type OpenedBody,
   type SyncResponse,
 } from "@polaris-key/client-core/cloud-sync";
 
@@ -76,6 +77,8 @@ interface Scenario {
     clientIds: string[];
     options: { onSignOut: "clear" | "keep" };
     legacyLocal: Record<string, Json> | null;
+    encryption: "e2e" | "server";
+    hasRoot: boolean;
   };
   steps: Obj[];
 }
@@ -132,7 +135,7 @@ function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
 
 describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client state machine)`, () => {
   it(`runs on Node ${process.version}`, () => {
-    expect(corpus.syncScenariosVersion).toBe(2);
+    expect(corpus.syncScenariosVersion).toBe(3);
     expect(corpus.constants).toEqual({
       debounceMs: SYNC_DEBOUNCE_MS,
       signOutFlushMs: SYNC_SIGNOUT_FLUSH_MS,
@@ -161,8 +164,8 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
         subject: sc.init.subject,
         network: sc.init.network,
         onSignOut: sc.init.options.onSignOut,
-        // The v2 scenarios are server-mode conversations; the machine's own default is e2e.
-        encryption: "server",
+        encryption: sc.init.encryption,
+        hasRoot: sc.init.hasRoot,
         newClientId: () => {
           const id = ids.shift();
           if (id === undefined) throw new Error("init.clientIds exhausted");
@@ -197,7 +200,18 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
             m.setNetwork(raw.state as "online" | "offline");
             break;
           case "respond":
-            m.receive(raw as unknown as SyncResponse);
+            m.receive(
+              raw.opened === undefined
+                ? (raw as unknown as SyncResponse)
+                : ({
+                    status: raw.status,
+                    body: raw.body,
+                  } as unknown as SyncResponse),
+              raw.opened as OpenedBody | undefined,
+            );
+            break;
+          case "root":
+            m.setRoot(raw.has === true);
             break;
           case "signIn":
             m.signIn(raw.subject as string);
@@ -231,6 +245,10 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
               expect(m.journal(), `${where}: journal`).toEqual(raw.journal);
             if (raw.status !== undefined)
               expect(m.status(), `${where}: status`).toEqual(raw.status);
+            if (raw.encryptionSince !== undefined)
+              expect(m.encryptionSince(), `${where}: encryptionSince`).toEqual(
+                raw.encryptionSince,
+              );
             if (raw.licence !== undefined)
               expect(licence, `${where}: licence`).toEqual(raw.licence);
             break;
