@@ -18,3 +18,81 @@ only from Polaris Key's Maven feed. To start, see the [quickstart](/docs/build/q
 to draw your own screens, [Your own UI](/docs/build/sdks/kotlin/your-own-ui/).
 
 <KotlinReadme />
+
+## Automatic sign-in
+
+`identity.autoSignIn()` signs the person in without a form. It never throws (cancellation aside) and
+answers an `AutoSignInResult`. The rungs, in order:
+
+1. **Stored session.** A device token from an earlier sign-in and a held license: `SignedIn`, no network.
+2. **Silent restore.** Planned; the ladder skips it.
+3. **Platform account, silently.** On Android the Google account the person already used with your app,
+   through Credential Manager. The exchange runs over a fresh nonce from the Worker.
+4. **Platform sheet.** One Google account sheet, only when you pass `AutoSignInPrompt.OPTIONAL`.
+
+Anything else is the regular sign-in form. A JVM desktop app has no platform account: the ladder is
+rung 1, then `NeedsSignIn`.
+
+```kotlin
+import im.plrs.key.identity.AutoSignInOptions
+import im.plrs.key.identity.AutoSignInPrompt
+import im.plrs.key.identity.AutoSignInResult
+
+suspend fun signInAtLaunch() {
+    val result = client.identity.autoSignIn(AutoSignInOptions(prompt = AutoSignInPrompt.OPTIONAL))
+    when (result) {
+        is AutoSignInResult.SignedIn -> showGate()
+        is AutoSignInResult.Confirm -> {}      // show the consent, then identity.choice.complete(grant, null, consent)
+        is AutoSignInResult.Choose -> {}       // show the license choice, then identity.choice.complete(grant, choice)
+        is AutoSignInResult.DeviceLimit -> {}  // every seat is taken: result.manageUrl frees one
+        is AutoSignInResult.NeedsSignIn -> {}  // result.reason: NoLink, Terms, SignedOut or NoCredential
+        is AutoSignInResult.Unavailable -> {}  // result.code is the Worker's, or platform-identity-unavailable
+    }
+}
+```
+
+From Java, `PolarisKeyFutures.autoSignIn(options)` returns a `CompletableFuture`.
+
+### Android
+
+Install the provider once, before the first `autoSignIn()`. The `play` flavor carries Credential
+Manager; in the `direct` flavor every call answers unavailable and the ladder stops at rung 1.
+
+```kotlin android
+import android.app.Activity
+import im.plrs.key.android.PlatformSignIn
+import im.plrs.key.android.asProvider
+import im.plrs.key.sdk.PolarisKeyClient
+
+fun installSignIn(client: PolarisKeyClient, currentActivity: () -> Activity?) {
+    client.identity.installPlatformIdentity(PlatformSignIn(currentActivity).asProvider())
+}
+```
+
+The Google web client id comes from the product's discovery document. `asProvider(fallbackClientId)`
+takes a fallback for a product that publishes none.
+
+### Signing out
+
+`identity.signOut()` sets a flag on the device and clears Credential Manager's state. While it is set,
+rungs 3 and 4 do not run: nothing signs the person back in behind their back. The next sign-in the person
+starts clears it. A provider that reports its credential revoked at launch signs the device out the
+same way.
+
+### Compose
+
+`PolarisKeyGate` runs `autoSignIn()` once at boot and draws the consent, the license choice, the device
+limit and the sign-in form, with a "Continue with Google" row when a provider is installed.
+`PolarisKeyGate(client, autoSignIn = false)` turns it off. See the
+[Compose kit](/docs/build/ui/frameworks/compose/).
+
+### Google setup
+
+Two things to register before the Google rungs work, both in Google Cloud:
+
+- **Client id.** A Web client, whose id is `identity.platformSignIn.google.serverClientId` in your
+  `.pkey/product` manifest or the console. Add an Android client per package for `clientIds`.
+- **SHA-1.** Each Android client needs your package name and a signing-certificate SHA-1: the Play app
+  signing key, the upload key and the debug key.
+
+The step-by-step page is planned (Developers, Sign-in, platform setup).
