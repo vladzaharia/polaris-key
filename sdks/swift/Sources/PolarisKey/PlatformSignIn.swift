@@ -12,8 +12,13 @@ public struct AppleSignInProvider: PlatformIdentityProvider {
     public var kind: ExchangeKind { .apple }
 
     private let apple: AppleSignIn
+    private let preferImmediate: Bool
 
-    public init(apple: AppleSignIn = AppleSignIn()) { self.apple = apple }
+    /// `preferImmediate: false` is the plain account sheet, for a person who tapped the Apple row.
+    public init(apple: AppleSignIn = AppleSignIn(), preferImmediate: Bool = true) {
+        self.apple = apple
+        self.preferImmediate = preferImmediate
+    }
 
     public var hasSilentRung: Bool { false }
 
@@ -26,7 +31,7 @@ public struct AppleSignInProvider: PlatformIdentityProvider {
 
     /// The one OS sheet, for a credential this app already has; runs only under `prompt: .optional`.
     public func sheet(nonce: String) async throws -> PlatformSubjectToken {
-        let grant = try await apple.sheet(nonce: nonce)
+        let grant = try await apple.sheet(nonce: nonce, preferImmediate: preferImmediate)
         return PlatformSubjectToken(token: grant.identityToken, nonce: nonce, userID: grant.userID)
     }
 

@@ -146,7 +146,15 @@ public struct SignInView: View {
                 screen: screen.state == .error ? methodsScreen : screen, providers: providers,
                 error: screen.state == .error ? screen.copy.first : nil,
                 failedMethod: model.inputs.signIn?.method,
-                onMethod: { key in model.beginSignIn(method: Self.methodName(key)) },
+                onMethod: { key in
+                    // The Apple row opens the account sheet and runs the exchange; the other
+                    // methods hand off to the hosted card.
+                    if key == KitProvider.apple.rawValue {
+                        model.signInWithProvider()
+                    } else {
+                        model.beginSignIn(method: Self.methodName(key))
+                    }
+                },
                 onCode: { model.beginSignIn(code: true) })
         case .handoff, .code:
             VStack(alignment: .leading, spacing: style.space(.md)) {
@@ -435,6 +443,14 @@ public struct SignInView: View {
     ) -> some View {
         let line = screen?.line(key) ?? model.signInScreen.line(key) ?? CopyLine(key)
         KitButton(line: line, kind: kind) {
+            // The confirm step is the model's: Continue completes the grant, the other drops it.
+            if model.signInScreen.state == .confirm {
+                if kind == .primary {
+                    Task { await model.continueAutoSignIn() }
+                } else {
+                    model.useAnotherAccount()
+                }
+            }
             onAutoSignIn?(kind == .primary ? .primary : .secondary)
         }
         .keyboardShortcut(kind == .primary ? .defaultAction : .cancelAction)

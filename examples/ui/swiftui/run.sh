@@ -18,6 +18,7 @@
 #   UI automation allowed (owner step O1); CI images have it.
 #
 #   PKEY_KIT_SHOTS  where the renders go (default: build/shots)
+#   PKEY_KIT_OS     the simulator runtime (OS=…) when the device exists on several (default: latest)
 #   PKEY_KIT_DEVICE the device's name in the file names (default: the simulator's, lower-cased)
 #   PKEY_KIT_BASELINES  compare every render with the baselines in this directory
 #                   (sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__); a missing one fails
@@ -89,7 +90,7 @@ TEST_RUNNER_PKEY_KIT_SHOTS="$SHOTS" TEST_RUNNER_PKEY_KIT_ONLY="${PKEY_KIT_ONLY:-
   TEST_RUNNER_PKEY_KIT_BASELINES="${PKEY_KIT_BASELINES:-}" TEST_RUNNER_PKEY_KIT_RECORD="${PKEY_KIT_RECORD:-0}" \
   xcodebuild test \
   -project "$HERE/TidewaterKit.xcodeproj" -scheme TidewaterKit \
-  -destination "platform=iOS Simulator,name=$DEVICE" \
+  -destination "platform=iOS Simulator,name=$DEVICE${PKEY_KIT_OS:+,OS=$PKEY_KIT_OS}" \
   -derivedDataPath "$BUILD/dd" -resultBundlePath "$BUILD/results-$(date +%s).xcresult" \
   CODE_SIGNING_ALLOWED=YES
 echo "run.sh: renders in $SHOTS"
