@@ -7,12 +7,13 @@ import {
   base64UrlDecode,
   ed25519Prechecks,
   isCanonicalB64url,
+  isX25519LowOrder,
 } from "@polaris-key/jws";
 import type { Db, DbStatement } from "../../db/types.js";
 import { resolveSyncPrincipal } from "../accounts/accountSubjects.js";
 import { getLicense } from "../licensing/store.js";
 import { licenseUsable } from "../devices.js";
-import { hexEncode, toArrayBuffer } from "../../platform/bytes.js";
+import { toArrayBuffer } from "../../platform/bytes.js";
 
 export interface DeviceKeysRow {
   product: string;
@@ -52,21 +53,6 @@ export class DeviceKeysInvalidError extends Error {
 }
 
 // ── Key checks (V5 §15.2 step 4, applied to both keys) ───────────────────────────────────────
-
-/**
- * The X25519 low-order points (RFC 7748 §6.1, as libsodium blocks them), lowercase hex. An
- * `agreeKey` equal to one gives an all-zero shared secret whatever the peer's private key is.
- * CC-05 moves the list into the corpus (`noise-vectors.json`); until then this is the one copy.
- */
-const X25519_LOW_ORDER: readonly string[] = [
-  "0000000000000000000000000000000000000000000000000000000000000000",
-  "0100000000000000000000000000000000000000000000000000000000000000",
-  "e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800",
-  "5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157",
-  "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
-  "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
-  "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
-];
 
 /** Canonical base64url of exactly 32 bytes, or null. */
 function raw32(s: unknown): Uint8Array | null {
@@ -110,7 +96,7 @@ export function isCanonicalX25519(key: Uint8Array): boolean {
 export function isValidAgreeKey(s: unknown): boolean {
   const key = raw32(s);
   if (!key || !isCanonicalX25519(key)) return false;
-  return !X25519_LOW_ORDER.includes(hexEncode(key));
+  return !isX25519LowOrder(key);
 }
 
 export function validateDeviceKeys(keys: DeviceKeyPair): boolean {

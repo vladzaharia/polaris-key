@@ -26,6 +26,25 @@ import { deleteProduct } from "../../../src/core/products/store.js";
 import { assertConnectDoc } from "../../../src/core/signing.js";
 
 describe("device keys hardening", () => {
+  it("refuses every entry of the retired low-order list and accepts an ordinary key", () => {
+    const retired = [
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "0100000000000000000000000000000000000000000000000000000000000000",
+      "e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800",
+      "5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157",
+      "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+      "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+    ];
+    for (const hex of retired) {
+      const raw = Uint8Array.from(hex.match(/../g)!, (h) => parseInt(h, 16));
+      expect(isValidAgreeKey(b64(raw)), hex).toBe(false);
+    }
+    const nine = new Uint8Array(32);
+    nine[0] = 9;
+    expect(isValidAgreeKey(b64(nine))).toBe(true);
+  });
+
   it("refuses the top-bit spelling of an X25519 key at registration", async () => {
     const w = await world();
     const a = await newKeys();

@@ -22,7 +22,6 @@ public enum ConnectLanReason: String, Sendable, CaseIterable {
     case closed
     case tooLarge = "too_large"
     case badType = "bad_type"
-    case queueFull = "queue_full"
     /// Local Network access was refused (D-8): hosts hide the nearby-device surface.
     case permissionDenied = "permission_denied"
     /// The app's Info.plist lacks `NSBonjourServices` or `NSLocalNetworkUsageDescription`.
@@ -39,7 +38,6 @@ public enum ConnectLanReason: String, Sendable, CaseIterable {
         case .notListening, .registrationRenamed: return ErrorCode.connectUnavailable
         case .connectFailed, .closed: return ErrorCode.networkError
         case .handshakeFailed, .wrongPeer: return ErrorCode.peerCertInvalid
-        case .queueFull: return ErrorCode.rateLimited
         }
     }
 }
