@@ -713,10 +713,19 @@ public actor SyncKeyring: CustomReflectable {
     }
 
     private static func refusal(_ res: PolarisResponse) -> PolarisError {
-        if let o = object(res.body), case .object(let e)? = o["error"], let code = e["code"]?.stringValue {
-            return PolarisError(code: code, message: e["message"]?.stringValue ?? "The server answered \(res.status).")
+        // The Worker answers `{"error": {"code", "message"}}`, or `{"error": "<code>"}` for a bare 404.
+        if let o = object(res.body) {
+            if case .object(let e)? = o["error"], let code = e["code"]?.stringValue {
+                return PolarisError(
+                    code: code, message: e["message"]?.stringValue ?? "The server answered \(res.status).",
+                    status: res.status)
+            }
+            if let code = o["error"]?.stringValue {
+                return PolarisError(code: code, message: "The server answered \(res.status).", status: res.status)
+            }
         }
-        return PolarisError(code: ErrorCode.invalidResponse, message: "The server answered \(res.status).")
+        return PolarisError(
+            code: ErrorCode.invalidResponse, message: "The server answered \(res.status).", status: res.status)
     }
 
     private static func object(_ data: Data) -> [String: JSONValue]? {

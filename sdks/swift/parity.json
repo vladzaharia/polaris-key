@@ -467,8 +467,8 @@
       "wp": "U-23"
     },
     "sync.keyring": {
-      "status": "planned",
-      "wp": "U-39"
+      "status": "implemented",
+      "note": "client.keyring (PolarisKey/SyncKeyring.swift, over PolarisKeyCore/Sync: CryptoKit HKDF, AES.GCM and HMAC, RFC 9180 mode_base written out over DeviceKeyPort.dh for open and an ephemeral Curve25519 key for seal): create(), unlock() (opens this device's wrap through the port's dh, so the agreement key never leaves the store), wrapTo()/removeWrap(), setRecoveryCode()/recover(), reset()/adopt()/openAdopted(), acceptRingChange(confirmed:), attach(_:) feeding setRoot, and the codec. The first root pins {ringId, epoch, rootKid} per product in the Core store; a served ring that differs is ringChanged and is never opened. The root is also kept in one Keychain item (sync-root, AfterFirstUnlockThisDeviceOnly, never synchronizable) that is used only while it matches the pin; forget() drops the root and the pin and runs from the release hook (a Keychain delete that fails stops the sign-out). Every type holding key material prints as redacted. SyncVectorsTests (hkdf, envelope, blind, canonicalJson, hpkeAnchor, wrap, recovery and adopt cases, plus an HPKE.Sender cross-check), SyncKeyringTests and the keyring-* transcripts in TranscriptTests."
     },
     "sync.e2e": {
       "status": "planned",
