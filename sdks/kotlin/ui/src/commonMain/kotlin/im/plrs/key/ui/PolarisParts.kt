@@ -94,6 +94,8 @@ public fun PolarisLicenseChoice(
     onSelect: (String) -> Unit = {},
     catalog: KitCopy = KitCopy.bundled,
     locale: String = kitLocale(),
+    /** The automatic sign-in's "Use another account", offered with every license on all its devices. */
+    onUseAnotherAccount: (() -> Unit)? = null,
 ) {
     val lines = remember(screen, catalog, locale) { KitLines(screen, catalog, locale) }
     val firstFree = choices.choices.firstOrNull { !it.isFull }?.id
@@ -110,6 +112,7 @@ public fun PolarisLicenseChoice(
         modifier = modifier,
         anchor = PolarisAnchor.Top,
         contentAlign = TextAlign.Start,
+        dockActionsAtLargeType = true,
         content = {
             PolarisProductHeader()
             PolarisTitle(lines.text("signin.choice.title") ?: lines.format("signin.choice.title"))
@@ -166,6 +169,9 @@ public fun PolarisLicenseChoice(
                         initialFocus = true,
                     )
                     Spacer(Modifier.height(PolarisSpace.controls))
+                }
+                onUseAnotherAccount?.let {
+                    PolarisTextButton(catalog.format("signin.auto.confirm.other", locale), onClick = it)
                 }
                 PolarisTextButton(catalog.format("common.cancel", locale), onClick = { onAction(KitAction.cancel) })
             }
