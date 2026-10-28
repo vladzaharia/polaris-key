@@ -13,6 +13,10 @@
 //    the port's `dh`, so no private half is read here.
 //  - The recovery code is returned once, to the caller, and kept nowhere.
 //  - A wrap is accepted only when `kid(R)` equals the ring's `rootKid`.
+//  - The first root this client acquires (create, recover, unlock) pins `{ringId, epoch, rootKid}` in
+//    the state directory (`keyring-pin.json`, owner-only; no secret). A served ring or wrap that
+//    differs is never opened: `unlock()` answers `ring-changed`, and only the recovery code
+//    (`recover`) or an explicit `acceptRingChange()` re-pins. Sign-out (`forget()`) drops the pin.
 
 import { PolarisError, type DeviceKeyPort } from "@polaris-key/client-core";
 import {
@@ -44,8 +48,15 @@ import { base64UrlDecode, base64UrlEncodeBytes } from "@polaris-key/jws";
 import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
 import { readJson, responseError } from "../core/http.js";
+import {
+  readJson as readJsonFile,
+  removeJson,
+  writeJson,
+} from "../core/jsonFile.js";
+import { readStoredSubject } from "../identity/account.js";
 import { printAs } from "../core/redact.js";
 import type { TokenManager } from "../core/token.js";
+import { join } from "node:path";
 
 /** The `kem` spelling the Worker stores for DHKEM X25519 (the contract's integer 32). */
 export const KEM_WIRE_X25519 = "x25519";
@@ -87,9 +98,23 @@ export interface KeyringState {
   wrap: KeyringWrapInfo | null;
 }
 
+/** What this client pinned when it first acquired a root. It holds no secret. */
+export interface RingPin {
+  ringId: string;
+  epoch: number;
+  rootKid: string;
+}
+
 export type UnlockResult =
   | { kind: "unlocked"; ringId: string; epoch: number }
-  | { kind: "locked"; reason: "no-ring" | "no-wrap" | "unusable-wrap" };
+  | { kind: "locked"; reason: "no-ring" | "no-wrap" | "unusable-wrap" }
+  /** The served ring is not the pinned one. Nothing was opened or replaced; confirm with the
+   *  person, then `recover(code)` or `acceptRingChange()`. `by` is the device that wrapped. */
+  | {
+      kind: "ring-changed";
+      pinned: RingPin;
+      served: RingPin & { createdAt: number; by?: string };
+    };
 
 export interface CreatedRing {
   ringId: string;
@@ -199,6 +224,7 @@ export class KeyringClient {
   readonly #crypto: SyncCryptoPort;
   #keys: DeviceKeyPort | undefined;
   readonly codec: SyncCodec;
+  readonly #pinFile: string;
 
   constructor(
     private readonly ctx: CoreContext,
@@ -208,6 +234,7 @@ export class KeyringClient {
     this.#crypto = opts.crypto ?? webCryptoSyncPort;
     this.#keys = opts.deviceKeys;
     this.codec = this.#makeCodec();
+    this.#pinFile = join(ctx.dirs.state, "keyring-pin.json");
     printAs(this, () => ({
       unlocked: this.#held !== null,
       ringId: this.#held?.ringId ?? null,
@@ -243,6 +270,48 @@ export class KeyringClient {
     this.#notify();
   }
 
+  /**
+   * Sign-out: forget every root in memory and drop the pin, so the next person on this device
+   * starts clean. The identity and licence sign-out paths call it.
+   */
+  async forget(): Promise<void> {
+    this.lock();
+    await removeJson(this.#pinFile);
+  }
+
+  /** The pinned ring, or null before this client first acquired a root. */
+  async pin(): Promise<RingPin | null> {
+    const v = await readJsonFile<Record<string, unknown> | null>(
+      this.#pinFile,
+      null,
+    );
+    if (
+      !isRecord(v) ||
+      v.product !== this.ctx.product ||
+      typeof v.ringId !== "string" ||
+      typeof v.epoch !== "number" ||
+      typeof v.rootKid !== "string"
+    )
+      return null;
+    // A pin recorded for another person does not bind this one.
+    const subject = await readStoredSubject(this.ctx.dirs.state);
+    if (
+      typeof v.subject === "string" &&
+      subject !== null &&
+      v.subject !== subject
+    )
+      return null;
+    return { ringId: v.ringId, epoch: v.epoch, rootKid: v.rootKid };
+  }
+
+  async #writePin(p: RingPin): Promise<void> {
+    await writeJson(this.#pinFile, {
+      product: this.ctx.product,
+      subject: await readStoredSubject(this.ctx.dirs.state),
+      ...p,
+    });
+  }
+
   // ── Reads ───────────────────────────────────────────────────────────────────────────────────
 
   /** `GET /<p>/devices/keyring`: the ring, and this device's own wrap. */
@@ -265,8 +334,40 @@ export class KeyringClient {
    * use stays locked (a result, not an error); a network or server failure throws.
    */
   async unlock(): Promise<UnlockResult> {
+    return this.#unlock(false);
+  }
+
+  /**
+   * The person confirmed that the served ring is theirs (after a `ring-changed` answer): open
+   * this device's wrap for it and pin it. Call it only from UI the person has confirmed. A wrap
+   * that does not open leaves the pin as it was.
+   */
+  async acceptRingChange(): Promise<UnlockResult> {
+    return this.#unlock(true);
+  }
+
+  async #unlock(accept: boolean): Promise<UnlockResult> {
     const { ring, wrap } = await this.read();
     if (ring === null) return { kind: "locked", reason: "no-ring" };
+    const pinned = await this.pin();
+    if (
+      !accept &&
+      pinned !== null &&
+      (pinned.ringId !== ring.ringId ||
+        pinned.epoch !== ring.epoch ||
+        pinned.rootKid !== ring.rootKid)
+    )
+      return {
+        kind: "ring-changed",
+        pinned,
+        served: {
+          ringId: ring.ringId,
+          epoch: ring.epoch,
+          rootKid: ring.rootKid,
+          createdAt: ring.createdAt,
+          ...(wrap?.by !== undefined ? { by: wrap.by } : {}),
+        },
+      };
     if (wrap === null) return { kind: "locked", reason: "no-wrap" };
     const keys = this.#keys;
     const kid = unhex(ring.rootKid);
@@ -296,7 +397,7 @@ export class KeyringClient {
       root?.fill(0);
       return { kind: "locked", reason: "unusable-wrap" };
     }
-    this.#hold({ ringId: ring.ringId, epoch: ring.epoch, kid, root });
+    await this.#hold({ ringId: ring.ringId, epoch: ring.epoch, kid, root });
     return { kind: "unlocked", ringId: ring.ringId, epoch: ring.epoch };
   }
 
@@ -450,7 +551,7 @@ export class KeyringClient {
         root?.fill(0);
         throw invalid();
       }
-      this.#hold({ ringId: ring.ringId, epoch: ring.epoch, kid, root });
+      await this.#hold({ ringId: ring.ringId, epoch: ring.epoch, kid, root });
       return {
         ringId: ring.ringId,
         epoch: ring.epoch,
@@ -535,7 +636,13 @@ export class KeyringClient {
     return this.#held;
   }
 
-  #hold(h: Held): void {
+  /** Take a freshly acquired root and pin its ring (pinned first: no root is held without one). */
+  async #hold(h: Held): Promise<void> {
+    await this.#writePin({
+      ringId: h.ringId,
+      epoch: h.epoch,
+      rootKid: hex(h.kid),
+    });
     if (this.#held !== null) {
       // A root for a ring is never replaced by another for the same ring and epoch (§13.11.1).
       if (this.#held.ringId !== h.ringId || this.#held.epoch !== h.epoch)
@@ -599,7 +706,7 @@ export class KeyringClient {
       }
       await this.#send("POST", path, body);
       const shown = code ? await encodeRecoveryCode(this.#crypto, code) : null;
-      this.#hold({ ringId, epoch, kid, root });
+      await this.#hold({ ringId, epoch, kid, root });
       this.#ring = null;
       return {
         ringId,

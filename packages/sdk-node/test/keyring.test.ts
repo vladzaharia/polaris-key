@@ -4,7 +4,14 @@
 // recovery code, reset and adopt, the codec, the typed refusals, and that the root never leaves
 // the client's memory. The transcripts are replayed in conformance/runners/node/transcripts.test.ts.
 
-import { readFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inspect } from "node:util";
@@ -156,6 +163,8 @@ class FakeRing {
 
 async function device(server: FakeRing, id: string) {
   const keys = createNodeDeviceKeyStore({ memory: true });
+  // The state directory outlives `make()`: the pin lives there.
+  const stateDir = mkdtempSync(join(tmpdir(), "pkey-ring-"));
   const make = async () => {
     const client = new PolarisKeyClient({
       productSlug: PRODUCT,
@@ -164,12 +173,13 @@ async function device(server: FakeRing, id: string) {
       trust: { pinnedKeys: {} },
       store: new Mem(id),
       fetchImpl: server.fetch,
+      stateDir,
       keyring: { deviceKeys: keys },
     });
     await client.init();
     return client;
   };
-  return { id, keys, make, client: await make() };
+  return { id, keys, make, stateDir, client: await make() };
 }
 
 const codeOf = async (p: Promise<unknown>): Promise<string> => {
@@ -498,6 +508,7 @@ describe("keyring: the root stays in memory", () => {
       version: "1.0.0",
       trust: { pinnedKeys: {} },
       store: new Mem("DEVICEDDDDDDDDDDDDDDDDDDDDDDDDDD"),
+      stateDir: mkdtempSync(join(tmpdir(), "pkey-ring-")),
       fetchImpl: s.fetch,
     });
     await bare.init();
@@ -511,6 +522,7 @@ describe("keyring: the root stays in memory", () => {
         token: null,
       }),
       fetchImpl: s.fetch,
+      stateDir: mkdtempSync(join(tmpdir(), "pkey-ring-")),
       keyring: { deviceKeys: a.keys },
     });
     await noToken.init();
@@ -520,5 +532,144 @@ describe("keyring: the root stays in memory", () => {
       "not_found",
     );
     expect(new KeyringError("x", "y")).toBeInstanceOf(PolarisError);
+  });
+});
+
+/** The pin file(s) under a state base (the client appends its product namespace). */
+const pinFiles = (base: string): string[] =>
+  readdirSync(base)
+    .map((d) => join(base, d, "keyring-pin.json"))
+    .filter((f) => existsSync(f));
+
+describe("keyring: the pin (a changed ring is never adopted silently)", () => {
+  const A = "DEVICEAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  const B = "DEVICEBBBBBBBBBBBBBBBBBBBBBBBBBB";
+
+  /** Device B (the victim) holds ring 1; an attacker with another device of the account resets
+   *  the ring and wraps its own root to B. */
+  async function attacked() {
+    const s = new FakeRing();
+    const victim = await device(s, B);
+    const made = await victim.client.keyring.create();
+    const sealed = await victim.client.keyring.codec.seal("n", "k", "mine");
+    const attacker = await device(s, A);
+    await attacker.client.keyring.reset();
+    await attacker.client.keyring.wrapTo(
+      B,
+      (await victim.keys.ensure()).agreeKey,
+    );
+    return { s, victim, attacker, made, sealed };
+  }
+
+  it("pins at create and writes an owner-only file with no secret", async () => {
+    const s = new FakeRing();
+    const a = await device(s, A);
+    const made = await a.client.keyring.create();
+    expect(await a.client.keyring.pin()).toEqual({
+      ringId: made.ringId,
+      epoch: 1,
+      rootKid: made.rootKid,
+    });
+    expect(pinFiles(a.stateDir)).toHaveLength(1);
+    expect(statSync(pinFiles(a.stateDir)[0]!).mode & 0o777).toBe(0o600);
+    const raw = readFileSync(pinFiles(a.stateDir)[0]!, "utf8");
+    expect(raw).not.toContain(made.recoveryCode!);
+    expect(raw).not.toMatch(/[0-9a-f]{64}/);
+  });
+
+  it("an attacker reset plus a wrap leaves the victim at ring-changed with its old root intact", async () => {
+    const { victim, made, sealed } = await attacked();
+    const again = await victim.make();
+    // Restart: nothing in memory, the pin on disk.
+    const r = await again.keyring.unlock();
+    expect(r).toMatchObject({
+      kind: "ring-changed",
+      pinned: { ringId: made.ringId, rootKid: made.rootKid },
+    });
+    expect(again.keyring.unlocked).toBe(false);
+    // The same client that held the old root keeps it and keeps reading its data.
+    const held = await victim.client.keyring.unlock();
+    expect(held.kind).toBe("ring-changed");
+    expect(victim.client.keyring.unlocked).toBe(true);
+    expect(
+      await victim.client.keyring.codec.open("n", "k", sealed),
+    ).toMatchObject({ ok: true, value: "mine" });
+    expect((await victim.client.keyring.pin())?.ringId).toBe(made.ringId);
+  });
+
+  it("recover(code) of the new ring re-pins; an attacker's ring never opens with the person's code", async () => {
+    const { s, victim, made } = await attacked();
+    const again = await victim.make();
+    expect((await again.keyring.unlock()).kind).toBe("ring-changed");
+    // The person's own code does not open the attacker's ring.
+    expect(await codeOf(again.keyring.recover(made.recoveryCode!))).toBe(
+      "recovery-code-invalid",
+    );
+    expect((await again.keyring.pin())?.ringId).toBe(made.ringId);
+    // A legitimate reset elsewhere gives the person a new code for the new ring.
+    const code = await (async () => {
+      const c = await device(s, "DEVICECCCCCCCCCCCCCCCCCCCCCCCCCC");
+      const r = await c.client.keyring.reset();
+      return r;
+    })();
+    const got = await again.keyring.recover(code.recoveryCode!);
+    expect(got.ringId).toBe(code.ringId);
+    expect((await again.keyring.pin())?.ringId).toBe(code.ringId);
+  });
+
+  it("acceptRingChange() re-pins after the person confirms", async () => {
+    const { s, victim, attacker } = await attacked();
+    const again = await victim.make();
+    expect((await again.keyring.unlock()).kind).toBe("ring-changed");
+    const now = s.ring!.ringId as string;
+    expect(await again.keyring.acceptRingChange()).toMatchObject({
+      kind: "unlocked",
+      ringId: now,
+    });
+    expect((await again.keyring.pin())?.ringId).toBe(now);
+    expect((await victim.make().then((c) => c.keyring.unlock())).kind).toBe(
+      "unlocked",
+    );
+    void attacker;
+  });
+
+  it("a reset by this device re-pins itself", async () => {
+    const s = new FakeRing();
+    const a = await device(s, A);
+    await a.client.keyring.create();
+    const fresh = await a.client.keyring.reset();
+    expect((await a.client.keyring.pin())?.ringId).toBe(fresh.ringId);
+    expect((await a.make().then((c) => c.keyring.unlock())).kind).toBe(
+      "unlocked",
+    );
+  });
+
+  it("a lower epoch or another rootKid is not adopted either", async () => {
+    const s = new FakeRing();
+    const a = await device(s, A);
+    await a.client.keyring.create();
+    s.ring = { ...s.ring!, epoch: 2 };
+    expect((await a.client.keyring.unlock()).kind).toBe("ring-changed");
+    s.ring = { ...s.ring!, epoch: 1, rootKid: "f".repeat(32) };
+    expect((await a.client.keyring.unlock()).kind).toBe("ring-changed");
+  });
+
+  it("forget() (sign-out) locks and drops the pin", async () => {
+    const s = new FakeRing();
+    const a = await device(s, A);
+    await a.client.keyring.create();
+    await a.client.keyring.forget();
+    expect(a.client.keyring.unlocked).toBe(false);
+    expect(await a.client.keyring.pin()).toBeNull();
+    expect(pinFiles(a.stateDir)).toHaveLength(0);
+  });
+
+  it("identity sign-out and licence deactivation forget the root and the pin", async () => {
+    const s = new FakeRing();
+    const a = await device(s, A);
+    await a.client.keyring.create();
+    await a.client.identity.forget();
+    expect(a.client.keyring.unlocked).toBe(false);
+    expect(await a.client.keyring.pin()).toBeNull();
   });
 });

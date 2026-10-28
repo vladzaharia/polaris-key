@@ -86,6 +86,7 @@ export {
   type KeyringState,
   type KeyringWrapInfo,
   type RecoveryBlob,
+  type RingPin,
   type RootListener,
   type SyncCodec,
   type UnlockResult,
