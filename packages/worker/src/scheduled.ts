@@ -46,6 +46,7 @@
 
 import { purgeAccountTokens } from "./core/accounts/personalTokens.js";
 import { purgeExpiredInvites } from "./core/rbac/bindings.js";
+import { purgeExpiredPrevious } from "./core/keyring/store.js";
 import { purgeRegistryTokens } from "./core/registry/registryTokens.js";
 import { pruneCiCredentials } from "./core/publisher.js";
 import { loadProductPublic } from "./core/products.js";
@@ -546,6 +547,8 @@ export async function runScheduledMaintenance(
   await step(report, "accountTokens", () => purgeAccountTokens(db, now));
   // ST-31.7: console invites that expired more than 7 days ago.
   await step(report, "consoleInvites", () => purgeExpiredInvites(db, now));
+  // U-36.3: the key rings a reset replaced more than 30 days ago lose their wraps and marker.
+  await step(report, "keyringPrevious", () => purgeExpiredPrevious(db, now));
 
   // The services' early nightly work (`contributes.maintenance.early`): Identity's erasure
   // ledger replay, its due account deletions and its erasure retries.

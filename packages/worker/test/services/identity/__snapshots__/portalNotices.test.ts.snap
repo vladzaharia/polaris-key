@@ -145,6 +145,25 @@ About this email: https://key.plrs.im/docs/help/emails/#download-link",
 }
 `;
 
+exports[`notice templates: copy > encryptionReset: subject and plain text 1`] = `
+{
+  "subject": "Mossgarden encryption was reset",
+  "text": "Mossgarden encryption was reset
+
+A device reset the encryption for your Mossgarden data on 15 Jan 2027, 08:00 UTC. There is a new key and a new recovery code.
+
+A device that still has the old key can move your data over for 30 days. After that it can't be recovered.
+
+No one will ask you for your recovery code.
+
+See your devices: https://key.plrs.im/#/p/mossgarden/devices
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.",
+}
+`;
+
 exports[`notice templates: copy > full HTML of a plain notice and a security notice 1`] = `
 "<!doctype html>
 <html lang="en">
@@ -446,5 +465,39 @@ You are receiving this because a developer issued a license to this email addres
 What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
 
 About this email: https://key.plrs.im/docs/help/emails/#license-reassigned-away",
+}
+`;
+
+exports[`notice templates: copy > recoveryCodeChanged: subject and plain text 1`] = `
+{
+  "subject": "Your Mossgarden recovery code changed",
+  "text": "Your Mossgarden recovery code changed
+
+Studio PC made a new recovery code for your Mossgarden data on 15 Jan 2027, 08:00 UTC. The old code no longer works.
+
+No one will ask you for your recovery code.
+
+See your devices: https://key.plrs.im/#/p/mossgarden/devices
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.",
+}
+`;
+
+exports[`notice templates: copy > recoveryStarted: subject and plain text 1`] = `
+{
+  "subject": "Recovery started on Studio PC",
+  "text": "Recovery started on Studio PC
+
+Studio PC started recovering your Mossgarden data on 15 Jan 2027, 08:00 UTC. Enter your recovery code in Mossgarden only.
+
+No one will ask you for your recovery code.
+
+See your devices: https://key.plrs.im/#/p/mossgarden/devices
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.",
 }
 `;

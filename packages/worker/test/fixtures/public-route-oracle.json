@@ -33480,104 +33480,97 @@
     "body": "90:0319efce076b2a2c"
   },
   "core GET /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 401,
     "headers": {
       "content-type": "application/json",
       "cache-control": "no-store",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "33:1ea0ca13adaba228"
   },
   "core HEAD /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store",
+      "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "18:e3933184560739b7"
   },
   "core POST /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store",
+      "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "18:e3933184560739b7"
   },
   "core POST+body /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store",
+      "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "18:e3933184560739b7"
   },
   "core PUT /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 401,
     "headers": {
       "content-type": "application/json",
       "cache-control": "no-store",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "33:1ea0ca13adaba228"
   },
   "core PUT+body /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 401,
     "headers": {
       "content-type": "application/json",
       "cache-control": "no-store",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "33:1ea0ca13adaba228"
   },
   "core PATCH /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store",
+      "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "18:e3933184560739b7"
   },
   "core PATCH+body /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store",
+      "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "18:e3933184560739b7"
   },
   "core DELETE /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store",
+      "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "18:e3933184560739b7"
   },
   "core DELETE+body /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store",
+      "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "18:e3933184560739b7"
   },
   "core OPTIONS /djdl/devices/keyring/recovery": {
     "status": 204,
@@ -44389,17 +44382,17 @@
     "body": "90:0319efce076b2a2c"
   },
   "cors GET /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 401,
     "headers": {
       "content-type": "application/json",
       "cache-control": "no-store",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "33:1ea0ca13adaba228"
   },
   "cors GET+origin /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 401,
     "headers": {
       "content-type": "application/json",
       "cache-control": "no-store",
@@ -44408,7 +44401,7 @@
       "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "33:1ea0ca13adaba228"
   },
   "cors OPTIONS+origin+preflight /djdl/devices/keyring/recovery": {
     "status": 204,
@@ -44423,14 +44416,14 @@
     "body": "0:e3b0c44298fc1c14"
   },
   "cors GET+other /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 401,
     "headers": {
       "content-type": "application/json",
       "cache-control": "no-store",
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "33:1ea0ca13adaba228"
   },
   "cors OPTIONS+other+preflight /djdl/devices/keyring/recovery": {
     "status": 204,
@@ -44449,16 +44442,15 @@
     "body": "0:e3b0c44298fc1c14"
   },
   "cors POST+body+origin /djdl/devices/keyring/recovery": {
-    "status": 404,
+    "status": 405,
     "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store",
+      "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
       "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
-    "body": "21:d2dfdc9511fbeaa0"
+    "body": "18:e3933184560739b7"
   },
   "cors GET /djdl/devices/dev1": {
     "status": 401,
