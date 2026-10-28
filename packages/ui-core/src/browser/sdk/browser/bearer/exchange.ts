@@ -55,7 +55,15 @@ export interface ExchangeOptions {
   licenseChoice?: "app" | "card";
   /** The device label (§12.7.1). */
   deviceName?: string;
+  /**
+   * Asked just before a token is stored. False abandons the attempt: nothing is stored and the
+   * exchange rejects with `ExchangeAborted` (a sign-out happened while it ran).
+   */
+  mayStore?(): boolean | Promise<boolean>;
 }
+
+/** The rejection of an exchange `mayStore` refused; matched by `name`, so no class is shared. */
+export const EXCHANGE_ABORTED = "ExchangeAborted";
 
 /** Why an exchange cannot run here. */
 export type ExchangeUnavailableReason =
