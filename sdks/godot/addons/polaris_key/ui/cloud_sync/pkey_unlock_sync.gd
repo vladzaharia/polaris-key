@@ -14,6 +14,9 @@ extends PKeyUiView
 ## first, Cancel last with the first focus, and Start over arms about half a second after the warning
 ## appears so a double press cannot run it).
 ##
+## The host's contract: after `unlocked` or `started_over` the screen stays on `working` (nothing to
+## press, no empty form) until the host closes it or replaces it with `PKeyRecoveryCode`.
+##
 ## The recovery code is entered only in the app (T23): it is never logged, and the field is cleared
 ## when it is accepted. Cancel on the warning returns to the code step with what was typed kept.
 ## Hidden when the Sync service is off (`sync_on`).
@@ -53,6 +56,7 @@ var _body: VBoxContainer
 var _title: Label
 var _lede: Label
 var _warning: Label
+var _warning_glyph: TextureRect
 var _field_block: VBoxContainer
 var _field_label: Label
 var _field_row: BoxContainer
@@ -92,7 +96,9 @@ func _build() -> void:
 	right.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var words := vbox(left, "Words", "PKeyTight")
 	_lede = label(words, "Lede", "PKeyMuted")
-	_warning = label(words, "Warning")
+	var warn := glyph_label(words, "Warning", "warning")
+	_warning = warn["label"]
+	_warning_glyph = warn["glyph"]
 	_status = label(words, "Status", "PKeyMuted")
 	loading_bar(left)
 	_field_block = vbox(right, "Field", "PKeyTight")
@@ -121,8 +127,9 @@ func _build() -> void:
 	_paste.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_error = label(_field_block, "Error", "PKeyError")
 	_no_ask = label(left, "NoAsk", "PKeyMuted")
-	_actions = actions_row(body, "Actions", BoxContainer.ALIGNMENT_BEGIN)
-	_confirm = button(_actions, "ConfirmStartOver", _on_confirm, "PKeyPrimary")
+	# The actions sit under the field they act on, in the same column.
+	_actions = actions_row(right, "Actions", BoxContainer.ALIGNMENT_BEGIN)
+	_confirm = button(_actions, "ConfirmStartOver", _on_confirm, "PKeyDanger")
 	_primary = button(_actions, "Primary", _on_primary, "PKeyPrimary")
 	_start_over = button(_actions, "StartOver", _on_start_over, "PKeyLink")
 	_cancel_button = button(_actions, "Cancel", _on_cancel)
@@ -155,6 +162,7 @@ func _arrange(m: Dictionary) -> void:
 	super(m)
 	_fit_field_row()
 	_style_destructive(_confirm)
+	size_glyph(_warning_glyph, 20.0, get_theme_color("font_color", "PKeyError" if step == "failed" or step == "start-over-failed" else "PKeyMuted"))
 	# Short on room, the product header gives way before the card scrolls.
 	_product.visible = squeeze_level() < 1
 	# Short on room, the gaps between the parts close before the card scrolls.
@@ -198,7 +206,11 @@ func _render() -> void:
 	cat_text(_lede, "unlockSync.lede" if in_code else ("unlockSync.noCode" if state == "no-code" else ""), args)
 	var warn_key := {"start-over": "unlockSync.startOverWarning", "failed": "unlockSync.failed", "start-over-failed": "unlockSync.startOverFailed"}.get(state, "") as String
 	cat_text(_warning, warn_key, args)
-	_warning.theme_type_variation = &"PKeyError" if state == "failed" or state == "start-over-failed" else &""
+	var failing := state == "failed" or state == "start-over-failed"
+	_warning.theme_type_variation = &"PKeyError" if failing else &""
+	# A failure never rides on colour and words alone.
+	_warning_glyph.visible = _warning.visible and failing
+	_warning_glyph.set_meta(&"pkey_glyph", "warning")
 	cat_text(_status, "common.working" if state == "working" else "", args)
 	_field_block.visible = in_code
 	cat_text(_field_label, "unlockSync.field" if in_code else "", args)
@@ -324,7 +336,8 @@ func _on_unlock() -> void:
 		return
 	var text := _field.text.strip_edges()
 	if text == "":
-		step = "invalid"
+		# Nothing was checked: no error, the field takes the focus.
+		_field.grab_focus()
 		return
 	if host_handles:
 		unlock_requested.emit(text)
@@ -335,8 +348,8 @@ func _on_unlock() -> void:
 		return
 	var next := PKeyCloudSyncController.unlock_step(r)
 	if next == "":
+		# Stays on `working` until the host closes or replaces the screen: no empty form flashes.
 		clear_code()
-		step = "code"
 		unlocked.emit()
 		return
 	step = next
@@ -368,7 +381,7 @@ func _start_reset() -> void:
 		return
 	var code := String(r.detail.get("recovery_code", ""))
 	clear_code()
-	step = "code"
+	# Stays on `working` until the host shows the new code (or closes the screen).
 	started_over.emit(code)
 
 
@@ -376,6 +389,14 @@ func _start_reset() -> void:
 ## look (the Polaris Key look's danger and dangerOn tokens; a game's own look gets its error red
 ## and whichever of white or ink reads better on it).
 func _style_destructive(b: Button) -> void:
+	# The kit's themes carry PKeyDanger (shape, padding and ink follow the primary in every look);
+	# a game's own theme without it gets the same fill from here.
+	if b.has_theme_stylebox(&"normal", &"PKeyDanger"):
+		for item in ["normal", "hover", "pressed"]:
+			b.remove_theme_stylebox_override(item)
+		for item in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			b.remove_theme_color_override(item)
+		return
 	var fill: Color
 	var on: Color
 	if PKeyUiTheme.branded():

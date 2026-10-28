@@ -117,6 +117,7 @@ const VARIATIONS := {
 	"PKeyError": "Label",
 	"PKeyBadge": "Label",
 	"PKeyPrimary": "Button",
+	"PKeyDanger": "Button",
 	"PKeyWarning": "Label",
 	"PKeyAvatar": "PanelContainer",
 	"PKeyActionRow": "BoxContainer",
@@ -816,6 +817,9 @@ static func neutral_with(base_size: int, text: Color, bold: Font, panel: StyleBo
 	# The one primary action: the ink style on the game's button shape (the game's hairline-free
 	# normal box widened like the rest).
 	_ink_primary(t, text, ground, t.get_stylebox("normal", "Button"))
+	# The destructive action (Start over): the primary's shape in the error red.
+	var ink := Color("#060912")
+	_danger(t, danger, ink if _contrast(danger, ink) >= _contrast(danger, Color.WHITE) else Color.WHITE)
 	# A quiet link (the tertiary action): the text colour, underlined by its ring when focused.
 	var none := StyleBoxEmpty.new()
 	none.content_margin_left = 8
@@ -929,6 +933,26 @@ static func _ink_primary(t: Theme, text: Color, ground: Color, button: StyleBox)
 		t.set_stylebox(pair[0], "PKeyPrimary", b)
 	for c in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
 		t.set_color(c, "PKeyPrimary", ground)
+
+
+## The destructive action: `PKeyDanger` takes the primary's shape, padding and font (so it holds in
+## every look and at every scale) in `fill`, labelled in `on`.
+## `edge` (the brand look: tokens only) keeps the fill and marks hover and press with that border.
+static func _danger(t: Theme, fill: Color, on: Color, edge: Variant = null) -> void:
+	for pair in [["normal", 0.0], ["hover", 0.12], ["pressed", 0.22]]:
+		var src: StyleBox = t.get_stylebox(pair[0], "PKeyPrimary") if t.has_stylebox(pair[0], "PKeyPrimary") else t.get_stylebox("normal", "Button")
+		var b: StyleBoxFlat = src.duplicate() as StyleBoxFlat if src is StyleBoxFlat else StyleBoxFlat.new()
+		var shade := fill if edge != null else (fill.lightened(float(pair[1])) if on.get_luminance() < 0.5 else fill.darkened(float(pair[1])))
+		b.draw_center = true
+		b.bg_color = shade
+		b.border_color = edge if edge != null and pair[1] > 0.0 else shade
+		if edge != null and pair[1] > 0.0:
+			b.set_border_width_all(2)
+		t.set_stylebox(pair[0], "PKeyDanger", b)
+	for c in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
+		t.set_color(c, "PKeyDanger", on)
+	if t.has_font("font", "PKeyPrimary"):
+		t.set_font("font", "PKeyDanger", t.get_font("font", "PKeyPrimary"))
 
 
 ## The committed neutral theme: built over the engine's default theme, without a derived bold
@@ -1084,6 +1108,7 @@ static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font, m
 		t.set_color(c, "PKeyPrimary", p.on_accent)
 	if medium != null or bold != null:
 		t.set_font("font", "PKeyPrimary", medium if medium != null else bold)
+	_danger(t, p.danger, p.danger_on, p.danger_border)
 	for type in ["LineEdit", "TextEdit"]:
 		t.set_stylebox("normal", type, _box(p.sunken, p.border_strong, 1, RADIUS_CONTROL, 0))
 		t.set_stylebox("read_only", type, _box(p.raised, p.border, 1, RADIUS_CONTROL, 0))
@@ -1182,7 +1207,7 @@ static func palette(dark: bool) -> Dictionary:
 			"strong": PKeyBrand.Dark.TEXT_STRONG, "text": PKeyBrand.Dark.TEXT_DEFAULT,
 			"muted": PKeyBrand.Dark.TEXT_MUTED, "subtle": PKeyBrand.Dark.TEXT_SUBTLE,
 			"border": PKeyBrand.Dark.BORDER_SUBTLE, "border_strong": PKeyBrand.Dark.BORDER_STRONG,
-			"focus": PKeyBrand.Dark.FOCUS, "danger": PKeyBrand.Dark.DANGER,
+			"focus": PKeyBrand.Dark.FOCUS, "danger": PKeyBrand.Dark.DANGER, "danger_on": PKeyBrand.Dark.DANGER_ON, "danger_border": PKeyBrand.Dark.DANGER_BORDER,
 		}
 	return {
 		"page": PKeyBrand.Light.SURFACE_PAGE, "raised": PKeyBrand.Light.SURFACE_RAISED,
@@ -1190,7 +1215,7 @@ static func palette(dark: bool) -> Dictionary:
 		"strong": PKeyBrand.Light.TEXT_STRONG, "text": PKeyBrand.Light.TEXT_DEFAULT,
 		"muted": PKeyBrand.Light.TEXT_MUTED, "subtle": PKeyBrand.Light.TEXT_SUBTLE,
 		"border": PKeyBrand.Light.BORDER_SUBTLE, "border_strong": PKeyBrand.Light.BORDER_STRONG,
-		"focus": PKeyBrand.Light.FOCUS, "danger": PKeyBrand.Light.DANGER,
+		"focus": PKeyBrand.Light.FOCUS, "danger": PKeyBrand.Light.DANGER, "danger_on": PKeyBrand.Light.DANGER_ON, "danger_border": PKeyBrand.Light.DANGER_BORDER,
 	}
 
 
@@ -1262,7 +1287,7 @@ static func _apply_layout(t: Theme, unit: float, density: String, brand: bool) -
 		_pad(t, "panel", "PanelContainer", page, page)
 		var side := roundf(roles["control_padding"] * unit)
 		var v := roundf(roles["tight_gap"] * unit)
-		for type in ["Button", "OptionButton", "PKeyPrimary"]:
+		for type in ["Button", "OptionButton", "PKeyPrimary", "PKeyDanger"]:
 			for item in ["normal", "hover", "pressed", "disabled"]:
 				_pad(t, item, type, side, v)
 		for item in ["normal", "hover", "pressed", "hover_pressed"]:

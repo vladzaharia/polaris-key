@@ -58,6 +58,8 @@ var _title: Label
 var _body_text: Label
 var _warning: Label
 var _error: Label
+var _warning_glyph: TextureRect
+var _error_glyph: TextureRect
 var _actions: BoxContainer
 var _use_code: Button
 var _accept: Button
@@ -80,8 +82,12 @@ func _build() -> void:
 	right.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var words := vbox(left, "Words", "PKeyTight")
 	_body_text = label(words, "BodyText", "PKeyMuted")
-	_warning = label(words, "Warning", "PKeyMuted")
-	_error = label(words, "Error", "PKeyError")
+	var warn := glyph_label(words, "Warning", "warning", "PKeyMuted")
+	_warning = warn["label"]
+	_warning_glyph = warn["glyph"]
+	var err := glyph_label(words, "Error", "warning", "PKeyError")
+	_error = err["label"]
+	_error_glyph = err["glyph"]
 	loading_bar(right)
 	_actions = actions_row(right, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_use_code = button(_actions, "UseCode", _on_use_code, "PKeyPrimary")
@@ -120,6 +126,8 @@ func _arrange(m: Dictionary) -> void:
 	_cols.get_child(0).size_flags_stretch_ratio = 1.3 if two else 1.0
 	super(m)
 	_product.visible = squeeze_level() < 1
+	size_glyph(_warning_glyph, 20.0, get_theme_color("font_color", "PKeyWarning"))
+	size_glyph(_error_glyph, 20.0, get_theme_color("font_color", "PKeyError"))
 	# Short on room, the gaps between the parts close before the card scrolls.
 	_body.theme_type_variation = &"PKeyTight" if squeeze_level() >= 2 else &"PKeyStack"
 
@@ -143,16 +151,18 @@ func _render() -> void:
 	var args := {"device": PKeyUiTheme.isolate(by.strip_edges())}
 	var copy: Array = model.get("copy", [])
 	cat_text(_title, "ringChange.title" if visible else "")
-	# The line naming the device is the one secondary line: it goes (squeeze step 3) before the
-	# card scrolls, and the warning and the actions stay.
+	# The line naming the device is what the person decides on: it never goes. Short on room the
+	# product header gives way, then the gaps, then the card scrolls.
 	var body_key := "ringChange.body" if copy.has("ringChange.body") else ("ringChange.bodyUnknown" if visible else "")
-	cat_text(_body_text, body_key if squeeze_level() < 3 else "", args)
+	cat_text(_body_text, body_key, args)
 	var warning_key := "ringChange.warning" if copy.has("ringChange.warning") else ("ringChange.warningNoServed" if visible else "")
 	# After a failed accept the failure line already names both ways on (try again, or the recovery
 	# code), so the tightest arrangement leaves the warning out rather than scroll the actions away.
 	cat_text(_warning, "" if state == "failed" and squeeze_level() >= squeeze_max() else warning_key)
 	cat_text(_error, "ringChange.failed" if state == "failed" else "")
 	fx_error("ringChange.failed" if state == "failed" else "")
+	_warning_glyph.visible = _warning.visible
+	_error_glyph.visible = _error.visible
 	cat_text(_use_code, "ringChange.useCode" if visible else "")
 	cat_text(_accept, "ringChange.accept" if copy.has("ringChange.accept") else "")
 	cat_text(_cancel_button, "common.cancel" if visible else "")
@@ -215,6 +225,15 @@ func _on_accept() -> void:
 	if not is_instance_valid(self):
 		return
 	busy = false
+	if r.ok and r.detail is Dictionary and r.detail.get("kind") == "ring-changed":
+		# The ring moved again while the person was deciding: show the new ring and its device and
+		# ask again, never the old one.
+		var now: Dictionary = r.detail
+		by = String(now["by"]) if now.get("by") is String else ""
+		served = now["served"] if now.get("served") is Dictionary else {}
+		failed = false
+		ensure_focus(true)
+		return
 	if r.ok:
 		accepted.emit()
 		return

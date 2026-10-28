@@ -42,14 +42,15 @@ static func start_over(sdk: Object) -> PKeyResult:
 	return await ring.reset(true)
 
 
-## ok only when the ring now opened (`kind: "unlocked"`); a ring the Worker changed again answers
-## `ring-changed` and is a failure here, so the screen says so and keeps Accept.
+## ok with `kind: "unlocked"` when the ring now opened, or with `kind: "ring-changed"` (and the new
+## `served` and `by`) when the Worker changed the ring again: the screen then shows the new ring and
+## asks again. Anything else is a failure.
 static func accept(sdk: Object, served: Dictionary) -> PKeyResult:
 	var ring := _ring(sdk)
 	if ring == null:
 		return _missing()
 	var r: PKeyResult = await ring.accept_ring_change(served)
-	if r.ok and not (r.detail is Dictionary and r.detail.get("kind") == "unlocked"):
+	if r.ok and not (r.detail is Dictionary and (r.detail.get("kind") == "unlocked" or r.detail.get("kind") == "ring-changed")):
 		return PKeyResult.failure(StringName(PKeyConstants.ErrorCode.BAD_RESPONSE), "The key ring is not the one that was shown.")
 	return r
 

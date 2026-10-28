@@ -113,14 +113,16 @@ func _notification(what: int) -> void:
 				(l as Label).text = ""
 
 
+## Ticking the box changes the state, not the screen: the focus stays where the person put it.
 func _screen_key() -> String:
-	return "%s|%s" % [model.get("state", ""), sync_on]
+	return "%s|%s" % [code != "", sync_on]
 
 
 func _render() -> void:
 	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("RecoveryCode", PKeyRecoveryCode.input(saved, sync_on))
 	var state: String = model.get("state", "hidden")
-	visible = state != "hidden"
+	# Nothing to save without a code: the screen stays hidden until the host hands one over.
+	visible = state != "hidden" and code != ""
 	_product.refresh()
 	cat_text(_title, "recoveryCode.title" if visible else "")
 	cat_text(_lede, "recoveryCode.lede" if visible else "")
@@ -164,6 +166,7 @@ func _fill_groups() -> void:
 		l.autowrap_mode = TextServer.AUTOWRAP_OFF
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		_groups.append(l)
+
 	for i in groups.size():
 		(_groups[i] as Label).text = groups[i]
 	_grid.visible = not groups.is_empty()
@@ -194,6 +197,14 @@ func _apply_width(width: float) -> void:
 func _fit_columns() -> void:
 	if _groups.is_empty():
 		return
+	# The code is the screen's hero: the title's size in the mono face, stepping down to the body size
+	# when the room runs short (the gaps close first, then this, before the card scrolls).
+	var hero := get_theme_font_size("font_size", "PKeyTitle")
+	for l in _groups:
+		if squeeze_level() >= 2:
+			(l as Label).remove_theme_font_size_override("font_size")
+		else:
+			(l as Label).add_theme_font_size_override("font_size", hero)
 	var first := _groups[0] as Label
 	var widest := 0.0
 	for l in _groups:
@@ -244,11 +255,29 @@ func _on_copy() -> void:
 
 func _on_toggled(on: bool) -> void:
 	saved = on
+	if on and is_focusable(_done):
+		# Done is the next step: focus it and bring it into view (it can sit below the fold).
+		_done.grab_focus()
+		_scroll_to_done.call_deferred()
+
+
+func _scroll_to_done() -> void:
+	if not is_instance_valid(_done) or not _done.is_inside_tree():
+		return
+	var n := _done.get_parent()
+	while n != null and n != get_parent():
+		if n is ScrollContainer:
+			(n as ScrollContainer).ensure_control_visible(_done)
+		n = n.get_parent()
 
 
 func _on_done() -> void:
 	if not saved:
 		return
+	# The clipboard keeps what it was given until it is replaced: take the code back off it, if it
+	# is still there (the engine cannot mark it concealed or give it an expiry).
+	if code != "" and PKeyCloudSyncController.clipboard_get() == PKeyCloudSyncController.hyphenated(code):
+		PKeyCloudSyncController.clipboard_set("")
 	_wipe()
 	done.emit()
 

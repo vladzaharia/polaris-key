@@ -72,7 +72,8 @@ func _build() -> void:
 	_glyph = glyph_node(row, "Glyph", "info")
 	_text = label(row, "Status", "PKeyMuted")
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_action = button(_card, "Action", _on_action, "PKeyPrimary")
+	# A quiet action: the state is what the strip says, the button only a way on.
+	_action = button(_card, "Action", _on_action, "PKeyLink")
 
 
 func _ready() -> void:

@@ -94,6 +94,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _kit_strip(t)
 	await _kit_account(t)
 	await _destructive(t)
+	await _ux_round(t)
 	PKeyUiTheme.reset()
 	PKeyCloudSyncController.memory_clipboard = false
 	root.size = size_before
@@ -161,7 +162,9 @@ func _controller_calls(t: PKeyTestContext) -> void:
 	t.check("controller: recover passes the typed text through", (await PKeyCloudSyncController.recover(sdk, "abc")).ok and ring.calls[0] == ["recover", ["abc"]])
 	ring.queue("accept_ring_change", PKeyResult.success({"kind": "ring-changed"}))
 	var again := await PKeyCloudSyncController.accept(sdk, RING)
-	t.check("controller: an accept that answers ring-changed again is a failure", not again.ok)
+	t.check("controller: an accept that answers ring-changed again is ok and carries the new ring", again.ok and again.detail.get("kind") == "ring-changed")
+	ring.queue("accept_ring_change", PKeyResult.success({"kind": "locked"}))
+	t.check("controller: any other answer to an accept is a failure", not (await PKeyCloudSyncController.accept(sdk, RING)).ok)
 	ring.queue("accept_ring_change", PKeyResult.success({"kind": "unlocked"}))
 	t.check("controller: an accept that opened the ring is ok, with exactly the served ring", (await PKeyCloudSyncController.accept(sdk, RING)).ok and ring.calls[ring.calls.size() - 1][1][0] == RING)
 	ring.queue("unlock", PKeyResult.success({"kind": "locked", "reason": "no-ring"}))
@@ -386,11 +389,22 @@ func _ring_change(t: PKeyTestContext) -> void:
 	(b["Accept"] as Button).pressed.emit()
 	await _frames(4)
 	t.check("ring: That was me passes the ring that was shown", ring.calls.size() == 1 and ring.calls[0][1][0] == RING and ok.size() == 1, str(ring.calls))
+	# The ring moved again: the new ring and its device are shown, and That was me asks again for it.
+	var moved := {"ring_id": "rg_BBBBBBBBBBBBBBBBBBBBBB", "epoch": 3, "root_kid": "ffeeddccbbaa99887766554433221100"}
+	ring.queue("accept_ring_change", PKeyResult.success({"kind": "ring-changed", "served": moved, "by": "Desk", "pinned": RING}))
+	(_buttons(v)["Accept"] as Button).pressed.emit()
+	await _frames(4)
+	t.check("ring: a ring that moved again shows the new ring and its device, with no failure", v.served == moved and v.by == "Desk" and not v.failed and (v.find_child("BodyText", true, false) as Label).text.contains("Desk") and not (v.find_child("Error", true, false) as Label).visible)
+	ring.queue("accept_ring_change", PKeyResult.success({"kind": "unlocked"}))
+	(_buttons(v)["Accept"] as Button).pressed.emit()
+	await _frames(4)
+	t.check("ring: the next That was me hands over the new ring", ring.calls[ring.calls.size() - 1][1][0] == moved and ok.size() == 2)
 	# A failed accept says so and Accept stays.
 	ring.queue("accept_ring_change", _fail("network-error"))
 	(_buttons(v)["Accept"] as Button).pressed.emit()
 	await _frames(4)
 	t.check("ring: a failed accept says so and keeps Accept", v.failed and (v.find_child("Error", true, false) as Label).visible and _buttons(v).has("Accept"))
+	t.check("ring: the failure carries a glyph, and the device line is still there", (v.find_child("ErrorGlyph", true, false) as Control).visible and (v.find_child("BodyText", true, false) as Label).text.contains("Desk"))
 	_free(v)
 	var none: PKeyRingChange = _sc.ring_change("nothing served")
 	await _frames()
@@ -636,3 +650,98 @@ func _kit_account(t: PKeyTestContext) -> void:
 	t.check("account: the existing rows still read", seen["signedOut"] == "You're signed out." and seen["synced"].begins_with("Synced"), str(seen))
 	tab.get_parent().remove_child(tab)
 	tab.queue_free()
+
+
+# ── The UX round (UXR-U-42.5) ────────────────────────────────────────────────────────────────
+
+func _ux_round(t: PKeyTestContext) -> void:
+	var ring := FakeRing.new()
+	var sdk := _sdk(ring)
+	# An empty field shows no error and takes the focus; success stays on `working`.
+	var u: PKeyUnlockSync = _sc.unlock_sync("code")
+	u.sdk = sdk
+	await _frames()
+	await u._on_unlock()
+	await _frames()
+	t.check("unlock: Enter on an empty field checks nothing and shows no error", u.step == "code" and ring.calls.is_empty() and not (u.find_child("Error", true, false) as Label).visible)
+	ring.queue("recover", PKeyResult.success({"ring_id": "r"}))
+	var woke: Array = []
+	u.unlocked.connect(func() -> void: woke.append(u.step))
+	u.set_typed_code("ab3d")
+	await u._on_unlock()
+	await _frames()
+	t.check("unlock: a successful unlock stays on working (no empty form) for the host to close", u.step == "working" and woke == ["working"] and u.typed_code() == "")
+	_free(u)
+	ring.queue("reset", PKeyResult.success({"ring_id": "r2", "recovery_code": CODE}))
+	var so: PKeyUnlockSync = _sc.unlock_sync("code")
+	so.sdk = sdk
+	await _frames()
+	await so._start_reset()
+	await _frames()
+	t.check("unlock: a start over that made a code stays on working for the host", so.step == "working")
+	_free(so)
+	# The actions sit under the field, in its column, and a failure carries a glyph.
+	var f: PKeyUnlockSync = _sc.unlock_sync("failed")
+	await _frames()
+	t.check("unlock: a failure line has a glyph before it", (f.find_child("WarningGlyph", true, false) as Control).visible and (f.find_child("Warning", true, false) as Label).visible)
+	_free(f)
+	var c: PKeyUnlockSync = _sc.unlock_sync("code")
+	await _frames()
+	t.check("unlock: Unlock sits in the field's column", c._actions.get_parent() == c._field_block.get_parent())
+	_free(c)
+	# Start over: left and right reach the neighbouring button on a horizontal row.
+	var w: PKeyUnlockSync = _sc.unlock_sync("start-over")
+	await _frames(4)
+	if not w._actions.vertical:
+		var order: Array = []
+		for ch in w._actions.get_children():
+			if ch is Control and (ch as Control).visible:
+				order.append(ch)
+		var last := order[order.size() - 1] as Control
+		var prev := order[order.size() - 2] as Control
+		t.check("unlock: a pad's left from Cancel reaches the button before it", last.get_node_or_null(last.focus_neighbor_left) == prev)
+		t.check("unlock: a pad's right reaches the next button", prev.get_node_or_null(prev.focus_neighbor_right) == last)
+	_free(w)
+	# The destructive button is the theme's PKeyDanger in every look and size.
+	for look in ["brand-dark", "brand-light", "neutral"]:
+		PKeyUiTheme.reset()
+		PKeyUiTheme.reduce_motion_mode = "on"
+		if look.begins_with("brand"):
+			PKeyUiTheme.branding = PKeyUiTheme.BRANDING_POLARIS_KEY
+			PKeyUiTheme.scheme = "light" if look == "brand-light" else "dark"
+		var d: PKeyUnlockSync = _sc.unlock_sync("start-over")
+		d.refresh_view()
+		await _frames()
+		var danger := d._confirm.get_theme_stylebox("normal") as StyleBoxFlat
+		var prim := d._primary.get_theme_stylebox("normal") as StyleBoxFlat
+		t.check("danger: Start over keeps the primary's shape and padding (%s)" % look, d._confirm.theme_type_variation == &"PKeyDanger" and not d._confirm.has_theme_stylebox_override("normal") and danger != null and prim != null and danger.get_corner_radius(CORNER_TOP_LEFT) == prim.get_corner_radius(CORNER_TOP_LEFT) and danger.content_margin_left == prim.content_margin_left and danger.content_margin_top == prim.content_margin_top, "%s %s" % [danger.content_margin_left if danger else -1, prim.content_margin_left if prim else -1])
+		_free(d)
+	PKeyUiTheme.reset()
+	PKeyUiTheme.reduce_motion_mode = "on"
+	# Save the code: ticking the box moves focus to Done; Done takes the code off the clipboard.
+	var r: PKeyRecoveryCode = _sc.recovery_code("show")
+	await _frames(4)
+	var box := r.find_child("Saved", true, false) as CheckBox
+	box.grab_focus()
+	box.button_pressed = true
+	await _frames(4)
+	var done := r.find_child("Done", true, false) as Button
+	t.check("code: ticking the box moves the focus to Done", done != null and done.visible and done.has_focus())
+	PKeyCloudSyncController.clipboard_set(PKeyCloudSyncController.hyphenated(CODE))
+	await r._on_done()
+	t.check("code: Done takes the code off the clipboard", PKeyCloudSyncController.clipboard_get() == "")
+	PKeyCloudSyncController.clipboard_set("something else")
+	_free(r)
+	var r2: PKeyRecoveryCode = _sc.recovery_code("show")
+	await _frames()
+	r2.saved = true
+	await r2._on_done()
+	t.check("code: Done leaves a clipboard that holds something else alone", PKeyCloudSyncController.clipboard_get() == "something else")
+	_free(r2)
+	var empty := PKeyRecoveryCode.new()
+	empty.auto_sdk = false
+	_tree().root.add_child(empty)
+	await _frames()
+	t.check("code: no code, no screen", not empty.visible)
+	_free(empty)
+	_free_node(sdk)
