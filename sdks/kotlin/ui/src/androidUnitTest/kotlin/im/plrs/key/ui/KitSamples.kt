@@ -232,6 +232,33 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
             PolarisCloudSyncStatus(PolarisCloudSync.Error, onRetry = {})
         }
     },
+    // The Cloud Sync screens (U-42), resolved by KitStates from the cloudSync family's inputs.
+    "cloudSyncStatus-locked" to {
+        PolarisScreen(showLogo = false) {
+            PolarisTitle("Cloud Sync")
+            Spacer(Modifier.height(16.dp))
+            PolarisCloudSyncStatus(PolarisCloudSync.Locked, onUnlock = {})
+            Spacer(Modifier.height(12.dp))
+            PolarisCloudSyncStatus(PolarisCloudSync.RingChanged, onReview = {})
+        }
+    },
+    "unlockSync-code" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "code")) },
+    "unlockSync-invalid" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "invalid")) },
+    "unlockSync-start-over-failed" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "start-over-failed")) },
+    "unlockSync-no-code" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "no-code")) },
+    "unlockSync-working" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "working")) },
+    "unlockSync-failed" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "failed")) },
+    "unlockSync-start-over" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "start-over")) },
+    "recoveryCode-show" to { PolarisRecoveryCodeScreen(syncScreen(KitComponent.recoveryCode, "recoveryCode"), sampleRecoveryCode) },
+    "recoveryCode-saved" to {
+        PolarisRecoveryCodeScreen(syncScreen(KitComponent.recoveryCode, "recoveryCode", "saved" to true), sampleRecoveryCode)
+    },
+    "ringChange-failed" to {
+        PolarisRingChange(syncScreen(KitComponent.ringChange, "ringChange", "by" to "Maya's MacBook", "served" to true, "failed" to true))
+    },
+    "ringChange-confirm" to {
+        PolarisRingChange(syncScreen(KitComponent.ringChange, "ringChange", "by" to "Maya's MacBook", "served" to true))
+    },
     // The release channel choice (UI-KITS.md §4.1 ChannelPicker): the switchable list, and the lock with its reason.
     "channelPicker-default" to {
         PolarisScreen(showLogo = false) {
@@ -294,4 +321,28 @@ internal fun samplePaywall(pending: String? = null, purchased: Boolean = false):
     )
     if (pending != null) inputs = inputs.with("pending", JsonPrimitive(pending))
     return KitStates.resolve(KitComponent.paywall, inputs) to KitRowData.from(inputs)
+}
+
+/** A recovery code as the keyring makes one: groups of letters and digits. */
+internal val sampleRecoveryCode = PolarisRecoveryCode("K7QM-2XRD-9TBA-WF4N-HC6P-VJ3E-M4TS-8YGK")
+
+/** The [component] state [member] says, resolved by KitStates (a `served: true` stands for a ring to confirm). */
+internal fun syncScreen(component: KitComponent, member: String, vararg fields: Pair<String, Any>): KitScreen {
+    val body = kotlinx.serialization.json.buildJsonObject {
+        for ((key, value) in fields) {
+            when {
+                key == "served" -> put(
+                    key,
+                    kotlinx.serialization.json.buildJsonObject {
+                        put("ringId", JsonPrimitive("ring_9f3a"))
+                        put("epoch", JsonPrimitive(2))
+                        put("rootKid", JsonPrimitive("kid_b21c"))
+                    },
+                )
+                value is Boolean -> put(key, JsonPrimitive(value))
+                else -> put(key, JsonPrimitive(value.toString()))
+            }
+        }
+    }
+    return KitStates.resolve(component, KitInputs.of(mapOf(member to body)))
 }
