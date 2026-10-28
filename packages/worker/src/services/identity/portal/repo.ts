@@ -1,3 +1,4 @@
+import { adminOidcConfig } from "../../../platform/platformOidc.js";
 import { operatorIssuerAllowed } from "../../../core/rbac/operatorIssuer.js";
 import { portalAudit } from "../../../core/accounts/portalAudit.js";
 import { normalizeEmail } from "../../../platform/email.js";
@@ -246,7 +247,12 @@ export async function recordLinkAssertion(
     linkId,
   );
   if (!link) return;
-  if (operatorIssuerAllowed(env, link.issuer_key)) {
+  const consoleIssuer = adminOidcConfig(env)?.issuer;
+  if (
+    operatorIssuerAllowed(env, link.issuer_key) ||
+    (consoleIssuer !== undefined &&
+      link.issuer_key === portalIdentityIssuerKey(consoleIssuer))
+  ) {
     await db.run(
       "UPDATE account_links SET claims_json = ? WHERE id = ?",
       assertion.claims ? JSON.stringify(assertion.claims) : null,

@@ -18,6 +18,7 @@ import {
 } from "../../../src/services/identity/accounts/repo.js";
 import {
   portalIdentityIssuerKey,
+  recordLinkAssertion,
   recordLinkGroups,
 } from "../../../src/services/identity/portal/repo.js";
 import { rootRuleHolds } from "../../../src/core/rbac/principal.js";
@@ -195,6 +196,64 @@ describe("a connection sign-in on an issuer that may sign operators in", () => {
     expect(r.groups_json).toBe(JSON.stringify([GROUP]));
     expect(r.asserted_at).toBe(NOW);
     expect(roots(w, r, NOW + 1)).toBe(true);
+  });
+});
+
+describe("a console issuer configured with a double trailing slash", () => {
+  it("is still guarded: the root rule reads the link keyed by the configured spelling", async () => {
+    const w = await seededWorld();
+    w.env.ADMIN_OIDC_ISSUER = `${ISSUER}//`;
+    w.env.ADMIN_OIDC_CLIENT_ID = "console";
+    w.env.PLATFORM_ADMIN_GROUP = GROUP;
+    const a = await insertAccount(
+      w.db,
+      { primaryEmail: null, primaryEmailVerified: false, displayName: null },
+      NOW,
+    );
+    await insertLink(
+      w.db,
+      a.id,
+      {
+        issuerKey: portalIdentityIssuerKey(`${ISSUER}//`),
+        tenantScope: "",
+        subject: "sub-1",
+        kind: "oidc",
+        email: null,
+        emailVerified: false,
+        displayName: null,
+        amr: null,
+      },
+      NOW,
+    );
+    const id = (await w.db.first<{ id: string }>(
+      "SELECT id FROM account_links WHERE subject = 'sub-1'",
+    ))!.id;
+    await recordLinkAssertion(
+      w.env,
+      w.db,
+      id,
+      { groups: [GROUP], claims: { department: "ops" } },
+      NOW,
+    );
+    const r = (await row(w))!;
+    expect(r.groups_json).toBeNull();
+    expect(r.asserted_at).toBeNull();
+    expect(r.claims_json).toBe(JSON.stringify({ department: "ops" }));
+  });
+});
+
+describe("a console issuer configured with a trailing slash", () => {
+  it("is still guarded: the link key is the slash-trimmed issuer", async () => {
+    const w = await seededWorld();
+    w.env.ADMIN_OIDC_ISSUER = `${ISSUER}//`;
+    w.env.ADMIN_OIDC_CLIENT_ID = "console";
+    w.env.PLATFORM_ADMIN_GROUP = GROUP;
+    await secondConnection(w);
+    await strongLink(w, true);
+    await signInThrough(w);
+    const r = (await row(w))!;
+    expect(r.groups_json).toBeNull();
+    expect(r.asserted_at).toBeNull();
   });
 });
 
