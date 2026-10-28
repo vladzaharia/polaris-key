@@ -22,7 +22,9 @@ export function ChannelStatus({
   channel,
 }: ChannelTabProps): React.ReactElement {
   const { delivery, identity } = channel;
-  const lines = delivery.attention.map((a) => attentionLine(a, slug, name));
+  const lines = delivery.attention.map((a) =>
+    attentionLine(a, slug, name, channel.id),
+  );
   const fields = identity ? Object.entries(identity.fields) : [];
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">

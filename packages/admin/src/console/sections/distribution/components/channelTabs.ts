@@ -7,6 +7,7 @@
 import type * as React from "react";
 import type { ChannelRow } from "../../../../api.js";
 import type { CHANNEL_TAB_IDS } from "../../../nav.js";
+import { ChannelReleases } from "./ChannelReleases.js";
 import { ChannelStatus } from "./ChannelStatus.js";
 
 export type ChannelTabId = (typeof CHANNEL_TAB_IDS)[number];
@@ -26,4 +27,5 @@ export interface ChannelTab {
 
 export const CHANNEL_TABS: readonly ChannelTab[] = [
   { value: "status", label: "Status", Panel: ChannelStatus },
+  { value: "releases", label: "Releases", Panel: ChannelReleases },
 ];

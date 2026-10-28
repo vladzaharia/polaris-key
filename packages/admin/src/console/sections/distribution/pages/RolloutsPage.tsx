@@ -12,31 +12,20 @@
  * Halted rows sort first. Facets: state and outlet, in the URL.
  */
 
-import { docsUrl } from "../../../../lib/docsLinks.js";
-import { useWriteGate } from "../../../access/useCan.js";
 import * as React from "react";
 import { Plus, RefreshCw } from "lucide-react";
-import type { Rollout, RolloutVerb } from "../../../../api.js";
-import { confirmFor, type ActionId } from "../../../../lib/actions.js";
-import { formatBasisPoints, fromSeconds } from "../../../../lib/format.js";
+import type { Rollout } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
-import { Meter } from "../../../../ui/charts/Meter.js";
-import {
-  DataTable,
-  type DataColumn,
-  type RowActionItem,
-} from "../../../../ui/data-table/index.js";
-import { EmptyState } from "../../../../ui/EmptyState.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
-import { Timestamp } from "../../../../ui/Timestamp.js";
-import { entityHref } from "../../../components/EntityLink.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
+import { StatusPill } from "../../../../ui/StatusPill.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { PageTabs } from "../../../components/PageTabs.js";
-import { navigate, Link, useSearchParam } from "../../../router.js";
+import { useSearchParam } from "../../../router.js";
 import { codecs } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
-import { useTableUrlState } from "../../../useTableUrlState.js";
 import { CellDrawer } from "../components/CellDrawer.js";
+import { RolloutList } from "../components/RolloutList.js";
+import { StartRolloutDialog } from "../components/RolloutDialogs.js";
 import {
   hrefWithQuery,
   patchQuery,
@@ -44,7 +33,6 @@ import {
   useMatrix,
   useRollouts,
 } from "../data.js";
-import { useReleaseStore } from "../../release/data.js";
 import {
   cellKey,
   indexCells,
@@ -55,26 +43,6 @@ import {
   useReadinessRefresh,
   type RolloutsView,
 } from "./MatrixPage.js";
-import {
-  actorLabel,
-  ROLLOUT_STATE_ORDER,
-  rolloutSummary,
-  sourceLabel,
-  VERB_LABEL,
-} from "../model/format.js";
-import {
-  allowedVerbs,
-  canSetPercentage,
-  RolloutVerbDialog,
-  SetPercentageDialog,
-  StartRolloutDialog,
-} from "../components/RolloutDialogs.js";
-import { statusOf } from "../../../../lib/status.js";
-
-const rowId = (r: Rollout) => `${r.deliverableId}:${r.outletId}:${r.channel}`;
-
-/** The rollout states that need someone: the only ones drawn as pills. */
-const ISSUE_STATES = new Set(["halted", "paused"]);
 
 /** Module-level, so `useSearchParam` keeps one codec identity. */
 const VIEW = codecs.oneOf(ROLLOUT_VIEWS, "list");
@@ -100,192 +68,10 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
   const readiness = useReadinessRefresh(slug);
   const gate = useWriteGate("ship", slug);
   const rollouts = useRollouts(slug);
-  const store = useReleaseStore(slug);
-  const [state, setState] = useTableUrlState("rollouts", {
-    facets: ["state", "outlet"],
-  });
-  const [verb, setVerb] = React.useState<{
-    rollout: Rollout;
-    verb: RolloutVerb;
-    version?: string;
-  } | null>(null);
-  const [setting, setSetting] = React.useState<Rollout | null>(null);
   const [starting, setStarting] = React.useState(false);
 
-  const versions = React.useMemo(() => {
-    const m = new Map<string, string>();
-    for (const r of store.data?.releases ?? []) m.set(r.releaseId, r.version);
-    return m;
-  }, [store.data]);
-  const versionOf = (id: string) => versions.get(id) ?? id;
-
-  const rows = React.useMemo(
-    () =>
-      [...(rollouts.data?.rollouts ?? [])].sort(
-        (a, b) =>
-          (ROLLOUT_STATE_ORDER[a.state] ?? 9) -
-            (ROLLOUT_STATE_ORDER[b.state] ?? 9) || b.updatedAt - a.updatedAt,
-      ),
-    [rollouts.data],
-  );
-  const outlets = [...new Set(rows.map((r) => r.outletId))].sort();
+  const rows = rollouts.data?.rollouts ?? [];
   const halted = rows.filter((r) => r.state === "halted").length;
-
-  const columns: DataColumn<Rollout>[] = [
-    {
-      id: "release",
-      header: "Release",
-      accessorFn: (r) => versionOf(r.releaseId),
-      meta: { priority: 1, primary: true },
-      cell: ({ row }) => (
-        <span className="font-mono text-xs whitespace-nowrap">
-          {versionOf(row.original.releaseId)}
-        </span>
-      ),
-    },
-    {
-      id: "outlet",
-      header: "Channel",
-      accessorKey: "outletId",
-      meta: { priority: 1 },
-      cell: ({ row }) => (
-        <span className="flex flex-col">
-          <span>{row.original.outletId}</span>
-          {row.original.deliverableId !== "app" ? (
-            <span className="text-xs text-fg-muted">
-              {row.original.deliverableId}
-            </span>
-          ) : null}
-        </span>
-      ),
-    },
-    {
-      id: "channel",
-      header: "Release track",
-      accessorKey: "channel",
-      meta: { priority: 1 },
-    },
-    {
-      id: "rolloutBp",
-      header: "Rollout",
-      accessorKey: "rolloutBp",
-      meta: {
-        priority: 1,
-        label: "Rollout",
-        csv: (r) => formatBasisPoints(r.rolloutBp),
-      },
-      cell: ({ row }) => (
-        <Meter
-          label={`Rollout of ${versionOf(row.original.releaseId)} on ${row.original.outletId} / ${row.original.channel}`}
-          hideLabel
-          value={
-            row.original.state === "complete" ? 10_000 : row.original.rolloutBp
-          }
-          max={10_000}
-          format="bp"
-          tone={
-            row.original.state === "halted"
-              ? "danger"
-              : row.original.state === "paused"
-                ? "warning"
-                : "accent"
-          }
-          className="min-w-32"
-        />
-      ),
-    },
-    {
-      id: "source",
-      header: "Source",
-      accessorFn: (r) =>
-        r.mirrored
-          ? `${sourceLabel(r.source)} (store-owned)`
-          : sourceLabel(r.source),
-      meta: { priority: 3 },
-    },
-    {
-      id: "updatedAt",
-      header: "Updated",
-      accessorKey: "updatedAt",
-      meta: {
-        numeric: true,
-        priority: 2,
-        csv: (r) => new Date(fromSeconds(r.updatedAt)).toISOString(),
-      },
-      cell: ({ row }) => (
-        <span className="flex flex-col">
-          <Timestamp at={fromSeconds(row.original.updatedAt)} />
-          <span className="text-xs text-fg-muted">
-            by {actorLabel(row.original.updatedBy)}
-          </span>
-        </span>
-      ),
-    },
-    {
-      // Pills mean attention (EXPERIENCE.md §11): halted and paused are pills, end-aligned in
-      // the last column; a healthy rollout's state is plain text the phone card leaves out.
-      id: "state",
-      header: "State",
-      accessorKey: "state",
-      meta: {
-        priority: 1,
-        align: "end",
-        csv: (r) => rolloutSummary(r),
-        quiet: (r) => !ISSUE_STATES.has(r.state),
-      },
-      cell: ({ row }) =>
-        ISSUE_STATES.has(row.original.state) ? (
-          <StatusPill domain="rollout" state={row.original.state} size="sm" />
-        ) : (
-          <span className="text-fg-muted">
-            {statusOf("rollout", row.original.state).label}
-          </span>
-        ),
-    },
-  ];
-
-  const rowActions = (r: Rollout): RowActionItem[] => {
-    const openCell: RowActionItem = {
-      label: "Open rollout",
-      onSelect: () => navigate(rolloutHref(r)),
-    };
-    const openRelease: RowActionItem = {
-      label: "Open release",
-      onSelect: () =>
-        navigate(entityHref(slug, { kind: "release", id: r.releaseId })),
-    };
-    // A store-owned rollout is read-only here: its store controls are in its drawer.
-    if (r.mirrored || !gate.allowed) return [openCell, openRelease];
-    const verbs = allowedVerbs(r);
-    const safe = verbs.filter(
-      (v) => confirmFor(`rollout.${v}` as ActionId).level < 2,
-    );
-    const danger = verbs.filter(
-      (v) => confirmFor(`rollout.${v}` as ActionId).level >= 2,
-    );
-    const items: RowActionItem[] = [
-      openCell,
-      openRelease,
-      ...safe.map((v) => ({
-        label: `${VERB_LABEL[v]}…`,
-        onSelect: () =>
-          setVerb({ rollout: r, verb: v, version: versionOf(r.releaseId) }),
-      })),
-    ];
-    if (canSetPercentage(r))
-      items.push({ label: "Set percentage…", onSelect: () => setSetting(r) });
-    if (danger.length) {
-      items.push({ type: "separator" });
-      for (const v of danger)
-        items.push({
-          label: `${VERB_LABEL[v]}…`,
-          tone: "danger",
-          onSelect: () =>
-            setVerb({ rollout: r, verb: v, version: versionOf(r.releaseId) }),
-        });
-    }
-    return items;
-  };
 
   const grid = view !== "list";
   const tabs = (
@@ -368,88 +154,28 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
             />
           </>
         ) : (
-          <DataTable<Rollout>
-            id="rollouts"
-            caption="Rollouts"
-            data={rows}
-            columns={columns}
-            getRowId={rowId}
-            rowLabel={(r) =>
-              `${versionOf(r.releaseId)} on ${r.outletId} / ${r.channel}`
-            }
-            rowHref={rolloutHref}
-            rowActions={rowActions}
-            linkComponent={Link}
-            state={state}
-            onStateChange={setState}
-            search={{
-              placeholder: "Search rollouts",
-              columns: ["release", "outlet", "channel"],
-            }}
-            facets={[
-              {
-                id: "state",
-                label: "State",
-                options: ["halted", "paused", "active", "complete"].map(
-                  (s) => ({
-                    value: s,
-                    label: statusOf("rollout", s).label,
-                  }),
-                ),
-              },
-              {
-                id: "outlet",
-                label: "Channel",
-                options: outlets.map((o) => ({ value: o, label: o })),
-              },
-            ]}
-            loading={rollouts.isPending}
-            error={
-              rollouts.isError && !rollouts.data ? rollouts.error : undefined
-            }
-            onRetry={() => void rollouts.refetch()}
-            mobile="cards"
-            empty={
-              <EmptyState
-                kind="first-run"
-                title="No rollouts yet"
-                description="A rollout offers a release to a share of the devices on one channel's release track, so a bad build reaches few before you halt it. Without one, each channel offers its release to everyone."
-                primaryAction={
-                  <Button
-                    disabledReason={gate.disabledReason}
-                    onClick={() => setStarting(true)}
-                  >
-                    Start rollout…
-                  </Button>
-                }
-                docs={docsUrl("rollouts")}
-              />
-            }
+          <RolloutList
+            slug={slug}
+            rollouts={rollouts}
+            tableId="rollouts"
+            hrefFor={rolloutHref}
+            starting={starting}
+            onStartingChange={setStarting}
+            startInitial={{ deliverable: "app" }}
           />
         )}
       </div>
       {!grid && cell !== "" ? (
         <ListCellDrawer slug={slug} cell={cell} deliverable={deliverable} />
       ) : null}
-      <RolloutVerbDialog
-        slug={slug}
-        target={verb}
-        onClose={() => setVerb(null)}
-      />
-      {setting ? (
-        <SetPercentageDialog
+      {grid ? (
+        <StartRolloutDialog
           slug={slug}
-          rollout={setting}
-          version={versionOf(setting.releaseId)}
-          onClose={() => setSetting(null)}
+          open={starting}
+          initial={{ deliverable }}
+          onClose={() => setStarting(false)}
         />
       ) : null}
-      <StartRolloutDialog
-        slug={slug}
-        open={starting}
-        initial={{ deliverable: grid ? deliverable : "app" }}
-        onClose={() => setStarting(false)}
-      />
     </CollectionTemplate>
   );
 }

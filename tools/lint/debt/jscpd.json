@@ -356,14 +356,8 @@
     "packages/admin/src/console/sections/distribution/pages/CredentialsPage.tsx": {
       "jscpd:duplicate": 5
     },
-    "packages/admin/src/console/sections/distribution/pages/HealthPage.tsx": {
-      "jscpd:duplicate": 1
-    },
     "packages/admin/src/console/sections/distribution/pages/OutletsPage.tsx": {
       "jscpd:duplicate": 3
-    },
-    "packages/admin/src/console/sections/distribution/pages/RolloutsPage.tsx": {
-      "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/feeds/model/sourceLine.tsx": {
       "jscpd:duplicate": 1

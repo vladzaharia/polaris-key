@@ -104,6 +104,11 @@ describe("Distribution → a channel: Status", () => {
     expect(items[1]!.textContent).toContain(
       "the file format or the architecture",
     );
+    expect(
+      within(items[1]!)
+        .getByRole("link", { name: "Releases" })
+        .getAttribute("href"),
+    ).toBe(`${H}/app-store/releases`);
     expect(items[2]!.textContent).toContain("bundle id");
     expect(screen.getAllByText("Attention").length).toBeGreaterThan(0);
     expect(screen.getByText(/No platform of DJDL is sent here/)).toBeTruthy();
@@ -151,7 +156,7 @@ describe("Distribution → a channel: the tablist", () => {
     boot(`${H}/app-store`, [row()]);
     const list = await screen.findByRole("tablist", { name: "App Store tabs" });
     const tabs = within(list).getAllByRole("tab");
-    expect(tabs.map((t) => t.textContent)).toEqual(["Status"]);
+    expect(tabs.map((t) => t.textContent)).toEqual(["Status", "Releases"]);
     expect(tabs[0]!.getAttribute("aria-selected")).toBe("true");
     expect(tabs[0]!.tabIndex).toBe(0);
     expect(screen.getByRole("tabpanel")).toBeTruthy();
@@ -166,16 +171,19 @@ describe("Distribution → a channel: the tablist", () => {
     ).toBe("true");
   });
 
-  it("keeps focus on the tab for the arrow keys with one tab, and Enter keeps Status", async () => {
+  it("the arrow keys move between the tabs, Home and End wrap, Enter opens one", async () => {
     boot(`${H}/app-store`, [row()]);
-    const tab = await screen.findByRole("tab", { name: "Status" });
-    tab.focus();
+    const status = await screen.findByRole("tab", { name: "Status" });
+    status.focus();
     await userEvent.keyboard("{ArrowRight}");
-    expect(document.activeElement).toBe(tab);
-    await userEvent.keyboard("{End}{Home}");
-    expect(document.activeElement).toBe(tab);
-    await userEvent.keyboard("{Enter}");
-    expect(window.location.hash).toBe(`${H}/app-store`);
+    const releases = screen.getByRole("tab", { name: "Releases" });
+    expect(document.activeElement).toBe(releases);
+    await userEvent.keyboard("{Home}");
+    expect(document.activeElement).toBe(status);
+    await userEvent.keyboard("{End}{Enter}");
+    await waitFor(() =>
+      expect(window.location.hash).toBe(`${H}/app-store/releases`),
+    );
   });
 });
 

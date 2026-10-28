@@ -59,6 +59,7 @@ export function attentionLine(
   a: ChannelAttention,
   slug: string,
   name: string,
+  channelId?: string,
 ): AttentionLine {
   switch (a.code) {
     case "out_of_scope":
@@ -72,6 +73,13 @@ export function attentionLine(
         detail: `Builds exist, but none match ${
           a.reasons.map((x) => FIT[x] ?? x).join(" or ") || "this channel"
         }.`,
+        // The builds that exist, and what each rollout offers, are on Releases.
+        action: channelId
+          ? {
+              label: "Releases",
+              to: r.channel(slug, channelId, "releases"),
+            }
+          : undefined,
       };
     case "credential_expiring":
       return {
