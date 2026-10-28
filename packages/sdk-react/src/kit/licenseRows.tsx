@@ -233,6 +233,8 @@ export function licenseRows(c: KitCtx): ReactNode {
         {replaceHere ? (
           button(c, "signin.replace.open", lone ? "primary" : "secondary", {
             detail: { licenseId: r.id },
+            // Replace in the browser leaves the app.
+            external: c.input.signIn?.replace === "browser",
           })
         ) : (
           <span />

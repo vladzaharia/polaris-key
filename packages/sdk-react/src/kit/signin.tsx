@@ -90,7 +90,9 @@ function formInput(o: UseSignInOptions, model: SignInModel | null): FormInput {
   const base: FormInput = model
     ? { ...(o.input ?? {}), ...model.input() }
     : { ...(o.input ?? {}) };
-  if (base.signIn && (o.presentation || o.replace))
+  // With a model, its session already carries both (and a device limit turns Replace to the
+  // browser): the options only complete a snapshot.
+  if (!model && base.signIn && (o.presentation || o.replace))
     base.signIn = {
       ...base.signIn,
       ...(o.presentation ? { presentation: o.presentation } : {}),

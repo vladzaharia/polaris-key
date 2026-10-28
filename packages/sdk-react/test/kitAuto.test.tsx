@@ -245,6 +245,10 @@ describe("automatic sign-in: device limit, Replace and the return (KFA-react)", 
     expect(row.getAttribute("data-layout")).toBe("full");
     expect(row.querySelector(".row-name")?.textContent).toBe("Tidewater Pro");
     expect(row.querySelector(".row-line .pill")?.textContent).toBe("Pro");
+    // It leaves the app: the new-window glyph.
+    expect(
+      control(m.container, "signin.replace.open")!.querySelector("svg.glyph"),
+    ).not.toBeNull();
     fireEvent.click(control(m.container, "signin.replace.open")!);
     expect(open).toHaveBeenCalledTimes(1);
     expect(String(open.mock.calls[0]![0])).toContain(MANAGE);

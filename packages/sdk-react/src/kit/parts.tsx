@@ -535,6 +535,8 @@ export function button(
     args?: Record<string, string | number>;
     /** Extra members of the `onAction` this control reports (a row's index). */
     detail?: Record<string, unknown>;
+    /** The control leaves the app (a Replace that runs in the browser): the new-window glyph. */
+    external?: boolean;
   } = {},
 ): ReactNode {
   // The refusal step's manage link leaves the app too (refusal.ts): the key step's title as its
@@ -576,6 +578,7 @@ function plainButton(
   const manage = key === MANAGE_KEY && isRefusalStep(c.view);
   const external =
     manage ||
+    extra.external === true ||
     (key === OWNED_SIGN_IN_KEY && c.view.args.signInLink === 1) ||
     (key === "status.renew" ? renewTarget(c.input) != null : OPENS.has(key)) ||
     c.chrome?.labels?.[key] !== undefined;
