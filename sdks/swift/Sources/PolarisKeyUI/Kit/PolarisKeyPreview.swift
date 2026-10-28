@@ -167,7 +167,7 @@ public struct PolarisKeyPreview: View {
                     onRetry: {}, onReset: state.variant == "controls" ? { _ in } : nil)
             }
         case .unlockSync:
-            UnlockSyncView(model: UnlockSyncModel(inputs: model.inputs))
+            UnlockSyncView(model: UnlockSyncModel(inputs: model.inputs, armDelay: .zero))
         case .recoveryCode:
             let recovery = RecoveryCodeModel(inputs: model.inputs)
             let _ = recovery.show(code: PolarisKeyPreviewState.sampleRecoveryCode)

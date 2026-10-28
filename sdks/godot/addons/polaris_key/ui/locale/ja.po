@@ -1977,6 +1977,11 @@ msgstr "コードが正しくありません。確認してもう一度お試し
 msgid "unlockSync.failed"
 msgstr "ロックを解除できませんでした。接続を確認して、もう一度お試しください。"
 
+#. Couldn't start over. Check your connection and try again.
+#. UnlockSync: Start over failed (not an unlock failure); Try again repeats it.
+msgid "unlockSync.startOverFailed"
+msgstr "やり直せませんでした。接続を確認して、もう一度お試しください。"
+
 #. This account has no recovery code. Start over to keep syncing.
 #. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
 msgid "unlockSync.noCode"
@@ -2047,7 +2052,7 @@ msgstr "{device}が同期データの新しいキーを設定しました。"
 msgid "ringChange.bodyUnknown"
 msgstr "デバイスが同期データの新しいキーを設定しました。"
 
-#. Choose That was me only if you did this. If not, use your recovery code.
+#. Choose “That was me” only if you did this. If not, use your recovery code.
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.warning"
 msgstr "ご自身で行った場合のみ「自分です」を選んでください。そうでない場合は、リカバリーコードを使ってください。"

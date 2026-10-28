@@ -68,13 +68,13 @@ final class CloudSyncModelTests: XCTestCase {
         model.code = "CODE"
         await model.unlock()
         XCTAssertEqual(model.screen.state, .failed)
-        model.retry()
+        await model.retry()
         XCTAssertEqual(model.screen.state, .code)
     }
 
     func testStartOverRunsOnlyFromItsWarning() async {
         let calls = Calls()
-        let model = UnlockSyncModel(host: host(calls))
+        let model = UnlockSyncModel(host: host(calls), armDelay: .milliseconds(5))
         await model.confirmStartOver()
         var resets = await calls.resets
         XCTAssertEqual(resets, 0, "no warning shown, nothing replaced")
@@ -83,6 +83,10 @@ final class CloudSyncModelTests: XCTestCase {
         model.cancel()
         XCTAssertEqual(model.screen.state, .code)
         model.askStartOver()
+        await model.confirmStartOver()
+        resets = await calls.resets
+        XCTAssertEqual(resets, 0, "a tap right after the warning appears does not reset")
+        try? await Task.sleep(for: .milliseconds(30))
         var shown: String?
         model.onStartedOver = { shown = $0 }
         await model.confirmStartOver()
@@ -188,4 +192,72 @@ final class CloudSyncModelTests: XCTestCase {
     func testARecoveryScreenWithNoCodeDrawsNothing() {
         XCTAssertTrue(RecoveryCodeModel().screen.isHidden)
     }
+
+    func testAStartOverInFlightCannotBeCancelledAndKeepsItsCode() async {
+        let gate = AsyncStream<Void>.makeStream()
+        let slow = CloudSyncHost(
+            recover: { _ in }, reset: {
+                for await _ in gate.stream { break }
+                return "MINTED"
+            }, acceptRingChange: { _ in .locked(reason: .noRing) }, newRecoveryCode: { "X" })
+        let model = UnlockSyncModel(host: slow, armDelay: .milliseconds(5))
+        var shown: String?
+        model.onStartedOver = { shown = $0 }
+        model.askStartOver()
+        try? await Task.sleep(for: .milliseconds(30))
+        let running = Task { await model.confirmStartOver() }
+        try? await Task.sleep(for: .milliseconds(30))
+        XCTAssertTrue(model.minting)
+        var cancelled = 0
+        model.onCancel = { cancelled += 1 }
+        model.cancel()
+        running.cancel()
+        gate.continuation.yield()
+        await running.value
+        XCTAssertEqual(cancelled, 0, "Cancel is ignored while the new key is being made")
+        XCTAssertEqual(shown, "MINTED", "the new code reaches the screen")
+        XCTAssertFalse(model.minting)
+    }
+
+    func testAFreshCodeSurvivesClearWhileItIsBeingMade() async {
+        let gate = AsyncStream<Void>.makeStream()
+        let slow = CloudSyncHost(
+            recover: { _ in }, reset: { nil }, acceptRingChange: { _ in .locked(reason: .noRing) },
+            newRecoveryCode: {
+                for await _ in gate.stream { break }
+                return "FRESH"
+            })
+        let model = RecoveryCodeModel(host: slow)
+        let making = Task { try? await model.generate() }
+        try? await Task.sleep(for: .milliseconds(30))
+        model.clear()
+        gate.continuation.yield()
+        await making.value
+        XCTAssertEqual(model.code, "FRESH")
+    }
+
+    func testAFailedStartOverIsNotAnUnlockFailureAndRetriesItself() async {
+        let calls = Calls()
+        let attempts = Attempts()
+        let flaky = CloudSyncHost(
+            recover: { _ in }, reset: {
+                if await attempts.next() == 1 { throw PolarisError(code: "network", message: "x") }
+                return "MINTED"
+            }, acceptRingChange: { _ in .locked(reason: .noRing) }, newRecoveryCode: { "X" })
+        _ = calls
+        let model = UnlockSyncModel(host: flaky, armDelay: .milliseconds(5))
+        var shown: String?
+        model.onStartedOver = { shown = $0 }
+        model.askStartOver()
+        try? await Task.sleep(for: .milliseconds(30))
+        await model.confirmStartOver()
+        XCTAssertEqual(model.screen.state, .startOverFailed)
+        await model.retry()
+        XCTAssertEqual(shown, "MINTED")
+    }
+}
+
+private actor Attempts {
+    var n = 0
+    func next() -> Int { n += 1; return n }
 }

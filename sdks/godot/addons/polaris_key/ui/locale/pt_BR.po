@@ -1987,6 +1987,11 @@ msgstr "Esse código não está correto. Confira e tente novamente."
 msgid "unlockSync.failed"
 msgstr "Não foi possível desbloquear. Verifique sua conexão e tente novamente."
 
+#. Couldn't start over. Check your connection and try again.
+#. UnlockSync: Start over failed (not an unlock failure); Try again repeats it.
+msgid "unlockSync.startOverFailed"
+msgstr "Não foi possível começar de novo. Verifique sua conexão e tente novamente."
+
 #. This account has no recovery code. Start over to keep syncing.
 #. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
 msgid "unlockSync.noCode"
@@ -2057,7 +2062,7 @@ msgstr "{device} configurou uma nova chave para seus dados sincronizados."
 msgid "ringChange.bodyUnknown"
 msgstr "Um dispositivo configurou uma nova chave para seus dados sincronizados."
 
-#. Choose That was me only if you did this. If not, use your recovery code.
+#. Choose “That was me” only if you did this. If not, use your recovery code.
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.warning"
 msgstr "Escolha “Fui eu” somente se foi você. Caso contrário, use seu código de recuperação."

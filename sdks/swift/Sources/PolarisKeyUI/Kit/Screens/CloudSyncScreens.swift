@@ -42,6 +42,8 @@ public struct UnlockSyncView: View {
                 actions(screen, state)
             }
             .kitAnimation(value: screen.stateName)
+            // A new key's code is on its way: the screen stays until it has been handed on.
+            .interactiveDismissDisabled(model.minting)
             .onAppear {
                 focus = .heading
                 #if os(macOS)
@@ -51,7 +53,7 @@ public struct UnlockSyncView: View {
             .onChange(of: screen.stateName) { _, _ in
                 // A refusal and the progress line are what changed; the heading did not.
                 switch model.step {
-                case .invalid, .failed, .working, .noCode: focus = .message
+                case .invalid, .failed, .startOverFailed, .working, .noCode: focus = .message
                 default: focus = .heading
                 }
                 cancelFocused = model.step == .startOver
@@ -99,6 +101,10 @@ public struct UnlockSyncView: View {
                     }
                 case .failed:
                     if let failed = screen.line("unlockSync.failed") { message(failed, style) }
+                case .startOverFailed:
+                    if let failed = screen.line("unlockSync.startOverFailed") {
+                        message(failed, style)
+                    }
                 case .noCode:
                     if let none = screen.line("unlockSync.noCode") { message(none, style, danger: false) }
                 case .startOver:
@@ -204,9 +210,9 @@ public struct UnlockSyncView: View {
                 KitButton(line: screen.lineOrKey("common.cancel"), kind: .quiet) { model.cancel() }
             case .working:
                 EmptyView()
-            case .failed:
+            case .failed, .startOverFailed:
                 KitButton(line: screen.lineOrKey("common.tryAgain"), kind: .primary) {
-                    model.retry()
+                    Task { await model.retry() }
                 }
                 .keyboardShortcut(.defaultAction)
                 KitButton(line: screen.lineOrKey("common.cancel"), kind: .quiet) { model.cancel() }
@@ -223,6 +229,8 @@ public struct UnlockSyncView: View {
                 KitButton(line: screen.lineOrKey("unlockSync.startOverConfirm"), kind: .destructive) {
                     Task { await model.confirmStartOver() }
                 }
+                .disabled(!model.startOverArmed)
+                .opacity(model.startOverArmed ? 1 : 0.5)
                 KitButton(line: screen.lineOrKey("common.cancel"), kind: .quiet) { model.cancel() }
                     .focused($cancelFocused)
                     .onAppear { cancelFocused = true }
@@ -307,18 +315,28 @@ public struct RecoveryCodeView: View {
     }
 
     private func codeGrid(_ code: String, _ style: KitResolvedStyle) -> some View {
-        let rows = Self.rows(code, perRow: dynamicType.isAccessibilitySize ? 2 : 4)
+        // The widest layout that fits the width: four to a row, then two, then one (at
+        // accessibility sizes four never fits). A group is never cut.
+        let layouts = dynamicType.isAccessibilitySize ? [2, 1] : [4, 2, 1]
         // Read group by group, each character apart, with a pause between groups.
         let spoken = code.split(separator: "-").map { $0.map(String.init).joined(separator: " ") }
             .joined(separator: ", ")
-        return Grid(alignment: .leading, horizontalSpacing: style.space(.md), verticalSpacing: style.space(.xs)) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                GridRow {
-                    ForEach(Array(row.enumerated()), id: \.offset) { _, group in
-                        Text(verbatim: group)
-                            .font(style.font(.key))
-                            .foregroundStyle(style.palette.textStrong)
-                            .fixedSize()
+        return ViewThatFits(in: .horizontal) {
+            ForEach(layouts, id: \.self) { perRow in
+                Grid(
+                    alignment: .leading, horizontalSpacing: style.space(.md),
+                    verticalSpacing: style.space(.xs)
+                ) {
+                    ForEach(Array(Self.rows(code, perRow: perRow).enumerated()), id: \.offset) {
+                        _, row in
+                        GridRow {
+                            ForEach(Array(row.enumerated()), id: \.offset) { _, group in
+                                Text(verbatim: group)
+                                    .font(style.font(.code))
+                                    .foregroundStyle(style.palette.textStrong)
+                                    .fixedSize()
+                            }
+                        }
                     }
                 }
             }

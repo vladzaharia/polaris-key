@@ -735,6 +735,9 @@ extension PolarisKeyPreviewState {
         .init(.unlockSync, "invalid", base { $0.unlockSync = KitUnlockSync(step: .invalid) }),
         .init(.unlockSync, "working", base { $0.unlockSync = KitUnlockSync(step: .working) }),
         .init(.unlockSync, "failed", base { $0.unlockSync = KitUnlockSync(step: .failed) }),
+        .init(
+            .unlockSync, "start-over-failed",
+            base { $0.unlockSync = KitUnlockSync(step: .startOverFailed) }),
         .init(.unlockSync, "no-code", base { $0.unlockSync = KitUnlockSync(step: .noCode) }),
         .init(
             .unlockSync, "start-over", base { $0.unlockSync = KitUnlockSync(step: .startOver) }),
