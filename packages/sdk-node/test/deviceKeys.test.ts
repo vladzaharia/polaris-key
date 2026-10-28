@@ -12,7 +12,9 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  rmSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
   statSync,
 } from "node:fs";
@@ -308,20 +310,89 @@ describe("node device key store: unreadable and refused", () => {
     await expect(s.ensure()).rejects.toBeInstanceOf(DeviceKeysUnreadableError);
   });
 
-  it("reclaims a lock left by a dead process, and times out on a live one", async () => {
-    const dir = tmp();
-    const s = fileStore(dir);
-    await s.ensure();
-    const lock = join(dir, "state", ".device-keys.json.lock");
+  const deadLock = async (dir: string, ageSeconds: number) => {
     const os = await import("node:os");
+    const lock = join(dir, "state", ".device-keys.json.lock");
     writeFileSync(
       lock,
       JSON.stringify({ pid: 2 ** 22 + 12345, host: os.hostname(), token: "x" }),
       { mode: 0o600 },
     );
+    const t = new Date(Date.now() - ageSeconds * 1000);
+    utimesSync(lock, t, t);
+    return lock;
+  };
+
+  it("reclaims an expired lock, and leaves a young one to its holder", async () => {
+    const dir = tmp();
+    const s = fileStore(dir);
+    await s.ensure();
+    const lock = await deadLock(dir, 60);
     expect(await s.publicKeys()).not.toBeNull();
     expect(existsSync(lock)).toBe(false);
+    // A young lock (even with a dead pid and no boot id) is waited on, not taken.
+    const young = await deadLock(dir, 1);
+    const busy = createNodeDeviceKeyStore({
+      storage: new FileDeviceKeyStorage(join(dir, "state", "device-keys.json")),
+    });
+    const t0 = Date.now();
+    const p = busy.publicKeys();
+    setTimeout(() => rmSync(young), 300);
+    await p;
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(250);
   });
+
+  it("three contenders on an expired lock make one pair and contiguous generations", async () => {
+    const dir = tmp();
+    mkdirSync(join(dir, "state"), { mode: 0o700 });
+    await deadLock(dir, 60);
+    const stores = [0, 1, 2].map((i) =>
+      createNodeDeviceKeyStore({
+        storage: new FileDeviceKeyStorage(
+          join(dir, "state", ...Array(i).fill("."), "device-keys.json"),
+        ),
+      }),
+    );
+    const made = await Promise.all(stores.map((s) => s.ensure()));
+    for (const k of made) expect(k).toEqual(made[0]);
+    await deadLock(dir, 60);
+    const gens = await Promise.all(stores.map((s) => s.rotate()));
+    expect(gens.map((g) => g.generation).sort()).toEqual([2, 3, 4]);
+    expect(readdirSync(join(dir, "state")).sort()).toEqual([
+      "device-keys.json",
+    ]);
+  });
+
+  it.runIf(posix)(
+    "refuses a directory with any group or other bit",
+    async () => {
+      const dir = tmp();
+      const s = fileStore(dir);
+      await s.ensure();
+      chmodSync(join(dir, "state"), 0o750);
+      await expect(s.ensure()).rejects.toBeInstanceOf(DeviceKeyStoreError);
+      chmodSync(join(dir, "state"), 0o700);
+      expect(await s.publicKeys()).not.toBeNull();
+    },
+  );
+
+  it.runIf(posix)(
+    "refuses a world-writable ancestor without the sticky bit",
+    async () => {
+      const dir = tmp();
+      const open = join(dir, "open");
+      mkdirSync(open, { mode: 0o700 });
+      chmodSync(open, 0o777);
+      const s = createNodeDeviceKeyStore({
+        storage: new FileDeviceKeyStorage(
+          join(open, "state", "device-keys.json"),
+        ),
+      });
+      await expect(s.ensure()).rejects.toBeInstanceOf(DeviceKeyStoreError);
+      chmodSync(open, 0o1777); // sticky: the usual /tmp shape
+      expect((await s.ensure()).generation).toBe(1);
+    },
+  );
 });
 
 describe("node device key store: memory and registration", () => {

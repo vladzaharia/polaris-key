@@ -64,7 +64,7 @@
     },
     "core.devicekeys": {
       "status": "implemented",
-      "note": "createNodeDeviceKeyStore (src/devices/deviceKeys.ts) over node:crypto: a 0600 file in a 0700 state directory, cross-process lock file, atomic replace; an unreadable record is an error that only wipe() resets; PolarisKeyClient.devices.registerKeys sends PUT /devices/keys. The pkey-proof/1 signer is client-core's."
+      "note": "createNodeDeviceKeyStore (src/devices/deviceKeys.ts) over node:crypto: a 0600 file in a 0700 state directory, cross-process lock file, atomic replace; an unreadable record is an error that only wipe() resets; PolarisKeyClient.devices.registerKeys sends PUT /devices/keys. On Windows the owner and mode checks, O_NOFOLLOW and the directory fsync are skipped (the profile ACL applies) and renames are retried on EPERM/EBUSY; stale-lock reclaim is best effort on a network home. The pkey-proof/1 signer is client-core's."
     },
     "license.gate": {
       "status": "implemented"

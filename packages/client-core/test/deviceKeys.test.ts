@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { base64UrlDecode, base64UrlEncodeBytes } from "@polaris-key/jws";
 import {
   DeviceKeyUnsupportedError,
+  DeviceKeysUnreadableError,
+  type StoredDeviceKeys,
   DeviceProofError,
   buildDeviceKeysRequest,
   createWebDeviceKeyStore,
@@ -130,13 +132,38 @@ describe("web device key store", () => {
     expect(c.signKey).not.toBe(b.signKey);
   });
 
-  it("replaces a stored record it cannot use", async () => {
-    const storage = memoryDeviceKeyStorage();
-    await storage.put({ v: 1, generation: 1 } as never);
-    const s = newStore(storage);
-    expect(await s.publicKeys()).toBeNull();
-    const k = await s.ensure();
-    expect(await s.publicKeys()).toEqual(k);
+  it("never replaces a stored record it cannot use; only wipe() resets it", async () => {
+    const real = createWebDeviceKeyStore({ storage: memoryDeviceKeyStorage() });
+    await real.ensure();
+    const shapes: StoredDeviceKeys[] = [
+      { v: 1, generation: 1 } as never,
+      { v: 1, generation: 0 } as never,
+    ];
+    // An extractable private key is unusable too.
+    const ex = await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+      "sign",
+      "verify",
+    ]);
+    const ag = (await crypto.subtle.generateKey({ name: "X25519" }, true, [
+      "deriveBits",
+    ])) as CryptoKeyPair;
+    shapes.push({ v: 1, generation: 1, sign: ex, agree: ag } as never);
+    for (const bad of shapes) {
+      const storage = memoryDeviceKeyStorage();
+      await storage.put(bad);
+      const s = newStore(storage);
+      for (const call of [
+        () => s.ensure(),
+        () => s.rotate(),
+        () => s.sign(new Uint8Array(1)),
+        () => s.publicKeys(),
+        () => s.dh(new Uint8Array(32).fill(9)),
+      ])
+        await expect(call()).rejects.toBeInstanceOf(DeviceKeysUnreadableError);
+      expect(await storage.get()).toBe(bad); // kept as it was
+      await s.wipe();
+      expect((await s.ensure()).generation).toBe(1);
+    }
   });
 });
 
@@ -460,7 +487,7 @@ describe("review round: persistence, wipe, fallback rules", () => {
     expect(await s.publicKeys()).toEqual(k); // still the durable identity
   });
 
-  it("ignores a stored record whose keys have the wrong type or usage", async () => {
+  it("refuses a stored record whose keys have the wrong type or usage", async () => {
     const storage = memoryDeviceKeyStorage();
     const s = newStore(storage);
     await s.ensure();
@@ -469,7 +496,9 @@ describe("review round: persistence, wipe, fallback rules", () => {
       ...rec,
       sign: { privateKey: rec.sign.publicKey, publicKey: rec.sign.publicKey },
     });
-    expect(await s.publicKeys()).toBeNull();
+    await expect(s.publicKeys()).rejects.toBeInstanceOf(
+      DeviceKeysUnreadableError,
+    );
     await storage.put({
       ...rec,
       agree: {
@@ -477,7 +506,9 @@ describe("review round: persistence, wipe, fallback rules", () => {
         publicKey: rec.agree.publicKey,
       },
     });
-    expect(await s.publicKeys()).toBeNull();
+    await expect(s.publicKeys()).rejects.toBeInstanceOf(
+      DeviceKeysUnreadableError,
+    );
   });
 
   it("takes the Web Lock around creation, rotate and wipe", async () => {

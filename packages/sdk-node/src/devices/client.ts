@@ -258,7 +258,11 @@ export class DevicesClient {
     );
     if (!res.ok) throw await responseError(res, what);
     const out = await readJson<{ keySeq?: unknown } | null>(res, what);
-    if (typeof out?.keySeq !== "number" || !Number.isSafeInteger(out.keySeq))
+    if (
+      typeof out?.keySeq !== "number" ||
+      !Number.isSafeInteger(out.keySeq) ||
+      out.keySeq < 1
+    )
       throw new PolarisError(
         ErrorCode.badResponse,
         "devices/keys answered without a keySeq.",

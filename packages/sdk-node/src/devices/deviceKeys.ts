@@ -11,7 +11,10 @@
 //  - `ensure`, `rotate` and `wipe` run under a lock file, so two processes cannot both create a
 //    pair or repeat a generation;
 //  - the file is `0600` in a `0700` directory; a directory or file owned by someone else, a
-//    directory others may write, a file others may touch, and a symlink are refused;
+//    directory with any group or other bit, a file others may touch, a symlink, and an ancestor
+//    (up to the home directory) that others may write without the sticky bit are refused;
+//  - on Windows the owner and mode checks, `O_NOFOLLOW` and the directory fsync are skipped (the
+//    user profile's ACL is the protection); renames are retried on EPERM/EBUSY;
 //  - the private halves are held in zeroed buffers for one operation and are in no return value,
 //    log or error text.
 
@@ -36,13 +39,17 @@ import {
   mkdirSync,
   openSync,
   readdirSync,
+  readFileSync,
+  readlinkSync,
+  realpathSync,
+  statSync,
   readSync,
   renameSync,
   unlinkSync,
   writeSync,
   chmodSync,
 } from "node:fs";
-import { hostname } from "node:os";
+import { homedir, hostname } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
   base64UrlDecode,
@@ -51,22 +58,13 @@ import {
 } from "@polaris-key/jws";
 import {
   DeviceKeyUnsupportedError,
+  DeviceKeysUnreadableError,
   type DeviceKeyPort,
   type DevicePublicKeys,
 } from "@polaris-key/client-core";
 import { resolveDirs } from "../core/dirs.js";
 
-/**
- * The stored key record exists but cannot be used (it does not parse, its public halves do not
- * match its private halves, or it is not one of ours). It is never replaced automatically: only
- * `wipe()` clears it, after which `ensure()` makes a new pair.
- */
-export class DeviceKeysUnreadableError extends Error {
-  constructor(message = "device keys: the record is unreadable") {
-    super(message);
-    this.name = "DeviceKeysUnreadableError";
-  }
-}
+export { DeviceKeysUnreadableError };
 
 /**
  * The store could not be used right now: an I/O fault, a path it refuses (foreign owner, loose
@@ -136,10 +134,25 @@ export class InMemoryDeviceKeyStorage implements NodeDeviceKeyStorage {
 
 const MAX_BYTES = 64 * 1024;
 const LOCK_STALE_MS = 30_000;
+const LOCK_DEAD_GRACE_MS = 5_000;
 const LOCK_TIMEOUT_MS = 10_000;
 const isWindows = process.platform === "win32";
 const ownUid = (): number | null =>
   typeof process.getuid === "function" ? process.getuid() : null;
+
+/**
+ * Identifies this boot and pid namespace (Linux: the boot id plus the pid-namespace inode), so a
+ * pid recorded in a lock is believed only by a process that shares it. Null elsewhere: a lock is
+ * then judged by age alone.
+ */
+function bootId(): string | null {
+  if (process.platform !== "linux") return null;
+  try {
+    return `${readFileSync("/proc/sys/kernel/random/boot_id", "utf8").trim()}:${readlinkSync("/proc/self/ns/pid")}`;
+  } catch {
+    return null;
+  }
+}
 
 /** In-process serialisation per path (the lock file is not re-entrant within one process). */
 const MUTEXES = new Map<string, Promise<unknown>>();
@@ -153,6 +166,26 @@ async function withMutex<T>(key: string, fn: () => Promise<T>): Promise<T> {
     return await run;
   } finally {
     if (MUTEXES.get(key) === tail) MUTEXES.delete(key);
+  }
+}
+
+/** `rename`, retried a few times where Windows briefly refuses (EPERM/EBUSY: a scanner holds it). */
+function renameRetry(from: string, to: string): void {
+  for (let i = 0; ; i++) {
+    try {
+      renameSync(from, to);
+      return;
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (!isWindows || (code !== "EPERM" && code !== "EBUSY") || i >= 5)
+        throw e;
+      Atomics.wait(
+        new Int32Array(new SharedArrayBuffer(4)),
+        0,
+        0,
+        20 * (i + 1),
+      );
+    }
   }
 }
 
@@ -263,10 +296,11 @@ export class FileDeviceKeyStorage implements NodeDeviceKeyStorage {
       throw new DeviceKeyStoreError(
         `device keys: refusing a directory owned by another user: ${dir}`,
       );
-    if ((dst.mode & 0o022) !== 0)
+    if ((dst.mode & 0o077) !== 0)
       throw new DeviceKeyStoreError(
-        `device keys: refusing a directory others may write: ${dir}`,
+        `device keys: refusing a directory others may access: ${dir}`,
       );
+    this.checkAncestors(dir);
     if (!includeFiles) return;
     for (const f of [this.file, this.lockPath]) {
       const st = this.lstatMaybe(f);
@@ -280,6 +314,35 @@ export class FileDeviceKeyStorage implements NodeDeviceKeyStorage {
         throw new DeviceKeyStoreError(
           `device keys: refusing a file others may access: ${f}`,
         );
+    }
+  }
+
+  /**
+   * Refuses a group- or world-writable ancestor without the sticky bit, from the real path of the
+   * directory up to the home directory (or the root): someone who can write there can swap the
+   * directory out. A world-writable parent without the sticky bit is unsupported.
+   */
+  private checkAncestors(dir: string): void {
+    let real: string;
+    try {
+      real = realpathSync(dir);
+    } catch (e) {
+      throw fault("resolve", dir, e);
+    }
+    let home: string | null = null;
+    try {
+      home = realpathSync(homedir());
+    } catch {
+      // no home: walk to the root
+    }
+    for (let p = dirname(real); ; p = dirname(p)) {
+      if (p === home) return;
+      const st = this.lstatMaybe(p);
+      if (st && (st.mode & 0o022) !== 0 && (st.mode & 0o1000) === 0)
+        throw new DeviceKeyStoreError(
+          `device keys: refusing a directory under one others may write: ${p}`,
+        );
+      if (dirname(p) === p) return;
     }
   }
 
@@ -300,32 +363,30 @@ export class FileDeviceKeyStorage implements NodeDeviceKeyStorage {
   }
 
   // ---- the lock ------------------------------------------------------------------------------
+  //
+  // Taken with the hard-link primitive: the body is written to a private temporary file, then
+  // `link(tmp, lock)` publishes it, atomically and with its content (a half-written lock is never
+  // visible). A stale lock is reclaimed by renaming it to a name derived from the token we
+  // observed, so two reclaimers cannot both win; if what moved is not what we observed, we back
+  // off and never put it back. The holder re-verifies its token just before it renames the new
+  // record into place. Stale-lock reclaim is best effort on a network home (clock and file
+  // semantics there are the server's); keep the state directory on a local disk.
+
+  private held: string | null = null;
 
   private async acquire(): Promise<() => void> {
     const token = randomBytes(16).toString("hex");
     const body = JSON.stringify({
       pid: process.pid,
       host: hostname(),
+      boot: bootId(),
       token,
     });
     const deadline = Date.now() + LOCK_TIMEOUT_MS;
     for (;;) {
-      try {
-        const fd = openSync(
-          this.lockPath,
-          fsc.O_WRONLY | fsc.O_CREAT | fsc.O_EXCL | (fsc.O_NOFOLLOW ?? 0),
-          0o600,
-        );
-        try {
-          if (!isWindows) fchmodSync(fd, 0o600);
-          writeSync(fd, body);
-        } finally {
-          closeSync(fd);
-        }
+      if (this.tryLink(body)) {
+        this.held = token;
         return () => this.release(token);
-      } catch (e) {
-        if ((e as NodeJS.ErrnoException).code !== "EEXIST")
-          throw fault("lock", this.lockPath, e);
       }
       this.checkTrusted(this.dir, true);
       this.reclaimIfStale();
@@ -335,20 +396,89 @@ export class FileDeviceKeyStorage implements NodeDeviceKeyStorage {
     }
   }
 
-  private release(token: string): void {
-    // Only our own lock: if it was reclaimed as stale, the new holder's file stays.
-    if (this.readLock()?.token !== token) return;
+  /** Makes a private temp file with `body`; link it to the lock path. True when we hold the lock. */
+  private tryLink(body: string): boolean {
+    const tmp = this.tempPath("lk");
     try {
-      unlinkSync(this.lockPath);
-    } catch {
-      // gone already
+      this.createPrivate(tmp, Buffer.from(body));
+      try {
+        linkSync(tmp, this.lockPath);
+        return true;
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === "EEXIST") return false;
+        throw fault("lock", this.lockPath, e);
+      }
+    } finally {
+      // Not zeroed: after a successful link this is the lock's own inode. It holds no key.
+      try {
+        unlinkSync(tmp);
+      } catch {
+        // gone already
+      }
     }
   }
 
-  private readLock(): { pid?: number; host?: string; token?: string } | null {
+  private tempPath(ext: string): string {
+    return join(
+      this.dir,
+      `.${this.name}.${randomBytes(8).toString("hex")}.${ext}`,
+    );
+  }
+
+  /** Creates `path` exclusively, owner-only before the first byte, and fsyncs it. */
+  private createPrivate(path: string, bytes: Buffer): void {
+    const fd = openSync(
+      path,
+      fsc.O_WRONLY | fsc.O_CREAT | fsc.O_EXCL | (fsc.O_NOFOLLOW ?? 0),
+      0o600,
+    );
+    try {
+      if (!isWindows) fchmodSync(fd, 0o600);
+      let off = 0;
+      while (off < bytes.length)
+        off += writeSync(fd, bytes, off, bytes.length - off);
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+  }
+
+  /** The file system's own clock: the mtime of a file made now (never `Date.now()`). */
+  private fsNow(): number {
+    const probe = this.tempPath("lk");
+    try {
+      this.createPrivate(probe, Buffer.alloc(0));
+      return statSync(probe).mtimeMs;
+    } catch {
+      return Date.now();
+    } finally {
+      this.zeroAndDelete(probe);
+    }
+  }
+
+  private release(token: string): void {
+    this.held = null;
+    // Only our own lock: rename it aside, check what moved, then remove it. A lock that is no
+    // longer ours (reclaimed as stale) is left to its new holder.
+    if (this.readLock(this.lockPath)?.token !== token) return;
+    const aside = join(this.dir, `.${this.name}.lock.${token}.stale`);
+    try {
+      renameSync(this.lockPath, aside);
+    } catch {
+      return;
+    }
+    this.zeroAndDelete(aside);
+  }
+
+  private readLock(path: string): {
+    pid?: number;
+    host?: string;
+    boot?: string | null;
+    token?: string;
+  } | null {
     let fd: number;
     try {
-      fd = openSync(this.lockPath, fsc.O_RDONLY | (fsc.O_NOFOLLOW ?? 0));
+      fd = openSync(path, fsc.O_RDONLY | (fsc.O_NOFOLLOW ?? 0));
     } catch {
       return null;
     }
@@ -356,9 +486,7 @@ export class FileDeviceKeyStorage implements NodeDeviceKeyStorage {
       const buf = Buffer.alloc(512);
       const n = readSync(fd, buf, 0, 512, 0);
       const o: unknown = JSON.parse(buf.toString("utf8", 0, n));
-      return o && typeof o === "object"
-        ? (o as { pid?: number; host?: string; token?: string })
-        : null;
+      return o && typeof o === "object" ? (o as { token?: string }) : null;
     } catch {
       return null;
     } finally {
@@ -366,57 +494,43 @@ export class FileDeviceKeyStorage implements NodeDeviceKeyStorage {
     }
   }
 
-  /** Moves a dead or expired lock aside (atomic rename), after checking what was moved. */
+  /** Moves a dead or expired lock aside (atomic rename to a token-named file), then checks it. */
   private reclaimIfStale(): void {
     const st = this.lstatMaybe(this.lockPath);
     if (!st) return;
     this.refuseNonRegular(this.lockPath, st);
-    const seen = this.readLock();
-    const old = Date.now() - st.mtimeMs > LOCK_STALE_MS;
+    const seen = this.readLock(this.lockPath);
+    const age = this.fsNow() - st.mtimeMs;
+    // A dead pid counts only past a grace period, and only on the same host and boot (pid
+    // namespace); elsewhere the age alone decides.
     let dead = false;
-    if (seen && typeof seen.pid === "number" && seen.host === hostname()) {
+    const boot = bootId();
+    if (
+      seen &&
+      typeof seen.pid === "number" &&
+      seen.host === hostname() &&
+      boot !== null &&
+      seen.boot === boot &&
+      age > LOCK_DEAD_GRACE_MS
+    ) {
       try {
         process.kill(seen.pid, 0);
       } catch (e) {
         dead = (e as NodeJS.ErrnoException).code === "ESRCH";
       }
     }
-    if (!old && !dead) return;
-    const aside = join(
-      this.dir,
-      `.${this.name}.${randomBytes(6).toString("hex")}.stale`,
-    );
+    if (age <= LOCK_STALE_MS && !dead) return;
+    // An unreadable lock has no token to name the file by; only the age rule applies to it.
+    const tag = seen?.token ?? randomBytes(8).toString("hex");
+    const aside = join(this.dir, `.${this.name}.lock.${tag}.stale`);
     try {
       renameSync(this.lockPath, aside);
     } catch {
       return; // someone else reclaimed it first
     }
-    // If a live holder's fresh lock was what moved, put it back (link fails if a new one exists).
-    const moved = this.readAside(aside);
-    if (moved && seen?.token && moved !== seen.token) {
-      try {
-        linkSync(aside, this.lockPath);
-      } catch {
-        // a newer lock exists; the displaced holder's release will find its token gone
-      }
-    }
+    // If what moved is not what we observed, a live holder's lock went with it: do not put it
+    // back (that could admit two holders); the holder sees its token gone and aborts its write.
     this.zeroAndDelete(aside);
-  }
-
-  private readAside(p: string): string | undefined {
-    try {
-      const fd = openSync(p, fsc.O_RDONLY | (fsc.O_NOFOLLOW ?? 0));
-      try {
-        const buf = Buffer.alloc(512);
-        const n = readSync(fd, buf, 0, 512, 0);
-        return (JSON.parse(buf.toString("utf8", 0, n)) as { token?: string })
-          .token;
-      } finally {
-        closeSync(fd);
-      }
-    } catch {
-      return undefined;
-    }
   }
 
   // ---- read and write ------------------------------------------------------------------------
@@ -479,24 +593,17 @@ export class FileDeviceKeyStorage implements NodeDeviceKeyStorage {
       `.${this.name}.${randomBytes(8).toString("hex")}.tmp`,
     );
     try {
-      const fd = openSync(
-        tmp,
-        fsc.O_WRONLY | fsc.O_CREAT | fsc.O_EXCL | (fsc.O_NOFOLLOW ?? 0),
-        0o600,
-      );
-      try {
-        if (!isWindows) fchmodSync(fd, 0o600); // before the first key byte
-        let off = 0;
-        while (off < bytes.length)
-          off += writeSync(fd, bytes, off, bytes.length - off);
-        fsyncSync(fd);
-      } finally {
-        closeSync(fd);
-      }
-      renameSync(tmp, this.file);
+      this.createPrivate(tmp, bytes); // owner-only before the first key byte
+      if (
+        this.held !== null &&
+        this.readLock(this.lockPath)?.token !== this.held
+      )
+        throw new DeviceKeyStoreError("device keys: the lock was lost");
+      renameRetry(tmp, this.file);
       this.syncDirectory();
     } catch (e) {
       this.zeroAndDelete(tmp);
+      if (e instanceof DeviceKeyStoreError) throw e;
       throw fault("write", this.file, e);
     }
   }
@@ -524,9 +631,17 @@ export class FileDeviceKeyStorage implements NodeDeviceKeyStorage {
       throw fault("list", this.dir, e);
     }
     const prefix = `.${this.name}.`;
-    for (const n of names)
-      if (n.startsWith(prefix) && (n.endsWith(".tmp") || n.endsWith(".stale")))
-        this.zeroAndDelete(join(this.dir, n));
+    for (const n of names) {
+      if (!n.startsWith(prefix)) continue;
+      // Record temporaries exist only under the lock, so any left is a crashed write's. Lock
+      // temporaries and moved-aside locks are other contenders' work in flight: only old ones go.
+      if (n.endsWith(".tmp")) this.zeroAndDelete(join(this.dir, n));
+      else if (n.endsWith(".lk") || n.endsWith(".stale")) {
+        const st = this.lstatMaybe(join(this.dir, n));
+        if (st && Date.now() - st.mtimeMs > 60_000)
+          this.zeroAndDelete(join(this.dir, n));
+      }
+    }
   }
 
   /** Overwrites a regular file we own with zeros, then deletes it. Best effort on the overwrite. */
