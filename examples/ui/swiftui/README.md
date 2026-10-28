@@ -37,6 +37,12 @@ PKEY_KIT_ONLY=Welcome.default,SignIn.methods PKEY_KIT_QUICK=1 ./run.sh
 PKEY_KIT_BASELINES=../../../sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__ ./run.sh
 ```
 
+The committed iPhone baselines are 440x956 renders from the iPhone 17 Pro Max on the iOS 26.5
+simulator; `run.sh` pins that runtime (`IOS=26.5`), because Xcode 27's `OS:latest` is iOS 27, which
+has no such device and draws some states differently. Name the files with
+`PKEY_KIT_DEVICE=iphone-440x956` to compare or record against them. CI has no iOS render lane
+(only the Mac one), so never record from another device or runtime.
+
 With `PKEY_KIT_BASELINES` every render is compared with its committed baseline;
 `PKEY_KIT_RECORD=1` writes them instead (give the reason in the commit).
 

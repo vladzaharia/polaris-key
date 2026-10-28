@@ -160,7 +160,7 @@ internal fun statusScreen(inputs: KitInputs): KitScreen {
     }
 }
 
-internal fun graceBannerScreen(inputs: KitInputs): KitScreen {
+internal fun graceBannerScreen(inputs: KitInputs, today: java.time.LocalDate): KitScreen {
     val context = KitContext(inputs)
     val gate = inputs.obj("gate")
     if (!inputs.isOn("license")) return hidden(KitComponent.graceBanner)
@@ -175,7 +175,7 @@ internal fun graceBannerScreen(inputs: KitInputs): KitScreen {
                     "days-left",
                     listOf(
                         context.line("grace.daysLeft", mapOf("days" to CopyArgument.Number(days))),
-                        context.line("grace.deadline", mapOf("date" to CopyArgument.Text(KitFormat.dayAfter(days)))),
+                        context.line("grace.deadline", mapOf("date" to CopyArgument.Text(KitFormat.dayAfter(days, today)))),
                         context.line("common.reconnect"),
                         context.line("common.dismiss"),
                     ),

@@ -3,7 +3,7 @@
 //   no arguments          the gallery of every preview state, on the fixture product (no Worker)
 //   -pkeyState <id>       one state full-screen (the render tests use it), e.g. Welcome.default
 //   -pkeyScheme dark|light, -pkeyPreset native, -pkeyAccent #rrggbb, -pkeyAmbient off,
-//   -pkeyFreezeTime (countdowns stop, for baselines), -pkeyLocale de, -pkeyMaterial (the iOS 18
+//   -pkeyFreezeTime (countdowns stop and dates count from a fixed day, for baselines), -pkeyLocale de, -pkeyMaterial (the iOS 18
 //   material fallback on 26)
 //   macOS only: -pkeyActivate (take the activation when launched from a script),
 //   -pkeyWindow WxH (the content size in points, e.g. 900x640) and -pkeyInactive
@@ -74,6 +74,14 @@ import SwiftUI
 
 @main
 struct TidewaterKitApp: App {
+    init() {
+        // Date-relative copy ("Works offline until ...") counts from a fixed day under the
+        // baseline flag, so a render is the same on every day.
+        if SampleArgs.has("-pkeyFreezeTime") {
+            KitFormat.referenceDate = Date(timeIntervalSince1970: 1_790_000_000)
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             Root()

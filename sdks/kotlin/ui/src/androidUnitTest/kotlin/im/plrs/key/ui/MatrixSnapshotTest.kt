@@ -54,7 +54,7 @@ internal object MatrixCases {
                     merged[key] = if (key == "capabilities" && base != null && value is JsonObject) JsonObject(base + value) else value
                 }
                 val inputs = KitInputs.of(merged)
-                val screen = KitStates.resolve(component, inputs)
+                val screen = KitStates.resolve(component, inputs, java.time.Instant.ofEpochSecond(NOW).atZone(java.time.ZoneOffset.UTC).toLocalDate())
                 val id = "${component.id.replaceFirstChar { it.lowercase() }}-${screen.state}"
                 // An entitled gate draws its children, which the matrix does not have: no picture.
                 val draws = !(component == KitComponent.entitlementGate && screen.state == "entitled")
