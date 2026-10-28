@@ -22,8 +22,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Node | `node` | 88 | 9 | 26 | 0 |
 | React | `web`, `desktop-bridge` | 85 | 21 | 17 | 0 |
 | Python | `python` | 82 | 9 | 32 | 0 |
-| Swift | `macos`, `ios` | 92 | 9 | 21 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 92 | 9 | 22 | 0 |
+| Swift | `macos`, `ios` | 93 | 9 | 20 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 93 | 9 | 21 | 0 |
 | Kotlin | `android`, `jvm` | 94 | 8 | 20 | 1 |
 
 ## Core
@@ -87,7 +87,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `connect.identity` | Device certificates and rings: verify, key choice and admission | `cases.json` `peerCertCases` + transcripts (CC-06) | ✓ | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
 | `connect.noise` | Noise_XX_25519_AESGCM_SHA256 and its primitives | `noise-vectors.json` | ✓ | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
-| `connect.protocol` | pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes | `peer-matrix.json` (CC-05) | planned (CC-08) | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
+| `connect.protocol` | pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes | `peer-matrix.json` | planned (CC-08) | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
 | `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit | planned (CC-08) | N/A (web, desktop-bridge: runtime) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | web, desktop-bridge: runtime |
 | `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts (CC-07) + unit | planned (CC-08) | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
 | `connect.links` | Inter-account links: mode p pairing and contacts | unit | planned (CC-19) | N/A (web, desktop-bridge: runtime) | planned (CC-19) | planned (CC-19) | planned (CC-19) | planned (CC-19) | web, desktop-bridge: runtime |
@@ -108,12 +108,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (I-15) | ✓ | planned (I-15) | planned (I-15) | planned (I-15) | planned (I-15) | — |
 | `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `identity.devicelabel` | Device label sent on device-code sign-in, activation and registration (WIRE-CONTRACT-V4 §12.7.1) | `device-label.json` + transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
-| `identity.toggle` | Identity off for a product: every sign-in entry fails fast, licences keep working | transcripts | ✓ | planned (I-10a) | planned (I-10a) | ✓ | planned (I-10b) | ✓ | — |
+| `identity.toggle` | Identity off for a product: every sign-in entry fails fast, licences keep working | transcripts | ✓ | planned (I-10a) | planned (I-10a) | ✓ | ✓ | ✓ | — |
 | `identity.keyentry` | Key entry on an Identity product: keyEntries on success, and the key-entry-limit refusal with manageUrl | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.attach` | Attach: add the device's licence to the account signed in on it, with a preview | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.account` | The account on the device: subject(), signOut() and openAccount() | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.redirect.web` | Web redirect sign-in: authorize with PKCE, then the code redeemed at token | transcripts | ✓ | planned (I-10a) | planned (I-10a) | ✓ | planned (I-10b) | ✓ | — |
-| `identity.choice` | Licence choice in the app: the choice.* primitives over a pending sign-in grant | transcripts | ✓ | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
+| `identity.choice` | Licence choice in the app: the choice.* primitives over a pending sign-in grant | transcripts | ✓ | planned (I-10a) | planned (I-10a) | ✓ | planned (I-10b) | planned (I-10b) | — |
 | `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | ✓ | planned (I-10a) | planned (I-10a) | ✓ | planned (I-10b) | ✓ | — |
 
 ## Release and update

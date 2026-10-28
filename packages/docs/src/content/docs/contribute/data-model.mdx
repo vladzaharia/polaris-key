@@ -177,6 +177,12 @@ this page or fails the freshness gate.
 | `sync_product_usage` | 0131_cloud_sync_directory.sql | `product`, `bytes`, `users`, `settings_bytes`, `record_bytes`, `file_bytes`, `revision_bytes`, `breakdown_json`, `computed_at` |
 | `sync_product_daily` | 0132_cloud_sync_daily.sql | `product`, `day`, `syncs`, `conflicts` |
 
+## connect
+
+| Table | Since | Columns (ALTERs annotated with their migration) |
+| --- | --- | --- |
+| `connect_rings` | 0146_connect_rings.sql | `product`, `subject`, `epoch`, `members_hash`, `member_ids`, `disc_key`, `prev_disc_key`, `prev_epoch`, `bumped_at` |
+
 ## update
 
 | Table | Since | Columns (ALTERs annotated with their migration) |

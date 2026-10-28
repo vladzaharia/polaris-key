@@ -23,6 +23,23 @@ import {
 import type { SqliteDb } from "../../../src/db/sqlite.js";
 
 const P = "djdl";
+const PS_ONE = "ps_" + "A".repeat(22);
+const PS_TWO = "ps_" + "B".repeat(22);
+
+/** A live account subject, so the principal rule resolves it. */
+async function seedSubject(db: SqliteDb, subject: string): Promise<void> {
+  const id = `acc_${subject.slice(3, 6)}`;
+  await db.run(
+    "INSERT INTO accounts (id, created_at, modified_at) VALUES (?, 1, 1)",
+    id,
+  );
+  await db.run(
+    "INSERT INTO account_product_subjects (account_id, product, subject, created_at) VALUES (?, ?, ?, 1)",
+    id,
+    P,
+    subject,
+  );
+}
 const b64 = (b: Uint8Array): string => base64UrlEncodeBytes(b);
 
 async function signPair(): Promise<{
@@ -162,12 +179,14 @@ describe("device keys store", () => {
 
   it("lists the authorized devices bound to a subject, in device order", async () => {
     const db = makeTestDb();
-    await seedDevice(db, "dev_b", "ps_one");
-    await seedDevice(db, "dev_a", "ps_one");
-    await seedDevice(db, "dev_gone", "ps_one", "deauthorized");
-    await seedDevice(db, "dev_other", "ps_two");
+    await seedSubject(db, PS_ONE);
+    await seedSubject(db, PS_TWO);
+    await seedDevice(db, "dev_b", PS_ONE);
+    await seedDevice(db, "dev_a", PS_ONE);
+    await seedDevice(db, "dev_gone", PS_ONE, "deauthorized");
+    await seedDevice(db, "dev_other", PS_TWO);
     await seedDevice(db, "dev_unbound", null);
-    await seedDevice(db, "dev_nokeys", "ps_one");
+    await seedDevice(db, "dev_nokeys", PS_ONE);
     for (const id of [
       "dev_a",
       "dev_b",
@@ -177,16 +196,18 @@ describe("device keys store", () => {
     ]) {
       await upsertDeviceKeys(db, P, id, await keys(), 1);
     }
-    const list = await accountDeviceKeys(db, P, "ps_one");
+    // a device that names no licence has its binding as its principal
+    await db.run("UPDATE devices SET license_id = ''");
+    const list = await accountDeviceKeys(db, P, PS_ONE);
     expect(list.map((d) => d.deviceId)).toEqual(["dev_a", "dev_b"]);
     expect(list[0]).toMatchObject({ keySeq: 1 });
-    expect(await accountDeviceKeys(db, "other", "ps_one")).toEqual([]);
+    expect(await accountDeviceKeys(db, "other", PS_ONE)).toEqual([]);
   });
 
   it("goes with the device: delete, purge and a deauthorize batch", async () => {
     const db = makeTestDb();
     for (const id of ["d1", "d2", "d3"]) {
-      await seedDevice(db, id, "ps_one");
+      await seedDevice(db, id, PS_ONE);
       await upsertDeviceKeys(db, P, id, await keys(), 1);
     }
     await deleteDeviceKeys(db, P, "d1");

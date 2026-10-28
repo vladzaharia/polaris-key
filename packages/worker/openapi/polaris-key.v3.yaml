@@ -105,6 +105,12 @@ tags:
       Cloud Sync (U-05; WIRE-CONTRACT-V4 §13): a signed-in person's synced settings for one
       product. Unsigned device routes under `/{product}/sync`, bearer only, no cookie. Off, or
       Config or Identity off, answers `404`.
+  - name: connect
+    description: >
+      Cloud Connect (CC-06; WIRE-CONTRACT-V5 §15): the roster and certificate of a signed-in
+      person's devices and the discovery key. Unsigned JSON device routes under
+      `/{product}/connect`, bearer only, no cookie, readable from a listed `web.origins` page. Off, or Identity off,
+      answers `404`.
   - name: registry
     description: >
       The registry host, `pkg.plrs.im` (F-02): package feeds for registry clients (npm, PyPI,
@@ -9139,6 +9145,169 @@ paths:
     options:
       operationId: preflightIdentitySignOut
       tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/connect/identity:
+    get:
+      operationId: connectIdentity
+      tags: [connect]
+      summary: The device's roster, certificate and discovery keys (CC-06.1)
+      description: >
+        WIRE-CONTRACT-V5 §15.3, §15.4. The device's own credential only: `Authorization: Bearer
+        pkeyt_…` and `X-PKey-Device`. The subject is the device's own principal; no parameter names
+        one. `ring` is a `pkey-ring+jws` of the person's devices that hold keys (1 to 128, sorted
+        by `deviceId`), valid for 7 days; `certificate` is the caller's `pkey-peer+jws`, valid for 7
+        days, carrying the ring's epoch. `discKeys` are the discovery keys, newest first: the
+        current key, and the one before it for 24 hours after the epoch moved. A device advertises
+        under the first only. The epoch rises when a device joins, leaves or rotates its keys,
+        noticed on the next read. The previous key is omitted when a device left in that bump. More than 128 devices answers `409 ring_too_large`, before the epoch moves.
+        `503 signing_unavailable` when the product has no signing key.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: X-PKey-Device
+          in: header
+          required: true
+          description: The device the bearer token belongs to.
+          schema: { type: string }
+      responses:
+        "200":
+          description: "`cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectIdentity" }
+              examples:
+                identity:
+                  value:
+                    ring: eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJ0ZXN0LWtpZCJ9.e30.c2ln
+                    certificate: eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcGVlcitqd3MiLCJraWQiOiJ0ZXN0LWtpZCJ9.e30.c2ln
+                    discKeys: [ZGlzYy1rZXktY3VycmVudC0zMi1ieXRlcy1sb25nISE]
+        "400":
+          description: "`bad_request`: `X-PKey-Device` is missing or malformed."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `account_required`: no account is signed in on the device. The client keeps its
+            state and offers sign-in behind a user action.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountRequiredBody" }
+              examples:
+                accountRequired:
+                  value:
+                    error:
+                      code: account_required
+                      message: Sign in to link this device.
+                      signInUrl: https://key.plrs.im/signin?product=djdl
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: >
+            `device_keys_required`: the device has registered no keys, or its keys are not in its
+            roster. Register them with `PUT /{product}/devices/keys`, then retry. `ring_too_large`:
+            the person has more than 128 devices; nothing is issued.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                required: { value: { error: { code: device_keys_required } } }
+                tooLarge: { value: { error: { code: ring_too_large } } }
+        "503":
+          description: "`signing_unavailable`: the product has no signing key."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightConnectIdentity
+      tags: [connect]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/connect/devices:
+    get:
+      operationId: connectDevices
+      tags: [connect]
+      summary: The person's linked devices, for display (CC-06.1)
+      description: >
+        WIRE-CONTRACT-V5 §15.9. The devices of the caller's person that hold keys, sorted by
+        `deviceId`, with the label the device reported, its platform when it is one of the closed
+        set, and when it was last seen. Display data: it carries no key and is not a roster. The
+        same credential and refusals as `connect/identity`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: X-PKey-Device
+          in: header
+          required: true
+          description: The device the bearer token belongs to.
+          schema: { type: string }
+      responses:
+        "200":
+          description: "`cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectDevices" }
+              examples:
+                devices:
+                  value:
+                    devices:
+                      - deviceId: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                        label: Studio Mac
+                        platform: macos
+                        lastSeen: 1761300000
+                        self: true
+        "400":
+          description: "`bad_request`: `X-PKey-Device` is missing or malformed."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `account_required`: no account is signed in on the device. The client keeps its
+            state and offers sign-in behind a user action.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountRequiredBody" }
+              examples:
+                accountRequired:
+                  value:
+                    error:
+                      code: account_required
+                      message: Sign in to link this device.
+                      signInUrl: https://key.plrs.im/signin?product=djdl
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: >
+            `device_keys_required`: the device has registered no keys, or its keys are not in its
+            roster. Register them with `PUT /{product}/devices/keys`, then retry. `ring_too_large`:
+            the person has more than 128 devices; nothing is issued.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                required: { value: { error: { code: device_keys_required } } }
+                tooLarge: { value: { error: { code: ring_too_large } } }
+    options:
+      operationId: preflightConnectDevices
+      tags: [connect]
       summary: CORS preflight
       description: >
         Browser preflight for a page on one of the product's `web.origins`. Answered
@@ -26959,6 +27128,7 @@ components:
             distribution: { $ref: "#/components/schemas/DistributionFragment" }
             sync: { $ref: "#/components/schemas/SyncFragment" }
             commerce: { $ref: "#/components/schemas/CommerceFragment" }
+            connect: { $ref: "#/components/schemas/ConnectFragment" }
           additionalProperties: { $ref: "#/components/schemas/ServiceFragment" }
     ServiceFragment:
       type: object
@@ -27080,6 +27250,79 @@ components:
           collections: false
           saves: false
           endpoints: { pull: null, push: null, files: null }
+    ConnectIdentity:
+      type: object
+      required: [ring, certificate, discKeys]
+      properties:
+        ring:
+          {
+            type: string,
+            description: "A `pkey-ring+jws` compact JWS (§15.3).",
+          }
+        certificate:
+          {
+            type: string,
+            description: "The caller's `pkey-peer+jws` compact JWS (§15.2).",
+          }
+        discKeys:
+          type: array
+          minItems: 1
+          maxItems: 2
+          description: Discovery keys, base64url of 32 bytes, newest first.
+          items: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+    ConnectDevices:
+      type: object
+      required: [devices]
+      properties:
+        devices:
+          type: array
+          maxItems: 128
+          items:
+            type: object
+            required: [deviceId, label, platform, lastSeen, self]
+            properties:
+              deviceId: { type: string }
+              label: { type: [string, "null"] }
+              platform: { type: [string, "null"] }
+              lastSeen: { type: integer }
+              self: { type: boolean }
+    ConnectFragment:
+      description: >
+        Cloud Connect's fragment (WIRE-CONTRACT-V5 §15.9). `{"enabled": false}` when off. When on,
+        `lan` says devices may find each other on the local network, `relay` that the relay is
+        available and `interAccount` that devices of different accounts may connect. Each endpoint
+        is a URL or `null` until the release that serves it.
+      oneOf:
+        - type: object
+          required: [enabled]
+          additionalProperties: false
+          properties:
+            enabled: { type: boolean, const: false }
+        - type: object
+          required: [enabled, lan, relay, interAccount, endpoints]
+          additionalProperties: true
+          properties:
+            enabled: { type: boolean, const: true }
+            lan: { type: boolean }
+            relay: { type: boolean }
+            interAccount: { type: boolean }
+            endpoints:
+              type: object
+              required: [identity, devices, ticket]
+              properties:
+                identity: { type: [string, "null"] }
+                devices: { type: [string, "null"] }
+                ticket: { type: [string, "null"] }
+      examples:
+        - { enabled: false }
+        - enabled: true
+          lan: true
+          relay: false
+          interAccount: false
+          endpoints:
+            identity: https://key.plrs.im/djdl/connect/identity
+            devices: https://key.plrs.im/djdl/connect/devices
+            ticket: null
     Jwks:
       type: object
       description: >

@@ -9,6 +9,9 @@ import {
   isCanonicalB64url,
 } from "@polaris-key/jws";
 import type { Db, DbStatement } from "../../db/types.js";
+import { resolveSyncPrincipal } from "../accounts/accountSubjects.js";
+import { getLicense } from "../licensing/store.js";
+import { licenseUsable } from "../devices.js";
 import { hexEncode, utf8Encode, toArrayBuffer } from "../../platform/bytes.js";
 
 export interface DeviceKeysRow {
@@ -137,26 +140,41 @@ export async function deviceSignKey(
   return (await getDeviceKeys(db, product, deviceId))?.sign_key ?? null;
 }
 
+interface MemberRow {
+  device_id: string;
+  sign_key: string;
+  agree_key: string;
+  key_seq: number;
+  label: string | null;
+  platform: string | null;
+  last_seen: number;
+}
+
+export interface MemberOptions {
+  /** The licence service is on: a device must also hold a seat and token and a usable licence. */
+  seatsHeld?: boolean;
+  /** Epoch seconds for the licence check; defaults to the clock. */
+  now?: number;
+}
+
 /**
- * The devices bound to a subject that have keys: what Cloud Sync wraps the root key to. Bound means
- * `devices.subject` is the subject, authorized means `status = 'authorized'`. With `seatsHeld` (the
- * licence service is on) a device whose seat and token were released (`releaseDormantSeats`) is left
- * out; with the service off a seat is never held, so the caller leaves it unset.
- * Sorted by `device_id` so two callers see one order.
+ * The devices that hold keys and whose principal is `subject`: exactly those for which
+ * `resolveSyncPrincipal` answers this subject (authorized, bound, licence not floating and not
+ * removed from the account's library). With `seatsHeld` (the licence service is on) a device whose
+ * seat and token were released (`releaseDormantSeats`) or whose licence is not usable (disabled,
+ * expired, gone) is left out; with the service off a seat is never held, so the caller leaves it
+ * unset. Sorted by `device_id` so two callers see one order. The SQL only narrows the candidates;
+ * the principal rule decides.
  */
-export async function accountDeviceKeys(
+async function memberRows(
   db: Db,
   product: string,
   subject: string,
-  opts: { seatsHeld?: boolean } = {},
-): Promise<AccountDeviceKeys[]> {
-  const rows = await db.all<{
-    device_id: string;
-    sign_key: string;
-    agree_key: string;
-    key_seq: number;
-  }>(
-    `SELECT k.device_id, k.sign_key, k.agree_key, k.key_seq
+  opts: MemberOptions,
+): Promise<MemberRow[]> {
+  const rows = await db.all<MemberRow & { status: string; license_id: string }>(
+    `SELECT k.device_id, k.sign_key, k.agree_key, k.key_seq, d.label, d.platform, d.last_seen,
+            d.status, d.license_id
        FROM device_keys k
        JOIN devices d ON d.product = k.product AND d.device_id = k.device_id
       WHERE k.product = ? AND d.subject = ? AND d.status = 'authorized'${
@@ -168,11 +186,62 @@ export async function accountDeviceKeys(
     product,
     subject,
   );
+  const now = opts.now ?? Math.floor(Date.now() / 1000);
+  const members: MemberRow[] = [];
+  for (const r of rows) {
+    const principal = await resolveSyncPrincipal(db, {
+      product,
+      status: r.status,
+      license_id: r.license_id,
+      subject,
+    });
+    if (principal?.subject !== subject) continue;
+    if (opts.seatsHeld) {
+      const licence = await getLicense(db, product, r.license_id);
+      if (!licenseUsable(licence, now)) continue;
+    }
+    members.push(r);
+  }
+  return members;
+}
+
+/** The members with their keys: what Cloud Sync wraps the root key to and Cloud Connect signs. */
+export async function accountDeviceKeys(
+  db: Db,
+  product: string,
+  subject: string,
+  opts: MemberOptions = {},
+): Promise<AccountDeviceKeys[]> {
+  const rows = await memberRows(db, product, subject, opts);
   return rows.map((r) => ({
     deviceId: r.device_id,
     signKey: r.sign_key,
     agreeKey: r.agree_key,
     keySeq: r.key_seq,
+  }));
+}
+
+/** What the linked-devices list shows of one device: display data only, no key. */
+export interface AccountDeviceListing {
+  deviceId: string;
+  label: string | null;
+  platform: string | null;
+  lastSeen: number;
+}
+
+/** The listing for `accountDeviceKeys`' set (same rule), sorted by `device_id`. */
+export async function accountDeviceListing(
+  db: Db,
+  product: string,
+  subject: string,
+  opts: MemberOptions = {},
+): Promise<AccountDeviceListing[]> {
+  const rows = await memberRows(db, product, subject, opts);
+  return rows.map((r) => ({
+    deviceId: r.device_id,
+    label: r.label,
+    platform: r.platform,
+    lastSeen: r.last_seen,
   }));
 }
 

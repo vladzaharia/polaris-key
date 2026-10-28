@@ -77,6 +77,14 @@
       "title": "Dispositivo no configurado",
       "message": "No se pudo configurar este dispositivo para la sincronización. Actualiza la app e inténtalo de nuevo."
     },
+    "device_keys_required": {
+      "title": "Dispositivo no vinculado",
+      "message": "Este dispositivo no se ha configurado para vincularse con los demás. Actualiza la app e inténtalo de nuevo."
+    },
+    "ring_too_large": {
+      "title": "Demasiados dispositivos",
+      "message": "Esta cuenta tiene más dispositivos vinculados de los que se pueden conectar. Quita uno e inténtalo de nuevo."
+    },
     "key_entry_limit": {
       "title": "No quedan usos de la clave",
       "message": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar."

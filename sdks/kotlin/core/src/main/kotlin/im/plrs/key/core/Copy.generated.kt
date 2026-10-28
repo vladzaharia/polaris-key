@@ -40,6 +40,8 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "document_not_representable" to CopyEntry("Service problem", "The service couldn't prepare your settings. Contact the developer."),
     "signing_unavailable" to CopyEntry("Signing unavailable", "The service can't sign a document right now. Try again in a few minutes."),
     "device_keys_invalid" to CopyEntry("Device not set up", "This device could not be set up for sync. Update the app and try again."),
+    "device_keys_required" to CopyEntry("Device not linked", "This device has not been set up to link with your others. Update the app and try again."),
+    "ring_too_large" to CopyEntry("Too many devices", "This account has more linked devices than can be connected. Remove one and try again."),
     "device_limit" to CopyEntry("Device limit reached", "This license is already on all its devices. Replace a device to use it here."),
     "key_entry_limit" to CopyEntry("No key entries left", "This key has no entries left. Add it to your account and sign in instead."),
     "license_disabled" to CopyEntry("License disabled", "This license has been disabled. Contact the developer."),
