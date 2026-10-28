@@ -891,6 +891,11 @@ class Feature:
     SYNC_CONFLICT: Final = "sync.conflict"
     SYNC_SAVES: Final = "sync.saves"
     SYNC_KEYRING: Final = "sync.keyring"
+    SYNC_RECORDS: Final = "sync.records"
+    SYNC_FILES: Final = "sync.files"
+    SYNC_FILES_DELTA: Final = "sync.files.delta"
+    SYNC_E2E_RECOVERY: Final = "sync.e2e.recovery"
+    SYNC_TRANSFER_BACKGROUND: Final = "sync.transfer.background"
     SYNC_E2E: Final = "sync.e2e"
     CONNECT_IDENTITY: Final = "connect.identity"
     CONNECT_NOISE: Final = "connect.noise"
@@ -1024,6 +1029,11 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "sync.conflict",
     "sync.saves",
     "sync.keyring",
+    "sync.records",
+    "sync.files",
+    "sync.files.delta",
+    "sync.e2e.recovery",
+    "sync.transfer.background",
     "sync.e2e",
     "connect.identity",
     "connect.noise",
@@ -2418,6 +2428,11 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.conflict": CapabilityRow("planned", "sync", ()),
         "sync.saves": CapabilityRow("planned", "sync", ()),
         "sync.keyring": CapabilityRow("implemented", "sync", ()),
+        "sync.records": CapabilityRow("planned", "sync", ()),
+        "sync.files": CapabilityRow("planned", "sync", ()),
+        "sync.files.delta": CapabilityRow("planned", "sync", ()),
+        "sync.e2e.recovery": CapabilityRow("planned", "sync", ()),
+        "sync.transfer.background": CapabilityRow("na", "sync", (CapabilityNa("python", "runtime"),)),
         "sync.e2e": CapabilityRow("planned", "sync", ()),
         "connect.identity": CapabilityRow("implemented", "connect", ()),
         "connect.noise": CapabilityRow("planned", "connect", ()),
@@ -2514,4 +2529,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "02064b856cceb3051c2865949f4219473044d013ba7bd5e32db24bed389c42ba"
+CAPABILITY_DIGEST: Final[str] = "eb34fcab6e3684fc4df7b89eda72363da8c5661649aeb02f2cbf0e1dae50bb4d"

@@ -470,6 +470,26 @@
       "status": "planned",
       "wp": "U-39"
     },
+    "sync.records": {
+      "status": "planned",
+      "wp": "U-23"
+    },
+    "sync.files": {
+      "status": "planned",
+      "wp": "U-23"
+    },
+    "sync.files.delta": {
+      "status": "planned",
+      "wp": "U-23"
+    },
+    "sync.e2e.recovery": {
+      "status": "planned",
+      "wp": "U-07"
+    },
+    "sync.transfer.background": {
+      "status": "planned",
+      "wp": "U-41"
+    },
     "sync.e2e": {
       "status": "planned",
       "wp": "U-07"

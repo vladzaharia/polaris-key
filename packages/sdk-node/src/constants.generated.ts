@@ -678,6 +678,11 @@ export const Feature = {
   syncConflict: "sync.conflict",
   syncSaves: "sync.saves",
   syncKeyring: "sync.keyring",
+  syncRecords: "sync.records",
+  syncFiles: "sync.files",
+  syncFilesDelta: "sync.files.delta",
+  syncE2eRecovery: "sync.e2e.recovery",
+  syncTransferBackground: "sync.transfer.background",
   syncE2e: "sync.e2e",
   connectIdentity: "connect.identity",
   connectNoise: "connect.noise",
@@ -812,6 +817,11 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "sync.conflict",
   "sync.saves",
   "sync.keyring",
+  "sync.records",
+  "sync.files",
+  "sync.files.delta",
+  "sync.e2e.recovery",
+  "sync.transfer.background",
   "sync.e2e",
   "connect.identity",
   "connect.noise",
@@ -2039,6 +2049,15 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
   "sync.keyring": { status: "implemented", service: "sync", na: [] },
+  "sync.records": { status: "planned", service: "sync", na: [] },
+  "sync.files": { status: "planned", service: "sync", na: [] },
+  "sync.files.delta": { status: "planned", service: "sync", na: [] },
+  "sync.e2e.recovery": { status: "planned", service: "sync", na: [] },
+  "sync.transfer.background": {
+    status: "na",
+    service: "sync",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
   "sync.e2e": { status: "implemented", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
@@ -2211,4 +2230,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "2391a384ea9a3e3653f2fcc9b83260b62204fd1bed2b6a22cac2ca989d9866e6";
+  "6fdea0ba59f92e598b37cc79da2f12beeab64e36a353e3c978f74754dba1b73a";
