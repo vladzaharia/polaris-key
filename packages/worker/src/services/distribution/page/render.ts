@@ -24,6 +24,7 @@
  */
 
 import { FONT, THEME_TOKENS } from "@polaris-key/brand";
+import { badgeSvg } from "@polaris-key/brand/svg";
 import { buildLabel, type BuildLabel } from "@polaris-key/manifest";
 import {
   LOCKER_LOCKUP_CSS,
@@ -171,6 +172,9 @@ export const PAGE_CSS = [
   `.sha{word-break:break-all}`,
   `.mono code{font-size:.8125rem}`,
   `.summary{white-space:pre-line}`,
+  `.lk-badge{margin:1.5rem 0 0}.lk-badge a{display:inline-block}.lk-badge svg{display:block}.lk-light,.lk-text{display:none}`,
+  `@media (prefers-color-scheme:light){.lk-dark{display:none}.lk-light{display:inline-block}}`,
+  `@media (max-width:359px){.lk-art{display:none!important}.lk-text{display:inline-block}}`,
   `footer{padding:2.5rem 1rem 3rem;font-size:.875rem}`,
   `footer p{margin:0 0 1rem}`,
   LOCKER_LOCKUP_CSS,
@@ -475,6 +479,25 @@ export interface PageExtras {
    * `feedOriginOf`). `null` leaves the links out: the bytes host serves no docs.
    */
   helpOrigin?: string | null;
+  /**
+   * LK-12: where the "Available on Polaris Locker" badge goes, `<customer origin>/<slug>`, or
+   * `null` (no customer site, so no badge). The page draws the badge only when it also offers a
+   * `direct` download, the one case where the product really is in Polaris Locker.
+   */
+  lockerUrl?: string | null;
+}
+
+/**
+ * The "Available on Polaris Locker" badge as a link (LK-12; kit v1.3: the art is not a control, so
+ * it carries a real destination, and it is shown at 320 CSS px or more). The dark and light
+ * badges follow the page's colour scheme; under 360 px the text link stands in for the badge.
+ */
+function lockerBadge(url: string | null, hasDirect: boolean): string {
+  const href = hasDirect && url !== null ? safeHref(url) : null;
+  if (href === null) return "";
+  const kind = "locker-available-on" as const;
+  const alt = "Available on Polaris Locker";
+  return `<p class="lk-badge"><a href="${href}" class="lk-art lk-dark">${badgeSvg({ kind, theme: "dark", title: alt })}</a><a href="${href}" class="lk-art lk-light">${badgeSvg({ kind, theme: "light", title: alt })}</a><a href="${href}" class="lk-text">${alt}</a></p>`;
 }
 
 /** Render the page. */
@@ -616,7 +639,14 @@ export function renderDownloadPage(
         ? `<p class="sub">${esc(model.listing.subtitle)}</p>`
         : ""
     }</header>`,
-    `<main>${lead}${release}${
+    `<main>${lead}${release}${lockerBadge(
+      extras.lockerUrl ?? null,
+      model.platforms.some((g) =>
+        g.actions.some(
+          (id) => model.actions.find((a) => a.id === id)?.kind === "download",
+        ),
+      ),
+    )}${
       ways
         ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Every way to get ${esc(name)}</h2>${ways}</section>`
         : ""

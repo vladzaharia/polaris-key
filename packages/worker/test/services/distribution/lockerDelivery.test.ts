@@ -126,6 +126,31 @@ describe("the download page", () => {
     new Headers({ "user-agent": "Windows NT 10.0" }),
   );
 
+  it("carries the Available on Polaris Locker badge, linked, only with a customer site and a direct download (LK-12)", () => {
+    const url = "https://polaris.locker/tidewater";
+    const html = renderDownloadPage(model, detected, { lockerUrl: url });
+    expect(
+      html.match(/<a href="https:\/\/polaris\.locker\/tidewater"/g),
+    ).toHaveLength(3);
+    expect(html).toContain('aria-label="Available on Polaris Locker"');
+    expect(html).toContain('viewBox="0 0 320 104"');
+    expect(html).toContain('width="320"');
+    expect(html).not.toContain("style=");
+    expect(renderDownloadPage(model, detected)).not.toContain(
+      'class="lk-badge"',
+    );
+    expect(
+      renderDownloadPage(model, detected, { lockerUrl: "javascript:alert(1)" }),
+    ).not.toContain('class="lk-badge"');
+    const noDirect = {
+      ...model,
+      platforms: [{ ...model.platforms[0]!, actions: [] }],
+    } as DownloadModel;
+    expect(
+      renderDownloadPage(noDirect, detected, { lockerUrl: url }),
+    ).not.toContain('class="lk-badge"');
+  });
+
   it("is the Locker shell with the Star Cut as the Delivery symbol", () => {
     const html = renderDownloadPage(model, detected);
     expect(html).toContain(

@@ -140,6 +140,43 @@ export function helpAliasResponse(
   });
 }
 
+/**
+ * `polaris.locker/<slug>` (LK-12, plans/LK-00.md §7.1): the destination of the "Available on" and
+ * "Open in" Polaris Locker badges. It answers a redirect to the product's storefront page in the
+ * customer site (`/#/discover/<slug>`); the SPA shows its one not-found for a product that is
+ * unknown, unlisted or withdrawn (S-21 D5), so this answers the same for every well-formed slug
+ * and reads no database: it is no oracle for which products exist. The target is built from the
+ * matched slug alone (`[a-z0-9-]`, never a reserved platform slug), never from the request's
+ * host, query or fragment. Only GET and HEAD; `null` for any other route.
+ */
+export function customerSlugRedirect(
+  req: Request,
+  route: {
+    kind: string;
+    slug?: string;
+    product?: string;
+    rest?: readonly string[];
+  },
+): Response | null {
+  if (
+    route.kind !== "service" ||
+    route.slug !== "distribution" ||
+    route.rest?.length !== 1 ||
+    route.rest[0] !== "download" ||
+    typeof route.product !== "string"
+  )
+    return null;
+  if (req.method !== "GET" && req.method !== "HEAD") return null;
+  return new Response(null, {
+    status: 302,
+    headers: {
+      location: `/#/discover/${route.product}`,
+      "cache-control": "public, max-age=300",
+      "x-content-type-options": "nosniff",
+    },
+  });
+}
+
 export const HOST_DOCUMENT_PATH = "/.well-known/polaris-host.json";
 export const ROBOTS_PATH = "/robots.txt";
 

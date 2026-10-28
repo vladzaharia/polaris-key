@@ -71,6 +71,7 @@ import {
   CUSTOMER_ROUTE_KINDS,
   customerDocsPath,
   customerHostOwnResponse,
+  customerSlugRedirect,
   docsElsewhere,
   helpAliasResponse,
   isCustomerFeedRoute,
@@ -194,6 +195,11 @@ async function routeRequest(
   if (onCustomerHost && isCustomerHostOwnPath(url.pathname))
     return customerHostOwnResponse(req, env, url.pathname);
   const route = matchRoute(url.pathname);
+  // LK-12: `polaris.locker/<slug>` is the badges' destination (the product's storefront page).
+  if (onCustomerHost && url.pathname.split("/").length === 2) {
+    const toStorefront = customerSlugRedirect(req, route);
+    if (toStorefront) return toStorefront;
+  }
   if (
     onCustomerHost &&
     !CUSTOMER_ROUTE_KINDS.has(route.kind) &&

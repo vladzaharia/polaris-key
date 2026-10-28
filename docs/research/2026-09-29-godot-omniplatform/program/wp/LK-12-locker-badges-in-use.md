@@ -36,3 +36,13 @@ Deferred until: LK-11 is live.
 ## Hand-off
 
 The role agent sets `--set LK-12 in-review` when it hands off; the lead sets `done` after review.
+
+## Progress and continuation (2026-10-28)
+
+Built: the Worker route and the download page's badge. Correction to the plan text: `/<slug>` is
+not a new route kind. It is the existing bare-slug alias (`/{product}` in the spec); on the
+customer host it now answers `302 /#/discover/<slug>` (no database read, no oracle). The download
+page (bytes host) draws the 320 x 104 "Available on Polaris Locker" badge, linked to
+`<customer origin>/<slug>`, only with a customer site and a direct download (text link under
+360 px). Not built: destinations for the other 14 labels (they need their own real actions;
+console "Get a badge" is LK-10) and the plrs.im website part (owner step OS-25).

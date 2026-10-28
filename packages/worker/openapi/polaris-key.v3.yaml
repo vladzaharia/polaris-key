@@ -10248,6 +10248,13 @@ paths:
         Exact rewrite (P2b-06): the short link to a product's download page. Like the page, it
         answers only on the bytes host; on the console host it is the plain not-found, as it
         always was. A reserved platform slug (`manage`, `docs`, `login`, …) is never a product.
+
+
+        On the customer host (`polaris.locker/<slug>`, LK-12) it is the destination of the "Available
+        on" and "Open in" Polaris Locker badges: `GET` and `HEAD` answer `302` to
+        `/#/discover/<slug>`, the product's storefront page. The answer reads no database, so it is
+        the same for every well-formed slug; the page shows its one not-found for a product that is
+        unknown, unlisted or withdrawn. Any other method is the plain not-found.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
         "200":
@@ -10255,6 +10262,10 @@ paths:
           content:
             text/html:
               schema: { type: string }
+        "302":
+          description: On the customer host, to the storefront page (`/#/discover/<slug>`).
+          headers:
+            Location: { schema: { type: string } }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "429": { $ref: "#/components/responses/FeedRateLimited" }
 
