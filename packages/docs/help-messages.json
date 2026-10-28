@@ -835,11 +835,13 @@
       "entry": "key_entry_limit",
       "article": "add-a-license",
       "why": "A license key that isn't in an account can be entered on a limited number of new devices, and this key has used them all.",
-      "fix": "Add the license to your Polaris Locker account, then sign in to the app with that account. After that, a new device can't use the key and signs in instead. Add the license only if it is yours. If you can't add it, ask the app's developer."
+      "fix": "Add the license to your Polaris Locker account, then sign in to the app with that account. A new device can't use the key then and signs in instead. Add it only if it is yours. If you can't, ask the app's developer."
     },
     "activation.key-entry-limit": {
       "page": "accounts",
-      "entry": "key_entry_limit"
+      "entry": "key_entry_limit",
+      "why": "This key has used all its new-device entries.",
+      "fix": "Add the license to your Polaris Locker account, then sign in with it."
     },
     "email_in_use": {
       "page": "accounts",
@@ -1133,6 +1135,51 @@
       "page": "accounts",
       "why": "The license wasn't added to your account, because the request was declined. Nothing changed.",
       "fix": "Add the license again if you still want it in your account."
+    },
+    "relay_disabled": {
+      "page": "other",
+      "why": "The app's developer turned off remote connect. Your devices connect only on the same network.",
+      "fix": "Use devices on the same network. If you need remote connect, ask the app's developer."
+    },
+    "relay_paused": {
+      "page": "other",
+      "why": "Remote connect is paused. Devices on the same network still connect.",
+      "fix": "Try again later."
+    },
+    "relay_quota_exceeded": {
+      "page": "other",
+      "why": "The app has used all its remote connections. Devices on the same network still connect.",
+      "fix": "Try again later, or use devices on the same network."
+    },
+    "relay_ticket_invalid": {
+      "page": "other",
+      "why": "The connection request expired before it was used.",
+      "fix": "Start the connection again."
+    },
+    "device-keys-unreadable": {
+      "page": "devices",
+      "why": "The keys saved on this device can't be read.",
+      "fix": "Reset this device's keys from the app's settings, then sign in again."
+    },
+    "device-key-store-error": {
+      "page": "devices",
+      "why": "This device's keys can't be reached right now.",
+      "fix": "Try again. If it keeps happening, restart the device."
+    },
+    "connect-unavailable": {
+      "page": "other",
+      "why": "Nearby connection isn't available for this app on this device.",
+      "fix": "Use the app's other ways to sign in or sync."
+    },
+    "peer-cert-invalid": {
+      "page": "devices",
+      "why": "The other device couldn't be verified, so nothing was shared.",
+      "fix": "Try again. Both devices must be signed in to the same account."
+    },
+    "nearby-permission-denied": {
+      "page": "devices",
+      "why": "The app isn't allowed to reach devices on your local network.",
+      "fix": "Allow local network access for the app in your system settings, then try again."
     },
     "activation.license-owned": {
       "page": "accounts",

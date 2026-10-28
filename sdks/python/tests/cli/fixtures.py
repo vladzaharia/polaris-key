@@ -277,4 +277,7 @@ OUT_OF_SCOPE = {
     "ChannelPicker": "should tier; update --channel",
     "Toast": "a terminal prints lines, it has no toasts",
     "NearbyApproval": "the approving device is an app with a screen; a terminal never approves a nearby sign-in",
+    "UnlockSync": "should tier; no CLI verb for unlocking synced data yet",
+    "RecoveryCode": "should tier; no CLI verb for the recovery code yet",
+    "RingChange": "should tier; no CLI verb for a linked-device change yet",
 }

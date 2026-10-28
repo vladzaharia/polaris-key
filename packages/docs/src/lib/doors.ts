@@ -152,6 +152,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
         label: "Devices",
         items: leaves(
           "help/devices",
+          "help/nearby-devices",
           "help/new-computer",
           "help/device-limit",
           "help/offline-activation",
@@ -444,7 +445,11 @@ export const DOOR_TREES: readonly DoorTree[] = [
       {
         label: "Cloud Connect",
         collapsed: true,
-        items: leaves("features/cloud-connect/index"),
+        items: leaves(
+          "features/cloud-connect/index",
+          "features/cloud-connect/channels",
+          "features/cloud-connect/relay",
+        ),
       },
       {
         label: "Reference",
@@ -485,6 +490,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
               "reference/protocol/config-document",
               "reference/protocol/bundles",
               "reference/protocol/packs",
+              "reference/protocol/peer",
               "reference/protocol/fingerprint-constants",
               "reference/protocol/corpus",
             ),

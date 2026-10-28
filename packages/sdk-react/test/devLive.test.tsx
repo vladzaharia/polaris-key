@@ -126,8 +126,7 @@ it.runIf(unset.length > 0 && unset.length < 3)(
 
 // The five test keys the Worker refuses, by the documented `activation.kind` (the React "Your own
 // UI" page). An expired, a disabled and a revoked licence answer alike with a 401 `unauthorized`;
-// a full licence answers `device_limit`; `key_entry_limit` is a code the kinds do not name, so it
-// arrives as `refused` with the server's code. The rest of a refusal (the counters, the portal
+// a full licence answers `device_limit`; `key_entry_limit` has its own kind, `keyEntryLimit`. The rest of a refusal (the counters, the portal
 // link) is checked for its shape, never its values.
 const REFUSED = [
   { key: "expired", kind: "unauthorized", code: "unauthorized", status: 401 },
@@ -141,7 +140,7 @@ const REFUSED = [
   },
   {
     key: "key-entry-limit",
-    kind: "refused",
+    kind: "keyEntryLimit",
     code: "key_entry_limit",
     status: 403,
   },

@@ -905,7 +905,7 @@ With Cloud Sync on and a person signed in, the
 settings calls you already use go to the person's synced copy: `config.set_value` and `config.clear`
 send the edit, and `config.get_value` reads what the person's other devices sent. The same code runs
 with Cloud Sync off. Which keys sync is the catalog's decision (see
-[Synced settings](/docs/features/cloud-sync/#synced-settings)); a locked key never does. Nothing syncs
+[Synced settings](https://key.plrs.im/docs/features/cloud-sync/#synced-settings)); a locked key never does. Nothing syncs
 before sign-in: a device activated with a license key keeps its settings on the device and uploads
 them at the first sign-in.
 
