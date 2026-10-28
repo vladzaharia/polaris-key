@@ -3897,38 +3897,6 @@
       "layer": "client"
     },
     {
-      "id": "identity.signInWithBrowser",
-      "kind": "method",
-      "sdks": {
-        "python": {}
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.beginSignIn",
-      "kind": "method",
-      "sdks": {
-        "python": {}
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.pollSignIn",
-      "kind": "method",
-      "sdks": {
-        "python": {}
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.waitForSignIn",
-      "kind": "method",
-      "sdks": {
-        "python": {}
-      },
-      "layer": "client"
-    },
-    {
       "id": "devices.register",
       "kind": "method",
       "sdks": {
@@ -4547,14 +4515,6 @@
         "swift": {},
         "kotlin": {},
         "godot": {}
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.acceptSignIn",
-      "kind": "method",
-      "sdks": {
-        "python": {}
       },
       "layer": "client"
     },
