@@ -36,6 +36,7 @@ import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { CacheRecordV3, Store } from "@polaris-key/client-core";
 import { PolarisKeyClient } from "../src/client.js";
 import { CACHE_VERSION } from "../src/core/store.js";
+import { createNodeDeviceKeyStore } from "../src/devices/deviceKeys.js";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────────────────
 const here = dirname(fileURLToPath(import.meta.url));
@@ -549,5 +550,56 @@ describe("devices.report() — the body is built from RE-VERIFIED documents (R4-
     const body = h.only().body!;
     expect(body.config).toEqual({});
     expect(body.entitlements).toEqual({});
+  });
+});
+
+describe("devices.registerKeys() — PUT /devices/keys with a keys proof (CC-26.2)", () => {
+  it("sends the signed body with the bearer, and refuses memory-only keys", async () => {
+    const h = await harness({
+      token: "tok",
+      respond: () => json({ keySeq: 3 }),
+    });
+    const keys = createNodeDeviceKeyStore({ memory: true });
+    await expect(h.client.devices.registerKeys(keys)).rejects.toThrow(
+      "memory-only",
+    );
+    expect(h.calls).toHaveLength(0);
+    const out = await h.client.devices.registerKeys(keys, {
+      allowEphemeral: true,
+    });
+    expect(out).toEqual({ keySeq: 3 });
+    const c = h.only();
+    expect(c.method).toBe("PUT");
+    expect(c.path).toBe(`/${PRODUCT}/devices/keys`);
+    expect(c.authorization).toBe("Bearer tok");
+    expect(c.device).toBeTruthy();
+    expect(Object.keys(c.body!).sort()).toEqual([
+      "agreeKey",
+      "issuedAt",
+      "sig",
+      "signKey",
+    ]);
+  });
+
+  it("needs a credential and surfaces a refusal in the taxonomy", async () => {
+    const none = await harness({ respond: () => json({}) });
+    await expect(
+      none.client.devices.registerKeys(
+        createNodeDeviceKeyStore({ memory: true }),
+        { allowEphemeral: true },
+      ),
+    ).rejects.toThrow();
+    const h = await harness({
+      token: "tok",
+      respond: () => json({ error: "bad_signature" }, 403),
+    });
+    await expect(
+      h.client.devices.registerKeys(
+        createNodeDeviceKeyStore({ memory: true }),
+        {
+          allowEphemeral: true,
+        },
+      ),
+    ).rejects.toThrow();
   });
 });

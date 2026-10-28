@@ -18,6 +18,7 @@
 import { base64UrlEncodeBytes, isX25519LowOrder } from "@polaris-key/jws";
 import {
   DeviceKeyUnsupportedError,
+  DeviceKeysUnreadableError,
   type DeviceKeyPort,
   type DevicePublicKeys,
 } from "./deviceKeys.js";
@@ -294,7 +295,10 @@ export function createWebDeviceKeyStore(
       (s) => s.get(),
       (r) => validShape(r),
     );
-    return validShape(rec) ? rec : null;
+    if (rec === null) return null;
+    // A record that exists but cannot be used is an error, never replaced: only wipe() resets it.
+    if (!validShape(rec)) throw new DeviceKeysUnreadableError();
+    return rec;
   };
 
   const port: WebDeviceKeyPort = {
@@ -310,9 +314,8 @@ export function createWebDeviceKeyStore(
             (s) => s.putIfAbsent(made),
             (r) => validShape(r),
           );
-          if (validShape(won)) return publicOf(won);
-          await run((s) => s.put(made)); // a record this code cannot use is replaced
-          return publicOf(made);
+          if (!validShape(won)) throw new DeviceKeysUnreadableError();
+          return publicOf(won);
         });
       }),
     publicKeys: () =>

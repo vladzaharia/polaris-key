@@ -630,6 +630,7 @@ export const Feature = {
   coreStore: "core.store",
   coreCopy: "core.copy",
   coreBackend: "core.backend",
+  coreDevicekeys: "core.devicekeys",
   licenseGate: "license.gate",
   licenseSignedinuser: "license.signedinuser",
   licenseActivate: "license.activate",
@@ -652,6 +653,7 @@ export const Feature = {
   syncSettings: "sync.settings",
   syncConflict: "sync.conflict",
   syncSaves: "sync.saves",
+  syncKeyring: "sync.keyring",
   connectIdentity: "connect.identity",
   connectNoise: "connect.noise",
   connectProtocol: "connect.protocol",
@@ -677,6 +679,7 @@ export const Feature = {
   identityRedirectWeb: "identity.redirect.web",
   identityChoice: "identity.choice",
   identitySigninHints: "identity.signin.hints",
+  identityExchange: "identity.exchange",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -758,6 +761,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "core.store",
   "core.copy",
   "core.backend",
+  "core.devicekeys",
   "license.gate",
   "license.signedinuser",
   "license.activate",
@@ -780,6 +784,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "sync.settings",
   "sync.conflict",
   "sync.saves",
+  "sync.keyring",
   "connect.identity",
   "connect.noise",
   "connect.protocol",
@@ -805,6 +810,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.redirect.web",
   "identity.choice",
   "identity.signin.hints",
+  "identity.exchange",
   "release.changelog",
   "release.download",
   "release.record",
@@ -1979,6 +1985,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "core.copy": { status: "implemented", service: "sdk", na: [] },
   "core.backend": { status: "implemented", service: "license", na: [] },
+  "core.devicekeys": { status: "planned", service: "core", na: [] },
   "license.gate": { status: "implemented", service: "license", na: [] },
   "license.signedinuser": { status: "implemented", service: "license", na: [] },
   "license.activate": { status: "implemented", service: "license", na: [] },
@@ -2016,6 +2023,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.settings": { status: "planned", service: "sync", na: [] },
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
+  "sync.keyring": { status: "planned", service: "sync", na: [] },
   "connect.identity": { status: "planned", service: "connect", na: [] },
   "connect.noise": { status: "planned", service: "connect", na: [] },
   "connect.protocol": { status: "planned", service: "connect", na: [] },
@@ -2091,6 +2099,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     status: "implemented",
     service: "identity",
     na: [],
+  },
+  "identity.exchange": {
+    status: "planned",
+    service: "identity",
+    na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
@@ -2276,4 +2289,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "702fa24a5c752706f84e66c4251cb859cc5f409294324e8cea34cc1aa024b393";
+  "b6662c3bc2d2c1458fc7db243f7b2d293ca49f3b61574c4b785b7441f9fb45f8";

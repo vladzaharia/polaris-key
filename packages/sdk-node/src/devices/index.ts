@@ -14,6 +14,18 @@ export {
   type RegisterResult,
 } from "./client.js";
 
+export {
+  DeviceKeyStoreError,
+  DeviceKeysUnreadableError,
+  FileDeviceKeyStorage,
+  InMemoryDeviceKeyStorage,
+  createNodeDeviceKeyStore,
+  type DeviceKeyPersistence,
+  type NodeDeviceKeyStorage,
+  type NodeDeviceKeyStore,
+  type NodeDeviceKeyStoreOptions,
+} from "./deviceKeys.js";
+
 export { deriveDeviceId, deviceIdFromRaw } from "./deviceId.js";
 
 export {

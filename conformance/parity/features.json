@@ -350,6 +350,22 @@
       "note": "WIRE-CONTRACT-V4 §14.5: backend-matrix.json's `client` section; client-core's `clientBackendAction` is the reference (SP-53). Never sends the device token or the config document."
     },
     {
+      "id": "core.devicekeys",
+      "family": "core",
+      "title": "Device key store (Ed25519 signing + X25519 agreement keys) and the pkey-proof/1 signer",
+      "service": "core",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "device-proof.json"
+        },
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
       "id": "license.gate",
       "family": "license",
       "title": "Gate evaluation, every status",

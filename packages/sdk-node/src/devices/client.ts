@@ -11,7 +11,12 @@
 // of the product's fleet, not of any one grant.
 
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
-import { PolarisError } from "@polaris-key/client-core";
+import {
+  PolarisError,
+  buildDeviceKeysRequest,
+  type DeviceKeyPort,
+  type DeviceKeysResponse,
+} from "@polaris-key/client-core";
 import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
@@ -220,6 +225,49 @@ export class DevicesClient {
       message:
         c.message ?? `devices/register failed with status ${res.status}.`,
     };
+  }
+
+  /**
+   * `PUT /<p>/devices/keys` (CC-03.2): registers the port's public keys for this device with a
+   * `keys` proof. Resending is safe (the server answers a registered pair with its `keySeq`).
+   * Refuses a memory-only port unless `allowEphemeral`. Throws `PolarisError` in the one
+   * taxonomy on a refusal; the private halves never leave the port.
+   */
+  async registerKeys(
+    port: DeviceKeyPort,
+    opts: { allowEphemeral?: boolean } = {},
+  ): Promise<DeviceKeysResponse> {
+    const token = this.requireToken();
+    const what = "device keys";
+    const { body } = await buildDeviceKeysRequest(port, {
+      product: this.ctx.product,
+      deviceId: this.ctx.deviceId,
+      ...(opts.allowEphemeral ? { allowEphemeral: true } : {}),
+    });
+    const res = await this.ctx.request(
+      this.ctx.url("devices/keys"),
+      {
+        method: "PUT",
+        headers: this.ctx.headers({
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        }),
+        body: JSON.stringify(body),
+      },
+      what,
+    );
+    if (!res.ok) throw await responseError(res, what);
+    const out = await readJson<{ keySeq?: unknown } | null>(res, what);
+    if (
+      typeof out?.keySeq !== "number" ||
+      !Number.isSafeInteger(out.keySeq) ||
+      out.keySeq < 1
+    )
+      throw new PolarisError(
+        ErrorCode.badResponse,
+        "devices/keys answered without a keySeq.",
+      );
+    return { keySeq: out.keySeq };
   }
 
   /** `GET /<p>/devices` — the product's roster for this credential. Throws `PolarisError` in

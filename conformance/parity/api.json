@@ -711,6 +711,11 @@
     },
     {
       "sdk": "node",
+      "path": "devices.registerKeys",
+      "reason": "CC-26.2 key registration (PUT devices/keys); the cross-SDK concept follows with the other SDKs' key stores (CC-26.3 to CC-26.7)"
+    },
+    {
+      "sdk": "node",
       "path": "devices.requestRegistration",
       "reason": "wiring the boot and update flows call; not an app verb"
     },

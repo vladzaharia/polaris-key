@@ -51,6 +51,9 @@
       "status": "implemented",
       "note": "client.backend (PolarisKey.BackendClient): data(for:) and headers() send X-PKey-License and X-PKey-Device only; backendOrigins (exact scheme/host/port, https except loopback) is checked before the request and on every redirect hop before it is sent; the freshness pre-sync, one shared sync, one forced sync and retry on license_stale/license_invalid (at least 10 s apart), and not_entitled/sign_in_required thrown typed. BackendTests replays backend-matrix.json's client rows."
     },
+    "core.devicekeys": {
+      "status": "implemented"
+    },
     "license.gate": {
       "status": "implemented"
     },
