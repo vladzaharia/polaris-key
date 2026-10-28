@@ -24,11 +24,8 @@ import im.plrs.key.core.StateSlot
 import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.JsonObject
 import im.plrs.key.core.CoreContext
 import im.plrs.key.core.ConfigDoc
@@ -102,7 +99,7 @@ public class ConfigClient(
 
     private suspend fun localOverrides(): Map<String, JsonElement> = hostOverrides + persisted()
     @Volatile private var catalogCache: Catalog? = null
-    private val settings = java.util.concurrent.ConcurrentHashMap<String, MutableStateFlow<JsonElement?>>()
+    private val settings = java.util.concurrent.ConcurrentHashMap<String, SettingState>()
     private val changeFlow = MutableSharedFlow<ConfigChange>(extraBufferCapacity = 64)
 
     /** Every change to a key's effective value: a local `set()`/`clear()`, or a new document. */
@@ -237,13 +234,15 @@ public class ConfigClient(
     }
 
     /**
-     * A live handle on [key]'s effective value: the current value now, then every change (a local
-     * override, a new verified document). Null while no layer answers.
+     * A live handle on [key]: its effective value, source, lock and visibility now (a local
+     * override, a new verified document), then every change through [ConfigSetting.flow] and
+     * [ConfigSetting.on].
      */
-    public suspend fun setting(key: String): StateFlow<JsonElement?> {
-        val flow = settings.getOrPut(key) { MutableStateFlow(null) }
-        flow.value = ConfigResolution.resolveValue(context(), key)
-        return flow.asStateFlow()
+    public suspend fun setting(key: String): ConfigSetting {
+        val state = settings.getOrPut(key) { SettingState() }
+        val ctx = context()
+        state.update(ConfigResolution.resolveValue(ctx, key), ConfigResolution.resolveSource(ctx, key))
+        return ConfigSetting(key, this, state)
     }
 
     /**
@@ -258,9 +257,14 @@ public class ConfigClient(
         keys += lastSeen.keys
         for (key in keys) {
             val now = ConfigResolution.resolveValue(ctx, key)
-            if (emit && now != lastSeen[key]) changeFlow.tryEmit(ConfigChange(key, now, ConfigResolution.resolveSource(ctx, key)))
+            val source = ConfigResolution.resolveSource(ctx, key)
+            val moved = emit && now != lastSeen[key]
+            if (moved) changeFlow.tryEmit(ConfigChange(key, now, source))
             if (now == null) lastSeen.remove(key) else lastSeen[key] = now
-            settings[key]?.value = now
+            settings[key]?.let { st ->
+                st.update(now, source)
+                if (moved) st.listeners.forEach { it(ConfigChange(key, now, source)) }
+            }
         }
     }
 

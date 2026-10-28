@@ -2789,11 +2789,7 @@
         "swift": {
           "shape": "property"
         },
-        "kotlin": {
-          "spelling": "value",
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -2809,10 +2805,7 @@
         "swift": {
           "shape": "property"
         },
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -2828,10 +2821,7 @@
         "swift": {
           "shape": "property"
         },
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -2848,10 +2838,7 @@
         "swift": {
           "shape": "property"
         },
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "absent today"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -2871,10 +2858,7 @@
         "python": {},
         "react": {},
         "swift": {},
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {
           "spelling": "set_value",
           "reason": "Object.set is a native method"
@@ -2891,10 +2875,7 @@
         "python": {},
         "react": {},
         "swift": {},
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -2913,10 +2894,7 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {
           "spelling": "changed",
           "shape": "signal",
