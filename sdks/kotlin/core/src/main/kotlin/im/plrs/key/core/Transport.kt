@@ -41,6 +41,10 @@ public class PolarisException(
     /** The typed N/A behind a `service-unavailable` refusal (P1b-10). */
     public val unsupported: Unsupported? = null,
     cause: Throwable? = null,
+    /** The HTTP status of the Worker's refusal, when the error is one (the exchange); null otherwise. */
+    public val httpStatus: Int? = null,
+    /** Seconds to wait before retrying, when the Worker named them (`rate_limited`). */
+    public val retryAfterSeconds: Int? = null,
 ) : Exception(message, cause)
 
 /** One HTTP response, reduced to what this SDK reads. */

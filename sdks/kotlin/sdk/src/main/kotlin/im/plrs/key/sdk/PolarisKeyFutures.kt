@@ -20,6 +20,11 @@ import im.plrs.key.core.UpdateCheck
 import im.plrs.key.identity.AttachResult
 import im.plrs.key.identity.ChoiceCompleted
 import im.plrs.key.identity.ChoiceResult
+import im.plrs.key.identity.ConsentInput
+import im.plrs.key.identity.ExchangeKind
+import im.plrs.key.identity.ExchangeNonce
+import im.plrs.key.identity.ExchangeNonceResult
+import im.plrs.key.identity.ExchangeOutcome
 import im.plrs.key.identity.LicenseChoice
 import im.plrs.key.identity.LicenseChoiceView
 import im.plrs.key.identity.ReplaceView
@@ -95,9 +100,17 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     public fun choiceDevices(grant: String, licenseId: String): CompletableFuture<ChoiceResult<ReplaceView>> =
         call { client.identity.choice.devices(grant, licenseId) }
 
-    /** `identity.choice.complete(grant, choice)`: finish the sign-in with the person's choice. */
-    public fun choiceComplete(grant: String, choice: LicenseChoice): CompletableFuture<ChoiceResult<ChoiceCompleted>> =
-        call { client.identity.choice.complete(grant, choice) }
+    /** `identity.choice.complete(grant, choice, consent)`: finish the sign-in with the person's choice and, after an exchange's `PendingConsent`, their consent. */
+    @JvmOverloads
+    public fun choiceComplete(grant: String, choice: LicenseChoice?, consent: ConsentInput? = null): CompletableFuture<ChoiceResult<ChoiceCompleted>> =
+        call { client.identity.choice.complete(grant, choice, consent) }
+
+    /** `identity.exchangeNonce(kind)`: a single-use nonce for the platform provider to sign into its token. */
+    public fun exchangeNonce(kind: ExchangeKind): CompletableFuture<ExchangeNonceResult> = call { client.identity.exchangeNonce(kind) }
+
+    /** `identity.exchange(kind, subjectToken, nonce)`: the platform's ID token for a device token; a Worker refusal fails the future with a PolarisException. */
+    public fun exchange(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce): CompletableFuture<ExchangeOutcome> =
+        call { client.identity.exchange(kind, subjectToken, nonce) }
 
     /** `identity.choice.cancel(grant)`: give the grant up. */
     public fun choiceCancel(grant: String): CompletableFuture<ChoiceResult<Unit>> = call { client.identity.choice.cancel(grant) }
