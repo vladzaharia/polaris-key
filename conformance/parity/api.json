@@ -2285,6 +2285,21 @@
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
+      "sdk": "kotlin",
+      "path": "identity.exchange",
+      "reason": "the exchange primitive under identity.autoSignIn (I-45.2), which carries the row; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.exchangeNonce",
+      "reason": "the exchange primitive under identity.autoSignIn (I-45.2), which carries the row; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.useDeviceKeys",
+      "reason": "wiring: hands the exchange proof its device key store; not an app verb"
+    },
+    {
       "sdk": "swift",
       "path": "identity.installIdentityEvents",
       "reason": "wiring the client installs (the `identity` event's sink); not an app verb"

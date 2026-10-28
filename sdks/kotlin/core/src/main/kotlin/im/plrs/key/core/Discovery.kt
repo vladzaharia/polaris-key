@@ -50,6 +50,14 @@ public data class DiscoveryTrust(
     val pinnedKeys: TrustSet = emptyMap(),
 )
 
+/** The Identity fragment's `exchange` member (WIRE-CONTRACT-V5 section 12.11.6): the platform kinds the product accepts. */
+public data class IdentityExchangeDiscovery(
+    /** `google` and `apple`, as published; a kind this SDK does not know is kept as text. */
+    val kinds: List<String> = emptyList(),
+    /** `exchange.google.serverClientId`: the audience a Google ID token must carry. */
+    val googleServerClientId: String? = null,
+)
+
 /**
  * The Identity fragment's account members (WIRE-CONTRACT-V4 §12.6): present only while the product's
  * Identity service is on. A client uses an endpoint only when it is here and never builds one.
@@ -67,6 +75,8 @@ public data class IdentityDiscovery(
     val accountPortal: String? = null,
     /** Every published endpoint, as served. */
     val endpoints: Map<String, String> = emptyMap(),
+    /** `exchange`: present only when the product declares a platform kind (V5 section 12.11.6). */
+    val exchange: IdentityExchangeDiscovery? = null,
 ) {
     /** The authorize endpoint a redirect sign-in sends the browser to. */
     val authorize: String? get() = endpoints["authorize"]
@@ -124,7 +134,15 @@ public object Discovery {
             signout = e["signout"],
             accountPortal = e["accountPortal"],
             endpoints = e,
+            exchange = exchange(fragment.extras["exchange"].objectValue),
         )
+    }
+
+    private fun exchange(o: JsonObject?): IdentityExchangeDiscovery? {
+        val kinds = o?.get("kinds").arrayValue ?: return null
+        val list = kinds.mapNotNull { it.stringValue }
+        if (list.isEmpty()) return null
+        return IdentityExchangeDiscovery(list, o?.get("google").objectValue?.get("serverClientId").stringValue)
     }
 
     /** Parse a discovery document; the fail-closed rules as pure data. */

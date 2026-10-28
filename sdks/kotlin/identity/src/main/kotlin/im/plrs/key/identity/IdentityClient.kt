@@ -23,6 +23,7 @@
 package im.plrs.key.identity
 
 import im.plrs.key.core.CoreContext
+import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.Feature
 import im.plrs.key.core.JsonText
@@ -132,10 +133,43 @@ public class IdentityClient(
     /** Raised after a sign-out released the seat and dropped the token; the facade republishes the licence. */
     onSignedOut: suspend () -> Unit = {},
     sleep: (suspend (Long) -> Unit)? = null,
+    /** This device's keys, for the `exchange` proof. Null: `exchange` answers `Unavailable(noDeviceKeys)`. */
+    deviceKeys: DeviceKeyPort? = null,
 ) {
     private val sleep: suspend (Long) -> Unit = sleep ?: { seconds -> delay(seconds * 1000) }
     internal val beforeSignOut = java.util.concurrent.CopyOnWriteArrayList<BeforeSignOutHook>()
     private val account = IdentityAccount(core, opener, { beforeSignOut.toList() }, onSubject, onSignedOut)
+
+    @Volatile
+    private var deviceKeys: DeviceKeyPort? = deviceKeys
+
+    /** Use these device keys for `exchange` from now on. */
+    public fun useDeviceKeys(keys: DeviceKeyPort?) {
+        deviceKeys = keys
+    }
+
+    /**
+     * `POST nonce`: a new single-use nonce for the platform provider to sign into its token (V5 section 12.11.2).
+     * A result of [ExchangeOutcome.Unavailable] (or another non-nonce outcome) ends the exchange.
+     */
+    public suspend fun exchangeNonce(kind: ExchangeKind): ExchangeNonceResult {
+        val port = deviceKeys ?: return ExchangeNonceResult.Ended(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noDeviceKeys))
+        return when (val step = requestExchangeNonce(kind, port)) {
+            is NonceStep.Got -> ExchangeNonceResult.Issued(step.nonce)
+            is NonceStep.Ended -> ExchangeNonceResult.Ended(step.outcome)
+        }
+    }
+
+    /**
+     * `POST token` with the token-exchange grant (V5 section 12.11.3): the platform's ID token for a device
+     * token. [nonce] is the one the provider signed into [subjectToken]; null asks for a nonce first (the
+     * token then cannot carry it, so only a recorded conversation does this). A token is stored only for
+     * [ExchangeOutcome.SignedIn]. Throws on a network failure or a 5xx; the Worker's answers are results.
+     */
+    public suspend fun exchange(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce? = null): ExchangeOutcome {
+        val port = deviceKeys ?: return ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noDeviceKeys)
+        return exchangeTokens(kind, subjectToken, nonce, port)
+    }
 
     internal var redirectEntropyValue: RedirectEntropy? = null
     internal var redirectAcquisitionSyncValue: Boolean = true

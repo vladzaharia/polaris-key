@@ -63,6 +63,7 @@ import im.plrs.key.core.TokenSource
 import im.plrs.key.core.ImportBundleResult
 import im.plrs.key.core.chooseReacquireRoute
 import im.plrs.key.core.deauthorizeDevice
+import im.plrs.key.core.defaultDeviceKeyStore
 import im.plrs.key.core.listDevices
 import im.plrs.key.core.registerDevice
 import im.plrs.key.core.renameDevice
@@ -444,6 +445,9 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
             config.publish()
             publishLicense(force = true)
         },
+        // The `exchange` proof's keys: the host's, else the state directory's file store; Android has no default.
+        deviceKeys = options.connect.deviceKeys
+            ?: if (RuntimeFamily.isAndroid) null else defaultDeviceKeyStore(core.store.stateDirectory),
     )
 
     /**
