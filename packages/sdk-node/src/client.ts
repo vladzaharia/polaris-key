@@ -72,6 +72,7 @@ import { CommerceClient } from "./commerce/client.js";
 import { DistributionClient } from "./distribution/client.js";
 import { PolarisEventEmitter } from "./core/events.js";
 import { BackendClient, type BackendClientOptions } from "./backend/client.js";
+import { KeyringClient, type KeyringOptions } from "./keyring/client.js";
 import { crashTagsFor, type CrashTags } from "./server.js";
 import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
 import {
@@ -126,6 +127,8 @@ export interface PolarisKeyClientOptions extends CoreOptions {
   /** `client.backend`: the origins `backend.fetch()` may send the licence to (framework
    *  drop-ins §6). Validated here: a bad origin throws `invalid-options` from the constructor. */
   backend?: BackendClientOptions;
+  /** The Cloud Sync key ring (U-38.1): the device keys and the crypto port. */
+  keyring?: KeyringOptions;
 }
 
 /**
@@ -186,6 +189,10 @@ export class PolarisKeyClient {
   /** The client half of a product backend: `fetch()` and `headers()` with the signed licence
    *  document (WIRE-CONTRACT-V4 §14.5). */
   readonly backend: BackendClient;
+  /** The Cloud Sync key ring: the end-to-end root, its wraps and recovery (WIRE-CONTRACT-V5 §13.11).
+   *  Named `keyring` because `sync()` is the licence-sync method; it is the plan's
+   *  `client.sync.keyring`. */
+  readonly keyring: KeyringClient;
 
   private readonly cache: CacheManager;
   private readonly tokens: TokenManager;
@@ -284,6 +291,11 @@ export class PolarisKeyClient {
       () => this.update,
     );
     this.distribution = new DistributionClient(this.core);
+    this.keyring = new KeyringClient(
+      this.core,
+      this.tokens,
+      opts.keyring ?? {},
+    );
     this.commerce = new CommerceClient(this.core, this.tokens, () =>
       this.sync({ force: true }).then(() => undefined),
     );
@@ -340,6 +352,7 @@ export class PolarisKeyClient {
     this.update.onUpdateAvailable = (check) =>
       this.events.safeEmit("updateAvailable", check);
     this.license.onDeactivated = async () => {
+      this.keyring.lock();
       await this.identity.forget();
       this.noteLicense();
     };

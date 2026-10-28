@@ -76,6 +76,20 @@ export {
   normalizeBackendOrigin,
   type BackendClientOptions,
 } from "./backend/client.js";
+export {
+  KEM_WIRE_X25519,
+  KeyringClient,
+  KeyringError,
+  type CreatedRing,
+  type KeyringOptions,
+  type KeyringRing,
+  type KeyringState,
+  type KeyringWrapInfo,
+  type RecoveryBlob,
+  type RootListener,
+  type SyncCodec,
+  type UnlockResult,
+} from "./keyring/index.js";
 export { activationRefusal } from "./license/endpoints.js";
 // The error copy catalog (SDK parity pass §3.2): one sentence and title per code.
 export {
