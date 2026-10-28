@@ -3,7 +3,7 @@
 //   {"op": "<name>", …}  →  a synchronous result, or {"ok":true,"req":N} now and, later, one
 //                           event {"ev":"<name>","req":N, …result} through the event sink.
 //
-// Synchronous: ping, capabilities, kc_get, kc_set, kc_delete, app_attest_supported (none of them
+// Synchronous: ping, capabilities, kc_get, kc_set, kc_delete, dk_seal, dk_open, dk_destroy, app_attest_supported (none of them
 // waits on anything). Asynchronous (each in its own detached task; the caller's thread never
 // blocks): distributor, app_transaction, products, purchase, entitlements, listen, finish,
 // packs_status, packs_ensure, packs_check_updates, packs_remove, packs_url, packs_watch,
@@ -196,6 +196,9 @@ public final class PlatformHost: Sendable {
         case "kc_get", "kc_set", "kc_delete":
             return keychain(op, q)
 
+        case "dk_seal", "dk_open", "dk_destroy":
+            return deviceKeySealer(op, q)
+
         case "packs_status":
             guard let id = str("id") else { return ["ok": false, "error": "missing_id"] }
             if let u = packs.unsupported() { return u }
@@ -289,6 +292,38 @@ public final class PlatformHost: Sendable {
             "entitlementsForID": .bool(a.entitlementsForID),
             "appAttest": .bool(appAttest.unsupported() == nil),
         ]
+    }
+
+    /// The Godot device key store's sealer (CC-26.7): `dk_seal` {product, context, plain} -> {blob},
+    /// `dk_open` {product, context, blob} -> {plain} (`unopenable` when it can never open),
+    /// `dk_destroy` {product}. Bytes are base64; `keychain: "login"` as for kc_*.
+    private func deviceKeySealer(_ op: String, _ q: PlatformObject) -> PlatformObject {
+        #if canImport(Security) && canImport(CryptoKit)
+        guard let backend = services.keychain else { return Self.unsupported("runtime", "The Keychain is not available here.") }
+        guard let product = q["product"]?.stringValue else { return ["ok": false, "error": "missing_product_or_account"] }
+        var flavor = SecureStore.Keychain.dataProtection
+        if let raw = q["keychain"] {
+            guard let name = raw.stringValue, let k = SecureStore.Keychain(rawValue: name) else {
+                return ["ok": false, "error": "invalid_keychain"]
+            }
+            flavor = k
+        }
+        guard SecureStore.validProduct(product) else { return ["ok": false, "error": "invalid_name"] }
+        let sealer = DeviceKeySealer(product: product, backend: backend, keychain: flavor)
+        func bytes(_ k: String) -> Data? { q[k]?.stringValue.flatMap { Data(base64Encoded: $0) } }
+        switch op {
+        case "dk_seal":
+            guard let plain = bytes("plain"), let context = bytes("context") else { return ["ok": false, "error": "bad_input"] }
+            return sealer.seal(plain: plain, context: context)
+        case "dk_open":
+            guard let blob = bytes("blob"), let context = bytes("context") else { return ["ok": false, "error": "bad_input"] }
+            return sealer.open(blob: blob, context: context)
+        default:
+            return sealer.destroy()
+        }
+        #else
+        return Self.unsupported("runtime", "The Keychain is not available here.")
+        #endif
     }
 
     private func keychain(_ op: String, _ q: PlatformObject) -> PlatformObject {

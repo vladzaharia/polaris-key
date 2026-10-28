@@ -20,10 +20,18 @@
 // that hold whatever the implementation: the vocabulary, rule coverage, HLC and clientId
 // syntax, and that a client never sends a fresh mutationId at or below one it already sent.
 //
+// Version 3 (U-35.2; WIRE-CONTRACT-V5 §11.5, §13.10) adds the end-to-end policy. `init` gains
+// `encryption` ("server" or "e2e") and `hasRoot` (whether the device holds the ring's root); the
+// `root` step gives or takes the root away; `respond` may carry `opened`, what the host codec
+// found for each row it opened (the machine never reads sealed/invalid/seq from a body); the
+// `encryptionSince` assert reads the partition's boundary. The fake transport still speaks
+// plaintext: sealing is the host codec's job, pinned by `sync-vectors.json`. Every v2 scenario
+// runs in server mode, with its expectations unchanged.
+//
 // Append-only: a scenario's expectations never change under the same `syncScenariosVersion`;
 // a vocabulary or expectation change bumps it.
 
-export const SYNC_SCENARIOS_VERSION = 2;
+export const SYNC_SCENARIOS_VERSION = 3;
 
 type J = null | boolean | number | string | J[] | { [k: string]: J };
 type Obj = { [k: string]: J };
@@ -38,6 +46,7 @@ const STEPS = [
   "signIn",
   "signOut",
   "relaunch",
+  "root",
   "assert",
 ] as const;
 
@@ -60,6 +69,7 @@ const ASSERTS = [
   "events",
   "status",
   "licence",
+  "encryptionSince",
 ] as const;
 
 /** Every rule a scenario can pin. S-17 §5.4 push and journal rules 1–8 first. */
@@ -236,6 +246,31 @@ const RULES: { id: string; title: string; ref: string }[] = [
       "A quota below the person's usage removes nothing, and a clear still passes",
     ref: "plans/U-01b.md R4 rule 5; WIRE-CONTRACT-V4 §13.1",
   },
+  // Version 3 (U-35.2).
+  {
+    id: "e2e-client-policy",
+    title:
+      "In E2E mode a max or min key is a compare-and-swap on the version seen; on conflict the client keeps the better value, re-pushes it on the server's version with origin merge when it is its own, and never prompts. A merge key stays per-member on the server",
+    ref: "WIRE-CONTRACT-V5 §13.10.5; plans/CC-01-cloud-sync.md §1.6",
+  },
+  {
+    id: "e2e-locked",
+    title:
+      "With no root for the ring the machine is locked: nothing is pushed or pulled, the journal is kept, edits read in the clear, and unlocking pulls first, then pushes in mutationId order",
+    ref: "WIRE-CONTRACT-V5 §11.5",
+  },
+  {
+    id: "encryption-pinned",
+    title:
+      "An app that requires E2E (the default) never reads past a Worker that says server or omits the member: the body is dropped unread, the status is unsupported with sync-encryption-pinned, and the journal and snapshot are kept. A server-mode app is unchanged",
+    ref: "WIRE-CONTRACT-V5 §11.5, §13.10.6; threat T26",
+  },
+  {
+    id: "encryption-since",
+    title:
+      "A plaintext row is legacy data only when the host-mapped seq is below encryptionSince, which only ever lowers; otherwise it is invalid. Sealed and invalid come only from the host's open result",
+    ref: "WIRE-CONTRACT-V5 §13.10.7",
+  },
 ];
 
 // ── fixtures ───────────────────────────────────────────────────────────────────────────────
@@ -359,6 +394,8 @@ function init(over: Obj = {}): Obj {
     clientIds: [C1, C2],
     options: { onSignOut: "clear" },
     legacyLocal: null,
+    encryption: "server",
+    hasRoot: true,
     ...over,
   };
 }
@@ -564,8 +601,8 @@ const rejected = (id: number, code: string): Obj => ({
   status: "rejected",
   code,
 });
-const respond = (body: Obj, status = 200): Obj => ({
-  respond: { status, body },
+const respond = (body: Obj, status = 200, opened?: Obj): Obj => ({
+  respond: opened ? { status, body, opened } : { status, body },
 });
 const errorBody = (code: string, message: string, extra: Obj = {}): Obj => ({
   error: { code, message, ...extra },
@@ -587,6 +624,7 @@ const network = (state: "online" | "offline"): Obj => ({ network: { state } });
 const signIn = (subject: string): Obj => ({ signIn: { subject } });
 const signOut = (opts: Obj = {}): Obj => ({ signOut: opts });
 const assert = (a: Obj): Obj => ({ assert: a });
+const root = (has: boolean): Obj => ({ root: { has } });
 const val = (value: J, from: string): Obj => ({ value, from });
 const st = (state: string, pending: number, reason?: string): Obj =>
   reason ? { state, pending, reason } : { state, pending };
@@ -641,6 +679,9 @@ function scenarios(): Scenario[] {
   };
   const addV2 = (sc: Omit<Scenario, "wp">): void => {
     s.push({ ...sc, wp: "U-01b" });
+  };
+  const add3 = (sc: Omit<Scenario, "wp">): void => {
+    s.push({ ...sc, wp: "U-35.2" });
   };
 
   add({
@@ -3023,6 +3064,415 @@ function scenarios(): Scenario[] {
     ],
   });
 
+  // ── version 3 (U-35.2; WIRE-CONTRACT-V5 §11.5, §13.10) ──────────────────────────────────────
+  // The fake transport speaks plaintext. What the host codec found for each opened row rides on
+  // `respond` as `opened`; the machine takes sealed, invalid and seq from nowhere else.
+
+  const LAP = "stats.fastestLap";
+  const E2E_CATALOG: Obj = {
+    settings: [
+      ...(CATALOG.settings as Obj[]),
+      synced(LAP, "min", { type: "integer", minimum: 0 }),
+    ],
+    collections: CATALOG.collections as Obj[],
+  };
+  const E2E_DOCUMENT: Obj = {
+    values: { ...(DOCUMENT.values as Obj), [LAP]: 0 },
+    locked: DOCUMENT.locked!,
+  };
+  const e2e = (over: Obj = {}): Obj =>
+    init({
+      catalog: E2E_CATALOG,
+      document: E2E_DOCUMENT,
+      encryption: "e2e",
+      ...over,
+    });
+  const e2eBody = (a: PullArgs & { since?: number; results?: Obj[] }): Obj => ({
+    ...(a.results ? pushBody({ ...a, results: a.results }) : pullBody(a)),
+    encryption: "e2e",
+    encryptionSince: a.since ?? 0,
+  });
+  /** The start-up pull answered `e2e`; the host opened every change as sealed. */
+  const e2eStarted = (cursor: number, changes: Obj[]): Obj[] => [
+    assert({ requests: [pullReq(0, C1)], status: st("syncing", 0) }),
+    respond(
+      e2eBody({ serverNow: T0, cursor, changes }),
+      200,
+      sealed(changes.length),
+    ),
+  ];
+  /** Another pull at `cursor`, answered `e2e` with the boundary at `since`. */
+  const repull = (cursor: number, since: number, T = T0): Obj[] => [
+    network("offline"),
+    network("online"),
+    assert({ requests: [pullReq(cursor, C1)] }),
+    respond(e2eBody({ serverNow: T, cursor, since })),
+  ];
+  const invalidity = (key: string, invalid: boolean): Obj => ({
+    states: { [key]: { sync: "synced", invalid, locked: false } },
+  });
+  const sealed = (n = 1): Obj => ({
+    changes: Array.from({ length: n }, () => ({ sealed: true })),
+  });
+  /** An E2E max/min write: a compare-and-swap on the version seen (§13.10.5). */
+  const cas = (
+    id: number,
+    key: string,
+    value: J,
+    baseVersion: number | "*",
+    h: string,
+  ): Obj => ({ ...set(id, key, value, h), baseVersion });
+
+  add3({
+    name: "e2e-max-conflict-remerged",
+    description:
+      "In E2E mode a max key is written against the version the client saw. When the server's sealed copy is smaller, the client re-pushes its own larger value on the server's version, with origin merge and no prompt.",
+    rules: ["e2e-client-policy"],
+    init: e2e(),
+    steps: [
+      ...e2eStarted(2, [change(BEST, 120, 2, hlc(T0 - 1000))]),
+      assert({
+        values: { [BEST]: val(120, "cloud") },
+        events: [changed([BEST], "remote")],
+        status: st("idle", 0),
+      }),
+      local("set", [BEST, 150], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [pushReq(C1, 2, [cas(1, BEST, 150, 2, hlc(T0))])],
+        events: [changed([BEST], "local")],
+      }),
+      respond(
+        e2eBody({
+          serverNow: T0 + 2000,
+          cursor: 3,
+          lastMutationId: 1,
+          results: [
+            conflict(1, { value: 130, version: 3, editedHlc: hlc(T0 - 500) }),
+          ],
+        }),
+        200,
+        { conflicts: { 1: { sealed: true } } },
+      ),
+      assert({
+        requests: [pushReq(C1, 3, [cas(2, BEST, 150, 3, hlc(T0))])],
+        values: { [BEST]: val(150, "pending") },
+        status: st("syncing", 1),
+      }),
+      respond(
+        e2eBody({
+          serverNow: T0 + 2000,
+          cursor: 4,
+          lastMutationId: 2,
+          results: [ok(2, 4)],
+          changes: [change(BEST, 150, 4, hlc(T0))],
+        }),
+        200,
+        sealed(),
+      ),
+      assert({
+        values: { [BEST]: val(150, "cloud") },
+        journal: { [ALICE]: partition(C1, 3, 4, []) },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add3({
+    name: "e2e-min-server-wins",
+    description:
+      "In E2E mode a min key whose server copy is smaller keeps the server's value: the client enqueues nothing and never re-pushes.",
+    rules: ["e2e-client-policy"],
+    init: e2e(),
+    steps: [
+      ...e2eStarted(2, [change(LAP, 80, 2, hlc(T0 - 1000))]),
+      assert({
+        values: { [LAP]: val(80, "cloud") },
+        events: [changed([LAP], "remote")],
+      }),
+      local("set", [LAP, 90], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [pushReq(C1, 2, [cas(1, LAP, 90, 2, hlc(T0))])],
+      }),
+      respond(
+        e2eBody({
+          serverNow: T0 + 2000,
+          cursor: 2,
+          lastMutationId: 1,
+          results: [
+            conflict(1, { value: 80, version: 2, editedHlc: hlc(T0 - 1000) }),
+          ],
+        }),
+        200,
+        { conflicts: { 1: { sealed: true } } },
+      ),
+      assert({
+        values: { [LAP]: val(80, "cloud") },
+        requests: [],
+        journal: { [ALICE]: partition(C1, 2, 2, []) },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add3({
+    name: "e2e-merge-member-cells",
+    description:
+      "A merge key in E2E mode is still one member op per changed member, with no base version and no client loop: the server settles each sealed member cell by its clock, and the client only reads the sealed result.",
+    rules: ["e2e-client-policy"],
+    init: e2e(),
+    steps: [
+      assert({ requests: [pullReq(0, C1)] }),
+      respond(
+        e2eBody({
+          serverNow: T0,
+          cursor: 2,
+          changes: [change(BIND, { jump: "space" }, 2, hlc(T0 - 1000))],
+        }),
+        200,
+        sealed(),
+      ),
+      local("set", [BIND, { jump: "space", dash: "shift" }]),
+      advance(2000),
+      assert({
+        requests: [
+          pushReq(C1, 2, [setMember(1, BIND, "dash", "shift", hlc(T0))]),
+        ],
+        events: [changed([BIND], "remote"), changed([BIND], "local")],
+      }),
+      respond(
+        e2eBody({
+          serverNow: T0 + 2000,
+          cursor: 4,
+          lastMutationId: 1,
+          results: [ok(1, 3)],
+          changes: [
+            change(BIND, { jump: "j", dash: "shift" }, 4, hlc(T0 + 500)),
+          ],
+        }),
+        200,
+        sealed(),
+      ),
+      assert({
+        values: { [BIND]: val({ jump: "j", dash: "shift" }, "cloud") },
+        events: [changed([BIND], "remote")],
+        requests: [],
+        journal: { [ALICE]: partition(C1, 2, 4, []) },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add3({
+    name: "e2e-locked-keeps-journal",
+    description:
+      "With no root for the ring the machine is locked: it sends nothing whatever the trigger, keeps the journal across a relaunch, reads its own edit in the clear and reads the snapshot as invalid.",
+    rules: ["e2e-locked"],
+    init: e2e({ hasRoot: false }),
+    steps: [
+      assert({ requests: [], status: st("locked", 0, "keyring") }),
+      local("set", [VOL, 0.2], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [],
+        values: { [VOL]: val(0.2, "pending") },
+        states: { [VOL]: { sync: "pending", invalid: false, locked: false } },
+        journal: {
+          [ALICE]: partition(C1, 2, 0, [set(1, VOL, 0.2, hlc(T0))]),
+        },
+        status: st("locked", 1, "keyring"),
+      }),
+      local("flush"),
+      local("refresh"),
+      network("offline"),
+      network("online"),
+      assert({ requests: [], status: st("locked", 1, "keyring") }),
+      { relaunch: {} },
+      assert({
+        requests: [],
+        journal: {
+          [ALICE]: partition(C1, 2, 0, [set(1, VOL, 0.2, hlc(T0))]),
+        },
+        status: st("locked", 1, "keyring"),
+      }),
+    ],
+  });
+
+  add3({
+    name: "e2e-unlock-pushes",
+    description:
+      "Giving the machine its root confirms the Worker first (a pull), then pushes the held operations in mutationId order.",
+    rules: ["e2e-locked"],
+    init: e2e({ hasRoot: false }),
+    steps: [
+      local("set", [VOL, 0.1], { ok: true }),
+      local("set", [BEST, 4], { ok: true }),
+      advance(2000),
+      assert({ requests: [], status: st("locked", 2, "keyring") }),
+      root(true),
+      assert({ requests: [pullReq(0, C1)], status: st("syncing", 2) }),
+      respond(e2eBody({ serverNow: T0 + 2000, cursor: 1 })),
+      assert({
+        requests: [
+          pushReq(C1, 1, [
+            set(1, VOL, 0.1, hlc(T0)),
+            cas(2, BEST, 4, "*", hlc(T0, 1)),
+          ]),
+        ],
+        status: st("syncing", 2),
+      }),
+      respond(
+        e2eBody({
+          serverNow: T0 + 2000,
+          cursor: 3,
+          lastMutationId: 2,
+          results: [ok(1, 2), ok(2, 3)],
+          changes: [change(VOL, 0.1, 2, hlc(T0)), change(BEST, 4, 3, hlc(T0))],
+        }),
+        200,
+        sealed(2),
+      ),
+      assert({
+        values: { [VOL]: val(0.1, "cloud"), [BEST]: val(4, "cloud") },
+        journal: { [ALICE]: partition(C1, 3, 3, []) },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add3({
+    name: "e2e-downgrade-refused",
+    description:
+      "An app that requires E2E (the default) drops a body that says server unread: the status is unsupported with sync-encryption-pinned, the journal and snapshot are kept, and nothing is sent until the Worker says e2e again.",
+    rules: ["encryption-pinned"],
+    init: e2e(),
+    steps: [
+      assert({ requests: [pullReq(0, C1)] }),
+      respond(
+        e2eBody({
+          serverNow: T0,
+          cursor: 2,
+          changes: [change(VOL, 0.5, 2, hlc(T0 - 1000))],
+        }),
+        200,
+        sealed(),
+      ),
+      local("set", [QUAL, "high"], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [pushReq(C1, 2, [set(1, QUAL, "high", hlc(T0))])],
+      }),
+      respond({
+        ...pushBody({
+          serverNow: T0 + 2000,
+          cursor: 9,
+          lastMutationId: 1,
+          results: [ok(1, 9)],
+          changes: [change(VOL, 0.9, 9, hlc(T0))],
+        }),
+        encryption: "server",
+      }),
+      assert({
+        values: { [VOL]: val(0.5, "cloud"), [QUAL]: val("high", "pending") },
+        journal: {
+          [ALICE]: partition(C1, 2, 2, [set(1, QUAL, "high", hlc(T0))]),
+        },
+        status: {
+          state: "unsupported",
+          pending: 1,
+          reason: "encryption",
+          code: "sync-encryption-pinned",
+        },
+      }),
+      advance(2000),
+      local("flush"),
+      network("offline"),
+      network("online"),
+      assert({
+        requests: [],
+        status: {
+          state: "unsupported",
+          pending: 1,
+          reason: "encryption",
+          code: "sync-encryption-pinned",
+        },
+      }),
+    ],
+  });
+
+  add3({
+    name: "e2e-legacy-plain-below-since",
+    description:
+      "A plaintext row is legacy data, and read, only while the host-mapped seq is below encryptionSince; at or above it the row is invalid. A sealed row is read, a later higher boundary does not revive a refused row, and a lower one reaches rows already held.",
+    rules: ["encryption-since"],
+    init: e2e(),
+    steps: [
+      assert({ requests: [pullReq(0, C1)] }),
+      respond(
+        e2eBody({
+          serverNow: T0,
+          cursor: 9,
+          since: 5,
+          changes: [
+            change(VOL, 0.4, 3, hlc(T0 - 3000)),
+            change(QUAL, "low", 7, hlc(T0 - 2000)),
+            change(BEST, 15, 9, hlc(T0 - 1000)),
+          ],
+        }),
+        200,
+        { changes: [{ seq: 3 }, { seq: 7 }, { sealed: true }] },
+      ),
+      assert({
+        values: {
+          [VOL]: val(0.4, "cloud"),
+          [QUAL]: val("medium", "document"),
+          [BEST]: val(15, "cloud"),
+        },
+        states: {
+          [VOL]: { sync: "synced", invalid: false, locked: false },
+          [QUAL]: { sync: "synced", invalid: true, locked: false },
+        },
+        encryptionSince: 5,
+      }),
+      ...repull(9, 20),
+      assert({ ...invalidity(QUAL, true), encryptionSince: 5 }),
+      ...repull(9, 2),
+      assert({ ...invalidity(VOL, true), encryptionSince: 2 }),
+    ],
+  });
+
+  add3({
+    name: "server-mode-unchanged",
+    description:
+      "An app in server mode is not locked, not pinned and not subject to the client policy: it pushes at once, reads a body with no encryption member, writes a max key with no base version, and on conflict takes the server copy.",
+    rules: ["e2e-client-policy", "encryption-pinned"],
+    init: init({ hasRoot: false }),
+    steps: [
+      ...started(2, [change(BEST, 120, 2, hlc(T0 - 1000))]),
+      local("set", [BEST, 150], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [pushReq(C1, 2, [set(1, BEST, 150, hlc(T0))])],
+        status: st("syncing", 1),
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 2000,
+          cursor: 2,
+          lastMutationId: 1,
+          results: [conflict(1, { value: 200, version: 3 })],
+        }),
+      ),
+      assert({
+        values: { [BEST]: val(200, "cloud") },
+        requests: [],
+        journal: { [ALICE]: partition(C1, 2, 2, []) },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
   return s;
 }
 
@@ -3310,7 +3760,7 @@ export function buildSyncScenarios(): Obj {
   const file: Obj = {
     syncScenariosVersion: SYNC_SCENARIOS_VERSION,
     description:
-      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Literal data, not generated by an implementation.",
+      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Version 3 adds the end-to-end policy: `init.encryption` and `init.hasRoot`, the `root` step (the device gains or loses the ring's root), `respond.opened` (what the host codec found for each opened row; the fake transport itself speaks plaintext) and the `encryptionSince` assert. Literal data, not generated by an implementation.",
     product: PRODUCT,
     constants: {
       debounceMs: 2000,

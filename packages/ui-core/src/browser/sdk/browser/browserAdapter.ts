@@ -1340,6 +1340,12 @@ export class BrowserAdapter implements PolarisAdapter {
   async signOut(): Promise<SignOutResult> {
     if (this.configError) throw this.fail("identity", this.configError);
     this.setBusy("identity", true);
+    // Stop the browser re-selecting the account on the next visit (FedCM; a no-op elsewhere).
+    // Loaded on demand so the page bundle stays within its size budget.
+    await import("./platformIdentity/fedcm.js").then(
+      (m) => m.fedcmPreventSilentAccess(),
+      () => undefined,
+    );
     if (this.bearer) {
       try {
         await this.ensureDiscovery();

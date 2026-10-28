@@ -1,0 +1,447 @@
+{
+  "transcriptVersion": 1,
+  "id": "connect-identity-rotate",
+  "description": "The roster epoch and K_disc over a person's changes (WIRE-CONTRACT-V5 §15.3, §15.4). A device joins: the epoch rises, a new K_disc is drawn and the old one is delivered beside it for 24 hours (two keys). The device leaves: the epoch rises and the previous key is dropped (one key). This device rotates its keys, which is a re-registration the Worker treats as a leave: the epoch rises and only the new K_disc comes.",
+  "features": ["connect.identity"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_-wbTyxqk74aq_UymrCBqXlNU00t3qzVFOU_Acrs8Fmk",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "note": "Discovery names Cloud Connect.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 5,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "requires-license",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "deviceKeys": "https://key.plrs.im/djdl/devices/keys"
+                  },
+                  "portal": {
+                    "enabled": true,
+                    "activate": "https://key.plrs.im/activate?product=djdl"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": {
+                    "enabled": true,
+                    "endpoints": {
+                      "activate": "https://key.plrs.im/djdl/license/activate",
+                      "enroll": "https://key.plrs.im/djdl/license/enroll",
+                      "token": "https://key.plrs.im/djdl/license/token",
+                      "deauthorize": "https://key.plrs.im/djdl/license/deauthorize",
+                      "document": "https://key.plrs.im/djdl/license/document"
+                    }
+                  },
+                  "config": { "enabled": false },
+                  "release": { "enabled": false },
+                  "distribution": { "enabled": false },
+                  "update": { "enabled": false },
+                  "identity": {
+                    "enabled": true,
+                    "configured": true,
+                    "issuer": "https://key.plrs.im/djdl/identity",
+                    "account": true,
+                    "keyEntryLimit": 10,
+                    "endpoints": {
+                      "session": "https://key.plrs.im/djdl/identity/session",
+                      "sessionLicense": "https://key.plrs.im/djdl/identity/session/license",
+                      "authStart": "https://key.plrs.im/djdl/identity/auth/start",
+                      "authCallback": "https://key.plrs.im/djdl/identity/auth/callback",
+                      "authLogout": "https://key.plrs.im/djdl/identity/auth/logout",
+                      "authDeviceStart": "https://key.plrs.im/djdl/identity/auth/device/start",
+                      "authDeviceEntry": "https://key.plrs.im/djdl/identity/auth/device",
+                      "authDeviceVerify": "https://key.plrs.im/djdl/identity/auth/device/verify",
+                      "authDevicePoll": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                      "authorize": "https://key.plrs.im/djdl/identity/authorize",
+                      "token": "https://key.plrs.im/djdl/identity/token",
+                      "choiceLicenses": "https://key.plrs.im/djdl/identity/choice/licenses",
+                      "choiceDevices": "https://key.plrs.im/djdl/identity/choice/devices",
+                      "choiceComplete": "https://key.plrs.im/djdl/identity/choice/complete",
+                      "choiceCancel": "https://key.plrs.im/djdl/identity/choice/cancel",
+                      "attach": "https://key.plrs.im/djdl/identity/attach",
+                      "subject": "https://key.plrs.im/djdl/identity/subject",
+                      "signout": "https://key.plrs.im/djdl/identity/signout",
+                      "nonce": "https://key.plrs.im/djdl/identity/nonce",
+                      "link": "https://key.plrs.im/djdl/identity/link",
+                      "accountPortal": "https://key.plrs.im/#/p/djdl"
+                    }
+                  },
+                  "sync": { "enabled": false },
+                  "commerce": { "enabled": false },
+                  "connect": {
+                    "enabled": true,
+                    "lan": true,
+                    "relay": false,
+                    "interAccount": false,
+                    "endpoints": {
+                      "identity": "https://key.plrs.im/djdl/connect/identity",
+                      "devices": "https://key.plrs.im/djdl/connect/devices",
+                      "ticket": null
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "ok" }
+    },
+    {
+      "action": "connectIdentity",
+      "note": "The first call.",
+      "args": { "keyLabel": "transcript-connect-key-1" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "PUT",
+              "path": "/djdl/devices/keys",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "vnV00dDZEKK4P5vlDt0tITCeBORkgedd8cexMNOA31w",
+                  "agreeKey": "z9EE67vsnQkPEIWr4YL4qDFqIj2nZTan9l67gPiUU1A",
+                  "issuedAt": 1700000000,
+                  "sig": "s16ZlO47sKF4tOKeF_3Ib_ww1UGQqgajm7gOvsMZ9hArl0oWK_xsL4n_uWZUULfeDneOx2TthYOa6vau3UnJDg"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "keySeq": 1 }
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/connect/identity",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ring": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19pZm9MMG9LMk5kTlJ4clQtcl9XNUNBIiwiZXBvY2giOjEsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDA2MDQ4MDAsImRldmljZXMiOlt7ImRldmljZUlkIjoiVFJBTlNDUklQVERFVklDRTAwMDAwMDAwMDAwMDAwMDEiLCJzaWduS2V5Ijoidm5WMDBkRFpFS0s0UDV2bER0MHRJVENlQk9Sa2dlZGQ4Y2V4TU5PQTMxdyIsImFncmVlS2V5IjoiejlFRTY3dnNuUWtQRUlXcjRZTDRxREZxSWoyblpUYW45bDY3Z1BpVVUxQSJ9LHsiZGV2aWNlSWQiOiJUUkFOU0NSSVBUREVWSUNFMDAwMDAwMDAwMDAwMDAwMiIsInNpZ25LZXkiOiItXzVVS1pkRlhxR0lUUGF2TG5YaHpPV1h2T0JoeWRqclk2R1VOY3UxZnhNIiwiYWdyZWVLZXkiOiJFZjlTVG1UcHRoVmQ0YXQ0djFnTy1RY3AyUmd5QnFacFRBek9wYTlSekdVIn1dfQ.WWXgBqAZgO328KoReSFuHDXM2NSg3edQZP07hzKYZY_1OPaA53dH1qB6mNtdgsnQfDq2D3svnj-fKRMaEO3-Ag",
+                "certificate": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcGVlcitqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19pZm9MMG9LMk5kTlJ4clQtcl9XNUNBIiwiZGV2aWNlSWQiOiJUUkFOU0NSSVBUREVWSUNFMDAwMDAwMDAwMDAwMDAwMSIsInNpZ25LZXkiOiJ2blYwMGREWkVLSzRQNXZsRHQwdElUQ2VCT1JrZ2VkZDhjZXhNTk9BMzF3IiwiYWdyZWVLZXkiOiJ6OUVFNjd2c25Ra1BFSVdyNFlMNHFERnFJajJuWlRhbjlsNjdnUGlVVTFBIiwicmluZ0Vwb2NoIjoxLCJpc3N1ZWRBdCI6MTcwMDAwMDAwMCwiZXhwaXJlc0F0IjoxNzAwNjA0ODAwfQ.I9v5lEcXZxHHbg1VQh8jCFdsjWmf_URvFI0UMSR8ptksxk0boFryJQdQOalFYFH8D0_UNvjUAzj7MVpdlHhzBw",
+                "discKeys": ["T_TVaDO9E2JL4w9fqVWtUF6qxt5pDG3jYDJ3QMI4eTs"]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "epoch": 1,
+        "devices": [
+          "TRANSCRIPTDEVICE0000000000000001",
+          "TRANSCRIPTDEVICE0000000000000002"
+        ],
+        "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+        "discKeys": 1
+      }
+    },
+    {
+      "action": "connectIdentity",
+      "note": "A device joined: the epoch rises, two K_disc keys.",
+      "args": { "keyLabel": "transcript-connect-key-1", "refresh": true },
+      "now": 1700000010,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/connect/identity",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ring": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19pZm9MMG9LMk5kTlJ4clQtcl9XNUNBIiwiZXBvY2giOjIsImlzc3VlZEF0IjoxNzAwMDAwMDEwLCJleHBpcmVzQXQiOjE3MDA2MDQ4MTAsImRldmljZXMiOlt7ImRldmljZUlkIjoiVFJBTlNDUklQVERFVklDRTAwMDAwMDAwMDAwMDAwMDEiLCJzaWduS2V5Ijoidm5WMDBkRFpFS0s0UDV2bER0MHRJVENlQk9Sa2dlZGQ4Y2V4TU5PQTMxdyIsImFncmVlS2V5IjoiejlFRTY3dnNuUWtQRUlXcjRZTDRxREZxSWoyblpUYW45bDY3Z1BpVVUxQSJ9LHsiZGV2aWNlSWQiOiJUUkFOU0NSSVBUREVWSUNFMDAwMDAwMDAwMDAwMDAwMiIsInNpZ25LZXkiOiItXzVVS1pkRlhxR0lUUGF2TG5YaHpPV1h2T0JoeWRqclk2R1VOY3UxZnhNIiwiYWdyZWVLZXkiOiJFZjlTVG1UcHRoVmQ0YXQ0djFnTy1RY3AyUmd5QnFacFRBek9wYTlSekdVIn0seyJkZXZpY2VJZCI6IlRSQU5TQ1JJUFRERVZJQ0UwMDAwMDAwMDAwMDAwMDAzIiwic2lnbktleSI6IkdyYUdCWEhsTkhYdFd5NnBnc21XZ3FkdGdzT0tENU9zTW1HY0ZxUnVRNEEiLCJhZ3JlZUtleSI6Ii1EaTZBazdNVWFYZmVxR1RILXVYZTZmZnBIdUowblMtZURsNWZHRTFlekEifV19.mng-n_8-2jhJHTJptJE1-0D0q34fhfKS4PCGvKAnyMgvcRx5Zl7VpSAFtRbyyCAdqhq8AbvBfTLSniEbtC_nCg",
+                "certificate": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcGVlcitqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19pZm9MMG9LMk5kTlJ4clQtcl9XNUNBIiwiZGV2aWNlSWQiOiJUUkFOU0NSSVBUREVWSUNFMDAwMDAwMDAwMDAwMDAwMSIsInNpZ25LZXkiOiJ2blYwMGREWkVLSzRQNXZsRHQwdElUQ2VCT1JrZ2VkZDhjZXhNTk9BMzF3IiwiYWdyZWVLZXkiOiJ6OUVFNjd2c25Ra1BFSVdyNFlMNHFERnFJajJuWlRhbjlsNjdnUGlVVTFBIiwicmluZ0Vwb2NoIjoyLCJpc3N1ZWRBdCI6MTcwMDAwMDAxMCwiZXhwaXJlc0F0IjoxNzAwNjA0ODEwfQ.AXrVCqapg2vJ_Eqeo166bR9MLHJlve30YwvhxKlWHavYGXJ7FD8tT23dxALebpwHjVDgeNIgJdFLSFt4-OHbBw",
+                "discKeys": [
+                  "rbQ-XekkC2UIX2b4B6Ivx7xRjZ7OxkYUBXa2106AHTk",
+                  "T_TVaDO9E2JL4w9fqVWtUF6qxt5pDG3jYDJ3QMI4eTs"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "epoch": 2,
+        "devices": [
+          "TRANSCRIPTDEVICE0000000000000001",
+          "TRANSCRIPTDEVICE0000000000000002",
+          "TRANSCRIPTDEVICE0000000000000003"
+        ],
+        "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+        "discKeys": 2
+      }
+    },
+    {
+      "action": "connectIdentity",
+      "note": "The device left: the epoch rises, the previous K_disc is gone.",
+      "args": { "keyLabel": "transcript-connect-key-1", "refresh": true },
+      "now": 1700000020,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/connect/identity",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ring": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19pZm9MMG9LMk5kTlJ4clQtcl9XNUNBIiwiZXBvY2giOjMsImlzc3VlZEF0IjoxNzAwMDAwMDIwLCJleHBpcmVzQXQiOjE3MDA2MDQ4MjAsImRldmljZXMiOlt7ImRldmljZUlkIjoiVFJBTlNDUklQVERFVklDRTAwMDAwMDAwMDAwMDAwMDEiLCJzaWduS2V5Ijoidm5WMDBkRFpFS0s0UDV2bER0MHRJVENlQk9Sa2dlZGQ4Y2V4TU5PQTMxdyIsImFncmVlS2V5IjoiejlFRTY3dnNuUWtQRUlXcjRZTDRxREZxSWoyblpUYW45bDY3Z1BpVVUxQSJ9LHsiZGV2aWNlSWQiOiJUUkFOU0NSSVBUREVWSUNFMDAwMDAwMDAwMDAwMDAwMiIsInNpZ25LZXkiOiItXzVVS1pkRlhxR0lUUGF2TG5YaHpPV1h2T0JoeWRqclk2R1VOY3UxZnhNIiwiYWdyZWVLZXkiOiJFZjlTVG1UcHRoVmQ0YXQ0djFnTy1RY3AyUmd5QnFacFRBek9wYTlSekdVIn1dfQ.Y8GeF_KtxDPSQdkJf6S62RLWbSZvB_fD2Ylwk4e9Oy5l3r7pe2nttrx0Cp01hohXDy8mW6nIlClu59P5hrjdAg",
+                "certificate": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcGVlcitqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19pZm9MMG9LMk5kTlJ4clQtcl9XNUNBIiwiZGV2aWNlSWQiOiJUUkFOU0NSSVBUREVWSUNFMDAwMDAwMDAwMDAwMDAwMSIsInNpZ25LZXkiOiJ2blYwMGREWkVLSzRQNXZsRHQwdElUQ2VCT1JrZ2VkZDhjZXhNTk9BMzF3IiwiYWdyZWVLZXkiOiJ6OUVFNjd2c25Ra1BFSVdyNFlMNHFERnFJajJuWlRhbjlsNjdnUGlVVTFBIiwicmluZ0Vwb2NoIjozLCJpc3N1ZWRBdCI6MTcwMDAwMDAyMCwiZXhwaXJlc0F0IjoxNzAwNjA0ODIwfQ.waCq8FKXr7DrvpHyA3-WE9ZmPDpo86CW9xVAhAHlVHgg7UwzvfM_uOXud5ff0SLjtHK3GAV5YsGRkSTRoFuJBw",
+                "discKeys": ["OG1iZtyje3tR8dEwziOpq7JHMSlPG3NEb00Wgu4rOC8"]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "epoch": 3,
+        "devices": [
+          "TRANSCRIPTDEVICE0000000000000001",
+          "TRANSCRIPTDEVICE0000000000000002"
+        ],
+        "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+        "discKeys": 1
+      }
+    },
+    {
+      "action": "connectIdentity",
+      "note": "This device rotated its keys: registered again, the epoch rises.",
+      "args": { "keyLabel": "transcript-connect-key-2" },
+      "now": 1700000030,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "PUT",
+              "path": "/djdl/devices/keys",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "PLIJ6fmG1lrcqNCXkNxxcPMrUlAWzSgJwropmRorM50",
+                  "agreeKey": "G1YmOp1dzB7X84dgNHhnnXVXetf781SoOGVt0Jqe7js",
+                  "issuedAt": 1700000030,
+                  "sig": "ZIw_mQTlsAUMV-gey5CUq1onZhZu6aR-gLhY7yjZD6XMKuRIWujQNaGebmreyRzt5ivnGOWIrFKhe0MpzCp-Ag"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "keySeq": 2 }
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/connect/identity",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ring": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19pZm9MMG9LMk5kTlJ4clQtcl9XNUNBIiwiZXBvY2giOjQsImlzc3VlZEF0IjoxNzAwMDAwMDMwLCJleHBpcmVzQXQiOjE3MDA2MDQ4MzAsImRldmljZXMiOlt7ImRldmljZUlkIjoiVFJBTlNDUklQVERFVklDRTAwMDAwMDAwMDAwMDAwMDEiLCJzaWduS2V5IjoiUExJSjZmbUcxbHJjcU5DWGtOeHhjUE1yVWxBV3pTZ0p3cm9wbVJvck01MCIsImFncmVlS2V5IjoiRzFZbU9wMWR6QjdYODRkZ05IaG5uWFZYZXRmNzgxU29PR1Z0MEpxZTdqcyJ9LHsiZGV2aWNlSWQiOiJUUkFOU0NSSVBUREVWSUNFMDAwMDAwMDAwMDAwMDAwMiIsInNpZ25LZXkiOiItXzVVS1pkRlhxR0lUUGF2TG5YaHpPV1h2T0JoeWRqclk2R1VOY3UxZnhNIiwiYWdyZWVLZXkiOiJFZjlTVG1UcHRoVmQ0YXQ0djFnTy1RY3AyUmd5QnFacFRBek9wYTlSekdVIn1dfQ.AR1MaIFuOvbTA6wzI5jr1QwdCDoo4d8dLbrL_3_v0FqqBlkCEINElGjgHv_WKstjLeEcmcLWlU5UmyhwJ3nuCw",
+                "certificate": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcGVlcitqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19pZm9MMG9LMk5kTlJ4clQtcl9XNUNBIiwiZGV2aWNlSWQiOiJUUkFOU0NSSVBUREVWSUNFMDAwMDAwMDAwMDAwMDAwMSIsInNpZ25LZXkiOiJQTElKNmZtRzFscmNxTkNYa054eGNQTXJVbEFXelNnSndyb3BtUm9yTTUwIiwiYWdyZWVLZXkiOiJHMVltT3AxZHpCN1g4NGRnTkhobm5YVlhldGY3ODFTb09HVnQwSnFlN2pzIiwicmluZ0Vwb2NoIjo0LCJpc3N1ZWRBdCI6MTcwMDAwMDAzMCwiZXhwaXJlc0F0IjoxNzAwNjA0ODMwfQ.u5yDpNK31QqCeul0OTf1lPWLVaqUoIKPIPyRppMBV7I6rJJrv7i5nPyTOppoOU84oyjMw51zIiTrUb3LwbUOAw",
+                "discKeys": ["rukNrbEVZ0QldF5xI3qgySfj0EgbpY8PNHVE3RR57eA"]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "epoch": 4,
+        "devices": [
+          "TRANSCRIPTDEVICE0000000000000001",
+          "TRANSCRIPTDEVICE0000000000000002"
+        ],
+        "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+        "discKeys": 1
+      }
+    }
+  ]
+}

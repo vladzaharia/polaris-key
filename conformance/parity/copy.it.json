@@ -589,6 +589,14 @@
       "title": "Problema di archiviazione",
       "message": "L'app non è riuscita a leggere o salvare la licenza su questo dispositivo. Verifica che l'app possa scrivere nella sua cartella dati."
     },
+    "connect-unavailable": {
+      "title": "Connessione non disponibile",
+      "message": "La connessione ai dispositivi vicini non è disponibile per questa app su questo dispositivo."
+    },
+    "peer-cert-invalid": {
+      "title": "Dispositivo non verificato",
+      "message": "Impossibile verificare questo dispositivo. Riprova."
+    },
     "platform-error": {
       "title": "Problema della piattaforma",
       "message": "La piattaforma ha segnalato un errore. Riprova."

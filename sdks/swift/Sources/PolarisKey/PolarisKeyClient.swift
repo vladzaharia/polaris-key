@@ -289,7 +289,7 @@ public actor PolarisKeyClient {
         self.capabilityEngine = engine
         self.fingerprintEnabled = options.license.fingerprint
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
-        let connect = ConnectClient(core: core, options: options.connect)
+        let connect = ConnectClient(core: core, options: options.connect, accessGroup: options.core.keychainAccessGroup)
         self.connect = connect
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
         // does NOT fire it — a keyless registration is a provisioning step a host may want to
@@ -305,11 +305,10 @@ public actor PolarisKeyClient {
                     fingerprintEnabled: options.license.fingerprint, publisher: publisher)
             },
             // `client.license.deactivate()` reaches the same event as `client.deactivate()`.
-            onReleased: {
-                // A released device holds no roster and no discovery key.
-                try? await connect.leave()
-                await publisher.publish()
-            })
+            onReleased: { await publisher.publish() },
+            // A released device holds no roster and no discovery key; if they cannot be removed
+            // (a locked Keychain) the release stops.
+            beforeRelease: { try await connect.leave() })
         self.entitlements = EntitlementsClient(license: self.license)
         let license = self.license
         licenseBox.set(license)
@@ -329,12 +328,14 @@ public actor PolarisKeyClient {
         }
         identity.installSignOut { [core] in
             do {
+                // Fail closed: the held roster and K_disc go first, and if they cannot, nothing
+                // else is wiped.
+                try await connect.leave()
                 try await core.clearAll()
             } catch {
                 await publisher.publish()
                 throw error
             }
-            try? await connect.leave()
             await publisher.publish()
         }
         backendSync.set { [weak self] force in

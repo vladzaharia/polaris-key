@@ -589,6 +589,14 @@
       "title": "Problema de almacenamiento",
       "message": "La app no pudo leer ni guardar su licencia en este dispositivo. Comprueba que la app puede escribir en su carpeta de datos."
     },
+    "connect-unavailable": {
+      "title": "Conexión no disponible",
+      "message": "La conexión con dispositivos cercanos no está disponible para esta app en este dispositivo."
+    },
+    "peer-cert-invalid": {
+      "title": "Dispositivo no verificado",
+      "message": "No se pudo verificar este dispositivo. Inténtalo de nuevo."
+    },
     "platform-error": {
       "title": "Problema de la plataforma",
       "message": "La plataforma informó de un error. Vuelve a intentarlo."

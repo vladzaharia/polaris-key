@@ -2523,6 +2523,8 @@ and keys checked as in §15.2 step 4. At 128 entries the payload is about 20 KiB
 A roster is expired once `now > expiresAt + 300`, the certificate's clock skew (§15.2 step 6). An expired held ring counts as no ring at all. That is safe, because the certificates of removed
 devices expire on the same horizon.
 
+**The client's own identity.** A client holds its certificate C and roster R together, and accepts a fetched pair only when `C.ringEpoch == R.epoch`, C names this device and its keys, and R lists this device. A fetched R′ with the **same** epoch as the held R replaces it only when its `devices` list is identical (a reissue that extends `expiresAt`, so a stable roster does not lapse after `RING_SECONDS`); a same-epoch R′ with different devices is refused and the held pair is kept. A refused answer writes nothing.
+
 **Peer admission** with certificate C:
 
 1. C verifies (§15.2).
@@ -2549,6 +2551,7 @@ devices expire on the same horizon.
   `connect_rings`. `GET /connect/identity` delivers the current key and the previous one (for 24 h
   after a bump). A device advertises only under the newest key.
   The previous key is delivered only when every device of the earlier epoch is still a member: a bump in which a device left drops it, so a removed device has no window. A bump caused by a device rotating its keys is treated as a leave and drops it too. A bump that only adds devices keeps it.
+  Clients treat the delivered previous key as authoritative but SHOULD stop using it 24 h after first seeing it, and drop it at once on a local leave or when a fetched roster lost or re-keyed a device compared with the held one. A client does not know the bump time, so its bound can exceed the Worker's window by up to 24 h; the Worker's rule above is what closes a removed device's window.
 - **Why server-delivered.** This keeps L-13's server-delivered key over a root-key derivation.
   Connect then works without Cloud Sync E2E, and rotation is trivial.
 - **Byte-level choices (`peer-matrix.json` `adverts`).** `deviceId` in the HMAC is the 24 bytes the 32 base64url characters decode to. The instance suffix is the first 16 characters of the RFC 4648 base32 alphabet in lower case (`a-z2-7`), unpadded, of the 32-byte MAC. A browser matches an instance against the current epoch and the one before, newest key first, and against no other. A TXT entry splits at its first `=`; an entry without `=` and a key this section does not define are ignored; keys are case-sensitive; a repeated key refuses the whole advert. `v` must be `1`; `m` must be `a`, `v` or `p`; `h` is read for `v` and `p` only and must be 16 lower-case hex characters.

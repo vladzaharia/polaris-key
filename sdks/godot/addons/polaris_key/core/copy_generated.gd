@@ -163,6 +163,8 @@ const COPY_CODES := {
 	"http-error": {"title": "Service problem", "message": "The service answered with an error. Try again."},
 	"invalid-response": {"title": "Unexpected answer", "message": "The service sent an answer the app couldn't use. Try again."},
 	"store-failed": {"title": "Storage problem", "message": "The app couldn't read or save its license on this device. Check that the app can write its data folder."},
+	"connect-unavailable": {"title": "Connect unavailable", "message": "Nearby connection isn't available for this app on this device."},
+	"peer-cert-invalid": {"title": "Device not verified", "message": "This device couldn't be verified. Try again."},
 	"platform-error": {"title": "Platform problem", "message": "The platform reported an error. Try again."},
 	"no-token": {"title": "Not activated", "message": "This device isn't activated yet. Activate it or sign in."},
 	"mint-unavailable": {"title": "Not available", "message": "This isn't available for this app."},

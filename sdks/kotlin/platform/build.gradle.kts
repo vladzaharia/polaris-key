@@ -81,6 +81,10 @@ dependencies {
     "playApi"(libs.play.app.update)
     "playApi"(libs.play.asset.delivery)
     "playApi"(libs.play.integrity)
+    // Credential Manager (I-45.4): the play flavour only; the direct AAR carries none of it.
+    "playImplementation"(libs.androidx.credentials)
+    "playImplementation"(libs.androidx.credentials.play.services.auth)
+    "playImplementation"(libs.googleid)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

@@ -218,6 +218,22 @@
       ],
       "note": "Credential Manager on the Android play flavour (I-45); JVM desktop has no platform identity."
     },
+    "identity.autosignin": {
+      "status": "planned",
+      "wp": "I-45",
+      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-45)."
+    },
+    "identity.link": {
+      "status": "planned",
+      "wp": "I-45",
+      "except": [
+        {
+          "runtime": "jvm",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Link offer (I-43.3 transcripts, I-45)."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10b.14: ActivationResult.Ok.keyEntries, KeyEntryLimit(manageUrl, keyEntries) and LicenseOwned(signInUrl); keyentry-* transcripts replayed."
@@ -521,8 +537,8 @@
       "wp": "U-39"
     },
     "connect.identity": {
-      "status": "planned",
-      "wp": "CC-12"
+      "status": "implemented",
+      "note": "Verification is :core's Peer (verifyCert, verifyRing, replaceRing, admitPeer); :conformance's PeerCasesTest drives peerCertCases, ringCases (the ring-lifetime-* rows included) and peerAdmissionCases on JCA and on Tink (CC-12.1). client.connect (:sdk, ConnectTest) makes the device keys on first need, registers them (registerDeviceKeys, PUT devices/keys), fetches GET connect/identity, verifies the roster and certificate against the effective set, refuses a stale, foreign, expired or other-keys answer, and holds them with K_disc as pkey.connect.v1 (owner-only file beside the device keys; memory-only keys refuse unless allowEphemeralKeys; an unreadable key record is an error); the previous K_disc is dropped after a leave or a key change; listDevices() and leave() (also run before sign-out). Android supplies its Keystore-sealed key store and state storage (CC-12b). No connect-identity transcript is recorded yet, so none is replayed."
     },
     "connect.noise": {
       "status": "planned",

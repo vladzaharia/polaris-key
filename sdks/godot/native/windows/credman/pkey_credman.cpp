@@ -16,8 +16,23 @@
 //
 // Credential Manager is part of Windows (advapi32), so this class always loads and needs nothing
 // beside pkey_win.dll.
+//
+// PKeyWinDpapiNative (CC-26.7) is the sealer behind the Godot device key store
+// (addons/polaris_key/core/store/sealer_windows.gd): DPAPI wraps and unwraps the record's bytes.
+//
+//   protect(data, entropy)    {ok, blob} | {ok: false, error, win32}
+//   unprotect(blob, entropy)  {ok, plain} | {ok: false, error, win32, unopenable}
+//
+// CryptProtectData with CRYPTPROTECT_UI_FORBIDDEN and no CRYPTPROTECT_LOCAL_MACHINE: the blob opens
+// only for this Windows user on this machine, with no prompt. The entropy is the caller's context
+// (the product slug), so a blob of one product does not open as another's. `unopenable` is set only
+// for an error that cannot pass (the blob is not DPAPI data, or another user or machine made it);
+// every other failure is a fault the store reports as such, never as "the keys are gone". DPAPI
+// keeps no per-product key, so there is nothing to delete: the store removes its record. Plain
+// buffers are zeroed after use.
 #include "pkey_win_common.h"
 
+#include <dpapi.h>
 #include <wincred.h>
 
 #include <godot_cpp/classes/ref_counted.hpp>
@@ -115,4 +130,65 @@ class PKeyWinCredentialNative : public RefCounted {
   }
 };
 
-void pkey_win::register_credman() { GDREGISTER_CLASS(PKeyWinCredentialNative); }
+class PKeyWinDpapiNative : public RefCounted {
+  GDCLASS(PKeyWinDpapiNative, RefCounted)
+
+ protected:
+  static void _bind_methods() {
+    ClassDB::bind_method(D_METHOD("protect", "data", "entropy"), &PKeyWinDpapiNative::protect);
+    ClassDB::bind_method(D_METHOD("unprotect", "blob", "entropy"), &PKeyWinDpapiNative::unprotect);
+  }
+
+  static Dictionary fault(const char *what, DWORD err, bool unopenable) {
+    Dictionary d = failure(what, err);
+    d["unopenable"] = unopenable;
+    return d;
+  }
+
+  static DATA_BLOB view(const PackedByteArray &b) {
+    DATA_BLOB v;
+    v.cbData = (DWORD)b.size();
+    v.pbData = const_cast<BYTE *>(b.ptr());
+    return v;
+  }
+
+  static PackedByteArray take(DATA_BLOB &out, bool zero) {
+    PackedByteArray r;
+    r.resize((int64_t)out.cbData);
+    if (out.cbData > 0) memcpy(r.ptrw(), out.pbData, out.cbData);
+    if (zero && out.cbData > 0) SecureZeroMemory(out.pbData, out.cbData);
+    LocalFree(out.pbData);
+    return r;
+  }
+
+ public:
+  Dictionary protect(const PackedByteArray &data, const PackedByteArray &entropy) {
+    DATA_BLOB in = view(data), ent = view(entropy), out = {};
+    if (!CryptProtectData(&in, L"pkey", &ent, nullptr, nullptr, CRYPTPROTECT_UI_FORBIDDEN, &out)) {
+      return fault("CryptProtectData", GetLastError(), false);
+    }
+    Dictionary d = success();
+    d["blob"] = take(out, false);
+    return d;
+  }
+
+  Dictionary unprotect(const PackedByteArray &blob, const PackedByteArray &entropy) {
+    DATA_BLOB in = view(blob), ent = view(entropy), out = {};
+    if (!CryptUnprotectData(&in, nullptr, &ent, nullptr, nullptr, CRYPTPROTECT_UI_FORBIDDEN, &out)) {
+      DWORD err = GetLastError();
+      // Only an error that can never pass is "unopenable". NTE_BAD_KEY_STATE is deliberately NOT one:
+      // it can mean the user profile or master key is not loaded yet, a transient condition that must
+      // never read as "the keys are gone".
+      bool never = err == ERROR_INVALID_DATA || err == (DWORD)NTE_BAD_DATA;
+      return fault("CryptUnprotectData", err, never);
+    }
+    Dictionary d = success();
+    d["plain"] = take(out, true);
+    return d;
+  }
+};
+
+void pkey_win::register_credman() {
+  GDREGISTER_CLASS(PKeyWinCredentialNative);
+  GDREGISTER_CLASS(PKeyWinDpapiNative);
+}

@@ -92,6 +92,12 @@ public interface DeviceKeyStorage {
 
     /** Deletes the record so it cannot be read back. */
     public suspend fun clear()
+
+    /**
+     * Deletes the record but leaves any sealer key alone: for a record that shares its sealer with
+     * another (Cloud Connect's state beside the device keys). Defaults to [clear].
+     */
+    public suspend fun deleteRecord(): Unit = clear()
 }
 
 /** Process memory only: the keys die with the process. */
@@ -209,7 +215,11 @@ public class FileDeviceKeyStorage(
         true
     }
 
-    override suspend fun clear(): Unit {
+    override suspend fun clear(): Unit = removeRecord(destroySealer = true)
+
+    override suspend fun deleteRecord(): Unit = removeRecord(destroySealer = false)
+
+    private suspend fun removeRecord(destroySealer: Boolean) {
         locked {
             refuseSymlink(file)
             try {
@@ -228,7 +238,7 @@ public class FileDeviceKeyStorage(
                 throw StoreException("could not delete $file", e)
             }
             // Only a deleted file lets the key go; a failure above leaves the key, so nothing is lost.
-            sealer?.destroy()
+            if (destroySealer) sealer?.destroy()
         }
     }
 
@@ -591,3 +601,14 @@ public class DeviceKeyStore(
         return derived.contentEquals(r.agreePub) && verifier.verify(r.signPub, probe, sig)
     }
 }
+
+/** The file the default device key store uses in a client's state directory. */
+public const val DEVICE_KEYS_FILE: String = "device-keys.json"
+
+/**
+ * The store a client uses when the host gave none: the 0600 file in [stateDirectory], or, with no
+ * state directory, a memory-only store (which refuses to register keys). Android has no default:
+ * its store is sealed by the Keystore (`androidDeviceKeyStore`).
+ */
+public fun defaultDeviceKeyStore(stateDirectory: File?): DeviceKeyStore =
+    DeviceKeyStore(if (stateDirectory == null) InMemoryDeviceKeyStorage() else FileDeviceKeyStorage(File(stateDirectory, DEVICE_KEYS_FILE)))

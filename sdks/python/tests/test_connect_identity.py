@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 import pytest
-from helpers import ATTACKER_PEM, KID, PRIVATE_PEM, PRODUCT, TOKEN, make_client
+from helpers import ATTACKER_PEM, BASE_URL, KID, PRIVATE_PEM, PRODUCT, TOKEN, make_client
 
 from polaris_key import PolarisError
 from polaris_key.connect.state import CONNECT_STATE_FILE
@@ -386,3 +386,103 @@ def test_list_devices_refuses_a_malformed_or_oversized_answer(worker, tmp_path) 
     worker.listing = {"nope": 1}
     with pytest.raises(PolarisError):
         c.connect.list_devices()
+
+
+# ── Sign-out (R-6a finding 5, decision C) ────────────────────────────────────────────────
+
+
+class SignOutWorker:
+    """The fake Worker plus discovery naming the sign-out endpoint, and a ``POST signout``."""
+
+    def __init__(self, inner: FakeWorker) -> None:
+        self.inner = inner
+        self.signouts = 0
+
+    def __call__(self, r: httpx.Request) -> httpx.Response:
+        base = f"{BASE_URL}/{PRODUCT}"
+        if r.url.path.endswith("/.well-known/polaris.json"):
+            return httpx.Response(
+                200,
+                json={
+                    "product": PRODUCT,
+                    "services": {
+                        "license": {"enabled": True},
+                        "config": {"enabled": True},
+                        "connect": {"enabled": True},
+                        "identity": {
+                            "enabled": True,
+                            "configured": True,
+                            "account": True,
+                            "endpoints": {"signout": f"{base}/identity/signout"},
+                        },
+                    },
+                },
+            )
+        if r.url.path.endswith("/identity/signout"):
+            self.signouts += 1
+            return httpx.Response(200, json={"released": False})
+        return self.inner(r)
+
+
+def _device_with_signout(worker: FakeWorker, tmp_path):
+    out = SignOutWorker(worker)
+    c = make_client(
+        out,
+        store=_tokened(),
+        state_dir=str(tmp_path),
+        expected_services=["license", "config", "connect", "identity"],
+    )
+    return out, c
+
+
+def test_sign_out_clears_the_connect_state_and_keeps_the_device_keys(worker, tmp_path) -> None:
+    out, c = _device_with_signout(worker, tmp_path)
+    c.connect.identity()
+    state = os.path.join(c.core.dirs.state, CONNECT_STATE_FILE)
+    keys_file = os.path.join(c.core.dirs.state, "device-keys.json")
+    assert os.path.exists(state) and os.path.exists(keys_file)
+    c.identity.sign_out()
+    assert out.signouts == 1
+    assert not os.path.exists(state) and os.path.exists(keys_file)
+    assert c.connect.current() is None and c.connect.discovery_keys() is None
+
+
+def test_sign_out_without_connect_state_creates_nothing(worker, tmp_path) -> None:
+    out, c = _device_with_signout(worker, tmp_path)
+    before = sorted(os.listdir(tmp_path))
+    c.identity.sign_out()
+    assert out.signouts == 1
+    assert sorted(os.listdir(tmp_path)) == before
+    assert not os.path.exists(os.path.join(c.core.dirs.state, CONNECT_STATE_FILE))
+    assert not os.path.exists(os.path.join(c.core.dirs.state, "device-keys.json"))
+
+
+def test_a_state_that_cannot_be_deleted_stops_the_sign_out(worker, tmp_path, monkeypatch) -> None:
+    from polaris_key.core.device_keys import DeviceKeyStoreError
+
+    out, c = _device_with_signout(worker, tmp_path)
+    c.connect.identity()
+    storage = c.connect._store()
+
+    def refuse() -> None:
+        raise DeviceKeyStoreError("cannot delete")
+
+    monkeypatch.setattr(storage, "clear", refuse)
+    with pytest.raises(PolarisError):
+        c.identity.sign_out()
+    assert out.signouts == 0
+    assert os.path.exists(os.path.join(c.core.dirs.state, CONNECT_STATE_FILE))
+    assert c.core.store.get_token() == TOKEN  # nothing was signed out
+
+
+def test_the_discovery_keys_and_the_state_record_refuse_pickling(worker, tmp_path) -> None:
+    import pickle
+
+    c = device(worker, tmp_path)
+    c.connect.identity()
+    with pytest.raises(TypeError):
+        pickle.dumps(c.connect.discovery_keys())
+    rec = c.connect._load()
+    assert rec is not None
+    with pytest.raises(TypeError):
+        pickle.dumps(rec)

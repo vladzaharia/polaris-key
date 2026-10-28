@@ -193,6 +193,51 @@ public suspend fun CoreContext.deauthorizeDevice(deviceId: String) {
     }
 }
 
+// ── Device keys (V5 section 15.8) ─────────────────────────────────────────────────────────────
+
+/**
+ * A Worker refusal as a [PolarisException]: the body's wire code (`device_keys_required`,
+ * `account_required`, `ring_too_large`, ...), else `http-error`. The text names the call and the
+ * status, never a body, so nothing secret reaches a log.
+ */
+public fun wireRefusal(response: PolarisResponse, what: String): PolarisException =
+    PolarisException(wireErrorCode(response.body) ?: ErrorCode.httpError, "$what failed with status ${response.status}.")
+
+/**
+ * `PUT /<p>/devices/keys`: registers the port's public keys for this device with a `keys` proof and
+ * answers the Worker's `keySeq`. Resending is safe. A memory-only port is refused unless
+ * [allowEphemeral]: every restart would register a new pair, and the Worker allows four a day. The
+ * private halves never leave the port.
+ */
+public suspend fun CoreContext.registerDeviceKeys(port: DeviceKeyPort, allowEphemeral: Boolean = false): Long {
+    val token = token() ?: throw PolarisException(ErrorCode.noToken, "Register or sign in before registering device keys.")
+    val proof = try {
+        DeviceProofs.buildDeviceKeysRequest(port, product, deviceId(), now(), allowEphemeral).second
+    } catch (e: DeviceKeyUnsupportedException) {
+        throw PolarisException(ErrorCode.invalidOptions, "The device keys cannot be used here: ${e.message}", cause = e)
+    } catch (e: DeviceKeysUnreadableException) {
+        throw PolarisException(ErrorCode.deviceKeysUnreadable, "The stored device keys cannot be opened.", cause = e)
+    } catch (e: StoreException) {
+        throw PolarisException(ErrorCode.storeFailed, "The device keys could not be read: ${e.message}", cause = e)
+    }
+    val body = JsonObject(
+        mapOf(
+            "signKey" to JsonPrimitive(proof.signKey),
+            "agreeKey" to JsonPrimitive(proof.agreeKey),
+            "issuedAt" to jsonInt(proof.issuedAt),
+            "sig" to JsonPrimitive(proof.sig),
+        ),
+    ).toString().toByteArray(Charsets.UTF_8)
+    val response = request(
+        endpoints.deviceKeys, method = "PUT",
+        headers = mapOf("authorization" to "Bearer $token", "content-type" to "application/json"), body = body,
+    )
+    if (!response.isOk) throw wireRefusal(response, "device keys registration")
+    val seq = JsonText.parseOrNull(response.text).objectValue?.get("keySeq").longValue
+    if (seq == null || seq < 1) throw PolarisException(ErrorCode.badResponse, "devices/keys answered without a keySeq.")
+    return seq
+}
+
 // ── The fingerprint a mint path sends ────────────────────────────────────────────────────────
 
 /**

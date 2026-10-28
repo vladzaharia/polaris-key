@@ -8,7 +8,7 @@
 // @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 // @pkey-feature license.manage
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
-// @pkey-feature identity.redirect.web identity.signin.hints identity.choice
+// @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -43,9 +43,10 @@
 // `CoreContext`, against the blobs template the last discover returned, and the replay server
 // behind the `PackObjectTransport` seam (`ReplayPackObjectTransport`).
 
+import CryptoKit
 import Foundation
 import PolarisKey
-import PolarisKeyCore
+@testable import PolarisKeyCore
 @testable import PolarisKeyIdentity
 import PolarisKeyLicense
 @testable import PolarisKeyPacks
@@ -80,6 +81,46 @@ final class ReplaySession: @unchecked Sendable {
     var platform: String?
     /// The transcript's steps (`releaseFetch`'s `partial` seeds from the whole-payload answer).
     var steps: [Transcript.Step] = []
+    /// The fixture device keys behind `client.connect` and the label they were last set to.
+    let keys = FixtureKeyPort()
+    var keyLabel: String?
+}
+
+/// The fixture device keys of a label (format.ts, `connectIdentity`) as a key port: the Ed25519 seed is
+/// SHA-256(label), the agreement key's 32 bytes are SHA-256(label + ":agree") with the top bit of the
+/// last byte clear, and it signs deterministically (`DeterministicEd25519`). The agreement key has no private half here (identity needs none), so `dh` answers
+/// nil. Test-only; `use(label:)` is a key rotation.
+final class FixtureKeyPort: DeviceKeyPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var signing = Curve25519.Signing.PrivateKey()
+    private var seed = Data()
+    private var keys = DevicePublicKeys(signKey: "", agreeKey: "", generation: 1)
+
+    func use(label: String) {
+        lock.withLock {
+            seed = Data(SHA256.hash(data: Data(label.utf8)))
+            // swiftlint:disable:next force_try
+            signing = try! Curve25519.Signing.PrivateKey(rawRepresentation: seed)
+            var agree = Data(SHA256.hash(data: Data((label + ":agree").utf8)))
+            agree[agree.count - 1] &= 0x7f
+            keys = DevicePublicKeys(
+                signKey: Base64URL.encode(signing.publicKey.rawRepresentation),
+                agreeKey: Base64URL.encode(agree), generation: 1)
+        }
+    }
+
+    func ensure() async throws -> DevicePublicKeys { lock.withLock { keys } }
+    func publicKeys() async throws -> DevicePublicKeys? { lock.withLock { keys } }
+    func sign(_ message: Data) async throws -> Data {
+        // Deterministic, so the signature is the recorded one (CryptoKit's signing is randomised).
+        lock.withLock {
+            DeterministicEd25519.sign(message, seed: seed, publicKey: signing.publicKey.rawRepresentation)
+        }
+    }
+    func dh(_ peerPublic: Data) async throws -> Data? { nil }
+    func rotate() async throws -> DevicePublicKeys { lock.withLock { keys } }
+    func persistence() async throws -> DeviceKeyPersistence { .durable }
+    func wipe() async throws {}
 }
 
 enum SwiftReplay {
@@ -284,6 +325,52 @@ enum SwiftReplay {
             }
             // `core.presentation` (HA-13): the member the client now exposes, or null.
             out["presentation"] = client.presentation?.jsonValue ?? .null
+        case "connectIdentity", "connectDevices":
+            // `client.connect` (CC-06.4, `connect.identity`).
+            let label = step.args["keyLabel"]?.stringValue ?? ""
+            if session.keyLabel != label {
+                // A different label is a different key pair: the next call registers it.
+                session.keys.use(label: label)
+                session.keyLabel = label
+            }
+            if step.action == "connectIdentity" {
+                switch await client.connect.identity() {
+                case .ready(let id):
+                    out["result"] = .string("ok")
+                    out["epoch"] = .int(id.ring.epoch)
+                    out["devices"] = .array(id.ring.devices.map { .string($0.deviceId) })
+                    out["deviceId"] = .string(id.deviceId)
+                    out["discKeys"] = .int(id.discKeys.count)
+                case .unsupported: out["result"] = .string("unavailable")
+                case .refused(let r):
+                    out["result"] = .string("refused")
+                    out["code"] = .string(r.code)
+                case .error(let code, _):
+                    out["result"] = .string("error")
+                    out["code"] = .string(code)
+                }
+            } else {
+                switch await client.connect.listDevices() {
+                case .devices(let list):
+                    out["result"] = .string("ok")
+                    out["devices"] = .array(
+                        list.map {
+                            .object([
+                                "deviceId": .string($0.deviceId),
+                                "label": $0.label.map(JSONValue.string) ?? .null,
+                                "platform": $0.platform.map(JSONValue.string) ?? .null,
+                                "lastSeen": .int($0.lastSeen), "self": .bool($0.isSelf),
+                            ])
+                        })
+                case .unsupported: out["result"] = .string("unavailable")
+                case .refused(let r):
+                    out["result"] = .string("refused")
+                    out["code"] = .string(r.code)
+                case .error(let code, _):
+                    out["result"] = .string("error")
+                    out["code"] = .string(code)
+                }
+            }
         case "sync":
             let r = await client.sync(force: step.args["force"] == .bool(true))
             out["applied"] = .bool(r.applied)
@@ -642,7 +729,10 @@ enum SwiftReplay {
                 .appendingPathComponent("pkey-replay-\(UUID().uuidString)", isDirectory: true),
             // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
             deviceName: t.initial.deviceName ?? "")
-        let client = try await PolarisKeyClient.create(options: PolarisKeyClientOptions(core: core))
+        let session = ReplaySession()
+        let client = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                core: core, connect: ConnectOptions(keys: session.keys, store: .inMemory())))
         var update: UpdateClient?
         if let u {
             update = try UpdateClient(
@@ -656,7 +746,6 @@ enum SwiftReplay {
         }
         // The redirect recordings hold the token exchange, not the sync a sign-in triggers after it.
         if redirects { client.identity.redirectAcquisitionSync.set(false) }
-        let session = ReplaySession()
         session.platform = t.initial.platform
         session.steps = t.steps
         for i in t.steps.indices {

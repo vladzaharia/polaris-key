@@ -1,0 +1,483 @@
+{
+  "transcriptVersion": 1,
+  "id": "link-errors",
+  "description": "The refusals of POST link (I-43.2, WIRE-CONTRACT-V5 §12.11.4), after a fresh sign-in. A handle nobody issued is 404 not_found and spends nothing. A proof that does not cover the handle is 400 invalid_grant, the one refusal of every proof, key and binding check, and leaves the handle. The right request, for an Apple identity another account now holds, is 409 link_conflict: nothing moves, and the step-up and the handle are spent. The same request again is 401 step_up_required.",
+  "features": ["identity.link"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "exchange",
+      "note": "No account links this Apple identity: the answer carries the link handle.",
+      "args": {
+        "kind": "apple",
+        "keyLabel": "transcript-device-key-1",
+        "subjectToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FwcGxlaWQuYXBwbGUuY29tIiwiYXVkIjoiY29tLmFjbWUubWFjIiwic3ViIjoiYS1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOiJ0cnVlIiwibm9uY2UiOiI0UDdBTkFCZFFyd2l4QlZGZ2w0QnM4VjBlWV9RX3pmdEg4UUdPMFk4YmJNIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE3MDAwMDA2MDB9.jDbxs0RPk7SmIEqAroT4vYuMKUsS5a-NEncDSTQLRHmp8Yk_eUltAZ6WFHXmo0umJGfGq7Qi4U0jO3V6Hdr06mKK9M3DcaPJ5EfjL9JCrrwSYUezPE6jUP-PN21mer5zCvaR5Kk5ENwgPv7RJWdP7Lj106Nl8vDQ2ctLhL5cIiptoTjKVg3Rs-HhewFjGXXQ86ix0QVK3geQFI_tHPX_0H-qEtRPCgbsD7BPKdq0aKevxT4HLuuDtpH8BWY2ZmKNpHd0o35Ky0i9_MAvqOnvDAKhELUzNOv305sfJTPs43qciolOiD3AwYu1mDdK9n00jS_qv5mbtTs7hCQve847ow"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "4P7ANABdQrwixBVFgl4Bs8V0eY_Q_zftH8QGO0Y8bbM",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FwcGxlaWQuYXBwbGUuY29tIiwiYXVkIjoiY29tLmFjbWUubWFjIiwic3ViIjoiYS1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOiJ0cnVlIiwibm9uY2UiOiI0UDdBTkFCZFFyd2l4QlZGZ2w0QnM4VjBlWV9RX3pmdEg4UUdPMFk4YmJNIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE3MDAwMDA2MDB9.jDbxs0RPk7SmIEqAroT4vYuMKUsS5a-NEncDSTQLRHmp8Yk_eUltAZ6WFHXmo0umJGfGq7Qi4U0jO3V6Hdr06mKK9M3DcaPJ5EfjL9JCrrwSYUezPE6jUP-PN21mer5zCvaR5Kk5ENwgPv7RJWdP7Lj106Nl8vDQ2ctLhL5cIiptoTjKVg3Rs-HhewFjGXXQ86ix0QVK3geQFI_tHPX_0H-qEtRPCgbsD7BPKdq0aKevxT4HLuuDtpH8BWY2ZmKNpHd0o35Ky0i9_MAvqOnvDAKhELUzNOv305sfJTPs43qciolOiD3AwYu1mDdK9n00jS_qv5mbtTs7hCQve847ow",
+                  "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+                  "nonce": "4P7ANABdQrwixBVFgl4Bs8V0eY_Q_zftH8QGO0Y8bbM",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "0qprOB_etcyzf1hnGT7orR5sb5LmAqdCSUgrCs6GMclMSK77-UW_ITc_D9dtFKLX1WdNF854RaU5xQ0MY0FkDg"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 403,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "interstitial_required",
+                "reason": "no_link",
+                "url": "https://key.plrs.im/djdl/identity/authorize",
+                "linkHandle": "lh_TxXPZWRLrqBG2eb9YskFY0ktm3RwYyv85kQ7D6vhxok",
+                "expiresIn": 600
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "interstitial-required" }
+    },
+    {
+      "action": "browser",
+      "note": "The app sends the person's browser to authorize.",
+      "args": {
+        "state": "tidewater-state-0123456789",
+        "redirectUri": "https://app.example/auth/callback",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/identity/authorize?response_type=code&client_id=djdl&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&state=tidewater-state-0123456789&code_challenge=-583Jx3Gn4AKAj7xr5NSDQ3V6snyKHhZUDKua28Tp10&code_challenge_method=S256&scope=profile+email",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 303,
+              "headers": {
+                "cache-control": "no-store",
+                "location": "https://key.plrs.im/signin?request=rq_5oWcSZHpAvSPqh-pAqKnBA"
+              },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "card" }
+    },
+    {
+      "action": "browser",
+      "note": "Continue to the app: the sign-in on this device is the step-up.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/api/signin/requests/rq_5oWcSZHpAvSPqh-pAqKnBA/continue",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": {
+                "redirect": "https://app.example/auth/callback?code=kf8PKZPkFYJCdyqJFHEkoK7eOOCzLbPx9z3ZZi2kRDE&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity"
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "app" }
+    },
+    {
+      "action": "redirectComplete",
+      "note": "The SDK redeems the code; the device token it holds is the bearer of the link calls.",
+      "args": {
+        "callbackUrl": "https://app.example/auth/callback?code=kf8PKZPkFYJCdyqJFHEkoK7eOOCzLbPx9z3ZZi2kRDE&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+        "state": "tidewater-state-0123456789"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "authorization_code",
+                  "client_id": "djdl",
+                  "code": "kf8PKZPkFYJCdyqJFHEkoK7eOOCzLbPx9z3ZZi2kRDE",
+                  "code_verifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+                  "redirect_uri": "https://app.example/auth/callback"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "code",
+                  "code_verifier",
+                  "redirect_uri",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_V0O_8NTs0POnXVIvWe_L9xfc0TeUJ4rqaMzAWlaE5cE",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000000,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": null,
+                "subject": "ps_m2ZE3OTPtUcWJti66-C1yg"
+              }
+            },
+            "capture": { "token": "$.access_token" }
+          }
+        ]
+      },
+      "expect": { "result": "ok", "scope": "profile email", "tokenHeld": true }
+    },
+    {
+      "action": "link",
+      "note": "A handle nobody issued.",
+      "args": {
+        "linkHandle": "lh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "keyLabel": "transcript-device-key-1"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/link",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "linkHandle": "lh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                  "proof": "d5Ia1q2ajynK3f6w4wsD9quo_1pykXXGZFUkjc6K2u4pZbRVS5jaodeiRMFLnGeYZCSjHCWXRxJkZUZ5PtJWCw"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "not_found" } }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 404, "code": "not_found" }
+    },
+    {
+      "action": "link",
+      "note": "A proof over another value.",
+      "args": {
+        "linkHandle": "lh_TxXPZWRLrqBG2eb9YskFY0ktm3RwYyv85kQ7D6vhxok",
+        "keyLabel": "transcript-device-key-1",
+        "proofValue": "lh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/link",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "linkHandle": "lh_TxXPZWRLrqBG2eb9YskFY0ktm3RwYyv85kQ7D6vhxok",
+                  "proof": "d5Ia1q2ajynK3f6w4wsD9quo_1pykXXGZFUkjc6K2u4pZbRVS5jaodeiRMFLnGeYZCSjHCWXRxJkZUZ5PtJWCw"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "invalid_grant" } }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 400, "code": "invalid_grant" }
+    },
+    {
+      "action": "link",
+      "note": "The identity belongs to another account.",
+      "args": {
+        "linkHandle": "lh_TxXPZWRLrqBG2eb9YskFY0ktm3RwYyv85kQ7D6vhxok",
+        "keyLabel": "transcript-device-key-1"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/link",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "linkHandle": "lh_TxXPZWRLrqBG2eb9YskFY0ktm3RwYyv85kQ7D6vhxok",
+                  "proof": "CODvzWXEpQZgepRuQ9XqOoHA2Sts1JAmeHt6PpwpGFj3AEMTGBmpLfS6HplJv4dI18FOpEz645Gi-1I03DeBAg"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 409,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "link_conflict" } }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 409, "code": "link_conflict" }
+    },
+    {
+      "action": "link",
+      "note": "The step-up is spent.",
+      "args": {
+        "linkHandle": "lh_TxXPZWRLrqBG2eb9YskFY0ktm3RwYyv85kQ7D6vhxok",
+        "keyLabel": "transcript-device-key-1"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/link",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "linkHandle": "lh_TxXPZWRLrqBG2eb9YskFY0ktm3RwYyv85kQ7D6vhxok",
+                  "proof": "CODvzWXEpQZgepRuQ9XqOoHA2Sts1JAmeHt6PpwpGFj3AEMTGBmpLfS6HplJv4dI18FOpEz645Gi-1I03DeBAg"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 401,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "step_up_required" } }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 401,
+        "code": "step_up_required"
+      }
+    }
+  ]
+}

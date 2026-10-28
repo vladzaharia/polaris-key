@@ -1616,6 +1616,11 @@
     },
     {
       "sdk": "kotlin",
+      "path": "client.connect",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
       "path": "client.packs",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
@@ -3277,7 +3282,9 @@
         "node": {},
         "react": {
           "spelling": "usePolarisAuth().choice.complete",
-          "shape": "hook"
+          "shape": "hook",
+          "planned": "I-46",
+          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
         },
         "python": {
           "planned": "I-10a",
@@ -3285,13 +3292,19 @@
         },
         "swift": {
           "spelling": "ChoiceNamespace.complete",
-          "labels": ["grant", "choice"]
+          "labels": ["grant", "choice"],
+          "planned": "I-44",
+          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
         },
         "kotlin": {
-          "spelling": "ChoiceClient.complete"
+          "spelling": "ChoiceClient.complete",
+          "planned": "I-45",
+          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
         },
         "godot": {
-          "spelling": "PKeyIdentityChoice.complete"
+          "spelling": "PKeyIdentityChoice.complete",
+          "planned": "I-48",
+          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
         }
       },
       "layer": "client"
@@ -3328,6 +3341,135 @@
         }
       },
       "layer": "client"
+    },
+    {
+      "id": "identity.autoSignIn",
+      "kind": "method",
+      "feature": "identity.autosignin",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "returns": "json",
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+        },
+        "react": {
+          "planned": "I-46",
+          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+        },
+        "swift": {
+          "spelling": "IdentityNamespace.autoSignIn",
+          "planned": "I-44",
+          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+        },
+        "kotlin": {
+          "spelling": "IdentityClient.autoSignIn",
+          "planned": "I-45",
+          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+        },
+        "godot": {
+          "spelling": "PKeyIdentity.auto_sign_in",
+          "planned": "I-48",
+          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.link.offer",
+      "kind": "method",
+      "feature": "identity.link",
+      "sdks": {
+        "react": {
+          "planned": "I-46",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        }
+      },
+      "layer": "client",
+      "returns": "json"
+    },
+    {
+      "id": "identity.link.accept",
+      "kind": "method",
+      "feature": "identity.link",
+      "sdks": {
+        "react": {
+          "planned": "I-46",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "handle",
+          "type": "string"
+        }
+      ],
+      "returns": "json"
+    },
+    {
+      "id": "identity.link.decline",
+      "kind": "method",
+      "feature": "identity.link",
+      "sdks": {
+        "react": {
+          "planned": "I-46",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "the link offer (plan-auto-sign-in §2.3)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "handle",
+          "type": "string"
+        }
+      ],
+      "returns": "json"
     },
     {
       "id": "identity.useLicenseChoice",

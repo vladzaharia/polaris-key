@@ -589,6 +589,14 @@
       "title": "存储出现问题",
       "message": "应用无法在此设备上读取或保存其许可证。请确认应用可以写入其数据文件夹。"
     },
+    "connect-unavailable": {
+      "title": "无法连接",
+      "message": "此设备上的此应用无法连接附近的设备。"
+    },
+    "peer-cert-invalid": {
+      "title": "无法验证设备",
+      "message": "无法验证此设备。请重试。"
+    },
     "platform-error": {
       "title": "平台出现问题",
       "message": "平台报告了一个错误。请重试。"

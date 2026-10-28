@@ -90,6 +90,10 @@ const FR: CopyBundle = {
     device_keys_invalid: "Appareil non configuré",
     device_keys_required: "Appareil non lié",
     ring_too_large: "Trop d'appareils",
+    relay_disabled: "Connexion à distance désactivée",
+    relay_paused: "Connexion à distance en pause",
+    relay_quota_exceeded: "Limite à distance atteinte",
+    relay_ticket_invalid: "Connexion expirée",
     licenseDisabled: "Licence désactivée",
     license_disabled: "Licence désactivée",
     licenseExpired: "Licence expirée",
@@ -195,6 +199,13 @@ const FR: CopyBundle = {
       "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez.",
     ring_too_large:
       "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez.",
+    relay_disabled:
+      "La connexion à distance est désactivée pour cette app. Vos appareils se connectent uniquement sur le même réseau.",
+    relay_paused:
+      "La connexion à distance est en pause pour le moment. Réessayez plus tard.",
+    relay_quota_exceeded:
+      "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.",
+    relay_ticket_invalid: "La demande de connexion a expiré. Réessayez.",
     license_disabled:
       "Cette licence a été désactivée. Contactez le développeur.",
     license_unusable:

@@ -190,6 +190,9 @@ public object Ed25519Strict {
 
     private fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
+    /** V4 §1.1 checks 2 and 3 for one 32-byte point encoding: canonical, and not a small-order or negative-zero spelling. */
+    public fun isAcceptablePoint(enc: ByteArray): Boolean = acceptablePoint(enc)
+
     private fun acceptablePoint(enc: ByteArray): Boolean {
         if (enc.size != 32) return false
         val y = IntArray(32) { enc[it].toInt() and 0xff }

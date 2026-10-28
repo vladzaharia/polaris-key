@@ -309,8 +309,8 @@ func _faults(t: PKeyTestContext) -> void:
 	var o := outside.ensure()
 	t.check("faults: a store directory outside user:// is refused", not o.ok and o.code == PKeyDeviceKeyStore.STORE_FAULT \
 			and outside.public_keys().code == PKeyDeviceKeyStore.STORE_FAULT, str(o))
-	t.check("faults: a product that climbs out is refused", PKeyDeviceKeyStore.new("..", "user://pkey").ensure().code == PKeyDeviceKeyStore.STORE_FAULT and PKeyDeviceKeyStore.new("a/b", \
-			"user://pkey").ensure().code == PKeyDeviceKeyStore.STORE_FAULT)
+	t.check("faults: a product that climbs out is refused up front (invalid-options, CC-26.7)", PKeyDeviceKeyStore.new("..", "user://pkey").ensure().code == PKeyErrors.INVALID_OPTIONS and PKeyDeviceKeyStore.new("a/b", \
+			"user://pkey").ensure().code == PKeyErrors.INVALID_OPTIONS)
 
 	# A busy lock is a store fault, never "no keys", and nothing changes.
 	var root := _dir("busy")

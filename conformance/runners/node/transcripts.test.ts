@@ -5,6 +5,7 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature identity.keyentry
+// @pkey-feature connect.identity
 // @pkey-feature license.manage
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
@@ -59,6 +60,12 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
+import {
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  sign as edSign,
+} from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -73,8 +80,13 @@ import {
   type DeviceCodeSession,
   type LicenseChoice,
   type Store,
+  UnsupportedError,
 } from "@polaris-key/node";
-import { chunkRangeFetch, recordHash } from "@polaris-key/client-core";
+import {
+  chunkRangeFetch,
+  recordHash,
+  type DeviceKeyPort,
+} from "@polaris-key/client-core";
 import { signJws } from "@polaris-key/jws";
 import {
   applies,
@@ -248,6 +260,8 @@ interface Session {
   server: ReplayServer;
   /** The redirect session the last authorize step started (its URL is what the browser opens). */
   redirect: RedirectSession | null;
+  /** The label of the fixture keys the client holds (`connectIdentity`). */
+  keyLabel?: string;
   /** The first ring a `keyringCreate` made: the one a later `keyringAdopt` takes the root of. */
   firstRingId?: string;
 }
@@ -530,6 +544,81 @@ async function keyringStep(
     if (!(e instanceof PolarisError)) throw e;
     out.result = "refused";
     if (e.status !== undefined) out.status = e.status;
+    out.code = e.code;
+  }
+}
+
+/**
+ * The fixture device keys of `label` as a key port (format.ts, connectIdentity): the Ed25519 key is
+ * seeded by SHA-256(label), the agreement key's bytes are SHA-256(label + ":agree") with the top bit
+ * clear. The agreement key has no private half here, so `dh` answers nothing; identity needs none.
+ */
+function fixtureKeyPort(label: string): DeviceKeyPort {
+  const seed = createHash("sha256").update(label).digest();
+  const priv = createPrivateKey({
+    key: Buffer.concat([
+      Buffer.from("302e020100300506032b657004220420", "hex"),
+      seed,
+    ]),
+    format: "der",
+    type: "pkcs8",
+  });
+  const jwk = createPublicKey(priv).export({ format: "jwk" });
+  const signKey = jwk.x as string;
+  const agree = createHash("sha256").update(`${label}:agree`).digest();
+  agree[31]! &= 0x7f;
+  const keys = {
+    signKey,
+    agreeKey: agree.toString("base64url"),
+    generation: 1,
+  };
+  return {
+    ensure: async () => keys,
+    publicKeys: async () => keys,
+    sign: async (m) => new Uint8Array(edSign(null, Buffer.from(m), priv)),
+    dh: async () => null,
+    rotate: async () => keys,
+    persistence: () => "durable",
+    wipe: async () => undefined,
+  };
+}
+
+/** `client.connect` (CC-06.4, `connect.identity`): the identity and the device list. */
+async function connectStep(
+  client: PolarisKeyClient,
+  step: Step,
+  session: Session,
+  out: Observed,
+): Promise<void> {
+  const label = String(step.args.keyLabel);
+  if (session.keyLabel !== label) {
+    // A different label is a different key pair: the next call registers it.
+    client.connect.useDeviceKeys(fixtureKeyPort(label));
+    session.keyLabel = label;
+  }
+  try {
+    if (step.action === "connectIdentity") {
+      const id = await client.connect.identity({
+        refresh: step.args.refresh === true,
+      });
+      const disc = await client.connect.discoveryKeys();
+      out.result = "ok";
+      out.epoch = id.epoch;
+      out.devices = id.devices.map((d) => d.deviceId);
+      out.deviceId = id.deviceId;
+      out.discKeys = disc?.previous ? 2 : 1;
+    } else {
+      out.result = "ok";
+      out.devices =
+        (await client.connect.listDevices()) as unknown as JsonValue;
+    }
+  } catch (e) {
+    if (e instanceof UnsupportedError) {
+      out.result = "unavailable";
+      return;
+    }
+    if (!(e instanceof PolarisError)) throw e;
+    out.result = "refused";
     out.code = e.code;
   }
 }
@@ -911,6 +1000,10 @@ async function act(
     case "keyringRecoverySet":
     case "keyringRecoveryGet":
       await keyringStep(client, step, session, out);
+      break;
+    case "connectIdentity":
+    case "connectDevices":
+      await connectStep(client, step, session, out);
       break;
     case "downloadUrl":
       out.url = client.release.downloadUrl(

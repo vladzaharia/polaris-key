@@ -8,7 +8,8 @@
 // stored copy that no longer verifies is never used. K_disc is a secret: it is held as
 // `DiscoveryKey`, which prints as redacted, and it is written only to this item. A Keychain
 // error (locked, denied) is thrown and never taken for "no state". A record that does not
-// decode is dropped: everything in it is fetched again.
+// decode, or carries a version this build does not know, is `.unreadable`: it is never
+// overwritten behind the host's back, and only `clear()` (a leave) removes it.
 
 import Foundation
 
@@ -43,7 +44,9 @@ public struct RegisteredDeviceKeys: Sendable, Equatable, Codable {
 }
 
 /// What the store keeps. Internal: hosts read `ConnectIdentity`.
-package struct ConnectRecord: Codable, Equatable, CustomStringConvertible, CustomDebugStringConvertible {
+package struct ConnectRecord: Codable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
     package static let version = 1
     package var v: Int = ConnectRecord.version
     package var ring: String
@@ -52,10 +55,14 @@ package struct ConnectRecord: Codable, Equatable, CustomStringConvertible, Custo
     package var discKeys: [String]
     package var registered: RegisteredDeviceKeys?
     package var storedAt: Int
+    /// When the second K_disc (the previous key) was first seen; nil with no previous key.
+    package var prevFirstSeen: Int?
 
     package init(
-        ring: String, certificate: String, discKeys: [String], registered: RegisteredDeviceKeys?, storedAt: Int
+        ring: String, certificate: String, discKeys: [String], registered: RegisteredDeviceKeys?, storedAt: Int,
+        prevFirstSeen: Int? = nil
     ) {
+        self.prevFirstSeen = prevFirstSeen
         self.ring = ring
         self.certificate = certificate
         self.discKeys = discKeys
@@ -65,11 +72,14 @@ package struct ConnectRecord: Codable, Equatable, CustomStringConvertible, Custo
 
     package var description: String { "ConnectRecord(redacted)" }
     package var debugDescription: String { description }
+    package var customMirror: Mirror { Mirror(self, children: [], displayStyle: .struct) }
 }
 
 public enum ConnectStateError: Error, Sendable, Equatable {
     case keychain(OSStatus)
     case write
+    /// A record exists but does not decode, or has an unknown version.
+    case unreadable
 }
 
 /// Custody of the Connect record for one product.
@@ -95,10 +105,18 @@ public final class ConnectStateStore: @unchecked Sendable {
         do { blob = try vault.read() } catch DeviceKeyError.keychain(let s) {
             throw ConnectStateError.keychain(s)
         }
-        guard let blob, let r = try? JSONDecoder().decode(ConnectRecord.self, from: blob),
+        guard let blob else { return nil }
+        guard let r = try? JSONDecoder().decode(ConnectRecord.self, from: blob),
             r.v == ConnectRecord.version
-        else { return nil }
+        else { throw ConnectStateError.unreadable }
         return r
+    }
+
+    /// Whether an item exists, readable or not. Touches nothing.
+    package func exists() throws -> Bool {
+        do { return try vault.read() != nil } catch DeviceKeyError.keychain(let s) {
+            throw ConnectStateError.keychain(s)
+        }
     }
 
     package func save(_ record: ConnectRecord) throws {

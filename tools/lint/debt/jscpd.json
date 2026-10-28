@@ -9,13 +9,22 @@
       "jscpd:duplicate": 2
     },
     "conformance/runners/browser/noiseVectors.browser.test.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "conformance/runners/browser/presentation.browser.test.ts": {
       "jscpd:duplicate": 3
     },
+    "conformance/runners/browser/syncVectors.browser.test.ts": {
+      "jscpd:duplicate": 11
+    },
     "conformance/runners/node/configMatrix.test.ts": {
       "jscpd:duplicate": 4
+    },
+    "conformance/runners/node/exchangeTranscripts.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "conformance/runners/node/linkTranscripts.test.ts": {
+      "jscpd:duplicate": 1
     },
     "conformance/runners/node/noiseVectors.test.ts": {
       "jscpd:duplicate": 3
@@ -30,7 +39,7 @@
       "jscpd:duplicate": 23
     },
     "conformance/runners/node/syncVectors.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 6
     },
     "conformance/runners/node/transcriptReplay.ts": {
       "jscpd:duplicate": 3
@@ -3654,7 +3663,7 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test/softAuthenticator.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/worker/test/srcScan.ts": {
       "jscpd:duplicate": 1
@@ -4316,6 +4325,9 @@
     "packages/worker/test/transcripts/scenarios/license.ts": {
       "jscpd:duplicate": 7
     },
+    "packages/worker/test/transcripts/scenarios/link.ts": {
+      "jscpd:duplicate": 2
+    },
     "packages/worker/test/transcripts/scenarios/locker.ts": {
       "jscpd:duplicate": 9
     },
@@ -4323,7 +4335,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/transcripts/scenarios/redirect.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 5
     },
     "packages/worker/test/transcripts/scenarios/release.ts": {
       "jscpd:duplicate": 4
@@ -4335,7 +4347,7 @@
       "jscpd:duplicate": 5
     },
     "packages/worker/test/x509Fixtures.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "packages/worker/vitest.deltas.workers.config.ts": {
       "jscpd:duplicate": 2

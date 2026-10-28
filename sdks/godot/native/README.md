@@ -11,6 +11,12 @@ SP-27 adds the desktop keyring pieces behind `PKeyKeyringStore`: the macOS build
 `PolarisKeyApple` (`macos/build_apple.sh`) and `pkey_win.dll`'s `PKeyWinCredentialNative`. Without
 them the token stays in the 0600 file and `store_status()` says `keyring-unavailable`.
 
+CC-26.7 adds the device key store's sealers to the same pieces: the Apple build answers `dk_seal`, `dk_open`
+and `dk_destroy` (PolarisKeyPlatform's `DeviceKeySealer`, a Keychain AES-256-GCM key), the Android plugin
+`ks_seal`, `ks_open` and `ks_destroy` (`:platform`'s `KeystoreSealer`), and `pkey_win.dll` carries
+`PKeyWinDpapiNative` (DPAPI, user scope, no UI). Linux has none. The Apple key is a Keychain-held AES key, not Secure Enclave-bound. Without a lane the store keeps the
+engine-encrypted file.
+
 The docs page `/docs/services/update/godot-desktop/` is the adopter view. The measurements behind
 every rule are in `docs/research/2026-09-29-godot-omniplatform/notes/S-11-desktop-updaters.md`.
 

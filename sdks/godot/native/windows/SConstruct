@@ -9,7 +9,7 @@
 # StoreContext file alone is compiled as C++20 (C++/WinRT under C++17 needs
 # <experimental/coroutine>, which the VS 2026 STL rejects); godot-cpp stays at C++17. No updater
 # library is linked: velopack_libc.dll and WinSparkle.dll are loaded at run time. The Credential
-# Manager class (SP-27) links advapi32, part of Windows.
+# Manager class (SP-27) links advapi32 and the DPAPI one (CC-26.7) crypt32, both part of Windows.
 import os
 
 godot_cpp = ARGUMENTS.get("godot_cpp", "../.deps/godot-cpp")
@@ -20,7 +20,7 @@ SConsignFile(os.path.join(os.path.abspath(godot_cpp), ".sconsign-pkey-win"))
 
 env = SConscript(os.path.join(godot_cpp, "SConstruct"))
 env.Append(CPPPATH=["src/", os.path.join(velopack, "include")])
-env.Append(LIBS=["WindowsApp", "ole32", "user32", "advapi32"])
+env.Append(LIBS=["WindowsApp", "ole32", "user32", "advapi32", "crypt32"])
 env.Append(CCFLAGS=["/bigobj"])
 
 cpp20 = env.Clone()

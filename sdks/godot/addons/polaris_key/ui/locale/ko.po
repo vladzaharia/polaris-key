@@ -6758,6 +6758,26 @@ msgstr "저장소 문제"
 msgid "core.codes.store-failed.message"
 msgstr "앱이 이 기기에서 라이선스를 읽거나 저장하지 못했어요. 앱이 데이터 폴더에 쓸 수 있는지 확인하세요."
 
+#. Connect unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect-unavailable.title"
+msgstr "연결할 수 없음"
+
+#. Nearby connection isn't available for this app on this device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect-unavailable.message"
+msgstr "이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다."
+
+#. Device not verified
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-cert-invalid.title"
+msgstr "기기를 확인할 수 없음"
+
+#. This device couldn't be verified. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-cert-invalid.message"
+msgstr "이 기기를 확인할 수 없습니다. 다시 시도하세요."
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"

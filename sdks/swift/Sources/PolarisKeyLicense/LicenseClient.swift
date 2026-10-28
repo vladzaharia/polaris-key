@@ -82,13 +82,16 @@ public actor LicenseClient {
     private let fingerprintEnabled: Bool
     private let onAcquired: LicenseAcquiredListener?
     private let onReleased: LicenseReleasedListener?
+    private let beforeRelease: (@Sendable () async throws -> Void)?
 
     public init(
         core: CoreContext,
         options: LicenseClientOptions = LicenseClientOptions(),
         onAcquired: LicenseAcquiredListener? = nil,
-        onReleased: LicenseReleasedListener? = nil
+        onReleased: LicenseReleasedListener? = nil,
+        beforeRelease: (@Sendable () async throws -> Void)? = nil
     ) {
+        self.beforeRelease = beforeRelease
         self.core = core
         self.fingerprintEnabled = options.fingerprint
         self.onAcquired = onAcquired
@@ -226,6 +229,9 @@ public actor LicenseClient {
     /// Raises the licence change (`onReleased`) when it returns or throws, so `client.events`
     /// carries the `license` event whichever entry point released the seat.
     public func deactivate() async throws {
+        // Fail closed: a step that cannot finish (Cloud Connect's held identity) stops the release
+        // before anything changes.
+        try await beforeRelease?()
         do {
             if let token = await core.token {
                 await LicenseEndpoints.deauthorize(core, token: token)

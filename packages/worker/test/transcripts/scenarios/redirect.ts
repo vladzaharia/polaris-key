@@ -18,6 +18,7 @@ import { createHash } from "node:crypto";
 import { expect } from "vitest";
 import {
   TranscriptRecorder,
+  type ExchangeSpec,
   type StepRecorder,
   type World,
 } from "../recorder.js";
@@ -128,6 +129,7 @@ export function token(
   s: StepRecorder,
   code: string,
   verifier: string,
+  extra: Pick<ExchangeSpec, "bearer" | "capture"> = {},
 ): Promise<Response> {
   const form = {
     grant_type: "authorization_code",
@@ -137,6 +139,7 @@ export function token(
     redirect_uri: CALLBACK,
   };
   return s.send({
+    ...extra,
     method: "POST",
     path: `/${PRODUCT}/identity/token`,
     form,

@@ -156,6 +156,8 @@ public enum ErrorCode {
     public static let httpError = "http-error"
     public static let invalidResponse = "invalid-response"
     public static let storeFailed = "store-failed"
+    public static let connectUnavailable = "connect-unavailable"
+    public static let peerCertInvalid = "peer-cert-invalid"
     public static let platformError = "platform-error"
     public static let noToken = "no-token"
     public static let mintUnavailable = "mint-unavailable"
@@ -364,6 +366,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "http-error",
     "invalid-response",
     "store-failed",
+    "connect-unavailable",
+    "peer-cert-invalid",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -572,6 +576,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "http-error": "client",
     "invalid-response": "client",
     "store-failed": "client",
+    "connect-unavailable": "client",
+    "peer-cert-invalid": "client",
     "platform-error": "client",
     "no-token": "client",
     "mint-unavailable": "client",
@@ -698,6 +704,8 @@ public enum Feature {
     public static let identityChoice = "identity.choice"
     public static let identitySigninHints = "identity.signin.hints"
     public static let identityExchange = "identity.exchange"
+    public static let identityAutosignin = "identity.autosignin"
+    public static let identityLink = "identity.link"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
     public static let releaseRecord = "release.record"
@@ -828,6 +836,8 @@ public let FEATURE_VALUES: [String] = [
     "identity.choice",
     "identity.signin.hints",
     "identity.exchange",
+    "identity.autosignin",
+    "identity.link",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1472,7 +1482,7 @@ public let OUTLET_MATRIX_VERSION = 1
 public let PLAN_MATRIX_VERSION = 2
 
 /// `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
-public let SYNC_SCENARIOS_VERSION = 2
+public let SYNC_SCENARIOS_VERSION = 3
 
 /// `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
 public let DEVICE_LABEL_VERSION = 1
@@ -1958,6 +1968,8 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.exchange": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.autosignin": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.link": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -2024,4 +2036,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "703e570a034186c2d531388b6b4caf4dd8dd410d4462fe85813d57afb895a5f1"
+public let CAPABILITY_DIGEST = "79b50ea6e1b11443e8d6a42acd0238d10cb9dd108b704673b192c31103c97071"

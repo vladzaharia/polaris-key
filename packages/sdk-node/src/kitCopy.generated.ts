@@ -1484,6 +1484,12 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Storage problem",
     "core.codes.store-failed.message":
       "The app couldn't read or save its license on this device. Check that the app can write its data folder.",
+    "core.codes.connect-unavailable.title": "Connect unavailable",
+    "core.codes.connect-unavailable.message":
+      "Nearby connection isn't available for this app on this device.",
+    "core.codes.peer-cert-invalid.title": "Device not verified",
+    "core.codes.peer-cert-invalid.message":
+      "This device couldn't be verified. Try again.",
     "core.codes.platform-error.title": "Platform problem",
     "core.codes.platform-error.message":
       "The platform reported an error. Try again.",
@@ -3295,6 +3301,12 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Speicherproblem",
     "core.codes.store-failed.message":
       "Die App konnte ihre Lizenz auf diesem Gerät nicht lesen oder speichern. Prüfen Sie, ob die App in ihren Datenordner schreiben kann.",
+    "core.codes.connect-unavailable.title": "Verbindung nicht verfügbar",
+    "core.codes.connect-unavailable.message":
+      "Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar.",
+    "core.codes.peer-cert-invalid.title": "Gerät nicht bestätigt",
+    "core.codes.peer-cert-invalid.message":
+      "Dieses Gerät konnte nicht bestätigt werden. Versuchen Sie es erneut.",
     "core.codes.platform-error.title": "Plattformproblem",
     "core.codes.platform-error.message":
       "Die Plattform hat einen Fehler gemeldet. Versuchen Sie es erneut.",
@@ -5095,6 +5107,12 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Problème de stockage",
     "core.codes.store-failed.message":
       "L’app n’a pas pu lire ou enregistrer sa licence sur cet appareil. Vérifiez qu’elle peut écrire dans son dossier de données.",
+    "core.codes.connect-unavailable.title": "Connexion indisponible",
+    "core.codes.connect-unavailable.message":
+      "La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil.",
+    "core.codes.peer-cert-invalid.title": "Appareil non vérifié",
+    "core.codes.peer-cert-invalid.message":
+      "Cet appareil n'a pas pu être vérifié. Réessayez.",
     "core.codes.platform-error.title": "Problème de plateforme",
     "core.codes.platform-error.message":
       "La plateforme a signalé une erreur. Réessayez.",
@@ -6884,6 +6902,12 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Problema de almacenamiento",
     "core.codes.store-failed.message":
       "La app no pudo leer ni guardar su licencia en este dispositivo. Comprueba que la app puede escribir en su carpeta de datos.",
+    "core.codes.connect-unavailable.title": "Conexión no disponible",
+    "core.codes.connect-unavailable.message":
+      "La conexión con dispositivos cercanos no está disponible para esta app en este dispositivo.",
+    "core.codes.peer-cert-invalid.title": "Dispositivo no verificado",
+    "core.codes.peer-cert-invalid.message":
+      "No se pudo verificar este dispositivo. Inténtalo de nuevo.",
     "core.codes.platform-error.title": "Problema de la plataforma",
     "core.codes.platform-error.message":
       "La plataforma informó de un error. Vuelve a intentarlo.",
@@ -8642,6 +8666,12 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Erro de armazenamento",
     "core.codes.store-failed.message":
       "O app não conseguiu ler nem salvar a licença neste dispositivo. Verifique se o app pode gravar na pasta de dados dele.",
+    "core.codes.connect-unavailable.title": "Conexão indisponível",
+    "core.codes.connect-unavailable.message":
+      "A conexão com dispositivos próximos não está disponível para este app neste dispositivo.",
+    "core.codes.peer-cert-invalid.title": "Dispositivo não verificado",
+    "core.codes.peer-cert-invalid.message":
+      "Não foi possível verificar este dispositivo. Tente novamente.",
     "core.codes.platform-error.title": "Problema na plataforma",
     "core.codes.platform-error.message":
       "A plataforma informou um erro. Tente novamente.",
@@ -10412,6 +10442,12 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Problema di archiviazione",
     "core.codes.store-failed.message":
       "L'app non è riuscita a leggere o salvare la licenza su questo dispositivo. Verifica che l'app possa scrivere nella sua cartella dati.",
+    "core.codes.connect-unavailable.title": "Connessione non disponibile",
+    "core.codes.connect-unavailable.message":
+      "La connessione ai dispositivi vicini non è disponibile per questa app su questo dispositivo.",
+    "core.codes.peer-cert-invalid.title": "Dispositivo non verificato",
+    "core.codes.peer-cert-invalid.message":
+      "Impossibile verificare questo dispositivo. Riprova.",
     "core.codes.platform-error.title": "Problema della piattaforma",
     "core.codes.platform-error.message":
       "La piattaforma ha segnalato un errore. Riprova.",
@@ -12201,6 +12237,12 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "保存の問題",
     "core.codes.store-failed.message":
       "アプリはこのデバイスでライセンスを読み取るか保存することができませんでした。アプリがデータフォルダに書き込めることを確認してください。",
+    "core.codes.connect-unavailable.title": "接続できません",
+    "core.codes.connect-unavailable.message":
+      "このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。",
+    "core.codes.peer-cert-invalid.title": "デバイスを確認できません",
+    "core.codes.peer-cert-invalid.message":
+      "このデバイスを確認できませんでした。もう一度お試しください。",
     "core.codes.platform-error.title": "プラットフォームの問題",
     "core.codes.platform-error.message":
       "プラットフォームがエラーを報告しました。もう一度お試しください。",
@@ -13918,6 +13960,12 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "저장소 문제",
     "core.codes.store-failed.message":
       "앱이 이 기기에서 라이선스를 읽거나 저장하지 못했어요. 앱이 데이터 폴더에 쓸 수 있는지 확인하세요.",
+    "core.codes.connect-unavailable.title": "연결할 수 없음",
+    "core.codes.connect-unavailable.message":
+      "이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다.",
+    "core.codes.peer-cert-invalid.title": "기기를 확인할 수 없음",
+    "core.codes.peer-cert-invalid.message":
+      "이 기기를 확인할 수 없습니다. 다시 시도하세요.",
     "core.codes.platform-error.title": "플랫폼 문제",
     "core.codes.platform-error.message":
       "플랫폼에서 오류를 보고했어요. 다시 시도하세요.",
@@ -15515,6 +15563,11 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "存储出现问题",
     "core.codes.store-failed.message":
       "应用无法在此设备上读取或保存其许可证。请确认应用可以写入其数据文件夹。",
+    "core.codes.connect-unavailable.title": "无法连接",
+    "core.codes.connect-unavailable.message":
+      "此设备上的此应用无法连接附近的设备。",
+    "core.codes.peer-cert-invalid.title": "无法验证设备",
+    "core.codes.peer-cert-invalid.message": "无法验证此设备。请重试。",
     "core.codes.platform-error.title": "平台出现问题",
     "core.codes.platform-error.message": "平台报告了一个错误。请重试。",
     "core.codes.no-token.title": "未激活",

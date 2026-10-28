@@ -3,7 +3,11 @@ package im.plrs.key.godot
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.util.Base64
+import im.plrs.key.platform.AndroidKeyStoreProvider
 import im.plrs.key.platform.InstallSource
+import im.plrs.key.platform.KeyProvider
+import im.plrs.key.platform.KeystoreSealer
 import im.plrs.key.platform.PolarisKeyPlatform
 import im.plrs.key.platform.SecureStore
 import im.plrs.key.platform.SecureStoreException
@@ -73,13 +77,19 @@ abstract class FlavorCommands(protected val c: Commands) {
  * the other flavour, reason `outlet`). An asynchronous op answers `{ok: true, req}` at once and its
  * result arrives later as a queued event `{ev: "result", req, ok, …}`.
  *
- * Common ops: capabilities, install_source, ks_get / ks_set / ks_delete / ks_info, poll.
+ * Common ops: capabilities, install_source, ks_get / ks_set / ks_delete / ks_info, ks_seal / ks_open /
+ * ks_destroy (the Godot device key store's sealer, CC-26.7), poll.
  * Unsolicited events: update_state, update_result, pack_state, install_status, resumed.
  *
  * Calls arrive on Godot's render thread (notes/S-10 §5); Play Core and activity work is posted to
  * the UI thread and slow work (hashing an APK) to a worker; none of it blocks the game.
  */
-class Commands(val host: Host, flavorFactory: ((Commands) -> FlavorCommands)? = null) {
+class Commands(
+    val host: Host,
+    flavorFactory: ((Commands) -> FlavorCommands)? = null,
+    /** The Keystore behind ks_seal / ks_open / ks_destroy (tests pass a fake: Robolectric has no AndroidKeyStore). */
+    private val keyProvider: () -> KeyProvider = { AndroidKeyStoreProvider(host.appContext) },
+) {
     val queue = EventQueue()
     private val nextReq = AtomicInteger(1)
     val worker: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "pkey-android-worker") }
@@ -108,6 +118,19 @@ class Commands(val host: Host, flavorFactory: ((Commands) -> FlavorCommands)? = 
         }
         "ks_delete" -> store(q) { s -> JSONObject().put("ok", true).put("existed", s.delete(q.getString("account"))) }
         "ks_info" -> store(q) { s -> s.info().put("ok", true) }
+        "ks_seal" -> sealer(q) { s ->
+            JSONObject().put("ok", true).put("blob", b64(s.seal(bytes(q, "plain"), bytes(q, "context")))).put("hardware", hardware(s.alias))
+        }
+        "ks_open" -> sealer(q) { s ->
+            // null is a blob that can never open (key gone or invalidated, bad tag, other format); a
+            // Keystore fault that may pass throws SecureStoreException and is an error, never "gone".
+            val plain = s.open(bytes(q, "blob"), bytes(q, "context"))
+            if (plain == null) JSONObject().put("ok", false).put("error", "unopenable") else JSONObject().put("ok", true).put("plain", b64(plain)).put("hardware", hardware(s.alias))
+        }
+        "ks_destroy" -> sealer(q) { s ->
+            s.destroy()
+            JSONObject().put("ok", true)
+        }
         else -> when {
             op in flavor.ops -> flavor.handle(op, q)
             op in PLAY_OPS || op in DIRECT_OPS -> JSONObject()
@@ -141,6 +164,31 @@ class Commands(val host: Host, flavorFactory: ((Commands) -> FlavorCommands)? = 
     } catch (e: SecureStoreException) {
         fail("keystore", e.message).put("reason", e.reason)
     }
+
+    /**
+     * The device key sealer of `q.product`: KeystoreSealer over the AndroidKeyStore alias bound to the
+     * product (CC-26.5). Bytes travel as base64. Invalid input is `bad_input`, an invalid product a `keystore` error of reason `invalid-name`; a Keystore
+     * fault carries only its reason, never a key or a byte of the record.
+     */
+    private fun sealer(q: JSONObject, block: (KeystoreSealer) -> JSONObject): JSONObject = try {
+        block(KeystoreSealer(keyProvider(), KeystoreSealer.aliasFor(q.getString("product"))))
+    } catch (e: SecureStoreException) {
+        fail("keystore", e.message).put("reason", e.reason)
+    } catch (e: IllegalArgumentException) {
+        fail("bad_input", null)
+    }
+
+    /** Whether the Keystore key reports secure hardware (TEE or StrongBox); false when unknown. */
+    private fun hardware(alias: String): Boolean = try {
+        val d = keyProvider().describe(alias)
+        d.optBoolean("insideSecureHardware", false) || d.optInt("securityLevel", 0) >= 1
+    } catch (e: Exception) {
+        false
+    }
+
+    private fun bytes(q: JSONObject, key: String): ByteArray = Base64.decode(q.getString(key), Base64.NO_WRAP)
+
+    private fun b64(b: ByteArray): String = Base64.encodeToString(b, Base64.NO_WRAP)
 
     /**
      * Starts an asynchronous op: answers `{ok: true, req}` now; [block] calls its argument once with
