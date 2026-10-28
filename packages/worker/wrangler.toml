@@ -261,6 +261,12 @@ BLOBS_BUCKET_NAME = "polaris-key-blobs-prod"
 # P4-17: lazy hot-pair deltas' kill switch. A-13: "runtime" = the console's platform settings
 # store decides (default off); "off" = a hard off no console value can override.
 LAZY_DELTAS = "runtime"
+# LG-1: launch gates for the v0.10.0 features. "runtime" = the console decides (default off,
+# turned on only after the feature's security sign-off); "on" = on here (staging and dev only).
+LAUNCH_IDENTITY_EXCHANGE = "runtime"
+LAUNCH_CONNECT = "runtime"
+LAUNCH_SYNC_E2E = "runtime"
+LAUNCH_RELAY = "runtime"
 # F-10 automation: the deploy hook (src/platformDeploy.ts, POST /webhooks/deploy). Only this
 # repository's .github/workflows/deploy.yml, in the `production` environment, at a protected
 # v* tag, may call it with its GitHub OIDC token; the ids are GitHub's numeric repository and
@@ -388,6 +394,12 @@ BLOBS_BUCKET_NAME = "polaris-key-blobs-staging"
 # P4-17: lazy hot-pair deltas' kill switch. A-13: "runtime" = the console's platform settings
 # store decides (default off); "off" = a hard off no console value can override.
 LAZY_DELTAS = "runtime"
+# LG-1: launch gates for the v0.10.0 features. "runtime" = the console decides (default off,
+# turned on only after the feature's security sign-off); "on" = on here (staging and dev only).
+LAUNCH_IDENTITY_EXCHANGE = "on"
+LAUNCH_CONNECT = "on"
+LAUNCH_SYNC_E2E = "on"
+LAUNCH_RELAY = "on"
 # I-18: staging sends from the production auth sending subdomain, so the staging deliverability
 # check proves the very records production uses (RUNBOOK "Sign-in email"). Until the owner
 # onboards auth.plrs.im the provider refuses the sender and the Worker answers email_unavailable.
@@ -497,6 +509,12 @@ BLOBS_BUCKET_NAME = "polaris-key-blobs-dev"
 # P4-17: lazy hot-pair deltas' kill switch. A-13: "runtime" = the console's platform settings
 # store decides (default off); "off" = a hard off no console value can override.
 LAZY_DELTAS = "runtime"
+# LG-1: launch gates for the v0.10.0 features. "runtime" = the console decides (default off,
+# turned on only after the feature's security sign-off); "on" = on here (staging and dev only).
+LAUNCH_IDENTITY_EXCHANGE = "on"
+LAUNCH_CONNECT = "on"
+LAUNCH_SYNC_E2E = "on"
+LAUNCH_RELAY = "on"
 # I-07: Turnstile site key (public); the secret stays unset until the portal renders the widget.
 TURNSTILE_SITE_KEY = "0x4AAAAAAFPA80GfFwEcAJOR"
 # I-17: moving `provider: platform` end users off the platform IdP (RUNBOOK "Moving end users off

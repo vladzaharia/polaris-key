@@ -40,6 +40,7 @@ import type { DeviceRow } from "../repo.js";
 import type { Product } from "../products.js";
 import { BodyTooLargeError, readBodyText } from "../cappedBody.js";
 import { keyringWanted } from "../contributions.js";
+import { launchGateOn } from "../settings/platformRead.js";
 import {
   isValidClientDeviceId,
   licenseUsable,
@@ -140,6 +141,8 @@ export async function handleKeyring(
   const wrapsTarget =
     rest.length === 2 && rest[0] === "wraps" ? (rest[1] ?? "") : null;
   if (rest.length > 0 && wrapsTarget === null) return notFound();
+  // LG-1: with the gate off the routes do not exist, whatever the product has enabled.
+  if (!(await launchGateOn(env, db, "launch.syncE2e"))) return notFound();
   if (!(await keyringWanted(db, product))) return notFound();
 
   const allowed = wrapsTarget === null ? ["GET", "POST"] : ["PUT", "DELETE"];

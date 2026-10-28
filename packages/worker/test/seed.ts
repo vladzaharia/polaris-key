@@ -68,6 +68,12 @@ export function makeEnv(kv: KvMock, _slugs?: string[]): Env {
     CLOUD_SYNC: asCloudSyncNamespace(new CloudSyncNamespaceMock()),
     PLATFORM_KEK: TEST_KEK,
     BLOBS: asR2(new R2Mock()),
+    // LG-1: the launch gates are on here, so the v0.10.0 routes keep their tests; the gate tests
+    // (test/core/settings/launchGates.test.ts) switch one off.
+    LAUNCH_IDENTITY_EXCHANGE: "on",
+    LAUNCH_CONNECT: "on",
+    LAUNCH_SYNC_E2E: "on",
+    LAUNCH_RELAY: "on",
   };
   return env as Env;
 }

@@ -225,6 +225,10 @@ describe("PLATFORM_SETTINGS", () => {
       "EMAIL_PRODUCT_DAILY_CAP",
       "IDENTITY_RESERVED_DISPLAY_NAMES",
       "KEYENTRY_REFUSALS",
+      "LAUNCH_CONNECT",
+      "LAUNCH_IDENTITY_EXCHANGE",
+      "LAUNCH_RELAY",
+      "LAUNCH_SYNC_E2E",
       "LAZY_DELTAS",
       "LAZY_DELTA_MAX_BYTES",
       "LICENSING_RESERVED_NAMES",
@@ -244,6 +248,11 @@ describe("PLATFORM_SETTINGS", () => {
       // PX-W9: a rollout switch, not a kill switch. Off is the permissive side (every key entry is
       // admitted), so `runtime`: a console value, then `[vars]`, then the default `off`.
       KEYENTRY_REFUSALS: "runtime",
+      // LG-1: the launch gates are kill switches that fail closed.
+      LAUNCH_CONNECT: "ceiling",
+      LAUNCH_IDENTITY_EXCHANGE: "ceiling",
+      LAUNCH_RELAY: "ceiling",
+      LAUNCH_SYNC_E2E: "ceiling",
       // HA-10 (notes/S-20 §6.10): the hosted-asset rollback switch. Not a security gate (off only
       // restores the pre-HA-07 behaviour), so `runtime`: an unreadable store is not an off.
       ASSET_HOSTING: "runtime",

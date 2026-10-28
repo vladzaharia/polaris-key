@@ -137,6 +137,11 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
     // The fake IdP is served from this process; the allowlist names its unique host.
     OIDC_ISSUER_ALLOWLIST: idpHost,
     KEYENTRY_REFUSALS: "on",
+    // LG-1: the local world runs every launch gate on.
+    LAUNCH_IDENTITY_EXCHANGE: "on",
+    LAUNCH_CONNECT: "on",
+    LAUNCH_SYNC_E2E: "on",
+    LAUNCH_RELAY: "on",
   } as unknown as Env;
 
   const releasePair = await generateEd25519();

@@ -42,6 +42,10 @@ export interface PlatformValues {
   "email.dailyCapDefault": number;
   "cloudSync.quota.defaultBytes": number;
   "cloudSync.writesPaused": "on" | "off";
+  "launch.identityExchange": "on" | "off";
+  "launch.connect": "on" | "off";
+  "launch.syncE2e": "on" | "off";
+  "launch.relay": "on" | "off";
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;
@@ -67,6 +71,22 @@ export async function platformSetting<K extends keyof PlatformValues>(
     return "off" as PlatformValues[K];
   return (await resolvePlatformSetting(coreSettingsContext(env, db), key))
     .value as PlatformValues[K];
+}
+
+/** LG-1: the launch gates, one per v0.10.0 feature (`launch.*`, default off, fail closed). */
+export type LaunchGate = Extract<keyof PlatformValues, `launch.${string}`>;
+
+/** Is a launch gate on? Off while the setting is unset, hard-off in `[vars]`, or unreadable. */
+export async function launchGateOn(
+  env: SettingsEnv,
+  db: Db,
+  gate: LaunchGate,
+): Promise<boolean> {
+  try {
+    return (await platformSetting(env, db, gate)) === "on";
+  } catch {
+    return false;
+  }
 }
 
 /** One platform setting resolved with its chain, version and source (the console's view). */
