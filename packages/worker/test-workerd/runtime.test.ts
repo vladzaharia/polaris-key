@@ -492,6 +492,7 @@ describe("Google Play connector on workerd (P5-03)", () => {
       outletCapabilities: async () => null,
       licenseProvenance: () => null,
       storeProducts: () => null,
+      githubPrToken: () => null,
     };
     const run = playRun({
       env: workerEnv,
@@ -567,6 +568,7 @@ describe("Microsoft Store connector on workerd (P5-04)", () => {
       outletCapabilities: async () => null,
       licenseProvenance: () => null,
       storeProducts: () => null,
+      githubPrToken: () => null,
     };
     const run = () =>
       msStoreRun({
