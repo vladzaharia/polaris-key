@@ -744,12 +744,11 @@ describe("the React kit at every size", () => {
 });
 
 describe("the complete fixture baseline matrix", () => {
-  it("selects all 156 registered non-hidden component states exactly once", () => {
+  it("selects every registered non-hidden component state exactly once", () => {
     const expected = [...REGISTERED_COMPONENT_STATE_IDS].sort();
     const actual = BASELINE_SCENES.map((scene) => scene.id).sort();
-    expect(expected).toHaveLength(156);
-    expect(actual).toHaveLength(156);
-    expect(new Set(actual).size).toBe(156);
+    expect(actual).toHaveLength(expected.length);
+    expect(new Set(actual).size).toBe(expected.length);
     expect(actual).toEqual(expected);
   });
 

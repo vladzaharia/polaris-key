@@ -45,10 +45,10 @@ from it. A new code needs an entry there first.
 | `keyring_conflict` | `ErrorCode.KeyringConflict` | [Help](/docs/help/messages/accounts/#keyring_conflict) |
 | `device_keys_required` | `ErrorCode.DeviceKeysRequired` | [Help](/docs/help/messages/devices/#device_keys_required) |
 | `ring_too_large` | `ErrorCode.RingTooLarge` | [Help](/docs/help/messages/devices/#ring_too_large) |
-| `relay_disabled` | `ErrorCode.RelayDisabled` | developer only |
-| `relay_paused` | `ErrorCode.RelayPaused` | developer only |
-| `relay_quota_exceeded` | `ErrorCode.RelayQuotaExceeded` | developer only |
-| `relay_ticket_invalid` | `ErrorCode.RelayTicketInvalid` | developer only |
+| `relay_disabled` | `ErrorCode.RelayDisabled` | [Help](/docs/help/messages/other/#relay_disabled) |
+| `relay_paused` | `ErrorCode.RelayPaused` | [Help](/docs/help/messages/other/#relay_paused) |
+| `relay_quota_exceeded` | `ErrorCode.RelayQuotaExceeded` | [Help](/docs/help/messages/other/#relay_quota_exceeded) |
+| `relay_ticket_invalid` | `ErrorCode.RelayTicketInvalid` | [Help](/docs/help/messages/other/#relay_ticket_invalid) |
 | `bad_request` | `ErrorCode.BadRequest` | developer only |
 | `not_found` | `ErrorCode.NotFound` | [Help](/docs/help/messages/other/#not_found) |
 | `managed_by_admin` | `ErrorCode.ManagedByAdmin` | [Help](/docs/help/messages/other/#managed_by_admin) |
@@ -110,8 +110,8 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `bundle-import-unsupported` | `core` | React: this adapter cannot import offline bundles (a desktop bridge older than protocol v3, or a browser without pinned trust keys or IndexedDB). | [Help](/docs/help/messages/other/#bundle-import-unsupported) |
 | `report-unsupported` | `core` | React: device telemetry cannot be reported from here (a browser session has no device token, or the desktop bridge does not expose it). | [Help](/docs/help/messages/other/#report-unsupported) |
 | `device-management-unsupported` | `core` | Remote device management needs a credential or backend this client does not have. | [Help](/docs/help/messages/other/#device-management-unsupported) |
-| `device-keys-unreadable` | `core` | Node, client-core: the stored device key record exists but cannot be used. It is never replaced; only wiping the device keys resets it. | developer only |
-| `device-key-store-error` | `core` | Node: the device key store could not be used right now (an I/O fault, a refused path or a lock timeout). Nothing was changed. | developer only |
+| `device-keys-unreadable` | `core` | Node, client-core: the stored device key record exists but cannot be used. It is never replaced; only wiping the device keys resets it. | [Help](/docs/help/messages/devices/#device-keys-unreadable) |
+| `device-key-store-error` | `core` | Node: the device key store could not be used right now (an I/O fault, a refused path or a lock timeout). Nothing was changed. | [Help](/docs/help/messages/devices/#device-key-store-error) |
 | `device_list_failed` | `core` | Python, Swift: listing the fleet's devices failed. | [Help](/docs/help/messages/devices/#device_list_failed) |
 | `device_rename_failed` | `core` | Python, Swift: renaming a device failed. | [Help](/docs/help/messages/devices/#device_rename_failed) |
 | `device_deauthorize_failed` | `core` | Python, Swift: deauthorizing another device failed. | [Help](/docs/help/messages/devices/#device_deauthorize_failed) |
@@ -142,9 +142,9 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `http-error` | `core` | Godot: The server answered a non-success status with no recognised error code in its body. | [Help](/docs/help/messages/other/#http-error) |
 | `invalid-response` | `core` | Godot: The server answered 2xx with a body that failed strict parsing or lacked a required field. | [Help](/docs/help/messages/other/#invalid-response) |
 | `store-failed` | `core` | The credential, cache or Cloud Connect state store could not be read or written, or its device keys could not be used. | [Help](/docs/help/messages/other/#store-failed) |
-| `connect-unavailable` | `connect` | Cloud Connect cannot run here: the product has it off, or this SDK has no Connect on this platform. A host hides its Connect surface and does not retry (WIRE-CONTRACT-V5 §15). | developer only |
-| `peer-cert-invalid` | `connect` | A device certificate or roster failed verification, or a roster is stale or belongs to another account or product (WIRE-CONTRACT-V5 §15.2, §15.3). Nothing is trusted; a host fetches a fresh one. | developer only |
-| `nearby-permission-denied` | `connect` | The OS refused this app access to devices on the local network (iOS and macOS Local Network permission; Android local-network access). The person can allow it in the system settings. | developer only |
+| `connect-unavailable` | `connect` | Cloud Connect cannot run here: the product has it off, or this SDK has no Connect on this platform. A host hides its Connect surface and does not retry (WIRE-CONTRACT-V5 §15). | [Help](/docs/help/messages/other/#connect-unavailable) |
+| `peer-cert-invalid` | `connect` | A device certificate or roster failed verification, or a roster is stale or belongs to another account or product (WIRE-CONTRACT-V5 §15.2, §15.3). Nothing is trusted; a host fetches a fresh one. | [Help](/docs/help/messages/devices/#peer-cert-invalid) |
+| `nearby-permission-denied` | `connect` | The OS refused this app access to devices on the local network (iOS and macOS Local Network permission; Android local-network access). The person can allow it in the system settings. | [Help](/docs/help/messages/devices/#nearby-permission-denied) |
 | `platform-error` | `core` | Godot: a native platform plugin answered an error, or a reply that is not JSON: the Apple plugin (PolarisKeyPlatform through the PolarisKeyApple GDExtension) or the Android plugin (polaris-key-platform through PolarisKeyAndroid); `detail` carries the plugin's own fields. | [Help](/docs/help/messages/other/#platform-error) |
 | `no-token` | `core` | Godot: An authenticated call ran with no device token in hand. | [Help](/docs/help/messages/license-key/#no-token) |
 | `mint-unavailable` | `config` | Godot: this session's discovery document says the product has no approved edge-mint recipe (`config.mint.available` is false), so the mint was not sent. | [Help](/docs/help/messages/other/#mint-unavailable) |

@@ -27,7 +27,15 @@ function withEntry(text: string, name = "2026-10-24-bad.md") {
 describe("changelog entries", () => {
   it("load, newest version first", () => {
     const versions = load().map((e) => e.version);
-    expect(versions[0]).toBe("0.9.x");
+    // Newest first: by major, minor, then patch, where `x` (no patch named) is the newest patch.
+    const key = (v: string) =>
+      v.split(".").map((p) => (p === "x" ? Infinity : Number(p)));
+    const newestFirst = (a: string, b: string) => {
+      const [ka, kb] = [key(a), key(b)];
+      for (let i = 0; i < 3; i++) if (ka[i] !== kb[i]) return kb[i]! - ka[i]!;
+      return 0;
+    };
+    expect(versions).toEqual([...versions].sort(newestFirst));
     expect(versions.at(-1)).toBe("0.9.0");
   });
 

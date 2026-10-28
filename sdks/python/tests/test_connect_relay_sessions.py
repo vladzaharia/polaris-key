@@ -270,7 +270,9 @@ def test_gone_for_a_device_ends_only_its_sessions() -> None:
         assert inn.closed is None
         n.room.push(ID_A, {"op": "gone", "device": b64url_decode(ID_B)})
         assert closed.wait(5) and inn.closed is not None and inn.closed.code == "connection_lost"
-        assert out.closed is None  # B has not heard of it yet
+        # B was never told the room dropped A's peer. If it closed at all, it heard A's goodbye on the
+        # socket; it did not lose the connection itself. Which of the two arrives first is a race.
+        assert out.closed is None or out.closed.code != "connection_lost"
 
 
 def test_stop_says_goodbye_to_open_sessions() -> None:

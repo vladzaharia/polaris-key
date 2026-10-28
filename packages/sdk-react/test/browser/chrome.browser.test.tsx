@@ -426,13 +426,16 @@ describe("the Windows chrome, behaviour", () => {
     await frame();
     const cs = getComputedStyle(btn);
     expect(cs.boxShadow).toBe("none");
-    // UK-31.8: a split card carries no frame of its own (it would touch the title and buttons);
-    // its passport pane has it. The sheet scene is split at this width.
+    // I-46.9: the frame is the card's own, unless the card fills the viewport; then a split card
+    // frames its identity pane instead. The sheet scene is split at this width.
     expect(kit.querySelector(".stage")!.hasAttribute("data-split")).toBe(true);
-    expect(
-      getComputedStyle(kit.querySelector(".stage[data-split] .passport")!)
-        .borderTopStyle,
-    ).toBe("solid");
+    const framed =
+      kit.matches("[data-fill]") || kit.querySelector("[data-fill]")
+        ? ".stage[data-split] .passport"
+        : ".stage .card";
+    expect(getComputedStyle(kit.querySelector(framed)!).borderTopStyle).toBe(
+      "solid",
+    );
   });
 
   it("takes 44 px controls under a coarse pointer (touch)", async () => {
