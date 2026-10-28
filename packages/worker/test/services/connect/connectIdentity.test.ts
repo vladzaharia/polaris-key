@@ -7,26 +7,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { verifyJws } from "@polaris-key/jws";
 import { RING_SECONDS } from "@polaris-key/protocol/connect";
 import { dispatchWith } from "../../../src/dispatch.js";
-import type { Db } from "../../../src/db/types.js";
-import type { Env } from "../../../src/platform/env.js";
-import { makeTestDb } from "../../helpers.js";
-import { KvMock } from "../../kvMock.js";
-import {
-  makeEnv,
-  mkReq,
-  NOW,
-  seedLicenseWithKey,
-  seedProduct,
-  TEST_KID,
-  TEST_PUB,
-} from "../../seed.js";
+
+import { NOW, seedLicenseWithKey, TEST_KID, TEST_PUB } from "../../seed.js";
 import { newKeys } from "../../deviceKeyFixtures.js";
-import { serializeServices } from "../../../src/core/services.js";
-import { setServices } from "../../../src/core/products/store.js";
-import { loadProduct } from "../../../src/core/products.js";
-import { setDeviceSubject } from "../../../src/core/accounts/accountSubjects.js";
-import { signIn } from "../../../src/services/identity/accounts/signIn.js";
-import { handleActivate } from "../../../src/services/license/activation.js";
+
 import { upsertDeviceKeys } from "../../../src/core/devices/keys.js";
 import { assertConnectDoc } from "../../../src/core/signing.js";
 import {
@@ -38,93 +22,19 @@ import {
 import { connectRingsStore } from "../../../src/services/connect/subjectStore.js";
 import { connectProductDeletion } from "../../../src/services/connect/productDeletion.js";
 
-const SLUG = "djdl";
-const BASE = "https://key.plrs.im";
-const A = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-const B = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
-const C = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
-const OTHER = "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD";
-
-interface World {
-  db: Db;
-  env: Env;
-  subject: string;
-  tokens: Record<string, string>;
-}
-
-const SERVICE_SLUGS = [
-  "license",
-  "config",
-  "release",
-  "distribution",
-  "update",
-  "identity",
-  "sync",
-  "commerce",
-  "connect",
-] as const;
-
-/** Exactly these services on, every other off. */
-async function enable(db: Db, on: readonly string[]): Promise<void> {
-  const services = Object.fromEntries(
-    SERVICE_SLUGS.map((k) => [k, { enabled: on.includes(k) }]),
-  );
-  await setServices(
-    db,
-    SLUG,
-    serializeServices({ services } as never),
-    "manifest",
-    NOW,
-  );
-}
-
-async function activate(
-  w: Pick<World, "db" | "env">,
-  key: string,
-  deviceId: string,
-): Promise<string> {
-  const product = (await loadProduct(w.env, w.db, SLUG))!;
-  const headers = { authorization: `Bearer ${key}`, "x-pkey-device": deviceId };
-  const res = await handleActivate(
-    mkReq("POST", headers),
-    w.env,
-    w.db,
-    product,
-    NOW,
-  );
-  expect(res.status).toBe(200);
-  return ((await res.json()) as { token: string }).token;
-}
-
-async function bindTo(
-  w: Pick<World, "db" | "env">,
-  deviceId: string,
-  email: string,
-): Promise<string> {
-  const who = { issuerKey: "email", subject: email, kind: "email" } as const;
-  const opts = { unfenced: true as const, product: { slug: SLUG } };
-  const r = await signIn(w.db, who, NOW, opts);
-  if (r.status !== "signed_in") throw new Error(r.status);
-  const bound = await setDeviceSubject(w.env, w.db, SLUG, deviceId, r.subject!);
-  expect(bound).toBe(true);
-  return r.subject!;
-}
-
-/** Devices A and B of one person, both with keys. C and OTHER are added by tests. */
-async function world(): Promise<World> {
-  const db = makeTestDb();
-  const env = makeEnv(new KvMock(), []);
-  await seedProduct(db, SLUG);
-  await enable(db, ["license", "identity", "connect"]);
-  const { key } = await seedLicenseWithKey(db, SLUG);
-  const w = { db, env, tokens: {} as Record<string, string> };
-  for (const d of [A, B]) w.tokens[d] = await activate(w, key, d);
-  const subject = await bindTo(w, A, "ada@example.com");
-  await bindTo(w, B, "ada@example.com");
-  for (const d of [A, B])
-    await upsertDeviceKeys(db, SLUG, d, await newKeys(), NOW);
-  return { ...w, subject };
-}
+import {
+  SLUG,
+  BASE,
+  A,
+  B,
+  C,
+  OTHER,
+  type World,
+  enable,
+  activate,
+  bindTo,
+  world,
+} from "./connectFixture.js";
 
 const get = (
   w: Pick<World, "db" | "env">,
@@ -399,7 +309,8 @@ describe("the connect.rings subject store", () => {
       product: SLUG,
       subject: w.subject,
     });
-    expect(exported).toEqual({ epoch: 1, bumpedAt: NOW });
+    // CC-06.3: the merge forces a bump on the survivor.
+    expect(exported).toEqual({ epoch: 2, bumpedAt: NOW });
     expect(JSON.stringify(exported)).not.toContain(
       (await getRing(w.db, SLUG, w.subject))!.disc_key,
     );

@@ -11,11 +11,13 @@
  *
  * ── EPOCH AND K_DISC ─────────────────────────────────────────────────────────────────────────
  *
- * `members_hash` is a SHA-256 over the members' `deviceId.signKey.agreeKey` lines. It is compared
- * on every read: when it differs from the stored one the epoch rises by one, a new K_disc is drawn,
- * and the old one is kept as `prev_disc_key` for 24 hours. There is no event to hear: a device
- * that joins, leaves or rotates its keys changes the hash, and the next read notices. The update
- * is conditional on the epoch it read, so two requests racing a bump make one bump.
+ * `members_hash` is a SHA-256 over the members' `deviceId.signKey.agreeKey` lines. When it differs
+ * from the stored one the epoch rises by one, a new K_disc is drawn, and the old one is kept as
+ * `prev_disc_key` for 24 hours (not after a leave). The device lifecycle listener
+ * (`ringListener.ts`) is the primary path: it runs `currentRing` as soon as a device is removed,
+ * unbound, bound elsewhere or changes its keys. The comparison on every read stays as a backstop.
+ * The update is conditional on the epoch it read, so two requests racing a bump make one bump.
+ * Each bump writes one `connect.ring.bump` audit row: the reason and the new epoch, no key.
  *
  * ── LIFETIME ─────────────────────────────────────────────────────────────────────────────────
  *
@@ -33,6 +35,7 @@ import {
 } from "@polaris-key/protocol/connect";
 import type { Db } from "../../db/types.js";
 import type { AccountDeviceKeys } from "../../core/devices/keys.js";
+import { actorColumns, appendAudit, SYSTEM_ACTORS } from "../../core/audit.js";
 import { signDoc } from "../../core/signing.js";
 import { sha256Hex } from "../../platform/hash.js";
 import { randomToken } from "../../platform/random.js";
@@ -106,6 +109,38 @@ function someoneLeft(stored: string, members: readonly AccountDeviceKeys[]) {
   return stored.split("\n").some((id) => !now.has(id));
 }
 
+/** Why a ring moved: a read that found the members changed, a lifecycle event, or an account merge. */
+export type BumpReason =
+  | "read"
+  | "removed"
+  | "unbound"
+  | "bound"
+  | "keys"
+  | "merge";
+
+/** The `connect.ring.bump` audit row: the reason and the epoch. It names no key. */
+async function auditBump(
+  db: Db,
+  product: string,
+  subject: string,
+  epoch: number,
+  reason: BumpReason = "read",
+  left: number,
+  now: number,
+): Promise<void> {
+  await appendAudit(db, {
+    product,
+    at: now,
+    ...actorColumns(SYSTEM_ACTORS.platform),
+    action: "connect.ring.bump",
+    target_kind: "connectRing",
+    target_id: subject,
+    summary: `Roster moved to epoch ${epoch} (${reason}).`,
+    reason,
+    after_json: JSON.stringify({ epoch, left: left === 1 }),
+  });
+}
+
 /**
  * The subject's current ring row and the members it was computed for, created on the first read
  * and bumped when the members changed. `load` reads the members; it is called again after every
@@ -119,7 +154,10 @@ export async function currentRing(
   subject: string,
   load: () => Promise<AccountDeviceKeys[]>,
   now: number,
-): Promise<{ row: RingRow; members: AccountDeviceKeys[] }> {
+  opts: { reason?: BumpReason; force?: boolean } = {},
+): Promise<{ row: RingRow; members: AccountDeviceKeys[]; bumped: boolean }> {
+  let force = opts.force === true;
+  let bumped = false;
   for (let attempt = 0; attempt < 6; attempt++) {
     const members = await load();
     if (members.length > MAX_RING_DEVICES) throw new RingTooLargeError();
@@ -140,9 +178,11 @@ export async function currentRing(
       );
       continue;
     }
-    if (row.members_hash === hash) return { row, members };
+    if (row.members_hash === hash && !force) return { row, members, bumped };
+    // A forced bump is tried once: if it lost the race, the winner's bump already moved the epoch.
+    force = false;
     const left = someoneLeft(row.member_ids, members) ? 1 : 0;
-    await db.runChanges(
+    const changed = await db.runChanges(
       `UPDATE connect_rings
           SET epoch = epoch + 1, members_hash = ?, member_ids = ?,
               prev_disc_key = CASE WHEN ? = 1 THEN NULL ELSE disc_key END,
@@ -160,6 +200,18 @@ export async function currentRing(
       row.epoch,
       row.members_hash,
     );
+    if (changed > 0) {
+      bumped = true;
+      await auditBump(
+        db,
+        product,
+        subject,
+        row.epoch + 1,
+        opts.reason,
+        left,
+        now,
+      );
+    }
   }
   throw new Error("connect: the ring kept changing under the read");
 }

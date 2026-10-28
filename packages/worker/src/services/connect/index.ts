@@ -18,6 +18,7 @@ import type {
   DiscoveryContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
+import { CONNECT_RING_LISTENER, connectRingListener } from "./ringListener.js";
 import { connectIntegration } from "./integration.js";
 import { connectProductDeletion } from "./productDeletion.js";
 import { CONNECT_ROUTES } from "./routes.js";
@@ -30,6 +31,8 @@ export const connectService: ServiceDescriptor = {
     integration: connectIntegration,
     subjectStores: { [CONNECT_RINGS_STORE]: connectRingsStore },
     productDeletion: connectProductDeletion,
+    /** CC-06.3: the primary path that moves the roster epoch. */
+    onDeviceChange: { [CONNECT_RING_LISTENER]: connectRingListener },
   },
   handle: CONNECT_ROUTES.handle,
   surface: CONNECT_ROUTES.surface,
