@@ -543,16 +543,16 @@
       "wp": "U-38"
     },
     "connect.identity": {
-      "status": "planned",
-      "wp": "CC-09"
+      "status": "implemented",
+      "note": "CC-09.1: adapter.connect (ui-core browser/connect, bearer mode): identity({refresh}), current(), listDevices(), discoveryKeys() and leave(), over the page's DeviceKeyPort (IndexedDB, non-extractable) and client-core peer/cert. The roster, certificate and K_disc are one pkey.connect.v1 record in the page's IndexedDB (memory with memory-only keys, which need allowEphemeralKeys); K_disc is non-enumerable and in no error. The previous K_disc goes 24 h after first seen, on roster loss or re-key and on leave; a 3.5-day short-circuit, which refresh bypasses; one call at a time; an unreadable record is an error that leave clears. Sign-out and deactivation call leave() and fail closed; a cookie page answers the typed runtime N/A. The connect-identity* transcripts replay in test/transcripts.test.ts; test/connectIdentity.test.ts pins the rest."
     },
     "connect.noise": {
-      "status": "planned",
-      "wp": "CC-09"
+      "status": "implemented",
+      "note": "client-core's peer/noise.ts over WebCrypto X25519 and AES-256-GCM, which the web relay sessions run (the DH of this device's key goes through DeviceKeyPort.dh); the browser runner drives every noise-vectors.json row in Chromium, Firefox and WebKit (conformance/runners/browser/noiseVectors.browser.test.ts), and test/connectRelay.test.ts runs a full XXpsk0 admission between two devices."
     },
     "connect.protocol": {
-      "status": "planned",
-      "wp": "CC-09"
+      "status": "implemented",
+      "note": "client-core's peer/ codecs (frame, record, relay, payload) and the PeerChannel session machine, which the web relay sessions run in mode a (test/connectRelay.test.ts: admission, 200 KB MORE reassembly, rekey-free close); the peer-matrix.json sections are driven by conformance/runners/node."
     },
     "connect.lan": {
       "status": "na",
@@ -561,8 +561,8 @@
       "note": "A browser or renderer has no sockets; the relay is its only path, and the host's Node SDK does the rest."
     },
     "connect.relay": {
-      "status": "planned",
-      "wp": "CC-09"
+      "status": "implemented",
+      "note": "ui-core browser/connect (relay.ts, CC-09.2) behind adapter.cloudConnect and useCloudConnect(): connect.relayTicket() (the pkeyrt_ ticket, shape-checked, wss and the Worker's own host only; typed RelayError for relay_disabled, relay_paused with Retry-After capped at 3600 s, relay_quota_exceeded with its scope), a RelayService over the browser's WebSocket (pkey-relay.1, the ticket as the second subprotocol) with client-core's envelope codec, one PeerChannel per (peer, session) in the literal mode a (v and p never cross: assertRelayMode), backoff with jitter and a floor that resets only after 30 s stable, byte-capped session queues (peer_busy past 8 MiB; a WebSocket cannot be paused) and a bounded PeerDocs queue, a pushed RING through the identity replacement rules (keysStale, deferred refresh, one refresh a minute), a pushed TRUST verified against the usable pins with anti-rollback under the session's trust lock, and nothing secret reachable through JSON.stringify, enumerable fields or console. The relay code loads on the first start() (the React size budgets hold). The connect-relay-ticket and connect-relay-quota transcripts replay in test/transcripts.test.ts; test/connectRelay.test.ts pins the rest."
     },
     "connect.links": {
       "status": "na",
@@ -575,8 +575,8 @@
       "wp": "CC-20"
     },
     "connect.app": {
-      "status": "planned",
-      "wp": "CC-09"
+      "status": "implemented",
+      "note": "adapter.cloudConnect / useCloudConnect() (CC-09.2): start, stop, peers, refreshPeers, devices, open, onChannel, onNotice, status and onChange, with the relay as the only path (a page cannot discover devices on a LAN: connect.lan is the typed runtime N/A). A cookie page and the local adapter answer the typed runtime N/A, the desktop renderer the version N/A (its host runs the Node SDK). Sign-out and deactivation stop it before leaving the roster."
     },
     "server.license": {
       "status": "na",

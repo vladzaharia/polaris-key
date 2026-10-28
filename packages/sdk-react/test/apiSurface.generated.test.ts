@@ -5,6 +5,7 @@ import {
   useBoot,
   useCapabilities,
   useChangelog,
+  useCloudConnect,
   useConfigSetting,
   useEntitlement,
   useImportBundle,
@@ -50,6 +51,15 @@ export type Surface = [
   PolarisKeyConfig["refreshIntervalSeconds"],
   PolarisKeyConfig["store"],
   PolarisKeyConfig["backend"],
+  ReturnType<typeof useCloudConnect>["start"],
+  ReturnType<typeof useCloudConnect>["stop"],
+  ReturnType<typeof useCloudConnect>["peers"],
+  ReturnType<typeof useCloudConnect>["devices"],
+  ReturnType<typeof useCloudConnect>["open"],
+  ReturnType<typeof useCloudConnect>["onChannel"],
+  ReturnType<typeof useCloudConnect>["refreshPeers"],
+  ReturnType<typeof useCloudConnect>["status"],
+  ReturnType<typeof useCloudConnect>["onNotice"],
 ];
 
 it("client.create", () => expect(typeof PolarisKeyProvider).toBe("function"));

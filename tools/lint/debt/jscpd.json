@@ -45,7 +45,7 @@
       "jscpd:duplicate": 3
     },
     "conformance/runners/node/transcripts.test.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 18
     },
     "examples/node-electron/src/main.ts": {
       "jscpd:duplicate": 1
@@ -1274,6 +1274,9 @@
     "packages/client-core/src/decide.ts": {
       "jscpd:duplicate": 6
     },
+    "packages/client-core/src/deviceKeyStoreWeb.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/client-core/src/feed.ts": {
       "jscpd:duplicate": 2
     },
@@ -1330,6 +1333,9 @@
     },
     "packages/client-core/src/peer/relay.ts": {
       "jscpd:duplicate": 4
+    },
+    "packages/client-core/src/peer/sas.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/client-core/src/presentation.ts": {
       "jscpd:duplicate": 1
@@ -1532,6 +1538,27 @@
     "packages/sdk-node/src/config/client.ts": {
       "jscpd:duplicate": 3
     },
+    "packages/sdk-node/src/connect/channel.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/sdk-node/src/connect/client.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/sdk-node/src/connect/cloudConnect.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/src/connect/lan.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/connect/relay.ts": {
+      "jscpd:duplicate": 20
+    },
+    "packages/sdk-node/src/connect/session.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/sdk-node/src/connect/state.ts": {
+      "jscpd:duplicate": 2
+    },
     "packages/sdk-node/src/core/bundle.ts": {
       "jscpd:duplicate": 1
     },
@@ -1543,6 +1570,9 @@
     },
     "packages/sdk-node/src/core/presentation.ts": {
       "jscpd:duplicate": 6
+    },
+    "packages/sdk-node/src/core/redact.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/core/store.ts": {
       "jscpd:duplicate": 1
@@ -1682,6 +1712,9 @@
     "packages/sdk-node/test/configLocal.test.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/sdk-node/test/connect.test.ts": {
+      "jscpd:duplicate": 15
+    },
     "packages/sdk-node/test/copy.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -1750,6 +1783,12 @@
     },
     "packages/sdk-node/test/presentation.test.ts": {
       "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/relay.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/relayFixtures.ts": {
+      "jscpd:duplicate": 7
     },
     "packages/sdk-node/test/releaseFetch.test.ts": {
       "jscpd:duplicate": 2
@@ -1823,6 +1862,9 @@
     "packages/sdk-react/test/accountCalls.test.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/sdk-react/test/autoSignIn.test.ts": {
+      "jscpd:duplicate": 2
+    },
     "packages/sdk-react/test/backend.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -1888,6 +1930,12 @@
     },
     "packages/sdk-react/test/configMatrix.test.ts": {
       "jscpd:duplicate": 3
+    },
+    "packages/sdk-react/test/connectIdentity.test.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/sdk-react/test/connectRelay.test.ts": {
+      "jscpd:duplicate": 11
     },
     "packages/sdk-react/test/copy.test.ts": {
       "jscpd:duplicate": 1
@@ -1977,7 +2025,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/transcripts.test.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 19
     },
     "packages/sdk-react/test/trustCustody.test.ts": {
       "jscpd:duplicate": 2
@@ -2117,6 +2165,33 @@
     "packages/ui-core/src/browser/sdk/browser/browserAdapter.ts": {
       "jscpd:duplicate": 10
     },
+    "packages/ui-core/src/browser/sdk/browser/connect/bytes.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/channel.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/client.ts": {
+      "jscpd:duplicate": 17
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/cloud.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/errors.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/redact.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/relay.ts": {
+      "jscpd:duplicate": 18
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/session.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/state.ts": {
+      "jscpd:duplicate": 3
+    },
     "packages/ui-core/src/browser/sdk/browser/discovery.ts": {
       "jscpd:duplicate": 2
     },
@@ -2125,6 +2200,9 @@
     },
     "packages/ui-core/src/browser/sdk/browser/offline.ts": {
       "jscpd:duplicate": 3
+    },
+    "packages/ui-core/src/browser/sdk/browser/ring/engine.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/urls.ts": {
       "jscpd:duplicate": 1
@@ -4291,6 +4369,9 @@
     },
     "packages/worker/test/transcripts/format.ts": {
       "jscpd:duplicate": 2
+    },
+    "packages/worker/test/transcripts/providers.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/worker/test/transcripts/scenarios/account.ts": {
       "jscpd:duplicate": 12

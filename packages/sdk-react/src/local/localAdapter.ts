@@ -82,6 +82,10 @@ import type { ChoiceNamespace } from "../core/choice.js";
 import type { AutoSignInResult, SignInNamespace } from "../core/signIn.js";
 import { unsupportedKeyring, type KeyringClient } from "../core/keyring.js";
 import {
+  unsupportedCloudConnect,
+  type CloudConnectClient,
+} from "../browser/connect/index.js";
+import {
   PolarisError,
   type ChangelogEntry,
   type CommerceBinding,
@@ -463,6 +467,12 @@ export class LocalAdapter implements PolarisAdapter {
   readonly keyring: KeyringClient = unsupportedKeyring(
     "runtime",
     "A local-only page holds no device token, so it has no Cloud Sync key ring.",
+  );
+
+  /** Cloud Connect (connect.app): the typed N/A here. */
+  readonly cloudConnect: CloudConnectClient = unsupportedCloudConnect(
+    "runtime",
+    "A local-only page holds no device token, so it has no Cloud Connect.",
   );
 
   readonly signIn: SignInNamespace = {
