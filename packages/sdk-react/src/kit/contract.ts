@@ -21,6 +21,7 @@ export {
   monogramOf,
   onCopyLoaded,
   preloadCopy,
+  copyPending,
   OPENS,
   outOfRange,
   settingKind,

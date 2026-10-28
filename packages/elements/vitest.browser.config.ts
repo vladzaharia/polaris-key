@@ -42,6 +42,7 @@ export default defineConfig({
   },
   test: {
     include: ["test/browser/**/*.browser.test.ts"],
+    setupFiles: ["test/setupCopy.ts"],
     testTimeout: 60_000,
     // One file, many renders: report each test, keep the run in one browser page.
     fileParallelism: false,

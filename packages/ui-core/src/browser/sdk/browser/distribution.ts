@@ -10,7 +10,7 @@
 
 import { ErrorCode } from "../constants.generated.js";
 import { PolarisError } from "../core/types.js";
-import { wireCodeOf } from "./update.js";
+import { wireCodeOf } from "./urls.js";
 import {
   osFamily,
   pageEnvironment,

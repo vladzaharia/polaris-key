@@ -11,6 +11,7 @@
 
 import {
   KIT_COPY_EN_LEAN,
+  KIT_COPY_LAZY_PREFIXES,
   KIT_COPY_VARIANTS,
   loadKitCopy,
   loadKitCopyEnRest,
@@ -75,6 +76,17 @@ function ensureEnglishRest(): void {
  */
 export function preloadCopy(): void {
   ensureEnglishRest();
+}
+
+/**
+ * Whether `key` is missing only because English's second table has not arrived: it is under a
+ * lazy prefix and the table is still loading. After it loaded, a missing key is a real bug.
+ */
+export function copyPending(key: string): boolean {
+  return (
+    englishRest !== "done" &&
+    KIT_COPY_LAZY_PREFIXES.some((p) => key.startsWith(p))
+  );
 }
 
 /** Register a table directly (tests, or a host that preloads a pack). */

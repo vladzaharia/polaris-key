@@ -1078,6 +1078,21 @@ export const LAZY_EN_PREFIXES = [
   "signin.signout.releasedMac",
   // The approve-a-device dialog is the portal's (admin reads the full table); no kit draws it.
   "signin.approve.",
+  // Screens that follow a network answer: the copy table is in place by then (`preloadCopy`).
+  "signin.choice.",
+  "signin.join.",
+  "signin.replace.",
+  "signin.linkOffer.",
+  "signin.nearby.",
+  "core.activation.",
+  "signin.consent.",
+  "signin.code.",
+  "signin.device.",
+  "signin.cli.",
+  "signin.console.",
+  "signin.confirmLink.",
+  "signin.mail.",
+  "signin.return.",
 ] as const;
 export const LAZY_EN_KEEP: ReadonlySet<string> = new Set([
   // The nearby approver's prompt (NearbyApproval) draws these.
@@ -1129,6 +1144,9 @@ export const KIT_COPY_EN_LEAN: Readonly<Record<string, string>> = en;
 export async function loadKitCopyEnRest(): Promise<Readonly<Record<string, string>>> {
   return (await import("./en-rest.json", { with: { type: "json" } })).default;
 }
+
+/** The key prefixes \`en-rest.json\` holds: a key under one is missing only until the rest loads. */
+export const KIT_COPY_LAZY_PREFIXES: readonly string[] = ${JSON.stringify(LAZY_EN_PREFIXES)};
 
 /** English platform variants (D13 title case on macOS and documented verbs); other locales have none. */
 export const KIT_COPY_VARIANTS: Readonly<Record<string, Readonly<Record<string, string>>>> = ${JSON.stringify(variantsFor(model))};
