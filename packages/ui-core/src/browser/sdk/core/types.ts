@@ -32,7 +32,11 @@ import { noBusy, noErrors } from "./services.js";
 import type { ActivationOutcome, KeyEntries } from "./activation.js";
 import type { BootAttempt } from "./bootGuard.js";
 import type { ChoiceNamespace } from "./choice.js";
-import type { SignInNamespace } from "./signIn.js";
+import type {
+  AutoSignInOptions,
+  AutoSignInResult,
+  SignInNamespace,
+} from "./signIn.js";
 import type { BootResult, BootRunOptions } from "./boot.js";
 import type { CrashTags, CrashTagsOptions } from "./crash.js";
 import type { UpdateEvent } from "../constants.generated.js";
@@ -463,6 +467,10 @@ export interface PolarisAdapter {
   /** The licence choice an app shows itself after `signIn` answered `choose` (identity.choice).
    *  Bearer mode; a cookie page and the desktop renderer throw the typed `UnsupportedError`. */
   readonly choice: ChoiceNamespace;
+  /** The automatic sign-in ladder (identity.autosignin): a stored token, then the platform
+   *  provider silently, then (only with `prompt: "optional"`) its chooser. Bearer mode runs it;
+   *  the desktop renderer, a cookie page and the local adapter answer `unavailable`. */
+  autoSignIn(opts?: AutoSignInOptions): Promise<AutoSignInResult>;
   /** Open the product's page in the customer portal (discovery's `accountPortal`). Typed
    *  `UnsupportedError` when the product names none. */
   openAccount(): Promise<void>;
