@@ -13,8 +13,9 @@ extends RefCounted
 ##                          unique id, the product and a random per-install salt kept beside it).
 ##
 ## Either way the bytes are useless in another install's backup: the platform key does not leave the
-## device, and the passphrase rests on the device's unique id. Keeping the folder out of OS backups
-## themselves (iOS "do not back up", Android `allowBackup`) is a native-lane follow-up. The file is
+## device, and the passphrase rests on the device's unique id. The folder is kept out of OS
+## backups by PKeyBackupExclusion: the caller roots `state_dir` in `PKeyBackupExclusion.root()` (Android's
+## no-backup directory) and the first write marks it excluded on iOS. The file is
 ## owner-only (0600) where the OS has modes, written to a random temporary name and renamed over the
 ## target. GDScript has no O_EXCL or O_NOFOLLOW; the random name and the rename stand in. The root is
 ## never written: the key ring keeps it in memory. A purge deletes this file (`remove`) first.
@@ -218,6 +219,7 @@ func _ensure_dir() -> bool:
 			return false
 		if _unix():
 			FileAccess.set_unix_permissions(dir, _OWNER_RWX)
+		PKeyBackupExclusion.exclude(dir)
 	return true
 
 
