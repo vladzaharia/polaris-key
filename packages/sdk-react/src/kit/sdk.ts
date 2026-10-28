@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { UiInput } from "@polaris-key/ui-core";
+import type { AutoOutcome, UiInput } from "@polaris-key/ui-core";
 import {
   gateInput,
   openManage,
@@ -23,16 +23,29 @@ import {
 
 import { PolarisContext } from "../react/context.js";
 import { useAdapterState } from "../react/hooks.js";
-import type { OidcSignInHandle, PolarisState } from "../core/index.js";
+import type {
+  OidcSignInHandle,
+  PolarisAdapter,
+  PolarisState,
+} from "../core/index.js";
 
 import { openLink, safeLink } from "./links.js";
 
 export { gateInput, type GateStep };
 
+/** The gate's steps: the key and hand-off steps, and the in-app sign-in form (`signin`). */
+export type SdkStep = GateStep | "signin";
+
+/** The longest the gate holds its checking screen for automatic sign-in. */
+const AUTO_WAIT_MS = 10_000;
+
 /** What `<PolarisKeyGate>` needs from the SDK. */
 export interface SdkGate {
+  adapter: PolarisAdapter;
   input: UiInput;
-  step: GateStep;
+  step: SdkStep;
+  /** What automatic sign-in found, for the sign-in form to show first (null: the methods). */
+  seed: AutoOutcome | null;
   /** The control that opened the current step, so Back returns focus to it. */
   opener: string | null;
   act(key: string): void;
@@ -55,7 +68,20 @@ export function useSdkGate(
   // The hooks run whether or not a provider exists; with none they hold an inert state.
   const adapter = ctx?.adapter ?? null;
   const state = useAdapterState(adapter ?? INERT);
-  const [step, setStep] = useState<GateStep>("home");
+  const [step, setStep] = useState<SdkStep>("home");
+  // Automatic sign-in: pending while the one run at boot is out, then what it found.
+  const [auto, setAuto] = useState<{
+    pending: boolean;
+    seed: AutoOutcome | null;
+  }>({ pending: false, seed: null });
+  const autoStarted = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   const [key, setKey] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [handle, setHandle] = useState<OidcSignInHandle | null>(null);
@@ -82,10 +108,15 @@ export function useSdkGate(
     handleRef.current?.cancel?.();
     setHandle(null);
     setStep("home");
+    // What the ladder found is spent (its grant went with the form); the methods stay one press away.
+    setAuto((a) => ({
+      ...a,
+      seed: a.seed ? { kind: "needsSignIn" } : null,
+    }));
     setDismissed(errorRef.current);
     setSubmitted(false);
   }, []);
-  const enter = useCallback((next: GateStep, from: string) => {
+  const enter = useCallback((next: SdkStep, from: string) => {
     setOpener(from);
     setStep(next);
     if (typeof history !== "undefined" && !pushed.current) {
@@ -165,6 +196,34 @@ export function useSdkGate(
       pushed.current = false;
     }
   }, [state.status, state.phase]);
+  // Automatic sign-in: once at boot, when the page needs one and the product can sign in. What
+  // it found steps the gate into the in-app form (a confirm, the license list, the device
+  // limit); a sign-in that landed moves the license state by itself.
+  const autoOn =
+    ctx !== null &&
+    ctx.autoSignIn !== false &&
+    typeof adapter?.autoSignIn === "function";
+  const identityOn = state.capabilities?.identity.enabled === true;
+  useEffect(() => {
+    if (!autoOn || !adapter || autoStarted.current) return;
+    if (
+      state.phase === "loading" ||
+      state.status !== "needs-activation" ||
+      !identityOn
+    )
+      return;
+    autoStarted.current = true;
+    setAuto({ pending: true, seed: null });
+    // The ladder and its mapping load now, with the run, not with the page.
+    void import("./autoMap.js")
+      .then((m) => m.runAuto(adapter, AUTO_WAIT_MS))
+      .catch(() => ({ seed: null, open: false }))
+      .then(({ seed, open }) => {
+        if (!alive.current) return;
+        setAuto({ pending: false, seed });
+        if (open) setStep("signin");
+      });
+  }, [autoOn, adapter, state.phase, state.status, identityOn]);
   // An identity failure ends the hand-off (the Welcome step shows it).
   const identityError = state.error.identity;
   useEffect(() => {
@@ -251,6 +310,15 @@ export function useSdkGate(
           return;
         }
         case "welcome.signIn":
+          // The ladder found nothing to continue with: Sign in opens the form, whose provider
+          // button asks for the account chooser.
+          if (auto.seed?.kind === "needsSignIn" && step === "home") {
+            enter("signin", k);
+            return;
+          }
+          handleRef.current?.cancel?.();
+          signIn();
+          return;
         case "signin.key.signIn":
         case "signin.again":
         case "signin.handoff.again":
@@ -354,6 +422,7 @@ export function useSdkGate(
       step,
       enter,
       leave,
+      auto.seed,
     ],
   );
 
@@ -370,7 +439,7 @@ export function useSdkGate(
       ctx
         ? withSignInError(
             gateInput(state, {
-              step,
+              step: step === "signin" ? "home" : step,
               key,
               submitted,
               handle,
@@ -396,8 +465,13 @@ export function useSdkGate(
   );
   if (!ctx || !input) return null;
   return {
-    input,
+    adapter: ctx.adapter,
+    // While automatic sign-in is out the gate keeps its checking screen, never a flash of Welcome.
+    input: auto.pending
+      ? { ...input, gate: { checking: true, cached: false } }
+      : input,
     step,
+    seed: auto.seed,
     opener,
     act,
     edit,
@@ -414,7 +488,7 @@ function withSignInError(input: UiInput, failed: boolean): UiInput {
 const INERT = {
   subscribe: () => () => {},
   snapshot: () => INERT_STATE,
-} as unknown as import("../core/index.js").PolarisAdapter;
+} as unknown as PolarisAdapter;
 const INERT_STATE = {
   phase: "loading",
   status: "needs-activation",

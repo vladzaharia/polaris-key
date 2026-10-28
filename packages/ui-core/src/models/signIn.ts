@@ -343,6 +343,17 @@ function autoStepView(
         provider,
         tier: ctx.input.account?.tier,
         code: auto.code,
+        // The existing-license line's arguments (the kit words `term` itself, from its copy).
+        license: auto.anchor?.name,
+        device: auto.device,
+        position:
+          auto.anchor?.position !== undefined
+            ? String(auto.anchor.position)
+            : undefined,
+        limit:
+          auto.anchor?.limit !== undefined
+            ? String(auto.anchor.limit)
+            : undefined,
       },
       primary: o.primary ?? null,
       tone: o.tone ?? null,

@@ -13,6 +13,8 @@ export interface PolarisContextValue {
   version?: string;
   /** The product slug (`config.productSlug`): the kit's diagnostics name it. */
   productSlug?: string;
+  /** False when the Provider's `autoSignIn={false}`: the gate does not try automatic sign-in. */
+  autoSignIn?: false;
 }
 
 /** Null until a `<PolarisKeyProvider>` mounts — hooks throw a clear error otherwise. */

@@ -1,11 +1,19 @@
 // Builds the browser's key ring engine. The adapter loads this module on the first ring call
 // (`lazyKeyring`), so the engine, its crypto, the root vault and the default device key store stay
 // out of the initial load of a page that never opens the ring.
-import { createWebDeviceKeyStore } from "@polaris-key/client-core";
+import {
+  createWebDeviceKeyStore,
+  type DeviceKeyPort,
+} from "@polaris-key/client-core";
 import type { BearerSession } from "../bearer/session.js";
 import type { BrowserAdapterOptions } from "../browserAdapter.js";
 import { RingEngine } from "./engine.js";
 import { indexedDbRootVault } from "./rootVault.js";
+
+/** The default device key store (IndexedDB, a memory fallback). */
+export function createDeviceKeys(): DeviceKeyPort {
+  return createWebDeviceKeyStore();
+}
 
 export function createRingEngine(a: {
   product: string;

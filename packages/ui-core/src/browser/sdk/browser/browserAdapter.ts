@@ -93,7 +93,6 @@ import {
   isValidHostOutlet,
   reloadFeeds,
   resolveUpdateOutlet,
-  createWebDeviceKeyStore,
   type DetectedOutlet,
   type HostOutlet,
   type OutletStamp,
@@ -2030,12 +2029,14 @@ export class BrowserAdapter implements PolarisAdapter {
 
   private ring_: KeyringClient | null = null;
   private readonly ringOptions: BrowserAdapterOptions["keyring"];
-  private deviceKeys_: DeviceKeyPort | null = null;
+  private deviceKeys_: Promise<DeviceKeyPort> | null = null;
 
-  /** The device key store the key ring and the platform sign-in share: one port per adapter. */
-  private deviceKeyPort(): DeviceKeyPort {
-    return (this.deviceKeys_ ??=
-      this.ringOptions?.deviceKeys ?? createWebDeviceKeyStore());
+  /** The device key store the key ring and the platform sign-in share: one port per adapter. The
+   *  default store (IndexedDB) loads with the first thing that needs it, not with the page. */
+  private deviceKeyPort(): Promise<DeviceKeyPort> {
+    return (this.deviceKeys_ ??= this.ringOptions?.deviceKeys
+      ? Promise.resolve(this.ringOptions.deviceKeys)
+      : import("./ring/create.js").then((m) => m.createDeviceKeys()));
   }
 
   // ── Automatic sign-in (identity.autosignin, I-46.4) ──────────────────────────────────────
@@ -2085,12 +2086,14 @@ export class BrowserAdapter implements PolarisAdapter {
     const b = this.bearer;
     if (this.configError || !b) return { kind: "unavailable", code: "runtime" };
     try {
+      // A person-initiated sign-in lifts the sign-out flag (a boot-time ladder honours it).
+      if (opts.explicit === true) await this.setExplicitSignOut(false);
       await this.ensureDiscovery();
       const m = await import("./bearer/autoSignIn.js");
       const result = await m.runAutoSignIn(
         {
           bearer: b,
-          port: this.deviceKeyPort(),
+          port: await this.deviceKeyPort(),
           provider: this.platformProvider(m),
           endpoints: exchangeDiscoveryOf(this.discovery_),
           explicitSignOut: () => this.explicitSignOut(),
@@ -2126,7 +2129,7 @@ export class BrowserAdapter implements PolarisAdapter {
       (await import("./ring/create.js")).createRingEngine({
         product: this.product,
         bearer: b,
-        options: { ...o, deviceKeys: this.deviceKeyPort() },
+        options: { ...o, deviceKeys: await this.deviceKeyPort() },
       }),
     ));
   }

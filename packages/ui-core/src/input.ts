@@ -170,6 +170,16 @@ export interface AutoSignInInput {
   alsoGets?: boolean;
   /** The code the waiting device shows, which the person taps on the approving device. */
   code?: string;
+  /** The license an existing-license confirm names: the arguments of its license line
+   *  (`signin.consent.licenseLine`). `term` is `perpetual` or the end as epoch seconds. */
+  anchor?: {
+    name: string;
+    term: "perpetual" | number;
+    position?: number;
+    limit?: number;
+  };
+  /** The name this device goes by in the license line. */
+  device?: string;
 }
 
 /** The approving device's side of nearby sign-in. Absent: the account-menu entry. */
