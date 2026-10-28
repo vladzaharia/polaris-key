@@ -31,7 +31,7 @@ import { ErrorCode } from "../constants.generated.js";
 import { PolarisError } from "../core/types.js";
 import type { DiscoveryDocument } from "./discovery.js";
 import type { TrustSet } from "./offline.js";
-import { buildDownloadUrlFor, endpoint, expand, wireCodeOf } from "./update.js";
+import { buildDownloadUrlFor, endpoint, expand, wireCodeOf } from "./urls.js";
 
 /** What to download: a `binary` decision, a record hash, or a verified record (each with an
  *  optional build id; without one the record's only build is used). */

@@ -37,6 +37,32 @@ export async function loadKitCopyEnRest(): Promise<
   return (await import("./en-rest.json", { with: { type: "json" } })).default;
 }
 
+/** The key prefixes `en-rest.json` holds: a key under one is missing only until the rest loads. */
+export const KIT_COPY_LAZY_PREFIXES: readonly string[] = [
+  "core.codes.",
+  "cli.",
+  "common.update",
+  "menu.signOut",
+  "menu.account",
+  "signin.signout.titleMac",
+  "signin.signout.releasedMac",
+  "signin.approve.",
+  "signin.choice.",
+  "signin.join.",
+  "signin.replace.",
+  "signin.linkOffer.",
+  "signin.nearby.",
+  "core.activation.",
+  "signin.consent.",
+  "signin.code.",
+  "signin.device.",
+  "signin.cli.",
+  "signin.console.",
+  "signin.confirmLink.",
+  "signin.mail.",
+  "signin.return.",
+];
+
 /** English platform variants (D13 title case on macOS and documented verbs); other locales have none. */
 export const KIT_COPY_VARIANTS: Readonly<
   Record<string, Readonly<Record<string, string>>>
