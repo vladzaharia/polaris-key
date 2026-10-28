@@ -175,6 +175,7 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
     @State private var window: CGSize = .zero
 
     @Environment(\.kitInSheet) private var inSheet
+    @Environment(\.dynamicTypeSize) private var dynamicType
 
     var body: some View {
         #if os(macOS)
@@ -236,6 +237,9 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
             // A wide window (an iPad in portrait) keeps the act with the content: the main action
             // stays in the first view instead of 600 pt below it (UI-KITS: main action first).
             let regular = geo.size.width > 600
+            // At accessibility sizes the lines scroll and the act docks to the bottom edge, so the
+            // main action stays in the first viewport (SIGN-IN §3.19). A hero keeps its flow.
+            let docked = dynamicType.isAccessibilitySize && !hero
             ScrollView {
                 VStack(spacing: 0) {
                     // A hero screen centres its block near the upper third (spacers 1:2); a
@@ -273,15 +277,19 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
                         // A body narrower than the column starts at the title's edge.
                         .frame(maxWidth: .infinity, alignment: hero ? .center : .leading)
                     }
-                    Spacer(minLength: style.space(.lg))
-                        .frame(maxHeight: regular ? style.space(.xl) * 1.5 : .infinity)
-                    if hero && !regular { Spacer(minLength: 0) }
-                    VStack(spacing: style.space(.md)) {
-                        actions()
-                        footer()
+                    if docked {
+                        Spacer(minLength: style.space(.lg))
+                    } else {
+                        Spacer(minLength: style.space(.lg))
+                            .frame(maxHeight: regular ? style.space(.xl) * 1.5 : .infinity)
+                        if hero && !regular { Spacer(minLength: 0) }
+                        VStack(spacing: style.space(.md)) {
+                            actions()
+                            footer()
+                        }
+                        .padding(.bottom, style.space(.lg))
+                        if regular { Spacer(minLength: 0) }
                     }
-                    .padding(.bottom, style.space(.lg))
-                    if regular { Spacer(minLength: 0) }
                 }
                 .padding(.horizontal, style.space(.lg))
                 .frame(maxWidth: geo.size.width > 600 ? 480 : .infinity)
@@ -290,6 +298,20 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if docked {
+                    VStack(spacing: style.space(.md)) {
+                        actions()
+                        footer()
+                    }
+                    .padding(.horizontal, style.space(.lg))
+                    .padding(.top, style.space(.sm))
+                    .padding(.bottom, style.space(.lg))
+                    .frame(maxWidth: geo.size.width > 600 ? 480 : .infinity)
+                    .frame(maxWidth: .infinity)
+                    .background(style.palette.page)
+                }
+            }
         }
     }
 

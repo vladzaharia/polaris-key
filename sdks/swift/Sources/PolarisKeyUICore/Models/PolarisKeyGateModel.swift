@@ -267,6 +267,12 @@ public final class PolarisKeyGateModel {
     private var pendingConsent: PendingConsent?
     /// The choice view of a `deviceLimit` result (no grant: Replace goes to the browser).
     private var limitChoices: KitLicenseChoices?
+    /// The refusal's `manageUrl` behind `limitChoices`: where Replace a device goes when the rows
+    /// carry no page of their own.
+    public private(set) var limitManageUrl: String?
+    /// Replace a device was opened in the browser from a device-limit step: on return the
+    /// provider sign-in runs once more (KFA decision e).
+    private var replaceOpened = false
     private var ladderStarted = false
 
     /// A live model over `client`.
@@ -615,6 +621,7 @@ public final class PolarisKeyGateModel {
         guard let client else { return }
         // A fresh request replaces a choice whose grant lapsed.
         choice = nil
+        dropLimit()
         route = .signIn
         signInError = nil
         signIn = KitSignIn(
@@ -689,7 +696,7 @@ public final class PolarisKeyGateModel {
     /// Cancel the sign-in: the form returns to its first step; nothing binds.
     public func cancelSignIn() {
         dropConsent()
-        limitChoices = nil
+        dropLimit()
         if let held = choice {
             // Backing out of the choice abandons the grant; nothing was bound.
             choice = nil
@@ -1005,7 +1012,7 @@ public final class PolarisKeyGateModel {
         }
         pendingConsent = held
         choice = nil
-        limitChoices = nil
+        dropLimit()
         signInError = nil
         pending = nil
         signInProvider = Self.providerName(held.consent.as.provider) ?? fallback
@@ -1062,8 +1069,9 @@ public final class PolarisKeyGateModel {
 
     /// "Use another account" on the confirm step: the grant is dropped and the methods show.
     public func useAnotherAccount() {
-        guard pendingConsent != nil else { return }
+        guard pendingConsent != nil || inDeviceLimit else { return }
         dropConsent()
+        dropLimit()
         signInError = nil
         signIn = KitSignIn(
             presentation: options.signInPresentation, replace: options.replace, channel: .browser)
@@ -1084,23 +1092,65 @@ public final class PolarisKeyGateModel {
         signInProvider = provider
         pending = nil
         choice = nil
+        dropConsent()
+        replaceOpened = false
+        if signIn == nil || signIn?.outcome == .signedIn {
+            signIn = KitSignIn(
+                presentation: options.signInPresentation, replace: options.replace,
+                channel: .browser)
+        }
+        signInError = nil
         if let view, !view.choices.isEmpty {
             // Every seat is taken: the rows that are full, with their Replace in the browser.
+            autoSignIn = nil
             limitChoices = LicenseChoiceModel.choices(from: view)
-            if signIn == nil {
-                signIn = KitSignIn(
-                    presentation: options.signInPresentation, replace: options.replace,
-                    channel: .browser)
-            }
+            limitManageUrl = manageUrl
             route = .signIn
             rebuild()
             announce(licenseChoice.copy.first)
         } else {
-            activation = KitActivation(result: "device-limit", manageUrl: manageUrl)
-            route = .activate
+            // No rows: the step of its own (ui-matrix SignIn/device-limit), never the key screen.
+            limitChoices = nil
+            limitManageUrl = nil
+            autoSignIn = KitAutoSignIn(step: .deviceLimit, manageUrl: manageUrl)
+            route = .signIn
             rebuild()
-            announce(activate.copy.first)
+            announce(signInScreen.copy.first)
         }
+    }
+
+    /// Whether the form shows a device limit: the step with no rows, or the rows that are full.
+    public var inDeviceLimit: Bool {
+        route == .signIn && choice == nil
+            && (inputs.autoSignIn?.step == .deviceLimit || limitChoices != nil)
+    }
+
+    /// Let go of a device-limit step (its rows, link and pending return).
+    private func dropLimit() {
+        limitChoices = nil
+        limitManageUrl = nil
+        replaceOpened = false
+        if autoSignIn?.step == .deviceLimit { autoSignIn = nil }
+    }
+
+    /// The view opened Replace a device in the browser from a device-limit step.
+    public func replaceOpenedInBrowser() {
+        guard autoSignIn?.step == .deviceLimit || limitChoices != nil else { return }
+        replaceOpened = true
+    }
+
+    /// The app came back to the foreground. If Replace a device was opened from a device-limit
+    /// step, the provider sign-in runs once more and this answers true; the person does not
+    /// start again by hand. Any other return is the caller's to handle.
+    @discardableResult
+    public func resumeAfterReplace() -> Bool {
+        guard replaceOpened, autoSignIn?.step == .deviceLimit || limitChoices != nil else {
+            replaceOpened = false
+            return false
+        }
+        replaceOpened = false
+        signInWithProvider()
+        return true
     }
 
     /// The sign-in form's provider row (Sign in with Apple): the plain account sheet over a fresh
@@ -1111,7 +1161,7 @@ public final class PolarisKeyGateModel {
         let kind = provider.kind
         let name = Self.providerName(kind)
         choice = nil
-        limitChoices = nil
+        dropLimit()
         dropConsent()
         route = .signIn
         signInError = nil

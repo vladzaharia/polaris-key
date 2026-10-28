@@ -54,6 +54,8 @@ struct KitText: View {
     var role: KitTextRole = .body
     var color: KitTextColor = .default
     var alignment: TextAlignment = .leading
+    /// A weight over the role's own (the confirm step's license line reads 500).
+    var weight: Font.Weight?
 
     @Environment(\.polarisKeyStrings) private var strings
     #if os(macOS)
@@ -62,12 +64,13 @@ struct KitText: View {
 
     init(
         _ line: CopyLine, _ role: KitTextRole = .body, color: KitTextColor = .default,
-        alignment: TextAlignment = .leading
+        alignment: TextAlignment = .leading, weight: Font.Weight? = nil
     ) {
         self.line = line
         self.role = role
         self.color = color
         self.alignment = alignment
+        self.weight = weight
     }
 
     init(
@@ -88,7 +91,7 @@ struct KitText: View {
     var body: some View {
         kitStyle { style in
             Text(strings.string(line))
-                .font(style.font(role))
+                .font(weight.map { style.font(role).weight($0) } ?? style.font(role))
                 .foregroundStyle(color.resolve(style.palette))
                 .multilineTextAlignment(resolvedAlignment)
                 .fixedSize(horizontal: false, vertical: true)
