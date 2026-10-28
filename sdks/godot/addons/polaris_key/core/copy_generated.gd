@@ -165,6 +165,7 @@ const COPY_CODES := {
 	"store-failed": {"title": "Storage problem", "message": "Couldn't save on this device. Check storage and try again."},
 	"connect-unavailable": {"title": "Connect unavailable", "message": "Nearby connection isn't available for this app on this device."},
 	"peer-cert-invalid": {"title": "Device not verified", "message": "This device couldn't be verified. Try again."},
+	"nearby-permission-denied": {"title": "Local network blocked", "message": "This app can't reach devices on your local network. Allow it in system settings."},
 	"platform-error": {"title": "Platform problem", "message": "The platform reported an error. Try again."},
 	"no-token": {"title": "Not activated", "message": "This device isn't activated yet. Activate it or sign in."},
 	"mint-unavailable": {"title": "Not available", "message": "This isn't available for this app."},

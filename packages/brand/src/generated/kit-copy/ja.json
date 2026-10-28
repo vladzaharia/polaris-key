@@ -1197,6 +1197,8 @@
   "core.codes.connect-unavailable.message": "このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。",
   "core.codes.peer-cert-invalid.title": "デバイスを確認できません",
   "core.codes.peer-cert-invalid.message": "このデバイスを確認できませんでした。もう一度お試しください。",
+  "core.codes.nearby-permission-denied.title": "ローカルネットワークがブロックされています",
+  "core.codes.nearby-permission-denied.message": "このアプリはローカルネットワーク上のデバイスにアクセスできません。システム設定で許可してください。",
   "core.codes.platform-error.title": "プラットフォームの問題",
   "core.codes.platform-error.message": "プラットフォームがエラーを報告しました。もう一度お試しください。",
   "core.codes.no-token.title": "アクティベートされていません",

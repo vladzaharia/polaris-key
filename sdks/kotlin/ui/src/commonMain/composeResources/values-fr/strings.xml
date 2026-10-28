@@ -2617,6 +2617,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_message">Cet appareil n'a pas pu être vérifié. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_title">Réseau local bloqué</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_message">Cette app ne peut pas accéder aux appareils de votre réseau local. Autorisez-le dans les réglages du système.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">Problème de plateforme</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_message">La plateforme a signalé une erreur. Réessayez.</string>

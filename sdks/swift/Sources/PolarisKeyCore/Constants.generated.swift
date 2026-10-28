@@ -158,6 +158,7 @@ public enum ErrorCode {
     public static let storeFailed = "store-failed"
     public static let connectUnavailable = "connect-unavailable"
     public static let peerCertInvalid = "peer-cert-invalid"
+    public static let nearbyPermissionDenied = "nearby-permission-denied"
     public static let platformError = "platform-error"
     public static let noToken = "no-token"
     public static let mintUnavailable = "mint-unavailable"
@@ -368,6 +369,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "store-failed",
     "connect-unavailable",
     "peer-cert-invalid",
+    "nearby-permission-denied",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -578,6 +580,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "store-failed": "client",
     "connect-unavailable": "client",
     "peer-cert-invalid": "client",
+    "nearby-permission-denied": "client",
     "platform-error": "client",
     "no-token": "client",
     "mint-unavailable": "client",

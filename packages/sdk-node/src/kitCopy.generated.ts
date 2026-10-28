@@ -1498,6 +1498,9 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-cert-invalid.title": "Device not verified",
     "core.codes.peer-cert-invalid.message":
       "This device couldn't be verified. Try again.",
+    "core.codes.nearby-permission-denied.title": "Local network blocked",
+    "core.codes.nearby-permission-denied.message":
+      "This app can't reach devices on your local network. Allow it in system settings.",
     "core.codes.platform-error.title": "Platform problem",
     "core.codes.platform-error.message":
       "The platform reported an error. Try again.",
@@ -3323,6 +3326,9 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-cert-invalid.title": "Gerät nicht bestätigt",
     "core.codes.peer-cert-invalid.message":
       "Dieses Gerät konnte nicht bestätigt werden. Versuchen Sie es erneut.",
+    "core.codes.nearby-permission-denied.title": "Lokales Netzwerk gesperrt",
+    "core.codes.nearby-permission-denied.message":
+      "Diese App kann keine Geräte in Ihrem lokalen Netzwerk erreichen. Erlauben Sie es in den Systemeinstellungen.",
     "core.codes.platform-error.title": "Plattformproblem",
     "core.codes.platform-error.message":
       "Die Plattform hat einen Fehler gemeldet. Versuchen Sie es erneut.",
@@ -5137,6 +5143,9 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-cert-invalid.title": "Appareil non vérifié",
     "core.codes.peer-cert-invalid.message":
       "Cet appareil n'a pas pu être vérifié. Réessayez.",
+    "core.codes.nearby-permission-denied.title": "Réseau local bloqué",
+    "core.codes.nearby-permission-denied.message":
+      "Cette app ne peut pas accéder aux appareils de votre réseau local. Autorisez-le dans les réglages du système.",
     "core.codes.platform-error.title": "Problème de plateforme",
     "core.codes.platform-error.message":
       "La plateforme a signalé une erreur. Réessayez.",
@@ -6940,6 +6949,9 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-cert-invalid.title": "Dispositivo no verificado",
     "core.codes.peer-cert-invalid.message":
       "No se pudo verificar este dispositivo. Inténtalo de nuevo.",
+    "core.codes.nearby-permission-denied.title": "Red local bloqueada",
+    "core.codes.nearby-permission-denied.message":
+      "Esta app no puede acceder a los dispositivos de tu red local. Permítelo en los ajustes del sistema.",
     "core.codes.platform-error.title": "Problema de la plataforma",
     "core.codes.platform-error.message":
       "La plataforma informó de un error. Vuelve a intentarlo.",
@@ -8712,6 +8724,9 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-cert-invalid.title": "Dispositivo não verificado",
     "core.codes.peer-cert-invalid.message":
       "Não foi possível verificar este dispositivo. Tente novamente.",
+    "core.codes.nearby-permission-denied.title": "Rede local bloqueada",
+    "core.codes.nearby-permission-denied.message":
+      "Este app não consegue acessar dispositivos da sua rede local. Permita nas configurações do sistema.",
     "core.codes.platform-error.title": "Problema na plataforma",
     "core.codes.platform-error.message":
       "A plataforma informou um erro. Tente novamente.",
@@ -10496,6 +10511,9 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-cert-invalid.title": "Dispositivo non verificato",
     "core.codes.peer-cert-invalid.message":
       "Impossibile verificare questo dispositivo. Riprova.",
+    "core.codes.nearby-permission-denied.title": "Rete locale bloccata",
+    "core.codes.nearby-permission-denied.message":
+      "Questa app non può raggiungere i dispositivi sulla tua rete locale. Consentilo nelle impostazioni di sistema.",
     "core.codes.platform-error.title": "Problema della piattaforma",
     "core.codes.platform-error.message":
       "La piattaforma ha segnalato un errore. Riprova.",
@@ -12299,6 +12317,10 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-cert-invalid.title": "デバイスを確認できません",
     "core.codes.peer-cert-invalid.message":
       "このデバイスを確認できませんでした。もう一度お試しください。",
+    "core.codes.nearby-permission-denied.title":
+      "ローカルネットワークがブロックされています",
+    "core.codes.nearby-permission-denied.message":
+      "このアプリはローカルネットワーク上のデバイスにアクセスできません。システム設定で許可してください。",
     "core.codes.platform-error.title": "プラットフォームの問題",
     "core.codes.platform-error.message":
       "プラットフォームがエラーを報告しました。もう一度お試しください。",
@@ -14030,6 +14052,9 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-cert-invalid.title": "기기를 확인할 수 없음",
     "core.codes.peer-cert-invalid.message":
       "이 기기를 확인할 수 없습니다. 다시 시도하세요.",
+    "core.codes.nearby-permission-denied.title": "로컬 네트워크 차단됨",
+    "core.codes.nearby-permission-denied.message":
+      "이 앱이 로컬 네트워크의 기기에 접근할 수 없습니다. 시스템 설정에서 허용해 주세요.",
     "core.codes.platform-error.title": "플랫폼 문제",
     "core.codes.platform-error.message":
       "플랫폼에서 오류를 보고했어요. 다시 시도하세요.",
@@ -15639,6 +15664,9 @@ export const KIT_COPY: Readonly<
       "此设备上的此应用无法连接附近的设备。",
     "core.codes.peer-cert-invalid.title": "无法验证设备",
     "core.codes.peer-cert-invalid.message": "无法验证此设备。请重试。",
+    "core.codes.nearby-permission-denied.title": "本地网络已被阻止",
+    "core.codes.nearby-permission-denied.message":
+      "此应用无法访问本地网络上的设备。请在系统设置中允许。",
     "core.codes.platform-error.title": "平台出现问题",
     "core.codes.platform-error.message": "平台报告了一个错误。请重试。",
     "core.codes.no-token.title": "未激活",

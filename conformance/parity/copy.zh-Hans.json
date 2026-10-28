@@ -597,6 +597,10 @@
       "title": "无法验证设备",
       "message": "无法验证此设备。请重试。"
     },
+    "nearby-permission-denied": {
+      "title": "本地网络已被阻止",
+      "message": "此应用无法访问本地网络上的设备。请在系统设置中允许。"
+    },
     "platform-error": {
       "title": "平台出现问题",
       "message": "平台报告了一个错误。请重试。"

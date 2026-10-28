@@ -6826,6 +6826,16 @@ msgstr "Gerät nicht bestätigt"
 msgid "core.codes.peer-cert-invalid.message"
 msgstr "Dieses Gerät konnte nicht bestätigt werden. Versuchen Sie es erneut."
 
+#. Local network blocked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.title"
+msgstr "Lokales Netzwerk gesperrt"
+
+#. This app can't reach devices on your local network. Allow it in system settings.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.message"
+msgstr "Diese App kann keine Geräte in Ihrem lokalen Netzwerk erreichen. Erlauben Sie es in den Systemeinstellungen."
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"

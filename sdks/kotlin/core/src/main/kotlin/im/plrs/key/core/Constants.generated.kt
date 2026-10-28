@@ -160,6 +160,7 @@ public object ErrorCode {
     public const val storeFailed: String = "store-failed"
     public const val connectUnavailable: String = "connect-unavailable"
     public const val peerCertInvalid: String = "peer-cert-invalid"
+    public const val nearbyPermissionDenied: String = "nearby-permission-denied"
     public const val platformError: String = "platform-error"
     public const val noToken: String = "no-token"
     public const val mintUnavailable: String = "mint-unavailable"
@@ -370,6 +371,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "store-failed",
     "connect-unavailable",
     "peer-cert-invalid",
+    "nearby-permission-denied",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -580,6 +582,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "store-failed" to "client",
     "connect-unavailable" to "client",
     "peer-cert-invalid" to "client",
+    "nearby-permission-denied" to "client",
     "platform-error" to "client",
     "no-token" to "client",
     "mint-unavailable" to "client",
