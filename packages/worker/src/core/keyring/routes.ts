@@ -32,7 +32,9 @@
  * ANOTHER device only while it holds a current wrap itself (it holds the root). A device may
  * always store a wrap for itself (after a recovery code or a platform backup restored the root).
  * A wrap is create-only, so the slot cannot be overwritten; the owner removes its own and writes
- * again. Clients open a wrap only against the ring's `rootKid`, which the server cannot forge.
+ * again. Clients open a wrap only against the ring's `rootKid`, and only for the ring they pinned
+ * when they first acquired a root: a served ring that differs is reported to the person, never
+ * adopted by the client on its own.
  *
  * A wrap is served only to its own device, and only while the wrap row is current: the device is
  * live, still carries the ring's subject, and registered its keys no later than the wrap was made.
