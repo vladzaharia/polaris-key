@@ -11,6 +11,7 @@ import {
   net,
   Notification,
   protocol,
+  shell,
   systemPreferences,
 } from "electron";
 import type { MenuItemConstructorOptions } from "electron";
@@ -85,6 +86,8 @@ void (async () => {
     },
     // Accent, high contrast and reduced transparency for the kit's native chrome.
     electron: { systemPreferences, nativeTheme },
+    // The kit's links out (replace a device, release notes, the sign-in page): https only.
+    shell,
   });
 
   // The kit's two menu items: in the app menu on macOS, the Help menu elsewhere.
@@ -112,8 +115,19 @@ void (async () => {
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 
-  // The window shows the app and nothing else: no popups, no navigation away.
-  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  // The window shows the app and nothing else: no popups, no navigation away. A link the page
+  // opens leaves for the system browser when it is https; everything else is dropped. (The kit
+  // itself asks the bridge, whose own https check and sender rule apply.)
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const u = new URL(url);
+      if (u.protocol === "https:" && !u.username && !u.password)
+        void shell.openExternal(u.href);
+    } catch {
+      // Not a URL: nothing opens.
+    }
+    return { action: "deny" };
+  });
   // Compare scheme and host: `.origin` is the opaque "null" for app: and file: URLs.
   const page = new URL(pageUrl);
   const stay = (e: { preventDefault(): void }, url: string) => {

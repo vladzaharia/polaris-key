@@ -438,6 +438,49 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
     expect(ipc.handlers.size).toBe(0);
   });
 
+  // @pkey-feature core.presentation
+  it("openExternal opens an https URL through the host's shell and nothing else (UK-06.16)", async () => {
+    const opened: string[] = [];
+    const { bridge, ipc } = await setup({}, "pkeyt_seed", {
+      host: { shell: { openExternal: async (u) => void opened.push(u) } },
+    });
+    const open = bridge.openExternal!;
+    expect(await open("https://polaris.locker/activate?next=free-device")).toBe(
+      true,
+    );
+    expect(opened).toEqual([
+      "https://polaris.locker/activate?next=free-device",
+    ]);
+    for (const bad of [
+      "http://polaris.locker/",
+      "javascript:alert(1)",
+      "file:///etc/passwd",
+      "app://main/index.html",
+      "https://user:pw@polaris.locker/",
+      "not a url",
+    ])
+      await expect(open(bad), bad).rejects.toMatchObject({
+        code: "invalid-argument",
+      });
+    await expect(open(42 as never)).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+    expect(opened).toHaveLength(1);
+    // The sender rule applies to it as to every other call.
+    ipc.deny();
+    await expect(open("https://polaris.locker/")).rejects.toMatchObject({
+      code: "sender-refused",
+    });
+    expect(opened).toHaveLength(1);
+  });
+
+  it("openExternal without a shell answers not-configured", async () => {
+    const { bridge } = await setup();
+    await expect(
+      bridge.openExternal!("https://polaris.locker/"),
+    ).rejects.toMatchObject({ code: "not-configured" });
+  });
+
   it("exposes the bridge in the main world under window.polarisKey", () => {
     const exposed: Record<string, unknown> = {};
     exposePolarisBridgeInMainWorld({

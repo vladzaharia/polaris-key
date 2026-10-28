@@ -1012,8 +1012,14 @@ export function actions(
       : Number(b === primary) - Number(a === primary),
   );
   // Pressed once: while the work runs the primary is busy and ignores further presses.
+  // The update prompt's primary is busy for as long as the download runs (a second press would
+  // start a second install).
   const busy =
-    c.input.pending !== undefined || c.input.signIn?.redeeming === true;
+    c.input.pending !== undefined ||
+    c.input.signIn?.redeeming === true ||
+    (c.driven === true &&
+      c.view.component === "UpdatePrompt" &&
+      c.view.state === "downloading");
   return (
     <div
       className="actions"

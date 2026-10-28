@@ -555,7 +555,10 @@ export function useKit(
     tight,
     headingLevel:
       props.headingLevel ??
-      (props.embedded || LAYOUTS[v.component as OwnLayouts]?.kind === "pane"
+      // The update prompt is a modal dialog over the host, whose own page keeps the h1.
+      (props.embedded ||
+      v.component === "UpdatePrompt" ||
+      LAYOUTS[v.component as OwnLayouts]?.kind === "pane"
         ? 2
         : 1),
     interactive: props.onInput !== undefined,
