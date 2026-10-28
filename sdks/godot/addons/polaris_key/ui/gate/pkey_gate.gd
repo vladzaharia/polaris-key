@@ -146,11 +146,18 @@ func _on_signed_in(r: PKeySignInOutcome) -> void:
 	if who == "":
 		who = String(facts["holder"])
 	var tier := String(facts["tier"])
+	who = toast_name(who)
 	if who != "" and tier != "":
 		# One catalog line, "Signed in as {name} · {tier} license", so no kit joins two with a separator.
 		sdk.toasts().show_success(String(catalog().format("signin.desktop.toast", {"name": PKeyUiTheme.isolate(who), "tier": PKeyUiTheme.isolate(tier)})))
 		return
 	sdk.toasts().show_success(t.text("account_holder", PKeyUiTheme.isolate(who)) if who != "" else t.text("sign_in_ok"), t.text("account_tier", PKeyUiTheme.isolate(tier)) if tier != "" else "")
+
+
+## A name for a toast's one line: long ones (an email, a double-barrelled surname) end in an ellipsis
+## rather than breaking a word across lines.
+static func toast_name(name: String) -> String:
+	return name if name.length() <= 20 else name.left(19) + "\u2026"
 
 
 ## The gate squeezes for the dialog it holds (sign-in, offline activation, the device limit).

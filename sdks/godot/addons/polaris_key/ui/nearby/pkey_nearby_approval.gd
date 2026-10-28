@@ -1,4 +1,3 @@
-class_name PKeyNearbyApproval
 extends PKeyUiView
 ## NearbyApproval (ui-matrix v7; ui-core's `nearby_approval_view`): the signed-in device's side of
 ## nearby sign-in. A new device asks to sign in; this shows three 6-digit codes, one of them the
