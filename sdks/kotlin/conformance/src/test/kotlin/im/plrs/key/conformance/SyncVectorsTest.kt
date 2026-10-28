@@ -3,26 +3,37 @@
 // The Kotlin conformance runner for the Cloud Sync E2E primitives in
 // conformance/corpus/v2/sync-vectors.json (WIRE-CONTRACT-V5 section 13.10), read in place; it
 // mirrors the Swift SyncVectorsTests. A runner reads the sections it implements: hkdfCases,
-// envelopeCases, blindCases and canonicalJsonCases. The Gradle `test` task runs it on the JCA
-// backend and `testTink` again with Tink forced for the X25519 the later sections use.
+// envelopeCases, blindCases, canonicalJsonCases, hpkeAnchor, wrapCases, recoveryCodeCases and
+// adoptCases. The Gradle `test` task runs it on the JCA backend and `testTink` again with Tink
+// forced: the X25519 of the HPKE sections then runs on Tink (DeviceCurves), the AEAD on the JCA.
 
 package im.plrs.key.conformance
 
+import im.plrs.key.core.DeviceCurves
+import im.plrs.key.core.JcaDeviceCurves
 import im.plrs.key.core.JsonText
+import im.plrs.key.core.TinkDeviceCurves
+import im.plrs.key.core.X25519Points
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.longValue
 import im.plrs.key.core.stringValue
 import im.plrs.key.core.sync.CanonicalJson
+import im.plrs.key.core.sync.HpkeBaseMode
 import im.plrs.key.core.sync.SyncBlind
 import im.plrs.key.core.sync.SyncCrypto
 import im.plrs.key.core.sync.SyncCryptoException
 import im.plrs.key.core.sync.SyncEnvelope
+import im.plrs.key.core.sync.SyncHpke
 import im.plrs.key.core.sync.SyncKeys
+import im.plrs.key.core.sync.SyncRecovery
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -181,5 +192,128 @@ class SyncVectorsTest : ConformanceSuite() {
             2.0e-3 to "0.002", 1e23 to "1e+23", 4.35 to "4.35", 123456789.0 to "123456789",
         )
         for ((d, s) in cases) assertEquals(s, CanonicalJson.numberString(d))
+    }
+
+    // -- U-39.7: HPKE, the wrap, the recovery code and adopt ---------------------------------------
+
+    private val curves: DeviceCurves = if (Corpus.backend == "tink") TinkDeviceCurves else JcaDeviceCurves
+
+    /** The port's `dh` over [privateKey]: a refused peer key or an all-zero output is null. */
+    private fun dhOver(privateKey: ByteArray): suspend (ByteArray) -> ByteArray? = { peer ->
+        curves.x25519(privateKey, peer)?.takeIf { out -> out.any { it.toInt() != 0 } }
+    }
+
+    @Test
+    fun hpkeAnchor() = runBlocking {
+        val a = v["hpkeAnchor"]!!.obj["vector"]!!.obj
+        val e = a["encryption"]!!.obj
+        val info = bytes(a.s("info"))
+        val aad = bytes(e.s("aad"))
+        val pt = bytes(e.s("pt"))
+        val sealed = SyncHpke.seal(bytes(a.s("pkRm")), SyncHpke.Binding(info, aad), pt, SyncHpke.Ephemeral(bytes(a.s("skEm")), curves))
+        assertEquals(a.s("enc"), hex(sealed.enc))
+        assertEquals(e.s("ct"), hex(sealed.ct))
+        assertEquals(a.s("pkRm"), hex(curves.x25519(bytes(a.s("skRm")), X25519Points.BASE)!!))
+        val opened = SyncHpke.open(bytes(a.s("pkRm")), dhOver(bytes(a.s("skRm"))), bytes(a.s("enc")), SyncHpke.Binding(info, aad), bytes(e.s("ct")))
+        assertEquals(e.s("pt"), hex(opened!!))
+        // The key schedule's own outputs.
+        val dh = curves.x25519(bytes(a.s("skEm")), bytes(a.s("pkRm")))!!
+        val ss = HpkeBaseMode.sharedSecret(dh, bytes(a.s("enc")) + bytes(a.s("pkRm")))
+        assertEquals(a.s("shared_secret"), hex(ss))
+        val ks = HpkeBaseMode.keySchedule(ss, info)
+        assertEquals(a.s("key"), hex(ks.key))
+        assertEquals(a.s("base_nonce"), hex(ks.nonce))
+    }
+
+    @Test
+    fun hpkeRoundTripsWithAFreshEphemeralKey() = runBlocking {
+        val sk = SyncCrypto.random(32)
+        val pk = curves.x25519(sk, X25519Points.BASE)!!
+        val b = SyncHpke.Binding("i".toByteArray(), "a".toByteArray())
+        val s = SyncHpke.seal(pk, b, "hello".toByteArray(), SyncHpke.Ephemeral(curves = curves))
+        assertEquals(32, s.enc.size)
+        assertEquals("hello", String(SyncHpke.open(pk, dhOver(sk), s.enc, b, s.ct)!!))
+        assertNull(SyncHpke.open(pk, dhOver(sk), s.enc, SyncHpke.Binding("j".toByteArray(), b.aad), s.ct))
+    }
+
+    @Test
+    fun wraps() = runBlocking {
+        val f = Failures("sync wrap")
+        for (c in list("wrapCases")) {
+            val ctx = SyncHpke.WrapContext(c.s("product"), c.s("deviceId"), c.s("ringId"), c["epoch"].longValue!!.toInt())
+            val kid = bytes(c.s("kidHex"))
+            val priv = bytes(c.s("recipientPrivateHex"))
+            val pub = curves.x25519(priv, X25519Points.BASE)!!
+            val w = c["wrap"]!!.obj
+            val wrap = SyncHpke.Wrap(w["kem"].longValue!!.toInt(), bytes(w.s("encHex")), bytes(w.s("ctHex")))
+            val got = SyncHpke.unwrapRoot(pub, dhOver(priv), ctx, kid, wrap)
+            f.equal(c.sOrNull("expectRootHex"), got?.let(::hex)) { c.s("id") }
+            val s = c["seal"]?.takeIf { it is JsonObject }?.obj ?: continue
+            f.equal(s.s("infoHex"), hex(SyncHpke.wrapInfo(ctx))) { "${c.s("id")} info" }
+            f.equal(s.s("recipientPublicHex"), hex(pub)) { "${c.s("id")} public key" }
+            val again = SyncHpke.wrapRoot(
+                bytes(s.s("recipientPublicHex")),
+                ctx,
+                kid,
+                bytes(s.s("rootHex")),
+                SyncHpke.Ephemeral(bytes(s.s("ephemeralPrivateHex")), curves),
+            )
+            f.check(again == wrap) { "${c.s("id")} seal" }
+        }
+        f.done(list("wrapCases").size)
+    }
+
+    @Test
+    fun wrapToAZeroKeyIsRefused() {
+        val ctx = SyncHpke.WrapContext("demo", "d", "rg_AAAAAAAAAAAAAAAAAAAAAA", 1)
+        assertTrue(refuses { SyncHpke.wrapRoot(ByteArray(32), ctx, ByteArray(16), ByteArray(32), SyncHpke.Ephemeral(curves = curves)) })
+        assertTrue(refuses { SyncHpke.wrapRoot(ByteArray(31), ctx, ByteArray(16), ByteArray(32), SyncHpke.Ephemeral(curves = curves)) })
+    }
+
+    @Test
+    fun recoveryCodes() {
+        val f = Failures("sync recovery")
+        for (c in list("recoveryCodeCases")) {
+            when (c.s("kind")) {
+                "code" -> {
+                    f.equal(c.s("text"), SyncRecovery.encode(bytes(c.s("codeHex")))) { "${c.s("id")} encode" }
+                    f.equal(c.s("codeHex"), SyncRecovery.parse(c.s("text"))?.let(::hex)) { "${c.s("id")} parse" }
+                }
+
+                "parse" -> f.equal(c.sOrNull("expectCodeHex"), SyncRecovery.parse(c.s("input"))?.let(::hex)) { c.s("id") }
+
+                else -> {
+                    val code = bytes(c.s("codeHex"))
+                    val epoch = c["epoch"].longValue!!.toInt()
+                    val kid = bytes(c.s("kidHex"))
+                    val got = SyncRecovery.unwrap(code, SyncRecovery.RingRef(c.s("ringId"), epoch, kid), bytes(c.s("blobHex")))
+                    f.equal(c.sOrNull("expectRootHex"), got?.let(::hex)) { c.s("id") }
+                    val s = c["seal"]?.takeIf { it is JsonObject }?.obj ?: continue
+                    val again = SyncRecovery.wrap(
+                        code,
+                        SyncRecovery.RingRef(c.s("ringId"), epoch, kid),
+                        bytes(s.s("rootHex")),
+                        bytes(s.s("nonceHex")),
+                    )
+                    f.equal(c.s("blobHex"), hex(again)) { "${c.s("id")} seal" }
+                }
+            }
+        }
+        f.done(list("recoveryCodeCases").size)
+        assertNotNull(SyncRecovery.parse(SyncRecovery.encode(SyncRecovery.newCode())))
+    }
+
+    @Test
+    fun adopts() {
+        val f = Failures("sync adopt")
+        for (c in list("adoptCases")) {
+            val cur = bytes(c.s("currentRootHex"))
+            val from = SyncRecovery.RingRef(c.s("fromRingId"), c["epoch"].longValue!!.toInt(), bytes(c.s("kidHex")))
+            val got = SyncRecovery.openAdopt(cur, from, bytes(c.s("blobHex")))
+            f.equal(c.sOrNull("expectRootHex"), got?.let(::hex)) { c.s("id") }
+            val s = c["seal"]?.takeIf { it is JsonObject }?.obj ?: continue
+            f.equal(c.s("blobHex"), hex(SyncRecovery.sealAdopt(cur, from, bytes(s.s("oldRootHex")), bytes(s.s("nonceHex"))))) { "${c.s("id")} seal" }
+        }
+        f.done(list("adoptCases").size)
     }
 }
