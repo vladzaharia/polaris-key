@@ -83,16 +83,28 @@
 // the replay holds the recording path to the recorded bytes. `updatesPending` is the length of
 // the session's journal.
 
-import { beforeAll, describe, expect, it } from "vitest";
+import {
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  sign as edSign,
+} from "node:crypto";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   chunkRangeFetch,
   createWebDeviceKeyStore,
   memoryDeviceKeyStorage,
   recordHash,
+  type DeviceKeyPort,
 } from "@polaris-key/client-core";
 import { webCryptoSyncPort } from "@polaris-key/client-core/sync";
 import { RingEngine } from "../src/browser/ring/engine.js";
 import { memoryRootVault } from "../src/browser/ring/rootVault.js";
+import {
+  createConnect,
+  type ConnectClient,
+} from "../src/browser/connect/index.js";
+import { memoryConnectState } from "../src/browser/connect/state.js";
 import { browserObjectFetch } from "../src/packs/browserPacks.js";
 import { newTestKey, signCompact } from "./fixtures.js";
 import {
@@ -120,6 +132,7 @@ import {
   fetchChangelog,
 } from "../src/browser/release.js";
 import { PolarisError } from "../src/core/types.js";
+import { UnsupportedError } from "../src/core/caps.js";
 import { runBoot } from "../src/core/boot.js";
 import { bearerBootDriver } from "../src/browser/boot.js";
 import { fetchReleaseBuild } from "../src/browser/releaseFetch.js";
@@ -500,6 +513,26 @@ async function replay(t: Transcript): Promise<void> {
     vault: memoryRootVault(),
     newRingId: () => nextRingId,
   });
+  // connect.identity (CC-09.1): the engine over this session, with the fixture device keys the
+  // step's `keyLabel` names (a different label is a key rotation: the next call registers them).
+  const connectState = memoryConnectState();
+  let connectKeys: DeviceKeyPort = fixtureKeyPort("unused");
+  let connectLabel: string | null = null;
+  const connect: ConnectClient = createConnect({
+    product: t.product,
+    device: async () => ({
+      deviceId: session.deviceId,
+      hasToken: session.hasToken,
+    }),
+    request: (path, init) => session.ringRequest(path, init),
+    registerKeys: (port, opts) => session.registerKeys(port, opts),
+    trust: () => session.effectiveTrust(),
+    now: () => clock,
+    discovery: async () => discovered,
+    keys: () => connectKeys,
+    allowEphemeralKeys: false,
+    stores: { durable: () => connectState, memory: connectState },
+  });
   for (const e of journal) {
     clock = e.at;
     nextEventId = e.eventId;
@@ -812,6 +845,42 @@ async function replay(t: Transcript): Promise<void> {
         }
         break;
       }
+      case "connectIdentity":
+      case "connectDevices": {
+        const label = String(step.args.keyLabel);
+        if (connectLabel !== label) {
+          connectKeys = fixtureKeyPort(label);
+          connectLabel = label;
+        }
+        // The `keys` proof carries the clock at the step.
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(clock * 1000);
+        try {
+          if (step.action === "connectIdentity") {
+            const idn = await connect.identity({
+              refresh: step.args.refresh === true,
+            });
+            const disc = await connect.discoveryKeys();
+            observed.result = "ok";
+            observed.epoch = idn.epoch;
+            observed.devices = idn.devices.map((d) => d.deviceId);
+            observed.deviceId = idn.deviceId;
+            observed.discKeys = disc?.previous ? 2 : 1;
+          } else {
+            observed.result = "ok";
+            observed.devices = (await connect.listDevices()) as never;
+          }
+        } catch (e) {
+          if (e instanceof UnsupportedError) observed.result = "unavailable";
+          else if (e instanceof PolarisError) {
+            observed.result = "refused";
+            observed.code = e.wireCode ?? e.code;
+          } else throw e;
+        } finally {
+          vi.useRealTimers();
+        }
+        break;
+      }
       case "boot": {
         const driver = bearerBootDriver({
           session,
@@ -1048,13 +1117,12 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // connect.relay is CC-07.3's connect-relay-* transcripts; the relay client is CC-09.
     // identity.link is I-43.3's link-* transcripts (the link offer, I-46); the Node runner replays
     // them with a reference client (linkTranscripts.test.ts).
-    // connect.identity is CC-06.4's connect-identity* transcripts; React's port is CC-09.
+    // connect.identity is CC-06.4's connect-identity* transcripts, replayed here (CC-09.1).
     const plannedHere = [
       "sync.settings",
       "identity.exchange",
       "identity.link",
       "connect.relay",
-      "connect.identity",
     ];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
@@ -1468,3 +1536,40 @@ describe("the React replayer's commerce mapping fails on a doctored transcript",
     await expect(replay(t)).rejects.toThrow(/step 1: result/);
   });
 });
+
+/**
+ * The fixture device keys of `label` as a key port (format.ts, connectIdentity): the Ed25519 key is
+ * seeded by SHA-256(label), the agreement key's bytes are SHA-256(label + ":agree") with the top bit
+ * clear, so the recorded `PUT /<p>/devices/keys` bytes are the ones this sends. The agreement key
+ * has no private half here, so `dh` answers nothing; identity needs none.
+ */
+function fixtureKeyPort(label: string): DeviceKeyPort {
+  const seed = createHash("sha256").update(label).digest();
+  const priv = createPrivateKey({
+    key: Buffer.concat([
+      Buffer.from("302e020100300506032b657004220420", "hex"),
+      seed,
+    ]),
+    format: "der",
+    type: "pkcs8",
+  });
+  const signKey = (
+    createPublicKey(priv).export({ format: "jwk" }) as { x: string }
+  ).x;
+  const agree = createHash("sha256").update(`${label}:agree`).digest();
+  agree[31]! &= 0x7f;
+  const keys = {
+    signKey,
+    agreeKey: agree.toString("base64url"),
+    generation: 1,
+  };
+  return {
+    ensure: async () => keys,
+    publicKeys: async () => keys,
+    sign: async (m) => new Uint8Array(edSign(null, Buffer.from(m), priv)),
+    dh: async () => null,
+    rotate: async () => keys,
+    persistence: () => "durable",
+    wipe: async () => undefined,
+  };
+}
