@@ -75,7 +75,9 @@ class Network:
 
         return MdnsHandle(stop)
 
-    async def browse(self, on_up: Callable[[MdnsFound], None], on_down: Optional[Callable[[str], None]] = None) -> MdnsHandle:
+    async def browse(
+        self, on_up: Callable[[MdnsFound], None], on_down: Optional[Callable[[str], None]] = None
+    ) -> MdnsHandle:
         b = (on_up, on_down)
         self.browsers.append(b)
         for a in list(self.adverts.values()):
@@ -338,7 +340,12 @@ def test_a_failed_start_releases_what_it_opened() -> None:
 def test_it_does_not_dial_an_unknown_device_or_an_address_off_the_lan() -> None:
     with World() as w:
         la = w.start(w.a)
-        for target in (ID_C, LanPeer(ID_B, "8.8.8.8", 9), LanPeer(ID_B, "169.254.1.1", 9), LanPeer(ID_B, "100.64.0.1", 9)):
+        for target in (
+            ID_C,
+            LanPeer(ID_B, "8.8.8.8", 9),
+            LanPeer(ID_B, "169.254.1.1", 9),
+            LanPeer(ID_B, "100.64.0.1", 9),
+        ):
             with pytest.raises(LanError) as e:
                 run(la.connect(target))
             assert e.value.reason == "unknown_peer"

@@ -227,6 +227,7 @@ def _js_number(v: float) -> str:
     _, digits, exp = Decimal(repr(abs(v))).as_tuple()
     ds = "".join(str(d) for d in digits).rstrip("0")
     k = len(ds)
+    assert isinstance(exp, int)  # finite values only: ``exp`` is never "n", "N" or "F"
     n = len(digits) + exp  # the decimal point sits n digits in: value = 0.ds * 10**n
     if k <= n <= 21:
         out = ds + "0" * (n - k)

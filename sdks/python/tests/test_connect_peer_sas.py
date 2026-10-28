@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import pytest
 
@@ -133,7 +133,7 @@ def test_at_most_sixteen_records_are_held() -> None:
 
 
 def test_confirm_before_a_code_closes_and_a_second_confirm_is_a_noop_close() -> None:
-    d, m = Side("v", "initiator"), Side("v", "responder")
+    d = Side("v", "initiator")
     d.s.start()
     d.s.confirm_sas()
     assert d.of(Closed) == [Closed("peer_not_allowed", False)]
@@ -322,7 +322,8 @@ def test_corpus_nonces_give_the_corpus_codes_for_the_session_hash() -> None:
     h = d.s._hs.handshake_hash
     assert d.of(Sas)[0].code == sas_value(h, nd, bytes([9]) * 32, "v")
     for r in M["sas"]["codes"]:
-        assert sas_display(sas_value(bytes.fromhex(r["h"]), bytes.fromhex(r["nD"]), bytes.fromhex(r["nM"]), r["mode"])) == r["display"]
+        value = sas_value(bytes.fromhex(r["h"]), bytes.fromhex(r["nD"]), bytes.fromhex(r["nM"]), r["mode"])
+        assert sas_display(value) == r["display"]
 
 
 @pytest.mark.parametrize(

@@ -192,7 +192,8 @@ def key_refusal_spec(ctx: Context, kind: str, activation: Mapping[str, Any]) -> 
         ),
         "signin.key.differentKey",
     ]
-    return {"copy": copy, "primary": "signin.key.signIn" if limit else "signin.key.ownedSignIn", "link": link, "qr": add and tv}
+    primary = "signin.key.signIn" if limit else "signin.key.ownedSignIn"
+    return {"copy": copy, "primary": primary, "link": link, "qr": add and tv}
 
 
 def activate_view(ctx: Context) -> View:

@@ -7,11 +7,10 @@ with rekey, the 15 failure rows and the external anchors."""
 from __future__ import annotations
 
 import hashlib
+import json
 import pickle
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-
-import json
 
 import pytest
 

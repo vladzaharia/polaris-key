@@ -71,7 +71,8 @@ class Rig:
 
 
 def srv(inst: str = INST, port: int = 4242, target: Optional[str] = None) -> Record:
-    return Record(inst + "." + PEER_SERVICE, "SRV", 120, {"port": port, "target": target or inst + ".local", "priority": 0, "weight": 0})
+    srv = {"port": port, "target": target or inst + ".local", "priority": 0, "weight": 0}
+    return Record(inst + "." + PEER_SERVICE, "SRV", 120, srv)
 
 
 def txt(inst: str = INST, entries: Tuple[str, ...] = ("v=1", "m=a")) -> Record:

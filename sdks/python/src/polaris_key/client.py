@@ -357,7 +357,7 @@ class PolarisKeyClient:
             keyring=self.keyring,
             config=self.config,
             subject=self.identity._account.stored_subject,
-            emit=lambda e: self.events.emit("cloudSync", **e),
+            emit=self._emit_cloud_sync,
             log=lambda m: _log.warning("%s", m),
         )
         #: Cloud Sync (WIRE-CONTRACT-V5 §13): ``status()`` and ``flush()``; changes arrive as
@@ -388,11 +388,7 @@ class PolarisKeyClient:
         self.release.update = self.update
         self.update._client_ref = weakref.ref(self)
         self.update.events = self.events
-        self.update.packs.on(
-            lambda p: self.events.emit(
-                "packs", pack=p.pack_id, phase=p.phase, done=p.done, total=p.total
-            )
-        )
+        self.update.packs.on(self._emit_pack_progress)
         self._observed: Optional[Dict[str, Any]] = None
         self.config.changed = self._publish
         # The app build's boot guard (SDK parity pass §3.15), beside the token store.
@@ -495,6 +491,12 @@ class PolarisKeyClient:
             self._cloud_sync_api.on_deactivated()
         except Exception:  # noqa: BLE001 - leaving Cloud Sync never fails a deactivation
             pass
+
+    def _emit_cloud_sync(self, data: Dict[str, Any]) -> None:
+        self.events.emit("cloudSync", **data)
+
+    def _emit_pack_progress(self, p: Any) -> None:
+        self.events.emit("packs", pack=p.pack_id, phase=p.phase, done=p.done, total=p.total)
 
     def _identity_to_sync(self, event: Any) -> None:
         self._cloud_sync_api.on_identity(event.get("change", ""), event.get("subject"))

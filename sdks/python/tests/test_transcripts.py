@@ -79,27 +79,13 @@ import re
 import shutil
 import tempfile
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 import httpx
 import pytest
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-
-from polaris_key import PolarisError, PolarisKeyClient, StagedUpdate, UpdateClientOptions
-from polaris_key.constants_generated import ERROR_CODE_VALUES
-from polaris_key.core.b64url import b64url_encode
-from polaris_key.cloud_sync.host_codec import open_pull, seal_push
-from polaris_key.cloud_sync.transport import send_sync
-from polaris_key.core import sync_crypto as sc
-from polaris_key.core.caps import UnsupportedError
-from polaris_key.core.device_keys import DevicePublicKeys
-from polaris_key.core.models import ReleaseRecordDoc
-from polaris_key.core.store import CacheRecord
-from polaris_key.devices.keys import create_device_key_store
-from polaris_key.update.packs import chunk_range_fetch
-
 from transcript_replay import (
     ReplayError,
     ReplayServer,
@@ -108,6 +94,19 @@ from transcript_replay import (
     load_manifest,
     load_transcripts,
 )
+
+from polaris_key import PolarisError, PolarisKeyClient, StagedUpdate, UpdateClientOptions
+from polaris_key.cloud_sync.host_codec import open_pull, seal_push
+from polaris_key.cloud_sync.transport import send_sync
+from polaris_key.constants_generated import ERROR_CODE_VALUES
+from polaris_key.core import sync_crypto as sc
+from polaris_key.core.b64url import b64url_encode
+from polaris_key.core.caps import UnsupportedError
+from polaris_key.core.device_keys import DevicePublicKeys
+from polaris_key.core.models import ReleaseRecordDoc
+from polaris_key.core.store import CacheRecord
+from polaris_key.devices.keys import create_device_key_store
+from polaris_key.update.packs import chunk_range_fetch
 
 MANIFEST = load_manifest("sdks/python/parity.json")
 TRANSCRIPTS = load_transcripts()
