@@ -422,17 +422,24 @@ final class PeerSessionTests: XCTestCase {
         } catch { XCTAssertEqual(error as? PeerChannelError, .messageTooLarge) }
     }
 
-    func testModesVAndPAreNotHereYet() throws {
+    func testTheAccountContextMustFitTheMode() throws {
         let acct = PeerAccountContext(
             trust: [:], expectedAud: "djdl", certJws: "x", ownSub: sub, ownDeviceId: idA, heldRing: { nil }, discKeys: [])
         let key = try PeerNoiseRawStaticKey(privateKey: rnd())
-        for mode in [PeerNoiseMode.v, .p] {
-            XCTAssertThrowsError(
-                try PeerChannel(
-                    role: .initiator, slug: "djdl", staticKey: key, account: acct,
-                    hello: (nil, "t", "a", nil), send: { _ in }, onEvent: { _ in }, mode: mode)
-            ) { XCTAssertEqual($0 as? PeerChannelError, .mode) }
-        }
+        // Mode a needs an account; v and p take none; an approver needs a limiter.
+        XCTAssertThrowsError(
+            try PeerChannel(
+                role: .initiator, slug: "djdl", staticKey: key, hello: (nil, "t", "a", nil), send: { _ in },
+                onEvent: { _ in }, mode: .a))
+        XCTAssertThrowsError(
+            try PeerChannel(
+                role: .initiator, slug: "djdl", staticKey: key, account: acct, hello: (nil, "t", "a", nil),
+                send: { _ in }, onEvent: { _ in }, mode: .v))
+        XCTAssertThrowsError(
+            try PeerChannel(
+                role: .responder, slug: "djdl", staticKey: key, hello: (nil, "t", "a", nil), send: { _ in },
+                onEvent: { _ in }, mode: .v)
+        ) { XCTAssertEqual($0 as? PeerChannelError, .mode) }
     }
 
     func testNoSecretInADescription() async throws {

@@ -1,6 +1,12 @@
-// WIRE-CONTRACT-V5 §15.5 and §15.6: one `pkey-peer/1` session, mode `a` (account) (CC-11.8). Swift
-// mirror of client-core's `peer/session.ts` and the Python port's `core/peer_session.py`; modes
-// `v` and `p` (the SAS) follow in CC-11.9.
+// WIRE-CONTRACT-V5 §15.5 and §15.6: one `pkey-peer/1` session, per mode (`a` account, `v` approver,
+// `p` pair) (CC-11.8, CC-11.9). Swift mirror of client-core's `peer/session.ts` and the Python
+// port's `core/peer_session.py`.
+//
+// Modes v and p: after HELLO the initiator (the device) commits to a nonce, the responder (the
+// approver) answers with its own, the initiator reveals, and both show the same six-digit code.
+// The host calls `confirmSas()` when the person agrees; until then host records from the peer are
+// held (at most 16), and HELLO display data is unauthenticated. A responder in these modes needs a
+// `HandshakeLimiter`.
 //
 // An engine that owns no socket and starts no timer: Noise messages come in through `receive`
 // (already de-framed) and go out through `send`; the host's loop calls `tick()` when `wakeIn()`
@@ -89,6 +95,9 @@ public struct PeerEstablished: Sendable, Equatable {
 public enum PeerSessionEvent: Sendable, Equatable, CustomStringConvertible, CustomReflectable {
     /// The handshake and the HELLO exchange are done and the session is open.
     case established(PeerEstablished)
+    /// Modes v and p: the code both screens show; the host calls `confirmSas()` when the person
+    /// agrees.
+    case sas(code: Int, display: String)
     /// A record the host owns, delivered only once the session is open. The host must close on an
     /// APP_CRITICAL type (0x8100 to 0xFFFD) it does not understand.
     case record(type: Int, body: Data)
@@ -103,6 +112,7 @@ public enum PeerSessionEvent: Sendable, Equatable, CustomStringConvertible, Cust
     public var description: String {
         switch self {
         case .established: return "PeerSessionEvent.established"
+        case .sas: return "PeerSessionEvent.sas"
         case .record(let t, _): return "PeerSessionEvent.record(type: \(t))"
         case .ring(_, let e): return "PeerSessionEvent.ring(epoch: \(e))"
         case .trustUnverified: return "PeerSessionEvent.trustUnverified"
@@ -114,12 +124,57 @@ public enum PeerSessionEvent: Sendable, Equatable, CustomStringConvertible, Cust
 }
 
 public enum PeerChannelError: Error, Sendable, Equatable {
-    /// Only the account mode is implemented here.
+    /// The account context or the admission limiter does not fit the mode and role.
     case mode
     case notOpen
     /// A record type the session owns (HELLO, CLOSE, REKEY, the SAS records).
     case ownedRecord
     case messageTooLarge
+}
+
+/// The approver's admission: at most `maxPerMinute` handshakes a minute (default 5) and at most
+/// `maxPending` sessions waiting on a code (default 4), on a monotonic clock. An attempt counts
+/// only when `begin()` is called, which a session does when it starts.
+public final class HandshakeLimiter: Sendable {
+    private struct State: Sendable {
+        var stamps: [TimeInterval] = []
+        var pending = 0
+    }
+    private let maxPerMinute: Int
+    private let maxPending: Int
+    private let mono: @Sendable () -> TimeInterval
+    private let state = LockedValue(State())
+
+    public init(
+        maxPerMinute: Int = 5, maxPending: Int = 4,
+        mono: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
+    ) {
+        self.maxPerMinute = maxPerMinute
+        self.maxPending = maxPending
+        self.mono = mono
+    }
+
+    /// A release function when one more session may start now; nil when refused.
+    public func begin() -> (@Sendable () -> Void)? {
+        let t = mono()
+        let ok = state.with { s -> Bool in
+            s.stamps = s.stamps.filter { t - $0 < 60 }
+            if s.stamps.count >= maxPerMinute || s.pending >= maxPending { return false }
+            s.stamps.append(t)
+            s.pending += 1
+            return true
+        }
+        guard ok else { return nil }
+        let done = LockedValue(false)
+        return { [state] in
+            let first = done.with { d -> Bool in
+                if d { return false }
+                d = true
+                return true
+            }
+            if first { state.with { $0.pending -= 1 } }
+        }
+    }
 }
 
 private struct Fail: Error {
@@ -136,11 +191,14 @@ private let owned: Set<Int> = [
 public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     public enum Role: Sendable { case initiator, responder }
 
-    private let mode: PeerNoiseMode = .a
+    private let mode: PeerNoiseMode
     private let role: Role
     private let slug: String
     private let staticKey: any PeerNoiseStaticKey
-    private let acct: PeerAccountContext
+    private let acct: PeerAccountContext?
+    private let admission: HandshakeLimiter?
+    private let random: @Sendable (Int) -> Data
+    private var release: (@Sendable () -> Void)?
     private let sendNoise: @Sendable (Data) -> Void
     private let onEvent: @Sendable (PeerSessionEvent) -> Void
     private let helloLabel: String?
@@ -152,10 +210,10 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     private let rekeyMessages: Int
     private let rekeySeconds: TimeInterval
 
-    private var asm = PeerRecordAssembler(mode: .a)
+    private var asm: PeerRecordAssembler
     private var hs: PeerNoiseHandshake?
     private var hsStep = 0
-    private enum Phase { case handshake, hello, open, closed }
+    private enum Phase { case handshake, hello, sas, sasShown, open, closed }
     private var phase = Phase.handshake
     private var tp: PeerNoiseTransport?
     private var peerCaps: [String] = []
@@ -167,6 +225,13 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     private var started = false
     private var transportDue: TimeInterval?
     private var certExpires: Int?
+    private var sasDue: TimeInterval?
+    private var nD: Data?
+    private var nM: Data?
+    private var commit: String?
+    private var sasDone = false
+    private var sasStep = 0
+    private var queued: [(type: Int, body: Data)] = []
     private var peerCertJws = ""
     private var peerRemote: Data?
     private var pending: (remote: Data, deviceId: String?)?
@@ -177,13 +242,18 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
     public init(
-        role: Role, slug: String, staticKey: any PeerNoiseStaticKey, account: PeerAccountContext,
-        caps: [String] = [], hello: (label: String?, platform: String, app: String, maxMessage: Int?),
+        role: Role, slug: String, staticKey: any PeerNoiseStaticKey, account: PeerAccountContext? = nil,
+        admission: HandshakeLimiter? = nil, caps: [String] = [], hello: (label: String?, platform: String, app: String, maxMessage: Int?),
         send: @escaping @Sendable (Data) -> Void, onEvent: @escaping @Sendable (PeerSessionEvent) -> Void,
-        mode: PeerNoiseMode = .a, now: (@Sendable () -> Int)? = nil, mono: (@Sendable () -> TimeInterval)? = nil,
+        mode: PeerNoiseMode = .a, random: (@Sendable (Int) -> Data)? = nil, now: (@Sendable () -> Int)? = nil, mono: (@Sendable () -> TimeInterval)? = nil,
         rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600
     ) throws {
-        guard mode == .a else { throw PeerChannelError.mode }
+        guard (mode == .a) == (account != nil) else { throw PeerChannelError.mode }
+        guard mode == .a || role == .initiator || admission != nil else { throw PeerChannelError.mode }
+        self.mode = mode
+        self.asm = PeerRecordAssembler(mode: PeerRecordMode(rawValue: mode.rawValue)!)
+        self.admission = admission
+        self.random = random ?? { n in Data((0..<n).map { _ in UInt8.random(in: 0...255) }) }
         self.role = role
         self.slug = slug
         self.staticKey = staticKey
@@ -204,7 +274,7 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         self.keyedAt = m()
     }
 
-    public nonisolated var description: String { "PeerChannel(mode: a)" }
+    public nonisolated var description: String { "PeerChannel()" }
     public nonisolated var customMirror: Mirror { Mirror(self, children: [:]) }
 
     // MARK: State
@@ -221,6 +291,7 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         if phase == .closed { return nil }
         var waits: [TimeInterval] = []
         if let d = transportDue { waits.append(d - mono()) }
+        if let d = sasDue { waits.append(d - mono()) }
         if let e = certExpires { waits.append(TimeInterval(e - now())) }
         return waits.min().map { max(0, $0) }
     }
@@ -230,7 +301,7 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     public func tick() async {
         await gate { [self] in
             if phase == .closed { return }
-            if let d = transportDue, mono() >= d {
+            if (transportDue.map { mono() >= $0 } ?? false) || (sasDue.map { mono() >= $0 } ?? false) {
                 await fail(.peerTimeout, byPeer: false)
             } else if let e = certExpires, now() >= e {
                 await fail(.peerExpired, byPeer: false)
@@ -243,8 +314,11 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     /// Initiator only: write message 1.
     public func start() async {
         await guarded { [self] in
-            guard role == .initiator, hs == nil, phase == .handshake, let key = acct.discKeys.first ?? nil else {
-                throw Fail(.handshakeFailed)
+            guard role == .initiator, hs == nil, phase == .handshake else { throw Fail(.handshakeFailed) }
+            var key: Data?
+            if let acct {
+                guard let k = acct.discKeys.first ?? nil else { throw Fail(.handshakeFailed) }
+                key = k
             }
             startClock()
             let h = try await newHandshake(key)
@@ -258,7 +332,14 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     public func receive(_ noise: Data) async {
         await guarded { [self] in
             if phase == .closed { return }
-            if !started && role == .responder { startClock() }
+            if !started && role == .responder {
+                // An approver counts the attempt only now that a session starts.
+                if let admission {
+                    guard let r = admission.begin() else { throw Fail(.peerBusy) }
+                    release = r
+                }
+                startClock()
+            }
             if phase == .handshake { try await onHandshake(noise) } else { try await onTransport(noise) }
         }
     }
@@ -268,9 +349,23 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         await acquire()
         defer { releaseGate() }
         guard phase == .open else { throw PeerChannelError.notOpen }
-        guard !owned.contains(type) else { throw PeerChannelError.ownedRecord }
+        guard !owned.contains(type), !(type == PeerRecordType.confirm && mode == .p) else { throw PeerChannelError.ownedRecord }
         guard body.count <= maxSend else { throw PeerChannelError.messageTooLarge }
         try emit(type, body)
+    }
+
+    /// Modes v and p: the person confirmed the code. Opens the session, sends `CONFIRM` in mode p
+    /// and delivers the host records held meanwhile.
+    public func confirmSas() async {
+        await guarded { [self] in
+            guard phase == .sasShown else { throw Fail(.peerNotAllowed) }
+            phase = .open
+            settle()
+            if mode == .p { try emit(PeerRecordType.confirm, Data("{}".utf8)) }
+            let q = queued
+            queued = []
+            for m in q { onEvent(.record(type: m.type, body: m.body)) }
+        }
     }
 
     /// Close with a code; sends CLOSE when the transport exists.
@@ -320,11 +415,20 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         phase = .closed
         transportDue = nil
         certExpires = nil
+        settle()
+        queued = []
         if wasUp && !byPeer && code != .handshakeFailed {
             try? emit(PeerRecordType.close, Data(#"{"code":"\#(code.rawValue)"}"#.utf8))
         }
         wipe()
         onEvent(.closed(code, byPeer: byPeer))
+    }
+
+    /// The person confirmed, or the session ended: the code deadline and the limiter slot end.
+    private func settle() {
+        sasDue = nil
+        release?()
+        release = nil
     }
 
     private func wipe() {
@@ -336,22 +440,25 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         if started { return }
         started = true
         transportDue = mono() + peerTransportDeadlineSeconds
+        if mode != .a { sasDue = mono() + peerSasDeadlineSeconds }
     }
 
-    private func newHandshake(_ discKey: Data) async throws -> PeerNoiseHandshake {
+    private func newHandshake(_ discKey: Data?) async throws -> PeerNoiseHandshake {
         try PeerNoiseHandshake(
             role: role == .initiator ? .initiator : .responder, protocol: peerNoiseProtocol(mode),
             prologue: peerPrologue(slug: slug, mode: mode), staticKey: staticKey,
-            psk: try peerPsk(discoveryKey: discKey, slug: slug))
+            psk: mode == .a ? try peerPsk(discoveryKey: discKey ?? Data(), slug: slug) : nil)
     }
 
     private func ownPayload() throws -> Data {
+        guard let acct else { return try PeerPayload.payload23(mode: mode, caps: caps) }
         let held = acct.heldRing()
         return try PeerPayload.payload23(mode: mode, caps: caps, account: (acct.certJws, held?.epoch ?? 1))
     }
 
     private func admit(_ certJws: String, _ ringJws: String?, _ remote: Data) -> PeerDocs.PeerAdmission {
-        PeerDocs.admitPeer(
+        guard let acct else { return .refused(reason: "cert-invalid") }
+        return PeerDocs.admitPeer(
             certJws: certJws, heldRing: ringJws,
             options: VerifyPeerCertOptions(
                 trust: acct.trust, expectedAud: acct.expectedAud, now: now(),
@@ -365,8 +472,9 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             // Message 1: try the current then the previous discovery key; a failed tag closes
             // silently.
             var payload: Data?
-            for k in acct.discKeys.prefix(2) {
-                guard let k else { continue }
+            let keys: [Data?] = acct.map { Array($0.discKeys.prefix(2)) } ?? [nil]
+            for k in keys {
+                if acct != nil && k == nil { continue }
                 do {
                     let h = try await newHandshake(k)
                     payload = try await h.readMessage(noise)
@@ -387,8 +495,25 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         guard hsStep == (role == .initiator ? 1 : 2) else { throw Fail(.handshakeFailed) }
         let payload = try await h.readMessage(noise)
         let verdict = PeerPayload.parse(mode: mode, message: message, payload)
-        guard verdict.ok, let certJws = verdict.cert, let ring = verdict.ring else { throw Fail(.handshakeFailed) }
+        guard verdict.ok else { throw Fail(.handshakeFailed) }
         guard let remote = await h.remoteStatic else { throw Fail(.handshakeFailed) }
+        var peerDeviceId: String?
+        if mode == .a {
+            guard let certJws = verdict.cert, let ring = verdict.ring else { throw Fail(.handshakeFailed) }
+            peerDeviceId = try admitAccount(certJws, ring, remote)
+        }
+        peerCaps = verdict.caps
+        if role == .initiator { sendNoise(try await h.writeMessage(try ownPayload())) }
+        tp = try await h.transport()
+        transportDue = nil
+        keyedAt = mono()
+        phase = .hello
+        pending = (remote, peerDeviceId)
+        try sendHello()
+    }
+
+    private func admitAccount(_ certJws: String, _ ring: Int, _ remote: Data) throws -> String {
+        guard let acct else { throw Fail(.handshakeFailed) }
         let held = acct.heldRing()
         if let held {
             // A held roster that is expired, unverifiable or another account's must not admit: ask
@@ -413,14 +538,7 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         certExpires = cert.expiresAt
         peerRing = ring
         if sync == .request { onEvent(.ringWanted) }
-        peerCaps = verdict.caps
-        if role == .initiator { sendNoise(try await h.writeMessage(try ownPayload())) }
-        tp = try await h.transport()
-        transportDue = nil
-        keyedAt = mono()
-        phase = .hello
-        pending = (remote, cert.deviceId)
-        try sendHello()
+        return cert.deviceId
     }
 
     private func sendHello() throws {
@@ -467,13 +585,22 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             maxSend = min(peerMaxMessageBytes, hello.maxMessage)
             caps = PeerPayload.capsIntersection(caps, peerCaps)
             pending = nil
-            phase = .open
+            let account = mode == .a
+            phase = account ? .open : .sas
             onEvent(
                 .established(
                     PeerEstablished(
-                        caps: caps, hello: hello, helloAuthenticated: true, remoteStatic: p.remote,
+                        caps: caps, hello: hello, helloAuthenticated: account, remoteStatic: p.remote,
                         peerDeviceId: p.deviceId)))
-            try pushRing()
+            if account {
+                try pushRing()
+            } else if role == .initiator {
+                // The device commits first.
+                let n = random(32)
+                nD = n
+                try emit(PeerRecordType.sasCommit, try PeerSAS.body(.c, PeerSAS.commit(n)))
+                sasStep = 1
+            }
             return
         }
         switch type {
@@ -491,6 +618,8 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             phase = .closed
             transportDue = nil
             certExpires = nil
+            settle()
+            queued = []
             wipe()
             onEvent(.closed(knownClose.contains(code) ? PeerClosedReason(rawValue: code)! : .peerBadFrame, byPeer: true))
         case PeerRecordType.trust:
@@ -500,14 +629,62 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             onEvent(.trustUnverified(jws: t))
         case PeerRecordType.ring:
             try onRing(body)
+        case PeerRecordType.sasCommit, PeerRecordType.sasNonce, PeerRecordType.sasReveal:
+            try await onSas(type, body)
         default:
-            // Everything else belongs to the host.
+            // Everything else belongs to the host, and only once the code is settled.
+            if phase == .sasShown {
+                // The peer may confirm first: hold the record (bounded) until this side's person does.
+                if queued.count >= 16 { throw Fail(.peerBusy) }
+                queued.append((type, body))
+                return
+            }
+            guard phase == .open else { throw Fail(.peerNotAllowed) }
             onEvent(.record(type: type, body: body))
         }
     }
 
+    private func onSas(_ type: Int, _ body: Data) async throws {
+        guard phase == .sas, !sasDone else { throw Fail(.peerBadFrame) }
+        let initiator = role == .initiator
+        // Responder (the approver): COMMIT then REVEAL. Initiator (the device): NONCE.
+        if type == PeerRecordType.sasCommit && !initiator && sasStep == 0 {
+            guard let c = PeerSAS.parseBody(.c, body) else { throw Fail(.peerBadFrame) }
+            commit = try PeerSAS.encodeValue(c)
+            let n = random(32)
+            nM = n
+            try emit(PeerRecordType.sasNonce, try PeerSAS.body(.nM, n))
+            sasStep = 1
+            return
+        }
+        if type == PeerRecordType.sasNonce && initiator && sasStep == 1 {
+            guard let n = PeerSAS.parseBody(.nM, body), let d = nD else { throw Fail(.peerBadFrame) }
+            nM = n
+            try emit(PeerRecordType.sasReveal, try PeerSAS.body(.nD, d))
+            try await finishSas()
+            return
+        }
+        if type == PeerRecordType.sasReveal && !initiator && sasStep == 1 {
+            // `revealOK` compares the commitment in constant time.
+            guard let d = PeerSAS.parseBody(.nD, body), let c = commit, PeerSAS.revealOK(commit: c, nD: try PeerSAS.encodeValue(d))
+            else { throw Fail(.peerBadFrame) }
+            nD = d
+            try await finishSas()
+            return
+        }
+        throw Fail(.peerBadFrame)
+    }
+
+    private func finishSas() async throws {
+        guard let h = hs, let d = nD, let m = nM else { throw Fail(.peerBadFrame) }
+        let code = PeerSAS.value(handshakeHash: try await h.handshakeHash, nD: d, nM: m, mode: mode)
+        sasDone = true
+        phase = .sasShown
+        onEvent(.sas(code: code, display: PeerSAS.display(code)))
+    }
+
     private func pushRing() throws {
-        guard let held = acct.heldRing(), held.epoch > peerRing else { return }
+        guard let acct, let held = acct.heldRing(), held.epoch > peerRing else { return }
         let enc = JSONEncoder()
         enc.outputFormatting = [.withoutEscapingSlashes]
         let q = String(decoding: (try? enc.encode(held.jws)) ?? Data(), as: UTF8.self)
@@ -515,6 +692,7 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     }
 
     private func onRing(_ body: Data) throws {
+        guard let acct else { throw Fail(.peerNotAllowed) }
         guard let (o, _) = PeerPayload.parseStrictObject(body), case .string(let ring)? = o["ring"] else {
             throw Fail(.peerBadFrame)
         }
