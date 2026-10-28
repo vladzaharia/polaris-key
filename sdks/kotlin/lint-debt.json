@@ -3291,6 +3291,12 @@
       "detekt:style.MagicNumber": 1,
       "detekt:style.ReturnCount": 3,
       "ktlint:standard:enum-entry-name-case": 3
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/lan/MdnsPacket.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 20,
+      "detekt:style.ThrowsCount": 2
     }
   }
 }
