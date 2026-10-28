@@ -46,6 +46,7 @@ import {
   loadPinRevocations,
   mergeTrust,
   normalizeDeviceLabel,
+  buildDeviceKeysRequest,
   trustSignerOrder,
   usablePins,
   verifyConfigDoc,
@@ -53,6 +54,7 @@ import {
   verifyTrustManifest,
   type BlockedState,
   type CacheRecordV3,
+  type DeviceKeyPort,
   type RedirectPending,
   type Store,
   type TrustManifestResult,
@@ -1566,6 +1568,69 @@ export class BearerSession {
     if (cap) result.deviceCap = true;
     if (applied || !unauthorized) await this.report().catch(() => false);
     return result;
+  }
+
+  // ── Cloud Sync key ring and device keys (sync.keyring, U-38.2) ──────────────────────────────
+
+  /**
+   * One authenticated request under `/<p>/` for the key ring engine: the device bearer and the
+   * seven `X-PKey-*` headers, no cookie. The caller reads the status; nothing here logs a body.
+   */
+  async ringRequest(
+    path: string,
+    init: { method: string; body?: string },
+  ): Promise<Response> {
+    await this.init();
+    return this.send(path, {
+      method: init.method,
+      headers: this.headers({
+        authorization: `Bearer ${this.requireToken()}`,
+        ...(init.body !== undefined
+          ? { "content-type": "application/json" }
+          : {}),
+      }),
+      ...(init.body !== undefined ? { body: init.body } : {}),
+    });
+  }
+
+  /**
+   * `PUT /<p>/devices/keys` (CC-03.2) with the port's public keys and a `keys` proof, as Node's
+   * `devices.registerKeys`. Resending is safe. A memory-only port is refused unless
+   * `allowEphemeral`; the private halves never leave the port.
+   */
+  async registerKeys(
+    port: DeviceKeyPort,
+    opts: { allowEphemeral?: boolean } = {},
+  ): Promise<{ keySeq: number }> {
+    await this.init();
+    const token = this.requireToken();
+    const { body } = await buildDeviceKeysRequest(port, {
+      product: this.opts.product,
+      deviceId: this.deviceIdValue,
+      ...(opts.allowEphemeral ? { allowEphemeral: true } : {}),
+    });
+    const res = await this.send("devices/keys", {
+      method: "PUT",
+      headers: this.headers({
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      }),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw await refusal(res, "device_keys_failed");
+    const out = (await res.json().catch(() => null)) as {
+      keySeq?: unknown;
+    } | null;
+    if (
+      typeof out?.keySeq !== "number" ||
+      !Number.isSafeInteger(out.keySeq) ||
+      out.keySeq < 1
+    )
+      throw new PolarisError(
+        ErrorCode.badResponse,
+        "devices/keys answered without a keySeq.",
+      );
+    return { keySeq: out.keySeq };
   }
 
   // ── Devices ──────────────────────────────────────────────────────────────────────────────

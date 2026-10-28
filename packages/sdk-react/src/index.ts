@@ -36,6 +36,19 @@ export {
   type UseLicenseGate,
   type GateScreen,
 } from "./react/hooks.js";
+// sync.keyring (U-38.2): the key ring's lock state and the recovery-code actions.
+export { useSyncLock, useRecoveryCode } from "./react/useKeyring.js";
+export type {
+  SyncLockState,
+  UseSyncLock,
+  UseRecoveryCode,
+} from "./react/useKeyring.js";
+export type {
+  RingCode,
+  RingState,
+  RingStatus,
+  KeyringClient,
+} from "./core/keyring.js";
 // identity.choice (I-10a.11): `useLicenseChoice(grant)` over `usePolarisAuth().choice`.
 export {
   useLicenseChoice,

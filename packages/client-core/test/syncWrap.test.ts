@@ -15,6 +15,7 @@ import {
   sealAdopt,
   unwrapRecovery,
   unwrapRoot,
+  unwrapRootWithDh,
   webCryptoSyncPort as port,
   wrapInfo,
   wrapRecovery,
@@ -109,6 +110,43 @@ describe("pkey-sync-wrap/1", () => {
     const fresh = await wrapRoot(port, pkR, ctx, kid, root);
     expect(hex(fresh.enc)).not.toBe(hex(a.enc));
     expect(await unwrapRoot(port, skR, ctx, kid, fresh)).toEqual(root);
+  });
+
+  it("unwraps through a port that only does DH, the same as with the private key", async () => {
+    const pkR = await port.x25519.publicKey(skR);
+    const kid = await deriveKid(port, root);
+    const w = await wrapRoot(port, pkR, ctx, kid, root);
+    const recipient = {
+      publicKey: pkR,
+      dh: (peer: Uint8Array) => port.x25519.dh(skR, peer),
+    };
+    expect(await unwrapRootWithDh(port, recipient, ctx, kid, w)).toEqual(root);
+    // A port that refuses the peer key, or another key, opens nothing.
+    expect(
+      await unwrapRootWithDh(
+        port,
+        { ...recipient, dh: async () => null },
+        ctx,
+        kid,
+        w,
+      ),
+    ).toBeNull();
+    const other = seq(32, 3);
+    expect(
+      await unwrapRootWithDh(
+        port,
+        {
+          publicKey: await port.x25519.publicKey(other),
+          dh: (peer) => port.x25519.dh(other, peer),
+        },
+        ctx,
+        kid,
+        w,
+      ),
+    ).toBeNull();
+    expect(
+      await unwrapRootWithDh(port, recipient, ctx, kid, { ...w, kem: 16 }),
+    ).toBeNull();
   });
 
   it("refuses a wrong key, context, kid, kem, or tampering", async () => {

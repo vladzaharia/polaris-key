@@ -100,7 +100,14 @@ import {
   type UpdateCheckContent,
   type VerifiedRevocation,
 } from "@polaris-key/client-core";
-import type { CapabilityContext } from "@polaris-key/client-core";
+import {
+  createWebDeviceKeyStore,
+  type CapabilityContext,
+  type DeviceKeyPort,
+} from "@polaris-key/client-core";
+import { RingEngine } from "./ring/engine.js";
+import { indexedDbRootVault, type RootVault } from "./ring/rootVault.js";
+import { unsupportedKeyring, type KeyringClient } from "../core/keyring.js";
 import { clientBackendAction } from "@polaris-key/client-core/backend";
 import type {
   BinaryMethod,
@@ -422,6 +429,18 @@ export interface BrowserAdapterOptions {
    *  `trust.pinnedKeys` too: a feed verifies against the pinned product keys. */
   update?: BrowserUpdateConfig;
   /**
+   * The Cloud Sync key ring (sync.keyring, bearer mode only). `deviceKeys` is the device key store
+   * (default `createWebDeviceKeyStore()`, IndexedDB with a memory fallback); a memory-only store
+   * makes the ring unlock-only (recovery code), with the root held in memory. `vault` is where the
+   * root's non-extractable handle lives (default IndexedDB, per product).
+   */
+  keyring?: {
+    deviceKeys?: DeviceKeyPort;
+    vault?: RootVault;
+    /** Seconds the root stays in memory as bytes after it was made or recovered. Default 300. */
+    sessionRootSeconds?: number;
+  };
+  /**
    * The update driver's service worker (update.driver): the container the install hand-off
    * looks for a waiting worker in (default `navigator.serviceWorker`; `null`: this page has
    * none, and `installUpdate()` answers `unsupported`) and the reload that follows the hand-off
@@ -685,6 +704,7 @@ export class BrowserAdapter implements PolarisAdapter {
     }
     this.authMode = resolveAuthMode(opts.auth, this.base, opts.pageOrigin);
     this.autoRegister = opts.autoRegister !== false;
+    this.ringOptions = opts.keyring;
     if (this.authMode === "bearer" && !this.pinned) {
       const err = new PolarisError(
         "invalid-options",
@@ -1973,6 +1993,34 @@ export class BrowserAdapter implements PolarisAdapter {
     } catch (e) {
       throw this.fail("license", asError(e, "sign-in-failed"));
     }
+  }
+
+  private ring_: KeyringClient | null = null;
+  private readonly ringOptions: BrowserAdapterOptions["keyring"];
+
+  /**
+   * The Cloud Sync key ring (sync.keyring). Bearer mode runs the engine; a cookie page holds no
+   * device token and gets the typed runtime N/A.
+   */
+  get keyring(): KeyringClient {
+    if (this.ring_) return this.ring_;
+    const b = this.bearer;
+    if (!b) return (this.ring_ = unsupportedKeyring("runtime", COOKIE_DETAIL));
+    const o = this.ringOptions ?? {};
+    const keys = o.deviceKeys ?? createWebDeviceKeyStore();
+    return (this.ring_ = new RingEngine({
+      product: this.product,
+      deviceId: () => b.deviceId,
+      transport: { request: (path, init) => b.ringRequest(path, init) },
+      keys,
+      ensureKeysRegistered: async () => {
+        await b.registerKeys(keys);
+      },
+      vault: o.vault ?? indexedDbRootVault(`pkey-sync-ring-${this.product}`),
+      ...(o.sessionRootSeconds !== undefined
+        ? { sessionRootSeconds: o.sessionRootSeconds }
+        : {}),
+    }));
   }
 
   /** `signIn.start` / `signIn.complete` (identity.signIn). */
