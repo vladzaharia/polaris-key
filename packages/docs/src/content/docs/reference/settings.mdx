@@ -7,7 +7,7 @@ description: "Every platform, product and service setting in the settings regist
     Source of truth: the settings registry (packages/worker/src/core/settings/ and each service's
     settings.ts), emitted by packages/worker/scripts/gen-settings.ts. */}
 
-The settings registry describes every setting Polaris Key has: 113 entries (30 platform, 83 product, 0 entity), 5 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
+The settings registry describes every setting Polaris Key has: 114 entries (31 platform, 83 product, 0 entity), 5 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
 
 How to read the columns:
 
@@ -50,6 +50,7 @@ One value per deployment, edited under **Platform → Settings**. A deploy var, 
 | `email.appleRelay` | Apple private relay (platform admins): Registered once the sender is registered with Apple's private email relay. Until then relay recipients are refused, not bounced. | one of `unregistered`, `registered` | `"unregistered"` | cascade | `EMAIL_APPLE_RELAY` | L2 on change | — |
 | `alerts.destinations` | Alert destinations (platform admins): Where the platform's alerts go: email addresses and signed https webhooks, per alert kind (auto-halt, store connection, commerce, access changes, a failing destination). A product's own destinations replace these for the kinds they take. Unset, alerts reach the audit trail only. | structured (notify_destinations rows (core/notify/alertDestinations.ts)) | unset | cascade | — | L1 on change | — |
 | `feeds.policy` | [Package feeds policy](/docs/features/ship-builds/channels/): Per ecosystem: whether feeds answer at all and the largest package a product may publish. Off makes every feed for that ecosystem answer not found. | structured (dist_registry_policy rows (registry/settings.ts)) | unset | cascade | — | L1 on change | — |
+| `console.access` | Console access rules (platform admins): Rules that give people who sign in through an operator connection access to the console, by group, domain or claim. A rule grants Product admin or Console access, never Platform admin or Superadmin. | structured (AccessRulesDoc (core/rbac/claimMatcher.ts parseAccessRules)) | `{"rules":[]}` | cascade | — | L2 on change | reason required; security-widening |
 | `license.defaults.deviceLimit` | [Default device limit](/docs/features/licensing/access/): The device limit a product starts from when it sets none of its own. A change reaches every product that inherits it. | integer 1–1000 | `5` | cascade | — | L2 | registered ahead of ST-16 |
 | `license.defaults.maxOfflineDays` | [Default offline window](/docs/features/licensing/access/): How many days a device may run offline when its product sets no window of its own. A change reaches every product that inherits it. | integer 0–365 days | `30` | cascade | — | L2 | registered ahead of ST-16; devices see it (document) |
 

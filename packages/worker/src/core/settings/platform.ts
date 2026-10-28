@@ -29,6 +29,7 @@ import {
 import { setting } from "./define.js";
 import type { SettingDef } from "./types.js";
 import { LAUNCH_GATES } from "./launchGates.js";
+import { CONSOLE_ACCESS_DEF } from "./consoleAccessDef.js";
 
 /**
  * The lazy-delta consumer's per-side ceiling: 32 MiB, measured (notes/S-08 §4.2) against the
@@ -745,6 +746,9 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     storage: { kind: "rich", adapter: "dist_registry_policy" },
     since: "ST-09",
   }),
+
+  // ── Console access (ST-32.2): the one privilege-grant entry, in its own file ──────────────
+  CONSOLE_ACCESS_DEF,
 
   // ── Product defaults (ST-16 wires them; owner decision 2: live inheritance) ─────────────
   setting({

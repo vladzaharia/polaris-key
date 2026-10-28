@@ -308,6 +308,19 @@ export async function verifiedDomains(
   return rows.map((r) => r.domain);
 }
 
+/** The domains of one connection that are verified AND enforced (exact names, lower case). */
+export async function enforcedDomains(
+  db: Db,
+  connectionId: string,
+): Promise<string[]> {
+  const rows = await db.all<{ domain: string }>(
+    `SELECT domain FROM identity_connection_domains
+      WHERE connection_id = ? AND verified_at IS NOT NULL AND enforce = 1 ORDER BY domain`,
+    connectionId,
+  );
+  return rows.map((r) => r.domain);
+}
+
 /**
  * Whether `domain` is verified AND enforced by some active connection in `scopes` whose
  * audience covers `surface`: the card then sends that domain's addresses no email code and no

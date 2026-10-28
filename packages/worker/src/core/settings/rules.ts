@@ -41,6 +41,7 @@
 
 import { isSetupChoices } from "./setupShape.js";
 import { isAreaId, PRODUCT_AREAS } from "../rbac/areas.js";
+import { parseAccessRules } from "../rbac/claimMatcher.js";
 import type { RegisteredSlice, SettingsRegistry } from "./registry.js";
 import type {
   ConfirmLevel,
@@ -245,6 +246,20 @@ export function wideningConfirm(def: SettingDef): ConfirmLevel {
       : maxLevel(c.on, c.off);
 }
 
+/**
+ * The one platform-scope, security-widening entries: settings that hand out console access
+ * (ST-28 plan §3, ST-32.2). They are exempt from rule 1's "a security-widening knob cannot be a
+ * platform setting" and sit in the `members` area, and only on these conditions: a Superadmin
+ * writer, a step-up, an L2 confirm and a reason (`write.ts`). The list only grows with a
+ * THREAT-MODEL review. A key here names no deny-list category (`console.access` matches none), so
+ * it needs no category exemption; `settings-registry.test.ts` pins both facts.
+ */
+export const PRIVILEGE_GRANT_KEYS: readonly string[] = ["console.access"];
+
+/** The `schema` name of `console.access`: the ClaimMatcher rule document (`core/rbac/claimMatcher.ts`). */
+export const ACCESS_RULES_SCHEMA =
+  "AccessRulesDoc (core/rbac/claimMatcher.ts parseAccessRules)";
+
 /** The `schema` name of `core.setup`: its value is checked by `setupShape.ts`. */
 export const SETUP_SCHEMA = "SetupChoices (core/settings/setupShape.ts)";
 
@@ -279,7 +294,11 @@ export function fitsValueSpec(spec: ValueSpec, value: unknown): boolean {
     case "json":
       if (value === undefined || value === null) return false;
       // A json setting with a pinned shape (the validator is named by `schema`).
-      return spec.schema === SETUP_SCHEMA ? isSetupChoices(value) : true;
+      if (spec.schema === SETUP_SCHEMA) return isSetupChoices(value);
+      // Read-path parse: every rule carries a well-formed id. The write path mints them first.
+      if (spec.schema === ACCESS_RULES_SCHEMA)
+        return parseAccessRules(value).ok;
+      return true;
   }
 }
 
@@ -415,10 +434,28 @@ function checkEntry(def: SettingDef, out: string[]): void {
       SECURITY_WIDENING_PATTERN.test(def.key);
     if (mustWiden && !def.securityWidening)
       out.push(`${at}: widens access, so it must be securityWidening (rule 2)`);
-  } else if (def.securityWidening)
+  } else if (
+    def.securityWidening &&
+    !(def.scope === "platform" && PRIVILEGE_GRANT_KEYS.includes(def.key))
+  )
     out.push(
       `${at}: a security-widening knob cannot be a platform setting (rule 1)`,
     );
+  if (PRIVILEGE_GRANT_KEYS.includes(def.key)) {
+    // The exemption holds only for the shape the writer enforces.
+    if (def.scope !== "platform" || !def.securityWidening || !def.critical)
+      out.push(
+        `${at}: a privilege-grant key is a critical, security-widening platform entry`,
+      );
+    if (def.value.kind !== "json" || def.value.schema !== ACCESS_RULES_SCHEMA)
+      out.push(
+        `${at}: a privilege-grant key's value is the access-rule document`,
+      );
+    if (def.rbacArea !== "members")
+      out.push(`${at}: a privilege-grant key's rbacArea is members (rule 7)`);
+    if (def.ownership !== "operator")
+      out.push(`${at}: a privilege-grant key is written by the console only`);
+  }
   if (def.securityWidening) {
     if (!def.critical)
       out.push(`${at}: a security-widening setting is critical (rule 2)`);
@@ -458,7 +495,11 @@ function checkEntry(def: SettingDef, out: string[]): void {
   // Rule 7: areas.
   if (!isAreaId(def.rbacArea))
     out.push(`${at}: rbacArea must be one of AREAS (rule 7)`);
-  else if (def.scope === "platform" && def.rbacArea !== "platform")
+  else if (
+    def.scope === "platform" &&
+    def.rbacArea !==
+      (PRIVILEGE_GRANT_KEYS.includes(def.key) ? "members" : "platform")
+  )
     out.push(`${at}: a platform entry's rbacArea is platform (rule 7)`);
   else if (def.scope !== "platform" && !PRODUCT_AREAS.includes(def.rbacArea))
     out.push(`${at}: a product entry's rbacArea is a product area (rule 7)`);
