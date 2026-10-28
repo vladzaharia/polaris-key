@@ -83,6 +83,12 @@ public sealed interface LicenseChoice {
     }
 }
 
+/** The app consent a `complete` records (V5 section 12.11.3 rule 2): the claims the person agreed to share, a subset of what the consent view listed. */
+public data class ConsentInput(val claims: List<String>) {
+    /** The request's `consent` member. */
+    public fun toJson(): JsonObject = JsonObject(mapOf("claims" to kotlinx.serialization.json.JsonArray(claims.map { JsonPrimitive(it) })))
+}
+
 /** The licences a grant can choose from. [raw] is the Worker's view as served (what `:ui-core`'s `KitRows` reads). */
 public data class LicenseChoiceView(val state: String, val choices: List<JsonObject>, val raw: JsonObject) {
     /** The ids of [choices], in order. */
@@ -173,19 +179,25 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
      * Finish with the person's choice. On `Ok` the device token is stored, the subject is persisted and the
      * acquisition sync runs, exactly as after a sign-in. The grant is spent on `Ok`; a refusal the person can
      * fix (`device_limit`, `license_choice_required`, a wrong key) leaves it open.
+     *
+     * The person's app [consent] rides with the choice (required on a grant `exchange` issued as `PendingConsent`,
+     * where [choice] may be null; a licence choice then due answers `license_choice_required` with the view and
+     * keeps the grant open). The Worker refuses a request that omits what its grant needs.
      */
-    public suspend fun complete(grant: String, choice: LicenseChoice): ChoiceResult<ChoiceCompleted> =
-        complete(grant, choice.toJson())
+    @JvmOverloads
+    public suspend fun complete(grant: String, choice: LicenseChoice?, consent: ConsentInput? = null): ChoiceResult<ChoiceCompleted> =
+        completeWire(grant, choice?.toJson(), consent?.toJson())
 
     /** Conformance replay only: a completion with the recorded `choice` member, or none (the Worker's 409 `license_choice_required`). */
     @ConformanceReplayOnly
-    public suspend fun completeRecorded(grant: String, choice: JsonObject?): ChoiceResult<ChoiceCompleted> = complete(grant, choice)
+    public suspend fun completeRecorded(grant: String, choice: JsonObject?): ChoiceResult<ChoiceCompleted> = completeWire(grant, choice, null)
 
-    private suspend fun complete(grant: String, choice: JsonObject?): ChoiceResult<ChoiceCompleted> {
+    private suspend fun completeWire(grant: String, choice: JsonObject?, consent: JsonObject?): ChoiceResult<ChoiceCompleted> {
         val body = LinkedHashMap<String, kotlinx.serialization.json.JsonElement>()
         body["grant"] = JsonPrimitive(grant)
         // A null choice is the conformance replay's, for the recorded completion that names none.
         choice?.let { body["choice"] = it }
+        consent?.let { body["consent"] = it }
         val res = post(ChoiceEndpoint.Complete, body)
         if (res.status != 200) return refusal(res, "choice complete")
         val json = JsonText.parseOrNull(res.text)
