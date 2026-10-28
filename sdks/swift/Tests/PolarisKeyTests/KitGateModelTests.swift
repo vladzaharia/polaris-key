@@ -305,9 +305,61 @@
             await server.reply("/djdl/identity/token", status: 403, body: #"{"error":"device_limit"}"#)
             let full = PolarisKeyGateModel(client: try await autoClient(provider: SheetProvider()))
             full.start()
-            try await settle { full.route == .activate }
+            try await settle { full.signInScreen.state == .deviceLimit }
             defer { full.stop() }
-            XCTAssertEqual(full.activate.state, .deviceLimit)
+            // Its own step in the sign-in form, never the key screen (KFA-0 / KFA-swift).
+            XCTAssertEqual(full.route, .signIn)
+            XCTAssertNil(full.inputs.activation)
+        }
+
+        private let manage = "https://polaris.locker/#/p/djdl/free-device"
+
+        func testTheDeviceLimitStepResumesTheProviderSignInAfterReplace() async throws {
+            await server.reply(
+                "/djdl/identity/token", status: 403,
+                body: #"{"error":"device_limit","manageUrl":"\#(manage)"}"#)
+            let provider = SheetProvider()
+            let model = PolarisKeyGateModel(
+                client: try await autoClient(provider: provider), platformProvider: provider)
+            model.start()
+            try await settle { model.signInScreen.state == .deviceLimit }
+            defer { model.stop() }
+            XCTAssertEqual(model.inputs.autoSignIn?.manageUrl, manage)
+            XCTAssertEqual(provider.calls.current, ["silent"])
+
+            // A return that follows no Replace is not a resume.
+            XCTAssertFalse(model.resumeAfterReplace())
+            XCTAssertEqual(provider.calls.current, ["silent"])
+
+            // Replace opened the browser; the person freed a seat and comes back.
+            model.replaceOpenedInBrowser()
+            await server.reply("/djdl/identity/token", body: consentBody(license: existingLicense))
+            XCTAssertTrue(model.resumeAfterReplace())
+            try await settle { model.signInScreen.state == .confirm }
+            XCTAssertEqual(provider.calls.current, ["silent", "sheet"], "the provider ran once more")
+            XCTAssertNil(model.inputs.activation)
+            // One return, one retry.
+            XCTAssertFalse(model.resumeAfterReplace())
+            let tokens = await paths("/identity/token")
+            XCTAssertEqual(tokens.count, 2)
+        }
+
+        func testUseAnotherAccountLeavesTheDeviceLimitForTheMethods() async throws {
+            await server.reply(
+                "/djdl/identity/token", status: 403,
+                body: #"{"error":"device_limit","manageUrl":"\#(manage)"}"#)
+            let model = PolarisKeyGateModel(client: try await autoClient(provider: SheetProvider()))
+            model.start()
+            try await settle { model.signInScreen.state == .deviceLimit }
+            defer { model.stop() }
+            model.replaceOpenedInBrowser()
+            model.useAnotherAccount()
+            XCTAssertEqual(model.signInScreen.state, .methods)
+            XCTAssertNil(model.inputs.autoSignIn)
+            XCTAssertFalse(model.resumeAfterReplace(), "leaving the step forgets the pending return")
+
+            model.backToWelcome()
+            XCTAssertEqual(model.route, .welcome)
         }
 
         func testTheAppleRowOpensTheSheetThenRunsTheExchange() async throws {

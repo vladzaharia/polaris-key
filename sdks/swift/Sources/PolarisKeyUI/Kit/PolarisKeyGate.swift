@@ -75,7 +75,11 @@ public struct PolarisKeyGate<Content: View>: View {
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
-            if manageOpened, model.activate.state == .deviceLimit {
+            if model.resumeAfterReplace() {
+                // Back from Replace a device on an automatic sign-in's device-limit step: the
+                // provider sign-in runs once more, so the person never starts again by hand.
+                manageOpened = false
+            } else if manageOpened, model.activate.state == .deviceLimit {
                 // Back from Replace a device in the browser: retry the key once (DL6).
                 manageOpened = false
                 Task { await model.submitKey() }

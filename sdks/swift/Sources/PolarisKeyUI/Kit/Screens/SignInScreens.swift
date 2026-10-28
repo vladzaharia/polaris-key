@@ -91,8 +91,10 @@ public struct SignInView: View {
                 ? CopyLine("signin.handoff.codeTitle") : CopyLine("signin.handoff.title")
         case .choose:
             // A lapsed grant says so; the list it replaced is gone.
-            return model.licenseChoice.state == .grantExpired
-                ? CopyLine("signin.handoff.tooLong") : CopyLine("signin.choice.title")
+            if model.licenseChoice.state == .grantExpired { return CopyLine("signin.handoff.tooLong") }
+            // Full rows after a device limit are that refusal's step: its own title.
+            return limitRows
+                ? CopyLine("core.codes.device_limit.title") : CopyLine("signin.choice.title")
         case .replace:
             return CopyLine("signin.replace.open")
         case .key:
@@ -121,9 +123,22 @@ public struct SignInView: View {
                         )
                         .accessibilityHidden(true)
                 }
-                KitText(title(screen), .title, color: .strong)
+                if screen.state == .confirm, let sub = Self.subtitle(screen) {
+                    // "as <email>" sits directly under the h1 as its subtitle (SIGN-IN §3.19).
+                    VStack(alignment: .leading, spacing: style.space(.xxs)) {
+                        KitText(title(screen), .title, color: .strong)
+                        KitText(sub, .body, color: .muted)
+                    }
+                } else {
+                    KitText(title(screen), .title, color: .strong)
+                }
             }
         }
+    }
+
+    /// The confirm step's subtitle: the account, or the Apple Account when no email was shared.
+    static func subtitle(_ screen: KitScreen<SignInState>) -> CopyLine? {
+        screen.line("signin.auto.confirm.as") ?? screen.line("signin.auto.confirm.asApple")
     }
 
     /// The method a provider or row names in a failure's sentence.
@@ -212,7 +227,9 @@ public struct SignInView: View {
                     }
                 #endif
             }
-        case .confirm, .linkOffer, .nearbyWait, .linkConflict, .nearbyPrompt, .deviceLimit:
+        case .confirm:
+            ConfirmBody(screen: screen)
+        case .linkOffer, .nearbyWait, .linkConflict, .nearbyPrompt, .deviceLimit:
             // The step's sentences under its title; the controls are the actions.
             VStack(alignment: .leading, spacing: style.space(.sm)) {
                 ForEach(
@@ -343,14 +360,16 @@ public struct SignInView: View {
                         Task { await model.openChoiceReplace(licenseId: full.id) }
                     }
                     .keyboardShortcut(.defaultAction)
-                } else if model.licenseChoice.state == .allFull,
-                    let link = model.inputs.choices?.choices.lazy
-                        .compactMap({ KitLinks.valid($0.freeDeviceUrl) }).first
-                {
+                } else if model.licenseChoice.state == .allFull, let link = browserReplaceLink {
+                    // Replace in the browser only where some full row allows it; the page is the
+                    // row's own, else the refusal's manageUrl. On return the sign-in resumes.
                     KitButton(
                         line: CopyLine("signin.replace.open"), kind: .primary,
                         glyph: PolarisKitGlyph.newWindow
-                    ) { open(link) }
+                    ) {
+                        model.replaceOpenedInBrowser()
+                        open(link)
+                    }
                     .keyboardShortcut(.defaultAction)
                 }
                 // A raced list keeps its primary: the person picks again and goes on.
@@ -371,6 +390,9 @@ public struct SignInView: View {
                         model.useLicenseKey()
                     }
                 }
+                if limitRows {
+                    autoButton("signin.auto.confirm.other", .quiet, shortcut: false)
+                }
                 cancelButton
             case .confirm:
                 autoButton("signin.auto.confirm.primary", .primary)
@@ -388,8 +410,9 @@ public struct SignInView: View {
                 autoButton("common.continue", .primary)
                 autoButton("signin.nearby.notYou", .quiet)
             case .deviceLimit:
-                // Replace a device opens the refusal's manageUrl; the SwiftUI slice (KFA-swift)
-                // owns the full-row layout and the resume on return.
+                // Replace a device opens the refusal's manageUrl and the sign-in resumes on return
+                // (the gate runs the provider sign-in once more); Use another account drops the
+                // step; Cancel leaves the form for Welcome. Never the key field (SIGN-IN §3.19).
                 #if !os(tvOS)
                     if screen.shows("signin.deviceLimit.replace"),
                         let link = KitLinks.valid(model.inputs.autoSignIn?.manageUrl)
@@ -397,10 +420,14 @@ public struct SignInView: View {
                         KitButton(
                             line: CopyLine("signin.deviceLimit.replace"), kind: .primary,
                             glyph: PolarisKitGlyph.newWindow
-                        ) { open(link) }
+                        ) {
+                            model.replaceOpenedInBrowser()
+                            open(link)
+                        }
+                        .keyboardShortcut(.defaultAction)
                     }
                 #endif
-                autoButton("signin.auto.confirm.other", .quiet)
+                autoButton("signin.auto.confirm.other", .quiet, shortcut: false)
                 cancelButton
             case .linkDone:
                 autoButton("common.continue", .primary)
@@ -455,7 +482,8 @@ public struct SignInView: View {
 
     /// A control of an automatic step: the line's label, the host told which it was.
     @ViewBuilder private func autoButton(
-        _ key: String, _ kind: KitButtonKind, screen: KitScreen<SignInState>? = nil
+        _ key: String, _ kind: KitButtonKind, screen: KitScreen<SignInState>? = nil,
+        shortcut: Bool = true
     ) -> some View {
         let line = screen?.line(key) ?? model.signInScreen.line(key) ?? CopyLine(key)
         KitButton(line: line, kind: kind) {
@@ -466,10 +494,29 @@ public struct SignInView: View {
                 } else {
                     model.useAnotherAccount()
                 }
+            } else if kind != .primary, model.inDeviceLimit {
+                // The device limit's other account: the grant goes and the methods show.
+                model.useAnotherAccount()
             }
             onAutoSignIn?(kind == .primary ? .primary : .secondary)
         }
-        .keyboardShortcut(kind == .primary ? .defaultAction : .cancelAction)
+        .keyboardShortcut(
+            kind == .primary ? .defaultAction : (shortcut ? .cancelAction : nil))
+    }
+
+    /// Full rows with no free seat and no grant to choose under: a device limit, whatever drew it.
+    private var limitRows: Bool {
+        model.licenseChoice.state == .allFull && model.choice == nil
+            && model.licenseChoice.line("signin.choice.allFullCreate") == nil
+    }
+
+    /// Where Replace a device goes in the browser from a list of full rows: only when some full
+    /// row allows a replace, to that row's page, else the refusal's `manageUrl`.
+    private var browserReplaceLink: URL? {
+        let rows = model.inputs.choices?.choices ?? []
+        guard rows.contains(where: { $0.isFull && $0.replace?.allowed == true }) else { return nil }
+        return rows.lazy.compactMap { KitLinks.valid($0.freeDeviceUrl) }.first
+            ?? KitLinks.valid(model.limitManageUrl)
     }
 
     /// Replace in the app: the choice's own call when it runs here, else the host's handler.
@@ -524,7 +571,8 @@ public struct SignInView: View {
     }
 
     private func cancelSignInStep() {
-        if model.signInScreen.state == .methods {
+        if model.signInScreen.state == .methods || model.inDeviceLimit {
+            // A device limit that stopped sign-in leaves the form for Welcome, like the methods.
             model.backToWelcome()
             onClose?()
         } else {
@@ -593,6 +641,68 @@ public struct SignInMethodsView: View {
         }
     }
 
+    /// The email (or Continue in browser) row: the primary, or a secondary under the providers.
+    @ViewBuilder private func emailRow(_ email: CopyLine?, primary: Bool, _ style: KitResolvedStyle)
+        -> some View
+    {
+        if let email {
+            if primary {
+                KitButton(line: email, kind: .primary, glyph: PolarisKitGlyph.newWindow) {
+                    onMethod(email.key)
+                }
+                .keyboardShortcut(.defaultAction)
+            } else {
+                KitButton(line: email, kind: .secondary, glyph: PolarisKitGlyph.newWindow) {
+                    onMethod(email.key)
+                }
+            }
+            errorRow(after: "Email", style)
+        }
+    }
+
+    /// The provider buttons: `isDefault` makes the first the form's default action.
+    @ViewBuilder private func providerRows(_ style: KitResolvedStyle, isDefault: Bool)
+        -> some View
+    {
+        VStack(spacing: style.space(.sm)) {
+            ForEach(providers, id: \.self) { provider in
+                let label = strings.string(
+                    "signin.provider.continue", ["provider": .text(provider.name)])
+                // Apple's rules (HIG, Sign in with Apple): the logo and "Continue with Apple"
+                // on a full-width button, white on a dark ground and black on a light one; same
+                // height and capsule as its siblings.
+                Button {
+                    onMethod(provider.rawValue)
+                } label: {
+                    HStack(spacing: style.space(.xs)) {
+                        Image(systemName: provider.symbol)
+                            .font(style.font(.button))
+                            .accessibilityHidden(true)
+                        Text(label)
+                            .font(style.font(.button))
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: style.controlHeight - 14)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(
+                    KitCapsuleStyle(
+                        fill: AnyShapeStyle(style.dark ? Color.white : Color.black),
+                        label: style.dark ? .black : .white,
+                        reduceMotion: style.reduceMotion,
+                        height: style.controlHeight,
+                        hairline: style.dark ? nil : Color.black)
+                )
+                .keyboardShortcut(isDefault && provider == providers.first ? .defaultAction : nil)
+                .accessibilityLabel(label)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(strings.string("signin.provider.group"))
+        ForEach(providers, id: \.self) { errorRow(after: $0.name, style) }
+    }
+
     public var body: some View {
         kitStyle { style in
             VStack(alignment: .leading, spacing: style.space(.md)) {
@@ -600,53 +710,18 @@ public struct SignInMethodsView: View {
                     KitText(lede, .body, color: .default)
                 }
                 KitMethodsStack {
-                    if let email = screen.line("signin.email.continue")
+                    let email = screen.line("signin.email.continue")
                         ?? screen.line("signin.desktop.continue")
-                    {
-                        KitButton(line: email, kind: .primary, glyph: PolarisKitGlyph.newWindow) {
-                            onMethod(email.key)
-                        }
-                        .keyboardShortcut(.defaultAction)
-                        errorRow(after: "Email", style)
+                    let hasProviders = !providers.isEmpty && screen.shows("signin.provider.continue")
+                    // The primary is the model's (SIGN-IN §3.19): Continue in browser on a desktop,
+                    // Continue with the provider elsewhere, with email a secondary row. A kit with
+                    // no provider row keeps email as the primary.
+                    let emailIsPrimary = email?.key == "signin.desktop.continue" || !hasProviders
+                    if emailIsPrimary { emailRow(email, primary: true, style) }
+                    if hasProviders {
+                        providerRows(style, isDefault: !emailIsPrimary)
                     }
-                    if !providers.isEmpty, screen.shows("signin.provider.continue") {
-                        VStack(spacing: style.space(.sm)) {
-                            ForEach(providers, id: \.self) { provider in
-                                let label = strings.string(
-                                    "signin.provider.continue",
-                                    ["provider": .text(provider.name)])
-                                // Apple's rules (HIG, Sign in with Apple): the logo and "Continue
-                                // with Apple" on a full-width button, white on a dark ground and
-                                // black on a light one; same height and capsule as its siblings.
-                                Button {
-                                    onMethod(provider.rawValue)
-                                } label: {
-                                    HStack(spacing: style.space(.xs)) {
-                                        Image(systemName: provider.symbol)
-                                            .font(style.font(.button))
-                                            .accessibilityHidden(true)
-                                        Text(label)
-                                            .font(style.font(.button))
-                                            .multilineTextAlignment(.center)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
-                                    .frame(maxWidth: .infinity, minHeight: style.controlHeight - 14)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(
-                                    KitCapsuleStyle(
-                                        fill: AnyShapeStyle(style.dark ? Color.white : Color.black),
-                                        label: style.dark ? .black : .white,
-                                        reduceMotion: style.reduceMotion,
-                                        height: style.controlHeight,
-                                        hairline: style.dark ? nil : Color.black))
-                                .accessibilityLabel(label)
-                            }
-                        }
-                        .accessibilityElement(children: .contain)
-                        .accessibilityLabel(strings.string("signin.provider.group"))
-                        ForEach(providers, id: \.self) { errorRow(after: $0.name, style) }
-                    }
+                    if !emailIsPrimary { emailRow(email, primary: false, style) }
                     if let passkey = screen.line("signin.passkey") {
                         KitButton(line: passkey, kind: .secondary) { onMethod(passkey.key) }
                         errorRow(after: "Passkey", style)
@@ -654,6 +729,49 @@ public struct SignInMethodsView: View {
                     if let code = screen.line("signin.link.deviceCode") {
                         KitButton(line: code, kind: .quiet) { onCode() }
                     }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Automatic sign-in's confirm step
+
+/// The confirm step's body (SIGN-IN §3.19): overline labels, a strong license line, 4 pt inside a
+/// labelled group and 16 pt between groups. The account is the h1's subtitle, not a body line. A
+/// label draws only with its value, and a line missing an argument is not drawn at all.
+struct ConfirmBody: View {
+    let screen: KitScreen<SignInState>
+
+    /// The license value: the existing license with its seat, or the one created on Continue.
+    private var licenseValue: CopyLine? {
+        for key in ["signin.consent.licenseLine", "signin.consent.newLicense", "signin.choice.metaNew"] {
+            if let line = screen.line(key), line.isComplete() { return line }
+        }
+        return nil
+    }
+
+    var body: some View {
+        kitStyle { style in
+            VStack(alignment: .leading, spacing: style.space(.md)) {
+                if let label = screen.line("signin.consent.license"), let value = licenseValue {
+                    VStack(alignment: .leading, spacing: style.space(.xxs)) {
+                        KitText(label, .footnote, color: .muted)
+                        KitText(value, .body, color: .strong, weight: .medium)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                if let label = screen.line("signin.consent.alsoGets") {
+                    VStack(alignment: .leading, spacing: style.space(.xxs)) {
+                        KitText(label, .footnote, color: .muted)
+                        if let profile = screen.line("signin.consent.profile") {
+                            KitText(profile, .body, color: .default)
+                        }
+                        if let pairwise = screen.line("signin.consent.pairwise") {
+                            KitText(pairwise, .meta, color: .muted)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
                 }
             }
         }
@@ -819,6 +937,16 @@ public struct LicenseChoiceView: View {
                 if let lede = screen.line("signin.choice.lede") {
                     KitText(lede, .body, color: .default)
                 }
+                // The full list's lede sits above its rows in every kit (SIGN-IN §3.19).
+                ForEach(
+                    screen.copy.filter {
+                        $0.key.hasPrefix("signin.choice.allFull")
+                            || $0.key == "signin.choice.noneReplaceable"
+                            || $0.key.hasPrefix("signin.none")
+                    }, id: \.key
+                ) { line in
+                    KitText(line, .body, color: .default)
+                }
                 if screen.state == .loading {
                     LoadingIndicator(CopyLine("common.loading"))
                 }
@@ -858,15 +986,6 @@ public struct LicenseChoiceView: View {
                     // The selected row's tint follows the group's corners.
                     .clipShape(
                         RoundedRectangle(cornerRadius: style.groupRadius, style: .continuous))
-                }
-                ForEach(
-                    screen.copy.filter {
-                        $0.key.hasPrefix("signin.choice.allFull")
-                            || $0.key == "signin.choice.noneReplaceable"
-                            || $0.key.hasPrefix("signin.none")
-                    }, id: \.key
-                ) { line in
-                    KitText(line, .meta, color: .default)
                 }
             }
         }
