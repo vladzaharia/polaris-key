@@ -8,6 +8,9 @@ import im.plrs.key.core.longValue
 import im.plrs.key.core.sync.CloudSyncMachine
 import im.plrs.key.core.sync.HostCodec
 import im.plrs.key.core.sync.SyncResponse
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -37,7 +40,14 @@ internal class CloudSyncHostExchange(private val st: CloudSyncHostState) {
         if (wire == null) {
             m.receive(SyncResponse.TRANSPORT)
         } else {
-            val res = deps.send(wire)
+            val res = try {
+                deps.sendFor?.invoke(wire, bound) ?: deps.send(wire)
+            } catch (e: CancellationException) {
+                // A flush that timed out cancels the call. The machine must hear that nothing was processed, or its
+                // request stays in flight for good and nothing is ever sent again.
+                withContext(NonCancellable) { if (st.generation == generation) m.receive(SyncResponse.TRANSPORT) }
+                throw e
+            }
             when {
                 // A purge ran while the request was out: the machine is gone, so the answer is never read (H-7).
                 st.generation != generation -> Unit

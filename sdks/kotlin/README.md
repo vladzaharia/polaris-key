@@ -379,6 +379,15 @@ On the JVM it tries the LAN first (mDNS and TCP), then the relay. On Android the
 discovery needs the Android adapter (CC-12b) and reports `off` with reason `unsupported` until then.
 `stop()` and sign-out close every session within 2 s each. `PolarisKeyFutures` has the Java forms.
 
+## Cloud Sync settings
+
+`client.cloudSync.status()` answers the machine's state (`local` before it starts), `flush()` sends what is waiting (bounded) and
+`newRecoveryCode()` makes a fresh code through `client.keyring`. `client.events` carries `PolarisEvent.CloudSync`. While a person is
+signed in, `config.set`, `clear` and `setting(key)` go through the machine and `setting(key).sync()` answers `local`, `pending` or
+`synced`. Set the mode and the compiled catalog in `PolarisKeyClientOptions.cloudSync`; a product without the Sync service gets the
+typed `service-unavailable`. Signing out flushes, forgets the key ring and purges; a ring that cannot forget stops the sign-out. The
+state file is `cloud-sync.json` in the store's state directory (`noBackupFilesDir` on Android).
+
 ## JVM desktop
 
 `PolarisKeyDesktop` (in `:sdk`) is the desktop entry point, as `PolarisKeyAndroid` is

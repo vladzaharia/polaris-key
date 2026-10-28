@@ -36,8 +36,14 @@ public object CloudSyncTransport {
     }
 
     /** The wire request for [req], or null when it is not a sync route or there is no token (nothing is sent). */
-    private suspend fun prepared(core: CoreContext, req: JsonObject): PolarisRequest? {
+    private suspend fun prepared(core: CoreContext, req: JsonObject, bound: String?): PolarisRequest? {
         val token = core.token()
+        // The subject is stored before the token (every sign-in path), so a token that is another person's means the
+        // stored subject already is: re-read it after the token and refuse a request bound to someone else.
+        if (bound != null) {
+            val now = core.storedSubject()
+            if (now != null && now != bound) return null
+        }
         val path = req["path"].stringValue
         val method = req["method"].stringValue
         val sendable = !token.isNullOrEmpty() && path != null && method != null
@@ -57,8 +63,8 @@ public object CloudSyncTransport {
     }
 
     /** Send one machine request; the answer is a [SyncResponse], or [SyncResponse.TRANSPORT]. */
-    public suspend fun send(core: CoreContext, req: JsonObject): SyncResponse {
-        val wire = prepared(core, req) ?: return SyncResponse.TRANSPORT
+    public suspend fun send(core: CoreContext, req: JsonObject, bound: String? = null): SyncResponse {
+        val wire = prepared(core, req, bound) ?: return SyncResponse.TRANSPORT
         // Any failure to get an answer is "nothing was processed"; no message is kept (it could name a URL).
         val res = runCatching { core.transport.send(wire) }
             .onFailure { if (it is CancellationException) throw it }

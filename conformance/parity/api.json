@@ -2942,9 +2942,7 @@
           "reason": "a hook returns a render value; the sync state re-renders with the value"
         },
         "swift": {},
-        "kotlin": {
-          "planned": "U-07"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -3717,9 +3715,7 @@
           "reason": "a hook returns a render value, following the machine"
         },
         "swift": {},
-        "kotlin": {
-          "planned": "U-07"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -3739,9 +3735,7 @@
           "reason": "the hook carries the method"
         },
         "swift": {},
-        "kotlin": {
-          "planned": "U-07"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -3764,7 +3758,7 @@
           "planned": "U-07"
         },
         "kotlin": {
-          "planned": "U-07"
+          "path": "cloudSync.encryption"
         },
         "godot": {
           "spelling": "cloud_sync_encryption"
@@ -3795,7 +3789,8 @@
           "reason": "one event stream on the client, case cloudSync"
         },
         "kotlin": {
-          "planned": "U-07"
+          "spelling": "client.events",
+          "reason": "one event stream on the client (client.events), PolarisEvent.CloudSync"
         },
         "godot": {
           "spelling": "client.event",

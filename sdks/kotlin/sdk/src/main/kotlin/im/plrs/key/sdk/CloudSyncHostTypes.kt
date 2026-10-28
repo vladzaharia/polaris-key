@@ -31,6 +31,12 @@ public class CloudSyncHostDeps(
     /** The signed config document's `values` and the keys it `locked`. */
     public val document: suspend () -> JsonObject,
 ) {
+    /**
+     * `send` with the person the request is bound to: the live wiring re-reads the stored subject after it reads the
+     * token and refuses the request when it is another person's. Null: [send] alone.
+     */
+    public var sendFor: (suspend (JsonObject, String?) -> SyncResponse)? = null
+
     public var keyringUnlocked: () -> Boolean = { false }
     public var attachKeyring: (im.plrs.key.sdk.SyncRootListener) -> () -> Unit = { { } }
 

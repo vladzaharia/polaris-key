@@ -42,6 +42,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
+private const val SAVE_AFTER_DEADLINE_MS = 250L
+
 public class CloudSyncHost private constructor(private val core: CloudSyncHostCore) : CloudSyncHostData by core.data {
     public constructor(deps: CloudSyncHostDeps, opts: CloudSyncHostOptions = CloudSyncHostOptions()) : this(CloudSyncHostCore(deps, opts))
 
@@ -163,12 +165,16 @@ public class CloudSyncHost private constructor(private val core: CloudSyncHostCo
     public suspend fun flush(maxMs: Long = SYNC_SIGNOUT_FLUSH_MS.toLong()) {
         if (!st.live) return
         withContext(dispatcher) { st.machine?.flush() }
-        withTimeoutOrNull(maxMs) {
+        // One deadline for the pass and the save (the sign-out bound is not doubled); the save runs on the host's
+        // dispatcher, where the machine and the open keys are confined.
+        val done = withTimeoutOrNull(maxMs) {
             touch()
             core.pump.awaitDone(maxMs)
             touch()
+            withContext(dispatcher) { core.pump.save() }
         }
-        withTimeoutOrNull(maxMs) { core.pump.save() }
+        // Past the deadline the journal is still kept: a short save of what the machine holds.
+        if (done == null) withTimeoutOrNull(SAVE_AFTER_DEADLINE_MS) { withContext(dispatcher) { core.pump.save() } }
     }
 
     /** What the shutdown hook runs: a flush bounded by the sign-out flush bound. */

@@ -3,6 +3,7 @@
 package im.plrs.key.sdk
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 
@@ -67,11 +68,17 @@ internal class CloudSyncHostDataImpl(
                 }
             }
         } finally {
-            withContext(Dispatchers.IO) {
-                st.file.remove()
-                st.file.sweepTemporaries()
+            // A cancelled caller must still finish: the second delete, the sweep, and letting the pump run again.
+            withContext(NonCancellable) {
+                try {
+                    withContext(Dispatchers.IO) {
+                        st.file.remove()
+                        st.file.sweepTemporaries()
+                    }
+                } finally {
+                    withContext(st.dispatcher) { st.purging = false }
+                }
             }
-            withContext(st.dispatcher) { st.purging = false }
         }
     }
 

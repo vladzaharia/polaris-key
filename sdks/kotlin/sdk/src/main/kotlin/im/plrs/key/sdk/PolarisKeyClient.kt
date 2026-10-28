@@ -501,12 +501,14 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     /** The identity callback reaches the API through this, because `identity` is built before the API. */
     private val cloudSyncApi = java.util.concurrent.atomic.AtomicReference<CloudSyncApi?>(null)
 
+    @Volatile internal var tempStateDir: java.io.File? = null
+
     private val cloudSyncImpl: CloudSyncApi = CloudSyncApi(
         core = core,
         config = config,
         makeHost = {
             CloudSyncHost(
-                liveCloudSyncDeps(core, keyring, config, core.store.stateDirectory ?: privateTempDir()),
+                liveCloudSyncDeps(core, keyring, config, core.store.stateDirectory ?: privateTempDir().also { tempStateDir = it }),
                 options.cloudSync,
             )
         },
@@ -514,6 +516,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         emit = { eventFlow.tryEmit(PolarisEvent.CloudSync(it)) },
         forgetRing = { keyring.forget() },
         recovery = { keyring.setRecoveryCode() },
+        cleanup = { tempStateDir?.deleteRecursively() },
     ).also { api ->
         cloudSyncApi.set(api)
         // Registered after Connect's hook: the roster goes first. Then Cloud Sync flushes (bounded) and signs the machine out while

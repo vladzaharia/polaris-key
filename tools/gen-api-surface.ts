@@ -468,6 +468,7 @@ const KOTLIN_TYPE: Record<string, string> = {
   packs: "PacksClient",
   presentation: "PresentationSource",
   cloudConnect: "CloudConnect",
+  cloudSync: "CloudSyncClient",
 };
 /** Rows built by the Android and Desktop bootstrap objects (PolarisKeyAndroid, PolarisKeyDesktop): not on the client, and the Android module is not in the JVM build. */
 const KOTLIN_UNASSERTED = new Set([
@@ -486,6 +487,7 @@ const KOTLIN_COMPANION = new Set([
 const KOTLIN_OPTION_HOLDER: Record<string, string> = {
   core: "CoreOptions",
   update: "UpdateClientOptions",
+  cloudSync: "CloudSyncHostOptions",
 };
 
 function renderKotlin(api: Api): string {
@@ -528,6 +530,8 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.release.ReleaseClient`,
     `import im.plrs.key.sdk.BackendClient`,
     `import im.plrs.key.sdk.CloudConnect`,
+    `import im.plrs.key.sdk.CloudSyncClient`,
+    `import im.plrs.key.sdk.CloudSyncHostOptions`,
     `import im.plrs.key.sdk.CommerceClient`,
     `import im.plrs.key.sdk.PolarisKeyClient`,
     ...[
