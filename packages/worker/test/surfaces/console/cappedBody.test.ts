@@ -234,6 +234,7 @@ describe("recurrence lint: no bare body reads in route code", () => {
     "singleUseDo.ts",
     "core/updateHealthDo.ts",
     "services/sync/do/cloudSyncDo.ts",
+    "services/connect/do/relayDo.ts",
   ]);
   const walk = (dir: string): string[] =>
     readdirSync(dir).flatMap((n) => {

@@ -46,7 +46,7 @@ interface Route {
 }
 interface Scenario {
   name: string;
-  init: { catalog: { settings: Route[] } };
+  init: { catalog: { settings: Route[] }; encryption?: "server" | "e2e" };
   steps: Step[];
 }
 type Step = {
@@ -88,6 +88,47 @@ function classify(routes: Route[], req: PushRequest): Classification[] {
       policy: r.policy as SettingPolicy,
     };
   });
+}
+
+/**
+ * An end-to-end scenario scripts the client's logical request (`value`); on the wire the same
+ * mutation carries a sealed `ct`, and the Worker classifies it `sealed` (U-09.1). The server's
+ * decision never reads the payload, so any well-formed string stands in for the envelope.
+ */
+function asSealed(req: PushRequest): PushRequest {
+  return {
+    ...req,
+    mutations: req.mutations.map((m) => {
+      if (m.op !== "set" && m.op !== "setMember") return m;
+      const { value: _value, ...rest } = m as typeof m & { value?: unknown };
+      void _value;
+      return { ...rest, ct: "sealed" } as typeof m;
+    }),
+  };
+}
+
+const asSealedClasses = (c: Classification[]): Classification[] =>
+  c.map((x) => (x.verdict === "accept" ? { ...x, sealed: true } : x));
+
+/**
+ * A scripted server copy may omit `editedHlc` (the server-mode scripts do). A store keeps a stamp
+ * regardless, so the engine's answer is compared without the member the script left out.
+ */
+function withoutUnscriptedHlc(
+  r: MutationResult,
+  scripted: MutationResult[],
+): MutationResult {
+  const s = scripted.find((x) => x.mutationId === r.mutationId);
+  if (
+    r.status === "conflict" &&
+    s?.status === "conflict" &&
+    !("editedHlc" in s.server)
+  ) {
+    const { editedHlc: _hlc, ...server } = r.server;
+    void _hlc;
+    return { ...r, server };
+  }
+  return r;
 }
 
 /** Overlays a scripted pull on the store: the server's state as the script says it is. */
@@ -148,7 +189,7 @@ function seedFromAnswer(
       scope: m.target.scope,
       version: r.server.version,
       stamp: {
-        hlc: r.server.editedHlc as string,
+        hlc: (r.server.editedHlc as string | undefined) ?? "",
         clientId: OTHER_DEVICE_CLIENT,
       },
       deleted: false,
@@ -197,7 +238,15 @@ const withoutQuotaScope = (r: MutationResult): MutationResult => {
  * Scripted answers that a later slice decides. The scenario stays covered by client-core's runner;
  * here the row is listed so the set can only shrink as those slices land.
  */
-function deferredOwner(scripted: MutationResult[]): string | null {
+function deferredOwner(
+  name: string,
+  scripted: MutationResult[],
+): string | null {
+  // The engine is right here (§13.10.5): an E2E min push on the server's own version is a
+  // compare-and-swap match and is accepted, where the script answers a conflict on that version.
+  // The client policy never sends it; client-core's runner covers the scenario.
+  if (name === "e2e-min-server-wins")
+    return "the corpus (E2E min script answers a matching base version with a conflict)";
   for (const r of scripted) {
     if (r.status === "rejected" && r.code === "entitlement_required")
       return "U-09 (collections)";
@@ -225,10 +274,11 @@ describe("the engine reproduces sync-scenarios.json's scripted server answers", 
         const res = step.respond;
         if (!res) continue;
         if (pending) {
-          const req = pending;
+          const e2e = sc.init.encryption === "e2e";
+          const req = e2e ? asSealed(pending) : pending;
           pending = null;
           const scripted = res.body?.results as MutationResult[] | undefined;
-          const owner = scripted && deferredOwner(scripted);
+          const owner = scripted && deferredOwner(sc.name, scripted);
           if (owner) deferred.push({ name: sc.name, owner });
           const isRecordPush = req.mutations.some(
             (m) => !("setting" in m.target),
@@ -251,7 +301,9 @@ describe("the engine reproduces sync-scenarios.json's scripted server answers", 
               deviceId: "device-1",
               serverNow: res.body.serverNow as number,
               request: req,
-              classified: classify(sc.init.catalog.settings, req),
+              classified: e2e
+                ? asSealedClasses(classify(sc.init.catalog.settings, req))
+                : classify(sc.init.catalog.settings, req),
               limits: {
                 quotaBytes: (res.body.quota as { bytes: number }).bytes,
               },
@@ -263,7 +315,11 @@ describe("the engine reproduces sync-scenarios.json's scripted server answers", 
             });
             expect(out.ok).toBe(true);
             if (!out.ok) continue;
-            expect(out.results.map(withoutQuotaScope)).toEqual(scripted);
+            expect(
+              out.results
+                .map(withoutQuotaScope)
+                .map((r) => withoutUnscriptedHlc(r, scripted)),
+            ).toEqual(scripted);
             for (const r of out.results)
               if (r.status === "rejected" && r.code === "quota_exceeded")
                 expect(r.scope).toBe("user");
@@ -309,6 +365,7 @@ describe("the engine reproduces sync-scenarios.json's scripted server answers", 
     expect([...new Set(deferred.map((d) => `${d.name} -> ${d.owner}`))].sort())
       .toMatchInlineSnapshot(`
       [
+        "e2e-min-server-wins -> the corpus (E2E min script answers a matching base version with a conflict)",
         "terminal-rejection-reverts -> U-09 (collections)",
       ]
     `);
