@@ -1,16 +1,16 @@
 # I-45 Kotlin autoSignIn(): Credential Manager, PGS v2, JVM ladder, Compose states (rungs 1-4; rungs 6-7 after I-15; nearby after I-40 and CC-15)
 
-| Field       | Value                                                                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                                                                                                                     |
-| Size        | 1–1.4 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [I-13](I-13-exchange-endpoint.md), [I-43](I-43-link-offer.md), [I-46](I-46-web-auto-signin.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [CC-26](CC-26-device-key-stores.md) |
-| Unblocks    | [I-49](I-49-silent-restore.md)                                                                                                                                                         |
-| Role        | `pkey-sdk-porter`                                                                                                                                                                      |
-| Plan mode   | no                                                                                                                                                                                     |
-| Gates       | all-sdks, drift-gate, ci:android, ui-snapshots                                                                                                                                         |
-| Human input | none                                                                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                              |
+| Field       | Value                                                                                                                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                                                                                                                                                     |
+| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                   |
+| Depends on  | [I-13](I-13-exchange-endpoint.md), [I-43](I-43-link-offer.md), [I-46](I-46-web-auto-signin.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [CC-26](CC-26-device-key-stores.md), [I-14](I-14-game-verifiers.md) |
+| Unblocks    | [I-49](I-49-silent-restore.md)                                                                                                                                                                                         |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                      |
+| Plan mode   | no                                                                                                                                                                                                                     |
+| Gates       | all-sdks, drift-gate, ci:android, ui-snapshots                                                                                                                                                                         |
+| Human input | none                                                                                                                                                                                                                   |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                              |
 
 ## Goal
 

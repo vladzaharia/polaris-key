@@ -678,6 +678,7 @@ export const Feature = {
   syncConflict: "sync.conflict",
   syncSaves: "sync.saves",
   syncKeyring: "sync.keyring",
+  syncE2e: "sync.e2e",
   connectIdentity: "connect.identity",
   connectNoise: "connect.noise",
   connectProtocol: "connect.protocol",
@@ -811,6 +812,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "sync.conflict",
   "sync.saves",
   "sync.keyring",
+  "sync.e2e",
   "connect.identity",
   "connect.noise",
   "connect.protocol",
@@ -2052,6 +2054,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
   "sync.keyring": { status: "implemented", service: "sync", na: [] },
+  "sync.e2e": { status: "planned", service: "sync", na: [] },
   "connect.identity": { status: "planned", service: "connect", na: [] },
   "connect.noise": { status: "planned", service: "connect", na: [] },
   "connect.protocol": { status: "planned", service: "connect", na: [] },
@@ -2323,4 +2326,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "3cf15e871990cfc24d910f5f2f37a46f825a720e822cc491a97e47cf681c9122";
+  "d55678f4ea0da2241529adf1a668bdd19bb361ad07a9a3be0f9558f14dd2b8e7";

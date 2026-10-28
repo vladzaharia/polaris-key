@@ -466,6 +466,10 @@
       "status": "implemented",
       "note": "client.keyring (sdks/python/src/polaris_key/keyring/client.py) over polaris_key.core.sync_crypto on `cryptography` (HKDF, AES-256-GCM, X25519, HPKE mode_base written out): create(), unlock() (opens this device's wrap through the DeviceKeyPort's dh, so the agreement key never leaves the store), wrap_to()/remove_wrap(), set_recovery_code()/recover(), reset()/adopt()/open_adopted(), attach(machine) feeding set_root, and the codec. The root is held in memory only, never written, returned or shown in a repr, error or pickle; the host decides how a wrap travels (R-9). tests/test_keyring.py, tests/test_sync_crypto_conformance.py (sync-vectors.json: hkdf, envelope, blind, hpke anchor, wrap, recovery, adopt); the keyring-* transcripts replay in tests/test_transcripts.py."
     },
+    "sync.e2e": {
+      "status": "planned",
+      "wp": "U-38"
+    },
     "connect.identity": {
       "status": "implemented",
       "note": "polaris_key.core.peer_cert ports client-core's peer/cert.ts (verify_peer_cert, verify_ring, ring_expired, replace_ring, admit_peer) over the SDK's strict verify_jws; tests/test_connect_conformance.py runs peerCertCases, ringCases and peerAdmissionCases. client.connect (polaris_key/connect, CC-10.1): identity() registers the device keys on first need (a memory-only store refuses unless allow_ephemeral_keys), fetches GET connect/identity and verifies the roster and certificate against the effective set, refusing a stale, foreign, expired or other-keys answer with bad_response; the roster, certificate and K_disc are kept as pkey.connect.v1 (0600 in a 0700 state directory, never in a repr or log) with the previous K_disc dropped on a leave or key change and after 24 h; list_devices(), current(), discovery_keys(), leave(). tests/test_connect_identity.py. No identity transcript is recorded yet; the relay transcripts belong to connect.relay."

@@ -18911,7 +18911,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3", "plans/CC-01.md §4"],
       "brief": "wp/CC-08-node-connect.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "CC-09",
@@ -18945,7 +18945,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3", "plans/CC-01.md §4"],
       "brief": "wp/CC-10-python-connect.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "CC-11",
@@ -18962,7 +18962,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3", "plans/CC-01.md §4"],
       "brief": "wp/CC-11-swift-connect.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "CC-12",
@@ -18979,7 +18979,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3", "plans/CC-01.md §4"],
       "brief": "wp/CC-12-kotlin-connect.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "CC-12b",
@@ -19299,7 +19299,7 @@
       "optional": false,
       "refs": ["plans/CC-01.md §2 R-5", "plans/CC-01-cloud-connect.md §3"],
       "brief": "wp/CC-26-device-key-stores.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "I-42",
@@ -19333,7 +19333,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/I-43-link-offer.md",
-      "status": "todo",
+      "status": "in-progress",
       "planRef": "CC-01"
     },
     {
@@ -19343,7 +19343,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.0, 1.4],
-      "deps": ["I-13", "I-43", "I-46", "I-10b", "CC-26"],
+      "deps": ["I-13", "I-43", "I-46", "I-10b", "CC-26", "I-14"],
       "planMode": false,
       "gates": ["all-sdks", "drift-gate", "ui-snapshots"],
       "humanInputs": [],
@@ -19351,7 +19351,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5", "plans/CC-01.md §4"],
       "brief": "wp/I-44-swift-auto-signin.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "I-45",
@@ -19360,7 +19360,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.0, 1.4],
-      "deps": ["I-13", "I-43", "I-46", "I-10b", "CC-26"],
+      "deps": ["I-13", "I-43", "I-46", "I-10b", "CC-26", "I-14"],
       "planMode": false,
       "gates": ["all-sdks", "drift-gate", "ci:android", "ui-snapshots"],
       "humanInputs": [],
@@ -19368,7 +19368,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5", "plans/CC-01.md §4"],
       "brief": "wp/I-45-kotlin-auto-signin.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "I-46",
@@ -19391,7 +19391,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/I-46-web-auto-signin.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "I-47",
@@ -19503,7 +19503,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/U-34-client-core-e2e.md",
-      "status": "todo",
+      "status": "in-progress",
       "planRef": "CC-01"
     },
     {
@@ -19527,7 +19527,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/U-35-machine-v3.md",
-      "status": "todo",
+      "status": "in-progress",
       "planRef": "CC-01"
     },
     {
@@ -19554,7 +19554,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/U-36-core-key-ring.md",
-      "status": "todo",
+      "status": "in-progress",
       "planRef": "CC-01"
     },
     {
@@ -19692,7 +19692,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §7", "plans/CC-01.md §4"],
       "brief": "wp/U-43-security-review-e2e.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "U-44",

@@ -608,6 +608,10 @@
       "status": "planned",
       "wp": "U-40"
     },
+    "sync.e2e": {
+      "status": "planned",
+      "wp": "U-40"
+    },
     "connect.identity": {
       "status": "planned",
       "wp": "CC-14"
