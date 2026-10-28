@@ -15,7 +15,6 @@ import {
   memoryDeviceKeyStorage,
   type DeviceKeyPort,
 } from "@polaris-key/client-core";
-import { BearerSession } from "../src/browser/bearer/session.js";
 import { indexedDbStore, memoryStore } from "../src/browser/bearer/store.js";
 import {
   fedcmGoogleProvider,
@@ -34,31 +33,21 @@ import type {
   PlatformMediation,
 } from "../src/core/signIn.js";
 
+import {
+  ACCESS,
+  GRANT,
+  HANDLE,
+  SUBJECT_TOKEN,
+  durableKeys,
+  json,
+  TOKEN_BODY,
+  exchangeSession,
+  nonceOf,
+} from "./exchangeFixtures.js";
+
 const NOW = 1_700_000_000;
 const DEVICE = "AUTOSIGNINDEVICE000000000000001";
 const BASE = "https://key.plrs.im/acme/identity";
-const TOKEN = "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJnb29nbGUifQ.c2ln";
-const ACCESS = "pkeyt_prsGUTwB_L_ya9ehl-yBxntG6B7_xgjP270SLtXiRdU";
-const GRANT = "sg_vXaXXVFx-nbsln4n2t-RP-vjQSv6dpGbNfDR9V7Kn7M";
-const HANDLE = "lh_Cgk9GjrOM5ZTa16Q4RNw3rl3FE1zW0g_zIXFPBEenRU";
-const nonceOf = (n: number) => `${String(n).padStart(43, "N")}`;
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-
-const TOKEN_BODY = {
-  access_token: ACCESS,
-  token_type: "Bearer",
-  scope: "profile email",
-  subject: "ps_abc",
-  schemaVersion: 1,
-  device: { id: DEVICE, licenseId: null },
-  license: { id: "lic-1" },
-  issued_token_type: "urn:polaris-key:token-type:device",
-};
 
 const EXCHANGE = {
   kinds: ["google"],
@@ -90,21 +79,12 @@ function rig(
   }) as typeof fetch;
   const discovery = o.discovery === undefined ? discoveryOf() : o.discovery;
   const store = memoryStore("acme");
-  const session = new BearerSession({
-    baseUrl: "https://key.plrs.im",
-    product: "acme",
-    version: "1.0.0",
+  const session = exchangeSession({
     fetchImpl,
-    now: () => NOW,
-    pinned: { k: "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI" },
     store,
-    enabled: (slug) => slug === "identity",
     exchangeEndpoints: () => exchangeDiscoveryOf(discovery),
-    random: () => 0,
   });
-  const port: DeviceKeyPort = createWebDeviceKeyStore({
-    storage: memoryDeviceKeyStorage(),
-  });
+  const port = durableKeys();
   return { session, store, port, calls, discovery };
 }
 
@@ -140,11 +120,23 @@ function ctxOf(
   };
 }
 
+const interstitial = (reason: string, extra: Record<string, unknown> = {}) =>
+  json(
+    {
+      error: "interstitial_required",
+      reason,
+      url: "https://key.plrs.im/acme/signin",
+      linkHandle: HANDLE,
+      ...extra,
+    },
+    403,
+  );
+
 describe("rung 1: a stored token", () => {
   it("is signedIn with no provider asked and no request made", async () => {
     const r = rig();
     await r.store.setToken("pkeyt_stored");
-    const s = stub({ silent: TOKEN });
+    const s = stub({ silent: SUBJECT_TOKEN });
     const out = await runAutoSignIn(ctxOf(r, s.provider));
     expect(out).toMatchObject({ kind: "signedIn", via: "stored" });
     expect(s.asked).toEqual([]);
@@ -165,7 +157,7 @@ describe("rung 1: a stored token", () => {
 describe("rung 3: the provider asks silently", () => {
   it("exchanges the provider's token and stores the device token", async () => {
     const r = rig();
-    const s = stub({ silent: TOKEN });
+    const s = stub({ silent: SUBJECT_TOKEN });
     const out = await runAutoSignIn(ctxOf(r, s.provider));
     expect(out).toMatchObject({
       kind: "signedIn",
@@ -181,7 +173,7 @@ describe("rung 3: the provider asks silently", () => {
     const r = rig();
     const s = stub();
     const out = await runAutoSignIn(ctxOf(r, s.provider));
-    expect(out).toEqual({ kind: "needsSignIn", reason: "none" });
+    expect(out).toEqual({ kind: "needsSignIn", reason: "noCredential" });
     expect(s.asked).toEqual(["silent"]);
     expect(await r.store.getToken()).toBeNull();
     // The token endpoint was never called: only the nonce was spent.
@@ -209,7 +201,9 @@ describe("rung 3: the provider asks silently", () => {
         },
       }),
     );
-    const out = await runAutoSignIn(ctxOf(r, stub({ silent: TOKEN }).provider));
+    const out = await runAutoSignIn(
+      ctxOf(r, stub({ silent: SUBJECT_TOKEN }).provider),
+    );
     expect(out.kind).toBe("confirm");
     expect((out as { grant: string }).grant).toBe(GRANT);
     expect(JSON.stringify(out)).not.toContain(GRANT);
@@ -224,73 +218,101 @@ describe("rung 3: the provider asks silently", () => {
         choices: { state: "one" },
       }),
     );
-    const out = await runAutoSignIn(ctxOf(r, stub({ silent: TOKEN }).provider));
+    const out = await runAutoSignIn(
+      ctxOf(r, stub({ silent: SUBJECT_TOKEN }).provider),
+    );
     expect(out).toMatchObject({ kind: "choose", expiresIn: 300 });
     expect(JSON.stringify(out)).not.toContain(GRANT);
   });
 
-  it("maps no_link to needsSignIn with the handle kept out of view", async () => {
-    const r = rig(() =>
-      json(
-        {
-          error: "interstitial_required",
-          reason: "no_link",
-          url: "https://key.plrs.im/acme/signin",
-          linkHandle: HANDLE,
-          expiresIn: 600,
-        },
-        403,
-      ),
+  it.each([
+    ["no_link", "noLink", HANDLE],
+    // An unknown reason is a no_link that carries no handle.
+    ["something_new", "noLink", undefined],
+  ])("maps the interstitial %s to %s", async (wire, reason, handle) => {
+    const r = rig(() => interstitial(wire, { expiresIn: 600 }));
+    const out = await runAutoSignIn(
+      ctxOf(r, stub({ silent: SUBJECT_TOKEN }).provider),
     );
-    const out = await runAutoSignIn(ctxOf(r, stub({ silent: TOKEN }).provider));
-    expect(out).toMatchObject({ kind: "needsSignIn", reason: "no_link" });
-    expect((out as { linkHandle?: string }).linkHandle).toBe(HANDLE);
+    expect(out).toMatchObject({ kind: "needsSignIn", reason });
+    expect((out as { linkHandle?: string }).linkHandle).toBe(handle);
     expect(JSON.stringify(out)).not.toContain(HANDLE);
   });
 
   it("maps device_limit to a result", async () => {
     const r = rig(() => json({ error: "device_limit" }, 403));
-    const out = await runAutoSignIn(ctxOf(r, stub({ silent: TOKEN }).provider));
+    const out = await runAutoSignIn(
+      ctxOf(r, stub({ silent: SUBJECT_TOKEN }).provider),
+    );
     expect(out.kind).toBe("deviceLimit");
   });
 
   it("treats an older Worker's unsupported_grant_type as a failed rung", async () => {
     const r = rig(() => json({ error: "unsupported_grant_type" }, 400));
-    const out = await runAutoSignIn(ctxOf(r, stub({ silent: TOKEN }).provider));
-    expect(out).toEqual({ kind: "needsSignIn", reason: "none" });
+    const out = await runAutoSignIn(
+      ctxOf(r, stub({ silent: SUBJECT_TOKEN }).provider),
+    );
+    expect(out).toEqual({ kind: "needsSignIn", reason: "noCredential" });
   });
 
   it("throws a typed error for any other refusal", async () => {
     const r = rig(() => json({ error: "invalid_grant" }, 400));
     await expect(
-      runAutoSignIn(ctxOf(r, stub({ silent: TOKEN }).provider)),
+      runAutoSignIn(ctxOf(r, stub({ silent: SUBJECT_TOKEN }).provider)),
     ).rejects.toMatchObject({ name: "PolarisError" });
   });
 
   it("is unavailable where the product serves none, or not this kind", async () => {
     const none = rig(undefined, { discovery: null });
     expect(
-      await runAutoSignIn(ctxOf(none, stub({ silent: TOKEN }).provider)),
+      await runAutoSignIn(
+        ctxOf(none, stub({ silent: SUBJECT_TOKEN }).provider),
+      ),
     ).toEqual({ kind: "unavailable", code: "product" });
     const apple = rig(undefined, {
       discovery: discoveryOf({ kinds: ["apple"] }),
     });
     expect(
-      await runAutoSignIn(ctxOf(apple, stub({ silent: TOKEN }).provider)),
+      await runAutoSignIn(
+        ctxOf(apple, stub({ silent: SUBJECT_TOKEN }).provider),
+      ),
     ).toEqual({ kind: "unavailable", code: "kind" });
+  });
+
+  it("is unavailable when discovery names an endpoint off the product's origin", async () => {
+    const off = rig(undefined, {
+      discovery: {
+        services: {
+          identity: {
+            enabled: true,
+            exchange: EXCHANGE,
+            endpoints: {
+              nonce: "https://evil.example/nonce",
+              token: ENDPOINTS.token,
+            },
+          },
+        },
+      },
+    });
+    const s = stub({ silent: SUBJECT_TOKEN });
+    expect(await runAutoSignIn(ctxOf(off, s.provider))).toEqual({
+      kind: "unavailable",
+      code: "endpoint",
+    });
+    expect(s.asked).toEqual([]);
   });
 
   it("goes to the form where the browser has no provider (Safari, Firefox)", async () => {
     const r = rig();
     expect(await runAutoSignIn(ctxOf(r, null))).toEqual({
       kind: "needsSignIn",
-      reason: "none",
+      reason: "noCredential",
     });
-    const s = stub({ silent: TOKEN });
+    const s = stub({ silent: SUBJECT_TOKEN });
     s.provider.available = () => false;
     expect(await runAutoSignIn(ctxOf(r, s.provider))).toEqual({
       kind: "needsSignIn",
-      reason: "none",
+      reason: "noCredential",
     });
     expect(s.asked).toEqual([]);
   });
@@ -299,17 +321,17 @@ describe("rung 3: the provider asks silently", () => {
 describe("rung 4: the chooser, only with prompt: optional (D-A12)", () => {
   it("is not tried by default", async () => {
     const r = rig();
-    const s = stub({ optional: TOKEN });
+    const s = stub({ optional: SUBJECT_TOKEN });
     expect(await runAutoSignIn(ctxOf(r, s.provider))).toEqual({
       kind: "needsSignIn",
-      reason: "none",
+      reason: "noCredential",
     });
     expect(s.asked).toEqual(["silent"]);
   });
 
   it('is tried after a silent miss with prompt: "optional", with its own nonce', async () => {
     const r = rig();
-    const s = stub({ optional: TOKEN });
+    const s = stub({ optional: SUBJECT_TOKEN });
     const out = await runAutoSignIn(ctxOf(r, s.provider), {
       prompt: "optional",
     });
@@ -320,7 +342,7 @@ describe("rung 4: the chooser, only with prompt: optional (D-A12)", () => {
 
   it("is skipped when the silent rung already signed in", async () => {
     const r = rig();
-    const s = stub({ silent: TOKEN, optional: TOKEN });
+    const s = stub({ silent: SUBJECT_TOKEN, optional: SUBJECT_TOKEN });
     await runAutoSignIn(ctxOf(r, s.provider), { prompt: "optional" });
     expect(s.asked).toEqual(["silent"]);
   });
@@ -330,10 +352,10 @@ describe("the explicit sign-out flag", () => {
   it("skips rungs 3 and 4 while set, even with prompt: optional", async () => {
     const r = rig();
     await r.store.explicitSignOut!.set(true);
-    const s = stub({ silent: TOKEN, optional: TOKEN });
+    const s = stub({ silent: SUBJECT_TOKEN, optional: SUBJECT_TOKEN });
     expect(
       await runAutoSignIn(ctxOf(r, s.provider), { prompt: "optional" }),
-    ).toEqual({ kind: "needsSignIn", reason: "none" });
+    ).toEqual({ kind: "needsSignIn", reason: "signedOut" });
     expect(s.asked).toEqual([]);
     expect(r.calls).toEqual([]);
   });
@@ -363,7 +385,7 @@ describe("syncKey (Q-8)", () => {
     for (const key of ["present", "needed"] as const) {
       const r = rig();
       const out = await runAutoSignIn(
-        ctxOf(r, stub({ silent: TOKEN }).provider, {
+        ctxOf(r, stub({ silent: SUBJECT_TOKEN }).provider, {
           syncKey: async () => key,
         }),
       );
@@ -376,7 +398,7 @@ describe("syncKey (Q-8)", () => {
     );
     expect(stored).toMatchObject({ via: "stored", syncKey: "needed" });
     const off = await runAutoSignIn(
-      ctxOf(rig(), stub({ silent: TOKEN }).provider),
+      ctxOf(rig(), stub({ silent: SUBJECT_TOKEN }).provider),
     );
     expect("syncKey" in off).toBe(false);
   });
@@ -450,7 +472,7 @@ describe("through the browser adapter", () => {
   }
 
   it("signOut sets the flag, then runs the provider's cleanup; autoSignIn then stays at the form", async () => {
-    const s = stub({ silent: TOKEN, optional: TOKEN });
+    const s = stub({ silent: SUBJECT_TOKEN, optional: SUBJECT_TOKEN });
     const { adapter, store } = await adapterRig(s.provider);
     await adapter.signOut();
     expect(s.provider.signOutCleanup).toHaveBeenCalledTimes(1);
@@ -460,7 +482,7 @@ describe("through the browser adapter", () => {
         autoSignIn(o: unknown): Promise<AutoSignInResult>;
       }
     ).autoSignIn({ prompt: "optional" });
-    expect(out).toEqual({ kind: "needsSignIn", reason: "none" });
+    expect(out).toEqual({ kind: "needsSignIn", reason: "signedOut" });
     expect(s.asked).toEqual([]);
   });
 
@@ -470,7 +492,7 @@ describe("through the browser adapter", () => {
     await store.explicitSignOut!.set(true);
     expect(await adapter.autoSignIn()).toEqual({
       kind: "needsSignIn",
-      reason: "none",
+      reason: "signedOut",
     });
     expect(s.asked).toEqual([]);
     // The documents are not served here, so the sync after the activation may fail; the

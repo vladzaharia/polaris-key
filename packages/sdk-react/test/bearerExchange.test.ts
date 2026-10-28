@@ -22,14 +22,21 @@ import type { ExchangeOptions } from "../src/browser/bearer/exchange.js";
 import { exchangeDiscoveryOf } from "../src/browser/discovery.js";
 import { PolarisError } from "../src/core/types.js";
 
+import {
+  ACCESS,
+  GRANT,
+  HANDLE,
+  SUBJECT_TOKEN,
+  durableKeys,
+  json,
+  TOKEN_BODY,
+  exchangeSession,
+  nonceOf,
+} from "./exchangeFixtures.js";
+
 const NOW = 1_700_000_000;
 const DEVICE = "EXCHANGEDEVICE0000000000000001";
 const BASE = "https://key.plrs.im/acme/identity";
-const GRANT = "sg_vXaXXVFx-nbsln4n2t-RP-vjQSv6dpGbNfDR9V7Kn7M";
-const HANDLE = "lh_Cgk9GjrOM5ZTa16Q4RNw3rl3FE1zW0g_zIXFPBEenRU";
-const SUBJECT_TOKEN = "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJnb29nbGUifQ.c2ln";
-const ACCESS = "pkeyt_prsGUTwB_L_ya9ehl-yBxntG6B7_xgjP270SLtXiRdU";
-const nonceOf = (n: number) => `${String(n).padStart(43, "N")}`;
 
 const CONSENT = {
   client: {
@@ -65,23 +72,6 @@ const lowerKeys = (h: HeadersInit | undefined): Record<string, string> => {
   for (const [k, v] of Object.entries((h ?? {}) as Record<string, string>))
     out[k.toLowerCase()] = v;
   return out;
-};
-
-const json = (body: unknown, status = 200, headers: HeadersInit = {}) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json", ...headers },
-  });
-
-const TOKEN_BODY = {
-  access_token: ACCESS,
-  token_type: "Bearer",
-  scope: "profile email",
-  subject: "ps_abc",
-  schemaVersion: 1,
-  device: { id: DEVICE, licenseId: null },
-  license: { id: "lic-1" },
-  issued_token_type: "urn:polaris-key:token-type:device",
 };
 
 interface Call {
@@ -143,26 +133,16 @@ function rig(
     return new Response("", { status: 404 });
   }) as typeof fetch;
   const discovery = o.discovery === undefined ? DISCOVERY : o.discovery;
-  const session = new BearerSession({
-    baseUrl: "https://key.plrs.im",
-    product: "acme",
-    version: "1.0.0",
+  const session = exchangeSession({
     fetchImpl,
-    now: () => NOW,
-    pinned: { k: "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI" },
     store,
-    enabled: (slug) => slug === "identity",
     exchangeEndpoints: () => exchangeDiscoveryOf(discovery),
     choiceEndpoints: () =>
       (discovery as typeof DISCOVERY | null)?.services.identity.endpoints ??
       null,
-    random: () => 0,
   });
   return { session, calls, store, port: durableKeys() };
 }
-
-const durableKeys = (): DeviceKeyPort =>
-  createWebDeviceKeyStore({ storage: memoryDeviceKeyStorage() });
 
 const google = (
   subjectToken: ExchangeOptions["subjectToken"] = async () => SUBJECT_TOKEN,

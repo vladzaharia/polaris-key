@@ -11,8 +11,8 @@ import type {
   AuthorizePurpose,
   ExchangeConsentView,
   ExchangeKind,
-  InterstitialReason,
 } from "@polaris-key/protocol/identity";
+import type { LicenseChoiceView } from "./choice.js";
 import type { RedirectPending } from "@polaris-key/client-core";
 import { isSecureTransportUrl } from "./types.js";
 
@@ -288,6 +288,8 @@ export type AutoSignInUnavailable =
   | "kind"
   /** This browser's device keys cannot sign, or die with the page. */
   | "device-keys"
+  /** Discovery named a sign-in endpoint off the product's origin (or not https). */
+  | "endpoint"
   /** The transport has no ladder: the desktop renderer, a cookie page, the local adapter. */
   | "runtime";
 
@@ -303,6 +305,8 @@ export type AutoSignInResult =
       scope?: string;
       activation?: { licenseId: string | null };
       syncKey?: AutoSyncKey;
+      /** The sync after the sign-in failed; the device token is stored all the same. */
+      syncError?: Error;
     }
   | {
       kind: "confirm";
@@ -318,13 +322,20 @@ export type AutoSignInResult =
     }
   | {
       kind: "needsSignIn";
-      /** `none`: no rung found a credential (or the person signed out): show the form. */
-      reason: InterstitialReason | "none";
+      /** `noLink`: the provider's account is linked to no account; `terms`: the terms are
+       *  unaccepted; `signedOut`: the person signed out on this device; `noCredential`: no rung
+       *  found a credential. Each shows the form. */
+      reason: "noLink" | "terms" | "signedOut" | "noCredential";
       url?: string;
       expiresIn?: number;
       readonly linkHandle?: string;
     }
-  | { kind: "deviceLimit"; manageUrl?: string }
+  | {
+      kind: "deviceLimit";
+      manageUrl?: string;
+      /** The licences and their seats, when the refusal came with the choice view. */
+      choices?: LicenseChoiceView;
+    }
   | { kind: "unavailable"; code: AutoSignInUnavailable };
 
 /** How the provider may ask: `silent` shows nothing, `optional` may show the chooser. */

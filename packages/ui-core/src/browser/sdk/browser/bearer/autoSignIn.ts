@@ -20,6 +20,7 @@ import { ErrorCode } from "../../constants.generated.js";
 import type {
   AutoSignInOptions,
   AutoSignInResult,
+  AutoSignInUnavailable,
   AutoSyncKey,
   PlatformIdentityProvider,
   PlatformMediation,
@@ -93,10 +94,15 @@ export async function runSignOutCleanup(
 /** Thrown from `subjectToken` when the provider offered nothing; ends the rung, not the call. */
 class NoProviderToken extends Error {}
 
-const unavailable = (code: "product" | "kind" | "device-keys") =>
-  ({ kind: "unavailable", code }) as const;
+const unavailable = (code: AutoSignInUnavailable): AutoSignInResult => ({
+  kind: "unavailable",
+  code,
+});
 
-const none = (): AutoSignInResult => ({ kind: "needsSignIn", reason: "none" });
+const needs = (reason: "signedOut" | "noCredential"): AutoSignInResult => ({
+  kind: "needsSignIn",
+  reason,
+});
 
 /** Carry the non-enumerable secrets of an exchange outcome onto the result. */
 function resultOf(o: ExchangeOutcome): AutoSignInResult {
@@ -108,6 +114,7 @@ function resultOf(o: ExchangeOutcome): AutoSignInResult {
         subject: o.subject,
         scope: o.scope,
         activation: o.activation,
+        ...(o.syncError ? { syncError: o.syncError } : {}),
       };
     case "pendingConsent":
       return hidden(
@@ -124,7 +131,7 @@ function resultOf(o: ExchangeOutcome): AutoSignInResult {
     case "needsSignIn": {
       const r = {
         kind: "needsSignIn" as const,
-        reason: o.reason,
+        reason: o.reason === "terms" ? ("terms" as const) : ("noLink" as const),
         url: o.url,
         ...(o.expiresIn !== undefined ? { expiresIn: o.expiresIn } : {}),
       };
@@ -191,14 +198,14 @@ export async function runAutoSignIn(
 
   // Rung 2 (a restore secret) is not built on the web (I-49).
 
-  if (await ctx.explicitSignOut()) return none();
+  if (await ctx.explicitSignOut()) return needs("signedOut");
   const provider = ctx.provider;
   if (provider !== null) {
     if (ctx.endpoints === null) return unavailable("product");
     if (!ctx.endpoints.kinds.includes(provider.kind))
       return unavailable("kind");
   }
-  if (provider === null || !provider.available()) return none();
+  if (provider === null || !provider.available()) return needs("noCredential");
 
   const silent = await attempt(ctx, provider, "silent", opts);
   const result =
@@ -206,7 +213,7 @@ export async function runAutoSignIn(
     (opts.prompt === "optional"
       ? await attempt(ctx, provider, "optional", opts)
       : null);
-  if (result === null) return none();
+  if (result === null) return needs("noCredential");
   if (result.kind !== "signedIn") return result;
   const syncKey = await ctx.syncKey();
   return syncKey !== undefined ? { ...result, syncKey } : result;
