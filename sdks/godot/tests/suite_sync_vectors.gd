@@ -1,20 +1,17 @@
 extends RefCounted
 # Cloud Sync end-to-end primitives over the generator-owned mirror of conformance/corpus/v2/
-# sync-vectors.json (WIRE-CONTRACT-V5 §13.10, U-40.1): the sections that need no AEAD. Sections that
-# do (or that need the chunker, the file stream, HPKE) are typed N/A below, by name, and the suite
+# sync-vectors.json (WIRE-CONTRACT-V5 §13.10, U-40.1): the the settings-size sections (primitives, AES-256-GCM, the
+# envelope, HPKE, wrap, recovery, adopt, U-40.5). Sections that need the chunker, the file stream or the
+# transfer planner are typed N/A below, by name, and the suite
 # fails on a section that is in neither list, so a new corpus section is noticed.
 
 const VECTORS := "res://tests/corpus/v2/sync-vectors.json"
 
-## Implemented sections (recoveryCodeCases only for the kinds `code` and `parse`).
-const RUN := ["hkdfCases", "blindCases", "canonicalJsonCases", "recoveryCodeCases"]
+## Implemented sections.
+const RUN := ["hkdfCases", "blindCases", "canonicalJsonCases", "recoveryCodeCases", "envelopeCases", "hpkeAnchor", "wrapCases", "adoptCases"]
 ## Typed N/A: the section needs a primitive this slice does not ship.
 const NOT_APPLICABLE := {
-	"envelopeCases": "needs the envelope codec over AES-256-GCM (U-40.5)",
 	"transferPlanCases": "needs the transfer planner (U-40.5)",
-	"hpkeAnchor": "needs HPKE over X25519 (U-40.5); its AES-256-GCM encryption row runs in _aes_gcm (U-40.3)",
-	"wrapCases": "needs HPKE (U-40.5)",
-	"adoptCases": "needs the adopt codec over AES-256-GCM (U-40.5)",
 	"cdcCases": "needs the chunker (U-40.5)",
 	"cdcEditCases": "needs the chunker (U-40.5)",
 	"deltaCases": "needs the chunker (U-40.5)",
@@ -32,6 +29,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 		return true
 	var d: Dictionary = j.data
 	t.check("syncVectorsVersion is 1", d.get("syncVectorsVersion") == 1)
+	_constants = d["constants"]
 	for k in d:
 		if META.has(k) or RUN.has(k):
 			continue
@@ -39,12 +37,6 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 			t.info("N/A %s: %s" % [k, NOT_APPLICABLE[k]])
 		else:
 			t.check("section %s is run or typed N/A" % k, false)
-	var n_blob := 0
-	for c in d["recoveryCodeCases"]:
-		if c["kind"] == "blob":
-			n_blob += 1
-	t.info("N/A recoveryCodeCases kind blob (%d rows): needs the recovery blob codec (U-40.5)" % n_blob)
-
 	_hkdf(t, d["hkdfCases"])
 	_blind(t, d["blindCases"])
 	_kid(t, d)
@@ -52,6 +44,12 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_recovery(t, d["recoveryCodeCases"])
 	_extras(t)
 	_aes_gcm(t, d)
+	_envelope(t, d["envelopeCases"])
+	_hpke_anchor(t, d["hpkeAnchor"]["vector"])
+	_wrap(t, d["wrapCases"])
+	_adopt(t, d["adoptCases"])
+	_recovery_blobs(t, d["recoveryCodeCases"])
+	_u405_extras(t)
 	return true
 
 
@@ -351,3 +349,167 @@ func _aes_gcm_timing(t: PKeyTestContext, k: PackedByteArray, n: PackedByteArray)
 	var ratio := float(maxi(best_first, best_last)) / float(maxi(1, mini(best_first, best_last)))
 	t.info("tag compare, 4096 bytes x20: mismatch first %d us, last %d us, ratio %.3f" % [best_first, best_last, ratio])
 	t.check("tag compare time does not depend on the mismatch position", ratio < 1.5, "ratio %.3f" % ratio)
+
+
+# ── U-40.5: envelope, HPKE, wrap, recovery blob, adopt ───────────────────────────────────────────
+
+## A name from the vectors as UTF-8: the engine's JSON turns the corpus's U+0000 into U+FFFD, and the
+## vectors have no real U+FFFD in a name, so the replacement character reads as NUL here.
+func _name_of(s: String) -> PackedByteArray:
+	var b := s.to_utf8_buffer()
+	var out := PackedByteArray()
+	var i := 0
+	while i < b.size():
+		if i + 2 < b.size() and b[i] == 0xEF and b[i + 1] == 0xBF and b[i + 2] == 0xBD:
+			out.append(0)
+			i += 3
+		else:
+			out.append(b[i])
+			i += 1
+	return out
+
+
+func _envelope(t: PKeyTestContext, rows: Array) -> void:
+	var t0 := Time.get_ticks_usec()
+	for c in rows:
+		var root := _hex(c["rootHex"])
+		var env := _hex(c["envelopeHex"])
+		var want: Dictionary = c["expect"]
+		if c.has("seal"):
+			# An alias case was sealed under the source name the reader accepts (expect.name).
+			var again := PKeySyncEnvelope.seal_value(root, c["collection"], _name_of(want["name"]), c["seal"]["value"], _hex(c["seal"]["saltHex"]))
+			t.check("envelope %s seals to the vector" % c["id"], again == env)
+		var aliases: Array = []
+		for a in c["aliases"]:
+			aliases.append(_name_of(a))
+		var got := PKeySyncEnvelope.open_value(root, c["collection"], _name_of(c["name"]), env, aliases)
+		if want["result"] == "ok":
+			var same: bool = got["ok"] and got["name_bytes"] == _name_of(want["name"]) and PKeySyncCanonicalJson.canonicalize_value(got["value"]).get("canonical") == PKeySyncCanonicalJson.canonicalize_value(want["value"]).get("canonical")
+			t.check("envelope %s opens" % c["id"], same)
+			if got["ok"]:
+				var any := PKeySyncEnvelope.open_value_any_name(root, c["collection"], env)
+				t.check("envelope %s opens under any name" % c["id"], any["ok"] and any["name_bytes"] == got["name_bytes"])
+		else:
+			t.check("envelope %s is refused as %s" % [c["id"], want["reason"]], not got["ok"] and got["reason"] == want["reason"], str(got.get("reason")))
+	t.info("envelope section: %d rows in %.1f ms" % [rows.size(), (Time.get_ticks_usec() - t0) / 1000.0])
+	var consts: Dictionary = {"envelopeOverheadBytes": PKeySyncEnvelope.OVERHEAD_BYTES, "envelopeFixedBytes": PKeySyncEnvelope.FIXED_BYTES, "paddingBlockBytes": PKeySyncEnvelope.PAD_BLOCK}
+	var same_consts := true
+	for k in consts:
+		same_consts = same_consts and int(_constants.get(k, -1)) == consts[k]
+	t.check("envelope constants match the corpus", same_consts)
+
+
+var _constants := {}
+
+
+func _hpke_anchor(t: PKeyTestContext, v: Dictionary) -> void:
+	var enc: Dictionary = v["encryption"]
+	var info := _hex(v["info"])
+	var sealed := PKeySyncHpke.seal(_hex(v["pkRm"]), info, _hex(enc["aad"]), _hex(enc["pt"]), _hex(v["skEm"]))
+	t.check("hpke anchor seals (enc)", not sealed.is_empty() and (sealed["enc"] as PackedByteArray).hex_encode() == v["enc"])
+	t.check("hpke anchor seals (ct)", not sealed.is_empty() and (sealed["ct"] as PackedByteArray).hex_encode() == enc["ct"])
+	t.check("hpke anchor public key of skRm", PKeyCurve25519.x25519_public(_hex(v["skRm"])).hex_encode() == v["pkRm"])
+	var opened: Variant = PKeySyncHpke.open(PKeySyncHpke.dh_of_private(_hex(v["skRm"])), _hex(v["pkRm"]), _hex(v["enc"]), info, _hex(enc["aad"]), _hex(enc["ct"]))
+	t.check("hpke anchor opens", opened != null and (opened as PackedByteArray).hex_encode() == enc["pt"])
+	t.check("hpke anchor refuses another aad", PKeySyncHpke.open(PKeySyncHpke.dh_of_private(_hex(v["skRm"])), _hex(v["pkRm"]), _hex(v["enc"]), info, _hex(enc["aad"] + "00"), _hex(enc["ct"])) == null)
+	t.check("hpke anchor refuses another info", PKeySyncHpke.open(PKeySyncHpke.dh_of_private(_hex(v["skRm"])), _hex(v["pkRm"]), _hex(v["enc"]), _hex(v["info"] + "00"), _hex(enc["aad"]), _hex(enc["ct"])) == null)
+	# Timing of one seal and one open of a wrapped root (informational).
+	var seal_best := 1 << 60
+	var open_best := 1 << 60
+	var priv := _gen(32, 3, 0, 5)
+	var pub := PKeyCurve25519.x25519_public(priv)
+	var dh := PKeySyncHpke.dh_of_private(priv)
+	for _i in 3:
+		var t0 := Time.get_ticks_usec()
+		var r := PKeySyncHpke.seal(pub, info, PackedByteArray([1]), _gen(32, 1, 0, 0))
+		seal_best = mini(seal_best, Time.get_ticks_usec() - t0)
+		t0 = Time.get_ticks_usec()
+		var o: Variant = PKeySyncHpke.open(dh, pub, r["enc"], info, PackedByteArray([1]), r["ct"])
+		open_best = mini(open_best, Time.get_ticks_usec() - t0)
+		t.check("hpke round trip", o != null)
+	t.info("hpke wrap of a root: seal %.1f ms, open %.1f ms (best of 3, X25519 in GDScript)" % [seal_best / 1000.0, open_best / 1000.0])
+
+
+func _wrap(t: PKeyTestContext, rows: Array) -> void:
+	for c in rows:
+		var priv := _hex(c["recipientPrivateHex"])
+		var pub := PKeyCurve25519.x25519_public(priv)
+		var w: Dictionary = c["wrap"]
+		var kid := _hex(c["kidHex"])
+		if c.has("seal"):
+			var s: Dictionary = c["seal"]
+			t.check("wrap %s recipient public" % c["id"], pub.hex_encode() == s["recipientPublicHex"])
+			t.check("wrap %s info" % c["id"], PKeySyncWrap.wrap_info(c["product"], c["deviceId"], c["ringId"], int(c["epoch"])).hex_encode() == s["infoHex"])
+			var again := PKeySyncWrap.wrap_root(pub, c["product"], c["deviceId"], c["ringId"], int(c["epoch"]), kid, _hex(s["rootHex"]), _hex(s["ephemeralPrivateHex"]))
+			t.check("wrap %s seals to the vector" % c["id"], not again.is_empty() and again["kem"] == w["kem"] and (again["enc"] as PackedByteArray).hex_encode() == w["encHex"] and (again["ct"] as PackedByteArray).hex_encode() == w["ctHex"])
+		var got: Variant = PKeySyncWrap.unwrap_root(PKeySyncHpke.dh_of_private(priv), pub, c["product"], c["deviceId"], c["ringId"], int(c["epoch"]), kid, int(w["kem"]), _hex(w["encHex"]), _hex(w["ctHex"]))
+		if c["expectRootHex"] == null:
+			t.check("wrap %s is refused" % c["id"], got == null)
+		else:
+			t.check("wrap %s opens" % c["id"], got != null and (got as PackedByteArray).hex_encode() == c["expectRootHex"])
+
+
+func _adopt(t: PKeyTestContext, rows: Array) -> void:
+	for c in rows:
+		var cur := _hex(c["currentRootHex"])
+		var kid := _hex(c["kidHex"])
+		if c.has("seal"):
+			var again := PKeySyncWrap.seal_adopt(cur, c["fromRingId"], int(c["epoch"]), kid, _hex(c["seal"]["oldRootHex"]), _hex(c["seal"]["nonceHex"]))
+			t.check("adopt %s seals to the vector" % c["id"], again.hex_encode() == c["blobHex"])
+		var got: Variant = PKeySyncWrap.open_adopt(cur, c["fromRingId"], int(c["epoch"]), kid, _hex(c["blobHex"]))
+		if c["expectRootHex"] == null:
+			t.check("adopt %s is refused" % c["id"], got == null)
+		else:
+			t.check("adopt %s opens" % c["id"], got != null and (got as PackedByteArray).hex_encode() == c["expectRootHex"])
+
+
+func _recovery_blobs(t: PKeyTestContext, rows: Array) -> void:
+	for c in rows:
+		if c["kind"] != "blob":
+			continue
+		var code := _hex(c["codeHex"])
+		var kid := _hex(c["kidHex"])
+		if c.has("seal"):
+			var again := PKeySyncWrap.wrap_recovery(code, c["ringId"], int(c["epoch"]), kid, _hex(c["seal"]["rootHex"]), _hex(c["seal"]["nonceHex"]))
+			t.check("recovery blob %s seals to the vector" % c["id"], again.hex_encode() == c["blobHex"])
+		var got: Variant = PKeySyncWrap.unwrap_recovery(code, c["ringId"], int(c["epoch"]), kid, _hex(c["blobHex"]))
+		if c["expectRootHex"] == null:
+			t.check("recovery blob %s is refused" % c["id"], got == null)
+		else:
+			t.check("recovery blob %s opens" % c["id"], got != null and (got as PackedByteArray).hex_encode() == c["expectRootHex"])
+
+
+func _u405_extras(t: PKeyTestContext) -> void:
+	var root := _gen(32, 7, 0, 1)
+	# A fresh random salt per seal (S9): two seals of one value differ, and both open.
+	var a := PKeySyncEnvelope.seal_value(root, "$settings", "theme", "dark")
+	var b := PKeySyncEnvelope.seal_value(root, "$settings", "theme", "dark")
+	t.check("two seals of one value differ (fresh salt)", not a.is_empty() and a != b)
+	t.check("a sealed envelope has the contract size", a.size() == PKeySyncEnvelope.FIXED_BYTES + 64)
+	t.check("a fresh envelope opens", PKeySyncEnvelope.open_value(root, "$settings", "theme", a)["ok"])
+	t.check("a bad salt length is refused", PKeySyncEnvelope.seal_value(root, "$settings", "theme", "x", PackedByteArray([1])).is_empty())
+	t.check("a bad root is refused", PKeySyncEnvelope.seal_value(root.slice(0, 31), "$settings", "theme", "x").is_empty())
+	t.check("NaN is refused", PKeySyncEnvelope.seal_value(root, "$settings", "theme", NAN).is_empty())
+	var m := PKeySyncEnvelope.seal_value(root, "$settings", PKeySyncEnvelope.member_name("inv", "gold"), 3)
+	t.check("a merge member opens under its name", PKeySyncEnvelope.open_value(root, "$settings", PKeySyncEnvelope.member_name("inv", "gold"), m)["ok"])
+	t.check("a merge member does not open under its member name alone", PKeySyncEnvelope.open_value(root, "$settings", "gold", m).get("reason") == "name")
+	# Hostile wraps (S9: the all-zero DH and the enc length).
+	var priv := _gen(32, 3, 0, 5)
+	var pub := PKeyCurve25519.x25519_public(priv)
+	t.check("a wrap to a low-order key is refused", PKeySyncWrap.wrap_root(PackedByteArray([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), "p", "d", "r", 1, _gen(16, 1, 0, 0), root).is_empty())
+	t.check("a wrap with epoch 2^32 is refused", PKeySyncWrap.wrap_root(pub, "p", "d", "r", 4294967296, _gen(16, 1, 0, 0), root).is_empty())
+	var w := PKeySyncWrap.wrap_root(pub, "p", "d", "r", 1, _gen(16, 1, 0, 0), root)
+	var back: Variant = PKeySyncWrap.unwrap_root(PKeySyncHpke.dh_of_private(priv), pub, "p", "d", "r", 1, _gen(16, 1, 0, 0), 32, w["enc"], w["ct"])
+	t.check("a fresh wrap round-trips", back != null and (back as PackedByteArray) == root)
+	t.check("a 33-byte enc is refused", PKeySyncHpke.open(PKeySyncHpke.dh_of_private(priv), pub, (w["enc"] as PackedByteArray) + PackedByteArray([0]), PKeySyncWrap.wrap_info("p", "d", "r", 1), _gen(16, 1, 0, 0), w["ct"]) == null)
+	# AES-GCM (review N4): AAD over the limit, a wrong tag on an empty message, and the empty message.
+	var k := _gen(32, 1, 0, 9)
+	var n := _gen(12, 1, 0, 2)
+	t.check("an AAD over 64 KiB is refused by seal", PKeySyncAesGcm.seal(k, n, PackedByteArray(), _gen(65537, 1, 0, 0)).is_empty())
+	t.check("an AAD over 64 KiB is refused by open", PKeySyncAesGcm.open(k, n, PKeySyncAesGcm.seal(k, n, PackedByteArray()), _gen(65537, 1, 0, 0)) == null)
+	var e := PKeySyncAesGcm.seal(k, n, PackedByteArray())
+	var bad := e.duplicate()
+	bad[0] ^= 1
+	t.check("a wrong tag on an empty message is refused", PKeySyncAesGcm.open(k, n, bad) == null)
+	var ok_empty: Variant = PKeySyncAesGcm.open(k, n, e)
+	t.check("an empty message opens to an empty array, not null", ok_empty != null and (ok_empty as PackedByteArray).is_empty())

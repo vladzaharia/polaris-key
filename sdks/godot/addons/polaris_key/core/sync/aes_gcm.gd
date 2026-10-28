@@ -3,9 +3,10 @@ class_name PKeySyncAesGcm
 extends RefCounted
 ## AES-256-GCM (NIST SP 800-38D) for Linux and the editor, where no native AEAD is linked
 ## (CC-13, R-12). The block cipher is the engine's `AESContext` in ECB mode, used as a CTR
-## keystream; the XOR and GHASH are GDScript. GHASH is bitwise with arithmetic masks: no branch
-## and no table index depends on the key, the data or the tag, and the tag compare ORs every byte.
-## Only lengths steer control flow. At most 64 KiB per call (a setting is at most 8 KiB); files stay
+## keystream; the XOR and GHASH are GDScript. GHASH and the XOR are bitwise with arithmetic masks:
+## no branch and no table index in them depends on the key, the data or the tag, and the tag
+## compare ORs every byte. Only lengths steer control flow. The block cipher itself is the engine's
+## (mbedtls software AES), whose table lookups this file does not control. At most 64 KiB per call (a setting is at most 8 KiB); files stay
 ## native-only. A 12-byte nonce, a 32-byte key and a 16-byte tag are the only shapes.
 
 const KEY_BYTES := 32
@@ -19,21 +20,25 @@ const _M63 := 0x7FFFFFFFFFFFFFFF
 
 
 ## Seals `plain` under `key` and `nonce`, binding `aad`. Returns ciphertext followed by the 16-byte
-## tag, or an empty array when an argument is unusable (the result is never empty on success).
-## A nonce must never repeat under a key.
+## tag. An empty array means refusal (a bad size, or the engine cipher failed) and nothing else: a
+## success is never empty, since the tag is 16 bytes. Test the result with `.is_empty()`.
+## A nonce must never repeat under a key: draw it from `Crypto.generate_random_bytes(12)`.
 static func seal(key: PackedByteArray, nonce: PackedByteArray, plain: PackedByteArray, aad: PackedByteArray = PackedByteArray()) -> PackedByteArray:
 	if key.size() != KEY_BYTES or nonce.size() != NONCE_BYTES or plain.size() > MAX_BYTES or aad.size() > MAX_BYTES:
 		return PackedByteArray()
 	var ks := _keystream(key, nonce, plain.size())
+	if ks.is_empty():
+		return PackedByteArray()
 	var ct := _xor(plain, ks, 32)
 	var tag := _tag(ks, ct, aad)
 	ct.append_array(tag)
 	return ct
 
 
-## Opens `sealed` (ciphertext then tag). Returns the plaintext (empty for an empty message), or
-## null when an argument is unusable or the tag does not verify. The tag is checked before any
-## plaintext is produced.
+## Opens `sealed` (ciphertext then tag). Returns the plaintext, or null when an argument is
+## unusable, the engine cipher failed or the tag does not verify. A valid empty message opens to an
+## EMPTY array, which is not a failure: always test `== null`, never truthiness or `is_empty()`. The
+## tag is checked before any plaintext is produced.
 static func open(key: PackedByteArray, nonce: PackedByteArray, sealed: PackedByteArray, aad: PackedByteArray = PackedByteArray()) -> Variant:
 	if key.size() != KEY_BYTES or nonce.size() != NONCE_BYTES or aad.size() > MAX_BYTES:
 		return null
@@ -42,6 +47,8 @@ static func open(key: PackedByteArray, nonce: PackedByteArray, sealed: PackedByt
 	var n := sealed.size() - TAG_BYTES
 	var ct := sealed.slice(0, n)
 	var ks := _keystream(key, nonce, n)
+	if ks.is_empty():
+		return null
 	var want := _tag(ks, ct, aad)
 	if not equal_constant_time(want, sealed.slice(n)):
 		return null
@@ -59,7 +66,7 @@ static func equal_constant_time(a: PackedByteArray, b: PackedByteArray) -> bool:
 	return diff == 0
 
 
-## The CTR keystream, laid out as block 0 = E(0) (the GHASH key H), block 1 = E(J0) (the tag
+## The CTR keystream (empty on an engine failure), laid out as block 0 = E(0) (the GHASH key H), block 1 = E(J0) (the tag
 ## mask), blocks 2.. = the keystream for `n` message bytes.
 static func _keystream(key: PackedByteArray, nonce: PackedByteArray, n: int) -> PackedByteArray:
 	var blocks := 2 + (n + 15) / 16
@@ -76,9 +83,13 @@ static func _keystream(key: PackedByteArray, nonce: PackedByteArray, n: int) -> 
 		buf.encode_u32(o + 8, n1)
 		buf.encode_u32(o + 12, be)
 	var aes := AESContext.new()
-	aes.start(AESContext.MODE_ECB_ENCRYPT, key)
+	if aes.start(AESContext.MODE_ECB_ENCRYPT, key) != OK:
+		return PackedByteArray()
 	var out := aes.update(buf)
 	aes.finish()
+	# A cipher that answers the wrong size is a failure, never a short keystream.
+	if out.size() != blocks * 16:
+		return PackedByteArray()
 	return out
 
 
