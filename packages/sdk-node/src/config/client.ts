@@ -14,6 +14,7 @@
 
 import type { JSONValue, ManagedEntry } from "@polaris-key/protocol/core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
+import { readCappedText } from "../core/boundedBody.js";
 import { Catalog, type ProductCatalog } from "@polaris-key/catalog";
 import { join } from "node:path";
 import { PolarisError } from "@polaris-key/client-core";
@@ -192,7 +193,9 @@ export class ConfigClient {
         signal: this.ctx.deadline(),
       });
       if (!res.ok) return null;
-      const body: unknown = await res.json();
+      const text = await readCappedText(res);
+      if (text === null) return null;
+      const body: unknown = JSON.parse(text);
       return isCatalog(body) ? body : null;
     } catch {
       return null;
