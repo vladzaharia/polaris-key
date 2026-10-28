@@ -868,6 +868,9 @@ export function renderView(ctx: RenderCtx): TemplateResult | typeof nothing {
   if (ctx.view.state === "hidden") return nothing;
   // DL7: a loading state inside its delay shows nothing at all (its view carries no copy yet).
   if (isLoading(ctx.view) && ctx.view.copy.length === 0) return nothing;
+  // English's second table (the screens that follow a network answer, `LAZY_EN_PREFIXES`) is
+  // still loading: draw nothing rather than a missing string. The element redraws when it arrives.
+  if (ctx.view.copy.some((k) => !ctx.copy.has(k))) return nothing;
   const c: RenderCtx = { ...ctx, view: fillable(ctx) };
   const layout = LAYOUTS[c.view.component];
   switch (layout.kind) {

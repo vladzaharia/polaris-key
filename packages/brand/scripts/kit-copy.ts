@@ -1078,6 +1078,21 @@ export const LAZY_EN_PREFIXES = [
   "signin.signout.releasedMac",
   // The approve-a-device dialog is the portal's (admin reads the full table); no kit draws it.
   "signin.approve.",
+  // Screens that follow a network answer: the copy table is in place by then (`preloadCopy`).
+  "signin.choice.",
+  "signin.join.",
+  "signin.replace.",
+  "signin.linkOffer.",
+  "signin.nearby.",
+  "core.activation.",
+  "signin.consent.",
+  "signin.code.",
+  "signin.device.",
+  "signin.cli.",
+  "signin.console.",
+  "signin.confirmLink.",
+  "signin.mail.",
+  "signin.return.",
 ] as const;
 export const LAZY_EN_KEEP: ReadonlySet<string> = new Set([
   // The nearby approver's prompt (NearbyApproval) draws these.
