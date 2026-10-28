@@ -4,7 +4,9 @@
  * seen, newest first. Read-only; a person opens their user record and a device its record on
  * Devices, where Deauthorize lives.
  *
- * A person's label is not stored, so the subject stands in, in full. Certificate expiry and last
+ * A person is labelled by their shared contact email when the product may see one (the Worker
+ * decides; Users shows the same email); the subject then sits under it. Without one the subject
+ * stands in, in full. Certificate expiry and last
  * relay use are drawn only when some device on the page has one: the Worker answers `null` until
  * it stores them, and an always-empty column is noise (D1). The columns share one width plan, so
  * they line up from card to card.
@@ -184,6 +186,7 @@ function PersonCard({
   // One width plan for every card: the device column, then the rest in equal shares.
   const rest = 2 + Number(cert) + Number(relay) + 1;
   const share = `${(70 / rest).toFixed(2)}%`;
+  const name = person.label ?? person.subject;
   const devices = [...person.devices].sort((a, b) => b.lastSeen - a.lastSeen);
   return (
     <Panel
@@ -191,18 +194,32 @@ function PersonCard({
         <Link
           to={r.user(slug, person.subject)}
           data-person-link={person.subject}
-          className={cn(LINK, "font-mono text-sm font-medium")}
+          className={cn(
+            LINK,
+            "text-sm font-medium",
+            person.label === null && "font-mono",
+          )}
         >
-          {person.label ?? person.subject}
+          {name}
         </Link>
       }
-      description={`${formatCount(n)} ${n === 1 ? "device" : "devices"}`}
+      description={
+        <>
+          {person.label !== null ? (
+            <>
+              <span className="font-mono [overflow-wrap:anywhere]">
+                {person.subject}
+              </span>
+              {" · "}
+            </>
+          ) : null}
+          {`${formatCount(n)} ${n === 1 ? "device" : "devices"}`}
+        </>
+      }
     >
       <div className="pk-scroll -m-5 overflow-x-auto">
         <table className="w-full table-fixed border-collapse max-sm:block">
-          <caption className="sr-only">
-            Devices of {person.label ?? person.subject}
-          </caption>
+          <caption className="sr-only">Devices of {name}</caption>
           <colgroup className="max-sm:hidden">
             <col className="w-[30%]" />
             {Array.from({ length: rest }, (_, i) => (

@@ -14,6 +14,7 @@ import {
   accountDeviceKeys,
   upsertDeviceKeys,
 } from "../../../src/core/devices/keys.js";
+import { accountForSubject } from "../../../src/core/accounts/accountSubjects.js";
 import { currentRing } from "../../../src/services/connect/ring.js";
 import { newKeys } from "../../deviceKeyFixtures.js";
 import { NOW } from "../../seed.js";
@@ -106,6 +107,48 @@ describe("GET connect/people", () => {
     });
     for (const banned of ["signKey", "agreeKey", "sign_key", "discKey", "ada@"])
       expect(text).not.toContain(banned);
+  });
+
+  it("labels a person by the shared contact email, and only one the product may see", async () => {
+    const w = await setup();
+    const labelOf = async () =>
+      (
+        (await (await w.get("u1", [GROUP], PEOPLE)).json()) as {
+          people: { label: string | null }[];
+        }
+      ).people[0]!.label;
+    // The account email is not shared until the person consents to it.
+    expect(await labelOf()).toBeNull();
+    const acct = (await accountForSubject(w.db, SLUG, w.subject))!;
+    await w.db.run(
+      `INSERT INTO account_product_grants (account_id, product, claims_json, granted_at, modified_at)
+       VALUES (?, ?, '["name"]', ?, ?)`,
+      acct,
+      SLUG,
+      NOW,
+      NOW,
+    );
+    expect(await labelOf()).toBeNull();
+    await w.db.run(
+      `UPDATE account_product_grants SET claims_json = '["email"]' WHERE account_id = ?`,
+      acct,
+    );
+    expect(await labelOf()).toBe("ada@example.com");
+    // With Identity off the consent is not read.
+    await enable(w.db, ["license", "connect"]);
+    expect(await labelOf()).toBeNull();
+    // The buyer's licence email wins, consent or not.
+    await enable(w.db, ["license", "identity", "connect"]);
+    await w.db.run(
+      `UPDATE account_product_grants SET claims_json = NULL WHERE account_id = ?`,
+      acct,
+    );
+    await w.db.run(
+      `UPDATE licenses SET account_id = ?, email = 'buyer@example.com' WHERE product = ?`,
+      acct,
+      SLUG,
+    );
+    expect(await labelOf()).toBe("buyer@example.com");
   });
 
   it("reports the rotation time as keysSince", async () => {
