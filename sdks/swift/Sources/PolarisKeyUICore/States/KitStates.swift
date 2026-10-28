@@ -18,6 +18,7 @@ public enum KitStates {
         case .welcome: return welcome(inputs).erased
         case .signIn: return signIn(inputs).erased
         case .signInHandoff: return signInHandoff(inputs).erased
+        case .nearbyApproval: return nearbyApproval(inputs).erased
         case .activate: return activate(inputs).erased
         case .offlineActivation: return offlineActivation(inputs).erased
         case .deviceLimit: return deviceLimit(inputs).erased

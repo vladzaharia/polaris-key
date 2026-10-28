@@ -814,10 +814,14 @@ public struct KitAccount: Sendable, Codable, Equatable, Hashable {
     public var signedIn: Bool
     /// `account` when the holder is the account signed in here (S-19); absent otherwise.
     public var holder: String?
+    /// The tier of the license this account holds here, by display name; names it in the
+    /// signed-in line (`signin.return.signedInTier`).
+    public var tier: String?
 
-    public init(signedIn: Bool, holder: String? = nil) {
+    public init(signedIn: Bool, holder: String? = nil, tier: String? = nil) {
         self.signedIn = signedIn
         self.holder = holder
+        self.tier = tier
     }
 }
 
@@ -873,6 +877,53 @@ public struct KitError: Sendable, Codable, Equatable, Hashable {
     public init(code: String) { self.code = code }
 }
 
+/// Automatic sign-in's step in the sign-in form (needs `signIn`).
+public enum KitAutoSignInStep: String, Sendable, Codable, CaseIterable {
+    case confirm
+    case linkOffer = "link-offer"
+    case linkDone = "link-done"
+    case linkConflict = "link-conflict"
+    case nearbyPrompt = "nearby-prompt"
+    case nearbyWait = "nearby-wait"
+    case nearbyDone = "nearby-done"
+}
+
+/// Whose identity a provider link covers: `global` is shared across apps, `developer` is this
+/// developer's apps only; absent is treated as per developer.
+public enum KitLinkReach: String, Sendable, Codable, CaseIterable {
+    case global, developer, unknown
+}
+
+/// Automatic sign-in's state: the step, the account's email (absent: the provider shared none)
+/// and how far a provider link reaches.
+public struct KitAutoSignIn: Sendable, Codable, Equatable, Hashable {
+    public var step: KitAutoSignInStep
+    public var email: String?
+    public var reach: KitLinkReach?
+
+    public init(step: KitAutoSignInStep, email: String? = nil, reach: KitLinkReach? = nil) {
+        self.step = step
+        self.email = email
+        self.reach = reach
+    }
+}
+
+/// The approving device's side of nearby sign-in: where it is, and the device asking.
+public struct KitNearbyApproval: Sendable, Codable, Equatable, Hashable {
+    public enum Step: String, Sendable, Codable, CaseIterable {
+        case entry, ask, approved
+        case notNearby = "not-nearby"
+    }
+
+    public var step: Step
+    public var device: String?
+
+    public init(step: Step, device: String? = nil) {
+        self.step = step
+        self.device = device
+    }
+}
+
 // MARK: - The inputs
 
 /// Everything a kit screen is drawn from. Every member is optional in the matrix; the defaults
@@ -898,6 +949,11 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
     public var activation: KitActivation?
     public var offline: KitOffline?
     public var signIn: KitSignIn?
+    /// The provider the person signed in with ("Apple", "Google"), named in the auto steps.
+    public var provider: String?
+    public var autoSignIn: KitAutoSignIn?
+    /// nil: the account menu's entry.
+    public var nearbyApproval: KitNearbyApproval?
     public var deviceCode: KitDeviceCode?
     public var choices: KitLicenseChoices?
     public var replaceView: KitReplaceView?
@@ -923,7 +979,8 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         capabilities: KitCapabilities = KitCapabilities(), stage: KitStage? = nil,
         gate: KitGate? = nil, pending: KitPending? = nil, loading: Bool? = nil,
         elapsedMs: Double? = nil, keyField: KitKeyField? = nil, activation: KitActivation? = nil,
-        offline: KitOffline? = nil, signIn: KitSignIn? = nil,
+        offline: KitOffline? = nil, signIn: KitSignIn? = nil, provider: String? = nil,
+        autoSignIn: KitAutoSignIn? = nil, nearbyApproval: KitNearbyApproval? = nil,
         deviceCode: KitDeviceCode? = nil, choices: KitLicenseChoices? = nil,
         replaceView: KitReplaceView? = nil, selected: String? = nil, devices: [KitDevice]? = nil,
         browserMode: Bool? = nil, edit: KitEdit? = nil, saved: Bool? = nil,
@@ -948,6 +1005,9 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         self.activation = activation
         self.offline = offline
         self.signIn = signIn
+        self.provider = provider
+        self.autoSignIn = autoSignIn
+        self.nearbyApproval = nearbyApproval
         self.deviceCode = deviceCode
         self.choices = choices
         self.replaceView = replaceView
