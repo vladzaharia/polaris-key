@@ -47,6 +47,7 @@ import type {
   SignInOptions,
 } from "../core/signIn.js";
 import type { ChoiceNamespace } from "../core/choice.js";
+import { unsupportedKeyring, type KeyringClient } from "../core/keyring.js";
 import {
   BridgePresentationSource,
   type ReactPresentationSource,
@@ -884,6 +885,14 @@ export class DesktopAdapter implements PolarisAdapter {
         "The host process enrols (its Node SDK's license.enroll()); the renderer does not.",
     });
   }
+
+  /**
+   * The Cloud Sync key ring (sync.keyring): the typed `version` N/A here.
+   */
+  readonly keyring: KeyringClient = unsupportedKeyring(
+    "version",
+    "The desktop bridge has no key ring verb yet. Unlock Cloud Sync on the desktop host, or use a browser page.",
+  );
 
   /** `signIn.start` (identity.signIn): a device-code session over the bridge's `beginSignIn` /
    *  `pollSignIn`. The redirect and the hints the verbs do not carry are refused, typed. */

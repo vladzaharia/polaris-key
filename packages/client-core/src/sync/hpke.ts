@@ -170,6 +170,34 @@ export async function hpkeSeal(
   return { enc, ct: await p.aesGcmSeal(key, nonce, aad, plaintext) };
 }
 
+/**
+ * The recipient of a wrap whose private half stays inside a key port (`DeviceKeyPort`): its public
+ * key and a DH that answers null for a refused peer key. Nothing here can read the private key.
+ */
+export interface HpkeRecipient {
+  /** The raw 32-byte X25519 public key. */
+  publicKey: Uint8Array;
+  /** X25519 of the private key and `peer`; null when the peer key is refused. */
+  dh(peer: Uint8Array): Promise<Uint8Array | null>;
+}
+
+/** `OpenBase` for a recipient held by a port: the plaintext, or null (as `hpkeOpen`). */
+export async function hpkeOpenWithDh(
+  p: SyncCryptoPort,
+  recipient: HpkeRecipient,
+  enc: Uint8Array,
+  info: Uint8Array,
+  aad: Uint8Array,
+  ciphertext: Uint8Array,
+): Promise<Uint8Array | null> {
+  if (enc.length !== HPKE_ENC_BYTES) return null;
+  const dh = await recipient.dh(enc);
+  if (dh === null || dh.every((b) => b === 0)) return null;
+  const ss = await sharedSecret(p, dh, cat(enc, recipient.publicKey));
+  const { key, nonce } = await hpkeKeySchedule(p, ss, info);
+  return p.aesGcmOpen(key, nonce, aad, ciphertext);
+}
+
 /** `OpenBase`: the plaintext, or null for a bad `enc`, a wrong key, info or aad, or tampering. */
 export async function hpkeOpen(
   p: SyncCryptoPort,
@@ -179,13 +207,17 @@ export async function hpkeOpen(
   aad: Uint8Array,
   ciphertext: Uint8Array,
 ): Promise<Uint8Array | null> {
-  if (enc.length !== HPKE_ENC_BYTES) return null;
-  const dh = await p.x25519.dh(recipientPrivateKey, enc);
-  if (dh === null || dh.every((b) => b === 0)) return null;
-  const pkR = await p.x25519.publicKey(recipientPrivateKey);
-  const ss = await sharedSecret(p, dh, cat(enc, pkR));
-  const { key, nonce } = await hpkeKeySchedule(p, ss, info);
-  return p.aesGcmOpen(key, nonce, aad, ciphertext);
+  return hpkeOpenWithDh(
+    p,
+    {
+      publicKey: await p.x25519.publicKey(recipientPrivateKey),
+      dh: (peer) => p.x25519.dh(recipientPrivateKey, peer),
+    },
+    enc,
+    info,
+    aad,
+    ciphertext,
+  );
 }
 
 // ── The wrap (§13.11.1) ──────────────────────────────────────────────────────────────────────
@@ -254,6 +286,26 @@ export async function unwrapRoot(
   const root = await hpkeOpen(
     p,
     recipientPrivateKey,
+    wrap.enc,
+    wrapInfo(c),
+    kid,
+    wrap.ct,
+  );
+  return root !== null && root.length === SYNC_ROOT_BYTES ? root : null;
+}
+
+/** `unwrapRoot` for a device whose agreement key lives in a port (`DeviceKeyPort.dh`). */
+export async function unwrapRootWithDh(
+  p: SyncCryptoPort,
+  recipient: HpkeRecipient,
+  c: WrapContext,
+  kid: Uint8Array,
+  wrap: SyncWrap,
+): Promise<Uint8Array | null> {
+  if (wrap.kem !== HPKE_KEM_X25519) return null;
+  const root = await hpkeOpenWithDh(
+    p,
+    recipient,
     wrap.enc,
     wrapInfo(c),
     kid,

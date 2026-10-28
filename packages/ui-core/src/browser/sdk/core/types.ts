@@ -567,6 +567,13 @@ export interface PolarisAdapter {
    *  redirect session (bearer mode), and `signIn.complete(callbackUrl)` after the navigation
    *  back. A cookie page refuses with the typed `UnsupportedError`. */
   readonly signIn: SignInNamespace;
+  /**
+   * The Cloud Sync key ring (sync.keyring, WIRE-CONTRACT-V5 §13.11): create, unlock with the
+   * recovery code, set a new code, reset, and wrap the root to another device. Browser bearer
+   * mode runs it in-page. A cookie page, the desktop bridge (until the host serves a ring verb)
+   * and the local adapter answer the typed `UnsupportedError`; `unsupported` says which.
+   */
+  readonly keyring: import("./keyring.js").KeyringClient;
   /** Edge-mint a short-lived third-party token (config.mint). Memory-cached per device token. */
   mintToken(recipeId: string): Promise<MintedToken>;
   /** The licence's commerce binding (commerce.receipt). */
