@@ -144,7 +144,7 @@ export function useSdkGate(
   const nameRef = useRef<string | undefined>(undefined);
   nameRef.current = state.profile?.name ?? state.profile?.email;
   const tierRef = useRef<unknown>(undefined);
-  tierRef.current = state.entitlements.tier;
+  tierRef.current = state.entitlements?.tier;
   useEffect(() => {
     if (state.status !== "needs-activation" && state.phase !== "loading") {
       // A sign-in that landed names who signed in and under which tier (when both are known).
