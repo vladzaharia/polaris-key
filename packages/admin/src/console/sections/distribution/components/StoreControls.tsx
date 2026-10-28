@@ -28,6 +28,8 @@ import { Button } from "../../../../ui/Button.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
 import { Combobox } from "../../../../ui/Combobox.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
+import type { ConfirmBlock } from "../../../../ui/confirmReasons.js";
+import { controlGate, fractionGate } from "../model/controlGate.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
@@ -60,7 +62,7 @@ function ControlConfirm({
   pending,
   onClose,
   children,
-  confirmDisabled,
+  gate,
   bodyExtra,
 }: {
   slug: string;
@@ -68,7 +70,8 @@ function ControlConfirm({
   pending: PendingControl | null;
   onClose: () => void;
   children?: React.ReactNode;
-  confirmDisabled?: boolean;
+  /** What Confirm waits for: `confirmDisabled` and its reason, set together. */
+  gate?: ConfirmBlock;
   /** Fields the dialog's inputs add to the body at confirm time. */
   bodyExtra?: () => Record<string, unknown>;
 }): React.ReactElement | null {
@@ -82,7 +85,7 @@ function ControlConfirm({
       title={pending.title}
       consequences={pending.consequences}
       confirmLabel={pending.confirmLabel}
-      confirmDisabled={confirmDisabled}
+      {...gate}
       describeError={describe}
       onConfirm={async () => {
         await mutate("connectorControl", slug, connector, pending.control, {
@@ -304,18 +307,7 @@ export function StoreRolloutControls({
           setPending(null);
           setConfirmRollback(false);
         }}
-        confirmDisabled={
-          isFraction
-            ? numberRangeError(fraction, {
-                min: 0.01,
-                max: 99.99,
-                percent: true,
-                required: true,
-              }) !== null
-            : isComplete
-              ? appName.trim() === ""
-              : false
-        }
+        gate={fractionGate(fraction, appName, pending?.control)}
         bodyExtra={() =>
           isFraction
             ? { userFraction: fraction }
@@ -581,18 +573,13 @@ export function ConnectorCard({
     if (control === "settings") return { ...settings };
     return {};
   };
-  const disabled =
-    control === "release"
-      ? !releaseId || appName.trim() === ""
-      : control === "testflight/public-link"
-        ? groupId.trim() === ""
-        : control === "priority"
-          ? !track ||
-            !releaseId ||
-            priority === null ||
-            priority < 0 ||
-            priority > 5
-          : false;
+  const gate = controlGate(control, {
+    releaseId,
+    appName,
+    groupId,
+    track,
+    priority,
+  });
 
   return (
     <section
@@ -652,7 +639,7 @@ export function ConnectorCard({
         connector={connector.kind}
         pending={pending}
         onClose={() => setPending(null)}
-        confirmDisabled={disabled}
+        gate={gate}
         bodyExtra={extra}
       >
         {control === "release" || control === "priority" ? (

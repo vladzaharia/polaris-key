@@ -30,7 +30,7 @@ import { formatBasisPoints } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
 import { Combobox } from "../../../../ui/Combobox.js";
-import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
+import { ConfirmDialog, confirmBlocked } from "../../../../ui/ConfirmDialog.js";
 import { Dialog, DialogBody, DialogFooter } from "../../../../ui/Dialog.js";
 import { FormField, focusFirstInvalid } from "../../../../ui/form.js";
 import { NumberInput, numberRangeError } from "../../../../ui/NumberInput.js";
@@ -730,7 +730,7 @@ function HaltEverywhereConfirm({
       }
       confirmLabel={n === 1 ? "Halt 1 rollout" : `Halt ${n} rollouts`}
       cancelLabel={storesOnly ? "Done" : undefined}
-      confirmDisabled={n === 0}
+      {...confirmBlocked([n === 0, "No rollout to halt"])}
       describeError={(e) => {
         if (e instanceof PartialHaltError) {
           const first = e.refused[0]!;

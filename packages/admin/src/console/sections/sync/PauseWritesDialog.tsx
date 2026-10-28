@@ -5,6 +5,7 @@
  * into its step-up state (D11). Resuming is L1 and needs the reason too (the setting is critical).
  */
 
+import { NEEDS_REASON } from "../../../ui/confirmReasons.js";
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { HttpError, type PlatformSwitchSetting } from "../../../api.js";
@@ -169,6 +170,7 @@ export function PauseWritesDialog({
       }
       confirmDisabled={reason.trim() === ""}
       initialFocusRef={reasonRef}
+      confirmDisabledReason={NEEDS_REASON}
       signedInAt={me.data?.authAt}
       stepUpKey={stepUpKeyFor(setting.key, to)}
       stepUpState={{ reason }}

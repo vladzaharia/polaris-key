@@ -1142,12 +1142,10 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
     ).toBeTruthy();
     expect(within(dialog).queryByRole("checkbox")).toBeNull();
     expect(
-      (
-        within(dialog).getByRole("button", {
-          name: "Halt 0 rollouts",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+      within(dialog)
+        .getByRole("button", { name: "Halt 0 rollouts" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
     await userEvent.click(within(dialog).getByRole("button", { name: "Done" }));
     expect(rolloutAction).not.toHaveBeenCalled();
   });

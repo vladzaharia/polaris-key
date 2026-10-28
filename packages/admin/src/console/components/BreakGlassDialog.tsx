@@ -1,3 +1,4 @@
+import { NEEDS_REASON } from "../../ui/confirmReasons.js";
 import * as React from "react";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.js";
 import { Textarea } from "../../ui/Textarea.js";
@@ -59,6 +60,11 @@ export function BreakGlassDialog({
       confirmLabel="Make break-glass claim"
       confirmDisabled={
         trimmed.length === 0 || trimmed.length > BREAK_GLASS_REASON_MAX
+      }
+      confirmDisabledReason={
+        trimmed.length === 0
+          ? NEEDS_REASON
+          : `Keep the reason under ${BREAK_GLASS_REASON_MAX} characters`
       }
       onConfirm={() => onConfirm(trimmed)}
     >

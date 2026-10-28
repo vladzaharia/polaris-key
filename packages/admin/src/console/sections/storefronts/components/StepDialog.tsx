@@ -12,6 +12,7 @@
  * did instead of writing twice. The dialog stays open on a refusal and shows it inline.
  */
 
+import { blocker, NEEDS_APP_NAME } from "../../../../ui/confirmReasons.js";
 import * as React from "react";
 import type {
   StorefrontFollowUp,
@@ -97,6 +98,10 @@ export function StepDialog({
       consequences={request.consequences}
       confirmLabel={request.verb}
       confirmDisabled={missing || (typed && appName.trim() === "")}
+      confirmDisabledReason={blocker(
+        [missing, "Fill in the required fields to continue"],
+        [typed && appName.trim() === "", NEEDS_APP_NAME],
+      )}
       describeError={(e) =>
         errorCopy(e, { area: "distribution", thing: "Step" })
       }

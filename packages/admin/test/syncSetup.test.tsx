@@ -340,9 +340,11 @@ describe("Cloud Sync → Setup", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByText("DJDL")).toBeTruthy();
     expect(within(dialog).getByText("Diceroll")).toBeTruthy();
-    const confirm = within(dialog).getByRole("button", {
-      name: "Pause writes for 2 products",
-    });
+    const confirmButton = () =>
+      within(dialog).getByRole("button", {
+        name: "Pause writes for 2 products",
+      });
+    const confirm = confirmButton();
     expect(
       confirm.getAttribute("aria-disabled") ?? confirm.hasAttribute("disabled"),
     ).toBeTruthy();
@@ -350,7 +352,7 @@ describe("Cloud Sync → Setup", () => {
       within(dialog).getByLabelText(/Reason/),
       "Storage errors in eu-west",
     );
-    await user.click(confirm);
+    await user.click(confirmButton());
     expect(patch).toHaveBeenCalledWith("cloudSync.writesPaused", {
       value: "on",
       expectedVersion: 4,
