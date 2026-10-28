@@ -13,6 +13,7 @@
  * chunks of {@link MAX_BULK_DELETE}, each with its own count, and the results are summed.
  */
 
+import { blocker } from "../../../../ui/confirmReasons.js";
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -220,6 +221,7 @@ export function BulkDeleteDialog({
       }
       confirmLabel={`Delete ${plural(n, "license")}`}
       confirmDisabled={n === 0}
+      confirmDisabledReason="No licenses to delete"
       describeError={describeDelete}
       onConfirm={async () => {
         const res = await deleteInChunks(
@@ -298,6 +300,10 @@ export function CleanupDialog({
       }
       confirmLabel={n ? `Delete ${plural(n, "license")}` : "Delete"}
       confirmDisabled={q.isPending || n === 0}
+      confirmDisabledReason={blocker(
+        [q.isPending, "Wait for the licenses to load"],
+        [n === 0, "No duplicate licenses to delete"],
+      )}
       describeError={describeDelete}
       onConfirm={async () => {
         const res = await deleteInChunks(

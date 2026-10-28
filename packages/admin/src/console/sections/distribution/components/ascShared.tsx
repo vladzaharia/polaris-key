@@ -15,6 +15,7 @@
  *   shared listing model replaces).
  */
 
+import { blocker, NEEDS_APP_NAME } from "../../../../ui/confirmReasons.js";
 import * as React from "react";
 import { ExternalLink } from "lucide-react";
 import type { AscBuildDto, ConnectorStatusDto } from "../../../../api.js";
@@ -237,6 +238,7 @@ export function AscActionDialog({
   onClose,
   children,
   confirmDisabled = false,
+  confirmDisabledReason,
   bodyExtra,
 }: {
   slug: string;
@@ -244,6 +246,8 @@ export function AscActionDialog({
   onClose: () => void;
   children?: React.ReactNode;
   confirmDisabled?: boolean;
+  /** Why `confirmDisabled` holds, in the button's tooltip. */
+  confirmDisabledReason?: string;
   /** Fields the dialog's own inputs add to every body at confirm time. */
   bodyExtra?: () => Record<string, unknown>;
 }): React.ReactElement | null {
@@ -267,6 +271,13 @@ export function AscActionDialog({
       consequences={intent.consequences}
       confirmLabel={intent.confirmLabel}
       confirmDisabled={confirmDisabled || (typed && appName.trim() === "")}
+      confirmDisabledReason={blocker(
+        [
+          confirmDisabled,
+          confirmDisabledReason ?? "Complete the form to continue",
+        ],
+        [typed && appName.trim() === "", NEEDS_APP_NAME],
+      )}
       describeError={describeAsc}
       onConfirm={async () => {
         const results: Record<string, unknown>[] = [];

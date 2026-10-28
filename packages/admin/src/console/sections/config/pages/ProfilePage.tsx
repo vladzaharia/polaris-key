@@ -8,6 +8,8 @@ import {
 import { fromSeconds } from "../../../../lib/format.js";
 import { ManagedPayloadEditor } from "../../../../ManagedPayloadEditor.js";
 import { Button } from "../../../../ui/Button.js";
+import { WriteLock } from "../../../../ui/WriteLock.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { DataTable, type DataColumn } from "../../../../ui/data-table/index.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
@@ -49,6 +51,8 @@ export function ProfilePage({
   tab?: string;
 }): React.ReactElement {
   const profile = useProfile(slug, id);
+  // A view-only member reads the payload; the editors and the record's actions are soft-disabled.
+  const gate = useWriteGate("config", slug);
   const [dirty, setDirty] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
@@ -135,6 +139,7 @@ export function ProfilePage({
           {
             label: "Edit details…",
             icon: <Pencil aria-hidden />,
+            disabledReason: gate.disabledReason,
             onSelect: () => setEditing(true),
           },
         ]}
@@ -142,7 +147,7 @@ export function ProfilePage({
           {
             label: "Delete…",
             icon: <Trash2 aria-hidden />,
-            disabledReason: deleteBlockedReason(usedBy),
+            disabledReason: gate.disabledReason ?? deleteBlockedReason(usedBy),
             onSelect: () => setDeleting(true),
           },
         ]}
@@ -169,7 +174,9 @@ export function ProfilePage({
       />
 
       <div hidden={current !== "payload"} className="pk-vt-tabpanel">
-        <PayloadTab slug={slug} profile={p} onDirtyChange={setDirty} />
+        <WriteLock locked={!gate.allowed} reason={gate.disabledReason}>
+          <PayloadTab slug={slug} profile={p} onDirtyChange={setDirty} />
+        </WriteLock>
       </div>
       {current === "used-by" ? (
         <div className="pk-vt-tabpanel">

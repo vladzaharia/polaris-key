@@ -16,6 +16,11 @@
  * (403 `step_up_required` turns the dialog's callout back on).
  */
 
+import {
+  blocker,
+  NEEDS_REASON,
+  NEEDS_SIGN_IN,
+} from "../../../../ui/confirmReasons.js";
 import * as React from "react";
 import {
   HttpError,
@@ -324,6 +329,12 @@ export function ReassignDialog({
       ]}
       confirmLabel="Reassign license"
       confirmDisabled={!fresh || !emailOk || same || !reasonOk}
+      confirmDisabledReason={blocker(
+        [!fresh, NEEDS_SIGN_IN],
+        [!emailOk, "Enter the new email to continue"],
+        [same, "Use a different email to continue"],
+        [!reasonOk, NEEDS_REASON],
+      )}
       typedConfirmation={
         confirmFor("license.reassign").typedConfirmation
           ? {
@@ -443,6 +454,10 @@ export function MakeFloatingDialog({
       ]}
       confirmLabel="Make floating"
       confirmDisabled={!fresh || reason.trim().length === 0}
+      confirmDisabledReason={blocker(
+        [!fresh, NEEDS_SIGN_IN],
+        [reason.trim().length === 0, NEEDS_REASON],
+      )}
       typedConfirmation={
         confirmFor("license.makeFloating").typedConfirmation
           ? {
@@ -523,6 +538,10 @@ export function UndoHolderMoveDialog({
       ]}
       confirmLabel="Undo"
       confirmDisabled={!fresh || reason.trim().length === 0}
+      confirmDisabledReason={blocker(
+        [!fresh, NEEDS_SIGN_IN],
+        [reason.trim().length === 0, NEEDS_REASON],
+      )}
       describeError={(e) => errorCopy(e, { thing: "License" })}
       onConfirm={async () => {
         await mutate("undoRelink", slug, move!.id, {
