@@ -33,6 +33,7 @@ import {
   type SyncWrap,
 } from "@polaris-key/client-core/sync";
 import type { DeviceKeyPort } from "@polaris-key/client-core";
+import type { HostCodec } from "@polaris-key/client-core/sync";
 import {
   ERROR_CODE_VALUES,
   ErrorCode,
@@ -47,6 +48,7 @@ import type {
   RingStatus,
   KeyringClient,
 } from "../../core/keyring.js";
+import { ringCodec } from "./codec.js";
 import {
   importRootHandle,
   memoryRootVault,
@@ -281,6 +283,12 @@ export class RingEngine implements KeyringClient {
   private async persistence(): Promise<RingPersistence> {
     return (await this.vault()).persistence();
   }
+
+  /** The host codec over `ringKeys()`, or null while this device holds no root. */
+  codec(): HostCodec | null {
+    return this.held ? (this.#codec ??= ringCodec(this)) : null;
+  }
+  #codec: HostCodec | null = null;
 
   /** The derived keys the sealing codec takes, or null while this device holds no root. */
   async ringKeys(): Promise<RingKeys | null> {
