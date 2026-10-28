@@ -23,6 +23,7 @@ every load. There is no unsigned field left for a local attacker to poison.
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import weakref
@@ -36,6 +37,7 @@ from .core.device_keys import DeviceKeyPort
 from .connect import ConnectClient
 from .keyring import KeyringClient
 from .commerce import CommerceClient
+from .cloud_sync.api import CloudSyncApi, CloudSyncClient
 from .cloud_sync.host import CloudSyncHost, CloudSyncHostDeps, CloudSyncHostOptions
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .core.bundle import ImportBundleResult, import_bundle
@@ -91,6 +93,8 @@ from .presentation import DiscoveryPresentationSource
 from .release.client import ReleaseClient
 from .update.bootguard import BootGuard
 from .update.client import UpdateClient, UpdateClientOptions
+
+_log = logging.getLogger("polaris_key")
 
 __all__ = [
     "PolarisKeyClient",
@@ -347,6 +351,22 @@ class PolarisKeyClient:
             if isinstance(cloud_sync, CloudSyncHostOptions)
             else CloudSyncHostOptions(**dict(cloud_sync or {})),
         )
+        self._cloud_sync_api = CloudSyncApi(
+            ctx=self.core,
+            host=self.cloud_sync_host,
+            keyring=self.keyring,
+            config=self.config,
+            subject=self.identity._account.stored_subject,
+            emit=lambda e: self.events.emit("cloudSync", **e),
+            log=lambda m: _log.warning("%s", m),
+        )
+        #: Cloud Sync (WIRE-CONTRACT-V5 §13): ``status()`` and ``flush()``; changes arrive as
+        #: ``client.events`` ``cloudSync`` events. A product without the Sync service gets the typed N/A.
+        self.cloud_sync = CloudSyncClient(self._cloud_sync_api)
+        # The identity session's subject drives the machine; a sign-out flushes (bounded) and forgets.
+        self.events.subscribe(self._identity_to_sync, ("identity",))
+        self.identity.on_before_sign_out(self._cloud_sync_api.before_sign_out)
+        self.config.sync_noted = self._note_synced_config
 
         # Store purchases → licence flags (P6-01). The one-call claim helpers sync on success.
         self.commerce = CommerceClient(
@@ -471,10 +491,23 @@ class PolarisKeyClient:
     def _forget_identity_and_ring(self) -> None:
         self.keyring.forget()
         self.identity.forget()
+        try:
+            self._cloud_sync_api.on_deactivated()
+        except Exception:  # noqa: BLE001 - leaving Cloud Sync never fails a deactivation
+            pass
+
+    def _identity_to_sync(self, event: Any) -> None:
+        self._cloud_sync_api.on_identity(event.get("change", ""), event.get("subject"))
+
+    def _note_synced_config(self, key: str, value: Any) -> None:
+        # The machine's change was reported on its own; the change detector must not report it again.
+        if self._observed is not None:
+            self._observed["config"][key] = value
 
     def close(self) -> None:
         """Stop the refresh thread and release the HTTP client. Safe to call twice."""
         self._timer_stop.set()
+        self._cloud_sync_api.close()
         self.cloud_sync_host.close()
         self.keyring.lock()
         timer = self._timer
@@ -538,6 +571,7 @@ class PolarisKeyClient:
             self._discovery_doc = result.manifest
             self.core.set_services(result.services)
             self.cloud_sync_host.note_discovery()
+            self._cloud_sync_api.attach_soon()
             try:
                 self.presentation_source.accept(result.manifest)
             except Exception:  # display data never fails discovery
@@ -692,8 +726,9 @@ class PolarisKeyClient:
         except Exception:
             return {"status": None, "ents": {}, "config": {}}
 
-    def _publish(self) -> None:
-        """Emit the license, entitlement and config events since the last observation."""
+    def _publish(self, origin: str = "remote") -> None:
+        """Emit the license, entitlement and config events since the last observation. ``origin`` is
+        what the config events say caused them."""
         before = self._observed
         after = self._observe()
         self._observed = after
@@ -709,7 +744,12 @@ class PolarisKeyClient:
             a, b = after["config"].get(key), before["config"].get(key)
             if a != b:
                 self.events.emit(
-                    "config", key=key, value=a, previous=b, source=self.config.get_config_source(key)
+                    "config",
+                    key=key,
+                    value=a,
+                    previous=b,
+                    source=self.config.get_config_source(key),
+                    origin=origin,
                 )
 
     def _report_once(self) -> None:

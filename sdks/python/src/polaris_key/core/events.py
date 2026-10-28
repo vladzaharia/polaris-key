@@ -7,11 +7,15 @@ Kinds (:data:`EVENT_KINDS`):
 * ``entitlement`` — one entitlement's value changed (``name``, ``value``, ``previous``); a
   revoked or expired gate reads every entitlement as ``None`` (S-19 G11);
 * ``config`` — one setting's effective value changed (``key``, ``value``, ``previous``,
-  ``source``), from a sync or from ``config.set`` / ``config.clear``;
+  ``source``, ``origin``: ``local``, ``remote``, ``merge`` or ``migration``), from a sync or from
+  ``config.set`` / ``config.clear``;
 * ``updateAvailable`` — a decision offers a newer build (``version``, ``action``,
   ``mandatory``);
 * ``packs`` — pack install progress (``pack``, ``phase``, ``done``, ``total``);
-* ``store`` — the token store is degraded (``reason``, ``detail``).
+* ``store`` — the token store is degraded (``reason``, ``detail``);
+* ``identity`` — the account changed (``change``: ``signed_in``, ``signed_out``, ``subject_changed``);
+* ``cloudSync`` — Cloud Sync's machine reported something (``type``: ``change``, ``signedOut``,
+  ``signInOffered`` ...; the other members are the machine's own). ``change`` names keys, never values.
 
 Listeners run synchronously on the thread that caused the change (a sync, a ``config.set``) and
 must not block. An exception in one cannot break the others or the SDK: it is logged, with its
@@ -38,7 +42,7 @@ def listener_failed(what: str) -> None:
     ``except`` block. A host bug is never swallowed silently, and never breaks the SDK."""
     log.exception("polaris_key: the %s callback raised; continuing", what)
 
-EVENT_KINDS = ("license", "entitlement", "config", "updateAvailable", "packs", "store", "identity")
+EVENT_KINDS = ("license", "entitlement", "config", "updateAvailable", "packs", "store", "identity", "cloudSync")
 
 
 @dataclass(frozen=True)
