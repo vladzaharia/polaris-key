@@ -490,6 +490,13 @@ class TrustManager:
         self._install(jws, result)
         return jws
 
+    @property
+    def lock(self) -> Any:
+        """The lock every install runs under (re-entrant). A caller that persists what an install
+        accepted holds it across the install and the write, so a concurrent refresh cannot leave an
+        older manifest on disk."""
+        return self._lock
+
     def accept_peer(self, jws: str) -> PeerTrustResult:
         """Verify a manifest a peer pushed and install it, under the rules the Worker's own manifest
         meets: signed by a usable pin, bound to this product, fresh, and newer than the one held

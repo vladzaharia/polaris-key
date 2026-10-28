@@ -45,6 +45,7 @@ __all__ = [
     "MAX_PENDING",
     "MAX_PENDING_PER_ADDRESS",
     "MAX_SESSIONS",
+    "MAX_SESSIONS_PER_PEER",
     "lan_source",
 ]
 
@@ -53,6 +54,8 @@ MAX_PENDING = 32
 MAX_PENDING_PER_ADDRESS = 4
 #: Open sessions at once.
 MAX_SESSIONS = 64
+#: Open sessions with one device at once (the relay's ``max_pending_per_peer`` counts the same way).
+MAX_SESSIONS_PER_PEER = 4
 HANDSHAKE_SECONDS = 30.0
 DIAL_SECONDS = 10.0
 IDENTITY_TTL_S = 30
@@ -109,6 +112,7 @@ class LanOptions:
     max_pending: int = MAX_PENDING
     max_pending_per_address: int = MAX_PENDING_PER_ADDRESS
     max_sessions: int = MAX_SESSIONS
+    max_sessions_per_peer: int = MAX_SESSIONS_PER_PEER
     rekey_messages: Optional[int] = None
     rekey_seconds: Optional[float] = None
     handshake_seconds: float = HANDSHAKE_SECONDS
@@ -234,6 +238,49 @@ class LanService:
         )
         self._adv = self._browse = None
 
+    def abort(self) -> None:
+        """Force-end the service from another thread, without a graceful close, when the loop's thread is
+        held by a host callback. The derived discovery table is dropped now; the listener, the browser,
+        the advert and every socket are cancelled on the loop as soon as it is free."""
+        self._stopped = True
+        self._tab = None
+        try:
+            self._loop.call_soon_threadsafe(self._abort_on_loop)
+        except RuntimeError:
+            pass
+
+    def _abort_on_loop(self) -> None:
+        self._docs.close()
+        if self._cancel_epoch is not None:
+            self._cancel_epoch()
+            self._cancel_epoch = None
+        for w in list(self._pending):
+            self._abort(w)
+        for t in list(self._tasks):
+            t.cancel()
+        for s in list(self._sessions):
+            try:
+                s.close()
+            except Exception:
+                pass
+        srv = self._server
+        if srv is not None:
+            try:
+                srv.close()
+            except Exception:
+                pass
+        for h in (self._adv, self._browse):
+            if h is not None:
+                asyncio.ensure_future(self._stop_handle(h))
+        self._adv = self._browse = None
+
+    @staticmethod
+    async def _stop_handle(h: Any) -> None:
+        try:
+            await h.stop()
+        except Exception:
+            pass
+
     @staticmethod
     async def _quiet(aw: Optional[Awaitable[Any]]) -> None:
         if aw is None:
@@ -295,12 +342,14 @@ class LanService:
 
     async def _connect_one(self, peer: LanPeer, ident: PeerSource) -> Any:
         reader, writer = await self._dial(peer)
-        link = self._link(reader, writer, ident, "initiator")
+        link = self._link(reader, writer, ident, "initiator", expect=peer.device_id)
         task = self._spawn(link.run())
         link.start()
         try:
             return await wait_opened(link, self._o.handshake_seconds + 5)
         except LanError:
+            if link.wrong_peer:
+                raise LanError("wrong_peer", "The device that answered is not the one that advertised.") from None
             raise
         except Exception as e:
             task.cancel()
@@ -363,7 +412,9 @@ class LanService:
 
     # -- links ------------------------------------------------------------------------------------
 
-    def _link(self, reader: Any, writer: Any, ident: PeerSource, role: str) -> SocketLink:
+    def _link(
+        self, reader: Any, writer: Any, ident: PeerSource, role: str, expect: Optional[str] = None
+    ) -> SocketLink:
         o = self._o
         docs = self._docs
 
@@ -402,9 +453,16 @@ class LanService:
             },
             handlers,
             handshake_seconds=o.handshake_seconds,
+            expect_peer=expect,
+            peer_full=self._peer_full,
         )
         self._links.add(link)
         return link
+
+    def _peer_full(self, device_id: str) -> bool:
+        """True when this device already holds its share of the open sessions."""
+        n = sum(1 for s in self._sessions if s.peer_device_id == device_id)
+        return n >= self._o.max_sessions_per_peer
 
     # -- TCP --------------------------------------------------------------------------------------
 

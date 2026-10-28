@@ -16,7 +16,7 @@ from typing import Any, Callable, List, Optional
 
 import pytest
 from connect_relay_fake import FakeRoom, ManualSleep
-from test_connect_lan import World, run, until
+from test_connect_lan import ID_C, World, run, until
 from test_connect_peer_session import ID_A, ID_B
 
 from polaris_key.connect.errors import RelayError
@@ -149,6 +149,27 @@ def test_a_ping_is_answered_and_listed_on_every_interval() -> None:
         until(lambda: len(r.room.received) >= n + 2)
         assert [m["op"] for _, m in r.room.received[n : n + 2]] == ["ping", "list"]
         assert len(r.room.received[n][1]["data"]) == 8
+
+
+def test_members_the_room_lists_outside_the_roster_are_not_believed() -> None:
+    with Rig(members={ID_A, ID_B, ID_C}) as r:
+        svc = r.ready()
+        until(lambda: svc.members() == [ID_A])
+        assert ID_C not in svc.members()
+        assert ID_C not in run(svc.refresh_members(3))
+
+
+def test_two_intervals_without_a_pong_close_the_socket_and_it_reconnects() -> None:
+    with Rig() as r:
+        r.room.mute_pong = True
+        r.ready()
+        for _ in range(3):
+            until(lambda: any(s == PING for s, _ in r.sleep.pending))
+            r.clock.t += PING
+            assert r.on_loop(lambda: r.sleep.fire(lambda s: s == PING))
+            time.sleep(0.05)
+        r.wake()
+        until(lambda: len(r.room.offered) == 2)
 
 
 def test_members_changes_and_gone_are_reported() -> None:

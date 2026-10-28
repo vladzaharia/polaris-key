@@ -250,9 +250,31 @@ class CloudConnect:
         try:
             fut.result(STOP_SECONDS)
         except (concurrent.futures.TimeoutError, TimeoutError):
-            # A host callback is holding the Connect loop. The teardown stays queued and runs when it
-            # lets go; the caller (sign-out) does not wait on the host's code (S6).
-            raise LanError("closed", "Cloud Connect did not stop in time: a callback is blocking its thread.") from None
+            # A host callback is holding the Connect loop. Sign-out does not wait on the host's code:
+            # force-cancel the transports (no graceful close), drop the discovery state, and go on.
+            fut.cancel()
+            self._force_stop()
+
+    def _force_stop(self) -> None:
+        with self._lock:
+            lan, relay = self._lan, self._relay
+            self._lan = self._relay = None
+            self._running = False
+            unsub, self._unsub = self._unsub, []
+        for u in unsub:
+            try:
+                u()
+            except Exception:
+                pass
+        for svc in (lan, relay):
+            if svc is not None:
+                try:
+                    svc.abort()
+                except Exception:
+                    pass
+        self._sessions.clear()
+        # Stops the loop once the blocked callback returns and cancels every task still on it.
+        self._loop.close(0.0)
 
     async def _stop(self) -> None:
         async with self._serial():

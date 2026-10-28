@@ -258,7 +258,9 @@ class PeerDocs:
         src = self._src
         if src.refresh is None or self._closed:
             return False
-        t = src.now()
+        # A rate rule, not a document-time rule: the monotonic clock, so a wall clock set back cannot
+        # hold refreshes off.
+        t = self._clock()
         with self._lock:
             if t - self._last_refresh < REFRESH_GAP_SECONDS:
                 gap = self._last_refresh + REFRESH_GAP_SECONDS - t

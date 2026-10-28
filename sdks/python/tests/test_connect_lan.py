@@ -20,6 +20,7 @@ from polaris_key.connect.errors import LanError
 from polaris_key.connect.lan import (
     MAX_PENDING,
     MAX_PENDING_PER_ADDRESS,
+    MAX_SESSIONS_PER_PEER,
     LanOptions,
     LanPeer,
     LanService,
@@ -385,6 +386,33 @@ def test_the_device_that_answers_must_be_the_one_dialled() -> None:
         with pytest.raises(LanError) as e:
             run(lb.connect(LanPeer(ID_C, "127.0.0.1", la.port)))
         assert e.value.reason == "wrong_peer"
+        # Refused inside the handshake: the dialling side never registered a session for it.
+        assert not lb._sessions
+
+
+def test_one_device_cannot_hold_more_than_its_share_of_the_open_sessions() -> None:
+    assert MAX_SESSIONS_PER_PEER == 4
+    with World() as w:
+        la = w.start(w.a, max_sessions_per_peer=2)
+        lb = w.start(w.b, advertise=False, browse=False)
+        inbound: List[Any] = []
+        la.on_session(inbound.append)
+        peer = LanPeer(ID_A, "127.0.0.1", la.port)
+        first = [run(lb.connect(peer)) for _ in range(2)]
+        until(lambda: len(inbound) == 2)
+        # The dialler finishes its handshake first; the full side ends it with peer_busy and never
+        # registers or announces it.
+        third = run(lb.connect(peer))
+        ended: List[Any] = []
+        third.on_close(ended.append)
+        until(lambda: ended)
+        assert ended[0].code == "peer_busy" and ended[0].by_peer
+        assert len(inbound) == 2 and len(la._sessions) == 2
+        # A closed session frees a place.
+        first[0].close()
+        until(lambda: len(la._sessions) == 1)
+        run(lb.connect(peer))
+        until(lambda: len(inbound) == 3)
 
 
 def test_stop_closes_open_sessions_and_the_listener() -> None:

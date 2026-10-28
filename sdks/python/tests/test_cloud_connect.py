@@ -464,6 +464,23 @@ def test_applying_a_peer_trust_manifest_follows_the_hosts_trust_refresh_switch()
         c.close()
 
 
+def test_a_peer_trust_install_and_its_cache_write_are_one_step_under_the_trust_lock() -> None:
+    import threading
+
+    from helpers import make_client
+
+    c = make_client(_no_network)
+    try:
+        done = threading.Event()
+        with c._trust.lock:
+            t = threading.Thread(target=lambda: (c._apply_peer_trust("not-a-jws"), done.set()), daemon=True)
+            t.start()
+            assert not done.wait(0.3)  # a refresh holding the lock keeps the install and write out
+        assert done.wait(5)
+    finally:
+        c.close()
+
+
 # -- asyncio ----------------------------------------------------------------------------------------
 
 
@@ -488,18 +505,19 @@ def test_the_async_client_mirrors_the_facade_as_coroutines() -> None:
         assert not cc.status().running
 
 
-def test_stop_does_not_wait_forever_on_a_host_callback_that_blocks_the_connect_thread(
+def test_stop_force_cancels_after_the_bound_when_a_host_callback_blocks_the_connect_thread(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import time
 
-    from polaris_key.connect.errors import LanError
     from polaris_key.connect.loop import connect_loop
 
     monkeypatch.setattr(cc_mod, "STOP_SECONDS", 0.3)
     with Rig() as r:
         a = r.make(r.world.a)
         a.start(r.options())
+        lan, relay = a._lan, a._relay
+        assert lan is not None and relay is not None
 
         async def blocker() -> None:
             time.sleep(1.5)  # a host callback holding the loop's thread
@@ -507,15 +525,21 @@ def test_stop_does_not_wait_forever_on_a_host_callback_that_blocks_the_connect_t
         connect_loop().submit(blocker())
         time.sleep(0.1)
         t0 = time.monotonic()
-        with pytest.raises(LanError) as e:
-            a.stop()
-        assert time.monotonic() - t0 < 1.2 and e.value.reason == "closed"
-        # The teardown stayed queued and runs once the callback lets go.
+        a.stop()  # D-12: does not raise and does not wait past the bound
+        assert time.monotonic() - t0 < 1.2
+        # Nothing graceful is left to wait for: the services are over and the discovery state is gone.
+        assert not a.status().running and a._lan is None and a._relay is None
+        assert lan._stopped and lan._tab is None and relay._stopped
+        # Once the callback lets go, the cancelled transports close without a graceful pass.
         for _ in range(100):
-            if not a.status().running:
+            if lan._server is None or not lan._server.is_serving():
                 break
             time.sleep(0.05)
-        assert not a.status().running
+        assert lan._server is None or not lan._server.is_serving()
+        # And the next start works on a fresh loop.
+        a.start(r.options())
+        assert a.status().running
+        a.stop()
 
 
 def test_signing_out_is_not_held_by_a_blocked_stop_and_a_stuck_session_close_is_quiet() -> None:
