@@ -2273,9 +2273,11 @@ Every symmetric key seals one plaintext, so the nonce is a constant (12 zero byt
 
 **`pkey-sync-file/1`** seals a file as a stream of segments:
 
-- a 64-byte little-endian header, like `pkey-sync-chunks/1`: `PKSYNCF1`, `version` u16 1, `flags` u16, `segmentBytes` u32 (1 MiB), `kid` 16 bytes, `salt` 32 bytes. Only the nonce counter below is big-endian;
+- a 64-byte little-endian header, like `pkey-sync-chunks/1`: `PKSYNCF1`, `version` u16 1, `flags` u16 0, `segmentBytes` u32 (1 MiB), `kid` 16 bytes, `salt` 32 bytes. Only the nonce counter below is big-endian;
 - segment `i` is `AES-256-GCM(K_file, nonce = u8(last) ‖ 0³ ‖ u64be(i), aad = header, segment)`;
-- an empty file is one empty last segment. A truncated stream, a reordered segment or a missing last flag is refused.
+- every segment but the last holds exactly `segmentBytes` of plaintext, and the last holds 1 to `segmentBytes`. Only the empty file has an empty last segment, and it is then the only segment. A truncated stream, a reordered segment or a missing last flag is refused.
+
+A reader refuses the first violation, in this order (`fileStreamCases`): under 64 bytes (`shape`), `magic`, `version`, a non-zero `flags`, a `segmentBytes` other than 1 MiB (`segmentSize`), and a `kid` that is not this ring's (`kid`); then the body: no segment, or a tail shorter than a tag (`shape`); an empty last segment after others (`size`); and a segment that fails its tag (`auth`, which covers truncation, reordering, a missing last flag and a tampered header).
 
 Segments allow ranged downloads and resume. **`pkey-sync-chunk/1`** and **`pkey-sync-chunks/1`** are in §13.8.3.
 
