@@ -27,6 +27,7 @@ import java.awt.Toolkit
 import java.awt.datatransfer.Clipboard
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
+import kotlinx.coroutines.flow.first
 import java.awt.Desktop
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -231,3 +232,20 @@ internal actual fun rememberHeldSignIn(key: Any, actions: PolarisSignInActions, 
 
 internal actual fun autoPlatformVariant(): PolarisPlatformVariant =
     PolarisPlatformVariant.resolve(System.getProperty("os.name"), System.getProperty(PolarisPlatformVariant.FORCE_PROPERTY))
+
+@Composable
+internal actual fun rememberScreenReaderOn(): Boolean = false
+
+@Composable
+internal actual fun PolarisReturnEffect(awaiting: Boolean, onReturn: () -> Unit) {
+    val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
+    val foreground = LocalPolarisForeground.current ?: { windowInfo.isWindowFocused }
+    val current by rememberUpdatedState(onReturn)
+    androidx.compose.runtime.LaunchedEffect(awaiting) {
+        if (!awaiting) return@LaunchedEffect
+        // Away, then back: the browser took the window and gave it up.
+        androidx.compose.runtime.snapshotFlow(foreground).first { !it }
+        androidx.compose.runtime.snapshotFlow(foreground).first { it }
+        current()
+    }
+}

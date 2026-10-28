@@ -9,7 +9,16 @@ import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.provider.Settings
+import android.view.accessibility.AccessibilityManager
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -163,3 +172,36 @@ internal actual fun PolarisDialogDim(amount: Float) {
 }
 
 internal actual fun autoPlatformVariant(): PolarisPlatformVariant = PolarisPlatformVariant.Android
+
+@Composable
+internal actual fun rememberScreenReaderOn(): Boolean {
+    val manager = LocalContext.current.getSystemService(AccessibilityManager::class.java)
+    var on by remember(manager) { mutableStateOf(manager?.isTouchExplorationEnabled == true) }
+    DisposableEffect(manager) {
+        val listener = AccessibilityManager.TouchExplorationStateChangeListener { on = it }
+        manager?.addTouchExplorationStateChangeListener(listener)
+        onDispose { manager?.removeTouchExplorationStateChangeListener(listener) }
+    }
+    return on
+}
+
+@Composable
+internal actual fun PolarisReturnEffect(awaiting: Boolean, onReturn: () -> Unit) {
+    val owner = LocalLifecycleOwner.current
+    val current by rememberUpdatedState(onReturn)
+    DisposableEffect(owner, awaiting) {
+        var left = false
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> left = true
+                Lifecycle.Event.ON_RESUME -> if (left) {
+                    left = false
+                    current()
+                }
+                else -> Unit
+            }
+        }
+        if (awaiting) owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
+}

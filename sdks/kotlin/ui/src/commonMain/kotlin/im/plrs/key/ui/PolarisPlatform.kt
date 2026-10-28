@@ -36,6 +36,18 @@ public expect fun rememberPolarisOpener(): PolarisOpener
 @Composable
 internal expect fun PolarisBackHandler(enabled: Boolean = true, onBack: () -> Unit): Modifier
 
+/** Whether a screen reader is reading by touch (TalkBack's touch exploration); false where there is none. */
+@Composable
+internal expect fun rememberScreenReaderOn(): Boolean
+
+/**
+ * Calls [onReturn] once when the person comes back to the app after leaving it (to a browser or a
+ * system screen), while [awaiting]. Android: the host lifecycle's ON_PAUSE then ON_RESUME, which a
+ * browser in a window of its own never changes focus for. Desktop: the window loses focus, then regains it.
+ */
+@Composable
+internal expect fun PolarisReturnEffect(awaiting: Boolean, onReturn: () -> Unit)
+
 /** Whether the person has turned animation off at the system level. */
 @Composable
 internal expect fun rememberSystemReduceMotion(): Boolean

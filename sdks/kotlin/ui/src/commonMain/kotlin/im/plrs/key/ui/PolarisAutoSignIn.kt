@@ -11,7 +11,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -25,25 +24,17 @@ public fun PolarisAutoSignIn(state: PolarisAutoSignInState, modifier: Modifier =
     PolarisAutoSignInScreen(ui, state, modifier)
 }
 
-/** True while the app's window is in the foreground; a test provides its own. */
+/** True while the app's window is in the foreground (desktop's return signal); a test provides its own. */
 internal val LocalPolarisForeground = androidx.compose.runtime.staticCompositionLocalOf<(() -> Boolean)?> { null }
 
 /**
- * After Replace opened the browser, the person comes back: the window leaves the foreground and returns.
- * That return runs the sign-in once more ([PolarisAutoSignInState.returned]), so they do not start again by hand.
+ * After Replace opened the browser, the person comes back. That return runs the sign-in once more
+ * ([PolarisAutoSignInState.returned]), so they do not start again by hand.
  */
 @Composable
 private fun ResumeAfterReplace(state: PolarisAutoSignInState) {
     val awaiting by state.awaitingReturn.collectAsState()
-    val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
-    val foreground = LocalPolarisForeground.current ?: { windowInfo.isWindowFocused }
-    androidx.compose.runtime.LaunchedEffect(awaiting) {
-        if (!awaiting) return@LaunchedEffect
-        // Away, then back: the browser took the window and gave it up.
-        androidx.compose.runtime.snapshotFlow(foreground).first { !it }
-        androidx.compose.runtime.snapshotFlow(foreground).first { it }
-        state.returned()
-    }
+    PolarisReturnEffect(awaiting) { state.returned() }
 }
 
 @Composable
