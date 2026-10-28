@@ -10,7 +10,7 @@ import Testing
 @testable import PolarisKeyCore
 
 /// A codec over a fixture root, with a switch for "locked" and a count of seals.
-private final class FixtureCodec: SyncCodecPort, @unchecked Sendable {
+final class FixtureCodec: SyncCodecPort, @unchecked Sendable {
     let root: Data
     private let lock = NSLock()
     private var isLocked = false
