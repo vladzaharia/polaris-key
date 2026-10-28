@@ -312,7 +312,7 @@
   "unlockSync.invalid": "Il codice non è corretto. Controllalo e riprova.",
   "unlockSync.failed": "Impossibile sbloccare. Controlla la connessione e riprova.",
   "unlockSync.startOverFailed": "Impossibile ricominciare. Controlla la connessione e riprova.",
-  "unlockSync.noCode": "Questo account non ha un codice di recupero. Ricomincia per continuare a sincronizzare.",
+  "unlockSync.noCode": "Questo account non ha un codice di recupero. Su un dispositivo ancora connesso e sbloccato, scegli «Nuovo codice di recupero». Altrimenti, ricomincia.",
   "unlockSync.startOverTitle": "Ricominciare da capo?",
   "unlockSync.startOverWarning": "I tuoi dati sincronizzati attuali andranno persi. Ricomincia da capo solo se non trovi il codice di recupero.",
   "unlockSync.startOverConfirm": "Ricomincia da capo",

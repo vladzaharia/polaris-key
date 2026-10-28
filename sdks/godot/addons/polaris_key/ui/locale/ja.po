@@ -1982,10 +1982,10 @@ msgstr "ロックを解除できませんでした。接続を確認して、も
 msgid "unlockSync.startOverFailed"
 msgstr "やり直せませんでした。接続を確認して、もう一度お試しください。"
 
-#. This account has no recovery code. Start over to keep syncing.
+#. This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over.
 #. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
 msgid "unlockSync.noCode"
-msgstr "このアカウントにはリカバリーコードがありません。同期を続けるには、最初からやり直してください。"
+msgstr "このアカウントにはリカバリーコードがありません。サインインしたままロック解除されている端末で「新しいリカバリーコード」を選ぶか、そうでなければ最初からやり直してください。"
 
 #. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.

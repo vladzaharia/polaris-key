@@ -737,7 +737,7 @@
     <!-- UnlockSync: Start over failed (not an unlock failure); Try again repeats it. -->
     <string name="unlockSync_startOverFailed">No se pudo empezar de nuevo. Comprueba tu conexión e inténtalo de nuevo.</string>
     <!-- UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on. -->
-    <string name="unlockSync_noCode">Esta cuenta no tiene código de recuperación. Empieza de nuevo para seguir sincronizando.</string>
+    <string name="unlockSync_noCode">Esta cuenta no tiene código de recuperación. En un dispositivo que siga con la sesión iniciada y desbloqueado, elige «Nuevo código de recuperación». Si no, empieza de nuevo.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->
     <string name="unlockSync_startOverTitle">¿Empezar de cero?</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22). -->

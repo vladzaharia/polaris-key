@@ -1992,10 +1992,10 @@ msgstr "Impossibile sbloccare. Controlla la connessione e riprova."
 msgid "unlockSync.startOverFailed"
 msgstr "Impossibile ricominciare. Controlla la connessione e riprova."
 
-#. This account has no recovery code. Start over to keep syncing.
+#. This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over.
 #. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
 msgid "unlockSync.noCode"
-msgstr "Questo account non ha un codice di recupero. Ricomincia per continuare a sincronizzare."
+msgstr "Questo account non ha un codice di recupero. Su un dispositivo ancora connesso e sbloccato, scegli «Nuovo codice di recupero». Altrimenti, ricomincia."
 
 #. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.

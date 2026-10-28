@@ -319,7 +319,7 @@
     "unlockSync.invalid": "Dieser Code stimmt nicht. Prüfen Sie ihn und versuchen Sie es erneut.",
     "unlockSync.failed": "Entsperren fehlgeschlagen. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
     "unlockSync.startOverFailed": "Neu beginnen fehlgeschlagen. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
-    "unlockSync.noCode": "Dieses Konto hat keinen Wiederherstellungscode. Beginnen Sie neu, um weiter zu synchronisieren.",
+    "unlockSync.noCode": "Dieses Konto hat keinen Wiederherstellungscode. Wählen Sie auf einem Gerät, das noch angemeldet und entsperrt ist, „Neuer Wiederherstellungscode“. Andernfalls beginnen Sie neu.",
     "unlockSync.startOverTitle": "Neu beginnen?",
     "unlockSync.startOverWarning": "Ihre bisher synchronisierten Daten gehen verloren. Beginnen Sie nur neu, wenn Sie Ihren Wiederherstellungscode nicht finden.",
     "unlockSync.startOverConfirm": "Neu beginnen",

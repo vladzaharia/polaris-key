@@ -319,7 +319,7 @@
     "unlockSync.invalid": "Ce code n’est pas correct. Vérifiez-le et réessayez.",
     "unlockSync.failed": "Impossible de déverrouiller. Vérifiez votre connexion et réessayez.",
     "unlockSync.startOverFailed": "Impossible de recommencer. Vérifiez votre connexion et réessayez.",
-    "unlockSync.noCode": "Ce compte n’a pas de code de récupération. Recommencez pour continuer à synchroniser.",
+    "unlockSync.noCode": "Ce compte n’a pas de code de récupération. Sur un appareil encore connecté et déverrouillé, choisissez « Nouveau code de récupération ». Sinon, recommencez.",
     "unlockSync.startOverTitle": "Tout recommencer ?",
     "unlockSync.startOverWarning": "Vos données synchronisées actuelles seront perdues. Ne recommencez que si vous ne retrouvez pas votre code de récupération.",
     "unlockSync.startOverConfirm": "Tout recommencer",

@@ -1982,10 +1982,10 @@ msgstr "无法解锁。请检查网络连接后重试。"
 msgid "unlockSync.startOverFailed"
 msgstr "无法重新开始。请检查网络连接后重试。"
 
-#. This account has no recovery code. Start over to keep syncing.
+#. This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over.
 #. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
 msgid "unlockSync.noCode"
-msgstr "此账户没有恢复码。请重新开始以继续同步。"
+msgstr "此账户没有恢复码。请在仍已登录且已解锁的设备上选择“新恢复码”。否则请重新开始。"
 
 #. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.

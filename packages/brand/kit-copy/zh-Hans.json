@@ -319,7 +319,7 @@
     "unlockSync.invalid": "恢复码不正确。请检查后重试。",
     "unlockSync.failed": "无法解锁。请检查网络连接后重试。",
     "unlockSync.startOverFailed": "无法重新开始。请检查网络连接后重试。",
-    "unlockSync.noCode": "此账户没有恢复码。请重新开始以继续同步。",
+    "unlockSync.noCode": "此账户没有恢复码。请在仍已登录且已解锁的设备上选择“新恢复码”。否则请重新开始。",
     "unlockSync.startOverTitle": "重新开始？",
     "unlockSync.startOverWarning": "当前已同步的数据将丢失。仅在找不到恢复码时才重新开始。",
     "unlockSync.startOverConfirm": "重新开始",
