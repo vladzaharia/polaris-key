@@ -22,6 +22,10 @@ playIntegrity = "1.6.0"
 # Library 8 or later for new apps and app updates from 31 August 2026; 9.1.0 declares minSdk 23
 # (below ours) and no minCompileSdk, so it builds under compileSdk 36 and AGP 8.6.1.
 playBilling = "9.1.0"
+# Credential Manager for :platform's play flavour (I-45.4, Q-10), exact pins. credentials 1.6.0 is
+# the last stable (1.7.0 is alpha); googleid 1.2.1 depends on credentials 1.6.0 (1.2.0 on a beta).
+androidxCredentials = "1.6.0"
+googleid = "1.2.0"
 junit = "4.13.2"
 robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
@@ -73,6 +77,9 @@ godot = { module = "org.godotengine:godot", version.ref = "godot" }
 play-app-update = { module = "com.google.android.play:app-update", version.ref = "playAppUpdate" }
 play-asset-delivery = { module = "com.google.android.play:asset-delivery", version.ref = "playAssetDelivery" }
 play-integrity = { module = "com.google.android.play:integrity", version.ref = "playIntegrity" }
+androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "androidxCredentials" }
+androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidxCredentials" }
+googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 play-billing = { module = "com.android.billingclient:billing", version.ref = "playBilling" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }

@@ -19,6 +19,8 @@
 #           PlayInstallDriver or PadPackTransport); the platform AAR's classes.jar references no
 #           Play Core either (P6-09), though it carries the flavour-neutral PlatformIntegrity (which
 #           answers Unsupported "outlet" there); :android's DirectInstallDriver present
+#           (I-45.4) no androidx/credentials or googleid class in the platform AAR or the dex; play
+#           carries GoogleSignIn and Credential Manager
 #   both    no native libraries in the platform, Godot or :android AAR (pure Kotlin, notes/E4
 #           §2.1); the PlatformIntegrity surface is present (P6-09); the APK's only native library
 #           is zstd-jni's (which the opt-in polaris-key-zstd links, SP-50; :boundary adds it so its
@@ -91,6 +93,16 @@ for flavor in play direct; do
     [ "$n" -ge 1 ] && ok "platform AAR links Play Core" || fail "platform AAR has no Play Core reference"
   fi
 
+  # Credential Manager and googleid (I-45.4): the flavour-neutral PlatformIdentity is in both AARs,
+  # the Google classes only in play.
+  if grep -q 'im/plrs/key/platform/PlatformIdentity.class' <<<"$listing"; then ok "platform AAR has PlatformIdentity"; else fail "platform AAR lacks PlatformIdentity"; fi
+  n="$(unzip -p "$jar" '*.class' | LC_ALL=C grep -a -c -E 'androidx/credentials|com/google/android/libraries/identity/googleid' || true)"
+  if [ "$flavor" = direct ]; then
+    [ "$n" = 0 ] && ok "platform AAR references no Credential Manager or googleid" || fail "platform AAR references Credential Manager or googleid ($n)"
+  else
+    [ "$n" -ge 1 ] && ok "platform AAR links Credential Manager" || fail "platform AAR has no Credential Manager reference"
+  fi
+
   # The APK's native libraries: only zstd-jni's (through :android), each 16 KB page aligned.
   libs="$(unzip -Z1 "$apk" | grep -E '\.so$' || true)"
   other="$(grep -v -E '^lib/[^/]+/libzstd-jni-[0-9.-]+\.so$' <<<"$libs" | grep -v '^$' || true)"
@@ -125,9 +137,15 @@ for flavor in play direct; do
     [ "$n" = 1 ] && ok "Play Asset Delivery present" || fail "Play Asset Delivery missing ($n)"
     n="$(count "Class descriptor *: 'Lim/plrs/key/platform/play/PlayIntegrity;'" "$dex")"
     [ "$n" = 1 ] && ok "Play Integrity present" || fail "Play Integrity missing ($n)"
+    n="$(count "Class descriptor *: 'Lim/plrs/key/platform/play/GoogleSignIn;'" "$dex")"
+    [ "$n" = 1 ] && ok "Google sign-in over Credential Manager present" || fail "Google sign-in missing ($n)"
+    n="$(count "Class descriptor *: 'Landroidx/credentials/CredentialManager;'" "$dex")"
+    [ "$n" = 1 ] && ok "Credential Manager present" || fail "Credential Manager missing ($n)"
     n="$(count "Class descriptor *: 'Lim/plrs/key/platform/play/PlayPlatformIntegrity;'" "$dex")"
     [ "$n" = 1 ] && ok "PlatformIntegrity over Play present" || fail "PlatformIntegrity over Play missing ($n)"
   else
+    n="$(count 'Landroidx/credentials/|Lcom/google/android/libraries/identity/googleid/' "$dex")"
+    [ "$n" = 0 ] && ok "no androidx/credentials or googleid class or reference" || fail "$n Credential Manager or googleid references"
     n="$(count 'Lcom/google/android/play/' "$dex")"
     [ "$n" = 0 ] && ok "no Play Core class or reference" || fail "$n Play Core references"
     n="$(count "Class descriptor *: 'Lim/plrs/key/platform/play/|Class descriptor *: 'Lim/plrs/key/godot/PlayCommands|Class descriptor *: 'Lim/plrs/key/android/(PlayInstallDriver|PadPackTransport)" "$dex")"
