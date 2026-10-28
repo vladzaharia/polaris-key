@@ -15,13 +15,17 @@ import XCTest
 private struct SoftWrapper: DeviceKeyWrapping {
     let key = SymmetricKey(size: .bits256)
     var failWrap = false
+    var failWith: DeviceKeyError = .wrap
     func wrap(_ plain: Data, aad: Data) throws -> WrappedKey {
-        if failWrap { throw DeviceKeyError.wrap }
+        if failWrap { throw failWith }
         let box = try AES.GCM.seal(plain, using: key, authenticating: aad)
         return WrappedKey(handle: Data([1]), ephemeral: Data([2]), sealed: box.combined!)
     }
     func unwrap(_ w: WrappedKey, aad: Data) throws -> Data {
-        try AES.GCM.open(AES.GCM.SealedBox(combined: w.sealed), using: key, authenticating: aad)
+        // Like the real wrapper: a failed open is `.wrap`, never a format error.
+        do { return try AES.GCM.open(AES.GCM.SealedBox(combined: w.sealed), using: key, authenticating: aad) } catch {
+            throw DeviceKeyError.wrap
+        }
     }
 }
 
@@ -126,12 +130,12 @@ private struct HookedPort: DeviceKeyPort {
 private let device = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH"
 private let now = 1_700_000_000
 
-private func mem() -> DeviceKeyStore { DeviceKeyStore.inMemory() }
+private func mem() -> DeviceKeyStore { try! DeviceKeyStore.inMemory() }
 
 private func store(
     _ vault: any DeviceKeyVault, wrapper: (any DeviceKeyWrapping)? = nil, require: Bool = false
 ) -> DeviceKeyStore {
-    DeviceKeyStore(productSlug: "djdl", vault: vault, wrapper: wrapper, kind: .durable, requireWrapper: require)
+    try! DeviceKeyStore(productSlug: "djdl", vault: vault, wrapper: wrapper, kind: .durable, requireWrapper: require)
 }
 
 // ── The store ────────────────────────────────────────────────────────────────────────
@@ -250,18 +254,36 @@ final class DeviceKeyStoreTests: XCTestCase {
         } catch { XCTAssertEqual(error as? DeviceKeyError, .keychain(errSecAuthFailed)) }
     }
 
-    func testReplacesARecordItCannotUse() async throws {
+    func testAnUnreadableRecordThrowsAndSurvivesUntilWipe() async throws {
         let v = MemoryDeviceKeyVault()
-        _ = try v.insert(Data("{\"v\":1,\"generation\":1}".utf8))
+        let junk = Data("{\"v\":1,\"generation\":1}".utf8)
+        _ = try v.insert(junk)
         let s = store(v)
-        let none = try await s.publicKeys()
-        XCTAssertNil(none)
+        for op in [
+            { _ = try await s.publicKeys() }, { _ = try await s.ensure() }, { _ = try await s.rotate() },
+            { _ = try await s.sign(Data([1])) },
+        ] {
+            do {
+                try await op()
+                XCTFail("used or replaced an unreadable record")
+            } catch { XCTAssertEqual(error as? DeviceKeyError, .unreadable) }
+        }
+        XCTAssertEqual(try v.read(), junk, "the record must survive")
+        try v.upsert(Data([0xff, 0x00]))  // not even JSON
+        do {
+            _ = try await s.ensure()
+            XCTFail("replaced undecodable bytes")
+        } catch { XCTAssertEqual(error as? DeviceKeyError, .unreadable) }
+        try await s.wipe()
         let k = try await s.ensure()
-        let pk = try await s.publicKeys()
-        XCTAssertEqual(pk, k)
-        try v.upsert(Data([0xff, 0x00]))
-        let k2 = try await s.ensure()
-        XCTAssertEqual(k2.generation, 1)
+        XCTAssertEqual(k.generation, 1)
+    }
+
+    func testRejectsABadProductSlug() throws {
+        for slug in ["", "a|b", "Djdl", "a\nb"] {
+            XCTAssertThrowsError(try DeviceKeyStore.inMemory(productSlug: slug), slug)
+            XCTAssertThrowsError(try DeviceKeyStore(productSlug: slug), slug)
+        }
     }
 
     func testAKeychainErrorIsNotTakenForNoKeys() async throws {
@@ -308,18 +330,38 @@ final class DeviceKeyStoreTests: XCTestCase {
         XCTAssertEqual(r.generation, 2)
     }
 
-    func testAWrappedRecordBoundToAnotherGenerationIsUnusable() async throws {
+    func testAFailedUnwrapKeepsTheIdentity() async throws {
         let v = MemoryDeviceKeyVault()
-        let w = SoftWrapper()
-        let s = store(v, wrapper: w)
-        _ = try await s.ensure()
-        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(try v.read())) as? [String: Any])
-        json["generation"] = 7  // the sealed bytes were bound to generation 1
+        let s = store(v, wrapper: SoftWrapper())
+        let k = try await s.ensure()
+        let blob = try XCTUnwrap(try v.read())
+        // A record copied to another generation (or product) fails GCM: an error, not a reset.
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: blob) as? [String: Any])
+        json["generation"] = 7
         try v.upsert(JSONSerialization.data(withJSONObject: json))
-        let k = try await s.publicKeys()
-        XCTAssertNil(k)
-        let fresh = try await s.ensure()
-        XCTAssertEqual(fresh.generation, 1)
+        do {
+            _ = try await s.ensure()
+            XCTFail("opened a record bound elsewhere")
+        } catch { XCTAssertEqual(error as? DeviceKeyError, .wrap) }
+        try v.upsert(blob)
+        let still = try await s.publicKeys()
+        XCTAssertEqual(still, k)
+    }
+
+    func testATransientWrapFailureKeepsTheIdentity() async throws {
+        let v = MemoryDeviceKeyVault()
+        let good = SoftWrapper()
+        let k = try await store(v, wrapper: good).ensure()
+        // A wrapper that cannot open now (locked): ensure and rotate throw, the record stays.
+        let locked = store(v, wrapper: SoftWrapper())  // a different key: every open fails
+        for op in [{ _ = try await locked.ensure() }, { _ = try await locked.rotate() }] {
+            do {
+                try await op()
+                XCTFail("replaced behind a failed unwrap")
+            } catch { XCTAssertEqual(error as? DeviceKeyError, .wrap) }
+        }
+        let back = try await store(v, wrapper: good).publicKeys()
+        XCTAssertEqual(back, k)
     }
 
     func testAWrappedRecordIsNotReplacedWhenTheEnclaveIsOff() async throws {
@@ -340,17 +382,27 @@ final class DeviceKeyStoreTests: XCTestCase {
             _ = try await store(MemoryDeviceKeyVault(), wrapper: nil, require: true).ensure()
             XCTFail("fell back")
         } catch { XCTAssertEqual(error as? DeviceKeyError, .unsupported("secure-enclave")) }
-        var bad = SoftWrapper()
-        bad.failWrap = true
+        var absent = SoftWrapper()
+        absent.failWrap = true
+        absent.failWith = .unsupported("secure-enclave")
         do {
-            _ = try await store(MemoryDeviceKeyVault(), wrapper: bad, require: true).ensure()
+            _ = try await store(MemoryDeviceKeyVault(), wrapper: absent, require: true).ensure()
             XCTFail("fell back")
         } catch { XCTAssertEqual(error as? DeviceKeyError, .unsupported("secure-enclave")) }
-        // Preferred: the refusal falls back to the Keychain alone, and says so.
-        let s = store(MemoryDeviceKeyVault(), wrapper: bad)
+        // Preferred: a permanently absent SE falls back to the Keychain alone, and says so.
+        let s = store(MemoryDeviceKeyVault(), wrapper: absent)
         _ = try await s.ensure()
         let prot = try await s.protection()
         XCTAssertEqual(prot, .keychain)
+        // A transient failure is an error, never a quiet downgrade.
+        var flaky = SoftWrapper()
+        flaky.failWrap = true
+        let v = MemoryDeviceKeyVault()
+        do {
+            _ = try await store(v, wrapper: flaky).ensure()
+            XCTFail("downgraded on a transient failure")
+        } catch { XCTAssertEqual(error as? DeviceKeyError, .wrap) }
+        XCTAssertNil(try v.read())
     }
 
     func testRealSecureEnclaveWrapperRoundTrips() throws {
@@ -407,6 +459,15 @@ final class DeviceKeyVaultTests: XCTestCase {
         k.legacy = Data([5])
         XCTAssertEqual(try vault(k).read(), Data([5]))
         XCTAssertEqual(k.dp, Data([5]))
+        XCTAssertNil(k.legacy)
+    }
+
+    func testAWriteToTheDataProtectionKeychainDropsTheLegacyCopy() throws {
+        let k = FakeKeychain()
+        k.dp = Data([0])
+        k.legacy = Data([1])  // a stale copy
+        try vault(k).upsert(Data([2]))
+        XCTAssertEqual(k.dp, Data([2]))
         XCTAssertNil(k.legacy)
     }
 

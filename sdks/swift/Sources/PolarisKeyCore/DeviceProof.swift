@@ -166,7 +166,7 @@ public enum DeviceProofs {
         return pub.isValidSignature(sig, for: message)
     }
 
-    private static func slugOK(_ s: String) -> Bool {
+    static func slugOK(_ s: String) -> Bool {
         let b = Array(s.utf8)
         guard (1...64).contains(b.count) else { return false }
         func alnum(_ c: UInt8) -> Bool { (c >= 97 && c <= 122) || (c >= 48 && c <= 57) }

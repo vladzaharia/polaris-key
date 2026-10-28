@@ -24,9 +24,9 @@
 //
 // The private halves are never part of the API: the port returns public keys, signatures and
 // shared secrets. Swift gives no control over copies of key bytes in memory; the store holds
-// them only inside one operation. A record it cannot open (a malformed item, a wrapped item
-// from another device) is replaced by a new pair on the next `ensure()`, never silently used;
-// a Keychain error (locked, denied) is thrown, never taken for "no keys".
+// them only inside one operation. A record it cannot open is never replaced behind the
+// host's back: a malformed one throws `.unreadable`, a failed unwrap throws `.wrap`, a Keychain
+// error (locked, denied) is thrown, and none is taken for "no keys". `wipe()` is the way out.
 
 import CryptoKit
 import Foundation
@@ -72,6 +72,9 @@ public enum DeviceKeyError: Error, Sendable, Equatable {
     case keychain(OSStatus)
     /// The wrap or unwrap failed for a reason that may pass (the device is locked).
     case wrap
+    /// The stored record is malformed or fails to open. Nothing replaces it behind the host's
+    /// back: `wipe()` is the way out, and a new identity registers again.
+    case unreadable
     /// A wipe left the item behind.
     case wipeIncomplete
 }
@@ -103,7 +106,9 @@ protocol DeviceKeyVault: Sendable {
     func read() throws -> Data?
     /// Stores `blob` only if nothing is there; false when something is.
     func insert(_ blob: Data) throws -> Bool
-    /// Stores `blob`, replacing any item.
+    /// Stores `blob`, replacing any item. Last writer wins: there is no compare-and-swap, so two
+    /// processes rotating at once keep whichever wrote last (Keychain updates cannot match the
+    /// old value). Hosts that share keys across processes should rotate from one.
     func upsert(_ blob: Data) throws
     func delete() throws
 }
@@ -119,9 +124,6 @@ protocol DeviceKeyWrapping: Sendable {
     func wrap(_ plain: Data, aad: Data) throws -> WrappedKey
     func unwrap(_ w: WrappedKey, aad: Data) throws -> Data
 }
-
-/// The record failed to open for a reason that will not pass: replace it.
-private struct Unusable: Error {}
 
 // ── The Secure Enclave wrapper ───────────────────────────────────────────────────────
 
@@ -141,29 +143,37 @@ struct SecureEnclaveWrapper: DeviceKeyWrapping {
             let access = SecAccessControlCreateWithFlags(
                 nil, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly, .privateKeyUsage, &err)
         else { throw DeviceKeyError.wrap }
-        let se = try SecureEnclave.P256.KeyAgreement.PrivateKey(accessControl: access)
-        let eph = P256.KeyAgreement.PrivateKey()
-        let epk = eph.publicKey.x963Representation
-        let shared = try eph.sharedSecretFromKeyAgreement(with: se.publicKey)
-        let box = try AES.GCM.seal(plain, using: symmetricKey(shared, ephemeral: epk), authenticating: aad)
-        guard let combined = box.combined else { throw DeviceKeyError.wrap }
-        return WrappedKey(handle: se.dataRepresentation, ephemeral: epk, sealed: combined)
+        // Only a permanently absent SE is "unsupported" (the store may fall back); any other
+        // failure may pass and is `.wrap`.
+        guard Self.isAvailable else { throw DeviceKeyError.unsupported("secure-enclave") }
+        do {
+            let se = try SecureEnclave.P256.KeyAgreement.PrivateKey(accessControl: access)
+            let eph = P256.KeyAgreement.PrivateKey()
+            let epk = eph.publicKey.x963Representation
+            let shared = try eph.sharedSecretFromKeyAgreement(with: se.publicKey)
+            let box = try AES.GCM.seal(plain, using: symmetricKey(shared, ephemeral: epk), authenticating: aad)
+            guard let combined = box.combined else { throw DeviceKeyError.wrap }
+            return WrappedKey(handle: se.dataRepresentation, ephemeral: epk, sealed: combined)
+        } catch let e as DeviceKeyError {
+            throw e
+        } catch { throw DeviceKeyError.wrap }
     }
 
     func unwrap(_ w: WrappedKey, aad: Data) throws -> Data {
-        let se: SecureEnclave.P256.KeyAgreement.PrivateKey
+        // Only a malformed ephemeral point is a format error. A handle the SE will not open, a
+        // failed agreement and a failed GCM open all rethrow as `.wrap`: they can be transient
+        // (locked, busy) or an attack, and none may cost the device its identity.
         let epub: P256.KeyAgreement.PublicKey
+        do { epub = try P256.KeyAgreement.PublicKey(x963Representation: w.ephemeral) } catch {
+            throw DeviceKeyError.unreadable
+        }
         do {
-            se = try SecureEnclave.P256.KeyAgreement.PrivateKey(dataRepresentation: w.handle)
-            epub = try P256.KeyAgreement.PublicKey(x963Representation: w.ephemeral)
-        } catch { throw Unusable() }
-        let shared: SharedSecret
-        do { shared = try se.sharedSecretFromKeyAgreement(with: epub) } catch { throw DeviceKeyError.wrap }
-        do {
+            let se = try SecureEnclave.P256.KeyAgreement.PrivateKey(dataRepresentation: w.handle)
+            let shared = try se.sharedSecretFromKeyAgreement(with: epub)
             return try AES.GCM.open(
                 AES.GCM.SealedBox(combined: w.sealed), using: symmetricKey(shared, ephemeral: w.ephemeral),
                 authenticating: aad)
-        } catch { throw Unusable() }
+        } catch { throw DeviceKeyError.wrap }
     }
 }
 
@@ -232,13 +242,23 @@ struct KeychainDeviceKeyVault: DeviceKeyVault {
         return keychain.add(a)
     }
 
+    /// Best effort: no older legacy copy may outlive a write to the data-protection keychain.
+    private func dropLegacy() {
+        #if os(macOS)
+            _ = keychain.delete(query(dataProtection: false))
+        #endif
+    }
+
     func read() throws -> Data? {
         if let dp = try readOne(dataProtection: true) { return dp }
         #if os(macOS)
             guard let legacy = try readOne(dataProtection: false) else { return nil }
             // Migrate when the data-protection keychain is open to this process.
+            // Migration counts only if the legacy copy is gone; else drop the new copy, so one
+            // item stays the truth.
             if add(legacy, dataProtection: true) == errSecSuccess {
-                _ = keychain.delete(query(dataProtection: false))
+                let d = keychain.delete(query(dataProtection: false))
+                if d != errSecSuccess && d != errSecItemNotFound { _ = keychain.delete(query(dataProtection: true)) }
             }
             return legacy
         #else
@@ -248,7 +268,10 @@ struct KeychainDeviceKeyVault: DeviceKeyVault {
 
     func insert(_ blob: Data) throws -> Bool {
         let s = add(blob, dataProtection: true)
-        if s == errSecSuccess { return true }
+        if s == errSecSuccess {
+            dropLegacy()
+            return true
+        }
         if s == errSecDuplicateItem { return false }
         #if os(macOS)
             guard s == errSecMissingEntitlement else { throw DeviceKeyError.keychain(s) }
@@ -263,14 +286,20 @@ struct KeychainDeviceKeyVault: DeviceKeyVault {
 
     func upsert(_ blob: Data) throws {
         let s = keychain.update(query(dataProtection: true), attributes(blob))
-        if s == errSecSuccess { return }
+        if s == errSecSuccess {
+            dropLegacy()
+            return
+        }
         #if os(macOS)
             // The item may live in the legacy keychain (no entitlement, or not yet migrated).
             if s == errSecItemNotFound || s == errSecMissingEntitlement {
                 let l = keychain.update(query(dataProtection: false), attributes(blob))
                 if l == errSecSuccess { return }
                 guard l == errSecItemNotFound else { throw DeviceKeyError.keychain(l) }
-                if s == errSecItemNotFound, add(blob, dataProtection: true) == errSecSuccess { return }
+                if s == errSecItemNotFound, add(blob, dataProtection: true) == errSecSuccess {
+                    dropLegacy()
+                    return
+                }
                 let a = add(blob, dataProtection: false)
                 guard a == errSecSuccess else { throw DeviceKeyError.keychain(a) }
                 return
@@ -320,8 +349,10 @@ public actor DeviceKeyStore: DeviceKeyPort {
 
     /// The Keychain store for `productSlug`. `accessGroup` (`<TeamID>.<group>`) shares the keys
     /// with the app's extensions. `secureEnclave` says whether to wrap the keys with the SE.
-    public init(productSlug: String, accessGroup: String? = nil, secureEnclave: SecureEnclaveUse = .ifAvailable) {
-        self.init(
+    public init(productSlug: String, accessGroup: String? = nil, secureEnclave: SecureEnclaveUse = .ifAvailable)
+        throws
+    {
+        try self.init(
             productSlug: productSlug,
             vault: KeychainDeviceKeyVault(
                 keychain: SystemKeychain(), service: "pkey:\(productSlug)", accessGroup: accessGroup),
@@ -330,14 +361,16 @@ public actor DeviceKeyStore: DeviceKeyPort {
     }
 
     /// Keys that die with the process. `persistence()` is `.memory`.
-    public static func inMemory(productSlug: String = "memory") -> DeviceKeyStore {
-        DeviceKeyStore(productSlug: productSlug, vault: MemoryDeviceKeyVault(), wrapper: nil, kind: .memory)
+    public static func inMemory(productSlug: String = "memory") throws -> DeviceKeyStore {
+        try DeviceKeyStore(productSlug: productSlug, vault: MemoryDeviceKeyVault(), wrapper: nil, kind: .memory)
     }
 
     init(
         productSlug: String, vault: any DeviceKeyVault, wrapper: (any DeviceKeyWrapping)?,
         kind: DeviceKeyPersistence, requireWrapper: Bool = false
-    ) {
+    ) throws {
+        // The slug goes into the authenticated data and the Keychain service: no `|`, no surprises.
+        guard DeviceProofs.slugOK(productSlug) else { throw DeviceKeyError.unsupported("product") }
         self.requireWrapper = requireWrapper
         self.productSlug = productSlug
         self.vault = vault
@@ -345,7 +378,9 @@ public actor DeviceKeyStore: DeviceKeyPort {
         self.kind = kind
     }
 
-    /// How the keys are protected at rest: of the stored pair, else of the next pair.
+    /// How the keys are protected at rest: of the stored pair, else of the next pair. A record
+    /// that does not decode reports as the next pair would; `ensure()` and `publicKeys()` throw
+    /// `.unreadable` for it.
     public func protection() throws -> DeviceKeyProtection {
         if kind == .memory { return .memory }
         if let blob = try vault.read(), let env = try? JSONDecoder().decode(Envelope.self, from: blob) {
@@ -353,7 +388,6 @@ public actor DeviceKeyStore: DeviceKeyPort {
         }
         return wrapper != nil ? .secureEnclaveWrapped : .keychain
     }
-
 
     public func persistence() -> DeviceKeyPersistence { kind }
 
@@ -376,7 +410,6 @@ public actor DeviceKeyStore: DeviceKeyPort {
 
     private enum Loaded {
         case none
-        case unusable
         case keys(Open)
     }
 
@@ -384,7 +417,7 @@ public actor DeviceKeyStore: DeviceKeyPort {
         guard let blob = try vault.read() else { return .none }
         do {
             let env = try JSONDecoder().decode(Envelope.self, from: blob)
-            guard env.v == 1, env.generation >= 1 else { throw Unusable() }
+            guard env.v == 1, env.generation >= 1 else { throw DeviceKeyError.unreadable }
             let raw: RawKeys
             if let w = env.wrapped, env.keys == nil {
                 // A pair wrapped to a Secure Enclave this store was told not to use is not
@@ -394,7 +427,7 @@ public actor DeviceKeyStore: DeviceKeyPort {
             } else if let k = env.keys, env.wrapped == nil {
                 raw = k
             } else {
-                throw Unusable()
+                throw DeviceKeyError.unreadable
             }
             return .keys(
                 Open(
@@ -404,7 +437,8 @@ public actor DeviceKeyStore: DeviceKeyPort {
         } catch let e as DeviceKeyError {
             throw e
         } catch {
-            return .unusable
+            // Bad JSON, bad lengths: unreadable, never replaced automatically.
+            throw DeviceKeyError.unreadable
         }
     }
 
@@ -416,9 +450,10 @@ public actor DeviceKeyStore: DeviceKeyPort {
             do {
                 env.wrapped = try wrapper.wrap(JSONEncoder().encode(raw), aad: aad(o.generation))
                 env.protection = "secure-enclave"
-            } catch {
-                if requireWrapper { throw DeviceKeyError.unsupported("secure-enclave") }
-                env.keys = raw  // `.ifAvailable`: the SE refused; protection() reports `.keychain`
+            } catch DeviceKeyError.unsupported(let why) {
+                // The SE is permanently absent. Any other failure may pass and is thrown.
+                if requireWrapper { throw DeviceKeyError.unsupported(why) }
+                env.keys = raw  // `.ifAvailable`: protection() reports `.keychain`
             }
         } else {
             env.keys = raw
@@ -438,11 +473,9 @@ public actor DeviceKeyStore: DeviceKeyPort {
         case .none:
             let o = fresh(1)
             if try vault.insert(try encode(o)) { return o.publicKeys }
-            // Another process won the race: use its pair, unless that one is unusable too.
+            // Another process won the race: use its pair.
             if case .keys(let w) = try load() { return w.publicKeys }
-            return try replace(generation: 1)
-        case .unusable:
-            return try replace(generation: 1)
+            throw DeviceKeyError.unreadable
         }
     }
 
@@ -474,7 +507,7 @@ public actor DeviceKeyStore: DeviceKeyPort {
 
     public func rotate() throws -> DevicePublicKeys {
         var previous = 0
-        if case .keys(let o) = try load() { previous = o.generation }
+        if case .keys(let o) = try load() { previous = o.generation }  // unreadable throws
         return try replace(generation: previous + 1)
     }
 
