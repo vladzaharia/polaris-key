@@ -1,6 +1,7 @@
 // GENERATED FILE — do not edit by hand. Source: conformance/parity/api.json; regenerate with `pnpm gen api`.
 import { expect, it } from "vitest";
 import {
+  ChoiceClient,
   ConfigClient,
   DeviceCodeSession,
   EntitlementsClient,
@@ -76,13 +77,13 @@ it("identity.signIn.session.complete", () =>
 it("identity.choice", () =>
   expect("choice" in IdentityClient.prototype).toBe(true));
 it("identity.choice.licenses", () =>
-  expect("licenses" in IdentityClient.prototype).toBe(true));
+  expect("licenses" in ChoiceClient.prototype).toBe(true));
 it("identity.choice.devices", () =>
-  expect("devices" in IdentityClient.prototype).toBe(true));
+  expect("devices" in ChoiceClient.prototype).toBe(true));
 it("identity.choice.complete", () =>
-  expect("complete" in IdentityClient.prototype).toBe(true));
+  expect("complete" in ChoiceClient.prototype).toBe(true));
 it("identity.choice.cancel", () =>
-  expect("cancel" in IdentityClient.prototype).toBe(true));
+  expect("cancel" in ChoiceClient.prototype).toBe(true));
 it("identity.useLicenseChoice", () =>
   expect("choice" in IdentityClient.prototype).toBe(true));
 it("identity.attachLicense", () =>

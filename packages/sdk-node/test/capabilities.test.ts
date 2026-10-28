@@ -64,6 +64,7 @@ const NONE = {
   identity: { enabled: false },
   sync: { enabled: false },
   commerce: { enabled: false },
+  connect: { enabled: false },
 };
 
 /** Fingerprinting off everywhere: these tests pin capability wiring, not hardware probes.
