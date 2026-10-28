@@ -47,6 +47,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature license.manage
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
+# @pkey-feature identity.redirect.web identity.choice identity.signin.hints
 
 from __future__ import annotations
 
@@ -59,6 +60,7 @@ import shutil
 import tempfile
 import time
 from typing import Any, Dict, Optional
+from urllib.parse import parse_qs, urljoin, urlsplit
 
 import httpx
 import pytest
@@ -242,6 +244,59 @@ def _act(
             # wire code; the typed kind carries the sign-in link.
             out["result"] = "refused"
             out["signInUrl"] = r.sign_in_url
+    elif action == "browser":
+        out.update(_browser_step(client, step, session))
+    elif action == "redirectComplete":
+        cb = urlsplit(args["callbackUrl"])
+        s = _start_redirect_for(
+            client, step, f"{cb.scheme}://{cb.netloc}{cb.path}", session.get("license_choice")
+        )
+        try:
+            done = s.complete(args["callbackUrl"])
+            out["result"] = "ok" if done.kind == "signed_in" else done.kind
+            if done.kind == "signed_in":
+                out["scope"] = done.scope
+                out["licenseId"] = done.activation.license_id
+                out["subject"] = done.subject
+                out["tokenHeld"] = store.token is not None
+        except PolarisError as e:
+            out["result"] = e.code.replace("_", "-")
+            out["code"] = e.code
+    elif action in ("choiceLicenses", "choiceDevices", "choiceComplete", "choiceCancel"):
+        # The grant routes (I-10a.17): `client.identity.choice.*`, a refusal being a result.
+        grant = str(args["grant"])
+        choice = client.identity.choice
+        refused = None
+        if action == "choiceLicenses":
+            r = choice.licenses(grant)
+            if r.kind == "ok":
+                out["state"] = r.view.state
+                out["licenses"] = sorted(r.view.license_ids)
+            else:
+                refused = r
+        elif action == "choiceDevices":
+            r = choice.devices(grant, str(args["licenseId"]))
+            if r.kind == "ok":
+                out["devices"] = r.view.device_ids
+            else:
+                refused = r
+        elif action == "choiceComplete":
+            r = choice.complete(grant, _recorded_choice(step))
+            if r.kind == "ok":
+                out["licenseId"] = r.license_id
+                out["subject"] = r.subject
+                out["tokenHeld"] = store.token is not None
+                if r.key_entries is not None:
+                    out["keyEntries"] = {"used": r.key_entries.used, "limit": r.key_entries.limit}
+            else:
+                refused = r
+        else:
+            r = choice.cancel(grant)
+            if r.kind != "ok":
+                refused = r
+        out["result"] = "refused" if refused is not None else "ok"
+        if refused is not None:
+            out["code"] = refused.code
     elif action == "subject":
         out["subject"] = client.identity.subject()
     elif action == "signOut":
@@ -405,6 +460,133 @@ def _release_fetch(
     }
 
 
+#: The ``state``, verifier and redirect URI the Worker scenarios use (their ``browser`` and
+#: ``redirectComplete`` args name them when a step differs from these).
+REDIRECT_DEFAULTS = {
+    "state": "tidewater-state-0123456789",
+    "code_verifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+    "redirect_uri": "https://app.example/auth/callback",
+}
+
+
+def _recorded_choice(step: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """The ``choice`` a ``choiceComplete`` step sends: the step's own ``choice`` arg, else the one
+    the recording's request carries (a key is not a transcript arg). A recording with none is the
+    Worker's 409 ``license_choice_required`` for a completion that names no choice: the SDK sends
+    no ``choice`` member."""
+    if "choice" in step["args"]:
+        return step["args"]["choice"]  # type: ignore[no-any-return]
+    body = step["exchanges"]["items"][0]["request"].get("body")
+    return ((body or {}).get("json") or {}).get("choice")
+
+
+def _start_redirect_for(
+    client: PolarisKeyClient, step: Dict[str, Any], redirect_uri: str, license_choice: Optional[str]
+) -> Any:
+    """A fresh redirect sign-in with the recorded entropy, as the host would start it."""
+    args = step["args"]
+    client.identity._deps.entropy = {
+        "state": args.get("state", REDIRECT_DEFAULTS["state"]),
+        "code_verifier": args.get("codeVerifier", REDIRECT_DEFAULTS["code_verifier"]),
+    }
+    opts: Dict[str, Any] = {}
+    for arg, name in (("loginHint", "login_hint"), ("nameHint", "name_hint"), ("purpose", "purpose")):
+        if isinstance(args.get(arg), str):
+            opts[name] = args[arg]
+    if license_choice:
+        opts["license_choice"] = license_choice
+    return client.identity.sign_in.start(channel="redirect", redirect_uri=redirect_uri, **opts)
+
+
+def _browser_step(
+    client: PolarisKeyClient, step: Dict[str, Any], session: Dict[str, Any]
+) -> Dict[str, Any]:
+    """One ``browser`` step: the page the person's browser would load. The authorize request is
+    the one the SDK built (its ``authorize_url``), unless the step is a refusal (``expect.error``
+    on an authorize exchange: a wrong client, an unregistered redirect URI, plain PKCE,
+    ``openid``): an SDK cannot be made to send those, so the browser plays the recorded request.
+    Every other request is the card's own and is played as recorded. The observation is where the
+    browser ended up."""
+    t, server = session["transcript"], session["server"]
+    base = t["baseUrl"]
+    authorize_path = f"/{t['product']}/identity/authorize"
+    redirect_uri = step["args"].get("redirectUri", REDIRECT_DEFAULTS["redirect_uri"])
+    out: Dict[str, Any] = {}
+    last: Optional[httpx.Response] = None
+    for item in step["exchanges"]["items"]:
+        req = item["request"]
+        path = req["path"]
+        if req["method"] == "GET" and path.startswith(authorize_path) and "error" not in step["expect"]:
+            recorded = parse_qs(urlsplit(path).query)
+            choice = "app" if recorded.get("license_choice") == ["app"] else None
+            s = _start_redirect_for(client, step, redirect_uri, choice)
+            session["license_choice"] = choice
+            built = urlsplit(s.authorize_url)
+            path = built.path + "?" + built.query
+        kwargs: Dict[str, Any] = {}
+        if req["body"] is not None:
+            kwargs["json"] = req["body"]["json"]
+        last = server(httpx.Request(req["method"], base + path, **kwargs))
+    if last is None:
+        return out
+    app = urlsplit(redirect_uri)
+    location = last.headers.get("location")
+    if location is None:
+        try:
+            j = last.json()
+            location = j.get("redirect") if isinstance(j, dict) else None
+        except ValueError:
+            location = None
+    if isinstance(location, str):
+        to = urlsplit(urljoin(base + "/", location))
+        if (to.scheme, to.netloc) == (app.scheme, app.netloc) and to.path == app.path:
+            out["navigated"] = "app"
+            err = parse_qs(to.query).get("error")
+            if err:
+                out["error"] = err[0]
+        elif "bind" in parse_qs(to.query):
+            out["navigated"] = "bind"
+        else:
+            out["navigated"] = "card"
+        return out
+    if last.status_code == 404:
+        out["navigated"] = "refused"
+        return out
+    if last.headers.get("content-type", "").startswith("text/html"):
+        out["navigated"] = "page"
+        # The refusal page names no code in its body; the Worker's mapping is by status.
+        out["error"] = "invalid_client" if last.status_code == 401 else "redirect_uri_mismatch"
+        return out
+    # The card reading its request (hints) or answering a refused Continue: still on the card.
+    out["navigated"] = "card"
+    try:
+        view = last.json()
+    except ValueError:
+        view = None
+    if isinstance(view, dict) and "request" in view:
+        out["loginHint"] = view.get("loginHint")
+        out["nameHint"] = view.get("nameHint")
+        out["purpose"] = view.get("purpose")
+    return out
+
+
+def _uses_redirect(t: Dict[str, Any]) -> bool:
+    """Does this transcript replay a redirect sign-in (so discovery must serve the Identity fragment)?"""
+    return any(s["action"] in ("browser", "redirectComplete") for s in t["steps"])
+
+
+def _redirect_issuer(t: Dict[str, Any]) -> str:
+    """The issuer the Worker's discovery names for a redirect transcript: the ``iss`` its recorded
+    callbacks carry (the customer host's issuer differs from the API host's), else the product's."""
+    for step in t["steps"]:
+        cb = step["args"].get("callbackUrl")
+        if isinstance(cb, str):
+            iss = parse_qs(urlsplit(cb).query).get("iss")
+            if iss:
+                return iss[0]
+    return f"{t['baseUrl']}/{t['product']}/identity"
+
+
 def _uses_account(t: Dict[str, Any]) -> bool:
     """Does this transcript call the account verbs (so discovery must name their endpoints)?"""
     return any(s["action"] in ("subject", "signOut", "attach") for s in t["steps"])
@@ -413,7 +595,12 @@ def _uses_account(t: Dict[str, Any]) -> bool:
 def _standard_discovery(t: Dict[str, Any]) -> Dict[str, Any]:
     """The Worker's standard discovery document, for a transcript that loads none itself."""
     base = f"{t['baseUrl']}/{t['product']}"
-    if _uses_account(t):
+    if _uses_account(t) or _uses_redirect(t):
+        choice = any(
+            "/identity/choice/" in x["request"]["path"]
+            for s in t["steps"]
+            for x in s["exchanges"]["items"]
+        )
         # A slug discovery omits reads as off, so the account transcripts name their services;
         # the Identity fragment names the account endpoints (WIRE-CONTRACT-V4 §12.6).
         return {
@@ -425,12 +612,24 @@ def _standard_discovery(t: Dict[str, Any]) -> Dict[str, Any]:
                     "enabled": True,
                     "configured": True,
                     "account": True,
-                    "issuer": f"{base}/identity",
+                    "issuer": _redirect_issuer(t),
                     "endpoints": {
                         "subject": f"{base}/identity/subject",
                         "signout": f"{base}/identity/signout",
                         "attach": f"{base}/identity/attach",
                         "accountPortal": f"{t['baseUrl']}/#/p/{t['product']}",
+                        "authorize": f"{base}/identity/authorize",
+                        "token": f"{base}/identity/token",
+                        **(
+                            {
+                                "choiceLicenses": f"{base}/identity/choice/licenses",
+                                "choiceDevices": f"{base}/identity/choice/devices",
+                                "choiceComplete": f"{base}/identity/choice/complete",
+                                "choiceCancel": f"{base}/identity/choice/cancel",
+                            }
+                            if choice
+                            else {}
+                        ),
                     },
                 },
             },
@@ -518,6 +717,10 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
         **kwargs,
     )
     client.devices.fingerprint = lambda: FINGERPRINT  # type: ignore[method-assign]
+    if _uses_redirect(t):
+        # The redirect recordings pin the token exchange alone. The acquisition sync a sign-in
+        # raises (trust fetch, documents, report) is pinned by the sync transcripts.
+        client.identity._deps.on_acquired = lambda: None
     client.init()
     if t["initial"].get("platform") is not None:
         # The device's canonical platform: what the host names in the update options.
@@ -529,7 +732,7 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
             lambda _: {"events": copy.deepcopy(journal), "offered": None}
         )
         assert len(client.update_journal.events()) == len(journal)
-    session: Dict[str, Any] = {}
+    session: Dict[str, Any] = {"transcript": t, "server": server}
     try:
         for i, _ in enumerate(t["steps"]):
             step = server.begin_step(i)

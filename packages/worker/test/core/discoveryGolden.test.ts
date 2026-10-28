@@ -57,6 +57,10 @@
  * `{"enabled":false}` while it is off. Additive, like `core.presentation`.
  * CC-03.2 (plans/CC-01-cloud-connect.md §2.8, approved) added `core.endpoints.deviceKeys` (`<base>/devices/keys`)
  * after `report`, in every document. Additive.
+ * I-13.7 (WIRE-CONTRACT-V5 §12.11.6) added Identity's `endpoints.nonce` (`<base>/identity/nonce`) after
+ * `signout` while the `launch.identityExchange` gate is on (it is, in this suite's env), and the
+ * `exchange` member only for a product that declares a platform sign-in kind (none here). Additive;
+ * the transcripts `discovery-identity-exchange` and `exchange-gate-off` pin both.
  */
 
 import { readFileSync } from "node:fs";

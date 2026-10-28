@@ -41,6 +41,9 @@ import {
   accountDeletionScheduledNotice,
   appLink,
   deviceRemovedNotice,
+  encryptionResetNotice,
+  recoveryCodeChangedNotice,
+  recoveryStartedNotice,
   deviceReplacedNotice,
   displayValue,
   downloadLinkEmail,
@@ -62,6 +65,31 @@ import { EMAIL_DOWNLOAD_PER_HOUR } from "../../../src/services/identity/portal/a
 const ORIGIN = "https://key.plrs.im";
 
 const TEMPLATES: Record<string, () => NoticeMessage> = {
+  // U-36.3: the key ring's three notices. Each says no one asks for the recovery code.
+  recoveryStarted: () =>
+    recoveryStartedNotice({
+      deviceLabel: "Studio PC",
+      productName: "Mossgarden",
+      productSlug: "mossgarden",
+      at: 1_800_000_000,
+      origin: ORIGIN,
+    }),
+  recoveryCodeChanged: () =>
+    recoveryCodeChangedNotice({
+      deviceLabel: "Studio PC",
+      productName: "Mossgarden",
+      productSlug: "mossgarden",
+      at: 1_800_000_000,
+      origin: ORIGIN,
+    }),
+  encryptionReset: () =>
+    encryptionResetNotice({
+      deviceLabel: null,
+      productName: "Mossgarden",
+      productSlug: "mossgarden",
+      at: 1_800_000_000,
+      origin: ORIGIN,
+    }),
   licenseAdded: () =>
     licenseAddedNotice({
       productName: "Mossgarden",
@@ -164,6 +192,9 @@ const TEMPLATES: Record<string, () => NoticeMessage> = {
 };
 
 const SECURITY: Record<string, true> = {
+  recoveryStarted: true,
+  recoveryCodeChanged: true,
+  encryptionReset: true,
   deviceRemoved: true,
   deviceReplaced: true,
   newDeviceSignIn: true,

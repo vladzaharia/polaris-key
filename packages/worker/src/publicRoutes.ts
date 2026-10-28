@@ -178,8 +178,7 @@ export const CORE_ROUTES: readonly CoreRouteDecl[] = [
     handler: (c) => handleDeviceKeys(c.req, c.env, c.db, c.product, c.now),
   },
   // U-36.2: the Core key ring (WIRE-CONTRACT-V5 §13.11). `404` unless a service needs it for the
-  // product (Cloud Sync in end-to-end mode). `rest` is the decoded path after `keyring`; U-36.3
-  // adds recovery, adopt and reset to the same kind.
+  // product (Cloud Sync in end-to-end mode). `rest` is the decoded path after `keyring`.
   {
     kind: "keyring",
     surface: [
@@ -188,6 +187,9 @@ export const CORE_ROUTES: readonly CoreRouteDecl[] = [
         path: "/{product}/devices/keyring/wraps/{deviceId}",
         methods: ["put", "delete"],
       },
+      { path: "/{product}/devices/keyring/recovery", methods: ["get", "put"] },
+      { path: "/{product}/devices/keyring/adopt", methods: ["post"] },
+      { path: "/{product}/devices/keyring/reset", methods: ["post"] },
     ],
     cors: true,
     auth: { kind: "device" },

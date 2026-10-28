@@ -183,6 +183,7 @@ import {
   completeRedirect,
   type SettleHooks,
 } from "./bearer/signInSessions.js";
+import { choiceEndpointsOf, type ChoiceNamespace } from "../core/choice.js";
 import {
   callbackState,
   redirectEndpointsOf,
@@ -716,6 +717,7 @@ export class BrowserAdapter implements PolarisAdapter {
         enabled: (slug) => this.capabilities[slug].enabled,
         identityEndpoints: () => accountEndpointsOf(this.discovery_),
         redirectEndpoints: () => redirectEndpointsOf(this.discovery_),
+        choiceEndpoints: () => choiceEndpointsOf(this.discovery_),
         ...(opts.fingerprint ? { fingerprint: opts.fingerprint } : {}),
         ...(opts.deviceName !== undefined
           ? { deviceName: opts.deviceName }
@@ -1440,6 +1442,30 @@ export class BrowserAdapter implements PolarisAdapter {
       }
       return r;
     });
+  }
+
+  /** `identity.choice.*`: bearer mode, over the `choice*` endpoints discovery names. */
+  readonly choice: ChoiceNamespace = {
+    licenses: (grant) => this.choiceCall((b) => b.choiceLicenses(grant)),
+    devices: (grant, licenseId) =>
+      this.choiceCall((b) => b.choiceDevices(grant, licenseId)),
+    complete: (grant, choice) =>
+      this.choiceCall(async (b) => {
+        const r = await b.choiceComplete(grant, choice);
+        if (r.kind === "ok")
+          this.applyBearer({ busy: noBusy(), error: noErrors() });
+        return r;
+      }),
+    cancel: (grant) => this.choiceCall((b) => b.choiceCancel(grant)),
+  };
+
+  private async choiceCall<T>(
+    run: (b: BearerSession) => Promise<T>,
+  ): Promise<T> {
+    if (this.configError) throw this.fail("identity", this.configError);
+    const b = this.requireBearer(Feature.identityChoice, COOKIE_DETAIL);
+    await this.ensureDiscovery();
+    return this.account(() => run(b));
   }
 
   async openAccount(): Promise<void> {

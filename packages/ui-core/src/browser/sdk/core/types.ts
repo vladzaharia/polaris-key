@@ -31,6 +31,7 @@ import type { ProductCatalog } from "@polaris-key/catalog";
 import { noBusy, noErrors } from "./services.js";
 import type { ActivationOutcome, KeyEntries } from "./activation.js";
 import type { BootAttempt } from "./bootGuard.js";
+import type { ChoiceNamespace } from "./choice.js";
 import type { SignInNamespace } from "./signIn.js";
 import type { BootResult, BootRunOptions } from "./boot.js";
 import type { CrashTags, CrashTagsOptions } from "./crash.js";
@@ -459,6 +460,9 @@ export interface PolarisAdapter {
   /** `attach({confirm: false})` previews the device's licence, `{confirm: true}` puts it in the
    *  signed-in account. Typed `UnsupportedError` where the transport or product cannot. */
   attach(opts: { confirm: boolean }): Promise<AttachResult>;
+  /** The licence choice an app shows itself after `signIn` answered `choose` (identity.choice).
+   *  Bearer mode; a cookie page and the desktop renderer throw the typed `UnsupportedError`. */
+  readonly choice: ChoiceNamespace;
   /** Open the product's page in the customer portal (discovery's `accountPortal`). Typed
    *  `UnsupportedError` when the product names none. */
   openAccount(): Promise<void>;

@@ -1,0 +1,236 @@
+{
+  "transcriptVersion": 1,
+  "id": "exchange-confirm",
+  "description": "A linked person who has not consented to this app yet (WIRE-CONTRACT-V5 §12.11.3 rules 1 and 2, L-1). The grant answers status confirm instead of a token: a pending sign-in grant (300 s, bound to the device) and the consent view (who is asking, who the person signs in as, the items, firstTime). Nothing is bound or written. The SDK shows the consent, then completes with choice/complete {grant, consent {claims}}; the answer is the device token with the scope the person kept. consent is required on this grant.",
+  "features": ["identity.exchange"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "exchange",
+      "args": {
+        "kind": "google",
+        "keyLabel": "transcript-device-key-1",
+        "subjectToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiYllLbWhpaHFwdlU3UjlqZEFvWWNBbkNKUEUwMjZEekttZVUycWJ0MUtzVSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.LHF7z9tXT09W11TZjmMluSksGyCAO9dAcd94Zfi3VJjCq6fE3JzPh7O5Sy8yFAJj15k9w2Q2rwGN1e0uWCU2dQEnAgKY-c5OOhC7GnUMzmAb4Ix6V-tyPmRUr7Mtqf7RnIHXohqFyNKKvTpaqAJtc4xUFja_HJouBjwOnXu6TFnMYvsXVDsrZxn4Q6ISa9vJUlubyGbY_-kjlg-XY77lLbKG0Dx7dk3DZp1cPP52n_IqkaiqnNvBlBbuvvVgrALljYFPGYgwtmTxAtGgQM0GgKC8eIahxpgaEU6g7T453x3wEdGZvLVje2M-LvAzX1iNQTQsYsZGiDVQhcyjD1LliQ"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "bYKmhihqpvU7R9jdAoYcAnCJPE026DzKmeU2qbt1KsU",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiYllLbWhpaHFwdlU3UjlqZEFvWWNBbkNKUEUwMjZEekttZVUycWJ0MUtzVSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.LHF7z9tXT09W11TZjmMluSksGyCAO9dAcd94Zfi3VJjCq6fE3JzPh7O5Sy8yFAJj15k9w2Q2rwGN1e0uWCU2dQEnAgKY-c5OOhC7GnUMzmAb4Ix6V-tyPmRUr7Mtqf7RnIHXohqFyNKKvTpaqAJtc4xUFja_HJouBjwOnXu6TFnMYvsXVDsrZxn4Q6ISa9vJUlubyGbY_-kjlg-XY77lLbKG0Dx7dk3DZp1cPP52n_IqkaiqnNvBlBbuvvVgrALljYFPGYgwtmTxAtGgQM0GgKC8eIahxpgaEU6g7T453x3wEdGZvLVje2M-LvAzX1iNQTQsYsZGiDVQhcyjD1LliQ",
+                  "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+                  "nonce": "bYKmhihqpvU7R9jdAoYcAnCJPE026DzKmeU2qbt1KsU",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "CYzwtYRkWBQCEEdy6aX0TymlWlOmT94APXi_eqsabTmvV0Yc-lSIqaumDn6xTsmdUgixUCLKLC0LTzG28zJPAA"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "status": "confirm",
+                "grant": "sg_vXaXXVFx-nbsln4n2t-RP-vjQSv6dpGbNfDR9V7Kn7M",
+                "expiresIn": 300,
+                "consent": {
+                  "client": {
+                    "appName": "djdl",
+                    "developerName": null,
+                    "iconUrl": null,
+                    "nameVerified": true
+                  },
+                  "as": { "provider": "google", "email": "ada@example.com" },
+                  "items": [
+                    {
+                      "kind": "profile",
+                      "claims": ["name", "picture", "email"]
+                    }
+                  ],
+                  "scopeHash": "327f7d9e9a356405aafdeb28138a0586ee84b663f9cb65798332291ce1b1652f",
+                  "firstTime": true,
+                  "changed": false
+                },
+                "choices": {
+                  "state": "none",
+                  "choices": [],
+                  "keep": false,
+                  "preselected": null,
+                  "create": null,
+                  "getLicense": {
+                    "activateUrl": "https://key.plrs.im/activate?product=djdl",
+                    "purchaseUrl": null,
+                    "keyEntry": false
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "confirm",
+        "firstTime": true,
+        "changed": false,
+        "as": { "provider": "google", "email": "ada@example.com" }
+      }
+    },
+    {
+      "action": "choiceComplete",
+      "note": "choice.complete(grant, {consent}): the person kept both claims.",
+      "args": { "grant": "sg_vXaXXVFx-nbsln4n2t-RP-vjQSv6dpGbNfDR9V7Kn7M" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/choice/complete",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant": "sg_vXaXXVFx-nbsln4n2t-RP-vjQSv6dpGbNfDR9V7Kn7M",
+                  "consent": { "claims": ["profile", "email"] }
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_suNUWz-NiTiXCZGj_0JrWDnP3mTTvK6rTWEAudIJJPo",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000000,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": null,
+                "subject": "ps_A7ybdNFwX3s1aGMWK-20Ww"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "tokenHeld": true,
+        "scope": "profile email",
+        "licenseId": null
+      }
+    }
+  ]
+}

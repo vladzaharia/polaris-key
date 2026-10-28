@@ -679,6 +679,7 @@ public object Feature {
     public const val identityRedirectWeb: String = "identity.redirect.web"
     public const val identityChoice: String = "identity.choice"
     public const val identitySigninHints: String = "identity.signin.hints"
+    public const val identityExchange: String = "identity.exchange"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
     public const val releaseRecord: String = "release.record"
@@ -806,6 +807,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.redirect.web",
     "identity.choice",
     "identity.signin.hints",
+    "identity.exchange",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1953,6 +1955,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.redirect.web" to CapabilityRow("implemented", "identity", listOf()),
     "identity.choice" to CapabilityRow("implemented", "identity", listOf()),
     "identity.signin.hints" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.exchange" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -2019,4 +2022,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "b6b5b42ad0a9129ba0a764d8cd27f3921573add8bdac11d03e9206e6f0885977"
+public const val CAPABILITY_DIGEST: String = "b3e2aa5f1eaf66686ebba5c82b4563437c05e0eef329b503b29e733a26dddfa8"

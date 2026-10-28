@@ -41,6 +41,7 @@ import {
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { stmtsMoveAccountAutoAttachBlocks } from "../../../core/licensing/licenseHolders.js";
 import { runSubjectMerge } from "../../../core/accounts/subjectHooks.js";
+import { notifyDeviceChange } from "../../../core/devices/lifecycle.js";
 import { randomId } from "../../../platform/crypto.js";
 import { sendNotice } from "../../../core/notify/send.js";
 import { securityNoticeRecipients } from "../../../core/notify/recipients.js";
@@ -168,6 +169,26 @@ export async function mergeAccounts(
         { product: row.product, from: row.subject, to },
       );
     }
+  }
+
+  // The devices the batch re-binds to the survivor's subject, read before it moves them: each is
+  // announced as `bound` once the batch has committed (the device lifecycle, R-7).
+  const rebound: Array<{ product: string; deviceId: string; subject: string }> =
+    [];
+  for (const row of absorbedSubjects) {
+    const to = survivorSubjects.get(row.product);
+    if (!to) continue;
+    const bound = await db.all<{ device_id: string }>(
+      "SELECT device_id FROM devices WHERE product = ? AND subject = ?",
+      row.product,
+      row.subject,
+    );
+    for (const d of bound)
+      rebound.push({
+        product: row.product,
+        deviceId: d.device_id,
+        subject: to,
+      });
   }
 
   const products: Array<{
@@ -362,6 +383,19 @@ export async function mergeAccounts(
     }
     throw e;
   }
+
+  // Listeners hear it after the commit, so a service that keeps state per device (Cloud Connect's
+  // roster) reads the devices where they now are. Total: a listener never fails the merge.
+  for (const d of rebound)
+    await notifyDeviceChange(
+      { db, env, now },
+      {
+        product: d.product,
+        deviceId: d.deviceId,
+        kind: "bound",
+        subject: d.subject,
+      },
+    );
 
   const undoUntil = now + MERGE_UNDO_SECONDS;
   const message = accountsMergedNotice({ origin: ctx.origin, undoUntil });

@@ -1,0 +1,662 @@
+{
+  "transcriptVersion": 1,
+  "id": "exchange-errors",
+  "description": "Every verifier failure is the same refusal (WIRE-CONTRACT-V5 §12.11.3). A token for another audience, one whose authorised party is foreign, one signed for another nonce, an expired one and a nonce the Worker already spent all answer 400 invalid_grant with the same bytes, so a caller learns nothing about which check failed. Each refusal leaves the client holding no token; the SDK reports sign-in-failed and the host may retry with a fresh nonce.",
+  "features": ["identity.exchange"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "exchange",
+      "note": "A token for another audience.",
+      "args": {
+        "kind": "google",
+        "keyLabel": "transcript-device-key-1",
+        "subjectToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6ImV2aWwiLCJzdWIiOiJnLXN1Yi0xIiwiZW1haWwiOiJhZGFAZXhhbXBsZS5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibm9uY2UiOiJOaU85LThvWlA1MF94ZENGQnUzSXdJU2VnT2FrVF9XZWxQVXlFT1N6MGtzIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE3MDAwMDM2MDB9.rYnIyeqQ4JKPh76rdzeAInCAMp7Zgq1sk0mVFvdQiiKQvxk-WIf9aYJEVIN7HjIsKcjb7AzAYV7MflVDSd3cpXQIcii3xy-XIQeaK_txF1JNqetvezMUUeDj9ZYm6cgkJySztAd-AabXyuJc27W9oUPj5Koez0UnC9q7O73g2MsrDru8yBvdGwg0JkKeC5TK2M87nHngvx2zwXgO9kIq15Qig6h-pANirmykjbvTDKpKEuutNaxJm96rcB7vKPARpjIlHmbyJMpnYvhFGF3WKN8czMSPl6_IqygNCBrksFMfAb5HhOnDw3KujLnC3sYOki9pGPWL-UI69LpyHdBV5w"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "NiO9-8oZP50_xdCFBu3IwISegOakT_WelPUyEOSz0ks",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6ImV2aWwiLCJzdWIiOiJnLXN1Yi0xIiwiZW1haWwiOiJhZGFAZXhhbXBsZS5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibm9uY2UiOiJOaU85LThvWlA1MF94ZENGQnUzSXdJU2VnT2FrVF9XZWxQVXlFT1N6MGtzIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE3MDAwMDM2MDB9.rYnIyeqQ4JKPh76rdzeAInCAMp7Zgq1sk0mVFvdQiiKQvxk-WIf9aYJEVIN7HjIsKcjb7AzAYV7MflVDSd3cpXQIcii3xy-XIQeaK_txF1JNqetvezMUUeDj9ZYm6cgkJySztAd-AabXyuJc27W9oUPj5Koez0UnC9q7O73g2MsrDru8yBvdGwg0JkKeC5TK2M87nHngvx2zwXgO9kIq15Qig6h-pANirmykjbvTDKpKEuutNaxJm96rcB7vKPARpjIlHmbyJMpnYvhFGF3WKN8czMSPl6_IqygNCBrksFMfAb5HhOnDw3KujLnC3sYOki9pGPWL-UI69LpyHdBV5w",
+                  "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+                  "nonce": "NiO9-8oZP50_xdCFBu3IwISegOakT_WelPUyEOSz0ks",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "ZOht16kSxdwYsyeApB2C_nLJ2uB8HlBslxQvzay8Yj-XzH5w_x7WSA4sOEKNpenvlOyRTPBBKeasn9JZhYGDCQ"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "A foreign authorised party.",
+      "args": {
+        "kind": "google",
+        "keyLabel": "transcript-device-key-1",
+        "subjectToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiJldmlsIiwiYXVkIjoiMTIzNC13ZWIuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiJnLXN1Yi0xIiwiZW1haWwiOiJhZGFAZXhhbXBsZS5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibm9uY2UiOiJNclQxb1lBTmIzVV9xUlpRMnNtMXItc2lQZVA3aC1UUFNfTzA2aXZWZTFjIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE3MDAwMDM2MDB9.MuDklbEgQqbr7Z7WiUUIfsohwWws-xSS8GX9O8RBENNX0C3hbEhVDR4HrgKUFPoGhP0xZnQtRK1EE-VIU-xUcDCNEV-99opRaQTtdA0AUniSKYERhvJvZk30wPipncZfTMt5-OikrH27_n9cvTuPRPDZeVlGhpiSfWH8iE86qeT3CoebWym4NYfIB3iJWBmGcNQvXOQx9w4rX86T0C151b7-TGlii8dUTmw6DvVQzVDMX8llNj-Lp5AzjP-8vMXqETapf5t9LY6ARlu9h3zdc9vTAjNI_0zFns1xe1y7_k23QqbnKcHGX1TWYIlwkFW4WNEER70CPtxOIHhDeoMZJQ"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "MrT1oYANb3U_qRZQ2sm1r-siPeP7h-TPS_O06ivVe1c",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiJldmlsIiwiYXVkIjoiMTIzNC13ZWIuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiJnLXN1Yi0xIiwiZW1haWwiOiJhZGFAZXhhbXBsZS5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibm9uY2UiOiJNclQxb1lBTmIzVV9xUlpRMnNtMXItc2lQZVA3aC1UUFNfTzA2aXZWZTFjIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE3MDAwMDM2MDB9.MuDklbEgQqbr7Z7WiUUIfsohwWws-xSS8GX9O8RBENNX0C3hbEhVDR4HrgKUFPoGhP0xZnQtRK1EE-VIU-xUcDCNEV-99opRaQTtdA0AUniSKYERhvJvZk30wPipncZfTMt5-OikrH27_n9cvTuPRPDZeVlGhpiSfWH8iE86qeT3CoebWym4NYfIB3iJWBmGcNQvXOQx9w4rX86T0C151b7-TGlii8dUTmw6DvVQzVDMX8llNj-Lp5AzjP-8vMXqETapf5t9LY6ARlu9h3zdc9vTAjNI_0zFns1xe1y7_k23QqbnKcHGX1TWYIlwkFW4WNEER70CPtxOIHhDeoMZJQ",
+                  "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+                  "nonce": "MrT1oYANb3U_qRZQ2sm1r-siPeP7h-TPS_O06ivVe1c",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "o5Ff3D-xkmiWBbo1uwNLZeYf0GednyYwRhNZF26yjPK6TBidmrtfhZHeEk3E1UhrW5sm7pBSNW-jNBoIQlkOBA"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "A token signed for another nonce.",
+      "args": {
+        "kind": "google",
+        "keyLabel": "transcript-device-key-1",
+        "subjectToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiYW5vdGhlci1ub25jZSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.Y4NxzxGh-QtCSGTsw76Ktm2u01SRgsKYNQ1CCSbmlPPh16sBujek1xlDLjuVbbUvq0s2KuBqFVDXov_xoqy5uNVSpHc0-8mmY4VaO9y1e628N3BgPBjy7wpAOMFeFCHeo2jOuUDqhtFZ5otxr92tx5_RpFJzF_sY3aWOYMCFC-jtk-XAzkABUSguVP5qryxs6pyaJA1CQrrcN50z9yViwZ8GsZSqDubCLy473eDzoJTWwTvrDWFFE2iydNdjy6QCHmT0HGAyY5GQWqObwoPGbbjPVfxsTRNW9TTo0Zey000HkxaO4p1PnZlGluQ1hQaZ6QiJ-ds_GLYfSoZi5fcZUQ"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "cEDC4PHbQV62EM-7Obqew2UKivdUhMZ5O5sBjA53IHc",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiYW5vdGhlci1ub25jZSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.Y4NxzxGh-QtCSGTsw76Ktm2u01SRgsKYNQ1CCSbmlPPh16sBujek1xlDLjuVbbUvq0s2KuBqFVDXov_xoqy5uNVSpHc0-8mmY4VaO9y1e628N3BgPBjy7wpAOMFeFCHeo2jOuUDqhtFZ5otxr92tx5_RpFJzF_sY3aWOYMCFC-jtk-XAzkABUSguVP5qryxs6pyaJA1CQrrcN50z9yViwZ8GsZSqDubCLy473eDzoJTWwTvrDWFFE2iydNdjy6QCHmT0HGAyY5GQWqObwoPGbbjPVfxsTRNW9TTo0Zey000HkxaO4p1PnZlGluQ1hQaZ6QiJ-ds_GLYfSoZi5fcZUQ",
+                  "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+                  "nonce": "cEDC4PHbQV62EM-7Obqew2UKivdUhMZ5O5sBjA53IHc",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "JC6zLX07ErjMm2SsL_gtRwrBlA8whAPcfC4B_-Ri3R5QrMWF01xMk5vwlCbmO0k7KaFq1gvzmG0RraImJN1_Dw"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "An expired token.",
+      "args": {
+        "kind": "google",
+        "keyLabel": "transcript-device-key-1",
+        "subjectToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiUmJDZ2RoSEd3TGhTdDVsQkMyclBBREFNTXFVRW5NUUdMWjFQa1M4WkpQZyIsImlhdCI6MTY5OTk5MjgwMCwiZXhwIjoxNjk5OTk2NDAwfQ.qcVZX-U4WBSaeSJzljZ06QNKgQJJ3JgnfcOynuPYLz-rjrhey6Ydue0s8QLCHg94rpCzHObEdjliF3nP37FJBOEPB2Vq5GY8dMM1FXfKd5aZE34AzDgb-KFkcbG7T_HvJE2foHJRMMFE0VZmo1Tmb5aiGSYrXWXdnJP0CO6uUQ1WZ-CDO_8wcPLxe2Rp4BGGfTXkIWboAooo4_qbjjl_oEF2VlF14brIWbqKmskExBBBktUjNOflchvBz9Ioza3wcqbFUP0NAAfU5gcS9M2BKlUxBCjyA4Wr77_BiyeD02EQvMoutPMN4QQvHOaLMP5r7NGp9wT9hbLp92xMoLcthQ"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "RbCgdhHGwLhSt5lBC2rPADAMMqUEnMQGLZ1PkS8ZJPg",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiUmJDZ2RoSEd3TGhTdDVsQkMyclBBREFNTXFVRW5NUUdMWjFQa1M4WkpQZyIsImlhdCI6MTY5OTk5MjgwMCwiZXhwIjoxNjk5OTk2NDAwfQ.qcVZX-U4WBSaeSJzljZ06QNKgQJJ3JgnfcOynuPYLz-rjrhey6Ydue0s8QLCHg94rpCzHObEdjliF3nP37FJBOEPB2Vq5GY8dMM1FXfKd5aZE34AzDgb-KFkcbG7T_HvJE2foHJRMMFE0VZmo1Tmb5aiGSYrXWXdnJP0CO6uUQ1WZ-CDO_8wcPLxe2Rp4BGGfTXkIWboAooo4_qbjjl_oEF2VlF14brIWbqKmskExBBBktUjNOflchvBz9Ioza3wcqbFUP0NAAfU5gcS9M2BKlUxBCjyA4Wr77_BiyeD02EQvMoutPMN4QQvHOaLMP5r7NGp9wT9hbLp92xMoLcthQ",
+                  "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+                  "nonce": "RbCgdhHGwLhSt5lBC2rPADAMMqUEnMQGLZ1PkS8ZJPg",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "cc2pAJdTViPgvkxQIAtpjIBqpM56lFYSkc_trl7ZnvbKsLjwH6qhV8cbkmV5m1EuOxOZQ9eQK9m1fUZFrp_RAQ"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "A good exchange spends its nonce.",
+      "args": {
+        "kind": "google",
+        "keyLabel": "transcript-device-key-1",
+        "subjectToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiTzZLZ1Q2YjhvNzNmOEJ1OGdZQUpqZVhXbDZKYXJKR3JTeE5STzlSeU9uRSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.k_BMX1gDNOvLbjFJp6AQYWcUb2CwGfDJ-7vWNyO096PMkyVllo6CAwV9jxCbE5OYDXBAWn8wizmDhFPwfhViLzOrhm-uCfQdZ41UDJymFqEz8xUAzRYt2Oh93Qz34B5FbN0SznpaIC0fpA0VZ2q9nk7SoLmviHiNUCHzwyghEYC4axptKAGCe0CFu2IsG1Gof32HUcJrfsRlvtJY2-IInN4K9WYoo9yK4gZmx1HPBf4-KWhVDDB7FVRef8S0OHfakSe6zEN-m0dl-osl9qrvgSVNu-6JYSIdii9tW3rtO8sv2mG4Tdl89_OQaspT64M8beDBhSSdwQJLbkGV4FgisQ"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "O6KgT6b8o73f8Bu8gYAJjeXWl6JarJGrSxNRO9RyOnE",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiTzZLZ1Q2YjhvNzNmOEJ1OGdZQUpqZVhXbDZKYXJKR3JTeE5STzlSeU9uRSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.k_BMX1gDNOvLbjFJp6AQYWcUb2CwGfDJ-7vWNyO096PMkyVllo6CAwV9jxCbE5OYDXBAWn8wizmDhFPwfhViLzOrhm-uCfQdZ41UDJymFqEz8xUAzRYt2Oh93Qz34B5FbN0SznpaIC0fpA0VZ2q9nk7SoLmviHiNUCHzwyghEYC4axptKAGCe0CFu2IsG1Gof32HUcJrfsRlvtJY2-IInN4K9WYoo9yK4gZmx1HPBf4-KWhVDDB7FVRef8S0OHfakSe6zEN-m0dl-osl9qrvgSVNu-6JYSIdii9tW3rtO8sv2mG4Tdl89_OQaspT64M8beDBhSSdwQJLbkGV4FgisQ",
+                  "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+                  "nonce": "O6KgT6b8o73f8Bu8gYAJjeXWl6JarJGrSxNRO9RyOnE",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "Q3gxAjJcxgYHsJ88sw_uZU2X-yCgcmNt2Tk0N1DUY0UcYIZ6kaqq52xKDLr0jsTEKPpZeHR_RIRUFHuyU4TQBw"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_prsGUTwB_L_ya9ehl-yBxntG6B7_xgjP270SLtXiRdU",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000000,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": null,
+                "subject": "ps_itCIStWBNslLbrRC3HRvCA",
+                "issued_token_type": "urn:polaris-key:token-type:device"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "tokenHeld": true,
+        "scope": "profile email",
+        "issuedTokenType": "urn:polaris-key:token-type:device",
+        "licenseId": null
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "The same nonce again.",
+      "args": {
+        "kind": "google",
+        "keyLabel": "transcript-device-key-1",
+        "nonce": "O6KgT6b8o73f8Bu8gYAJjeXWl6JarJGrSxNRO9RyOnE",
+        "subjectToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiTzZLZ1Q2YjhvNzNmOEJ1OGdZQUpqZVhXbDZKYXJKR3JTeE5STzlSeU9uRSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.k_BMX1gDNOvLbjFJp6AQYWcUb2CwGfDJ-7vWNyO096PMkyVllo6CAwV9jxCbE5OYDXBAWn8wizmDhFPwfhViLzOrhm-uCfQdZ41UDJymFqEz8xUAzRYt2Oh93Qz34B5FbN0SznpaIC0fpA0VZ2q9nk7SoLmviHiNUCHzwyghEYC4axptKAGCe0CFu2IsG1Gof32HUcJrfsRlvtJY2-IInN4K9WYoo9yK4gZmx1HPBf4-KWhVDDB7FVRef8S0OHfakSe6zEN-m0dl-osl9qrvgSVNu-6JYSIdii9tW3rtO8sv2mG4Tdl89_OQaspT64M8beDBhSSdwQJLbkGV4FgisQ"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiTzZLZ1Q2YjhvNzNmOEJ1OGdZQUpqZVhXbDZKYXJKR3JTeE5STzlSeU9uRSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.k_BMX1gDNOvLbjFJp6AQYWcUb2CwGfDJ-7vWNyO096PMkyVllo6CAwV9jxCbE5OYDXBAWn8wizmDhFPwfhViLzOrhm-uCfQdZ41UDJymFqEz8xUAzRYt2Oh93Qz34B5FbN0SznpaIC0fpA0VZ2q9nk7SoLmviHiNUCHzwyghEYC4axptKAGCe0CFu2IsG1Gof32HUcJrfsRlvtJY2-IInN4K9WYoo9yK4gZmx1HPBf4-KWhVDDB7FVRef8S0OHfakSe6zEN-m0dl-osl9qrvgSVNu-6JYSIdii9tW3rtO8sv2mG4Tdl89_OQaspT64M8beDBhSSdwQJLbkGV4FgisQ",
+                  "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+                  "nonce": "O6KgT6b8o73f8Bu8gYAJjeXWl6JarJGrSxNRO9RyOnE",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "Q3gxAjJcxgYHsJ88sw_uZU2X-yCgcmNt2Tk0N1DUY0UcYIZ6kaqq52xKDLr0jsTEKPpZeHR_RIRUFHuyU4TQBw"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    }
+  ]
+}

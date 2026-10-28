@@ -3,7 +3,9 @@
 * :attr:`IdentityClient.sign_in` ``.start(**opts)`` begins a sign-in and answers a
   :class:`~polaris_key.identity.sign_in.SignInSession` (device code, RFC 8628, for hosts that
   cannot complete a browser redirect: a CLI, a daemon, a game console, a kiosk). The session's
-  ``wait()`` paces the polls; ``once=True`` polls exactly once.
+  ``wait()`` paces the polls; ``once=True`` polls exactly once. ``channel="redirect"`` answers a
+  :class:`~polaris_key.identity.redirect.RedirectSession` (a host-supplied https redirect URI,
+  ``complete(callback_url)``); its ``choose`` outcome is finished with :attr:`IdentityClient.choice`.
 
 A ``ready`` poll stores the device token through Core's token manager and raises the same
 acquisition event activation does, so the facade's forced sync runs exactly as it would
@@ -35,10 +37,13 @@ from .sign_in import (
     SignInSession,
     start_device_code,
 )
+from .choice import ChoiceClient
+from .redirect import RedirectSession, start_redirect_sign_in
 from ..core.context import CoreContext
 from ..core.token import TokenManager
 
 __all__ = [
+    "ChoiceClient",
     "IdentityClient",
     "SignedInIdentity",
     "SignInNamespace",
@@ -89,14 +94,28 @@ class IdentityClient:
             license_id=license_id or (lambda: None),
             open_url=open_url or _open_in_browser,
             emit=emit or (lambda *a, **k: None),
+            load_discovery=discover,
+            write_subject=self._account.write_subject,
         )
-        self._sign_in = SignInNamespace(self._start_sign_in)
+        self._sign_in = SignInNamespace(self._start_sign_in, self._start_redirect)
+        self._choice = ChoiceClient(self._deps)
 
     def _store_identity(self, who: Optional[SignedInIdentity]) -> None:
         self._identity = who
 
     def _start_sign_in(self, **opts: Any) -> SignInSession:
         return start_device_code(self._deps, **opts)
+
+    def _start_redirect(self, **opts: Any) -> RedirectSession:
+        return start_redirect_sign_in(self._deps, **opts)
+
+    @property
+    def choice(self) -> ChoiceClient:
+        """``identity.choice.licenses/devices/complete/cancel``: the licence choice an app shows
+        itself after a redirect sign-in settled ``choose`` (``license_choice="app"``). Each call
+        raises the typed ``service-unavailable`` N/A when the product's discovery names no choice
+        endpoint."""
+        return self._choice
 
     @property
     def sign_in(self) -> SignInNamespace:

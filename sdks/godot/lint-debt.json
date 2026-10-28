@@ -229,6 +229,9 @@
     "sdks/godot/addons/polaris_key/services/identity/account.gd": {
       "gdlint:max-returns": 1
     },
+    "sdks/godot/addons/polaris_key/services/identity/choice.gd": {
+      "gdlint:max-returns": 1
+    },
     "sdks/godot/addons/polaris_key/services/identity/sign_in_session.gd": {
       "gdlint:max-returns": 2,
       "gdlint:signal-name": 1
@@ -486,6 +489,9 @@
     },
     "sdks/godot/tests/identity/test_account.gd": {
       "gdlint:max-line-length": 7
+    },
+    "sdks/godot/tests/identity/test_choice.gd": {
+      "gdlint:max-line-length": 6
     },
     "sdks/godot/tests/identity/test_confirm.gd": {
       "gdlint:max-line-length": 4

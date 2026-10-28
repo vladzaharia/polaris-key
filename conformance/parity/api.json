@@ -3116,8 +3116,8 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "usePolarisAuth().choice",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3132,8 +3132,9 @@
           "reason": "a property returning the choice client"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeyIdentity.choice",
+          "shape": "property",
+          "reason": "a property returning the choice client"
         }
       },
       "layer": "client"
@@ -3151,8 +3152,8 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "usePolarisAuth().choice.licenses",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3166,8 +3167,7 @@
           "spelling": "ChoiceClient.licenses"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeyIdentityChoice.licenses"
         }
       },
       "layer": "client"
@@ -3189,8 +3189,8 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "usePolarisAuth().choice.devices",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3204,8 +3204,7 @@
           "spelling": "ChoiceClient.devices"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeyIdentityChoice.devices"
         }
       },
       "layer": "client"
@@ -3227,8 +3226,8 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "usePolarisAuth().choice.complete",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3242,8 +3241,7 @@
           "spelling": "ChoiceClient.complete"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeyIdentityChoice.complete"
         }
       },
       "layer": "client"
@@ -3261,8 +3259,8 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "usePolarisAuth().choice.cancel",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3276,8 +3274,7 @@
           "spelling": "ChoiceClient.cancel"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeyIdentityChoice.cancel"
         }
       },
       "layer": "client"
@@ -3299,17 +3296,26 @@
           "reason": "no hook: Node calls the identity.choice primitives"
         },
         "react": {
-          "planned": "I-10a",
-          "reason": "the React hook over identity.choice (D-3)",
+          "spelling": "useLicenseChoice",
           "shape": "hook"
         },
         "swift": {
           "spelling": "LicenseChoiceModel"
         },
+        "godot": {
+          "spelling": "identity.choice",
+          "shape": "property",
+          "reason": "no hook: Godot calls the identity.choice primitives"
+        },
         "kotlin": {
           "spelling": "identity.choice",
           "shape": "property",
           "reason": "no hook: Kotlin calls the identity.choice primitives"
+        },
+        "python": {
+          "spelling": "identity.choice",
+          "shape": "property",
+          "reason": "no hook: Python calls the identity.choice primitives"
         }
       },
       "layer": "client"

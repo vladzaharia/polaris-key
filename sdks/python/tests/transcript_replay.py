@@ -16,6 +16,7 @@ import json
 import re
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+from urllib.parse import unquote_plus
 
 import httpx
 
@@ -189,11 +190,25 @@ class ReplayServer:
         elif not has_body:
             out.append("body: expected a JSON body, got none")
         else:
-            try:
-                parsed = json.loads(body.decode("utf-8"))
-            except Exception:
-                out.append("body: not JSON")
-                return out
+            form = (expected["headers"].get("content-type") or "").lower().startswith(
+                "application/x-www-form-urlencoded"
+            )
+            if form:
+                # A form body (I-08's token request): compared as the object its names and
+                # values make. A repeated name is a failure here, as it is at the Worker.
+                parsed = {}
+                for pair in body.decode("utf-8").split("&"):
+                    name, _, value = pair.partition("=")
+                    name = unquote_plus(name)
+                    if name in parsed:
+                        out.append(f'body: repeated field "{name}"')
+                    parsed[name] = unquote_plus(value)
+            else:
+                try:
+                    parsed = json.loads(body.decode("utf-8"))
+                except Exception:
+                    out.append("body: not JSON")
+                    return out
             out.extend(
                 f"body {p}" for p in body_problems(want["json"], parsed, want["match"])
             )

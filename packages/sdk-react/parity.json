@@ -219,12 +219,23 @@
       "note": "I-10a.10: bearer mode. signIn.start({channel: \"redirect\", redirectUri}) builds the PKCE authorize URL with client-core and keeps the verifier and state in sessionStorage keyed by state; signIn.complete(callbackUrl) (or the session's) checks state and iss and redeems the code at the token endpoint. The desktop renderer signs in by device code only: its redirect is a typed unsupported (runtime) since the bridge has no verb to redeem a code in the host. Cookie mode is SP-40."
     },
     "identity.choice": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented",
+      "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. The desktop renderer never holds a grant (the bridge's beginSignIn refuses licenseChoice), so its calls are a typed unsupported (runtime); a cookie page refuses the same way."
     },
     "identity.signin.hints": {
       "status": "implemented",
       "note": "I-10a.10: bearer mode: loginHint, nameHint and purpose go on the authorize URL (redirect) and the device start body (device code). The desktop bridge's beginSignIn carries only deviceName, so a hint there is a typed unsupported (runtime) rather than a silent drop."
+    },
+    "identity.exchange": {
+      "status": "planned",
+      "wp": "I-46",
+      "except": [
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime"
+        }
+      ],
+      "note": "FedCM and Google Identity Services on the web (I-46); the desktop renderer holds no device key."
     },
     "identity.keyentry": {
       "status": "implemented",

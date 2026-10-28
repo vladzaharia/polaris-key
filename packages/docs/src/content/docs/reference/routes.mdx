@@ -126,6 +126,10 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | DELETE | `/{product}/devices/{deviceId}` | core | Deauthorize a device |
 | POST | `/{product}/devices/attest/challenge` | core | A single-use device attestation challenge (P6-02) |
 | POST | `/{product}/devices/attest` | core | Raise the device's trust level with App Attest or Play Integrity (P6-02) |
+| POST | `/{product}/devices/keyring/adopt` | core | Store a previous or merged root sealed under the current one (U-36.3) |
+| GET | `/{product}/devices/keyring/recovery` | core | Fetch the sealed recovery blob (U-36.3) |
+| PUT | `/{product}/devices/keyring/recovery` | core | Replace the sealed recovery blob (U-36.3) |
+| POST | `/{product}/devices/keyring/reset` | core | Reset encryption with a new ring (U-36.3) |
 | PUT | `/{product}/devices/keyring/wraps/{deviceId}` | core | Store a wrap of the ring root for a device (U-36.2) |
 | DELETE | `/{product}/devices/keyring/wraps/{deviceId}` | core | Remove this device's own wrap (U-36.2) |
 | GET | `/{product}/devices/keyring` | core | Read the person's key ring and this device's wrap (U-36.2) |
@@ -194,7 +198,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/identity/session` | identity | The browser session's fused document |
 | POST | `/{product}/identity/signout` | identity | Sign the device out of its account |
 | GET | `/{product}/identity/subject` | identity | The pairwise subject signed in on the device |
-| POST | `/{product}/identity/token` | identity | Redeem an authorization code for a device token (OAuth-shaped token) |
+| POST | `/{product}/identity/token` | identity | Redeem an authorization code, or exchange a platform ID token, for a device token (OAuth-shaped token) |
 | GET | `https://img.plrs.im/{product}/a/{sha256}/{w}.webp` | img | A width variant of a hosted image (image host only) |
 | HEAD | `https://img.plrs.im/{product}/a/{sha256}/{w}.webp` | img | A width variant of a hosted image, headers only (image host only) |
 | GET | `https://img.plrs.im/{product}/a/{sha256}` | img | A hosted image, content-addressed (image host only) |

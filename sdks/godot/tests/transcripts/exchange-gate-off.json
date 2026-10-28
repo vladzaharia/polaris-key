@@ -1,0 +1,272 @@
+{
+  "transcriptVersion": 1,
+  "id": "exchange-gate-off",
+  "description": "A Worker whose platform sign-in launch gate is off (LG-1, launch.identityExchange). Discovery names neither the exchange member nor the nonce endpoint, so an SDK starts at the regular sign-in. A client that still reaches the routes (a Worker rolled back after it fetched a nonce) finds the nonce route absent (404 not_found) and the grant unsupported: 400 unsupported_grant_type, which the SDK treats as a failed rung. Nothing is bound.",
+  "features": ["identity.exchange"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 5,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "requires-identity",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "deviceKeys": "https://key.plrs.im/djdl/devices/keys",
+                    "register": "https://key.plrs.im/djdl/devices/register"
+                  },
+                  "portal": {
+                    "enabled": true,
+                    "activate": "https://key.plrs.im/activate?product=djdl"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": { "enabled": false },
+                  "config": {
+                    "enabled": true,
+                    "schemaVersion": 1,
+                    "endpoints": {
+                      "document": "https://key.plrs.im/djdl/config/document",
+                      "schema": "https://key.plrs.im/djdl/config/schema"
+                    },
+                    "mint": { "available": false }
+                  },
+                  "release": { "enabled": false },
+                  "distribution": { "enabled": false },
+                  "update": { "enabled": false },
+                  "identity": {
+                    "enabled": true,
+                    "configured": true,
+                    "issuer": "https://key.plrs.im/djdl/identity",
+                    "account": true,
+                    "keyEntryLimit": 10,
+                    "endpoints": {
+                      "session": "https://key.plrs.im/djdl/identity/session",
+                      "sessionLicense": "https://key.plrs.im/djdl/identity/session/license",
+                      "authStart": "https://key.plrs.im/djdl/identity/auth/start",
+                      "authCallback": "https://key.plrs.im/djdl/identity/auth/callback",
+                      "authLogout": "https://key.plrs.im/djdl/identity/auth/logout",
+                      "authDeviceStart": "https://key.plrs.im/djdl/identity/auth/device/start",
+                      "authDeviceEntry": "https://key.plrs.im/djdl/identity/auth/device",
+                      "authDeviceVerify": "https://key.plrs.im/djdl/identity/auth/device/verify",
+                      "authDevicePoll": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                      "authorize": "https://key.plrs.im/djdl/identity/authorize",
+                      "token": "https://key.plrs.im/djdl/identity/token",
+                      "choiceLicenses": "https://key.plrs.im/djdl/identity/choice/licenses",
+                      "choiceDevices": "https://key.plrs.im/djdl/identity/choice/devices",
+                      "choiceComplete": "https://key.plrs.im/djdl/identity/choice/complete",
+                      "choiceCancel": "https://key.plrs.im/djdl/identity/choice/cancel",
+                      "attach": "https://key.plrs.im/djdl/identity/attach",
+                      "subject": "https://key.plrs.im/djdl/identity/subject",
+                      "signout": "https://key.plrs.im/djdl/identity/signout",
+                      "accountPortal": "https://key.plrs.im/#/p/djdl"
+                    }
+                  },
+                  "sync": { "enabled": false },
+                  "commerce": { "enabled": false },
+                  "connect": { "enabled": false }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "services": {
+          "license": false,
+          "config": true,
+          "release": false,
+          "distribution": false,
+          "update": false,
+          "identity": true,
+          "sync": false,
+          "commerce": false,
+          "connect": false
+        },
+        "exchange": null,
+        "nonceEndpoint": false
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "The nonce route is absent.",
+      "args": { "kind": "google", "keyLabel": "transcript-device-key-1" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "not_found" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "code": "not_found", "tokenHeld": false }
+    },
+    {
+      "action": "exchange",
+      "note": "A nonce fetched before the gate went off: the grant is unsupported.",
+      "args": {
+        "kind": "google",
+        "keyLabel": "transcript-device-key-1",
+        "nonce": "7k5GD2Lf-GdejBd79_7Zuhfbx9-pK05iy1nLAPkMU1s",
+        "subjectToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiN2s1R0QyTGYtR2RlakJkNzlfN1p1aGZieDktcEswNWl5MW5MQVBrTVUxcyIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.sItNaLe8y90raPZldQmDdO7WKm9DMV7nsAqvyb5t84eqp0Y8ZIttCVZYFQJBNjl3EsRFAdNqfSOSH4t2Hx6wkhdY-T6i1Yey_6_7RzvXiyU7ir2hYqkiTIsQCs9Sc8t0_lFwEj9HJMFMV50WLUcSbllCtcJ5hjtIbv8T2GJUWZKSnWYSRt65VY0Pbh69ZWPm5cnh93VW8Vn_iXLLWGuwHs2BL39QcLneDoMrsxrJQ-IVxwQqeKihiaV40xvoqJdXbirGjRr1Ksmwbr1gs4kYoMsyRfScHMtZWgm_vvJyT8LUipM1RYOssBI0yQCectyHX55d1H_kKlkrKwb3AHPJsA"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiN2s1R0QyTGYtR2RlakJkNzlfN1p1aGZieDktcEswNWl5MW5MQVBrTVUxcyIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.sItNaLe8y90raPZldQmDdO7WKm9DMV7nsAqvyb5t84eqp0Y8ZIttCVZYFQJBNjl3EsRFAdNqfSOSH4t2Hx6wkhdY-T6i1Yey_6_7RzvXiyU7ir2hYqkiTIsQCs9Sc8t0_lFwEj9HJMFMV50WLUcSbllCtcJ5hjtIbv8T2GJUWZKSnWYSRt65VY0Pbh69ZWPm5cnh93VW8Vn_iXLLWGuwHs2BL39QcLneDoMrsxrJQ-IVxwQqeKihiaV40xvoqJdXbirGjRr1Ksmwbr1gs4kYoMsyRfScHMtZWgm_vvJyT8LUipM1RYOssBI0yQCectyHX55d1H_kKlkrKwb3AHPJsA",
+                  "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+                  "nonce": "7k5GD2Lf-GdejBd79_7Zuhfbx9-pK05iy1nLAPkMU1s",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "vMQTaQZdsh9-0ZDBH0okeeigxgbsmRo1iWEHlZ3FDJr07Yo8dQ_JvUBVHP216LVTkS5_GKlpyF5Oo-KFQTBWCw"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "unsupported_grant_type" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "unsupported_grant_type",
+        "tokenHeld": false
+      }
+    }
+  ]
+}

@@ -26,6 +26,10 @@ func _init(owner: PKeyIdentity) -> void:
 ##                     The session's `authorize_url` is the page to open; hand the URL the browser
 ##                     landed on to `session.complete(callback_url)`.
 ##   redirect_uri      redirect: the https URI the product registered (required)
+##   license_choice    redirect: "app" shows the licence choice in the app: a token that would need a
+##                     choice settles `complete()` as `license_choice` (grant, choices) and
+##                     `PolarisKey.identity.choice.*` finishes it. Honoured only when discovery names
+##                     the choice endpoints; otherwise the card chooses. Default: the card chooses
 ##   scope             redirect: scopes asked for, a String or Array; default "profile email"
 ##   login_hint, name_hint, purpose
 ##                     redirect: prefill the card (WIRE-CONTRACT-V4 §12.4); they verify nothing.

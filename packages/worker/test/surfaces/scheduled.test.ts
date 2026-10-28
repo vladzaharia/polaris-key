@@ -426,6 +426,37 @@ describe("scheduled() download-token purge", () => {
   });
 });
 
+describe("scheduled() key ring previous rings", () => {
+  it("forgets a ring a reset replaced after its 30 days, and runs twice as a no-op (U-36.3)", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "acme");
+    await db.run(
+      `INSERT INTO keyrings (product, subject, ring_id, epoch, root_kid, state, previous_ring_id, previous_kid, previous_until, created_by, created_at, updated_at)
+       VALUES ('acme', 'ps_a', 'rg_new', 1, 'k2', 'active', 'rg_old', 'k1', ?, 'd1', ?, ?)`,
+      NOW + 100,
+      NOW,
+      NOW,
+    );
+    await db.run(
+      `INSERT INTO keyring_wraps (product, subject, device_id, ring_id, epoch, kid, kem, enc, ct, by_device, created_at)
+       VALUES ('acme', 'ps_a', 'd1', 'rg_old', 1, 'k1', 'x', 'e', 'c', 'd1', ?)`,
+      NOW,
+    );
+    expect(
+      (await runScheduledMaintenance(db, NOW + 50)).counts.keyringPrevious,
+    ).toBe(0);
+    expect(
+      (await runScheduledMaintenance(db, NOW + 100)).counts.keyringPrevious,
+    ).toBe(1);
+    expect(
+      (await runScheduledMaintenance(db, NOW + 100)).counts.keyringPrevious,
+    ).toBe(0);
+    expect(
+      await db.first("SELECT 1 FROM keyring_wraps WHERE ring_id = 'rg_old'"),
+    ).toBeNull();
+  });
+});
+
 describe("scheduled() dormant-seat reclamation", () => {
   // The just-in-time reclamation inside `claimDeviceSeat` only frees capacity for whoever is
   // ALREADY activating. Without the sweep, a licence whose devices all went dark reads as full

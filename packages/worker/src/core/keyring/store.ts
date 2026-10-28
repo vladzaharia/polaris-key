@@ -330,22 +330,28 @@ export async function deleteWrap(
   );
 }
 
-/** Replace the sealed recovery blob of the current ring. False when the subject has no ring. */
+/**
+ * Replace the sealed recovery blob of the current ring. False when the subject has no ring, or,
+ * with `guard`, when the ring is no longer at that epoch and `kid` (checked in the same statement,
+ * so a reset between the caller's read and this write cannot take a blob sealed for the old root).
+ */
 export async function setRecovery(
   db: Db,
   product: string,
   subject: string,
   ct: string,
   now: number,
+  guard?: { epoch: number; kid: string },
 ): Promise<boolean> {
   const n = await db.runChanges(
     `UPDATE keyrings SET recovery_ct = ?, recovery_at = ?, updated_at = ?
-      WHERE product = ? AND subject = ?`,
+      WHERE product = ? AND subject = ?${guard ? " AND epoch = ? AND root_kid = ?" : ""}`,
     ct,
     now,
     now,
     product,
     subject,
+    ...(guard ? [guard.epoch, guard.kid] : []),
   );
   return n > 0;
 }
@@ -438,7 +444,7 @@ export async function resetRing(
 
 /**
  * Forget the replaced rings whose 30 days passed: their wraps, and the `previous` marker. Returns
- * how many rings it cleared. Nothing schedules it yet (U-36.3 owns the sweep).
+ * how many rings it cleared. The nightly sweep runs it (`scheduled.ts`, step `keyringPrevious`).
  */
 export async function purgeExpiredPrevious(
   db: Db,

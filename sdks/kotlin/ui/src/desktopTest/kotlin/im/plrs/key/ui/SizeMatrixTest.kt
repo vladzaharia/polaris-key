@@ -220,9 +220,6 @@ internal fun ComposeUiTest.writeShot(out: File?, chrome: String, screen: String,
  * line, and a line that no longer matches fails the test, so the list only shrinks (the lint-debt rule).
  */
 internal val knownMatrixGaps: List<Regex> = listOf(
-    // GNOME's 40 px pills are a fixed height; a larger font scale cuts the label. A floor (heightIn) moves the focus ring
-    // off the pill, because Material's 48 dp interactive floor then sizes the outer box the ring is drawn on.
-    Regex("""Gnome [a-z-]+ \d+x\d+-fs2: text '.*' is cut"""),
     // Content taller than a short window scrolls inside its pane at font scale 2: the controls below the fold are not in view.
     Regex("""Gnome message 844x390-fs2: .* (shows|is not in the first viewport) .*"""),
     Regex("""Windows update-sheet 844x390-fs2: 'All changes in 2\.5\.0' shows .*"""),

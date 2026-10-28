@@ -18,6 +18,7 @@ import type {
   DiscoveryContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
+import { CONNECT_RING_LISTENER, connectRingListener } from "./ringListener.js";
 import { launchGateOn } from "../../core/settings/platformRead.js";
 import { connectIntegration } from "./integration.js";
 import { connectProductDeletion } from "./productDeletion.js";
@@ -31,6 +32,8 @@ export const connectService: ServiceDescriptor = {
     integration: connectIntegration,
     subjectStores: { [CONNECT_RINGS_STORE]: connectRingsStore },
     productDeletion: connectProductDeletion,
+    /** CC-06.3: the primary path that moves the roster epoch. */
+    onDeviceChange: { [CONNECT_RING_LISTENER]: connectRingListener },
   },
   // LG-1: with the launch gate off the routes do not exist (the registry's not-found).
   handle: async (ctx) =>

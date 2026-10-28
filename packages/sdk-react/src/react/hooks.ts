@@ -388,6 +388,9 @@ export interface UsePolarisAuth {
   signIn: PolarisAdapter["signIn"];
   subject: PolarisAdapter["subject"];
   attach: PolarisAdapter["attach"];
+  /** The licence choice an app shows itself after a sign-in answered `choose`
+   *  (identity.choice); see `useLicenseChoice`. */
+  choice: PolarisAdapter["choice"];
   openAccount: PolarisAdapter["openAccount"];
   /** Register a function `signOut()` awaits first. Returns the remover. */
   onBeforeSignOut: PolarisAdapter["onBeforeSignOut"];
@@ -418,6 +421,7 @@ export function usePolarisAuth(): UsePolarisAuth {
       signIn: adapter.signIn,
       subject: () => adapter.subject(),
       attach: (opts) => adapter.attach(opts),
+      choice: adapter.choice,
       openAccount: () => adapter.openAccount(),
       onBeforeSignOut: (hook) => adapter.onBeforeSignOut(hook),
       supportsOidcLogin: state.capabilities.identity.enabled,
