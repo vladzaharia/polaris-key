@@ -13,6 +13,7 @@ import polaris_key
 from polaris_key import AsyncClient
 from polaris_key.devices.store import InMemoryStore
 
+from test_identity_mint import clock  # noqa: F401
 from helpers import BASE_URL, PRODUCT, TOKEN, TRUST, mock_client, routes, sign_config, sign_license
 
 
@@ -62,18 +63,12 @@ def test_methods_are_coroutines_over_the_shared_core() -> None:
     asyncio.run(main())
 
 
-def test_wait_for_sign_in_is_native_and_cancellable(monkeypatch) -> None:
-    real_sleep = asyncio.sleep
-
-    async def fast_sleep(_s):
-        await real_sleep(0)
-
+def test_session_wait_is_awaitable(clock) -> None:
     async def main():
         c = await _create(_handler([{"status": "pending"}, {"status": "ready", "token": TOKEN, "identity": {"name": "Ada"}}]))
-        monkeypatch.setattr(polaris_key.aio.asyncio, "sleep", fast_sleep)
-        prompt = await c.identity.begin_sign_in()
-        r = await c.identity.wait_for_sign_in(prompt)
-        assert r.status == "ready" and r.identity.name == "Ada"
+        session = await c.identity.sign_in.start()
+        r = await session.wait()
+        assert r.kind == "signed_in" and r.identity.name == "Ada"
         await c.aclose()
 
     asyncio.run(main())
@@ -86,32 +81,28 @@ def test_wait_for_sign_in_is_native_and_cancellable(monkeypatch) -> None:
         ({"status": "error"}, "error", "sign-in-failed"),
     ],
 )
-def test_wait_for_sign_in_keeps_the_code_of_a_denied_or_failed_sign_in(monkeypatch, poll, status, code) -> None:
-    real_sleep = asyncio.sleep
-
-    async def fast_sleep(_s):
-        await real_sleep(0)
-
+def test_session_wait_keeps_the_code_of_a_denied_or_failed_sign_in(clock, poll, status, code) -> None:
     async def main():
         c = await _create(_handler([{"status": "pending"}, poll]))
-        monkeypatch.setattr(polaris_key.aio.asyncio, "sleep", fast_sleep)
-        prompt = await c.identity.begin_sign_in()
-        r = await c.identity.wait_for_sign_in(prompt)
-        assert r.status == status and r.code == code
+        session = await c.identity.sign_in.start()
+        with pytest.raises(polaris_key.PolarisError) as e:
+            await session.wait()
+        assert e.value.code == code
         await c.aclose()
 
     asyncio.run(main())
 
 
-def test_cancelling_the_wait_stops_polling() -> None:
+def test_cancelling_the_wait_stops_polling_and_cancels_the_session() -> None:
     async def main():
         c = await _create(_handler([{"status": "pending"}]))
-        prompt = await c.identity.begin_sign_in()
-        task = asyncio.ensure_future(c.identity.wait_for_sign_in(prompt))
+        session = await c.identity.sign_in.start()
+        task = asyncio.ensure_future(session.wait())
         await asyncio.sleep(0.05)
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+        assert session._session._cancelled.is_set()
         await c.aclose()
 
     asyncio.run(main())

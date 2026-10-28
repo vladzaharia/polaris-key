@@ -30083,8 +30083,12 @@ var PY_LIBRARY = {
     code: lines2(
       PY_HEAD(c),
       ``,
-      `result = client.identity.sign_in_with_browser(device_name=${q2(`${c.appName} on this computer`)})`,
-      `if result.status == "ready":`,
+      `session = client.identity.sign_in.start(device_name=${q2(`${c.appName} on this computer`)})`,
+      `print(session.user_code, session.verification_uri)`,
+      `session.reopen()  # opens the system browser`,
+      ``,
+      `result = session.wait()`,
+      `if result.kind == "signed_in":`,
       `    profile = client.license.get_profile()`,
       `    print(profile.name if profile else "Signed in")`
     )

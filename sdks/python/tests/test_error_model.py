@@ -33,7 +33,7 @@ from polaris_key import (
 )
 from polaris_key.core.models import ReleaseRecordDoc
 from polaris_key.devices.store import InMemoryStore
-from polaris_key.identity import SignInPrompt
+from polaris_key.identity import SignInSession
 
 from helpers import BASE_URL, PRODUCT, TOKEN, TRUST, discovery_doc, mock_client, new_keypair
 
@@ -96,15 +96,17 @@ def _client(plane: Plane) -> Any:
     return c
 
 
-def _prompt(c: Any) -> SignInPrompt:
-    return SignInPrompt(
-        deviceCode="dc_" + "x" * 40,
-        userCode="WDJB-MJHT",
-        verificationUri="https://key.example/device",
-        verificationUriComplete="https://key.example/device?user_code=WDJB-MJHT",
-        expiresIn=600,
+def _prompt(c: Any) -> SignInSession:
+    return SignInSession(
+        device_code="dc_" + "x" * 40,
+        user_code="WDJB-MJHT",
+        verification_uri="https://key.example/device",
+        verification_uri_complete="https://key.example/device?user_code=WDJB-MJHT",
+        expires_in=600,
         interval=1,
-        expiresAt=c.core.now() + 600,
+        expires_at=c.core.now() + 600,
+        device_name=None,
+        deps=c.identity._deps,
     )
 
 
@@ -148,13 +150,8 @@ RAISING: List[Tuple[str, Call]] = [
     ("release.changelog", lambda c, t: c.release.changelog()),
     ("release.fetch", lambda c, t: c.release.fetch(_record(), to=os.path.join(t, "a.dmg"))),
     ("distribution.download_model", lambda c, t: c.distribution.download_model()),
-    ("identity.begin_sign_in", lambda c, t: c.identity.begin_sign_in()),
-    ("identity.poll_sign_in", lambda c, t: c.identity.poll_sign_in(_prompt(c))),
-    ("identity.accept_sign_in", lambda c, t: c.identity.accept_sign_in(_prompt(c))),
-    (
-        "identity.sign_in_with_browser",
-        lambda c, t: c.identity.sign_in_with_browser(open_url=lambda u: True),
-    ),
+    ("identity.sign_in.start", lambda c, t: c.identity.sign_in.start()),
+    ("identity.sign_in.session.wait", lambda c, t: _prompt(c).wait(once=True)),
     ("config.mint_token", lambda c, t: c.config.mint_token("musickit")),
     ("commerce.binding", lambda c, t: c.commerce.binding()),
     ("commerce.claim", lambda c, t: c.commerce.claim("steam", {"ticket": "ab", "dlcAppId": "1"})),
@@ -361,16 +358,17 @@ def test_sign_in_errors_carry_the_server_message() -> None:
 
     c.core._client = mock_client(refuse)
     with pytest.raises(PolarisError) as exc:
-        c.identity.begin_sign_in()
+        c.identity.sign_in.start()
     assert (exc.value.code, exc.value.message, exc.value.status) == ("unauthorized", "device mismatch", 401)
-    poll = c.identity.poll_sign_in(_prompt(c))
-    assert (poll.status, poll.message) == ("error", "device mismatch")
+    with pytest.raises(PolarisError) as poll:
+        _prompt(c).wait(once=True)
+    assert (poll.value.code, poll.value.message) == ("sign-in-failed", "device mismatch")
 
     def nested(r: httpx.Request) -> httpx.Response:
         return httpx.Response(403, json={"error": {"code": "identity_disabled", "message": "Sign-in is off."}})
 
     c.core._client = mock_client(nested)
     with pytest.raises(PolarisError) as exc:
-        c.identity.begin_sign_in()
+        c.identity.sign_in.start()
     assert (exc.value.code, exc.value.message) == ("identity_disabled", "Sign-in is off.")
     c.close()

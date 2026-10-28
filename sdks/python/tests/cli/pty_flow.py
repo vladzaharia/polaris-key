@@ -13,6 +13,8 @@ from types import SimpleNamespace
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src"))
 
 from polaris_key.core.errors import PolarisError  # noqa: E402
+from fake_session import FakeSession  # noqa: E402  (a sibling: the script dir is on sys.path)
+from polaris_key.identity.sign_in import SignInOutcome  # noqa: E402
 from polaris_key.license.endpoints import ActivationDeviceLimit  # noqa: E402
 from polaris_key.ui.terminal import flows  # noqa: E402
 from polaris_key.ui.terminal.device import Device  # noqa: E402
@@ -37,26 +39,18 @@ class Source:
         return {"name": NAME, "developerName": "Harbor Audio", "accent": "#369186"}
 
 
-class Prompt:
-    deviceCode = "dc"
-    userCode = CODE
-    verificationUri = URL
-    verificationUriComplete = URL + ("&" if "?" in URL else "?") + "code=" + CODE
-    expiresIn = 600
-    interval = 1
-
-    def __init__(self) -> None:
-        self.expiresAt = int(time.time()) + 600
-
-
 class Identity:
-    def begin_sign_in(self, name=None, confirm_identity=False):
-        return Prompt()
+    def __init__(self) -> None:
+        def behave(token: threading.Event) -> SignInOutcome:
+            if token.wait(EXPIRE):
+                return SignInOutcome(kind="cancelled")
+            return SignInOutcome(kind="expired")
 
-    def wait_for_sign_in(self, prompt, *, cancel: threading.Event, on_confirm=None):
-        if cancel.wait(EXPIRE):
-            raise PolarisError("cancelled", "cancelled")
-        return SimpleNamespace(status="expired")
+        self.sign_in = SimpleNamespace(
+            start=lambda device_name=None, **kw: FakeSession(
+                user_code=CODE, verification_uri=URL, verification_uri_complete=URL + ("&" if "?" in URL else "?") + "code=" + CODE, behave=behave
+            )
+        )
 
 
 def update_client() -> SimpleNamespace:

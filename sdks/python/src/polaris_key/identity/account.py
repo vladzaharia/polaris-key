@@ -183,8 +183,11 @@ class Account:
         forget: Callable[[], None],
         wipe_local: Callable[[], None],
         open_url: Callable[[str], bool],
+        emit: Optional[Callable[..., Any]] = None,
     ) -> None:
         self._ctx = ctx
+        #: ``client.events.emit``: the ``identity`` event kind (signed out, subject changed).
+        self._emit = emit
         self._tokens = tokens
         #: The discovery document: the loaded one, else loads it once.
         self._discover = discover
@@ -275,6 +278,15 @@ class Account:
         """The pairwise subject of the account signed in on this device, or ``None`` (a
         key-only device, or one with no token). The answer is persisted, so it survives a
         restart."""
+        before = self.stored_subject()
+        now = self.fetch_subject()
+        if now != before and self._emit is not None:
+            self._emit("identity", change="subject_changed", subject=now)
+        return now
+
+    def fetch_subject(self) -> Optional[str]:
+        """Ask the Worker for the subject and persist the answer; no event (a sign-in raises its
+        own)."""
         url = self._endpoint("subject")
         token = self._tokens.current
         if not token:
@@ -320,6 +332,8 @@ class Account:
         self._forget()
         if released:
             self._wipe_local()
+        if self._emit is not None:
+            self._emit("identity", change="signed_out", released=released)
         return SignOutResult(released=released)
 
     def open_account(self) -> OpenAccountResult:
@@ -363,7 +377,10 @@ class Account:
             raise PolarisError(ErrorCode.BAD_RESPONSE, "attach answered without a token.")
         self._tokens.set(new_token, "activate")
         subject = body.get("subject") if _is_subject(body.get("subject")) else None
+        before = self.stored_subject()
         self.write_subject(subject)
+        if subject is not None and subject != before and self._emit is not None:
+            self._emit("identity", change="subject_changed", subject=subject)
         return AttachOk(
             subject=subject, attached="claimed" if body.get("attached") == "claimed" else None
         )

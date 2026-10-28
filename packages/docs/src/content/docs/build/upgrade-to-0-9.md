@@ -210,6 +210,11 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 | godot | `identity.sign_in_pending` | `identity.signIn.session.outcome` | 0.9 |
 | godot | `identity.sign_in_confirm` | `identity.signIn.session.outcome` | 0.9 |
 | godot | `identity.sign_in_finished` | `identity.signIn.session.outcome` | 0.9 |
+| python | `identity.sign_in_with_browser` | `identity.signIn.start` | 0.9 |
+| python | `identity.begin_sign_in` | `identity.signIn.start` | 0.9 |
+| python | `identity.poll_sign_in` | `identity.signIn.session.wait` | 0.9 |
+| python | `identity.wait_for_sign_in` | `identity.signIn.session.wait` | 0.9 |
+| python | `identity.accept_sign_in` | `identity.signIn.session.wait` | 0.9 |
 
 <!-- /GENERATED:upgrade-sdk -->
 <!-- prettier-ignore-end -->

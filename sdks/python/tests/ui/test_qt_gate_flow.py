@@ -20,7 +20,7 @@ import pytest
 pytest.importorskip("PySide6.QtQuick")
 
 from polaris_key.core.errors import PolarisError
-from polaris_key.identity.client import SignedInIdentity, SignInPrompt, SignInResult
+from polaris_key.identity.sign_in import SignedInIdentity, SignInOutcome
 from polaris_key.ui.core.theme import Theme
 from polaris_key.ui.qt.gate import run_gate
 from qt_fixtures import TIDEWATER, FakeSource
@@ -55,6 +55,36 @@ class FakeLicense:
         return SimpleNamespace(kind="ok")
 
 
+class FakeSession:
+    """What ``identity.sign_in.start()`` answers: the shown fields and a ``wait`` the test ends."""
+
+    def __init__(self, identity: "FakeIdentity", n: int) -> None:
+        self._identity = identity
+        self.user_code = "WDJB-MJHT"
+        self.verification_uri = "https://polaris.locker/device"
+        self.verification_uri_complete = f"https://polaris.locker/device?user_code=WDJB-MJHT&n={n}"
+        self.expires_in = 600
+        self.interval = 5
+        self.expires_at = int(identity.now) + 600
+
+    def wait(self, timeout: Any = None, *, once: bool = False, confirm: Any = None, cancel_token: Optional[threading.Event] = None) -> Any:
+        ident = self._identity
+        cancel = cancel_token if cancel_token is not None else threading.Event()
+        ident.cancels.append(cancel)
+        ident.waiting.set()
+        while not (ident.finish.is_set() or cancel.is_set()):
+            time.sleep(0.005)
+        if cancel.is_set():
+            return SignInOutcome(kind="cancelled")
+        ident.finish.clear()
+        ident.waiting.clear()
+        if isinstance(ident.result, BaseException):
+            raise ident.result
+        if ident.result.kind == "signed_in":
+            ident.client.st = "ok"
+        return ident.result
+
+
 class FakeIdentity:
     """A sign-in whose wait ends when the test says so (or when it is cancelled)."""
 
@@ -62,41 +92,21 @@ class FakeIdentity:
         self.client = client
         self.begun = 0
         self.begin_error: Optional[PolarisError] = None
-        self.prompts: List[SignInPrompt] = []
+        self.prompts: List[FakeSession] = []
         self.cancels: List[threading.Event] = []
         self.finish = threading.Event()
-        self.result: Any = SignInResult(status="ready", identity=SignedInIdentity("Ada", "ada@example.com"))
+        self.result: Any = SignInOutcome(kind="signed_in", identity=SignedInIdentity("Ada", "ada@example.com"))
         self.waiting = threading.Event()
         self.now = time.time()
+        self.sign_in = SimpleNamespace(start=self._start)
 
-    def begin_sign_in(self, device_name: Optional[str] = None, *, confirm_identity: bool = False) -> SignInPrompt:
+    def _start(self, channel: str = "device-code", **opts: Any) -> FakeSession:
         self.begun += 1
         if self.begin_error is not None:
             raise self.begin_error
-        prompt = SignInPrompt(
-            deviceCode="secret-device-code",
-            userCode="WDJB-MJHT",
-            verificationUri="https://polaris.locker/device",
-            verificationUriComplete=f"https://polaris.locker/device?user_code=WDJB-MJHT&n={self.begun}",
-            expiresIn=600,
-            interval=5,
-            expiresAt=int(self.now) + 600,
-        )
-        self.prompts.append(prompt)
-        return prompt
-
-    def wait_for_sign_in(self, prompt: SignInPrompt, timeout: Any = None, *, cancel: threading.Event, on_confirm: Any = None) -> Any:
-        self.cancels.append(cancel)
-        self.waiting.set()
-        while not (self.finish.is_set() or cancel.is_set()):
-            time.sleep(0.005)
-        if cancel.is_set():
-            raise PolarisError("cancelled", "cancelled")
-        self.finish.clear()
-        self.waiting.clear()
-        if self.result.status == "ready":
-            self.client.st = "ok"
-        return self.result
+        session = FakeSession(self, self.begun)
+        self.prompts.append(session)
+        return session
 
 
 class FakeCore:
@@ -434,7 +444,7 @@ def test_sign_in_methods_then_the_browser_then_the_app(rig):
     r.until("SignIn.handoff")
     assert r.spec.title == "Finish in your browser" and r.spec.progress == -1.0  # the wait is the shimmer
     assert r.texts()[:3] == ["Open browser again", "Cancel", "Use a code instead"] or set(r.texts()) >= {"Open browser again", "Cancel"}
-    assert r.opener.urls == [r.client.identity.prompts[0].verificationUriComplete]
+    assert r.opener.urls == [r.client.identity.prompts[0].verification_uri_complete]
     r.press("signin.handoff.again", "open-browser")
     assert len(r.opener.urls) == 2 and r.client.identity.begun == 1  # reuses the request in flight
     r.client.identity.finish.set()
@@ -467,7 +477,7 @@ def test_no_browser_offers_copy_link_and_a_code(rig):
     r.until("SignInHandoff.no-browser")
     assert r.texts()[0] == "Copy link" and "Use a code instead" in r.texts()
     r.press("signin.handoff.copyLink", "copy-link")
-    assert r.clipboard.value == r.client.identity.prompts[0].verificationUriComplete
+    assert r.clipboard.value == r.client.identity.prompts[0].verification_uri_complete
     assert r.shown == "SignInHandoff.link-copied"
 
 
@@ -520,9 +530,9 @@ def test_a_lapsed_code_is_never_polled_again(rig):
 @pytest.mark.parametrize(
     "result,state,title",
     [
-        (SignInResult(status="error", code="sign-in-denied"), "SignInHandoff.denied", "Sign-in declined"),
-        (SignInResult(status="error", code="sign-in-failed"), "SignInHandoff.failed", "Sign-in failed"),
-        (SignInResult(status="expired"), "SignIn.expired", ""),
+        (PolarisError("sign-in-denied", "declined"), "SignInHandoff.denied", "Sign-in declined"),
+        (PolarisError("sign-in-failed", "failed"), "SignInHandoff.failed", "Sign-in failed"),
+        (SignInOutcome(kind="expired"), "SignIn.expired", ""),
     ],
 )
 def test_a_sign_in_that_ends_badly_says_so_and_offers_a_new_one(rig, result, state, title):

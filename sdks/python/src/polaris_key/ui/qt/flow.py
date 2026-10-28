@@ -6,7 +6,7 @@ SwiftUI, ``useGate`` in React), over the Python client: which screen the person 
 typed, and the client calls that move them on. It draws nothing itself: every screen is a
 ``(view, data)`` from ``polaris_key.ui.core`` (the same functions the ui-matrix pins) that
 :class:`~.kit.KitView` lays out. The client calls that wait (``activate_with_key``,
-``begin_sign_in``, ``wait_for_sign_in``) run on a worker thread and hand their result back to the GUI
+``sign_in.start``, ``wait``) run on a worker thread and hand their result back to the GUI
 thread with ``bridge.post``; a result from a screen the person has since left is dropped.
 
 The routes::
@@ -285,10 +285,10 @@ class GateFlow:
         out: Dict[str, Any] = {"phase": session.phase}
         prompt = session.prompt
         if prompt is not None:
-            out["userCode"] = prompt.userCode
-            out["verificationUri"] = prompt.verificationUri
-            out["expiresIn"] = prompt.expiresIn
-            out["secondsLeft"] = max(0, int(prompt.expiresAt - self._now()))
+            out["userCode"] = prompt.user_code
+            out["verificationUri"] = prompt.verification_uri
+            out["expiresIn"] = prompt.expires_in
+            out["secondsLeft"] = max(0, int(prompt.expires_at - self._now()))
         if session.copied:
             out["copied"] = True
         return out
@@ -521,7 +521,7 @@ class GateFlow:
         self.redraw()
         name = self._device_name
         self._run(
-            lambda: self.client.identity.begin_sign_in(name, confirm_identity=False),
+            lambda: self.client.identity.sign_in.start(device_name=name),
             lambda prompt, error: self._prompted(session, prompt, error),
         )
 
@@ -538,10 +538,10 @@ class GateFlow:
         if session.code_mode:
             self._ticker.start()
         else:
-            session.browser_opened = bool(self._open_url(prompt.verificationUriComplete))
+            session.browser_opened = bool(self._open_url(prompt.verification_uri_complete))
         self.redraw()
         self._run(
-            lambda: self.client.identity.wait_for_sign_in(prompt, cancel=session.cancel),
+            lambda: prompt.wait(cancel_token=session.cancel),
             lambda result, err: self._signed_in(session, result, err),
         )
 
@@ -549,15 +549,12 @@ class GateFlow:
         if session is not self.session:
             return
         if error is not None:
-            if getattr(error, "code", None) == "cancelled":
-                return
-            session.phase = "failed"
+            session.phase = "denied" if getattr(error, "code", None) == "sign-in-denied" else "failed"
         else:
-            status = getattr(result, "status", "error")
-            code = getattr(result, "code", None)
-            session.phase = (
-                "ok" if status == "ready" else "expired" if status == "expired" else "denied" if code == "sign-in-denied" else "failed"
-            )
+            kind = getattr(result, "kind", "error")
+            if kind == "cancelled":
+                return
+            session.phase = "ok" if kind == "signed_in" else "expired" if kind == "expired" else "failed"
         self._ticker.stop()
         if session.phase == "ok":
             self.session = None
@@ -574,7 +571,7 @@ class GateFlow:
         session = self.session
         if session is None or session.prompt is None:
             return
-        url = session.prompt.verificationUriComplete
+        url = session.prompt.verification_uri_complete
         view = getattr(self.kit.bridge, "_view", None)
         link = view.decisions.link if view is not None else None
         if session.code_mode and link is not None and link.url:
@@ -586,7 +583,7 @@ class GateFlow:
         session = self.session
         if session is None or session.prompt is None:
             return
-        self._clipboard.set_text(session.prompt.userCode)
+        self._clipboard.set_text(session.prompt.user_code)
         session.copied = True
         self.redraw()
         qt.QtCore.QTimer.singleShot(2000, lambda: self._uncopy(session))
@@ -595,7 +592,7 @@ class GateFlow:
         session = self.session
         if session is None or session.prompt is None:
             return
-        self._clipboard.set_text(session.prompt.verificationUriComplete)
+        self._clipboard.set_text(session.prompt.verification_uri_complete)
         session.copied = True
         self.redraw()
         qt.QtCore.QTimer.singleShot(2000, lambda: self._uncopy(session))
@@ -612,7 +609,7 @@ class GateFlow:
         if session is None or session.prompt is None or session.phase != "waiting":
             self._ticker.stop()
             return
-        if self._now() >= session.prompt.expiresAt:
+        if self._now() >= session.prompt.expires_at:
             session.cancel.set()
             session.phase = "expired"
             self._ticker.stop()

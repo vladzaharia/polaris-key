@@ -264,6 +264,13 @@ function renderPython(api: Api): string {
       continue; // an instance attribute set in __init__
     } else if (r.handle) {
       attrs.push(`(${q(r.id)}, "ConfigSetting", ${q(r.name)})`);
+    } else if (r.id === "identity.signIn") {
+      // sign_in is a property on the identity client; start is its one verb.
+      attrs.push(`(${q(r.id)}, "IdentityClient", "sign_in")`);
+    } else if (r.id === "identity.signIn.start") {
+      attrs.push(`(${q(r.id)}, "SignInNamespace", "start")`);
+    } else if (r.id.startsWith("identity.signIn.session.")) {
+      attrs.push(`(${q(r.id)}, "SignInSession", ${q(r.name)})`);
     } else if (PY_CLASS[r.ns]) {
       attrs.push(`(${q(r.id)}, ${q(PY_CLASS[r.ns]!)}, ${q(r.name)})`);
     }
@@ -286,6 +293,7 @@ import pytest
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.identity.client import IdentityClient
+from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
 from polaris_key.license.entitlements import EntitlementsClient
 
@@ -294,6 +302,8 @@ CLASSES = {
     "ConfigClient": ConfigClient,
     "ConfigSetting": ConfigSetting,
     "IdentityClient": IdentityClient,
+    "SignInNamespace": SignInNamespace,
+    "SignInSession": SignInSession,
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
 }

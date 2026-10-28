@@ -45,7 +45,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature packs.apply.chunk commerce.receipt
 # @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 # @pkey-feature license.manage
-# @pkey-feature identity.keyentry identity.account identity.attach
+# @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
 
 from __future__ import annotations
@@ -126,41 +126,57 @@ def _act(
 ) -> Dict[str, Any]:
     """THE mapping from transcript verbs and ``expect`` keys onto the Python SDK.
 
-    ``session`` carries the prompt the last ``beginSignIn`` returned between steps."""
+    ``session`` carries the sign-in session the last ``beginSignIn`` started between steps."""
     out: Dict[str, Any] = {}
     action = step["action"]
     args = step["args"]
+    # D-6: the recorded action names map onto the session (`sign_in.start`, `wait`).
     if action == "beginSignIn":
-        p = client.identity.begin_sign_in(device_name=args.get("deviceName"))
-        session["prompt"] = p
-        out["prompt"] = {
-            "userCode": p.userCode,
-            "verificationUri": p.verificationUri,
-            "verificationUriComplete": p.verificationUriComplete,
-            "expiresIn": p.expiresIn,
-            "interval": p.interval,
-            "deviceName": p.deviceName,
-        }
+        try:
+            p = client.identity.sign_in.start(device_name=args.get("deviceName"))
+        except PolarisError as e:
+            # identity-disabled: the refusal is the step's result.
+            out["result"] = e.code
+        else:
+            session["prompt"] = p
+            out["prompt"] = {
+                "userCode": p.user_code,
+                "verificationUri": p.verification_uri,
+                "verificationUriComplete": p.verification_uri_complete,
+                "expiresIn": p.expires_in,
+                "interval": p.interval,
+                "deviceName": p.device_name,
+            }
     elif action == "pollSignIn":
         try:
-            poll = client.identity.poll_sign_in(session["prompt"])
+            o = session["prompt"].wait(once=True)
         except PolarisError as e:
-            # I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
-            if e.code not in ("server-error", "network-error"):
+            if e.code in ("sign-in-denied", "sign-in-failed"):
+                out["result"] = "error"
+                out["code"] = e.code
+            elif e.code in ("server-error", "network-error"):
+                # I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
+                out["result"] = "transient"
+                out["code"] = e.code
+            else:
                 raise
-            out["result"] = "transient"
+        else:
+            if o.kind == "pending":
+                out["result"] = "slow-down" if o.slow_down else "pending"
+                if o.slow_down:
+                    out["interval"] = o.interval
+            else:
+                out["result"] = "ready" if o.kind == "signed_in" else o.kind
+    elif action == "waitForSignIn":
+        try:
+            done = session["prompt"].wait()
+        except PolarisError as e:
+            if e.code not in ("sign-in-denied", "sign-in-failed"):
+                raise
+            out["result"] = "error"
             out["code"] = e.code
         else:
-            out["result"] = poll.status
-            if poll.status == "slow-down":
-                out["interval"] = poll.interval
-            if poll.status == "error" and poll.code:
-                out["code"] = poll.code
-    elif action == "waitForSignIn":
-        done = client.identity.wait_for_sign_in(session["prompt"])
-        out["result"] = done.status
-        if done.status == "error" and done.code:
-            out["code"] = done.code
+            out["result"] = "ready" if done.kind == "signed_in" else done.kind
     elif action == "mintToken":
         try:
             minted = client.config.mint_token(args["recipeId"])

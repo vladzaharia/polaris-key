@@ -24,6 +24,7 @@ from polaris_key.ui.terminal.flows import Terminal
 from polaris_key.ui.terminal.text import to_ansi
 
 from .fixtures import FIXTURES, KEY, Presentation, kit
+from .fake_session import FakeSession, sign_in_of, signed_in
 from .golden_support import env
 
 C = Copy("en")
@@ -122,32 +123,16 @@ def test_device_limit_without_a_terminal_reports_and_stops() -> None:
     assert out.code == 1 and out.data["manageUrl"] == "https://k/m"
 
 
-class _Prompt:
-    deviceCode = "dc"
-    userCode = "WDJB-MJHT"
-    verificationUri = "https://polaris.locker/device"
-    verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT"
-    expiresIn = 600
-    interval = 1
-
-    def __init__(self) -> None:
-        self.expiresAt = int(time.time()) + 600
+URL_COMPLETE = "https://polaris.locker/device?user_code=WDJB-MJHT"
 
 
 class _Identity:
+    """``client.identity``: ``sign_in.start()`` answers a session that finishes after ``finish_after``."""
+
     def __init__(self, finish_after: float = 0.3) -> None:
         self.finish_after = finish_after
-        self.cancelled = False
-
-    def begin_sign_in(self, name: Any = None, confirm_identity: bool = False) -> _Prompt:
-        return _Prompt()
-
-    def wait_for_sign_in(self, prompt: Any, *, cancel: threading.Event, on_confirm: Any = None) -> Any:
-        if cancel.wait(self.finish_after):
-            self.cancelled = True
-            raise PolarisError("cancelled", "cancelled")
-        ident = type("I", (), {"name": "Mara Fennick", "email": "mara@fennick.studio"})()
-        return type("R", (), {"status": "ready", "identity": ident, "attached": None})()
+        self.session = FakeSession(behave=signed_in(after=finish_after))
+        self.sign_in = sign_in_of(self.session)
 
 
 class _SignInClient:
@@ -166,7 +151,7 @@ def test_sign_in_opens_the_browser_switches_to_a_code_and_finishes() -> None:
     t.verb = "login"
     t.kit.env = t.kit.env.but(headless=False)
     out = flows.sign_in(_SignInClient(_Identity(0.4)), t)
-    assert opened == [_Prompt.verificationUriComplete]
+    assert opened == [URL_COMPLETE]
     assert out.code == 0 and out.data["state"] == "signedIn" and out.data["email"] == "mara@fennick.studio"
     screen = t.device.out.getvalue()
     assert C("signin.cli.opening") in screen and "WDJB-MJHT" in screen and C("common.copied") in screen
@@ -258,7 +243,7 @@ def test_browser_flag_opens_the_browser_even_when_headless() -> None:
     t.kit.env = t.kit.env.but(headless=True)
     t.verb = "login"
     out = flows.sign_in(_SignInClient(_Identity(0.2)), t, browser=True)
-    assert out.code == 0 and opened == [_Prompt.verificationUriComplete]
+    assert out.code == 0 and opened == [URL_COMPLETE]
     assert C("signin.cli.opening") in t.device.out.getvalue()
 
 

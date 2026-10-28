@@ -105,20 +105,20 @@ from polaris_key import PolarisKeyClient
 
 
 def sign_in(client: PolarisKeyClient, stop: threading.Event) -> Optional[str]:
-    prompt = client.identity.begin_sign_in(device_name="Build agent 7")
-    # Show prompt.userCode large, prompt.verificationUri as the short address, and the QR of
-    # prompt.verificationUriComplete. Never show prompt.deviceCode.
-    print(prompt.userCode, prompt.verificationUri)
-    result = client.identity.wait_for_sign_in(prompt, timeout=300, cancel=stop)
-    if result.status != "ready":
-        return None  # "expired", or an error with result.message
+    session = client.identity.sign_in.start(device_name="Build agent 7")
+    # Show session.user_code large, session.verification_uri as the short address, and the QR of
+    # session.verification_uri_complete.
+    print(session.user_code, session.verification_uri)
+    outcome = session.wait(timeout=300, cancel_token=stop)
+    if outcome.kind != "signed_in":
+        return None  # "expired" or "cancelled"; a refusal raises
     # Anyone holding the code can finish the sign-in elsewhere: say who signed in.
     profile = client.license.get_profile()
     return f"Signed in as {profile.name} <{profile.email}>" if profile else "Signed in"
 ```
 
-`sign_in_with_browser()` does the same and opens the system browser. `wait_for_sign_in` raises
-`TimeoutError` when `timeout` runs out and `PolarisError("cancelled")` when `cancel` is set. Sign-in
+`session.reopen()` opens the system browser. `wait` raises `TimeoutError` when `timeout` runs out and
+answers `cancelled` when `session.cancel()` is called or `cancel_token` is set. Sign-in
 needs the Identity service; with it off, every call raises `service-unavailable` before any request.
 `client.identity.sign_out()` ends the session.
 

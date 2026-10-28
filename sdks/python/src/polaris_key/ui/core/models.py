@@ -253,14 +253,14 @@ class SignInModel:
         return self.view
 
     def prompted(self, prompt: Any, now: int) -> SignInView:
-        url = self._url_override or getattr(prompt, "verificationUri", None)
+        url = self._url_override or getattr(prompt, "verification_uri", None)
         return self._set(
             component="SignInHandoff" if self.headless else "SignIn",
             state="code" if self.headless else "handoff",
-            user_code=getattr(prompt, "userCode", None),
+            user_code=getattr(prompt, "user_code", None),
             url=url,
-            url_complete=getattr(prompt, "verificationUriComplete", None),
-            seconds_left=max(0, int(getattr(prompt, "expiresAt", now) - now)),
+            url_complete=getattr(prompt, "verification_uri_complete", None),
+            seconds_left=max(0, int(getattr(prompt, "expires_at", now) - now)),
         )
 
     def browser_failed(self) -> SignInView:
@@ -279,8 +279,10 @@ class SignInModel:
         return self._set(copied=False)
 
     def finished(self, result: Any) -> SignInView:
-        status = getattr(result, "status", "error")
-        if status == "ready":
+        """The session's outcome: ``signed_in`` or ``expired`` (a refusal or a failure raises:
+        see :meth:`errored`)."""
+        kind = getattr(result, "kind", "error")
+        if kind == "signed_in":
             ident = getattr(result, "identity", None)
             return self._set(
                 component="SignIn",
@@ -288,15 +290,20 @@ class SignInModel:
                 name=getattr(ident, "name", None),
                 email=getattr(ident, "email", None),
             )
-        if status == "expired":
+        if kind == "expired":
             return self._set(component="SignInHandoff", state="expired", code="sign-in-expired")
-        # The code decides (DENY-01): a refusal is denied, a bare poll error is failed.
-        code = getattr(result, "code", None)
+        if kind == "cancelled":
+            return self.cancelled()
+        return self._set(component="SignIn", state="error", code="sign-in-failed")
+
+    def errored(self, code: str) -> SignInView:
+        """The wait raised ``code``. The code decides (DENY-01): a refusal is denied, a failure
+        after approval is failed, anything else (the network, the Worker) is the error screen."""
         if code == "sign-in-denied":
             return self._set(component="SignInHandoff", state="denied", code="sign-in-denied")
         if code == "sign-in-failed":
             return self._set(component="SignInHandoff", state="failed", code="sign-in-failed")
-        return self._set(component="SignIn", state="error", code="sign-in-failed")
+        return self._set(component="SignIn", state="error", code=code)
 
     def cancelled(self) -> SignInView:
         return self._set(component="SignInHandoff", state="cancelled", code="cancelled")

@@ -73,7 +73,7 @@ _OFFLINE = SimpleNamespace(
     core=SimpleNamespace(version="2.4.1", channel="stable", local_only=False),
     try_discover=lambda: _OfflineDiscovery(),
     license=SimpleNamespace(activate_with_key=lambda key: ActivationError(message="offline"), deactivate=_offline),
-    identity=SimpleNamespace(begin_sign_in=_offline, sign_out=_offline),
+    identity=SimpleNamespace(sign_in=SimpleNamespace(start=lambda device_name=None, **kw: _offline()), sign_out=_offline),
     update=_OfflineUpdate(),
     list_devices=_offline,
 )

@@ -25,6 +25,7 @@ import pytest
 
 from polaris_key.core.errors import PolarisError
 from polaris_key.core.models import DocProfile, SignedInUser
+from polaris_key.identity.sign_in import SignInOutcome
 from polaris_key.license.endpoints import ActivationDeviceLimit
 from polaris_key.ui.core import Theme
 from polaris_key.ui.terminal import flows
@@ -34,6 +35,7 @@ from polaris_key.ui.terminal.flows import Terminal
 from polaris_key.ui.terminal.parts import Kit
 from polaris_key.ui.terminal.text import Span, break_pieces, wrap
 
+from .fake_session import FakeSession, sign_in_of
 from .fixtures import KEY, PRODUCT
 from .golden_support import env
 from .pyterm import Term
@@ -135,33 +137,29 @@ def check(label: str, term: Term, view: List[str], *, code: Optional[str] = None
         assert not (rows[i][0] == "│" and rows[i - 1][0] == "│"), f"{label}: two blank rail rows:\n{text}"
 
 
-class _Prompt:
-    def __init__(self, v: dict) -> None:
-        self.deviceCode = "dc"
-        self.userCode = v["code"]
-        self.verificationUri = v["url"]
-        self.verificationUriComplete = v["url"] + ("&" if "?" in v["url"] else "?") + "code=" + v["code"]
-        self.expiresIn = 600
-        self.interval = 1
-        self.expiresAt = int(time.time()) + 600
+def _session(v: dict, result: Any = None, delay: float = 0.4) -> FakeSession:
+    """The session ``sign_in.start()`` answers: ``result`` (an outcome, or an error to raise) after ``delay``, else it waits for Esc."""
+    behave = None
+    if result is not None:
+
+        def behave(token: Any) -> SignInOutcome:
+            if token is not None and token.wait(delay):
+                return SignInOutcome(kind="cancelled")
+            if isinstance(result, BaseException):
+                raise result
+            return result
+
+    return FakeSession(
+        user_code=v["code"],
+        verification_uri=v["url"],
+        verification_uri_complete=v["url"] + ("&" if "?" in v["url"] else "?") + "code=" + v["code"],
+        behave=behave,
+    )
 
 
 class _Identity:
     def __init__(self, v: dict, result: Any = None, delay: float = 0.4) -> None:
-        self.v = v
-        self.result = result
-        self.delay = delay
-
-    def begin_sign_in(self, name: Any = None, confirm_identity: bool = False) -> _Prompt:
-        return _Prompt(self.v)
-
-    def wait_for_sign_in(self, prompt: Any, *, cancel: threading.Event, on_confirm: Any = None) -> Any:
-        if self.result is not None:
-            if cancel.wait(self.delay):
-                raise PolarisError("cancelled", "cancelled")
-            return self.result
-        cancel.wait(10)
-        raise PolarisError("cancelled", "cancelled")
+        self.sign_in = sign_in_of(_session(v, result, delay))
 
 
 def _client(v: dict, result: Any = None, **extra: Any) -> Any:
@@ -300,7 +298,7 @@ def test_login_in_the_browser_keeps_the_fallback_url_and_the_keys_in_view(cols: 
     snaps: List[List[str]] = []
     t = terminal(term, v, verb="login", keys=[_snap(term, snaps)])
     flows.sign_in(_client(v), t)
-    check(f"login {cols}x{rows} {values}", term, snaps[0], url=_Prompt(v).verificationUriComplete, hints=True)
+    check(f"login {cols}x{rows} {values}", term, snaps[0], url=_session(v).verification_uri_complete, hints=True)
 
 
 @pytest.mark.parametrize("cols,rows,values", MATRIX)
@@ -574,9 +572,9 @@ def test_the_device_limit_shrunk_and_grown_again_shows_a_fresh_launchs_screen(cp
 @pytest.mark.parametrize(
     "label,result,title",
     [
-        ("expired", SimpleNamespace(status="expired"), "Code expired"),
-        ("declined", SimpleNamespace(status="error", code="sign-in-denied"), "Sign-in declined"),
-        ("signed in", SimpleNamespace(status="ready", identity=SimpleNamespace(name="Mara Fennick", email="mara@fennick.studio"), attached=None), "Signed in as Mara Fennick"),
+        ("expired", SignInOutcome(kind="expired"), "Code expired"),
+        ("declined", PolarisError("sign-in-denied", "declined"), "Sign-in declined"),
+        ("signed in", SignInOutcome(kind="signed_in", identity=SimpleNamespace(name="Mara Fennick", email="mara@fennick.studio")), "Signed in as Mara Fennick"),
     ],
 )
 def test_an_end_state_leaves_one_result_block_under_one_header(cols: int, rows: int, label: str, result: Any, title: str) -> None:
@@ -612,7 +610,7 @@ def test_the_device_limit_left_with_esc_keeps_its_header_title_and_closing_row(c
 def test_a_signed_in_name_is_one_unit(cols: int) -> None:
     term = Term(cols, 24)
     t = terminal(term, SHORT, verb="login", keys=[], device_code=True)
-    result = SimpleNamespace(status="ready", identity=SimpleNamespace(name="Mara Fennick", email="mara@fennick.studio"), attached=None)
+    result = SignInOutcome(kind="signed_in", identity=SimpleNamespace(name="Mara Fennick", email="mara@fennick.studio"))
     t.finish(flows.sign_in(_client(SHORT, result), t))
     rows = [r for r, _ in term.all()]
     assert any("Mara Fennick" in r for r in rows), "\n".join(rows)
@@ -625,7 +623,7 @@ def test_the_end_of_a_flow_draws_no_empty_closing_row() -> None:
     assert "└" not in [r for r, _ in term.all()] and term.all()[-1][0].startswith("✓")
     term = Term(80, 24)
     t = terminal(term, SHORT, verb="login", keys=[], device_code=True, headless=True)
-    result = SimpleNamespace(status="ready", identity=SimpleNamespace(name=None, email="mara@fennick.studio"), attached=None)
+    result = SignInOutcome(kind="signed_in", identity=SimpleNamespace(name=None, email="mara@fennick.studio"))
     t.finish(flows.sign_in(_client(SHORT, result), t))
     assert term.all()[-1][0].startswith("✓") and "└" not in [r for r, _ in term.all()]
 

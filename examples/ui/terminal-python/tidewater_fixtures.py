@@ -17,7 +17,7 @@ import os
 import tempfile
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from polaris_key.client import DeviceInfo
@@ -120,34 +120,49 @@ class _License:
         return None
 
 
-@dataclass
-class _Prompt:
-    deviceCode: str = field(default="dc-demo", repr=False)
-    userCode: str = "WDJB-MJHT"
-    verificationUri: str = "https://polaris.locker/device"
-    verificationUriComplete: str = "https://polaris.locker/device?user_code=WDJB-MJHT"
-    expiresIn: int = 600
-    interval: int = 1
-    expiresAt: int = 0
+class _Session:
+    """What ``identity.sign_in.start()`` answers: the shown fields and a ``wait``."""
+
+    user_code = "WDJB-MJHT"
+    verification_uri = "https://polaris.locker/device"
+    verification_uri_complete = "https://polaris.locker/device?user_code=WDJB-MJHT"
+    expires_in = 600
+    interval = 1
+
+    def __init__(self, c: "FixtureClient") -> None:
+        self.c = c
+        self.expires_at = int(time.time()) + 600
+
+    def reopen(self) -> bool:
+        return True
+
+    def cancel(self) -> None:
+        pass
+
+    def wait(self, timeout: Optional[float] = None, *, once: bool = False, confirm: Any = None, cancel_token: Optional[threading.Event] = None) -> Any:
+        if cancel_token is not None and cancel_token.wait(SIGN_IN_SECONDS):
+            return type("Outcome", (), {"kind": "cancelled"})()
+        if cancel_token is None:
+            time.sleep(SIGN_IN_SECONDS)
+        self.c.state.update(activated=True, signed_in=True)
+        _save(self.c.state)
+        ident = type("Identity", (), {"name": "Mara Fennick", "email": "mara@fennick.studio"})()
+        return type("Outcome", (), {"kind": "signed_in", "identity": ident, "activation": None})()
+
+
+class _SignIn:
+    def __init__(self, c: "FixtureClient") -> None:
+        self.c = c
+
+    def start(self, channel: str = "device-code", **opts: Any) -> _Session:
+        time.sleep(0.4)
+        return _Session(self.c)
 
 
 class _Identity:
     def __init__(self, c: "FixtureClient") -> None:
         self.c = c
-
-    def begin_sign_in(self, device_name: Optional[str] = None, *, confirm_identity: bool = False) -> _Prompt:
-        time.sleep(0.4)
-        return _Prompt(expiresAt=int(time.time()) + 600)
-
-    def wait_for_sign_in(self, prompt: Any, timeout: Optional[float] = None, *, cancel: Optional[threading.Event] = None, on_confirm: Any = None) -> Any:
-        if cancel is not None and cancel.wait(SIGN_IN_SECONDS):
-            raise PolarisError("cancelled", "cancelled")
-        if cancel is None:
-            time.sleep(SIGN_IN_SECONDS)
-        self.c.state.update(activated=True, signed_in=True)
-        _save(self.c.state)
-        ident = type("Identity", (), {"name": "Mara Fennick", "email": "mara@fennick.studio"})()
-        return type("Result", (), {"status": "ready", "identity": ident, "attached": None, "message": None})()
+        self.sign_in = _SignIn(c)
 
     def current(self) -> Optional[Dict[str, Any]]:
         return {"name": "Mara Fennick", "email": "mara@fennick.studio"} if self.c.state.get("signed_in") else None

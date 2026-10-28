@@ -58,10 +58,10 @@ class Hostile:
 
 
 class _Prompt:
-    userCode = "WDJB-MJHT"
-    verificationUri = ESC_VURI
-    verificationUriComplete = ESC_VURI + "?user_code=WDJB-MJHT"
-    expiresAt = 600
+    user_code = "WDJB-MJHT"
+    verification_uri = ESC_VURI
+    verification_uri_complete = ESC_VURI + "?user_code=WDJB-MJHT"
+    expires_at = 600
 
 
 def _renders(k: Kit) -> List[List[Line]]:

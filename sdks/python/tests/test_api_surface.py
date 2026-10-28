@@ -6,6 +6,7 @@ import pytest
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.identity.client import IdentityClient
+from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
 from polaris_key.license.entitlements import EntitlementsClient
 
@@ -14,6 +15,8 @@ CLASSES = {
     "ConfigClient": ConfigClient,
     "ConfigSetting": ConfigSetting,
     "IdentityClient": IdentityClient,
+    "SignInNamespace": SignInNamespace,
+    "SignInSession": SignInSession,
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
 }
@@ -41,8 +44,13 @@ ATTRS = [
     ("entitlements.has", "EntitlementsClient", "has"),
     ("entitlements.value", "EntitlementsClient", "value"),
     ("entitlements.all", "EntitlementsClient", "all"),
+    ("identity.signIn", "IdentityClient", "sign_in"),
     ("identity.subject", "IdentityClient", "subject"),
     ("identity.signOut", "IdentityClient", "sign_out"),
+    ("identity.signIn.start", "SignInNamespace", "start"),
+    ("identity.signIn.session.reopen", "SignInSession", "reopen"),
+    ("identity.signIn.session.cancel", "SignInSession", "cancel"),
+    ("identity.signIn.session.wait", "SignInSession", "wait"),
     ("identity.attachLicense", "IdentityClient", "attach"),
     ("identity.openAccount", "IdentityClient", "open_account"),
     ("client.discover", "PolarisKeyClient", "discover"),
@@ -107,6 +115,11 @@ REMOVED = [
     ("license.is_entitled", "LicenseClient", "is_entitled"),
     ("license.entitlement_value", "LicenseClient", "entitlement_value"),
     ("license.get_entitlements", "LicenseClient", "get_entitlements"),
+    ("identity.sign_in_with_browser", "IdentityClient", "sign_in_with_browser"),
+    ("identity.begin_sign_in", "IdentityClient", "begin_sign_in"),
+    ("identity.poll_sign_in", "IdentityClient", "poll_sign_in"),
+    ("identity.wait_for_sign_in", "IdentityClient", "wait_for_sign_in"),
+    ("identity.accept_sign_in", "IdentityClient", "accept_sign_in"),
 ]
 
 @pytest.mark.parametrize("concept,cls,name", ATTRS)
