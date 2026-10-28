@@ -26,6 +26,9 @@ import { CONNECT_ROUTES } from "./routes.js";
 import { CONNECT_RINGS_STORE, connectRingsStore } from "./subjectStore.js";
 import { CONNECT_SETTINGS_SLICE } from "./settings.js";
 
+/** The relay room class, re-exported for the Worker entry point. */
+export { ConnectRelayDO } from "./do/relayDo.js";
+
 export const connectService: ServiceDescriptor = {
   slug: "connect",
   contributes: {

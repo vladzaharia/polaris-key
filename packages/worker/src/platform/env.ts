@@ -52,6 +52,14 @@ export interface Env {
    */
   CLOUD_SYNC: DurableObjectNamespace;
   /**
+   * Cloud Connect's relay room (CC-07.2, `services/connect/do/relayDo.ts`): one SQLite-backed
+   * object per (product, person), named only by `services/connect/do/client.ts`. OPTIONAL: unbound,
+   * the relay answers nothing and discovery says `relay: false`. Bound, it still serves nothing
+   * until `launch.relay` is on.
+   * @inventory binding stores
+   */
+  CONNECT_RELAY?: DurableObjectNamespace;
+  /**
    * Update-health counters (P6-03, `src/core/updateHealthDo.ts`): one object per (product,
    * deliverable, release), reached only through `core/updateHealth.ts`. OPTIONAL: unbound, the
    * report still stores its `updates` but counts nothing, and the funnel and auto-halt read no
