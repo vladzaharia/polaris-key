@@ -902,7 +902,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
     return (
       <>
         {flash ? (
-          <KitRoot kit={kit} bare className={props.className}>
+          <KitRoot kit={kit} bare>
             {toastStrip(kit.ctxFor(view), flash)}
           </KitRoot>
         ) : null}

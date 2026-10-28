@@ -14,7 +14,12 @@ import {
 } from "./contract.js";
 import { platformVariant } from "@polaris-key/ui-core/theme";
 import { rowsOf } from "./lazy.js";
-import { isRefusalStep, refusalLayout, refusalView } from "./refusal.js";
+import {
+  isRefusalStep,
+  REFUSAL_ERROR_KEY,
+  refusalLayout,
+  refusalView,
+} from "./refusal.js";
 export type { SettingsRow } from "./contract.js";
 
 import {
@@ -451,8 +456,12 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
   const p = place(c, layout);
   // The refusal step says its sentence in the body, not in a callout.
   const plainBody = isRefusalStep(view);
-  const errorKeys = plainBody ? [] : p.body.filter(isErrorKey);
-  const body = plainBody ? p.body : p.body.filter((k) => !isErrorKey(k));
+  const errorKeys = plainBody
+    ? p.body.filter((k) => k === REFUSAL_ERROR_KEY)
+    : p.body.filter(isErrorKey);
+  const body = plainBody
+    ? p.body.filter((k) => k !== REFUSAL_ERROR_KEY)
+    : p.body.filter((k) => !isErrorKey(k));
   const heroTitle = layout.header === "hero";
   const ambient = c.resolved.theme.ambient;
   const showIdentity = layout.header !== "none";
@@ -710,7 +719,7 @@ export function renderView(c0: KitCtx): ReactNode {
   // DL7: a loading state inside its delay shows nothing at all (its view carries no copy yet).
   if (isLoading(c.view) && c.view.copy.length === 0) return null;
   const layout = isRefusalStep(c.view)
-    ? refusalLayout(LAYOUTS[c.view.component])
+    ? refusalLayout(LAYOUTS[c.view.component], c.view.component)
     : LAYOUTS[c.view.component];
   // A page of the app's holds a screen-form part as a pane (no stage, no ambient, its own width).
   if (c.embedded && layout.kind === "screen")

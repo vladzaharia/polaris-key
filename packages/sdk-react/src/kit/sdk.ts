@@ -66,6 +66,8 @@ export function useSdkGate(
   const errorRef = useRef<unknown>(null);
   errorRef.current = state.error.license;
   const [toast, setToast] = useState<GateToast | null>(null);
+  // A sign-in that could not start from a refusal step: its callout (never a silent nothing).
+  const [signInFailed, setSignInFailed] = useState(false);
   // The toast lasts a few seconds.
   useEffect(() => {
     if (!toast) return;
@@ -198,12 +200,18 @@ export function useSdkGate(
     if (!adapter) return;
     // The kit starts its own sign-in; the refusal's `signInUrl` is only the fallback for a
     // build that cannot (license_owned, refusal.ts).
-    const fallback = (): void => {
+    setSignInFailed(false);
+    const fallback = (e: unknown): void => {
+      // Only a build that cannot sign in at all falls back to the product's sign-in page; any
+      // other failure is said on the step.
+      const code = (e as { code?: string } | null)?.code;
       const url = safeLink(
         (errorRef.current as { activation?: { signInUrl?: string } } | null)
           ?.activation?.signInUrl,
       );
-      if (url) openLink(url);
+      if (url && (code === "unsupported" || code === "service-disabled"))
+        openLink(url);
+      else setSignInFailed(true);
     };
     void Promise.resolve()
       .then(() => adapter.signInWithOidc())
@@ -225,6 +233,23 @@ export function useSdkGate(
     (k: string) => {
       if (!adapter) return;
       switch (k) {
+        case "signin.key.ownedSignIn": {
+          // Where the build cannot sign in itself, the product's sign-in page is the link.
+          if (!state.capabilities.identity.enabled) {
+            const url = safeLink(
+              (
+                state.error.license as {
+                  activation?: { signInUrl?: string };
+                } | null
+              )?.activation?.signInUrl,
+            );
+            if (url) openLink(url);
+            return;
+          }
+          handleRef.current?.cancel?.();
+          signIn();
+          return;
+        }
         case "welcome.signIn":
         case "signin.again":
         case "signin.handoff.again":
@@ -240,6 +265,9 @@ export function useSdkGate(
           // From a refusal: back to the key field with the refused key still in it.
           setDismissed(errorRef.current);
           setSubmitted(false);
+          // A different key starts from an empty field, as the sign-in form does.
+          setKey("");
+          setSignInFailed(false);
           if (step === "activate") return;
           enter("activate", k);
           return;
@@ -273,8 +301,8 @@ export function useSdkGate(
         }
         case "signin.key.addTitle": {
           // The refusal's manage link: where the key is added to the account.
-          const url = safeLink(state.error.license?.manageUrl);
-          if (url) openLink(url);
+          const url = state.error.license?.manageUrl;
+          if (url) openManage(url, opts.returnUrl, key.trim() || undefined);
           return;
         }
         case "deviceLimit.title":
@@ -339,15 +367,18 @@ export function useSdkGate(
   const input = useMemo(
     () =>
       ctx
-        ? gateInput(state, {
-            step,
-            key,
-            submitted,
-            handle,
-            secondsLeft,
-            dismissed,
-            ...(opts.locale !== undefined ? { locale: opts.locale } : {}),
-          })
+        ? withSignInError(
+            gateInput(state, {
+              step,
+              key,
+              submitted,
+              handle,
+              secondsLeft,
+              dismissed,
+              ...(opts.locale !== undefined ? { locale: opts.locale } : {}),
+            }),
+            signInFailed && step === "activate",
+          )
         : null,
     [
       ctx,
@@ -358,6 +389,7 @@ export function useSdkGate(
       handle,
       secondsLeft,
       dismissed,
+      signInFailed,
       opts.locale,
     ],
   );
@@ -370,6 +402,11 @@ export function useSdkGate(
     edit,
     toast,
   };
+}
+
+/** The gate's input, with a sign-in that failed to start named for the refusal step. */
+function withSignInError(input: UiInput, failed: boolean): UiInput {
+  return failed ? { ...input, error: { code: "sign-in-failed" } } : input;
 }
 
 /** A stand-in adapter for the hooks' sake when no provider is mounted (never called). */
