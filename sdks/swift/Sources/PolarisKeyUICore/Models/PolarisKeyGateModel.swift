@@ -98,7 +98,7 @@ public struct KitGateHandlers {
 
 /// A toast the gate shows over the running app (UI-KITS §4.1 Toast).
 public struct KitGateToast: Identifiable, Sendable {
-    public enum Kind: Sendable { case signedIn, copied, update }
+    public enum Kind: Sendable { case signedIn, copied, update, info }
     public let id = UUID()
     public let kind: Kind
     public let line: CopyLine
@@ -502,7 +502,17 @@ public final class PolarisKeyGateModel {
         activation = Self.kitActivation(result)
         rebuild()
         announce(activate.copy.first)
-        if result.isOK { await reload() }
+        if result.isOK {
+            await reload()
+            // "{n} key entries left" once the app shows (SIGN-IN.md §4.5).
+            if case .ok(_, _, let entries?) = result {
+                showToast(
+                    .info,
+                    CopyLine(
+                        "signin.key.entriesLeftShort",
+                        ["left": .number(max(0, entries.limit - entries.used))]))
+            }
+        }
     }
 
     // MARK: Offline activation
@@ -583,6 +593,8 @@ public final class PolarisKeyGateModel {
     /// names what the person picked, for a failure's sentence.
     public func beginSignIn(method: String? = nil, code: Bool = false) {
         guard let client else { return }
+        // A fresh request replaces a choice whose grant lapsed.
+        choice = nil
         route = .signIn
         signInError = nil
         signIn = KitSignIn(

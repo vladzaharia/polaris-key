@@ -82,7 +82,9 @@ public struct SignInView: View {
             return model.inputs.signIn?.channel == .deviceCode
                 ? CopyLine("signin.handoff.codeTitle") : CopyLine("signin.handoff.title")
         case .choose:
-            return CopyLine("signin.choice.title")
+            // A lapsed grant says so; the list it replaced is gone.
+            return model.licenseChoice.state == .grantExpired
+                ? CopyLine("signin.handoff.tooLong") : CopyLine("signin.choice.title")
         case .replace:
             return CopyLine("signin.replace.open")
         case .key:
@@ -151,6 +153,8 @@ public struct SignInView: View {
                 KitText(CopyLine("signin.handoff.finishing"), .meta, color: .muted)
             }
             .accessibilityElement(children: .combine)
+        case .choose where model.licenseChoice.state == .grantExpired:
+            EmptyView()
         case .choose:
             LicenseChoiceView(
                 screen: model.licenseChoice, choices: model.inputs.choices,
@@ -166,7 +170,7 @@ public struct SignInView: View {
                     confirmInSystem: true,
                     onReplaceDevice: replaceDevice,
                     onBrowser: replaceInBrowser,
-                    cancel: Self.isMac ? { cancelSignInStep() } : nil)
+                    cancel: nil)
             }
         case .key:
             ActivateBody(
@@ -245,6 +249,10 @@ public struct SignInView: View {
                 KitButton(line: CopyLine("signin.again"), kind: .primary) { model.beginSignIn() }
                     .keyboardShortcut(.defaultAction)
                 cancelButton
+            case .choose where model.licenseChoice.state == .grantExpired:
+                KitButton(line: CopyLine("signin.again"), kind: .primary) { model.beginSignIn() }
+                    .keyboardShortcut(.defaultAction)
+                cancelButton
             case .choose:
                 // Every license full: Replace a device in the app when the choice runs in it and a
                 // license allows it, else on the card, which comes back to this form (SIGN-IN.md
@@ -269,7 +277,11 @@ public struct SignInView: View {
                     ) { open(link) }
                     .keyboardShortcut(.defaultAction)
                 }
-                if model.licenseChoice.shows("signin.choice.continue") {
+                // A raced list keeps its primary: the person picks again and goes on.
+                if model.licenseChoice.shows("signin.choice.continue")
+                    || (model.licenseChoice.state == .raced
+                        && model.inputs.choices?.choices.contains { !$0.isFull } == true)
+                {
                     KitButton(
                         line: CopyLine("signin.choice.continue"), kind: .primary,
                         busy: model.choice?.phase == .working
@@ -292,8 +304,18 @@ public struct SignInView: View {
                 .keyboardShortcut(.defaultAction)
                 cancelButton
             case .replace:
-                // On a Mac Cancel sits in the same row as Replace… (inside the list's view).
-                if !Self.isMac { cancelButton }
+                // Back returns to the list with the grant intact; Cancel leaves the whole flow.
+                KitButton(
+                    line: CopyLine("signin.replace.back"), kind: .secondary,
+                    action: {
+                        if model.choice != nil { model.closeChoiceReplace() } else { cancelSignInStep() }
+                    }
+                )
+                .keyboardShortcut(.cancelAction)
+                KitButton(line: CopyLine("common.cancel"), kind: .quiet) {
+                    model.cancelSignIn()
+                    onClose?()
+                }
             }
         }
     }
@@ -626,6 +648,7 @@ public struct LicenseChoiceView: View {
     /// Told on every pick, so a live model follows the view.
     let onSelect: ((String) -> Void)?
     @State private var selected: String?
+    @AccessibilityFocusState private var racedFocused: Bool
     @Environment(\.polarisKeyStrings) private var strings
 
     public init(
@@ -646,6 +669,16 @@ public struct LicenseChoiceView: View {
                 }
                 if screen.state == .loading {
                     LoadingIndicator(CopyLine("common.loading"))
+                }
+                ForEach(screen.copy.filter { $0.key.hasSuffix(".raced") }, id: \.key) { line in
+                    KitText(line, .meta, color: .default)
+                        .padding(style.space(.md))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: style.groupRadius, style: .continuous)
+                                .fill(style.palette.sunken))
+                        .accessibilityFocused($racedFocused)
+                        .onAppear { racedFocused = true }
                 }
                 if let rows = choices?.choices, !rows.isEmpty {
                     VStack(spacing: 0) {
@@ -668,7 +701,7 @@ public struct LicenseChoiceView: View {
                     screen.copy.filter {
                         $0.key.hasPrefix("signin.choice.allFull")
                             || $0.key == "signin.choice.noneReplaceable"
-                            || $0.key.hasSuffix(".raced") || $0.key.hasPrefix("signin.none")
+                            || $0.key.hasPrefix("signin.none")
                     }, id: \.key
                 ) { line in
                     KitText(line, .meta, color: .default)
