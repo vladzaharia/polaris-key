@@ -385,6 +385,9 @@ export class PolarisKeyClient {
       void this.cloudSyncApi.onIdentity(e).catch(() => undefined);
     });
     this.identity.onBeforeSignOut(() => this.cloudSyncApi.beforeSignOut());
+    // Connect stops first, bounded (D-12): a session must not outlive the roster it was admitted
+    // under, and a host callback that holds it up cannot hold the sign-out.
+    this.identity.onBeforeSignOut(() => this.cloudConnect.stopForSignOut());
     // Signing out leaves the person's devices: the roster and K_disc are not this device's to keep.
     this.identity.onBeforeSignOut(() => this.connect.leave());
     this.commerce = new CommerceClient(this.core, this.tokens, () =>

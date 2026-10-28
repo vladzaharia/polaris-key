@@ -125,6 +125,7 @@ import {
   type CloudConnectClient,
   type ConnectClient,
 } from "./connect/index.js";
+import { stopForSignOut as stopCloudConnectForSignOut } from "./connect/signout.js";
 import { clientBackendAction } from "@polaris-key/client-core/backend";
 import type {
   BinaryMethod,
@@ -2320,7 +2321,11 @@ export class BrowserAdapter implements PolarisAdapter {
     if (this.cloud_) return this.cloud_;
     if (!this.bearer)
       return (this.cloud_ = unsupportedCloudConnect("runtime", COOKIE_DETAIL));
-    return (this.cloud_ = createCloudConnect(this.connect));
+    const cloud = (this.cloud_ = createCloudConnect(this.connect));
+    // Connect stops before the server hears of the sign-out, within a bound (D-12): a session
+    // must not outlive the roster it was admitted under, and a stuck stop cannot hold sign-out.
+    this.bearer.onBeforeSignOut(() => stopCloudConnectForSignOut(cloud));
+    return cloud;
   }
 
   /**
