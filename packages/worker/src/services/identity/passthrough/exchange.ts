@@ -353,7 +353,10 @@ export async function handleExchange(ctx: {
       subject: found.subject,
       email: found.email,
       deviceId,
-      scope: resolveScope(undefined, product) ?? [],
+      // What the person consented to, never more: a narrowed consent stays narrowed.
+      scope: (resolveScope(undefined, product) ?? []).filter((c) =>
+        (consent.claims ?? []).includes(c),
+      ),
       licenseChoice: choice,
       choice: null,
       deviceName: form.get("device_name") ?? undefined,

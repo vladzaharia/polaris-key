@@ -239,7 +239,7 @@ async function seedConsent(accountId: string): Promise<void> {
   await h.db.run(
     `INSERT INTO account_product_grants
        (account_id, product, claims_json, granted_at, modified_at, scope_hash)
-     VALUES (?, ?, '[]', ?, ?, ?)
+     VALUES (?, ?, '["profile","email"]', ?, ?, ?)
      ON CONFLICT (account_id, product) DO UPDATE SET scope_hash = excluded.scope_hash`,
     accountId,
     SLUG,
@@ -636,6 +636,20 @@ describe("L-1: consent on the exchange", () => {
     // The next device's exchange is silent: consent stands.
     const again = await exchange(google(), { device: DEVICE_2 });
     expect(again.text.slice(0, 200)).toContain("access_token");
+  });
+
+  it("a narrowed consent stays narrowed on every later exchange, and the grant is audited without a token", async () => {
+    const { grant } = await confirmed();
+    const res = await complete({ grant, consent: { claims: ["email"] } });
+    expect(((await res.json()) as { scope: string }).scope).toBe("email");
+    const next = await exchange(google(), { device: DEVICE_2 });
+    expect(next.body.scope).toBe("email");
+    const audit = await h.db.all<{ summary: string; actor_sub: string }>(
+      "SELECT summary, actor_sub FROM audit WHERE action = 'signin.consent.granted'",
+    );
+    expect(audit).toHaveLength(1);
+    expect(audit[0]!.summary).toContain("email");
+    expect(JSON.stringify(audit)).not.toContain(GOOGLE_SUB);
   });
 
   it("a missing or foreign consent is 400 bad_request and leaves the grant open", async () => {

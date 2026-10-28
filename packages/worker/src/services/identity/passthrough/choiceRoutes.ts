@@ -412,6 +412,19 @@ export async function handleChoice(
         ],
       },
     ]);
+    await appendAudit(db, {
+      product: product.slug,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: taken.subject,
+      actor_name: null,
+      actor_email: null,
+      action: "signin.consent.granted",
+      target_kind: "product",
+      target_id: product.slug,
+      parent_id: null,
+      summary: `Granted ${granted.join(", ") || "no claims"} to the app (scope ${taken.consent.scopeHash})`,
+    });
   }
 
   await appendAudit(db, {
@@ -425,7 +438,9 @@ export async function handleChoice(
     target_kind: "device",
     target_id: deviceId,
     parent_id: bound.licenseId === NO_LICENSE_ID ? null : bound.licenseId,
-    summary: `Chose a license in the app (${choice?.kind ?? "none"})`,
+    summary: choice
+      ? `Chose a license in the app (${choice.kind})`
+      : "Confirmed consent",
   });
   return noStore(
     json(

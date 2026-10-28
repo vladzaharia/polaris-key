@@ -134,6 +134,8 @@ export async function consentState(
   scopeHash: string;
   firstTime: boolean;
   changed: boolean;
+  /** The claims the person granted, when a consent row stands (else `null`). */
+  claims: string[] | null;
 }> {
   const license = product.services.license.enabled;
   const cloudSync = cloudSyncOn(product);
@@ -148,8 +150,11 @@ export async function consentState(
   if (cloudSync) items.push({ kind: "cloudSync" });
   items.push({ kind: "profile", claims: [...CONSENT_PROFILE_CLAIMS] });
   const scopeHash = await askedScopeHash(product);
-  const grant = await db.first<{ scope_hash: string | null }>(
-    "SELECT scope_hash FROM account_product_grants WHERE account_id = ? AND product = ?",
+  const grant = await db.first<{
+    scope_hash: string | null;
+    claims_json: string;
+  }>(
+    "SELECT scope_hash, claims_json FROM account_product_grants WHERE account_id = ? AND product = ?",
     accountId,
     product.slug,
   );
@@ -159,7 +164,17 @@ export async function consentState(
     firstTime: grant === null,
     // A consent recorded before scopes were (`scope_hash` NULL) asks once more, to record one.
     changed: grant !== null && grant.scope_hash !== scopeHash,
+    claims: grant ? parseClaims(grant.claims_json) : null,
   };
+}
+
+function parseClaims(raw: string): string[] {
+  try {
+    const v: unknown = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((c) => typeof c === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 /** `GET /api/signin/requests/:handle/consent`, for the signed-in `accountId`. */
