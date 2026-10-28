@@ -50,6 +50,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 import java.net.InetAddress
 import java.net.ServerSocket
@@ -73,6 +74,9 @@ private const val MISS_CACHE = 1024
 private const val MILLIS = 1000
 private const val OPEN_GRACE_SECONDS = 5
 private const val BACKLOG = 128
+
+/** `stop()` gives up waiting after this long, so a blocked host callback cannot hang sign-out. */
+private const val STOP_TIMEOUT_MILLIS = 15_000L
 
 /** A roster device seen on the network. */
 public data class LanPeer(val deviceId: String, val host: String, val port: Int)
@@ -207,30 +211,32 @@ internal class LanService private constructor(
             if (stopped) return
             stopped = true
         }
-        docs.close()
-        cancelEpoch?.invoke()
-        cancelEpoch = null
-        val socks = synchronized(lock) { pending.toList() }
-        for (s in socks) abort(s)
-        val open = synchronized(lock) { sessions.toList() }
-        for (s in open) {
-            try {
-                s.close()
-            } catch (e: Exception) {
-                // the session is going away anyway
+        withTimeoutOrNull(STOP_TIMEOUT_MILLIS) {
+            docs.close()
+            cancelEpoch?.invoke()
+            cancelEpoch = null
+            val socks = synchronized(lock) { pending.toList() }
+            for (s in socks) abort(s)
+            val open = synchronized(lock) { sessions.toList() }
+            for (s in open) {
+                try {
+                    s.close()
+                } catch (e: Exception) {
+                    // the session is going away anyway
+                }
             }
+            quiet { adv?.stop() }
+            quiet { browseHandle?.stop() }
+            try {
+                server?.close()
+            } catch (e: IOException) {
+                // already closed
+            }
+            adv = null
+            browseHandle = null
+            val ls = synchronized(lock) { links.toList() }
+            for (l in ls) quiet { l.close() }
         }
-        quiet { adv?.stop() }
-        quiet { browseHandle?.stop() }
-        try {
-            server?.close()
-        } catch (e: IOException) {
-            // already closed
-        }
-        adv = null
-        browseHandle = null
-        val ls = synchronized(lock) { links.toList() }
-        for (l in ls) quiet { l.close() }
         if (ownsScope) scope.cancel()
     }
 
