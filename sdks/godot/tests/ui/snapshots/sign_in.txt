@@ -33,7 +33,7 @@ Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2
 Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "Is this you?"
 Card/Scroll/Stack/Body/Info/Steps/Account/Avatar/Initials: Label "A"
 Card/Scroll/Stack/Body/Info/Steps/Account/Who/Name: Label "Ada Lovelace"
-Card/Scroll/Stack/Body/Info/Steps/Account/Who/Email: Label "ada@example.com"
+Card/Scroll/Stack/Body/Info/Steps/Account/Who/Email: Label "ada@mail.io"
 Card/Scroll/Stack/Body/Info/Steps/AttachLicense: CheckButton "Also attach this device's license to my account" [focus 1]
 Card/Scroll/Stack/Body/Info/Actions/Continue: Button "Continue" [focus 2]
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]

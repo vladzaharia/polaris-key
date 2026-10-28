@@ -85,6 +85,8 @@ const TIGHT_CASES := [
 	# A game's 22 px theme with unspaced Japanese on a 390 dp wide phone: the reply's Import is a scroll away.
 	["offline", "custom", "1170x2532@3"],
 	["gate.offline", "custom", "1170x2532@3"],
+	# Four large-type words stack taller than the phone's page: Link, the auto step's primary, is a scroll away.
+	["sign_in.auto_link", "native36", "1170x2532@3"],
 	["activation", "custom", "pixel-art canvas_items 640x360 keep"],
 	["activation", "native", "pixel-art canvas_items 640x360 keep"],
 	["activation", "native36", "640x360"],
@@ -277,6 +279,13 @@ const SCREENS := [
 	["gate.update", "gate", "version-too-old with a store action", "full"],
 	["activation", "activation", "license on, identity on, enrolment on, native", "full"],
 	["activation.device_limit", "activation", "device limit, replace a device (QR)", "full", "pad"],
+	["activation.key_limit", "activation", "key-entry limit, add it in Polaris Locker (button)", "full"],
+	["activation.key_limit_qr", "activation", "key-entry limit, add it in Polaris Locker (QR)", "full", "pad"],
+	["activation.license_owned", "activation", "license in another account", "full"],
+	["sign_in.auto_link", "sign_in_step", "link offer, per developer", "full"],
+	["sign_in.auto_confirm", "sign_in_step", "confirm, the account's email", "full"],
+	["sign_in.nearby_wait", "sign_in_step", "nearby wait", "full"],
+	["nearby.ask", "nearby", "ask", "full"],
 	["offline", "offline", "native", "full"],
 	["boot", "boot", "syncing", "full"],
 	["boot.waiting", "boot", "waiting needs-activation", "full"],

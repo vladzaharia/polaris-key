@@ -141,6 +141,9 @@ var _manage_caption: Label
 var _limit_actions: BoxContainer
 var _again: Button
 var _other_key: Button
+## The focused key refusal ("key-entry-limit" or "license-owned"), or "": drawn in the limit view's
+## box as a step of its own (ui-matrix v7 Activate/key-entry-limit and Activate/license-owned).
+var refusal := ""
 ## The last result's kind.
 var last_kind: StringName = &""
 var sign_in_dialog: PKeySignInDialog
@@ -238,6 +241,9 @@ func _build() -> void:
 	_limit_actions = actions_row(_limit_right, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_again = button(_limit_actions, "TryAgain", _on_again, "PKeyPrimary")
 	_other_key = button(_limit_actions, "DifferentKey", _on_other_key)
+	# A long label (German, a game's large type) wraps rather than widening the card.
+	for b in [_manage, _again, _other_key]:
+		(b as Button).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sign_in_dialog = PKeySignInDialog.new()
 	sign_in_dialog.auto_sdk = false
 	sign_in_dialog.confirm_identity = confirm_identity
@@ -297,8 +303,13 @@ func squeeze_max() -> int:
 	return 4
 
 
+## True while the device-limit view or a focused key refusal is on screen.
+func in_limit_view() -> bool:
+	return refusal != "" or not limit.is_empty()
+
+
 func _screen_key() -> String:
-	return "%s|%s" % [mode, "limit" if not limit.is_empty() else ""]
+	return "%s|%s" % [mode, "limit" if in_limit_view() else ""]
 
 
 ## The width this panel wants (logical pixels, without a host card's padding): two panes on a wide
@@ -315,7 +326,7 @@ func preferred_width() -> float:
 
 ## The device-limit view's two columns (the state, the way out): on a landscape panel with room.
 func _limit_side_by_side() -> bool:
-	if limit.is_empty() or mode != "main" or phone_screen() or not bool(layout_metrics().get("landscape", false)):
+	if not in_limit_view() or (refusal != "" and manage_presentation() != "qr") or mode != "main" or phone_screen() or not bool(layout_metrics().get("landscape", false)):
 		return false
 	# Only when the width this panel really gets holds both columns (a host card around it can be
 	# narrower than the screen): each column keeps most of a single column's width.
@@ -323,7 +334,7 @@ func _limit_side_by_side() -> bool:
 
 
 func _two_panes() -> bool:
-	return bool(layout_metrics().get("wide", false)) and show_product and limit.is_empty() and not phone_screen()
+	return bool(layout_metrics().get("wide", false)) and show_product and not in_limit_view() and not phone_screen()
 
 
 func _apply_width(width: float) -> void:
@@ -385,7 +396,7 @@ func _arrange(m: Dictionary) -> void:
 	_form.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	# On a phone's own page (this panel outermost) the product and the lede head the page and the
 	# form docks to the bottom, the primary on top (DL1), as the gate's does.
-	var form_docked := phone_bleed() and mode == "main" and limit.is_empty()
+	var form_docked := phone_bleed() and mode == "main" and not in_limit_view()
 	if form_docked:
 		_product.hero = true
 		_product.as_title = true
@@ -398,10 +409,10 @@ func _arrange(m: Dictionary) -> void:
 	_extras.add_theme_constant_override("h_separation", roundi(role("inline_gap")))
 	_extras.add_theme_constant_override("v_separation", 0)
 	# The lede leads the form wherever the product does not carry it to the top of a phone's page.
-	show_text(_form_lede, lede_text() if show_lede and mode == "main" and limit.is_empty() and not outer_view().phone_bleed() and squeeze_level() < 1 else "")
+	show_text(_form_lede, lede_text() if show_lede and mode == "main" and not in_limit_view() and not outer_view().phone_bleed() and squeeze_level() < 1 else "")
 	# A full license on a landscape panel: the state on one side, the way out on the other.
 	set_columns(_limit_cols, _limit_side_by_side())
-	_spacer.visible = phone_screen() and not limit.is_empty()
+	_spacer.visible = phone_screen() and in_limit_view()
 	# On a phone's screen a dialog fills the page, so it can dock its actions to the bottom.
 	var fill := Control.SIZE_EXPAND_FILL if phone_screen() else Control.SIZE_FILL
 	sign_in_dialog.size_flags_vertical = fill
@@ -428,8 +439,22 @@ func _arrange(m: Dictionary) -> void:
 	# a QR code instead of the button, Try again is the primary.
 	_again.theme_type_variation = &"" if _manage.visible else &"PKeyPrimary"
 	_manage.theme_type_variation = &"PKeyPrimary"
+	_other_key.theme_type_variation = &""
+	_other_key.remove_theme_font_size_override("font_size")
+	if refusal != "":
+		# Sign in is the one primary; the add-key link sits between it and Use a different key.
+		_again.theme_type_variation = &"PKeyPrimary"
+		_manage.theme_type_variation = &""
+		# Use a different key is the quiet way out: a link, which has room on a large-type phone.
+		_other_key.theme_type_variation = &"PKeyLink"
+		_fit_font(_other_key)
+		place(_manage, _limit_actions, 1)
+		# The QR (a pad-only device) sits under the actions, so Sign in is always the first thing.
+		_limit_right.move_child(_remedy, _limit_right.get_child_count() - 1)
+		return
 	# On a phone the three actions dock together at the bottom, the primary on top.
 	var docked := phone_screen() and not limit.is_empty()
+	_limit_right.move_child(_remedy, 0)
 	if docked:
 		place(_manage, _limit_actions, 0)
 	else:
@@ -467,7 +492,7 @@ func capabilities() -> Dictionary:
 func _render() -> void:
 	var t := c()
 	var caps := capabilities()
-	var in_limit := not limit.is_empty() and mode == "main"
+	var in_limit := in_limit_view() and mode == "main"
 	_main.visible = mode == "main" and not in_limit
 	_limit_box.visible = in_limit
 	sign_in_dialog.visible = mode == "sign-in"
@@ -520,7 +545,7 @@ func _render_store_only(t: PKeyUiCopy, caps: Dictionary) -> void:
 	show_text(_store_note, (_restore_note + "\n" if _restore_note != "" else "") + t.text("store_only", [String(PKeyUiTheme.product_identity()["name"]) if String(PKeyUiTheme.product_identity()["name"]) != "" else t.text("store_only_game"), store]) if none else "")
 	var wired: bool = sdk != null and sdk.get("commerce") != null and String(sdk.commerce.current_store()) in ["app-store", "steam"]
 	show_text(_restore, t.text("purchase_restore") if none and wired else "")
-	if none and mode == "main" and limit.is_empty() and not _warned_store and sdk != null and sdk.get("core") != null:
+	if none and mode == "main" and not in_limit_view() and not _warned_store and sdk != null and sdk.get("core") != null:
 		_warned_store = true
 		push_warning("Polaris Key: this build (%s) offers no way to activate (key entry is hidden on store builds, and the Identity service is not enabled), so the gate shows only 'Get the game from the store'. Enable Identity for the product, or sell the game through the store's own purchase and PolarisKey.commerce." % store)
 
@@ -550,7 +575,10 @@ func _on_restore() -> void:
 
 
 func _render_limit(t: PKeyUiCopy) -> void:
-	if limit.is_empty():
+	if not in_limit_view():
+		return
+	if refusal != "":
+		_render_refusal(t)
 		return
 	# The device-limit view leads with the product whoever hosts it: a host's own product pane gives
 	# way to it (the gate hides its pane while a limit shows).
@@ -596,12 +624,53 @@ func _render_limit(t: PKeyUiCopy) -> void:
 	_other_key.text = t.text("different_key")
 
 
+## A button's label never wraps below its words' width, so on a phone in a game's large type the
+## quiet button would be wider than the card: shrink its type to what the room allows.
+func _fit_font(b: Button) -> void:
+	b.remove_theme_font_size_override("font_size")
+	var room := content_room().x
+	var need := b.get_combined_minimum_size().x
+	if room > 0.0 and need > room:
+		var size := b.get_theme_font_size("font_size")
+		b.add_theme_font_size_override("font_size", maxi(roundi(size * room / need) - 1, 8))
+
+
+## The focused key refusal (ui-matrix v7): the product, a title and one sentence, then Sign in
+## (the primary, the kit's own), "Add it in Polaris Locker" for the limit (a QR with its caption on a
+## pad-only device), and Use a different key (quiet).
+func _render_refusal(t: PKeyUiCopy) -> void:
+	# Short on room, the product header gives way before the screen scrolls.
+	_limit_product.visible = squeeze_level() < 2
+	_limit_product.refresh()
+	var limit_kind := refusal == "key-entry-limit"
+	_limit_title.text = t.text("refusal_limit_title" if limit_kind else "refusal_owned_title")
+	_limit_lede.text = t.text("refusal_limit_lede" if limit_kind else "refusal_owned_lede")
+	_limit_lede.visible = squeeze_level() < 3
+	_seats.visible = false
+	var as_qr := manage_presentation() == "qr"
+	var has_link := limit_kind and manage_url != ""
+	_manage.text = t.text("add_in_locker")
+	leaves_app(_manage)
+	_manage.add_theme_constant_override("h_separation", 0)
+	_manage.visible = has_link and not as_qr
+	_manage_qr.text = manage_url if has_link and as_qr else ""
+	_manage_qr.visible = has_link and as_qr and not _manage_qr.encode_failed
+	_manage_qr.get_parent().visible = _manage_qr.visible
+	show_text(_manage_caption, t.text("add_in_locker_scan") if _manage_qr.visible else "")
+	_remedy.visible = _manage_qr.visible
+	_again.text = t.text("sign_in")
+	_again.visible = capabilities()["sign_in"]
+	_other_key.text = t.text("different_key")
+
+
 ## The controls in focus order for the form on screen now.
 func _focus_chain() -> Array:
 	if mode == "sign-in":
 		return sign_in_dialog._focus_chain()
 	if mode == "offline":
 		return offline_dialog._focus_chain()
+	if refusal != "":
+		return [_again, _manage, _other_key]
 	if not limit.is_empty():
 		return [_manage, _again, _other_key]
 	if pad_only():
@@ -615,6 +684,8 @@ func _initial_focus() -> Control:
 		return sign_in_dialog._initial_focus()
 	if mode == "offline":
 		return offline_dialog._initial_focus()
+	if refusal != "":
+		return _again if is_focusable(_again) else _other_key
 	if not limit.is_empty():
 		return _manage if is_focusable(_manage) else _again
 	if pad_only() and is_focusable(_sign_in):
@@ -645,6 +716,7 @@ func show_result(r: PKeyActivationResult, key := "", slot := "key") -> void:
 	last_kind = r.kind if r != null else &""
 	if r != null and r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT:
 		limit = {"used": int(r.device_count) if r.device_count != null else -1, "limit": int(r.limit) if r.limit != null else -1}
+		refusal = ""
 		message = ""
 		message_ok = false
 		refresh_view()
@@ -653,6 +725,15 @@ func show_result(r: PKeyActivationResult, key := "", slot := "key") -> void:
 		outer_view().ensure_focus.call_deferred()
 		return
 	limit = {}
+	refusal = ""
+	if r != null and (r.kind == PKeyActivationResult.KIND_KEY_ENTRY_LIMIT or r.kind == PKeyActivationResult.KIND_LICENSE_OWNED):
+		# A refusal a different key cannot fix is a focused step of its own (DL6), not a callout under the field.
+		refusal = String(r.kind)
+		message = ""
+		message_ok = false
+		refresh_view()
+		outer_view().ensure_focus.call_deferred()
+		return
 	_message_is_data = false
 	var m := PKeyActivationController.message_for(r)
 	message = c().text(m[0], m[1])
@@ -684,6 +765,7 @@ func show_message(text: String, slot := "key") -> void:
 	message_danger = true
 	message_slot = slot
 	limit = {}
+	refusal = ""
 	refresh_view()
 	if text != "" and slot == "key":
 		_key.grab_focus.call_deferred()
@@ -697,6 +779,7 @@ func show_message_text(text: String) -> void:
 	message_danger = true
 	message_slot = "key"
 	limit = {}
+	refusal = ""
 	refresh_view()
 	_key.grab_focus.call_deferred()
 
@@ -744,7 +827,18 @@ func _on_manage() -> void:
 
 
 func _on_again() -> void:
+	if refusal != "":
+		# The focused refusal's primary: the kit's own sign-in.
+		refusal = ""
+		manage_url = ""
+		_on_sign_in()
+		return
+	_reset_limit()
+
+
+func _reset_limit() -> void:
 	limit = {}
+	refusal = ""
 	manage_url = ""
 	message = ""
 	refresh_view()
@@ -753,7 +847,7 @@ func _on_again() -> void:
 
 func _on_other_key() -> void:
 	_key.text = ""
-	_on_again()
+	_reset_limit()
 
 
 func _on_free() -> void:
@@ -813,8 +907,8 @@ func _back() -> void:
 
 
 func _cancel() -> bool:
-	if not limit.is_empty():
-		_on_again()
+	if in_limit_view():
+		_reset_limit()
 		return true
 	if mode != "main":
 		_back()

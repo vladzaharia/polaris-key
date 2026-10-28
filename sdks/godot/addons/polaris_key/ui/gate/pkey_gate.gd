@@ -227,13 +227,13 @@ func _build() -> void:
 ## Two panes: the product on its own pane beside the activation form, on a wide panel, with the
 ## form on screen (not a dialog inside it, not a full license, not a network failure).
 func _two_panes() -> bool:
-	return activation.visible and activation.mode == "main" and activation.limit.is_empty() and bool(layout_metrics().get("wide", false)) and not phone_bleed()
+	return activation.visible and activation.mode == "main" and not activation.in_limit_view() and bool(layout_metrics().get("wide", false)) and not phone_bleed()
 
 
 ## The activation panel's own sub-screens (sign-in, offline activation, a full license) lead with
 ## their own header: the gate's pane gives way.
 func _activation_owns_screen() -> bool:
-	return activation.visible and (activation.mode != "main" or not activation.limit.is_empty())
+	return activation.visible and (activation.mode != "main" or activation.in_limit_view())
 
 
 ## The card's content width (logical pixels): what the activation panel wants while a dialog of
@@ -391,7 +391,7 @@ func _tr_product(t: PKeyUiCopy, key: String) -> String:
 
 
 func _screen_key() -> String:
-	return "%s|%s|%s|%s|%s" % [screen, activation.mode, "limit" if not activation.limit.is_empty() else "", "net" if network_error else "", "key" if _keying else ""]
+	return "%s|%s|%s|%s|%s" % [screen, activation.mode, "limit" if activation.in_limit_view() else "", "net" if network_error else "", "key" if _keying else ""]
 
 
 func _render() -> void:

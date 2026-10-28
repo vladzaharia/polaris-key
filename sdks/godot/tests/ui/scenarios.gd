@@ -108,6 +108,16 @@ func all() -> Array:
 	out.append(["activation", "device limit", activation_result])
 	out.append(["activation", "device limit, replace a device (button)", activation_manage.bind("button")])
 	out.append(["activation", "device limit, replace a device (QR)", activation_manage.bind("qr")])
+	out.append(["activation", "key-entry limit, add it in Polaris Locker (button)", activation_refusal.bind("key-entry-limit", "button")])
+	out.append(["activation", "key-entry limit, add it in Polaris Locker (QR)", activation_refusal.bind("key-entry-limit", "qr")])
+	out.append(["activation", "key-entry limit, no link", activation_refusal.bind("key-entry-limit", "")])
+	out.append(["activation", "license in another account", activation_refusal.bind("license-owned", "button")])
+	# ── PKeySignInStep: automatic sign-in's steps (ui-matrix v7).
+	for c in SIGN_IN_STEP_CASES:
+		out.append(["sign_in_step", c[0], sign_in_step.bind(c[1])])
+	# ── PKeyNearbyApproval (ui-matrix v7).
+	for c in ["entry", "ask", "approved", "not-nearby", "mismatch", "denied", "expired", "device-limit", "choose", "account-required", "rate-limited", "no-name", "hidden"]:
+		out.append(["nearby", c, nearby.bind(c)])
 	# ── PKeySignInDialog.
 	out.append(["sign_in", "starting", sign_in.bind("starting")])
 	out.append(["sign_in", "pending", sign_in.bind("pending")])
@@ -368,6 +378,85 @@ func activation_manage(how: String) -> Control:
 	return p
 
 
+## The focused key refusals (ui-matrix v7 Activate/key-entry-limit, Activate/license-owned).
+func activation_refusal(kind: String, how: String) -> Control:
+	var p := PKeyActivationPanel.new()
+	p.manage_mode = "qr" if how == "qr" else "button"
+	p.set_capabilities(PKeyActivationController.capabilities(true, true, false, false))
+	add(p)
+	var limit := kind == "key-entry-limit"
+	var r := PKeyActivationResult.of(PKeyActivationResult.KIND_KEY_ENTRY_LIMIT if limit else PKeyActivationResult.KIND_LICENSE_OWNED, PKeyErrors.KEY_ENTRY_LIMIT if limit else PKeyErrors.LICENSE_OWNED, "", 403)
+	if limit and how != "":
+		r.manage_url = "https://polaris.locker/add-key?product=djdl"
+	p.show_result(r, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")
+	return p
+
+
+const SIGN_IN_STEP_CASES := [
+	["confirm, the account's email", "confirm"],
+	["confirm, Apple shared no email", "confirm-apple"],
+	["confirm, a new license and what the app also gets", "confirm-license"],
+	["link offer, Google shared across apps", "link-offer-global"],
+	["link offer, per developer", "link-offer-developer"],
+	["link done", "link-done"],
+	["link conflict", "link-conflict"],
+	["nearby prompt", "nearby-prompt"],
+	["nearby wait", "nearby-wait"],
+	["nearby done", "nearby-done"],
+]
+
+
+func sign_in_step(kind: String) -> Control:
+	var s := PKeySignInStep.new()
+	s.auto_sdk = false
+	add(s)
+	s.developer = "Drift Studio"
+	match kind:
+		"confirm":
+			s.email = "ada@mail.io"
+		"confirm-apple":
+			s.provider = "Apple"
+		"confirm-license":
+			s.email = "ada@mail.io"
+			s.license_line = "new"
+			s.also_gets = true
+		"link-offer-global":
+			s.step = "link-offer"
+			s.reach = "global"
+		"link-offer-developer":
+			s.step = "link-offer"
+			s.reach = "developer"
+		"nearby-done":
+			s.step = "nearby-done"
+			s.email = "ada@mail.io"
+		"nearby-wait":
+			s.step = "nearby-wait"
+			s.code = "482 913"
+		_:
+			s.step = kind
+	if kind == "confirm" or kind == "confirm-apple" or kind == "confirm-license":
+		s.step = "confirm"
+	s.refresh_view()
+	return s
+
+
+func nearby(kind: String) -> Control:
+	var n := PKeyNearbyApproval.new()
+	n.auto_sdk = false
+	add(n)
+	n.device = "" if kind == "no-name" else "Living room TV"
+	if kind == "hidden":
+		n.identity_on = false
+	elif kind == "no-name":
+		n.step = "approved"
+	else:
+		n.step = kind
+	if kind == "ask":
+		n.codes = PackedStringArray(["482 913", "107 356", "759 204"])
+	n.refresh_view()
+	return n
+
+
 func prompt_fixture() -> PKeySignInSession:
 	var p := PKeySignInSession.new(true)
 	p.device_code = "dc_fixture"
@@ -396,7 +485,7 @@ func sign_in(state: String) -> Control:
 			d.refresh_view()
 		"confirm":
 			d.show_prompt(prompt_fixture())
-			d.show_confirm({"identity": {"name": "Ada Lovelace", "email": "ada@example.com"}, "attachable": true})
+			d.show_confirm({"identity": {"name": "Ada Lovelace", "email": "ada@mail.io"}, "attachable": true})
 		"ok":
 			d.show_result(PKeySignInOutcome.signed_in({"name": "Ada"}, "", true, null))
 		"expired":

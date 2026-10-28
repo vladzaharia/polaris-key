@@ -4,11 +4,11 @@ extends RefCounted
 ## pins them for every language; a screen reads them from here instead of spelling a string.
 
 ## The UI matrix version these models implement (the generated `UI_MATRIX_VERSION`).
-const UI_MATRIX_VERSION := 6
+const UI_MATRIX_VERSION := 7
 
 ## UI-KITS.md §4.1: every component, must and should.
 const COMPONENTS := [
-	"PolarisKeyGate", "Boot", "Welcome", "SignIn", "SignInHandoff", "Activate",
+	"PolarisKeyGate", "Boot", "Welcome", "SignIn", "SignInHandoff", "NearbyApproval", "Activate",
 	"OfflineActivation", "DeviceLimit", "LicenseChoice", "Devices", "UpdatePrompt",
 	"UpdateProgress", "ReleaseNotes", "StatusScreen", "GraceBanner", "AccountAndLicense",
 	"Settings", "Paywall", "EntitlementGate", "CloudSyncStatus", "About", "ChannelPicker", "Toast",
@@ -18,14 +18,15 @@ const COMPONENTS := [
 const HIDDEN := "hidden"
 
 ## The actions a view offers, named by what they do (`vocabulary.actions`).
-const ACTIONS := ["open-card", "open-browser", "replace-in-browser", "open-manage-url", "copy-link", "retry", "cancel"]
+const ACTIONS := ["open-card", "open-browser", "replace-in-browser", "open-manage-url", "start-sign-in", "copy-link", "retry", "cancel"]
 
 ## Which controls perform each action, by their label's copy key (`vocabulary.actionKeys`).
 const ACTION_KEYS := {
 	"open-card": ["signin.desktop.continue", "signin.email.continue"],
 	"open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
 	"replace-in-browser": [],
-	"open-manage-url": ["deviceLimit.openBrowser", "devices.manage"],
+	"open-manage-url": ["deviceLimit.openBrowser", "devices.manage", "signin.key.addInLocker"],
+	"start-sign-in": ["signin.key.ownedSignIn", "signin.key.signIn"],
 	"copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
 	"retry": ["common.tryAgain", "common.reconnect", "signin.again", "signInHandoff.newCode"],
 	"cancel": ["common.cancel"],
