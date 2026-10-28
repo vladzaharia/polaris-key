@@ -52,6 +52,8 @@ export interface GrantRecord {
    * when the device binds (I-13.5). Absent on every other grant.
    */
   keys?: { signKey: string; agreeKey: string };
+  /** Earned by a same-device `authorization_code` (I-43.1): `choice/complete` then marks the step-up. */
+  fresh?: true;
   /** Reads spent so far. */
   reads: number;
   /** Epoch seconds the grant ends, for restoring it after a retryable refusal. */

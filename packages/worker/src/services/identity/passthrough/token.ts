@@ -93,6 +93,7 @@ import { acceptsKeys, licenseChoiceView, offerFor } from "./choice.js";
 import { issueGrant } from "./grant.js";
 import { bindChoice, type BindRefusal, type BindResult } from "./bind.js";
 import { handleExchange } from "./exchange.js";
+import { markFresh } from "./fresh.js";
 
 /** The token endpoint: 30 a minute per client network, 10 per device id; both fail closed. */
 export const TOKEN_RATE = { bucket: "identityToken", limit: 30, windowSec: 60 };
@@ -259,6 +260,7 @@ export async function handleToken(ctx: {
       licenseChoice: record.licenseChoice,
       choice: record.choice ?? null,
       deviceName: form.get("device_name") ?? undefined,
+      fresh: true,
       audit: {
         action: "signin.token",
         summary: "Signed in a device through authorize",
@@ -286,6 +288,8 @@ export interface SignedIn {
   keys?: DeviceKeyPair;
   /** The signing key the device held when the exchange checked it (`null`: none). */
   heldSignKey?: string | null;
+  /** A same-device grant (I-43.1): marks the step-up once the device is bound. Only `authorization_code` sets it. */
+  fresh?: true;
 }
 
 /**
@@ -358,6 +362,7 @@ export async function bindAndAnswer(
           deviceId,
           scope: p.scope,
           ...(p.keys ? { keys: p.keys } : {}),
+          ...(p.fresh ? { fresh: true as const } : {}),
         },
         now,
       );
@@ -411,6 +416,7 @@ export async function bindAndAnswer(
     }
   }
 
+  if (p.fresh) await markFresh(env, product.slug, deviceId);
   await appendAudit(db, {
     product: product.slug,
     id: randomId("aud"),

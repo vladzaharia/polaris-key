@@ -37,7 +37,7 @@ import {
   exchangeLinkRef,
   type ExchangeLinkRecord,
 } from "../../../src/services/identity/passthrough/exchange.js";
-import { getArtefact } from "../../../src/core/singleUse.js";
+import { artefactRef, getArtefact } from "../../../src/core/singleUse.js";
 import {
   EXCHANGE_SUBJECT_TOKEN_TYPE,
   LINK_HANDLE_PATTERN,
@@ -265,6 +265,13 @@ describe("the token exchange", () => {
     expect(audit).toHaveLength(1);
     expect(JSON.stringify(audit)).not.toContain(r.token);
     expect(audit[0]!.summary).toContain("google");
+    // The exchange is not a same-device sign-in: it never writes the step-up (I-43.1).
+    expect(
+      await getArtefact(
+        h.env,
+        artefactRef("signin-fresh", `${SLUG}:${DEVICE}`),
+      ),
+    ).toBeNull();
   });
 
   it("hands over a pending grant when a licence choice is due, carrying the keys for complete", async () => {
