@@ -56,6 +56,9 @@ public enum PolarisKeyEvent: Sendable, Equatable {
     case store(reason: String, detail: String?)
     /// The account changed: `kind` is `signedIn`, `signedOut` or `subjectChanged`.
     case identity(kind: String, subject: String?, previous: String?)
+    /// What Cloud Sync's machine reports: a synced change, a rejected edit, a sign-out, unsynced data, a
+    /// sign-in offer, or a failed purge. Names keys and codes only, never a value (H-11).
+    case cloudSync(CloudSyncEvent)
 
     /// The event's kind name (`license`, `entitlement`, `config`, `updateAvailable`, `packs`,
     /// `store`, `identity`).
@@ -68,11 +71,12 @@ public enum PolarisKeyEvent: Sendable, Equatable {
         case .packs: return "packs"
         case .store: return "store"
         case .identity: return "identity"
+        case .cloudSync: return "cloudSync"
         }
     }
 
     /// Every kind name, in the shared order.
-    public static let kinds = ["license", "entitlement", "config", "updateAvailable", "packs", "store", "identity"]
+    public static let kinds = ["license", "entitlement", "config", "updateAvailable", "packs", "store", "identity", "cloudSync"]
 }
 
 /// The fan-out behind `client.events`.
@@ -116,6 +120,7 @@ actor ChangePublisher {
     let hub: PolarisEventHub
     private let observe: @Sendable () async -> ChangeObservation
     private let source: @Sendable (String) async -> ConfigSource
+    private let origin: @Sendable (String) async -> SyncChangeOrigin
     private let deliver: @Sendable (ConfigChange) -> Void
     private var observed: ChangeObservation?
     private var tail: Task<Void, Never>?
@@ -124,11 +129,13 @@ actor ChangePublisher {
         hub: PolarisEventHub,
         observe: @escaping @Sendable () async -> ChangeObservation,
         source: @escaping @Sendable (String) async -> ConfigSource,
+        origin: @escaping @Sendable (String) async -> SyncChangeOrigin = { _ in .local },
         deliver: @escaping @Sendable (ConfigChange) -> Void = { _ in }
     ) {
         self.hub = hub
         self.observe = observe
         self.source = source
+        self.origin = origin
         self.deliver = deliver
     }
 
@@ -169,7 +176,7 @@ actor ChangePublisher {
             if a != b {
                 let src = await source(key)
                 hub.emit(.config(key: key, value: a, previous: b, source: src))
-                deliver(ConfigChange(key: key, value: a, previous: b, source: src))
+                deliver(ConfigChange(key: key, value: a, previous: b, source: src, origin: await origin(key)))
             }
         }
         if let failure = after.storeFailure, failure != before.storeFailure {

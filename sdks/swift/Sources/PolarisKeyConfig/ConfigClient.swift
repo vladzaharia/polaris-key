@@ -87,7 +87,13 @@ public actor ConfigClient {
     private var minting: [String: (deviceToken: String, task: Task<MintedToken, Error>)] = [:]
     /// `config.set` values, persisted in `localStore` (they beat `localOverrides`).
     private let localStore: any LocalConfigStore
-    private var persisted: [String: JSONValue]
+    var persisted: [String: JSONValue]
+    /// Cloud Sync's port (`ConfigSync.swift`); nil until the umbrella installs it.
+    var syncPort: (any ConfigSyncPort)?
+    /// Every key the machine has touched; `snapshot` includes them.
+    var syncKeys: Set<String> = []
+    /// Where each synced key's last change came from, until the change is delivered.
+    var syncOrigins: [String: SyncChangeOrigin] = [:]
     /// The catalog, fetched once per process when `set` first needs it.
     private var catalog: ConfigCatalog?
     /// `onConfigChange` / `configChanges` registrations (`ConfigSetting.swift`).
@@ -182,7 +188,7 @@ public actor ConfigClient {
         minted[recipeId] = (deviceToken, token)
     }
 
-    private func doc() async -> ConfigDoc? {
+    func doc() async -> ConfigDoc? {
         await core.cache().config?.doc
     }
 
@@ -215,6 +221,19 @@ public actor ConfigClient {
     /// when the catalog (fetched once when first needed) does not list it as a `config` key or
     /// its schema `type` / `enum` refuses the value. Offline, without a catalog, the value is kept.
     public func set(_ key: String, _ value: JSONValue) async throws {
+        if let port = syncPort, await port.active() {
+            syncKeys.insert(key)
+            let r = await port.set(key, value)
+            await changeObserver.current?()
+            switch r {
+            case .ok: return
+            case .failed(let code):
+                throw PolarisError(
+                    code: code == ErrorCode.managedByAdmin ? ErrorCode.managedByAdmin : ErrorCode.badRequest,
+                    message: code == ErrorCode.managedByAdmin
+                        ? "\(key) is managed by an administrator." : "\(key): the value is not accepted.")
+            }
+        }
         if let entry = await doc()?.config[key], entry.state == .enforced || entry.state == .hidden {
             throw PolarisError(
                 code: ErrorCode.invalidOptions,
@@ -240,6 +259,13 @@ public actor ConfigClient {
     /// Remove the user's own value for `key` (resolution falls back to the next layer) and raise
     /// a `config` change when the effective value moved.
     public func clear(_ key: String) async {
+        if let port = syncPort, await port.active() {
+            syncKeys.insert(key)
+            // A refused clear (a locked key) is a no-op (Q-9).
+            _ = await port.clear(key)
+            await changeObserver.current?()
+            return
+        }
         guard persisted[key] != nil else { return }
         await writeLocal { $0.removeValue(forKey: key) }
     }
@@ -264,7 +290,7 @@ public actor ConfigClient {
         let after = await snapshot()
         for key in Set(before.keys).union(after.keys).sorted() where before[key] != after[key] {
             deliver(
-                ConfigChange(key: key, value: after[key], previous: before[key], source: await getConfigSource(key)))
+                ConfigChange(key: key, value: after[key], previous: before[key], source: await getConfigSource(key), origin: takeSyncOrigin(key)))
         }
     }
 
@@ -278,6 +304,9 @@ public actor ConfigClient {
     public func settingState(_ key: String) async -> ConfigSettingState {
         let ctx = await context()
         let state = ctx.remote?[key]?.state
+        if let synced = await syncedValue(key) {
+            return ConfigSettingState(value: synced, source: .local, locked: state == .enforced || state == .hidden)
+        }
         return ConfigSettingState(
             value: ConfigResolution.resolveValue(ctx, key), source: ConfigResolution.resolveSource(ctx, key),
             locked: state == .enforced || state == .hidden)
@@ -311,7 +340,8 @@ public actor ConfigClient {
     /// Resolve the effective value for `key`, honouring management state + the override layers
     /// (`ConfigResolution`, WIRE-CONTRACT-V3 §2.2.1).
     public func get(_ key: String, default fallback: JSONValue) async -> JSONValue {
-        ConfigResolution.resolveValue(await context(), key) ?? fallback
+        if let synced = await syncedValue(key) { return synced }
+        return ConfigResolution.resolveValue(await context(), key) ?? fallback
     }
 
     // ── Typed getters (SP-S02) ───────────────────────────────────────────────────────────
@@ -346,7 +376,8 @@ public actor ConfigClient {
 
     /// Where `get(key)` would source its value from (provenance, for settings UIs).
     public func getConfigSource(_ key: String) async -> ConfigSource {
-        ConfigResolution.resolveSource(await context(), key)
+        if await syncedValue(key) != nil { return .local }
+        return ConfigResolution.resolveSource(await context(), key)
     }
 
     /// The user-visible catalog (§2.2.1 rule 4): every document entry MINUS the `hidden` ones,
@@ -361,9 +392,10 @@ public actor ConfigClient {
         let ctx = await context()
         var keys = Set(ctx.localOverrides.keys)
         keys.formUnion((ctx.remote ?? [:]).keys)
+        keys.formUnion(syncKeys)
         var out: [String: JSONValue] = [:]
         for k in keys {
-            if let v = ConfigResolution.resolveValue(ctx, k) { out[k] = v }
+            if let v = await syncedValue(k) ?? ConfigResolution.resolveValue(ctx, k) { out[k] = v }
         }
         return out
     }

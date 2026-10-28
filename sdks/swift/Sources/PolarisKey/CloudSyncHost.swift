@@ -362,6 +362,25 @@ public actor CloudSyncHost {
         return r
     }
 
+    /// The person the machine is signed in as; nil while signed out or not started.
+    public func machineSubject() -> String? { machine?.subject }
+
+    /// Offer the legacy local values to the machine (once per install; the caller keeps the marker).
+    public func importLocal(_ values: [String: JSONValue]) -> CallResult {
+        machine?.importLocal(values) ?? .failed("not-started")
+    }
+
+    /// A document that changed since the machine was built is routed through a rebuild first, so the
+    /// locked list the machine checks is the current one (A-6). A no-op when nothing changed.
+    public func refreshDocumentIfChanged() async {
+        guard let m = machine else { return }
+        _ = m.refresh()
+        if Self.dump(await deps.document()) != documentJSON {
+            rebuildWanted = true
+            await touch()
+        }
+    }
+
     public func get(_ key: String) -> SyncEffectiveValue? { machine?.get(key) }
     public func settingState(_ key: String) -> SyncSettingState? { machine?.settingState(key) }
     public func status() -> SyncStatus? { machine?.status() }

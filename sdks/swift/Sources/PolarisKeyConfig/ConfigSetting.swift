@@ -22,12 +22,19 @@ public struct ConfigChange: Sendable, Equatable {
     public let previous: JSONValue?
     /// Where the new value comes from.
     public let source: ConfigSource
+    /// What moved it: `local` (this device's `set` / `clear`, the default), or a Cloud Sync `remote`,
+    /// `merge` or `migration`.
+    public let origin: SyncChangeOrigin
 
-    public init(key: String, value: JSONValue?, previous: JSONValue?, source: ConfigSource) {
+    public init(
+        key: String, value: JSONValue?, previous: JSONValue?, source: ConfigSource,
+        origin: SyncChangeOrigin = .local
+    ) {
         self.key = key
         self.value = value
         self.previous = previous
         self.source = source
+        self.origin = origin
     }
 }
 
@@ -93,6 +100,9 @@ public struct ConfigSetting: Sendable {
     public var visibility: String {
         get async { await client.settingVisibility(key) }
     }
+
+    /// Where this key stands with Cloud Sync: `local`, `pending` (an edit waits to be sent) or `synced`.
+    public func sync() async -> SettingSyncState { await client.settingSyncState(key) }
 
     /// `config.set(key, value)`.
     public func set(_ value: JSONValue) async throws { try await client.set(key, value) }
