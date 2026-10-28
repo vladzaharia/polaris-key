@@ -1,3 +1,4 @@
+import { operatorIssuerAllowed } from "../../../core/rbac/operatorIssuer.js";
 import { portalAudit } from "../../../core/accounts/portalAudit.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import { parseJsonColumn } from "../../../platform/json.js";
@@ -223,8 +224,15 @@ export async function recordLinkGroups(
  * §2.3 "Links"): the mapped groups and the access-rule claims, replaced together in ONE `UPDATE`.
  * `null` is "not asserted" (fail closed). `asserted_at` (ST-30) is written in this same statement, when anything was asserted;
  * nothing else writes these columns for a connection link.
+ *
+ * A link is keyed by (issuer, subject), not by the connection that wrote it. On an issuer that may
+ * sign operators in (`operatorIssuerAllowed`) the console's root rule reads `groups_json` and
+ * `asserted_at`, so ONLY the console sign-in (`recordLinkGroups`, the IdP's own groups claim) may
+ * write them there: a connection's claim map is operator-editable and may name any claim. On such
+ * a link this writes `claims_json` alone and leaves the groups and `asserted_at` untouched.
  */
 export async function recordLinkAssertion(
+  env: Env,
   db: Db,
   linkId: string,
   assertion: {
@@ -233,6 +241,19 @@ export async function recordLinkAssertion(
   },
   now: number,
 ): Promise<void> {
+  const link = await db.first<{ issuer_key: string }>(
+    "SELECT issuer_key FROM account_links WHERE id = ?",
+    linkId,
+  );
+  if (!link) return;
+  if (operatorIssuerAllowed(env, link.issuer_key)) {
+    await db.run(
+      "UPDATE account_links SET claims_json = ? WHERE id = ?",
+      assertion.claims ? JSON.stringify(assertion.claims) : null,
+      linkId,
+    );
+    return;
+  }
   await db.run(
     "UPDATE account_links SET groups_json = ?, claims_json = ?, asserted_at = ? WHERE id = ?",
     assertion.groups ? JSON.stringify(assertion.groups) : null,

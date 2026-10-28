@@ -401,7 +401,13 @@ export async function beginProviderSignIn(
         now,
       );
       if (input.linkAssertion) {
-        await recordLinkAssertion(db, result.linkId, input.linkAssertion, now);
+        await recordLinkAssertion(
+          env,
+          db,
+          result.linkId,
+          input.linkAssertion,
+          now,
+        );
       }
       const fresh =
         (await getAccountRow(db, result.account.id)) ?? result.account;
@@ -1320,7 +1326,7 @@ async function completeGate(
     now,
   );
   if (gate.linkAssertion) {
-    await recordLinkAssertion(db, done.linkId, gate.linkAssertion, now);
+    await recordLinkAssertion(env, db, done.linkId, gate.linkAssertion, now);
   }
   const account = await getAccountRow(db, done.accountId);
   if (!account) return gateRefused(403, ACCOUNT_DISABLED_MESSAGE);
