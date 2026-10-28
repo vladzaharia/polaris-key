@@ -19,6 +19,7 @@ import {
   asCloudSyncNamespace,
 } from "../../cloudSyncDoMock.js";
 import { dispatch } from "../../../src/dispatch.js";
+import { invalidatePlatformSettings } from "../../../src/core/platformSettings.js";
 import type { Db } from "../../../src/db/types.js";
 import type { Env } from "../../../src/platform/env.js";
 import { serializeServices } from "../../../src/core/services.js";
@@ -43,13 +44,26 @@ export interface World {
   subject: string;
 }
 
-export async function world(): Promise<World> {
+export async function world(
+  opts: { catalog?: unknown; gate?: "on" | "off" } = {},
+): Promise<World> {
   const db = makeTestDb();
   const ns = new CloudSyncNamespaceMock();
   const kv = new KvMock();
   const env = makeEnv(kv, []);
   env.CLOUD_SYNC = asCloudSyncNamespace(ns);
-  await seedProduct(db, SLUG, { catalog: { schemaVersion: 1, entries: [] } });
+  if (opts.gate !== undefined) {
+    (env as unknown as Record<string, string>).LAUNCH_SYNC_E2E = opts.gate;
+    invalidatePlatformSettings(env, db);
+  }
+  await seedProduct(db, SLUG, {
+    // The abuse tests push `value`s: the server-mode wire, unless a test asks for another.
+    catalog: opts.catalog ?? {
+      schemaVersion: 1,
+      entries: [],
+      cloudSync: { encryption: "server" },
+    },
+  });
   await setServices(
     db,
     SLUG,

@@ -35,17 +35,25 @@ import {
   type SettingRoute,
 } from "@polaris-key/catalog";
 import {
+  SYNC_E2E_OVERHEAD_BYTES,
+  SYNC_MAX_SETTINGS_BYTES,
   SYNC_MAX_VALUE_BYTES,
+  type SyncEncryptionMode,
   type SyncJson,
   type SyncMutation,
 } from "@polaris-key/protocol/sync";
 import { resolveKey } from "../engine/migrations.js";
+import { envelopeBytes, isBlinded } from "../engine/sealed.js";
 import type { CatalogMigrations, Classification } from "../engine/types.js";
 import { valueBytes } from "../engine/usage.js";
 
 const NOT_SYNCED: Classification = {
   verdict: "reject",
   code: "setting_not_synced",
+};
+const MISMATCH: Classification = {
+  verdict: "reject",
+  code: "encryption_mismatch",
 };
 const COLLECTION_UNKNOWN: Classification = {
   verdict: "reject",
@@ -116,29 +124,71 @@ function openInvalid(m: SyncMutation): boolean {
   return valueBytes(m.value as SyncJson) > SYNC_MAX_VALUE_BYTES;
 }
 
-/** One classification per mutation, in order. */
+/**
+ * The sealed value of an end-to-end mutation: a well-shaped envelope (§13.10.4) under the cap.
+ * `limit` is the value cap the key's kind carries (8 KiB for an open setting), charged on
+ * `envelopeBytes - 113`. Nothing else about the value is checked; the server never decodes it.
+ */
+function sealedInvalid(m: SyncMutation, limit: number): boolean {
+  if (m.op !== "set" && m.op !== "setMember") return false;
+  const n = envelopeBytes(m.ct);
+  return n === null || n - SYNC_E2E_OVERHEAD_BYTES > limit;
+}
+
+/**
+ * One classification per mutation, in order. `mode` is the mode the request is served in
+ * (`common.ts` `syncMode`): in `e2e` a mutation carries `ct` and blinded names (§13.3, §13.10); in
+ * `server` it carries `value`. The wrong one, or a name that would leak, is `encryption_mismatch`.
+ */
 export function classifyMutations(
   mutations: readonly SyncMutation[],
   catalog: Catalog | null,
   migrations: CatalogMigrations,
+  mode: SyncEncryptionMode = "server",
 ): Classification[] {
   const declared = declaredKeys(catalog);
+  const e2e = mode === "e2e";
   return mutations.map((m): Classification => {
     if (!("setting" in m.target)) return COLLECTION_UNKNOWN;
+    // The wrong payload for the product's mode, before anything else is looked at.
+    if (e2e ? "value" in m : "ct" in m) return MISMATCH;
     const resolved = resolveKey(m.target.setting, migrations);
     if (resolved.kind === "dropped") return NOT_SYNCED;
     const key = resolved.kind === "renamed" ? resolved.to : m.target.setting;
     const route = declared.routes.get(key);
-    if (route === undefined)
+    if (route === undefined) {
+      // An open setting's key is a person-chosen name: in E2E it must arrive blinded.
+      if (e2e && !isBlinded(m.target.setting)) return MISMATCH;
       return {
         verdict: "accept",
         scope: "user",
         policy: "lastWrite",
         open: true,
-        ...(openInvalid(m) ? { valueInvalid: true } : {}),
+        ...(e2e ? { sealed: true } : {}),
+        ...((e2e ? sealedInvalid(m, SYNC_MAX_VALUE_BYTES) : openInvalid(m))
+          ? { valueInvalid: true }
+          : {}),
       };
+    }
     if (route.route !== "synced") return NOT_SYNCED;
     const entry = declared.entries.get(key) as ConfigEntry;
+    if (e2e) {
+      // A merge member's name is a person-chosen name too.
+      if (
+        (m.op === "setMember" || m.op === "removeMember") &&
+        !isBlinded(m.member)
+      )
+        return MISMATCH;
+      return {
+        verdict: "accept",
+        scope: route.scope,
+        policy: route.policy,
+        sealed: true,
+        ...(sealedInvalid(m, SYNC_MAX_SETTINGS_BYTES)
+          ? { valueInvalid: true }
+          : {}),
+      };
+    }
     return {
       verdict: "accept",
       scope: route.scope,

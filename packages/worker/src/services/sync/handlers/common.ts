@@ -40,6 +40,8 @@ import {
   knownPlatform,
   platformFamily,
 } from "../../../core/devices/platformFamily.js";
+import { launchGateOn } from "../../../core/settings/platformRead.js";
+import type { SyncEncryptionMode } from "@polaris-key/protocol/sync";
 import type { CatalogMigrations } from "../engine/types.js";
 import { resolveKey } from "../engine/migrations.js";
 import { CloudSyncDoError } from "../do/client.js";
@@ -206,4 +208,50 @@ export async function catalogView(
     if (r.kind === "renamed") aliases[from] = r.to;
   }
   return { catalogVersion, migrations, aliases: { ...aliases } };
+}
+
+// ── The product's mode (WIRE-CONTRACT-V5 §13.10.1) ───────────────────────────────────────────
+
+/**
+ * What a request is served as, and what it says about it.
+ *
+ *   serve      the mode the push and pull run in. `"e2e"` only when the operator's launch gate
+ *              `launch.syncE2e` is on and the catalog says `e2e` (the default). With the gate off
+ *              nothing is sealed or accepted as `ct`: the Worker behaves as before E2E existed.
+ *   advertise  the `encryption` member of discovery and of a pull. Absent with the gate off, so
+ *              an app that requires E2E stays local (`unsupported`) rather than sending
+ *              plaintext to a Worker that cannot take `ct`.
+ */
+export interface SyncMode {
+  serve: SyncEncryptionMode;
+  advertise?: SyncEncryptionMode;
+}
+
+/** The catalog's `cloudSync.encryption`; an unreadable catalog answers `e2e`, never plaintext. */
+export function catalogEncryption(
+  loaded: { catalog_json: string } | null,
+): SyncEncryptionMode {
+  if (!loaded) return "e2e";
+  try {
+    const catalog: unknown = JSON.parse(loaded.catalog_json);
+    if (!isRecord(catalog)) return "e2e";
+    const cs = catalog.cloudSync;
+    // The same rule as `cloudSyncEncryption` (shared-catalog): `server` only when declared.
+    return isRecord(cs) && cs.encryption === "server" ? "server" : "e2e";
+  } catch {
+    return "e2e";
+  }
+}
+
+export async function syncMode(
+  env: Env,
+  db: Db,
+  slug: string,
+  loaded?: { catalog_json: string } | null,
+): Promise<SyncMode> {
+  if (!(await launchGateOn(env, db, "launch.syncE2e")))
+    return { serve: "server" };
+  const row = loaded === undefined ? await getActiveSchema(db, slug) : loaded;
+  const mode = catalogEncryption(row);
+  return { serve: mode, advertise: mode };
 }

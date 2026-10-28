@@ -91,6 +91,8 @@ const CATALOG = {
     entry("audio.gain", { type: "number" }),
   ],
   cloudSync: {
+    // These tests drive the server-mode wire (`value`); E2E has its own (cloudSyncE2e.test.ts).
+    encryption: "server",
     migrations: [
       {
         toSchemaVersion: 2,

@@ -232,10 +232,14 @@ export type SyncRejectCode =
 
 /** §13.3: the server's copy carried by a `conflict`. */
 export interface SyncServerCopy {
-  value: SyncJson;
+  /** Absent on a sealed copy (§13.10): `ct` replaces it. A legacy plaintext row keeps `value`. */
+  value?: SyncJson;
+  /** §13.3, §13.10: the sealed value of a row written in end-to-end mode. */
+  ct?: string;
   version: number;
   editedHlc?: string;
-  members?: Record<string, SyncJson>;
+  /** Plaintext members, or (end-to-end) `[{member, ct, editedHlc}]` with blinded names. */
+  members?: Record<string, SyncJson> | SyncSealedMember[];
 }
 
 /** §13.3: `{mutationId, status}` and the status's members. */
@@ -318,7 +322,7 @@ export interface PullResponse extends Partial<PullEncryption> {
   usage: SyncUsage;
   /** Only on a cursor-0 answer for a principal with nothing stored. */
   empty?: true;
-  changes: SyncChange[];
+  changes: (SyncChange | SyncSealedChange)[];
   tombstones: SyncTombstone[];
 }
 
@@ -337,7 +341,8 @@ export type SyncSealedChange =
   | {
       setting: string;
       scope: SyncScope;
-      ct: string;
+      /** Absent on a `merge` setting, whose sealed values are its `members`. */
+      ct?: string;
       version: number;
       editedHlc: string;
       updatedBy: string;
