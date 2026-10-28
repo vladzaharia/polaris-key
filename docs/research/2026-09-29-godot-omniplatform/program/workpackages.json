@@ -19596,7 +19596,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5", "plans/CC-01.md §4"],
       "brief": "wp/U-38-e2e-client-node-react-python.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "U-39",
