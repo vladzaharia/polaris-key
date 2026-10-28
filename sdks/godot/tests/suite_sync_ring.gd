@@ -503,7 +503,7 @@ static func _file_has(path: String, needle: PackedByteArray) -> bool:
 
 
 ## True when none of `secrets` (text) appears in any of `texts`.
-func _quiet(t: PKeyTestContext, texts: Array, secrets: Array) -> bool:
+func _quiet(_t: PKeyTestContext, texts: Array, secrets: Array) -> bool:
 	for x in texts:
 		for s in secrets:
 			if String(x).contains(String(s)):
