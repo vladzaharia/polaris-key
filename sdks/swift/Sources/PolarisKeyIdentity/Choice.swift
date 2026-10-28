@@ -240,7 +240,7 @@ public struct ChoiceNamespace: Sendable {
             case .token(let accessToken, let scope, let subject, _, _, let license) =
                 IdentityRedirect.parseTokenAnswer(status: 200, body: body)
         else { throw Self.badResponse("choice/complete answered without a sign-in.") }
-        try await client.core.setToken(accessToken, source: .signin)
+        try await client.core.setToken(accessToken, source: .signin, person: true)
         if client.redirectAcquisitionSync.current { await client.onAcquired?() }
         client.updateSubject(subject)
         client.notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
