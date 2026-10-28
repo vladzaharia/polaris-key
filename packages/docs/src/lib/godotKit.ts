@@ -223,6 +223,27 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
     shows:
       'A small status strip: "Synced 2 minutes ago", Syncing, Offline, a conflict with Review, or a failure; signed out it offers Sign in to sync. It hides while Cloud Sync is off and never takes the focus',
   },
+  UnlockSync: {
+    view: "cloud_sync/pkey_unlock_sync",
+    controller: "cloud_sync/cloud_sync_controller",
+    answers:
+      "the key ring calls the Cloud Sync screens make: unlock with the recovery code, start over with a new key, accept a ring change the person confirmed, and a new recovery code",
+    model: "UnlockSync",
+    shows:
+      "The recovery code field when this device holds no key for the synced data, with Start over and its warning; Try again after a failure, and only Start over when the account holds no code",
+  },
+  RecoveryCode: {
+    view: "cloud_sync/pkey_recovery_code",
+    model: "RecoveryCode",
+    shows:
+      'A new recovery code, shown once as 8 groups of 4, with Copy code and an "I\'ve saved my recovery code" check that Done waits for; the screen keeps nothing after Done',
+  },
+  RingChange: {
+    view: "cloud_sync/pkey_ring_change",
+    model: "RingChange",
+    shows:
+      "Your sync key changed: the device that changed it, Use recovery code first, That was me for the ring the person was shown, and Cancel",
+  },
   About: {
     view: "about/pkey_about",
     model: "About",
