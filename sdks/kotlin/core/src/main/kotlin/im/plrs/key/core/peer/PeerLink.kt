@@ -34,6 +34,9 @@ import java.io.IOException
 /** The largest frame a peer may send before it is admitted. */
 public const val HANDSHAKE_FRAME_MAX: Int = 16_384
 
+/** Bytes a link may hold unsent before it closes `peer_busy` (a peer that never reads). */
+public const val LINK_WRITE_CAP: Long = 8L * 1024 * 1024
+
 /** Seconds from accept (or connect) to an admitted channel. */
 public const val HANDSHAKE_SECONDS: Double = 30.0
 
@@ -79,8 +82,8 @@ public class LinkRefused(public val closeCode: String) : Exception("peer not adm
 
 /** What a link reports. [onEstablished] returns the host object that [PeerLink.opened] resolves to. */
 public class LinkHandlers<H>(
-    public val onEstablished: (PeerLink<H>, SessionEvent.Established) -> H,
-    public val onRecord: (PeerLink<H>, Int, ByteArray) -> Unit = { _, _, _ -> },
+    public val onEstablished: (PeerLinkPort, SessionEvent.Established) -> H,
+    public val onRecord: (PeerLinkPort, Int, ByteArray) -> Unit = { _, _, _ -> },
     public val onRing: (String, Long) -> Unit = { _, _ -> },
     public val onTrust: (String) -> Unit = {},
     public val onRingWanted: () -> Unit = {},
@@ -105,12 +108,13 @@ public class PeerLink<H>(
     private var ended = false
     private var lost = false
     private var open = false
+    private val queuedBytes = java.util.concurrent.atomic.AtomicLong()
 
     /** Resolves to the host object once the peer is admitted; fails with [LinkRefused] when it is not. */
     public val opened: CompletableDeferred<H> = CompletableDeferred()
 
     /** The channel this link drives. */
-    public val channel: PeerChannel = build({ outbound.trySend(it) }, ::onEvent)
+    public val channel: PeerChannel = build(::enqueue, ::onEvent)
 
     override val remoteAddress: String get() = pipe.remoteAddress
 
@@ -120,7 +124,10 @@ public class PeerLink<H>(
     init {
         scope.launch {
             try {
-                for (noise in outbound) pipe.write(encodeFrame(noise))
+                for (noise in outbound) {
+                    pipe.write(encodeFrame(noise))
+                    queuedBytes.addAndGet(-noise.size.toLong())
+                }
             } catch (e: IOException) {
                 outbound.close()
             } finally {
@@ -185,6 +192,12 @@ public class PeerLink<H>(
     }
 
     // -- internals -------------------------------------------------------------------------------
+
+    /** The channel's output: queued for the writer, and the link closes `peer_busy` when the peer does not read. */
+    private fun enqueue(noise: ByteArray) {
+        if (queuedBytes.addAndGet(noise.size.toLong()) > LINK_WRITE_CAP && !ended) closeNow(PeerCloseCode.peer_busy)
+        outbound.trySend(noise)
+    }
 
     private suspend fun data(chunk: ByteArray) {
         if (ended) return

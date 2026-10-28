@@ -1828,6 +1828,10 @@
       "detekt:naming.EnumNaming": 5,
       "ktlint:standard:enum-entry-name-case": 5
     },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/ConnectRelay.kt": {
+      "detekt:naming.EnumNaming": 8,
+      "ktlint:standard:enum-entry-name-case": 8
+    },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt": {
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 8,
@@ -3269,8 +3273,8 @@
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/ConnectErrors.kt": {
       "detekt:complexity.LongParameterList": 1,
-      "detekt:naming.EnumNaming": 29,
-      "ktlint:standard:enum-entry-name-case": 29
+      "detekt:naming.EnumNaming": 30,
+      "ktlint:standard:enum-entry-name-case": 30
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/ConnectRelayTicketTest.kt": {
       "detekt:exceptions.SwallowedException": 1

@@ -42,9 +42,12 @@ class PeerLinkTest {
         val inbox = Channel<ByteArray>(Channel.UNLIMITED)
         var other: MemPipe? = null
 
+        @Volatile var stall = false
+
         override suspend fun read(): ByteArray? = inbox.receiveCatching().getOrNull()
 
         override suspend fun write(bytes: ByteArray) {
+            if (stall) delay(60_000)
             other!!.inbox.trySend(bytes.copyOf())
         }
 
@@ -239,6 +242,24 @@ class PeerLinkTest {
             val rest = List(3 - early) { String(p.sb.records.receive().second) }
             assertEquals(listOf("one", "two", "three").drop(early), rest)
             assertFalse(p.b.isEnded)
+        } finally {
+            s.cancel()
+        }
+    }
+
+    @Test
+    fun aPeerThatNeverReadsClosesTheLinkPeerBusyAtTheWriteCap() = bounded {
+        val s = scope()
+        try {
+            val p = connected(s)
+            p.pa.stall = true // the first write after this one blocks and nothing drains
+            val body = ByteArray(1 shl 20)
+            repeat(10) {
+                try {
+                    p.a.sendRecord(0x0100, body)
+                } catch (e: IllegalStateException) { /* already closing */ }
+            }
+            assertEquals(SessionEvent.Closed("peer_busy", false), p.sa.closed.await())
         } finally {
             s.cancel()
         }
