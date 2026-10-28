@@ -377,6 +377,115 @@ Sign in with Apple button opens the sheet and then the exchange. Pass
 `.polarisKeyGate(client, autoSignIn: false)` (or `.polarisKey(client, autoSignIn: false)`) to turn
 the launch attempt off.
 
+### Cloud Sync key ring
+
+`client.keyring` holds the person's end-to-end key: one root per ring, shared by their devices and
+never sent to the Worker in the clear. The Worker stores only wraps of it, one per device, and a
+blob sealed under the recovery code. The Cloud Sync client that seals settings with it is planned;
+the key ring itself is here. It uses the device keys `client.connect` uses (a `DeviceKeyPort`).
+
+| Call                              | What it does                                                                                                                            |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `status()`                        | What this device holds now, with no request: `unlocked`, `ringId`, `epoch`, `pinned`, `rootStored`.                                     |
+| `unlock()`                        | Opens this device's own wrap. `.unlocked`, `.locked(reason:)` (`.noRing`, `.noWrap`, `.unusableWrap`) or `.ringChanged`.                |
+| `create(recovery:)`               | A new ring: a fresh root, a wrap to this device and, by default, a recovery code. A ring that already exists throws `keyring_conflict`. |
+| `reset(recovery:)`                | Starts over with a new ring. The Worker keeps the old ring as `previous` for 30 days.                                                   |
+| `wrapTo(deviceId:agreeKey:)`      | Wraps the root to another device of the same person, with the agreement key its nearby approval carried.                                |
+| `setRecoveryCode()`               | A new recovery code; the previous one stops working.                                                                                    |
+| `recover(_:)`                     | Opens the root from the typed recovery code.                                                                                            |
+| `adopt(ringId:)`, `openAdopted()` | Folds an earlier ring's root under the current one, and opens the roots others folded.                                                  |
+| `lock()`, `forget()`              | Drops the roots from memory (quit), or from memory and the Keychain with the pin (sign-out).                                            |
+
+A locked ring refuses to seal or open with `sync-locked`. `attach(_:)` takes a `SyncRootListener`
+that is told whenever the root is gained or lost.
+
+```swift
+import PolarisKey
+
+func openRing(_ client: PolarisKeyClient) async throws -> String? {
+    let ring = client.keyring
+    let status = await ring.status()
+    if status.unlocked { return nil }          // a restart: the stored root came back, no request
+
+    switch try await ring.unlock() {
+    case .unlocked:
+        return nil
+    case .locked(let reason) where reason == .noRing:
+        // The first device. The recovery code is returned once, here, and kept nowhere.
+        return try await ring.create().recoveryCode
+    case .locked:
+        return nil                             // no wrap for this device: wrap it from another, or recover
+    case .ringChanged(let pinned, let served, _, _):
+        _ = (pinned, served)                   // see "A changed ring" below
+        return nil
+    }
+}
+```
+
+**The recovery code** is shown once, when the ring is created or the code is reset, and the SDK
+keeps it nowhere: not in the Keychain, not in a log, not in an error, and `SyncCreatedRing` prints
+without it. Show it to the person to write down, and ask for it only inside your app. Every type
+that holds a root prints as redacted.
+
+```swift
+import PolarisKey
+
+func recoverRing(_ client: PolarisKeyClient, typed: String) async throws -> Bool {
+    do {
+        let recovered = try await client.keyring.recover(typed)
+        return recovered.wrapDeposited         // true: the next start unlocks without the code
+    } catch let error as PolarisError where error.code == "recovery-code-invalid" {
+        return false                           // a typo or the wrong code; the checksum failed first
+    }
+}
+```
+
+`recover(_:)` checks the code before any request. On success the root is held and pinned, and this
+device deposits its own wrap.
+
+**Wrapping to another device.** On a device that holds the root, `wrapTo(deviceId:agreeKey:)` seals
+it to the other device's agreement key. That device then calls `unlock()`. The agreement key never
+leaves its `DeviceKeyPort`: a wrap is opened through the port.
+
+```swift
+import PolarisKey
+
+func approve(_ client: PolarisKeyClient, deviceId: String, agreeKey: String) async throws {
+    try await client.keyring.wrapTo(deviceId: deviceId, agreeKey: agreeKey)
+}
+```
+
+**A changed ring.** The first root this device acquires pins the ring's `ringId`, `epoch` and
+`rootKid`. A ring or wrap the Worker later serves that differs from the pin is never opened:
+`unlock()` answers `.ringChanged` and nothing is replaced. Show the person what changed (`served`,
+`createdAt`, and `by`, the device that wrapped), and call `acceptRingChange(confirmed:)` only from
+their yes. `recover(_:)` also re-pins.
+
+```swift
+import PolarisKey
+
+func acceptChange(_ client: PolarisKeyClient, served: SyncRingPin) async throws -> Bool {
+    // Call this only after the person confirmed the ring they were shown.
+    let result = try await client.keyring.acceptRingChange(confirmed: served)
+    if case .unlocked = result { return true }
+    return false                               // the Worker now serves another ring: ask again
+}
+```
+
+**Reset and adopt.** `reset()` makes a new ring; the root this device held stays in memory so
+`adopt(ringId:)` can fold it under the new one. `openAdopted()` opens the roots already folded in,
+so `client.keyring.codec` reads data sealed under them.
+
+**Sign-out.** Releasing the device (`deactivate()`, or a sign-out that releases it) calls
+`forget()`: the roots leave memory and the Keychain and the pin is dropped, so the next person
+starts clean. A root that cannot be deleted throws and stops the release.
+
+**Where the root lives.** In memory while the app runs, and in one Keychain item: service
+`pkey:<product>`, account `sync-root`, accessible after first unlock on this device only
+(`AfterFirstUnlockThisDeviceOnly`), never synchronizable. A restart takes it back while it matches
+the pin. A Keychain write that fails leaves the root in memory only. An iCloud Keychain backup of
+the root is planned.
+
 ### Edge-mint
 
 `try await client.config.mintToken("musickit")` asks the Worker to sign a short-lived
