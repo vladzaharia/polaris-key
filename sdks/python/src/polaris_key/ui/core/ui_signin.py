@@ -16,7 +16,7 @@ from typing import Any, List, Mapping, Optional, Union
 from urllib.parse import quote
 
 from ...constants_generated import DEVICE_CODE_PAGE, SIGN_IN_PROVIDER_NAME, TV_CODE_PAGE
-from .ui_activate import activation_copy
+from .ui_activate import activation_copy, key_refusal_of, key_refusal_spec
 from .ui_contract import Context, platform_class, system_confirm
 from .ui_view import (
     LinkVerdict,
@@ -30,7 +30,7 @@ from .ui_view import (
     valid_link,
 )
 
-__all__ = ["sign_in_handoff_view", "sign_in_view", "verification_url"]
+__all__ = ["nearby_approval_view", "sign_in_handoff_view", "sign_in_view", "verification_url"]
 
 _Copy = List[Union[str, bool, None]]
 
@@ -99,6 +99,83 @@ def _methods_copy(ctx: Context) -> _Copy:
     ]
 
 
+def _per_developer(provider: str, reach: Any) -> bool:
+    """The provider's identity is per developer: Apple always, Google unless shared across apps."""
+    return provider == "Apple" or reach != "global"
+
+
+def _auto_step_view(ctx: Context, auto: Mapping[str, Any], args: Mapping[str, Any], provider: str) -> View:
+    """Automatic sign-in's steps, drawn in the form's body: confirm the account, offer to link the
+    provider, and the nearby wait (plans/auto-sign-in.md §3)."""
+    step = auto.get("step")
+    a = {**args, "provider": provider}
+
+    def view(state: str, copy: _Copy, primary: Optional[str] = None, tone: Optional[str] = None) -> View:
+        return make_view(ctx, "SignIn", state, copy, args=a, primary=primary, tone=tone)
+
+    if step == "confirm":
+        return view(
+            "confirm",
+            [
+                "signin.auto.confirm.title",
+                "signin.auto.confirm.as" if auto.get("email") else "signin.auto.confirm.asApple",
+                "signin.auto.confirm.primary",
+                "signin.auto.confirm.other",
+            ],
+            "signin.auto.confirm.primary",
+        )
+    if step == "link-offer":
+        return view(
+            "link-offer",
+            [
+                "signin.linkOffer.title",
+                "signin.linkOffer.bodyDeveloper"
+                if _per_developer(provider, auto.get("reach"))
+                else "signin.linkOffer.bodyGlobal",
+                "signin.linkOffer.primary",
+                "signin.linkOffer.decline",
+            ],
+            "signin.linkOffer.primary",
+        )
+    if step == "link-done":
+        return view("link-done", ["signin.linkOffer.done"])
+    if step == "link-conflict":
+        return view("link-conflict", ["signin.linkOffer.conflict"], tone="neutral")
+    if step == "nearby-prompt":
+        return view(
+            "nearby-prompt",
+            ["signin.nearby.prePrompt", "signin.auto.confirm.primary", "common.notNow"],
+            "signin.auto.confirm.primary",
+        )
+    if step == "nearby-wait":
+        return view("nearby-wait", ["signin.nearby.title", "signin.nearby.body", "signin.nearby.code"])
+    return view("nearby-done", ["signin.nearby.done", "signin.nearby.notYou"])
+
+
+def nearby_approval_view(ctx: Context) -> View:
+    """NearbyApproval: the approving device's side of nearby sign-in (D-A9). No primary: choosing
+    the matching code is the action, and Not now the only other."""
+    if not ctx.on("identity"):
+        return hidden_view(ctx, "NearbyApproval")
+    n = _mapping(ctx.input.get("nearbyApproval"))
+    args = {"device": n.get("device")}
+    step = n.get("step")
+    if step == "ask":
+        return make_view(
+            ctx,
+            "NearbyApproval",
+            "ask",
+            ["signin.nearby.ask", "signin.nearby.askBody", "signin.nearby.deny"],
+            args=args,
+            focus="heading",
+        )
+    if step == "approved":
+        return make_view(ctx, "NearbyApproval", "approved", ["signin.nearby.approved"], args=args)
+    if step == "not-nearby":
+        return make_view(ctx, "NearbyApproval", "not-nearby", ["signin.nearby.notNearby"], args=args, tone="neutral")
+    return make_view(ctx, "NearbyApproval", "entry", ["signin.nearby.menu"], args=args, focus=None)
+
+
 def _methods_view(ctx: Context, args: Mapping[str, Any]) -> View:
     return make_view(ctx, "SignIn", "methods", _methods_copy(ctx), args=args, primary=_methods_primary(ctx))
 
@@ -126,6 +203,9 @@ def sign_in_view(ctx: Context) -> View:
             tone="danger",
             error_slot=primary,
         )
+    auto = _mapping(ctx.input.get("autoSignIn"))
+    if auto:
+        return _auto_step_view(ctx, auto, {**args, "developer": ident.developer, "email": auto.get("email")}, provider)
     if s.get("outcome") == "expired" or (dc and (dc.get("phase") == "expired" or code_expired(dc.get("secondsLeft")))):
         return make_view(
             ctx,
@@ -145,7 +225,7 @@ def sign_in_view(ctx: Context) -> View:
         copy: List[str] = (
             ["signin.return.signedInShort"]
             if not license_on
-            else ["signin.done.start", "signin.return.signedInShort"]
+            else ["signin.done.start", "signin.return.signedInTier" if account.get("tier") else "signin.return.signedInShort"]
             if s.get("issuedNow")
             else ["signin.desktop.toast"]
         )
@@ -165,6 +245,20 @@ def sign_in_view(ctx: Context) -> View:
         if s.get("event") == "have-key" and license_on and ctx.caps["keyEntry"]:
             a = _mapping(ctx.input.get("activation"))
             refused = bool(a) and a.get("result") != "ok"
+            refusal = key_refusal_of(a) if a else None
+            if refusal is not None:  # a different key cannot fix it: the field is left behind (DL6)
+                spec = key_refusal_spec(ctx, refusal, a)
+                return make_view(
+                    ctx,
+                    "SignIn",
+                    "key-refused",
+                    spec["copy"],
+                    args=args,
+                    primary=spec["primary"],
+                    tone="neutral",
+                    link=spec["link"],
+                    qr=spec["qr"],
+                )
             return make_view(
                 ctx,
                 "SignIn",

@@ -263,12 +263,12 @@ export const ACTIONS: Readonly<Record<string, string>> = {
 export const ACTION_KEYS: Readonly<Record<string, readonly string[]>> = {
   "open-card": ["signin.desktop.continue", "signin.email.continue"],
   "open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
+  "start-sign-in": ["signin.key.ownedSignIn"],
   "open-manage-url": [
     "deviceLimit.openBrowser",
     "devices.manage",
     "signin.key.addInLocker",
   ],
-  "start-sign-in": ["signin.key.ownedSignIn"],
   "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
   retry: [
     "common.tryAgain",
