@@ -89,22 +89,61 @@ public struct ConnectOptions: Sendable {
     public var keys: (any DeviceKeyPort)?
     /// Where the identity is kept. Nil: the Keychain.
     public var store: ConnectStateStore?
+    /// Accept a key store whose keys die with the process (`DeviceKeyStore.inMemory()`). Off by
+    /// default: without it a memory-only store is `invalid-options`, because keys that are gone
+    /// at the next launch leave a dead entry in the person's roster.
+    public var allowEphemeralKeys: Bool
 
-    public init(keys: (any DeviceKeyPort)? = nil, store: ConnectStateStore? = nil) {
+    public init(
+        keys: (any DeviceKeyPort)? = nil, store: ConnectStateStore? = nil, allowEphemeralKeys: Bool = false
+    ) {
         self.keys = keys
         self.store = store
+        self.allowEphemeralKeys = allowEphemeralKeys
     }
 }
 
 public actor ConnectClient {
     private let core: CoreContext
     private let options: ConnectOptions
+    private let accessGroup: String?
     private var madeKeys: (any DeviceKeyPort)?
     private var madeStore: ConnectStateStore?
 
-    public init(core: CoreContext, options: ConnectOptions = ConnectOptions()) {
+    public init(core: CoreContext, options: ConnectOptions = ConnectOptions(), accessGroup: String? = nil) {
         self.core = core
         self.options = options
+        self.accessGroup = accessGroup
+    }
+
+    // ── Serialisation ────────────────────────────────────────────────────────────────────
+    // An actor is reentrant at every `await`, so `identity()`, `listDevices()` and `leave()` run
+    // one at a time through this lock: a `leave()` during a fetch waits for it and then clears,
+    // and two `identity()` calls never save out of order.
+    private var locked = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    private func acquire() async {
+        if locked {
+            await withCheckedContinuation { waiters.append($0) }
+        } else {
+            locked = true
+        }
+    }
+
+    private func release() {
+        if waiters.isEmpty {
+            locked = false
+        } else {
+            waiters.removeFirst().resume()
+        }
+    }
+
+    private func serialised<T: Sendable>(_ body: () async -> T) async -> T {
+        await acquire()
+        let out = await body()
+        release()
+        return out
     }
 
     // ── Public ───────────────────────────────────────────────────────────────────────────
@@ -116,8 +155,28 @@ public actor ConnectClient {
         return await verified(record, deviceId: await core.deviceId, now: await core.now())
     }
 
+    /// The previous K_disc is kept for 24 hours from when it was first seen (V5 §15.4); a record
+    /// with a second key and no first-seen time keeps neither.
+    private static let previousKeySeconds = 86_400
+    /// A certificate with more than 3.5 days left is served from the held identity.
+    private static let certFreshSeconds = 302_400
+
+    private static func activeDiscKeys(_ r: ConnectRecord, now: Int) -> [String] {
+        guard r.discKeys.count > 1 else { return r.discKeys }
+        guard let seen = r.prevFirstSeen, now < seen + previousKeySeconds else { return [r.discKeys[0]] }
+        return r.discKeys
+    }
+
     /// Registers keys if needed, fetches and verifies the identity, stores it.
-    public func identity() async -> ConnectIdentityResult {
+    ///
+    /// With a held identity whose certificate has more than 3.5 days left the held one is served
+    /// without a request, unless `refresh` is true. A transport that sees a peer certificate on a
+    /// higher epoch, or a `RING` from a peer, asks for `refresh: true`.
+    public func identity(refresh: Bool = false) async -> ConnectIdentityResult {
+        await serialised { await identityLocked(refresh: refresh) }
+    }
+
+    private func identityLocked(refresh: Bool) async -> ConnectIdentityResult {
         if let early = await precheck() { return early }
         let keys: DevicePublicKeys
         let port: any DeviceKeyPort
@@ -127,17 +186,21 @@ public actor ConnectClient {
             port = try keyPort()
             store = try self.store()
             // Keys that die with the process cannot be a roster entry: refuse before making any.
-            if try await port.persistence() == .memory {
-                return .refused(
-                    ConnectRefusal(
-                        code: ErrorCode.deviceKeysRequired, status: 0,
-                        message: "The device key store is memory-only; it cannot register keys.",
-                        signInUrl: nil))
+            if try await port.persistence() == .memory && !options.allowEphemeralKeys {
+                return .error(
+                    code: ErrorCode.invalidOptions,
+                    message: "The device key store is memory-only; set allowEphemeralKeys to use it.")
             }
             keys = try await port.ensure()
             record = try store.load()
         } catch {
             return .error(code: "store-failed", message: "The device keys or the held identity could not be read.")
+        }
+        if !refresh, let record, let id = await verified(record, deviceId: await core.deviceId, now: await core.now()),
+            id.certificate.signKey == keys.signKey, id.certificate.agreeKey == keys.agreeKey,
+            id.certificate.expiresAt - (await core.now()) > Self.certFreshSeconds
+        {
+            return .ready(id)
         }
         guard let token = await core.token else {
             return .error(code: ErrorCode.noToken, message: "Activate or register before using Cloud Connect.")
@@ -170,6 +233,10 @@ public actor ConnectClient {
 
     /// The person's devices (`GET /<p>/connect/devices`).
     public func listDevices() async -> ConnectDevicesResult {
+        await serialised { await listDevicesLocked() }
+    }
+
+    private func listDevicesLocked() async -> ConnectDevicesResult {
         if let early = await precheck() {
             switch early {
             case .unsupported(let u): return .unsupported(u)
@@ -200,8 +267,16 @@ public actor ConnectClient {
 
     /// Removes the held identity: the roster, the certificate and every discovery key, the
     /// previous one included. The device keys stay (they belong to the device, not the account).
+    ///
+    /// With nothing held it returns at once and touches nothing. If a record exists (even an
+    /// unreadable one) and cannot be deleted, it throws, so a sign-out stops rather than leave
+    /// K_disc behind.
     public func leave() async throws {
-        try self.store().clear()
+        await acquire()
+        defer { release() }
+        let store = try self.store()
+        guard try store.exists() else { return }
+        try store.clear()
     }
 
     // ── Seams ────────────────────────────────────────────────────────────────────────────
@@ -209,7 +284,7 @@ public actor ConnectClient {
     private func keyPort() throws -> any DeviceKeyPort {
         if let k = options.keys { return k }
         if let k = madeKeys { return k }
-        let k = try DeviceKeyStore(productSlug: core.product)
+        let k = try DeviceKeyStore(productSlug: core.product, accessGroup: accessGroup)
         madeKeys = k
         return k
     }
@@ -217,7 +292,7 @@ public actor ConnectClient {
     private func store() throws -> ConnectStateStore {
         if let s = options.store { return s }
         if let s = madeStore { return s }
-        let s = try ConnectStateStore(productSlug: core.product)
+        let s = try ConnectStateStore(productSlug: core.product, accessGroup: accessGroup)
         madeStore = s
         return s
     }
@@ -282,7 +357,8 @@ public actor ConnectClient {
         let request: (path: String, body: DeviceKeysRequest)
         do {
             let deviceId = await core.deviceId
-            request = try await DeviceProofs.keysRequest(port, product: core.product, deviceId: deviceId)
+            request = try await DeviceProofs.keysRequest(
+                port, product: core.product, deviceId: deviceId, allowEphemeral: options.allowEphemeralKeys)
         } catch DeviceKeyError.unsupported {
             return .failure(
                 Failure(
@@ -375,16 +451,34 @@ public actor ConnectClient {
                 return invalid("stale roster")
             }
         }
+        // K_disc: the current key, and the previous one only while it is under 24 hours old and
+        // no device was lost or re-keyed since the held roster. Nothing carries over from the
+        // held record except the time the previous key was first seen.
+        var disc = [body.discKeys[0]]
+        var prevSeen: Int?
+        if body.discKeys.count > 1 {
+            let prev = body.discKeys[1]
+            let sameKey = (held?.discKeys.count ?? 0) > 1 && held?.discKeys[1] == prev
+            let first = (sameKey ? held?.prevFirstSeen : nil) ?? now
+            var lost = false
+            if let held, case .ok(let was) = PeerDocs.verifyRing(held.ring, trust: trust, expectedAud: core.product) {
+                lost = was.devices.contains { !ring.devices.contains($0) }
+            }
+            if !lost && now < first + Self.previousKeySeconds {
+                disc.append(prev)
+                prevSeen = first
+            }
+        }
         let record = ConnectRecord(
-            ring: body.ring, certificate: body.certificate, discKeys: body.discKeys, registered: registered,
-            storedAt: now)
+            ring: body.ring, certificate: body.certificate, discKeys: disc, registered: registered,
+            storedAt: now, prevFirstSeen: prevSeen)
         do { try store.save(record) } catch {
             return .error(code: "store-failed", message: "The identity could not be stored.")
         }
         return .ready(
             ConnectIdentity(
                 subject: ring.sub, deviceId: deviceId, ring: ring, certificate: cert, ringJws: body.ring,
-                certificateJws: body.certificate, discKeys: body.discKeys.compactMap { DiscoveryKey(base64url: $0) }))
+                certificateJws: body.certificate, discKeys: disc.compactMap { DiscoveryKey(base64url: $0) }))
     }
 
     /// A stored record is trusted only as far as it verifies again.
@@ -396,8 +490,9 @@ public actor ConnectClient {
                 r.certificate, options: VerifyPeerCertOptions(trust: trust, expectedAud: core.product, now: now)),
             cert.sub == ring.sub, cert.deviceId == deviceId, (1...2).contains(r.discKeys.count)
         else { return nil }
-        let disc = r.discKeys.compactMap { DiscoveryKey(base64url: $0) }
-        guard disc.count == r.discKeys.count else { return nil }
+        let active = Self.activeDiscKeys(r, now: now)
+        let disc = active.compactMap { DiscoveryKey(base64url: $0) }
+        guard disc.count == active.count else { return nil }
         return ConnectIdentity(
             subject: ring.sub, deviceId: deviceId, ring: ring, certificate: cert, ringJws: r.ring,
             certificateJws: r.certificate, discKeys: disc)
