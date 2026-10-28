@@ -29,6 +29,9 @@ import type {
 } from "../../core/localConfig.js";
 import type { KeyringClient } from "../../core/keyring.js";
 import type { BrowserCloudSyncHost } from "./host.js";
+import { safeSignInUrl } from "../../core/signInUrl.js";
+
+export { safeSignInUrl };
 
 /** The reasons the machine leaves a principal, each of which drops the key ring. */
 const FORGETTING = new Set(["signOut", "accountRequired", "subjectChanged"]);
@@ -77,25 +80,6 @@ export function importMarker(
   };
 }
 
-/** A sign-in URL fit to hand to the app: a same-site path, or https on `origin`; else null. */
-export function safeSignInUrl(
-  url: string | null,
-  origin: string | undefined,
-): string | null {
-  if (url === null) return null;
-  if (/^\/(?![/\\])/.test(url)) return url;
-  try {
-    const u = new URL(url);
-    return u.protocol === "https:" &&
-      origin !== undefined &&
-      u.origin === origin
-      ? u.href
-      : null;
-  } catch {
-    return null;
-  }
-}
-
 export interface BrowserCloudSyncApiDeps {
   host: BrowserCloudSyncHost;
   keyring: Pick<KeyringClient, "forget">;
@@ -114,7 +98,15 @@ export class BrowserCloudSyncApi {
   readonly #d: BrowserCloudSyncApiDeps;
   readonly #listeners = new Set<(events: SyncEvent[]) => void>();
   #attached: Promise<void> | null = null;
-  #subject: string | null = null;
+  #subjectValue: string | null = null;
+  /** The person the machine is signed in as; the host is told, so no request outlives them. */
+  get #subject(): string | null {
+    return this.#subjectValue;
+  }
+  set #subject(s: string | null) {
+    this.#subjectValue = s;
+    this.#d.host.bindSubject(s);
+  }
   #forgot = false;
   #chain: Promise<void> = Promise.resolve();
   /** Identity changes, one at a time and in order. */

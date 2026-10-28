@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import type { Unsupported } from "@polaris-key/client-core";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import { UnsupportedError } from "../core/caps.js";
+import { safeSignInUrl } from "../core/signInUrl.js";
 import type { SyncStatus } from "../core/cloudSync.js";
 import type { SettingSync } from "../core/localConfig.js";
 import { useConfigSetting, useCtx, type UseConfigSetting } from "./hooks.js";
@@ -100,11 +101,7 @@ export function useCloudSync(): UseCloudSync {
       for (const e of events)
         if (e.type === "signInOffered")
           setOffer({
-            // The API already checked the origin; a scheme other than https is never handed on.
-            signInUrl:
-              e.signInUrl !== null && /^(https:|\/(?![/\\]))/.test(e.signInUrl)
-                ? e.signInUrl
-                : null,
+            signInUrl: safeSignInUrl(e.signInUrl, client.signInOrigin),
           });
       next();
     });

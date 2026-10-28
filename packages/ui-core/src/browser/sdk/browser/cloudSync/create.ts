@@ -84,6 +84,7 @@ export async function createBrowserCloudSync(
     {
       product: o.product,
       request: (path, init) => bearer.ringRequest(path, init),
+      subject: () => bearer.account,
       ring: o.keyring,
       discovery: () =>
         (o.discovery_?.services?.sync as

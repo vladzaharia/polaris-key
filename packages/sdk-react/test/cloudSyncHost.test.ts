@@ -29,6 +29,7 @@ import {
 } from "../src/browser/ring/rootVault.js";
 import {
   BrowserCloudSyncHost,
+  PURGE_WAIT_MS,
   CATALOG_REFETCH_MS,
   vetted,
   type BrowserSyncHostDeps,
@@ -780,6 +781,44 @@ describe("browser cloud sync host: leaving the principal deletes the synced data
     await host.flush(1000);
     await host.close();
     expect(await b.store.get()).toBeNull();
+  });
+
+  it("S-2: a purge returns within its bound while a request never answers", async () => {
+    const w = new World();
+    const b = new Browser();
+    const never = (() => new Promise<Response>(() => undefined)) as never;
+    const { host } = await b.tab(w, { deps: { request: never } });
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    void host.touch();
+    await new Promise((r) => setTimeout(r, 20));
+    const t0 = Date.now();
+    await host.purge();
+    // The request's own limit is 15 s; the purge does not wait for it.
+    expect(Date.now() - t0).toBeLessThan(PURGE_WAIT_MS * 2 + 500);
+    expect(await b.store.get()).toBeNull();
+    // No close: it would wait for the stuck request's own limit.
+  }, 10_000);
+
+  it("a request queued for one person is never sent under another's token", async () => {
+    const w = new World();
+    const b = new Browser();
+    const now = { current: SUBJECT as string | null };
+    const { host } = await b.tab(w, { deps: { subject: () => now.current } });
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    host.bindSubject(SUBJECT);
+    await host.touch();
+    const before = w.seen.length;
+    await host.set("theme", "P1-VALUE");
+    // The token is the next person's before the debounce tick or the flush runs.
+    now.current = "P2";
+    await host.flush(1000);
+    expect(
+      w.seen.slice(before).some((r) => JSON.stringify(r).includes("P1-VALUE")),
+    ).toBe(false);
+    expect(w.seen.slice(before)).toEqual([]);
+    await b.close();
   });
 
   it("account_required drops the ring and the record", async () => {
