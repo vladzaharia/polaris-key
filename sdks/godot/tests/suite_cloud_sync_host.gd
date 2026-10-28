@@ -48,6 +48,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_state(t)
 	await _host(t)
 	await _bounds(t)
+	await PKeyTestFixtures.frames(20)  # let abandoned coroutines resume and finish
 	return true
 
 
