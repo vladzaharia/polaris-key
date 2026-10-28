@@ -52,7 +52,7 @@ import { patched } from "./adaptBase.js";
 import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
 import { refusalOf } from "./refusal.js";
-import { openLink, safeLink } from "./links.js";
+import { currentPageUrl, openLink, safeLink } from "./links.js";
 import { openManage } from "@polaris-key/ui-core/browser";
 
 export type { FormInput, FormStep } from "./contractForm.js";
@@ -406,7 +406,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         if (url)
           openManage(
             url,
-            window.location.href,
+            currentPageUrl(),
             s.keyField?.text.trim() || undefined,
           );
         return;
@@ -419,7 +419,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         const url = s.autoSignIn?.manageUrl ?? model.manageUrl;
         if (url) {
           model.leftToReplace();
-          openManage(url, window.location.href);
+          openManage(url, currentPageUrl());
         }
         return;
       }
@@ -446,7 +446,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
             ) ?? model.manageUrl;
           if (url) {
             model.leftToReplace();
-            openManage(url, window.location.href);
+            openManage(url, currentPageUrl());
           }
         }
         return model.openReplace(id);

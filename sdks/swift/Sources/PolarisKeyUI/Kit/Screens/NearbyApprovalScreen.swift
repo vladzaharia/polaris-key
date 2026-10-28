@@ -35,35 +35,39 @@ public struct NearbyApprovalView: View {
 
     @ViewBuilder private func step(_ screen: KitScreen<NearbyApprovalState>) -> some View {
         KitScreenScaffold(header: true) {
-            HStack(alignment: .center, spacing: 8) {
-                if screen.state == .approved {
-                    kitStyle { style in
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(style.font(.title))
-                            .foregroundStyle(style.palette.success)
-                            .accessibilityHidden(true)
+            kitStyle { style in
+                HStack(alignment: .center, spacing: style.space(.xs)) {
+                    if screen.state == .approved {
+                        kitStyle { inner in
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(inner.font(.title))
+                                .foregroundStyle(inner.palette.success)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    if let title = screen.copy.first {
+                        KitText(title, .title, color: .strong)
                     }
                 }
-                if let title = screen.copy.first {
-                    KitText(title, .title, color: .strong)
-                }
+                .accessibilityAddTraits(.isHeader)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .accessibilityAddTraits(.isHeader)
-            .frame(maxWidth: .infinity, alignment: .leading)
         } content: {
-            VStack(alignment: .leading, spacing: 16) {
-                if screen.state == .ask {
-                    if let body = screen.line("signin.nearby.askBody") {
-                        KitText(body, .body, color: .default)
-                    }
-                    codeRow
-                    if let warning = screen.line("signin.approve.warning") {
-                        KitText(warning, .meta, color: .muted)
-                    }
-                } else {
-                    // An outcome: its sentences under the title; the last line is the way on.
-                    ForEach(Array(screen.copy.dropFirst().dropLast()), id: \.key) { line in
-                        KitText(line, .body, color: .default)
+            kitStyle { style in
+                VStack(alignment: .leading, spacing: style.space(.md)) {
+                    if screen.state == .ask {
+                        if let body = screen.line("signin.nearby.askBody") {
+                            KitText(body, .body, color: .default)
+                        }
+                        codeRow
+                        if let warning = screen.line("signin.approve.warning") {
+                            KitText(warning, .meta, color: .muted)
+                        }
+                    } else {
+                        // An outcome: its sentences under the title; the last line is the way on.
+                        ForEach(Array(screen.copy.dropFirst().dropLast()), id: \.key) { line in
+                            KitText(line, .body, color: .default)
+                        }
                     }
                 }
             }
@@ -89,7 +93,7 @@ public struct NearbyApprovalView: View {
                         model.onChoose?(code)
                     } label: {
                         Text(code)
-                            .font(.system(size: 28, weight: .semibold, design: .rounded))
+                            .font(style.font(.title))
                             .monospacedDigit()
                             .foregroundStyle(style.palette.textStrong)
                             .frame(maxWidth: .infinity, minHeight: 64)
