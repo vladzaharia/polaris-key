@@ -33,6 +33,7 @@ import httpx
 
 from .backend import BackendClient
 from .core.device_keys import DeviceKeyPort
+from .connect import ConnectClient
 from .keyring import KeyringClient
 from .commerce import CommerceClient
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
@@ -184,6 +185,10 @@ class PolarisKeyClient:
         # This device's keys (a DeviceKeyPort, e.g. from create_device_key_store). Without it,
         # anything that needs the agreement key refuses with `device_keys_required`.
         device_keys: Optional[DeviceKeyPort] = None,
+        # ── client.connect (Cloud Connect identity, CC-10.1) ─────────────────────────
+        # Allow a memory-only key store: its keys die with the process, so every restart would
+        # register a new pair (the Worker allows 4 a day). Off by default.
+        allow_ephemeral_keys: bool = False,
     ) -> None:
         self.product = product_slug
         self.core = CoreContext(
@@ -306,6 +311,18 @@ class PolarisKeyClient:
         #: The Cloud Sync key ring: the end-to-end root, its wraps and recovery (WIRE-CONTRACT-V5
         #: §13.11). Named ``keyring`` because ``sync()`` is the licence sync.
         self.keyring = KeyringClient(self.core, self._tokens, device_keys=device_keys)
+
+        #: Cloud Connect identity (WIRE-CONTRACT-V5 §15): the person's roster, this device's
+        #: certificate and K_disc, verified against the effective product set. Without
+        #: ``device_keys`` it uses the file key store in the state directory.
+        self.connect = ConnectClient(
+            self.core,
+            self._tokens,
+            self.devices,
+            lambda: self._trust.effective,
+            device_keys=device_keys,
+            allow_ephemeral_keys=allow_ephemeral_keys,
+        )
 
         # Store purchases → licence flags (P6-01). The one-call claim helpers sync on success.
         self.commerce = CommerceClient(
