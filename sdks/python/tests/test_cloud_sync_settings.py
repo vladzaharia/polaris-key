@@ -361,3 +361,131 @@ def test_events_name_keys_and_never_values_or_the_root(rigs: Callable[..., Rig])
     sign_out_hook(r)
     assert seen
     assert "very-secret-value" not in json.dumps([dict(e.data) for e in seen])
+
+
+# ── security fix round (SEC-HOST2) ───────────────────────────────────────────────────────────────
+
+
+def within(seconds: float, fn: Callable[[], Any]) -> bool:
+    """Run ``fn`` on a thread; True when it returned in time."""
+    import threading
+
+    t = threading.Thread(target=fn, daemon=True)
+    t.start()
+    t.join(seconds)
+    return not t.is_alive()
+
+
+def test_b2_purge_removes_the_file_before_the_running_pump_ends(rigs: Callable[..., Rig]) -> None:
+    import threading
+
+    r = signed_in(rigs, World())
+    r.client.config.set("theme", "dark")
+    r.client.cloud_sync.flush()
+    assert state_file(r.state_dir) != ""
+    r.host._pump_lock.acquire()  # a slow pump in flight
+    try:
+        t = threading.Thread(target=r.host.purge, daemon=True)
+        t.start()
+        for _ in range(100):
+            if state_file(r.state_dir) == "":
+                break
+            t.join(0.05)
+        assert state_file(r.state_dir) == ""
+        assert t.is_alive()  # still waiting on the pump
+    finally:
+        r.host._pump_lock.release()
+    t.join(5)
+    assert not t.is_alive()
+    assert state_file(r.state_dir) == ""
+
+
+def test_b2_a_sign_out_that_gives_up_waiting_has_already_deleted_the_file(
+    rigs: Callable[..., Rig], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from polaris_key.cloud_sync import api as api_mod
+
+    r = signed_in(rigs, World())
+    r.client.config.set("theme", "dark")
+    r.client.cloud_sync.flush()
+    monkeypatch.setattr(api_mod, "_FORGET_WAIT", 0.2)
+    api = r.client._cloud_sync_api
+    api._forgot = False
+    r.host._pump_lock.acquire()
+    try:
+        assert within(5, api._forget_bounded)  # returns although the purge waits on the pump
+        assert state_file(r.state_dir) == ""
+        assert locked_ring(r)
+    finally:
+        r.host._pump_lock.release()
+
+
+def test_b3_a_listener_that_sets_a_value_from_inside_the_pump_does_not_deadlock(
+    rigs: Callable[..., Rig],
+) -> None:
+    r = signed_in(rigs, World())
+    c = r.client
+    seen: List[Any] = []
+
+    def listener(e: Any) -> None:
+        seen.append(e["type"])
+        if e["type"] == "change" and e["keys"] == ["theme"] and "again" not in seen:
+            seen.append("again")
+            c.config.set("theme", "second")  # re-enters touch() on the pump's own thread
+            c.cloud_sync.status()
+
+    c.events.subscribe(listener, ("cloudSync",))
+    # The change event of this set is reported on the pump's thread, where the listener sets again.
+    assert within(10, lambda: c.config.set("theme", "first"))
+    assert within(10, c.cloud_sync.flush)
+    assert "again" in seen
+
+
+def test_s1_a_non_finite_number_in_an_answer_does_not_abort_the_pump(rigs: Callable[..., Rig]) -> None:
+    w = World()
+    r = signed_in(rigs, w)
+    w.pull = lambda url: httpx.Response(
+        200,
+        content=json.dumps(w.body()).replace('"catalogVersion": 1', '"catalogVersion": 1e999')
+        .replace('"cursor": 0', '"cursor": 1e999')
+        .encode(),
+    )
+    r.m("refresh")
+    r.host.touch()
+    # The pump finished and saved; a hostile cursor was not taken.
+    assert state_file(r.state_dir) != ""
+    assert r.m("persist")["partitions"][SUBJECT]["cursor"] == 0
+
+
+def test_s2_a_failed_rebuild_still_removes_the_file_and_clears_the_open_keys(
+    rigs: Callable[..., Rig], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    r = signed_in(rigs, World())
+    r.client.config.set("theme", "dark")
+    r.client.cloud_sync.flush()
+    r.host._open_keys = {"previous-person-key": None}
+
+    def boom(_p: Any) -> None:
+        raise RuntimeError("attach")
+
+    monkeypatch.setattr(r.host, "_build", boom)
+    with pytest.raises(RuntimeError):
+        r.host.purge()
+    assert state_file(r.state_dir) == ""
+    assert r.host._open_keys == {}
+
+
+def test_s9_a_failed_purge_reaches_the_app_as_an_event_without_values(
+    rigs: Callable[..., Rig], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    r = signed_in(rigs, World())
+    seen: List[Any] = []
+    r.client.events.subscribe(seen.append, ("cloudSync",))
+
+    def boom() -> None:
+        raise OSError("/secret/path")
+
+    monkeypatch.setattr(r.host, "purge", boom)
+    sign_out_hook(r)
+    failed = [dict(e.data) for e in seen if e["type"] == "purgeFailed"]
+    assert failed == [{"type": "purgeFailed"}]
