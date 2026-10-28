@@ -4,6 +4,7 @@
 #
 #   run.sh                     build and run the render tests on an iPhone (iPhone 17 Pro Max)
 #   DEVICE="iPad Air 11-inch (M4)" run.sh   the same on another installed simulator
+#   IOS=26.5                   the simulator runtime (default 26.5, the one the baselines are recorded on)
 #   PKEY_KIT_ONLY=Welcome.default,SignIn.methods run.sh   only these states
 #   PKEY_KIT_QUICK=1 run.sh    each state in both schemes only (no AX, landscape or native)
 #   run.sh --open              generate the project and open it in Xcode
@@ -34,6 +35,10 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 BUILD="$HERE/build"
 DEVICE="${DEVICE:-iPhone 17 Pro Max}"
+# The runtime the committed baselines are recorded on. Xcode 27 resolves OS:latest to iOS 27, which
+# has no iPhone 17 Pro Max and draws a few states differently; pin the 26 runtime, or set IOS to
+# another installed one (and do not record baselines from it).
+IOS="${IOS:-26.5}"
 LABEL="${PKEY_KIT_DEVICE:-$(echo "$DEVICE" | tr '[:upper:] ' '[:lower:]-')}"
 SHOTS="${PKEY_KIT_SHOTS:-$BUILD/shots}"
 
@@ -90,7 +95,7 @@ TEST_RUNNER_PKEY_KIT_SHOTS="$SHOTS" TEST_RUNNER_PKEY_KIT_ONLY="${PKEY_KIT_ONLY:-
   TEST_RUNNER_PKEY_KIT_BASELINES="${PKEY_KIT_BASELINES:-}" TEST_RUNNER_PKEY_KIT_RECORD="${PKEY_KIT_RECORD:-0}" \
   xcodebuild test \
   -project "$HERE/TidewaterKit.xcodeproj" -scheme TidewaterKit \
-  -destination "platform=iOS Simulator,name=$DEVICE${PKEY_KIT_OS:+,OS=$PKEY_KIT_OS}" \
+  -destination "platform=iOS Simulator,name=$DEVICE,OS=${PKEY_KIT_OS:-$IOS}" \
   -derivedDataPath "$BUILD/dd" -resultBundlePath "$BUILD/results-$(date +%s).xcresult" \
   CODE_SIGNING_ALLOWED=YES
 echo "run.sh: renders in $SHOTS"

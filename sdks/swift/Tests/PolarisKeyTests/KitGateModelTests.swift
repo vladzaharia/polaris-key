@@ -102,7 +102,9 @@
             await model.reload()
             model.keyText = "pkey_djdl_" + String(repeating: "A", count: 22)
             await model.submitKey()
-            XCTAssertEqual(model.activate.state, .rejected)
+            // license_owned is its own focused step (ui-matrix v7 `license-owned`), not a
+            // refusal stacked under the field.
+            XCTAssertEqual(model.activate.state, .licenseOwned)
             XCTAssertTrue(model.activate.shows("core.codes.license_owned.message"))
             // Editing clears the refusal (DL7): a new whole key is parsed again.
             model.keyText = "pkey_djdl_" + String(repeating: "B", count: 22)

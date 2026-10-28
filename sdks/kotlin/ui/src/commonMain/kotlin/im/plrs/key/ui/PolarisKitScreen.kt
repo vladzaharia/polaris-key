@@ -326,8 +326,11 @@ private fun KitScreenBody(
     }
     // The account pane's controls are its rows; a button list under them would draw each twice.
     val rowsOnly = component == KitComponent.accountAndLicense
-    val tertiary = if (rowsOnly) emptyList() else controls.filter { it.key in tertiaryKeys }
-    val buttons = if (rowsOnly) emptyList() else controls.filter { it.key !in tertiaryKeys }
+    // Boot's "Not now" is paired with Download, so it stays a tonal secondary (UI-KITS.md: "never bare
+    // text when paired"); everywhere else it is the quiet decline of an automatic step.
+    val isTertiary = { key: String -> key in tertiaryKeys && !(key == "common.notNow" && component == KitComponent.boot) }
+    val tertiary = if (rowsOnly) emptyList() else controls.filter { isTertiary(it.key) }
+    val buttons = if (rowsOnly) emptyList() else controls.filter { !isTertiary(it.key) }
     // macOS: a step screen's actions are a trailing row; the Welcome keeps its stacked hero buttons.
     val macRow = autoPlatformVariant() == PolarisPlatformVariant.MacOS && component != KitComponent.welcome && buttons.isNotEmpty()
     val onDefault: (() -> Unit)? = if (macRow && !activating) buttons.firstOrNull()?.let { line -> { onControl(line.key); onAction(KitAction.forCopyKey(line.key)) } } else null
