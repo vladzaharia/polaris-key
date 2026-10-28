@@ -2596,6 +2596,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_message">L’app n’a pas pu lire ou enregistrer sa licence sur cet appareil. Vérifiez qu’elle peut écrire dans son dossier de données.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_unavailable_title">Connexion indisponible</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_unavailable_message">La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_cert_invalid_title">Appareil non vérifié</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_cert_invalid_message">Cet appareil n'a pas pu être vérifié. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">Problème de plateforme</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_message">La plateforme a signalé une erreur. Réessayez.</string>

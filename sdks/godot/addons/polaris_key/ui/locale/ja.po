@@ -6758,6 +6758,26 @@ msgstr "保存の問題"
 msgid "core.codes.store-failed.message"
 msgstr "アプリはこのデバイスでライセンスを読み取るか保存することができませんでした。アプリがデータフォルダに書き込めることを確認してください。"
 
+#. Connect unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect-unavailable.title"
+msgstr "接続できません"
+
+#. Nearby connection isn't available for this app on this device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect-unavailable.message"
+msgstr "このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。"
+
+#. Device not verified
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-cert-invalid.title"
+msgstr "デバイスを確認できません"
+
+#. This device couldn't be verified. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-cert-invalid.message"
+msgstr "このデバイスを確認できませんでした。もう一度お試しください。"
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"

@@ -156,6 +156,8 @@ public enum ErrorCode {
     public static let httpError = "http-error"
     public static let invalidResponse = "invalid-response"
     public static let storeFailed = "store-failed"
+    public static let connectUnavailable = "connect-unavailable"
+    public static let peerCertInvalid = "peer-cert-invalid"
     public static let platformError = "platform-error"
     public static let noToken = "no-token"
     public static let mintUnavailable = "mint-unavailable"
@@ -364,6 +366,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "http-error",
     "invalid-response",
     "store-failed",
+    "connect-unavailable",
+    "peer-cert-invalid",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -572,6 +576,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "http-error": "client",
     "invalid-response": "client",
     "store-failed": "client",
+    "connect-unavailable": "client",
+    "peer-cert-invalid": "client",
     "platform-error": "client",
     "no-token": "client",
     "mint-unavailable": "client",

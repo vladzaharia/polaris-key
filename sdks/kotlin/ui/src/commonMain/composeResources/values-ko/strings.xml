@@ -2570,6 +2570,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_message">앱이 이 기기에서 라이선스를 읽거나 저장하지 못했어요. 앱이 데이터 폴더에 쓸 수 있는지 확인하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_unavailable_title">연결할 수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_unavailable_message">이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_cert_invalid_title">기기를 확인할 수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_cert_invalid_message">이 기기를 확인할 수 없습니다. 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">플랫폼 문제</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_message">플랫폼에서 오류를 보고했어요. 다시 시도하세요.</string>

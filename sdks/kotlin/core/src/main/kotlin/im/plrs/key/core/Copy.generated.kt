@@ -169,6 +169,8 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "http-error" to CopyEntry("Service problem", "The service answered with an error. Try again."),
     "invalid-response" to CopyEntry("Unexpected answer", "The service sent an answer the app couldn't use. Try again."),
     "store-failed" to CopyEntry("Storage problem", "The app couldn't read or save its license on this device. Check that the app can write its data folder."),
+    "connect-unavailable" to CopyEntry("Connect unavailable", "Nearby connection isn't available for this app on this device."),
+    "peer-cert-invalid" to CopyEntry("Device not verified", "This device couldn't be verified. Try again."),
     "platform-error" to CopyEntry("Platform problem", "The platform reported an error. Try again."),
     "no-token" to CopyEntry("Not activated", "This device isn't activated yet. Activate it or sign in."),
     "mint-unavailable" to CopyEntry("Not available", "This isn't available for this app."),

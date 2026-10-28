@@ -878,6 +878,18 @@
       "description": "Godot: The credential or cache store could not be read or written."
     },
     {
+      "code": "connect-unavailable",
+      "kind": "client",
+      "service": "connect",
+      "description": "Cloud Connect cannot run here: the product has it off, or this SDK has no Connect on this platform. A host hides its Connect surface and does not retry (WIRE-CONTRACT-V5 \u00a715)."
+    },
+    {
+      "code": "peer-cert-invalid",
+      "kind": "client",
+      "service": "connect",
+      "description": "A device certificate or roster failed verification, or a roster is stale or belongs to another account or product (WIRE-CONTRACT-V5 \u00a715.2, \u00a715.3). Nothing is trusted; a host fetches a fresh one."
+    },
+    {
       "code": "platform-error",
       "kind": "client",
       "service": "core",

@@ -158,6 +158,8 @@ public object ErrorCode {
     public const val httpError: String = "http-error"
     public const val invalidResponse: String = "invalid-response"
     public const val storeFailed: String = "store-failed"
+    public const val connectUnavailable: String = "connect-unavailable"
+    public const val peerCertInvalid: String = "peer-cert-invalid"
     public const val platformError: String = "platform-error"
     public const val noToken: String = "no-token"
     public const val mintUnavailable: String = "mint-unavailable"
@@ -366,6 +368,8 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "http-error",
     "invalid-response",
     "store-failed",
+    "connect-unavailable",
+    "peer-cert-invalid",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -574,6 +578,8 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "http-error" to "client",
     "invalid-response" to "client",
     "store-failed" to "client",
+    "connect-unavailable" to "client",
+    "peer-cert-invalid" to "client",
     "platform-error" to "client",
     "no-token" to "client",
     "mint-unavailable" to "client",

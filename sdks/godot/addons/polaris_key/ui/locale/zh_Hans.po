@@ -6758,6 +6758,26 @@ msgstr "存储出现问题"
 msgid "core.codes.store-failed.message"
 msgstr "应用无法在此设备上读取或保存其许可证。请确认应用可以写入其数据文件夹。"
 
+#. Connect unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect-unavailable.title"
+msgstr "无法连接"
+
+#. Nearby connection isn't available for this app on this device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect-unavailable.message"
+msgstr "此设备上的此应用无法连接附近的设备。"
+
+#. Device not verified
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-cert-invalid.title"
+msgstr "无法验证设备"
+
+#. This device couldn't be verified. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-cert-invalid.message"
+msgstr "无法验证此设备。请重试。"
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"
