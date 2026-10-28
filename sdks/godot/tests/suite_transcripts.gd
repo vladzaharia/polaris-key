@@ -7,6 +7,7 @@ extends RefCounted
 # @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 # @pkey-feature license.manage identity.keyentry identity.redirect.web identity.signin.hints identity.choice
 # @pkey-feature release.fetch
+# @pkey-feature sync.keyring
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -122,6 +123,10 @@ static func replay(tr: Dictionary) -> Array:
 	var journal = tr["initial"].get("updateJournal")
 	if journal is Array:
 		opts.store_root = PKeyTestFixtures.scratch_dir("transcript-journal")
+	if tr["steps"].any(func(st): return String(st["action"]).begins_with("keyring")):
+		# The key ring's own device keys and vault: scratch files and memory, nothing in the keychain.
+		opts.device_keys = PKeyDeviceKeyStore.new(tr["product"], PKeyTestFixtures.scratch_dir("transcript-ring-keys"), false, false)
+		opts.ring_vault = PKeySyncRingVault.new(tr["product"], "user://pkey", true)
 	var sdk := PKeyTestFixtures.new_sdk()
 	sdk.set_meta("pkey_platform", String(tr["initial"].get("platform", "")))
 	var presentation_dir := PKeyTestFixtures.scratch_dir("transcript-presentation")
@@ -248,6 +253,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			var r: PKeyBootResult = await sdk.boot({"resolve_on_stop": true, "view": view, "host": PKeyBootHost.new(sdk)})
 			out["bootOutcome"] = r.outcome
 			view.queue_free()
+		"keyringGet", "keyringCreate", "keyringReset", "keyringWrap", "keyringUnwrap", "keyringAdopt", "keyringRecoverySet", "keyringRecoveryGet":
+			await _keyring(sdk, step, out)
 		"downloadModel":
 			var r: PKeyResult = await sdk.distribution.download_model()
 			out["result"] = "ok" if r.ok else String(r.code)
@@ -837,6 +844,57 @@ func _synthetic_update(t: PKeyTestContext) -> void:
 
 
 ## The transcript's name for an activation outcome: license_owned is a plain `refused` there.
+## The key ring verbs (U-40.7, `sync.keyring`) over `PolarisKey.keyring`. The transcripts hold no key
+## material the client could use, so the client makes its own: create and reset draw a root, wrap
+## seals it to a fresh agreement key for the named device (`deviceId` is the TARGET), and adopt takes
+## the root of the first ring this conversation created. A refusal reads as `refused` with the status
+## and the code.
+static func _keyring(sdk: Node, step: Dictionary, out: Dictionary) -> void:
+	var k: PKeySyncRing = sdk.keyring
+	var action: String = step["action"]
+	var args: Dictionary = step["args"]
+	var r: PKeyResult
+	match action:
+		"keyringGet":
+			r = await k.read()
+			if r.ok:
+				var g: Variant = r.detail["ring"]
+				out["ring"] = null if g == null else {"ringId": g["ring_id"], "epoch": g["epoch"], "rootKid": g["root_kid"], "state": g["state"], "recoverySet": g["recovery_set"], "previous": g["previous"]["ring_id"] if g["previous"] != null else null, "adopted": (g["adopted"] as Array).map(func(a: Dictionary) -> String: return a["ring_id"])}
+				var w: Variant = r.detail["wrap"]
+				out["wrap"] = null if w == null else {"epoch": w["epoch"], "kid": w["kid"], "by": w["by"]}
+		"keyringCreate", "keyringReset":
+			if action == "keyringCreate":
+				r = await k.create()
+			else:
+				r = await k.reset()
+			if r.ok:
+				if action == "keyringCreate" and not sdk.has_meta("pkey_first_ring"):
+					sdk.set_meta("pkey_first_ring", r.detail["ring_id"])
+				# The ring id is the client's own draw and the recording's is a fixture: both must be a well
+				# formed id, and the replay reports the recorded one when ours is.
+				var well := RegEx.create_from_string("\\Arg_[A-Za-z0-9_-]{22}\\z").search(r.detail["ring_id"]) != null
+				out["ringId"] = step["expect"].get("ringId", r.detail["ring_id"]) if well else r.detail["ring_id"]
+				out["epoch"] = r.detail["epoch"]
+		"keyringWrap":
+			var fresh := PKeyDeviceKeyStore.new("djdl", PKeyTestFixtures.scratch_dir("transcript-ring-peer"), false, false).ensure()
+			r = await k.wrap_to(String(args.get("deviceId", "")), fresh.detail["agree_key"])
+		"keyringUnwrap":
+			r = await k.remove_wrap(String(args.get("deviceId", "")))
+		"keyringAdopt":
+			r = await k.adopt(String(sdk.get_meta("pkey_first_ring", "")))
+		"keyringRecoverySet":
+			r = await k.set_recovery_code()
+		_:
+			r = await k.recovery_blob()
+			if r.ok:
+				out["ct"] = r.detail["ct"]
+	out["result"] = "ok" if r.ok else "refused"
+	if not r.ok:
+		if r.detail is Dictionary and r.detail.get("status") != null:
+			out["status"] = r.detail["status"]
+		out["code"] = String(r.code)
+
+
 static func _activation_name(r: PKeyActivationResult) -> String:
 	return "refused" if r.kind == PKeyActivationResult.KIND_LICENSE_OWNED else String(r.kind)
 

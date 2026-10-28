@@ -89,6 +89,12 @@ const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 @export_range(4.0, 8.0, 0.5) var verify_slice_ms := 6.0
 ## Where the file store keeps `<product>/{device, token, managed.json}`.
 @export var store_root := DEFAULT_STORE_ROOT
+## The device key store the key ring opens its own wrap with (a `PKeyDeviceKeyStore`, or any object with
+## `ensure()` and `dh()`). Null: the product's own store under `store_root`, the one the app registers keys
+## from. Not an export: a game passes a store it already made, and tests pass a scratch one.
+var device_keys: Object = null
+## Where the key ring keeps its pin and root (`PKeySyncRingVault`). Null: the product's vault under `store_root`.
+var ring_vault: PKeySyncRingVault = null
 
 ## Send a hashed hardware fingerprint when registering (PolarisKey.devices). Off: the server
 ## records the device `unverified` (a `strict` tier refuses it). Raw values never leave the device.
