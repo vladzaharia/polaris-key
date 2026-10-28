@@ -29,6 +29,10 @@ public enum ErrorCode {
     public static let deviceKeysInvalid = "device_keys_invalid"
     public static let deviceKeysRequired = "device_keys_required"
     public static let ringTooLarge = "ring_too_large"
+    public static let relayDisabled = "relay_disabled"
+    public static let relayPaused = "relay_paused"
+    public static let relayQuotaExceeded = "relay_quota_exceeded"
+    public static let relayTicketInvalid = "relay_ticket_invalid"
     public static let deviceLimit = "device_limit"
     public static let keyEntryLimit = "key_entry_limit"
     public static let licenseDisabled = "license_disabled"
@@ -231,6 +235,10 @@ public let ERROR_CODE_VALUES: [String] = [
     "device_keys_invalid",
     "device_keys_required",
     "ring_too_large",
+    "relay_disabled",
+    "relay_paused",
+    "relay_quota_exceeded",
+    "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
     "license_disabled",
@@ -433,6 +441,10 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "device_keys_invalid": "wire",
     "device_keys_required": "wire",
     "ring_too_large": "wire",
+    "relay_disabled": "wire",
+    "relay_paused": "wire",
+    "relay_quota_exceeded": "wire",
+    "relay_ticket_invalid": "wire",
     "device_limit": "wire",
     "key_entry_limit": "wire",
     "license_disabled": "wire",

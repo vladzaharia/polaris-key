@@ -1982,6 +1982,22 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_message">此账户关联的设备超出了可连接的数量。请移除一台后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_disabled_title">远程连接已关闭</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_disabled_message">此应用已关闭远程连接。你的设备仅能在同一网络下连接。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_paused_title">远程连接已暂停</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_paused_message">远程连接暂时暂停。请稍后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_quota_exceeded_title">已达远程用量上限</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_quota_exceeded_message">远程连接用量已用完，即将重置。同一网络下的设备仍可连接。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_ticket_invalid_title">连接已过期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_ticket_invalid_message">连接请求已过期。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">密钥已无剩余输入次数</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。</string>

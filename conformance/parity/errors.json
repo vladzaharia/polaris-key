@@ -112,6 +112,30 @@
       "description": "409: the person has more devices than a roster holds (128). Nothing is issued and the roster epoch does not move. Remove a device, then retry."
     },
     {
+      "code": "relay_disabled",
+      "kind": "wire",
+      "service": "connect",
+      "description": "403: the product has turned its relay off (`cloudConnect.relay.enabled`). Devices connect only on the same network."
+    },
+    {
+      "code": "relay_paused",
+      "kind": "wire",
+      "service": "connect",
+      "description": "503 with `Retry-After`: the deployment paused the relay (`cloudConnect.relayPaused`). The local network is unaffected; retry later."
+    },
+    {
+      "code": "relay_quota_exceeded",
+      "kind": "wire",
+      "service": "connect",
+      "description": "429: the relay quota is spent. The body's `scope` says whose: `person` (the day's bytes, resets at 00:00 UTC) or `product` (the month's bytes, resets on the 1st). The local network is never metered."
+    },
+    {
+      "code": "relay_ticket_invalid",
+      "kind": "wire",
+      "service": "connect",
+      "description": "401: the relay ticket is missing, malformed, expired, already used, or for another product or device. On an open WebSocket the close code is 4001. Ask for a new ticket."
+    },
+    {
       "code": "device_limit",
       "kind": "wire",
       "service": "license",

@@ -85,6 +85,22 @@
       "title": "Trop d'appareils",
       "message": "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez."
     },
+    "relay_disabled": {
+      "title": "Connexion à distance désactivée",
+      "message": "La connexion à distance est désactivée pour cette app. Vos appareils se connectent uniquement sur le même réseau."
+    },
+    "relay_paused": {
+      "title": "Connexion à distance en pause",
+      "message": "La connexion à distance est en pause pour le moment. Réessayez plus tard."
+    },
+    "relay_quota_exceeded": {
+      "title": "Limite à distance atteinte",
+      "message": "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
+    },
+    "relay_ticket_invalid": {
+      "title": "Connexion expirée",
+      "message": "La demande de connexion a expiré. Réessayez."
+    },
     "key_entry_limit": {
       "title": "Aucune saisie restante",
       "message": "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place."

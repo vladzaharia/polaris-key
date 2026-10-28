@@ -874,7 +874,7 @@ Time box 60 min.
 **CC-07.4** — pkey-implementer (Sonnet 5.5). Plan: §2.7. Steps:
 
 1. The workerd smoke.
-2. The poke.
+2. The poke. It must close the sockets of removed members immediately; the alarm only catches them within 60 s (security review of CC-07, finding 2).
 
 Time box 45 min. Hand-off: request a Sonnet 5.5 security review over CC-07.
 

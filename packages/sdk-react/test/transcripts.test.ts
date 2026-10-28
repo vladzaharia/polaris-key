@@ -963,7 +963,13 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // identity.exchange is I-13.7's exchange-* transcripts (FedCM and GIS, I-46); the Node
     // runner replays them with a reference client (exchangeTranscripts.test.ts). sync.keyring is
     // U-36.4's keyring-* transcripts; the ring client is U-38.
-    const plannedHere = ["sync.settings", "identity.exchange", "sync.keyring"];
+    // connect.relay is CC-07.3's connect-relay-* transcripts; the relay client is CC-09.
+    const plannedHere = [
+      "sync.settings",
+      "identity.exchange",
+      "sync.keyring",
+      "connect.relay",
+    ];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];

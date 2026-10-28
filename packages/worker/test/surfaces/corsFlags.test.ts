@@ -89,6 +89,7 @@ const OLD_CORS_SERVICE_PATHS = [
   "sync/ops",
   // CC-06.1: the Cloud Connect roster and the linked-devices list (device bearer, never ambient).
   "connect/identity",
+  "connect/relay/ticket",
   "connect/devices",
 ];
 

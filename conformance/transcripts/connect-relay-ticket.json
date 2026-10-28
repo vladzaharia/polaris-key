@@ -1,0 +1,149 @@
+{
+  "transcriptVersion": 1,
+  "id": "connect-relay-ticket",
+  "description": "The relay ticket (WIRE-CONTRACT-V5 §15.7). A signed-in device with registered keys trades its bearer for a single-use pkeyrt_ ticket that lives 60 seconds, with the WebSocket URL and the pkey-relay.1 subprotocol. Without the bearer it is 401. With the operator's launch gate (launch.relay) off the route does not exist: 404.",
+  "features": ["connect.relay"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_UnclYEPDsJKnBWqtUuw8kAHjjIn5ym9GDrR1UHdxVZI",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "relayTicket",
+      "note": "A ticket.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/connect/relay/ticket",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ticket": "pkeyrt_k-onWy0kgu7c5rbwa38ee3j57fNRtVhc",
+                "url": "wss://key.plrs.im/djdl/connect/relay",
+                "protocol": "pkey-relay.1",
+                "expiresAt": 1700000060
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "protocol": "pkey-relay.1",
+        "url": "wss://key.plrs.im/djdl/connect/relay",
+        "expiresIn": 60
+      }
+    },
+    {
+      "action": "relayTicket",
+      "note": "No bearer.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/connect/relay/ticket",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 401,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "unauthorized" } }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 401, "code": "unauthorized" }
+    },
+    {
+      "action": "relayTicket",
+      "note": "The launch gate is off.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/connect/relay/ticket",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "not_found" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 404, "code": "not_found" }
+    }
+  ]
+}

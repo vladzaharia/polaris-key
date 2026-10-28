@@ -5268,6 +5268,46 @@ msgstr "设备过多"
 msgid "core.codes.ring_too_large.message"
 msgstr "此账户关联的设备超出了可连接的数量。请移除一台后重试。"
 
+#. Remote connect is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_disabled.title"
+msgstr "远程连接已关闭"
+
+#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_disabled.message"
+msgstr "此应用已关闭远程连接。你的设备仅能在同一网络下连接。"
+
+#. Remote connect paused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_paused.title"
+msgstr "远程连接已暂停"
+
+#. Remote connect is paused for now. Try again later.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_paused.message"
+msgstr "远程连接暂时暂停。请稍后重试。"
+
+#. Remote limit reached
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_quota_exceeded.title"
+msgstr "已达远程用量上限"
+
+#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_quota_exceeded.message"
+msgstr "远程连接用量已用完，即将重置。同一网络下的设备仍可连接。"
+
+#. Connection expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_ticket_invalid.title"
+msgstr "连接已过期"
+
+#. The connection request expired. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_ticket_invalid.message"
+msgstr "连接请求已过期。请重试。"
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

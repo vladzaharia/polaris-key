@@ -5294,6 +5294,46 @@ msgstr "Troppi dispositivi"
 msgid "core.codes.ring_too_large.message"
 msgstr "Questo account ha più dispositivi collegati di quanti se ne possano connettere. Rimuovine uno e riprova."
 
+#. Remote connect is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_disabled.title"
+msgstr "Connessione remota disattivata"
+
+#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_disabled.message"
+msgstr "La connessione remota è disattivata per questa app. I tuoi dispositivi si connettono solo sulla stessa rete."
+
+#. Remote connect paused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_paused.title"
+msgstr "Connessione remota in pausa"
+
+#. Remote connect is paused for now. Try again later.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_paused.message"
+msgstr "La connessione remota è in pausa per ora. Riprova più tardi."
+
+#. Remote limit reached
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_quota_exceeded.title"
+msgstr "Limite remoto raggiunto"
+
+#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_quota_exceeded.message"
+msgstr "Il limite della connessione remota è esaurito. Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque."
+
+#. Connection expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_ticket_invalid.title"
+msgstr "Connessione scaduta"
+
+#. The connection request expired. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_ticket_invalid.message"
+msgstr "La richiesta di connessione è scaduta. Riprova."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

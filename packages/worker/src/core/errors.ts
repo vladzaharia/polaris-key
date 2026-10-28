@@ -24,6 +24,14 @@ export const ErrorCode = {
   DeviceKeysRequired: "device_keys_required",
   /** CC-06.1: the person has more devices than a roster holds (409). */
   RingTooLarge: "ring_too_large",
+  /** CC-07.3: the product turned its relay off (403). */
+  RelayDisabled: "relay_disabled",
+  /** CC-07.3: `cloudConnect.relayPaused` is on (503, `Retry-After`). */
+  RelayPaused: "relay_paused",
+  /** CC-07.3: the person's day or the product's month is spent (429, body `scope`). */
+  RelayQuotaExceeded: "relay_quota_exceeded",
+  /** CC-07.3: the relay ticket is missing, malformed, expired, spent or not for this caller (401). */
+  RelayTicketInvalid: "relay_ticket_invalid",
   BadRequest: "bad_request",
   NotFound: "not_found",
   ManagedByAdmin: "managed_by_admin",

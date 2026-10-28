@@ -98,6 +98,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   // I-13.2: the exchange nonce route writes one single-use record per call (per network, per device).
   identityNonce: "closed",
   identityNonceDevice: "closed",
+  // CC-07.3: the relay ticket (per device) and the relay upgrade (per network) each cost a
+  // single-use store operation; an outage refuses rather than lets a flood through.
+  connectRelayTicket: "closed",
+  connectRelayUpgrade: "closed",
   identityLink: "closed",
   identityLinkDevice: "closed",
   adminLogin: "closed",

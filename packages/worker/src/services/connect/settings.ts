@@ -9,8 +9,8 @@
  * and the kill switch live in Core's platform slice (`core/settings/platform.ts`), because a
  * service slice contributes product-scope entries only.
  *
- * Registered ahead of the relay (CC-07.3 reads them): each is `pending` until then, so the console
- * does not offer it.
+ * CC-07.3 reads the relay switch and the ceiling (`relay/access.ts`). `cloudConnect.interAccount`
+ * stays `pending` until inter-account links (CC-18), so the console does not offer it.
  */
 
 import { CLOUD_CONNECT_CEILINGS } from "@polaris-key/catalog";
@@ -46,7 +46,7 @@ export const CONNECT_SETTINGS_SLICE: ServiceSettingsSlice = {
       visibleWhen: VISIBLE,
       storage: { kind: "scalar" },
       since: "CC-02.2",
-      pending: { wp: "CC-07" },
+      readers: ["services/connect/relay/access.ts"],
     }),
     setting({
       key: "cloudConnect.interAccount",
@@ -69,7 +69,7 @@ export const CONNECT_SETTINGS_SLICE: ServiceSettingsSlice = {
       visibleWhen: VISIBLE,
       storage: { kind: "scalar" },
       since: "CC-02.2",
-      pending: { wp: "CC-07" },
+      pending: { wp: "CC-18" },
     }),
     // The operator's cost control: all relay bytes of every person on the product together, per
     // UTC month. Raising it costs the platform more, so it is confirmed more strictly than lowering.
@@ -97,7 +97,7 @@ export const CONNECT_SETTINGS_SLICE: ServiceSettingsSlice = {
       visibleWhen: VISIBLE,
       storage: { kind: "scalar" },
       since: "CC-02.2",
-      pending: { wp: "CC-07" },
+      readers: ["services/connect/relay/access.ts"],
     }),
   ],
 };

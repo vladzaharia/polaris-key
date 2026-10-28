@@ -74,7 +74,9 @@ export type RelayInput =
   | { kind: "frame"; socket: string; data: Uint8Array | string; now: number }
   | { kind: "tick"; now: number; paused?: boolean; productOver?: boolean }
   | { kind: "close"; socket: string; now: number }
-  | { kind: "ring"; epoch: number };
+  | { kind: "ring"; epoch: number }
+  /** The person's current devices (a fresh read of the ring members); anyone else is closed. */
+  | { kind: "members"; members: Uint8Array[] };
 
 export type RelayOutput =
   | { kind: "send"; socket: string; data: Uint8Array }
@@ -89,6 +91,8 @@ interface Sock {
   tokens: number;
   at: number;
   strikes: number;
+  /** When the last rate strike was counted (ms); strikes decay after a second without one. */
+  lastStrike: number;
 }
 
 /** What the shell persists to rebuild an engine after hibernation. */
@@ -157,6 +161,7 @@ export class RelayEngine {
         tokens: CLOUD_CONNECT_DEFAULTS.messageBurst,
         at: now,
         strikes: 0,
+        lastStrike: Number.NEGATIVE_INFINITY,
       });
     }
   }
@@ -185,6 +190,20 @@ export class RelayEngine {
       case "close":
         this.drop(input.socket, out);
         break;
+      case "members": {
+        this.members.clear();
+        for (const m of input.members) this.members.set(hexEncode(m), m);
+        for (const s of [...this.socks.values()]) {
+          if (this.members.has(s.device)) continue;
+          out.push({
+            kind: "close",
+            socket: s.id,
+            code: RELAY_CLOSE.notMember,
+          });
+          this.drop(s.id, out);
+        }
+        break;
+      }
       case "ring": {
         const data = encodeRelay({ op: "ring", epoch: input.epoch });
         for (const s of this.socks.values())
@@ -258,6 +277,7 @@ export class RelayEngine {
       tokens: CLOUD_CONNECT_DEFAULTS.messageBurst,
       at: now,
       strikes: 0,
+      lastStrike: Number.NEGATIVE_INFINITY,
     };
     this.socks.set(id, sock);
 
@@ -301,12 +321,15 @@ export class RelayEngine {
     s.at = Math.max(s.at, now);
     if (s.tokens < 1) {
       s.strikes++;
+      s.lastStrike = now;
       if (s.strikes >= RATE_STRIKES_MAX) return refuse(RELAY_CLOSE.limit);
       this.limit(s, RELAY_LIMIT.rate, out);
       return;
     }
     s.tokens -= 1;
-    s.strikes = 0;
+    // Strikes decay: a flood that keeps winning a token between strikes is still a flood, so
+    // they reset only after a second without one.
+    if (now - s.lastStrike >= 1000) s.strikes = 0;
 
     const msg = decodeRelay("toRoom", data);
     if (!msg) return refuse(RELAY_CLOSE.refused);

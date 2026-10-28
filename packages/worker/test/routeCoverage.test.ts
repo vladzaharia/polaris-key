@@ -811,6 +811,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/choose",
   // I-08: `authorize` is a browser navigation to the card; only `token` is a page's `fetch`.
   "/{product}/identity/authorize",
+  // CC-07.3: a WebSocket upgrade, which has no preflight; the single-use ticket is the credential.
+  "/{product}/connect/relay",
   "/{product}/config/mint/{mintId}/auth",
   // P2-05: CI routes, authenticated by a `pkeyci_` bearer — never called from a browser page.
   "/{product}/release/channels/{channel}/promote",

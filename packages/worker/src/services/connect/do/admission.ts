@@ -7,7 +7,11 @@
  */
 
 import { CLOUD_CONNECT_CEILINGS } from "@polaris-key/catalog";
-import { hexDecode, hexEncode } from "../../../platform/bytes.js";
+import {
+  b64urlDecodeStrict,
+  hexDecode,
+  hexEncode,
+} from "../../../platform/bytes.js";
 import type { RelayTicket } from "../relay/engine.js";
 
 export const ADMISSION_HEADER = "x-pkey-relay-admission";
@@ -19,6 +23,8 @@ export interface Admission {
   ticket: RelayTicket;
   /** The product's relay bytes per UTC month, clamped to the 500 GiB ceiling. */
   monthCeiling: number;
+  /** The licence service is on: the roster counts only devices that hold a seat (the principal rule). */
+  seatsHeld: boolean;
 }
 
 const PRODUCT_RE = /^[a-z0-9-]+$/;
@@ -27,6 +33,12 @@ const HEX48 = /^[0-9a-f]{48}$/;
 
 const toHex = hexEncode;
 const fromHex = (h: string): Uint8Array => hexDecode(h) ?? new Uint8Array(0);
+
+/** A device id as the room names it: its 24 decoded bytes, or null when it is not one. */
+export function deviceIdBytes(id: string): Uint8Array | null {
+  const b = b64urlDecodeStrict(id);
+  return b !== null && b.length === 24 ? b : null;
+}
 
 /** The room's name for one person on one product: the one place a relay object is named. */
 export function relayObjectName(product: string, subject: string): string {
@@ -46,6 +58,7 @@ export function encodeAdmission(a: Admission): string {
     productOver: a.ticket.productOver,
     expiresAt: a.ticket.expiresAt,
     monthCeiling: a.monthCeiling,
+    seatsHeld: a.seatsHeld,
   });
 }
 
@@ -72,11 +85,13 @@ export function decodeAdmission(raw: string | null): Admission | null {
     typeof v === "number" && Number.isFinite(v) && v >= 0;
   if (!num(j.dayBytes) || !num(j.expiresAt) || !num(j.monthCeiling))
     return null;
+  if (typeof j.seatsHeld !== "boolean") return null;
   if (typeof j.paused !== "boolean" || typeof j.productOver !== "boolean")
     return null;
   return {
     product,
     subject,
+    seatsHeld: j.seatsHeld,
     monthCeiling: Math.min(
       Math.floor(j.monthCeiling),
       CLOUD_CONNECT_CEILINGS.perProduct.relayBytesPerMonth,

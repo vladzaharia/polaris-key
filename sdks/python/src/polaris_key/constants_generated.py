@@ -237,6 +237,10 @@ class ErrorCode:
     DEVICE_KEYS_INVALID: Final = "device_keys_invalid"
     DEVICE_KEYS_REQUIRED: Final = "device_keys_required"
     RING_TOO_LARGE: Final = "ring_too_large"
+    RELAY_DISABLED: Final = "relay_disabled"
+    RELAY_PAUSED: Final = "relay_paused"
+    RELAY_QUOTA_EXCEEDED: Final = "relay_quota_exceeded"
+    RELAY_TICKET_INVALID: Final = "relay_ticket_invalid"
     DEVICE_LIMIT: Final = "device_limit"
     KEY_ENTRY_LIMIT: Final = "key_entry_limit"
     LICENSE_DISABLED: Final = "license_disabled"
@@ -439,6 +443,10 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "device_keys_invalid",
     "device_keys_required",
     "ring_too_large",
+    "relay_disabled",
+    "relay_paused",
+    "relay_quota_exceeded",
+    "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
     "license_disabled",
@@ -643,6 +651,10 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "device_keys_invalid": "wire",
         "device_keys_required": "wire",
         "ring_too_large": "wire",
+        "relay_disabled": "wire",
+        "relay_paused": "wire",
+        "relay_quota_exceeded": "wire",
+        "relay_ticket_invalid": "wire",
         "device_limit": "wire",
         "key_entry_limit": "wire",
         "license_disabled": "wire",

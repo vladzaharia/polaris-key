@@ -252,6 +252,12 @@
 // ids)}) and `wrap` (null, or {epoch, kid, by}); keyringCreate and keyringReset add `ringId` and
 // `epoch`; keyringRecoveryGet adds `ct`.
 //
+// relayTicket (CC-07.3, WIRE-CONTRACT-V5 §15.7) — `POST /<p>/connect/relay/ticket`, replayed only by
+// an SDK that marks `connect.relay` implemented. `expect`: `result` "ok" (with `protocol`
+// "pkey-relay.1", `url` and `expiresIn` seconds) | "refused" (with `status`, `code` and, on a 429,
+// `scope` "person" | "product"; on a 503, `retryAfter`). The ticket value is random and never
+// asserted beyond its `pkeyrt_` shape.
+//
 // chunkRange (P4-32, plans/P4-32.md §4) — `{ bundle, offset, length }`: the SDK's chunk-range
 // fetch (client-core `chunkRangeFetch`, Python `chunk_range_fetch`, Swift `chunkRangeFetch`,
 // Kotlin `chunkRangeFetch`, Godot `PKeyPackChunks.chunk_range_fetch`) of `length` bytes at
@@ -377,7 +383,9 @@ export type Action =
   | "keyringRecoverySet"
   | "keyringRecoveryGet"
   | "keyringAdopt"
-  | "keyringReset";
+  | "keyringReset"
+  /** CC-07.3 (WIRE-CONTRACT-V5 §15.7): the Cloud Connect relay ticket of the `connect-relay-*` transcripts. */
+  | "relayTicket";
 
 export interface Step {
   action: Action;

@@ -31,6 +31,10 @@ public object ErrorCode {
     public const val deviceKeysInvalid: String = "device_keys_invalid"
     public const val deviceKeysRequired: String = "device_keys_required"
     public const val ringTooLarge: String = "ring_too_large"
+    public const val relayDisabled: String = "relay_disabled"
+    public const val relayPaused: String = "relay_paused"
+    public const val relayQuotaExceeded: String = "relay_quota_exceeded"
+    public const val relayTicketInvalid: String = "relay_ticket_invalid"
     public const val deviceLimit: String = "device_limit"
     public const val keyEntryLimit: String = "key_entry_limit"
     public const val licenseDisabled: String = "license_disabled"
@@ -233,6 +237,10 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "device_keys_invalid",
     "device_keys_required",
     "ring_too_large",
+    "relay_disabled",
+    "relay_paused",
+    "relay_quota_exceeded",
+    "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
     "license_disabled",
@@ -435,6 +443,10 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "device_keys_invalid" to "wire",
     "device_keys_required" to "wire",
     "ring_too_large" to "wire",
+    "relay_disabled" to "wire",
+    "relay_paused" to "wire",
+    "relay_quota_exceeded" to "wire",
+    "relay_ticket_invalid" to "wire",
     "device_limit" to "wire",
     "key_entry_limit" to "wire",
     "license_disabled" to "wire",

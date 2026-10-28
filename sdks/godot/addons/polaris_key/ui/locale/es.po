@@ -5294,6 +5294,46 @@ msgstr "Demasiados dispositivos"
 msgid "core.codes.ring_too_large.message"
 msgstr "Esta cuenta tiene más dispositivos vinculados de los que se pueden conectar. Quita uno e inténtalo de nuevo."
 
+#. Remote connect is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_disabled.title"
+msgstr "Conexión remota desactivada"
+
+#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_disabled.message"
+msgstr "La conexión remota está desactivada para esta app. Tus dispositivos se conectan solo en la misma red."
+
+#. Remote connect paused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_paused.title"
+msgstr "Conexión remota en pausa"
+
+#. Remote connect is paused for now. Try again later.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_paused.message"
+msgstr "La conexión remota está en pausa por ahora. Inténtalo más tarde."
+
+#. Remote limit reached
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_quota_exceeded.title"
+msgstr "Límite remoto alcanzado"
+
+#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_quota_exceeded.message"
+msgstr "Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose."
+
+#. Connection expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_ticket_invalid.title"
+msgstr "Conexión caducada"
+
+#. The connection request expired. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_ticket_invalid.message"
+msgstr "La solicitud de conexión caducó. Inténtalo de nuevo."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

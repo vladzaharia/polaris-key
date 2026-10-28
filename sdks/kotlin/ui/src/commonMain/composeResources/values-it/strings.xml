@@ -2008,6 +2008,22 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_message">Questo account ha più dispositivi collegati di quanti se ne possano connettere. Rimuovine uno e riprova.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_disabled_title">Connessione remota disattivata</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_disabled_message">La connessione remota è disattivata per questa app. I tuoi dispositivi si connettono solo sulla stessa rete.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_paused_title">Connessione remota in pausa</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_paused_message">La connessione remota è in pausa per ora. Riprova più tardi.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_quota_exceeded_title">Limite remoto raggiunto</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_quota_exceeded_message">Il limite della connessione remota è esaurito. Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_ticket_invalid_title">Connessione scaduta</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_ticket_invalid_message">La richiesta di connessione è scaduta. Riprova.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">Nessun inserimento rimasto</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.</string>

@@ -5294,6 +5294,46 @@ msgstr "Trop d'appareils"
 msgid "core.codes.ring_too_large.message"
 msgstr "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez."
 
+#. Remote connect is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_disabled.title"
+msgstr "Connexion à distance désactivée"
+
+#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_disabled.message"
+msgstr "La connexion à distance est désactivée pour cette app. Vos appareils se connectent uniquement sur le même réseau."
+
+#. Remote connect paused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_paused.title"
+msgstr "Connexion à distance en pause"
+
+#. Remote connect is paused for now. Try again later.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_paused.message"
+msgstr "La connexion à distance est en pause pour le moment. Réessayez plus tard."
+
+#. Remote limit reached
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_quota_exceeded.title"
+msgstr "Limite à distance atteinte"
+
+#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_quota_exceeded.message"
+msgstr "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
+
+#. Connection expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_ticket_invalid.title"
+msgstr "Connexion expirée"
+
+#. The connection request expired. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_ticket_invalid.message"
+msgstr "La demande de connexion a expiré. Réessayez."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

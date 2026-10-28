@@ -269,6 +269,44 @@ describe("relay engine: token bucket", () => {
     });
   });
 
+  it("a 1,000-a-second flood still reaches the strike close: accepted frames between strikes do not reset it", () => {
+    const r = room();
+    r.join("a1", A);
+    const list = encodeRelay({ op: "list" });
+    spend(r, 400); // the burst
+    let closed = false;
+    // 1,000 a second: one frame per millisecond; the refill wins a token every fifth.
+    for (let i = 0; i < 5000 && !closed; i++) {
+      r.advance(1);
+      closed = closes(r.frame("a1", list)).some(
+        ([, c]) => c === RELAY_CLOSE.limit,
+      );
+    }
+    expect(closed).toBe(true);
+  });
+
+  it("strikes decay after a second without one", () => {
+    const r = room();
+    r.join("a1", A);
+    const list = encodeRelay({ op: "list" });
+    spend(r, 400);
+    for (let i = 0; i < RATE_STRIKES_MAX - 1; i++) r.frame("a1", list);
+    r.advance(1500); // quiet: the strikes decay on the next accepted frame
+    expect(sent(r.frame("a1", list), "a1")[0]?.op).toBe("members");
+    spend(r, 400);
+    const out = r.frame("a1", list);
+    expect(closes(out)).toEqual([]);
+  });
+
+  it("a members update closes the sockets of devices that left (4003) and announces them gone", () => {
+    const r = room();
+    r.join("a1", A);
+    r.join("b1", B);
+    const out = r.go({ kind: "members", members: [A, C] });
+    expect(closes(out)).toEqual([["b1", RELAY_CLOSE.notMember]]);
+    expect(sent(out, "a1").map((m) => m.op)).toEqual(["gone"]);
+  });
+
   it("is per socket", () => {
     const r = room();
     r.join("a1", A);
