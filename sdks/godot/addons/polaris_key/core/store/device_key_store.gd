@@ -64,7 +64,31 @@ extends RefCounted
 ##                     persistent is also "memory".
 ##
 ## On mobile and consoles the file store is BEST EFFORT (`best_effort()` is true): the app
-## sandbox is the protection. The native lane (CC-26.7: Keychain, Keystore) replaces it there.
+## sandbox is the protection. The native lane replaces it there (CC-26.7, below).
+##
+## Native sealers (CC-26.7; plans/CC-01.md R-5 and Q12: software 25519 keys in hardware-wrapped
+## storage). Where a native lane is present (PKeyRecordSealer: the Apple Keychain, the Android
+## Keystore, Windows DPAPI) the store keeps making keys and signing in GDScript and uses the
+## sealer in place of `open_encrypted_with_pass`: the record file is `"PKSL" || 0x01 || blob`,
+## the blob sealed under a platform key that never leaves secure storage, bound to the product
+## through the context `pkey-device-keys/1/<product>`. `protection()` is then
+## `<sealer id>-sealed` ("keychain-sealed", "keystore-sealed", "dpapi-sealed"), `hardware_backed()`
+## is true for the first two, and `best_effort()` is false. Linux has no sealer and keeps the
+## engine-encrypted file. The rules above still hold, and these are added:
+##
+##  * a sealed record that cannot be opened (the platform key is gone or invalidated, the tag fails,
+##    another Windows user) is KEYS_UNREADABLE and is never replaced; only `wipe()` resets it. A
+##    fault that may pass (a locked Keychain, a Keystore provider error) is STORE_FAULT, never
+##    "gone", and never leads to a new key.
+##  * a sealed record read where the lane is missing (the plugin was removed) is `unsupported`,
+##    never unreadable, and is left alone.
+##  * with a sealer, a record that is not sealed (a CC-26.6 file written before the lane existed)
+##    is unreadable too: it is not read through the weaker path, and `wipe()` clears it.
+##  * `wipe()` removes the record and destroys the platform key (DPAPI has no per-product key).
+##  * the sealer is chosen when the store is made: `sealer` is the one passed, else
+##    PKeyRecordSealer.for_platform(product) for a file store with engine encryption on, unless
+##    the environment sets PKEY_DESKTOP_KEYRING=0 (the test runner does, so no suite touches the
+##    developer's Keychain). A sealer is never used by a memory store or a plain-file store.
 ## Raw keys are never written to `res://` or any path outside `user://`.
 
 const KEYS_UNREADABLE := &"device-keys-unreadable"
@@ -76,6 +100,9 @@ const SALT_FILE := "device-keys.salt"
 const LOCK_DIR := "device-keys.lock"
 const LOCK_STALE_SECONDS := 60
 const _MAGIC := "PKDK"
+const _SEALED_MAGIC := "PKSL"
+const _SEALED_VERSION := 1
+const _SEALED_MAX := 4096
 const _VERSION := 1
 const _RECORD_BYTES := 4 + 1 + 8 + 32 * 4
 const _MAX_GENERATION := 9007199254740991
@@ -99,6 +126,8 @@ var _memory: bool
 ## False when `root` is outside `user://`: raw keys are never written to a shared or exported path.
 var _root_ok := true
 var _encrypted: bool
+## The native sealer in use (null: the engine-encrypted file, CC-26.6).
+var sealer: PKeyRecordSealer = null
 ## The in-memory record of a memory store.
 var _mem_record := PackedByteArray()
 ## SHA-256 of the last record whose public halves were checked against its private halves.
@@ -111,14 +140,19 @@ var _salt_fault: PKeyResult = null
 
 ## A store for `product`. `root` is the parent directory, which must be under `user://`.
 ## `memory` keeps the keys in process memory only. `encrypted` turns the engine's file
-## encryption on (the default) or off.
-func _init(p_product: String, root := "user://pkey", memory := false, encrypted := true) -> void:
+## encryption on (the default) or off. `p_sealer` is a native sealer; null picks the platform's
+## when its lane is present (see the header).
+func _init(p_product: String, root := "user://pkey", memory := false, encrypted := true, p_sealer: PKeyRecordSealer = null) -> void:
 	product = p_product
 	dir = root.path_join(p_product)
 	var name_ok := RegEx.create_from_string("\\A[A-Za-z0-9][A-Za-z0-9@._-]{0,127}\\z").search(p_product) != null
 	_root_ok = name_ok and not p_product.contains("..") and root.begins_with("user://") and not root.contains("..")
 	_memory = memory
 	_encrypted = encrypted
+	if not memory and encrypted and _root_ok:
+		sealer = p_sealer
+		if sealer == null and OS.get_environment("PKEY_DESKTOP_KEYRING") != "0":
+			sealer = PKeyRecordSealer.for_platform(p_product)
 
 
 static func memory_only() -> PKeyDeviceKeyStore:
@@ -142,13 +176,23 @@ func persistence() -> String:
 func protection() -> String:
 	if _memory or persistence() == "memory":
 		return "memory"
+	if sealer != null:
+		return sealer.id() + "-sealed"
 	if _encrypted and unique_id != "":
 		return "encrypted-file"
 	return "file"
 
 
+## True when a native sealer holds the platform key in hardware-backed storage (the Apple Keychain,
+## the Android Keystore). DPAPI is OS-protected but not reported as hardware.
+func hardware_backed() -> bool:
+	return sealer != null and (sealer.id() == "keychain" or sealer.id() == "keystore")
+
+
 ## True on mobile and consoles, where this store is a fallback for the native lane (CC-26.7).
 func best_effort() -> bool:
+	if sealer != null and not _memory:
+		return false
 	if not _memory and _encrypted and unique_id == "":
 		return true
 	var os_name := OS.get_name()
@@ -261,6 +305,9 @@ func _wipe_locked() -> PKeyResult:
 				return _fault("remove", err)
 	if FileAccess.file_exists(rec_path):
 		return _fault("remove", ERR_FILE_CANT_WRITE)
+	if sealer != null:
+		# The record is gone; now the platform key. A failure leaves nothing readable, and a retry finishes.
+		return sealer.destroy()
 	return PKeyResult.success()
 
 
@@ -477,6 +524,15 @@ func _fetch() -> PKeyResult:
 
 ## The record file's bytes; the file exists.
 func _fetch_file(path: String) -> PKeyResult:
+	var head := FileAccess.open(path, FileAccess.READ)
+	if head != null:
+		var raw := head.get_buffer(_SEALED_MAX + 1)
+		head.close()
+		if raw.size() >= 5 and raw.slice(0, 4).get_string_from_ascii() == _SEALED_MAGIC:
+			return _fetch_sealed(raw)
+		if sealer != null:
+			# Not written by a sealer: not read through the weaker path, and never replaced.
+			return PKeyResult.failure(KEYS_UNREADABLE, "device keys: the record is unreadable")
 	var f: FileAccess = null
 	if _encrypted:
 		_salt_fault = null
@@ -497,6 +553,19 @@ func _fetch_file(path: String) -> PKeyResult:
 		bytes.fill(0)
 		return _fault("read", ferr)
 	return PKeyResult.success(bytes)
+
+
+## The bytes of a sealed record (`"PKSL" || version || blob`, read in full).
+func _fetch_sealed(raw: PackedByteArray) -> PKeyResult:
+	if sealer == null:
+		return PKeyResult.unsupported("core.devicekeys", PKeyConstants.UnsupportedReason.DEPENDENCY, "device keys: this record is sealed by the platform lane, which is not in this build")
+	if raw.size() > _SEALED_MAX or raw[4] != _SEALED_VERSION or raw.size() == 5:
+		return PKeyResult.failure(KEYS_UNREADABLE, "device keys: the record is unreadable")
+	return sealer.open(raw.slice(5), _seal_context())
+
+
+func _seal_context() -> PackedByteArray:
+	return ("pkey-device-keys/1/%s" % product).to_utf8_buffer()
 
 
 ## What a failed open means: a file this install key cannot open is unreadable (never replaced);
@@ -575,12 +644,20 @@ func _store(bytes: PackedByteArray) -> PKeyResult:
 	if _memory:
 		_mem_record = bytes.duplicate()
 		return PKeyResult.success()
-	var err := _write_file(RECORD_FILE, bytes, _encrypted)
+	var file_bytes := bytes
+	if sealer != null:
+		var sealed := sealer.seal(bytes, _seal_context())
+		if not sealed.ok:
+			return sealed
+		file_bytes = _SEALED_MAGIC.to_ascii_buffer()
+		file_bytes.append(_SEALED_VERSION)
+		file_bytes.append_array(sealed.detail)
+	var err := _write_file(RECORD_FILE, file_bytes, _encrypted and sealer == null)
 	if err == OK:
 		return PKeyResult.success()
-	if _salt_fault != null:
+	if sealer == null and _salt_fault != null:
 		return _salt_fault
-	if err == ERR_UNAVAILABLE and _encrypted:
+	if err == ERR_UNAVAILABLE and _encrypted and sealer == null:
 		return PKeyResult.unsupported("core.devicekeys", PKeyConstants.UnsupportedReason.RUNTIME, "device keys: this engine cannot write an encrypted file; create the store with encrypted = false")
 	return _fault("write", err)
 
