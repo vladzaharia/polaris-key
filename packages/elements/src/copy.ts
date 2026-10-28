@@ -23,7 +23,8 @@ import { Copy, resolveLocale, type CopyTable } from "@polaris-key/ui-core";
 const tables: Partial<Record<string, CopyTable>> & { en: CopyTable } = {
   en: KIT_COPY_EN_LEAN,
 };
-let englishRest: "idle" | "loading" | "done" = "idle";
+let englishRest: "idle" | "loading" | "failed" | "done" = "idle";
+let restAttempts = 0;
 const loading = new Map<string, Promise<void>>();
 const listeners = new Set<() => void>();
 
@@ -64,8 +65,17 @@ function ensureEnglishRest(): void {
       }
     })
     .catch(() => {
-      // Copy never breaks a screen: a code's text stays the fallback sentence.
-      englishRest = "done";
+      // A failed load (offline, a stale deploy) must not turn the keys it holds into a thrown
+      // "no catalog string": the state stays pending, so the kit draws nothing, and the load is
+      // tried again a few times.
+      if (englishRest !== "loading") return;
+      englishRest = "failed";
+      if (++restAttempts >= 3) return;
+      setTimeout(() => {
+        if (englishRest !== "failed") return;
+        englishRest = "idle";
+        ensureEnglishRest();
+      }, 2_000 * restAttempts);
     });
 }
 
