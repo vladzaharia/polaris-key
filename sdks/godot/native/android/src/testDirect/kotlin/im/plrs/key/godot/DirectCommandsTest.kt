@@ -31,7 +31,7 @@ class DirectCommandsTest {
     private val host = TestHost()
     private val apk = File(host.appContext.filesDir, "u.apk").apply { writeBytes(ByteArray(64) { it.toByte() }) }
 
-    private fun commands(archive: ArchiveFacts?) = Commands(host) { DirectCommands(it, StaticFacts(host.appContext.filesDir, archive)) }
+    private fun commands(archive: ArchiveFacts?) = Commands(host, flavorFactory = { DirectCommands(it, StaticFacts(host.appContext.filesDir, archive)) })
 
     @After
     fun tearDown() {
