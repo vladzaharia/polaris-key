@@ -310,8 +310,10 @@ Lovelace <ada@example.com>" with a way out: the kit's sign-in form does, ending 
 
 `client.identity.autoSignIn()` signs the person in from what the device already has, with no form. It
 needs the Identity service and a product that publishes the Apple exchange (the product's
-`identity.platformSignIn` setting); otherwise it answers `.unavailable`. It runs a ladder and stops at the
-first rung that answers:
+`identity.platformSignIn` setting). With no platform provider installed it answers
+`.needsSignIn(.noCredential)`; with the installed Apple provider and the default prompt it answers the same
+without a request, and `.unavailable` only when the Worker or the platform refuses. It runs a ladder and
+stops at the first rung that answers:
 
 | Rung | What it does                                            | Runs when                                                |
 | ---- | ------------------------------------------------------- | -------------------------------------------------------- |
