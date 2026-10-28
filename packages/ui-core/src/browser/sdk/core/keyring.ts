@@ -17,8 +17,18 @@ export type RingPersistence = "durable" | "memory";
  * - `none`: the product has no key ring yet (the first device creates it).
  * - `locked`: a ring exists and this device holds no root for it. Unlock with the recovery code.
  * - `unlocked`: this device holds the root of the current ring.
+ * - `ring-changed`: the served ring is not the one this browser pinned when it first acquired a
+ *   root (see `RingStatus.changed`). Nothing was opened and the stored root was not replaced.
+ *   Unlock with the recovery code, or call `acceptRingChange()` once the person confirmed.
  */
-export type RingState = "none" | "locked" | "unlocked";
+export type RingState = "none" | "locked" | "unlocked" | "ring-changed";
+
+/** A ring's identity as pinned or served. It holds no secret. */
+export interface RingIdentity {
+  ringId: string;
+  epoch: number;
+  rootKid: string;
+}
 
 export interface RingStatus {
   state: RingState;
@@ -33,6 +43,9 @@ export interface RingStatus {
    * the page (the Worker needs registered keys for the ring's own wrap): it can still unlock.
    */
   canCreate: boolean;
+  /** Set with `state: "ring-changed"`: what was pinned, what is served, and the device that
+   *  wrapped for this one (empty when none did). */
+  changed?: { pinned: RingIdentity; served: RingIdentity; by: string };
 }
 
 /** What a new ring or a new code hands back, once: show it, and keep nothing. */
@@ -65,6 +78,16 @@ export interface KeyringClient {
   removeWrap(deviceId: string): Promise<void>;
   /** Forgets the root on this device. The ring and its wraps stay on the server. */
   lock(): Promise<void>;
+  /**
+   * Sign-out: locks, clears the stored root and drops the pin, so the next person on this device
+   * starts clean. The browser adapter calls it on sign-out and deactivation.
+   */
+  forget(): Promise<void>;
+  /**
+   * After `ring-changed`, and only once the person confirmed in UI: pin the served ring, drop the
+   * stored root of the old one and open this device's wrap for the new one when it has one.
+   */
+  acceptRingChange(): Promise<RingStatus>;
   /** Whether this device holds the root right now (what the sync machine's `setRoot` takes). */
   hasRoot(): boolean;
   /** Called on every change of `hasRoot()`. Returns the unsubscribe. */
@@ -95,6 +118,8 @@ export function unsupportedKeyring(
     wrapTo: refuse,
     removeWrap: refuse,
     lock: refuse,
+    forget: refuse,
+    acceptRingChange: refuse,
     hasRoot: () => false,
     subscribe: () => () => undefined,
   };

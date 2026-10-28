@@ -52,6 +52,7 @@ import {
   ringKeysOf,
   type RingKeys,
   type RootVault,
+  type RingPin,
   type StoredRoot,
 } from "./rootVault.js";
 
@@ -115,6 +116,24 @@ const unhex = (s: unknown): Uint8Array | null =>
   typeof s === "string" && /^[0-9a-f]{32}$/.test(s)
     ? Uint8Array.from(s.match(/../g)!, (h) => parseInt(h, 16))
     : null;
+
+const identityPin = (r: {
+  ringId: string;
+  epoch: number;
+  rootKid: string;
+}): RingPin => ({ v: 1, ringId: r.ringId, epoch: r.epoch, rootKid: r.rootKid });
+const identityOf = (r: { ringId: string; epoch: number; rootKid: string }) => ({
+  ringId: r.ringId,
+  epoch: r.epoch,
+  rootKid: r.rootKid,
+});
+const pinOfRoot = (r: StoredRoot): RingPin =>
+  identityPin({ ringId: r.ringId, epoch: r.epoch, rootKid: r.kid });
+const pinMatches = (
+  p: RingPin,
+  r: { ringId: string; epoch: number; rootKid: string },
+): boolean =>
+  p.ringId === r.ringId && p.epoch === r.epoch && p.rootKid === r.rootKid;
 
 const same = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && a.every((x, i) => x === b[i]);
@@ -242,6 +261,20 @@ export class RingEngine implements KeyringClient {
   /** The vault in use: the durable one only while the device keys are durable too. */
   private async vault(): Promise<RootVault> {
     return (await this.keysDurable()) ? this.o.vault : this.memory;
+  }
+
+  /** The vault in use, where it keeps the root, and whether this device can create a ring. */
+  private async where(): Promise<{
+    vault: RootVault;
+    persistence: RingPersistence;
+    canCreate: boolean;
+  }> {
+    const vault = await this.vault();
+    return {
+      vault,
+      persistence: vault.persistence(),
+      canCreate: await this.keysDurable(),
+    };
   }
 
   private async persistence(): Promise<RingPersistence> {
@@ -373,23 +406,31 @@ export class RingEngine implements KeyringClient {
 
   async status(): Promise<RingStatus> {
     const { ring, wrap } = await this.read();
-    const vault = await this.vault();
-    const persistence = vault.persistence();
-    const canCreate = await this.keysDurable();
+    const { vault, persistence, canCreate } = await this.where();
     if (!ring) {
-      // The ring is gone (its data was deleted): a root for it opens nothing.
-      await vault.clear();
-      this.dropSession();
-      this.setHeld(false);
+      // The server's answer never deletes the stored root: only this device's own wipe, reset or
+      // sign-out does. A ring that comes back is compared with the pin below.
       return this.shape("none", null, persistence, canCreate);
     }
     const have = await vault.get();
+    const pin = (await vault.getPin()) ?? (have ? pinOfRoot(have) : null);
+    if (pin && !pinMatches(pin, ring)) {
+      // A different ring (another id, epoch or root kid) is never adopted silently. The stored
+      // root stays as it is; the machine is told this device holds no root for the served ring.
+      this.setHeld(false);
+      return this.shape("ring-changed", ring, persistence, canCreate, {
+        pinned: identityOf(pin),
+        served: identityOf(ring),
+        by: wrap?.by ?? "",
+      });
+    }
     if (
       have &&
       have.ringId === ring.ringId &&
       have.epoch === ring.epoch &&
       have.kid === ring.rootKid
     ) {
+      if (!(await vault.getPin())) await vault.putPin(pinOfRoot(have));
       this.setHeld(true);
       return this.shape("unlocked", ring, persistence, canCreate);
     }
@@ -400,13 +441,30 @@ export class RingEngine implements KeyringClient {
     return this.shape("locked", ring, persistence, canCreate);
   }
 
+  async acceptRingChange(): Promise<RingStatus> {
+    const { ring, wrap } = await this.read();
+    const { vault, persistence, canCreate } = await this.where();
+    if (!ring) return this.shape("none", null, persistence, canCreate);
+    // The person confirmed this ring: the old root opens nothing in it, so it goes, and the
+    // served ring is pinned before anything is opened.
+    await vault.clear();
+    this.dropSession();
+    this.setHeld(false);
+    await vault.putPin(identityPin(ring));
+    if (wrap && canCreate && (await this.openOwnWrap(ring, wrap)))
+      return this.shape("unlocked", ring, persistence, canCreate);
+    return this.shape("locked", ring, persistence, canCreate);
+  }
+
   private shape(
     state: RingStatus["state"],
     ring: WireRing | null,
     persistence: RingPersistence,
     canCreate: boolean,
+    changed?: NonNullable<RingStatus["changed"]>,
   ): RingStatus {
     return {
+      ...(changed ? { changed } : {}),
       state,
       ringId: ring?.ringId ?? null,
       epoch: ring?.epoch ?? null,
@@ -464,7 +522,10 @@ export class RingEngine implements KeyringClient {
       kid: rootKid,
       key: await importRootHandle(root),
     };
-    await (await this.vault()).put(rec);
+    const vault = await this.vault();
+    await vault.put(rec);
+    // The first root acquired (create, recover or unwrap) pins its ring; a later one re-pins.
+    await vault.putPin(identityPin({ ringId, epoch, rootKid }));
     this.dropSession();
     const ms =
       (this.o.sessionRootSeconds ?? DEFAULT_SESSION_ROOT_SECONDS) * 1000;
@@ -785,5 +846,11 @@ export class RingEngine implements KeyringClient {
     await this.o.vault.clear();
     await this.memory.clear();
     this.setHeld(false);
+  }
+
+  async forget(): Promise<void> {
+    await this.lock();
+    await this.o.vault.clearPin();
+    await this.memory.clearPin();
   }
 }

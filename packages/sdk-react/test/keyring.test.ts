@@ -540,6 +540,141 @@ describe("start over", () => {
   });
 });
 
+describe("the pin: a changed ring is never adopted silently", () => {
+  /** The victim (B) holds ring 1. An attacker's device resets the ring and wraps its own root to
+   *  the victim's agreement key. */
+  async function attacked() {
+    const server = new FakeRingServer();
+    const vault = memoryRootVault();
+    const victim = device(server, B, { vault });
+    const made = await victim.engine.create();
+    const oldKid = server.ring!.rootKid;
+    const oldRing = server.ring!.ringId;
+    const attacker = device(server, A);
+    await attacker.engine.reset();
+    await attacker.engine.wrapTo(B, (await victim.keys.publicKeys())!.agreeKey);
+    // The victim's page loads again over the same vault and keys.
+    const reload = device(server, B, { keys: victim.keys, vault });
+    return { server, vault, victim, reload, made, oldKid, oldRing, attacker };
+  }
+
+  it("leaves the victim at ring-changed with its stored root intact", async () => {
+    const { server, vault, reload, oldKid, oldRing } = await attacked();
+    const s = await reload.engine.status();
+    expect(s.state).toBe("ring-changed");
+    expect(s.changed).toMatchObject({
+      pinned: { ringId: oldRing, rootKid: oldKid },
+      served: { ringId: server.ring!.ringId, rootKid: server.ring!.rootKid },
+    });
+    expect(reload.engine.hasRoot()).toBe(false);
+    // Nothing was overwritten: the vault still holds the old root, and the pin is unchanged.
+    expect((await vault.get())!.kid).toBe(oldKid);
+    expect((await vault.getPin())!.ringId).toBe(oldRing);
+  });
+
+  it("a wrong code does not touch it; the code of the new ring re-pins", async () => {
+    const { server, vault, reload, made, oldKid } = await attacked();
+    await reload.engine.status();
+    // The attacker's ring has no blob the victim's code opens.
+    await expect(
+      reload.engine.recover(made.recoveryCode),
+    ).rejects.toMatchObject({ code: "recovery-code-invalid" });
+    expect((await vault.get())!.kid).toBe(oldKid);
+    // The person starts over from another device of theirs and gets a code for the new ring.
+    const other = device(server, "DEVICECCCCCCCCCCCCCCCCCCCCCCCCCC");
+    const fresh = await other.engine.reset();
+    const s = await reload.engine.recover(fresh.recoveryCode);
+    expect(s.state).toBe("unlocked");
+    expect((await vault.getPin())!.ringId).toBe(fresh.ringId);
+    expect((await vault.get())!.kid).toBe(server.ring!.rootKid);
+    expect((await reload.engine.status()).state).toBe("unlocked");
+  });
+
+  it("acceptRingChange() re-pins after the person confirms", async () => {
+    const { server, vault, reload } = await attacked();
+    expect((await reload.engine.status()).state).toBe("ring-changed");
+    const s = await reload.engine.acceptRingChange();
+    expect(s.state).toBe("unlocked");
+    expect((await vault.getPin())!.ringId).toBe(server.ring!.ringId);
+    expect((await reload.engine.status()).state).toBe("unlocked");
+  });
+
+  it("another epoch or root kid for the same ring id is not adopted either", async () => {
+    const server = new FakeRingServer();
+    const vault = memoryRootVault();
+    const a = device(server, A, { vault });
+    await a.engine.create();
+    server.ring!.epoch = 2;
+    expect((await a.engine.status()).state).toBe("ring-changed");
+    server.ring!.epoch = 1;
+    server.ring!.rootKid = "f".repeat(32);
+    expect((await a.engine.status()).state).toBe("ring-changed");
+  });
+
+  it("a reset by this device re-pins itself", async () => {
+    const server = new FakeRingServer();
+    const vault = memoryRootVault();
+    const a = device(server, A, { vault });
+    await a.engine.create();
+    const fresh = await a.engine.reset();
+    expect((await vault.getPin())!.ringId).toBe(fresh.ringId);
+    expect((await a.engine.status()).state).toBe("unlocked");
+  });
+
+  it("a root stored before pins existed pins itself on the first status", async () => {
+    const server = new FakeRingServer();
+    const vault = memoryRootVault();
+    const a = device(server, A, { vault });
+    await a.engine.create();
+    await vault.clearPin();
+    expect((await a.engine.status()).state).toBe("unlocked");
+    expect(await vault.getPin()).not.toBeNull();
+    // And a pinless vault root against a different served ring is a change, not an overwrite.
+    await vault.clearPin();
+    server.ring!.ringId = "rg_" + "Z".repeat(22);
+    expect((await a.engine.status()).state).toBe("ring-changed");
+  });
+
+  it("status() with no ring never clears the stored root", async () => {
+    const server = new FakeRingServer();
+    const vault = memoryRootVault();
+    const a = device(server, A, { vault });
+    await a.engine.create();
+    const ring = server.ring;
+    server.ring = null;
+    expect((await a.engine.status()).state).toBe("none");
+    expect(await vault.get()).not.toBeNull();
+    expect(a.engine.hasRoot()).toBe(true);
+    server.ring = ring;
+    expect((await a.engine.status()).state).toBe("unlocked");
+  });
+
+  it("keeps the pin in IndexedDB beside the root", async () => {
+    const { IDBFactory } = await import("fake-indexeddb");
+    const idb = new IDBFactory();
+    const server = new FakeRingServer();
+    const a = device(server, A, { vault: indexedDbRootVault("t-pin", idb) });
+    const made = await a.engine.create();
+    const page2 = indexedDbRootVault("t-pin", idb);
+    expect(await page2.getPin()).toMatchObject({ ringId: made.ringId });
+    await page2.clear();
+    expect(await page2.getPin()).not.toBeNull();
+    await page2.clearPin();
+    expect(await indexedDbRootVault("t-pin", idb).getPin()).toBeNull();
+  });
+
+  it("forget() (sign-out) locks, clears the vault and drops the pin", async () => {
+    const server = new FakeRingServer();
+    const vault = memoryRootVault();
+    const a = device(server, A, { vault });
+    await a.engine.create();
+    await a.engine.forget();
+    expect(a.engine.hasRoot()).toBe(false);
+    expect(await vault.get()).toBeNull();
+    expect(await vault.getPin()).toBeNull();
+  });
+});
+
 describe("the other transports", () => {
   it("a cookie page answers the typed runtime N/A on every verb", async () => {
     const adapter = browserAdapter({
@@ -560,6 +695,8 @@ describe("the other transports", () => {
       () => ring.recover("x"),
       () => ring.reset(),
       () => ring.lock(),
+      () => ring.forget(),
+      () => ring.acceptRingChange(),
     ])
       await expect(f()).rejects.toMatchObject({
         name: "UnsupportedError",
