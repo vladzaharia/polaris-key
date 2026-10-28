@@ -594,7 +594,7 @@ struct GateToastView: View {
 
     var body: some View {
         ToastView(
-            text: strings.string(toast.line), tone: toast.kind == .update ? .neutral : .success,
+            text: strings.string(toast.line), tone: toast.kind == .update || toast.kind == .info ? .neutral : .success,
             onDismiss: onDismiss,
             action: toast.kind == .update
                 ? onUpdate.map { (strings.string("update.install"), $0) } : nil)

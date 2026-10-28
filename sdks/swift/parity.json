@@ -405,7 +405,7 @@
     },
     "ui.signin": {
       "status": "implemented",
-      "note": "The signIn family (SignIn, SignInHandoff, LicenseChoice) in UIMatrixTests; the one sign-in form (SignInView) over the SDK's device-code primitives, every state rendered. The in-app license choice draws from I-04's views once the SDK carries the grant (I-10a)."
+      "note": "The signIn family (SignIn with its automatic steps and key refusal, SignInHandoff, LicenseChoice, NearbyApproval) in UIMatrixTests (ui-matrix v7); NearbyApprovalView over NearbyApprovalModel (states only; the nearby protocol is CC-15); the one sign-in form (SignInView) over the SDK's device-code primitives, every state rendered. The in-app license choice draws from I-04's views once the SDK carries the grant (I-10a)."
     },
     "ui.devicelimit": {
       "status": "implemented",

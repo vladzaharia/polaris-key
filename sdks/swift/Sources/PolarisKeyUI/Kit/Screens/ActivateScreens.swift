@@ -12,10 +12,11 @@ enum ActivateRefusal: Equatable {
     case keyEntryLimit, licenseOwned
 
     static func of(_ screen: KitScreen<ActivateState>) -> ActivateRefusal? {
-        guard screen.state == .rejected else { return nil }
-        if screen.shows("core.activation.key-entry-limit.message") { return .keyEntryLimit }
-        if screen.shows("core.codes.license_owned.message") { return .licenseOwned }
-        return nil
+        switch screen.state {
+        case .keyEntryLimit: return .keyEntryLimit
+        case .licenseOwned: return .licenseOwned
+        default: return nil
+        }
     }
 
     /// The refusal's link when the server gave a valid one.
@@ -30,7 +31,7 @@ enum ActivateRefusal: Equatable {
     /// The primary: add the key to an account, or sign in to the one that has it.
     var actionKey: String {
         switch self {
-        case .keyEntryLimit: return "signin.key.addTitle"
+        case .keyEntryLimit: return "signin.key.addInLocker"
         case .licenseOwned: return "signin.key.ownedSignIn"
         }
     }
@@ -47,6 +48,15 @@ struct RefusalStep: View {
     var onOpenLink: (() -> Void)?
     var onDifferentKey: () -> Void
     @Environment(\.polarisKeyStrings) private var strings
+
+    /// A TV cannot open the page: the QR and its caption stand in for the link.
+    private static var isTV: Bool {
+        #if os(tvOS)
+            return true
+        #else
+            return false
+        #endif
+    }
 
     var body: some View {
         kitStyle { style in
@@ -69,9 +79,12 @@ struct RefusalStep: View {
                             PolarisQRCode(
                                 link.absoluteString,
                                 accessibilityLabel: strings.string(
-                                    refusal == .keyEntryLimit ? "a11y.qrManage" : "a11y.qr")
+                                    refusal == .keyEntryLimit ? "a11y.qrAddKey" : "a11y.qr")
                             )
                             .frame(width: 200, height: 200)
+                            if refusal == .keyEntryLimit {
+                                KitText(CopyLine("signin.key.scan"), .meta, color: .muted)
+                            }
                         }
                     #endif
                 }
@@ -80,10 +93,12 @@ struct RefusalStep: View {
                     // Sign in finishes in the app; the link is the primary only when the kit has
                     // no sign-in to start.
                     if let onSignIn {
-                        KitButton(line: CopyLine("welcome.signIn"), kind: .primary, action: onSignIn)
+                        KitButton(
+                            line: CopyLine("signin.key.ownedSignIn"), kind: .primary,
+                            action: onSignIn)
                             .keyboardShortcut(.defaultAction)
                     }
-                    if let onOpenLink, refusal == .keyEntryLimit || onSignIn == nil {
+                    if let onOpenLink, !Self.isTV, refusal == .keyEntryLimit || onSignIn == nil {
                         KitButton(
                             line: CopyLine(
                                 refusal.actionKey, ["product": .text(style.identity.name)]),
@@ -230,7 +245,7 @@ struct ActivateBody: View {
                     }
                 }
             }
-        case .deviceLimit, .rejected:
+        case .deviceLimit, .rejected, .keyEntryLimit, .licenseOwned:
             if screen.state == .deviceLimit
                 || screen.copy.contains(where: { $0.key.hasPrefix("core.") })
             {
@@ -331,7 +346,8 @@ struct ActivateActions: View {
     /// Whether a refusal is the service's answer to a well-formed key (a callout, not the field's
     /// own message): the fix is a different key.
     static func refusesTheKey(_ screen: KitScreen<ActivateState>) -> Bool {
-        screen.state == .rejected && screen.copy.contains { $0.key.hasPrefix("core.") }
+        (screen.state == .rejected || ActivateRefusal.of(screen) != nil)
+            && screen.copy.contains { $0.key.hasPrefix("core.") }
     }
 
     /// The device-limit fix's label: "Replace a Device" on a Mac (the button's `macos` variant, title
