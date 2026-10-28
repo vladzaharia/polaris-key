@@ -312,10 +312,14 @@ public class IdentityClient(
             "ready" -> {
                 val token = body?.get("token").stringValue
                 if (token.isNullOrEmpty()) return SignInPoll.Error("ready without a token.")
-                core.setToken(token, TokenSource.signin, personInitiated = true)
-                // The pairwise subject the Worker reports (`identity.account`); the facade hears of a change.
+                // The pairwise subject the Worker reports (`identity.account`); the facade hears of a change. The subject is
+                // stored before the token, so no sync sees the new token under the previous person.
                 val subject = body?.get("subject").stringValue?.takeIf { it.isNotEmpty() }
-                if (subject != null && core.setSubject(subject)) onSubject(subject)
+                if (subject == null) {
+                    core.setToken(token, TokenSource.signin, personInitiated = true)
+                } else if (core.storeSignIn(token, subject, TokenSource.signin, personInitiated = true)) {
+                    onSubject(subject)
+                }
                 onAcquired?.invoke()
                 SignInPoll.Ready(subject)
             }

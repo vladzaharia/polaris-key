@@ -214,9 +214,8 @@ internal class IdentityAccount(
         }
         val newToken = answer["token"].stringValue?.takeIf { it.isNotEmpty() }
             ?: throw PolarisException(ErrorCode.badResponse, "attach answered without a token.")
-        core.setToken(newToken, TokenSource.activate, provenance = TokenProvenance.signin)
         val subject = answer["subject"].stringValue?.takeIf { it.isNotEmpty() }
-        if (core.setSubject(subject)) onSubject(subject)
+        if (core.storeSignIn(newToken, subject, TokenSource.activate, provenance = TokenProvenance.signin)) onSubject(subject)
         return AttachResult.Ok(subject, if (answer["attached"].stringValue == "claimed") "claimed" else null)
     }
 

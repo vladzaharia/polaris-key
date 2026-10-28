@@ -400,6 +400,30 @@ public class CoreContext(options: CoreOptions) {
         if (personInitiated) setExplicitSignOut(false)
     }
 
+    /**
+     * A sign-in's two writes in the order that keeps a person's data with the person: the subject FIRST, then the
+     * token. While the token is the new person's, nothing may still name the previous one, or a sync that runs in
+     * between would push the previous person's pending edit under the new token (Cloud Sync's person check reads
+     * the stored subject). A token that cannot be stored puts the previous subject back. True when the subject moved.
+     */
+    public suspend fun storeSignIn(
+        token: String,
+        subject: String?,
+        source: TokenSource? = null,
+        personInitiated: Boolean = false,
+        provenance: TokenProvenance? = TokenProvenance.of(source),
+    ): Boolean {
+        val before = storedSubject()
+        val moved = setSubject(subject)
+        try {
+            setToken(token, source, personInitiated, provenance)
+        } catch (e: Throwable) {
+            if (moved) runCatching { setSubject(before) }
+            throw e
+        }
+        return moved
+    }
+
     // ── Token provenance (I-45.2 L4) ────────────────────────────────────────────────────────
     private val provenanceSlot: StateSlot by lazy {
         store.stateDirectory?.let { FileStateSlot(File(it, "token-provenance")) } ?: MemoryStateSlot()

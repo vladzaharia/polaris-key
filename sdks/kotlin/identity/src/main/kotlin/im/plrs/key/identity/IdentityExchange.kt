@@ -399,14 +399,17 @@ internal suspend fun IdentityClient.exchangeTokens(
     val answer = IdentityRedirect.parseTokenAnswer(200, json)
     if (answer !is TokenAnswer.Token) throw PolarisException(ErrorCode.badResponse, "the exchange answered without a complete sign-in.")
     if (mayStore != null && !mayStore()) throw SignedOutDuringExchange()
-    core.setToken(answer.accessToken, TokenSource.signin, personInitiated = personInitiated)
+    // The subject is stored before the token, so no sync sees the new token under the previous person.
+    val moved = core.storeSignIn(answer.accessToken, answer.subject, TokenSource.signin, personInitiated = personInitiated)
     // A sign-out may have run between the check and the store (it bumps the generation, then reads the token):
     // it would not have seen this one and its provenance write came last. Re-check and take the token back out.
     if (mayStore != null && !mayStore()) {
         core.clearAll()
+        // The subject went in before the token: the sign-out that ran meant none.
+        core.setSubject(null)
         throw SignedOutDuringExchange()
     }
-    if (core.setSubject(answer.subject)) onSubject(answer.subject)
+    if (moved) onSubject(answer.subject)
     if (redirectAcquisitionSyncValue) onAcquired?.invoke()
     return ExchangeOutcome.SignedIn(answer.subject, answer.scope, answer.license?.get("id").stringValue, o["issued_token_type"].stringValue)
 }
