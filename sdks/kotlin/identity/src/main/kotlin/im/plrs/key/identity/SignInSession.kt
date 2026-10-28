@@ -135,7 +135,7 @@ private fun redirectPrompt(deviceName: String?): SignInPrompt =
 public class SignInSession internal constructor(
     private val client: IdentityClient,
     /** The code, the URIs and the clock the host shows. Empty on the redirect channel. */
-    public val prompt: SignInPrompt,
+    internal val prompt: SignInPrompt,
     private val opener: AccountOpener?,
     redirect: RedirectPending? = null,
     private val redirectDeviceName: String? = null,

@@ -2082,6 +2082,7 @@
       "detekt:exceptions.TooGenericExceptionCaught": 1,
       "detekt:style.MagicNumber": 1,
       "detekt:style.ReturnCount": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
       "ktlint:standard:function-signature": 5
     },
     "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/PolarisLicenseChoiceState.kt": {
@@ -2103,10 +2104,12 @@
       "ktlint:standard:wrapping": 1
     },
     "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/PolarisSignInState.kt": {
+      "detekt:exceptions.InstanceOfCheckForException": 1,
       "detekt:exceptions.SwallowedException": 1,
       "detekt:exceptions.TooGenericExceptionCaught": 2,
       "detekt:style.MagicNumber": 2,
       "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 4,
       "ktlint:standard:binary-expression-wrapping": 4,
       "ktlint:standard:max-line-length": 1
     },
@@ -2143,7 +2146,11 @@
       "ktlint:standard:blank-line-between-when-conditions": 2
     },
     "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/PolarisGateStateTest.kt": {
-      "ktlint:standard:class-signature": 3
+      "detekt:style.MaxLineLength": 4,
+      "ktlint:standard:argument-list-wrapping": 49,
+      "ktlint:standard:class-signature": 3,
+      "ktlint:standard:max-line-length": 4,
+      "ktlint:standard:property-wrapping": 4
     },
     "sdks/kotlin/ui-core/src/test/kotlin/im/plrs/key/ui/PolarisLicenseChoiceStateTest.kt": {
       "detekt:style.UseCheckOrError": 3,
@@ -2262,6 +2269,13 @@
       "ktlint:standard:function-literal": 2,
       "ktlint:standard:max-line-length": 1,
       "ktlint:standard:property-wrapping": 1
+    },
+    "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/KeyRefusalTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 6,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
     },
     "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/KitSamples.kt": {
       "detekt:style.MaxLineLength": 7,
@@ -2487,17 +2501,19 @@
       "detekt:complexity.LongMethod": 2,
       "detekt:complexity.LongParameterList": 4,
       "detekt:naming.FunctionNaming": 5,
-      "detekt:style.MaxLineLength": 11,
-      "ktlint:standard:argument-list-wrapping": 74,
-      "ktlint:standard:binary-expression-wrapping": 10,
+      "detekt:style.MaxLineLength": 18,
+      "ktlint:standard:argument-list-wrapping": 132,
+      "ktlint:standard:binary-expression-wrapping": 22,
       "ktlint:standard:blank-line-between-when-conditions": 11,
-      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:function-literal": 10,
       "ktlint:standard:function-naming": 5,
       "ktlint:standard:indent": 72,
-      "ktlint:standard:max-line-length": 11,
-      "ktlint:standard:multiline-if-else": 3,
+      "ktlint:standard:max-line-length": 18,
+      "ktlint:standard:mixed-condition-operators": 1,
+      "ktlint:standard:multiline-if-else": 5,
       "ktlint:standard:no-consecutive-blank-lines": 1,
-      "ktlint:standard:statement-wrapping": 6
+      "ktlint:standard:statement-wrapping": 6,
+      "ktlint:standard:wrapping": 1
     },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisGnome.kt": {
       "detekt:complexity.LongParameterList": 3,
@@ -2870,10 +2886,10 @@
       "ktlint:standard:wrapping": 1
     },
     "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/GnomeBoardShotsTest.kt": {
-      "detekt:style.MagicNumber": 19,
-      "detekt:style.MaxLineLength": 2,
-      "ktlint:standard:argument-list-wrapping": 20,
-      "ktlint:standard:max-line-length": 2,
+      "detekt:style.MagicNumber": 18,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 11,
+      "ktlint:standard:max-line-length": 1,
       "ktlint:standard:multiline-loop": 1
     },
     "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/GnomeChromeTest.kt": {
@@ -2887,12 +2903,19 @@
       "ktlint:standard:max-line-length": 2,
       "ktlint:standard:statement-wrapping": 11
     },
+    "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/KeyRefusalMatrixTest.kt": {
+      "detekt:style.MagicNumber": 25,
+      "detekt:style.MaxLineLength": 2,
+      "ktlint:standard:argument-list-wrapping": 24,
+      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:multiline-loop": 1
+    },
     "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/MacBoardShotsTest.kt": {
       "detekt:complexity.NestedBlockDepth": 1,
-      "detekt:style.MagicNumber": 9,
-      "detekt:style.MaxLineLength": 2,
-      "ktlint:standard:argument-list-wrapping": 19,
-      "ktlint:standard:max-line-length": 2,
+      "detekt:style.MagicNumber": 8,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 10,
+      "ktlint:standard:max-line-length": 1,
       "ktlint:standard:multiline-loop": 1
     },
     "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/MacChromeTest.kt": {
@@ -2943,7 +2966,7 @@
       "detekt:complexity.LongParameterList": 2,
       "detekt:style.MagicNumber": 31,
       "detekt:style.MaxLineLength": 3,
-      "ktlint:standard:argument-list-wrapping": 22,
+      "ktlint:standard:argument-list-wrapping": 20,
       "ktlint:standard:binary-expression-wrapping": 1,
       "ktlint:standard:function-literal": 2,
       "ktlint:standard:function-signature": 1,
@@ -2958,7 +2981,7 @@
     "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/WindowsBoardShotsTest.kt": {
       "detekt:style.MagicNumber": 8,
       "detekt:style.MaxLineLength": 1,
-      "ktlint:standard:argument-list-wrapping": 17,
+      "ktlint:standard:argument-list-wrapping": 15,
       "ktlint:standard:function-literal": 2,
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:max-line-length": 1,

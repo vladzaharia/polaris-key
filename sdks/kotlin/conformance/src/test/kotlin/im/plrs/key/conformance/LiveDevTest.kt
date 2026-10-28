@@ -47,7 +47,7 @@ import im.plrs.key.core.action
 import im.plrs.key.core.storeNamespace
 import im.plrs.key.identity.SignInOptions
 import im.plrs.key.identity.SignInOutcome
-import im.plrs.key.identity.SignInPrompt
+import im.plrs.key.identity.SignInSession
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.isUsable
 import im.plrs.key.sdk.PolarisEvent
@@ -254,7 +254,7 @@ class LiveDevTest : ConformanceSuite() {
     fun b4_deviceCodeSignIn() = scenario {
         val client = device("signin").client
         val session = client.identity.signIn.start(SignInOptions(deviceName = "Kotlin live test"))
-        val prompt = session.prompt
+        val prompt = session
         assertTrue("the sign-in page is the dev server's: ${prompt.verificationUriComplete}", prompt.verificationUriComplete.startsWith("${live.origin}/"))
         assertTrue(prompt.userCode.isNotEmpty())
         assertNull(client.core.token())
@@ -355,7 +355,7 @@ class LiveDevTest : ConformanceSuite() {
     }
 
     /** The person at the verification page, as the harness plays them. */
-    private suspend fun approve(prompt: SignInPrompt) = withContext(Dispatchers.IO) {
+    private suspend fun approve(prompt: SignInSession) = withContext(Dispatchers.IO) {
         val log = Files.createTempFile("pkey-dev-approve-", ".log")
         try {
             val process = ProcessBuilder("node", live.approve.absolutePath, prompt.verificationUriComplete, prompt.userCode)

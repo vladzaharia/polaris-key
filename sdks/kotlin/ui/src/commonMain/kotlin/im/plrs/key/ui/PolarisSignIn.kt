@@ -186,8 +186,8 @@ private fun PolarisCodeView(
     val copy = PolarisTheme.copy
     val theme = PolarisTheme.current
     val opener = rememberPolarisOpener()
-    val link = ui.prompt.verificationUriComplete
-    val address = theme.deviceCodeUrl?.let(::displayHost) ?: displayHost(ui.prompt.verificationUri)
+    val link = ui.code.verificationUriComplete
+    val address = theme.deviceCodeUrl?.let(::displayHost) ?: displayHost(ui.code.verificationUri)
     var noBrowser by rememberSaveable(link) { mutableStateOf(false) }
     // The link comes from the server: only a plain https link is opened, shown as a QR or copied.
     val linkOk = isSafeSignInLink(link)
@@ -207,8 +207,8 @@ private fun PolarisCodeView(
     val back = PolarisBackHandler(onBack = onCancel)
     // TalkBack hears the code once, spelled out, when it first appears.
     val announce = rememberPolarisAnnouncer()
-    val spoken = copy.format(copy.signInCodeDescription, spelled(ui.prompt.userCode))
-    LaunchedEffect(ui.prompt.userCode) { announce(spoken) }
+    val spoken = copy.format(copy.signInCodeDescription, spelled(ui.code.userCode))
+    LaunchedEffect(ui.code.userCode) { announce(spoken) }
     val countdown: @Composable () -> Unit = {
         Spacer(Modifier.height(PolarisSpace.controls))
         PolarisCountdown(ui.fractionLeft, copy.format(copy.signInExpiresIn, countdown(ui.secondsLeft)))
@@ -218,7 +218,7 @@ private fun PolarisCodeView(
         // PX-W13: the label the sign-in page will show (the Worker's echo), so the player can
         // check the page belongs to this device. A short single column drops it first (DL3: a
         // secondary line gives way before the controls do).
-        ui.prompt.deviceName?.takeUnless { window.compactHeight && !window.twoPane }?.let { label ->
+        ui.code.deviceName?.takeUnless { window.compactHeight && !window.twoPane }?.let { label ->
             Spacer(Modifier.height(PolarisSpace.controls))
             Text(
                 text = copy.format(copy.signInDeviceLabel, label),
@@ -248,7 +248,7 @@ private fun PolarisCodeView(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(polarisWindow.section))
-                PolarisUserCode(ui.prompt.userCode, Modifier.fillMaxWidth())
+                PolarisUserCode(ui.code.userCode, Modifier.fillMaxWidth())
                 countdown()
             } else {
                 PolarisLede(copy.signInCodeBody, address)
@@ -259,7 +259,7 @@ private fun PolarisCodeView(
                 if (linkOk) PolarisQr(link, copy.signInQrDescription, Modifier.size(polarisWindow.qrSize))
                 deviceLine()
             } else {
-                PolarisUserCode(ui.prompt.userCode, Modifier.fillMaxWidth(), onCopy = if (linkOk) link to onCopyLink else null)
+                PolarisUserCode(ui.code.userCode, Modifier.fillMaxWidth(), onCopy = if (linkOk) link to onCopyLink else null)
                 if (autoPlatformVariant() == PolarisPlatformVariant.Android && !polarisWindow.compactHeight) {
                     // Android: the screen is waiting on the person; an indeterminate indicator says so (the draining ring alone reads as a radio button).
                     Spacer(Modifier.height(PolarisSpace.controls))
