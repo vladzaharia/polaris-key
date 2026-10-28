@@ -75,6 +75,8 @@ import { PolarisEventEmitter } from "./core/events.js";
 import { BackendClient, type BackendClientOptions } from "./backend/client.js";
 import { KeyringClient, type KeyringOptions } from "./keyring/client.js";
 import { CloudSyncHost, type CloudSyncHostOptions } from "./cloudSync/host.js";
+import { CloudSyncApi } from "./cloudSync/api.js";
+import { readStoredSubject } from "./identity/account.js";
 import { ConnectClient, type ConnectOptions } from "./connect/client.js";
 import { CloudConnect } from "./connect/cloudConnect.js";
 import { crashTagsFor, type CrashTags } from "./server.js";
@@ -211,6 +213,10 @@ export class PolarisKeyClient {
   /** The Cloud Sync host: the machine, its transport and its state (U-06.2). Idle until `start()`.
    *  @internal */
   readonly cloudSyncHost: CloudSyncHost;
+  /** Cloud Sync settings (U-06.3): `status()` and `flush()`; its events arrive on
+   *  `events.on("cloudSync", …)`. A product without the Sync service answers the typed N/A. */
+  readonly cloudSync: Pick<CloudSyncApi, "status" | "flush">;
+  private readonly cloudSyncApi: CloudSyncApi;
 
   private readonly cache: CacheManager;
   private readonly tokens: TokenManager;
@@ -362,6 +368,22 @@ export class PolarisKeyClient {
       },
       opts.cloudSync ?? {},
     );
+    this.cloudSyncApi = new CloudSyncApi({
+      ctx: this.core,
+      host: this.cloudSyncHost,
+      keyring: this.keyring,
+      config: this.config,
+      subject: () => readStoredSubject(this.core.dirs.state),
+      emit: (e) => this.events.safeEmit("cloudSync", e),
+    });
+    this.cloudSync = {
+      status: () => this.cloudSyncApi.status(),
+      flush: () => this.cloudSyncApi.flush(),
+    };
+    this.events.on("identity", (e) => {
+      void this.cloudSyncApi.onIdentity(e).catch(() => undefined);
+    });
+    this.identity.onBeforeSignOut(() => this.cloudSyncApi.beforeSignOut());
     // Signing out leaves the person's devices: the roster and K_disc are not this device's to keep.
     this.identity.onBeforeSignOut(() => this.connect.leave());
     this.commerce = new CommerceClient(this.core, this.tokens, () =>
@@ -422,6 +444,7 @@ export class PolarisKeyClient {
     this.license.onDeactivated = async () => {
       await this.keyring.forget();
       await this.identity.forget();
+      await this.cloudSyncApi.onDeactivated().catch(() => undefined);
       this.noteLicense();
     };
     this.refreshIntervalSeconds = opts.refreshIntervalSeconds;
@@ -509,6 +532,7 @@ export class PolarisKeyClient {
       await this.presentationStore.accept(result.manifest);
       await this.portalStore.accept(result.manifest);
       this.cloudSyncHost.noteDiscovery();
+      void this.cloudSyncApi.attach().catch(() => undefined);
     }
     return result;
   }

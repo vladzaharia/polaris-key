@@ -116,6 +116,8 @@ export class CloudSyncHost {
   #exitHook: (() => void) | null = null;
   #started = false;
   #closed = false;
+  /** After a purge the journal stays unsaved until a principal signs in again. */
+  #purged = false;
 
   constructor(deps: CloudSyncHostDeps, opts: CloudSyncHostOptions = {}) {
     this.#deps = deps;
@@ -226,6 +228,14 @@ export class CloudSyncHost {
     if (JSON.stringify(this.#deps.document()) !== this.#documentJson)
       this.#rebuildWanted = true;
     this.touch();
+  }
+
+  /** Bring the machine's clock to the real one, so an edit made now is stamped and debounced from
+   *  now (the machine only moves when told). */
+  catchUp(): void {
+    if (this.#machine === null) return;
+    const dt = this.#now - this.#machine.now;
+    if (dt > 0) this.#machine.advance(dt);
   }
 
   /** Run the machine now: advance its clock, exchange every queued request, save. Never throws. */
@@ -397,6 +407,7 @@ export class CloudSyncHost {
 
   /** Persist the journal. Committing the debounced edits is what `persist()` does by contract. */
   async #save(persisted?: CloudSyncFile["persisted"]): Promise<void> {
+    if (this.#purged) return;
     const file: CloudSyncFile = {
       v: 1,
       product: this.#deps.ctx.product,
@@ -421,6 +432,38 @@ export class CloudSyncHost {
       void this.touch();
     }, TICK_MS);
     this.#timer.unref?.();
+  }
+
+  /** Offer the legacy `local-config.json` to the machine, once per install. */
+  async importLocalOnce(values: Record<string, Json>): Promise<void> {
+    const done = await this.#file.imported();
+    this.machine.importLocal(done ? {} : values);
+    if (!done) await this.#file.markImported().catch(() => undefined);
+  }
+
+  /** A principal signed in: the journal is saved again. */
+  resume(): void {
+    this.#purged = false;
+  }
+
+  /**
+   * Forget the person's synced data (S6): the machine is rebuilt empty and `cloud-sync.json`,
+   * which holds the opened snapshot in the clear, is deleted. Nothing is saved again until
+   * `resume()`. Works before `start()` too (the file may predate this process). Throws only if
+   * the file could not be removed; the in-memory data is gone either way.
+   */
+  async purge(): Promise<void> {
+    this.#purged = true;
+    this.#openKeys = new Set();
+    if (this.#timer !== null) clearTimeout(this.#timer);
+    this.#timer = null;
+    if (this.started) {
+      await this.#pumping?.catch(() => undefined);
+      this.#emitFrom(this.machine);
+      this.#build(null);
+      this.machine.importLocal({});
+    }
+    await this.#file.remove();
   }
 
   /** Send what is waiting and save, giving up (the journal is kept) after `maxMs`. */

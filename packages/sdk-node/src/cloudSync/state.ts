@@ -10,10 +10,13 @@
 
 import type { CloudSyncPersisted } from "@polaris-key/client-core/cloud-sync";
 import type { ProductCatalog } from "@polaris-key/catalog";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { readJson, writeJson } from "../core/jsonFile.js";
 
 export const CLOUD_SYNC_FILE = "cloud-sync.json";
+/** Holds no data: it says the legacy `local-config.json` was offered to the machine once. */
+export const CLOUD_SYNC_IMPORTED_FILE = "cloud-sync-imported.json";
 /** Open-setting names kept for tombstone mapping; past this the oldest are dropped. */
 export const OPEN_KEYS_MAX = 4096;
 
@@ -36,6 +39,7 @@ export const isCatalogShape = (v: unknown): v is ProductCatalog =>
 
 export class CloudSyncStateFile {
   readonly path: string;
+  readonly importedPath: string;
   #write: Promise<void> = Promise.resolve();
 
   constructor(
@@ -43,6 +47,22 @@ export class CloudSyncStateFile {
     private readonly product: string,
   ) {
     this.path = join(stateDir, CLOUD_SYNC_FILE);
+    this.importedPath = join(stateDir, CLOUD_SYNC_IMPORTED_FILE);
+  }
+
+  /** Delete the file (after every pending write, so none lands after it). Throws if it stays. */
+  remove(): Promise<void> {
+    const next = this.#write.then(() => rm(this.path, { force: true }));
+    this.#write = next.catch(() => undefined);
+    return next;
+  }
+
+  async imported(): Promise<boolean> {
+    return (await readJson<unknown>(this.importedPath, null)) !== null;
+  }
+
+  markImported(): Promise<void> {
+    return writeJson(this.importedPath, { v: 1 });
   }
 
   /** The saved file, or an empty one when it is missing, corrupt or another product's. */
