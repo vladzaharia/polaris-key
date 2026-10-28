@@ -18,6 +18,8 @@ import im.plrs.key.core.DeviceCurves
 import im.plrs.key.core.DeviceCurvesSelection
 import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.X25519Points
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.security.GeneralSecurityException
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -25,8 +27,6 @@ import javax.crypto.Cipher
 import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 // -- Ports ---------------------------------------------------------------------------------------
 
@@ -52,19 +52,17 @@ public object JcaNoiseAead : NoiseAead {
         return cipher.doFinal(data)
     }
 
-    override fun seal(key: ByteArray, nonce: ByteArray, aad: ByteArray, plaintext: ByteArray): ByteArray =
-        try {
-            run(Cipher.ENCRYPT_MODE, key, nonce, aad, plaintext)
-        } catch (e: GeneralSecurityException) {
-            throw NoiseException(NoiseErrorCode.bad_key)
-        }
+    override fun seal(key: ByteArray, nonce: ByteArray, aad: ByteArray, plaintext: ByteArray): ByteArray = try {
+        run(Cipher.ENCRYPT_MODE, key, nonce, aad, plaintext)
+    } catch (e: GeneralSecurityException) {
+        throw NoiseException(NoiseErrorCode.bad_key)
+    }
 
-    override fun open(key: ByteArray, nonce: ByteArray, aad: ByteArray, ciphertext: ByteArray): ByteArray? =
-        try {
-            run(Cipher.DECRYPT_MODE, key, nonce, aad, ciphertext)
-        } catch (e: GeneralSecurityException) {
-            null
-        }
+    override fun open(key: ByteArray, nonce: ByteArray, aad: ByteArray, ciphertext: ByteArray): ByteArray? = try {
+        run(Cipher.DECRYPT_MODE, key, nonce, aad, ciphertext)
+    } catch (e: GeneralSecurityException) {
+        null
+    }
 }
 
 /**
@@ -210,8 +208,7 @@ public fun hkdfSha256(salt: ByteArray, ikm: ByteArray, info: ByteArray, length: 
 public enum class PeerMode(public val wire: String) { a("a"), v("v"), p("p") }
 
 /** The Noise protocol name of a mode: XXpsk0 for `a` (R-1), plain XX for `v` and `p`. */
-public fun peerNoiseProtocol(mode: PeerMode): String =
-    if (mode == PeerMode.a) "Noise_XXpsk0_25519_AESGCM_SHA256" else "Noise_XX_25519_AESGCM_SHA256"
+public fun peerNoiseProtocol(mode: PeerMode): String = if (mode == PeerMode.a) "Noise_XXpsk0_25519_AESGCM_SHA256" else "Noise_XX_25519_AESGCM_SHA256"
 
 /** `"pkey-peer/1" 0x00 slug 0x00 mode 0x00`. */
 public fun peerPrologue(slug: String, mode: PeerMode): ByteArray =
@@ -429,7 +426,10 @@ public class NoiseHandshake(o: NoiseHandshakeOptions) {
     private suspend fun dh(token: Token) {
         val mineIsStatic = when (token) {
             Token.ee -> false
-            Token.es -> !initiator // es: initiator e with responder s
+
+            Token.es -> !initiator
+
+            // es: initiator e with responder s
             else -> initiator // se: initiator s with responder e
         }
         val remoteIsStatic = when (token) {
@@ -467,7 +467,10 @@ public class NoiseHandshake(o: NoiseHandshakeOptions) {
         } catch (err: Throwable) {
             dead = true
             wipeSecrets()
-            throw if (err is NoiseException) err else if (err is kotlinx.coroutines.CancellationException) err else NoiseException(NoiseErrorCode.state)
+            throw when (err) {
+                is NoiseException, is kotlinx.coroutines.CancellationException -> err
+                else -> NoiseException(NoiseErrorCode.state)
+            }
         }
     }
 
@@ -479,6 +482,7 @@ public class NoiseHandshake(o: NoiseHandshakeOptions) {
         for (t in tokens()) {
             when (t) {
                 Token.psk -> mixKeyAndHash(psk!!)
+
                 Token.e -> {
                     val eph = e ?: ports.random(32).also { e = it }
                     val pub = publicOfEphemeral(eph)
@@ -486,10 +490,12 @@ public class NoiseHandshake(o: NoiseHandshakeOptions) {
                     mixHash(pub)
                     if (usesPsk) mixKey(pub)
                 }
+
                 Token.s -> {
                     val pub = sPub ?: staticKey.publicKey().also { sPub = it }
                     wire = cat(wire, encryptAndHash(pub))
                 }
+
                 else -> dh(t)
             }
         }
@@ -506,6 +512,7 @@ public class NoiseHandshake(o: NoiseHandshakeOptions) {
         for (t in tokens()) {
             when (t) {
                 Token.psk -> mixKeyAndHash(psk!!)
+
                 Token.e -> {
                     if (message.size < off + 32) throw NoiseException(NoiseErrorCode.malformed)
                     val r = message.copyOfRange(off, off + 32)
@@ -514,12 +521,14 @@ public class NoiseHandshake(o: NoiseHandshakeOptions) {
                     mixHash(r)
                     if (usesPsk) mixKey(r)
                 }
+
                 Token.s -> {
                     val len = if (cs.hasKey()) 32 + TAG else 32
                     if (message.size < off + len) throw NoiseException(NoiseErrorCode.malformed)
                     rs = decryptAndHash(message.copyOfRange(off, off + len))
                     off += len
                 }
+
                 else -> dh(t)
             }
         }

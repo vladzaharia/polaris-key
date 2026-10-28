@@ -32,7 +32,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 
 /** The one error type the SDK throws; the verification path returns null instead. */
-public class PolarisException(
+public open class PolarisException(
     /** A registry code (`ErrorCode`), or the server's machine-readable code. */
     public val code: String,
     message: String,
