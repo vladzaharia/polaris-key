@@ -161,6 +161,18 @@ export type {
   SignInOutcome,
   SignInSession,
 } from "./signIn.js";
+export {
+  choiceEndpointsOf,
+  type ChoiceCancelResult,
+  type ChoiceCompleteResult,
+  type ChoiceEndpoints,
+  type ChoiceNamespace,
+  type ChoiceRefusal,
+  type ChoiceViewResult,
+  type LicenseChoice,
+  type LicenseChoiceView,
+  type ReplaceView,
+} from "./choice.js";
 export { activationError } from "./activationError.js";
 export {
   activationMessage,

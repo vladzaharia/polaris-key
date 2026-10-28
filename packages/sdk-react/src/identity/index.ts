@@ -4,6 +4,12 @@
 // `supportsOidcLogin` is derived from the identity service's discovery fragment, so a product
 // with no identity service offers no OIDC button rather than one that leads to a 404.
 export { usePolarisAuth } from "../react/hooks.js";
+export { useLicenseChoice } from "../react/useLicenseChoice.js";
+export type {
+  UseLicenseChoice,
+  UseLicenseChoiceOptions,
+  LicenseChoiceStatus,
+} from "../react/useLicenseChoice.js";
 export type { UsePolarisAuth } from "../react/hooks.js";
 export type { OidcSignInHandle } from "../core/index.js";
 export type { DocProfile } from "@polaris-key/protocol/license";

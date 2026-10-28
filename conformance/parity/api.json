@@ -3115,10 +3115,7 @@
       "feature": "identity.choice",
       "sdks": {
         "node": {},
-        "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "react": { "spelling": "usePolarisAuth().choice", "shape": "hook" },
         "python": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3151,8 +3148,8 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "usePolarisAuth().choice.licenses",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3189,8 +3186,8 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "usePolarisAuth().choice.devices",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3227,8 +3224,8 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "usePolarisAuth().choice.complete",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3261,8 +3258,8 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "usePolarisAuth().choice.cancel",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3298,11 +3295,7 @@
           "shape": "property",
           "reason": "no hook: Node calls the identity.choice primitives"
         },
-        "react": {
-          "planned": "I-10a",
-          "reason": "the React hook over identity.choice (D-3)",
-          "shape": "hook"
-        },
+        "react": { "spelling": "useLicenseChoice", "shape": "hook" },
         "swift": {
           "spelling": "LicenseChoiceModel"
         },

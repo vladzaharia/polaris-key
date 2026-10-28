@@ -78,6 +78,7 @@ import {
   type ServicesMap,
 } from "../core/services.js";
 import { createStore, type Store } from "../core/store.js";
+import type { ChoiceNamespace } from "../core/choice.js";
 import type { SignInNamespace } from "../core/signIn.js";
 import {
   PolarisError,
@@ -461,6 +462,13 @@ export class LocalAdapter implements PolarisAdapter {
         dial("Signing in"),
       )) as unknown as SignInNamespace["start"],
     complete: () => Promise.reject(dial("Signing in")),
+  };
+
+  readonly choice: ChoiceNamespace = {
+    licenses: () => Promise.reject(dial("The licence choice")),
+    devices: () => Promise.reject(dial("The licence choice")),
+    complete: () => Promise.reject(dial("The licence choice")),
+    cancel: () => Promise.reject(dial("The licence choice")),
   };
 
   async mintToken(_recipeId: string): Promise<MintedToken> {
