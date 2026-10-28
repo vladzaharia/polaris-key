@@ -10,7 +10,7 @@ sidebar:
 
 Account emails come from Polaris Locker, at `noreply@auth.plrs.im` or `noreply@plrs.im`. None asks for your full license key.
 
-Didn't ask for a sign-in code or link? Ignore it; nothing changes until it is used. Code didn't arrive? See [Your sign-in code didn't arrive](/docs/help/code-didnt-arrive/).
+Ignore a code or link you didn't ask for; nothing changes until it is used. Code didn't arrive? See [Your sign-in code didn't arrive](/docs/help/code-didnt-arrive/).
 
 ## Your library
 
@@ -24,15 +24,15 @@ Sign in with this address. No key.
 
 ### <a id="license-added"></a><var>App</var> is in your library
 
-Select **Open** and the app's name to see it.
+Select **Open**, then the app's name.
 
 ### <a id="license-from-developer"></a><var>App</var> is in your Polaris Locker library
 
-Select **Open** and the app's name to see it.
+Select **Open**, then the app's name.
 
 ### <a id="license-attached"></a>Your <var>App</var> license was added to a Polaris Locker account
 
-A license was added with its key. If this was not you, contact the app's developer.
+It was added with its key. Not you? Contact the app's developer.
 
 ### <a id="license-key-replaced"></a>Your license has a new key
 
@@ -88,7 +88,7 @@ Nothing is erased.
 
 ### <a id="account-deleted"></a>Your Polaris Locker account has been deleted
 
-Your account, its email addresses and its sign-in methods were erased as you asked. If you did not ask for this, sign in to create a new account. Your licenses stay with each developer, so you can add them back.
+Your account, email addresses and sign-in methods were erased. Didn't ask for this? Sign in to create a new account. Your licenses stay with each developer, so you can add them back.
 
 ### <a id="accounts-merged"></a>Two Polaris Locker accounts were joined
 
@@ -110,7 +110,7 @@ If unexpected, contact the developer's support within 72 hours; they can undo it
 
 ### <a id="license-relinked-in"></a><var>App</var> is being added to your library
 
-Select **Open** and the app's name to see it. If unexpected, contact the developer's support within 72 hours; they can undo it.
+Select **Open**, then the app's name. If unexpected, contact the developer's support within 72 hours; they can undo it.
 
 ### <a id="license-relink-undone"></a>The developer undid a move of a <var>App</var> license
 
