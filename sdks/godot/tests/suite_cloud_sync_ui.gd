@@ -52,8 +52,27 @@ class FakeRing extends RefCounted:
 		return _next("set_recovery_code", [])
 
 
+## `PolarisKey.cloud_sync`, scripted: `status()` answers the queued status (the last one repeats);
+## `flush()` is counted.
+class FakeCloud extends RefCounted:
+	var states: Array = []
+	var reads := 0
+	var flushes := 0
+
+	func status() -> PKeyResult:
+		reads += 1
+		var st: Variant = states[0] if states.size() == 1 else states.pop_front()
+		return st if st is PKeyResult else PKeyResult.success(st)
+
+	func flush() -> PKeyResult:
+		flushes += 1
+		return status()
+
+
 class FakeSdk extends Node:
+	signal event(kind: String, data: Dictionary)
 	var keyring: Object = null
+	var cloud_sync: Object = null
 
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
@@ -71,6 +90,9 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _recovery(t)
 	await _ring_change(t)
 	await _status(t)
+	await _kit_host(t)
+	await _kit_strip(t)
+	await _kit_account(t)
 	await _destructive(t)
 	PKeyUiTheme.reset()
 	PKeyCloudSyncController.memory_clipboard = false
@@ -85,6 +107,11 @@ static func _tree() -> SceneTree:
 func _free(v: Control) -> void:
 	v.get_parent().remove_child(v)
 	v.queue_free()
+
+
+func _free_node(n: Node) -> void:
+	n.get_parent().remove_child(n)
+	n.queue_free()
 
 
 func _frames(n := 3) -> void:
@@ -431,3 +458,181 @@ func _destructive(t: PKeyTestContext) -> void:
 		_free(v)
 	PKeyUiTheme.reset()
 	PKeyUiTheme.reduce_motion_mode = "on"
+
+
+# ── The kit host: the strip and the screens follow PolarisKey.cloud_sync (U-42.5T) ────────────
+
+func _kit_sdk(states: Array) -> FakeSdk:
+	var ring := FakeRing.new()
+	var sdk := _sdk(ring)
+	sdk.cloud_sync = FakeCloud.new()
+	sdk.cloud_sync.states = states
+	return sdk
+
+
+func _row(sdk: FakeSdk) -> PKeyCloudSyncKitHost:
+	var h := PKeyCloudSyncKitHost.new()
+	h.sdk = sdk
+	await h.refresh()
+	return h
+
+
+func _kit_host(t: PKeyTestContext) -> void:
+	var cases := [
+		["local", {"state": "local", "pending": 0}, "", false],
+		["unsupported", {"state": "unsupported", "pending": 0}, "", false],
+		["idle", {"state": "idle", "pending": 0}, "synced", false],
+		["pending", {"state": "pending", "pending": 2}, "synced", false],
+		["syncing", {"state": "syncing", "pending": 1}, "syncing", false],
+		["offline", {"state": "offline", "pending": 1}, "offline", false],
+		["paused", {"state": "paused", "pending": 1}, "offline", false],
+		["blocked: account required", {"state": "blocked", "reason": "account_required"}, "error", true],
+		["blocked: unauthorized", {"state": "blocked", "reason": "unauthorized"}, "error", true],
+		["blocked: forbidden", {"state": "blocked", "reason": "forbidden"}, "error", false],
+		["Sync off (typed N/A)", PKeyResult.failure(&"product", "off"), "", false],
+	]
+	for c in cases:
+		var sdk := _kit_sdk([c[1]])
+		var h := await _row(sdk)
+		t.check("kit host: %s -> row '%s'" % [c[0], c[2]], h.status_row == c[2] and h.signed_out == c[3], h.status_row)
+		_free_node(sdk)
+	# Locked: the key ring tells a plain lock from a changed ring, and never accepts one.
+	var sdk := _kit_sdk([{"state": "locked", "pending": 0, "reason": "keyring"}])
+	(sdk.keyring as FakeRing).queue("unlock", PKeyResult.success({"kind": "locked", "reason": "no-wrap"}))
+	var h := await _row(sdk)
+	t.check("kit host: locked with a plain lock is locked", h.status_row == "locked" and h.served.is_empty())
+	(sdk.keyring as FakeRing).queue("unlock", PKeyResult.success({"kind": "ring-changed", "by": "Desk", "served": RING}))
+	await h.refresh()
+	t.check("kit host: a changed ring is ring-changed, with the ring it was drawn for", h.status_row == "ring-changed" and h.by == "Desk" and h.served == RING)
+	t.check("kit host: the probe never accepts a ring", not (sdk.keyring as FakeRing).calls.any(func(c: Array) -> bool: return c[0] == "accept_ring_change"))
+	(sdk.keyring as FakeRing).queue("unlock", PKeyResult.failure(&"network-error", "x"))
+	await h.refresh()
+	t.check("kit host: an unreadable ring is a plain lock", h.status_row == "locked")
+	# The event stream.
+	sdk.cloud_sync.states = [{"state": "idle", "pending": 0}]
+	await h.start()
+	sdk.event.emit("cloudSync", {"type": "signedOut", "reason": "signOut"})
+	t.check("kit host: signedOut is a neutral error row offering sign in", h.status_row == "error" and h.signed_out and h.account_state() == "signedOut")
+	sdk.event.emit("cloudSync", {"type": "change", "keys": ["a.x"], "origin": "local"})
+	await _frames()
+	t.check("kit host: a change refreshes to synced", h.status_row == "synced" and not h.signed_out)
+	var reads: int = sdk.cloud_sync.reads
+	sdk.event.emit("license", {"type": "change"})
+	await _frames()
+	t.check("kit host: other event kinds are ignored", sdk.cloud_sync.reads == reads)
+	h.stop()
+	_free_node(sdk)
+
+
+func _kit_strip(t: PKeyTestContext) -> void:
+	# Locked -> Unlock sync -> the code opens the ring -> the screen goes and the machine is read again.
+	var sdk := _kit_sdk([{"state": "locked", "pending": 1, "reason": "keyring"}, {"state": "idle", "pending": 0}])
+	var ring := sdk.keyring as FakeRing
+	ring.queue("unlock", PKeyResult.success({"kind": "locked", "reason": "no-wrap"}))
+	var strip := PKeyCloudSyncStatus.new()
+	strip.auto_sdk = false
+	_tree().root.add_child(strip)
+	await strip.follow(sdk)
+	await _frames()
+	t.check("strip: follows a locked machine", strip.state == "locked" and (strip.find_child("Status", true, false) as Label).text == "Sync is locked.")
+	(_buttons(strip)["Action"] as Button).pressed.emit()
+	await _frames()
+	var u := _find(PKeyUnlockSync)
+	t.check("strip: Unlock sync opens UnlockSync", u != null and strip.host.screen == "unlock")
+	ring.queue("recover", PKeyResult.success({"ring_id": "r"}))
+	u.set_typed_code("ab3d 9fgh")
+	await u._on_unlock()
+	await _frames(6)
+	t.check("strip: the code unlocks, the screen goes, the queue flushes and the row redraws", _find(PKeyUnlockSync) == null and strip.host.screen == "" and sdk.cloud_sync.flushes == 1 and strip.state == "synced", "%s %s %s %s" % [_find(PKeyUnlockSync), strip.host.screen, sdk.cloud_sync.flushes, strip.state])
+	_free_strip(strip)
+	_free_node(sdk)
+	# Ring changed -> Review -> Accept (only the served ring) -> the screen goes.
+	sdk = _kit_sdk([{"state": "locked", "pending": 0, "reason": "keyring"}, {"state": "idle", "pending": 0}])
+	ring = sdk.keyring as FakeRing
+	ring.queue("unlock", PKeyResult.success({"kind": "ring-changed", "by": "Desk", "served": RING}))
+	strip = PKeyCloudSyncStatus.new()
+	strip.auto_sdk = false
+	_tree().root.add_child(strip)
+	await strip.follow(sdk)
+	await _frames()
+	t.check("strip: a changed ring says so and offers Review", strip.state == "ring-changed" and (_buttons(strip)["Action"] as Button).text == "Review")
+	(_buttons(strip)["Action"] as Button).pressed.emit()
+	await _frames()
+	var rc := _find(PKeyRingChange)
+	t.check("strip: Review opens RingChange for the ring that was drawn", rc != null and rc.served == RING and rc.by == "Desk")
+	ring.queue("accept_ring_change", PKeyResult.success({"kind": "unlocked"}))
+	await rc._on_accept()
+	await _frames(6)
+	t.check("strip: accepting hands over exactly that ring and closes the screen", ring.calls.any(func(c: Array) -> bool: return c[0] == "accept_ring_change" and c[1][0] == RING) and _find(PKeyRingChange) == null and strip.state == "synced", "%s %s %s" % [_find(PKeyRingChange), strip.state, ring.calls])
+	# "Use recovery code" from RingChange goes to UnlockSync.
+	strip.host.served = RING
+	strip.host.open_review()
+	await _frames()
+	_find(PKeyRingChange).use_code_requested.emit()
+	await _frames()
+	t.check("strip: use recovery code switches RingChange to UnlockSync", _find(PKeyRingChange) == null and _find(PKeyUnlockSync) != null)
+	# Start over -> RecoveryCode shows the new code once -> Done wipes it.
+	ring.queue("reset", PKeyResult.success({"ring_id": "r2", "recovery_code": CODE}))
+	var uu := _find(PKeyUnlockSync)
+	await uu._start_reset()
+	await _frames()
+	var rv := _find(PKeyRecoveryCode)
+	t.check("strip: start over shows the new recovery code", _find(PKeyUnlockSync) == null and rv != null and rv.code == CODE and strip.host.screen == "recovery_code")
+	rv.saved = true
+	await rv._on_done()
+	await _frames(6)
+	t.check("strip: Done closes the code screen and nothing keeps the code", _find(PKeyRecoveryCode) == null and strip.host.code == "" and (not is_instance_valid(rv) or rv.code == ""))
+	# New recovery code from settings.
+	ring.queue("set_recovery_code", PKeyResult.success(CODE))
+	await strip.host.request_new_recovery_code()
+	await _frames()
+	rv = _find(PKeyRecoveryCode)
+	t.check("strip: New recovery code goes through the key ring and shows the code", rv != null and rv.code == CODE and ring.calls.any(func(c: Array) -> bool: return c[0] == "set_recovery_code"))
+	strip.host.dismiss()
+	await _frames()
+	t.check("strip: an unsaved new code is never dropped", _find(PKeyRecoveryCode) != null)
+	rv.saved = true
+	await rv._on_done()
+	await _frames(6)
+	ring.queue("set_recovery_code", _fail("network-error"))
+	await strip.host.request_new_recovery_code()
+	await _frames()
+	t.check("strip: a failed New recovery code shows no screen and says so", _find(PKeyRecoveryCode) == null and strip.host.new_code_failed)
+	_free_strip(strip)
+	_free_node(sdk)
+
+
+func _find(cls: Variant) -> Control:
+	for layer in _tree().root.get_children():
+		if layer is CanvasLayer and not layer.is_queued_for_deletion():
+			for c in layer.get_children():
+				if is_instance_of(c, cls) and not c.is_queued_for_deletion():
+					return c
+	return null
+
+
+func _free_strip(strip: PKeyCloudSyncStatus) -> void:
+	var host := strip.host
+	strip.get_parent().remove_child(strip)
+	strip.queue_free()
+	if host != null:
+		host.stop()
+
+
+func _kit_account(t: PKeyTestContext) -> void:
+	var tab := PKeyAccountTab.new()
+	tab.auto_sdk = false
+	_tree().root.add_child(tab)
+	var seen := {}
+	for st in ["locked", "ring-changed", "signedOut", "synced"]:
+		tab.cloud_sync = st
+		tab.cloud_sync_time = "2 min ago"
+		tab.refresh_view()
+		await _frames()
+		var v := tab.find_child("Value", true, false) as Label
+		seen[st] = v.text if v != null else ""
+	t.check("account: the Cloud Sync row says locked", seen["locked"] == "Sync is locked.", str(seen))
+	t.check("account: the Cloud Sync row says the key changed", seen["ring-changed"] == "Your sync key changed.", str(seen))
+	t.check("account: the existing rows still read", seen["signedOut"] == "You're signed out." and seen["synced"].begins_with("Synced"), str(seen))
+	tab.get_parent().remove_child(tab)
+	tab.queue_free()
