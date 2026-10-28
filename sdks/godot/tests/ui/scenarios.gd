@@ -180,8 +180,15 @@ func all() -> Array:
 	for c in [["default: replace the least recent", "default"], ["default: the limit is not known", "unknown"], ["browser mode", "browser"], ["browser mode: a QR code on a TV", "browser-tv"], ["busy", "busy"], ["removed", "removed"], ["failed", "failed"]]:
 		out.append(["device_limit", c[0], device_limit.bind(c[1])])
 	# ── PKeyCloudSyncStatus, PKeyAbout and PKeyReleaseNotes (UI-KITS.md §4.1), the models' states.
-	for c in [["synced", "synced"], ["syncing", "syncing"], ["offline", "offline"], ["conflict, Review offered", "conflict"], ["error", "error"], ["error: signed out", "signed-out"]]:
+	for c in [["synced", "synced"], ["syncing", "syncing"], ["offline", "offline"], ["conflict, Review offered", "conflict"], ["error", "error"], ["error: signed out", "signed-out"], ["locked", "locked"], ["ring changed", "ring-changed"]]:
 		out.append(["cloud_sync", c[0], cloud_sync.bind(c[1])])
+	# ── The Cloud Sync screens (ui-matrix `cloudSync`, U-42.5): every state the model has.
+	for c in ["code", "code, typed", "invalid", "working", "failed", "start-over-failed", "no-code", "start-over", "hidden"]:
+		out.append(["unlock_sync", c, unlock_sync.bind(c)])
+	for c in ["show", "saved", "hidden"]:
+		out.append(["recovery_code", c, recovery_code.bind(c)])
+	for c in ["confirm", "no device named", "nothing served", "failed", "hidden"]:
+		out.append(["ring_change", c, ring_change.bind(c)])
 	for c in [["with every link", "full"], ["version only", "plain"]]:
 		out.append(["about", c[0], about.bind(c[1])])
 	for c in [["list", "list"], ["loading", "loading"], ["empty", "empty"], ["error", "error"]]:
@@ -582,6 +589,60 @@ func cloud_sync(kind: String) -> Control:
 		"signed-out":
 			s.state = "error"
 			s.signed_in = false
+		"locked", "ring-changed":
+			s.state = kind
+	s.refresh_view()
+	return s
+
+
+## Not a real code: fixture text in the code's own shape (8 groups of 4).
+const FIXTURE_CODE := "AB3D-9FGH-JK4M-NP5Q-RS6T-VW7X-YZ80-1C2E"
+const FIXTURE_RING := {"ring_id": "rg_AAAAAAAAAAAAAAAAAAAAAA", "epoch": 2, "root_kid": "00112233445566778899aabbccddeeff"}
+
+
+func unlock_sync(kind: String) -> Control:
+	var s := PKeyUnlockSync.new()
+	s.auto_sdk = false
+	add(s)
+	match kind:
+		"code, typed":
+			s.set_typed_code("ab3d 9fgh jk4m")
+		"hidden":
+			s.sync_on = false
+		_:
+			if kind != "code":
+				s.step = kind
+	s.refresh_view()
+	return s
+
+
+func recovery_code(kind: String) -> Control:
+	var s := PKeyRecoveryCode.new()
+	s.auto_sdk = false
+	add(s)
+	if kind == "hidden":
+		s.sync_on = false
+	s.code = FIXTURE_CODE
+	s.saved = kind == "saved"
+	s.refresh_view()
+	return s
+
+
+func ring_change(kind: String) -> Control:
+	var s := PKeyRingChange.new()
+	s.auto_sdk = false
+	add(s)
+	s.served = FIXTURE_RING.duplicate()
+	s.by = "Maya’s MacBook"
+	match kind:
+		"no device named":
+			s.by = ""
+		"nothing served":
+			s.served = {}
+		"failed":
+			s.failed = true
+		"hidden":
+			s.sync_on = false
 	s.refresh_view()
 	return s
 

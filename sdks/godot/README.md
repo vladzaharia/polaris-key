@@ -465,6 +465,35 @@ total)` drives it; verification is part of downloading, and nothing says install
   the bottom of the screen, full width. `PKeyToast.open(self)` adds a layer over the game;
   `follow_sdk = true` shows the SDK's update events.
 
+### Cloud Sync screens (unlock, save the recovery code, ring change)
+
+Three scenes and two more `PKeyCloudSyncStatus` states, drawn from the same model as the other kits
+(`ui/model/cloud_sync.gd`, ui-matrix `cloudSync`). End users see "Polaris Locker". The kit runs the
+key ring calls on `PolarisKey.keyring` through `PKeyCloudSyncController` unless you set
+`host_handles` and answer the signals yourself.
+
+- **`PKeyUnlockSync`.** The recovery code (a field in the code's own font, **Paste**, Enter submits;
+  "That code isn't right" clears when you edit it) or **Start over**. The warning comes first: Start
+  over is first on it, Cancel last with the first focus, and Start over arms about half a second
+  after the warning appears. A not-found answer from `keyring.recover()` goes to Start over. Signals:
+  `unlocked()`, `started_over(recovery_code)`, `cancelled()`. Nearby unlock is not offered.
+- **`PKeyRecoveryCode`.** Set `code` (from `keyring.create()`, `reset()` or `set_recovery_code()`);
+  the screen draws 8 groups of 4, whole, 4 to a row or fewer where the width holds fewer, says no one
+  will ask for it, copies the hyphenated form, and cannot be left until "I've saved my recovery code"
+  is checked and Done is pressed (`done()`). It forgets the code on Done.
+- **`PKeyRingChange`.** Names the device that set up the new key (`by`), offers **Use recovery code**
+  (the primary; `use_code_requested()`), **That was me** only with `served` (hands exactly that ring
+  to `keyring.accept_ring_change`; `accepted()`), and **Cancel**. A failed accept says so and keeps
+  That was me.
+- **`PKeyCloudSyncStatus`** also draws `locked` ("Sync is locked." with **Unlock sync**, signal
+  `unlock_requested`) and `ring-changed` ("Your sync key changed." with **Review**, which always
+  shows, signal `review_requested`). Following the sync client's state is the host binding and not
+  built yet; set `state` yourself until then.
+
+`PKeyCloudSyncController.begin(sdk)` says which screen a device needs: a locked device with no ring
+creates one and shows its recovery code, a ring this device cannot open asks for the code, a changed
+ring goes to the confirmation.
+
 ### Product presentation (`core.presentation`)
 
 Discovery carries the product's presentation: its name, developer, accents and an icon hosted by

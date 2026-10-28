@@ -38,7 +38,10 @@ const MODELS := {
 	"Settings": ["settings.gd", "settings_view"],
 	"Paywall": ["settings.gd", "paywall_view"],
 	"EntitlementGate": ["settings.gd", "entitlement_gate_view"],
-	"CloudSyncStatus": ["settings.gd", "cloud_sync_status_view"],
+	"CloudSyncStatus": ["cloud_sync.gd", "cloud_sync_status_view"],
+	"UnlockSync": ["cloud_sync.gd", "unlock_sync_view"],
+	"RecoveryCode": ["cloud_sync.gd", "recovery_code_view"],
+	"RingChange": ["cloud_sync.gd", "ring_change_view"],
 	"About": ["settings.gd", "about_view"],
 	"ChannelPicker": ["settings.gd", "channel_picker_view"],
 }

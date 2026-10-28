@@ -448,6 +448,8 @@ const DEFAULTS := {
 	"sync_conflict": "Some changes conflict.",
 	"sync_error": "Couldn't sync. Try again later.",
 	"sync_signed_out": "You're signed out.",
+	"sync_locked": "Sync is locked.",
+	"sync_ring_changed": "Your sync key changed.",
 	"channel_locked_by": "%s sets the channel.",
 	"toast_undo": "Undo",
 	"toast_update_available": "{product} %s is available",

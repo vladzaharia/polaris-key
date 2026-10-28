@@ -99,7 +99,21 @@ func _ready() -> void:
 		_bound = true
 		if sdk.has_signal("state_changed"):
 			sdk.state_changed.connect(func(_s: Dictionary) -> void: refresh_from_sdk())
+		_follow_cloud_sync()
 		refresh_from_sdk()
+
+
+## The Cloud Sync row follows `PolarisKey.cloud_sync` (shared with the status strip): "Sync is locked."
+## and "Your sync key changed." beside the usual states.
+func _follow_cloud_sync() -> void:
+	var h := PKeyCloudSyncKitHost.of(sdk)
+	if h == null:
+		return
+	h.changed.connect(func() -> void:
+		cloud_sync = h.account_state()
+		cloud_sync_time = h.sync_time
+		refresh_view())
+	h.start()
 
 
 func _process(_delta: float) -> void:
@@ -312,7 +326,7 @@ func _rebuild(t: PKeyUiCopy, state: String) -> void:
 		any = true
 	if _on("sync") and cloud_sync != "":
 		var r5 := _row(first, "sync", t.text("account_cloud_sync"))
-		var sk := {"synced": "sync_synced", "syncing": "sync_syncing", "offline": "sync_offline", "conflict": "sync_conflict", "error": "sync_error", "signedOut": "sync_signed_out"}.get(cloud_sync, "")
+		var sk := {"synced": "sync_synced", "syncing": "sync_syncing", "offline": "sync_offline", "conflict": "sync_conflict", "error": "sync_error", "signedOut": "sync_signed_out", "locked": "sync_locked", "ring-changed": "sync_ring_changed"}.get(cloud_sync, "")
 		if sk != "":
 			var v := label(r5["control"], "Value", "PKeyMuted")
 			v.text = t.text(sk, cloud_sync_time) if t.template(sk).contains("%s") else t.text(sk)

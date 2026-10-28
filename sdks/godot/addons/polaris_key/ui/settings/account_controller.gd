@@ -16,12 +16,11 @@ const CHANNELS := ["stable", "beta"]
 
 
 ## The enabled services (tools/services.json slugs) of this SDK: the opt-in services the product runs.
-## Cloud Sync is not in the Godot SDK yet, so it is never among them.
 static func services(sdk: Node) -> Array:
 	var out: Array = []
 	if sdk == null or sdk.get("core") == null or sdk.core == null:
 		return ["license", "config", "release", "distribution", "update", "identity", "commerce"]
-	for slug in ["license", "config", "release", "distribution", "update", "identity", "commerce"]:
+	for slug in ["license", "config", "release", "distribution", "update", "identity", "commerce", "sync"]:
 		if sdk.core.enabled(slug):
 			out.append(slug)
 	return out

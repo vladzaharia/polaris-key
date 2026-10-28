@@ -2,7 +2,7 @@ extends RefCounted
 # @pkey-feature ui.gate ui.activate ui.signin ui.devicelimit ui.devices ui.update ui.settings ui.paywall ui.theme ui.i18n
 #
 # The Godot runner of conformance/corpus/v2/ui-matrix.json (plans/UK-02b.md §5), over the kit's
-# headless layer (addons/polaris_key/ui/model/): every row of all ten families, never one
+# headless layer (addons/polaris_key/ui/model/): every row of all eleven families, never one
 # skipped. Component rows drive the model `expect.component` names (the signIn family through
 # the sign-in form's session, `sign_in_session.gd`) and compare the state, the sorted copy keys
 # and the sorted actions, and a negative row's Must not; theme rows pin the theme resolver; i18n
@@ -28,6 +28,7 @@ const FAMILIES := {
 	"update": "ui.update",
 	"settings": "ui.settings",
 	"paywall": "ui.paywall",
+	"cloudSync": "ui.settings",
 }
 const SIGN_IN := ["SignIn", "SignInHandoff", "LicenseChoice"]
 

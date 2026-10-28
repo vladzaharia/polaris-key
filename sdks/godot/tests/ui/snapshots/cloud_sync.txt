@@ -18,3 +18,11 @@ Card/Body/Row/Status: Label "Couldn't sync. Try again later."
 Card/Body/Row/Glyph: TextureRect
 Card/Body/Row/Status: Label "You're signed out."
 Card/Body/Action: Button "Sign in to sync" [focus 1]
+== locked ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Sync is locked."
+Card/Body/Action: Button "Unlock sync" [focus 1]
+== ring changed ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Your sync key changed."
+Card/Body/Action: Button "Review" [focus 1]

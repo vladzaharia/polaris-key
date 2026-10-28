@@ -608,7 +608,33 @@ func wire_focus() -> void:
 		ctl.focus_neighbor_top = prev
 		ctl.focus_previous = prev
 	_last_chain = chain
+	_wire_rows()
 	_after_wire()
+
+
+## On a horizontal action row a pad's left and right reach the neighbouring button (up and down
+## keep walking the whole chain); a stacked row has only up and down.
+func _wire_rows() -> void:
+	for row in _action_rows:
+		var r := row as BoxContainer
+		if not is_instance_valid(r) or r.vertical or not r.is_visible_in_tree():
+			continue
+		var buttons: Array = []
+		for ch in r.get_children():
+			if ch is Control and is_focusable(ch as Control):
+				buttons.append(ch)
+		if buttons.size() < 2:
+			continue
+		for i in buttons.size():
+			var b: Control = buttons[i]
+			var before: Variant = buttons[i - 1] if i > 0 else null
+			var after: Variant = buttons[i + 1] if i < buttons.size() - 1 else null
+			if is_layout_rtl():
+				var tmp: Variant = before
+				before = after
+				after = tmp
+			b.focus_neighbor_left = b.get_path_to(before) if before != null else NodePath()
+			b.focus_neighbor_right = b.get_path_to(after) if after != null else NodePath()
 
 
 ## After a render: focus a control when the view needs one (see `ensure_focus()`), at the index the
@@ -2054,6 +2080,18 @@ func hbox(parent: Node, node_name: String, variation := "PKeyRow") -> HBoxContai
 	return h
 
 
+## A line of words with its glyph before them (a failure or a warning never rides on colour and
+## words alone): `{row, glyph, label}`. The row and the glyph follow the label's visibility; size the
+## glyph in `_arrange` with `size_glyph()`.
+func glyph_label(parent: Node, node_name: String, glyph_name: String, variation := "") -> Dictionary:
+	var row := hbox(parent, node_name + "Row")
+	var g := glyph_node(row, node_name + "Glyph", glyph_name)
+	g.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var l := label(row, node_name, variation)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return {"row": row, "glyph": g, "label": l}
+
+
 ## A QR code on its white rounded tile (PKeyQrTile), under `parent`; returns the code. The tile
 ## shows while the code does.
 func qr_tile(parent: Node, node_name := "QrCode") -> PKeyQrRect:
@@ -2281,6 +2319,14 @@ func columns(parent: Node, node_name: String) -> BoxContainer:
 static func set_columns(box: BoxContainer, side_by_side: bool) -> void:
 	box.vertical = not side_by_side
 	box.theme_type_variation = "PKeyColumns" if side_by_side else "PKeySections"
+
+
+## Whether a landscape card has the room for two columns, one comfortable card width each: the
+## rule the two-part screens share (device limit, the Cloud Sync screens).
+func two_pane_fits() -> bool:
+	if phone_screen() or not is_landscape():
+		return false
+	return room_x() + 1.0 >= (role("card_width") - 2.0 * role("card_padding")) * 1.45
 
 
 ## The width `text` takes in `ctl`'s font and size, on one line.

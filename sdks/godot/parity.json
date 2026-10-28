@@ -570,7 +570,7 @@
     },
     "ui.settings": {
       "status": "implemented",
-      "note": "Every ui-matrix.json row of the family through the kit's headless models (addons/polaris_key/ui/model/, the port of ui-core): AccountAndLicense, Settings, CloudSyncStatus, About and ChannelPicker. suite_ui_core, on 4.7.2 and the 4.4.1 floor; the drop-in screens' structural snapshots and resolution matrix are suite_ui and suite_ui_matrix."
+      "note": "Every ui-matrix.json row of the family through the kit's headless models (addons/polaris_key/ui/model/, the port of ui-core): AccountAndLicense, Settings, CloudSyncStatus (with locked and ring-changed), About and ChannelPicker, and the cloudSync family's UnlockSync, RecoveryCode and RingChange. suite_ui_core, on 4.7.2 and the 4.4.1 floor; the drop-in screens' structural snapshots and resolution matrix are suite_ui and suite_ui_matrix. PKeyUnlockSync, PKeyRecoveryCode and PKeyRingChange run recover, reset, accept_ring_change and set_recovery_code on PolarisKey.keyring through PKeyCloudSyncController (suite_cloud_sync_ui); a status strip that follows the sync client's locked and ring-changed states is the host binding, model-only until U-21."
     },
     "ui.paywall": {
       "status": "implemented",
