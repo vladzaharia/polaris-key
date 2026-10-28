@@ -8,35 +8,40 @@
  *           it moves no epoch: the merge announces each re-bound device as `bound` once its batch
  *           has committed, and the ring listener (`ringListener.ts`) bumps the survivor then.
  *           Idempotent (a repeat finds no row).
- *   delete  the subject's row.
+ *   delete  the subject's row, and the person's relay room (its roster and the day's usage).
  *   export  the epoch and when it last changed. The discovery key is a secret of the devices'
  *           discovery, not data about the person, and is never exported.
  *   size    0: the row is a few hundred bytes of bookkeeping.
  */
 
 import type { SubjectStore } from "../../core/accounts/subjectHooks.js";
+import { purgeRelay } from "./do/client.js";
 
 /** The registry name (stable: the export document is keyed by it). */
 export const CONNECT_RINGS_STORE = "connect.rings";
 
 export const connectRingsStore: SubjectStore = {
   tables: ["connect_rings"],
+  durableObjects: ["ConnectRelayDO"],
 
-  async merge({ db }, { product, from, to }) {
+  async merge({ db, env }, { product, from, to }) {
     if (from === to) return;
     await db.run(
       "DELETE FROM connect_rings WHERE product = ? AND subject = ?",
       product,
       from,
     );
+    // The absorbed person's relay room goes too: its sockets reconnect as the survivor.
+    await purgeRelay(env, product, from);
   },
 
-  async delete({ db }, { product, subject }) {
+  async delete({ db, env }, { product, subject }) {
     await db.run(
       "DELETE FROM connect_rings WHERE product = ? AND subject = ?",
       product,
       subject,
     );
+    await purgeRelay(env, product, subject);
   },
 
   async export({ db }, { product, subject }) {

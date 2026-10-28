@@ -187,7 +187,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "platform",
     label: "Launch gate: Cloud Connect relay",
     description:
-      "Serves the Cloud Connect relay routes, once they exist. Nothing reads it yet.",
+      "Serves the Cloud Connect relay routes and its rooms. Off answers not_found, and an open room closes at its next minute.",
     keywords: ["launch", "relay", "cloud connect", "rollout"],
     docs: "/docs/operate/platform/settings/",
     ownership: "operator",

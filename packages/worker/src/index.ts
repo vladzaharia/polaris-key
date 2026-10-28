@@ -10,6 +10,7 @@ export { RateLimitDO } from "./rateLimitDo.js";
 export { UpdateHealthDO } from "./core/updateHealthDo.js";
 export { SingleUseDO } from "./singleUseDo.js";
 export { CloudSyncDO } from "./services/sync/index.js";
+export { ConnectRelayDO } from "./services/connect/index.js";
 
 /**
  * P4-18: the payload URL sends bytes that are ALREADY encoded (the stored zstd frame, or a dcz

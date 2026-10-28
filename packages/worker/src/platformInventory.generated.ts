@@ -42,6 +42,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: null,
   },
   {
+    name: "CONNECT_RELAY",
+    kind: "binding",
+    area: "stores",
+    optional: true,
+    editable: null,
+  },
+  {
     name: "UPDATE_HEALTH",
     kind: "binding",
     area: "jobs",

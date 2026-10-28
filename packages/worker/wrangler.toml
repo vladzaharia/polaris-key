@@ -52,6 +52,13 @@ class_name = "SingleUseDO"
 name = "CLOUD_SYNC"
 class_name = "CloudSyncDO"
 
+# CC-07.2: Cloud Connect's relay room (`src/services/connect/do/relayDo.ts`), one object per
+# (product, person), named only by `src/services/connect/do/client.ts`. SQLite-backed. Reached
+# only through the relay routes, which the `launch.relay` gate hides; the object checks it too.
+[[durable_objects.bindings]]
+name = "CONNECT_RELAY"
+class_name = "ConnectRelayDO"
+
 [[migrations]]
 tag = "v1"
 # SQLite-backed, not KV-backed. Cloudflare no longer permits accounts to create the legacy
@@ -79,6 +86,11 @@ new_sqlite_classes = ["SingleUseDO"]
 [[migrations]]
 tag = "v4"
 new_sqlite_classes = ["CloudSyncDO"]
+
+# CC-07.2: Cloud Connect's relay room. Its own append-only tag.
+[[migrations]]
+tag = "v5"
+new_sqlite_classes = ["ConnectRelayDO"]
 
 # ---------------------------------------------------------------------------
 # Scheduled maintenance (R11-09 / R12-10). Without this block the worker has no `scheduled()`
@@ -196,6 +208,9 @@ class_name = "SingleUseDO"
 [[env.prod.durable_objects.bindings]]
 name = "CLOUD_SYNC"
 class_name = "CloudSyncDO"
+[[env.prod.durable_objects.bindings]]
+name = "CONNECT_RELAY"
+class_name = "ConnectRelayDO"
 [[env.prod.kv_namespaces]]
 binding = "HOT"
 id = "51b31c97ac2140e5af2402bed1a31e71"
@@ -329,6 +344,9 @@ class_name = "SingleUseDO"
 [[env.staging.durable_objects.bindings]]
 name = "CLOUD_SYNC"
 class_name = "CloudSyncDO"
+[[env.staging.durable_objects.bindings]]
+name = "CONNECT_RELAY"
+class_name = "ConnectRelayDO"
 [[env.staging.kv_namespaces]]
 binding = "HOT"
 id = "REPLACE_ME_STAGING_KV_ID"
@@ -444,6 +462,9 @@ class_name = "SingleUseDO"
 [[env.dev.durable_objects.bindings]]
 name = "CLOUD_SYNC"
 class_name = "CloudSyncDO"
+[[env.dev.durable_objects.bindings]]
+name = "CONNECT_RELAY"
+class_name = "ConnectRelayDO"
 [[env.dev.kv_namespaces]]
 binding = "HOT"
 id = "REPLACE_ME_DEV_KV_ID"
@@ -542,6 +563,9 @@ class_name = "SingleUseDO"
 [[env.test.durable_objects.bindings]]
 name = "CLOUD_SYNC"
 class_name = "CloudSyncDO"
+[[env.test.durable_objects.bindings]]
+name = "CONNECT_RELAY"
+class_name = "ConnectRelayDO"
 [[env.test.kv_namespaces]]
 binding = "HOT"
 id = "local-registry-clients-kv"
