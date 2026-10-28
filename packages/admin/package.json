@@ -51,7 +51,7 @@
     "@types/pngjs": "^6.0.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.1.2",
     "axe-core": "^4.13.0",
     "jsdom": "^26.0.0",
     "playwright": "1.63.0",
