@@ -58,6 +58,7 @@ var platform := ""
 ## The native object to call instead of the Engine singleton: anything with
 ## `cmd(json: String) -> String` (tests).
 var native: Object = null
+var _no_backup_dir := ""
 ## The Engine singleton used when `native` is null. Tests point it at a missing one.
 var singleton_name := SINGLETON
 ## How long an awaited call waits for its result.
@@ -359,6 +360,16 @@ func keystore_set(product: String, account: String, value: String) -> PKeyResult
 ## detail.existed.
 func keystore_delete(product: String, account: String) -> PKeyResult:
 	return _wrap(PKeyConstants.Feature.CORE_STORE, call_sync({"op": "ks_delete", "product": product, "account": account}), PKeyErrors.STORE_FAILED)
+
+
+## The app's no-backup directory (`Context.noBackupFilesDir`: Auto Backup and device-to-device
+## transfer skip it), or "" when the plugin does not answer. Read once per process.
+func no_backup_dir() -> String:
+	if _no_backup_dir == "":
+		var r := call_sync({"op": "no_backup_dir"})
+		if r.get("ok", false) and r.get("path") is String:
+			_no_backup_dir = r["path"]
+	return _no_backup_dir
 
 
 ## What protects the product's key: {alias, backend, exists, securityLevel, insideSecureHardware,

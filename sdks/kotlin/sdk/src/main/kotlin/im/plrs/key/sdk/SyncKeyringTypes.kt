@@ -10,6 +10,7 @@ import im.plrs.key.core.DeviceKeyStorage
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.sync.SyncBlind
+import im.plrs.key.core.sync.SyncCodecPort
 import im.plrs.key.core.sync.SyncCrypto
 import im.plrs.key.core.sync.SyncEnvelope
 import kotlinx.serialization.json.JsonElement
@@ -161,26 +162,26 @@ internal fun lockedError() = PolarisException(ErrorCode.syncLocked, "This device
  * What the E2E machine's host seals and opens with. It holds no key itself: every call reads the
  * ring's current root, and refuses with `sync-locked` once the ring is locked.
  */
-public class SyncCodec internal constructor(private val memory: RingMemory) {
+public class SyncCodec internal constructor(private val memory: RingMemory) : SyncCodecPort {
     /** The current root's `kid`, lowercase hex; null while locked. */
     public val kid: String? get() = memory.held?.let { hex(it.kid) }
-    public val locked: Boolean get() = memory.held == null
+    override val locked: Boolean get() = memory.held == null
 
     override fun toString(): String = "SyncCodec(locked=$locked)"
 
     private fun need(): HeldRoot = memory.held ?: throw lockedError()
 
-    public fun seal(collection: String, name: String, value: JsonElement): ByteArray = SyncEnvelope.seal(need().root, collection, name, value)
+    override fun seal(collection: String, name: String, value: JsonElement): ByteArray = SyncEnvelope.seal(need().root, collection, name, value)
 
     /** Tries the current root, then any adopted root whose `kid` the envelope names. */
-    public fun open(collection: String, name: String, envelope: ByteArray, aliases: List<String> = emptyList()): SyncEnvelope.Opened =
+    override fun open(collection: String, name: String, envelope: ByteArray, aliases: List<String>): SyncEnvelope.Opened =
         tryRoots(envelope) { SyncEnvelope.open(it, collection, name, envelope, aliases) }
 
     /** Opens an envelope whose name is inside it. The caller checks the name it gets back. */
-    public fun openAny(collection: String, envelope: ByteArray): SyncEnvelope.Opened =
+    override fun openAny(collection: String, envelope: ByteArray): SyncEnvelope.Opened =
         tryRoots(envelope) { SyncEnvelope.openAnyName(it, collection, envelope) }
 
-    public fun blind(kind: SyncBlind.Kind, ctx: String, name: String): String = SyncBlind.blind(need().root, kind, ctx, name)
+    override fun blind(kind: SyncBlind.Kind, ctx: String, name: String): String = SyncBlind.blind(need().root, kind, ctx, name)
 
     private fun tryRoots(envelope: ByteArray, attempt: (ByteArray) -> SyncEnvelope.Opened): SyncEnvelope.Opened {
         val first = attempt(need().root)

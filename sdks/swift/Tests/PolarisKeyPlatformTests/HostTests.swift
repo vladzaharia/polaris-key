@@ -26,6 +26,19 @@ final class HostTests: XCTestCase {
         XCTAssertEqual(call(h, #"{"op":"packs_ensure"}"#)["error"], "missing_packs")
     }
 
+    func testExcludeFromBackupMarksADirectory() throws {
+        let (h, _) = host(fakeServices(store: FakeStoreClient(catalog: [])))
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("pkey-backup-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let ok = call(h, "{\"op\":\"exclude_from_backup\",\"path\":\"\(dir.path)\"}")
+        XCTAssertEqual(ok["ok"], true)
+        XCTAssertEqual(try dir.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+        XCTAssertEqual(call(h, "{\"op\":\"exclude_from_backup\",\"path\":\"\(dir.path)/missing\"}")["error"], "not_found")
+        XCTAssertEqual(call(h, #"{"op":"exclude_from_backup","path":"relative"}"#)["error"], "bad_path")
+        XCTAssertEqual(call(h, #"{"op":"exclude_from_backup"}"#)["error"], "bad_path")
+    }
+
     func testPingAndCapabilities() {
         let (h, _) = host(fakeServices(availability: .iOS17_4, store: FakeStoreClient(catalog: []), keychain: FakeKeychain()))
         let ping = call(h, #"{"op":"ping"}"#)

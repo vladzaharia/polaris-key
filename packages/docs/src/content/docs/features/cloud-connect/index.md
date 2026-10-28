@@ -76,5 +76,8 @@ The **Cloud Connect** section has three pages.
 
 ## Next steps
 
+- [The relay](/docs/features/cloud-connect/relay/): tickets, admission, quotas, pacing and what the relay sees.
+- [Channels](/docs/features/cloud-connect/channels/): open a channel, send messages, handle close reasons and sign-out.
+- [The peer protocol](/docs/reference/protocol/peer/): the certificate, roster, handshake and relay envelope, for implementers.
 - [Sign-in](/docs/features/sign-in/): the account Cloud Connect links devices by.
 - [Cloud Sync](/docs/features/cloud-sync/): keeps one person's settings and saves across devices.

@@ -101,6 +101,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrAddKey": "QR code that opens the add-key page",
     "a11y.nearbyCode": "Code to tap: {code}",
     "a11y.code": "Sign-in code {code}",
+    "a11y.recoveryCode": "Recovery code {code}",
     "a11y.seatMeter":
       "{used} of {limit, plural, one {# device} other {# devices}} in use",
     "a11y.productIcon": "{product} icon",
@@ -372,7 +373,12 @@ export const KIT_COPY: Readonly<
     "unlockSync.unlock": "Unlock",
     "unlockSync.startOver": "Start over",
     "unlockSync.invalid": "That code isn't right. Check it and try again.",
-    "unlockSync.failed": "Couldn't unlock. Try again later.",
+    "unlockSync.failed":
+      "Couldn't unlock. Check your connection and try again.",
+    "unlockSync.startOverFailed":
+      "Couldn't start over. Check your connection and try again.",
+    "unlockSync.noCode":
+      "This account has no recovery code. Start over to keep syncing.",
     "unlockSync.startOverTitle": "Start over?",
     "unlockSync.startOverWarning":
       "Your current synced data will be lost. Start over only if you can't find your recovery code.",
@@ -388,7 +394,11 @@ export const KIT_COPY: Readonly<
     "ringChange.body": "{device} set up a new key for your synced data.",
     "ringChange.bodyUnknown": "A device set up a new key for your synced data.",
     "ringChange.warning":
-      "Continue only if that was you. If not, unlock with your recovery code instead.",
+      "Choose “That was me” only if you did this. If not, use your recovery code.",
+    "ringChange.warningNoServed":
+      "Unlock with your recovery code to keep syncing.",
+    "ringChange.failed":
+      "Couldn't confirm the new key. Try again, or use your recovery code.",
     "ringChange.accept": "That was me",
     "ringChange.useCode": "Use recovery code",
     "about.title": "About {product}",
@@ -583,13 +593,15 @@ export const KIT_COPY: Readonly<
     "signin.auto.confirm.other": "Use another account",
     "signin.linkOffer.title": "Sign in with {provider} next time?",
     "signin.linkOffer.bodyGlobal":
-      "Then {app} and other apps that use Polaris Locker can sign you in by themselves.",
+      "Then {app} and other apps that use Polaris Locker can sign you in automatically.",
     "signin.linkOffer.bodyDeveloper":
-      "Then apps from {developer} can sign you in by themselves.",
+      "Then apps from {developer} can sign you in automatically.",
     "signin.linkOffer.bodyApp":
-      "Then {app} and its developer's other apps can sign you in by themselves.",
+      "Then {app} and its developer's other apps can sign you in automatically.",
     "signin.linkOffer.primary": "Link {provider}",
     "signin.linkOffer.decline": "No thanks",
+    "signin.linkOffer.stale": "Sign in again to link {provider}.",
+    "signin.linkOffer.failed": "Couldn't link {provider} on this device.",
     "signin.linkOffer.done": "{provider} linked",
     "signin.linkOffer.conflictTitle": "{provider} not linked",
     "signin.linkOffer.conflict":
@@ -1848,6 +1860,7 @@ export const KIT_COPY: Readonly<
       "QR-Code, der die Seite zum Hinzufügen des Schlüssels öffnet",
     "a11y.nearbyCode": "Code zum Tippen: {code}",
     "a11y.code": "Anmeldecode {code}",
+    "a11y.recoveryCode": "Wiederherstellungscode {code}",
     "a11y.seatMeter":
       "{used} von {limit, plural, one {# Gerät} other {# Geräten}} belegt",
     "a11y.productIcon": "Symbol von {product}",
@@ -2144,7 +2157,11 @@ export const KIT_COPY: Readonly<
     "unlockSync.invalid":
       "Dieser Code stimmt nicht. Prüfen Sie ihn und versuchen Sie es erneut.",
     "unlockSync.failed":
-      "Entsperren fehlgeschlagen. Versuchen Sie es später erneut.",
+      "Entsperren fehlgeschlagen. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+    "unlockSync.startOverFailed":
+      "Neu beginnen fehlgeschlagen. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+    "unlockSync.noCode":
+      "Dieses Konto hat keinen Wiederherstellungscode. Beginnen Sie neu, um weiter zu synchronisieren.",
     "unlockSync.startOverTitle": "Neu beginnen?",
     "unlockSync.startOverWarning":
       "Ihre bisher synchronisierten Daten gehen verloren. Beginnen Sie nur neu, wenn Sie Ihren Wiederherstellungscode nicht finden.",
@@ -2162,7 +2179,11 @@ export const KIT_COPY: Readonly<
     "ringChange.bodyUnknown":
       "Ein Gerät hat einen neuen Schlüssel für Ihre synchronisierten Daten eingerichtet.",
     "ringChange.warning":
-      "Fahren Sie nur fort, wenn Sie das waren. Andernfalls entsperren Sie stattdessen mit Ihrem Wiederherstellungscode.",
+      "Wählen Sie „Das war ich“ nur, wenn Sie das waren. Andernfalls verwenden Sie Ihren Wiederherstellungscode.",
+    "ringChange.warningNoServed":
+      "Entsperren Sie mit Ihrem Wiederherstellungscode, um weiter zu synchronisieren.",
+    "ringChange.failed":
+      "Der neue Schlüssel konnte nicht bestätigt werden. Versuchen Sie es erneut oder verwenden Sie Ihren Wiederherstellungscode.",
     "ringChange.accept": "Das war ich",
     "ringChange.useCode": "Wiederherstellungscode verwenden",
     "about.title": "Über {product}",
@@ -2377,6 +2398,10 @@ export const KIT_COPY: Readonly<
       "Dann können {app} und die anderen Apps des Entwicklers Sie selbstständig anmelden.",
     "signin.linkOffer.primary": "{provider} verknüpfen",
     "signin.linkOffer.decline": "Nein, danke",
+    "signin.linkOffer.stale":
+      "Melde dich erneut an, um {provider} zu verknüpfen.",
+    "signin.linkOffer.failed":
+      "{provider} konnte auf diesem Gerät nicht verknüpft werden.",
     "signin.linkOffer.done": "{provider} verknüpft",
     "signin.linkOffer.conflictTitle": "{provider} nicht verknüpft",
     "signin.linkOffer.conflict":
@@ -3715,6 +3740,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrAddKey": "Code QR qui ouvre la page d’ajout de clé",
     "a11y.nearbyCode": "Code à toucher : {code}",
     "a11y.code": "Code de connexion {code}",
+    "a11y.recoveryCode": "Code de récupération {code}",
     "a11y.seatMeter":
       "{used} sur {limit, plural, one {# appareil} many {# d’appareils} other {# appareils}} utilisés",
     "a11y.productIcon": "Icône de {product}",
@@ -4001,7 +4027,12 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOver": "Tout recommencer",
     "unlockSync.invalid":
       "Ce code n’est pas correct. Vérifiez-le et réessayez.",
-    "unlockSync.failed": "Impossible de déverrouiller. Réessayez plus tard.",
+    "unlockSync.failed":
+      "Impossible de déverrouiller. Vérifiez votre connexion et réessayez.",
+    "unlockSync.startOverFailed":
+      "Impossible de recommencer. Vérifiez votre connexion et réessayez.",
+    "unlockSync.noCode":
+      "Ce compte n’a pas de code de récupération. Recommencez pour continuer à synchroniser.",
     "unlockSync.startOverTitle": "Tout recommencer ?",
     "unlockSync.startOverWarning":
       "Vos données synchronisées actuelles seront perdues. Ne recommencez que si vous ne retrouvez pas votre code de récupération.",
@@ -4019,7 +4050,11 @@ export const KIT_COPY: Readonly<
     "ringChange.bodyUnknown":
       "Un appareil a configuré une nouvelle clé pour vos données synchronisées.",
     "ringChange.warning":
-      "Continuez uniquement si c’était vous. Sinon, déverrouillez plutôt avec votre code de récupération.",
+      "Choisissez « C’était moi » uniquement si c’était vous. Sinon, utilisez votre code de récupération.",
+    "ringChange.warningNoServed":
+      "Déverrouillez avec votre code de récupération pour continuer à synchroniser.",
+    "ringChange.failed":
+      "Impossible de confirmer la nouvelle clé. Réessayez ou utilisez votre code de récupération.",
     "ringChange.accept": "C’était moi",
     "ringChange.useCode": "Utiliser le code de récupération",
     "about.title": "À propos de {product}",
@@ -4234,6 +4269,9 @@ export const KIT_COPY: Readonly<
       "{app} et les autres apps de son développeur pourront alors vous connecter d’elles-mêmes.",
     "signin.linkOffer.primary": "Associer {provider}",
     "signin.linkOffer.decline": "Non merci",
+    "signin.linkOffer.stale": "Reconnectez-vous pour lier {provider}.",
+    "signin.linkOffer.failed":
+      "Impossible de lier {provider} sur cet appareil.",
     "signin.linkOffer.done": "{provider} associé",
     "signin.linkOffer.conflictTitle": "{provider} non associé",
     "signin.linkOffer.conflict":
@@ -5564,6 +5602,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrAddKey": "Código QR que abre la página para añadir la clave",
     "a11y.nearbyCode": "Código que tocar: {code}",
     "a11y.code": "Código de inicio de sesión {code}",
+    "a11y.recoveryCode": "Código de recuperación {code}",
     "a11y.seatMeter":
       "{used} de {limit, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}} en uso",
     "a11y.productIcon": "Icono de {product}",
@@ -5845,7 +5884,12 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOver": "Empezar de cero",
     "unlockSync.invalid":
       "Ese código no es correcto. Revísalo e inténtalo de nuevo.",
-    "unlockSync.failed": "No se pudo desbloquear. Inténtalo más tarde.",
+    "unlockSync.failed":
+      "No se pudo desbloquear. Comprueba tu conexión e inténtalo de nuevo.",
+    "unlockSync.startOverFailed":
+      "No se pudo empezar de nuevo. Comprueba tu conexión e inténtalo de nuevo.",
+    "unlockSync.noCode":
+      "Esta cuenta no tiene código de recuperación. Empieza de nuevo para seguir sincronizando.",
     "unlockSync.startOverTitle": "¿Empezar de cero?",
     "unlockSync.startOverWarning":
       "Se perderán tus datos sincronizados actuales. Empieza de cero solo si no encuentras tu código de recuperación.",
@@ -5863,7 +5907,11 @@ export const KIT_COPY: Readonly<
     "ringChange.bodyUnknown":
       "Un dispositivo configuró una clave nueva para tus datos sincronizados.",
     "ringChange.warning":
-      "Continúa solo si fuiste tú. Si no, desbloquea con tu código de recuperación.",
+      "Elige «Fui yo» solo si lo hiciste tú. Si no, usa tu código de recuperación.",
+    "ringChange.warningNoServed":
+      "Desbloquea con tu código de recuperación para seguir sincronizando.",
+    "ringChange.failed":
+      "No se pudo confirmar la nueva clave. Inténtalo de nuevo o usa tu código de recuperación.",
     "ringChange.accept": "Fui yo",
     "ringChange.useCode": "Usar código de recuperación",
     "about.title": "Acerca de {product}",
@@ -6074,6 +6122,10 @@ export const KIT_COPY: Readonly<
       "Entonces {app} y las demás apps de su desarrollador podrán iniciar tu sesión solas.",
     "signin.linkOffer.primary": "Vincular {provider}",
     "signin.linkOffer.decline": "No, gracias",
+    "signin.linkOffer.stale":
+      "Inicia sesión de nuevo para vincular {provider}.",
+    "signin.linkOffer.failed":
+      "No se pudo vincular {provider} en este dispositivo.",
     "signin.linkOffer.done": "{provider} vinculado",
     "signin.linkOffer.conflictTitle": "{provider} no vinculado",
     "signin.linkOffer.conflict":
@@ -7402,6 +7454,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrAddKey": "Código QR que abre a página de adicionar a chave",
     "a11y.nearbyCode": "Código para tocar: {code}",
     "a11y.code": "Código de acesso {code}",
+    "a11y.recoveryCode": "Código de recuperação {code}",
     "a11y.seatMeter":
       "{used} de {limit, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}} em uso",
     "a11y.productIcon": "Ícone de {product}",
@@ -7688,7 +7741,11 @@ export const KIT_COPY: Readonly<
     "unlockSync.invalid":
       "Esse código não está correto. Confira e tente novamente.",
     "unlockSync.failed":
-      "Não foi possível desbloquear. Tente novamente mais tarde.",
+      "Não foi possível desbloquear. Verifique sua conexão e tente novamente.",
+    "unlockSync.startOverFailed":
+      "Não foi possível começar de novo. Verifique sua conexão e tente novamente.",
+    "unlockSync.noCode":
+      "Esta conta não tem código de recuperação. Comece de novo para continuar sincronizando.",
     "unlockSync.startOverTitle": "Começar do zero?",
     "unlockSync.startOverWarning":
       "Seus dados sincronizados atuais serão perdidos. Só comece do zero se não encontrar seu código de recuperação.",
@@ -7706,7 +7763,11 @@ export const KIT_COPY: Readonly<
     "ringChange.bodyUnknown":
       "Um dispositivo configurou uma nova chave para seus dados sincronizados.",
     "ringChange.warning":
-      "Continue somente se foi você. Caso contrário, desbloqueie com seu código de recuperação.",
+      "Escolha “Fui eu” somente se foi você. Caso contrário, use seu código de recuperação.",
+    "ringChange.warningNoServed":
+      "Desbloqueie com seu código de recuperação para continuar sincronizando.",
+    "ringChange.failed":
+      "Não foi possível confirmar a nova chave. Tente novamente ou use seu código de recuperação.",
     "ringChange.accept": "Fui eu",
     "ringChange.useCode": "Usar código de recuperação",
     "about.title": "Sobre {product}",
@@ -7916,6 +7977,9 @@ export const KIT_COPY: Readonly<
       "Assim, {app} e os outros apps do desenvolvedor poderão entrar por você.",
     "signin.linkOffer.primary": "Vincular {provider}",
     "signin.linkOffer.decline": "Agora não",
+    "signin.linkOffer.stale": "Entre de novo para vincular {provider}.",
+    "signin.linkOffer.failed":
+      "Não foi possível vincular {provider} neste dispositivo.",
     "signin.linkOffer.done": "{provider} vinculado",
     "signin.linkOffer.conflictTitle": "{provider} não vinculado",
     "signin.linkOffer.conflict":
@@ -9205,6 +9269,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrAddKey": "Codice QR che apre la pagina per aggiungere la chiave",
     "a11y.nearbyCode": "Codice da toccare: {code}",
     "a11y.code": "Codice di accesso {code}",
+    "a11y.recoveryCode": "Codice di recupero {code}",
     "a11y.seatMeter":
       "{used} di {limit, plural, one {# dispositivo} many {# di dispositivi} other {# dispositivi}} in uso",
     "a11y.productIcon": "Icona di {product}",
@@ -9484,7 +9549,12 @@ export const KIT_COPY: Readonly<
     "unlockSync.unlock": "Sblocca",
     "unlockSync.startOver": "Ricomincia da capo",
     "unlockSync.invalid": "Il codice non è corretto. Controllalo e riprova.",
-    "unlockSync.failed": "Impossibile sbloccare. Riprova più tardi.",
+    "unlockSync.failed":
+      "Impossibile sbloccare. Controlla la connessione e riprova.",
+    "unlockSync.startOverFailed":
+      "Impossibile ricominciare. Controlla la connessione e riprova.",
+    "unlockSync.noCode":
+      "Questo account non ha un codice di recupero. Ricomincia per continuare a sincronizzare.",
     "unlockSync.startOverTitle": "Ricominciare da capo?",
     "unlockSync.startOverWarning":
       "I tuoi dati sincronizzati attuali andranno persi. Ricomincia da capo solo se non trovi il codice di recupero.",
@@ -9502,7 +9572,11 @@ export const KIT_COPY: Readonly<
     "ringChange.bodyUnknown":
       "Un dispositivo ha creato una nuova chiave per i tuoi dati sincronizzati.",
     "ringChange.warning":
-      "Continua solo se sei stato tu. Altrimenti sblocca con il codice di recupero.",
+      "Scegli «Sono stato io» solo se sei stato tu. Altrimenti usa il codice di recupero.",
+    "ringChange.warningNoServed":
+      "Sblocca con il codice di recupero per continuare a sincronizzare.",
+    "ringChange.failed":
+      "Impossibile confermare la nuova chiave. Riprova o usa il codice di recupero.",
     "ringChange.accept": "Sono stato io",
     "ringChange.useCode": "Usa il codice di recupero",
     "about.title": "Informazioni su {product}",
@@ -9713,6 +9787,9 @@ export const KIT_COPY: Readonly<
       "Così {app} e le altre app dello sviluppatore potranno farti accedere da sole.",
     "signin.linkOffer.primary": "Collega {provider}",
     "signin.linkOffer.decline": "No, grazie",
+    "signin.linkOffer.stale": "Accedi di nuovo per collegare {provider}.",
+    "signin.linkOffer.failed":
+      "Impossibile collegare {provider} su questo dispositivo.",
     "signin.linkOffer.done": "{provider} collegato",
     "signin.linkOffer.conflictTitle": "{provider} non collegato",
     "signin.linkOffer.conflict":
@@ -11026,6 +11103,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrAddKey": "キーの追加ページを開く QR コード",
     "a11y.nearbyCode": "タップするコード：{code}",
     "a11y.code": "サインインコード：{code}",
+    "a11y.recoveryCode": "リカバリーコード：{code}",
     "a11y.seatMeter":
       "{limit, plural, other {#台のデバイス}}中{used}台を使用中",
     "a11y.productIcon": "{product}のアイコン",
@@ -11311,7 +11389,11 @@ export const KIT_COPY: Readonly<
     "unlockSync.invalid":
       "コードが正しくありません。確認してもう一度お試しください。",
     "unlockSync.failed":
-      "ロックを解除できませんでした。しばらくしてからもう一度お試しください。",
+      "ロックを解除できませんでした。接続を確認して、もう一度お試しください。",
+    "unlockSync.startOverFailed":
+      "やり直せませんでした。接続を確認して、もう一度お試しください。",
+    "unlockSync.noCode":
+      "このアカウントにはリカバリーコードがありません。同期を続けるには、最初からやり直してください。",
     "unlockSync.startOverTitle": "最初からやり直しますか？",
     "unlockSync.startOverWarning":
       "現在同期されているデータは失われます。リカバリーコードが見つからない場合にのみ、やり直してください。",
@@ -11328,7 +11410,11 @@ export const KIT_COPY: Readonly<
     "ringChange.bodyUnknown":
       "デバイスが同期データの新しいキーを設定しました。",
     "ringChange.warning":
-      "ご自身で行った場合のみ続けてください。そうでない場合は、リカバリーコードでロックを解除してください。",
+      "ご自身で行った場合のみ「自分です」を選んでください。そうでない場合は、リカバリーコードを使ってください。",
+    "ringChange.warningNoServed":
+      "同期を続けるには、リカバリーコードでロックを解除してください。",
+    "ringChange.failed":
+      "新しいキーを確認できませんでした。もう一度お試しいただくか、リカバリーコードを使ってください。",
     "ringChange.accept": "自分で行いました",
     "ringChange.useCode": "リカバリーコードを使う",
     "about.title": "{product}について",
@@ -11538,6 +11624,10 @@ export const KIT_COPY: Readonly<
       "{app} と開発元の他のアプリが、自動でサインインできるようになります。",
     "signin.linkOffer.primary": "{provider} を連携",
     "signin.linkOffer.decline": "今はしない",
+    "signin.linkOffer.stale":
+      "{provider} をリンクするには、もう一度サインインしてください。",
+    "signin.linkOffer.failed":
+      "このデバイスでは {provider} をリンクできませんでした。",
     "signin.linkOffer.done": "{provider} を連携しました",
     "signin.linkOffer.conflictTitle": "{provider} は連携されていません",
     "signin.linkOffer.conflict":
@@ -12868,6 +12958,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrAddKey": "키 추가 페이지를 여는 QR 코드",
     "a11y.nearbyCode": "탭할 코드: {code}",
     "a11y.code": "로그인 코드 {code}",
+    "a11y.recoveryCode": "복구 코드 {code}",
     "a11y.seatMeter": "{limit, plural, other {기기 #대}} 중 {used}대 사용 중",
     "a11y.productIcon": "{product} 아이콘",
     "a11y.locked": "잠김",
@@ -13143,7 +13234,12 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOver": "처음부터 다시 시작",
     "unlockSync.invalid":
       "코드가 올바르지 않습니다. 확인한 후 다시 시도하세요.",
-    "unlockSync.failed": "잠금을 해제할 수 없습니다. 나중에 다시 시도하세요.",
+    "unlockSync.failed":
+      "잠금을 해제할 수 없습니다. 연결을 확인하고 다시 시도하세요.",
+    "unlockSync.startOverFailed":
+      "처음부터 다시 시작할 수 없습니다. 연결을 확인하고 다시 시도하세요.",
+    "unlockSync.noCode":
+      "이 계정에는 복구 코드가 없습니다. 계속 동기화하려면 처음부터 다시 시작하세요.",
     "unlockSync.startOverTitle": "처음부터 다시 시작할까요?",
     "unlockSync.startOverWarning":
       "현재 동기화된 데이터가 사라집니다. 복구 코드를 찾을 수 없을 때만 다시 시작하세요.",
@@ -13160,7 +13256,11 @@ export const KIT_COPY: Readonly<
     "ringChange.bodyUnknown":
       "한 기기에서 동기화된 데이터의 새 키를 설정했습니다.",
     "ringChange.warning":
-      "본인이 한 경우에만 계속하세요. 그렇지 않다면 복구 코드로 잠금을 해제하세요.",
+      "본인이 한 경우에만 '내가 했어요'를 선택하세요. 그렇지 않다면 복구 코드를 사용하세요.",
+    "ringChange.warningNoServed":
+      "계속 동기화하려면 복구 코드로 잠금을 해제하세요.",
+    "ringChange.failed":
+      "새 키를 확인할 수 없습니다. 다시 시도하거나 복구 코드를 사용하세요.",
     "ringChange.accept": "제가 했습니다",
     "ringChange.useCode": "복구 코드 사용",
     "about.title": "{product} 정보",
@@ -13360,6 +13460,9 @@ export const KIT_COPY: Readonly<
       "그러면 {app}과 개발자의 다른 앱이 자동으로 로그인해 줘요.",
     "signin.linkOffer.primary": "{provider} 연결",
     "signin.linkOffer.decline": "괜찮아요",
+    "signin.linkOffer.stale": "{provider}을(를) 연결하려면 다시 로그인하세요.",
+    "signin.linkOffer.failed":
+      "이 기기에서 {provider}을(를) 연결하지 못했습니다.",
     "signin.linkOffer.done": "{provider} 연결됨",
     "signin.linkOffer.conflictTitle": "{provider} 연결 안 됨",
     "signin.linkOffer.conflict":
@@ -14626,6 +14729,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrAddKey": "打开添加密钥页面的二维码",
     "a11y.nearbyCode": "要点按的代码：{code}",
     "a11y.code": "登录码{code}",
+    "a11y.recoveryCode": "恢复码{code}",
     "a11y.seatMeter": "已使用{used}台，共{limit, plural, other {#台设备}}",
     "a11y.productIcon": "{product}图标",
     "a11y.locked": "已锁定",
@@ -14877,7 +14981,9 @@ export const KIT_COPY: Readonly<
     "unlockSync.unlock": "解锁",
     "unlockSync.startOver": "重新开始",
     "unlockSync.invalid": "恢复码不正确。请检查后重试。",
-    "unlockSync.failed": "无法解锁。请稍后重试。",
+    "unlockSync.failed": "无法解锁。请检查网络连接后重试。",
+    "unlockSync.startOverFailed": "无法重新开始。请检查网络连接后重试。",
+    "unlockSync.noCode": "此账户没有恢复码。请重新开始以继续同步。",
     "unlockSync.startOverTitle": "重新开始？",
     "unlockSync.startOverWarning":
       "当前已同步的数据将丢失。仅在找不到恢复码时才重新开始。",
@@ -14890,7 +14996,10 @@ export const KIT_COPY: Readonly<
     "ringChange.title": "你的同步密钥已更改",
     "ringChange.body": "{device} 为你的已同步数据设置了新密钥。",
     "ringChange.bodyUnknown": "有设备为你的已同步数据设置了新密钥。",
-    "ringChange.warning": "仅当是你本人操作时才继续。否则，请改用恢复码解锁。",
+    "ringChange.warning":
+      "仅当是你本人操作时才选择“是我”。否则，请使用恢复码。",
+    "ringChange.warningNoServed": "请使用恢复码解锁，以继续同步。",
+    "ringChange.failed": "无法确认新密钥。请重试，或使用恢复码。",
     "ringChange.accept": "是我操作的",
     "ringChange.useCode": "使用恢复码",
     "about.title": "关于{product}",
@@ -15081,6 +15190,8 @@ export const KIT_COPY: Readonly<
       "之后 {app} 及其开发者的其他应用可以自动为你登录。",
     "signin.linkOffer.primary": "关联 {provider}",
     "signin.linkOffer.decline": "不用了",
+    "signin.linkOffer.stale": "请重新登录以关联 {provider}。",
+    "signin.linkOffer.failed": "无法在此设备上关联 {provider}。",
     "signin.linkOffer.done": "已关联 {provider}",
     "signin.linkOffer.conflictTitle": "未关联 {provider}",
     "signin.linkOffer.conflict":

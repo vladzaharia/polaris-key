@@ -77,6 +77,8 @@ export const OPENS: ReadonlySet<string> = new Set([
   "update.openStore",
   "paywall.portal",
   "signin.none.get",
+  // The link conflict's Help page (not a model action: the matrix rows pin those).
+  "signin.linkOffer.join",
   "common.manage",
   "about.licenses",
   // Replace a device opens the license's page (PX-W8) as Activate's fix, like DeviceLimit's.

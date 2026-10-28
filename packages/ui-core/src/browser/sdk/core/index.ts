@@ -243,3 +243,10 @@ export {
   type ProductPresentation,
   type ReactPresentationSource,
 } from "./presentation.js";
+
+export type {
+  LinkAcceptResult,
+  LinkClient,
+  LinkOfferEntry,
+  LinkOfferResult,
+} from "./link.js";

@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -477,13 +478,22 @@ public fun PolarisEntitlementLocked(tier: String? = null, modifier: Modifier = M
 // ── CloudSyncStatus ──────────────────────────────────────────────────────────────────────────
 
 /** What Cloud Sync is doing (UI-KITS.md 4.1 CloudSyncStatus). */
-public enum class PolarisCloudSync { Synced, Syncing, Offline, Conflict, Error, SignedOut }
+public enum class PolarisCloudSync {
+    Synced, Syncing, Offline, Conflict, Error, SignedOut,
+
+    /** This device holds no sync key: it says so and offers Unlock sync (never a sync time). */
+    Locked,
+
+    /** A different key ring is served: Review confirms it first, Unlock is never offered in its place. */
+    RingChanged,
+}
 
 /**
  * A small status for Cloud Sync: when it last synced, that it is syncing, that changes wait for the
  * connection, that some conflict, or that it could not. An icon and words, never colour alone. It
  * claims nothing it does not know (no "backed up"). [onOpen] makes the whole line open the details;
- * a failed sync offers Try again and a signed-out one offers Sign in to sync.
+ * a failed sync offers Try again, a signed-out one offers Sign in to sync, a locked one Unlock sync
+ * and a changed ring Review (U-42; the host's own status source binds these later, Q-7).
  *
  * @param syncedAtMillis epoch milliseconds of the last sync, for "Synced 5 minutes ago".
  */
@@ -496,6 +506,8 @@ public fun PolarisCloudSyncStatus(
     onOpen: (() -> Unit)? = null,
     onRetry: (() -> Unit)? = null,
     onSignIn: (() -> Unit)? = null,
+    onUnlock: (() -> Unit)? = null,
+    onReview: (() -> Unit)? = null,
 ) {
     val catalog = KitCopy.bundled
     val locale = kitLocale()
@@ -511,11 +523,15 @@ public fun PolarisCloudSyncStatus(
         PolarisCloudSync.Conflict -> catalog.format("cloudSync.conflict", locale)
         PolarisCloudSync.Error -> catalog.format("cloudSync.error", locale)
         PolarisCloudSync.SignedOut -> catalog.format("cloudSync.signedOut", locale)
+        PolarisCloudSync.Locked -> catalog.format("cloudSync.locked", locale)
+        PolarisCloudSync.RingChanged -> catalog.format("cloudSync.ringChanged", locale)
     }
     val (glyph, tint) = when (status) {
         PolarisCloudSync.Synced -> PolarisSymbols.Check to state.success
         PolarisCloudSync.Syncing -> PolarisSymbols.Refresh to scheme.onSurfaceVariant
         PolarisCloudSync.Offline, PolarisCloudSync.SignedOut -> PolarisSymbols.Info to scheme.onSurfaceVariant
+        PolarisCloudSync.Locked -> PolarisSymbols.Lock to scheme.onSurfaceVariant
+        PolarisCloudSync.RingChanged -> PolarisSymbols.Warning to state.warning
         PolarisCloudSync.Conflict -> PolarisSymbols.Warning to state.warning
         PolarisCloudSync.Error -> PolarisSymbols.Warning to state.danger
     }
@@ -525,21 +541,36 @@ public fun PolarisCloudSyncStatus(
             (if (onOpen != null) row.clickable(role = Role.Button, onClick = onOpen) else row)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
-            Icon(glyph, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            // The glyph sits on the first line of the label, not centred on a wrapped one (large fonts).
+            val line = with(LocalDensity.current) { MaterialTheme.typography.bodyLarge.lineHeight.toDp() }
+            Icon(glyph, contentDescription = null, tint = tint, modifier = Modifier.padding(top = ((line - 20.dp) / 2).coerceAtLeast(0.dp)).size(20.dp))
             Spacer(Modifier.width(12.dp))
             Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface, modifier = Modifier.weight(1f))
         }
         val action = when {
             status == PolarisCloudSync.Error && onRetry != null -> catalog.format("common.tryAgain", locale) to onRetry
             status == PolarisCloudSync.SignedOut && onSignIn != null -> catalog.format("cloudSync.signIn", locale) to onSignIn
+            status == PolarisCloudSync.Locked && onUnlock != null -> catalog.format("cloudSync.unlock", locale) to onUnlock
+            status == PolarisCloudSync.RingChanged && onReview != null -> catalog.format("common.review", locale) to onReview
             else -> null
         }
         if (action != null) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) { PolarisTextButton(action.first, action.second) }
         }
     }
+}
+
+/**
+ * The locked and changed-ring statuses bound to the kit's own unlock flow: Unlock sync and Review both
+ * call [PolarisSyncState.open], which unlocks this device or shows the ring to confirm, and
+ * [PolarisSyncFlow] draws the screens. Use this where the host has no handler of its own (the status
+ * source itself binds with the host settings, Q-7).
+ */
+@Composable
+public fun PolarisCloudSyncStatus(status: PolarisCloudSync, syncState: PolarisSyncState, modifier: Modifier = Modifier) {
+    PolarisCloudSyncStatus(status, modifier, onUnlock = syncState::open, onReview = syncState::open)
 }
 
 // ── About ────────────────────────────────────────────────────────────────────────────────────
