@@ -166,6 +166,19 @@ describe("sessions over the relay", () => {
     await until(() => inn.closed !== null);
   });
 
+  it("ignores a CANDIDATES record: not delivered, session stays open (§15.6 defines no client action)", async () => {
+    const { a, b, room } = await world();
+    const { out, inn } = await relayPair(a, b, room);
+    await out.sendRecord(
+      0x0006,
+      utf8(JSON.stringify({ addrs: ["192.168.1.9:4000", "8.8.8.8:1"] })),
+    );
+    await out.send(utf8("after"));
+    expect(text((await inn.receive()).body)).toBe("after");
+    expect(inn.closed).toBeNull();
+    await out.close();
+  });
+
   it("refuses a peer of another account", async () => {
     const { a, room, worker } = await world();
     const stranger = await makeClient(worker, "9", dirs);

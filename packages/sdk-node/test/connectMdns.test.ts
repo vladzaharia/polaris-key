@@ -142,6 +142,35 @@ describe("MulticastDnsAdapter", () => {
     expect(s.destroyed).toBe(true);
   });
 
+  it("expires a peer whose PTR TTL lapses without a refresh, and resolves it again after a re-announce", async () => {
+    vi.useFakeTimers();
+    try {
+      const s = new FakeSocket();
+      const up: MdnsFound[] = [];
+      const down: string[] = [];
+      const h = await new MulticastDnsAdapter({ create: () => s }).browse(
+        (f) => up.push(f),
+        (i) => down.push(i),
+      );
+      s.emit("response", packet(), SRC);
+      expect(up).toHaveLength(1);
+      // A refresh at 100 s restarts the 120 s clock.
+      vi.advanceTimersByTime(100_000);
+      s.emit("response", { answers: [packet().answers[0]] }, SRC);
+      vi.advanceTimersByTime(100_000);
+      expect(down).toEqual([]);
+      // No refresh: gone once the TTL lapses.
+      vi.advanceTimersByTime(30_000);
+      expect(down).toEqual([INST]);
+      // The same advert coming back is a new up.
+      s.emit("response", packet(), SRC);
+      expect(up).toHaveLength(2);
+      await h.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("drops what it should not trust", async () => {
     const run = async (answers: any[]): Promise<MdnsFound[]> => {
       const s = new FakeSocket();

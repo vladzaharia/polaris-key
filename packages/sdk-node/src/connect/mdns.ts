@@ -13,6 +13,7 @@
 //    four addresses and the first one seen is dialled (no ordering a neighbour can steer);
 //  - the tables of instances and addresses are bounded, entries expire after five minutes, and
 //    when full the least recently refreshed entry is evicted, so a flood cannot stop discovery;
+//  - a peer whose PTR TTL lapses without a refresh is reported down, like a goodbye (TTL 0);
 //  - query replies are sent at most once a second.
 
 import { networkInterfaces } from "node:os";
@@ -26,6 +27,7 @@ const MAX_ADDRS = 4;
 const ENTRY_TTL_MS = 5 * 60_000;
 const REPLY_GAP_MS = 1000;
 const TTL = 120;
+const SWEEP_MS = 5000;
 
 export interface MdnsAdvert {
   /** `p1-` plus 16 base32 characters. */
@@ -200,6 +202,8 @@ export class MulticastDnsAdapter implements MdnsAdapter {
       txt?: string[];
       up?: string;
       at: number;
+      /** When the advert's PTR record lapses unless it is refreshed (ms since epoch). */
+      exp: number;
     };
     const seen = new Map<string, Seen>();
     const addr = new Map<string, { ips: string[]; at: number }>();
@@ -257,9 +261,13 @@ export class MulticastDnsAdapter implements MdnsAdapter {
         let e = seen.get(inst);
         if (e === undefined) {
           if (seen.size >= MAX_INSTANCES) trim(seen, now, dropped);
-          e = { at: now };
+          e = { at: now, exp: now + TTL * 1000 };
         } else seen.delete(inst);
         e.at = now;
+        // A PTR is the refresh signal: its own TTL (capped) restarts the clock. A goodbye (TTL 0)
+        // was handled above.
+        if (r.type === "PTR")
+          e.exp = now + Math.min(r.ttl ?? TTL, ENTRY_TTL_MS / 1000) * 1000;
         seen.set(inst, e);
         if (r.type === "SRV" && r.data && Number.isInteger(r.data.port)) {
           if (r.data.port < 1 || r.data.port > 65535) continue;
@@ -317,13 +325,24 @@ export class MulticastDnsAdapter implements MdnsAdapter {
     ask();
     const t1 = setTimeout(ask, 1000);
     const t2 = setInterval(ask, 30_000);
+    // An advert whose TTL lapsed without a refresh is gone, as if it had said goodbye.
+    const t3 = setInterval(() => {
+      const now = Date.now();
+      for (const [k, v] of seen)
+        if (v.exp <= now) {
+          seen.delete(k);
+          dropped(k, v);
+        }
+    }, SWEEP_MS);
     t1.unref();
     t2.unref();
+    t3.unref();
     return {
       stop: () =>
         new Promise<void>((done) => {
           clearTimeout(t1);
           clearInterval(t2);
+          clearInterval(t3);
           s.destroy(() => done());
         }),
     };
