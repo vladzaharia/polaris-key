@@ -2408,6 +2408,11 @@
       "sdk": "swift",
       "path": "client.cloudConnect",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "client.cloudConnect",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     }
   ],
   "concepts": [
@@ -6216,9 +6221,7 @@
         },
         "python": {},
         "swift": {},
-        "kotlin": {
-          "planned": "CC-12"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "CC-14"
         }
@@ -6244,9 +6247,7 @@
         },
         "python": {},
         "swift": {},
-        "kotlin": {
-          "planned": "CC-12"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "CC-14"
         }
@@ -6266,9 +6267,7 @@
         },
         "python": {},
         "swift": {},
-        "kotlin": {
-          "planned": "CC-12"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "CC-14"
         }
@@ -6288,9 +6287,7 @@
         },
         "python": {},
         "swift": {},
-        "kotlin": {
-          "planned": "CC-12"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "CC-14"
         }
@@ -6310,9 +6307,7 @@
         },
         "python": {},
         "swift": {},
-        "kotlin": {
-          "planned": "CC-12"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "CC-14"
         }
@@ -6338,9 +6333,7 @@
         },
         "python": {},
         "swift": {},
-        "kotlin": {
-          "planned": "CC-12"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "CC-14"
         }
@@ -6375,6 +6368,10 @@
         "swift": {
           "sdkOnly": true,
           "reason": "Node-first helper; Swift carries it too"
+        },
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Kotlin carries it too"
         }
       },
       "layer": "client"
@@ -6401,6 +6398,10 @@
         "swift": {
           "sdkOnly": true,
           "reason": "Node-first helper; Swift carries it too"
+        },
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Kotlin carries it too"
         }
       },
       "layer": "client"
@@ -6427,6 +6428,10 @@
         "swift": {
           "sdkOnly": true,
           "reason": "Node-first helper; Swift carries it too"
+        },
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Kotlin carries it too"
         }
       },
       "layer": "client"

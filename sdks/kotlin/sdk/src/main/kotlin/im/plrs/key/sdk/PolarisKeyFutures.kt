@@ -156,6 +156,27 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     /** `release.fetch`: the verified build download. */
     public fun fetch(target: ReleaseTarget, to: File): CompletableFuture<FetchedFile> = call { client.release.fetch(target, to) }
 
+    // ── Cloud Connect ────────────────────────────────────────────────────────────────────────
+
+    /** `cloudConnect.start(options)`. */
+    @JvmOverloads
+    public fun cloudConnectStart(options: CloudConnectOptions = CloudConnectOptions()): CompletableFuture<Unit> =
+        call { client.cloudConnect.start(options) }
+
+    /** `cloudConnect.stop()`: bounded; a timeout completes the future exceptionally with `LanException(closed)`. */
+    public fun cloudConnectStop(): CompletableFuture<Unit> = call { client.cloudConnect.stop() }
+
+    /** `cloudConnect.open(deviceId, relay, lanAttemptSeconds)`. */
+    @JvmOverloads
+    public fun cloudConnectOpen(deviceId: String, relay: Boolean = true, lanAttemptSeconds: Double? = null): CompletableFuture<ConnectSession> =
+        call { client.cloudConnect.open(deviceId, relay, lanAttemptSeconds) }
+
+    /** `cloudConnect.devices()`. */
+    public fun cloudConnectDevices(): CompletableFuture<List<ConnectDevice>> = call { client.cloudConnect.devices() }
+
+    /** `cloudConnect.refreshPeers()`. */
+    public fun cloudConnectRefreshPeers(): CompletableFuture<List<CloudPeer>> = call { client.cloudConnect.refreshPeers() }
+
     // ── Channels, links, tags ────────────────────────────────────────────────────────────────
 
     public fun channelChoices(): CompletableFuture<ChannelChoices> = call { client.channelChoices() }
