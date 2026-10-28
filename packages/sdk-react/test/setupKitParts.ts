@@ -14,4 +14,10 @@ import {
   loadKitCopyEnRest,
 } from "@polaris-key/brand/kit-copy/lean";
 
-provideKitCopy("en", { ...KIT_COPY_EN_LEAN, ...(await loadKitCopyEnRest()) });
+import { provideTable } from "../src/kit/contract.js";
+
+const fullEn = { ...KIT_COPY_EN_LEAN, ...(await loadKitCopyEnRest()) };
+provideKitCopy("en", fullEn);
+// The built kit and the source modules keep separate tables: a test that draws a component through
+// the source (`kitComponent`, as the matrix does for NearbyApproval) needs its own copy.
+provideTable("en", fullEn);

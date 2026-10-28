@@ -422,7 +422,7 @@ describe("UK-02b D3: the SDK's activation outcomes in the views' vocabulary", ()
       result: "key-entry-limit",
       manageUrl: "https://key.plrs.im/add",
     });
-    expect(m.views().signIn.state).toBe("key");
+    expect(m.views().signIn.state).toBe("key-refused");
     m.differentKey();
     expect(m.snapshot.activation).toBeUndefined();
     expect(m.snapshot.keyField).toEqual({ text: "" });
