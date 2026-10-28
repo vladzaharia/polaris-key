@@ -1,6 +1,6 @@
 {
   "syncVectorsVersion": 1,
-  "description": "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
+  "description": "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
   "constants": {
     "envelopeOverheadBytes": 113,
     "envelopeFixedBytes": 49,
@@ -590,6 +590,566 @@
       "size": 1073741825,
       "delta": true,
       "expect": { "mode": "too_large", "partBytes": null, "parts": null }
+    }
+  ],
+  "hpkeAnchor": {
+    "note": "RFC 9180 test vector for mode_base, KEM 0x0020, KDF 0x0001 and AEAD 0x0002, copied from the pinned upstream file (sequence 0 only; hex). `source.sha256` pins the whole upstream file, `sha256` the vector as sorted-key compact JSON. A runner checks enc, shared_secret, key, base_nonce and the ciphertext; the raw layout (enc, then ciphertext followed by the tag) is what CryptoKit and Tink expose.",
+    "source": {
+      "id": "cfrg-hpke",
+      "url": "https://raw.githubusercontent.com/cfrg/draft-irtf-cfrg-hpke/5f503c564da00b0687b3de75f1dfbdfc4079ad31/test-vectors.json",
+      "sha256": "61fc662f01996cd06d713dacf5e133167bd309a1f329442d53f1e21a47b3ede6"
+    },
+    "sha256": "2811f0511eada7c2b345628a6cbe7a81bbbc7abe1fbe4d3e541c2fc02bd3aea0",
+    "vector": {
+      "mode": 0,
+      "kem_id": 32,
+      "kdf_id": 1,
+      "aead_id": 2,
+      "info": "4f6465206f6e2061204772656369616e2055726e",
+      "skRm": "497b4502664cfea5d5af0b39934dac72242a74f8480451e1aee7d6a53320333d",
+      "pkRm": "430f4b9859665145a6b1ba274024487bd66f03a2dd577d7753c68d7d7d00c00c",
+      "skEm": "179d4b53b6365c45b600c4163b61d95cbc2f4d9e36f1695558dce265ab8bab11",
+      "pkEm": "6c93e09869df3402d7bf231bf540fadd35cd56be14f97178f0954db94b7fc256",
+      "enc": "6c93e09869df3402d7bf231bf540fadd35cd56be14f97178f0954db94b7fc256",
+      "shared_secret": "3101c54c3a4f87439eaac080699ed9bbcc726ffe44e860c0424ccb7e3e2ead7b",
+      "key_schedule_context": "004ce5472ecdd5093ba0aecb8f871ff13f1fbc90ee76f0e18ace1a1b7e565bafa306f6ef962c9ee7cea40407b5d60f0f26990472faae3ac44c78366f1cac1ecde1",
+      "secret": "2058ac9b02c1f52c1aaf08bedbec9198219751a94ef67b7d5f0c8b6e2b54ebfb",
+      "key": "f50b0609186798729ed0564b36ef2ef8044f1f9d05636874d1f46c819c7a669f",
+      "base_nonce": "151d9929e2449747889bc923",
+      "encryption": {
+        "aad": "436f756e742d30",
+        "ct": "e5d84cd531cfb583096e7cfa9641bd3079cf3a91cda813c52deb5f512be9931980a41de125a925cdad859d5b7a",
+        "nonce": "151d9929e2449747889bc923",
+        "pt": "4265617574792069732074727574682c20747275746820626561757479"
+      }
+    }
+  },
+  "wrapCases": [
+    {
+      "id": "wrap-root",
+      "description": "A root wrapped to a device key; sealing it again with the ephemeral key gives the same bytes.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "57a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "seal": {
+        "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+        "recipientPublicHex": "0388070fee968c3b4fd6e9ff6e54d1ba6a66ed644949ef5b5fbac023f13c1147",
+        "ephemeralPrivateHex": "10dd52c16413bc3c151706a0ae051b6f9cb19c3b78c9eea36eaa64267be97f69",
+        "infoHex": "706b65792d73796e632f3120777261700064656d6f006465765f303132333435363738396162636465660072675f414141414141414141414141414141414141414141410000000001"
+      }
+    },
+    {
+      "id": "wrap-epoch-2",
+      "description": "Another epoch is another info and another wrap.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 2,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "57a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "83c45169be5617f29da55a6446a3ff8b868db4043997078d64ba0adfeed6adecfc9933e1e31944450f01ce2bc68b549c"
+      },
+      "expectRootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845"
+    },
+    {
+      "id": "wrong-product",
+      "description": "The product is part of info.",
+      "product": "other",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "57a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": null
+    },
+    {
+      "id": "wrong-device",
+      "description": "The device id is part of info.",
+      "product": "demo",
+      "deviceId": "dev_other",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "57a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": null
+    },
+    {
+      "id": "wrong-ring",
+      "description": "The ring id is part of info.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_BBBBBBBBBBBBBBBBBBBBBB",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "57a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": null
+    },
+    {
+      "id": "wrong-epoch",
+      "description": "The epoch is part of info.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 2,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "57a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": null
+    },
+    {
+      "id": "wrong-kid",
+      "description": "The kid is the associated data.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "58c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "57a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": null
+    },
+    {
+      "id": "wrong-key",
+      "description": "A different recipient key cannot open it.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "a3e1e107846e5dd2049cdb2f392342356cd99354a7509784a6e0f6bb75c242ff",
+      "wrap": {
+        "kem": 32,
+        "encHex": "57a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": null
+    },
+    {
+      "id": "unknown-kem",
+      "description": "Only kem 32 (X25519) is understood.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 16,
+        "encHex": "57a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": null
+    },
+    {
+      "id": "tampered-ct",
+      "description": "A flipped ciphertext bit fails authentication.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "57a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0f064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": null
+    },
+    {
+      "id": "tampered-tag",
+      "description": "A flipped tag bit fails authentication.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "57a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0623"
+      },
+      "expectRootHex": null
+    },
+    {
+      "id": "tampered-enc",
+      "description": "A flipped encapsulated-key bit derives another key.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "57a324616a3905e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": null
+    },
+    {
+      "id": "short-enc",
+      "description": "An encapsulated key must be 32 bytes.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "a324616a3805e16b63b4764c0b9a6e288e26d6518adf07f246f3882630a152",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": null
+    },
+    {
+      "id": "low-order-enc",
+      "description": "An all-zero encapsulated key is refused.",
+      "product": "demo",
+      "deviceId": "dev_0123456789abcdef",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "recipientPrivateHex": "e1b9ad0b5351214a356df48ef1a3cb382b228762081077c2450539788039b6ad",
+      "wrap": {
+        "kem": 32,
+        "encHex": "0000000000000000000000000000000000000000000000000000000000000000",
+        "ctHex": "0e064978bb23d418da48a3cd6f54e947bd56c142d70a65cf85274218196c770ca0abf6f5e0e19178efb36736a57b0622"
+      },
+      "expectRootHex": null
+    }
+  ],
+  "recoveryCodeCases": [
+    {
+      "kind": "code",
+      "id": "code-random",
+      "description": "An arbitrary code.",
+      "codeHex": "07890dc4d5941a3e8ece6dd032c92e0d",
+      "text": "0Y4G-VH6N-JGD3-X3PE-DQ83-5J9E-1MHV-DT56"
+    },
+    {
+      "kind": "code",
+      "id": "code-zero",
+      "description": "The all-zero code.",
+      "codeHex": "00000000000000000000000000000000",
+      "text": "0000-0000-0000-0000-0000-0000-00VM-E27Z"
+    },
+    {
+      "kind": "code",
+      "id": "code-ones",
+      "description": "The all-ones code.",
+      "codeHex": "ffffffffffffffffffffffffffffffff",
+      "text": "ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZXDC-D9CM"
+    },
+    {
+      "kind": "code",
+      "id": "code-b",
+      "description": "Another arbitrary code.",
+      "codeHex": "151d2bbbd207a89999ff3534e1e05fd6",
+      "text": "2MEJ-QEYJ-0YM9-K6FZ-6MTE-3R2Z-TTJH-WK56"
+    },
+    {
+      "kind": "parse",
+      "id": "parse-lowercase",
+      "description": "Case is ignored.",
+      "input": "0y4g-vh6n-jgd3-x3pe-dq83-5j9e-1mhv-dt56",
+      "expectCodeHex": "07890dc4d5941a3e8ece6dd032c92e0d"
+    },
+    {
+      "kind": "parse",
+      "id": "parse-spaces",
+      "description": "Spaces and hyphens are ignored.",
+      "input": "0Y4G VH6N JGD3 X3PE DQ83 5J9E 1MHV DT56",
+      "expectCodeHex": "07890dc4d5941a3e8ece6dd032c92e0d"
+    },
+    {
+      "kind": "parse",
+      "id": "parse-no-separators",
+      "description": "No separators at all.",
+      "input": "0Y4GVH6NJGD3X3PEDQ835J9E1MHVDT56",
+      "expectCodeHex": "07890dc4d5941a3e8ece6dd032c92e0d"
+    },
+    {
+      "kind": "parse",
+      "id": "parse-padded",
+      "description": "Leading and trailing whitespace.",
+      "input": " \n0Y4G-VH6N-JGD3-X3PE-DQ83-5J9E-1MHV-DT56\t ",
+      "expectCodeHex": "07890dc4d5941a3e8ece6dd032c92e0d"
+    },
+    {
+      "kind": "parse",
+      "id": "parse-o-is-zero",
+      "description": "O reads as 0.",
+      "input": "OOOO-OOOO-OOOO-OOOO-OOOO-OOOO-OOVM-E27Z",
+      "expectCodeHex": "00000000000000000000000000000000"
+    },
+    {
+      "kind": "parse",
+      "id": "parse-i-l-are-one",
+      "description": "I and L read as 1.",
+      "input": "FNYS-TJPY-BF5B-3CXT-THQV-X60Z-VAA5-SRJ2",
+      "expectCodeHex": "7d7d9d4ade5bcab1b3bad46fbe981fda"
+    },
+    {
+      "kind": "parse",
+      "id": "parse-bad-checksum",
+      "description": "Another first character fails the checksum.",
+      "input": "1Y4GVH6NJGD3X3PEDQ835J9E1MHVDT56",
+      "expectCodeHex": null
+    },
+    {
+      "kind": "parse",
+      "id": "parse-short",
+      "description": "31 characters.",
+      "input": "Y4GVH6NJGD3X3PEDQ835J9E1MHVDT56",
+      "expectCodeHex": null
+    },
+    {
+      "kind": "parse",
+      "id": "parse-long",
+      "description": "33 characters.",
+      "input": "0Y4GVH6NJGD3X3PEDQ835J9E1MHVDT560",
+      "expectCodeHex": null
+    },
+    {
+      "kind": "parse",
+      "id": "parse-bad-char",
+      "description": "U is not in the alphabet.",
+      "input": "UY4GVH6NJGD3X3PEDQ835J9E1MHVDT56",
+      "expectCodeHex": null
+    },
+    {
+      "kind": "parse",
+      "id": "parse-empty",
+      "description": "Nothing.",
+      "input": "",
+      "expectCodeHex": null
+    },
+    {
+      "kind": "blob",
+      "id": "blob-root",
+      "description": "The root sealed under the code; sealing again with the nonce gives the same bytes.",
+      "codeHex": "07890dc4d5941a3e8ece6dd032c92e0d",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "blobHex": "016a2a844f3b47f2670e40062b32e30d0d365b1156f8fd6d0ee8e43dc1d7e02bdca946621d46738d0e4eb389e0dfe88cdd3b84dac1a16839fc6933204f",
+      "expectRootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "seal": {
+        "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+        "nonceHex": "6a2a844f3b47f2670e40062b"
+      }
+    },
+    {
+      "kind": "blob",
+      "id": "blob-epoch-2",
+      "description": "Another epoch is another blob.",
+      "codeHex": "07890dc4d5941a3e8ece6dd032c92e0d",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 2,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "blobHex": "016a2a844f3b47f2670e40062b32e30d0d365b1156f8fd6d0ee8e43dc1d7e02bdca946621d46738d0e4eb389e0635627c5ff277926bf0f1ace2e0c1e29",
+      "expectRootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845"
+    },
+    {
+      "kind": "blob",
+      "id": "blob-wrong-code",
+      "description": "Another code cannot open it.",
+      "codeHex": "151d2bbbd207a89999ff3534e1e05fd6",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "blobHex": "016a2a844f3b47f2670e40062b32e30d0d365b1156f8fd6d0ee8e43dc1d7e02bdca946621d46738d0e4eb389e0dfe88cdd3b84dac1a16839fc6933204f",
+      "expectRootHex": null
+    },
+    {
+      "kind": "blob",
+      "id": "blob-wrong-ring",
+      "description": "The ring id is the salt and part of aad.",
+      "codeHex": "07890dc4d5941a3e8ece6dd032c92e0d",
+      "ringId": "rg_BBBBBBBBBBBBBBBBBBBBBB",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "blobHex": "016a2a844f3b47f2670e40062b32e30d0d365b1156f8fd6d0ee8e43dc1d7e02bdca946621d46738d0e4eb389e0dfe88cdd3b84dac1a16839fc6933204f",
+      "expectRootHex": null
+    },
+    {
+      "kind": "blob",
+      "id": "blob-wrong-epoch",
+      "description": "The epoch is part of aad.",
+      "codeHex": "07890dc4d5941a3e8ece6dd032c92e0d",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 2,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "blobHex": "016a2a844f3b47f2670e40062b32e30d0d365b1156f8fd6d0ee8e43dc1d7e02bdca946621d46738d0e4eb389e0dfe88cdd3b84dac1a16839fc6933204f",
+      "expectRootHex": null
+    },
+    {
+      "kind": "blob",
+      "id": "blob-wrong-kid",
+      "description": "The kid is part of aad.",
+      "codeHex": "07890dc4d5941a3e8ece6dd032c92e0d",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a9309f827930905fa8a05fddf2",
+      "blobHex": "016a2a844f3b47f2670e40062b32e30d0d365b1156f8fd6d0ee8e43dc1d7e02bdca946621d46738d0e4eb389e0dfe88cdd3b84dac1a16839fc6933204f",
+      "expectRootHex": null
+    },
+    {
+      "kind": "blob",
+      "id": "blob-bad-version",
+      "description": "Version 2 is refused.",
+      "codeHex": "07890dc4d5941a3e8ece6dd032c92e0d",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "blobHex": "026a2a844f3b47f2670e40062b32e30d0d365b1156f8fd6d0ee8e43dc1d7e02bdca946621d46738d0e4eb389e0dfe88cdd3b84dac1a16839fc6933204f",
+      "expectRootHex": null
+    },
+    {
+      "kind": "blob",
+      "id": "blob-tampered",
+      "description": "A flipped bit fails authentication.",
+      "codeHex": "07890dc4d5941a3e8ece6dd032c92e0d",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "blobHex": "016a2a844f3b47f2670e40062b32e30d0d365b1157f8fd6d0ee8e43dc1d7e02bdca946621d46738d0e4eb389e0dfe88cdd3b84dac1a16839fc6933204f",
+      "expectRootHex": null
+    },
+    {
+      "kind": "blob",
+      "id": "blob-truncated",
+      "description": "A short blob is refused.",
+      "codeHex": "07890dc4d5941a3e8ece6dd032c92e0d",
+      "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 1,
+      "kidHex": "59c632a8309f827930905fa8a05fddf2",
+      "blobHex": "016a2a844f3b47f2670e40062b32e30d0d365b1156f8fd6d0ee8e43dc1d7e02bdca946621d46738d0e4eb389e0dfe88cdd3b84dac1a16839fc693320",
+      "expectRootHex": null
+    }
+  ],
+  "adoptCases": [
+    {
+      "id": "adopt-root",
+      "description": "A previous root sealed under K_adopt of the current one; sealing again with the nonce gives the same bytes.",
+      "currentRootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "fromRingId": "rg_BBBBBBBBBBBBBBBBBBBBBB",
+      "epoch": 3,
+      "kidHex": "2a2524db571a6f4d8103a00bc48b538a",
+      "blobHex": "01806dbddf1e2f2a65ba2daa07ddbf5f6900b9960aca227bdc203a94d5956998f8cfe887f1bedf9f3d0391aba8994c6f86a4bebf99f4d0160edcacd194",
+      "expectRootHex": "b567775466d594e008ee37f078333db0197c262cfbed5f31111007df711df749",
+      "seal": {
+        "oldRootHex": "b567775466d594e008ee37f078333db0197c262cfbed5f31111007df711df749",
+        "nonceHex": "806dbddf1e2f2a65ba2daa07"
+      }
+    },
+    {
+      "id": "adopt-wrong-current",
+      "description": "Another current root derives another K_adopt.",
+      "currentRootHex": "b567775466d594e008ee37f078333db0197c262cfbed5f31111007df711df749",
+      "fromRingId": "rg_BBBBBBBBBBBBBBBBBBBBBB",
+      "epoch": 3,
+      "kidHex": "2a2524db571a6f4d8103a00bc48b538a",
+      "blobHex": "01806dbddf1e2f2a65ba2daa07ddbf5f6900b9960aca227bdc203a94d5956998f8cfe887f1bedf9f3d0391aba8994c6f86a4bebf99f4d0160edcacd194",
+      "expectRootHex": null
+    },
+    {
+      "id": "adopt-wrong-ring",
+      "description": "The source ring id is part of aad.",
+      "currentRootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "fromRingId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      "epoch": 3,
+      "kidHex": "2a2524db571a6f4d8103a00bc48b538a",
+      "blobHex": "01806dbddf1e2f2a65ba2daa07ddbf5f6900b9960aca227bdc203a94d5956998f8cfe887f1bedf9f3d0391aba8994c6f86a4bebf99f4d0160edcacd194",
+      "expectRootHex": null
+    },
+    {
+      "id": "adopt-wrong-epoch",
+      "description": "The source epoch is part of aad.",
+      "currentRootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "fromRingId": "rg_BBBBBBBBBBBBBBBBBBBBBB",
+      "epoch": 4,
+      "kidHex": "2a2524db571a6f4d8103a00bc48b538a",
+      "blobHex": "01806dbddf1e2f2a65ba2daa07ddbf5f6900b9960aca227bdc203a94d5956998f8cfe887f1bedf9f3d0391aba8994c6f86a4bebf99f4d0160edcacd194",
+      "expectRootHex": null
+    },
+    {
+      "id": "adopt-wrong-kid",
+      "description": "The source kid is part of aad.",
+      "currentRootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "fromRingId": "rg_BBBBBBBBBBBBBBBBBBBBBB",
+      "epoch": 3,
+      "kidHex": "2b2524db571a6f4d8103a00bc48b538a",
+      "blobHex": "01806dbddf1e2f2a65ba2daa07ddbf5f6900b9960aca227bdc203a94d5956998f8cfe887f1bedf9f3d0391aba8994c6f86a4bebf99f4d0160edcacd194",
+      "expectRootHex": null
+    },
+    {
+      "id": "adopt-bad-version",
+      "description": "Version 2 is refused.",
+      "currentRootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "fromRingId": "rg_BBBBBBBBBBBBBBBBBBBBBB",
+      "epoch": 3,
+      "kidHex": "2a2524db571a6f4d8103a00bc48b538a",
+      "blobHex": "02806dbddf1e2f2a65ba2daa07ddbf5f6900b9960aca227bdc203a94d5956998f8cfe887f1bedf9f3d0391aba8994c6f86a4bebf99f4d0160edcacd194",
+      "expectRootHex": null
+    },
+    {
+      "id": "adopt-tampered",
+      "description": "A flipped bit fails authentication.",
+      "currentRootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "fromRingId": "rg_BBBBBBBBBBBBBBBBBBBBBB",
+      "epoch": 3,
+      "kidHex": "2a2524db571a6f4d8103a00bc48b538a",
+      "blobHex": "01806dbddf1e2f2a65ba2daa07ddbf5f6900b9960aca227bdc203a94d5956898f8cfe887f1bedf9f3d0391aba8994c6f86a4bebf99f4d0160edcacd194",
+      "expectRootHex": null
+    },
+    {
+      "id": "adopt-recovery-label",
+      "description": "A blob sealed under K_rec with a recovery aad does not open as an adopt blob.",
+      "currentRootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "fromRingId": "rg_BBBBBBBBBBBBBBBBBBBBBB",
+      "epoch": 3,
+      "kidHex": "2a2524db571a6f4d8103a00bc48b538a",
+      "blobHex": "01806dbddf1e2f2a65ba2daa07d0eb1f1cd1238d44e42568df340831d0451cfcf40a7c6a5fd08b2f7fdd7efd6aeb86850cc8b142d8c2f1e01148ef7366",
+      "expectRootHex": null
     }
   ]
 }
