@@ -41,27 +41,37 @@ internal class CloudSyncHostDataImpl(
     private val pump: CloudSyncHostPump,
 ) : CloudSyncHostData {
     override suspend fun purge() {
-        withContext(st.dispatcher) {
+        // At once, before any suspension: the live machine is replaced by an empty one and no pump or rebuild runs
+        // until the purge ends, so nothing of the person's can be sent, saved or read back meanwhile (H-7).
+        val old = withContext(st.dispatcher) {
             st.purged = true
             st.generation += 1
-            // At once, before waiting for any pump: a sign-out that outlives its bounds, or a process that
-            // exits, must not leave the snapshot on disk.
-            withContext(Dispatchers.IO) { runCatching { st.file.remove() } }
-            st.openKeys.clear()
+            st.purging = true
             st.rebuildWanted = false
-            try {
+            st.openKeys.clear()
+            val previous = st.machine
+            if (st.live) {
+                builder.buildNow(null, st.documentValue, st.discoveryValue)
+                st.machine?.importLocal(JsonObject(emptyMap()))
+            }
+            previous
+        }
+        try {
+            // Before waiting for any pump: a sign-out that outlives its bounds, or a process that exits, must not
+            // leave the snapshot on disk.
+            withContext(Dispatchers.IO) { runCatching { st.file.remove() } }
+            withContext(st.dispatcher) {
                 if (st.live) {
                     pump.awaitDone(SYNC_PUMP_WAIT_MS)
-                    st.machine?.let { pump.emit(it) }
-                    builder.build(null)
-                    st.machine?.importLocal(JsonObject(emptyMap()))
-                }
-            } finally {
-                withContext(Dispatchers.IO) {
-                    st.file.remove()
-                    st.file.sweepTemporaries()
+                    old?.let { pump.emit(it) }
                 }
             }
+        } finally {
+            withContext(Dispatchers.IO) {
+                st.file.remove()
+                st.file.sweepTemporaries()
+            }
+            withContext(st.dispatcher) { st.purging = false }
         }
     }
 

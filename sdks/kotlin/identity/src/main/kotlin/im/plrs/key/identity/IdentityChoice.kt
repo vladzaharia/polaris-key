@@ -217,8 +217,7 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
         if (answer !is TokenAnswer.Token) throw PolarisException(ErrorCode.badResponse, "choice complete answered without a complete sign-in.")
         val o = json.objectValue
         val entries = o?.get("keyEntries").objectValue?.let { counts(it) }
-        core.setToken(answer.accessToken, TokenSource.signin, personInitiated = true)
-        if (core.setSubject(answer.subject)) client.onSubject(answer.subject)
+        if (core.storeSignIn(answer.accessToken, answer.subject, TokenSource.signin, personInitiated = true)) client.onSubject(answer.subject)
         if (client.redirectAcquisitionSyncValue) client.onAcquired?.invoke()
         return ChoiceResult.Ok(
             ChoiceCompleted(

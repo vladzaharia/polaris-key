@@ -250,7 +250,9 @@ class CloudSyncHostTest {
         r.signIn("sub_alice")
         r.answer = { pullBody(1) }
         r.host.touch()
-        assertEquals(0, r.schemaFetches)
+        // The served catalog is not persisted: it is fetched again on start (once, counted like any other fetch).
+        assertEquals(1, r.schemaFetches)
+        r.now += CATALOG_REFETCH_MS
         // A pull naming another version fetches once; an equal served catalog skips the rebuild.
         r.answer = { pullBody(2) }
         r.schema = j("""{"schemaVersion":2,"entries":[{"key":"audio.volume","kind":"config"}]}""")
@@ -261,7 +263,7 @@ class CloudSyncHostTest {
             it.flush()
         }
         r.host.touch()
-        assertEquals(1, r.schemaFetches)
+        assertEquals(2, r.schemaFetches)
         // Inside five minutes: no second fetch, whatever the version.
         r.answer = { pullBody(3) }
         r.now += 60_000
@@ -270,14 +272,14 @@ class CloudSyncHostTest {
             it.flush()
         }
         r.host.touch()
-        assertEquals(1, r.schemaFetches)
+        assertEquals(2, r.schemaFetches)
         r.now += CATALOG_REFETCH_MS
         r.host.withMachine {
             it.set("audio.volume", JsonPrimitive(3))
             it.flush()
         }
         r.host.touch()
-        assertEquals(2, r.schemaFetches)
+        assertEquals(3, r.schemaFetches)
         r.host.close()
     }
 

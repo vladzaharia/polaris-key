@@ -243,6 +243,8 @@ class CloudSyncSettingsTest {
         }
         assertFalse("the Worker was never asked to sign out: $log", log.contains("signout"))
         assertTrue("D-13: nothing is purged", r.stateFile.exists())
+        assertNotEquals("D-13: the machine is left as it was", SyncState.Local, r.client.cloudSync.status().state)
+        assertEquals("and the person's value is still there", json(0.3), r.client.config.get(VOL, JsonNull))
         assertFalse(r.events.contains(CloudSyncEvent.PurgeFailed))
         // The retry, with the storage healthy again, completes the chain.
         locked.failing = false
@@ -268,6 +270,41 @@ class CloudSyncSettingsTest {
         for (t in tokens.drop(before)) assertNotEquals("nothing of Alice's under Bob's token", "Bearer pkeyt_bob", t)
         assertEquals("nothing of Alice's was sent after the change", before, log.count { it.startsWith("push") })
         assertNotEquals(json(0.31), r.client.config.get(VOL, JsonNull))
+    }
+
+    // ── the sign-in window: the subject goes in before the token ───────────────────────────────────
+
+    @Test
+    fun aSignInStoresTheSubjectBeforeTheTokenAndRestoresItWhenTheTokenCannotBeStored() = runBlocking {
+        val dir = tmp.newFolder()
+        val subjectFile = File(dir, "identity-subject")
+        val seen = CopyOnWriteArrayList<String>()
+        var failing = false
+        val inner = FileStore("djdl", dir)
+        val store = object : im.plrs.key.core.Store by inner {
+            override suspend fun setToken(token: String) {
+                seen += subjectFile.takeIf { it.isFile }?.readText()?.trim().orEmpty()
+                if (failing) throw im.plrs.key.core.StoreException("disk full")
+                inner.setToken(token)
+            }
+        }
+        val core = im.plrs.key.core.CoreContext(
+            CoreOptions(
+                productSlug = "djdl", baseUrl = "https://key.example", version = "1.0.0", pinnedKeys = signer.trust,
+                trustRefresh = false, store = store, transport = ScriptedTransport(::handle),
+            ),
+        )
+        core.setSubject(ALICE)
+        assertTrue(core.storeSignIn("pkeyt_bob", BOB, im.plrs.key.core.TokenSource.signin, personInitiated = true))
+        assertEquals("the stored subject was already the new person's when the token went in", BOB, seen.last())
+        failing = true
+        try {
+            core.storeSignIn("pkeyt_carol", "ps_CarolCarolCarolCarol1", im.plrs.key.core.TokenSource.signin)
+            fail("a token that could not be stored was kept")
+        } catch (e: im.plrs.key.core.StoreException) {
+            // expected
+        }
+        assertEquals("the previous subject is back", BOB, core.storedSubject())
     }
 
     // ── A-2 ──────────────────────────────────────────────────────────────────────────────────────
@@ -375,6 +412,7 @@ class CloudSyncSettingsTest {
         val r = Rig()
         r.signIn()
         r.client.config.set(VOL, json(0.7))
+        eventually("local change") { r.changes.any { it.key == VOL } }
         assertEquals("local", r.changes.last { it.key == VOL }.origin)
         // Another device wrote a key; the next answer brings it.
         pushChange = """{"setting":"remote.only","scope":"user","value":"hi","version":50,"editedHlc":"0000ffffffff:0000"}"""

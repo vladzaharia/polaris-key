@@ -27,6 +27,13 @@ internal class CloudSyncHostState(val deps: CloudSyncHostDeps, val opts: CloudSy
     var routes: List<JsonObject> = emptyList()
     val openKeys: LinkedHashSet<String> = linkedSetOf()
     var documentJson: String = ""
+
+    /** The document and discovery the machine was last built from: a purge rebuilds from these without awaiting. */
+    var documentValue: JsonObject = EMPTY_CATALOG
+    var discoveryValue: im.plrs.key.core.sync.SyncDiscovery? = null
+
+    /** True from the start of a purge until it ends: no pump runs and no rebuild happens meanwhile (H-7). */
+    var purging: Boolean = false
     var lastFetchAt: Long? = null
     var triedVersion: Long? = null
     var used: Int = 0

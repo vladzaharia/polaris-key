@@ -38,6 +38,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -75,10 +76,11 @@ public class CloudSyncHost private constructor(private val core: CloudSyncHostCo
             val saved = withContext(Dispatchers.IO) { st.file.load() }
             st.openKeys.addAll(saved.openKeys)
             st.mirror = CloudSyncCatalog.vetted(st.opts.catalog)
-            st.served = CloudSyncCatalog.vetted(saved.catalog)
+            // The served catalog is never persisted: the compiled mirror is authoritative, and the Worker's is fetched again on start.
             core.builder.build(MachineStateJson.decode(saved.persisted))
-            if (saved.catalog == null && st.opts.catalog == null) core.exchanges.refetch(null)
             core.installShutdownHook({ flush(it) }, this@CloudSyncHost)
+            // A locked ring adds no request of its own (H-10); otherwise one rate-limited fetch, counted like any other.
+            if (st.opts.encryption != "e2e" || !st.deps.codec.locked) core.exchanges.refetch(null)
         }
         touch()
     }
@@ -97,6 +99,11 @@ public class CloudSyncHost private constructor(private val core: CloudSyncHostCo
             if (st.deps.document().toString() != st.documentJson) st.rebuildWanted = true
         }
         touch()
+    }
+
+    /** Run a pass without waiting for it: a `set`, a sign-in or a nudge never awaits the whole pump (its exchanges can take as long as the network). */
+    public fun kick() {
+        core.scope.launch { touch() }
     }
 
     /** Whether [start] has run and the host is not closed. */
@@ -128,7 +135,7 @@ public class CloudSyncHost private constructor(private val core: CloudSyncHostCo
     /** Run the machine now: advance its clock, exchange every queued request, save. Never throws. */
     public suspend fun touch() {
         withContext(dispatcher) {
-            if (!st.live || !st.deps.syncEnabled()) return@withContext
+            if (!st.live || st.purging || !st.deps.syncEnabled()) return@withContext
             if (st.pumping) {
                 // A caller reacting from inside the pump: the pump runs again after it.
                 st.again = true

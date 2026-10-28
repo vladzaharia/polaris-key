@@ -19,10 +19,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -105,6 +107,37 @@ class CloudSyncHostBoundsTest {
     }
 
     // ── H-7: purge ────────────────────────────────────────────────────────────────────────────
+
+    @Test
+    fun h7APurgeClearsTheLiveMachineAtOnceAndNothingRunsUntilItEnds() = runBlocking {
+        val r = Rig()
+        r.signIn("sub_alice")
+        r.host.touch()
+        r.edit(1)
+        val inFlight = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        r.answer = {
+            inFlight.complete(Unit)
+            release.await()
+            ok
+        }
+        r.edit(2)
+        val pump = async(Dispatchers.Default) { r.host.touch() }
+        inFlight.await()
+        val purge = async(Dispatchers.Default) { r.host.purge() }
+        delay(150)
+        // The pump is still out, the purge is waiting for it: the person's values are already gone from the live machine.
+        assertNull(r.host.withMachine { it.subject })
+        assertEquals(JsonNull, r.host.withMachine { it.get("audio.volume").value })
+        // A touch during the purge sends nothing (no pump runs until it ends).
+        val before = r.sent.size
+        r.host.touch()
+        assertEquals(before, r.sent.size)
+        release.complete(Unit)
+        pump.await()
+        purge.await()
+        assertFalse(r.file.exists())
+    }
 
     @Test
     fun h7APurgeInterleavedWithAnExchangeInFlightLeavesNoFileAndNoSavedJournal() = runBlocking {

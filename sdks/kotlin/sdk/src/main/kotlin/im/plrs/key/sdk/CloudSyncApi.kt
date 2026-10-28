@@ -12,12 +12,12 @@
 //         request bound to the old person (HOST-BIND).
 //  - A-2  An offline boot is not a sign-out. An unknown subject (nothing held, discovery not loaded, a
 //         network error) changes nothing; only a readable "no session" leaves.
-//  - A-3  Sign-out, the old token still current: Connect stops (bounded) and leaves, then a bounded flush and
-//         the machine's sign-out, THEN the ring forgets (the E2E flush needs the root), then purge. A forget
-//         that throws stops the sign-out before the Worker is asked, purges nothing and returns its error
-//         (D-13; the session stays, a retry forgets again); a purge failure is reported
-//         ([CloudSyncEvent.PurgeFailed]) and never replaces the sign-out's result. Purge also runs when Sync
-//         is off.
+//  - A-3  Sign-out, the old token still current: Connect stops (bounded) and leaves, then a bounded flush while
+//         the machine is signed in and the root is held, then the ring forgets (the E2E flush needs the root),
+//         THEN the machine signs out and the data is purged. A forget that throws stops the sign-out before the
+//         Worker is asked, leaves the machine as it was, purges nothing and returns its error (D-13; the session
+//         stays, a retry forgets again); a purge failure is reported ([CloudSyncEvent.PurgeFailed]) and never
+//         replaces the sign-out's result. Purge also runs when Sync is off.
 //  - A-4  A sign-out that happens elsewhere (`account_required`, a released device) reaches the machine as
 //         `signedOut` and forgets and purges once.
 //  - A-5  `signInUrl` is vetted ([safeSignInUrl]): no control characters or whitespace, resolved against the
@@ -325,7 +325,8 @@ internal class CloudSyncApi(
         }
         h.resume()
         if (importing) h.markImported()
-        h.touch()
+        // Never awaits the pump: its exchanges take as long as the network.
+        h.kick()
         settle()
     }
 
@@ -339,37 +340,36 @@ internal class CloudSyncApi(
     }
 
     /**
-     * The identity client's pre-sign-out hook (the old token is still current): bounded flush, the machine's
-     * sign-out, then the ring forgets and the data is purged (A-3). A forget that fails stops the sign-out
-     * (D-13); nothing is purged then.
+     * The identity client's pre-sign-out hook (the old token is still current): bounded flush while the machine
+     * is signed in and the root is held, then the ring forgets, THEN the machine signs out and the data is purged
+     * (A-3). A forget that fails stops the sign-out (D-13): its error is returned before the machine is touched
+     * or anything is purged, so everything stays as it was and a retry forgets again.
      */
     suspend fun beforeSignOut() {
         withContext(dispatcher) {
             drain()
             explicitForget = true
             try {
-                val h = startedHost()
-                if (h != null && subject != null) {
-                    h.withMachine { it.signOut() }
+                val h = startedHost()?.takeIf { subject != null }
+                if (h != null) {
                     h.flush(SYNC_SIGNOUT_FLUSH_MS.toLong())
                     drainEvents()
                 }
-                forgetAndPurge()
+                withContext(NonCancellable) { forgetRing() }
+                if (h != null) {
+                    h.withMachine { it.signOut() }
+                    h.touch()
+                    // Still waiting on a flush the vanished root cannot do: leave now (what was left is reported).
+                    h.withMachine { if (it.subject != null) it.signOut(discardUnsynced = true) }
+                    h.touch()
+                    drainEvents()
+                }
                 subject = null
+                withContext(NonCancellable) { purge() }
             } finally {
                 explicitForget = false
             }
         }
-    }
-
-    /**
-     * Forget the ring, then purge. A forget that fails stops the sign-out (D-13): its error is rethrown before
-     * anything is purged and the identity session stays, so a retry forgets again. A purge failure is reported
-     * ([CloudSyncEvent.PurgeFailed]) and never replaces the sign-out's result.
-     */
-    private suspend fun forgetAndPurge() {
-        withContext(NonCancellable) { forgetRing() }
-        withContext(NonCancellable) { purge() }
     }
 
     private suspend fun purge() {
@@ -456,8 +456,8 @@ internal class CloudSyncApi(
             // A document that changed since the machine was built is routed first (A-6).
             h.refreshDocumentIfChanged()
             val r = h.withMachine { it.set(key, value) }
-            // One pump reports the edit's events (nothing is due before the debounce).
-            h.touch()
+            // One pump reports the edit's events (nothing is due before the debounce); the call does not wait for it.
+            h.kick()
             return r
         }
 
@@ -465,7 +465,7 @@ internal class CloudSyncApi(
             val h = activeHost() ?: return CallResult.Failed("signed-out")
             h.refreshDocumentIfChanged()
             val r = h.withMachine { it.clear(key) }
-            h.touch()
+            h.kick()
             return r
         }
 

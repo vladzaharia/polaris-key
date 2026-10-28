@@ -63,19 +63,29 @@ internal class CloudSyncHostPump(
         }
     }
 
-    /** New catalog or document: the machine is rebuilt from its own journal (never mid-request). */
+    /**
+     * New catalog or document: the machine is rebuilt from its own journal (never mid-request). Every await comes
+     * first; the snapshot and the construction then run with no suspension between them, so an accepted `set` is
+     * in the snapshot or in the new machine. A purge that ran meanwhile drops the rebuild (generation).
+     */
     private suspend fun rebuild() {
         st.rebuildWanted = false
+        val generation = st.generation
+        val document = st.deps.document()
+        val discovery = st.deps.discovery()
+        if (st.generation != generation || st.purging) return
         val old = machine()
         val persisted = old.persist()
-        emit(old)
-        builder.build(persisted)
-        save(persisted)
+        val events = old.takeEvents()
+        builder.buildNow(persisted, document, discovery)
+        deliver(events)
+        save()
     }
 
     /** Events are delivered on a worker context, never while holding the host's dispatcher: a listener may block on the host (H-8). */
-    suspend fun emit(m: CloudSyncMachine) {
-        val events = m.takeEvents()
+    suspend fun emit(m: CloudSyncMachine) = deliver(m.takeEvents())
+
+    suspend fun deliver(events: List<im.plrs.key.core.sync.SyncEvent>) {
         if (events.isEmpty()) return
         val listeners = st.listeners.toList()
         withContext(Dispatchers.Default) { for (fn in listeners) runCatching { fn(events) } }
@@ -84,10 +94,9 @@ internal class CloudSyncHostPump(
     /** Persist the journal. Committing the debounced edits is what `persist()` does by contract. The file never holds the root. */
     suspend fun save(persisted: MachineState? = null) {
         val snapshot = MachineStateJson.encode(persisted ?: machine().persist())
-        val served = st.served
         val keys = st.openKeys.toList()
         // Failing to persist never fails the call that produced it. After a purge nothing is saved (H-7).
-        if (!st.purged) withContext(Dispatchers.IO) { runCatching { st.file.save(snapshot, served, keys) { !st.purged } } }
+        if (!st.purged) withContext(Dispatchers.IO) { runCatching { st.file.save(snapshot, null, keys) { !st.purged } } }
     }
 
     private fun retryDue(): Boolean = !st.retryArmed && !st.closed && st.failures in 1..SYNC_MAX_RETRIES

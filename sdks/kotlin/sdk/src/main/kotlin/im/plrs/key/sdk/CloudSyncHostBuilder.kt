@@ -7,6 +7,7 @@ import im.plrs.key.core.Base64Url
 import im.plrs.key.core.sync.CloudSyncMachine
 import im.plrs.key.core.sync.CloudSyncOptions
 import im.plrs.key.core.sync.MachineState
+import im.plrs.key.core.sync.SyncDiscovery
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
@@ -20,20 +21,32 @@ internal class CloudSyncHostBuilder(private val st: CloudSyncHostState, private 
 
     private fun newClientId(): String = "c_" + Base64Url.encode(ByteArray(CLIENT_ID_BYTES).also { random.nextBytes(it) })
 
-    /** (Re)build the machine from the journal, the catalog and the document. */
+    /** (Re)build the machine from the journal, the catalog and the document. Every await comes first (see [buildNow]). */
     suspend fun build(persisted: MachineState?) {
+        val document = st.deps.document()
+        val discovery = st.deps.discovery()
+        buildNow(persisted, document, discovery)
+    }
+
+    /**
+     * The construction itself: no suspension, so a caller that snapshotted the old machine just before it loses
+     * no edit the old one accepted (a `set` that lands while an await is pending is in the snapshot or in the
+     * new machine, never between).
+     */
+    fun buildNow(persisted: MachineState?, document: JsonObject, discovery: SyncDiscovery?) {
         st.detach?.invoke()
         st.detach = null
         st.catalog = CloudSyncCatalog.effective(st.mirror, st.served, st.openKeys)
         st.routes = CloudSyncCatalog.routesOf(st.catalog)
-        val document = st.deps.document()
+        st.documentValue = document
         st.documentJson = document.toString()
+        st.discoveryValue = discovery
         val opts = CloudSyncOptions(st.deps.product, JsonObject(mapOf("settings" to JsonArray(st.routes))), document, st.deps.clock(), ::newClientId)
         opts.encryption = st.opts.encryption
         opts.hasRoot = st.deps.keyringUnlocked()
         val m = CloudSyncMachine(opts, persisted)
         st.machine = m
-        applyDiscovery(m)
+        discovery?.let { m.setDiscovery(it) }
         st.building = true
         try {
             st.detach = st.deps.attachKeyring(RootFeed())
