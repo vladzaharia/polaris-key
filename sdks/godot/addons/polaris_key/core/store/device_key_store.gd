@@ -122,14 +122,14 @@ var lock_stale_seconds := LOCK_STALE_SECONDS
 ## `OS.get_unique_id()`, read once. Empty on a platform that has none: the passphrase then rests on
 ## the salt alone, `protection()` says "file" and `best_effort()` is true. A test may set it.
 var unique_id := OS.get_unique_id()
+## The native sealer in use (null: the engine-encrypted file, CC-26.6).
+var sealer: PKeyRecordSealer = null
 var _memory: bool
 ## False when `root` is outside `user://`: raw keys are never written to a shared or exported path.
 var _root_ok := true
 ## False when the product is not a canonical lower-case slug (the sealers accept no other): every member refuses with invalid-options.
 var _slug_ok := true
 var _encrypted: bool
-## The native sealer in use (null: the engine-encrypted file, CC-26.6).
-var sealer: PKeyRecordSealer = null
 ## The in-memory record of a memory store.
 var _mem_record := PackedByteArray()
 ## SHA-256 of the last record whose public halves were checked against its private halves.
@@ -536,19 +536,27 @@ func _fetch() -> PKeyResult:
 	return _fetch_file(path)
 
 
+## The answer for a sealed record (or for a sealer that cannot read this file); null when the
+## engine's own file path applies.
+func _sealed_head(path: String) -> PKeyResult:
+	var head := FileAccess.open(path, FileAccess.READ)
+	if head == null:
+		return _fault("open", FileAccess.get_open_error()) if sealer != null else null
+	var raw := head.get_buffer(_SEALED_MAX + 1)
+	head.close()
+	if raw.size() >= 5 and raw.slice(0, 4).get_string_from_ascii() == _SEALED_MAGIC:
+		return _fetch_sealed(raw)
+	if sealer != null:
+		# Not written by a sealer: not read through the weaker path, and never replaced.
+		return PKeyResult.failure(KEYS_UNREADABLE, "device keys: the record is unreadable")
+	return null
+
+
 ## The record file's bytes; the file exists.
 func _fetch_file(path: String) -> PKeyResult:
-	var head := FileAccess.open(path, FileAccess.READ)
-	if head != null:
-		var raw := head.get_buffer(_SEALED_MAX + 1)
-		head.close()
-		if raw.size() >= 5 and raw.slice(0, 4).get_string_from_ascii() == _SEALED_MAGIC:
-			return _fetch_sealed(raw)
-		if sealer != null:
-			# Not written by a sealer: not read through the weaker path, and never replaced.
-			return PKeyResult.failure(KEYS_UNREADABLE, "device keys: the record is unreadable")
-	if head == null and sealer != null:
-		return _fault("open", FileAccess.get_open_error())
+	var sealed := _sealed_head(path)
+	if sealed != null:
+		return sealed
 	var f: FileAccess = null
 	if _encrypted:
 		_salt_fault = null

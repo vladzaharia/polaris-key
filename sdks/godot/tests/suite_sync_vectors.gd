@@ -76,17 +76,18 @@ func _typed(label: String, ikm: PackedByteArray, salt: PackedByteArray, info: Pa
 	# The name after the NUL that scopes a label, if any.
 	var at := info.find(0)
 	var name := info.slice(at + 1).get_string_from_utf8() if at >= 0 else ""
+	var got: Variant = null
 	match label:
-		"kid": return PKeySyncHkdf.derive_kid(ikm)
-		"coll": return PKeySyncHkdf.derive_coll_key(ikm, name)
-		"names": return PKeySyncHkdf.derive_names_key(ikm)
-		"chunk-id": return PKeySyncHkdf.derive_chunk_id_key(ikm, name)
-		"value": return PKeySyncHkdf.derive_value_key(ikm, salt)
-		"file": return PKeySyncHkdf.derive_file_key(ikm, salt)
-		"chunk": return PKeySyncHkdf.derive_chunk_key(ikm, salt)
-		"recovery": return PKeySyncHkdf.derive_recovery_key(ikm, salt.get_string_from_utf8())
-		"adopt": return PKeySyncHkdf.derive_adopt_key(ikm)
-	return null
+		"kid": got = PKeySyncHkdf.derive_kid(ikm)
+		"coll": got = PKeySyncHkdf.derive_coll_key(ikm, name)
+		"names": got = PKeySyncHkdf.derive_names_key(ikm)
+		"chunk-id": got = PKeySyncHkdf.derive_chunk_id_key(ikm, name)
+		"value": got = PKeySyncHkdf.derive_value_key(ikm, salt)
+		"file": got = PKeySyncHkdf.derive_file_key(ikm, salt)
+		"chunk": got = PKeySyncHkdf.derive_chunk_key(ikm, salt)
+		"recovery": got = PKeySyncHkdf.derive_recovery_key(ikm, salt.get_string_from_utf8())
+		"adopt": got = PKeySyncHkdf.derive_adopt_key(ikm)
+	return got
 
 
 func _blind(t: PKeyTestContext, rows: Array) -> void:

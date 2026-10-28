@@ -19,6 +19,19 @@ signal denied()
 ## An outcome's one way on (Done, Manage devices, Continue, Sign in, Try again).
 signal primary_pressed(step: String)
 
+## State -> [title key, body keys, primary key] for the outcomes; the title takes focus.
+const OUTCOMES := {
+	"approved": ["signin.nearby.approved", [], "common.done"],
+	"not-nearby": ["signin.nearby.notNearby", ["signin.nearby.notNearbyBody"], "common.done"],
+	"mismatch": ["signin.nearby.mismatch", [], "common.done"],
+	"denied": ["signin.approve.deniedDone", [], "common.done"],
+	"expired": ["core.codes.sign-in-expired.title", ["core.codes.sign-in-expired.message"], "common.done"],
+	"device-limit": ["core.codes.device_limit.title", ["core.codes.device_limit.message"], "devices.manage"],
+	"choose": ["signin.choice.title", ["signin.choice.lede"], "signin.choice.continue"],
+	"account-required": ["core.codes.account_required.title", ["core.codes.account_required.message"], "signin.key.signIn"],
+	"rate-limited": ["core.codes.rate_limited.title", ["core.codes.rate_limited.message"], "common.tryAgain"],
+}
+
 @export_enum("entry", "ask", "approved", "not-nearby", "mismatch", "denied", "expired", "device-limit", "choose", "account-required", "rate-limited") var step := "entry":
 	set(value):
 		step = value
@@ -40,18 +53,6 @@ signal primary_pressed(step: String)
 
 var model: Dictionary = {}
 
-## State -> [title key, body keys, primary key] for the outcomes; the title takes focus.
-const OUTCOMES := {
-	"approved": ["signin.nearby.approved", [], "common.done"],
-	"not-nearby": ["signin.nearby.notNearby", ["signin.nearby.notNearbyBody"], "common.done"],
-	"mismatch": ["signin.nearby.mismatch", [], "common.done"],
-	"denied": ["signin.approve.deniedDone", [], "common.done"],
-	"expired": ["core.codes.sign-in-expired.title", ["core.codes.sign-in-expired.message"], "common.done"],
-	"device-limit": ["core.codes.device_limit.title", ["core.codes.device_limit.message"], "devices.manage"],
-	"choose": ["signin.choice.title", ["signin.choice.lede"], "signin.choice.continue"],
-	"account-required": ["core.codes.account_required.title", ["core.codes.account_required.message"], "signin.key.signIn"],
-	"rate-limited": ["core.codes.rate_limited.title", ["core.codes.rate_limited.message"], "common.tryAgain"],
-}
 
 var _body: VBoxContainer
 var _product: PKeyProductHeader

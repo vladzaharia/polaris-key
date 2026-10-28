@@ -465,16 +465,25 @@ class _Parser:
 			return _object(depth)
 		if c == 91:
 			return _array(depth)
+		return _scalar(c)
+
+	func _scalar(c: int) -> Variant:
 		if c == 34:
-			var u: Variant = _string_units()
-			if u == null:
-				return null
-			var q: Variant = PKeySyncCanonicalJson.quote_units(u)
-			if q == null:
-				return _fail("lone surrogate")
-			return q
+			return _quoted()
 		if c == 45 or (c >= 48 and c <= 57):
 			return _number()
+		return _literal()
+
+	func _quoted() -> Variant:
+		var u: Variant = _string_units()
+		if u == null:
+			return null
+		var q: Variant = PKeySyncCanonicalJson.quote_units(u)
+		if q == null:
+			return _fail("lone surrogate")
+		return q
+
+	func _literal() -> Variant:
 		for lit in ["true", "false", "null"]:
 			if text.substr(pos, lit.length()) == lit:
 				pos += lit.length()
@@ -515,34 +524,52 @@ class _Parser:
 			pos += 1
 			return PackedByteArray([123, 125])
 		while true:
-			_ws()
-			if pos >= n or text.unicode_at(pos) != 34:
-				return _fail("expected a member name at %d" % pos)
-			var ku: Variant = _string_units()
+			var ku: Variant = _member_name()
 			if ku == null:
 				return null
-			_ws()
-			if pos >= n or text.unicode_at(pos) != 58:
-				return _fail("expected : at %d" % pos)
-			pos += 1
 			var v: Variant = _value(depth + 1)
 			if v == null:
 				return null
 			members.append([ku, v])
-			_ws()
-			if pos >= n:
-				return _fail("unterminated object")
-			var c := text.unicode_at(pos)
-			pos += 1
-			if c == 125:
+			var step := _member_end()
+			if step == 0:
+				return null
+			if step == 2:
 				break
-			if c != 44:
-				return _fail("expected , or } at %d" % (pos - 1))
 		var e := [""]
 		var out: Variant = PKeySyncCanonicalJson._object_bytes(members, e)
 		if out == null:
 			return _fail(e[0])
 		return out
+
+	## A member's name and the colon after it, or null.
+	func _member_name() -> Variant:
+		_ws()
+		if pos >= n or text.unicode_at(pos) != 34:
+			return _fail("expected a member name at %d" % pos)
+		var ku: Variant = _string_units()
+		if ku == null:
+			return null
+		_ws()
+		if pos >= n or text.unicode_at(pos) != 58:
+			return _fail("expected : at %d" % pos)
+		pos += 1
+		return ku
+
+	## What follows a member's value: 1 a comma (more members), 2 the closing brace, 0 a failure.
+	func _member_end() -> int:
+		_ws()
+		if pos >= n:
+			_fail("unterminated object")
+			return 0
+		var c := text.unicode_at(pos)
+		pos += 1
+		if c == 125:
+			return 2
+		if c != 44:
+			_fail("expected , or } at %d" % (pos - 1))
+			return 0
+		return 1
 
 	## A string token as UTF-16 code units (escapes give code units directly), or null.
 	func _string_units() -> Variant:
@@ -605,15 +632,28 @@ class _Parser:
 			while pos < n and _is_digit(text.unicode_at(pos)):
 				pos += 1
 		var digits := text.substr(int_start, pos - int_start)
-		var frac := ""
-		if pos < n and text.unicode_at(pos) == 46:
+		var frac: Variant = _fraction()
+		if frac == null:
+			return _fail("bad number at %d" % start)
+		var ex: Variant = _exponent()
+		if ex == null:
+			return _fail("bad number at %d" % start)
+		return _decimal(digits, frac, ex[0], ex[1], neg)
+
+	## The fraction's digits after a point ("" when there is none), or null for a bare point.
+	func _fraction() -> Variant:
+		if pos >= n or text.unicode_at(pos) != 46:
+			return ""
+		pos += 1
+		var fs := pos
+		while pos < n and _is_digit(text.unicode_at(pos)):
 			pos += 1
-			var fs := pos
-			while pos < n and _is_digit(text.unicode_at(pos)):
-				pos += 1
-			if pos == fs:
-				return _fail("bad number at %d" % start)
-			frac = text.substr(fs, pos - fs)
+		if pos == fs:
+			return null
+		return text.substr(fs, pos - fs)
+
+	## The exponent as [value, huge], or null when `e` has no digits.
+	func _exponent() -> Variant:
 		var exp := 0
 		var huge := false
 		if pos < n and (text.unicode_at(pos) == 101 or text.unicode_at(pos) == 69):
@@ -626,7 +666,7 @@ class _Parser:
 			while pos < n and _is_digit(text.unicode_at(pos)):
 				pos += 1
 			if pos == es:
-				return _fail("bad number at %d" % start)
+				return null
 			var estr := text.substr(es, pos - es).lstrip("0")
 			if estr.length() > 9:
 				huge = true
@@ -635,6 +675,9 @@ class _Parser:
 				exp = int(estr)
 			if eneg:
 				exp = -exp
+		return [exp, huge]
+
+	func _decimal(digits: String, frac: String, exp: int, huge: bool, neg: bool) -> Variant:
 		var all := (digits + frac).lstrip("0")
 		var e10 := exp - frac.length()
 		if all == "":
@@ -646,12 +689,9 @@ class _Parser:
 		all = all.substr(0, end)
 		if all.length() > PKeySyncCanonicalJson._MAX_DIGITS:
 			return _fail("number has too many digits")
-		var x: float
 		if huge:
-			if e10 > 0:
-				return _fail("number is not finite")
-			return "0".to_utf8_buffer()
-		x = PKeySyncCanonicalJson.parse_decimal(all, e10)
+			return _fail("number is not finite") if e10 > 0 else "0".to_utf8_buffer()
+		var x: float = PKeySyncCanonicalJson.parse_decimal(all, e10)
 		if is_nan(x):
 			return _fail("number is not finite")
 		if neg:
