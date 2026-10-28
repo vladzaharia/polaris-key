@@ -113,6 +113,20 @@ import {
   type UpdateEvent,
 } from "../../constants.generated.js";
 import { UnsupportedError } from "../../core/caps.js";
+import {
+  choiceRefusal,
+  isChoiceCount,
+  isLicenseChoiceView,
+  isReplaceView,
+  type ChoiceCancelResult,
+  type ChoiceCompleteResult,
+  type ChoiceEndpointName,
+  type ChoiceEndpoints,
+  type ChoiceViewResult,
+  type LicenseChoice,
+  type LicenseChoiceView,
+  type ReplaceView,
+} from "../../core/choice.js";
 import type {
   DeviceCodeSignInOptions,
   RedirectEndpoints,
@@ -330,6 +344,9 @@ export interface BearerSessionOptions {
    *  `identity.issuer`). A redirect sign-in with none is `sign-in-unavailable`; the default
    *  answers none. */
   redirectEndpoints?: () => RedirectEndpoints | null;
+  /** The `choice*` endpoints discovery named (`identity.endpoints`). A choice call whose endpoint
+   *  is absent answers the typed unavailable and dials nothing; the default answers none. */
+  choiceEndpoints?: () => ChoiceEndpoints | null;
   /** Conformance replay only: the exact `state` and verifier of a recorded conversation. */
   redirectEntropy?: () => { state?: string; codeVerifier?: string };
   /** A hashed hardware fingerprint. A browser has none; the default answers null. */
@@ -1013,6 +1030,172 @@ export class BearerSession {
       subject: this.subjectValue,
       attached: b.attached === "claimed" ? "claimed" : null,
     };
+  }
+
+  // ── The licence choice (identity.choice, WIRE-CONTRACT-V4 §12.5.1) ─────────────────────────
+
+  /** Whether discovery names all four `choice*` endpoints (a session may run `licenseChoice:
+   *  "app"` only then). */
+  get choiceAvailable(): boolean {
+    const e = this.opts.choiceEndpoints?.();
+    return (
+      !!e &&
+      isString(e.choiceLicenses) &&
+      isString(e.choiceDevices) &&
+      isString(e.choiceComplete) &&
+      isString(e.choiceCancel)
+    );
+  }
+
+  /** POST a JSON body to the named choice endpoint, no device bearer (the grant is the
+   *  credential). A 5xx or a network failure throws; any other answer is returned. */
+  private async choicePost(
+    name: ChoiceEndpointName,
+    body: Record<string, unknown>,
+  ): Promise<{ res: Response; json: unknown }> {
+    await this.init();
+    if (!this.opts.enabled("identity"))
+      throw new UnsupportedError(
+        {
+          supported: false,
+          feature: Feature.identityChoice,
+          reason: "product",
+          detail: "the product does not run the identity service",
+        },
+        ErrorCode.serviceUnavailable,
+      );
+    const url = this.opts.choiceEndpoints?.()?.[name];
+    if (!isString(url))
+      throw new UnsupportedError(
+        {
+          supported: false,
+          feature: Feature.identityChoice,
+          reason: "product",
+          detail: `this product's discovery names no identity ${name} endpoint`,
+        },
+        ErrorCode.serviceUnavailable,
+      );
+    let res: Response;
+    try {
+      res = await this.opts.fetchImpl(url, {
+        method: "POST",
+        credentials: "omit",
+        headers: this.headers({ "content-type": "application/json" }),
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      throw new PolarisError(ErrorCode.networkError, (e as Error).message);
+    }
+    const json: unknown = await res
+      .text()
+      .then((t) => JSON.parse(t) as unknown)
+      .catch(() => null);
+    if (res.status >= 500)
+      throw new PolarisError(
+        ErrorCode.serverError,
+        `${name} failed with status ${res.status}.`,
+        bodyCode(json) ?? undefined,
+        undefined,
+        { status: res.status },
+      );
+    return { res, json };
+  }
+
+  private refused(res: Response, json: unknown) {
+    return choiceRefusal(
+      res.status,
+      bodyCode(json) ?? `http_${res.status}`,
+      json,
+      parseRetryAfter(res.headers.get("retry-after"), this.now()),
+    );
+  }
+
+  private async choiceRead<V>(
+    name: ChoiceEndpointName,
+    body: Record<string, unknown>,
+    valid: (v: unknown) => v is V,
+  ): Promise<ChoiceViewResult<V>> {
+    const { res, json } = await this.choicePost(name, body);
+    if (res.status !== 200) return this.refused(res, json);
+    if (!valid(json))
+      throw new PolarisError(
+        ErrorCode.badResponse,
+        `${name} answered without a readable view.`,
+        undefined,
+        undefined,
+        { status: 200 },
+      );
+    return { kind: "ok", view: json };
+  }
+
+  /** The licences the account can run this device on. */
+  choiceLicenses(grant: string): Promise<ChoiceViewResult<LicenseChoiceView>> {
+    return this.choiceRead("choiceLicenses", { grant }, isLicenseChoiceView);
+  }
+
+  /** The devices seated on a full licence, for Replace. */
+  choiceDevices(
+    grant: string,
+    licenseId: string,
+  ): Promise<ChoiceViewResult<ReplaceView>> {
+    return this.choiceRead(
+      "choiceDevices",
+      { grant, licenseId },
+      isReplaceView,
+    );
+  }
+
+  /** Finish with the person's choice. Only `ok` stores the token (and syncs); a refusal keeps
+   *  every piece of state, and one the person can fix (`device_limit`,
+   *  `license_choice_required`) leaves the grant open. */
+  async choiceComplete(
+    grant: string,
+    choice: LicenseChoice,
+  ): Promise<ChoiceCompleteResult> {
+    const { res, json } = await this.choicePost("choiceComplete", {
+      grant,
+      choice,
+    });
+    if (res.status !== 200) return this.refused(res, json);
+    const answer = parseTokenAnswer(200, json);
+    if (answer.kind !== "token")
+      throw new PolarisError(
+        ErrorCode.badResponse,
+        "choice complete answered without a complete sign-in.",
+        undefined,
+        undefined,
+        { status: 200 },
+      );
+    const keyEntries =
+      typeof json === "object" &&
+      json !== null &&
+      isChoiceCount((json as Record<string, unknown>).keyEntries)
+        ? ((json as Record<string, unknown>).keyEntries as {
+            used: number;
+            limit: number;
+          })
+        : undefined;
+    await this.setToken(answer.accessToken, "signin");
+    await this.syncAfterSignIn();
+    this.subjectValue = answer.subject;
+    return {
+      kind: "ok",
+      licenseId:
+        answer.license && typeof answer.license.id === "string"
+          ? answer.license.id
+          : null,
+      subject: answer.subject,
+      scope: answer.scope,
+      ...(keyEntries ? { keyEntries } : {}),
+      ...(choice.kind === "keep" ? { attachable: true as const } : {}),
+    };
+  }
+
+  /** Give the grant up (`204`). Nothing is stored. */
+  async choiceCancel(grant: string): Promise<ChoiceCancelResult> {
+    const { res, json } = await this.choicePost("choiceCancel", { grant });
+    if (res.status === 204 || res.status === 200) return { kind: "ok" };
+    return this.refused(res, json);
   }
 
   // ── The §5 single re-acquire ─────────────────────────────────────────────────────────────

@@ -219,8 +219,8 @@
       "note": "I-10a.10: bearer mode. signIn.start({channel: \"redirect\", redirectUri}) builds the PKCE authorize URL with client-core and keeps the verifier and state in sessionStorage keyed by state; signIn.complete(callbackUrl) (or the session's) checks state and iss and redeems the code at the token endpoint. The desktop renderer signs in by device code only: its redirect is a typed unsupported (runtime) since the bridge has no verb to redeem a code in the host. Cookie mode is SP-40."
     },
     "identity.choice": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented",
+      "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. The desktop renderer never holds a grant (the bridge's beginSignIn refuses licenseChoice), so its calls are a typed unsupported (runtime); a cookie page refuses the same way."
     },
     "identity.signin.hints": {
       "status": "implemented",

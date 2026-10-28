@@ -14,10 +14,12 @@ export interface AccountEndpoints {
   accountPortal?: string;
 }
 
-/** The identity fragment's account endpoints from a discovery document, or `null`. */
-export function accountEndpointsOf(
+/** The named string endpoints of a discovery document's identity fragment, or `null` when the
+ *  service is off or has no endpoint table. An absent or empty one is left out. */
+export function identityEndpointsOf<K extends string>(
   discovery: Record<string, unknown> | null | undefined,
-): AccountEndpoints | null {
+  keys: readonly K[],
+): Partial<Record<K, string>> | null {
   const services = discovery?.services as
     | Record<string, { enabled?: unknown; endpoints?: unknown } | undefined>
     | undefined;
@@ -25,12 +27,24 @@ export function accountEndpointsOf(
   if (identity?.enabled !== true) return null;
   const e = identity.endpoints;
   if (e === null || typeof e !== "object") return null;
-  const out: AccountEndpoints = {};
-  for (const k of ["subject", "signout", "attach", "accountPortal"] as const) {
+  const out: Partial<Record<K, string>> = {};
+  for (const k of keys) {
     const v = (e as Record<string, unknown>)[k];
     if (typeof v === "string" && v !== "") out[k] = v;
   }
   return out;
+}
+
+/** The identity fragment's account endpoints from a discovery document, or `null`. */
+export function accountEndpointsOf(
+  discovery: Record<string, unknown> | null | undefined,
+): AccountEndpoints | null {
+  return identityEndpointsOf(discovery, [
+    "subject",
+    "signout",
+    "attach",
+    "accountPortal",
+  ]);
 }
 
 /** The typed refusal of an account verb the product's discovery does not offer. */

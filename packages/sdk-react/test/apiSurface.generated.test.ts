@@ -10,6 +10,7 @@ import {
   useImportBundle,
   useLatestVersion,
   useLicense,
+  useLicenseChoice,
   useLicenseGate,
   useManagedConfig,
   usePolarisAuth,
@@ -40,6 +41,7 @@ export type Surface = [
   ReturnType<typeof usePolarisKey>["activateWithKey"],
   ReturnType<typeof usePolarisAuth>["signIn"],
   ReturnType<typeof usePolarisAuth>["signOut"],
+  ReturnType<typeof usePolarisAuth>["choice"],
   PolarisKeyConfig["auth"],
   PolarisKeyConfig["mode"],
   PolarisKeyConfig["bridge"],
@@ -54,6 +56,8 @@ it("client.create", () => expect(typeof PolarisKeyProvider).toBe("function"));
 it("client.boot", () => expect(typeof useBoot).toBe("function"));
 it("config.setting", () => expect(typeof useConfigSetting).toBe("function"));
 it("entitlements.has", () => expect(typeof useEntitlement).toBe("function"));
+it("identity.useLicenseChoice", () =>
+  expect(typeof useLicenseChoice).toBe("function"));
 it("client.presentation", () =>
   expect(typeof usePresentation).toBe("function"));
 it("client.capabilities", () =>
