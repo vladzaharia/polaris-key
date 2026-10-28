@@ -23,6 +23,7 @@ import {
   button,
   callout,
   codeDisplay,
+  nearbyCode,
   copyAddress,
   days,
   GLYPHS,
@@ -88,6 +89,11 @@ function contentFor(c: KitCtx): ReactNode {
       return (
         <>
           {qrCode(c, addKey?.qr ? addKey.url : null, "a11y.qrAddKey")}
+          {keys.has("signin.key.scan") ? (
+            <p className="body" data-key="signin.key.scan">
+              {text(c, "signin.key.scan")}
+            </p>
+          ) : null}
           {editing
             ? keyField(
                 c,
@@ -127,11 +133,17 @@ function contentFor(c: KitCtx): ReactNode {
       return (
         <>
           {codeDisplay(c)}
+          {nearbyCode(c)}
           {qrCode(
             c,
             url?.qr ? url.url : null,
             keys.has("a11y.qrAddKey") ? "a11y.qrAddKey" : "a11y.qr",
           )}
+          {keys.has("signin.key.scan") ? (
+            <p className="body" data-key="signin.key.scan">
+              {text(c, "signin.key.scan")}
+            </p>
+          ) : null}
           {showUrl ? (
             <p className="body" data-key="signin.handoff.url">
               {text(c, "signin.handoff.url", { url: shown as string })}

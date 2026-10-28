@@ -184,7 +184,7 @@ def key_refusal_spec(ctx: Context, kind: str, activation: Mapping[str, Any]) -> 
     copy = [
         "core.activation.key-entry-limit.title" if limit else "core.codes.license_owned.title",
         "core.activation.key-entry-limit.message" if limit else "core.codes.license_owned.message",
-        "signin.key.ownedSignIn",
+        "signin.key.signIn" if limit else "signin.key.ownedSignIn",
         *(
             (["signin.key.scan", "a11y.qrAddKey"] if tv else ["signin.key.addInLocker", "a11y.externalLink"])
             if add
@@ -192,7 +192,7 @@ def key_refusal_spec(ctx: Context, kind: str, activation: Mapping[str, Any]) -> 
         ),
         "signin.key.differentKey",
     ]
-    return {"copy": copy, "primary": "signin.key.ownedSignIn", "link": link, "qr": add and tv}
+    return {"copy": copy, "primary": "signin.key.signIn" if limit else "signin.key.ownedSignIn", "link": link, "qr": add and tv}
 
 
 def activate_view(ctx: Context) -> View:

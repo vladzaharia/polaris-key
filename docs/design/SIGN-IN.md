@@ -635,7 +635,9 @@ One component, three entries.
   working on the devices it's already on. Only typing the key again needs an account."
 - **`key_entry_limit` deep link** (`manageUrl` = `/activate?product=<slug>`, the key only in a
   `#key=` fragment): the notice "This key has no entries left in <Product>. Add it to your account
-  and <Product> signs you in instead." It is a neutral callout (DL6); **Add** stays enabled.
+  and <Product> signs you in instead." (`signin.key.noEntries`, the portal's product-named words;
+  the kits and the CLI show the core sentence of §4.5). It is a neutral callout (DL6); **Add** stays
+  enabled.
 - **Identity off:** nothing is counted, there is no meter, and the account is offered, never forced:
   "Keep <Product> in an account" with **Continue without an account** (S-24 D13).
 - **Keys that already belong to someone** (S-24 §9.4): an assigned key waiting for its email
@@ -1124,11 +1126,18 @@ consent, choices}`. The form morphs to the in-app consent (frame 18's form), the
 
 1. **In the app** (kit `Activate`): the key is entered natively and goes through `license/activate`.
    - On success the app runs, and `keyEntries` feeds "{left} key entries left" on the success line.
-   - On `key_entry_limit` the kit shows the refusal screen: "This key has no entries left. Add it to
-     your Polaris Locker account and <Product> signs you in instead." The primary is **Sign in**
-     (device code or redirect). If the account doesn't hold that license yet, the card's
-     no-license state takes the key (§3.6 rule 6), or **Use a license key instead** does. The secondary **Add it in Polaris Locker** opens `manageUrl` (QR on TV and console).
-   - On `license_owned` the kit starts sign-in itself, with `signInUrl` as the fallback.
+   - On `key_entry_limit` and `license_owned` the kit shows a focused refusal step, not the key
+     field with a callout (UI-KITS DL6): the product header, the refusal's title and one sentence,
+     and no field, lede or Paste, since resubmitting the same key cannot succeed. A refusal a
+     different key can fix (disabled, expired) stays under the field.
+   - **`key_entry_limit`:** the sentence is "Sign in and add this key to your Polaris Locker account
+     instead." The primary is **Sign in** (`signin.key.signIn`, the kit's own sign-in, then the
+     card's no-license state takes the key, §3.6 rule 6). The secondary **Add it in Polaris Locker**
+     opens `manageUrl` (↗); on TV and console a QR under the sentence "Scan to add this key in
+     Polaris Locker on your phone." replaces it. **Use a different key** returns to the field.
+   - **`license_owned`:** the product-named `core.codes.license_owned` sentence. The primary is
+     **Sign in to that account** (the kit's own sign-in, with `signInUrl` as the fallback) and
+     **Use a different key** follows.
 2. **On the card** ("Have a license key?"): KeyField → preview (never counted) → the on-ramp body
    (frame 10) → account → the entry counts when the claim is submitted ("This will be entry 3").
 3. **At the limit**, the forced body: no skip, "Sign in to add <Product>". Existing installs keep
