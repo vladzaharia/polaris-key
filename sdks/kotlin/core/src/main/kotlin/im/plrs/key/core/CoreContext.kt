@@ -353,7 +353,21 @@ public class CoreContext(options: CoreOptions) {
             tokenValue = token
             tokenSourceValue = source
         }
+        // An explicit sign-in ends the signed-out state (automatic sign-in may run again).
+        if (source == TokenSource.signin) setExplicitSignOut(false)
     }
+
+    // ── Explicit sign-out (I-45.2) ─────────────────────────────────────────────────────────
+    // True after `identity.signOut()` until the next explicit sign-in: the automatic sign-in ladder
+    // must not sign the person back in on its own. Kept beside the token so it survives a restart;
+    // a store with no state directory holds it for the process only.
+    private val explicitSignOutSlot: StateSlot by lazy {
+        store.stateDirectory?.let { FileStateSlot(File(it, "explicit-sign-out")) } ?: MemoryStateSlot()
+    }
+
+    public suspend fun explicitSignOut(): Boolean = io { explicitSignOutSlot.read()?.trim() == "1" }
+
+    public suspend fun setExplicitSignOut(on: Boolean): Unit = io { explicitSignOutSlot.write(if (on) "1" else "") }
 
     /** Wipe every credential and artifact except the v4 update slices, which re-verify. */
     public suspend fun clearAll() {

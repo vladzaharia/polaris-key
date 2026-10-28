@@ -115,6 +115,8 @@ internal class IdentityAccount(
     private val hooks: () -> List<BeforeSignOutHook>,
     private val onSubject: suspend (String?) -> Unit,
     private val onSignedOut: suspend () -> Unit,
+    /** Raised once the Worker accepted a sign-out: the explicit-sign-out flag and the platform cleanup. */
+    private val onAccepted: suspend () -> Unit = {},
 ) {
     /** The identity fragment, discovering once when this client has not yet (a fragment is never guessed). */
     private suspend fun fragment(): IdentityDiscovery? {
@@ -164,6 +166,8 @@ internal class IdentityAccount(
             released = body["released"].boolValue
                 ?: throw PolarisException(ErrorCode.badResponse, "sign-out answered without `released`.")
         }
+        // The Worker accepted it: nothing silent may sign this person back in.
+        onAccepted()
         val had = core.storedSubject() != null
         if (released) {
             core.clearAll()

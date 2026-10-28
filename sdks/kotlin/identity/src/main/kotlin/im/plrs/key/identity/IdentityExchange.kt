@@ -310,6 +310,7 @@ private fun refusalOf(res: PolarisResponse): ExchangeOutcome {
     throw PolarisException(
         code, "the exchange was refused ($code).", httpStatus = res.status,
         retryAfterSeconds = IdentityExchange.retryAfter(res, b),
+        view = if (code == ErrorCode.deviceLimit || code == "license_choice_required") b?.get("view").objectValue else null,
     )
 }
 

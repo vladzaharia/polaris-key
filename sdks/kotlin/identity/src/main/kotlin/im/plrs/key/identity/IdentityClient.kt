@@ -138,7 +138,8 @@ public class IdentityClient(
 ) {
     private val sleep: suspend (Long) -> Unit = sleep ?: { seconds -> delay(seconds * 1000) }
     internal val beforeSignOut = java.util.concurrent.CopyOnWriteArrayList<BeforeSignOutHook>()
-    private val account = IdentityAccount(core, opener, { beforeSignOut.toList() }, onSubject, onSignedOut)
+    internal val platformProvider = java.util.concurrent.atomic.AtomicReference<PlatformIdentityProvider?>(null)
+    private val account = IdentityAccount(core, opener, { beforeSignOut.toList() }, onSubject, onSignedOut) { markSignedOut() }
 
     @Volatile
     private var deviceKeys: DeviceKeyPort? = deviceKeys
@@ -147,6 +148,19 @@ public class IdentityClient(
     public fun useDeviceKeys(keys: DeviceKeyPort?) {
         deviceKeys = keys
     }
+
+    /** Install the platform provider `signOut()` cleans up after and `autoSignIn()` uses by default. */
+    public fun installPlatformIdentity(provider: PlatformIdentityProvider?) {
+        platformProvider.set(provider)
+    }
+
+    /**
+     * The automatic sign-in ladder (AutoSignIn.kt): the stored session, then the platform provider
+     * silently and, with `prompt = OPTIONAL`, through its one sheet. Never throws: a refusal is an
+     * [AutoSignInResult]. On the JVM desktop there is no provider: the ladder is rung 1, then `NeedsSignIn`.
+     */
+    @JvmOverloads
+    public suspend fun autoSignIn(options: AutoSignInOptions = AutoSignInOptions()): AutoSignInResult = runAutoSignIn(options)
 
     /**
      * `POST nonce`: a new single-use nonce for the platform provider to sign into its token (V5 section 12.11.2).

@@ -45,6 +45,8 @@ public class PolarisException(
     public val httpStatus: Int? = null,
     /** Seconds to wait before retrying, when the Worker named them (`rate_limited`). */
     public val retryAfterSeconds: Int? = null,
+    /** The licence-choice view a refusal carried (`device_limit`, `license_choice_required`), as the Worker served it; null otherwise. */
+    public val view: kotlinx.serialization.json.JsonObject? = null,
 ) : Exception(message, cause)
 
 /** One HTTP response, reduced to what this SDK reads. */

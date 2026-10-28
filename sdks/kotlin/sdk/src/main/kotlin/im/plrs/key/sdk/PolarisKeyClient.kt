@@ -451,6 +451,15 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     )
 
     /**
+     * Hand one set of device keys to both the platform `exchange` (`identity`) and Cloud Connect
+     * (`connect`), so the exchange proof and the Connect identity name the same keys.
+     */
+    public suspend fun useDeviceKeys(keys: im.plrs.key.core.DeviceKeyPort) {
+        identity.useDeviceKeys(keys)
+        connect.useDeviceKeys(keys)
+    }
+
+    /**
      * Cloud Connect (WIRE-CONTRACT-V5 section 15): this device's keys, roster, certificate and discovery
      * key. Refuses with `service-unavailable` while the product has Connect off.
      */
