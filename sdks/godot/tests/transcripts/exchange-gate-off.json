@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "exchange-gate-off",
-  "description": "A Worker whose platform sign-in launch gate is off (LG-1, launch.identityExchange). Discovery names neither the exchange member nor the nonce endpoint, so an SDK starts at the regular sign-in. A client that still reaches the routes (a Worker rolled back after it fetched a nonce) finds the nonce route absent (404 not_found) and the grant unsupported: 400 unsupported_grant_type, which the SDK treats as a failed rung. Nothing is bound.",
+  "description": "A Worker whose platform sign-in launch gate is off (LG-1, launch.identityExchange). Discovery names neither the exchange member nor the nonce endpoint, so a client sends nothing to the nonce or token routes (WIRE-CONTRACT-V5 §12.11.6): exchange() reports unavailable, holds no token and makes no request, and the SDK starts at the regular sign-in. A client that fetched discovery before the gate went off is exchange-gate-off-stale.json.",
   "features": ["identity.exchange"],
   "requires": ["core.store"],
   "product": "djdl",
@@ -152,121 +152,10 @@
     },
     {
       "action": "exchange",
-      "note": "The nonce route is absent.",
+      "note": "Discovery has no exchange member: the client sends nothing.",
       "args": { "kind": "google", "keyLabel": "transcript-device-key-1" },
-      "exchanges": {
-        "ordered": false,
-        "items": [
-          {
-            "request": {
-              "method": "POST",
-              "path": "/djdl/identity/nonce",
-              "headers": {
-                "x-pkey-device": "{deviceId}",
-                "x-pkey-version": "{version}"
-              },
-              "requiredHeaders": [
-                "x-pkey-device",
-                "x-pkey-version",
-                "x-pkey-channel",
-                "x-pkey-sdk",
-                "x-pkey-sdk-version",
-                "x-pkey-platform",
-                "x-pkey-arch",
-                "content-type"
-              ],
-              "body": {
-                "json": {
-                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
-                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
-                },
-                "match": "exact"
-              }
-            },
-            "response": {
-              "status": 404,
-              "headers": {
-                "cache-control": "no-store",
-                "content-type": "application/json"
-              },
-              "body": { "error": "not_found" }
-            }
-          }
-        ]
-      },
-      "expect": { "result": "refused", "code": "not_found", "tokenHeld": false }
-    },
-    {
-      "action": "exchange",
-      "note": "A nonce fetched before the gate went off: the grant is unsupported.",
-      "args": {
-        "kind": "google",
-        "keyLabel": "transcript-device-key-1",
-        "nonce": "7k5GD2Lf-GdejBd79_7Zuhfbx9-pK05iy1nLAPkMU1s",
-        "subjectToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiN2s1R0QyTGYtR2RlakJkNzlfN1p1aGZieDktcEswNWl5MW5MQVBrTVUxcyIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.sItNaLe8y90raPZldQmDdO7WKm9DMV7nsAqvyb5t84eqp0Y8ZIttCVZYFQJBNjl3EsRFAdNqfSOSH4t2Hx6wkhdY-T6i1Yey_6_7RzvXiyU7ir2hYqkiTIsQCs9Sc8t0_lFwEj9HJMFMV50WLUcSbllCtcJ5hjtIbv8T2GJUWZKSnWYSRt65VY0Pbh69ZWPm5cnh93VW8Vn_iXLLWGuwHs2BL39QcLneDoMrsxrJQ-IVxwQqeKihiaV40xvoqJdXbirGjRr1Ksmwbr1gs4kYoMsyRfScHMtZWgm_vvJyT8LUipM1RYOssBI0yQCectyHX55d1H_kKlkrKwb3AHPJsA"
-      },
-      "exchanges": {
-        "ordered": false,
-        "items": [
-          {
-            "request": {
-              "method": "POST",
-              "path": "/djdl/identity/token",
-              "headers": {
-                "x-pkey-device": "{deviceId}",
-                "x-pkey-version": "{version}",
-                "content-type": "application/x-www-form-urlencoded"
-              },
-              "requiredHeaders": [
-                "x-pkey-device",
-                "x-pkey-version",
-                "x-pkey-channel",
-                "x-pkey-sdk",
-                "x-pkey-sdk-version",
-                "x-pkey-platform",
-                "x-pkey-arch",
-                "content-type"
-              ],
-              "body": {
-                "json": {
-                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
-                  "client_id": "djdl",
-                  "subject_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoiN2s1R0QyTGYtR2RlakJkNzlfN1p1aGZieDktcEswNWl5MW5MQVBrTVUxcyIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.sItNaLe8y90raPZldQmDdO7WKm9DMV7nsAqvyb5t84eqp0Y8ZIttCVZYFQJBNjl3EsRFAdNqfSOSH4t2Hx6wkhdY-T6i1Yey_6_7RzvXiyU7ir2hYqkiTIsQCs9Sc8t0_lFwEj9HJMFMV50WLUcSbllCtcJ5hjtIbv8T2GJUWZKSnWYSRt65VY0Pbh69ZWPm5cnh93VW8Vn_iXLLWGuwHs2BL39QcLneDoMrsxrJQ-IVxwQqeKihiaV40xvoqJdXbirGjRr1Ksmwbr1gs4kYoMsyRfScHMtZWgm_vvJyT8LUipM1RYOssBI0yQCectyHX55d1H_kKlkrKwb3AHPJsA",
-                  "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
-                  "nonce": "7k5GD2Lf-GdejBd79_7Zuhfbx9-pK05iy1nLAPkMU1s",
-                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
-                  "proof": "vMQTaQZdsh9-0ZDBH0okeeigxgbsmRo1iWEHlZ3FDJr07Yo8dQ_JvUBVHP216LVTkS5_GKlpyF5Oo-KFQTBWCw"
-                },
-                "match": "exact",
-                "allowedKeys": [
-                  "grant_type",
-                  "client_id",
-                  "subject_token",
-                  "subject_token_type",
-                  "nonce",
-                  "device_key",
-                  "proof",
-                  "license_choice",
-                  "device_name"
-                ]
-              }
-            },
-            "response": {
-              "status": 400,
-              "headers": {
-                "cache-control": "no-store",
-                "content-type": "application/json"
-              },
-              "body": { "error": "unsupported_grant_type" }
-            }
-          }
-        ]
-      },
-      "expect": {
-        "result": "refused",
-        "code": "unsupported_grant_type",
-        "tokenHeld": false
-      }
+      "exchanges": { "ordered": false, "items": [] },
+      "expect": { "result": "unavailable", "tokenHeld": false }
     }
   ]
 }

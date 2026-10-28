@@ -236,7 +236,11 @@
 //                   `licenseId` or null) | "confirm" (`firstTime`, `changed`, `as`: the consent
 //                   view the SDK shows) | "choose" | "interstitial-required" (`reason`, `url`,
 //                   `linkHandle`, `expiresIn`, `tokenHeld` false) | "refused" (`code`: the
-//                   refusal's wire code, `tokenHeld` false)
+//                   refusal's wire code, `tokenHeld` false; the SDK throws a typed error) |
+//                   "unavailable" (`tokenHeld` false: the rung is not there. Either the client
+//                   sends nothing, a step with no exchanges, because the last discovery names no
+//                   `exchange` member (§12.11.6), or a 404 answers the nonce or token route, the
+//                   Worker having rolled the launch gate back after discovery)
 // A `confirm` or `choose` answer is completed by a `choiceComplete` step whose body (the
 // consent, the choice) is the one the recording sent; its `expect` is an exchange `ok`.
 // A `discover` step in these transcripts also pins `exchange` (the fragment's member or null)

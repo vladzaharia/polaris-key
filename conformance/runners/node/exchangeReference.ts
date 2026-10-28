@@ -79,6 +79,10 @@ export const METADATA = {
 
 export type Observed = Record<string, JsonValue>;
 
+/** Whether the last `discover` step of a replay showed an `exchange` member and the nonce
+ *  endpoint (§12.11.6). A client sends nothing to the exchange routes when it did not. */
+export const offered = new WeakMap<ReplayServer, boolean>();
+
 const EXCHANGE_GRANT = "urn:ietf:params:oauth:grant-type:token-exchange";
 const ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token";
 
@@ -99,6 +103,8 @@ export function observe(
       licenseId: license?.id ?? null,
     };
   }
+  // The rung is not there: a 404 from the nonce or token route (the gate rolled back).
+  if (status === 404) return { result: "unavailable", tokenHeld: false };
   if (status === 200 && body.status === "confirm") {
     const consent = body.consent as {
       firstTime: boolean;
@@ -136,6 +142,9 @@ export async function runExchange(
   t: Transcript,
   step: Step,
 ): Promise<Observed> {
+  // Discovery without the member: nothing is sent (§12.11.6).
+  if (offered.get(server) === false)
+    return { result: "unavailable", tokenHeld: false };
   const base = `${t.baseUrl}/${t.product}`;
   const device = deviceHeaders(t);
   const keys = deviceKeys(step.args.keyLabel as string);
