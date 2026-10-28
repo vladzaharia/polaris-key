@@ -6,6 +6,7 @@
 //
 // PKEY_KIT_SHOTS=<dir> writes each render to <dir>/polish.<scene>/<size>-<scheme>.png.
 
+import { fixtureTheme } from "./support.js";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { commands, page } from "vitest/browser";
 import type { UiInput } from "@polaris-key/ui-core";
@@ -49,21 +50,8 @@ function inputOf(name: string, patch: Partial<UiInput> = {}): UiInput {
   return { elapsedMs: 60_000, ...base, ...patch } as UiInput;
 }
 
-const ICON = `data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" fill="#0f3b45"/><circle cx="66" cy="28" r="9" fill="#f7c873"/><path d="M8 58q10-10 20 0t20 0 20 0 20 0" stroke="#5be0c8" stroke-width="7" fill="none" stroke-linecap="round"/></svg>`,
-)}`;
-
 beforeAll(() => {
-  PolarisKey.fonts(__PKEY_FONTS__);
-  PolarisKey.theme({
-    product: {
-      name: "Tidewater Studio",
-      developer: "Harbor Audio",
-      accent: "#369186",
-    },
-    iconSrc: ICON,
-  });
-  document.body.style.margin = "0";
+  fixtureTheme(__PKEY_FONTS__);
 });
 
 afterEach(() => {

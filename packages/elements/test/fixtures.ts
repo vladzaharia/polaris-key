@@ -74,3 +74,23 @@ export function roles(): Record<string, string> {
     Object.entries(en.messages).map(([k, v]) => [k, v.role]),
   );
 }
+
+/** A ResizeObserver that observes nothing (jsdom has none). */
+export function stubResizeObserver(): void {
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    disconnect() {}
+    unobserve() {}
+  } as unknown as typeof ResizeObserver;
+}
+
+/** The input of a corpus row of one family, with its defaults. */
+export function rowInput(family: string, name: string): UiInput {
+  const matrix = readMatrix();
+  const r = (matrix[family] as Row[]).find((x) => x.name === name);
+  if (!r) throw new Error(`no ${family} row ${name}`);
+  return {
+    elapsedMs: 60_000,
+    ...withDefaults(r.input, matrix.vocabulary.defaults),
+  };
+}
