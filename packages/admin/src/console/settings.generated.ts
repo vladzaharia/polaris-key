@@ -445,7 +445,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: true,
     secret: false,
-    pending: "CC-07",
+    pending: null,
     deprecated: null,
   },
   {
@@ -470,7 +470,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: true,
     secret: false,
-    pending: "CC-07",
+    pending: null,
     deprecated: null,
   },
   {
@@ -2173,7 +2173,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "claimable",
     critical: false,
     secret: false,
-    pending: "CC-07",
+    pending: null,
     deprecated: null,
   },
   {
@@ -2192,7 +2192,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "claimable",
     critical: true,
     secret: false,
-    pending: "CC-07",
+    pending: "CC-18",
     deprecated: null,
   },
   {
@@ -2211,7 +2211,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: true,
     secret: false,
-    pending: "CC-07",
+    pending: null,
     deprecated: null,
   },
 ];

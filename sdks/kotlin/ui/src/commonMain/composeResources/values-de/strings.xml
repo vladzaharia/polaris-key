@@ -1995,6 +1995,22 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_message">Dieses Konto hat mehr verknüpfte Geräte, als verbunden werden können. Entferne eines und versuche es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_disabled_title">Fernverbindung aus</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_disabled_message">Die Fernverbindung ist für diese App ausgeschaltet. Deine Geräte verbinden sich nur im selben Netzwerk.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_paused_title">Fernverbindung pausiert</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_paused_message">Die Fernverbindung ist vorübergehend pausiert. Versuche es später erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_quota_exceeded_title">Fernlimit erreicht</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_quota_exceeded_message">Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_ticket_invalid_title">Verbindung abgelaufen</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_ticket_invalid_message">Die Verbindungsanfrage ist abgelaufen. Versuche es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">Keine Schlüsseleingaben mehr</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.</string>

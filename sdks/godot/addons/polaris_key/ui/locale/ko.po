@@ -5268,6 +5268,46 @@ msgstr "기기가 너무 많음"
 msgid "core.codes.ring_too_large.message"
 msgstr "이 계정에 연결된 기기가 연결 가능한 수보다 많습니다. 하나를 제거한 후 다시 시도하세요."
 
+#. Remote connect is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_disabled.title"
+msgstr "원격 연결 꺼짐"
+
+#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_disabled.message"
+msgstr "이 앱은 원격 연결이 꺼져 있습니다. 기기는 같은 네트워크에서만 연결됩니다."
+
+#. Remote connect paused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_paused.title"
+msgstr "원격 연결 일시 중지"
+
+#. Remote connect is paused for now. Try again later.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_paused.message"
+msgstr "원격 연결이 잠시 중지되었습니다. 나중에 다시 시도하세요."
+
+#. Remote limit reached
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_quota_exceeded.title"
+msgstr "원격 연결 한도 도달"
+
+#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_quota_exceeded.message"
+msgstr "원격 연결 한도를 모두 사용했습니다. 곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다."
+
+#. Connection expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_ticket_invalid.title"
+msgstr "연결 만료"
+
+#. The connection request expired. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.relay_ticket_invalid.message"
+msgstr "연결 요청이 만료되었습니다. 다시 시도하세요."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

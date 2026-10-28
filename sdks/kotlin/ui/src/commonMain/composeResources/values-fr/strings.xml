@@ -2008,6 +2008,22 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_message">Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_disabled_title">Connexion à distance désactivée</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_disabled_message">La connexion à distance est désactivée pour cette app. Vos appareils se connectent uniquement sur le même réseau.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_paused_title">Connexion à distance en pause</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_paused_message">La connexion à distance est en pause pour le moment. Réessayez plus tard.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_quota_exceeded_title">Limite à distance atteinte</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_quota_exceeded_message">La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_ticket_invalid_title">Connexion expirée</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_ticket_invalid_message">La demande de connexion a expiré. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">Aucune saisie restante</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.</string>

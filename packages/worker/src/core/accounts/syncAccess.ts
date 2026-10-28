@@ -84,6 +84,43 @@ const clampBytes = (n: number): number =>
   Math.min(Math.max(n, 0), CLOUD_SYNC_CEILINGS.perPerson.bytes);
 
 /**
+ * The device's licence answer, for the features that read an entitlement from it (Cloud Sync's
+ * quota, Cloud Connect's relay quota): whether its anchor licence is usable and, when it is, the
+ * merged entitlement values. One place, so LX-09 swaps one body.
+ */
+export async function deviceLicence(
+  db: Db,
+  productSlug: string,
+  device: DeviceRow,
+  now: number,
+): Promise<{
+  licensed: boolean;
+  anchor: Awaited<ReturnType<typeof getLicense>>;
+  entitlements: Record<string, unknown>;
+}> {
+  const anchor = device.license_id
+    ? await getLicense(db, productSlug, device.license_id)
+    : null;
+  const licensed = licenseUsable(anchor, now);
+  let entitlements: Record<string, unknown> = {};
+  if (licensed) {
+    const { payload, tier } = await resolveMergedPayload(
+      db,
+      productSlug,
+      anchor,
+      device,
+      now,
+      { entitlementsOnly: true },
+    );
+    injectAdminPolicy(payload, tier, anchor, tighterMin, tighterMax);
+    entitlements = Object.fromEntries(
+      Object.entries(payload.entitlements).map(([k, e]) => [k, e?.value]),
+    );
+  }
+  return { licensed, anchor, entitlements };
+}
+
+/**
  * The access answer for a Cloud Sync mutation by `device` (the row `validateDeviceToken`
  * returned). `null` means the device has no Cloud Sync principal: answer `account_required`.
  */
@@ -98,26 +135,12 @@ export async function syncAccess(
   if (!principal || principal.product !== product.slug) return null;
 
   const licenseOff = !product.services.license.enabled;
-  const anchor = device.license_id
-    ? await getLicense(db, product.slug, device.license_id)
-    : null;
-  const licensed = licenseUsable(anchor, now);
-
-  let entitlements: Record<string, unknown> = {};
-  if (licensed) {
-    const { payload, tier } = await resolveMergedPayload(
-      db,
-      product.slug,
-      anchor,
-      device,
-      now,
-      { entitlementsOnly: true },
-    );
-    injectAdminPolicy(payload, tier, anchor, tighterMin, tighterMax);
-    entitlements = Object.fromEntries(
-      Object.entries(payload.entitlements).map(([k, e]) => [k, e?.value]),
-    );
-  }
+  const { licensed, anchor, entitlements } = await deviceLicence(
+    db,
+    product.slug,
+    device,
+    now,
+  );
 
   let quota: SyncQuota;
   let tierId: string | null = null;

@@ -213,7 +213,7 @@ product-declared companion apps. Enforced in review; detail: `docs/PRIVACY.md`.
 
 <a id="rule-8"></a>**8. Identifiers are Polaris Key.** Packages `@polaris-key/*`, PyPI
 `polaris-key`, SwiftPM `PolarisKey`, CLI `pkey`, manifest dir `.pkey/`, tokens `pkey_` (license),
-`pkeyt_` (device), `pkeyci_` (CI), `pkeyr_` (registry), `pkeya_` (admin API), `pkeyp_` (personal),
+`pkeyt_` (device), `pkeyci_` (CI), `pkeyr_` (registry), `pkeyrt_` (relay ticket), `pkeya_` (admin API), `pkeyp_` (personal),
 headers `X-PKey-*`, env `PKEY_CONFIG_*`, issuer `key.plrs.im`. The Polaris Locker brand renames none
 of them. The `@plrs` / `polaris-suite` / `.polaris/` naming is dead (Amendment A1): read
 `docs/superpowers/`'s spec closeout, not its plans. Enforced in review.

@@ -85,6 +85,22 @@
       "title": "Demasiados dispositivos",
       "message": "Esta cuenta tiene más dispositivos vinculados de los que se pueden conectar. Quita uno e inténtalo de nuevo."
     },
+    "relay_disabled": {
+      "title": "Conexión remota desactivada",
+      "message": "La conexión remota está desactivada para esta app. Tus dispositivos se conectan solo en la misma red."
+    },
+    "relay_paused": {
+      "title": "Conexión remota en pausa",
+      "message": "La conexión remota está en pausa por ahora. Inténtalo más tarde."
+    },
+    "relay_quota_exceeded": {
+      "title": "Límite remoto alcanzado",
+      "message": "Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose."
+    },
+    "relay_ticket_invalid": {
+      "title": "Conexión caducada",
+      "message": "La solicitud de conexión caducó. Inténtalo de nuevo."
+    },
     "key_entry_limit": {
       "title": "No quedan usos de la clave",
       "message": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar."

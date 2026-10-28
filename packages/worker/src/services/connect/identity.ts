@@ -34,6 +34,7 @@ import {
   accountDeviceListing,
   getDeviceKeys,
 } from "../../core/devices/keys.js";
+import type { DeviceRow } from "../../core/repo.js";
 import { knownPlatform } from "../../core/devices/platformFamily.js";
 import { resolveSyncPrincipal } from "../../core/accounts/accountSubjects.js";
 import { ErrorCode, json, wireError } from "../../core/errors.js";
@@ -50,8 +51,10 @@ import {
 } from "./ring.js";
 import { MAX_RING_DEVICES } from "@polaris-key/protocol/connect";
 
-interface Caller {
+export interface Caller {
   deviceId: string;
+  /** The device's row (its licence and token hash are what the relay quota reads). */
+  device: DeviceRow;
   subject: string;
   seatsHeld: boolean;
 }
@@ -64,7 +67,9 @@ async function signInRequired(ctx: ServiceContext): Promise<Response> {
   return json({ error: { code, message, signInUrl } }, { status: 403 });
 }
 
-async function authenticate(ctx: ServiceContext): Promise<Caller | Response> {
+export async function authenticate(
+  ctx: ServiceContext,
+): Promise<Caller | Response> {
   const { req, env, db, product, now } = ctx;
   const valid = await validateDeviceToken(env, db, product, bearer(req), now);
   if ("error" in valid) return wireError(401, ErrorCode.Unauthorized);
@@ -81,7 +86,12 @@ async function authenticate(ctx: ServiceContext): Promise<Caller | Response> {
     return signInRequired(ctx);
   if (!(await getDeviceKeys(db, product.slug, header)))
     return wireError(409, ErrorCode.DeviceKeysRequired);
-  return { deviceId: header, subject: principal.subject, seatsHeld };
+  return {
+    deviceId: header,
+    device: valid.device,
+    subject: principal.subject,
+    seatsHeld,
+  };
 }
 
 const NO_STORE = { "cache-control": "no-store" } as const;

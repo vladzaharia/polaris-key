@@ -2008,6 +2008,22 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_message">Esta conta tem mais dispositivos vinculados do que é possível conectar. Remova um e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_disabled_title">Conexão remota desativada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_disabled_message">A conexão remota está desativada para este app. Seus dispositivos se conectam apenas na mesma rede.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_paused_title">Conexão remota em pausa</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_paused_message">A conexão remota está em pausa por enquanto. Tente novamente mais tarde.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_quota_exceeded_title">Limite remoto atingido</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_quota_exceeded_message">O limite de conexão remota acabou. Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_ticket_invalid_title">Conexão expirada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_relay_ticket_invalid_message">O pedido de conexão expirou. Tente novamente.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">Nenhum uso restante da chave</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso.</string>

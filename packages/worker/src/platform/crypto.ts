@@ -26,6 +26,19 @@ export function mintDeviceToken(): string {
   return `${DEVICE_TOKEN_PREFIX}${randomToken(32)}`;
 }
 
+/** The relay-ticket prefix (WIRE-CONTRACT-V5 §15.7, §8): `r` for relay. */
+export const RELAY_TICKET_PREFIX = "pkeyrt_";
+
+/** A relay ticket: `pkeyrt_` + 32 base64url chars (192 bits), single use, valid 60 s (V5 §8). */
+export function mintRelayTicket(): string {
+  return `${RELAY_TICKET_PREFIX}${randomToken(24)}`;
+}
+
+/** Shape gate for a presented relay ticket, checked before the hash and the store lookup. */
+export function isRelayTicket(token: string): boolean {
+  return /^pkeyrt_[A-Za-z0-9_-]{32}$/.test(token);
+}
+
 /**
  * Shape gate for a presented device token.
  *

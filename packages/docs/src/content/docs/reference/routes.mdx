@@ -117,6 +117,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/config/schema` | config | The public config catalog |
 | GET | `/{product}/connect/devices` | connect | The person's linked devices, for display (CC-06.1) |
 | GET | `/{product}/connect/identity` | connect | The device's roster, certificate and discovery keys (CC-06.1) |
+| POST | `/{product}/connect/relay/ticket` | connect | A single-use ticket to open a relay socket (CC-07.3) |
+| GET | `/{product}/connect/relay` | connect | Open the person's relay socket (WebSocket upgrade, CC-07.3) |
 | GET | `/{product}/.well-known/jwks.json` | core | Product signing keys (JWKS) |
 | GET | `/{product}/.well-known/polaris-trust.jws` | core | Signed trust manifest (pkey-trust+jws) |
 | GET | `/{product}/.well-known/polaris.json` | core | Product discovery document |

@@ -108,9 +108,9 @@ tags:
   - name: connect
     description: >
       Cloud Connect (CC-06; WIRE-CONTRACT-V5 §15): the roster and certificate of a signed-in
-      person's devices and the discovery key. Unsigned JSON device routes under
-      `/{product}/connect`, bearer only, no cookie, readable from a listed `web.origins` page. Off, or Identity off,
-      answers `404`.
+      person's devices and the discovery key, and the relay (CC-07). Unsigned JSON device routes under
+      `/{product}/connect`, bearer only, no cookie, readable from a listed `web.origins` page; the
+      relay socket takes a single-use ticket instead. Off, or Identity off, answers `404`.
   - name: registry
     description: >
       The registry host, `pkg.plrs.im` (F-02): package feeds for registry clients (npm, PyPI,
@@ -5429,7 +5429,7 @@ paths:
                 properties:
                   ok: { type: boolean, const: true }
                   token: { type: string }
-                  expiresAt: { type: integer, description: Epoch seconds. }
+                  expiresAt: { type: integer, description: "Epoch seconds." }
                   repository: { type: string, description: "`<owner>/<repo>`." }
         "400": { $ref: "#/components/responses/CiRefusal" }
         "401": { $ref: "#/components/responses/CiUnauthorized" }
@@ -5932,7 +5932,7 @@ paths:
                 required: [token, expiresAt, scopes]
                 properties:
                   token: { type: string, pattern: "^pkeyci_" }
-                  expiresAt: { type: integer, description: Epoch seconds. }
+                  expiresAt: { type: integer, description: "Epoch seconds." }
                   scopes: { type: array, items: { type: string } }
               examples:
                 issued:
@@ -9675,6 +9675,168 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/connect/relay/ticket:
+    post:
+      operationId: connectRelayTicket
+      tags: [connect]
+      summary: A single-use ticket to open a relay socket (CC-07.3)
+      description: >
+        WIRE-CONTRACT-V5 §15.7. The device's own credential only: `Authorization: Bearer pkeyt_…`
+        and `X-PKey-Device`. A browser WebSocket cannot send `Authorization`, so the bearer buys a
+        ticket that rides the `Sec-WebSocket-Protocol` list of `GET /{product}/connect/relay`.
+        The ticket is `pkeyrt_` and 32 base64url characters, valid for 60 seconds, usable once, and
+        bound to the product, the person and the device. Nothing in the body names a person. The
+        relay carries ciphertext it cannot read. Answers `404` while the relay is off on the
+        deployment. Refused in this order: `403 relay_disabled` (the product turned the relay
+        off), `503 relay_paused` (the deployment paused it; `Retry-After`), `429
+        relay_quota_exceeded` with `scope: product` (the month is spent) or `scope: person` (the
+        person's day is zero). The same credential and refusals as `connect/identity`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: X-PKey-Device
+          in: header
+          required: true
+          description: The device the bearer token belongs to.
+          schema: { type: string }
+      responses:
+        "200":
+          description: "`cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectRelayTicket" }
+              examples:
+                ticket:
+                  value:
+                    ticket: pkeyrt_dGlja2V0dGlja2V0dGlja2V0dGlja2V0
+                    url: wss://key.plrs.im/djdl/connect/relay
+                    protocol: pkey-relay.1
+                    expiresAt: 1761300060
+        "400":
+          description: "`bad_request`: `X-PKey-Device` is missing or malformed."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `account_required`: no account is signed in on the device (the body carries
+            `signInUrl`). `relay_disabled`: the product turned the relay off; devices connect only
+            on the same network.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+              examples:
+                disabled: { value: { error: { code: relay_disabled } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: >
+            `device_keys_required`: the device has registered no keys, or its keys are not in its
+            roster.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                required: { value: { error: { code: device_keys_required } } }
+        "429":
+          description: >
+            `relay_quota_exceeded`. `scope` is `person` or `product`. The local network is never
+            metered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectRelayQuotaExceeded" }
+              examples:
+                product:
+                  {
+                    value:
+                      { error: { code: relay_quota_exceeded }, scope: product },
+                  }
+        "503":
+          description: >
+            `relay_paused`: the deployment paused the relay. `Retry-After` is in seconds. Devices
+            on the same network are unaffected.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                paused: { value: { error: { code: relay_paused } } }
+    options:
+      operationId: preflightConnectRelayTicket
+      tags: [connect]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/connect/relay:
+    get:
+      operationId: connectRelay
+      tags: [connect]
+      summary: Open the person's relay socket (WebSocket upgrade, CC-07.3)
+      description: >
+        WIRE-CONTRACT-V5 §15.7. A WebSocket upgrade with `Sec-WebSocket-Protocol: pkey-relay.1,
+        pkeyrt_…`: the ticket from `POST /{product}/connect/relay/ticket`, which this request
+        consumes. The Worker checks the ticket, re-reads the person's devices, and hands the socket
+        to the person's relay room, which answers `pkey-relay.1`. The ticket value never reaches the
+        room. A missing, malformed, expired, spent or foreign ticket is `401 relay_ticket_invalid`
+        (no `Authorization` is read). Answers `404` while the relay is off on the deployment, and
+        the same `403`, `429` and `503` refusals as the ticket route. After the upgrade the room
+        closes with 4001 (bad ticket), 4003 (not a member), 4008 (limit) or 4009 (replaced).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: Upgrade
+          in: header
+          required: true
+          schema: { type: string, enum: [websocket] }
+        - name: Sec-WebSocket-Protocol
+          in: header
+          required: true
+          description: "`pkey-relay.1, pkeyrt_…`."
+          schema: { type: string }
+      responses:
+        "101":
+          description: "Switching protocols; `Sec-WebSocket-Protocol: pkey-relay.1`."
+        "401":
+          description: "`relay_ticket_invalid`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                invalid: { value: { error: { code: relay_ticket_invalid } } }
+        "403":
+          description: "`relay_disabled`: the product turned the relay off."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "426":
+          description: "`bad_request`: not a WebSocket upgrade."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: "`relay_quota_exceeded`. `scope` is `person` or `product`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectRelayQuotaExceeded" }
+        "503":
+          description: "`relay_paused`; `Retry-After` is in seconds."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
   /{product}/sync:
     get:
       operationId: syncPull
@@ -25681,7 +25843,7 @@ components:
           type: [string, "null"]
           description: The device's normalised label (§12.7.1), as reported by the device.
         userCode: { type: [string, "null"] }
-        expiresAt: { type: integer, description: Epoch seconds. }
+        expiresAt: { type: integer, description: "Epoch seconds." }
         purpose:
           type: string
           enum: [signin, attach]
@@ -27644,6 +27806,27 @@ components:
               platform: { type: [string, "null"] }
               lastSeen: { type: integer }
               self: { type: boolean }
+    ConnectRelayTicket:
+      type: object
+      required: [ticket, url, protocol, expiresAt]
+      properties:
+        ticket:
+          type: string
+          pattern: "^pkeyrt_[A-Za-z0-9_-]{32}$"
+          description: Single use; valid for 60 seconds.
+        url: { type: string, description: "The upgrade URL, `wss:`." }
+        protocol: { type: string, const: pkey-relay.1 }
+        expiresAt: { type: integer, description: "Epoch seconds." }
+    ConnectRelayQuotaExceeded:
+      type: object
+      required: [error, scope]
+      properties:
+        error:
+          type: object
+          required: [code]
+          properties:
+            code: { type: string, const: relay_quota_exceeded }
+        scope: { type: string, enum: [person, product] }
     ConnectFragment:
       description: >
         Cloud Connect's fragment (WIRE-CONTRACT-V5 §15.9). `{"enabled": false}` when off. When on,
@@ -28180,7 +28363,7 @@ components:
           type: string
           pattern: "^[A-Za-z0-9_-]{43}$"
           description: base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))
-        expiresAt: { type: integer, description: Epoch seconds. }
+        expiresAt: { type: integer, description: "Epoch seconds." }
         play:
           type: object
           required: [cloudProjectNumber]
@@ -28262,7 +28445,7 @@ components:
                 description: What a link would cover; `null` while that is not known before a token.
     LinkRequest:
       description: >
-        A `linkHandle` (`lh_` and 43 base64url characters), or a token of the app's own with the
+        A `linkHandle` (`lh_` and 32 base64url characters), or a token of the app's own with the
         nonce and keys of §12.11.2. `proof` is a `pkey-proof/1` signature of purpose `link`.
       oneOf:
         - type: object
@@ -28638,7 +28821,7 @@ components:
       type: object
       description: >
         I-08b (§12.5.1): `token`'s `200` when `license_choice=app` and a choice is due. The grant
-        is `sg_` and 43 base64url characters, 300 s, bound to the redeeming device.
+        is `sg_` and 32 base64url characters, 300 s, bound to the redeeming device.
       required: [status, grant, expiresIn, choices]
       additionalProperties: false
       properties:

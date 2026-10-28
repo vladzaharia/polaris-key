@@ -42,6 +42,8 @@ export interface PlatformValues {
   "email.dailyCapDefault": number;
   "cloudSync.quota.defaultBytes": number;
   "cloudSync.writesPaused": "on" | "off";
+  "cloudConnect.relayPaused": "on" | "off";
+  "cloudConnect.quota.defaultRelayBytes": number;
   "launch.identityExchange": "on" | "off";
   "launch.connect": "on" | "off";
   "launch.syncE2e": "on" | "off";

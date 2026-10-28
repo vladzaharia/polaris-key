@@ -1,0 +1,154 @@
+{
+  "transcriptVersion": 1,
+  "id": "connect-relay-quota",
+  "description": "The relay refusals (WIRE-CONTRACT-V5 §15.7), in their order. The product turned its relay off: 403 relay_disabled. The deployment paused the relay: 503 relay_paused with Retry-After. The product's month of relay bytes is spent: 429 relay_quota_exceeded with scope product. The local network is never metered, so none of these touches a LAN connection.",
+  "features": ["connect.relay"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_SvjvFDlNWjfGFe6_XdnBmFDqHnelgjQAfE-zW2XIqWc",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "relayTicket",
+      "note": "The product turned the relay off.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/connect/relay/ticket",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 403,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "relay_disabled" } }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 403, "code": "relay_disabled" }
+    },
+    {
+      "action": "relayTicket",
+      "note": "The deployment paused the relay.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/connect/relay/ticket",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 503,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json",
+                "retry-after": "300"
+              },
+              "body": { "error": { "code": "relay_paused" } }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 503,
+        "code": "relay_paused",
+        "retryAfter": 300
+      }
+    },
+    {
+      "action": "relayTicket",
+      "note": "The month is spent.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/connect/relay/ticket",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 429,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": { "code": "relay_quota_exceeded" },
+                "scope": "product"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 429,
+        "code": "relay_quota_exceeded",
+        "scope": "product"
+      }
+    }
+  ]
+}

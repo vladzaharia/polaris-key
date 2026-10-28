@@ -563,7 +563,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     confirm: { on: "L2", off: "L1" },
     storage: { kind: "scalar" },
     since: "CC-02.2",
-    pending: { wp: "CC-07" },
+    readers: ["services/connect/relay/access.ts"],
   }),
   // The relay bytes a person gets per UTC day when no tier, licence override or add-on sets
   // `pkey.cloudConnect.relayBytes`. Clamped to the per-person ceiling. One write reaches every
@@ -597,7 +597,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     confirm: { up: "L2", down: "L2" },
     storage: { kind: "scalar" },
     since: "CC-02.2",
-    pending: { wp: "CC-07" },
+    readers: ["services/connect/relay/access.ts"],
   }),
 
   // ── Email and alerts (ST-09; I-18) ──────────────────────────────────────────────────────
