@@ -55,6 +55,8 @@ import {
   type NodeDeviceKeyStorage,
 } from "../devices/deviceKeys.js";
 import type { ProductDiscoveryDocument } from "../discovery.js";
+import { LanService, type LanOptions, type LanSource } from "./lan.js";
+import { LanError } from "./session.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -251,6 +253,55 @@ export class ConnectClient {
           : null;
       return { current: discKeyBytes(held.discKeys[0]!), previous: prev };
     });
+  }
+
+  /**
+   * Start the LAN half (CC-08.2): listen on TCP, advertise this device under the account
+   * instance name, browse for the person's other devices. Needs a held identity (`identity()`
+   * first); throws `LanError` (`no_identity`, `no_keys`) without one. Stop it with `stop()`.
+   */
+  async lan(opts: LanOptions = {}): Promise<LanService> {
+    return LanService.start(this.lanSource(), opts);
+  }
+
+  /** What the LAN service reads: the held identity, K_disc and the device's key operations. @internal */
+  lanSource(): LanSource {
+    return {
+      now: () => this.ctx.now(),
+      refresh: async () => {
+        await this.identity({ refresh: true });
+      },
+      load: async () => {
+        const id = await this.current();
+        if (id === null)
+          throw new LanError(
+            "no_identity",
+            "No Cloud Connect identity is held; call identity() first.",
+          );
+        const keys = await this.discoveryKeys();
+        const port = this.#port;
+        const pub = port === null ? null : await port.publicKeys();
+        if (keys === null || port === null || pub === null)
+          throw new LanError(
+            "no_keys",
+            "The device keys or K_disc are not held.",
+          );
+        return {
+          slug: this.ctx.product,
+          trust: this.deps.trust(),
+          sub: id.sub,
+          deviceId: id.deviceId,
+          certJws: id.certificate,
+          certExpiresAt: id.certificateExpiresAt,
+          ringJws: id.ring,
+          ringEpoch: id.epoch,
+          roster: id.devices.map((d) => d.deviceId),
+          keys,
+          agreePublic: base64UrlDecode(pub.agreeKey),
+          dh: (p) => port.dh(p),
+        };
+      },
+    };
   }
 
   /** Forget the held roster, certificate and K_disc (sign-out, leaving the person's devices).

@@ -478,8 +478,8 @@
       "note": "client-core's peer/ codecs (advert, sas, frame, record, relay, payload) and the PeerChannel session machine for modes a, v and p, which the Node SDK consumes directly; the Node runner drives every peer-matrix.json section (CC-05.4). LAN sockets, the relay client and the cloudConnect API follow in CC-08."
     },
     "connect.lan": {
-      "status": "planned",
-      "wp": "CC-08"
+      "status": "implemented",
+      "note": "client.connect.lan() (packages/sdk-node/src/connect, CC-08.2): LanService listens on TCP (random port, bounded unauthenticated sockets, a handshake deadline, frames over 16 KiB refused before the handshake), advertises the account instance name on the epoch timer through an MdnsAdapter (multicast-dns 7.2.5, optional, behind an interface; adverts that do not verify against the roster, K_disc and two epochs are dropped; non-LAN addresses are never dialled) and dials with client-core's PeerChannel (Noise XXpsk0, certificate and roster admission, HELLO, MORE reassembly to 1 MiB, rekey). The device's X25519 key stays behind DeviceKeyPort.dh. ConnectSession gives send, receive, onMessage, onClose and close with typed LanError reasons. test/lan.e2e.test.ts and test/connectMdns.test.ts (@pkey-feature connect.lan). Not yet: the relay fallback and the cloudConnect facade (CC-08.3)."
     },
     "connect.relay": {
       "status": "planned",
