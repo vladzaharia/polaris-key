@@ -22,6 +22,15 @@ internal val KID_BYTE_ORDER: Comparator<String> = Comparator { a, b ->
     x.size - y.size
 }
 
+/** Why [CoreContext.acceptPeer] refused a pushed manifest: it does not verify. */
+public const val PEER_TRUST_INVALID: String = "invalid"
+
+/** Why [CoreContext.acceptPeer] refused a pushed manifest: it is not newer than the one held. */
+public const val PEER_TRUST_NOT_NEWER: String = "not_newer"
+
+/** What [CoreContext.acceptPeer] answers: applied, or the refusal [reason]. Carries no key material. */
+public data class PeerTrustResult(val applied: Boolean, val reason: String? = null)
+
 /** The statuses that keep a manifest key: an exact, case-sensitive allow-list (§1). */
 private val LIVE_STATUSES = setOf("active", "staged", "retired")
 
