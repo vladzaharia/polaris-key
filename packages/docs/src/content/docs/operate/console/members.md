@@ -20,7 +20,8 @@ Choose **Invite people**, add one or more email addresses (up to 20 at a time), 
 for a Product admin choose the product (or all products) and the areas. The drawer shows what happens
 before you send: who is told, and when the invite expires.
 
-- You can give a role only if you could take it back. A Product admin gives Product admin on their
+- You can give a role only if you could take it back, except that Console access is taken back by a
+  Platform admin or a Superadmin. A Product admin gives Product admin on their
   own product, up to the areas they hold. A Platform admin gives Console access. Only a Superadmin
   gives Superadmin, Platform admin or Product admin on all products.
 - You cannot give yourself a role, or invite an address that belongs to your own account.

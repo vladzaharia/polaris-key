@@ -108,7 +108,7 @@ Corrections recorded by slice 31.18 (code is the fact):
 - `operate/console/members` is built and links to `reference/roles`, not back: `reference/roles` is public and the docs link-tier rule (`check:links`) refuses a public page linking an admin page, so the brief's "linked from `reference/roles`" is met in the other direction. `platform-members` and `settings-members` in `console/nav.ts` point at it; `lib/docsLinks.ts` has no members entry, so only the nav table changed.
 - 404-before-403 is closed: ST-31.8 answers an unknown `/products/:slug/*` slug with the same 403 as an unreachable real product. The ST-31.5 THREAT-MODEL line calling it "older behaviour, unchanged" was stale and is corrected.
 - The roster "list is cut" hint exists in `platformMembers.tsx` and `SettingsMembers.tsx` (`truncated`/`incomplete` callout). `useListCap.ts` is a different thing (show five more rows) and is not used by Members.
-- SM-6 and SM-7 move to ST-31b (lead decision Q8, registered separately). Conversion rule 5 already enforces the operator-connection requirement for platform roles; the docs page states only that.
+- SM-6 and SM-7 invite rules are built (`inviteBootstrapAllowed` in conversion, the passkey `via` in `console/passkeySignin.ts`). Only what the lead assigns to ST-31b (to be registered by the lead, Q8) is deferred: any further SM-6/SM-7 work beyond the built passkey and operator-connection conversion rules, and an ASCII check on the passkey path's verified address (SEC-ST31F S1).
 - "Sign out everywhere" and SSO rules are left to ST-34.13 and ST-32.9.
 
 ## UX coverage (2026-10-09)
