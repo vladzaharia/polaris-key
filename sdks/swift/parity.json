@@ -455,6 +455,10 @@
       "status": "planned",
       "wp": "U-23"
     },
+    "sync.keyring": {
+      "status": "planned",
+      "wp": "U-39"
+    },
     "connect.identity": {
       "status": "planned",
       "wp": "CC-11"

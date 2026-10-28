@@ -865,6 +865,7 @@ class Feature:
     SYNC_SETTINGS: Final = "sync.settings"
     SYNC_CONFLICT: Final = "sync.conflict"
     SYNC_SAVES: Final = "sync.saves"
+    SYNC_KEYRING: Final = "sync.keyring"
     CONNECT_IDENTITY: Final = "connect.identity"
     CONNECT_NOISE: Final = "connect.noise"
     CONNECT_PROTOCOL: Final = "connect.protocol"
@@ -993,6 +994,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "sync.settings",
     "sync.conflict",
     "sync.saves",
+    "sync.keyring",
     "connect.identity",
     "connect.noise",
     "connect.protocol",
@@ -2382,6 +2384,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.settings": CapabilityRow("planned", "sync", ()),
         "sync.conflict": CapabilityRow("planned", "sync", ()),
         "sync.saves": CapabilityRow("planned", "sync", ()),
+        "sync.keyring": CapabilityRow("planned", "sync", ()),
         "connect.identity": CapabilityRow("planned", "connect", ()),
         "connect.noise": CapabilityRow("planned", "connect", ()),
         "connect.protocol": CapabilityRow("planned", "connect", ()),
@@ -2475,4 +2478,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "91ca0d05a2012ccc2c2795fb394531b9f55eebf150700409193b7dd1d121f69a"
+CAPABILITY_DIGEST: Final[str] = "05148313c8262834ef5dfa484d78039e9c62f9e7a99d7a69bf5ebe58b62f0be3"

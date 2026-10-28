@@ -8448,6 +8448,47 @@ it carries no quota or subject. Rows are S-17 §5.14's.
   carry no Cloud Sync data; a pull never returns an operator layer. `syncAccess` never widens access
   in `legacy` mode.
 
+### The key ring: T21 to T23 (U-36)
+
+The key ring (`/<p>/devices/keyring`, WIRE-CONTRACT-V5 §13.11.2) holds, per product and pairwise
+subject, a root wrapped to each device's key-agreement key, a sealed recovery blob and the previous
+ring after a reset. The Worker stores values it cannot open and checks their shapes and who may
+write; it never opens a wrap or a blob. Every route needs a live device token and a signed-in
+subject, and answers `404` unless the launch gate `launch.syncE2e` is on and a service needs the
+ring for the product. The routes are recorded in the `keyring-*` transcripts.
+
+- **T21, key substitution.** A hostile Worker could register a key-agreement key of its own, so a
+  wrap relayed through the server would go to that key. Controls: a wrap is created only for a
+  live device of the same subject that has registered keys, only for the ring's current epoch and
+  `kid`, and only by a device that holds the root (or by a device for itself). The wrap slot is
+  create-only. The clients add the rest: a wrap for another device is made only after a nearby
+  approval that shows R-3's commit-and-reveal code, in the verifying mode (R-9), or from the
+  recovery code or a platform backup; there is no remote approval; a held root is never replaced by
+  a served one; a wrap is opened only against the ring's `rootKid`. Residual: the server's device
+  directory is trusted for listing devices and nothing else, and a client that skips the nearby
+  step is not stopped by the server.
+- **T22, key loss.** With every device lost and neither a recovery code nor a platform backup, the
+  data cannot be recovered, by design. Start over (`POST .../reset`) creates a new ring, and the
+  replaced ring stays readable as `previous` for 30 days, so a device that still holds the old root
+  can adopt it; the nightly job then forgets it. Reset is open to any signed-in device of the
+  account that has registered keys, with or without a wrap, because the person who has lost every
+  root is the case it serves; it writes an audit row and sends a notice to the account. Help says
+  what a reset does and does not bring back.
+- **T23, recovery-code phishing.** The recovery blob is sealed under a code the server never sees,
+  and it is useful only with that code. The fetch (`GET .../recovery`) is open to any signed-in
+  device of the account, with no wrap, because the device that needs it holds none. Its brakes are
+  5 fetches a day per device (a sixth is `429 rate_limited`; a fetch with nothing to return counts),
+  an audit row written before the blob is served, and a notice to the account's verified addresses
+  that says no one will ask for the code. If no address can be delivered to, only a count-only audit
+  row remains. The copy in the apps says the code is entered only in the app and never on a web
+  page. Residual: a person who gives the code to a caller, with a stolen device token, gives the
+  data away; the brakes make that visible, they do not prevent it.
+
+Writing the recovery blob and adopting a root need a wrap (they seal with the root). The recovery
+and adoption blobs are held to the contract layout (61 bytes, version 1), so the routes cannot be
+used as free storage. Rows go with the device (wraps), the account or the product, as listed in
+`docs/PRIVACY.md`.
+
 ### The account override layer (U-03, U-27)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the

@@ -68,6 +68,7 @@ import {
 
 import { CHOICE_SCENARIOS } from "./choice.js";
 import { CLOUD_SYNC_SCENARIOS } from "./cloudSync.js";
+import { KEYRING_SCENARIOS } from "./keyring.js";
 import { LOCKER_SCENARIOS } from "./locker.js";
 import { EXCHANGE_SCENARIOS } from "./exchange.js";
 
@@ -121,4 +122,5 @@ export const SCENARIOS: Scenario[] = [
   ...LOCKER_SCENARIOS,
   ...EXCHANGE_SCENARIOS,
   ...CLOUD_SYNC_SCENARIOS,
+  ...KEYRING_SCENARIOS,
 ];
