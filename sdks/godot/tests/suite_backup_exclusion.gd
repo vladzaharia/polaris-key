@@ -86,6 +86,14 @@ func _ios(t: PKeyTestContext) -> void:
 	t.check("ios: asked once per directory", native.count("exclude_from_backup") == 1)
 	native.fail = true
 	t.check("ios: a failed call is reported, not thrown, and retried next time", not PKeyBackupExclusion.exclude(dir + "/b") and not PKeyBackupExclusion.exclude(dir + "/b") and native.count("exclude_from_backup") == 3)
+	native.fail = false
+	var StateScript := preload("res://addons/polaris_key/services/cloud_sync/state.gd")
+	var fresh := PKeyTestFixtures.scratch_dir("bx-ios-state")
+	var before: int = native.count("exclude_from_backup")
+	StateScript.new(fresh, PRODUCT, PKeyFakeSealer.new()).save({"persisted": {}})
+	t.check("ios: the sync state directory is excluded even when it already exists (S-3)", native.count("exclude_from_backup") == before + 1)
+	PKeyTestFixtures.remove_tree(fresh)
+	t.check("S-3: the host roots its state directory through PKeyBackupExclusion.root", FileAccess.get_file_as_string("res://addons/polaris_key/services/cloud_sync.gd").contains("PKeyBackupExclusion.root(opts.store_root)"))
 	PKeyBackupExclusion.reset_for_tests()
 	PKeyTestFixtures.remove_tree(dir)
 

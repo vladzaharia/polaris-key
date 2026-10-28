@@ -223,6 +223,7 @@ func _helpers(t: PKeyTestContext) -> void:
 	var v: Dictionary = j["value"]
 	t.check("loader: ints stay ints, 1.0 and 1e2 stay floats", j["ok"] and typeof(v["i"]) == TYPE_INT and typeof(v["f"]) == TYPE_FLOAT and typeof(v["e"]) == TYPE_FLOAT and typeof(v["a"][0]) == TYPE_INT and typeof(v["a"][1]) == TYPE_FLOAT)
 	t.check("loader: a number past 2^53 is not made an int, null is kept", typeof(v["big"]) == TYPE_FLOAT and v.has("n") and v["n"] == null)
+	t.check("loader: a \\u0000 escape in any string fails closed (S-2)", not Types.load_json_text('{"setting":"a\\u0000b"}')["ok"] and not Types.load_json_text('["a\\u0000"]')["ok"] and not Types.load_json_bytes('{"k":"x\\u0000"}'.to_utf8_buffer())["ok"] and Types.load_json_text('{"k":"a\\\\u0000b"}')["ok"])
 	t.check("loader: strict (trailing comma, duplicate key, leading zero)", not Types.load_json_text('{"a":1,}')["ok"] and not Types.load_json_text('{"a":1,"a":2}')["ok"] and not Types.load_json_text("[01]")["ok"])
 
 

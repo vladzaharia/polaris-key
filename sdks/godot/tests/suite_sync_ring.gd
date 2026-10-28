@@ -168,6 +168,17 @@ func _lifecycle(t: PKeyTestContext) -> void:
 	var f := await ring2.forget()
 	var st3 := await ring2.status()
 	t.check("ring: forget drops the root and the pin", f.ok and not ring2.unlocked() and st3.detail["pinned"] == null and not st3.detail["root_stored"])
+	# S-4: a sign-out has begun: no verb takes a root back before the sign-out call, and a verb in flight
+	# when `forget` runs cannot re-store it.
+	ring2.begin_sign_out()
+	var refused := await ring2.unlock()
+	t.check("ring: after begin_sign_out an unlock holds and stores nothing", not refused.ok and not ring2.unlocked() and a["vault"].read_root().detail == null and a["vault"].read_pin().detail == null, str(refused))
+	ring2.allow_holds()
+	var racing := func() -> void: await ring2.unlock()
+	racing.call()
+	await ring2.forget()
+	await PKeyTestFixtures.frames(3)
+	t.check("ring: a forget that overtakes an unlock leaves nothing held or stored", not ring2.unlocked() and a["vault"].read_root().detail == null and a["vault"].read_pin().detail == null)
 	# After forget the device opens its own wrap through the key store's dh and pins again.
 	var u2 := await ring2.unlock()
 	t.check("ring: unlock opens this device's own wrap", u2.ok and u2.detail["kind"] == "unlocked", str(u2))
@@ -440,7 +451,20 @@ func _vault_files(t: PKeyTestContext) -> void:
 	var un := other.read_root()
 	t.check("vault: another machine's id cannot open it (unreadable, never replaced)", not un.ok and un.code == PKeyDeviceKeyStore.KEYS_UNREADABLE)
 	t.check("vault: the pin is plain JSON with no secret", enc.write_pin({"ring_id": "rg_" + "A".repeat(22), "epoch": 1, "root_kid": kid.hex_encode()}).ok and enc.read_pin().detail["epoch"] == 1 and not _file_has(root.path_join(PRODUCT).path_join("sync-ring-pin.json"), secret))
+	# S-5: a crash between write and rename leaves a temporary sibling; clear sweeps it.
+	for stray in ["sync-root.tmp-abc123", "sync-ring-pin.json.tmp-def456", "sync-root.salt.tmp-0"]:
+		var sf := FileAccess.open(root.path_join(PRODUCT).path_join(stray), FileAccess.WRITE)
+		sf.store_string("x")
+		sf.close()
 	t.check("vault: clear removes both and a later read finds none", enc.clear().ok and enc.read_root().detail == null and enc.read_pin().detail == null)
+	var left := DirAccess.get_files_at(root.path_join(PRODUCT))
+	t.check("vault: clear sweeps the temporary siblings too", Array(left).filter(func(n: String) -> bool: return n.contains(".tmp-")).is_empty(), str(left))
+	# S-6: no sealer and no device id: the file key would rest on public inputs, so the root stays in memory.
+	var noid := PKeySyncRingVault.new(PRODUCT, _dir("noid"), false, true, null)
+	noid.sealer = null
+	noid.unique_id = ""
+	var wrote := noid.write_root("rg_" + "A".repeat(22), 1, kid, secret)
+	t.check("vault: with no sealer and no device id the root is kept in memory only", wrote.ok and noid.persistence() == "memory" and noid.protection() == "memory" and not FileAccess.file_exists(_dir("noid").path_join(PRODUCT).path_join("sync-root")) and noid.read_root().detail["root"] == secret)
 	# Native sealer.
 	var sealer := PKeyFakeSealer.new("keystore")
 	var sv := PKeySyncRingVault.new(PRODUCT, _dir("sealed"), false, true, sealer)

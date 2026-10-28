@@ -52,6 +52,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _sign_out_chain(t)
 	await _elsewhere_and_offers(t)
 	await _import_and_document(t)
+	await _quit_durability(t)
 	_licence_free(t)
 	await PKeyTestFixtures.frames(3)  # queued frees run before the next suite and the exit
 	return true
@@ -356,6 +357,40 @@ func _import_and_document(t: PKeyTestContext) -> void:
 	var before: Object = host.machine()
 	var r: PKeyResult = sdk.config.set_value(KEY, 6)
 	t.check("A-6: the machine is rebuilt (locked list current) before a set after a document refresh", r.ok and not host._rebuild_wanted and host.machine() != before)
+	_done(c)
+
+
+func _pending_values(host: Node) -> Array:
+	var out: Array = []
+	var persisted: Variant = host._file.load_file()["persisted"]
+	if persisted is Dictionary:
+		for name in persisted["partitions"]:
+			for op: Dictionary in persisted["partitions"][name]["pending"]:
+				out.append(op.get("value"))
+	return out
+
+
+## S-1: an edit inside the debounce window survives quit: the close and pause notifications, and
+## leaving the tree, save before they await anything.
+func _quit_durability(t: PKeyTestContext) -> void:
+	var log := []
+	var version := [0]
+	var c := await _make(_handler(log, version))
+	var sdk: Node = c["sdk"]
+	await _sign_in(c, "ps_a")
+	var host: Node = sdk.cloud_sync.host
+	sdk.config.set_value(KEY, 11)
+	t.check("S-1 setup: the edit is only a draft, nothing saved holds it", not _pending_values(host).has(11))
+	host.notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
+	t.check("S-1: a close request saves the debounced edit before any await", _pending_values(host).has(11), str(_pending_values(host)))
+	sdk.config.set_value(KEY, 12)
+	host.notification(Node.NOTIFICATION_APPLICATION_PAUSED)
+	t.check("S-1: a pause saves the debounced edit before any await", _pending_values(host).has(12))
+	sdk.config.set_value(KEY, 13)
+	host.get_parent().remove_child(host)
+	t.check("S-1: leaving the tree saves the debounced edit", _pending_values(host).has(13))
+	host.queue_free()
+	sdk.cloud_sync.host = null
 	_done(c)
 
 

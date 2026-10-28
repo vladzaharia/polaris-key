@@ -154,6 +154,10 @@ static func json_equal(a: Variant, b: Variant) -> bool:
 ## Strict-parse JSON text (U-40.1's parser: never `JSON.parse_string`) and restore integer
 ## types. `{"ok": true, "value": v}` or `{"ok": false, "error": why}`.
 static func load_json_text(text: String) -> Dictionary:
+	# A real `\u0000` escape in any string would read as U+FFFD (a GDScript String cannot hold NUL), so
+	# a name that holds one would collide with a different name. The Worker never sends one: fail closed.
+	if JsonStrict.nul_as_fffd(text) != text:
+		return {"ok": false, "error": "a \\u0000 escape in a string"}
 	var parsed := JsonStrict.parse(text)
 	if not parsed["ok"]:
 		return {"ok": false, "error": parsed["error"]}
@@ -163,6 +167,8 @@ static func load_json_text(text: String) -> Dictionary:
 
 ## As `load_json_text`, for UTF-8 bytes (a served body): ill-formed UTF-8, a BOM and a raw NUL are refused.
 static func load_json_bytes(bytes: PackedByteArray) -> Dictionary:
+	if JsonStrict.nul_as_fffd(bytes.get_string_from_utf8()) != bytes.get_string_from_utf8():
+		return {"ok": false, "error": "a \\u0000 escape in a string"}
 	var parsed := JsonStrict.parse_bytes(bytes)
 	if not parsed["ok"]:
 		return {"ok": false, "error": parsed["error"]}

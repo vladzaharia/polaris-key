@@ -94,6 +94,8 @@ func load_file() -> Dictionary:
 ## Seal and write the file. False on any failure (failing to persist never fails the call that
 ## produced it; the host logs a static string).
 func save(file: Dictionary) -> bool:
+	if sealer == null and unique_id == "":
+		return false  # nothing to seal with: no journal is written (S-6)
 	if not _ensure_dir():
 		return false
 	var plain := JSON.stringify(file, "", false).to_utf8_buffer()
@@ -146,6 +148,14 @@ func remove() -> bool:
 			if name.begins_with(FILE + ".tmp-"):
 				DirAccess.remove_absolute(dir.path_join(name))
 	return ok
+
+
+## "sealed" (a native sealer), "encrypted-file" (the engine's, keyed to this device) or "none" (no
+## sealer and no device id: the journal is not written).
+func protection() -> String:
+	if sealer != null:
+		return "sealed"
+	return "encrypted-file" if unique_id != "" else "none"
 
 
 func imported() -> bool:
@@ -219,7 +229,8 @@ func _ensure_dir() -> bool:
 			return false
 		if _unix():
 			FileAccess.set_unix_permissions(dir, _OWNER_RWX)
-		PKeyBackupExclusion.exclude(dir)
+	# Every time (it asks the platform once per directory): the directory usually exists already.
+	PKeyBackupExclusion.exclude(dir)
 	return true
 
 

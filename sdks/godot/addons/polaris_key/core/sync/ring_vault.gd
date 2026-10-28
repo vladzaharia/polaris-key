@@ -62,11 +62,17 @@ func _to_string() -> String:
 
 ## "durable" survives a restart, "memory" dies with the process.
 func persistence() -> String:
-	if _memory or not _root_ok:
+	if _memory or not _root_ok or _no_seal_possible():
 		return "memory"
 	if OS.has_feature("web") and not OS.is_userfs_persistent():
 		return "memory"
 	return "durable"
+
+
+## No native sealer and no device id: the engine-encrypted file would be keyed by public inputs only
+## (the product and a salt beside it), which is plaintext in effect. The root stays in memory (S-6).
+func _no_seal_possible() -> bool:
+	return sealer == null and _encrypted and unique_id == ""
 
 
 func protection() -> String:
@@ -139,6 +145,15 @@ func clear() -> PKeyResult:
 			var err := DirAccess.remove_absolute(p)
 			if err != OK:
 				return PKeyResult.failure(PKeyDeviceKeyStore.STORE_FAULT, "sync ring: could not remove a record (%d)" % err)
+	# A crash between write and rename leaves a temporary sibling; it holds the root too (S-5).
+	var d := DirAccess.open(dir)
+	if d != null:
+		for name in d.get_files():
+			for f in [PIN_FILE, ROOT_FILE, SALT_FILE]:
+				if name.begins_with(f + ".tmp-"):
+					var terr := DirAccess.remove_absolute(dir.path_join(name))
+					if terr != OK:
+						return PKeyResult.failure(PKeyDeviceKeyStore.STORE_FAULT, "sync ring: could not remove a record (%d)" % terr)
 	return PKeyResult.success()
 
 
@@ -160,7 +175,7 @@ func _seal_context() -> PackedByteArray:
 
 
 func _store_root(rec: PackedByteArray) -> PKeyResult:
-	if _memory or not _root_ok:
+	if _memory or not _root_ok or _no_seal_possible():
 		_mem_root = rec.duplicate()
 		return PKeyResult.success()
 	var bytes := rec
@@ -175,7 +190,7 @@ func _store_root(rec: PackedByteArray) -> PKeyResult:
 
 
 func _read_root_bytes() -> PKeyResult:
-	if _memory or not _root_ok:
+	if _memory or not _root_ok or _no_seal_possible():
 		return PKeyResult.success(_mem_root.duplicate() if not _mem_root.is_empty() else null)
 	var path := dir.path_join(ROOT_FILE)
 	if not FileAccess.file_exists(path):

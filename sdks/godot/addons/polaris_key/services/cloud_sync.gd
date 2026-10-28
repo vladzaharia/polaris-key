@@ -92,7 +92,7 @@ func bind(p_core: PKeyCore, sdk: Node, p_config: PKeyConfig, p_keyring: Object, 
 		codec = PKeySyncHostCodec.new(p_keyring) if p_keyring is PKeySyncRing else CodecPort.new()
 	host.configure({
 		"product": p_core.product,
-		"state_dir": opts.store_root.path_join(p_core.storage_namespace),
+		"state_dir": PKeyBackupExclusion.root(opts.store_root).path_join(p_core.storage_namespace),
 		"sealer": sealer,
 		"codec": codec,
 		"enabled": func() -> bool: return p_core.enabled("sync"),
@@ -122,8 +122,10 @@ func status() -> PKeyResult:
 	if refused != null:
 		return refused
 	if host == null or not host.is_started():
-		return PKeyResult.success({"state": "local", "pending": 0})
-	return PKeyResult.success(host.machine().status())
+		return PKeyResult.success({"state": "local", "pending": 0, "protection": host.state_protection() if host != null else "none"})
+	var out: Dictionary = host.machine().status()
+	out["protection"] = host.state_protection()
+	return PKeyResult.success(out)
 
 
 ## Send what is waiting now (bounded by the sign-out flush window), save the journal and answer the
@@ -176,6 +178,8 @@ func attach() -> void:
 
 ## An identity change (`signedIn`, `signedOut`, `subjectChanged`): queued, handled in order.
 func on_identity(kind: String, subject: String, _previous: String = "") -> void:
+	if kind != "signedOut":
+		_allow_ring_holds()
 	_enqueue(func() -> void: await _on_identity(kind, subject))
 
 
@@ -215,6 +219,8 @@ func before_sign_out() -> PKeyResult:
 	_forgot = false
 	_forget_error = null
 	_in_sign_out = true
+	if _keyring != null and _keyring.has_method("begin_sign_out"):
+		_keyring.begin_sign_out()
 	if host != null and host.is_started() and _subject != null:
 		var m: Object = host.machine()
 		if m.subject() != null:
@@ -228,9 +234,15 @@ func before_sign_out() -> PKeyResult:
 		await _forget()
 	_in_sign_out = false
 	if _forget_error != null:
+		_allow_ring_holds()
 		return _forget_error
 	_subject = null
 	return PKeyResult.success()
+
+
+func _allow_ring_holds() -> void:
+	if _keyring != null and _keyring.has_method("allow_holds"):
+		_keyring.allow_holds()
 
 
 func close() -> void:
@@ -431,7 +443,7 @@ static func safe_sign_in_url(url: Variant, base_url: String) -> Variant:
 	if s.begins_with("/"):
 		if s.begins_with("//") or s.contains("\\"):
 			return null
-		resolved = base["origin"] + s if false else PKeyTransport.resolve(base_url, s)
+		resolved = PKeyTransport.resolve(base_url, s)
 	var u := PKeyTransport.parse_url(resolved)
 	if u.is_empty() or u["scheme"] != "https" or u["origin"] != base["origin"]:
 		return null
