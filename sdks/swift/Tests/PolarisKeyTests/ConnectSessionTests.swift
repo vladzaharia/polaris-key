@@ -148,7 +148,56 @@ private func eventually(_ what: String = "", _ cond: @escaping () -> Bool) async
     XCTAssertTrue(cond(), what)
 }
 
+/// A pipe that stops taking writes once told to: the peer that never reads (S5).
+private final class StallPipe: PeerBytePipe, @unchecked Sendable {
+    let inner: MemPipe
+    let stalled = LockedValue(false)
+    private let gate = LockedValue<[CheckedContinuation<Void, Never>]>([])
+    init(_ inner: MemPipe) { self.inner = inner }
+    var remoteAddress: String { inner.remoteAddress }
+    func read() async throws -> Data? { try await inner.read() }
+    func write(_ bytes: Data) async throws {
+        if stalled.current {
+            await withCheckedContinuation { c in gate.with { $0.append(c) } }
+            throw CancellationError()
+        }
+        try await inner.write(bytes)
+    }
+    func close() async {
+        await inner.close()
+        let w = gate.with { g -> [CheckedContinuation<Void, Never>] in let x = g; g = []; return x }
+        for c in w { c.resume() }
+    }
+}
+
 final class ConnectSessionTests: XCTestCase {
+    func testAPeerThatNeverReadsIsClosedWithPeerBusyAtTheWriteCap() async throws {
+        let (pa, pb) = MemPipe.pair()
+        let stall = StallPipe(pa)
+        let k = rnd()
+        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let ha = ConnectSessionHandlers(role: "initiator")
+        let hb = ConnectSessionHandlers(role: "responder")
+        let la = try await PeerLink.make(pipe: stall, options: options(.initiator, A, [k]), handlers: ha.handlers)
+        let lb = try await PeerLink.make(pipe: pb, options: options(.responder, B, [k]), handlers: hb.handlers)
+        ha.attach(la)
+        hb.attach(lb)
+        Task { await la.run() }
+        Task { await lb.run() }
+        await la.start()
+        async let sa = ha.opened(la)
+        async let sb = hb.opened(lb)
+        let (a, _) = try await (sa, sb)
+        stall.stalled.set(true)
+        let chunk = Data(repeating: 1, count: 60_000)
+        for _ in 0..<200 {
+            if a.closed != nil { break }
+            try? await a.send(chunk)
+        }
+        for _ in 0..<200 where a.closed == nil { try? await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertEqual(a.closed?.code, "peer_busy")
+    }
+
     // MARK: Two devices
 
     func testTwoDevicesOpenASessionExchangeMessagesAndClose() async throws {
@@ -483,24 +532,42 @@ final class ConnectSessionTests: XCTestCase {
             ])
     }
 
-    func testAtMostEightDocumentsWaitAndADuplicateIsBusy() async {
+    func testAtMostEightDocumentsWaitOneSlotIsKeptForRingAndBusyIsReportedOncePerSecond() async {
         let gate = LockedValue(false)
         let trustFn: @Sendable (String) async -> PeerTrustResult = { _ in
             while !gate.current { try? await Task.sleep(nanoseconds: 5_000_000) }
             return PeerTrustResult(applied: true, reason: nil)
         }
+        let ringFn: @Sendable (String) async -> RingAdoption = { _ in RingAdoption(stored: true, epoch: 2, reason: nil) }
         let notices = LockedValue<[ConnectNotice]>([])
-        let d = ConnectPeerDocs(source: ConnectPeerDocsSource(now: { 0 }, applyTrust: trustFn))
+        let d = ConnectPeerDocs(source: ConnectPeerDocsSource(now: { 0 }, adoptRing: ringFn, applyTrust: trustFn))
         d.onNotice { n in notices.with { $0.append(n) } }
         for i in 0..<10 { d.trust("doc\(i)") }
         d.trust("doc1")
-        XCTAssertEqual(notices.current.filter { $0.reason == "busy" }.count, 3, "two over the cap, one duplicate")
+        // 7 TRUST wait; the 8th slot is RING's. The three refused (two over, one duplicate) are one notice.
+        XCTAssertEqual(notices.current.filter { $0.reason == "busy" }.count, 1, "busy is reported once a second")
+        d.ring("roster")  // takes the reserved slot
+        XCTAssertEqual(notices.current.filter { $0.reason == "busy" }.count, 1)
         gate.set(true)
         await d.drain()
-        XCTAssertEqual(notices.current.filter { $0.outcome == "applied" }.count, connectMaxDocsQueued)
+        XCTAssertEqual(notices.current.filter { $0.type == "trust" && $0.outcome == "applied" }.count, connectMaxDocsQueued - 1)
+        XCTAssertEqual(notices.current.filter { $0.type == "ring" && $0.outcome == "stored" }.count, 1)
         d.trust("doc9")  // the slots are free again
         await d.drain()
-        XCTAssertEqual(notices.current.filter { $0.outcome == "applied" }.count, connectMaxDocsQueued + 1)
+        XCTAssertEqual(notices.current.filter { $0.type == "trust" && $0.outcome == "applied" }.count, connectMaxDocsQueued)
+    }
+
+    func testCloseStopsQueuedJobsAndLateRefreshes() async {
+        let c = Calls()
+        let d = docs(c)
+        let before = c.refreshes.current
+        d.close()
+        d.wantRing()
+        d.ring("late")
+        d.trust("late")
+        await d.drain()
+        XCTAssertEqual(c.refreshes.current, before, "no refresh after close")
+        XCTAssertEqual(c.notices.current, [], "no document is worked on after close")
     }
 
     func testARefreshRunsAtMostOnceAMinuteAndAFailureRetries() async {
