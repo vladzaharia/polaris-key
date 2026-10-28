@@ -26,11 +26,18 @@
 // during a pump sets `again` and returns; the pump runs once more. The machine is not `Sendable` and
 // never leaves this actor. No value, root or key material is logged, put in an error or printed.
 //
-// Not here yet (U-07.7): purge, `flush(maxMs)` bounds, `close()` and the app-lifecycle hooks.
+// Bounds (U-07.7): H-7 `purge`, H-8 re-entrancy, H-9 `flush(maxMs)`, `close()` and the lifecycle flush.
 // Nothing in the licence path imports this file.
 
 import Foundation
 import PolarisKeyCore
+
+#if canImport(UIKit)
+import UIKit
+#endif
+#if canImport(AppKit)
+import AppKit
+#endif
 
 /// What app code sets. Never read from the Worker.
 public struct CloudSyncOptions: Sendable {
@@ -181,7 +188,11 @@ public actor CloudSyncHost {
     private var triedCatalogVersion: Int?
     private var rebuildWanted = false
     private var again = false
-    private var pumping = false
+    /// The pump in progress, if any: one at a time; `flush`, `purge` and `close` wait on it, bounded.
+    private var pumpTask: Task<Void, Never>?
+    /// How long `purge` and `close` wait for a pump in progress (ms).
+    var pumpWaitMs = 2000
+    private var observers: [(center: NotificationCenter, token: any NSObjectProtocol)] = []
     private var timer: Task<Void, Never>?
     private var started = false
     private var closed = false
@@ -361,6 +372,7 @@ public actor CloudSyncHost {
     func generationCount() -> Int { generation }
     func encryptionMode() -> SyncEncryption? { machine?.encryptionMode }
     func cursor() -> Int? { machine?.persist().partitions[machine?.subject ?? syncLocalPartition]?.cursor }
+    func setPumpWait(_ ms: Int) { pumpWaitMs = ms }
     func noteOpenKeyForTest(_ name: String) { addOpenKey(name) }
     /// The open-setting names held for tombstone mapping.
     public func openKeyNames() -> [String] { openKeys }
@@ -368,21 +380,32 @@ public actor CloudSyncHost {
     // MARK: the pump
 
     /// Run the machine now: advance its clock, exchange every queued request, save. Never throws.
+    /// A touch that arrives while a pump runs sets `again` and returns at once (H-8): the running pump
+    /// goes round once more, so no wake-up is lost and no second pump starts.
     public func touch() async {
         guard started, !closed, await deps.syncEnabled() else { return }
-        // A listener or an exchange reacting from inside the pump: the pump runs again after it.
-        if pumping {
+        if pumpTask != nil {
             again = true
             return
         }
-        pumping = true
+        await startPump().value
+    }
+
+    /// Start the one pump task. Called only while none runs.
+    private func startPump() -> Task<Void, Never> {
+        let t = Task { await self.runPumps() }
+        pumpTask = t
+        return t
+    }
+
+    private func runPumps() async {
         while true {
             await pump()
-            // No suspension between this check and `pumping = false`: a touch that lands as the pump
-            // ends either set `again` before the check or runs a pump of its own after.
+            // No suspension between this check and clearing the task: a touch that lands as the pump
+            // ends either set `again` before the check or starts a pump of its own after (H-9).
             if !again || closed { break }
         }
-        pumping = false
+        pumpTask = nil
         armTimer()
     }
 
@@ -469,6 +492,8 @@ public actor CloudSyncHost {
             // cursor stays.
             return receive(m, gen, .transport)
         }
+        // A purge or rebuild since the request left: the old person's names go nowhere.
+        guard generation == gen, machine === m else { return }
         noteOpenedKeys(pulled)
         receive(m, gen, .answer(status: 200, body: pulled.body), pulled.opened)
         await maybeRefetch(pulled.body)
@@ -568,6 +593,121 @@ public actor CloudSyncHost {
         try? file.save(CloudSyncFile(persisted: snapshot, catalog: served, openKeys: openKeys))
     }
 
+    // MARK: bounds: flush, purge, close (H-7, H-9)
+
+    /// Wait for `t`, but for at most `ms`. The wait is not cancellable by the pump, so it is a race
+    /// between two tasks and whichever finishes first resumes the caller.
+    private func waitBounded(_ t: Task<Void, Never>, ms: Int) async {
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            let once = Once(c)
+            let sleeper = Task.detached {
+                try? await Task.sleep(nanoseconds: UInt64(max(ms, 0)) * 1_000_000)
+                once.fire()
+            }
+            once.sleeper = sleeper
+            Task.detached {
+                await t.value
+                once.fire()
+            }
+        }
+    }
+
+    /// Send what is waiting and save, giving up (the journal is kept) after `maxMs`. The bound holds
+    /// for the pump in progress and the trailing touch together (H-9): a pump already running is asked
+    /// to go round once more, and the wait ends at the deadline whatever the network does.
+    public func flush(maxMs: Int = SYNC_SIGNOUT_FLUSH_MS) async {
+        guard isStarted, !purged, let m = machine else { return }
+        catchUp()
+        _ = m.flush()
+        if await deps.syncEnabled() {
+            if let cur = pumpTask {
+                again = true
+                await waitBounded(cur, ms: maxMs)
+            } else if isStarted {
+                await waitBounded(startPump(), ms: maxMs)
+            }
+        }
+        save()
+    }
+
+    /// Forget the person's synced data: the machine is rebuilt empty and `cloud-sync.json`, which holds
+    /// the opened snapshot in the clear, is deleted. The file goes FIRST, before anything is awaited,
+    /// and the generation moves on, so a pump in flight never receives into the new machine and never
+    /// saves the old snapshot again. Nothing is saved until `signIn`. Works before `start()` too (the
+    /// file may predate this process). Throws only if the file could not be removed; the in-memory data
+    /// is gone either way.
+    public func purge() async throws {
+        purged = true
+        var failure: (any Error)?
+        do { try file.remove() } catch { failure = error }
+        generation += 1
+        openKeys = []
+        timer?.cancel()
+        timer = nil
+        if started && !closed {
+            if let t = pumpTask { await waitBounded(t, ms: pumpWaitMs) }
+            // Rebuilt whatever the wait found; a purge never leaves the old machine in place.
+            if (try? await build(nil)) != nil, let m = machine {
+                _ = m.importLocal([:])
+                emit(m)
+            }
+        }
+        openKeys = []
+        do { try file.remove() } catch { failure = failure ?? error }
+        if let failure { throw failure }
+    }
+
+    /// Stop the timer and the lifecycle hooks, detach from the ring and save the journal. Safe to call
+    /// more than once.
+    public func close() async {
+        if closed { return }
+        let was = isStarted
+        closed = true
+        timer?.cancel()
+        timer = nil
+        for o in observers { o.center.removeObserver(o.token) }
+        observers = []
+        detach?()
+        detach = nil
+        if was, let t = pumpTask { await waitBounded(t, ms: pumpWaitMs) }
+        if was { save() }
+    }
+
+    // MARK: lifecycle (Q-5: a bounded flush, no background tasks)
+
+    /// The notifications that flush: the app entering the background, and (macOS) terminating.
+    static var lifecycleNames: [(name: Notification.Name, blocking: Bool)] {
+        var out: [(Notification.Name, Bool)] = []
+        #if canImport(UIKit)
+        out.append((UIApplication.didEnterBackgroundNotification, false))
+        #endif
+        #if canImport(AppKit)
+        out.append((NSApplication.willTerminateNotification, true))
+        #endif
+        return out
+    }
+
+    /// Flush, bounded by `SYNC_SIGNOUT_FLUSH_MS`, when the app goes to the background or terminates. The
+    /// journal is on disk either way and resumes at the next launch. A terminating process would not
+    /// outlive an unawaited task, so a `blocking` notification holds its poster for the bound.
+    public func installLifecycleHooks(
+        center: NotificationCenter = .default,
+        names: [(name: Notification.Name, blocking: Bool)]? = nil
+    ) {
+        guard !closed else { return }
+        for (name, blocking) in names ?? Self.lifecycleNames {
+            let token = center.addObserver(forName: name, object: nil, queue: nil) { [weak self] _ in
+                let sem = DispatchSemaphore(value: 0)
+                Task {
+                    await self?.flush(maxMs: SYNC_SIGNOUT_FLUSH_MS)
+                    sem.signal()
+                }
+                if blocking { _ = sem.wait(timeout: .now() + .milliseconds(SYNC_SIGNOUT_FLUSH_MS + 500)) }
+            }
+            observers.append((center, token))
+        }
+    }
+
     // MARK: the timer
 
     /// The real-clock timer: wake while the machine holds work (an edit waiting out its debounce, a
@@ -585,5 +725,18 @@ public actor CloudSyncHost {
     private func timerFired() async {
         timer = nil
         await touch()
+    }
+}
+
+/// Resumes a continuation once, from whichever of two tasks gets there first.
+private final class Once: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cont: CheckedContinuation<Void, Never>?
+    var sleeper: Task<Void, Never>?
+    init(_ c: CheckedContinuation<Void, Never>) { cont = c }
+    func fire() {
+        let c = lock.withLock { () -> CheckedContinuation<Void, Never>? in defer { cont = nil }; return cont }
+        sleeper?.cancel()
+        c?.resume()
     }
 }

@@ -1,7 +1,7 @@
 // The Cloud Sync host (U-07.6): H-1 to H-6 and H-10, the person binding (A-1), one pump at a time,
 // and `openPull` feeding `CloudSyncMachine.receive`. Everything runs against fakes: a scripted Worker,
 // a fixture-root codec, a fake key ring and a temporary state directory. The H rules each name their
-// test below. H-7 to H-9 (purge, re-entrancy, flush bounds) are U-07.7's.
+// test below. H-7 to H-9 are in CloudSyncHostBoundsTests.
 
 import Foundation
 import Testing
@@ -9,132 +9,30 @@ import Testing
 @testable import PolarisKey
 @testable import PolarisKeyCore
 
-private let hRoot = Data((0..<32).map { UInt8(truncatingIfNeeded: 11 * $0 + 5) })
+
 private let VOL = "audio.volume"
 private let BIND = "input.bindings"
 private let OPEN = "my.private.key"
-private let ALICE = "sub_alice"
-private let BOB = "sub_bob"
-private let T0 = 1_760_000_000_000
 private let C = HostCodec.settingsCollection
-
-private func j(_ s: String) -> JSONValue { try! JSONDecoder().decode(JSONValue.self, from: Data(s.utf8)) }
+private func j(_ s: String) -> JSONValue { hJ(s) }
 private func sealedCt(_ name: String, _ v: JSONValue) -> JSONValue {
     .string(Base64URL.encode(try! SyncEnvelope.seal(root: hRoot, collection: C, name: name, value: v)))
 }
 private func blinded(_ n: String) -> String { SyncBlind.blind(root: hRoot, kind: .setting, ctx: C, n: n) }
-
-private let mirror = j(
-    """
-    {"schemaVersion":1,"entries":[
-      {"key":"audio.volume","kind":"config","user":{"sync":"user","conflict":"lastWrite"}},
-      {"key":"input.bindings","kind":"config","user":{"sync":"user","conflict":"merge"}}]}
-    """)
-
-private func reply(_ over: [String: JSONValue] = [:]) -> JSONValue {
-    var o: [String: JSONValue] = [
-        "encryption": .string("e2e"), "subject": .string(ALICE), "cursor": .int(1), "more": .bool(false),
-        "serverNow": .int(T0), "catalogVersion": .int(1), "lastMutationId": .int(0), "changes": .array([]),
-        "tombstones": .array([]), "aliases": .object([:]),
-        "usage": j("{\"bytes\":0,\"settings\":0,\"records\":0,\"files\":0}"),
-        "quota": j("{\"bytes\":268435456,\"files\":true}"),
-    ]
-    for (k, v) in over { o[k] = v }
-    return .object(o)
-}
-
-/// A scripted Worker, a fake key ring and a clock.
-private final class Rig: @unchecked Sendable {
-    private let lock = NSLock()
-    private var nowValue = T0
-    private var subjectValue: String? = ALICE
-    private var sentValue: [SyncRequest] = []
-    private var inFlight = 0
-    private(set) var maxInFlight = 0
-    private var fetches = 0
-    private var schema: JSONValue?
-    private var listener: (any SyncRootListener)?
-    var responder: @Sendable (SyncRequest, Rig) -> SyncResponse = { req, _ in
-        if req.method == .get { return .answer(status: 200, body: reply()) }
-        let ids = (req.body?.objectValue?["mutations"]?.arrayValue ?? []).compactMap { $0.objectValue?["mutationId"] }
-        return .answer(
-            status: 200,
-            body: reply([
-                "results": .array(
-                    ids.map { .object(["mutationId": $0, "status": .string("ok"), "version": .int(2)]) })
-            ]))
-    }
-    var sendDelayMs = 0
-    var onSend: (@Sendable (Rig) -> Void)?
-    let codec = FixtureCodec(hRoot)
-    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("pk-host-\(UUID().uuidString)")
-
-    var now: Int { get { lock.withLock { nowValue } } set { lock.withLock { nowValue = newValue } } }
-    var subject: String? { get { lock.withLock { subjectValue } } set { lock.withLock { subjectValue = newValue } } }
-    var sent: [SyncRequest] { lock.withLock { sentValue } }
-    var fetchCount: Int { lock.withLock { fetches } }
-    func setSchema(_ s: JSONValue?) { lock.withLock { schema = s } }
-    func setRoot(_ present: Bool) {
-        codec.lock(!present)
-        lock.withLock { listener }?.setRoot(present: present)
-    }
-    var unlocked: Bool { !codec.locked }
-
-    func deps() -> CloudSyncHostDeps {
-        CloudSyncHostDeps(
-            product: "demo", stateDir: dir,
-            send: { [self] req in
-                lock.withLock {
-                    sentValue.append(req)
-                    inFlight += 1
-                    maxInFlight = max(maxInFlight, inFlight)
-                }
-                onSend?(self)
-                if sendDelayMs > 0 { try? await Task.sleep(nanoseconds: UInt64(sendDelayMs) * 1_000_000) }
-                lock.withLock { inFlight -= 1 }
-                return responder(req, self)
-            },
-            codec: codec, keyringUnlocked: { [self] in unlocked },
-            attachKeyring: { [self] l in
-                lock.withLock { listener = l }
-                l.setRoot(present: unlocked)
-                return { [self] in lock.withLock { listener = nil } }
-            },
-            discovery: { .e2e },
-            fetchSchema: { [self] in
-                lock.withLock { fetches += 1 }
-                return lock.withLock { schema }
-            },
-            subject: { [self] in subject }, clock: { [self] in now })
-    }
-
-    func host(_ options: CloudSyncOptions = CloudSyncOptions(catalog: mirror)) async throws -> CloudSyncHost {
-        let h = CloudSyncHost(deps: deps(), options: options)
-        try await h.start()
-        return h
-    }
-    deinit { try? FileManager.default.removeItem(at: dir) }
-}
-
-private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(catalog: mirror)) async throws
-    -> CloudSyncHost
-{
-    let h = try await rig.host(options)
-    _ = try await h.signIn(ALICE)
-    await h.touch()
-    return h
+private func signedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptions(catalog: hMirror)) async throws -> CloudSyncHost {
+    try await hSignedIn(rig, options: options)
 }
 
 @Suite struct CloudSyncHostTests {
     // MARK: the machine's own receive, fed by openPull
 
     private func machine() throws -> CloudSyncMachine {
-        let routes = syncedSettings(mirror)
+        let routes = syncedSettings(hMirror)
         var o = SyncMachineOptions(
             product: "demo", catalog: SyncMachineCatalog(settings: routes),
-            document: SyncMachineDocument(values: [VOL: .double(0.8)]), now: T0,
+            document: SyncMachineDocument(values: [VOL: .double(0.8)]), now: hT0,
             newClientId: { "c_" + String(repeating: "0", count: 15) + "client1" })
-        o.subject = ALICE
+        o.subject = hALICE
         o.hasRoot = true
         o.discovery = .e2e
         let m = try CloudSyncMachine(o)
@@ -145,7 +43,7 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
 
     private func fed(_ over: [String: JSONValue]) throws -> CloudSyncMachine {
         let m = try machine()
-        let r = try HostCodec.openPull(reply(over), codec: FixtureCodec(hRoot))
+        let r = try HostCodec.openPull(hReply(over), codec: FixtureCodec(hRoot))
         try m.receive(.answer(status: 200, body: r.body), opened: r.opened)
         return m
     }
@@ -286,7 +184,7 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     // MARK: H-6: the state file
 
     @Test func h6StateFileIsOwnerOnlyExcludedFromBackupAndRoundTripsTheJournal() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         let h = try await signedIn(rig)
         #expect(await h.set(VOL, .double(0.4)) == .ok)
         rig.now += 5_000
@@ -303,8 +201,8 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
         #expect(String(decoding: text, as: UTF8.self).range(of: hRoot.map { String(format: "%02x", $0) }.joined()) == nil)
         // A relaunch gets the journal back.
         let loaded = CloudSyncStateFile(stateDir: rig.dir, product: "demo").load()
-        #expect(loaded.persisted?.subject == ALICE)
-        #expect(loaded.persisted?.partitions[ALICE]?.settings[VOL]?.value == .double(0.4))
+        #expect(loaded.persisted?.subject == hALICE)
+        #expect(loaded.persisted?.partitions[hALICE]?.settings[VOL]?.value == .double(0.4))
         let h2 = try await rig.host()
         #expect(await h2.get(VOL)?.value == .double(0.4))
     }
@@ -315,7 +213,7 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
         let f = CloudSyncStateFile(stateDir: dir, product: "demo")
         var st = SyncMachineState(subject: nil, partitions: [syncLocalPartition: SyncPartition(clientId: nil)], hlc: (1, 2), offsetMs: 3, contacted: true)
         st.aliases = ["a": "b"]
-        try f.save(CloudSyncFile(persisted: st, catalog: mirror, openKeys: ["k"]))
+        try f.save(CloudSyncFile(persisted: st, catalog: hMirror, openKeys: ["k"]))
         #expect(f.load().persisted == st)
         #expect(f.load().openKeys == ["k"])
         #expect(CloudSyncStateFile(stateDir: dir, product: "other").load() == CloudSyncFile())
@@ -347,14 +245,14 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     }
 
     @Test func h1TheMirrorIsAuthoritativeAndAServedCatalogOnlyAddsKeys() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         rig.setSchema(
             served(
                 """
                 {"key":"audio.volume","kind":"config","user":{"sync":"user","conflict":"merge"}},
                 {"key":"new.key","kind":"config","user":{"sync":"user","conflict":"max"}}
                 """, extra: "\"cloudSync\":{\"encryption\":\"server\"},"))
-        rig.responder = { _, _ in .answer(status: 200, body: reply(["catalogVersion": .int(2)])) }
+        rig.responder = { _, _ in .answer(status: 200, body: hReply(["catalogVersion": .int(2)])) }
         let h = try await signedIn(rig)
         let table = await h.routeTable()
         #expect(table.map(\.key) == [VOL, BIND, "new.key"])
@@ -365,13 +263,13 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     }
 
     @Test func h1ANonDeclaredKeyTheMachineHoldsOpenIsNotTurnedDeclaredByTheServer() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         rig.responder = { req, _ in
-            if req.method == .get { return .answer(status: 200, body: reply()) }
+            if req.method == .get { return .answer(status: 200, body: hReply()) }
             let ids = (req.body?.objectValue?["mutations"]?.arrayValue ?? []).compactMap { $0.objectValue?["mutationId"] }
             return .answer(
                 status: 200,
-                body: reply([
+                body: hReply([
                     "catalogVersion": .int(2),
                     "results": .array(ids.map { .object(["mutationId": $0, "status": .string("ok"), "version": .int(2)]) }),
                 ]))
@@ -403,13 +301,13 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     }
 
     @Test func h2RefetchesOnAChangedVersionAtMostEveryFiveMinutesAndSkipsAnEqualRebuild() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         rig.setSchema(served("{\"key\":\"new.key\",\"kind\":\"config\",\"user\":{\"sync\":\"user\"}}", version: 2))
         let v = LockedValue<Int>(2)
         rig.responder = { req, _ in
             req.method == .get
-                ? .answer(status: 200, body: reply(["catalogVersion": .int(v.current)]))
-                : .answer(status: 200, body: reply(["catalogVersion": .int(v.current)]))
+                ? .answer(status: 200, body: hReply(["catalogVersion": .int(v.current)]))
+                : .answer(status: 200, body: hReply(["catalogVersion": .int(v.current)]))
         }
         let h = try await signedIn(rig)
         #expect(rig.fetchCount == 1)
@@ -438,14 +336,14 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     }
 
     @Test func h2AChangedRouteSetRebuildsTheMachineFromItsOwnJournal() async throws {
-        let rig = Rig()
-        rig.responder = { _, _ in .answer(status: 200, body: reply(["catalogVersion": .int(2)])) }
+        let rig = HostRig()
+        rig.responder = { _, _ in .answer(status: 200, body: hReply(["catalogVersion": .int(2)])) }
         let h = try await signedIn(rig)
-        #expect(rig.fetchCount == 1)  // the first pull named version 2, the mirror holds 1
+        #expect(rig.fetchCount == 1)  // the first pull named version 2, the hMirror holds 1
         let gen = await h.generationCount()
         rig.setSchema(served("{\"key\":\"added.later\",\"kind\":\"config\",\"user\":{\"sync\":\"user\"}}", version: 3))
         rig.now += CloudSyncHost.catalogRefetchMs
-        rig.responder = { _, _ in .answer(status: 200, body: reply(["catalogVersion": .int(3)])) }
+        rig.responder = { _, _ in .answer(status: 200, body: hReply(["catalogVersion": .int(3)])) }
         _ = await h.set(VOL, .double(0.2))
         rig.now += 5_000
         await h.touch()
@@ -457,12 +355,12 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     // MARK: H-5: open-key names
 
     @Test func h5OpenKeysComeOnlyFromSealedRowsAndOwnMutationsAndAreCapped() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         let honest = blinded("sealed.open.key")
         rig.responder = { _, _ in
             .answer(
                 status: 200,
-                body: reply([
+                body: hReply([
                     "encryptionSince": .int(0),
                     "changes": .array([
                         .object([
@@ -489,7 +387,7 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     // MARK: H-10, the codec drops
 
     @Test func h10ALockedRingSendsAndPullsNothingAndTheHostAddsNoRequest() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         rig.codec.lock(true)
         let h = try await signedIn(rig)
         await h.touch()
@@ -502,28 +400,28 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     }
 
     @Test func h10ARootLostMidFlightDropsTheAnswerAndTheCursorStays() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         rig.onSend = { $0.codec.lock(true) }  // the ring locks while the request is out
-        rig.responder = { _, _ in .answer(status: 200, body: reply(["cursor": .int(9)])) }
+        rig.responder = { _, _ in .answer(status: 200, body: hReply(["cursor": .int(9)])) }
         let h = try await signedIn(rig)
         #expect(rig.sent.count >= 1)
         #expect(await h.cursor() == 0)
     }
 
     @Test func h10AnE2e200ThatIsNotAnObjectIsDropped() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         rig.responder = { _, _ in .answer(status: 200, body: .array([])) }
         let h = try await signedIn(rig)
         #expect(await h.cursor() == 0)
     }
 
     @Test func h10ARepeatedMutationIdAnswerIsDroppedAndTheEditStaysPending() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         let h = try await signedIn(rig)
         rig.responder = { req, _ in
-            if req.method == .get { return .answer(status: 200, body: reply()) }
+            if req.method == .get { return .answer(status: 200, body: hReply()) }
             let r: JSONValue = .object(["mutationId": .int(1), "status": .string("ok"), "version": .int(3)])
-            return .answer(status: 200, body: reply(["results": .array([r, r])]))
+            return .answer(status: 200, body: hReply(["results": .array([r, r])]))
         }
         _ = await h.set(VOL, .double(0.6))
         rig.now += 5_000
@@ -532,7 +430,7 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     }
 
     @Test func h10ASealedPushLeavesNoPlaintextOnTheWire() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         let h = try await signedIn(rig)
         _ = await h.set(VOL, .string("secret-volume"))
         _ = await h.set(OPEN, .string("secret-open"))
@@ -547,29 +445,29 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     // MARK: HOST-BIND (A-1)
 
     @Test func hostBindDropsARequestBoundToAnotherPersonBeforeItIsSent() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         let h = try await signedIn(rig)
         let before = rig.sent.count
         _ = await h.set(VOL, .double(0.7))
         rig.now += 5_000
-        rig.subject = BOB  // the session is another person's now
+        rig.subject = hBOB  // the session is another person's now
         await h.touch()
         #expect(rig.sent.count == before)
         #expect(await h.status()?.pending == 1)  // the edit waits; nothing was sent to the server
     }
 
     @Test func hostBindDoesNotReadAnAnswerWhenThePersonChangedDuringTheRequest() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         let h = try await signedIn(rig)
         _ = await h.set(VOL, .double(0.7))
         rig.now += 5_000
-        rig.onSend = { $0.subject = BOB }
+        rig.onSend = { $0.subject = hBOB }
         await h.touch()
         #expect(await h.status()?.pending == 1)  // the ok result was not applied
     }
 
     @Test func hostBindAnUnknownSessionPersonDoesNotBlock() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         rig.subject = nil  // offline or discovery not loaded: unknown, not a different person
         let h = try await signedIn(rig)
         _ = await h.set(VOL, .double(0.7))
@@ -582,10 +480,10 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     // MARK: one pump at a time, the budget, the timer
 
     @Test func onePumpRunsAtATimeEvenWhenTouchedConcurrently() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         rig.sendDelayMs = 20
         let h = try await rig.host()
-        _ = try await h.signIn(ALICE)
+        _ = try await h.signIn(hALICE)
         await withTaskGroup(of: Void.self) { g in
             for _ in 0..<8 { g.addTask { await h.touch() } }
         }
@@ -593,11 +491,11 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     }
 
     @Test func aPumpMakesAtMostSixtyFourExchanges() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         let cursor = LockedValue<Int>(0)
         rig.responder = { _, _ in
             cursor.set(cursor.current + 1)
-            return .answer(status: 200, body: reply(["cursor": .int(cursor.current), "more": .bool(true)]))
+            return .answer(status: 200, body: hReply(["cursor": .int(cursor.current), "more": .bool(true)]))
         }
         let h = try await signedIn(rig)
         #expect(rig.sent.count <= CloudSyncHost.maxExchanges)
@@ -606,15 +504,15 @@ private func signedIn(_ rig: Rig, options: CloudSyncOptions = CloudSyncOptions(c
     }
 
     @Test func theTimerPushesADebouncedEditWithoutAnotherCall() async throws {
-        let rig = Rig()
+        let rig = HostRig()
         rig.now = Int(Date().timeIntervalSince1970 * 1000)
         let clock = rig.deps().clock
         _ = clock
         var deps = rig.deps()
         deps.clock = { Int(Date().timeIntervalSince1970 * 1000) }
-        let h = CloudSyncHost(deps: deps, options: CloudSyncOptions(catalog: mirror))
+        let h = CloudSyncHost(deps: deps, options: CloudSyncOptions(catalog: hMirror))
         try await h.start()
-        _ = try await h.signIn(ALICE)
+        _ = try await h.signIn(hALICE)
         await h.touch()
         _ = await h.set(VOL, .double(0.9))
         var seen = false

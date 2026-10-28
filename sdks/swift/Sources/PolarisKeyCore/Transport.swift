@@ -225,6 +225,16 @@ public struct URLSessionTransport: PolarisTransport {
             #endif
         }
         try policy.throwIfRefused()
+        #if canImport(FoundationNetworking)
+        // Linux: FoundationNetworking gives no per-request redirect hook, so a redirect is FOLLOWED by
+        // the session before this code sees the answer, and the request (bearer included, as the
+        // session's own cross-origin rules allow) has already reached the target. All this can do is
+        // refuse to treat that answer as the control plane's: a final URL that differs from the
+        // request's is no answer. It does not refuse the redirect and does not undo the exposure.
+        if !request.followRedirects, let final = response.url, final.absoluteString != request.url.absoluteString {
+            throw PolarisError(code: "transport", message: "A redirect was followed where none is allowed.")
+        }
+        #endif
         guard let http = response as? HTTPURLResponse else {
             throw PolarisError(code: "transport", message: "non-http response")
         }
