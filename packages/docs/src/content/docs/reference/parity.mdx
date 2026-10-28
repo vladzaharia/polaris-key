@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 89 | 9 | 25 | 0 |
-| React | `web`, `desktop-bridge` | 91 | 21 | 11 | 0 |
-| Python | `python` | 83 | 9 | 31 | 0 |
-| Swift | `macos`, `ios` | 95 | 9 | 18 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 96 | 9 | 18 | 0 |
-| Kotlin | `android`, `jvm` | 97 | 8 | 17 | 1 |
+| Node | `node` | 89 | 10 | 26 | 0 |
+| React | `web`, `desktop-bridge` | 91 | 21 | 13 | 0 |
+| Python | `python` | 86 | 10 | 29 | 0 |
+| Swift | `macos`, `ios` | 95 | 9 | 20 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 96 | 9 | 20 | 0 |
+| Kotlin | `android`, `jvm` | 97 | 8 | 19 | 1 |
 
 ## Core
 
@@ -80,6 +80,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `sync.settings` | Settings over /sync: pull, push, cloudSync.status() and cloudSync.flush() | transcripts | planned (U-06) | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
 | `sync.conflict` | One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records | unit + transcripts (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | — |
 | `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
+| `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | planned (U-38) | planned (U-38) | planned (U-38) | planned (U-39) | planned (U-40) | planned (U-39) | — |
 
 ## Cloud Connect
 
@@ -112,9 +113,10 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.keyentry` | Key entry on an Identity product: keyEntries on success, and the key-entry-limit refusal with manageUrl | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.attach` | Attach: add the device's licence to the account signed in on it, with a preview | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.account` | The account on the device: subject(), signOut() and openAccount() | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `identity.redirect.web` | Web redirect sign-in: authorize with PKCE, then the code redeemed at token | transcripts | ✓ | ✓ | planned (I-10a) | ✓ | ✓ | ✓ | — |
-| `identity.choice` | Licence choice in the app: the choice.* primitives over a pending sign-in grant | transcripts | ✓ | ✓ | planned (I-10a) | ✓ | ✓ | ✓ | — |
-| `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | ✓ | ✓ | planned (I-10a) | ✓ | ✓ | ✓ | — |
+| `identity.redirect.web` | Web redirect sign-in: authorize with PKCE, then the code redeemed at token | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `identity.choice` | Licence choice in the app: the choice.* primitives over a pending sign-in grant | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `identity.exchange` | Platform sign-in: a Google or Apple ID token for a device token (the exchange) | transcripts | N/A (node: runtime) | planned (I-46); N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 
 ## Release and update
 

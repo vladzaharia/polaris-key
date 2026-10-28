@@ -105,3 +105,15 @@ The grant lives five minutes and answers only the device that redeemed the code.
 | `cancel`   | `grant`              | `204`. Nothing is bound       |
 
 A `choice` is `license` (with `replaceDeviceId` on a full license), `keep` (the device sends its own token), `create` or `key`. A key entered here counts as one key entry. A refusal you can fix, such as `device_limit`, leaves the grant open.
+
+## From an SDK
+
+Node, Python and React run this flow with `signIn.start({ channel: "redirect", redirectUri })` (Python: `sign_in.start(channel="redirect", redirect_uri=...)`). The SDK reads `authorize`, `token` and `iss` from discovery, builds the S256 challenge and `state`, and answers a session with `authorizeUrl`. Open that URL in a browser. When the browser lands on your redirect URI, pass the full URL to `complete(callbackUrl)`. The SDK checks `state` and `iss`, redeems the code and stores the device token.
+
+| Outcome (Node) | Meaning                                                                     |
+| -------------- | --------------------------------------------------------------------------- |
+| `signedIn`     | The device holds the token. `subject`, `scope` and `licenseId` come back    |
+| `choose`       | With `licenseChoice: "app"` and a choice due. Finish with `identity.choice` |
+| `cancelled`    | The person pressed Cancel                                                   |
+
+A session is single use: `complete` and `cancel` drop the PKCE verifier, and a replayed callback is refused without a request. A refusal throws under its own code (`invalid_grant`, `rate_limited`, `sign-in-failed`) and leaves the device token alone. React keeps the verifier in `sessionStorage` across the navigation, so call `usePolarisAuth().signIn.complete(callbackUrl)` on the page the browser returns to. The [Node](/docs/build/sdks/node/your-own-ui/#redirect-sign-in) and [Python](/docs/build/sdks/python/your-own-ui/#redirect-sign-in) pages have the code.

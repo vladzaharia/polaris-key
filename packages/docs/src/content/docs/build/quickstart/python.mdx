@@ -90,7 +90,7 @@ The verbs take no `--product` or `--trust`: `config=` says them once. `GroupedHe
   </Fragment>
   <Fragment slot="library">
 
-Call the client and handle each state yourself. Activate with `client.license.activate_with_key(key)`, read the state with `client.status()` and `client.is_licensed()`, and sign in with `client.identity.sign_in_with_browser()`. [Your own UI](/docs/build/sdks/python/your-own-ui/) gives each call with its states and words, including [a Qt app](/docs/build/sdks/python/your-own-ui/#qt).
+Call the client and handle each state yourself. Activate with `client.license.activate_with_key(key)`, read the state with `client.status()` and `client.is_licensed()`, and sign in with `client.identity.sign_in.start()`. [Your own UI](/docs/build/sdks/python/your-own-ui/) gives each call with its states and words, including [a Qt app](/docs/build/sdks/python/your-own-ui/#qt).
 
 ```python title="own_ui.py"
 from typing import Optional

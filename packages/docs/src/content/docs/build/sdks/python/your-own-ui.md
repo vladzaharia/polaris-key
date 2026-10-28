@@ -59,6 +59,8 @@ from typing import Optional
 
 from polaris_key import (
     ActivationDeviceLimit,
+    ActivationKeyEntryLimit,
+    ActivationLicenseOwned,
     ActivationOk,
     ActivationRateLimited,
     PolarisKeyClient,
@@ -76,6 +78,12 @@ def activate(client: PolarisKeyClient, key: str) -> Optional[str]:
     if isinstance(r, ActivationDeviceLimit) and r.manage_url:
         # Replace a device: Polaris Locker makes room for another device. Nothing was wiped.
         return f"{text} {with_manage_return(r.manage_url, 'myapp://activated')}"
+    if isinstance(r, ActivationKeyEntryLimit) and r.manage_url:
+        # The key has no entries left; r.key_entries has used and limit. Nothing was wiped.
+        return f"{text} {r.manage_url}"
+    if isinstance(r, ActivationLicenseOwned) and r.sign_in_url:
+        # The license is in an account and never moves by its key: offer sign-in.
+        return f"{text} {r.sign_in_url}"
     if isinstance(r, ActivationRateLimited) and r.retryAfterSeconds:
         return f"{text} ({r.retryAfterSeconds}s)"
     return text
@@ -88,6 +96,8 @@ def activate(client: PolarisKeyClient, key: str) -> Optional[str]:
 | `license-expired`, `license-disabled`                               | The license ended or an operator disabled it   | Renew, or contact the developer       |
 | `hardware-mismatch`, `fingerprint-required`, `attestation-required` | The device check failed                        | Retry; `changed` lists what moved     |
 | `enroll-disabled`, `enroll-claimed`                                 | No free license, or it is on an account        | Key entry, or sign in                 |
+| `key-entry-limit`                                                   | The key has no entries left                    | `manage_url`, or sign-in              |
+| `license-owned`                                                     | The license is in an account                   | `sign_in_url`: sign in                |
 | `rate-limited`                                                      | Too many attempts                              | Wait `retryAfterSeconds`              |
 | `refused`, `error`                                                  | Any other refusal; a network or server failure | Show the message and `code`           |
 
@@ -96,6 +106,8 @@ happy path: `register()` is for a product that opens keyless registration, and `
 the session. See the [device-limit recipe](/docs/build/recipes/device-limit/).
 
 ## Sign-in and who signed in
+
+`identity.sign_in.start` is the one way in. The default channel, `device-code`, suits a CLI, a daemon or a build agent:
 
 ```python
 import threading
@@ -118,9 +130,94 @@ def sign_in(client: PolarisKeyClient, stop: threading.Event) -> Optional[str]:
 ```
 
 `session.reopen()` opens the system browser. `wait` raises `TimeoutError` when `timeout` runs out and
-answers `cancelled` when `session.cancel()` is called or `cancel_token` is set. Sign-in
-needs the Identity service; with it off, every call raises `service-unavailable` before any request.
-`client.identity.sign_out()` ends the session.
+answers `cancelled` when `session.cancel()` is called or `cancel_token` is set. Sign-in needs the
+Identity service; with it off, every call raises `service-unavailable` before any request.
+
+### Redirect sign-in
+
+A host that opens a browser and receives its redirect uses `channel="redirect"`. The session is
+single use: keep it until the browser returns.
+
+```python
+from typing import Optional
+
+from polaris_key import PolarisKeyClient
+
+
+def begin(client: PolarisKeyClient):
+    session = client.identity.sign_in.start(
+        channel="redirect",
+        redirect_uri="https://app.example/auth/callback",
+        license_choice="app",
+    )
+    print(session.authorize_url)  # open it in the browser
+    return session
+
+
+def finish(session, callback_url: str) -> Optional[str]:
+    outcome = session.complete(callback_url)
+    if outcome.kind == "signed_in":
+        return outcome.subject
+    if outcome.kind == "choose":
+        return outcome.grant  # finish with identity.choice, below
+    return None  # "cancelled"
+```
+
+`complete` checks `state` and the issuer before it sends anything. A refusal raises under the
+Worker's code (`invalid_grant`, `rate_limited`, `sign-in-failed`) and leaves the device's token alone.
+
+### The license choice
+
+With `license_choice="app"`, a person who holds licenses settles `choose`. No token is stored until
+you finish with `identity.choice`. A refusal is a `ChoiceRefused` result with a `code`, not a raise:
+
+```python
+from typing import Optional
+
+from polaris_key import PolarisKeyClient
+from polaris_key.identity import ChoiceCompleteOk, ChoiceRefused, ChoiceViewOk
+
+
+def choose(client: PolarisKeyClient, grant: str) -> Optional[str]:
+    view = client.identity.choice.licenses(grant)
+    if isinstance(view, ChoiceRefused):
+        return view.code
+    assert isinstance(view, ChoiceViewOk)
+    ids = view.view.license_ids
+    if not ids:
+        client.identity.choice.cancel(grant)
+        return None
+    done = client.identity.choice.complete(grant, {"kind": "license", "licenseId": ids[0]})
+    if isinstance(done, ChoiceCompleteOk):
+        return done.license_id
+    # device_limit leaves the grant open and carries manage_url and a fresh view.
+    return done.code
+```
+
+The grant lives 300 seconds and is a credential: keep it out of logs.
+`identity.choice.devices(grant, license_id)` lists the devices on a full license, for **Replace a device**.
+
+### The account
+
+```python
+from polaris_key import PolarisKeyClient
+from polaris_key.identity import AttachConfirm
+
+
+def account(client: PolarisKeyClient) -> bool:
+    subject = client.identity.subject()  # "ps_…" or None
+    preview = client.identity.attach(confirm=False)
+    if isinstance(preview, AttachConfirm):
+        client.identity.attach(confirm=True)
+    client.identity.open_account()  # OpenAccountResult(url, opened)
+    print(subject)
+    return client.identity.sign_out().released
+```
+
+`attach` previews first and writes nothing; `confirm=True` adds the device's license to the account.
+A refusal (`account_required`, `license_owned`) is an `AttachRefused` result. `sign_out()` removes the
+device token only when `released` is true; a device activated by a key keeps its license. Use
+`client.license.deactivate()` to free the device.
 
 ## Status, offline and refresh
 

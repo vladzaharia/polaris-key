@@ -83,6 +83,10 @@ export function refusalScreen(r: Refusal) {
       };
     case "rate-limited":
       return { message, retryAfterSeconds: r.retryAfterSeconds };
+    case "key-entry-limit": // the key has no entries left; nothing was wiped
+      return { message, link: r.manageUrl, used: r.keyEntries.used };
+    case "license-owned": // the license is in an account; a key never moves it
+      return { message, link: r.signInUrl, next: "sign-in" };
     case "enroll-claimed": // the free license now belongs to an account
       return { message, next: "sign-in" };
     case "license-expired":
@@ -105,6 +109,8 @@ export async function activate(client: PolarisKeyClient, key: string) {
 | `license-expired`, `license-disabled`                               | The license ended or an operator disabled it   | Renew, or contact the developer      |
 | `hardware-mismatch`, `fingerprint-required`, `attestation-required` | The device check failed                        | Retry; `changed` lists what moved    |
 | `enroll-disabled`, `enroll-claimed`                                 | No free license, or it is on an account        | Key entry, or sign in                |
+| `key-entry-limit`                                                   | The key has no entries left                    | `manageUrl`, or sign-in              |
+| `license-owned`                                                     | The license is in an account                   | `signInUrl`: sign in                 |
 | `rate-limited`                                                      | Too many attempts                              | Wait `retryAfterSeconds`             |
 | `refused`, `error`                                                  | Any other refusal; a network or server failure | Show `copy.activation` and `code`    |
 
@@ -113,6 +119,8 @@ A device that a key counts is also freed from a device that still has a credenti
 [device-limit recipe](/docs/build/recipes/device-limit/).
 
 ## Sign-in and who signed in
+
+`identity.signIn.start` is the one way in. `channel: "device-code"` suits a CLI, a daemon or a kiosk:
 
 ```ts
 import { qr, type PolarisKeyClient } from "@polaris-key/node";
@@ -135,10 +143,93 @@ export async function signIn(client: PolarisKeyClient, signal: AbortSignal) {
 }
 ```
 
-`session.reopen()` opens the system browser. A person's refusal throws `sign-in-denied`; a failure
-after approval throws `sign-in-failed`. Sign-in needs the Identity service; with it off,
-`signIn.start` throws `service-unavailable` before any request. `client.identity.signOut()` and
-`client.license.deactivate()` end the session.
+`session.reopen()` opens the system browser and `session.cancel()` stops the wait. A person's refusal
+throws `sign-in-denied`; a failure after approval throws `sign-in-failed`. Sign-in needs the Identity
+service; with it off, `signIn.start` throws `service-unavailable` before any request.
+
+### Redirect sign-in
+
+A host that opens a browser and receives its redirect (a desktop app with a registered `https:`
+address) uses `channel: "redirect"`. The session is single use: keep it until the browser returns.
+
+```ts
+import type { PolarisKeyClient, RedirectSession } from "@polaris-key/node";
+
+export async function begin(client: PolarisKeyClient) {
+  const session = await client.identity.signIn.start({
+    channel: "redirect",
+    redirectUri: "https://app.example/auth/callback",
+    licenseChoice: "app",
+  });
+  return { session, open: session.authorizeUrl }; // open it in the browser
+}
+
+export async function finish(session: RedirectSession, callbackUrl: string) {
+  const outcome = await session.complete(callbackUrl);
+  switch (outcome.kind) {
+    case "signedIn":
+      return { subject: outcome.subject, licenseId: outcome.licenseId };
+    case "choose":
+      return { grant: outcome.grant, seconds: outcome.expiresIn }; // see below
+    case "cancelled":
+      return null;
+  }
+}
+```
+
+`complete` checks `state` and the issuer before it sends anything. A refusal throws under the
+Worker's code (`invalid_grant`, `rate_limited`, `sign-in-failed`) and leaves the device's token alone.
+
+### The license choice
+
+With `licenseChoice: "app"`, a person who holds licenses settles `choose`. No token is stored until
+you finish with `identity.choice`. A refusal is a result with a `code`, not a throw:
+
+```ts
+import type { PolarisKeyClient } from "@polaris-key/node";
+
+export async function choose(client: PolarisKeyClient, grant: string) {
+  const view = await client.identity.choice.licenses(grant);
+  if (view.kind !== "ok") return view.code;
+  const first = view.view.choices[0];
+  if (!first) return client.identity.choice.cancel(grant);
+  const done = await client.identity.choice.complete(grant, {
+    kind: "license",
+    licenseId: first.id,
+  });
+  if (done.kind === "ok") return done.licenseId;
+  // device_limit leaves the grant open and carries manageUrl and a fresh view.
+  return {
+    code: done.code,
+    manageUrl: done.manageUrl,
+    signInUrl: done.signInUrl,
+  };
+}
+```
+
+The grant lives 300 seconds and is a credential: keep it out of logs. `identity.choice.devices(grant,
+licenseId)` lists the devices on a full license, for **Replace a device**.
+
+### The account
+
+```ts
+import type { PolarisKeyClient } from "@polaris-key/node";
+
+export async function account(client: PolarisKeyClient) {
+  const subject = await client.identity.subject(); // "ps_…" or null
+  const preview = await client.identity.attach({ confirm: false });
+  if (preview.status === "confirm")
+    await client.identity.attach({ confirm: true });
+  await client.identity.openAccount(); // { url, opened }
+  const { released } = await client.identity.signOut();
+  return { subject, released };
+}
+```
+
+`attach` previews first and writes nothing; `{ confirm: true }` adds the device's license to the
+account. A refusal (`account_required`, `license_owned`) is a `refused` result. `signOut()` removes
+the device token only when `released` is true; a device activated by a key keeps its license. Use
+`client.license.deactivate()` to free the device. Subscribe with `client.events.on("identity", …)`.
 
 ## Status, offline and refresh
 
@@ -154,7 +245,7 @@ export function keepFresh(client: PolarisKeyClient) {
 }
 ```
 
-Events are `license`, `config`, `updateAvailable`, `packs` and `store`. A sync that fails offline
+Events are `license`, `config`, `identity`, `updateAvailable`, `packs` and `store`. A sync that fails offline
 leaves the last verified documents in force until `graceUntil`; `await client.storeStatus()` says
 whether the token is in the OS keyring or in a `0600` file. A machine with no network at all
 activates from a signed file: `client.importBundle(jws)`.
@@ -240,7 +331,7 @@ export async function submit(key: string): Promise<string | null> {
 
 The adapter's `snapshot()` is a `PolarisState` (`status`, `gate`, `profile`, `config`,
 `entitlements`, per-service `busy` and `error`). The device code of a sign-in never leaves the main
-process; `adapter.beginSignIn()` (the bridge verb, mapped onto the session) hands the renderer only what to show.
+process; the bridge hands the renderer only what to show.
 
 ## Tests
 

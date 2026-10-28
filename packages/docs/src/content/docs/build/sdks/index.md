@@ -43,14 +43,14 @@ conformance corpus. [The wire contract](/docs/reference/protocol/) describes the
 Every SDK composes one always-on **Core** (device id, credential, trust, the offline cache,
 `sync()`) with one **sub-client per enabled service**, addressed as `client.<service>.<verb>`:
 
-| Sub-client        | Owns                                                                                              |
-| ----------------- | ------------------------------------------------------------------------------------------------- |
-| `client.license`  | activation, enrollment, deactivation, status, entitlements, profile                               |
-| `client.config`   | the signed config document + layered resolution (`get`, `getSecret`), minted tokens (`mintToken`) |
-| `client.devices`  | registration, the roster, fingerprint/facts                                                       |
-| `client.identity` | device-code sign-in (`signIn.start`)                                                              |
-| `client.release`  | changelog, install script, artifact URLs                                                          |
-| `client.update`   | version check, the Sparkle appcast URL                                                            |
+| Sub-client        | Owns                                                                                                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `client.license`  | activation, enrollment, deactivation, status, entitlements, profile                                                                |
+| `client.config`   | the signed config document + layered resolution (`get`, `getSecret`), minted tokens (`mintToken`)                                  |
+| `client.devices`  | registration, the roster, fingerprint/facts                                                                                        |
+| `client.identity` | sign-in (`signIn.start`: device code or redirect), the license choice, the account (`subject`, `signOut`, `attach`, `openAccount`) |
+| `client.release`  | changelog, install script, artifact URLs                                                                                           |
+| `client.update`   | version check, the Sparkle appcast URL                                                                                             |
 
 Node also carries `client.distribution`, the public download model for a platform, and `client.commerce`, which turns store purchases into license flags. [The parity matrix](/docs/reference/parity/) lists which SDK implements each feature.
 

@@ -60,3 +60,5 @@ you, read [Your data and privacy](/docs/help/your-data/).
 ## Signing in to an app
 
 When you sign in to an app, Locker asks which license that device should use. A license with no free device shows **Replace a device**: pick the device to sign out. It gets an email, and it can sign in again when a spot is free. If you hold no license and the app gives one to everyone, **Continue** creates it.
+
+If an app says a key has no entries left, add the key to your account and sign in. If it says the license is already in another Locker account, sign in to that account: a license never moves by its key.
