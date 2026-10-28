@@ -76,6 +76,8 @@ func _transport(t: PKeyTestContext) -> void:
 				return {"status": 502, "body": "<html>"}
 			"/diceroll/sync?nul":
 				return {"status": 200, "body": "{\"changes\":[{\"setting\":\"a\\u0000b\",\"version\":1}]}"}
+			"/diceroll/sync?nulvalue":
+				return {"status": 200, "body": "{\"changes\":[{\"setting\":\"a.x\",\"version\":1,\"value\":\"p\\u0000q\"}]}"}
 			"/diceroll/sync?ints":
 				return {"status": 200, "body": "{\"cursor\":5,\"x\":1.5}"}
 		return {"status": 404})
@@ -94,6 +96,8 @@ func _transport(t: PKeyTestContext) -> void:
 	t.check("H-3: a 200 that is not strict JSON is not an answer", r == Transport.TRANSPORT_ERROR)
 	r = await Transport.send_sync(tr, ctx, {"method": "GET", "path": "/diceroll/sync?nul"})
 	t.check("S-2/HC-4: a served name with a \\u0000 escape is not an answer (it would read as another name)", r == Transport.TRANSPORT_ERROR)
+	r = await Transport.send_sync(tr, ctx, {"method": "GET", "path": "/diceroll/sync?nulvalue"})
+	t.check("R-1: a served VALUE with a \\u0000 escape still pulls (it reads as U+FFFD)", r.get("status") == 200 and r["body"]["changes"][0]["value"] == "p\ufffdq", str(r))
 	r = await Transport.send_sync(tr, ctx, {"method": "GET", "path": "/diceroll/sync?errpage"})
 	t.check("an error page keeps its status", r == {"status": 502})
 	r = await Transport.send_sync(tr, ctx, {"method": "GET", "path": "/diceroll/sync?ints"})

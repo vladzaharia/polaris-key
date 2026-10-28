@@ -223,7 +223,10 @@ func _helpers(t: PKeyTestContext) -> void:
 	var v: Dictionary = j["value"]
 	t.check("loader: ints stay ints, 1.0 and 1e2 stay floats", j["ok"] and typeof(v["i"]) == TYPE_INT and typeof(v["f"]) == TYPE_FLOAT and typeof(v["e"]) == TYPE_FLOAT and typeof(v["a"][0]) == TYPE_INT and typeof(v["a"][1]) == TYPE_FLOAT)
 	t.check("loader: a number past 2^53 is not made an int, null is kept", typeof(v["big"]) == TYPE_FLOAT and v.has("n") and v["n"] == null)
-	t.check("loader: a \\u0000 escape in any string fails closed (S-2)", not Types.load_json_text('{"setting":"a\\u0000b"}')["ok"] and not Types.load_json_text('["a\\u0000"]')["ok"] and not Types.load_json_bytes('{"k":"x\\u0000"}'.to_utf8_buffer())["ok"] and Types.load_json_text('{"k":"a\\\\u0000b"}')["ok"])
+	t.check("loader: a \\u0000 escape in a name fails closed: setting, member, key, renamedTo, k, record, aliases", not Types.load_json_text('{"setting":"a\\u0000b"}')["ok"] and not Types.load_json_text('{"member":"m\\u0000"}')["ok"] \
+			and not Types.load_json_text('{"key":"\\u0000k"}')["ok"] and not Types.load_json_text('{"renamedTo":"x\\u0000"}')["ok"] and not Types.load_json_bytes('{"k":"x\\u0000"}'.to_utf8_buffer())["ok"] \
+			and not Types.load_json_text('{"record":["c","i\\u0000"]}')["ok"] and not Types.load_json_text('{"aliases":{"a":"b\\u0000"}}')["ok"] and not Types.load_json_text('{"a\\u0000":1}')["ok"])
+	t.check("loader: a \\u0000 escape in a value keeps the U+FFFD replacement, and an escaped backslash is text", Types.load_json_text('{"value":"p\\u0000q"}')["value"]["value"] == "p\ufffdq" and Types.load_json_text('["a\\u0000"]')["ok"] and Types.load_json_text('{"setting":"a\\\\u0000b"}')["ok"])
 	t.check("loader: strict (trailing comma, duplicate key, leading zero)", not Types.load_json_text('{"a":1,}')["ok"] and not Types.load_json_text('{"a":1,"a":2}')["ok"] and not Types.load_json_text("[01]")["ok"])
 
 
