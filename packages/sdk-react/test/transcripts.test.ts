@@ -1522,7 +1522,7 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // browser's `authorize` and Continue are `browser` steps the replayer plays as recorded,
     // I-10a.10). identity.choice (I-10a.11) is I-08b's redirect-web-choose*, choice-* transcripts (the
     // choice.* primitives). sync.settings is U-05's cloudsync-*
-    // transcripts (the cloudSyncPull and cloudSyncPush steps); React's port is U-20.
+    // transcripts (the cloudSyncPull and cloudSyncPush steps), replayed here (U-20.4).
     // identity.exchange (I-46.5) is I-13.7's exchange-* transcripts, replayed through
     // `session.exchange` over a fixture key port. sync.keyring is
     // U-36.4's keyring-* transcripts are replayed here through the ring engine (U-38.2).
@@ -1530,7 +1530,7 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // identity.link is I-43.3's link-* transcripts (the link offer, I-46); the Node runner replays
     // them with a reference client (linkTranscripts.test.ts).
     // connect.identity is CC-06.4's connect-identity* transcripts, replayed here (CC-09.1).
-    const plannedHere = ["sync.settings", "identity.link"];
+    const plannedHere = ["identity.link"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];

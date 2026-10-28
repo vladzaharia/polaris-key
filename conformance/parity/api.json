@@ -2922,7 +2922,9 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useSetting().sync",
+          "shape": "hook",
+          "reason": "a hook returns a render value; the sync state re-renders with the value"
         },
         "swift": {
           "planned": "U-07"
@@ -3699,7 +3701,9 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useCloudSync().status",
+          "shape": "hook",
+          "reason": "a hook returns a render value, following the machine"
         },
         "swift": {
           "planned": "U-07"
@@ -3723,7 +3727,9 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useCloudSync().flush",
+          "shape": "hook",
+          "reason": "the hook carries the method"
         },
         "swift": {
           "planned": "U-07"
@@ -3777,7 +3783,9 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useCloudSync().status",
+          "shape": "hook",
+          "reason": "the hook re-renders on each machine event, so no event listener is exposed"
         },
         "swift": {
           "planned": "U-07"
