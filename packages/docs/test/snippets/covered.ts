@@ -31,6 +31,7 @@ export const COVERED_PAGES: Covered[] = [
   { path: `${BUILD}sdks/python/your-own-ui.md`, language: "python" },
   { path: `${BUILD}quickstart/kotlin.mdx`, language: "kotlin" },
   { path: `${BUILD}sdks/kotlin/your-own-ui.md`, language: "kotlin" },
+  { path: `${BUILD}sdks/kotlin/index.mdx`, language: "kotlin", prose: false },
   { path: `${BUILD}ui/frameworks/compose.mdx`, language: "kotlin" },
   {
     path: `${BUILD}ui/components/paywall.mdx`,
