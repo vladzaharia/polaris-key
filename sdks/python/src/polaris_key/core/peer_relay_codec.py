@@ -38,8 +38,8 @@ def _is_int(v: Any) -> bool:
 
 def encode_relay(m: Dict[str, Any]) -> bytes:
     """Encode one message; raises ``ValueError`` on a value its layout cannot hold."""
-    name = m.get("op")
-    _need(isinstance(name, str) and name in _OPS)
+    name = str(m.get("op"))
+    _need(name in _OPS)
     op = bytes([_OPS[name]])
     if name in ("send", "recv"):
         dev = m["to"] if name == "send" else m["from"]
