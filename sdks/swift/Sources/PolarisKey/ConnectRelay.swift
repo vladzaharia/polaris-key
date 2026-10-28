@@ -210,6 +210,8 @@ public struct ConnectRelayOptions: Sendable {
     public var maxSessions: Int
     public var maxPendingPerPeer: Int
     public var handshakeSeconds: TimeInterval
+    /// Makes the pacer for each socket (tests inject a clock). Default: 180/s with a burst of 360 (D-9).
+    public var pacer: (@Sendable () -> ConnectPacer)?
     public var rekeyMessages: Int?
     public var rekeySeconds: TimeInterval?
 
@@ -219,7 +221,8 @@ public struct ConnectRelayOptions: Sendable {
         caps: [String] = ["app/1"], label: String? = nil, backoffBase: TimeInterval = 1, backoffMax: TimeInterval = 60,
         backoffMin: TimeInterval = 0.5, stableSeconds: TimeInterval = 30, pingSeconds: TimeInterval = 25,
         openSeconds: TimeInterval = 15, maxSessions: Int = 64, maxPendingPerPeer: Int = 4,
-        handshakeSeconds: TimeInterval = 30, rekeyMessages: Int? = nil, rekeySeconds: TimeInterval? = nil
+        handshakeSeconds: TimeInterval = 30, pacer: (@Sendable () -> ConnectPacer)? = nil, rekeyMessages: Int? = nil,
+        rekeySeconds: TimeInterval? = nil
     ) {
         self.opener = opener
         self.sleep = sleep
@@ -236,6 +239,7 @@ public struct ConnectRelayOptions: Sendable {
         self.maxSessions = maxSessions
         self.maxPendingPerPeer = maxPendingPerPeer
         self.handshakeSeconds = handshakeSeconds
+        self.pacer = pacer
         self.rekeyMessages = rekeyMessages
         self.rekeySeconds = rekeySeconds
     }
@@ -290,7 +294,11 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
     private var notMember = 0
     private var runTask: Task<Void, Never>?
     private var sleeping: Task<Void, Error>?
-    private var outbox: AsyncStream<Data>.Continuation?
+    private var outbox: ConnectOutbox?
+    private var pacer: ConnectPacer?
+    private var links: [String: RelayLinkEntry] = [:]
+    private var endedKeys: [String] = []
+    private let sessionSubs = RelaySubs<ConnectSession>()
     private var waiters: [Int: CheckedContinuation<Void, Error>] = [:]
     private var nextWaiter = 0
     private var held: (at: Int, src: PeerSource)?
@@ -416,8 +424,9 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         let s = ws
         ws = nil
         isOpen = false
-        outbox?.finish()
+        outbox?.close()
         outbox = nil
+        pacer = nil
         sleeping?.cancel()
         await s?.close(code: 1000)
         runTask?.cancel()
@@ -525,15 +534,21 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         let openedAt = clock()
         lastLimit = nil
         error = nil
-        let (stream, cont) = AsyncStream<Data>.makeStream()
-        outbox = cont
+        let q = ConnectOutbox()
+        let pc = (o.pacer ?? { ConnectPacer() })()
+        outbox = q
+        pacer = pc
         set(.open)
         let w = waiters
         waiters = [:]
         for c in w.values { c.resume() }
         let writer = Task {
-            for await d in stream {
-                do { try await sock.send(d) } catch { break }
+            while let d = await q.get() {
+                do {
+                    try await pc.acquire()
+                    try await sock.send(d)
+                } catch { break }
+                q.sent()
             }
         }
         let pinger = Task { await self.ping(sock) }
@@ -562,12 +577,13 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         }
         writer.cancel()
         pinger.cancel()
-        cont.finish()
+        q.close()
         let was = isOpen
         if was && clock() - openedAt >= o.stableSeconds { attempts = 0 }
         isOpen = false
         ws = nil
         outbox = nil
+        pacer = nil
         memberSet = []
         loseLinks()
         if was { emitMembers() }
@@ -587,15 +603,21 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
 
     private func sendEnv(_ m: PeerRelayMessage) {
         guard isOpen, let o = outbox, let d = try? PeerRelayEnvelope.encode(m) else { return }
-        o.yield(d)
+        o.put(d, force: true)
     }
+
+    func sendSession(peer: Data, session: UInt32, noise: Data) {
+        sendEnv(.send(to: peer, session: session, noise: noise))
+    }
+
+    func hasRoom(_ n: Int) -> Bool { outbox?.roomFor(n) ?? false }
 
     /// False when the envelope is refused (the caller closes 1002).
     private func handle(_ data: Data) async -> Bool {
         guard let m = PeerRelayEnvelope.decode(.toClient, data) else { return false }
         switch m {
         case .recv(let from, let session, let noise):
-            received(from: from, session: session, noise: noise)
+            await received(from: from, session: session, noise: noise)
         case .members(let devices):
             memberSet = Set(devices.map { Base64URL.encode($0) })
             emitMembers()
@@ -618,6 +640,7 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
 
     private func limit(_ reason: Int) {
         lastLimit = reason
+        if reason == 1 { pacer?.halve() }
         let why: ConnectRelayReason = reason == 1 ? .rateLimited : reason == 4 ? .paused : .quota
         let msg =
             why == .paused
@@ -629,9 +652,150 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
 
     // MARK: Sessions (CC-11.14)
 
-    func received(from: Data, session: UInt32, noise: Data) {}
-    func gone(_ device: Data) {}
-    func loseLinks() {}
+    /// Called for each inbound session once it is open and admitted.
+    @discardableResult
+    public nonisolated func onSession(_ fn: @escaping @Sendable (ConnectSession) -> Void) -> @Sendable () -> Void {
+        sessionSubs.add(fn)
+    }
+
+    /// Dial a device of the person over the relay and run the handshake. Throws `ConnectRelayError`:
+    /// `unknownPeer`, `busy`, `handshakeFailed`, `wrongPeer`, or the reason the relay is not connected.
+    public func dial(_ deviceId: String) async throws -> ConnectSession {
+        try await ready()
+        guard let peer = try? PeerAdvert.deviceIdBytes(deviceId) else {
+            throw ConnectRelayError(.unknownPeer, "That is not a device id.")
+        }
+        let ident: PeerSource
+        do { ident = try await identity(force: false) } catch {
+            throw ConnectRelayError(.unknownPeer, "No Cloud Connect identity is held.")
+        }
+        if deviceId == ident.deviceId || !ident.roster.contains(deviceId) {
+            throw ConnectRelayError(.unknownPeer, "That device is not one of this person's devices.")
+        }
+        guard let entry = try await makeLink(peer: peer, session: newSessionId(peer), role: .initiator, ident: ident) else {
+            throw ConnectRelayError(.busy, "Too many relay sessions are open.")
+        }
+        do {
+            let s = try await entry.handlers.opened(entry.link!)
+            return try await checked(s, entry)
+        } catch let e as ConnectRelayError {
+            throw e
+        } catch {
+            throw ConnectRelayError(.handshakeFailed, "The handshake failed.")
+        }
+    }
+
+    /// G8: the certificate names the peer; the room's stamp must agree.
+    private func checked(_ s: ConnectSession, _ e: RelayLinkEntry) async throws -> ConnectSession {
+        if s.peerDeviceId != Base64URL.encode(e.peer) {
+            await s.close()
+            throw ConnectRelayError(.wrongPeer, "The device that answered is not the one that was dialled.")
+        }
+        return s
+    }
+
+    func received(from: Data, session: UInt32, noise: Data) async {
+        let key = linkKey(from, session)
+        if let known = links[key] {
+            known.pipe.push(noise)
+            return
+        }
+        if endedKeys.contains(key) { return }
+        // A first message of a session the peer opened. Only the person's own devices may.
+        guard let ident = try? await identity(force: false), !stopped, isOpen else { return }
+        let fromId = Base64URL.encode(from)
+        if fromId == ident.deviceId || !ident.roster.contains(fromId) { return }
+        if links.values.filter({ $0.peer == from && !$0.ended }).count >= o.maxPendingPerPeer { return }
+        // Another message of the same session may have arrived while the identity loaded.
+        if let known = links[key] {
+            known.pipe.push(noise)
+            return
+        }
+        guard let e = try? await makeLink(peer: from, session: session, role: .responder, ident: ident, first: noise)
+        else { return }
+        let h = e.handlers
+        let link = e.link!
+        Task {
+            guard let s = try? await h.opened(link) else { return }
+            await self.admitted(s, e)
+        }
+    }
+
+    private func admitted(_ s: ConnectSession, _ e: RelayLinkEntry) async {
+        guard let s = try? await checked(s, e), !stopped else { return }
+        sessionSubs.fire(s)
+    }
+
+    private func linkKey(_ peer: Data, _ session: UInt32) -> String {
+        peer.map { String(format: "%02x", $0) }.joined() + ":" + String(session)
+    }
+
+    private func newSessionId(_ peer: Data) -> UInt32 {
+        while true {
+            let n = UInt32.random(in: 0...UInt32.max)
+            let k = linkKey(peer, n)
+            if links[k] == nil && !endedKeys.contains(k) { return n }
+        }
+    }
+
+    /// nil when the session table is full. The entry is in the table before anything is awaited, so a
+    /// message that arrives while the link is built reaches its pipe.
+    private func makeLink(
+        peer: Data, session: UInt32, role: PeerChannel.Role, ident: PeerSource, first: Data? = nil
+    ) async throws -> RelayLinkEntry? {
+        if links.count >= o.maxSessions { return nil }
+        try assertRelayMode(.a)
+        let key = linkKey(peer, session)
+        let pipe = RelayPipe()
+        let docs = docs
+        let h = ConnectSessionHandlers(
+            role: role == .initiator ? "initiator" : "responder", path: "relay", onRing: { docs.onRing($0, $1) },
+            onTrust: { docs.onTrust($0) }, onRingWanted: { docs.onRingWanted() },
+            onEnded: { [weak self] in
+                guard let self else { return }
+                Task { await self.linkEnded(key) }
+            })
+        let entry = RelayLinkEntry(peer: peer, session: session, key: key, pipe: pipe, handlers: h)
+        links[key] = entry
+        if let first { pipe.push(first) }
+        pipe.attach(svc: self, peer: peer, session: session)
+        let epoch = ident.ringEpoch
+        let ring: @Sendable () -> (jws: String, epoch: Int)? = {
+            if let p = docs.pushed, p.epoch > epoch { return p }
+            return nil
+        }
+        let opts = PeerChannelOptions.connectBase(
+            ident, role: role, caps: o.caps, label: o.label, ring: ring, now: src.now, rekeyMessages: o.rekeyMessages,
+            rekeySeconds: o.rekeySeconds)
+        do {
+            let link = try await PeerLink.make(
+                pipe: pipe, options: opts, handlers: h.handlers, handshakeSeconds: o.handshakeSeconds)
+            entry.link = link
+            h.attach(RelayLinkFacade(link: link, svc: self))
+            pipe.onOverflow = { link.closeSoon(.peerBusy) }
+            Task { await link.run() }
+            if role == .initiator { await link.start() }
+        } catch {
+            links[key] = nil
+            throw error
+        }
+        return entry
+    }
+
+    func linkEnded(_ key: String) {
+        links[key]?.ended = true
+        links[key] = nil
+        endedKeys.append(key)
+        if endedKeys.count > 256 { endedKeys.removeFirst() }
+    }
+
+    func gone(_ device: Data) {
+        for e in links.values where e.peer == device { e.pipe.lose() }
+    }
+
+    func loseLinks() {
+        for e in links.values { e.pipe.lose() }
+    }
 
     // MARK: Identity and documents
 
@@ -659,4 +823,126 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         waiters = [:]
         for c in w.values { c.resume(throwing: e) }
     }
+}
+
+// MARK: - Sessions over the room
+
+final class RelayLinkEntry: @unchecked Sendable {
+    let peer: Data
+    let session: UInt32
+    let key: String
+    let pipe: RelayPipe
+    let handlers: ConnectSessionHandlers
+    var link: PeerLink?
+    var ended = false
+
+    init(peer: Data, session: UInt32, key: String, pipe: RelayPipe, handlers: ConnectSessionHandlers) {
+        self.peer = peer
+        self.session = session
+        self.key = key
+        self.pipe = pipe
+        self.handlers = handlers
+    }
+}
+
+/// A session's byte pipe inside the room: `PeerLink` writes length-framed Noise messages, which go out one
+/// per SEND envelope without the frame; RECV payloads come back framed. The room has no flow control, so a
+/// peer that sends faster than the host reads ends with `peer_busy` at the queue cap.
+final class RelayPipe: PeerBytePipe, @unchecked Sendable {
+    private struct State {
+        var q: [Data] = []
+        var bytes = 0
+        var waiter: CheckedContinuation<Data?, Never>?
+        var closed = false
+        var svc: ConnectRelayService?
+        var peer = Data()
+        var session: UInt32 = 0
+    }
+    private let state = LockedValue(State())
+    var onOverflow: (@Sendable () -> Void)?
+    var remoteAddress: String { "relay" }
+
+    func attach(svc: ConnectRelayService, peer: Data, session: UInt32) {
+        state.with {
+            $0.svc = svc
+            $0.peer = peer
+            $0.session = session
+        }
+    }
+
+    /// A RECV payload (an unframed Noise message).
+    func push(_ noise: Data) {
+        guard let framed = try? PeerFrame.encode(noise) else { return }
+        enum R { case none, hand(CheckedContinuation<Data?, Never>), overflow }
+        let r: R = state.with { s in
+            if s.closed { return .none }
+            if let w = s.waiter {
+                s.waiter = nil
+                return .hand(w)
+            }
+            if s.bytes + framed.count > connectQueueMaxBytes { return .overflow }
+            s.q.append(framed)
+            s.bytes += framed.count
+            return .none
+        }
+        switch r {
+        case .none: break
+        case .hand(let w): w.resume(returning: framed)
+        case .overflow: onOverflow?()
+        }
+    }
+
+    /// The socket is gone or the room dropped the peer: the link sees the end of the stream.
+    func lose() {
+        let w = state.with { s -> CheckedContinuation<Data?, Never>? in
+            s.closed = true
+            s.q = []
+            s.bytes = 0
+            defer { s.waiter = nil }
+            return s.waiter
+        }
+        w?.resume(returning: nil)
+    }
+
+    func read() async throws -> Data? {
+        await withCheckedContinuation { (c: CheckedContinuation<Data?, Never>) in
+            let ready: Data?? = state.with { s in
+                if !s.q.isEmpty {
+                    let d = s.q.removeFirst()
+                    s.bytes -= d.count
+                    return .some(d)
+                }
+                if s.closed { return .some(nil) }
+                s.waiter = c
+                return nil
+            }
+            if let ready { c.resume(returning: ready) }
+        }
+    }
+
+    func write(_ bytes: Data) async throws {
+        let (svc, peer, session) = state.with { ($0.svc, $0.peer, $0.session) }
+        guard let svc, bytes.count > 2 else { return }
+        await svc.sendSession(peer: peer, session: session, noise: bytes.dropFirst(2))
+    }
+
+    func close() async { lose() }
+}
+
+/// What a `ConnectSession` needs of its link, with the relay's queue check before anything is encrypted.
+struct RelayLinkFacade: ConnectSessionLink {
+    let link: PeerLink
+    let svc: ConnectRelayService
+
+    func sendRecord(type: Int, body: Data) async throws {
+        // Refuse before the engine encrypts: a message dropped after encryption would break the stream.
+        guard await svc.hasRoom(body.count + 128 * (body.count / 60000 + 1)) else {
+            throw ConnectRelayError(.rateLimited, "The relay queue is full; slow down.")
+        }
+        try await link.sendRecord(type: type, body: body)
+    }
+
+    func close(_ code: PeerCloseCode) async { await link.close(code) }
+    func closeSoon(_ code: PeerCloseCode) { link.closeSoon(code) }
+    func pause(_ on: Bool) { link.pause(on) }
 }

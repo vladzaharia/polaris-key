@@ -102,6 +102,10 @@ final class FakeRoom: @unchecked Sendable {
     private(set) var offered: [[String]] = []
     private(set) var issued = 0
     var rejectWith: Int?
+    /// Stamp `from` as another device for a sender (the room lying about who sent a message).
+    var stampAs: [String: String] = [:]
+    /// Deliver messages addressed to a device to another one.
+    var redirect: [String: String] = [:]
 
     init(members: Set<String>) { members_ = members }
 
@@ -151,9 +155,9 @@ final class FakeRoom: @unchecked Sendable {
         lock.withLock { received.append((dev, m)) }
         switch m {
         case .send(let to, let session, let noise):
-            let target = Base64URL.encode(to)
-            let ts = lock.withLock { sockets.filter { $0.device == target } }
-            for t in ts { t.deliver(.recv(from: Base64URL.decode(dev)!, session: session, noise: noise)) }
+            let target = lock.withLock { redirect[Base64URL.encode(to)] } ?? Base64URL.encode(to)
+            let (ts, stamp) = lock.withLock { (sockets.filter { $0.device == target }, stampAs[dev] ?? dev) }
+            for t in ts { t.deliver(.recv(from: Base64URL.decode(stamp)!, session: session, noise: noise)) }
         case .list: s.deliver(membersMessage())
         case .ping(let d): s.deliver(.pong(d))
         default: break

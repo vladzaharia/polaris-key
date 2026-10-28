@@ -139,6 +139,8 @@ public final class ConnectSession: Sendable, CustomStringConvertible, CustomRefl
             try await link.sendRecord(type: type, body: body)
         } catch PeerChannelError.messageTooLarge {
             throw ConnectLanError(.tooLarge, "The message is larger than the peer accepts.")
+        } catch let e as ConnectRelayError {
+            throw e  // the relay queue is full (`rate_limited`)
         } catch {
             throw ConnectLanError(.closed, "The session is closed.")
         }
