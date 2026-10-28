@@ -27,7 +27,7 @@ import os
 import threading
 import weakref
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Union
 
 import httpx
 
@@ -36,6 +36,7 @@ from .core.device_keys import DeviceKeyPort
 from .connect import ConnectClient
 from .keyring import KeyringClient
 from .commerce import CommerceClient
+from .cloud_sync.host import CloudSyncHost, CloudSyncHostDeps, CloudSyncHostOptions
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .core.bundle import ImportBundleResult, import_bundle
 from .core.cache import CacheManager
@@ -189,6 +190,10 @@ class PolarisKeyClient:
         # Allow a memory-only key store: its keys die with the process, so every restart would
         # register a new pair (the Worker allows 4 a day). Off by default.
         allow_ephemeral_keys: bool = False,
+        # ── Cloud Sync host (U-06.9) ─────────────────────────────────────────────────
+        # App code's Cloud Sync choices: a ``CloudSyncHostOptions`` or a mapping with ``encryption``
+        # (default "e2e"), ``catalog`` (the compiled mirror) and ``aliases``. Never read from the Worker.
+        cloud_sync: Optional[Union[CloudSyncHostOptions, Mapping[str, Any]]] = None,
     ) -> None:
         self.product = product_slug
         self.core = CoreContext(
@@ -310,7 +315,7 @@ class PolarisKeyClient:
 
         #: The Cloud Sync key ring: the end-to-end root, its wraps and recovery (WIRE-CONTRACT-V5
         #: §13.11). Named ``keyring`` because ``sync()`` is the licence sync.
-        self.keyring = KeyringClient(self.core, self._tokens, device_keys=device_keys)
+        self.keyring: KeyringClient = KeyringClient(self.core, self._tokens, device_keys=device_keys)
 
         #: Cloud Connect identity (WIRE-CONTRACT-V5 §15): the person's roster, this device's
         #: certificate and K_disc, verified against the effective product set. Without
@@ -326,6 +331,22 @@ class PolarisKeyClient:
         # Signing out forgets the held roster, certificate and K_disc (the device keys stay). A
         # state that cannot be deleted raises, and the sign-out stops (fail closed).
         self.identity.on_before_sign_out(self.connect.leave)
+
+        #: The Cloud Sync host (WIRE-CONTRACT-V5 §13): the machine, its transport and the state file.
+        #: Built here, started by the settings API; nothing is read or sent until then.
+        self.cloud_sync_host = CloudSyncHost(
+            CloudSyncHostDeps(
+                ctx=self.core,
+                tokens=self._tokens,
+                keyring=self.keyring,
+                discovery=lambda: self._discovery_doc,
+                fetch_schema=self.config.fetch_schema,
+                document=self._sync_document,
+            ),
+            cloud_sync
+            if isinstance(cloud_sync, CloudSyncHostOptions)
+            else CloudSyncHostOptions(**dict(cloud_sync or {})),
+        )
 
         # Store purchases → licence flags (P6-01). The one-call claim helpers sync on success.
         self.commerce = CommerceClient(
@@ -454,6 +475,7 @@ class PolarisKeyClient:
     def close(self) -> None:
         """Stop the refresh thread and release the HTTP client. Safe to call twice."""
         self._timer_stop.set()
+        self.cloud_sync_host.close()
         self.keyring.lock()
         timer = self._timer
         if timer is not None:
@@ -515,6 +537,7 @@ class PolarisKeyClient:
         if isinstance(result, DiscoveryOk):
             self._discovery_doc = result.manifest
             self.core.set_services(result.services)
+            self.cloud_sync_host.note_discovery()
             try:
                 self.presentation_source.accept(result.manifest)
             except Exception:  # display data never fails discovery
@@ -524,6 +547,15 @@ class PolarisKeyClient:
             except Exception:
                 pass
         return result
+
+    def _sync_document(self) -> Dict[str, Any]:
+        """The signed config document's values and the keys it locks, for the Cloud Sync machine."""
+        doc = self.config.doc
+        entries = doc.config if doc is not None else {}
+        return {
+            "values": {k: e.value for k, e in entries.items()},
+            "locked": [k for k, e in entries.items() if e.state in ("enforced", "hidden")],
+        }
 
     def _discovery_or_load(self) -> Optional[Dict[str, Any]]:
         """The discovery document, loaded once when this session has none (the account verbs

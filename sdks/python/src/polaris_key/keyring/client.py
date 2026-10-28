@@ -219,15 +219,23 @@ class SyncCodec:
         aliases: Optional[List[str]] = None,
     ) -> sc.OpenedValue:
         """Tries the current root, then any adopted root whose ``kid`` the envelope names."""
+        return self._try_roots(envelope, lambda root: sc.open_value(root, collection, name, envelope, aliases))
+
+    def open_any(self, collection: str, envelope: bytes) -> sc.OpenedValue:
+        """Opens an envelope whose name is inside it (a blinded open key or merge member). The caller
+        checks the name it gets back (:func:`~polaris_key.core.sync_crypto.open_value_any_name`)."""
+        return self._try_roots(envelope, lambda root: sc.open_value_any_name(root, collection, envelope))
+
+    def _try_roots(self, envelope: bytes, attempt: Callable[[bytearray], sc.OpenedValue]) -> sc.OpenedValue:
         cur = self._ring._need()
-        last = sc.open_value(cur.root, collection, name, envelope, aliases)
+        last = attempt(cur.root)
         if last.ok or last.reason != "kid":
             return last
         kid = bytes(envelope[1 : 1 + sc.SYNC_KID_BYTES])
         for o in list(self._ring._others):
             if o.kid != kid:
                 continue
-            last = sc.open_value(o.root, collection, name, envelope, aliases)
+            last = attempt(o.root)
             if last.ok or last.reason != "kid":
                 return last
         return last
