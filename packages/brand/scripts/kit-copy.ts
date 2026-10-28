@@ -147,17 +147,6 @@ export const PORTAL_NAMESPACES: ReadonlySet<string> = new Set([
   "locker",
 ]);
 
-/**
- * UK-42.1: keys whose components (ActivateDone, AddToAccount) and states land with UK-42.2 in
- * components.json. Until then they are exempt from "a component state lists it"; UK-42.2 deletes
- * this set and lists them.
- */
-const AWAITING_COMPONENT_STATES = (key: string): boolean =>
-  /^activate\.(done|recommend|attach|owned|otherEmail)\./.test(key) ||
-  key === "activate.waiting" ||
-  key === "activate.waitingSignIn" ||
-  key === "account.notInAccount";
-
 /** Namespaces whose keys need not be listed by a component state (parts and shared groups). */
 const SHARED_NAMESPACES = new Set([
   "part",
@@ -179,6 +168,9 @@ export const COMPONENTS = [
   "SignInHandoff",
   "NearbyApproval",
   "Activate",
+  // Activation without an account (UK-42.2): the ui-matrix `holders` family.
+  "ActivateDone",
+  "AddToAccount",
   "OfflineActivation",
   "DeviceLimit",
   "LicenseChoice",
@@ -924,11 +916,7 @@ export function validateKitCopy(src: KitCopySources): string[] {
     }
   }
   for (const key of Object.keys(en.messages))
-    if (
-      !SHARED_NAMESPACES.has(key.split(".")[0]!) &&
-      !listed.has(key) &&
-      !AWAITING_COMPONENT_STATES(key)
-    )
+    if (!SHARED_NAMESPACES.has(key.split(".")[0]!) && !listed.has(key))
       errors.push(`en ${key}: no component state lists it`);
   return errors;
 }

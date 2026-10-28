@@ -189,6 +189,37 @@ describe("ui-matrix.json", () => {
 describe("the generator refuses", () => {
   const cases: [string, (d: UiMatrix, s: UiMatrixSources) => void, string][] = [
     [
+      "a holders row that names Cloud Sync with it off (UK-42.2)",
+      (d) => {
+        const r = row(
+          d,
+          "holders",
+          "ActivateDone/ready: Cloud Sync, get it back and move it",
+        );
+        r.input.services = servicesWithout(S.services, "sync");
+      },
+      "Cloud Sync's line with Cloud Sync off",
+    ],
+    [
+      "a holders state with no row (UK-42.2)",
+      (d) => {
+        d.holders = d.holders.filter((r) => r.expect.state !== "email-bound");
+      },
+      "holders: no row for AddToAccount.email-bound",
+    ],
+    [
+      "the portal line with Identity on (UK-42.2)",
+      (d) => {
+        const r = row(
+          d,
+          "holders",
+          "ActivateDone/ready: Identity off, one reason that opens the portal",
+        );
+        r.input.services = S.services.map((x) => x.slug);
+      },
+      "the portal line is for Identity off",
+    ],
+    [
       "an unclosed services list",
       (d) => {
         row(d, "update", "UpdatePrompt: Update off").input.services = [
