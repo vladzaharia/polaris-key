@@ -4,10 +4,9 @@
 // The Swift runner for `conformance/corpus/v2/sync-scenarios.json` (U-07.1), read in place through
 // `CorpusLocator`. Mirrors Python's `test_sync_scenarios.py`.
 //
-// `settingCases` runs in full. The scenario driver below is the shell the machine slices fill in
-// (U-07.2 to U-07.4): while no machine exists, `ported` is empty, so every scenario is skipped by
-// name (D-N1), and each later slice adds the scenarios its machine half replays. The final slice
-// deletes `ported` and the skip, so the runner then carries no list.
+// `settingCases` runs in full. The scenario driver below replays the scenarios the machine ports so
+// far (D-N1): U-07.2 drops every scenario with no `respond` step (`isPending`), U-07.3 keeps only
+// the `e2e-` rule, and U-07.4 deletes the rule, so the runner then carries no skip.
 
 import Foundation
 import PolarisKeyCore
@@ -58,13 +57,22 @@ private struct SyncScenarioFile {
 }
 
 final class SyncScenariosTests: XCTestCase {
-    /// Scenarios the Swift machine port replays (D-N1). Empty until U-07.2; U-07.3 and U-07.4 grow
-    /// it, and the last slice deletes it and `skipReason`.
-    static let ported: Set<String> = []
-    static let skipReason = "not on the ported list (the machine arrives in U-07.2 to U-07.4)"
+    /// The skip rule (D-N1). U-07.2: a scenario that needs a server answer waits for the exchange
+    /// half. U-07.3 narrows it to the `e2e-` prefix and U-07.4 deletes it.
+    static func isPending(_ sc: [String: JSONValue]) -> Bool {
+        (sc["steps"]?.arrayValue ?? []).contains { $0.objectValue?.keys.contains("respond") ?? false }
+    }
 
-    /// Builds the machine for a scenario. nil until U-07.2 lands.
-    static var makeMachine: ((SyncScenarioInit, JSONValue, @escaping () -> String) -> SyncScenarioMachine)? { nil }
+    /// Builds the machine for a scenario.
+    static func makeMachine(_ i: SyncScenarioInit, _ product: JSONValue, _ newId: @escaping () -> String)
+        -> SyncScenarioMachine
+    {
+        let a = CloudSyncScenarioAdapter(product: product, initBlock: i, newClientId: newId)
+        if let legacy = i["legacyLocal"], legacy != .null {
+            XCTAssertEqual(a.machine.importLocal(legacy.objectValue ?? [:]), .ok, "import")
+        }
+        return a
+    }
 
     private func file() throws -> SyncScenarioFile { try SyncScenarioFile.load() }
 
@@ -82,26 +90,23 @@ final class SyncScenariosTests: XCTestCase {
         XCTAssertEqual(f.root["constants"]?.objectValue, want)
     }
 
-    func testPortedNamesExist() throws {
-        let names = Set(try file().scenarios.compactMap { $0["name"]?.stringValue })
-        XCTAssertTrue(Self.ported.isSubset(of: names), "ported names the corpus does not have")
-        XCTAssertFalse(names.isEmpty)
+    func testPendingRuleLeavesScenariosToReplay() throws {
+        let f = try file()
+        let ran = f.scenarios.filter { !Self.isPending($0) }.compactMap { $0["name"]?.stringValue }
+        XCTAssertEqual(f.scenarios.count, 60)
+        XCTAssertTrue(ran.contains("sign-out-discard-unsynced"))
+        XCTAssertFalse(ran.isEmpty)
     }
 
     func testScenarios() throws {
         let f = try file()
         var ran = 0
-        for sc in f.scenarios {
+        for sc in f.scenarios where !Self.isPending(sc) {
             let name = sc["name"]?.stringValue ?? "?"
-            guard Self.ported.contains(name) else { continue }
-            guard let make = Self.makeMachine else {
-                XCTFail("\(name) is ported but no machine is wired")
-                continue
-            }
-            try runScenario(sc, name: name, make: make, product: f.root["product"] ?? .null)
+            try runScenario(sc, name: name, make: Self.makeMachine, product: f.root["product"] ?? .null)
             ran += 1
         }
-        XCTAssertEqual(ran, Self.ported.count)
+        XCTAssertGreaterThan(ran, 0)
     }
 
     // MARK: - The driver (Python `test_scenario`)
@@ -224,4 +229,83 @@ final class SyncScenariosTests: XCTestCase {
         XCTAssertEqual(jsonBytes(.object(["b": .double(1.0), "a": .string("é")])), #"{"a":"é","b":1}"#.utf8.count)
         XCTAssertEqual(jsonBytes(.double(.infinity)), Int.max)
     }
+}
+
+/// The machine behind the driver's protocol: it turns the corpus's `init` block into options and the
+/// typed answers into the JSON the corpus compares.
+final class CloudSyncScenarioAdapter: SyncScenarioMachine {
+    let machine: CloudSyncMachine
+    private let opts: SyncMachineOptions
+
+    init(product: JSONValue, initBlock i: SyncScenarioInit, newClientId: @escaping () -> String) {
+        let cat = i["catalog"]?.objectValue ?? [:]
+        let doc = i["document"]?.objectValue ?? [:]
+        let clock = i["clock"]?.objectValue ?? [:]
+        var o = SyncMachineOptions(
+            product: product.stringValue ?? "",
+            catalog: SyncMachineCatalog(
+                settings: (cat["settings"]?.arrayValue ?? []).compactMap(SettingRoute.init(json:)),
+                collections: (cat["collections"]?.arrayValue ?? []).compactMap {
+                    guard let c = $0.objectValue, let n = c["name"]?.stringValue, let p = c["policy"]?.stringValue
+                    else { return nil }
+                    return SyncCollectionDecl(
+                        name: n, policy: p, field: c["field"]?.stringValue, resolve: c["resolve"]?.stringValue)
+                }),
+            document: SyncMachineDocument(
+                values: doc["values"]?.objectValue ?? [:],
+                locked: (doc["locked"]?.arrayValue ?? []).compactMap(\.stringValue)),
+            now: clock["now"]?.intValue ?? 0, newClientId: newClientId)
+        o.offsetMs = clock["offsetMs"]?.intValue ?? 0
+        o.contacted = clock["contacted"]?.boolValue ?? false
+        o.subject = i["subject"]?.stringValue
+        o.network = i["network"]?.stringValue.flatMap(SyncNetwork.init(rawValue:)) ?? .online
+        o.onSignOut = i["options"]?.objectValue?["onSignOut"]?.stringValue.flatMap(SyncOnSignOut.init(rawValue:)) ?? .clear
+        o.encryption = i["encryption"]?.stringValue.flatMap(SyncEncryption.init(rawValue:)) ?? .e2e
+        o.hasRoot = i["hasRoot"]?.boolValue ?? false
+        opts = o
+        machine = CloudSyncMachine(o)
+    }
+
+    private init(machine: CloudSyncMachine, opts: SyncMachineOptions) {
+        self.machine = machine
+        self.opts = opts
+    }
+
+    func call(_ name: String, _ a: [JSONValue]) -> CallResult {
+        func str(_ i: Int) -> String { a.count > i ? (a[i].stringValue ?? "") : "" }
+        switch name {
+        case "set": return machine.set(str(0), a[1])
+        case "clear": return machine.clear(str(0))
+        case "put": return machine.put(str(0), str(1), a[2])
+        case "add": return machine.add(str(0), str(1), a[2])
+        case "remove": return machine.remove(str(0), str(1), a[2])
+        case "flush": return machine.flush()
+        case "refresh": return machine.refresh()
+        default:
+            XCTFail("unknown call \(name)")
+            return .failed("unknown")
+        }
+    }
+
+    func advance(ms: Int) { machine.advance(ms) }
+    func setNetwork(_ state: String) { machine.setNetwork(SyncNetwork(rawValue: state) ?? .online) }
+    func receive(status: Int, body: JSONValue?, opened: SyncOpenedBody?) {
+        XCTFail("receive arrives with the exchange half (U-07.3)")
+    }
+    func receiveTransportError() { XCTFail("receive arrives with the exchange half (U-07.3)") }
+    func setRoot(has: Bool) { machine.setRoot(has) }
+    func signIn(subject: String) { machine.signIn(subject) }
+    func signOut(discardUnsynced: Bool) { machine.signOut(discardUnsynced: discardUnsynced) }
+    func relaunch(journalLost: Bool) -> SyncScenarioMachine {
+        CloudSyncScenarioAdapter(
+            machine: CloudSyncMachine.relaunch(machine, opts, journalLost: journalLost), opts: opts)
+    }
+    func takeRequests() -> [JSONValue] { machine.takeRequests().map(\.json) }
+    func takeEvents() -> [JSONValue] { machine.takeEvents().map(\.json) }
+    func get(_ key: String) -> JSONValue? { machine.get(key).json }
+    func settingState(_ key: String) -> JSONValue? { machine.settingState(key).json }
+    func record(_ collection: String, _ id: String) -> JSONValue? { machine.record(collection, id)?.json }
+    func journal() -> JSONValue { machine.journal() }
+    func status() -> JSONValue { machine.status().json }
+    func encryptionSince() -> JSONValue { machine.encryptionSince.map { .int($0) } ?? .null }
 }
