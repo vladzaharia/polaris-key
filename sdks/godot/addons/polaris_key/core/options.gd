@@ -129,8 +129,7 @@ var ring_vault: PKeySyncRingVault = null
 @export var cloud_sync_encryption := "e2e"
 ## Renames the app declares for synced settings (old name to current name). Never taken from a served body.
 @export var cloud_sync_aliases: Dictionary = {}
-## The codec the E2E lane seals with (a PKeyCloudSync codec port). Not an export. Null: the ring's own
-## codec once it ships (U-21.8), else the locked base codec, so an E2E product stays locked and sends nothing.
+## The codec the E2E lane seals with (a PKeyCloudSync codec port). Not an export. Null: PKeySyncHostCodec over the key ring.
 var cloud_sync_codec: Object = null
 
 @export_group("Config")

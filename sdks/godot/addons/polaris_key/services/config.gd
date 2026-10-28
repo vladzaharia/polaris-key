@@ -310,7 +310,7 @@ func clear_all() -> PKeyResult:
 # ── Cloud Sync (the port PKeyCloudSync installs; not app verbs) ─────────────────────────────
 
 ## Cloud Sync's port, set once its host runs; null removes it.
-func use_sync(port: Object) -> void:
+func _use_sync(port: Object) -> void:
 	_sync_port = port
 	refresh()
 
@@ -339,24 +339,24 @@ func _via_machine(r: Dictionary, key: String, value: Variant) -> PKeyResult:
 
 
 ## The legacy local values, for the one-time import into Cloud Sync.
-func importable() -> Dictionary:
+func _importable() -> Dictionary:
 	return _store.values.duplicate(true) if _store != null else {}
 
 
 ## The machine changed these keys: report them through the one change detector.
-func note_sync_change(keys: Array, _origin: String) -> void:
+func _note_sync_change(keys: Array, _origin: String) -> void:
 	for k in keys:
 		_sync_keys[String(k)] = true
 	refresh()
 
 
 ## `"local"`, `"pending"` or `"synced"` (PKeyConfigSetting.sync).
-func sync_state(key: String) -> String:
+func _sync_state(key: String) -> String:
 	return _sync_port.state(key) if _sync_active() else "local"
 
 
 ## The signed document's values and the keys it locks, for the Cloud Sync machine.
-func sync_document() -> Dictionary:
+func _sync_document() -> Dictionary:
 	var values := {}
 	var locked: Array = []
 	var remote = _remote()
@@ -371,7 +371,7 @@ func sync_document() -> Dictionary:
 
 
 ## The compiled mirror alone as `{schemaVersion, entries}` (never the fetched catalog), or {}.
-func compiled_catalog() -> Dictionary:
+func _compiled_catalog() -> Dictionary:
 	if _compiled_version == null:
 		return {}
 	var entries: Array = []

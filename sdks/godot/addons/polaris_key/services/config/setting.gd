@@ -57,7 +57,7 @@ func clear() -> PKeyResult:
 ## `local` key), `"pending"` (an edit waits to be sent) or `"synced"`.
 func sync() -> String:
 	var c = _config.get_ref()
-	return c.sync_state(key) if c != null else "local"
+	return c._sync_state(key) if c != null else "local"
 
 
 ## Whether a device-local override currently answers for this key.

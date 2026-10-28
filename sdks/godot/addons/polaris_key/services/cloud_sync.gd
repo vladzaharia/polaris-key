@@ -82,8 +82,11 @@ func bind(p_core: PKeyCore, sdk: Node, p_config: PKeyConfig, p_keyring: Object, 
 	var sealer: PKeyRecordSealer = null
 	if OS.get_environment("PKEY_DESKTOP_KEYRING") != "0":
 		sealer = PKeyRecordSealer.for_platform(p_core.product)
-	# One line plugs the real codec in (U-21.8): `PKeySyncHostCodec.new(keyring)` in place of the locked base.
-	var codec: Object = opts.cloud_sync_codec if opts.cloud_sync_codec != null else CodecPort.new()
+	# The real codec (U-21.8) over the key ring; a test or an app may pass its own; without a ring, the
+	# locked base codec, so an E2E product stays locked and sends nothing.
+	var codec: Object = opts.cloud_sync_codec
+	if codec == null:
+		codec = PKeySyncHostCodec.new(p_keyring) if p_keyring is PKeySyncRing else CodecPort.new()
 	host.configure({
 		"product": p_core.product,
 		"state_dir": opts.store_root.path_join(p_core.storage_namespace),
@@ -96,7 +99,7 @@ func bind(p_core: PKeyCore, sdk: Node, p_config: PKeyConfig, p_keyring: Object, 
 		"url": func(path: String) -> String: return p_core.url(path),
 		"discovery": func() -> Variant: return p_core.discovery_manifest,
 		"fetch_schema": func() -> Variant: return await p_config.fetch_schema(),
-		"document": func() -> Dictionary: return p_config.sync_document(),
+		"document": func() -> Dictionary: return p_config._sync_document(),
 		"transport": Transport.make(host, p_core.local_only),
 	}, {
 		"encryption": opts.cloud_sync_encryption,
@@ -147,7 +150,7 @@ func attach() -> void:
 		return
 	_attaching = true
 	# The compiled mirror is read now, so a mirror set after configure() counts.
-	var mirror := _config.compiled_catalog()
+	var mirror := _config._compiled_catalog()
 	host._opts["catalog"] = mirror if not mirror.is_empty() else null
 	var started: Dictionary = await host.start()
 	if not started["ok"]:
@@ -157,7 +160,7 @@ func attach() -> void:
 	if not _listening:
 		_listening = true
 		host.events.connect(_on_events)
-	_config.use_sync(_port)
+	_config._use_sync(_port)
 	# A journal saved while signed in still names its subject.
 	_subject = host.machine().subject()
 	# A-2: an empty stored subject is unknown (offline boot, discovery not loaded): nothing changes.
@@ -276,7 +279,7 @@ func _sign_in(subject: String) -> void:
 		await _sign_out_now()
 	# Once per install, before the first principal arrives so the values enter at the floor and a newer
 	# cloud value wins. The marker is written after the sign-in succeeded (A-6).
-	var mark: bool = host.import_pending(_config.importable())
+	var mark: bool = host.import_pending(_config._importable())
 	_subject = subject
 	var r: Dictionary = host.sign_in(subject)
 	if not r["ok"]:
@@ -337,7 +340,7 @@ func _on_events(events: Array) -> void:
 		if e.get("type") == "signedOut":
 			_subject = null
 		if e.get("type") == "change":
-			_config.note_sync_change(e["keys"], e["origin"])
+			_config._note_sync_change(e["keys"], e["origin"])
 		if left and e.get("type") == "signInOffered":
 			continue  # the offer follows the forget (A-5)
 		_deliver(e)
