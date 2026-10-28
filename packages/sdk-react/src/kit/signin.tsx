@@ -329,13 +329,14 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         return;
       case "signin.key.ownedSignIn":
       case "welcome.signIn":
+      case "signin.key.signIn":
         // A refusal's Sign in starts the kit's own sign-in; `signInUrl` is only the fallback
         // for a build that cannot (license_owned).
         return model.start({ channel: "browser" }).catch(() => {
           const url = safeLink(s.activation?.signInUrl);
           if (url) openLink(url);
         });
-      case "signin.key.addTitle": {
+      case "signin.key.addInLocker": {
         const url = s.activation?.manageUrl;
         // With the page's return address and the typed key, as the gate's link does.
         if (url)

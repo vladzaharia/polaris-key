@@ -395,7 +395,10 @@ const KIT_CSS = String.raw`
 }
 .pk-root[data-shape="short"] .stage[data-kind="screen"] .card > .actions .btn {
   inline-size: auto;
-  flex: 1 1 10rem;
+  /* A label never wraps inside its button: the button is as wide as its label, and a bar that
+     cannot hold two wraps to a second row of full-width buttons instead. */
+  flex: 1 1 auto;
+  white-space: nowrap;
 }
 
 /* UpdatePrompt: the primary takes the first line, Later and Restart when ready share the next. */

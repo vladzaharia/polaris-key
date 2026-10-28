@@ -22,10 +22,10 @@ export function refusalOf(input: UiInput): Refusal | null {
   return null;
 }
 
-/** The manage link's label: the key step's title plus the new-window glyph (interim, until
- *  I-46.1's `signin.key.addInLocker`). */
-export const MANAGE_KEY = "signin.key.addTitle";
-export const SIGN_IN_KEY = "welcome.signIn";
+/** The manage link's label (ui-core's `keyRefusalSpec`): "Add it in Polaris Locker" plus the
+ *  new-window glyph. */
+export const MANAGE_KEY = "signin.key.addInLocker";
+export const SIGN_IN_KEY = "signin.key.signIn";
 /** license-owned's primary: the account that holds the license (M4). */
 export const OWNED_SIGN_IN_KEY = "signin.key.ownedSignIn";
 /** A sign-in that failed to start: the one callout on the step. */
@@ -34,73 +34,46 @@ const DIFFERENT_KEY = "signin.key.differentKey";
 /** Read by the manage link as its description: where it goes. */
 export const OPENS_BROWSER_KEY = "signin.replace.opensBrowser";
 
-const COPY: Record<Refusal, string[]> = {
-  // The title says it; the sentence is the product-named one, not a restatement.
-  "key-entry-limit": [
-    "core.activation.key-entry-limit.title",
-    "signin.key.noEntries",
-  ],
-  // The product-named words: the license is this product's.
-  "license-owned": [
-    "core.codes.license_owned.title",
-    "core.codes.license_owned.message",
-  ],
-};
-
-/** True for a view the refusal step replaces: Activate's rejected state, the form's key step. */
+/** True for a view the refusal step replaces: Activate's two refusal states, the form's
+ *  `key-refused` step (I-46.1 renamed all three). */
 function replaced(view: View): boolean {
   return (
-    (view.component === "Activate" && view.state === "rejected") ||
-    (view.component === "SignIn" && view.state === "key")
+    (view.component === "Activate" &&
+      (view.state === "key-entry-limit" || view.state === "license-owned")) ||
+    (view.component === "SignIn" && view.state === "key-refused")
   );
 }
 
-/** The focused step for a refusal, or `null` when `view` is not the key step of one. */
+/** The focused step for a refusal, or `null` when `view` is not the key step of one. The copy and
+ *  the primary are ui-core's `keyRefusalSpec` (the corpus pins them, TV's QR included); the drop-in
+ *  adds the form's Cancel and the callout for a sign-in that failed to start. */
 export function refusalView(view: View, input: UiInput): View | null {
   const which = refusalOf(input);
   if (!which || !replaced(view)) return null;
   const canSignIn = input.capabilities?.signIn !== false;
-  const manage =
-    which === "key-entry-limit" && safeLink(input.activation?.manageUrl);
-  // license-owned: Sign in to that account. Where the build cannot sign in itself, the product's
-  // sign-in page is the link (and says so with the new-window glyph).
+  // license-owned on a build that cannot sign in itself: the product's sign-in page is the link
+  // (and says so with the new-window glyph).
   const ownedLink =
     which === "license-owned" &&
     !canSignIn &&
     safeLink(input.activation?.signInUrl);
-  const signIn =
-    which === "license-owned"
-      ? canSignIn || ownedLink
-        ? OWNED_SIGN_IN_KEY
-        : null
-      : canSignIn
-        ? SIGN_IN_KEY
-        : null;
   const failed = input.error?.code;
   const copy = [
-    ...COPY[which],
-    ...(signIn ? [signIn] : []),
-    ...(manage ? [MANAGE_KEY] : []),
-    DIFFERENT_KEY,
-    ...(view.component === "SignIn" ? ["common.cancel"] : []),
+    ...view.copy,
+    ...(view.component === "SignIn" && !view.copy.includes("common.cancel")
+      ? ["common.cancel"]
+      : []),
     ...(failed ? [REFUSAL_ERROR_KEY] : []),
   ];
   return {
     ...view,
     copy,
-    actions: manage ? ["open-manage-url"] : [],
     args: {
       ...view.args,
       refusal: which,
       ...(ownedLink ? { signInLink: 1 } : {}),
     },
-    decisions: {
-      ...view.decisions,
-      primary: signIn ?? (manage ? MANAGE_KEY : DIFFERENT_KEY),
-      tone: "neutral",
-      errorSlot: null,
-      focus: "heading",
-    },
+    decisions: { ...view.decisions, errorSlot: null, focus: "heading" },
   };
 }
 
@@ -119,6 +92,5 @@ export function refusalLayout(layout: Layout, component: string): Layout {
       component === "SignIn"
         ? [DIFFERENT_KEY, "common.cancel"]
         : [DIFFERENT_KEY],
-    content: [],
   };
 }
