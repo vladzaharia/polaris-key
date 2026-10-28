@@ -78,7 +78,7 @@ describe("pkey-sync-file/1", () => {
       2 * FILE_SEGMENT_BYTES,
     ]) {
       const plain = noise(n, n + 3);
-      const sealed = await sealFile(port, collKey, kid, salt, plain);
+      const sealed = await sealFile(port, collKey, kid, plain);
       expect(sealed.length).toBe(sealedFileSize(n));
       expect(plainFileSize(sealed.length)).toBe(n);
       const opened = await openFile(port, collKey, kid, sealed);
@@ -89,7 +89,7 @@ describe("pkey-sync-file/1", () => {
   it("seals the same bytes however the plaintext arrives", async () => {
     const { collKey, kid } = await setup();
     const plain = noise(FILE_SEGMENT_BYTES + 5000);
-    const whole = await sealFile(port, collKey, kid, salt, plain);
+    const whole = await sealFile(port, collKey, kid, plain, salt);
     for (const piece of [
       1000,
       65_537,
@@ -101,10 +101,25 @@ describe("pkey-sync-file/1", () => {
         for (let at = 0; at < plain.length; at += piece)
           yield plain.subarray(at, at + piece);
       })();
-      for await (const p of sealFileStream(port, collKey, kid, salt, src))
+      for await (const p of sealFileStream(port, collKey, kid, src, salt))
         parts.push(p);
       expect(hexOf(new Uint8Array(Buffer.concat(parts)))).toBe(hexOf(whole));
     }
+  });
+
+  it("draws a fresh salt every seal, so identical content never repeats a key", async () => {
+    const { collKey, kid } = await setup();
+    const plain = noise(5000, 4);
+    const a = await sealFile(port, collKey, kid, plain);
+    const b = await sealFile(port, collKey, kid, plain);
+    expect(hexOf(a.subarray(32, 64))).not.toBe(hexOf(b.subarray(32, 64)));
+    expect(hexOf(a.subarray(64))).not.toBe(hexOf(b.subarray(64)));
+    const opened = await openFile(port, collKey, kid, b);
+    expect(opened.ok && hexOf(opened.plain)).toBe(hexOf(plain));
+    // The port supplies the randomness, nothing derived from the content.
+    const fixed = { ...port, random: (n: number) => new Uint8Array(n).fill(3) };
+    const c = await sealFile(fixed, collKey, kid, plain);
+    expect(Array.from(c.subarray(32, 64))).toEqual(Array(32).fill(3));
   });
 
   it("streams a large synthetic file without holding it", async () => {
@@ -123,7 +138,7 @@ describe("pkey-sync-file/1", () => {
     })();
     const sealedIn = new Sha256();
     const sealedPieces = (async function* () {
-      for await (const p of sealFileStream(port, collKey, kid, salt, source)) {
+      for await (const p of sealFileStream(port, collKey, kid, source)) {
         consumed = produced - 0; // the sealer has taken everything produced so far
         sealedIn.update(p);
         yield p;
@@ -151,7 +166,7 @@ describe("pkey-sync-file/1", () => {
 
   it("refuses a bad header before any segment", async () => {
     const { collKey, kid } = await setup();
-    const sealed = await sealFile(port, collKey, kid, salt, noise(10));
+    const sealed = await sealFile(port, collKey, kid, noise(10));
     const at = async (mut: (b: Uint8Array) => void, k = kid) => {
       const b = Uint8Array.from(sealed);
       mut(b);
@@ -172,7 +187,6 @@ describe("pkey-sync-file/1", () => {
       port,
       collKey,
       kid,
-      salt,
       noise(FILE_SEGMENT_BYTES + 1),
     );
     for (const [len, want] of [
@@ -191,7 +205,7 @@ describe("pkey-sync-file/1", () => {
     it("reads and decrypts only the segments a range overlaps", async () => {
       const { collKey, kid } = await setup();
       const plain = noise(5 * FILE_SEGMENT_BYTES + 123, 11);
-      const sealed = await sealFile(port, collKey, kid, salt, plain);
+      const sealed = await sealFile(port, collKey, kid, plain);
       for (const [s, e, segs] of [
         [0, 0, 0],
         [0, 1, 1],
@@ -222,7 +236,7 @@ describe("pkey-sync-file/1", () => {
 
     it("refuses a range outside the file and a reader that answers short", async () => {
       const { collKey, kid } = await setup();
-      const sealed = await sealFile(port, collKey, kid, salt, noise(100));
+      const sealed = await sealFile(port, collKey, kid, noise(100));
       const read = async (o: number, l: number) => sealed.slice(o, o + l);
       const r = (s: number, e: number, rd = read, size = sealed.length) =>
         reason(openFileRange(port, collKey, kid, rd, size, s, e));

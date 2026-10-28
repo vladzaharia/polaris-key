@@ -690,7 +690,7 @@ describe("sync-vectors.json: fileStreamCases", () => {
       const salt = unhex(r.saltHex);
       const plain = filePlain(r.plain.label, r.plain.length);
       expect(sha(plain)).toBe(r.expect.plainSha256Hex);
-      const sealed = await sealFile(port, collKey, kid, salt, plain);
+      const sealed = await sealFile(port, collKey, kid, plain, salt);
       expect(sealed.length).toBe(r.expect.sealedSize);
       expect(sealedFileSize(plain.length)).toBe(r.expect.sealedSize);
       expect(plainFileSize(sealed.length)).toBe(plain.length);
@@ -704,7 +704,7 @@ describe("sync-vectors.json: fileStreamCases", () => {
         for (let at = 0; at < plain.length; at += 100_003)
           yield plain.subarray(at, at + 100_003);
       })();
-      for await (const p of sealFileStream(port, collKey, kid, salt, source))
+      for await (const p of sealFileStream(port, collKey, kid, source, salt))
         pieces.push(p);
       expect(sha(new Uint8Array(Buffer.concat(pieces)))).toBe(
         r.expect.sealedSha256Hex,
@@ -729,8 +729,9 @@ describe("sync-vectors.json: fileStreamCases", () => {
           port,
           await deriveCollKey(port, root, row.collection),
           await deriveKid(port, root),
-          salt,
+
           filePlain(row.plain.label, row.plain.length),
+          salt,
         ),
       );
     }

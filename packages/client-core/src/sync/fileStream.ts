@@ -136,17 +136,19 @@ export type ByteSource = AsyncIterable<Uint8Array> | Iterable<Uint8Array>;
 
 /**
  * Seals `source` as a `pkey-sync-file/1` stream, yielding the header and then one sealed segment
- * at a time. `kid` is `deriveKid(root)`, `collKey` is `K_coll`, and `salt` is 32 fresh random
- * bytes: a salt names one file version, so reusing it under the same `collKey` repeats the key
- * and the nonces.
+ * at a time. `kid` is `deriveKid(root)` and `collKey` is `K_coll`. Every seal draws a fresh
+ * random 32-byte salt from the port (§13.10.2), never one derived from the content: a salt names
+ * one file version, and reusing it under the same `collKey` repeats K_file and every nonce.
+ * `fixedSalt` is for known-answer vectors only.
  */
 export async function* sealFileStream(
   port: SyncCryptoPort,
   collKey: Uint8Array,
   kid: Uint8Array,
-  salt: Uint8Array,
   source: ByteSource,
+  fixedSalt?: Uint8Array,
 ): AsyncGenerator<Uint8Array> {
+  const salt = fixedSalt ?? port.random(SYNC_FILE_SALT_BYTES);
   const header = encodeFileHeader(kid, salt);
   const key = await deriveFileKey(port, collKey, salt);
   yield header;
@@ -177,12 +179,18 @@ export async function sealFile(
   port: SyncCryptoPort,
   collKey: Uint8Array,
   kid: Uint8Array,
-  salt: Uint8Array,
   plain: Uint8Array,
+  fixedSalt?: Uint8Array,
 ): Promise<Uint8Array> {
   const out = new Uint8Array(sealedFileSize(plain.length));
   let at = 0;
-  for await (const part of sealFileStream(port, collKey, kid, salt, [plain])) {
+  for await (const part of sealFileStream(
+    port,
+    collKey,
+    kid,
+    [plain],
+    fixedSalt,
+  )) {
     out.set(part, at);
     at += part.length;
   }
