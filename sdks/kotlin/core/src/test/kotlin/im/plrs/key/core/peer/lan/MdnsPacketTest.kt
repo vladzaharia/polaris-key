@@ -162,6 +162,14 @@ class MdnsPacketTest {
     }
 
     @Test
+    fun trailingBytesAfterAPtrOrSrvNameAreRefused() {
+        val ptr = name(inst) + byteArrayOf(0, 0)
+        assertEquals("bad_rdata", reason(header(an = 1) + rr(name(fqdn), 12, ptr)))
+        val srv = u16(0) + u16(0) + u16(80) + name(host) + byteArrayOf(7)
+        assertEquals("bad_rdata", reason(header(an = 1) + rr(name(fqdn), 33, srv)))
+    }
+
+    @Test
     fun truncatedHeaderAndFields() {
         assertEquals("truncated", reason(ByteArray(11)))
         assertEquals("truncated", reason(header(an = 1)))

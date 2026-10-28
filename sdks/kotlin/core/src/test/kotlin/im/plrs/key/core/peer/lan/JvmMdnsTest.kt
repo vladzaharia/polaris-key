@@ -263,8 +263,9 @@ class JvmMdnsTest {
         // A neighbour at .66 claims the instance lives at .20.
         r.push(full(ip = "192.168.1.20"), src = "192.168.1.66")
         assertTrue(r.up.isEmpty())
+        // The name belongs to the first source that announced it: .20 cannot claim it afterwards.
         r.push(listOf(a(ip = "192.168.1.20")), src = "192.168.1.20")
-        assertEquals("192.168.1.20", r.up[0].host)
+        assertTrue(r.up.isEmpty())
         r.close()
     }
 
@@ -285,17 +286,70 @@ class JvmMdnsTest {
     }
 
     @Test
-    fun theFirstAddressSeenIsDialledAndAtMostFourAreKept() {
+    fun aNamesAddressBelongsToTheSourceThatAnnouncedItAndAnotherSourceCannotAddOrReplaceIt() {
         val r = Rig()
         r.browse()
-        r.push(listOf(ptr(), srv(), txt()))
+        r.push(listOf(ptr(), srv(), txt()), "192.168.1.30")
         r.push(listOf(a(ip = "192.168.1.30")), "192.168.1.30")
-        for (n in 31..39) r.push(listOf(a(ip = "192.168.1.$n")), "192.168.1.$n")
         assertEquals(listOf("192.168.1.30"), r.up.map { it.host })
-        assertEquals(4, MDNS_MAX_ADDRS)
-        r.push(listOf(srv(port = 5000)))
+        for (n in 31..39) r.push(listOf(a(ip = "192.168.1.$n")), "192.168.1.$n")
+        r.push(listOf(srv(port = 5000)), "192.168.1.31") // another source cannot change the port
+        assertEquals(1, r.up.size)
+        assertEquals(listOf("192.168.1.30"), r.up[0].hosts)
+        r.push(listOf(srv(port = 5000)), "192.168.1.30") // the owner can
         assertEquals("192.168.1.30", r.up.last().host)
         assertEquals(5000, r.up.last().port)
+        r.close()
+    }
+
+    @Test
+    fun anAddressAnnouncedFirstByAStrangerDoesNotBeatTheNamesOwnSource() {
+        val r = Rig()
+        r.browse()
+        r.push(listOf(a(ip = "192.168.1.66")), "192.168.1.66") // the stranger is first with an A
+        r.push(full(ip = "192.168.1.20"), "192.168.1.20")
+        assertEquals(listOf("192.168.1.20"), r.up.map { it.host })
+        assertEquals(1, r.up.size)
+        r.close()
+    }
+
+    @Test
+    fun datagramsFromOutsideTheLanAreDroppedBeforeTheyAreParsed() {
+        for (src in listOf("8.8.8.8", "169.254.1.1", "100.64.0.1", "127.0.0.1", "not-an-address")) {
+            val r = Rig()
+            r.browse()
+            r.push(full(ip = "192.168.1.20"), src)
+            r.push(listOf(ptr(ttl = 0)), src)
+            assertTrue(src, r.up.isEmpty() && r.down.isEmpty())
+            // not even an entry: a good packet afterwards is reported once, with no "down"
+            r.push(full())
+            assertEquals(src, 1, r.up.size)
+            r.close()
+        }
+    }
+
+    @Test
+    fun aGoodbyeFromAnotherSourceDoesNotRemoveARealPeer() {
+        val r = Rig()
+        r.browse()
+        r.push(full())
+        r.push(listOf(ptr(ttl = 0)), "192.168.1.99")
+        assertTrue(r.down.isEmpty())
+        r.close()
+    }
+
+    @Test
+    fun onlyAcceptedInstancesEnterTheTable() {
+        val r = Rig()
+        runBlocking { r.adapter.browse({ r.up += it }, { r.down += it }, { it == inst }) }
+        for (i in 0 until MDNS_MAX_INSTANCES * 2) {
+            val n = name(i, 'f')
+            r.push(listOf(ptr(n), srv(n), txt(n), a(n, "192.168.1.20")))
+        }
+        assertTrue(r.up.isEmpty())
+        r.push(full())
+        assertEquals(listOf(inst), r.up.map { it.instance })
+        assertTrue(r.down.isEmpty()) // a flood of strangers evicted nothing
         r.close()
     }
 
@@ -331,7 +385,7 @@ class JvmMdnsTest {
         r.browse()
         val names = (0 until MDNS_MAX_INSTANCES + 40).map { name(it, 'a') }
         for (n in names) r.push(listOf(ptr(n), srv(n), txt(n)))
-        val ip = "192.168.2.2"
+        val ip = "192.168.1.20"
         r.push(listOf(a(names.last(), ip)), ip)
         assertTrue(r.up.any { it.instance == names.last() })
         r.push(listOf(a(names.first(), ip)), ip)

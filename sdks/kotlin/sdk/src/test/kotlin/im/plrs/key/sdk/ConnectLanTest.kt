@@ -88,7 +88,7 @@ class ConnectLanTest {
             }
         }
 
-        override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit): MdnsHandle {
+        override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle {
             val b = onUp to onDown
             browsers += b
             for (a in synchronized(adverts) { adverts.values.toList() }) onUp(found(a))
@@ -184,13 +184,15 @@ class ConnectLanTest {
             maxPending: Int = 32,
             maxPendingPerAddress: Int = 4,
             handshakeSeconds: Double = 30.0,
+            dialSeconds: Double = 5.0,
             rekeyMessages: Int? = null,
             timer: ((Double, () -> Unit) -> (() -> Unit))? = null,
             lanPermission: suspend () -> Boolean = { true },
         ): LanService = runBlocking {
             val o = LanOptions(
                 mdns = mdns, host = "127.0.0.1", allowLoopback = allowLoopback, advertise = advertise, browse = browse,
-                maxPending = maxPending, maxPendingPerAddress = maxPendingPerAddress, handshakeSeconds = handshakeSeconds,
+                maxPending = maxPending, maxPendingPerAddress = maxPendingPerAddress,
+                handshakeSeconds = handshakeSeconds, dialSeconds = dialSeconds,
                 rekeyMessages = rekeyMessages, timer = timer, lanPermission = lanPermission,
             )
             LanService.start(src, o).also { services += it }
@@ -413,7 +415,11 @@ class ConnectLanTest {
             val inner = Network()
             override suspend fun advertise(advert: MdnsAdvert) = inner.advertise(advert)
 
-            override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit): MdnsHandle = error("no socket")
+            override suspend fun browse(
+                onUp: (MdnsFound) -> Unit,
+                onDown: (String) -> Unit,
+                accept: (String) -> Boolean,
+            ): MdnsHandle = error("no socket")
         }
         try {
             w.start(w.a, mdns = net)
@@ -543,6 +549,52 @@ class ConnectLanTest {
     fun anExpiredCertificateIsRefused() {
         val w = World()
         dialRefused(w, w.source(w.b, w.peerSource(w.b, certExp = now0 - 5)))
+    }
+
+    private fun flooredAt(floor: Long, run: (World, LanService, LanService) -> Unit) {
+        // The host clock reads now0 (rolled back, or just behind); the trust floor is `floor`. B's
+        // certificate (default expiry now0 + 1000) is checked on the floor.
+        val w = World()
+        val la = w.start(w.a, LanSource(load = { w.peerSource(w.a) }, now = { now0 }, floored = { floor }))
+        val lb = w.start(w.b, w.source(w.b), advertise = false, browse = false)
+        run(w, la, lb)
+    }
+
+    @Test
+    fun aClockBehindTheFloorDoesNotMakeAnExpiredCertificateLive() {
+        flooredAt(now0 + 1_100) { _, la, lb ->
+            try {
+                runBlocking { lb.connect(LanPeer(idA, "127.0.0.1", la.port)) }
+                fail("refused")
+            } catch (e: LanException) {
+                assertEquals(LanErrorReason.handshake_failed, e.reason)
+            }
+        }
+    }
+
+    @Test
+    fun theSameCertificateIsLiveWhileTheFloorIsBeforeItsExpiry() {
+        flooredAt(now0 + 900) { _, la, lb ->
+            val s = runBlocking { lb.connect(LanPeer(idA, "127.0.0.1", la.port)) }
+            assertEquals(idA, s.peerDeviceId)
+        }
+    }
+
+    @Test
+    fun aDialTriesEveryAnnouncedAddressInTurn() {
+        val w = World()
+        val la = w.start(w.a)
+        val lb = w.start(w.b, advertise = false, browse = false, dialSeconds = 0.5)
+        // The first address does not answer (nothing listens there); the second is the device.
+        val s = runBlocking { lb.connect(LanPeer(idA, "192.168.254.254", la.port, listOf("127.0.0.1"))) }
+        assertEquals(idA, s.peerDeviceId)
+        // With no address left that answers, the dial fails as a connect failure.
+        try {
+            runBlocking { lb.connect(LanPeer(idA, "192.168.254.254", la.port, listOf("192.168.254.253", "8.8.8.8"))) }
+            fail("no answer")
+        } catch (e: LanException) {
+            assertEquals(LanErrorReason.connect_failed, e.reason)
+        }
     }
 
     @Test

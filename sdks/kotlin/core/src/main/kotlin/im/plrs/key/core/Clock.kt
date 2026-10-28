@@ -12,6 +12,7 @@ package im.plrs.key.core
 
 /** The §4.2 floor. "raise" is the only operation, so monotonicity is a property of the type. */
 public class MonotonicClock(highWaterMark: Long = 0) {
+    @Volatile
     public var highWaterMark: Long = highWaterMark
         private set
 

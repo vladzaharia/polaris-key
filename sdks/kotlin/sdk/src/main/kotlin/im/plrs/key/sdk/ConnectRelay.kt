@@ -359,7 +359,7 @@ internal class RelayService(
     private val endedKeys = java.util.ArrayDeque<String>()
     private val sessionFns = CopyOnWriteArrayList<(ConnectSession) -> Unit>()
     private val docs = PeerDocs(
-        PeerDocsSource(src.now, src.refresh, src.adoptRing, src.applyTrust),
+        PeerDocsSource(src.now, src.refresh, src.adoptRing, src.applyTrust, src.mono),
         onStored = { held = null },
         scope = this.scope,
     )
@@ -813,7 +813,7 @@ internal class RelayService(
             },
             path = "relay",
         )
-        val base = ChannelBase(ident, o.caps, o.label, { docs.pushed }, src.now, o.rekeyMessages, o.rekeySeconds)
+        val base = ChannelBase(ident, o.caps, o.label, { docs.pushed }, src.floored, o.rekeyMessages, o.rekeySeconds)
         assertRelayMode("a")
         synchronized(lock) {
             if (links.size >= o.maxSessions) return null
