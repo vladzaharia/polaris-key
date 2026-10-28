@@ -59,7 +59,7 @@
           }
         ]
       },
-      "expect": { "result": "refused", "code": "not_found", "tokenHeld": false }
+      "expect": { "result": "unavailable", "tokenHeld": false }
     }
   ]
 }
