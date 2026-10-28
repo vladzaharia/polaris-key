@@ -2,8 +2,9 @@
 ``@polaris-key/node``'s ``identity/signIn.ts``.
 
 ``channel="device-code"`` is RFC 8628 for hosts that cannot complete a browser redirect (a CLI,
-a daemon, a console, a kiosk); the redirect channel arrives with I-10a.17 and answers the typed
-``version`` N/A until then. ``start`` answers a :class:`SignInSession`.
+a daemon, a console, a kiosk); ``channel="redirect"`` is the authorization-code flow in
+``redirect.py`` (a host-supplied https ``redirect_uri``, ``complete(callback_url)``). ``start``
+answers a :class:`SignInSession` or a ``RedirectSession``.
 
 The session holds what the person is shown (``user_code``, the two verification URIs,
 ``expires_in``, ``interval``, ``device_name``) and keeps the POLL credential (the device code)
@@ -29,7 +30,7 @@ from __future__ import annotations
 import math
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Optional
 
 import httpx
@@ -97,6 +98,15 @@ class SignInOutcome:
     subject: Optional[str] = None
     activation: Optional[SignInActivation] = None
     identity: Optional[SignedInIdentity] = None
+    #: Redirect channel, ``signed_in``: the granted scope, space-delimited.
+    scope: Optional[str] = None
+    #: Redirect channel, ``choose`` (``license_choice="app"`` and a choice is due): no token was
+    #: stored. ``grant`` is a credential, so it is kept out of ``repr``; finish with
+    #: ``identity.choice.complete(grant, ...)`` or ``cancel(grant)`` before ``expires_in`` seconds
+    #: pass (300, §12.5.1).
+    grant: Optional[str] = field(default=None, repr=False)
+    expires_in: Optional[float] = None
+    choices: Optional[Dict[str, Any]] = None
 
 
 def _is_str(v: Any) -> bool:
@@ -168,6 +178,8 @@ class SignInDeps:
         license_id: Callable[[], Optional[str]],
         open_url: Callable[[str], bool],
         emit: Callable[..., Any],
+        load_discovery: Optional[Callable[[], Optional[Dict[str, Any]]]] = None,
+        write_subject: Optional[Callable[[Optional[str]], None]] = None,
     ) -> None:
         self.ctx = ctx
         self.tokens = tokens
@@ -180,6 +192,14 @@ class SignInDeps:
         self.license_id = license_id
         self.open_url = open_url
         self.emit = emit
+        #: Discovery, loading it first when this session has not (the redirect channel and the
+        #: choice calls need the endpoints); ``None`` uses :attr:`discovery`.
+        self.load_discovery = load_discovery
+        #: Persist the account subject (a redirect sign-in's token answer carries it).
+        self.write_subject = write_subject
+        #: Conformance replay only: the exact ``state`` and ``code_verifier`` of a recorded
+        #: redirect conversation.
+        self.entropy: Optional[Dict[str, str]] = None
 
 
 def _post(
@@ -501,19 +521,29 @@ def start_device_code(
 class SignInNamespace:
     """``client.identity.sign_in``: ``start(**opts)`` is its one verb."""
 
-    def __init__(self, start: Callable[..., SignInSession]) -> None:
+    def __init__(
+        self,
+        start: Callable[..., SignInSession],
+        start_redirect: Optional[Callable[..., Any]] = None,
+    ) -> None:
         self._start = start
+        self._start_redirect = start_redirect
 
-    def start(self, channel: str = "device-code", **opts: Any) -> SignInSession:
+    def start(self, channel: str = "device-code", **opts: Any) -> Any:
         """Start a sign-in. ``channel="device-code"`` (the default) takes ``device_name``,
-        ``login_hint``, ``name_hint``, ``purpose``, ``scope`` and ``license_choice``. Any other
-        channel answers the typed ``version`` N/A until its slice lands."""
-        if channel != "device-code":
-            raise UnsupportedError(
-                Unsupported(
-                    Feature.IDENTITY_REDIRECT_WEB,
-                    UnsupportedReason.VERSION,
-                    f"this SDK version has no {channel!r} sign-in channel",
-                ),
-            )
-        return self._start(**opts)
+        ``login_hint``, ``name_hint``, ``purpose``, ``scope`` and ``license_choice`` and answers a
+        :class:`SignInSession`. ``channel="redirect"`` takes the same plus the required https
+        ``redirect_uri`` and answers a :class:`~polaris_key.identity.redirect.RedirectSession`
+        with ``authorize_url`` and ``complete(callback_url)``. Any other channel answers the typed
+        ``version`` N/A (loopback, scheme and claimed-HTTPS redirects are I-15's)."""
+        if channel == "device-code":
+            return self._start(**opts)
+        if channel == "redirect" and self._start_redirect is not None:
+            return self._start_redirect(**opts)
+        raise UnsupportedError(
+            Unsupported(
+                Feature.IDENTITY_REDIRECT_WEB,
+                UnsupportedReason.VERSION,
+                f"this SDK version has no {channel!r} sign-in channel",
+            ),
+        )

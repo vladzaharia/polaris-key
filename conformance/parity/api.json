@@ -3303,6 +3303,11 @@
           "reason": "the React hook over identity.choice (D-3)",
           "shape": "hook"
         },
+        "python": {
+          "spelling": "identity.choice",
+          "shape": "property",
+          "reason": "no hook: Python calls the identity.choice primitives"
+        },
         "swift": {
           "spelling": "LicenseChoiceModel"
         },

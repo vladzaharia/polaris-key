@@ -158,16 +158,15 @@
       "status": "implemented"
     },
     "identity.redirect.web": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented",
+      "note": "I-10a.17: identity.sign_in.start(channel=\"redirect\", redirect_uri=...) builds the S256 authorize URL from discovery (identity/redirect.py, hashlib) for a browser the host opens; session.complete(callback_url) checks the redirect URI, state and iss before anything is sent, then redeems the code at discovery's token endpoint (form body, product origin only). Single use; a refusal is a SignInError carrying retry_after_seconds and never wipes the token. Loopback, scheme and claimed-HTTPS redirects are I-15's."
     },
     "identity.choice": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented",
+      "note": "I-10a.17: identity.choice.licenses/devices/complete/cancel over the endpoints discovery names (typed service-unavailable N/A otherwise), no bearer, the grant never in an error; a Worker refusal is a ChoiceRefused result (retry_after_seconds, manage_url, sign_in_url, key_entries, the fresh view); keep completes attachable; a redirect choose answer settles as the choice outcome only when the session asked for license_choice=\"app\". The three choice-* and two redirect-web-choose* transcripts are replayed."
     },
     "identity.signin.hints": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented"
     },
     "identity.keyentry": {
       "status": "implemented",
