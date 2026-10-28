@@ -404,7 +404,8 @@ def test_the_loop_runs_a_coroutine_on_one_daemon_thread_and_closes() -> None:
 
     names = {loop.submit(who()).result(5) for _ in range(3)}
     assert names == {"polaris-key-connect"} and loop.running
-    t = [t for t in threading.enumerate() if t.name == "polaris-key-connect"][0]
+    t = loop._thread  # this loop's own thread (the shared loop may be running too)
+    assert t is not None
     assert t.daemon
 
     async def boom() -> None:

@@ -223,6 +223,11 @@
       {
         "ns": "boot",
         "file": "sdks/python/src/polaris_key/boot.py"
+      },
+      {
+        "ns": "cloudConnect",
+        "type": "CloudConnect",
+        "file": "sdks/python/src/polaris_key/connect/cloud_connect.py"
       }
     ],
     "swift": [
@@ -932,6 +937,11 @@
     {
       "sdk": "python",
       "path": "client.connect",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "python",
+      "path": "client.cloud_connect",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
@@ -6199,9 +6209,7 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "python": {
-          "planned": "CC-10"
-        },
+        "python": {},
         "swift": {
           "planned": "CC-11"
         },
@@ -6231,9 +6239,7 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "python": {
-          "planned": "CC-10"
-        },
+        "python": {},
         "swift": {
           "planned": "CC-11"
         },
@@ -6257,9 +6263,7 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "python": {
-          "planned": "CC-10"
-        },
+        "python": {},
         "swift": {
           "planned": "CC-11"
         },
@@ -6283,9 +6287,7 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "python": {
-          "planned": "CC-10"
-        },
+        "python": {},
         "swift": {
           "planned": "CC-11"
         },
@@ -6309,9 +6311,7 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "python": {
-          "planned": "CC-10"
-        },
+        "python": {},
         "swift": {
           "planned": "CC-11"
         },
@@ -6341,9 +6341,7 @@
           "shape": "hook",
           "reason": "a hook returns a render value"
         },
-        "python": {
-          "planned": "CC-10"
-        },
+        "python": {},
         "swift": {
           "planned": "CC-11"
         },
@@ -6376,6 +6374,10 @@
           "shape": "hook",
           "sdkOnly": true,
           "reason": "Node-first helper; the hook and the browser adapter carry it too"
+        },
+        "python": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Python carries it too"
         }
       },
       "layer": "client"
@@ -6394,6 +6396,10 @@
           "shape": "hook",
           "sdkOnly": true,
           "reason": "Node-first helper; the hook and the browser adapter carry it too"
+        },
+        "python": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Python carries it too"
         }
       },
       "layer": "client"
@@ -6412,6 +6418,10 @@
           "shape": "hook",
           "sdkOnly": true,
           "reason": "Node-first helper; the hook and the browser adapter carry it too"
+        },
+        "python": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Python carries it too"
         }
       },
       "layer": "client"
