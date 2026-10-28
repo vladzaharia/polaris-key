@@ -4,7 +4,10 @@ extends PKeyUiView
 ## "Synced 2 minutes ago", "Syncing…", "Offline · changes sync when you reconnect", "Some changes
 ## conflict." (with **Review** where the game handles it) or "Couldn't sync. Try again later."; a
 ## sync that failed because nobody is signed in says "You're signed out." and offers **Sign in to
-## sync**, in a neutral tone. It never implies universal backup, and it hides itself while the
+## sync**, in a neutral tone. A device with no key for the synced data says "Sync is locked." and
+## offers **Unlock sync** (`locked`); a changed key says "Your sync key changed." and always offers
+## **Review** (`ring-changed`), which opens `PKeyRingChange` (the game connects `review_requested`).
+## It never implies universal backup, and it hides itself while the
 ## Sync service is off or there is no state to show. A strip: it takes no focus from the game; a pad
 ## reaches its action with the first direction press.
 
@@ -12,8 +15,10 @@ extends PKeyUiView
 signal review_requested()
 ## **Sign in to sync** was chosen.
 signal sign_in_requested()
+## **Unlock sync** was chosen on a `locked` status: show `PKeyUnlockSync`.
+signal unlock_requested()
 
-## "synced", "syncing", "offline", "conflict" or "error"; "" shows nothing.
+## "synced", "syncing", "offline", "conflict", "error", "locked" or "ring-changed"; "" shows nothing.
 @export var state := ""
 ## When it last synced, already worded ("2 minutes ago"); used by `synced`.
 @export var sync_time := ""
@@ -87,7 +92,7 @@ func _render() -> void:
 	cat_text(_text, key, args)
 	var primary = model.get("decisions", {}).get("primary")
 	cat_text(_action, "" if primary == null else String(primary), args)
-	_glyph.set_meta(&"pkey_glyph", {"synced": "success", "syncing": "info", "offline": "cloud_off", "conflict": "warning", "error": "warning"}.get(st, "info"))
+	_glyph.set_meta(&"pkey_glyph", {"synced": "success", "syncing": "info", "offline": "cloud_off", "conflict": "warning", "error": "warning", "locked": "lock", "ring-changed": "warning"}.get(st, "info"))
 
 
 func _arrange(m: Dictionary) -> void:
@@ -96,7 +101,7 @@ func _arrange(m: Dictionary) -> void:
 	set_columns(_card, false)
 	_action.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	super(m)
-	size_glyph(_glyph, 20.0, get_theme_color("font_color", "PKeyWarning") if state in ["conflict", "error"] else get_theme_color("font_color", "PKeyMuted"))
+	size_glyph(_glyph, 20.0, get_theme_color("font_color", "PKeyWarning") if state in ["conflict", "error", "ring-changed"] else get_theme_color("font_color", "PKeyMuted"))
 
 
 func _apply_width(width: float) -> void:
@@ -116,7 +121,10 @@ func ensure_focus(force := false) -> bool:
 
 
 func _on_action() -> void:
-	if state == "conflict":
-		review_requested.emit()
-	else:
-		sign_in_requested.emit()
+	match state:
+		"conflict", "ring-changed":
+			review_requested.emit()
+		"locked":
+			unlock_requested.emit()
+		_:
+			sign_in_requested.emit()

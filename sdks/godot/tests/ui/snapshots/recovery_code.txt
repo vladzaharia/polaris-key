@@ -1,0 +1,37 @@
+== show ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Head/Title: Label "Save your recovery code"
+Card/Scroll/Body/Columns/Left/Words/Lede: Label "You'll need it to unlock your synced data on a new device. It's shown only once."
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group0: Label "AB3D"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group1: Label "9FGH"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group2: Label "JK4M"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group3: Label "NP5Q"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group4: Label "RS6T"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group5: Label "VW7X"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group6: Label "YZ80"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group7: Label "1C2E"
+Card/Scroll/Body/Columns/Left/Copy: Button "Copy code" [focus 1]
+Card/Scroll/Body/Columns/Right/NoAsk: Label "No one will ever ask for this code. Enter it only in the app."
+Card/Scroll/Body/Columns/Right/Saved: CheckBox "I've saved my recovery code" [focus 2]
+== saved ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Head/Title: Label "Save your recovery code"
+Card/Scroll/Body/Columns/Left/Words/Lede: Label "You'll need it to unlock your synced data on a new device. It's shown only once."
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group0: Label "AB3D"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group1: Label "9FGH"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group2: Label "JK4M"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group3: Label "NP5Q"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group4: Label "RS6T"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group5: Label "VW7X"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group6: Label "YZ80"
+Card/Scroll/Body/Columns/Left/CodeField/Code/Group7: Label "1C2E"
+Card/Scroll/Body/Columns/Left/Copy: Button "Copy code" [focus 1]
+Card/Scroll/Body/Columns/Right/NoAsk: Label "No one will ever ask for this code. Enter it only in the app."
+Card/Scroll/Body/Columns/Right/Saved: CheckBox "I've saved my recovery code" [pressed, focus 2]
+Card/Scroll/Body/Actions/Done: Button "Done" [focus 3]
+== hidden ==
+<hidden>
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"

@@ -1,6 +1,6 @@
 extends RefCounted
 ## The settings and paywall families (ui-matrix.json `settings`, `paywall`): AccountAndLicense,
-## Settings, Paywall and EntitlementGate, and the should-tier CloudSyncStatus, About and
+## Settings, Paywall and EntitlementGate, and the should-tier About and
 ## ChannelPicker: the port of ui-core's `models/settings.ts`. A floating license is never
 ## silently attached to an account; a theme never reveals a hidden value; the paywall never
 ## invents checkout; a style override is never authorization.
@@ -292,32 +292,7 @@ static func entitlement_gate_view(ctx: RefCounted) -> Dictionary:
 
 # ── The should tier: CloudSyncStatus, About, ChannelPicker ───────────────────────────────────
 #
-# CloudSyncStatus states: synced, syncing, offline, conflict, error, hidden.
-
-
-## A small Cloud Sync status. It never implies universal backup.
-static func cloud_sync_status_view(ctx: RefCounted) -> Dictionary:
-	var raw = ctx.input.get("cloudSync")
-	if not ctx.on("sync") or not View.truthy(raw):
-		return View.hidden(ctx, "CloudSyncStatus")
-	var sync := _dict(raw)
-	var state = sync.get("state")
-	var error := _eq(state, "error")
-	# A sync that failed because nobody is signed in is not a fault: it says so and offers Sign in
-	# to sync, in a neutral tone (DL6). Review shows only when the host handles it.
-	var signed_out := error and _eq(sync.get("signedIn"), false)
-	var review := _eq(state, "conflict") and _eq(sync.get("canReview"), true)
-	var copy: Array = ["cloudSync.signedOut", "cloudSync.signIn"] if signed_out else [
-		"cloudSync.%s" % [state],
-		_when(review, "common.review"),
-	]
-	return View.make(ctx, "CloudSyncStatus", {
-		"state": state,
-		"copy": copy,
-		"primary": "cloudSync.signIn" if signed_out else ("common.review" if review else null),
-		"tone": "neutral" if signed_out else ("danger" if error else null),
-		"focus": null,
-	})
+# CloudSyncStatus moved to cloud_sync.gd with the Cloud Sync screens (U-42.5).
 
 
 ## Product, version, build, notices and Copy diagnostics (always redacted).

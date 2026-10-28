@@ -12,13 +12,15 @@ const COMPONENTS := [
 	"OfflineActivation", "DeviceLimit", "LicenseChoice", "Devices", "UpdatePrompt",
 	"UpdateProgress", "ReleaseNotes", "StatusScreen", "GraceBanner", "AccountAndLicense",
 	"Settings", "Paywall", "EntitlementGate", "CloudSyncStatus", "About", "ChannelPicker", "Toast",
+	"UnlockSync", "RecoveryCode", "RingChange",
 ]
 
 ## The reserved state of a component its service turns off: the drop-in renders nothing.
 const HIDDEN := "hidden"
 
 ## The actions a view offers, named by what they do (`vocabulary.actions`).
-const ACTIONS := ["open-card", "open-browser", "replace-in-browser", "open-manage-url", "start-sign-in", "copy-link", "retry", "cancel"]
+const ACTIONS := ["open-card", "open-browser", "replace-in-browser", "open-manage-url", "start-sign-in", "copy-link", "retry", "cancel",
+	"unlock", "start-over", "confirm-start-over", "accept-ring-change", "use-recovery-code", "copy-code"]
 
 ## Which controls perform each action, by their label's copy key (`vocabulary.actionKeys`).
 const ACTION_KEYS := {
@@ -30,6 +32,12 @@ const ACTION_KEYS := {
 	"copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
 	"retry": ["common.tryAgain", "common.reconnect", "signin.again", "signInHandoff.newCode"],
 	"cancel": ["common.cancel"],
+	"unlock": ["unlockSync.unlock", "cloudSync.unlock"],
+	"start-over": ["unlockSync.startOver"],
+	"confirm-start-over": ["unlockSync.startOverConfirm"],
+	"accept-ring-change": ["ringChange.accept"],
+	"use-recovery-code": ["ringChange.useCode"],
+	"copy-code": ["recoveryCode.copy"],
 }
 
 ## The opt-in services (tools/services.json) and what each requires (ST-38's closure rule).

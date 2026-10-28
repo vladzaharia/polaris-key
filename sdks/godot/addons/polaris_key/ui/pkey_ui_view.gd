@@ -2283,6 +2283,14 @@ static func set_columns(box: BoxContainer, side_by_side: bool) -> void:
 	box.theme_type_variation = "PKeyColumns" if side_by_side else "PKeySections"
 
 
+## Whether a landscape card has the room for two columns, one comfortable card width each: the
+## rule the two-part screens share (device limit, the Cloud Sync screens).
+func two_pane_fits() -> bool:
+	if phone_screen() or not is_landscape():
+		return false
+	return room_x() + 1.0 >= (role("card_width") - 2.0 * role("card_padding")) * 1.45
+
+
 ## The width `text` takes in `ctl`'s font and size, on one line.
 static func text_width(ctl: Control, text: String) -> float:
 	return ctl.get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, ctl.get_theme_font_size("font_size")).x
