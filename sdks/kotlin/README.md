@@ -144,6 +144,7 @@ service the product does not run throws `service-unavailable` before any request
 
 ```kotlin
 import im.plrs.key.core.CoreOptions
+import im.plrs.key.identity.SignInOptions
 import im.plrs.key.license.isUsable
 import im.plrs.key.sdk.PolarisKeyClient
 import im.plrs.key.sdk.PolarisKeyClientOptions

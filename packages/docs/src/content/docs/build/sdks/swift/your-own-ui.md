@@ -128,6 +128,8 @@ func signIn(_ client: PolarisKeyClient) async -> String {
             return "Signed in as \(who?.name ?? who?.email ?? "your account")"
         case .choose(let identity, _):
             return "Continue as \(identity.name ?? identity.email ?? "this account")?"
+        case .chooseLicense:
+            return "Pick the license to use."
         case .expired:
             return "The code expired. Start again."
         case .cancelled, .pending:
