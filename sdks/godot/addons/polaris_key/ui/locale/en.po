@@ -1982,6 +1982,11 @@ msgstr "That code isn't right. Check it and try again."
 msgid "unlockSync.failed"
 msgstr "Couldn't unlock. Check your connection and try again."
 
+#. Couldn't start over. Check your connection and try again.
+#. UnlockSync: Start over failed (not an unlock failure); Try again repeats it.
+msgid "unlockSync.startOverFailed"
+msgstr "Couldn't start over. Check your connection and try again."
+
 #. This account has no recovery code. Start over to keep syncing.
 #. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
 msgid "unlockSync.noCode"
@@ -2052,10 +2057,10 @@ msgstr "{device} set up a new key for your synced data."
 msgid "ringChange.bodyUnknown"
 msgstr "A device set up a new key for your synced data."
 
-#. Choose That was me only if you did this. If not, use your recovery code.
+#. Choose “That was me” only if you did this. If not, use your recovery code.
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.warning"
-msgstr "Choose That was me only if you did this. If not, use your recovery code."
+msgstr "Choose “That was me” only if you did this. If not, use your recovery code."
 
 #. Unlock with your recovery code to keep syncing.
 #. RingChange: used when no ring was served, so there is nothing to accept.

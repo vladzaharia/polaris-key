@@ -1977,6 +1977,11 @@ msgstr "恢复码不正确。请检查后重试。"
 msgid "unlockSync.failed"
 msgstr "无法解锁。请检查网络连接后重试。"
 
+#. Couldn't start over. Check your connection and try again.
+#. UnlockSync: Start over failed (not an unlock failure); Try again repeats it.
+msgid "unlockSync.startOverFailed"
+msgstr "无法重新开始。请检查网络连接后重试。"
+
 #. This account has no recovery code. Start over to keep syncing.
 #. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
 msgid "unlockSync.noCode"
@@ -2047,7 +2052,7 @@ msgstr "{device} 为你的已同步数据设置了新密钥。"
 msgid "ringChange.bodyUnknown"
 msgstr "有设备为你的已同步数据设置了新密钥。"
 
-#. Choose That was me only if you did this. If not, use your recovery code.
+#. Choose “That was me” only if you did this. If not, use your recovery code.
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.warning"
 msgstr "仅当是你本人操作时才选择“是我”。否则，请使用恢复码。"

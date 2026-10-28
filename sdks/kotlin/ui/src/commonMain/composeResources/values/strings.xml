@@ -729,6 +729,8 @@
     <string name="unlockSync_invalid">That code isn't right. Check it and try again.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code. -->
     <string name="unlockSync_failed">Couldn't unlock. Check your connection and try again.</string>
+    <!-- UnlockSync: Start over failed (not an unlock failure); Try again repeats it. -->
+    <string name="unlockSync_startOverFailed">Couldn't start over. Check your connection and try again.</string>
     <!-- UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on. -->
     <string name="unlockSync_noCode">This account has no recovery code. Start over to keep syncing.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->
@@ -756,7 +758,7 @@
     <!-- RingChange: confirm a changed sync key (U-42). Used when no device is named. -->
     <string name="ringChange_bodyUnknown">A device set up a new key for your synced data.</string>
     <!-- RingChange: confirm a changed sync key (U-42). -->
-    <string name="ringChange_warning">Choose That was me only if you did this. If not, use your recovery code.</string>
+    <string name="ringChange_warning">Choose “That was me” only if you did this. If not, use your recovery code.</string>
     <!-- RingChange: used when no ring was served, so there is nothing to accept. -->
     <string name="ringChange_warningNoServed">Unlock with your recovery code to keep syncing.</string>
     <!-- RingChange: accepting the new key failed; That was me stays available to retry. -->

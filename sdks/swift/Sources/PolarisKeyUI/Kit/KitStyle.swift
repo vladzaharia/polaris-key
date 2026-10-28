@@ -517,7 +517,12 @@ extension KitPaletteResolver {
             case .textMuted: p.textMuted = color
             case .textSubtle: p.textSubtle = color
             case .borderSubtle: p.border = color
-            case .danger: p.danger = color
+            case .danger:
+                p.danger = color
+                // The label is chosen on the fill it sits on: ink or white, whichever reads better.
+                p.dangerOn =
+                    PolarisAccent.contrast(PolarisAccent.ink, hex) >= PolarisAccent.contrast("#ffffff", hex)
+                    ? BrandColor(hexString: PolarisAccent.ink)!.color : .white
             case .warning: p.warning = color
             case .success: p.success = color
             }

@@ -734,6 +734,8 @@
     <string name="unlockSync_invalid">Ce code n’est pas correct. Vérifiez-le et réessayez.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code. -->
     <string name="unlockSync_failed">Impossible de déverrouiller. Vérifiez votre connexion et réessayez.</string>
+    <!-- UnlockSync: Start over failed (not an unlock failure); Try again repeats it. -->
+    <string name="unlockSync_startOverFailed">Impossible de recommencer. Vérifiez votre connexion et réessayez.</string>
     <!-- UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on. -->
     <string name="unlockSync_noCode">Ce compte n’a pas de code de récupération. Recommencez pour continuer à synchroniser.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->

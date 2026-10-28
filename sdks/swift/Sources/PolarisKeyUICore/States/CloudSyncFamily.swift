@@ -20,6 +20,7 @@ public enum CloudSyncStatusState: String, KitStateID {
 
 public enum UnlockSyncState: String, KitStateID {
     case code, invalid, working, failed
+    case startOverFailed = "start-over-failed"
     case noCode = "no-code"
     case startOver = "start-over"
     public static let component = KitComponent.unlockSync
@@ -76,6 +77,13 @@ extension KitStates {
                 .failed,
                 [
                     c.line("unlockSync.title"), c.line("unlockSync.failed"),
+                    c.line("common.tryAgain"), c.line("common.cancel"),
+                ])
+        case .startOverFailed:
+            return KitScreen(
+                .startOverFailed,
+                [
+                    c.line("unlockSync.title"), c.line("unlockSync.startOverFailed"),
                     c.line("common.tryAgain"), c.line("common.cancel"),
                 ])
         case .noCode:

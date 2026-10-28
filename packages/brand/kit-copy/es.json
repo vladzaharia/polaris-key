@@ -318,6 +318,7 @@
     "unlockSync.startOver": "Empezar de cero",
     "unlockSync.invalid": "Ese código no es correcto. Revísalo e inténtalo de nuevo.",
     "unlockSync.failed": "No se pudo desbloquear. Comprueba tu conexión e inténtalo de nuevo.",
+    "unlockSync.startOverFailed": "No se pudo empezar de nuevo. Comprueba tu conexión e inténtalo de nuevo.",
     "unlockSync.noCode": "Esta cuenta no tiene código de recuperación. Empieza de nuevo para seguir sincronizando.",
     "unlockSync.startOverTitle": "¿Empezar de cero?",
     "unlockSync.startOverWarning": "Se perderán tus datos sincronizados actuales. Empieza de cero solo si no encuentras tu código de recuperación.",

@@ -63,11 +63,24 @@ public final class UnlockSyncModel: CustomStringConvertible {
     /// Told when Start over made a new ring: the new recovery code, to show once.
     public var onStartedOver: (@MainActor (String?) -> Void)?
     public var onCancel: (@MainActor () -> Void)?
+    /// A start-over has run and made a new key: it cannot be cancelled and its screen cannot be
+    /// dismissed until it ends, so the new recovery code is never lost.
+    public private(set) var minting = false
+    /// The red confirm answers only after this long (a double tap on Start over must not reset).
+    public private(set) var startOverArmed = false
+    private let armDelay: Duration
+    private var armTask: Task<Void, Never>?
 
-    public init(inputs: KitInputs = KitInputs(), host: CloudSyncHost? = nil) {
+    public init(
+        inputs: KitInputs = KitInputs(), host: CloudSyncHost? = nil,
+        armDelay: Duration = .milliseconds(500)
+    ) {
         self.inputs = inputs
         self.host = host
+        self.armDelay = armDelay
         if inputs.unlockSync == nil { self.inputs.unlockSync = KitUnlockSync(step: .code) }
+        // A model that starts on the warning arms its confirm like one that moves there.
+        show(self.inputs.unlockSync?.step ?? .code)
     }
 
     nonisolated public var description: String { "UnlockSyncModel" }
@@ -75,7 +88,18 @@ public final class UnlockSyncModel: CustomStringConvertible {
     public var screen: KitScreen<UnlockSyncState> { KitStates.unlockSync(inputs) }
     public var step: KitUnlockSync.Step { inputs.unlockSync?.step ?? .code }
 
-    public func show(_ step: KitUnlockSync.Step) { inputs.unlockSync = KitUnlockSync(step: step) }
+    public func show(_ step: KitUnlockSync.Step) {
+        inputs.unlockSync = KitUnlockSync(step: step)
+        armTask?.cancel()
+        startOverArmed = false
+        if step == .startOver {
+            armTask = Task { [armDelay] in
+                try? await Task.sleep(for: armDelay)
+                guard !Task.isCancelled else { return }
+                self.startOverArmed = true
+            }
+        }
+    }
 
     /// Unlock: the code is checked on the device (its checksum) before any request.
     public func unlock() async {
@@ -112,22 +136,37 @@ public final class UnlockSyncModel: CustomStringConvertible {
 
     /// Replaces the sync key, from the warning only (T22).
     public func confirmStartOver() async {
-        guard step == .startOver, let host else { return }
+        guard step == .startOver, startOverArmed, !minting, let host else { return }
         show(.working)
+        minting = true
+        defer { minting = false }
         do {
-            let fresh = try await host.reset()
+            // An unstructured task: cancelling the caller (a dismissed view) does not cancel the
+            // reset, so a new ring is never made without its code being handed on.
+            let fresh = try await Task { try await host.reset() }.value
             code = ""
             onStartedOver?(fresh)
         } catch {
-            show(.failed)
+            show(.startOverFailed)
         }
     }
 
     /// Try again, from a failure: back to the code step.
-    public func retry() { if step == .failed { show(.code) } }
+    /// A failed Start over runs again (the person already confirmed it); an unlock goes back to the
+    /// code step.
+    public func retry() async {
+        if step == .startOverFailed {
+            show(.startOver)
+            startOverArmed = true
+            await confirmStartOver()
+        } else if step == .failed {
+            show(.code)
+        }
+    }
 
     /// Cancel leaves the warning for the code step, and leaves the screen from anywhere else.
     public func cancel() {
+        guard !minting else { return }
         if step == .startOver {
             // Back to where the warning was opened from.
             show(cameFromNoCode ? .noCode : .code)
@@ -147,6 +186,8 @@ public final class RecoveryCodeModel: CustomStringConvertible {
     public private(set) var inputs: KitInputs
     /// The code to draw, held in memory until Done or `clear()`. Not part of `inputs`.
     public private(set) var code: String?
+    /// A new code is being made: `clear()` is ignored until it is held.
+    public private(set) var generating = false
     private let host: CloudSyncHost?
     public var onDone: (@MainActor () -> Void)?
 
@@ -172,8 +213,12 @@ public final class RecoveryCodeModel: CustomStringConvertible {
 
     /// Makes a new code (`keyring.setRecoveryCode()`); the previous one stops working.
     public func generate() async throws {
-        guard let host else { return }
-        show(code: try await host.newRecoveryCode())
+        guard let host, !generating else { return }
+        generating = true
+        defer { generating = false }
+        // Not cancellable: the previous code stops working once this succeeds, so the new one
+        // must reach the screen.
+        show(code: try await Task { try await host.newRecoveryCode() }.value)
     }
 
     /// The person confirms they saved it; only then does Done show.
@@ -187,6 +232,7 @@ public final class RecoveryCodeModel: CustomStringConvertible {
     }
 
     public func clear() {
+        guard !generating else { return }
         code = nil
         inputs.recoveryCode = KitRecoveryCode(saved: false)
     }

@@ -73,6 +73,7 @@ export type UnlockSyncState =
   | "invalid"
   | "working"
   | "failed"
+  | "start-over-failed"
   | "no-code"
   | "start-over"
   | "hidden";
@@ -97,6 +98,20 @@ export function unlockSyncView(
         copy: [
           "unlockSync.title",
           "unlockSync.failed",
+          "common.tryAgain",
+          "common.cancel",
+        ],
+        primary: "common.tryAgain",
+        tone: "danger",
+        errorSlot: "screen",
+      });
+    case "start-over-failed":
+      // Start over did not run: not an unlock failure. Try again repeats it.
+      return makeView(ctx, "UnlockSync", {
+        state: "start-over-failed",
+        copy: [
+          "unlockSync.title",
+          "unlockSync.startOverFailed",
           "common.tryAgain",
           "common.cancel",
         ],

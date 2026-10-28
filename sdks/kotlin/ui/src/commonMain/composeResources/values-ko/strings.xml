@@ -724,6 +724,8 @@
     <string name="unlockSync_invalid">코드가 올바르지 않습니다. 확인한 후 다시 시도하세요.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code. -->
     <string name="unlockSync_failed">잠금을 해제할 수 없습니다. 연결을 확인하고 다시 시도하세요.</string>
+    <!-- UnlockSync: Start over failed (not an unlock failure); Try again repeats it. -->
+    <string name="unlockSync_startOverFailed">처음부터 다시 시작할 수 없습니다. 연결을 확인하고 다시 시도하세요.</string>
     <!-- UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on. -->
     <string name="unlockSync_noCode">이 계정에는 복구 코드가 없습니다. 계속 동기화하려면 처음부터 다시 시작하세요.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->
