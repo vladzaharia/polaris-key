@@ -251,6 +251,7 @@ export function useSdkGate(
           return;
         }
         case "welcome.signIn":
+        case "signin.key.signIn":
         case "signin.again":
         case "signin.handoff.again":
         case "signInHandoff.newCode":
@@ -299,7 +300,7 @@ export function useSdkGate(
               .catch(() => undefined);
           return;
         }
-        case "signin.key.addTitle": {
+        case "signin.key.addInLocker": {
           // The refusal's manage link: where the key is added to the account.
           const url = state.error.license?.manageUrl;
           if (url) openManage(url, opts.returnUrl, key.trim() || undefined);

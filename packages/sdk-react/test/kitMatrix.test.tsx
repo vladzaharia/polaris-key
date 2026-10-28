@@ -6,6 +6,7 @@
 // shows is on screen (as text, or as the accessible name it labels), every catalog `button` key is
 // a control, every `title` key a heading, and the view's primary is the one filled control (DL4).
 
+import { kitComponent } from "../src/kit/kitComponent.js";
 import { readFileSync } from "node:fs";
 import type { ReactNode } from "react";
 import { join } from "node:path";
@@ -146,26 +147,19 @@ vi.spyOn(console, "warn").mockImplementation((m: unknown) => {
 });
 afterEach(cleanup);
 
-const COMPONENTS = Kit as unknown as Record<
+// NearbyApproval is not a public export (UXR-kits-v7 B4): the matrix draws the internal component.
+const COMPONENTS = {
+  ...Kit,
+  NearbyApproval: kitComponent("NearbyApproval"),
+} as unknown as Record<
   string,
   ((p: Kit.KitProps & { children?: ReactNode }) => ReactNode) | undefined
 >;
-
-/** Rows the focused refusal step replaces (UX ruling I-10b.13-20, the Compose layout): the corpus
- *  still stacks them under the key field until the ui-matrix lane (I-10a.18) rewrites the rows.
- *  Skipped, dated 2026-10-27; the step itself is held by kitDrive.test.tsx and the browser rows. */
-const FOCUSED_REFUSAL_ROWS = new Set([
-  "Activate/rejected: another account holds the license",
-  "Activate/rejected: the key-entry limit",
-  "SignIn/key: another account holds the key's license",
-  "SignIn/key: another account holds the key's license (sheet)",
-]);
 
 for (const family of FAMILIES) {
   const rows = matrix[family] as Row[];
   describe(`react kit × ui-matrix.json ${family}`, () => {
     it.each(rows.map((r) => [r.name, r] as const))("%s", (_n, row) => {
-      if (FOCUSED_REFUSAL_ROWS.has(row.name)) return;
       const component = row.expect.component;
       // A row without `elapsedMs` means the DL7 delay has passed.
       const input: UiInput = {

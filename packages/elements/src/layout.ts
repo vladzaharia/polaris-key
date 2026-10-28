@@ -136,6 +136,18 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "signin.nearby.done",
     ],
     meta: ["signin.provider.group", "signin.code.label"],
+    // The confirm step reads as the model writes it: who, the license this device gets, then what
+    // the app also receives (the keys sort by name otherwise, and "will also get" led).
+    order: [
+      "signin.auto.confirm.as",
+      "signin.auto.confirm.asApple",
+      "signin.consent.license",
+      "signin.consent.newLicense",
+      "signin.consent.licenseLine",
+      "signin.consent.alsoGets",
+      "signin.consent.profile",
+      "signin.consent.pairwise",
+    ],
     content: ["part.keyField.label", "signin.key.scan"],
     // The sign-in form's Replace step confirms inline (D-80): its Replace… opener is quiet.
     quiet: ["signin.replace.open", "signin.replace.openSystem"],
@@ -174,6 +186,8 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "common.tryAgain",
     ],
     links: ["signin.nearby.menu"],
+    // The ask: the instruction, then the warning (the codes sit between them).
+    order: ["signin.nearby.askBody", "signin.approve.warning"],
     titles: [
       "signin.nearby.ask",
       "signin.nearby.approved",
