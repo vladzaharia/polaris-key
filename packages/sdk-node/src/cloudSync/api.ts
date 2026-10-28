@@ -112,7 +112,8 @@ export class CloudSyncApi {
   async #signIn(subject: string): Promise<void> {
     const { host, config } = this.#d;
     if (!host.started) return;
-    // Another person: the first one is signed out (flushed, then forgotten) before this one starts.
+    // Another person: the first one leaves (unsent edits dropped, then forgotten) before this one
+    // starts. The device credential is already the new person's, so nothing is sent for the old one.
     if (this.#subject !== null && this.#subject !== subject)
       await this.#signOutNow();
     // Once per install (the machine ignores a second call), before the first principal arrives so
@@ -141,11 +142,13 @@ export class CloudSyncApi {
     if (subject !== this.#subject) await this.#signIn(subject);
   }
 
-  /** Sign the machine out: send what is waiting (bounded), then it leaves and the events forget. */
+  /** The person changed: the credential in use is already the new person's, so this never talks
+   *  to the server. Unsynced edits are discarded, and the old synced values leave memory before
+   *  any await. The only flush is `beforeSignOut`, while the old credential is still current. */
   async #signOutNow(): Promise<void> {
     const { host } = this.#d;
-    host.machine.signOut();
-    await host.flush(SYNC_SIGNOUT_FLUSH_MS);
+    this.#subject = null;
+    host.machine.signOut({ discardUnsynced: true });
     await host.touch();
     await this.#chain;
   }

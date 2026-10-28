@@ -302,4 +302,37 @@ describe("the identity subject drives the machine; leaving forgets the ring (S6)
     expect(client.config.get("theme", "none")).not.toBe("dark");
     client.close();
   });
+
+  it("a change of person never sends the first person's edits under the new credential", async () => {
+    const w = new World();
+    const { client } = await signedIn(w);
+    await client.config.set("theme", "dark");
+    expect(client.config.setting("theme").sync()).toBe("pending");
+    const before = w.seen.length;
+    const T2 = `pkeyt_${"U".repeat(43)}`;
+    // The device credential is now the second person's (the session swaps it first).
+    await (
+      client as unknown as {
+        tokens: { set(t: string, s: string): Promise<void> };
+      }
+    ).tokens.set(T2, "license");
+    client.events.safeEmit("identity", {
+      kind: "subjectChanged",
+      subject: "ps_bbbbbbbbbbbbbbbbbbbbbb",
+    });
+    await settle(client);
+    const sent = w.seen
+      .slice(before)
+      .filter((r) => r.headers.get("authorization") === `Bearer ${T2}`);
+    expect(sent.filter((r) => r.method === "POST")).toEqual([]);
+    expect(
+      w.seen
+        .slice(before)
+        .some((r) => JSON.stringify(r.body ?? "").includes("dark")),
+    ).toBe(false);
+    // A write by the second person never lands in the first person's partition.
+    await client.config.set("theme", "light");
+    expect(client.config.get("theme", "none")).not.toBe("dark");
+    client.close();
+  });
 });

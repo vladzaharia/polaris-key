@@ -351,6 +351,28 @@ def test_another_person_signing_in_drops_the_first_persons_data_before_theirs_st
     assert r.client.config.get("theme", "none") != "dark"
 
 
+def test_a_change_of_person_never_sends_the_first_persons_edits_under_the_new_credential(
+    rigs: Callable[..., Rig],
+) -> None:
+    w = World()
+    r = signed_in(rigs, w)
+    r.client.config.set("theme", "dark")
+    assert r.client.config.setting("theme").sync() == "pending"
+    before = len(w.seen)
+    t2 = "pkeyt_" + "U" * 43
+    # The device credential is now the second person's (the session swaps it first).
+    r.client._tokens.set(t2)
+    identity(r.client, "subject_changed", "ps_bbbbbbbbbbbbbbbbbbbbbb")
+    r.client.cloud_sync.flush()
+    after = w.seen[before:]
+    with_t2 = [q for q in after if q.headers.get("authorization") == f"Bearer {t2}"]
+    assert [q for q in with_t2 if q.method == "POST"] == []
+    assert not any(b"dark" in q.content for q in after)
+    # A write by the second person never lands in the first person's partition.
+    r.client.config.set("theme", "light")
+    assert r.client.config.get("theme", "none") != "dark"
+
+
 def test_events_name_keys_and_never_values_or_the_root(rigs: Callable[..., Rig]) -> None:
     w = World()
     r = signed_in(rigs, w)
