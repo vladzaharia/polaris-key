@@ -1212,6 +1212,208 @@ paths:
         Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/devices/keyring/recovery:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+    get:
+      operationId: getKeyringRecovery
+      tags: [core]
+      summary: Fetch the sealed recovery blob (U-36.3)
+      description: >
+        The sealed recovery blob of the person's ring (V5 §13.11.4) with its `epoch` and `kid`, for
+        a device that holds no root. The blob opens only with the recovery code, which the server
+        never sees. At most 5 a day per device (`429 rate_limited`, counted before the read). Each
+        fetch is audited and the account is emailed "Recovery started on" the device's label.
+        `404` when no blob is set. `cache-control: no-store`.
+      security: [{ deviceToken: [] }]
+      responses:
+        "200":
+          description: The blob.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KeyringRecovery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: No account is signed in on the device (`account_required`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: The device fetched 5 times in the last day.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+    put:
+      operationId: putKeyringRecovery
+      tags: [core]
+      summary: Replace the sealed recovery blob (U-36.3)
+      description: >
+        Stores a new `recoveryWrap`: exactly 61 bytes, version `0x01`, unpadded base64url. Only a
+        device that holds a current wrap may write one (`403 forbidden`). `epoch` and `kid` must be
+        the ring's (`409 keyring_conflict`; the server keeps neither with the blob). Audited, and
+        the account is emailed that the recovery code changed.
+      security: [{ deviceToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/KeyringRecovery" }
+      responses:
+        "204": { description: Stored. }
+        "400":
+          description: A malformed body, or a blob that is not 61 bytes of version 1 (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            No account is signed in on the device (`account_required`), or the device holds no
+            wrap (`forbidden`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: The epoch or `kid` is not the ring's, or there is no ring.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                conflict: { value: { error: { code: keyring_conflict } } }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightKeyringRecovery
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/devices/keyring/adopt:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+    post:
+      operationId: adoptKeyringRoot
+      tags: [core]
+      summary: Store a previous or merged root sealed under the current one (U-36.3)
+      description: >
+        Stores `ct` (61 bytes, version `0x01`, sealed under `K_adopt`, V5 §13.11.4) for a root the
+        server already names: the ring a reset replaced, while its 30 days run, or a candidate an
+        account merge left. Any other `fromRingId` is `409 keyring_conflict`. Only a device that
+        holds a current wrap may adopt (`403 forbidden`). Idempotent: a sealed entry stays as it is.
+      security: [{ deviceToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/KeyringAdoptRequest" }
+      responses:
+        "204": { description: Stored. }
+        "400":
+          description: A malformed body or blob (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            No account is signed in on the device (`account_required`), or the device holds no
+            wrap (`forbidden`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: The server names no such root to adopt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                conflict: { value: { error: { code: keyring_conflict } } }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightKeyringAdopt
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/devices/keyring/reset:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+    post:
+      operationId: resetKeyring
+      tags: [core]
+      summary: Reset encryption with a new ring (U-36.3)
+      description: >
+        Replaces the ring with a new one at epoch 1 (a new `ringId`) and the calling device's wrap,
+        and optionally a new recovery blob (61 bytes, version `0x01`). The old ring becomes
+        `previous` for 30 days (its wraps stay with it, so a device that holds that root can
+        adopt it); the nightly sweep then forgets it. It needs no wrap: this is the way out for a
+        person who lost every root. The device must have registered its keys. `409
+        keyring_conflict` when there is no ring (create one) or `ringId` is the current ring's.
+        Audited, and the account is emailed.
+      security: [{ deviceToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/KeyringCreateRequest" }
+      responses:
+        "201":
+          description: Reset.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KeyringCreated" }
+        "400":
+          description: A malformed body or blob, or the device has no registered keys (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: No account is signed in on the device (`account_required`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: There is no ring, or `ringId` is the current ring's.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                conflict: { value: { error: { code: keyring_conflict } } }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightKeyringReset
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/devices/attest:
     post:
       operationId: attestDevice
@@ -27923,6 +28125,24 @@ components:
           required: [ct]
           properties:
             ct: { type: string, pattern: "^[A-Za-z0-9_-]+$", maxLength: 512 }
+    KeyringRecovery:
+      type: object
+      description: >
+        The sealed recovery blob (V5 §13.11.4): 61 bytes, version `0x01`, unpadded base64url, with
+        the ring's `epoch` and `kid`.
+      required: [ct, epoch, kid]
+      properties:
+        ct: { type: string, pattern: "^[A-Za-z0-9_-]{82}$" }
+        epoch: { type: integer, minimum: 1 }
+        kid: { type: string, pattern: "^[0-9a-f]{32}$" }
+    KeyringAdoptRequest:
+      type: object
+      required: [fromRingId, epoch, kid, ct]
+      properties:
+        fromRingId: { type: string, pattern: "^rg_[A-Za-z0-9_-]{22}$" }
+        epoch: { type: integer, minimum: 1 }
+        kid: { type: string, pattern: "^[0-9a-f]{32}$" }
+        ct: { type: string, pattern: "^[A-Za-z0-9_-]{82}$" }
     KeyringCreated:
       type: object
       required: [ringId, epoch]
