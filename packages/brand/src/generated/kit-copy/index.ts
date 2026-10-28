@@ -325,6 +325,7 @@ export type KitCopyKey =
   | "unlockSync.startOver"
   | "unlockSync.invalid"
   | "unlockSync.failed"
+  | "unlockSync.startOverFailed"
   | "unlockSync.noCode"
   | "unlockSync.startOverTitle"
   | "unlockSync.startOverWarning"

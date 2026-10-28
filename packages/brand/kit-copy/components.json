@@ -1173,6 +1173,14 @@
             "unlockSync.startOver",
             "common.cancel"
           ]
+        },
+        "start-over-failed": {
+          "copy": [
+            "unlockSync.title",
+            "unlockSync.startOverFailed",
+            "common.tryAgain",
+            "common.cancel"
+          ]
         }
       }
     },

@@ -1977,6 +1977,11 @@ msgstr "코드가 올바르지 않습니다. 확인한 후 다시 시도하세�
 msgid "unlockSync.failed"
 msgstr "잠금을 해제할 수 없습니다. 연결을 확인하고 다시 시도하세요."
 
+#. Couldn't start over. Check your connection and try again.
+#. UnlockSync: Start over failed (not an unlock failure); Try again repeats it.
+msgid "unlockSync.startOverFailed"
+msgstr "처음부터 다시 시작할 수 없습니다. 연결을 확인하고 다시 시도하세요."
+
 #. This account has no recovery code. Start over to keep syncing.
 #. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
 msgid "unlockSync.noCode"
@@ -2047,7 +2052,7 @@ msgstr "{device}에서 동기화된 데이터의 새 키를 설정했습니다."
 msgid "ringChange.bodyUnknown"
 msgstr "한 기기에서 동기화된 데이터의 새 키를 설정했습니다."
 
-#. Choose That was me only if you did this. If not, use your recovery code.
+#. Choose “That was me” only if you did this. If not, use your recovery code.
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.warning"
 msgstr "본인이 한 경우에만 '내가 했어요'를 선택하세요. 그렇지 않다면 복구 코드를 사용하세요."

@@ -700,7 +700,7 @@ const INPUTS: Record<string, string> = {
   cloudSync:
     "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed, signedIn?, canReview?, lastSynced?}. `ring-changed` always offers Review: the kit owns the confirmation.",
   unlockSync:
-    "UnlockSync's step: {step: code | invalid | working | failed | no-code | start-over, nearby?}. `no-code`: the account has no recovery code, so only Start over helps. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
+    "UnlockSync's step: {step: code | invalid | working | failed | start-over-failed | no-code | start-over, nearby?}. `no-code`: the account has no recovery code, so only Start over helps. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
   recoveryCode:
     "RecoveryCode: {saved?}. The code itself is never an input of the view: the kit draws it from the host, once, and keeps nothing.",
   ringChange:
@@ -3840,6 +3840,13 @@ function cloudSyncFamily(a: A): Draft[] {
       US("failed"),
       "UnlockSync",
       "failed",
+      "all",
+    ),
+    row(
+      "UnlockSync/start-over-failed: Start over did not run",
+      US("start-over-failed"),
+      "UnlockSync",
+      "start-over-failed",
       "all",
     ),
     row(
