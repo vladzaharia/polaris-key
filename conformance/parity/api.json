@@ -529,6 +529,11 @@
   "ignore": [
     {
       "sdk": "swift",
+      "path": "identity.installDeviceKeys",
+      "reason": "an internal hand-over seam: the umbrella gives the identity client the Connect key port; no host calls it"
+    },
+    {
+      "sdk": "swift",
       "path": "client.connect",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },

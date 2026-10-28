@@ -680,7 +680,6 @@ public object Feature {
     public const val syncConflict: String = "sync.conflict"
     public const val syncSaves: String = "sync.saves"
     public const val syncKeyring: String = "sync.keyring"
-    public const val syncE2e: String = "sync.e2e"
     public const val connectIdentity: String = "connect.identity"
     public const val connectNoise: String = "connect.noise"
     public const val connectProtocol: String = "connect.protocol"
@@ -813,7 +812,6 @@ public val FEATURE_VALUES: List<String> = listOf(
     "sync.conflict",
     "sync.saves",
     "sync.keyring",
-    "sync.e2e",
     "connect.identity",
     "connect.noise",
     "connect.protocol",
@@ -1524,7 +1522,7 @@ public const val OUTLET_MATRIX_VERSION: Int = 1
 public const val PLAN_MATRIX_VERSION: Int = 2
 
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
-public const val SYNC_SCENARIOS_VERSION: Int = 3
+public const val SYNC_SCENARIOS_VERSION: Int = 2
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 public const val DEVICE_LABEL_VERSION: Int = 1
@@ -1966,7 +1964,6 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "sync.conflict" to CapabilityRow("planned", "sync", listOf()),
     "sync.saves" to CapabilityRow("planned", "sync", listOf()),
     "sync.keyring" to CapabilityRow("planned", "sync", listOf()),
-    "sync.e2e" to CapabilityRow("planned", "sync", listOf()),
     "connect.identity" to CapabilityRow("implemented", "connect", listOf()),
     "connect.noise" to CapabilityRow("planned", "connect", listOf()),
     "connect.protocol" to CapabilityRow("planned", "connect", listOf()),
@@ -2061,4 +2058,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "a41b9e39ebc33e030b8b52d5da0b30f1d08b0e84aecb086011ea5d729c127e40"
+public const val CAPABILITY_DIGEST: String = "3c224973321fa4e7b5c8889c0af7760d087c6e26269f07485f696d2b3dd07208"

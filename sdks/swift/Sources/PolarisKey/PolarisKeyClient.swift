@@ -257,11 +257,14 @@ public actor PolarisKeyClient {
         // signed-in device holds a licensed token exactly as an activated one does.
         // One engine for supports(), caps() and every report's `caps`.
         let engine = Capabilities.sdk()
-        self.identity = IdentityClient(core: core) {
+        let identityClient = IdentityClient(core: core) {
             await PolarisKeyClient.syncAfterAcquisition(
                 core: core, probes: options.probes, engine: engine,
                 fingerprintEnabled: options.license.fingerprint, publisher: publisher)
         }
+        identityClient.installDeviceKeys(options.connect.keys)
+        identityClient.installPlatformIdentity(AppleSignInProvider())
+        self.identity = identityClient
         self.release = ReleaseClient(core: core)
         self.distribution = DistributionClient(core: core)
         self.pinnedReleaseKeys = options.pinnedReleaseKeys
