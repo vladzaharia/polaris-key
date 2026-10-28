@@ -76,10 +76,16 @@ class AndroidDeviceKeysTest {
     }
 
     @Test
-    fun aLostWrappingKeyLeavesAnUnusablePairThatEnsureReplaces() = runBlocking {
+    fun aLostWrappingKeyIsAnErrorUntilWipe() = runBlocking {
         val a = store().ensure()
         keys.keys.clear()
-        assertNull(store().publicKeys())
+        try {
+            store().ensure()
+            fail("an unreadable record must not be replaced")
+        } catch (e: im.plrs.key.core.DeviceKeysUnreadableException) {
+        }
+        assertTrue(file.exists())
+        store().wipe()
         assertNotEquals(a.signKey, store().ensure().signKey)
     }
 

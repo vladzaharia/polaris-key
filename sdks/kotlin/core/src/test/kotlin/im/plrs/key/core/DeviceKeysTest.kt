@@ -139,18 +139,52 @@ class DeviceKeysTest {
     }
 
     @Test
-    fun replacesARecordItCannotUse() = runBlocking {
-        val storage = InMemoryDeviceKeyStorage()
-        storage.put("""{"v":1,"generation":1}""".toByteArray())
-        val s = DeviceKeyStore(storage)
+    fun anUnreadableRecordIsAnErrorNeverReplacedUntilWipe() = runBlocking {
+        val f = File(tmp.root, "bad/device-keys.json")
+        val s = file(JcaDeviceCurves, f)
+        val a = s.ensure()
+        f.writeText("""{"v":1,"generation":1}""")
+        val garbage = f.readBytes()
+        assertThrows<DeviceKeysUnreadableException> { runBlocking { s.publicKeys() } }
+        assertThrows<DeviceKeysUnreadableException> { runBlocking { s.ensure() } }
+        assertThrows<DeviceKeysUnreadableException> { runBlocking { s.rotate() } }
+        assertThrows<DeviceKeysUnreadableException> { runBlocking { s.sign(ByteArray(1)) } }
+        assertThrows<DeviceKeysUnreadableException> { runBlocking { s.dh(DeviceCurvesSelection.randomBytes(32)) } }
+        assertThrows<DeviceKeysUnreadableException> { runBlocking { DeviceProofs.signKeysProof(s, "djdl", device, now) } }
+        assertArrayEquals(garbage, f.readBytes()) // survives every call
+        s.wipe()
         assertNull(s.publicKeys())
+        val b = s.ensure()
+        assertEquals(1, b.generation)
+        assertNotEquals(a.signKey, b.signKey)
+    }
+
+    @Test
+    fun aMismatchedRecordIsAnErrorAndSurvives() = runBlocking {
+        val storage = InMemoryDeviceKeyStorage()
+        val s = DeviceKeyStore(storage)
         val k = s.ensure()
-        assertEquals(k, s.publicKeys())
-        // Public halves that do not belong to the private halves are unusable too.
-        val other = mem(JcaDeviceCurves).also { it.ensure() }
-        val bad = String(storage.get()!!).replace(k.signKey, other.ensure().signKey)
-        storage.put(bad.toByteArray())
-        assertNull(DeviceKeyStore(storage).publicKeys())
+        val other = mem(JcaDeviceCurves).ensure()
+        val bad = String(storage.get()!!).replace(k.signKey, other.signKey).toByteArray()
+        storage.put(bad)
+        assertThrows<DeviceKeysUnreadableException> { runBlocking { s.ensure() } }
+        assertThrows<DeviceKeysUnreadableException> { runBlocking { s.rotate() } }
+        assertArrayEquals(bad, storage.get())
+    }
+
+    @Test
+    fun aTransientSealerFaultKeepsTheIdentity() = runBlocking {
+        val f = File(tmp.root, "flaky/device-keys.json")
+        val good = XorSealer()
+        val a = file(JcaDeviceCurves, f, good).ensure()
+        val before = f.readBytes()
+        val flaky = object : DeviceKeySealer by good {
+            override fun open(blob: ByteArray, context: ByteArray): ByteArray? = throw StoreException("keystore busy")
+        }
+        assertThrows<StoreException> { runBlocking { file(JcaDeviceCurves, f, flaky).ensure() } }
+        assertThrows<StoreException> { runBlocking { file(JcaDeviceCurves, f, flaky).rotate() } }
+        assertArrayEquals(before, f.readBytes())
+        assertEquals(a, file(JcaDeviceCurves, f, good).publicKeys())
     }
 
     @Test
@@ -212,11 +246,12 @@ class DeviceKeysTest {
         assertFalse(onDisk.contains("seed"))
         assertFalse(onDisk.contains(k.signKey))
         assertEquals(k, file(JcaDeviceCurves, f, sealer).publicKeys())
-        // A sealer that can no longer open the file (its key was destroyed) leaves nothing usable, and ensure replaces.
+        // A sealer that can no longer open the file (its key was destroyed) is an error, not a reset; wipe clears it.
         sealer.destroy()
         val fresh = XorSealer()
         val again = file(JcaDeviceCurves, f, fresh)
-        assertNull(again.publicKeys())
+        assertThrows<DeviceKeysUnreadableException> { runBlocking { again.ensure() } }
+        again.wipe()
         assertNotEquals(k.signKey, again.ensure().signKey)
         // wipe destroys the wrapping key.
         again.wipe()

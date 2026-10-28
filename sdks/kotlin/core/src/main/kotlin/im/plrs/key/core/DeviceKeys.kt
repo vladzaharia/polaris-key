@@ -61,10 +61,19 @@ public interface DeviceKeyPort {
     public suspend fun wipe()
 }
 
+/**
+ * The stored key record exists but cannot be used (it does not parse, its public halves do not match
+ * its private halves, or its wrapping key is gone). It is never replaced automatically: replacing it
+ * would silently change the device's identity. The only way out is [DeviceKeyPort.wipe] (or an
+ * explicit reset by the host), after which [DeviceKeyPort.ensure] makes a new pair.
+ */
+public class DeviceKeysUnreadableException(message: String) : Exception(message)
+
 /** Holds the one sealed-or-plain record of a [DeviceKeyStore]. Implementations must make [putIfAbsent] atomic. */
 public interface DeviceKeyStorage {
     public val persistence: DeviceKeyPersistence
 
+    /** The record, null when there is none. Throws [DeviceKeysUnreadableException] for one that exists but can never be opened. */
     public suspend fun get(): ByteArray?
 
     /** Writes [bytes] only when no record exists; false when one does. Safe across processes where the storage is shared. */
@@ -99,7 +108,7 @@ public class InMemoryDeviceKeyStorage : DeviceKeyStorage {
 /**
  * Wraps the record before it reaches the disk (the Android Keystore's AES-GCM key). [open] answers
  * null only for a blob that can never be opened (wrong or destroyed key, tampered, wrong [context]):
- * the store then treats the record as unusable and replaces it. A failure that may pass (the
+ * the file store then reports [DeviceKeysUnreadableException] and keeps the file. A failure that may pass (the
  * Keystore is busy or unavailable) must throw instead, so a glitch never costs the keys.
  */
 public interface DeviceKeySealer {
@@ -189,12 +198,13 @@ public class FileDeviceKeyStorage(
         refuseSymlink(file)
         if (!file.exists()) return null
         val raw = try {
-            if (file.length() > MAX_BYTES) return null
+            if (file.length() > MAX_BYTES) throw DeviceKeysUnreadableException("device keys: the record is not one of ours")
             file.readBytes()
         } catch (e: IOException) {
             throw StoreException("could not read $file", e)
         }
         return if (sealer == null) raw else sealer.open(raw, sealContext)
+            ?: throw DeviceKeysUnreadableException("device keys: the record cannot be opened")
     }
 
     private fun write(plain: ByteArray) {
@@ -254,7 +264,8 @@ public class FileDeviceKeyStorage(
  *
  * The record is JSON `{"v":1,"generation":n,"sign":{"seed","pub"},"agree":{"priv","pub"}}`, every
  * key canonical base64url. A record that does not parse, or whose public halves do not match its
- * private halves, is unusable: [publicKeys] answers null and [ensure] replaces it.
+ * private halves, is unreadable: every member except [wipe] throws [DeviceKeysUnreadableException]
+ * and the record is kept (never replaced, so the identity never changes silently). [wipe] clears it.
  */
 public class DeviceKeyStore(
     private val storage: DeviceKeyStorage,
@@ -281,12 +292,10 @@ public class DeviceKeyStore(
         val fresh = generate(1)
         val bytes = encode(fresh)
         try {
-            val raw = storage.get()
-            if (raw == null && storage.putIfAbsent(bytes)) return@withLock fresh.public()
-            // Another process made a pair first, or the stored one is unusable.
-            load()?.let { r -> return@withLock r.public().also { r.zero() } }
-            storage.put(bytes)
-            fresh.public()
+            if (storage.putIfAbsent(bytes)) return@withLock fresh.public()
+            // Another process made a pair first (or one is there and unreadable, which throws).
+            val r = load() ?: throw DeviceKeysUnreadableException("device keys: the record is unreadable")
+            r.public().also { r.zero() }
         } finally {
             bytes.fill(0)
             fresh.zero()
@@ -355,30 +364,39 @@ public class DeviceKeyStore(
         return json.toString().toByteArray(Charsets.UTF_8)
     }
 
-    /** The stored record, or null when there is none or it cannot be used. */
+    /** The stored record, null when there is none; throws [DeviceKeysUnreadableException] when it cannot be used. */
     private suspend fun load(): Record? {
         val raw = storage.get() ?: return null
         try {
-            val o = JsonText.parseOrNull(String(raw, Charsets.UTF_8)) as? JsonObject ?: return null
-            if (o["v"]?.let { (it as? JsonPrimitive)?.content } != "1") return null
-            val gen = (o["generation"] as? JsonPrimitive)?.content?.toIntOrNull()?.takeIf { it >= 1 } ?: return null
-            val sign = o["sign"] as? JsonObject ?: return null
-            val agree = o["agree"] as? JsonObject ?: return null
-            fun field(p: JsonObject, k: String): ByteArray? =
-                (p[k] as? JsonPrimitive)?.takeIf { it.isString }?.content?.let { Base64Url.decodeStrict(it) }?.takeIf { it.size == 32 }
-            val seed = field(sign, "seed") ?: return null
-            val signPub = field(sign, "pub") ?: return null
-            val agreePriv = field(agree, "priv") ?: return null
-            val agreePub = field(agree, "pub") ?: return null
-            val rec = Record(gen, seed, signPub, agreePriv, agreePub)
-            if (!consistent(rec)) {
-                rec.zero()
-                return null
-            }
-            return rec
+            return parse(raw) ?: throw DeviceKeysUnreadableException("device keys: the record is unreadable")
         } finally {
             raw.fill(0)
         }
+    }
+
+    private fun parse(raw: ByteArray): Record? {
+        val o = JsonText.parseOrNull(String(raw, Charsets.UTF_8)) as? JsonObject ?: return null
+        if ((o["v"] as? JsonPrimitive)?.content != "1") return null
+        val gen = (o["generation"] as? JsonPrimitive)?.content?.toIntOrNull()?.takeIf { it >= 1 } ?: return null
+        val sign = o["sign"] as? JsonObject ?: return null
+        val agree = o["agree"] as? JsonObject ?: return null
+        fun field(p: JsonObject, k: String): ByteArray? =
+            (p[k] as? JsonPrimitive)?.takeIf { it.isString }?.content?.let { Base64Url.decodeStrict(it) }?.takeIf { it.size == 32 }
+        val seed = field(sign, "seed") ?: return null
+        val signPub = field(sign, "pub")
+        val agreePriv = field(agree, "priv")
+        val agreePub = field(agree, "pub")
+        if (signPub == null || agreePriv == null || agreePub == null) {
+            seed.fill(0)
+            agreePriv?.fill(0)
+            return null
+        }
+        val rec = Record(gen, seed, signPub, agreePriv, agreePub)
+        if (!consistent(rec)) {
+            rec.zero()
+            return null
+        }
+        return rec
     }
 
     /** The public halves belong to the private halves: one agreement and one signature, both checked. */
