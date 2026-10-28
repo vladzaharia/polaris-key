@@ -9,8 +9,6 @@
 import { flushSync } from "react-dom";
 import {
   createContext,
-  lazy,
-  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -68,6 +66,8 @@ import {
 
 import { PolarisContext } from "../react/context.js";
 import { GLYPHS, text, type Chrome, type KitCtx } from "./parts.js";
+import type { AutoOutcome } from "@polaris-key/ui-core";
+import type { PolarisAdapter } from "../core/index.js";
 import { useSdkGate, type SdkStep } from "./sdk.js";
 import {
   adoptDesktopStyles,
@@ -780,6 +780,19 @@ export interface PolarisKeyGateProps extends KitProps {
   children?: ReactNode;
   /** The app's own address, added to the device-limit link as `return=` (PX-W8). */
   returnUrl?: string;
+  /** Draws the in-app sign-in form for automatic sign-in's steps. `gate.tsx` supplies it, so the
+   *  form loads on demand from the module that already loads the host's menu views. */
+  signInStep?: (a: SignInStepArgs) => ReactNode;
+}
+
+/** What the sign-in form needs from the gate. */
+export interface SignInStepArgs {
+  adapter: PolarisAdapter;
+  seed: AutoOutcome | null;
+  theme?: KitProps["theme"];
+  className?: string;
+  onBack: () => void;
+  onFallback: () => void;
 }
 
 /** The models of the screens the gate draws; the rest of ui-core's models stay out of its entry. */
@@ -792,9 +805,6 @@ const GATE_SCREENS: Partial<Record<ComponentName, Model>> = {
 };
 const viewOf = (component: ComponentName, input: UiInput): View =>
   GATE_SCREENS[component]!(contextOf(input));
-
-/** The in-app sign-in form automatic sign-in steps into; it loads when a step needs it. */
-const AutoForm = lazy(() => import("./autoForm.js"));
 
 /** The component the gate draws for its state and the sign-in step it is on. */
 function gateScreen(view: View, step: SdkStep): ComponentName | null {
@@ -917,19 +927,20 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
   }
   if (holding.current) return card.current;
   // Automatic sign-in found a step for the person: the sign-in form draws it, in the gate's place.
-  if (driven && step === "signin" && view.state === "needs-activation")
-    return (card.current = (
-      <Suspense fallback={null}>
-        <AutoForm
-          adapter={sdk.adapter}
-          seed={sdk.seed}
-          {...(props.theme ? { theme: props.theme } : {})}
-          {...(props.className ? { className: props.className } : {})}
-          onBack={() => sdk.act("common.back")}
-          onFallback={() => sdk.act("welcome.signIn")}
-        />
-      </Suspense>
-    ));
+  if (
+    driven &&
+    step === "signin" &&
+    view.state === "needs-activation" &&
+    props.signInStep
+  )
+    return (card.current = props.signInStep({
+      adapter: sdk.adapter,
+      seed: sdk.seed,
+      ...(props.theme ? { theme: props.theme } : {}),
+      ...(props.className ? { className: props.className } : {}),
+      onBack: () => sdk.act("common.back"),
+      onFallback: () => sdk.act("welcome.signIn"),
+    }));
   const c = kit.ctxFor(view);
   const sub = (component: ComponentName) => {
     const raw = viewOf(component, input);

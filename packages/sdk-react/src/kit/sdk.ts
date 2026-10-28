@@ -36,6 +36,9 @@ export { gateInput, type GateStep };
 /** The gate's steps: the key and hand-off steps, and the in-app sign-in form (`signin`). */
 export type SdkStep = GateStep | "signin";
 
+/** `Feature.identityAutosignin`; the generated table stays out of the gate's first load. */
+const AUTOSIGNIN = "identity.autosignin";
+
 /** The longest the gate holds its checking screen for automatic sign-in. */
 const AUTO_WAIT_MS = 10_000;
 
@@ -204,6 +207,8 @@ export function useSdkGate(
     ctx.autoSignIn !== false &&
     typeof adapter?.autoSignIn === "function";
   const identityOn = state.capabilities?.identity.enabled === true;
+  // The checking screen waits for the ladder only where the build has one to run.
+  const holds = autoOn && adapter?.supports(AUTOSIGNIN).supported === true;
   useEffect(() => {
     if (!autoOn || !adapter || autoStarted.current) return;
     if (
@@ -467,9 +472,10 @@ export function useSdkGate(
   return {
     adapter: ctx.adapter,
     // While automatic sign-in is out the gate keeps its checking screen, never a flash of Welcome.
-    input: auto.pending
-      ? { ...input, gate: { checking: true, cached: false } }
-      : input,
+    input:
+      auto.pending && holds
+        ? { ...input, gate: { checking: true, cached: false } }
+        : input,
     step,
     seed: auto.seed,
     opener,
