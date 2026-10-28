@@ -321,7 +321,7 @@ async function ticketClears(
     },
     now,
     // HA-09F: a browser's Resume sends `Range`; that keeps a started download alive past `exp`.
-    { ranged: req.headers.has("range") },
+    { range: req.headers.get("range") },
   );
 }
 

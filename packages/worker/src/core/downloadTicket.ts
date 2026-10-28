@@ -23,7 +23,7 @@
  *
  * A ticket carries no account id and no subject (I-04 §6.2): the account was judged at
  * redemption, and the ticket only says "this one file, for the next two minutes". It may be
- * reused inside its window, so `Range`, resume and `HEAD` work (Q2); a `Range` request keeps
+ * reused inside its window, so `Range`, resume and `HEAD` work (Q2); a resume `Range` keeps
  * working for `DOWNLOAD_TICKET_RESUME_SECONDS` more (HA-09F).
  *
  * ── KEYS ────────────────────────────────────────────────────────────────────────────────────
@@ -57,13 +57,21 @@ export const DOWNLOAD_TICKET_TTL_SECONDS = 120;
 
 /**
  * HA-09F: how long past `exp` a ticket still answers a RANGE request for its own file, so the
- * browser's Resume works on a large download that was interrupted after the 120 s window. One
- * hour: long enough for a reconnect or a lunch break, short enough that a leaked link stops
- * working the same day. Only a request carrying `Range` gets it (a client that already started
- * reads ranges; a fresh GET does not), and the MAC still binds host, product, release, name and
+ * browser's Resume works on a large download that was interrupted after the 120 s window. Fifteen
+ * minutes: long enough for a reconnect, short enough that a leaked link is a small window. Only a
+ * request with ONE parsed byte range starting at 1 or later gets it (`isResumeRange`: a real
+ * resume never starts at 0, and a malformed or multi-range header earns nothing), and the MAC still binds host, product, release, name and
  * SHA-256, so it never reaches another file. A code constant, like the TTL.
  */
-export const DOWNLOAD_TICKET_RESUME_SECONDS = 3600;
+export const DOWNLOAD_TICKET_RESUME_SECONDS = 900;
+
+/** Is `range` a single `bytes=<start>-[<end>]` range with `start >= 1` (and `end >= start`)? */
+export function isResumeRange(range: string | null | undefined): boolean {
+  const m = /^bytes=(\d{1,15})-(\d{0,15})$/.exec((range ?? "").trim());
+  if (!m) return false;
+  const start = Number(m[1]);
+  return start >= 1 && (m[2] === "" || Number(m[2]) >= start);
+}
 
 /** The query parameter the bytes host reads. */
 export const DOWNLOAD_TICKET_PARAM = "ticket";
@@ -146,8 +154,8 @@ export async function verifyDownloadTicket(
     host: string;
   },
   now: number,
-  /** A `Range` request (a resume) is honoured `DOWNLOAD_TICKET_RESUME_SECONDS` past `exp`. */
-  opts: { ranged?: boolean } = {},
+  /** The request's `Range`; a resume (`isResumeRange`) is honoured `DOWNLOAD_TICKET_RESUME_SECONDS` past `exp`. */
+  opts: { range?: string | null } = {},
 ): Promise<boolean> {
   if (ticket.length > MAX_TICKET_LENGTH) return false;
   const parts = ticket.split(".");
@@ -167,7 +175,7 @@ export async function verifyDownloadTicket(
     return false;
   const exp = Number(expRaw);
   const t = Math.floor(now);
-  const grace = opts.ranged ? DOWNLOAD_TICKET_RESUME_SECONDS : 0;
+  const grace = isResumeRange(opts.range) ? DOWNLOAD_TICKET_RESUME_SECONDS : 0;
   if (exp + grace <= t || exp > t + DOWNLOAD_TICKET_TTL_SECONDS) return false;
   // MAC_RE already holds it to 43 base64url characters, so the strict decoder reads exactly
   // what a plain `atob` did.

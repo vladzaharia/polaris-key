@@ -491,22 +491,25 @@ describe("licensed R2 downloads from the portal", () => {
     expect(none.headers.get("content-type")).not.toContain("text/html");
   });
 
-  it("HA-09F: a Range request resumes for an hour past expiry, for its own file only", async () => {
+  it("HA-09F: a resume Range works for 15 minutes past expiry, for its own file only", async () => {
     const w = await world("licensed");
     const p = await account(w);
     const url = await ticketedUrl(w, p);
-    const range = { headers: { range: "bytes=0-3" } };
-    expect((await fetchUrl(w, url, range)).status).toBe(206);
-    vi.setSystemTime((NOW + 120 + 3599) * 1000);
-    expect((await fetchUrl(w, url, range)).status).toBe(206);
-    // A fresh GET gets no grace.
+    const range = (v: string) => ({ headers: { range: v } });
+    expect((await fetchUrl(w, url, range("bytes=0-3"))).status).toBe(206);
+    vi.setSystemTime((NOW + 120 + 899) * 1000);
+    expect((await fetchUrl(w, url, range("bytes=1024-"))).status).toBe(416);
+    expect((await fetchUrl(w, url, range("bytes=1-3"))).status).toBe(206);
+    // Not a resume: no grace for a fresh GET, a start at 0, junk or several ranges.
+    for (const r of ["bytes=0-", "bytes=0-3", "x", "bytes=1-2,5-6", "bytes=-5"])
+      expect((await fetchUrl(w, url, range(r))).status, r).toBe(401);
     expect((await fetchUrl(w, url)).status).toBe(401);
-    vi.setSystemTime((NOW + 120 + 3600) * 1000);
-    expect((await fetchUrl(w, url, range)).status).toBe(401);
+    vi.setSystemTime((NOW + 120 + 900) * 1000);
+    expect((await fetchUrl(w, url, range("bytes=1-3"))).status).toBe(401);
     // Never another file, even inside the window.
     vi.setSystemTime((NOW + 600) * 1000);
     const other = `${BYTES}/${SLUG}/distribution/files/${encodeURIComponent("app@1.2.0")}/Diceroll-1.2.0-windows-arm64.zip?ticket=${encodeURIComponent(url.searchParams.get("ticket")!)}`;
-    expect((await fetchUrl(w, other, range)).status).toBe(401);
+    expect((await fetchUrl(w, other, range("bytes=1-3"))).status).toBe(401);
   });
 
   it("HA-09F: a refused redemption sends a browser back to Locker, and an API caller keeps the 404", async () => {
