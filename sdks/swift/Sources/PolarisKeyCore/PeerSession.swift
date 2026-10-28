@@ -49,6 +49,13 @@ public struct PeerHello: Sendable, Equatable {
     public let platform: String
     public let app: String
     public let maxMessage: Int
+
+    public init(label: String?, platform: String, app: String, maxMessage: Int) {
+        self.label = label
+        self.platform = platform
+        self.app = app
+        self.maxMessage = maxMessage
+    }
 }
 
 /// What mode a needs: this device's certificate, roster view and trust.
