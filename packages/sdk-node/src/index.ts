@@ -90,6 +90,14 @@ export {
   type SyncCodec,
   type UnlockResult,
 } from "./keyring/index.js";
+export {
+  ConnectClient,
+  PREV_DISC_KEY_SECONDS,
+  type ConnectDevice,
+  type ConnectIdentity,
+  type ConnectOptions,
+  type DiscoveryKeys,
+} from "./connect/index.js";
 export { activationRefusal } from "./license/endpoints.js";
 // The error copy catalog (SDK parity pass §3.2): one sentence and title per code.
 export {
