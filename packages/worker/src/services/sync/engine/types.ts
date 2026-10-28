@@ -50,9 +50,15 @@ export interface StoredSetting {
   /** The newest accepted write's stamp (`editedHlc` and `updatedBy`). */
   stamp: Stamp;
   deleted: boolean;
+  /** A sealed row (end-to-end mode, §13.10) keeps its `ct` string here, and in each member cell. */
   value: SyncJson;
   members?: Map<string, MemberCell>;
   floor?: Stamp;
+  /**
+   * Derived, never stored: the row holds sealed values (its `version` is at or above the store's
+   * `encryptionSince`). Sealed rows are charged by `envelopeBytes - 113` against the budgets.
+   */
+  sealed?: boolean;
 }
 
 /** A clientId's binding (rule 4): the first device that pushed with it, and its last processed id. */
@@ -126,6 +132,12 @@ export interface SyncStore {
    */
   getWatermark(): number;
   setWatermark(seq: number): void;
+  /**
+   * `encryptionSince` (§13.10.7): the store sequence from which every row is sealed. `undefined`
+   * until the first end-to-end write; rows below it are legacy plaintext. Set once.
+   */
+  getEncryptionSince(): number | undefined;
+  setEncryptionSince(seq: number): void;
 }
 
 /**
@@ -154,13 +166,16 @@ export type Classification =
       open?: boolean;
       /** The Worker's schema check of the mutation's value (or member value) failed. */
       valueInvalid?: boolean;
+      /** End-to-end mode: the mutation carries a sealed `ct`, which the object stores as given. */
+      sealed?: boolean;
     }
   | {
       verdict: "reject";
       code:
         | "setting_not_synced"
         | "collection_unknown"
-        | "entitlement_required";
+        | "entitlement_required"
+        | "encryption_mismatch";
     };
 
 /**

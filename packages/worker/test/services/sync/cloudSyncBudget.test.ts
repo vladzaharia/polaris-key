@@ -85,6 +85,7 @@ describe("byte accounting", () => {
     expect(rowCost(store.getSetting("ab", "user"))).toEqual({
       settings: 1,
       bytes: 18,
+      budget: 18,
     });
     push(store, [mut("clear", "ab")], { limits: BIG });
     expect(store.getUsage()).toEqual({

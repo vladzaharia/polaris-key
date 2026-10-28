@@ -69,7 +69,14 @@ function mutationProblem(m: unknown): string | null {
   // The per-operation members a setting mutation cannot do without.
   if ("setting" in t) {
     if (m.editedHlc === undefined) return "edited_hlc_required";
-    if ((m.op === "set" || m.op === "setMember") && !("value" in m))
+    // §13.3: `ct` replaces `value` in end-to-end mode; which one is legal is the product's mode,
+    // decided by the classification (`encryption_mismatch`), not by shape.
+    if (m.ct !== undefined && typeof m.ct !== "string") return "ct";
+    if (
+      (m.op === "set" || m.op === "setMember") &&
+      !("value" in m) &&
+      !("ct" in m)
+    )
       return "value_required";
     if (
       (m.op === "setMember" || m.op === "removeMember") &&

@@ -245,10 +245,12 @@
         "settings": true,
         "collections": false,
         "saves": false,
+        "encryption": "e2e",
         "endpoints": {
           "pull": "https://key.plrs.im/full/sync",
           "push": "https://key.plrs.im/full/sync/ops",
-          "files": null
+          "files": null,
+          "keyring": "https://key.plrs.im/full/devices/keyring"
         }
       },
       "commerce": {

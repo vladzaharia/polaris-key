@@ -8489,6 +8489,30 @@ and adoption blobs are held to the contract layout (61 bytes, version 1), so the
 used as free storage. Rows go with the device (wraps), the account or the product, as listed in
 `docs/PRIVACY.md`.
 
+### End-to-end settings: T26 (U-09.1)
+
+In end-to-end mode (`cloudSync.encryption` `e2e`, the default) a setting is stored as the `ct`
+the client sealed, under a declared key or a blinded name. The Worker checks the envelope's shape
+(canonical base64url, version byte 1, `(length - 49) mod 64 = 0`, under the caps) and never
+decodes it. The mode is served only while the launch gate `launch.syncE2e` is on; with it off
+every `ct` is `encryption_mismatch` and discovery says nothing of E2E.
+
+- **T26, downgrade.** A hostile or older Worker can claim server mode, or omit `encryption`, to
+  coax plaintext out of a client. Controls: an app requires `e2e` unless its catalog says
+  `server`, and a Worker that answers anything else leaves it local (`unsupported`); the pin holds
+  in discovery and in every pull and push body; the server refuses the wrong payload for its own
+  mode (`encryption_mismatch`), including an open setting, member, field or element whose name is
+  not blinded, so a name never leaks through a half-updated client. A plaintext row is honoured
+  only when its `version` is below the pull's `encryptionSince`, which the object fixes once, at
+  the first sealed push, and never moves. Residual: a Worker that serves `encryptionSince` far
+  above the real value only makes a client treat rows as invalid, never as trusted plaintext; a
+  switch of a product's catalog from `e2e` to `server` leaves sealed rows no client can open
+  (V5 §13.10.1). Ciphertext length is visible to the server, padded to 64 bytes; budgets are
+  charged on the length less the envelope overhead, so they match the client's.
+- **T19, `max` and `min`.** In E2E mode the server holds a compare-and-swap register and cannot
+  compare values; the client decides the better one. A client that ignores the rule can write a
+  worse value, which harms only that person's own data. Field policies are not anti-cheat.
+
 ### The account override layer (U-03, U-27)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the

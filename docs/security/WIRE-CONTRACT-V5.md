@@ -2097,6 +2097,9 @@ The `200` body is `{subject, serverNow, results, lastMutationId, …the pull mem
 - The server checks only the envelope's shape: canonical base64url, byte 0 equal to 1, and `(length − 49) mod 64 = 0`, under the caps. It stores the `kid`. A malformed envelope is `value_invalid`.
 - Member, field and element operations carry blinded names: `setMember {member: "x:…", ct}`, `setField {field: "x:…", ct}` and `add {element: "x:…", ct}`. `removeMember`, `removeField` and `remove` take the blinded name alone.
 - `max` and `min` settings are a compare-and-swap register in E2E mode: `set` carries `baseVersion`, and the client decides the better value (§11.5, §13.10.5).
+- **The register (U-09.1).** A `max` or `min` `set` in E2E mode is decided by `baseVersion` alone, never by value. A number must equal the row's current `version` (a missing row, or any other version, is a `conflict`); `"*"` is create-only (a `conflict` while the key is live); absent falls back to the `editedHlc` order of `lastWrite`. A cleared key keeps its `version`, so a client re-pushes on the `version` a `conflict` carries. A `baseVersion` that is neither `"*"` nor a non-negative integer is `value_invalid`. `clear` is unchanged.
+- **Conflict copy.** A `conflict` on a sealed row carries `server {ct, version, editedHlc}` in place of `value`; a sealed `merge` row carries `server {members: [{member, ct, editedHlc}], version, editedHlc}`. A row below `encryptionSince` (legacy plaintext) still carries `value`.
+- **Charges.** The quota charges the stored bytes (the `ct` string, quoted, plus the key); the budgets (256 keys, 64 KiB) charge `envelopeBytes − 113` per value. An open setting is at most 8 KiB on that count (`value_invalid` beyond); a blinded name is a fixed 45 characters.
 
 Push and journal rules 1–8 are normative as S-17 §5.4 states them. Rule 1: the last processed `mutationId` advances past every processed mutation, and only a request-level failure leaves it (transport error, `5xx`, `400`, `401`, `403`, `409 client_mismatch`, `413`, `429`, `503 writes_paused`). Rule 4: `clientId` matches §8's pattern, one per (install, partition), stored with the next `mutationId` (an integer from 1 to 2^53−1, strictly increasing) in one atomic journal write. The HLC orders writes, with `clientId` as the final tie-break. The server clamps an `editedHlc` later than `serverNow + 300 000 ms` to `serverNow` and accepts every earlier stamp, the import floor `000000000000:0000` included.
 
@@ -2110,10 +2113,15 @@ Push and journal rules 1–8 are normative as S-17 §5.4 states them. Rule 1: th
 - A cursor older than the 90-day tombstone horizon is `410 cursor_expired`.
 - A `subject` other than the client's partition key, like `403 account_required`, is a principal change, handled exactly like sign-out (§11.5).
 - **End-to-end pull.** A change carries `ct` in place of `value`, and a merge setting's members are `[{member, ct, editedHlc}]` with blinded `member`. The pull gains `encryption` (`"e2e"` or `"server"`) and `encryptionSince`, the store sequence from which every row is sealed (§11.5, §13.10.7). The server never decodes a `ct`.
+  - **No separate `seq`.** A change's `version` is its row's store sequence, so an E2E client reads legacy data as `version < encryptionSince`. `SyncChange` carries no other sequence member, and a client host derives the `seq` its machine reads (§11.5) from `version`.
+  - **Merge settings.** A sealed `merge` change carries `members` and no `ct`; its `value` is absent.
+  - **`encryption`** is present only while the operator's launch gate `launch.syncE2e` is on, and `encryptionSince` only in `e2e` mode. With the gate off the Worker serves server mode and says nothing of E2E (§13.5).
 
 ### 13.5 Discovery (U-05)
 
 `services.sync` is `{"enabled":false}` when Cloud Sync is off, and otherwise `{"enabled":true,"settings":…,"collections":…,"saves":…,"endpoints":{"pull":…,"push":…,"files":…}}`. Each capability turns true, and its endpoint stops being `null`, only from the release that serves it: `settings`, `pull` and `push` with U-05, `collections` with U-09, `saves` and `files` with U-10. There is no `limits` member: the quota depends on the requesting device's licence, so the pull carries it, and the platform numbers are generated constants. Collection labels are not in discovery. An SDK uses an endpoint only when discovery names it.
+
+**Encryption (U-09.1).** `services.sync.encryption` is `"e2e"` or `"server"`, the product's mode from its catalog (`cloudSync.encryption`, `"e2e"` when absent), and `endpoints.keyring` is `<base>/devices/keyring` for an `e2e` product. Both appear only while the operator's launch gate `launch.syncE2e` is on. With the gate off the members are absent, `ct` is `encryption_mismatch`, and an app that requires E2E stays local with `unsupported` (§11.5).
 
 ### 13.6 The stores and the conflict vocabulary
 
@@ -2287,7 +2295,7 @@ An app requires E2E unless its catalog says `server`. It never sends plaintext t
 
 #### 13.10.7 Legacy rows
 
-The pull's `encryptionSince` is the store sequence from which every row is sealed. An E2E client reads a plaintext row below it as legacy data and re-seals it on its next write; a plaintext row at or above it is `invalid`. A Worker that turns E2E on for a product with existing plaintext data sets `encryptionSince` to the sequence at that moment.
+The pull's `encryptionSince` is the store sequence from which every row is sealed. An E2E client reads a plaintext row below it as legacy data and re-seals it on its next write; a plaintext row at or above it is `invalid`. A Worker that turns E2E on for a product with existing plaintext data sets `encryptionSince` to the sequence at that moment. The object fixes it at the first sealed push, to the store sequence plus one; until then a pull answers that same number. It is set once and never moves, so a switch back to `server` leaves sealed rows that no client can open (§13.10.1), and a later switch to `e2e` does not re-sort them.
 
 #### 13.10.8 Corpus
 

@@ -33,6 +33,7 @@ export function admission(
   const before = rowCost(prev);
   const after = rowCost(next);
   const dBytes = after.bytes - before.bytes;
+  const dBudget = after.budget - before.budget;
   const dCount = after.settings - before.settings;
   if (limits?.productOverCeiling && dBytes > 0) return "product";
   if (
@@ -42,7 +43,7 @@ export function admission(
   )
     return "user";
   if (dCount > 0 && usage.settings + dCount > SYNC_MAX_SETTINGS) return "user";
-  if (dBytes > 0 && usage.settingsBytes + dBytes > SYNC_MAX_SETTINGS_BYTES)
+  if (dBudget > 0 && usage.settingsBytes + dBudget > SYNC_MAX_SETTINGS_BYTES)
     return "user";
   return null;
 }

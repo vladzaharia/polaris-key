@@ -522,7 +522,13 @@ export class CloudSyncDO implements DurableObject {
   }
 
   private pull(op: Extract<CloudSyncOp, { op: "pull" }>): Response {
-    if (!isName(op.deviceId) || !isName(op.family))
+    if (
+      !isName(op.deviceId) ||
+      !isName(op.family) ||
+      (op.encryption !== undefined &&
+        op.encryption !== "e2e" &&
+        op.encryption !== "server")
+    )
       return reply({ error: "bad_request" }, 400);
     this.migrateIfBehind();
     const outcome = applyPull(this.store, {
@@ -530,6 +536,7 @@ export class CloudSyncDO implements DurableObject {
       ...(op.clientId ? { clientId: op.clientId } : {}),
       deviceId: op.deviceId,
       family: op.family,
+      ...(op.encryption === "e2e" ? { e2e: true } : {}),
     });
     return reply({ op: "pull", outcome, meter: this.store.takeMeter() });
   }

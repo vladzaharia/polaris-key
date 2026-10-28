@@ -47,6 +47,7 @@ import {
   productGone,
   productStillLive,
   retryable,
+  syncMode,
   type SyncCaller,
 } from "./common.js";
 
@@ -108,6 +109,7 @@ async function pullInner(
 
   if (!(await productStillLive(db, product.slug))) return productGone();
 
+  const mode = await syncMode(env, db, product.slug);
   let current: SyncCaller = caller;
   // The device row is read again: its binding is what a merge or a sign-out moves.
   const resolveAgain = async (c: SyncCaller) => {
@@ -126,6 +128,7 @@ async function pullInner(
           ...(clientId !== null ? { clientId } : {}),
           deviceId: current.device.device_id,
           family: current.family,
+          encryption: mode.serve,
         },
       );
       tally.add(reply.meter);
@@ -171,6 +174,10 @@ async function pullInner(
     quota: current.access.quota,
     usage: outcome.usage,
     ...(outcome.empty ? { empty: true as const } : {}),
+    ...(mode.advertise !== undefined ? { encryption: mode.advertise } : {}),
+    ...(outcome.encryptionSince !== undefined
+      ? { encryptionSince: outcome.encryptionSince }
+      : {}),
     changes: outcome.changes,
     tombstones: outcome.tombstones,
   };

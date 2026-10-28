@@ -26,6 +26,7 @@ import {
   type SyncJson,
   type SyncMutation,
   type SyncOp,
+  type SyncSealedMember,
   type SyncServerCopy,
 } from "@polaris-key/protocol/sync";
 import { admission } from "./budget.js";
@@ -53,8 +54,25 @@ export const POLICY_OPS: Readonly<Record<SettingPolicy, ReadonlySet<SyncOp>>> =
 
 type Accept = Extract<Classification, { verdict: "accept" }>;
 
-/** The server's copy of a row, as a `conflict` carries it. A cleared key answers `value: null`. */
+/** The live members of a sealed `merge` row, as the wire carries them (§13.4). */
+export function sealedMembers(row: StoredSetting): SyncSealedMember[] {
+  const out: SyncSealedMember[] = [];
+  for (const [member, cell] of row.members ?? [])
+    if (!cell.removed && typeof cell.value === "string")
+      out.push({ member, ct: cell.value, editedHlc: cell.stamp.hlc });
+  return out;
+}
+
+/**
+ * The server's copy of a row, as a `conflict` carries it. A cleared key answers `value: null`. A
+ * sealed row answers `ct` (or, for a merge, its sealed `members`) in place of `value` (§13.10).
+ */
 export function serverCopy(row: StoredSetting): SyncServerCopy {
+  if (row.sealed && !row.deleted) {
+    const base = { version: row.version, editedHlc: row.stamp.hlc };
+    if (row.members) return { ...base, members: sealedMembers(row) };
+    if (typeof row.value === "string") return { ct: row.value, ...base };
+  }
   return {
     value: row.members ? liveMembers(row) : row.deleted ? null : row.value,
     version: row.version,
@@ -94,6 +112,8 @@ function asScalar(row: StoredSetting): StoredSetting {
 export interface ApplyContext {
   family: string;
   limits?: PushLimits;
+  /** End-to-end mode: the row this write produces holds sealed values. Set from the route. */
+  sealed?: boolean;
 }
 
 /**
@@ -109,6 +129,7 @@ function commit(
   next: StoredSetting,
 ): MutationResult {
   const shrinking = m.op === "clear" || m.op === "removeMember";
+  next.sealed = ctx.sealed === true;
   const refused = admission(
     store.getUsage(),
     prev,
@@ -124,6 +145,7 @@ function commit(
       scope: refused,
     };
   next.version = store.nextSeq();
+  next.sealed = ctx.sealed === true;
   store.putSetting(next);
   account(store, prev, next);
   return { mutationId: m.mutationId, status: "ok", version: next.version };
@@ -158,8 +180,9 @@ export function applySettingMutation(
   m: SyncMutation,
   route: Accept,
   stamp: Stamp,
-  ctx: ApplyContext = { family: "" },
+  baseCtx: ApplyContext = { family: "" },
 ): MutationResult {
+  const ctx: ApplyContext = { ...baseCtx, sealed: route.sealed === true };
   const target = m.target as { setting: string; scope: "user" | "platform" };
   if (target.scope !== route.scope)
     return {
@@ -176,6 +199,7 @@ export function applySettingMutation(
   // A max or min set is a number comparison; anything else cannot be compared.
   const numberless =
     m.op === "set" &&
+    !route.sealed &&
     (route.policy === "max" || route.policy === "min") &&
     (typeof m.value !== "number" || !Number.isFinite(m.value));
   // A member name is client text kept as a cell key; removals are never refused for quota, so the
@@ -184,14 +208,28 @@ export function applySettingMutation(
     (m.op === "setMember" || m.op === "removeMember") &&
     typeof m.member === "string" &&
     new TextEncoder().encode(m.member).length > SYNC_MAX_UNION_ELEMENT_BYTES;
-  if (route.valueInvalid || numberless || memberTooLong)
+  // A sealed write carries `ct` as a string (the Worker checked its shape); anything else is
+  // not a value. A sealed max/min `baseVersion` is a number or `"*"` (§13.3).
+  const sealedBad =
+    route.sealed === true &&
+    (((m.op === "set" || m.op === "setMember") && typeof m.ct !== "string") ||
+      (m.baseVersion !== undefined &&
+        m.baseVersion !== "*" &&
+        !(Number.isSafeInteger(m.baseVersion) && m.baseVersion >= 0)));
+  if (route.valueInvalid || numberless || memberTooLong || sealedBad)
     return {
       mutationId: m.mutationId,
       status: "rejected",
       code: "value_invalid",
     };
 
-  const stored = store.getSetting(target.setting, target.scope, ctx.family);
+  const loaded = store.getSetting(target.setting, target.scope, ctx.family);
+  // A row at or above `encryptionSince` holds sealed values (§13.10.7).
+  const since = store.getEncryptionSince();
+  const stored: StoredSetting | undefined =
+    loaded && since !== undefined && loaded.version >= since
+      ? { ...loaded, sealed: true }
+      : loaded;
   const base = stored ?? empty(m, target.scope, ctx.family);
   const fresh = stored === undefined;
 
@@ -222,7 +260,26 @@ export function applySettingMutation(
     });
   }
 
-  const value = m.value as SyncJson;
+  const value = (route.sealed ? m.ct : m.value) as SyncJson;
+  // E2E max/min: the server holds a compare-and-swap register and cannot compare values; the
+  // client decides the better one and re-pushes on the server's `version` (§13.10.5).
+  if (route.sealed && (route.policy === "max" || route.policy === "min")) {
+    const bv = m.baseVersion;
+    const live = !fresh && !row.deleted;
+    if (
+      bv === "*"
+        ? live
+        : typeof bv === "number" && (fresh || row.version !== bv)
+    )
+      return conflict(m, row);
+    if (bv !== undefined)
+      return commit(store, ctx, m, stored, {
+        ...row,
+        deleted: false,
+        value,
+        stamp: newer(stamp, row.stamp),
+      });
+  }
   const compared =
     (route.policy === "max" || route.policy === "min") &&
     !fresh &&
@@ -289,7 +346,11 @@ function applyMerge(
     members.set(
       name,
       m.op === "setMember"
-        ? { value: m.value as SyncJson, removed: false, stamp }
+        ? {
+            value: (ctx.sealed ? m.ct : m.value) as SyncJson,
+            removed: false,
+            stamp,
+          }
         : { value: null, removed: true, stamp },
     );
   }
