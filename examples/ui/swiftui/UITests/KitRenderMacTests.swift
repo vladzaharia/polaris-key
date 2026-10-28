@@ -111,7 +111,20 @@ final class KitRenderMacTests: XCTestCase {
         return value?.isEmpty == false ? value : nil
     }
 
-    var out: URL? { Self.env("PKEY_KIT_SHOTS").map { URL(fileURLWithPath: $0) } }
+    /// PKEY_KIT_SHOTS, or the runner's own temporary directory when the runner (sandboxed) may not write
+    /// there (Code=513 on CI); the renders stay in the result bundle's attachments either way.
+    var out: URL? {
+        guard let dir = Self.env("PKEY_KIT_SHOTS").map({ URL(fileURLWithPath: $0) }) else { return nil }
+        let fm = FileManager.default
+        let probe = dir.appendingPathComponent(".write-probe")
+        if (try? fm.createDirectory(at: dir, withIntermediateDirectories: true)) != nil,
+            (try? Data().write(to: probe)) != nil
+        {
+            try? fm.removeItem(at: probe)
+            return dir
+        }
+        return URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("pkey-shots-mac")
+    }
     var baselineFailures: [String] = []
     var quick: Bool { Self.env("PKEY_KIT_QUICK") == "1" }
 
