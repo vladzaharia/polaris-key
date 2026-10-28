@@ -389,6 +389,7 @@ export abstract class PkElement extends LitElement {
       dialog: this.isDialog(),
       shape: this.shape,
       wide: this.wide,
+      tight: this.tight,
       input: this.modelInput(),
       act: (key, extra = {}) => {
         const detail: PkActionDetail = {

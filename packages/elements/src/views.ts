@@ -283,7 +283,7 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
           "offlineActivation.request",
           "offlineActivation.loadHint",
           "offlineActivation.copyCode",
-          "offlineActivation.loadFile",
+          ...(docksLoadFile(c) ? [] : ["offlineActivation.loadFile"]),
           "offlineActivation.codeCopied",
           "offlineActivation.paste",
           "offlineActivation.dropHint",
@@ -2093,6 +2093,18 @@ function offerRows(c: RenderCtx): TemplateResult | typeof nothing {
   </div>`;
 }
 
+/** Step 2's primary (Load file, after a rejected signature) docks in the screen's action bar when
+ *  the window is short or the text large: the step starts near the fold there, the bar never does.
+ *  It follows the step's field in tab order and leads the bar. */
+function docksLoadFile(c: RenderCtx): boolean {
+  return (
+    c.view.component === "OfflineActivation" &&
+    c.view.state !== "done" &&
+    c.view.decisions.primary === "offlineActivation.loadFile" &&
+    (c.tight === true || c.shape === "short")
+  );
+}
+
 /** OfflineActivation as two numbered steps: the request code, then the response. */
 function offlineSteps(c: RenderCtx): TemplateResult {
   const has = (k: string) => c.copy.has(k);
@@ -2152,13 +2164,15 @@ function offlineSteps(c: RenderCtx): TemplateResult {
             >`
           : nothing}
       </div>
-      ${button(
-        c,
-        "offlineActivation.loadFile",
-        c.view.decisions.primary === "offlineActivation.loadFile"
-          ? "primary"
-          : "secondary",
-      )}
+      ${docksLoadFile(c)
+        ? nothing
+        : button(
+            c,
+            "offlineActivation.loadFile",
+            c.view.decisions.primary === "offlineActivation.loadFile"
+              ? "primary"
+              : "secondary",
+          )}
     </li>
   </ol>`;
 }

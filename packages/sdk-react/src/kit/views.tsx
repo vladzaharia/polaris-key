@@ -44,6 +44,7 @@ import {
   qrCode,
   radioKeys,
   seatMeter,
+  docksLoadFile,
   openOnChecked,
   shimmer,
   statusLine,
@@ -330,9 +331,12 @@ function ownFiltered<
     meta: string[];
     controls: string[];
   },
->(view: View, p: P): P {
+>(c: KitCtx, p: P): P {
+  const { view } = c;
   if (view.component !== "OfflineActivation" || view.state === "done") return p;
-  const keep = (k: string): boolean => !STEP_KEYS.includes(k);
+  const docked = docksLoadFile(c);
+  const keep = (k: string): boolean =>
+    !STEP_KEYS.includes(k) || (docked && k === "offlineActivation.loadFile");
   return {
     ...p,
     body: p.body.filter(keep),
@@ -523,7 +527,7 @@ function consentBody(c: KitCtx, keys: string[]): ReactNode {
 
 /** `placeKeys`, then the drop-in's chrome: controls and links the state lacks, keys it drops. */
 function place(c: KitCtx, layout: Layout) {
-  const placed = ownFiltered(c.view, placeKeys(c.view, layout));
+  const placed = ownFiltered(c, placeKeys(c.view, layout));
   // A line whose argument the input does not carry is dropped, never drawn as "{version}".
   const whole = (k: string) => usableKey(c, k);
   const p = {

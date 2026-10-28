@@ -549,6 +549,7 @@ export function useKit(
     input,
     shape,
     wide,
+    tight,
     headingLevel:
       props.headingLevel ??
       (props.embedded || LAYOUTS[v.component].kind === "pane" ? 2 : 1),

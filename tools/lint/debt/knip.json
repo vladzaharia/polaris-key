@@ -230,7 +230,7 @@
       "knip:binaries": 4
     },
     "packages/elements/src/render.ts": {
-      "knip:exports": 3
+      "knip:exports": 2
     },
     "packages/elements/src/views.ts": {
       "knip:exports": 1
