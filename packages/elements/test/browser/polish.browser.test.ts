@@ -223,7 +223,7 @@ describe("large text on a phone: the sheet", () => {
         );
     });
 
-    it(`${w}: the sheet's bar scrolls with the text`, async () => {
+    it(`${w}: the sheet's bar docks at its foot`, async () => {
       const el = await sheet(
         inputOf("SignIn/choose: desktop (sheet)"),
         w,
@@ -231,7 +231,7 @@ describe("large text on a phone: the sheet", () => {
         2,
       );
       const bar = q(el, '.card > [data-part="actions"]')!;
-      expect(getComputedStyle(bar).position).toBe("static");
+      expect(getComputedStyle(bar).position).toBe("sticky");
     });
   }
 
@@ -263,7 +263,7 @@ describe("large text on a phone: the sheet", () => {
 });
 
 describe("a short window at large text: the key step", () => {
-  it("844 x 390 at 200%: the bar undocks, and the primary can be reached", async () => {
+  it("844 x 390 at 200%: the bar stays docked, so the primary is in view", async () => {
     const el = await screen(
       "Activate",
       inputOf("Activate/parsed"),
@@ -275,7 +275,7 @@ describe("a short window at large text: the key step", () => {
     const root = q(el, ".pk-root")!;
     expect(root.hasAttribute("data-tight")).toBe(true);
     const bar = q(el, '.card > [data-part="actions"]')!;
-    expect(getComputedStyle(bar).position).toBe("static");
+    expect(getComputedStyle(bar).position).toBe("sticky");
   });
 
   it("844 x 390 at 100% docks the bar in one row", async () => {
