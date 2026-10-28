@@ -89,6 +89,8 @@ interface Call {
   headers: Record<string, string>;
   body: string;
   credentials?: RequestCredentials;
+  redirect?: RequestRedirect;
+  signal?: AbortSignal | null;
 }
 
 const DISCOVERY = {
@@ -127,6 +129,8 @@ function rig(
       headers: lowerKeys(init?.headers),
       body: String(init?.body ?? ""),
       credentials: init?.credentials,
+      redirect: init?.redirect,
+      signal: init?.signal,
     };
     calls.push(call);
     if (call.url === `${BASE}/nonce`) {
@@ -224,6 +228,11 @@ describe("the exchange request", () => {
     });
     expect(nonceCall!.headers["x-pkey-device"]).toBe(DEVICE);
     expect(nonceCall!.credentials).toBe("omit");
+    // Neither POST follows a redirect, and both carry the request deadline.
+    for (const c of r.calls) {
+      expect(c.redirect).toBe("error");
+      expect(c.signal).toBeInstanceOf(AbortSignal);
+    }
     expect(seen).toBe(nonceOf(1));
 
     expect(tokenCall!.headers["content-type"]).toBe(
@@ -350,6 +359,7 @@ describe("the answers", () => {
     const a = answer("future");
     const unknown = await a.session.exchange(a.port, google());
     expect(unknown).toMatchObject({ kind: "needsSignIn", reason: "no_link" });
+    expect((unknown as { linkHandle?: string }).linkHandle).toBeUndefined();
     const b = answer("terms");
     const terms = await b.session.exchange(b.port, google());
     if (terms.kind !== "needsSignIn") throw new Error(terms.kind);
@@ -395,6 +405,55 @@ describe("the answers", () => {
     const err = await r.session.exchange(r.port, google()).catch((e) => e);
     expect(err).toMatchObject({ code: "bad_response" });
     expect(r.store.token).toBeNull();
+  });
+});
+
+describe("pinned endpoints", () => {
+  const withEndpoints = (nonce: string, tokenUrl: string) => ({
+    services: {
+      identity: {
+        ...DISCOVERY.services.identity,
+        endpoints: {
+          ...DISCOVERY.services.identity.endpoints,
+          nonce,
+          token: tokenUrl,
+        },
+      },
+    },
+  });
+
+  it.each([
+    [
+      "a nonce endpoint on another origin",
+      "https://evil.example/n",
+      `${BASE}/token`,
+    ],
+    [
+      "a token endpoint on another origin",
+      `${BASE}/nonce`,
+      "https://evil.example/t",
+    ],
+    [
+      "a plaintext token endpoint",
+      `${BASE}/nonce`,
+      "http://key.plrs.im/acme/identity/token",
+    ],
+    ["a scheme that is not http", `${BASE}/nonce`, "javascript:alert(1)"],
+  ])("refuses %s and dials nothing", async (_n, nonce, tokenUrl) => {
+    const r = rig(() => json(TOKEN_BODY), {
+      discovery: withEndpoints(nonce, tokenUrl),
+    });
+    let asked = false;
+    const out = await r.session.exchange(
+      r.port,
+      google(async () => {
+        asked = true;
+        return SUBJECT_TOKEN;
+      }),
+    );
+    expect(out).toEqual({ kind: "unavailable", reason: "endpoint" });
+    expect(r.calls).toHaveLength(0);
+    expect(asked).toBe(false);
   });
 });
 
@@ -539,7 +598,10 @@ describe("secrets stay out of logs", () => {
 
 describe("choice.complete with consent", () => {
   /** Complete a grant; what the Worker was sent is parsed from the request body. */
-  async function complete(opts?: { consent: { claims: string[] } }) {
+  async function complete(
+    opts?: { consent: { claims: string[] } },
+    withChoice = true,
+  ) {
     const sent: Record<string, unknown>[] = [];
     const r = rig(() => json({}), {
       complete: (c) => {
@@ -547,7 +609,11 @@ describe("choice.complete with consent", () => {
         return json(TOKEN_BODY);
       },
     });
-    const out = await r.session.choiceComplete(GRANT, { kind: "create" }, opts);
+    const out = await r.session.choiceComplete(
+      GRANT,
+      withChoice ? { kind: "create" } : undefined,
+      opts,
+    );
     return { out, body: sent[0], token: r.store.token };
   }
 
@@ -569,6 +635,14 @@ describe("choice.complete with consent", () => {
     });
   });
 
+  it("completes a confirm grant with consent alone, no choice member", async () => {
+    const r = await complete({ consent: { claims: ["name"] } }, false);
+    expect(r.out).toMatchObject({ kind: "ok" });
+    expect(r.out).not.toHaveProperty("attachable");
+    expect(r.body).toEqual({ grant: GRANT, consent: { claims: ["name"] } });
+    expect(r.token).toBe(ACCESS);
+  });
+
   it("a refusal for the missing consent is a result and stores nothing", async () => {
     const r = rig(() => json({}), {
       complete: () => json({ error: "bad_request" }, 400),
@@ -580,6 +654,22 @@ describe("choice.complete with consent", () => {
       httpStatus: 400,
     });
     expect(r.store.token).toBeNull();
+  });
+});
+
+describe("sync after the token is stored", () => {
+  it("is still signed in when the sync fails, and says so", async () => {
+    const r = rig(() => json(TOKEN_BODY));
+    vi.spyOn(
+      r.session as unknown as { syncAfterSignIn(): Promise<void> },
+      "syncAfterSignIn",
+    ).mockRejectedValue(new PolarisError("network-error", "offline"));
+    const out = await r.session.exchange(r.port, google());
+    expect(out).toMatchObject({ kind: "signedIn", subject: "ps_abc" });
+    expect((out as { syncError?: PolarisError }).syncError?.code).toBe(
+      "network-error",
+    );
+    expect(r.store.token).toBe(ACCESS);
   });
 });
 
