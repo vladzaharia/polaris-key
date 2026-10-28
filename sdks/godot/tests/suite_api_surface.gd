@@ -169,6 +169,13 @@ const ROWS := [
 	["packs.packReady", "res://addons/polaris_key/services/packs.gd", "signal", "pack_ready"],
 	["packs.packFailed", "res://addons/polaris_key/services/packs.gd", "signal", "pack_failed"],
 	["packs.setChanged", "res://addons/polaris_key/services/packs.gd", "signal", "set_changed"],
+	["identity.isSigningIn", "res://addons/polaris_key/services/identity.gd", "method", "is_signing_in"],
+	["identity.cancel", "res://addons/polaris_key/services/identity.gd", "method", "cancel"],
+	["identity.signedInIdentity", "res://addons/polaris_key/services/identity.gd", "method", "signed_in_identity"],
+	["identity.requestSignIn", "res://addons/polaris_key/services/identity.gd", "method", "request_sign_in"],
+	["identity.signInPending", "res://addons/polaris_key/services/identity.gd", "signal", "sign_in_pending"],
+	["identity.signInConfirm", "res://addons/polaris_key/services/identity.gd", "signal", "sign_in_confirm"],
+	["identity.signInFinished", "res://addons/polaris_key/services/identity.gd", "signal", "sign_in_finished"],
 ]
 
 ## [concept, script, name]

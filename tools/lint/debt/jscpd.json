@@ -27,7 +27,7 @@
       "jscpd:duplicate": 3
     },
     "conformance/runners/node/transcripts.test.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 16
     },
     "examples/node-electron/src/main.ts": {
       "jscpd:duplicate": 1
@@ -1523,8 +1523,11 @@
     "packages/sdk-node/src/electron/main.ts": {
       "jscpd:duplicate": 1
     },
-    "packages/sdk-node/src/identity/signIn.ts": {
+    "packages/sdk-node/src/identity/redirect.ts": {
       "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/src/identity/signIn.ts": {
+      "jscpd:duplicate": 3
     },
     "packages/sdk-node/src/packs/client.ts": {
       "jscpd:duplicate": 3
@@ -1635,7 +1638,7 @@
       "jscpd:duplicate": 6
     },
     "packages/sdk-node/test/discovery.test.ts": {
-      "jscpd:duplicate": 12
+      "jscpd:duplicate": 11
     },
     "packages/sdk-node/test/documents.test.ts": {
       "jscpd:duplicate": 3
@@ -1824,7 +1827,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/capabilities.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 16
     },
     "packages/sdk-react/test/channels.test.tsx": {
       "jscpd:duplicate": 3
@@ -1842,7 +1845,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/desktopAdapter.test.ts": {
-      "jscpd:duplicate": 21
+      "jscpd:duplicate": 14
     },
     "packages/sdk-react/test/desktopIdentity.test.tsx": {
       "jscpd:duplicate": 1
@@ -2013,7 +2016,7 @@
       "jscpd:duplicate": 1
     },
     "packages/shared-manifest/src/index.test.ts": {
-      "jscpd:duplicate": 17
+      "jscpd:duplicate": 14
     },
     "packages/shared-manifest/src/index.ts": {
       "jscpd:duplicate": 3
@@ -2098,9 +2101,6 @@
     },
     "packages/ui-core/src/browser/sdk/core/presentation.ts": {
       "jscpd:duplicate": 6
-    },
-    "packages/ui-core/src/browser/sdk/core/signIn.ts": {
-      "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/core/types.ts": {
       "jscpd:duplicate": 2
@@ -2988,7 +2988,7 @@
       "jscpd:duplicate": 12
     },
     "packages/worker/test/attack/R12-secrets.test.ts": {
-      "jscpd:duplicate": 28
+      "jscpd:duplicate": 29
     },
     "packages/worker/test/attack/R3-licensing.test.ts": {
       "jscpd:duplicate": 5
@@ -3000,7 +3000,7 @@
       "jscpd:duplicate": 58
     },
     "packages/worker/test/attack/R8-oidc.test.ts": {
-      "jscpd:duplicate": 44
+      "jscpd:duplicate": 45
     },
     "packages/worker/test/attack/R9-injection.test.ts": {
       "jscpd:duplicate": 22
@@ -3132,7 +3132,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test/core/services.test.ts": {
-      "jscpd:duplicate": 17
+      "jscpd:duplicate": 19
     },
     "packages/worker/test/core/settings-resolver.test.ts": {
       "jscpd:duplicate": 1
@@ -3363,7 +3363,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/services/identity/deviceApproval.test.ts": {
-      "jscpd:duplicate": 13
+      "jscpd:duplicate": 12
     },
     "packages/worker/test/services/identity/deviceLoginCli.test.ts": {
       "jscpd:duplicate": 10
@@ -3396,7 +3396,7 @@
       "jscpd:duplicate": 10
     },
     "packages/worker/test/services/identity/oidcEdge.test.ts": {
-      "jscpd:duplicate": 29
+      "jscpd:duplicate": 30
     },
     "packages/worker/test/services/identity/platformPrimitives.test.ts": {
       "jscpd:duplicate": 3
@@ -4050,7 +4050,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/surfaces/linkRepo.test.ts": {
-      "jscpd:duplicate": 46
+      "jscpd:duplicate": 45
     },
     "packages/worker/test/surfaces/listingAssets.test.ts": {
       "jscpd:duplicate": 7
