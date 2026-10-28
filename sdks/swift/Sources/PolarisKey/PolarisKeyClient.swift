@@ -294,6 +294,8 @@ public actor PolarisKeyClient {
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
         let connect = ConnectClient(core: core, options: options.connect, accessGroup: options.core.keychainAccessGroup)
         self.connect = connect
+        // The key ring forgets its root and pin with the seat; filled below, once `attachments` is usable.
+        let forgetRing = LockedValue<(@Sendable () async throws -> Void)?>(nil)
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
         // does NOT fire it — a keyless registration is a provisioning step a host may want to
         // take long before it wants documents (an installer that registers at setup and syncs on
@@ -311,7 +313,10 @@ public actor PolarisKeyClient {
             onReleased: { await publisher.publish() },
             // A released device holds no roster and no discovery key; if they cannot be removed
             // (a locked Keychain) the release stops.
-            beforeRelease: { try await connect.leave() })
+            beforeRelease: {
+                try await connect.leave()
+                try await forgetRing.current?()
+            })
         self.entitlements = EntitlementsClient(license: self.license)
         let license = self.license
         licenseBox.set(license)
@@ -341,6 +346,8 @@ public actor PolarisKeyClient {
             }
             await publisher.publish()
         }
+        let attachments = self.attachments
+        forgetRing.set { try await PolarisKeyClient.keyring(core: core, attachments: attachments).forget() }
         backendSync.set { [weak self] force in
             guard let self else { return false }
             let result = await self.sync(force: force)

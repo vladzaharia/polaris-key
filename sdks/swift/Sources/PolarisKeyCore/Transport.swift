@@ -42,11 +42,14 @@ public struct PolarisError: Error, Sendable, Equatable {
     /// about another service (`not-configured` reads as licensing copy). `localizedDescription`
     /// prefers it; nil uses the catalog sentence for `code`.
     public let userMessage: String?
+    /// The HTTP status of the Worker's refusal, when the error is one; nil otherwise.
+    public let status: Int?
 
     public init(
         code: String, message: String, detail: String? = nil, unsupported: Unsupported? = nil,
-        userMessage: String? = nil
+        userMessage: String? = nil, status: Int? = nil
     ) {
+        self.status = status
         self.code = code
         self.message = message
         self.detail = detail
