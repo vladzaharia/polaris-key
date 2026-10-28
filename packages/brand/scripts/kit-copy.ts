@@ -1080,6 +1080,10 @@ export const LAZY_EN_PREFIXES = [
   "signin.approve.",
 ] as const;
 export const LAZY_EN_KEEP: ReadonlySet<string> = new Set([
+  // The nearby approver's prompt (NearbyApproval) draws these.
+  "signin.approve.warning",
+  "signin.approve.deny",
+  "signin.approve.deniedDone",
   "cli.signin.waitingCode",
   "common.updateCurrentNoSize",
   "common.updateDownload",

@@ -52,6 +52,8 @@ export const KIT_COPY: Readonly<
     "common.linkUnavailable": "That link doesn't open anything here.",
     "part.thisDevice":
       "{formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}",
+    "part.newDevice": "the new device",
+    "part.newDeviceTitle": "The new device",
     "part.thisDeviceTitle":
       "{formFactor, select, iphone {This iPhone} ipad {This iPad} mac {This Mac} phone {This phone} tablet {This tablet} computer {This computer} tv {This TV} other {This device}}",
     "part.platform.macos": "macOS",
@@ -97,6 +99,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrRequest": "QR code with the request code",
     "a11y.qrManage": "QR code that opens the device management page",
     "a11y.qrAddKey": "QR code that opens the add-key page",
+    "a11y.nearbyCode": "Code to tap: {code}",
     "a11y.code": "Sign-in code {code}",
     "a11y.seatMeter":
       "{used} of {limit, plural, one {# device} other {# devices}} in use",
@@ -541,38 +544,48 @@ export const KIT_COPY: Readonly<
       "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
     "signin.key.skip": "Skip for now",
     "signin.key.ownedSignIn": "Sign in to that account",
+    "signin.key.signIn": "Sign in",
     "signin.key.differentKey": "Use a different key",
     "signin.auto.confirm.title": "Continue to {app}",
     "signin.auto.confirm.as": "as {email}",
-    "signin.auto.confirm.asApple": "with your Apple ID",
+    "signin.auto.confirm.asApple": "with your Apple Account",
     "signin.auto.confirm.primary": "Continue",
     "signin.auto.confirm.other": "Use another account",
     "signin.linkOffer.title": "Sign in with {provider} next time?",
     "signin.linkOffer.bodyGlobal":
-      "{app} and other apps that use Polaris Locker sign you in by themselves.",
+      "Then {app} and other apps that use Polaris Locker can sign you in by themselves.",
     "signin.linkOffer.bodyDeveloper":
-      "Apps from {developer} sign you in by themselves.",
+      "Then apps from {developer} can sign you in by themselves.",
+    "signin.linkOffer.bodyApp":
+      "Then {app} and its developer's other apps can sign you in by themselves.",
     "signin.linkOffer.primary": "Link {provider}",
     "signin.linkOffer.decline": "No thanks",
-    "signin.linkOffer.done": "{provider} linked.",
+    "signin.linkOffer.done": "{provider} linked",
+    "signin.linkOffer.conflictTitle": "{provider} not linked",
     "signin.linkOffer.conflict":
-      "This {provider} account is linked to another Polaris Locker account.",
+      "This {provider} account belongs to another Polaris Locker account. You're still signed in.",
+    "signin.linkOffer.join": "Join accounts",
     "signin.nearby.title": "Approve on your other device",
+    "signin.nearby.promptTitle": "Sign in with your phone",
     "signin.nearby.body":
-      "Open {app} on a phone or computer where you're signed in.",
+      "Open {app} on a phone or computer that's signed in and on this network.",
+    "signin.nearby.match": "Tap this code there:",
     "signin.nearby.code": "Use a code instead",
     "signin.nearby.done": "Signed in as {email}",
     "signin.nearby.notYou": "Not you?",
     "signin.nearby.prePrompt":
-      "Allow access to devices on your network next, so your phone can sign you in.",
-    "signin.nearby.ask": "Sign in {device}?",
-    "signin.nearby.askBody": "Tap the code {device} shows",
-    "signin.nearby.deny": "Not now",
-    "signin.nearby.approved": "{device} is signed in.",
-    "signin.nearby.notNearby": "{device} isn't on your network.",
+      "Next, allow {app} to find devices on your network, so your phone can sign you in.",
+    "signin.nearby.ask": "Let {device} sign in?",
+    "signin.nearby.askBody": "Tap the code it shows.",
+    "signin.nearby.approved": "{device} is signed in",
+    "signin.nearby.notNearby": "{device} isn't on this network",
+    "signin.nearby.notNearbyBody":
+      "Connect both to the same Wi-Fi, or sign in with a code on {device}.",
+    "signin.nearby.mismatch":
+      "That code didn't match, so {device} wasn't signed in.",
     "signin.nearby.menu": "Approve a nearby device",
     "signin.key.addInLocker": "Add it in Polaris Locker",
-    "signin.key.scan": "Scan to add it in Polaris Locker on your phone.",
+    "signin.key.scan": "Scan to add this key in Polaris Locker on your phone.",
     "signin.return.yours": "{product} is yours",
     "signin.return.product": "{tier} · in your library",
     "signin.return.signedIn": "You're signed in to {app}",
@@ -1190,7 +1203,7 @@ export const KIT_COPY: Readonly<
       "Finish signing in on the Polaris Locker page, then return to the app.",
     "core.codes.not_nearby.title": "Not nearby",
     "core.codes.not_nearby.message":
-      "The other device isn't on this network. Move closer, or sign in with a code instead.",
+      "The other device isn't on this network. Connect both to the same Wi-Fi, or use a code instead.",
     "core.codes.auth_method_disabled.title": "Sign-in method unavailable",
     "core.codes.auth_method_disabled.message":
       "That sign-in method is turned off. Choose another one.",
@@ -1687,7 +1700,7 @@ export const KIT_COPY: Readonly<
       "This app doesn't offer a free license. Enter a license key or sign in.",
     "core.activation.key-entry-limit.title": "No key entries left",
     "core.activation.key-entry-limit.message":
-      "Add it to your account and sign in instead.",
+      "Sign in and add this key to your Polaris Locker account instead.",
     "core.activation.license-owned.title": "License in another account",
     "core.activation.license-owned.message":
       "This license is already in another Polaris Locker account. A license never moves by its key.",
@@ -1721,6 +1734,8 @@ export const KIT_COPY: Readonly<
     "common.linkUnavailable": "Dieser Link öffnet hier nichts.",
     "part.thisDevice":
       "{formFactor, select, iphone {dieses iPhone} ipad {dieses iPad} mac {diesen Mac} phone {dieses Telefon} tablet {dieses Tablet} computer {diesen Computer} tv {diesen Fernseher} other {dieses Gerät}}",
+    "part.newDevice": "das neue Gerät",
+    "part.newDeviceTitle": "Das neue Gerät",
     "part.thisDeviceTitle":
       "{formFactor, select, iphone {Dieses iPhone} ipad {Dieses iPad} mac {Dieser Mac} phone {Dieses Telefon} tablet {Dieses Tablet} computer {Dieser Computer} tv {Dieser Fernseher} other {Dieses Gerät}}",
     "part.platform.macos": "macOS",
@@ -1767,6 +1782,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrManage": "QR-Code, der die Seite zur Geräteverwaltung öffnet",
     "a11y.qrAddKey":
       "QR-Code, der die Seite zum Hinzufügen des Schlüssels öffnet",
+    "a11y.nearbyCode": "Code zum Tippen: {code}",
     "a11y.code": "Anmeldecode {code}",
     "a11y.seatMeter":
       "{used} von {limit, plural, one {# Gerät} other {# Geräten}} belegt",
@@ -2246,39 +2262,49 @@ export const KIT_COPY: Readonly<
       "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an.",
     "signin.key.skip": "Jetzt nicht",
     "signin.key.ownedSignIn": "Bei diesem Konto anmelden",
+    "signin.key.signIn": "Anmelden",
     "signin.key.differentKey": "Anderen Schlüssel verwenden",
     "signin.auto.confirm.title": "Weiter zu {app}",
     "signin.auto.confirm.as": "als {email}",
-    "signin.auto.confirm.asApple": "mit Ihrer Apple-ID",
+    "signin.auto.confirm.asApple": "mit Ihrem Apple Account",
     "signin.auto.confirm.primary": "Weiter",
     "signin.auto.confirm.other": "Anderes Konto verwenden",
     "signin.linkOffer.title": "Nächstes Mal mit {provider} anmelden?",
     "signin.linkOffer.bodyGlobal":
-      "{app} und andere Apps mit Polaris Locker melden Sie selbstständig an.",
+      "Dann können {app} und andere Apps mit Polaris Locker Sie selbstständig anmelden.",
     "signin.linkOffer.bodyDeveloper":
-      "Apps von {developer} melden Sie selbstständig an.",
+      "Dann können Apps von {developer} Sie selbstständig anmelden.",
+    "signin.linkOffer.bodyApp":
+      "Dann können {app} und die anderen Apps des Entwicklers Sie selbstständig anmelden.",
     "signin.linkOffer.primary": "{provider} verknüpfen",
     "signin.linkOffer.decline": "Nein, danke",
-    "signin.linkOffer.done": "{provider} verknüpft.",
+    "signin.linkOffer.done": "{provider} verknüpft",
+    "signin.linkOffer.conflictTitle": "{provider} nicht verknüpft",
     "signin.linkOffer.conflict":
-      "Dieses {provider}-Konto ist mit einem anderen Konto bei Polaris Locker verknüpft.",
+      "Dieses {provider}-Konto gehört zu einem anderen Konto bei Polaris Locker. Sie bleiben angemeldet.",
+    "signin.linkOffer.join": "Konten zusammenführen",
     "signin.nearby.title": "Auf Ihrem anderen Gerät bestätigen",
+    "signin.nearby.promptTitle": "Mit dem Telefon anmelden",
     "signin.nearby.body":
-      "Öffnen Sie {app} auf einem Telefon oder Computer, auf dem Sie angemeldet sind.",
+      "Öffnen Sie {app} auf einem Telefon oder Computer, der angemeldet und in diesem Netzwerk ist.",
+    "signin.nearby.match": "Tippen Sie dort auf diesen Code:",
     "signin.nearby.code": "Stattdessen einen Code verwenden",
     "signin.nearby.done": "Angemeldet als {email}",
     "signin.nearby.notYou": "Nicht Sie?",
     "signin.nearby.prePrompt":
-      "Erlauben Sie als Nächstes den Zugriff auf Geräte in Ihrem Netzwerk, damit Ihr Telefon Sie anmelden kann.",
-    "signin.nearby.ask": "{device} anmelden?",
-    "signin.nearby.askBody": "Tippen Sie auf den Code, den {device} anzeigt",
-    "signin.nearby.deny": "Jetzt nicht",
-    "signin.nearby.approved": "{device} ist angemeldet.",
-    "signin.nearby.notNearby": "{device} ist nicht in Ihrem Netzwerk.",
+      "Erlauben Sie {app} als Nächstes, Geräte in Ihrem Netzwerk zu finden, damit Ihr Telefon Sie anmelden kann.",
+    "signin.nearby.ask": "{device} die Anmeldung erlauben?",
+    "signin.nearby.askBody": "Tippen Sie auf den Code, den es anzeigt.",
+    "signin.nearby.approved": "{device} ist angemeldet",
+    "signin.nearby.notNearby": "{device} ist nicht in diesem Netzwerk",
+    "signin.nearby.notNearbyBody":
+      "Verbinden Sie beide mit demselben WLAN oder melden Sie sich auf {device} mit einem Code an.",
+    "signin.nearby.mismatch":
+      "Dieser Code stimmte nicht überein, daher wurde {device} nicht angemeldet.",
     "signin.nearby.menu": "Gerät in der Nähe bestätigen",
     "signin.key.addInLocker": "In Polaris Locker hinzufügen",
     "signin.key.scan":
-      "Scannen, um sie auf Ihrem Telefon in Polaris Locker hinzuzufügen.",
+      "Scannen, um diesen Schlüssel auf Ihrem Telefon in Polaris Locker hinzuzufügen.",
     "signin.return.yours": "{product} gehört Ihnen",
     "signin.return.product": "{tier} · in Ihrer Bibliothek",
     "signin.return.signedIn": "Sie sind bei {app} angemeldet",
@@ -2956,7 +2982,7 @@ export const KIT_COPY: Readonly<
       "Schließen Sie die Anmeldung auf der Polaris Locker-Seite ab und kehren Sie dann zur App zurück.",
     "core.codes.not_nearby.title": "Nicht in der Nähe",
     "core.codes.not_nearby.message":
-      "Das andere Gerät ist nicht in diesem Netzwerk. Gehen Sie näher heran oder melden Sie sich stattdessen mit einem Code an.",
+      "Das andere Gerät ist nicht in diesem Netzwerk. Verbinden Sie beide mit demselben WLAN oder verwenden Sie stattdessen einen Code.",
     "core.codes.auth_method_disabled.title": "Anmeldemethode nicht verfügbar",
     "core.codes.auth_method_disabled.message":
       "Diese Anmeldemethode ist deaktiviert. Wählen Sie eine andere.",
@@ -3472,7 +3498,7 @@ export const KIT_COPY: Readonly<
       "Diese App bietet keine kostenlose Lizenz an. Geben Sie einen Lizenzschlüssel ein oder melden Sie sich an.",
     "core.activation.key-entry-limit.title": "Keine Schlüsseleingaben mehr",
     "core.activation.key-entry-limit.message":
-      "Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
+      "Melden Sie sich an und fügen Sie diesen Schlüssel stattdessen Ihrem Polaris-Locker-Konto hinzu.",
     "core.activation.license-owned.title": "Lizenz in einem anderen Konto",
     "core.activation.license-owned.message":
       "Diese Lizenz befindet sich bereits in einem anderen Polaris Locker-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
@@ -3507,6 +3533,8 @@ export const KIT_COPY: Readonly<
     "common.linkUnavailable": "Ce lien n’ouvre rien ici.",
     "part.thisDevice":
       "{formFactor, select, iphone {cet iPhone} ipad {cet iPad} mac {ce Mac} phone {ce téléphone} tablet {cette tablette} computer {cet ordinateur} tv {ce téléviseur} other {cet appareil}}",
+    "part.newDevice": "le nouvel appareil",
+    "part.newDeviceTitle": "Le nouvel appareil",
     "part.thisDeviceTitle":
       "{formFactor, select, iphone {Cet iPhone} ipad {Cet iPad} mac {Ce Mac} phone {Ce téléphone} tablet {Cette tablette} computer {Cet ordinateur} tv {Ce téléviseur} other {Cet appareil}}",
     "part.platform.macos": "macOS",
@@ -3552,6 +3580,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrRequest": "Code QR contenant le code de demande",
     "a11y.qrManage": "Code QR qui ouvre la page de gestion des appareils",
     "a11y.qrAddKey": "Code QR qui ouvre la page d’ajout de clé",
+    "a11y.nearbyCode": "Code à toucher : {code}",
     "a11y.code": "Code de connexion {code}",
     "a11y.seatMeter":
       "{used} sur {limit, plural, one {# appareil} many {# d’appareils} other {# appareils}} utilisés",
@@ -4022,40 +4051,50 @@ export const KIT_COPY: Readonly<
       "Cette clé n’a plus de saisies disponibles dans {product}. Ajoutez-la à votre compte et {product} vous connectera à la place.",
     "signin.key.skip": "Passer pour l’instant",
     "signin.key.ownedSignIn": "Se connecter à ce compte",
+    "signin.key.signIn": "Se connecter",
     "signin.key.differentKey": "Utiliser une autre clé",
     "signin.auto.confirm.title": "Continuer vers {app}",
     "signin.auto.confirm.as": "en tant que {email}",
-    "signin.auto.confirm.asApple": "avec votre identifiant Apple",
+    "signin.auto.confirm.asApple": "avec votre compte Apple",
     "signin.auto.confirm.primary": "Continuer",
     "signin.auto.confirm.other": "Utiliser un autre compte",
     "signin.linkOffer.title":
       "Se connecter avec {provider} la prochaine fois ?",
     "signin.linkOffer.bodyGlobal":
-      "{app} et les autres apps qui utilisent Polaris Locker vous connectent d’elles-mêmes.",
+      "{app} et les autres apps qui utilisent Polaris Locker pourront alors vous connecter d’elles-mêmes.",
     "signin.linkOffer.bodyDeveloper":
-      "Les apps de {developer} vous connectent d’elles-mêmes.",
+      "Les apps de {developer} pourront alors vous connecter d’elles-mêmes.",
+    "signin.linkOffer.bodyApp":
+      "{app} et les autres apps de son développeur pourront alors vous connecter d’elles-mêmes.",
     "signin.linkOffer.primary": "Associer {provider}",
     "signin.linkOffer.decline": "Non merci",
-    "signin.linkOffer.done": "{provider} associé.",
+    "signin.linkOffer.done": "{provider} associé",
+    "signin.linkOffer.conflictTitle": "{provider} non associé",
     "signin.linkOffer.conflict":
-      "Ce compte {provider} est associé à un autre compte Polaris Locker.",
+      "Ce compte {provider} appartient à un autre compte Polaris Locker. Vous restez connecté.",
+    "signin.linkOffer.join": "Fusionner les comptes",
     "signin.nearby.title": "Approuvez sur votre autre appareil",
+    "signin.nearby.promptTitle": "Se connecter avec le téléphone",
     "signin.nearby.body":
-      "Ouvrez {app} sur un téléphone ou un ordinateur où vous êtes connecté.",
+      "Ouvrez {app} sur un téléphone ou un ordinateur connecté et sur ce réseau.",
+    "signin.nearby.match": "Touchez ce code là-bas :",
     "signin.nearby.code": "Utiliser un code à la place",
     "signin.nearby.done": "Connecté en tant que {email}",
     "signin.nearby.notYou": "Ce n’est pas vous ?",
     "signin.nearby.prePrompt":
-      "Autorisez ensuite l’accès aux appareils de votre réseau pour que votre téléphone puisse vous connecter.",
-    "signin.nearby.ask": "Connecter {device} ?",
-    "signin.nearby.askBody": "Touchez le code affiché sur {device}",
-    "signin.nearby.deny": "Pas maintenant",
-    "signin.nearby.approved": "{device} est connecté.",
-    "signin.nearby.notNearby": "{device} n’est pas sur votre réseau.",
+      "Autorisez ensuite {app} à trouver les appareils de votre réseau, pour que votre téléphone puisse vous connecter.",
+    "signin.nearby.ask": "Laisser {device} se connecter ?",
+    "signin.nearby.askBody": "Touchez le code qu’il affiche.",
+    "signin.nearby.approved": "{device} est connecté",
+    "signin.nearby.notNearby": "{device} n’est pas sur ce réseau",
+    "signin.nearby.notNearbyBody":
+      "Connectez les deux au même Wi-Fi, ou connectez-vous avec un code sur {device}.",
+    "signin.nearby.mismatch":
+      "Ce code ne correspondait pas, donc {device} n’a pas été connecté.",
     "signin.nearby.menu": "Approuver un appareil à proximité",
     "signin.key.addInLocker": "L’ajouter dans Polaris Locker",
     "signin.key.scan":
-      "Scannez pour l’ajouter dans Polaris Locker sur votre téléphone.",
+      "Scannez pour ajouter cette clé dans Polaris Locker sur votre téléphone.",
     "signin.return.yours": "{product} est à vous",
     "signin.return.product": "{tier} · dans votre bibliothèque",
     "signin.return.signedIn": "Vous êtes connecté à {app}",
@@ -4725,7 +4764,7 @@ export const KIT_COPY: Readonly<
       "Terminez la connexion sur la page Polaris Locker, puis revenez à l’app.",
     "core.codes.not_nearby.title": "Pas à proximité",
     "core.codes.not_nearby.message":
-      "L’autre appareil n’est pas sur ce réseau. Rapprochez-vous ou connectez-vous avec un code.",
+      "L’autre appareil n’est pas sur ce réseau. Connectez les deux au même Wi-Fi, ou utilisez un code à la place.",
     "core.codes.auth_method_disabled.title":
       "Méthode de connexion indisponible",
     "core.codes.auth_method_disabled.message":
@@ -5241,7 +5280,7 @@ export const KIT_COPY: Readonly<
       "Cette app ne propose pas de licence gratuite. Saisissez une clé de licence ou connectez-vous.",
     "core.activation.key-entry-limit.title": "Aucune saisie restante",
     "core.activation.key-entry-limit.message":
-      "Ajoutez-la à votre compte et connectez-vous à la place.",
+      "Connectez-vous et ajoutez plutôt cette clé à votre compte Polaris Locker.",
     "core.activation.license-owned.title": "Licence dans un autre compte",
     "core.activation.license-owned.message":
       "Cette licence est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer.",
@@ -5275,6 +5314,8 @@ export const KIT_COPY: Readonly<
     "common.linkUnavailable": "Este enlace no abre nada aquí.",
     "part.thisDevice":
       "{formFactor, select, iphone {este iPhone} ipad {este iPad} mac {este Mac} phone {este teléfono} tablet {esta tableta} computer {esta computadora} tv {este televisor} other {este dispositivo}}",
+    "part.newDevice": "el nuevo dispositivo",
+    "part.newDeviceTitle": "El nuevo dispositivo",
     "part.thisDeviceTitle":
       "{formFactor, select, iphone {Este iPhone} ipad {Este iPad} mac {Este Mac} phone {Este teléfono} tablet {Esta tableta} computer {Esta computadora} tv {Este televisor} other {Este dispositivo}}",
     "part.platform.macos": "macOS",
@@ -5320,6 +5361,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrRequest": "Código QR con el código de solicitud",
     "a11y.qrManage": "Código QR que abre la página de gestión de dispositivos",
     "a11y.qrAddKey": "Código QR que abre la página para añadir la clave",
+    "a11y.nearbyCode": "Código que tocar: {code}",
     "a11y.code": "Código de inicio de sesión {code}",
     "a11y.seatMeter":
       "{used} de {limit, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}} en uso",
@@ -5782,39 +5824,49 @@ export const KIT_COPY: Readonly<
       "A esta clave no le quedan usos en {product}. Añádela a tu cuenta y {product} iniciará tu sesión.",
     "signin.key.skip": "Omitir por ahora",
     "signin.key.ownedSignIn": "Iniciar sesión en esa cuenta",
+    "signin.key.signIn": "Iniciar sesión",
     "signin.key.differentKey": "Usar otra clave",
     "signin.auto.confirm.title": "Continuar a {app}",
     "signin.auto.confirm.as": "como {email}",
-    "signin.auto.confirm.asApple": "con tu ID de Apple",
+    "signin.auto.confirm.asApple": "con tu cuenta de Apple",
     "signin.auto.confirm.primary": "Continuar",
     "signin.auto.confirm.other": "Usar otra cuenta",
     "signin.linkOffer.title": "¿Iniciar sesión con {provider} la próxima vez?",
     "signin.linkOffer.bodyGlobal":
-      "{app} y otras apps que usan Polaris Locker inician tu sesión solas.",
+      "Entonces {app} y otras apps que usan Polaris Locker podrán iniciar tu sesión solas.",
     "signin.linkOffer.bodyDeveloper":
-      "Las apps de {developer} inician tu sesión solas.",
+      "Entonces las apps de {developer} podrán iniciar tu sesión solas.",
+    "signin.linkOffer.bodyApp":
+      "Entonces {app} y las demás apps de su desarrollador podrán iniciar tu sesión solas.",
     "signin.linkOffer.primary": "Vincular {provider}",
     "signin.linkOffer.decline": "No, gracias",
-    "signin.linkOffer.done": "{provider} vinculado.",
+    "signin.linkOffer.done": "{provider} vinculado",
+    "signin.linkOffer.conflictTitle": "{provider} no vinculado",
     "signin.linkOffer.conflict":
-      "Esta cuenta de {provider} está vinculada a otra cuenta de Polaris Locker.",
+      "Esta cuenta de {provider} pertenece a otra cuenta de Polaris Locker. Sigues con la sesión iniciada.",
+    "signin.linkOffer.join": "Unir cuentas",
     "signin.nearby.title": "Aprueba en tu otro dispositivo",
+    "signin.nearby.promptTitle": "Inicia sesión con tu teléfono",
     "signin.nearby.body":
-      "Abre {app} en un teléfono u ordenador donde hayas iniciado sesión.",
+      "Abre {app} en un teléfono u ordenador con la sesión iniciada y en esta red.",
+    "signin.nearby.match": "Toca allí este código:",
     "signin.nearby.code": "Usar un código",
     "signin.nearby.done": "Sesión iniciada como {email}",
     "signin.nearby.notYou": "¿No eres tú?",
     "signin.nearby.prePrompt":
-      "A continuación, permite el acceso a los dispositivos de tu red para que tu teléfono pueda iniciar tu sesión.",
-    "signin.nearby.ask": "¿Iniciar sesión en {device}?",
-    "signin.nearby.askBody": "Toca el código que muestra {device}",
-    "signin.nearby.deny": "Ahora no",
-    "signin.nearby.approved": "{device} ha iniciado sesión.",
-    "signin.nearby.notNearby": "{device} no está en tu red.",
+      "A continuación, permite que {app} encuentre dispositivos en tu red para que tu teléfono pueda iniciar tu sesión.",
+    "signin.nearby.ask": "¿Dejar que {device} inicie sesión?",
+    "signin.nearby.askBody": "Toca el código que muestra.",
+    "signin.nearby.approved": "{device} ha iniciado sesión",
+    "signin.nearby.notNearby": "{device} no está en esta red",
+    "signin.nearby.notNearbyBody":
+      "Conecta ambos a la misma red Wi-Fi, o inicia sesión con un código en {device}.",
+    "signin.nearby.mismatch":
+      "Ese código no coincidía, así que {device} no ha iniciado sesión.",
     "signin.nearby.menu": "Aprobar un dispositivo cercano",
     "signin.key.addInLocker": "Añadirla en Polaris Locker",
     "signin.key.scan":
-      "Escanea para añadirla en Polaris Locker desde tu teléfono.",
+      "Escanea para añadir esta clave en Polaris Locker desde tu teléfono.",
     "signin.return.yours": "{product} es tuyo",
     "signin.return.product": "{tier} · en tu biblioteca",
     "signin.return.signedIn": "Has iniciado sesión en {app}",
@@ -6480,7 +6532,7 @@ export const KIT_COPY: Readonly<
       "Termina de iniciar sesión en la página de Polaris Locker y vuelve a la app.",
     "core.codes.not_nearby.title": "No está cerca",
     "core.codes.not_nearby.message":
-      "El otro dispositivo no está en esta red. Acércate o inicia sesión con un código.",
+      "El otro dispositivo no está en esta red. Conecta ambos a la misma red Wi-Fi o usa un código.",
     "core.codes.auth_method_disabled.title":
       "Método de inicio de sesión no disponible",
     "core.codes.auth_method_disabled.message":
@@ -6996,7 +7048,7 @@ export const KIT_COPY: Readonly<
       "Esta app no ofrece una licencia gratuita. Escribe una clave de licencia o inicia sesión.",
     "core.activation.key-entry-limit.title": "No quedan usos de la clave",
     "core.activation.key-entry-limit.message":
-      "Añádela a tu cuenta e inicia sesión en su lugar.",
+      "Inicia sesión y añade esta clave a tu cuenta de Polaris Locker.",
     "core.activation.license-owned.title": "Licencia en otra cuenta",
     "core.activation.license-owned.message":
       "Esta licencia ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave.",
@@ -7030,6 +7082,8 @@ export const KIT_COPY: Readonly<
     "common.linkUnavailable": "Este link não abre nada aqui.",
     "part.thisDevice":
       "{formFactor, select, iphone {este iPhone} ipad {este iPad} mac {este Mac} phone {este celular} tablet {este tablet} computer {este computador} tv {esta TV} other {este dispositivo}}",
+    "part.newDevice": "o novo dispositivo",
+    "part.newDeviceTitle": "O novo dispositivo",
     "part.thisDeviceTitle":
       "{formFactor, select, iphone {Este iPhone} ipad {Este iPad} mac {Este Mac} phone {Este celular} tablet {Este tablet} computer {Este computador} tv {Esta TV} other {Este dispositivo}}",
     "part.platform.macos": "macOS",
@@ -7076,6 +7130,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrManage":
       "Código QR que abre a página de gerenciamento de dispositivos",
     "a11y.qrAddKey": "Código QR que abre a página de adicionar a chave",
+    "a11y.nearbyCode": "Código para tocar: {code}",
     "a11y.code": "Código de acesso {code}",
     "a11y.seatMeter":
       "{used} de {limit, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}} em uso",
@@ -7541,38 +7596,49 @@ export const KIT_COPY: Readonly<
       "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e entre em {product} com sua conta.",
     "signin.key.skip": "Pular por enquanto",
     "signin.key.ownedSignIn": "Entrar nessa conta",
+    "signin.key.signIn": "Entrar",
     "signin.key.differentKey": "Usar outra chave",
     "signin.auto.confirm.title": "Continuar para {app}",
     "signin.auto.confirm.as": "como {email}",
-    "signin.auto.confirm.asApple": "com seu ID Apple",
+    "signin.auto.confirm.asApple": "com sua conta Apple",
     "signin.auto.confirm.primary": "Continuar",
     "signin.auto.confirm.other": "Usar outra conta",
     "signin.linkOffer.title": "Entrar com {provider} da próxima vez?",
     "signin.linkOffer.bodyGlobal":
-      "{app} e outros apps que usam o Polaris Locker entram por você.",
-    "signin.linkOffer.bodyDeveloper": "Os apps de {developer} entram por você.",
+      "Assim, {app} e outros apps que usam o Polaris Locker poderão entrar por você.",
+    "signin.linkOffer.bodyDeveloper":
+      "Assim, os apps de {developer} poderão entrar por você.",
+    "signin.linkOffer.bodyApp":
+      "Assim, {app} e os outros apps do desenvolvedor poderão entrar por você.",
     "signin.linkOffer.primary": "Vincular {provider}",
     "signin.linkOffer.decline": "Agora não",
-    "signin.linkOffer.done": "{provider} vinculado.",
+    "signin.linkOffer.done": "{provider} vinculado",
+    "signin.linkOffer.conflictTitle": "{provider} não vinculado",
     "signin.linkOffer.conflict":
-      "Esta conta {provider} está vinculada a outra conta do Polaris Locker.",
+      "Esta conta {provider} pertence a outra conta do Polaris Locker. Você continua conectado.",
+    "signin.linkOffer.join": "Unir contas",
     "signin.nearby.title": "Aprove no seu outro dispositivo",
+    "signin.nearby.promptTitle": "Entre com o celular",
     "signin.nearby.body":
-      "Abra {app} em um celular ou computador em que você já entrou.",
+      "Abra {app} em um celular ou computador conectado e nesta rede.",
+    "signin.nearby.match": "Toque neste código lá:",
     "signin.nearby.code": "Usar um código",
     "signin.nearby.done": "Conectado como {email}",
     "signin.nearby.notYou": "Não é você?",
     "signin.nearby.prePrompt":
-      "Em seguida, permita o acesso aos dispositivos da sua rede para que seu celular possa fazer o login.",
-    "signin.nearby.ask": "Entrar em {device}?",
-    "signin.nearby.askBody": "Toque no código exibido em {device}",
-    "signin.nearby.deny": "Agora não",
-    "signin.nearby.approved": "{device} está conectado.",
-    "signin.nearby.notNearby": "{device} não está na sua rede.",
+      "Em seguida, permita que {app} encontre dispositivos na sua rede para que seu celular possa fazer o login.",
+    "signin.nearby.ask": "Deixar {device} entrar?",
+    "signin.nearby.askBody": "Toque no código que ele exibe.",
+    "signin.nearby.approved": "{device} está conectado",
+    "signin.nearby.notNearby": "{device} não está nesta rede",
+    "signin.nearby.notNearbyBody":
+      "Conecte os dois ao mesmo Wi-Fi ou entre com um código em {device}.",
+    "signin.nearby.mismatch":
+      "Esse código não correspondeu, então {device} não foi conectado.",
     "signin.nearby.menu": "Aprovar um dispositivo próximo",
     "signin.key.addInLocker": "Adicionar no Polaris Locker",
     "signin.key.scan":
-      "Escaneie para adicionar no Polaris Locker pelo celular.",
+      "Escaneie para adicionar esta chave no Polaris Locker pelo celular.",
     "signin.return.yours": "{product} é seu",
     "signin.return.product": "{tier} · na sua biblioteca",
     "signin.return.signedIn": "Você entrou em {app}",
@@ -8215,7 +8281,7 @@ export const KIT_COPY: Readonly<
       "Conclua o login na página do Polaris Locker e volte ao app.",
     "core.codes.not_nearby.title": "Não está por perto",
     "core.codes.not_nearby.message":
-      "O outro dispositivo não está nesta rede. Aproxime-se ou entre com um código.",
+      "O outro dispositivo não está nesta rede. Conecte os dois ao mesmo Wi-Fi ou use um código.",
     "core.codes.auth_method_disabled.title": "Método de acesso indisponível",
     "core.codes.auth_method_disabled.message":
       "Esse método de acesso está desativado. Escolha outro.",
@@ -8716,7 +8782,7 @@ export const KIT_COPY: Readonly<
       "Este app não oferece licença gratuita. Digite uma chave de licença ou entre.",
     "core.activation.key-entry-limit.title": "Nenhum uso restante da chave",
     "core.activation.key-entry-limit.message":
-      "Adicione-a à sua conta e entre em vez disso.",
+      "Entre e adicione esta chave à sua conta do Polaris Locker.",
     "core.activation.license-owned.title": "Licença em outra conta",
     "core.activation.license-owned.message":
       "Esta licença já está em outra conta do Polaris Locker. Uma licença nunca é transferida pela chave.",
@@ -8750,6 +8816,8 @@ export const KIT_COPY: Readonly<
     "common.linkUnavailable": "Questo link qui non apre nulla.",
     "part.thisDevice":
       "{formFactor, select, iphone {questo iPhone} ipad {questo iPad} mac {questo Mac} phone {questo telefono} tablet {questo tablet} computer {questo computer} tv {questa TV} other {questo dispositivo}}",
+    "part.newDevice": "il nuovo dispositivo",
+    "part.newDeviceTitle": "Il nuovo dispositivo",
     "part.thisDeviceTitle":
       "{formFactor, select, iphone {Questo iPhone} ipad {Questo iPad} mac {Questo Mac} phone {Questo telefono} tablet {Questo tablet} computer {Questo computer} tv {Questa TV} other {Questo dispositivo}}",
     "part.platform.macos": "macOS",
@@ -8795,6 +8863,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrRequest": "Codice QR con il codice di richiesta",
     "a11y.qrManage": "Codice QR che apre la pagina di gestione dei dispositivi",
     "a11y.qrAddKey": "Codice QR che apre la pagina per aggiungere la chiave",
+    "a11y.nearbyCode": "Codice da toccare: {code}",
     "a11y.code": "Codice di accesso {code}",
     "a11y.seatMeter":
       "{used} di {limit, plural, one {# dispositivo} many {# di dispositivi} other {# dispositivi}} in uso",
@@ -9256,39 +9325,49 @@ export const KIT_COPY: Readonly<
       "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo.",
     "signin.key.skip": "Salta per ora",
     "signin.key.ownedSignIn": "Accedi a quell'account",
+    "signin.key.signIn": "Accedi",
     "signin.key.differentKey": "Usa una chiave diversa",
     "signin.auto.confirm.title": "Continua su {app}",
     "signin.auto.confirm.as": "come {email}",
-    "signin.auto.confirm.asApple": "con il tuo ID Apple",
+    "signin.auto.confirm.asApple": "con il tuo account Apple",
     "signin.auto.confirm.primary": "Continua",
     "signin.auto.confirm.other": "Usa un altro account",
     "signin.linkOffer.title": "Accedere con {provider} la prossima volta?",
     "signin.linkOffer.bodyGlobal":
-      "{app} e le altre app che usano Polaris Locker ti fanno accedere da sole.",
+      "Così {app} e le altre app che usano Polaris Locker potranno farti accedere da sole.",
     "signin.linkOffer.bodyDeveloper":
-      "Le app di {developer} ti fanno accedere da sole.",
+      "Così le app di {developer} potranno farti accedere da sole.",
+    "signin.linkOffer.bodyApp":
+      "Così {app} e le altre app dello sviluppatore potranno farti accedere da sole.",
     "signin.linkOffer.primary": "Collega {provider}",
     "signin.linkOffer.decline": "No, grazie",
-    "signin.linkOffer.done": "{provider} collegato.",
+    "signin.linkOffer.done": "{provider} collegato",
+    "signin.linkOffer.conflictTitle": "{provider} non collegato",
     "signin.linkOffer.conflict":
-      "Questo account {provider} è collegato a un altro account Polaris Locker.",
+      "Questo account {provider} appartiene a un altro account Polaris Locker. Hai ancora effettuato l’accesso.",
+    "signin.linkOffer.join": "Unisci gli account",
     "signin.nearby.title": "Approva sull’altro dispositivo",
+    "signin.nearby.promptTitle": "Accedi con il telefono",
     "signin.nearby.body":
-      "Apri {app} su un telefono o computer dove hai già effettuato l’accesso.",
+      "Apri {app} su un telefono o computer con l’accesso effettuato e in questa rete.",
+    "signin.nearby.match": "Tocca lì questo codice:",
     "signin.nearby.code": "Usa invece un codice",
     "signin.nearby.done": "Accesso eseguito come {email}",
     "signin.nearby.notYou": "Non sei tu?",
     "signin.nearby.prePrompt":
-      "Consenti ora l’accesso ai dispositivi della tua rete, così il telefono può farti accedere.",
-    "signin.nearby.ask": "Far accedere {device}?",
-    "signin.nearby.askBody": "Tocca il codice mostrato da {device}",
-    "signin.nearby.deny": "Non ora",
-    "signin.nearby.approved": "{device} ha effettuato l’accesso.",
-    "signin.nearby.notNearby": "{device} non è nella tua rete.",
+      "Ora consenti a {app} di trovare i dispositivi della tua rete, così il telefono può farti accedere.",
+    "signin.nearby.ask": "Lasciare accedere {device}?",
+    "signin.nearby.askBody": "Tocca il codice che mostra.",
+    "signin.nearby.approved": "{device} ha effettuato l’accesso",
+    "signin.nearby.notNearby": "{device} non è in questa rete",
+    "signin.nearby.notNearbyBody":
+      "Collega entrambi allo stesso Wi-Fi, oppure accedi con un codice su {device}.",
+    "signin.nearby.mismatch":
+      "Quel codice non corrispondeva, quindi {device} non ha effettuato l’accesso.",
     "signin.nearby.menu": "Approva un dispositivo vicino",
     "signin.key.addInLocker": "Aggiungila in Polaris Locker",
     "signin.key.scan":
-      "Inquadra per aggiungerla in Polaris Locker dal telefono.",
+      "Inquadra per aggiungere questa chiave in Polaris Locker dal telefono.",
     "signin.return.yours": "{product} è tuo",
     "signin.return.product": "{tier} · nella tua libreria",
     "signin.return.signedIn": "Hai effettuato l'accesso a {app}",
@@ -9946,7 +10025,7 @@ export const KIT_COPY: Readonly<
       "Completa l'accesso sulla pagina di Polaris Locker, poi torna all'app.",
     "core.codes.not_nearby.title": "Non nelle vicinanze",
     "core.codes.not_nearby.message":
-      "L'altro dispositivo non è su questa rete. Avvicinati oppure accedi con un codice.",
+      "L’altro dispositivo non è in questa rete. Collega entrambi allo stesso Wi-Fi oppure usa un codice.",
     "core.codes.auth_method_disabled.title":
       "Metodo di accesso non disponibile",
     "core.codes.auth_method_disabled.message":
@@ -10455,7 +10534,7 @@ export const KIT_COPY: Readonly<
       "Questa app non offre una licenza gratuita. Inserisci una chiave di licenza o accedi.",
     "core.activation.key-entry-limit.title": "Nessun inserimento rimasto",
     "core.activation.key-entry-limit.message":
-      "Aggiungila al tuo account e accedi invece.",
+      "Accedi e aggiungi invece questa chiave al tuo account Polaris Locker.",
     "core.activation.license-owned.title": "Licenza in un altro account",
     "core.activation.license-owned.message":
       "Questa licenza è già in un altro account Polaris Locker. Una licenza non si sposta mai tramite la sua chiave.",
@@ -10490,6 +10569,8 @@ export const KIT_COPY: Readonly<
     "common.linkUnavailable": "このリンクでは、ここで開けるものがありません。",
     "part.thisDevice":
       "{formFactor, select, iphone {このiPhone} ipad {このiPad} mac {このMac} phone {このスマートフォン} tablet {このタブレット} computer {このコンピュータ} tv {このテレビ} other {このデバイス}}",
+    "part.newDevice": "新しいデバイス",
+    "part.newDeviceTitle": "新しいデバイス",
     "part.thisDeviceTitle":
       "{formFactor, select, iphone {このiPhone} ipad {このiPad} mac {このMac} phone {このスマートフォン} tablet {このタブレット} computer {このコンピュータ} tv {このテレビ} other {このデバイス}}",
     "part.platform.macos": "macOS",
@@ -10535,6 +10616,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrRequest": "リクエストコードのQRコード",
     "a11y.qrManage": "デバイス管理ページを開くQRコード",
     "a11y.qrAddKey": "キーの追加ページを開く QR コード",
+    "a11y.nearbyCode": "タップするコード：{code}",
     "a11y.code": "サインインコード：{code}",
     "a11y.seatMeter":
       "{limit, plural, other {#台のデバイス}}中{used}台を使用中",
@@ -10999,39 +11081,49 @@ export const KIT_COPY: Readonly<
       "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりにサインインで{product}を使えます。",
     "signin.key.skip": "今はスキップ",
     "signin.key.ownedSignIn": "そのアカウントにサインイン",
+    "signin.key.signIn": "サインイン",
     "signin.key.differentKey": "別のキーを使う",
     "signin.auto.confirm.title": "{app} に進む",
     "signin.auto.confirm.as": "{email} で",
-    "signin.auto.confirm.asApple": "Apple ID で",
+    "signin.auto.confirm.asApple": "Apple アカウントで",
     "signin.auto.confirm.primary": "続ける",
     "signin.auto.confirm.other": "別のアカウントを使う",
     "signin.linkOffer.title": "次回から {provider} でサインインしますか？",
     "signin.linkOffer.bodyGlobal":
-      "{app} など Polaris Locker を使うアプリは、自動でサインインします。",
+      "{app} など Polaris Locker を使うアプリが、自動でサインインできるようになります。",
     "signin.linkOffer.bodyDeveloper":
-      "{developer} のアプリは、自動でサインインします。",
+      "{developer} のアプリが、自動でサインインできるようになります。",
+    "signin.linkOffer.bodyApp":
+      "{app} と開発元の他のアプリが、自動でサインインできるようになります。",
     "signin.linkOffer.primary": "{provider} を連携",
     "signin.linkOffer.decline": "今はしない",
-    "signin.linkOffer.done": "{provider} を連携しました。",
+    "signin.linkOffer.done": "{provider} を連携しました",
+    "signin.linkOffer.conflictTitle": "{provider} は連携されていません",
     "signin.linkOffer.conflict":
-      "この {provider} アカウントは、別の Polaris Locker アカウントに連携されています。",
+      "この {provider} アカウントは、別の Polaris Locker アカウントのものです。サインインはそのままです。",
+    "signin.linkOffer.join": "アカウントを統合",
     "signin.nearby.title": "もう一方のデバイスで承認",
+    "signin.nearby.promptTitle": "スマートフォンでサインイン",
     "signin.nearby.body":
-      "サインイン済みのスマートフォンまたはパソコンで {app} を開いてください。",
+      "サインイン済みで、このネットワークにあるスマートフォンまたはパソコンで {app} を開いてください。",
+    "signin.nearby.match": "そちらでこのコードをタップ：",
     "signin.nearby.code": "代わりにコードを使う",
     "signin.nearby.done": "{email} でサインインしました",
     "signin.nearby.notYou": "ご本人ではありませんか？",
     "signin.nearby.prePrompt":
-      "次に、ネットワーク上のデバイスへのアクセスを許可してください。スマートフォンからサインインできます。",
-    "signin.nearby.ask": "{device} をサインインしますか？",
-    "signin.nearby.askBody": "{device} に表示されているコードをタップ",
-    "signin.nearby.deny": "今はしない",
-    "signin.nearby.approved": "{device} がサインインしました。",
-    "signin.nearby.notNearby": "{device} はお使いのネットワークにありません。",
+      "次に、{app} がネットワーク上のデバイスを見つけることを許可してください。スマートフォンからサインインできます。",
+    "signin.nearby.ask": "{device} のサインインを許可しますか？",
+    "signin.nearby.askBody": "表示されているコードをタップしてください。",
+    "signin.nearby.approved": "{device} がサインインしました",
+    "signin.nearby.notNearby": "{device} はこのネットワークにありません",
+    "signin.nearby.notNearbyBody":
+      "両方を同じ Wi-Fi に接続するか、{device} でコードを使ってサインインしてください。",
+    "signin.nearby.mismatch":
+      "コードが一致しなかったため、{device} はサインインしませんでした。",
     "signin.nearby.menu": "近くのデバイスを承認",
     "signin.key.addInLocker": "Polaris Locker で追加",
     "signin.key.scan":
-      "スマートフォンでスキャンして、Polaris Locker で追加します。",
+      "スマートフォンでスキャンして、このキーを Polaris Locker で追加します。",
     "signin.return.yours": "{product}があなたのものになりました",
     "signin.return.product": "{tier}・ライブラリに追加済み",
     "signin.return.signedIn": "{app}にサインインしました",
@@ -11697,7 +11789,7 @@ export const KIT_COPY: Readonly<
       "Polaris Lockerのページでサインインを完了し、アプリに戻ってください。",
     "core.codes.not_nearby.title": "近くにありません",
     "core.codes.not_nearby.message":
-      "もう一方のデバイスがこのネットワークにありません。近づくか、コードでサインインしてください。",
+      "もう一方のデバイスはこのネットワークにありません。両方を同じ Wi-Fi に接続するか、代わりにコードを使ってください。",
     "core.codes.auth_method_disabled.title": "サインイン方法を利用できません",
     "core.codes.auth_method_disabled.message":
       "このサインイン方法は無効になっています。別の方法を選択してください。",
@@ -12216,7 +12308,7 @@ export const KIT_COPY: Readonly<
       "このアプリは無料ライセンスを提供していません。ライセンスキーを入力するか、サインインしてください。",
     "core.activation.key-entry-limit.title": "キーの入力回数が残っていません",
     "core.activation.key-entry-limit.message":
-      "アカウントに追加して、代わりにサインインしてください。",
+      "代わりにサインインして、このキーを Polaris Locker アカウントに追加してください。",
     "core.activation.license-owned.title": "別のアカウントのライセンス",
     "core.activation.license-owned.message":
       "このライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。",
@@ -12251,6 +12343,8 @@ export const KIT_COPY: Readonly<
     "common.linkUnavailable": "이 링크로는 여기서 열 수 있는 것이 없어요.",
     "part.thisDevice":
       "{formFactor, select, iphone {이 iPhone} ipad {이 iPad} mac {이 Mac} phone {이 휴대폰} tablet {이 태블릿} computer {이 컴퓨터} tv {이 TV} other {이 기기}}",
+    "part.newDevice": "새 기기",
+    "part.newDeviceTitle": "새 기기",
     "part.thisDeviceTitle":
       "{formFactor, select, iphone {이 iPhone} ipad {이 iPad} mac {이 Mac} phone {이 휴대폰} tablet {이 태블릿} computer {이 컴퓨터} tv {이 TV} other {이 기기}}",
     "part.platform.macos": "macOS",
@@ -12296,6 +12390,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrRequest": "요청 코드가 담긴 QR 코드",
     "a11y.qrManage": "기기 관리 페이지를 여는 QR 코드",
     "a11y.qrAddKey": "키 추가 페이지를 여는 QR 코드",
+    "a11y.nearbyCode": "탭할 코드: {code}",
     "a11y.code": "로그인 코드 {code}",
     "a11y.seatMeter": "{limit, plural, other {기기 #대}} 중 {used}대 사용 중",
     "a11y.productIcon": "{product} 아이콘",
@@ -12741,37 +12836,49 @@ export const KIT_COPY: Readonly<
       "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요.",
     "signin.key.skip": "지금은 건너뛰기",
     "signin.key.ownedSignIn": "그 계정으로 로그인",
+    "signin.key.signIn": "로그인",
     "signin.key.differentKey": "다른 키 사용",
     "signin.auto.confirm.title": "{app}(으)로 계속",
     "signin.auto.confirm.as": "{email} 계정으로",
-    "signin.auto.confirm.asApple": "Apple ID로",
+    "signin.auto.confirm.asApple": "Apple 계정으로",
     "signin.auto.confirm.primary": "계속",
     "signin.auto.confirm.other": "다른 계정 사용",
     "signin.linkOffer.title": "다음부터 {provider}(으)로 로그인할까요?",
     "signin.linkOffer.bodyGlobal":
-      "{app} 등 Polaris Locker를 쓰는 앱이 자동으로 로그인해 줘요.",
+      "그러면 {app} 등 Polaris Locker를 쓰는 앱이 자동으로 로그인해 줘요.",
     "signin.linkOffer.bodyDeveloper":
-      "{developer}의 앱이 자동으로 로그인해 줘요.",
+      "그러면 {developer}의 앱이 자동으로 로그인해 줘요.",
+    "signin.linkOffer.bodyApp":
+      "그러면 {app}과 개발자의 다른 앱이 자동으로 로그인해 줘요.",
     "signin.linkOffer.primary": "{provider} 연결",
     "signin.linkOffer.decline": "괜찮아요",
-    "signin.linkOffer.done": "{provider}을(를) 연결했어요.",
+    "signin.linkOffer.done": "{provider} 연결됨",
+    "signin.linkOffer.conflictTitle": "{provider} 연결 안 됨",
     "signin.linkOffer.conflict":
-      "이 {provider} 계정은 다른 Polaris Locker 계정에 연결되어 있어요.",
+      "이 {provider} 계정은 다른 Polaris Locker 계정에 속해 있어요. 로그인은 그대로 유지돼요.",
+    "signin.linkOffer.join": "계정 합치기",
     "signin.nearby.title": "다른 기기에서 승인하세요",
-    "signin.nearby.body": "로그인된 휴대폰이나 컴퓨터에서 {app}을(를) 여세요.",
+    "signin.nearby.promptTitle": "휴대폰으로 로그인",
+    "signin.nearby.body":
+      "로그인되어 있고 이 네트워크에 연결된 휴대폰이나 컴퓨터에서 {app}을(를) 여세요.",
+    "signin.nearby.match": "그쪽에서 이 코드를 탭하세요:",
     "signin.nearby.code": "코드로 대신하기",
     "signin.nearby.done": "{email} 계정으로 로그인됨",
     "signin.nearby.notYou": "본인이 아닌가요?",
     "signin.nearby.prePrompt":
-      "다음 화면에서 네트워크의 기기 접근을 허용하면 휴대폰으로 로그인할 수 있어요.",
-    "signin.nearby.ask": "{device}에 로그인할까요?",
-    "signin.nearby.askBody": "{device}에 표시된 코드를 탭하세요",
-    "signin.nearby.deny": "나중에",
-    "signin.nearby.approved": "{device}에 로그인했어요.",
-    "signin.nearby.notNearby": "{device}이(가) 같은 네트워크에 없어요.",
+      "다음 화면에서 {app}이 네트워크의 기기를 찾도록 허용하면 휴대폰으로 로그인할 수 있어요.",
+    "signin.nearby.ask": "{device}의 로그인을 허용할까요?",
+    "signin.nearby.askBody": "표시된 코드를 탭하세요.",
+    "signin.nearby.approved": "{device}에 로그인했어요",
+    "signin.nearby.notNearby": "{device}이(가) 이 네트워크에 없어요",
+    "signin.nearby.notNearbyBody":
+      "두 기기를 같은 Wi-Fi에 연결하거나 {device}에서 코드로 로그인하세요.",
+    "signin.nearby.mismatch":
+      "코드가 일치하지 않아 {device}에 로그인하지 않았어요.",
     "signin.nearby.menu": "근처 기기 승인",
     "signin.key.addInLocker": "Polaris Locker에서 추가",
-    "signin.key.scan": "스캔해서 휴대폰의 Polaris Locker에서 추가하세요.",
+    "signin.key.scan":
+      "스캔해서 휴대폰의 Polaris Locker에서 이 키를 추가하세요.",
     "signin.return.yours": "이제 {product}을(를) 이용할 수 있어요",
     "signin.return.product": "{tier} · 라이브러리에 있음",
     "signin.return.signedIn": "{app}에 로그인했어요",
@@ -13395,7 +13502,7 @@ export const KIT_COPY: Readonly<
       "Polaris Locker 페이지에서 로그인을 완료한 뒤 앱으로 돌아오세요.",
     "core.codes.not_nearby.title": "근처에 없음",
     "core.codes.not_nearby.message":
-      "다른 기기가 이 네트워크에 없습니다. 가까이 이동하거나 코드로 로그인하세요.",
+      "다른 기기가 이 네트워크에 없어요. 두 기기를 같은 Wi-Fi에 연결하거나 코드를 대신 사용하세요.",
     "core.codes.auth_method_disabled.title": "로그인 방법 사용 불가",
     "core.codes.auth_method_disabled.message":
       "해당 로그인 방법은 꺼져 있어요. 다른 방법을 선택하세요.",
@@ -13895,7 +14002,7 @@ export const KIT_COPY: Readonly<
       "이 앱은 무료 라이선스를 제공하지 않아요. 라이선스 키를 입력하거나 로그인하세요.",
     "core.activation.key-entry-limit.title": "남은 키 등록 횟수 없음",
     "core.activation.key-entry-limit.message":
-      "계정에 추가하고 대신 로그인하세요.",
+      "로그인한 뒤 이 키를 Polaris Locker 계정에 추가하세요.",
     "core.activation.license-owned.title": "다른 계정의 라이선스",
     "core.activation.license-owned.message":
       "이 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.",
@@ -13929,6 +14036,8 @@ export const KIT_COPY: Readonly<
     "common.linkUnavailable": "此链接在这里无法打开任何内容。",
     "part.thisDevice":
       "{formFactor, select, iphone {这台iPhone} ipad {这台iPad} mac {这台Mac} phone {这部手机} tablet {这台平板电脑} computer {这台电脑} tv {这台电视} other {这台设备}}",
+    "part.newDevice": "新设备",
+    "part.newDeviceTitle": "新设备",
     "part.thisDeviceTitle":
       "{formFactor, select, iphone {此iPhone} ipad {此iPad} mac {此Mac} phone {此手机} tablet {此平板电脑} computer {此电脑} tv {此电视} other {此设备}}",
     "part.platform.macos": "macOS",
@@ -13973,6 +14082,7 @@ export const KIT_COPY: Readonly<
     "a11y.qrRequest": "包含请求代码的二维码",
     "a11y.qrManage": "打开设备管理页面的二维码",
     "a11y.qrAddKey": "打开添加密钥页面的二维码",
+    "a11y.nearbyCode": "要点按的代码：{code}",
     "a11y.code": "登录码{code}",
     "a11y.seatMeter": "已使用{used}台，共{limit, plural, other {#台设备}}",
     "a11y.productIcon": "{product}图标",
@@ -14387,36 +14497,46 @@ export const KIT_COPY: Readonly<
       "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。",
     "signin.key.skip": "暂时跳过",
     "signin.key.ownedSignIn": "登录那个账户",
+    "signin.key.signIn": "登录",
     "signin.key.differentKey": "使用其他密钥",
     "signin.auto.confirm.title": "继续前往 {app}",
     "signin.auto.confirm.as": "以 {email} 身份",
-    "signin.auto.confirm.asApple": "使用你的 Apple ID",
+    "signin.auto.confirm.asApple": "使用你的 Apple 账户",
     "signin.auto.confirm.primary": "继续",
     "signin.auto.confirm.other": "使用其他账户",
     "signin.linkOffer.title": "下次使用 {provider} 登录？",
     "signin.linkOffer.bodyGlobal":
-      "{app} 和其他使用 Polaris Locker 的应用会自动为你登录。",
-    "signin.linkOffer.bodyDeveloper": "{developer} 的应用会自动为你登录。",
+      "之后 {app} 和其他使用 Polaris Locker 的应用可以自动为你登录。",
+    "signin.linkOffer.bodyDeveloper":
+      "之后 {developer} 的应用可以自动为你登录。",
+    "signin.linkOffer.bodyApp":
+      "之后 {app} 及其开发者的其他应用可以自动为你登录。",
     "signin.linkOffer.primary": "关联 {provider}",
     "signin.linkOffer.decline": "不用了",
-    "signin.linkOffer.done": "已关联 {provider}。",
+    "signin.linkOffer.done": "已关联 {provider}",
+    "signin.linkOffer.conflictTitle": "未关联 {provider}",
     "signin.linkOffer.conflict":
-      "此 {provider} 账户已关联到另一个 Polaris Locker 账户。",
+      "此 {provider} 账户属于另一个 Polaris Locker 账户。你仍保持登录。",
+    "signin.linkOffer.join": "合并账户",
     "signin.nearby.title": "在你的另一台设备上批准",
-    "signin.nearby.body": "在已登录的手机或电脑上打开 {app}。",
+    "signin.nearby.promptTitle": "用手机登录",
+    "signin.nearby.body": "在已登录且处于此网络的手机或电脑上打开 {app}。",
+    "signin.nearby.match": "在那边点按此代码：",
     "signin.nearby.code": "改用代码",
     "signin.nearby.done": "已以 {email} 身份登录",
     "signin.nearby.notYou": "不是你？",
     "signin.nearby.prePrompt":
-      "接下来请允许访问网络中的设备，这样你的手机就能为你登录。",
-    "signin.nearby.ask": "让 {device} 登录？",
-    "signin.nearby.askBody": "点按 {device} 上显示的代码",
-    "signin.nearby.deny": "暂不",
-    "signin.nearby.approved": "{device} 已登录。",
-    "signin.nearby.notNearby": "{device} 不在你的网络中。",
+      "接下来请允许 {app} 查找网络中的设备，这样你的手机就能为你登录。",
+    "signin.nearby.ask": "允许 {device} 登录？",
+    "signin.nearby.askBody": "点按它显示的代码。",
+    "signin.nearby.approved": "{device} 已登录",
+    "signin.nearby.notNearby": "{device} 不在此网络中",
+    "signin.nearby.notNearbyBody":
+      "请将两台设备连接到同一 Wi-Fi，或在 {device} 上用代码登录。",
+    "signin.nearby.mismatch": "代码不匹配，因此 {device} 未登录。",
     "signin.nearby.menu": "批准附近的设备",
     "signin.key.addInLocker": "在 Polaris Locker 中添加",
-    "signin.key.scan": "扫描后在手机上的 Polaris Locker 中添加。",
+    "signin.key.scan": "扫描后在手机上的 Polaris Locker 中添加此密钥。",
     "signin.return.yours": "{product}已归你所有",
     "signin.return.product": "{tier} · 已在你的资料库中",
     "signin.return.signedIn": "你已登录{app}",
@@ -14992,7 +15112,7 @@ export const KIT_COPY: Readonly<
       "请在 Polaris Locker 页面完成登录，然后返回应用。",
     "core.codes.not_nearby.title": "不在附近",
     "core.codes.not_nearby.message":
-      "另一台设备不在此网络中。请靠近一些，或改用代码登录。",
+      "另一台设备不在此网络中。请将两台设备连接到同一 Wi-Fi，或改用代码。",
     "core.codes.auth_method_disabled.title": "登录方式不可用",
     "core.codes.auth_method_disabled.message":
       "该登录方式已关闭。请选择其他方式。",
@@ -15441,7 +15561,7 @@ export const KIT_COPY: Readonly<
       "此应用不提供免费许可证。请输入许可证密钥或登录。",
     "core.activation.key-entry-limit.title": "密钥已无剩余输入次数",
     "core.activation.key-entry-limit.message":
-      "请将它添加到你的账户，然后改为登录。",
+      "请登录，并将此密钥添加到你的 Polaris Locker 账户。",
     "core.activation.license-owned.title": "许可证在另一个账户中",
     "core.activation.license-owned.message":
       "此许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。",
@@ -15537,12 +15657,13 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.key.keep": { macos: "Keep {product} in an Account" },
   "signin.key.skip": { macos: "Skip for Now" },
   "signin.key.ownedSignIn": { macos: "Sign In to That Account" },
+  "signin.key.signIn": { macos: "Sign In" },
   "signin.key.differentKey": { macos: "Use a Different Key" },
   "signin.auto.confirm.other": { macos: "Use Another Account" },
   "signin.linkOffer.decline": { macos: "No Thanks" },
+  "signin.linkOffer.join": { macos: "Join Accounts" },
   "signin.nearby.code": { macos: "Use a Code Instead" },
   "signin.nearby.notYou": { macos: "Not You?" },
-  "signin.nearby.deny": { macos: "Not Now" },
   "signin.nearby.menu": { macos: "Approve a Nearby Device" },
   "signin.key.addInLocker": { macos: "Add It in Polaris Locker" },
   "signin.return.stay": { macos: "Stay Here" },

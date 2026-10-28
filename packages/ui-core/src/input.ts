@@ -158,11 +158,28 @@ export interface AutoSignInInput {
   /** Whom the provider's identity is shared with: `global` across apps, `developer` per
    *  developer. Apple is always per developer; absent is treated as `unknown` (per developer). */
   reach?: "global" | "developer" | "unknown";
+  /** The confirm step's license line: one created when the person continues, or one they hold. */
+  license?: "new" | "existing";
+  /** True on a first sign-in or when the consent changed: the confirm lists what the app also gets. */
+  alsoGets?: boolean;
+  /** The code the waiting device shows, which the person taps on the approving device. */
+  code?: string;
 }
 
 /** The approving device's side of nearby sign-in. Absent: the account-menu entry. */
 export interface NearbyApprovalInput {
-  step: "entry" | "ask" | "approved" | "not-nearby";
+  step:
+    | "entry"
+    | "ask"
+    | "approved"
+    | "not-nearby"
+    | "mismatch"
+    | "denied"
+    | "expired"
+    | "device-limit"
+    | "choose"
+    | "account-required"
+    | "rate-limited";
   /** The new device's friendly name. */
   device?: string;
 }

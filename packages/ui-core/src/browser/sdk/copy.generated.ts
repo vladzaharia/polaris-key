@@ -245,7 +245,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   not_nearby: {
     title: "Not nearby",
     message:
-      "The other device isn't on this network. Move closer, or sign in with a code instead.",
+      "The other device isn't on this network. Connect both to the same Wi-Fi, or use a code instead.",
   },
   auth_method_disabled: {
     title: "Sign-in method unavailable",
@@ -1013,7 +1013,7 @@ export const COPY_ACTIVATION: Readonly<Record<string, CopyEntry>> = {
   },
   "key-entry-limit": {
     title: "No key entries left",
-    message: "Add it to your account and sign in instead.",
+    message: "Sign in and add this key to your Polaris Locker account instead.",
   },
   "license-owned": {
     title: "License in another account",

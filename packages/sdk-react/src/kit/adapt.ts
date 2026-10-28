@@ -170,6 +170,15 @@ export function adaptChoice(
   });
 }
 
+/** The automatic sign-in steps that end on their own button, so no Cancel beside it. */
+const OWN_EXIT: ReadonlySet<string> = new Set([
+  "link-offer",
+  "link-done",
+  "link-conflict",
+  "nearby-prompt",
+  "nearby-done",
+]);
+
 /** The sign-in form's frame: Done ends on a heading and one Start; every other step of a sheet
  *  can be backed out of (DL2). */
 export function adaptSignIn(
@@ -184,12 +193,19 @@ export function adaptSignIn(
     return patched(view, {
       copy: union(
         view.copy,
-        ["signin.return.signedInShort", "signin.done.start"].filter(has),
+        // One heading: the tier line replaces the short one.
+        [
+          ...(view.copy.includes("signin.return.signedInTier")
+            ? []
+            : ["signin.return.signedInShort"]),
+          "signin.done.start",
+        ].filter(has),
       ),
       decisions: { ...view.decisions, primary: "signin.done.start" },
     });
   }
-  return view.state === "methods" && !sheet
+  // Steps with their own way on (an offer's No thanks, an outcome's Continue) have no Cancel.
+  return (view.state === "methods" && !sheet) || OWN_EXIT.has(view.state)
     ? view
     : patched(view, { copy: union(view.copy, ["common.cancel"]) });
 }

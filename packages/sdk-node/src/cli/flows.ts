@@ -1071,7 +1071,7 @@ function outcomeRows(
       ...problemRows(
         "warn",
         t("core.activation.key-entry-limit.title"),
-        t("signin.key.noEntries", { product: ctx.product.name }),
+        t("core.activation.key-entry-limit.message"),
       ),
       ...gap(ctx),
       ...fixRows(ctx, [{ verb: "login", key: "cli.fix.signIn" }]),

@@ -99,6 +99,16 @@ function argsOf(
     const k = initial ? "part.thisDeviceTitle" : "part.thisDevice";
     if (c.copy.has(k)) args.thisDevice = c.copy.format(k, { formFactor });
   }
+  // The approver names the device that asked, never itself: with no name it is "the new device".
+  if (
+    args.device === undefined &&
+    c.view.component === "NearbyApproval" &&
+    raw.includes("{device}")
+  ) {
+    const initial = /(^|[.!?]\s+)\{device\}/.test(raw);
+    const k = initial ? "part.newDeviceTitle" : "part.newDevice";
+    if (c.copy.has(k)) args.device = c.copy.format(k);
+  }
   if (
     args.device === undefined &&
     raw.includes("{device}") &&
@@ -738,6 +748,30 @@ export function codeDisplay(c: KitCtx): ReactNode {
             {GLYPHS.copy()}
           </button>
         ) : null}
+      </span>
+    </div>
+  );
+}
+
+/** The code the waiting device shows during nearby sign-in, for the person to tap on the approving
+ *  device (number matching). Read digit by digit. */
+export function nearbyCode(c: KitCtx): ReactNode {
+  const code = c.view.args.code;
+  if (code === undefined || !c.view.copy.includes("a11y.nearbyCode"))
+    return null;
+  return (
+    <div className="field" data-part="code">
+      <span className="code-row">
+        <span
+          className="code"
+          role="text"
+          data-key="a11y.nearbyCode"
+          aria-label={plain(c, "a11y.nearbyCode", {
+            code: spellOut(String(code)),
+          })}
+        >
+          {code}
+        </span>
       </span>
     </div>
   );
