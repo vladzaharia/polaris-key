@@ -128,6 +128,7 @@
                       "attach": "https://key.plrs.im/djdl/identity/attach",
                       "subject": "https://key.plrs.im/djdl/identity/subject",
                       "signout": "https://key.plrs.im/djdl/identity/signout",
+                      "nonce": "https://key.plrs.im/djdl/identity/nonce",
                       "accountPortal": "https://key.plrs.im/#/p/djdl"
                     }
                   },

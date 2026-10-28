@@ -169,6 +169,12 @@
       "status": "planned",
       "wp": "I-10a"
     },
+    "identity.exchange": {
+      "status": "na",
+      "runtime": ["python"],
+      "reason": "runtime",
+      "note": "No OS account to take a platform identity from (I-13); Python signs in by loopback or device code."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10a: ActivationOk.key_entries, ActivationKeyEntryLimit(manage_url, key_entries) and ActivationLicenseOwned(sign_in_url); no wipe, no retry."

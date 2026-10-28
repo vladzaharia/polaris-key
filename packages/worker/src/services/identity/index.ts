@@ -44,7 +44,13 @@ import { IDENTITY_ROUTES } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";
 import { IDENTITY_SETTINGS_SLICE } from "./settings.js";
-import type { IdentityDiscovery } from "@polaris-key/protocol/identity";
+import type {
+  ExchangeKind,
+  IdentityDiscovery,
+} from "@polaris-key/protocol/identity";
+import { launchGateOn } from "../../core/settings/platformRead.js";
+import { getProduct } from "../../core/products/store.js";
+import { readPlatformSignIn } from "./platformSignIn.js";
 import { keyEntryLimit } from "../../core/licensing/keyEntries.js";
 import { accountPortalUrl } from "../../core/licensing/manageUrl.js";
 import { licenseHolderHooks } from "./accounts/holders.js";
@@ -136,6 +142,15 @@ export const identityService: ServiceDescriptor = {
     const accountPortal = portalOn
       ? await accountPortalUrl(env, db, base, product)
       : null;
+    // I-13.7 (§12.11.6): the exchange rung is named only while the launch gate serves it and
+    // the product declares a kind; an SDK uses a rung only when its endpoint is present.
+    const exchangeOn = await launchGateOn(env, db, "launch.identityExchange");
+    const row = exchangeOn ? await getProduct(db, product.slug) : null;
+    const audiences = row ? await readPlatformSignIn(db, row) : null;
+    const kinds: ExchangeKind[] = [];
+    if (audiences?.google.serverClientId) kinds.push("google");
+    if (audiences?.apple.teamId && audiences.apple.bundleIds.length > 0)
+      kinds.push("apple");
     const fragment: IdentityDiscovery = {
       enabled: true,
       // I-08: the platform sign-in (`authorize`, `token`) needs no per-product IdP row, so a
@@ -148,6 +163,18 @@ export const identityService: ServiceDescriptor = {
         { env, db, ...(settings ? { registry: settings } : {}) },
         product.slug,
       ),
+      ...(kinds.length > 0
+        ? {
+            exchange: {
+              kinds,
+              ...(audiences?.google.serverClientId
+                ? {
+                    google: { serverClientId: audiences.google.serverClientId },
+                  }
+                : {}),
+            },
+          }
+        : {}),
       endpoints: {
         session: `${base}/identity/session`,
         sessionLicense: `${base}/identity/session/license`,
@@ -167,6 +194,7 @@ export const identityService: ServiceDescriptor = {
         attach: `${base}/identity/attach`,
         subject: `${base}/identity/subject`,
         signout: `${base}/identity/signout`,
+        ...(exchangeOn ? { nonce: `${base}/identity/nonce` } : {}),
         ...(accountPortal ? { accountPortal } : {}),
       },
     };

@@ -184,13 +184,13 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `identity.signIn` | `identity.signIn` | `usePolarisAuth().signIn` | planned (I-10a) | `identity.signIn` | `identity.signIn` | `identity.sign_in` | `identity.devicecode` |
+| `identity.signIn` | `identity.signIn` | `usePolarisAuth().signIn` | `identity.sign_in` | `identity.signIn` | `identity.signIn` | `identity.sign_in` | `identity.devicecode` |
 | `identity.subject` | `identity.subject` | planned (I-10a) | `identity.subject` | `identity.subject` | `identity.subject` | `identity.subject` | `identity.account` |
 | `identity.signOut` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.account` |
-| `identity.signIn.start` | `identity.signIn.start` | `usePolarisAuth().signIn.start` | planned (I-10a) | `SignInNamespace.start` | `SignInNamespace.start` | `PKeySignInNamespace.start` | `identity.devicecode` |
-| `identity.signIn.session.reopen` | `identity.signIn.session.reopen` | `DeviceCodeSignInSession.reopen` | planned (I-10a) | `SignInSession.reopen` | `SignInSession.reopen` | `PKeySignInSession.reopen` | `identity.devicecode` |
-| `identity.signIn.session.cancel` | `identity.signIn.session.cancel` | `SignInSession.cancel` | planned (I-10a) | `SignInSession.cancel` | `SignInSession.cancel` | `PKeySignInSession.cancel` | `identity.devicecode` |
-| `identity.signIn.session.wait` | `identity.signIn.session.wait` | `DeviceCodeSignInSession.wait` | planned (I-10a) | `SignInSession.wait` | `SignInSession.wait` | `PKeySignInSession.wait` | `identity.devicecode` |
+| `identity.signIn.start` | `identity.signIn.start` | `usePolarisAuth().signIn.start` | `identity.sign_in.start` | `SignInNamespace.start` | `SignInNamespace.start` | `PKeySignInNamespace.start` | `identity.devicecode` |
+| `identity.signIn.session.reopen` | `identity.signIn.session.reopen` | `DeviceCodeSignInSession.reopen` | `identity.sign_in.session.reopen` | `SignInSession.reopen` | `SignInSession.reopen` | `PKeySignInSession.reopen` | `identity.devicecode` |
+| `identity.signIn.session.cancel` | `identity.signIn.session.cancel` | `SignInSession.cancel` | `identity.sign_in.session.cancel` | `SignInSession.cancel` | `SignInSession.cancel` | `PKeySignInSession.cancel` | `identity.devicecode` |
+| `identity.signIn.session.wait` | `identity.signIn.session.wait` | `DeviceCodeSignInSession.wait` | `identity.sign_in.session.wait` | `SignInSession.wait` | `SignInSession.wait` | `PKeySignInSession.wait` | `identity.devicecode` |
 | `identity.signIn.session.accept` | — | — | — | — | — | `PKeySignInSession.accept` | — |
 | `identity.signIn.session.isWaiting` | — | — | — | — | — | `PKeySignInSession.is_waiting` | — |
 | `identity.signIn.session.outcome` | — | — | — | — | — | `PKeySignInSession.outcome` | — |
@@ -497,3 +497,8 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Godot | `identity.sign_in_pending` | `identity.signIn.session.outcome` | I-10b |
 | Godot | `identity.sign_in_confirm` | `identity.signIn.session.outcome` | I-10b |
 | Godot | `identity.sign_in_finished` | `identity.signIn.session.outcome` | I-10b |
+| Python | `identity.sign_in_with_browser` | `identity.signIn.start` | I-10a |
+| Python | `identity.begin_sign_in` | `identity.signIn.start` | I-10a |
+| Python | `identity.poll_sign_in` | `identity.signIn.session.wait` | I-10a |
+| Python | `identity.wait_for_sign_in` | `identity.signIn.session.wait` | I-10a |
+| Python | `identity.accept_sign_in` | `identity.signIn.session.wait` | I-10a |
