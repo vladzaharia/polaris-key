@@ -20,9 +20,11 @@ import {
   PolarisKeyGate as Gate_,
   type KitProps,
   type PolarisKeyGateProps,
+  type SignInStepArgs,
 } from "./component.js";
 
 const OpenedViews = lazy(() => import("./openedViews.js"));
+const AutoForm = lazy(() => import("./autoForm.js"));
 
 /**
  * What the host asked the window to open (`PolarisAdapter.onOpen`, a native menu item): the drop-in
@@ -62,10 +64,15 @@ function OpenedHost(props: {
  */
 export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
   const sdk = useContext(PolarisContext);
+  const signInStep = (a: SignInStepArgs) => (
+    <Suspense fallback={null}>
+      <AutoForm {...a} />
+    </Suspense>
+  );
   if (props.input !== undefined || !sdk?.adapter.onOpen)
-    return <Gate_ {...props} />;
+    return <Gate_ signInStep={signInStep} {...props} />;
   return (
-    <Gate_ {...props}>
+    <Gate_ signInStep={signInStep} {...props}>
       {props.children}
       <OpenedHost
         adapter={sdk.adapter}

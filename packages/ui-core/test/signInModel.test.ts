@@ -123,8 +123,12 @@ function fakeSdk(waits: SignInWait[], complete: ChoiceComplete[] = []) {
         calls.push(`devices ${licenseId}`);
         return REPLACE;
       },
-      async complete(grant, choice: LicenseChoiceInput) {
-        calls.push(`complete ${grant} ${JSON.stringify(choice)}`);
+      async complete(grant, choice: LicenseChoiceInput | undefined, opts) {
+        calls.push(
+          `complete ${grant} ${JSON.stringify(choice)}${
+            opts?.consent ? ` consent ${opts.consent.claims.join(",")}` : ""
+          }`,
+        );
         return complete.shift() ?? { outcome: "signedIn", issuedNow: false };
       },
       async cancel(grant) {
@@ -444,5 +448,121 @@ describe("UK-02b D3: the SDK's activation outcomes in the views' vocabulary", ()
     await m.submitKey("pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG");
     expect(m.snapshot.activation?.keyEntries).toEqual({ used: 1, limit: 3 });
     expect(m.views().signIn.state).toBe("done");
+  });
+});
+
+describe("SignInModel: automatic sign-in (I-46.8)", () => {
+  const CONFIRM = {
+    kind: "confirm" as const,
+    grant: "sg_c1",
+    claims: ["email", "name"],
+    input: {
+      email: "maya@example.com",
+      license: "existing" as const,
+      alsoGets: true,
+      anchor: {
+        name: "Pro",
+        term: "perpetual" as const,
+        position: 2,
+        limit: 3,
+      },
+    },
+  };
+
+  it("a confirm draws the consent lines; Continue completes with the claims", async () => {
+    const sdk = fakeSdk([]);
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC, provider: "Google" },
+    });
+    m.presentAuto(CONFIRM);
+    const v = m.views().signIn;
+    expect(v.state).toBe("confirm");
+    expect(v.copy).toContain("signin.consent.licenseLine");
+    // The license line's arguments come from the consent view, not the kit.
+    expect(v.args).toMatchObject({ license: "Pro", position: "2", limit: "3" });
+    await m.confirm();
+    expect(sdk.calls).toContain("complete sg_c1 undefined consent email,name");
+    expect(m.views().signIn.state).toBe("done");
+  });
+
+  it("Use another account gives the grant up and shows the methods", async () => {
+    const sdk = fakeSdk([]);
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC },
+    });
+    m.presentAuto(CONFIRM);
+    await m.useAnother();
+    expect(sdk.calls).toContain("choice.cancel sg_c1");
+    expect(m.views().signIn.state).toBe("methods");
+  });
+
+  it("a license_choice_required answer after consent opens the license list", async () => {
+    const sdk = fakeSdk([], [{ outcome: "choose", choices: VIEW }]);
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC },
+    });
+    m.presentAuto(CONFIRM);
+    await m.confirm();
+    expect(m.views().licenseChoice.state).toBe("many");
+    expect(m.snapshot.autoSignIn).toBeUndefined();
+  });
+
+  it("a choose result opens the license list; a device limit with a list uses the card's Replace", () => {
+    const m = new SignInModel({
+      primitives: fakeSdk([]).primitives,
+      base: { platform: MAC },
+    });
+    m.presentAuto({ kind: "choose", grant: "sg_2", choices: VIEW });
+    expect(m.views().licenseChoice.state).toBe("many");
+    const n = new SignInModel({
+      primitives: fakeSdk([]).primitives,
+      base: { platform: MAC },
+    });
+    n.presentAuto({ kind: "deviceLimit", view: VIEW });
+    expect(n.snapshot.session.replace).toBe("browser");
+    expect(n.views().licenseChoice.state).not.toBe("hidden");
+  });
+
+  it("a device limit with no list says so and offers the portal link", () => {
+    const m = new SignInModel({
+      primitives: fakeSdk([]).primitives,
+      base: { platform: MAC },
+    });
+    m.presentAuto({ kind: "deviceLimit", manageUrl: "https://key.plrs.im/m" });
+    expect(m.snapshot.activation).toMatchObject({
+      result: "device-limit",
+      manageUrl: "https://key.plrs.im/m",
+    });
+  });
+
+  it("the provider's button asks the provider, then falls back to the browser sign-in", async () => {
+    const sdk = fakeSdk([{ outcome: "pending" }]);
+    let asked = 0;
+    sdk.primitives.autoSignIn = async () => {
+      asked++;
+      return { kind: "needsSignIn" };
+    };
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC },
+    });
+    await m.signInWithProvider();
+    expect(asked).toBe(1);
+    expect(sdk.calls[0]).toBe("start browser app");
+  });
+
+  it("the provider's button shows what the provider found", async () => {
+    const sdk = fakeSdk([]);
+    sdk.primitives.autoSignIn = async () => CONFIRM;
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC },
+    });
+    await m.signInWithProvider();
+    expect(sdk.calls).toEqual([]);
+    expect(m.views().signIn.state).toBe("confirm");
   });
 });

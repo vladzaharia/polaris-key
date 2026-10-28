@@ -40,6 +40,10 @@
       "types": "./dist/contract.d.ts",
       "default": "./dist/contract.js"
     },
+    "./form": {
+      "types": "./dist/form.d.ts",
+      "default": "./dist/form.js"
+    },
     "./styles.css": "./dist/styles.css",
     "./fonts.css": "./dist/fonts/fonts.css",
     "./package.json": "./package.json"

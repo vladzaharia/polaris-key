@@ -18,6 +18,7 @@
 // @pkey-feature ui.cli.portal
 // @pkey-feature sync.keyring
 // @pkey-feature connect.relay
+// @pkey-feature sync.settings
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -87,7 +88,27 @@ import {
   recordHash,
   type DeviceKeyPort,
 } from "@polaris-key/client-core";
+import {
+  blind,
+  openPull,
+  openValue,
+  openValueAnyName,
+  sealPush,
+  sealValue,
+  webCryptoSyncPort,
+  type HostCodec,
+} from "@polaris-key/client-core/sync";
+import type {
+  Json,
+  SettingRoute,
+  SyncResponse,
+  WireMutation,
+} from "@polaris-key/client-core/cloud-sync";
 import { signJws } from "@polaris-key/jws";
+// The host's own transport (U-06.2). The package does not export it, so the runner reads the
+// built file: the replay must go through the bearer, the `X-PKey-*` headers and the byte caps the
+// host uses, not through a copy of them.
+import { sendSync } from "../../../packages/sdk-node/dist/cloudSync/transport.js";
 import {
   applies,
   doctor,
@@ -253,6 +274,10 @@ function standardDiscovery(t: Transcript): string {
   });
 }
 
+/** Is `url` a Cloud Sync pull of `product`? */
+const isSyncGet = (url: URL, product: string): boolean =>
+  url.pathname === `/${product}/sync`;
+
 /** The replay's memory between steps: the prompt the last `beginSignIn` returned. */
 interface Session {
   prompt: DeviceCodeSession | null;
@@ -264,6 +289,16 @@ interface Session {
   keyLabel?: string;
   /** The first ring a `keyringCreate` made: the one a later `keyringAdopt` takes the root of. */
   firstRingId?: string;
+  /** The next mutation id a `cloudSyncPush` generates (one past the last the Worker answered). */
+  syncNextId?: number;
+  /** What the replay's fetch saw on the last sync exchange (the transport does not expose it). */
+  syncWire?: SyncWire;
+}
+
+/** The headers of the last Cloud Sync answer, and the ETag a later pull sends back. */
+interface SyncWire {
+  etag: string | null;
+  retryAfter: string | null;
 }
 
 /** The `state`, verifier and redirect URI the Worker scenarios use (their `browser` and
@@ -363,6 +398,22 @@ async function browserStep(
       init.body = JSON.stringify(req.body.json);
       init.headers = { "content-type": "application/json" };
     }
+    // A CORS exchange (`cloudsync-cors`) is the browser's own: the recorded headers are played
+    // as recorded, and the SDK asserts nothing about them (React's Chromium job does).
+    if (req.headers.origin !== undefined) {
+      const token = (
+        client as unknown as { tokens: { current: string | null } }
+      ).tokens.current;
+      init.headers =
+        req.method === "OPTIONS" || token === null
+          ? { ...req.headers }
+          : {
+              // The request itself carries the SDK's own headers and the device bearer.
+              ...client.core.headers({ authorization: `Bearer ${token}` }),
+              "content-type": "application/json",
+              origin: req.headers.origin,
+            };
+    }
     const res = await session.server.fetch(`${t.baseUrl}${path}`, init);
     last = {
       status: res.status,
@@ -461,6 +512,161 @@ function activation(
   // §12.2: the counts, `null` where the answer carries none (Identity off).
   if (r.kind === "ok" || r.kind === "key-entry-limit")
     out.keyEntries = r.keyEntries ?? null;
+}
+
+// ── Cloud Sync settings (U-06.4, `sync.settings`) ─────────────────────────────────────────────
+
+/** The settings the generated mutations name: declared in the replay's catalog, or open. */
+const SYNC_DECLARED = ["ui.theme", "audio.volume"];
+const SYNC_E2E_NAMES = ["ui.theme", "my.open.key", "game.best"];
+const SYNC_E2E_ROUTES: SettingRoute[] = [
+  { key: "ui.theme", route: "synced", scope: "user", policy: "lastWrite" },
+  { key: "game.best", route: "synced", scope: "user", policy: "max" },
+];
+const SYNC_CLIENT_ID = "c_AAAAAAAAAAAAAAAAAAAAAA";
+const SYNC_HLC = "018bcfe56418:0000";
+
+/** A fixture root: the replay's ring is not a real one, so every recorded `ct` is `invalid`. */
+const FIXTURE_ROOT = Uint8Array.from({ length: 32 }, (_, i) => 3 * i + 7);
+const SYNC_PORT = webCryptoSyncPort;
+const fixtureCodec: HostCodec = {
+  locked: false,
+  seal: (c, n, v) => sealValue(SYNC_PORT, FIXTURE_ROOT, c, n, v),
+  open: (c, n, e, a) => openValue(SYNC_PORT, FIXTURE_ROOT, c, n, e, a),
+  openAny: (c, e) => openValueAnyName(SYNC_PORT, FIXTURE_ROOT, c, e),
+  blind: (k, ctx, n) => blind(SYNC_PORT, FIXTURE_ROOT, k, ctx, n),
+};
+
+/** `count` generated set mutations, ids from `first`, cycling through `names`. */
+function generatedMutations(
+  count: number,
+  first: number,
+  names: readonly string[],
+): WireMutation[] {
+  return Array.from({ length: count }, (_, i) => ({
+    mutationId: first + i,
+    target: { setting: names[i % names.length]!, scope: "user" as const },
+    op: "set" as const,
+    value: `generated-${first + i}`,
+    editedHlc: SYNC_HLC,
+  }));
+}
+
+const isRec = (v: unknown): v is Record<string, Json> =>
+  v !== null && typeof v === "object" && !Array.isArray(v);
+
+/** One label per mutation result, in the transcript format's words. */
+function resultLabel(r: Record<string, Json>): string {
+  switch (r.status) {
+    case "ok":
+      if (typeof r.renamedTo === "string") return `ok:renamedTo:${r.renamedTo}`;
+      return r.dropped === true ? "ok:dropped" : "ok";
+    case "rejected":
+      return typeof r.scope === "string"
+        ? `rejected:${String(r.code)}:${r.scope}`
+        : `rejected:${String(r.code)}`;
+    default:
+      return String(r.status);
+  }
+}
+
+/**
+ * `cloudSyncPull` / `cloudSyncPush` (U-06.4, WIRE-CONTRACT-V4 §13.3, §13.4, V5 §13.10): the request
+ * goes out through the host's transport. A pull is `GET /<p>/sync?cursor=N` (the replay's fetch
+ * adds `If-None-Match` with the last ETag); a push carries N generated mutations. In the
+ * end-to-end transcript the push body is sealed by client-core's `sealPush` and the answer opened
+ * by `openPull`, over a fixture root: the recorded `ct`s are fixture bytes, so every row must come
+ * back `invalid`, and the settings read are the wire's own names. The labels are the format's.
+ */
+async function cloudSyncStep(
+  client: PolarisKeyClient,
+  step: Step,
+  session: Session,
+  out: Observed,
+): Promise<void> {
+  const t = session.transcript;
+  const e2e = t.id === "cloudsync-e2e-settings";
+  const tokens = (
+    client as unknown as { tokens: Parameters<typeof sendSync>[1] }
+  ).tokens;
+  const cursor = Number(step.args.cursor);
+  const wire = (session.syncWire ??= { etag: null, retryAfter: null });
+  wire.retryAfter = null;
+  let mutations: WireMutation[] = [];
+  let req: Parameters<typeof sendSync>[2];
+  if (step.action === "cloudSyncPull") {
+    req = { method: "GET", path: `/${t.product}/sync?cursor=${cursor}` };
+  } else {
+    mutations = generatedMutations(
+      Number(step.args.mutations),
+      (session.syncNextId ??= 1),
+      e2e ? SYNC_E2E_NAMES : SYNC_DECLARED,
+    );
+    const body: Json = {
+      clientId: SYNC_CLIENT_ID,
+      cursor,
+      ...(step.args.atomic === true ? { atomic: true } : {}),
+      mutations: mutations as unknown as Json,
+    };
+    req = {
+      method: "POST",
+      path: `/${t.product}/sync/ops`,
+      body: e2e ? await sealPush(body, fixtureCodec, SYNC_E2E_ROUTES) : body,
+    };
+  }
+  const res: SyncResponse = await sendSync(client.core, tokens, req);
+  if ("error" in res) {
+    out.result = res.error;
+    return;
+  }
+  if (res.status === 304) {
+    out.result = "not-modified";
+    return;
+  }
+  if (res.status < 200 || res.status >= 300) {
+    out.result = "refused";
+    out.status = res.status;
+    const err = isRec(res.body) ? res.body.error : undefined;
+    if (isRec(err) && typeof err.code === "string") out.code = err.code;
+    if (wire.retryAfter !== null) out.retryAfter = Number(wire.retryAfter);
+    return;
+  }
+  let body: Json | undefined = res.body;
+  if (e2e && body !== undefined) {
+    const opened = await openPull(body, fixtureCodec, { mutations });
+    body = opened.body;
+    for (const row of [
+      ...(opened.opened.changes ?? []),
+      ...Object.values(opened.opened.conflicts ?? {}),
+    ])
+      expect(row, `${t.id}: a fixture ct opens`).toEqual({ invalid: true });
+  }
+  out.result = "ok";
+  if (!isRec(body)) return;
+  if (typeof body.cursor === "number") out.cursor = body.cursor;
+  if (typeof body.more === "boolean") out.more = body.more;
+  out.empty = body.empty === true;
+  out.settings = (Array.isArray(body.changes) ? body.changes : [])
+    .map((c) => (isRec(c) ? c.setting : undefined))
+    .filter((n): n is string => typeof n === "string")
+    .sort();
+  if (isRec(body.quota)) {
+    if (typeof body.quota.bytes === "number") out.quotaBytes = body.quota.bytes;
+    if (typeof body.quota.files === "boolean") out.files = body.quota.files;
+  }
+  if (typeof body.encryption === "string") out.encryption = body.encryption;
+  if (typeof body.encryptionSince === "number")
+    out.encryptionSince = body.encryptionSince;
+  if (isRec(body.aliases)) out.aliases = body.aliases;
+  if (step.action === "cloudSyncPush") {
+    if (typeof body.lastMutationId === "number") {
+      out.lastMutationId = body.lastMutationId;
+      session.syncNextId = body.lastMutationId + 1;
+    }
+    out.results = (Array.isArray(body.results) ? body.results : []).map((r) =>
+      isRec(r) ? resultLabel(r) : "?",
+    );
+  }
 }
 
 /**
@@ -1001,6 +1207,10 @@ async function act(
     case "keyringRecoveryGet":
       await keyringStep(client, step, session, out);
       break;
+    case "cloudSyncPull":
+    case "cloudSyncPush":
+      await cloudSyncStep(client, step, session, out);
+      break;
     case "connectIdentity":
     case "connectDevices":
       await connectStep(client, step, session, out);
@@ -1056,6 +1266,7 @@ async function replay(t: Transcript): Promise<void> {
     );
   }
   let currentStep: Step | null = null;
+  const syncWire: SyncWire = { etag: null, retryAfter: null };
   // The standard discovery answer, for a transcript that loads discovery nowhere itself.
   let discoverySteps = t.steps.some((s) => s.action === "discover");
   const discoveryPath = `/${t.product}/.well-known/polaris.json`;
@@ -1077,7 +1288,19 @@ async function replay(t: Transcript): Promise<void> {
         headers: { "content-type": "application/json" },
       });
     }
-    return server.fetch(input, init);
+    if (isSyncGet(url, t.product)) {
+      // A pull sends back the last ETag it saw, as a cache would (the transport has no cache).
+      const headers = { ...(init?.headers as Record<string, string>) };
+      if (syncWire.etag !== null) headers["if-none-match"] = syncWire.etag;
+      const res = await server.fetch(input, { ...init, headers });
+      syncWire.etag = res.headers.get("etag") ?? syncWire.etag;
+      syncWire.retryAfter = res.headers.get("retry-after");
+      return res;
+    }
+    const res = await server.fetch(input, init);
+    if (url.pathname === `/${t.product}/sync/ops`)
+      syncWire.retryAfter = res.headers.get("retry-after");
+    return res;
   }) as typeof fetch;
   const services =
     t.initial.services ??
@@ -1136,6 +1359,7 @@ async function replay(t: Transcript): Promise<void> {
     transcript: t,
     server,
     redirect: null,
+    syncWire,
   };
   for (let i = 0; i < t.steps.length; i += 1) {
     const step = server.beginStep(i);

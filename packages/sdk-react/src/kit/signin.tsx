@@ -27,6 +27,7 @@ import {
 import {
   SignInModel,
   signInView,
+  type AutoOutcome,
   type ReplaceMode,
   type SignInPresentation,
   type SignInPrimitives,
@@ -45,15 +46,17 @@ import {
   formStep,
   type FormInput,
   type FormStep,
-} from "./contract.js";
+} from "./contractForm.js";
 import { GLYPHS, text, type Chrome } from "./parts.js";
+import { platformLabel } from "./contract.js";
+import { patched } from "./adaptBase.js";
 import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
 import { refusalOf } from "./refusal.js";
 import { openLink, safeLink } from "./links.js";
 import { openManage } from "@polaris-key/ui-core/browser";
 
-export type { FormInput, FormStep } from "./contract.js";
+export type { FormInput, FormStep } from "./contractForm.js";
 
 const useIsoLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -69,6 +72,8 @@ export interface UseSignInOptions {
   /** Everything else the views read (identity, platform, capabilities, services), or a whole
    *  snapshot when there are no primitives. */
   input?: UiInput;
+  /** What automatic sign-in found, shown first (a confirm, the license list, the device limit). */
+  seed?: AutoOutcome;
 }
 
 /** The form's headless state: the live model, the input its views read, and the step drawn. */
@@ -106,6 +111,8 @@ export function useSignIn(o: UseSignInOptions = {}): UseSignIn {
   const base = o.input ?? {};
   const baseRef = useRef<UiInput>(base);
   baseRef.current = base;
+  const seedRef = useRef(o.seed);
+  seedRef.current = o.seed;
   useEffect(() => {
     if (!o.primitives) {
       setModel(null);
@@ -118,6 +125,7 @@ export function useSignIn(o: UseSignInOptions = {}): UseSignIn {
       base: baseRef.current,
       deliver: (fn) => queueMicrotask(fn),
     });
+    if (seedRef.current) m.presentAuto(seedRef.current);
     setModel(m);
     const stop = m.subscribe(() => force());
     return () => {
@@ -146,6 +154,8 @@ export interface SignInProps extends KitProps {
   replace?: ReplaceMode;
   /** `sheet` only: the dialog is open. */
   open?: boolean;
+  /** What automatic sign-in found, shown first. */
+  seed?: AutoOutcome;
   /** The person pressed Done's Start. */
   onDone?: () => void;
   /** `sheet` only: the dialog closed (Escape, Cancel before a sign-in starts, Done). */
@@ -156,6 +166,35 @@ export interface SignInProps extends KitProps {
  *  that says how long it lasts and can be cancelled). */
 const bodyOf = (i: FormInput): ReturnType<typeof formStep>["body"] =>
   adaptReplace(adaptHandoff(adaptMethods(formStep(i).body)));
+
+/** The existing-license line's words, from the kit's own copy: the term as the license rows say
+ *  it, and this device by its platform. The model supplies the license and the seat. */
+function confirmWords(
+  view: ReturnType<typeof formStep>["body"],
+  input: FormInput,
+  copy: {
+    has(k: string): boolean;
+    format(k: string, a: object): string;
+    locale: string;
+  },
+): ReturnType<typeof formStep>["body"] {
+  const anchor = input.autoSignIn?.anchor;
+  if (view.state !== "confirm" || !anchor) return view;
+  const lifetime = anchor.term === "perpetual";
+  const key = lifetime ? "signin.term.lifetime" : "signin.term.until";
+  const date = lifetime
+    ? ""
+    : new Date((anchor.term as number) * 1000).toLocaleDateString(copy.locale);
+  return patched(view, {
+    args: {
+      ...view.args,
+      term: copy.has(key) ? copy.format(key, { date }) : "",
+      device:
+        view.args.device ??
+        (platformLabel(input.platform?.os, copy as never) || "This device"),
+    },
+  });
+}
 
 /** The code step counts down on its own: the model hands over the seconds left when the code was
  *  issued, and this keeps them ticking (at 0:00 the view goes to expired, DL14). */
@@ -229,6 +268,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     presentation: props.presentation,
     replace: props.replace,
     input: props.input,
+    ...(props.seed ? { seed: props.seed } : {}),
   });
   const model = form.model;
   // The device picked in the Replace step (kit-side, as in the elements).
@@ -253,7 +293,12 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
 
   const close = () => {
     const out = model?.snapshot.session.outcome;
-    if (model && out !== undefined && out !== "signedIn") void model.cancel();
+    if (
+      model &&
+      out !== "signedIn" &&
+      (out !== undefined || model.snapshot.autoSignIn)
+    )
+      void model.cancel();
     props.onClose?.();
   };
   const closeRef = useRef(close);
@@ -291,8 +336,15 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     if (!model) return;
     const s = model.snapshot;
     switch (key) {
-      case "signin.desktop.continue":
       case "signin.provider.continue":
+        // The provider's account chooser first, then what the ladder found (L2: this press
+        // lifts a sign-out); without a platform provider it starts the browser sign-in.
+        return model.signInWithProvider();
+      case "signin.auto.confirm.primary":
+        return model.confirm();
+      case "signin.auto.confirm.other":
+        return model.useAnother();
+      case "signin.desktop.continue":
       case "signin.email.continue":
       case "signin.passkey":
         return model.start({ channel: "browser" });
@@ -310,6 +362,8 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       case "common.cancel":
         // In a sheet, Cancel leaves it (and drops a sign-in in flight); in the page, it backs out.
         if (sheet) return close();
+        // Cancel on the methods step leaves the form when the host gave it somewhere to go.
+        if (props.onClose && kit.view.state === "methods") return close();
         return model.cancel();
       case "signin.choice.continue":
         // Pressed once: a second press while the license is redeemed does nothing.
@@ -427,7 +481,11 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   );
 
   const step = formStep(kit.input as FormInput);
-  const body_ = bodyOf(kit.input as FormInput);
+  const body_ = confirmWords(
+    bodyOf(kit.input as FormInput),
+    kit.input as FormInput,
+    kit.copy as never,
+  );
   // A refusal is its own step: the title takes focus when one lands (and a different key's
   // field when it goes), whichever state the form stays in.
   const stepKey = `${step.body.component}.${step.body.state}${

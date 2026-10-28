@@ -30,7 +30,7 @@ import {
 } from "../src/browser/ring/rootVault.js";
 import { UnsupportedError } from "../src/core/caps.js";
 import { PolarisError } from "../src/core/types.js";
-import { bindRingToMachine } from "../src/core/keyring.js";
+import { bindRingToMachine, lazyKeyring } from "../src/core/keyring.js";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { DesktopAdapter } from "../src/desktop/desktopAdapter.js";
 import { makeFakeBridge, okBridgeState } from "./fixtures.js";
@@ -399,6 +399,34 @@ describe("the root in the browser", () => {
     expect(a.engine.hasRoot()).toBe(true);
   });
 
+  it("codec() is null while locked, seals under the vault root, and refuses once locked (U-20.1)", async () => {
+    const server = new FakeRingServer();
+    const a = device(server, A);
+    expect(a.engine.codec()).toBeNull();
+    await a.engine.create();
+    const codec = a.engine.codec()!;
+    expect(codec.locked).toBe(false);
+    const env = await codec.seal("$settings", "k", { n: 1 });
+    const keys = (await a.engine.ringKeys())!;
+    expect(hexOf(env.subarray(1, 17))).toBe(keys.kid);
+    expect(await codec.open("$settings", "k", env)).toEqual({
+      ok: true,
+      name: "k",
+      value: { n: 1 },
+    });
+    // A second browser with the same ring (recovery) opens it.
+    const lazy = lazyKeyring(async () => a.engine);
+    expect(lazy.codec()).toBeNull(); // the engine is not loaded: nothing pulled in
+    await lazy.status();
+    expect(lazy.codec()).toBe(codec);
+    await a.engine.lock();
+    expect(a.engine.codec()).toBeNull();
+    expect(codec.locked).toBe(true);
+    await expect(codec.seal("$settings", "k", 1)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+  });
+
   it("lock() forgets the root and tells subscribers", async () => {
     const server = new FakeRingServer();
     const a = device(server, A);
@@ -726,6 +754,7 @@ describe("the other transports", () => {
         feature: "sync.keyring",
       });
     expect(ring.hasRoot()).toBe(false);
+    expect(ring.codec()).toBeNull();
   });
 
   it("the desktop bridge answers the typed version N/A (no ring verb yet)", async () => {

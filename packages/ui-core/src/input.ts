@@ -174,6 +174,16 @@ export interface AutoSignInInput {
   /** The `device-limit` step: the refusal's `manageUrl`, where a device is replaced. Absent or
    *  invalid: the step names the fix in words and offers no Replace. */
   manageUrl?: string;
+  /** The license an existing-license confirm names: the arguments of its license line
+   *  (`signin.consent.licenseLine`). `term` is `perpetual` or the end as epoch seconds. */
+  anchor?: {
+    name: string;
+    term: "perpetual" | number;
+    position?: number;
+    limit?: number;
+  };
+  /** The name this device goes by in the license line. */
+  device?: string;
 }
 
 /** The approving device's side of nearby sign-in. Absent: the account-menu entry. */

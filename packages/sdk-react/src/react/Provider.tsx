@@ -72,6 +72,10 @@ export interface PolarisKeyConfig {
 export interface PolarisKeyProviderProps {
   /** The one transport configuration object. */
   config: PolarisKeyConfig;
+  /** `false` turns off automatic sign-in: the gate then shows its normal sign-in, as before. On
+   *  by default; it runs once at boot, and only where the page can sign in with a platform
+   *  account. */
+  autoSignIn?: boolean;
   children?: ReactNode;
 }
 
@@ -283,8 +287,9 @@ export function PolarisKeyProvider(
       ...(origins.length > 0 ? { backend: { origins } } : {}),
       ...(version !== undefined ? { version } : {}),
       productSlug,
+      ...(props.autoSignIn === false ? { autoSignIn: false as const } : {}),
     };
-  }, [adapter, originsKey, version, productSlug]);
+  }, [adapter, originsKey, version, productSlug, props.autoSignIn]);
   return (
     <PolarisContext.Provider value={value}>{children}</PolarisContext.Provider>
   );
