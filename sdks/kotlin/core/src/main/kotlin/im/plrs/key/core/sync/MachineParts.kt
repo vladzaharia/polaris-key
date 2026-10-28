@@ -54,6 +54,9 @@ public class CloudSyncMachine private constructor(private val parts: MachinePart
         parts.start()
     }
 
+    /** Who the machine holds signed in, or null (a signed-out device). */
+    public val subject: String? get() = parts.core.s.subject
+
     /** The machine's clock. */
     public val now: Long get() = parts.core.now
 
