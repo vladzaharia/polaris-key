@@ -1623,7 +1623,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/identity/redirect.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/identity/signIn.ts": {
       "jscpd:duplicate": 3
@@ -2180,8 +2180,11 @@
     "packages/shared-protocol/test/exports.test.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/ui-core/src/browser/sdk/browser/bearer/redirect.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/ui-core/src/browser/sdk/browser/bearer/session.ts": {
-      "jscpd:duplicate": 12
+      "jscpd:duplicate": 10
     },
     "packages/ui-core/src/browser/sdk/browser/bearer/signInSessions.ts": {
       "jscpd:duplicate": 1
