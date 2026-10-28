@@ -8,7 +8,8 @@
       "ruff:I001": 1
     },
     "sdks/python/src/polaris_key/aio.py": {
-      "mypy:arg-type": 1
+      "mypy:arg-type": 1,
+      "ruff:E501": 1
     },
     "sdks/python/src/polaris_key/backend.py": {
       "ruff:B018": 1,
@@ -127,7 +128,20 @@
     "sdks/python/src/polaris_key/distribution/__init__.py": {
       "mypy:arg-type": 1
     },
+    "sdks/python/src/polaris_key/identity/account.py": {
+      "mypy:arg-type": 1,
+      "mypy:union-attr": 3
+    },
     "sdks/python/src/polaris_key/identity/client.py": {
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/identity/redirect.py": {
+      "mypy:arg-type": 3,
+      "mypy:operator": 1,
+      "mypy:union-attr": 3,
+      "ruff:I001": 1
+    },
+    "sdks/python/src/polaris_key/identity/sign_in.py": {
       "mypy:arg-type": 2
     },
     "sdks/python/src/polaris_key/license/__init__.py": {
@@ -216,7 +230,7 @@
       "mypy:arg-type": 4,
       "mypy:misc": 4,
       "mypy:operator": 1,
-      "ruff:E501": 46,
+      "ruff:E501": 47,
       "ruff:F401": 3
     },
     "sdks/python/src/polaris_key/ui/terminal/parts.py": {
@@ -293,14 +307,19 @@
     "sdks/python/src/polaris_key/update/packs/select.py": {
       "ruff:E501": 1
     },
+    "sdks/python/tests/cli/fake_session.py": {
+      "ruff:E501": 2
+    },
     "sdks/python/tests/cli/fixtures.py": {
-      "ruff:E501": 48
+      "ruff:E501": 45
     },
     "sdks/python/tests/cli/golden_support.py": {
       "ruff:E501": 1
     },
     "sdks/python/tests/cli/pty_flow.py": {
-      "ruff:E501": 7
+      "ruff:E501": 8,
+      "ruff:F401": 1,
+      "ruff:I001": 1
     },
     "sdks/python/tests/cli/ptyrun.py": {
       "ruff:E501": 2
@@ -336,10 +355,11 @@
       "ruff:I001": 3
     },
     "sdks/python/tests/cli/test_cli_scenes.py": {
-      "ruff:E501": 6
+      "ruff:E501": 7
     },
     "sdks/python/tests/cli/test_flows.py": {
-      "ruff:F401": 1
+      "ruff:F401": 3,
+      "ruff:I001": 1
     },
     "sdks/python/tests/cli/test_golden.py": {
       "ruff:E501": 1
@@ -367,9 +387,9 @@
     },
     "sdks/python/tests/cli/test_responsive.py": {
       "ruff:E402": 2,
-      "ruff:E501": 28,
+      "ruff:E501": 27,
       "ruff:E741": 1,
-      "ruff:F401": 1
+      "ruff:F401": 2
     },
     "sdks/python/tests/cli/test_textual.py": {
       "ruff:E501": 5,
@@ -388,6 +408,7 @@
     },
     "sdks/python/tests/test_async_client.py": {
       "ruff:E501": 2,
+      "ruff:F811": 2,
       "ruff:I001": 1
     },
     "sdks/python/tests/test_auto_discover.py": {
@@ -478,8 +499,27 @@
     "sdks/python/tests/test_headers.py": {
       "ruff:I001": 1
     },
+    "sdks/python/tests/test_identity_account.py": {
+      "ruff:E501": 3,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_identity_choice.py": {
+      "ruff:E501": 1,
+      "ruff:I001": 1
+    },
     "sdks/python/tests/test_identity_mint.py": {
       "ruff:F401": 1,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_identity_redirect.py": {
+      "ruff:E501": 5,
+      "ruff:F401": 2,
+      "ruff:I001": 1
+    },
+    "sdks/python/tests/test_identity_session.py": {
+      "ruff:E501": 3,
+      "ruff:F401": 1,
+      "ruff:F811": 19,
       "ruff:I001": 1
     },
     "sdks/python/tests/test_license_events.py": {
@@ -572,11 +612,6 @@
     },
     "sdks/python/tests/test_server_starlette.py": {
       "ruff:F401": 1,
-      "ruff:I001": 1
-    },
-    "sdks/python/tests/test_sign_in_conveniences.py": {
-      "ruff:E501": 3,
-      "ruff:F811": 7,
       "ruff:I001": 1
     },
     "sdks/python/tests/test_stage_matrix.py": {
