@@ -1956,7 +1956,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.settings": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.conflict": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.saves": CapabilityRow(status: "planned", service: "sync", na: []),
-    "sync.keyring": CapabilityRow(status: "implemented", service: "sync", na: []),
+    "sync.keyring": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.records": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.files": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.files.delta": CapabilityRow(status: "planned", service: "sync", na: []),
@@ -1964,13 +1964,13 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.transfer.background": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.e2e": CapabilityRow(status: "planned", service: "sync", na: []),
     "connect.identity": CapabilityRow(status: "implemented", service: "connect", na: []),
-    "connect.noise": CapabilityRow(status: "planned", service: "connect", na: []),
-    "connect.protocol": CapabilityRow(status: "planned", service: "connect", na: []),
-    "connect.lan": CapabilityRow(status: "planned", service: "connect", na: []),
-    "connect.relay": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.noise": CapabilityRow(status: "implemented", service: "connect", na: []),
+    "connect.protocol": CapabilityRow(status: "implemented", service: "connect", na: []),
+    "connect.lan": CapabilityRow(status: "implemented", service: "connect", na: []),
+    "connect.relay": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.links": CapabilityRow(status: "planned", service: "connect", na: []),
     "connect.transfer": CapabilityRow(status: "planned", service: "connect", na: []),
-    "connect.app": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.app": CapabilityRow(status: "implemented", service: "connect", na: []),
     "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.facts": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.register": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -2057,4 +2057,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "cc278ff8d72c2d2edfd3226ca062a6d5dfbb064a33cd7fb5667e0f8df6db5460"
+public let CAPABILITY_DIGEST = "07a1b87c04d41b15e8249fe9424b7e0b4e8a894afb1250ebaa189cf29fdcf874"

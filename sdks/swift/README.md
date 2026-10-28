@@ -498,6 +498,41 @@ only** — never in the cache file or the keychain — and reused until 30 secon
 before any request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
 `rate_limited` / `misconfigured`.
 
+### Cloud Connect
+
+`client.cloudConnect` links the devices signed in to one account and opens an encrypted channel between
+them, over the local network first and the relay when the LAN does not answer. It needs sign-in and a
+product with the `connect` service on.
+
+```swift
+try await client.cloudConnect.start()
+let stopListening = client.cloudConnect.onChannel { session in /* a device opened a session to this one */ }
+let peers = await client.cloudConnect.peers()
+if let first = peers.first {
+    let session = try await client.cloudConnect.open(first.deviceId)
+    try await session.send(Data("hello".utf8))
+}
+await client.cloudConnect.stop()
+```
+
+`stop()` never waits past 15 seconds; sign-out and release stop it first. `CloudConnectOptions(lan:relay:)`
+turns a path off.
+
+**Local network access (Apple platforms).** The LAN path advertises and browses over Bonjour, so the app's
+`Info.plist` needs both keys; without them `start()` reports the LAN as not configured and the relay still works:
+
+```xml
+<key>NSLocalNetworkUsageDescription</key>
+<string>Finds your other devices on this network.</string>
+<key>NSBonjourServices</key>
+<array>
+  <string>_pkeypeer._tcp</string>
+</array>
+```
+
+A refused Local Network prompt is the `nearby-permission-denied` error. A **sandboxed macOS app** also needs the
+`com.apple.security.network.client` and `com.apple.security.network.server` entitlements (it dials out and listens).
+
 ### Stores
 
 - `KeychainStore` (default) — token in the OS keychain (service **`pkey:<product>`**), device id

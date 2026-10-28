@@ -82,6 +82,19 @@ final class ConnectBrowseIndex: Sendable {
         }
     }
 
+    /// Forget the keys and the dictionary (stop and abort).
+    func clear() {
+        state.with { s in
+            s.keys = []
+            s.roster = []
+            s.loaded = false
+            s.built = nil
+        }
+    }
+
+    /// True while the index holds discovery-key bytes (a test reads it).
+    var holdsKeys: Bool { state.with { !$0.keys.isEmpty || $0.built != nil } }
+
     func lookup(_ instance: String, now: Int) -> Hit? {
         guard PeerAdvert.isInstanceName(instance) else { return nil }
         return state.with { s in
@@ -119,6 +132,15 @@ final class ConnectBrowseIndex: Sendable {
     }
 }
 
+/// A counter every holder of a cached identity reads: it moves when the identity changes anywhere (a refresh,
+/// a pushed roster, a sign-out), so the LAN and relay services drop their 30 s copies together (N8).
+public final class ConnectIdentityEpoch: Sendable {
+    private let n = LockedValue(0)
+    public init() {}
+    public var value: Int { n.current }
+    public func bump() { n.with { $0 &+= 1 } }
+}
+
 /// What the LAN service needs of the client. `load` reads the held identity (it may touch the key store);
 /// `now` is epoch seconds. `refresh` asks the Worker for a newer roster (throws on failure); `adoptRing`
 /// stores a roster a peer pushed and `applyTrust` applies a trust manifest a peer pushed: each may be nil
@@ -129,17 +151,20 @@ public struct ConnectLanSource: Sendable {
     public var refresh: (@Sendable () async throws -> Void)?
     public var adoptRing: (@Sendable (String) async -> RingAdoption)?
     public var applyTrust: (@Sendable (String) async -> PeerTrustResult)?
+    /// Moves when the identity changes; the services share it so one's change reaches the other.
+    public var changes: ConnectIdentityEpoch
 
     public init(
         load: @escaping @Sendable () async throws -> PeerSource, now: @escaping @Sendable () -> Int,
         refresh: (@Sendable () async throws -> Void)? = nil, adoptRing: (@Sendable (String) async -> RingAdoption)? = nil,
-        applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil
+        applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil, changes: ConnectIdentityEpoch = ConnectIdentityEpoch()
     ) {
         self.load = load
         self.now = now
         self.refresh = refresh
         self.adoptRing = adoptRing
         self.applyTrust = applyTrust
+        self.changes = changes
     }
 
     /// The source over a `ConnectClient`. `applyTrust` is the host's trust custodian.
@@ -154,7 +179,7 @@ public struct ConnectLanSource: Sendable {
                     throw ConnectLanError(.noIdentity, "The identity could not be refreshed.")
                 }
             },
-            adoptRing: { await c.adoptRing($0) }, applyTrust: applyTrust)
+            adoptRing: { await c.adoptRing($0) }, applyTrust: applyTrust, changes: c.identityChanges)
     }
 }
 
@@ -323,14 +348,14 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
     private var stopped = false
     private var listening = false
     private var port: UInt16 = 0
-    private var held: (at: Int, src: PeerSource)?
+    private var held: (at: Int, gen: Int, src: PeerSource)?
     private var advName = ""
     private var stopBrowse: (@Sendable () -> Void)?
     /// The browser's stop, readable without the actor, for `abort()`.
     private let browseStop = LockedValue<(@Sendable () -> Void)?>(nil)
     private var cancelEpoch: (@Sendable () -> Void)?
     private var peers: [String: (peer: ConnectLanPeer, instance: String)] = [:]
-    private let index: ConnectBrowseIndex
+    nonisolated let index: ConnectBrowseIndex
     private var pending: [ObjectIdentifier: NWPipe] = [:]
     private var sessions: [ObjectIdentifier: ConnectSession] = [:]
 
@@ -407,6 +432,7 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
         }
         listening = true
         if o.advertise { try await rotate() }
+        if o.browse && !o.advertise { armEpoch(src.now()) }
         if o.browse {
             do {
                 stopBrowse = try network.browse(
@@ -466,6 +492,8 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
         pending = [:]
         for s in sessions.values { await s.close() }
         sessions = [:]
+        held = nil
+        index.clear()
         await network.stop()
     }
 
@@ -477,6 +505,7 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
             v = nil
         }
         docs.close()
+        index.clear()
         let net = network
         Task { await net.stop() }
         Task { await self.abortInActor() }
@@ -517,15 +546,19 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
 
     private func identity(force: Bool) async throws -> PeerSource {
         let now = src.now()
-        if !force, let h = held, now - h.at < identityTtlSeconds, h.src.certExpiresAt - now > certMarginSeconds {
+        if !force, let h = held, h.gen == src.changes.value, now - h.at < identityTtlSeconds,
+            h.src.certExpiresAt - now > certMarginSeconds
+        {
             return h.src
         }
+        let gen = src.changes.value
         let v: PeerSource
         do { v = try await src.load() } catch let e as ConnectLanError { throw e } catch {
             throw ConnectLanError(.noIdentity, "No Cloud Connect identity is held.")
         }
+        if stopped { return v }
         if index.update(v) { network.rescan() }
-        held = (now, v)
+        held = (now, gen, v)
         return v
     }
 
@@ -534,6 +567,7 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
     func advertWithdrawn() { advName = "" }
 
     func stored() {
+        src.changes.bump()
         held = nil
         // Reload now so the browse index follows a new roster or key.
         if !stopped { Task { _ = try? await self.identity(force: false) } }
@@ -663,12 +697,29 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
             advName = name
             await network.advertise(BonjourAdvert(instance: name, txt: ["v=1", "m=a"]))
         }
-        let next = (epoch + 1) * peerAdvertEpochSeconds - src.now()
+        armEpoch(src.now())
+    }
+
+    /// Wake at the next epoch boundary. With adverts on that is a rotation; browse-only has no advert to
+    /// rotate, but a peer already under the next epoch is found by rebuilding the index and rescanning.
+    private func armEpoch(_ now: Int) {
+        if stopped { return }
+        let next = (peerAdvertEpoch(now) + 1) * peerAdvertEpochSeconds - now
         cancelEpoch?()
         cancelEpoch = timer(TimeInterval(max(1, next))) { [weak self] in
             guard let self else { return }
-            Task { try? await self.rotate() }
+            Task { await self.epochTick() }
         }
+    }
+
+    private func epochTick() async {
+        if stopped { return }
+        if o.advertise {
+            try? await rotate()
+            return
+        }
+        if index.refresh(now: src.now()) { network.rescan() }
+        armEpoch(src.now())
     }
 
     private func gone(_ instance: String) {

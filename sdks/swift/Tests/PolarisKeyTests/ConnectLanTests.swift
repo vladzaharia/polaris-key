@@ -103,6 +103,12 @@ private final class Directory: @unchecked Sendable {
         return { [self] in lock.withLock { browsers[id] = nil } }
     }
 
+    /// What a real browser does on `rescan()`: offer every current result again.
+    func replay() {
+        let (fs, bs) = lock.withLock { (adverts.values.map(\.found), browsers.values.map(\.up)) }
+        for b in bs { for f in fs { b(f) } }
+    }
+
     func inject(_ f: BonjourFound) {
         let bs = lock.withLock { browsers.values.map(\.up) }
         for b in bs { b(f) }
@@ -141,6 +147,8 @@ private final class FakeNet: ConnectLanNetwork, @unchecked Sendable {
     ) throws -> @Sendable () -> Void { dir.browse(up: onUp, down: onDown) }
 
     func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe { try await BonjourPipes.dial(endpoint, options: dialOptions) }
+
+    func rescan() { dir.replay() }
 
     func stop() async {
         listener.stop()
@@ -462,6 +470,71 @@ final class ConnectLanTests: XCTestCase {
         XCTAssertEqual("\(a)", "ConnectLanService()")
         XCTAssertFalse(dumped.contains(w.ring))
         await w.close()
+    }
+
+    /// R1: a browse-only service still wakes at the epoch boundary, so a peer that was seen under the next
+    /// epoch before this clock turned is found then.
+    func testABrowseOnlyServiceFindsAPeerSeenUnderTheNextEpochAtTheBoundary() async throws {
+        let w = try await World()
+        let timers = Timers()
+        let net = FakeNet(w.dir)
+        let a = try await ConnectLanService.start(
+            w.source(w.a), options: ConnectLanOptions(advertise: false, network: net, timer: timers.timer))
+        XCTAssertEqual(timers.last.first, 800, "the epoch timer is armed with no advert")
+        // B's clock is already in the next epoch.
+        let ahead = ConnectLanSource(load: { [w] in w.peerSource(w.b) }, now: { [clock = w.clock] in clock.now + 800 })
+        let b = try await ConnectLanService.start(ahead, options: ConnectLanOptions(network: FakeNet(w.dir)))
+        try await Task.sleep(nanoseconds: 200_000_000)
+        let seen = await a.currentPeers()
+        XCTAssertTrue(seen.isEmpty, "the next epoch's name is not in the index yet")
+        w.clock.advance(800)
+        timers.fireAll()
+        await until("A finds B at the boundary") { await a.currentPeers().map(\.deviceId) == [idB] }
+        await a.stop()
+        await b.stop()
+    }
+
+    /// R2: the discovery-key bytes are dropped on stop and on abort.
+    func testTheBrowseIndexDropsItsKeysOnStopAndAbort() async throws {
+        let w = try await World()
+        let a = try await w.start(w.a)
+        XCTAssertTrue(a.index.holdsKeys)
+        await a.stop()
+        XCTAssertFalse(a.index.holdsKeys)
+        let b = try await w.start(w.b)
+        XCTAssertTrue(b.index.holdsKeys)
+        b.abort()
+        XCTAssertFalse(b.index.holdsKeys)
+        await w.close()
+    }
+
+    /// N8: one identity change reaches both services' 30 s caches.
+    func testAnIdentityChangeDropsTheCachedIdentityInTheLanAndRelayServices() async throws {
+        let w = try await World()
+        let changes = ConnectIdentityEpoch()
+        let lanLoads = LockedValue(0), relayLoads = LockedValue(0)
+        func src(_ n: LockedValue<Int>) -> ConnectLanSource {
+            ConnectLanSource(
+                load: { [w] in
+                    n.with { $0 += 1 }
+                    return w.peerSource(w.a)
+                }, now: { [clock = w.clock] in clock.now }, changes: changes)
+        }
+        let lan = try await ConnectLanService.start(src(lanLoads), options: ConnectLanOptions(network: FakeNet(w.dir)))
+        let relay = ConnectRelayService(source: src(relayLoads), ticket: { .error(code: "x", message: "x") })
+        _ = try await relay.identity(force: false)
+        _ = try await relay.identity(force: false)
+        XCTAssertEqual(relayLoads.current, 1, "cached")
+        let l0 = lanLoads.current
+        changes.bump()
+        _ = try await relay.identity(force: false)
+        XCTAssertEqual(relayLoads.current, 2, "the bump dropped the relay's copy")
+        // The LAN service's own reload on a stored roster moves the shared counter, so the relay follows.
+        await lan.stored()
+        await until("the LAN service reloaded") { lanLoads.current > l0 }
+        _ = try await relay.identity(force: false)
+        XCTAssertEqual(relayLoads.current, 3)
+        await lan.stop()
     }
 }
 #endif
