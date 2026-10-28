@@ -20,11 +20,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
 | Node | `node` | 98 | 12 | 24 | 0 |
-| React | `web`, `desktop-bridge` | 98 | 22 | 14 | 0 |
-| Python | `python` | 89 | 12 | 33 | 0 |
-| Swift | `macos`, `ios` | 99 | 9 | 25 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 99 | 9 | 26 | 0 |
-| Kotlin | `android`, `jvm` | 105 | 8 | 20 | 1 |
+| React | `web`, `desktop-bridge` | 101 | 22 | 11 | 0 |
+| Python | `python` | 94 | 12 | 28 | 0 |
+| Swift | `macos`, `ios` | 105 | 9 | 19 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 100 | 9 | 25 | 0 |
+| Kotlin | `android`, `jvm` | 106 | 8 | 19 | 1 |
 
 ## Core
 
@@ -71,17 +71,17 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `config.mint` | Edge-mint of third-party tokens | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.mirror` | Typed catalog mirrors | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.local` | Persisted device-local overrides: config.set, config.setting, onConfigChange | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `config.sync` | Synced settings on config.*: setting(key).sync(), routes from syncedSettings, the config.local import | `sync-scenarios.json` `settingCases` + transcripts (U-05) | ✓ | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
+| `config.sync` | Synced settings on config.*: setting(key).sync(), routes from syncedSettings, the config.local import | `sync-scenarios.json` `settingCases` + transcripts (U-05) | ✓ | ✓ | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
 
 ## Cloud Sync
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `sync.scenarios` | The Cloud Sync client machine: journal, HLC, partitions, open settings, import, paused and parked edits | `sync-scenarios.json` | ✓ | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
-| `sync.settings` | Settings over /sync: pull, push, cloudSync.status() and cloudSync.flush() | transcripts | ✓ | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
+| `sync.settings` | Settings over /sync: pull, push, cloudSync.status() and cloudSync.flush() | transcripts | ✓ | ✓ | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
 | `sync.conflict` | One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records | unit + transcripts (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | — |
 | `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
-| `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | ✓ | ✓ | ✓ | planned (U-39) | planned (U-40) | planned (U-39) | — |
+| `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.records` | cloudSync records: collections with put, update, compare-and-set and union merge | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
 | `sync.files` | cloudSync files: single and multipart upload, resume, progress and ranged download | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
 | `sync.files.delta` | cloudSync file delta: content-defined chunks, only the missing chunks travel | `sync-vectors.json` `cdcCases` + transcripts (U-37) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
@@ -94,13 +94,13 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `connect.identity` | Device certificates and rings: verify, key choice and admission | `cases.json` `peerCertCases` + transcripts | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
-| `connect.noise` | Noise_XX_25519_AESGCM_SHA256 and its primitives | `noise-vectors.json` | ✓ | ✓ | planned (CC-10) | planned (CC-11) | planned (CC-14) | ✓ | — |
-| `connect.protocol` | pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes | `peer-matrix.json` | ✓ | ✓ | planned (CC-10) | planned (CC-11) | planned (CC-14) | ✓ | — |
-| `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit | ✓ | N/A (web, desktop-bridge: runtime) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12b) | web, desktop-bridge: runtime |
-| `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | ✓ | ✓ | planned (CC-10) | planned (CC-11) | planned (CC-14) | ✓ | — |
+| `connect.noise` | Noise_XX_25519_AESGCM_SHA256 and its primitives | `noise-vectors.json` | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
+| `connect.protocol` | pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes | `peer-matrix.json` | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
+| `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (CC-14) | planned (CC-12b) | web, desktop-bridge: runtime |
+| `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
 | `connect.links` | Inter-account links: mode p pairing and contacts | unit | planned (CC-19) | N/A (web, desktop-bridge: runtime) | planned (CC-19) | planned (CC-19) | planned (CC-19) | planned (CC-19) | web, desktop-bridge: runtime |
 | `connect.transfer` | Direct Transfer: data between Cloud Connect peers | unit | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | — |
-| `connect.app` | The cloudConnect API: start, stop, peers, devices, open, onChannel | unit | ✓ | ✓ | planned (CC-10) | planned (CC-11) | planned (CC-14) | ✓ | — |
+| `connect.app` | The cloudConnect API: start, stop, peers, devices, open, onChannel | unit | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
 
 ## Devices and identity
 
@@ -125,7 +125,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.exchange` | Platform sign-in: a Google or Apple ID token for a device token (the exchange) | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | ✓ | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 | `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | planned (I-47) | planned (I-46) | planned (I-47) | ✓ | planned (I-48) | ✓ | — |
-| `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | planned (I-46); N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
+| `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 
 ## Release and update
 

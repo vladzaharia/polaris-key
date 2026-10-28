@@ -615,6 +615,20 @@ export function successMark(): TemplateResult {
   </div>`;
 }
 
+/** Google's own "G", unmodified, above the link offer's title: the offer is about Google, so the
+ *  step names it before the words do. Decorative: the title says it. */
+export function providerMark(): TemplateResult {
+  return html`<div
+    class="provider-mark"
+    part="provider-mark"
+    aria-hidden="true"
+  >
+    <svg viewBox="0 0 ${GOOGLE_G_GRID} ${GOOGLE_G_GRID}" focusable="false">
+      ${GOOGLE_G_PATHS.map((p) => svg`<path fill=${p.fill} d=${p.d} />`)}
+    </svg>
+  </div>`;
+}
+
 /** LoadingIndicator: the 2 px shimmer along the container's top edge (§1.5 rule 4). */
 export function shimmer(): TemplateResult {
   return html`<div
@@ -897,7 +911,13 @@ export function links(
 ): TemplateResult | typeof nothing {
   if (keys.length === 0) return nothing;
   return html`<div class="links" part="links" data-part="links">
-    ${keys.map((k) => button(c, k, "link"))}
+    ${keys.map((k) =>
+      button(c, k, "link", {
+        disabled:
+          k === "signin.linkOffer.decline" &&
+          c.input.signIn?.redeeming === true,
+      }),
+    )}
   </div>`;
 }
 

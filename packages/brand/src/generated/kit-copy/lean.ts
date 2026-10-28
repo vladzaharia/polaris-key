@@ -61,6 +61,20 @@ export const KIT_COPY_LAZY_PREFIXES: readonly string[] = [
   "signin.confirmLink.",
   "signin.mail.",
   "signin.return.",
+  "unlockSync.",
+  "recoveryCode.",
+  "ringChange.",
+  "cloudSync.locked",
+  "cloudSync.unlock",
+  "cloudSync.ringChanged",
+  "settings.",
+  "devices.",
+  "offlineActivation.",
+  "updateProgress.",
+  "releaseNotes.",
+  "channel.",
+  "about.",
+  "account.",
 ];
 
 /** English platform variants (D13 title case on macOS and documented verbs); other locales have none. */

@@ -64,6 +64,11 @@ var _settings := {}
 ## refresh at the end.
 var _quiet := false
 ## recipe id -> {device_token, result}: memory only, never persisted.
+## Cloud Sync's port (PKeyCloudSync sets it once the host runs): `active()`, `set_value(k, v)`,
+## `clear_value(k)`, `get_value(k)`, `state(k)`. While it is active a write goes through the machine.
+var _sync_port: Object = null
+## Every key the machine has touched; the snapshot includes them.
+var _sync_keys := {}
 var _minted := {}
 ## recipe id -> MintPending: a mint in flight, shared by concurrent asks under the same token.
 var _minting := {}
@@ -218,6 +223,9 @@ func _on_store_changed(_keys: PackedStringArray) -> void:
 
 
 func _local(key: String) -> Array:
+	var synced: Array = _synced_value(key)
+	if not synced.is_empty():
+		return synced
 	if _store == null:
 		return []
 	var accessor := _accessor(key)
@@ -244,6 +252,10 @@ func _local(key: String) -> Array:
 func set_value(key: String, value: Variant) -> PKeyResult:
 	if typeof(value) == TYPE_NIL:
 		return clear(key)
+	if _sync_active():
+		# While Cloud Sync holds a person the edit goes through its machine, in its order of refusals.
+		_sync_keys[key] = true
+		return _via_machine(_sync_port.set_value(key, value), key, value)
 	var refused := _write_refusal(key)
 	if refused != null:
 		return refused
@@ -261,6 +273,9 @@ func set_value(key: String, value: Variant) -> PKeyResult:
 func clear(key: String) -> PKeyResult:
 	if key == "":
 		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "A config key is required.")
+	if _sync_active():
+		_sync_keys[key] = true
+		return _via_machine(_sync_port.clear_value(key), key, null)
 	if _store == null:
 		return PKeyResult.success()
 	if not _store.clear_override(key, _accessor(key)):
@@ -290,6 +305,79 @@ func clear_all() -> PKeyResult:
 	if failed:
 		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "Some settings could not be cleared.", cleared)
 	return PKeyResult.success(cleared)
+
+
+# ── Cloud Sync (the port PKeyCloudSync installs; not app verbs) ─────────────────────────────
+
+## Cloud Sync's port, set once its host runs; null removes it.
+func _use_sync(port: Object) -> void:
+	_sync_port = port
+	refresh()
+
+
+func _sync_active() -> bool:
+	return _sync_port != null and _sync_port.active()
+
+
+## `[value]` when the machine holds a synced value for `key` (the signed document decides otherwise,
+## and a lock is above it), else `[]`.
+func _synced_value(key: String) -> Array:
+	if not _sync_active():
+		return []
+	var e: Dictionary = _sync_port.get_value(key)
+	if e.get("from") == "document" or e.get("value") == null:
+		return []
+	return [e["value"]]
+
+
+func _via_machine(r: Dictionary, key: String, value: Variant) -> PKeyResult:
+	if r.get("ok", false):
+		return PKeyResult.success(_copy(value))
+	if r.get("error") == "managed_by_admin":
+		return PKeyResult.failure(PKeyErrors.MANAGED_BY_ADMIN, "%s is managed by the product's administrator and cannot be changed here." % key, {"key": key})
+	return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "%s: the value is not accepted." % key, {"key": key})
+
+
+## The legacy local values, for the one-time import into Cloud Sync.
+func _importable() -> Dictionary:
+	return _store.values.duplicate(true) if _store != null else {}
+
+
+## The machine changed these keys: report them through the one change detector.
+func _note_sync_change(keys: Array, _origin: String) -> void:
+	for k in keys:
+		_sync_keys[String(k)] = true
+	refresh()
+
+
+## `"local"`, `"pending"` or `"synced"` (PKeyConfigSetting.sync).
+func _sync_state(key: String) -> String:
+	return _sync_port.state(key) if _sync_active() else "local"
+
+
+## The signed document's values and the keys it locks, for the Cloud Sync machine.
+func _sync_document() -> Dictionary:
+	var values := {}
+	var locked: Array = []
+	var remote = _remote()
+	if remote is Dictionary:
+		for k in remote:
+			var e: Variant = remote[k]
+			if e is Dictionary:
+				values[String(k)] = e.get("value")
+				if e.get("state") == "enforced" or e.get("state") == "hidden":
+					locked.append(String(k))
+	return {"values": values, "locked": locked}
+
+
+## The compiled mirror alone as `{schemaVersion, entries}` (never the fetched catalog), or {}.
+func _compiled_catalog() -> Dictionary:
+	if _compiled_version == null:
+		return {}
+	var entries: Array = []
+	for k in _compiled_entries:
+		entries.append(_compiled_entries[k].duplicate(true))
+	return {"schemaVersion": _compiled_version, "entries": entries}
 
 
 ## The live handle on `key` (PKeyConfigSetting): its value, source and lock now, then `changed`
@@ -746,6 +834,8 @@ func _known_keys() -> Array:
 	for b in _bindings:
 		keys[b.key] = true
 	for k in _settings:
+		keys[k] = true
+	for k in _sync_keys:
 		keys[k] = true
 	if _store != null:
 		for k in _store.values:

@@ -34,6 +34,10 @@ public enum KitStates {
         case .paywall: return paywall(inputs).erased
         case .entitlementGate: return entitlementGate(inputs).erased
         case .toast: return toast(inputs).erased
+        case .cloudSyncStatus: return cloudSyncStatus(inputs).erased
+        case .unlockSync: return unlockSync(inputs).erased
+        case .recoveryCode: return recoveryCode(inputs).erased
+        case .ringChange: return ringChange(inputs).erased
         }
     }
 }

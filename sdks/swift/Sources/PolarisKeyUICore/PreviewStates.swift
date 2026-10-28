@@ -140,7 +140,7 @@ extension PolarisKeyPreviewState {
     /// Every preview, component by component.
     public static let all: [PolarisKeyPreviewState] =
         gate + welcome + signIn + nearby + activate + offlineActivation + deviceLimit + statusAndGrace + update + settings
-        + devicesAndPaywall
+        + devicesAndPaywall + cloudSync
 
     /// The previews of one component.
     public static func of(_ component: KitComponent) -> [PolarisKeyPreviewState] {
@@ -721,5 +721,45 @@ extension PolarisKeyPreviewState {
         .init(
             .entitlementGate, "entitled",
             base { $0.entitlement = KitEntitlement(name: "pro.export", entitled: true) }),
+    ]
+
+    /// A made-up recovery code for previews and renders. It opens nothing.
+    public static let sampleRecoveryCode = "K7QF-2M9D-XR4T-8WHB-3JNC-6PEV-4HDA-9XKS"
+
+    static let cloudSync: [PolarisKeyPreviewState] = [
+        .init(.cloudSyncStatus, "locked", base { $0.cloudSync = KitCloudSync(state: .locked) }),
+        .init(
+            .cloudSyncStatus, "ring-changed",
+            base { $0.cloudSync = KitCloudSync(state: .ringChanged) }),
+        .init(.unlockSync, "code", base { $0.unlockSync = KitUnlockSync(step: .code) }),
+        .init(.unlockSync, "invalid", base { $0.unlockSync = KitUnlockSync(step: .invalid) }),
+        .init(.unlockSync, "working", base { $0.unlockSync = KitUnlockSync(step: .working) }),
+        .init(.unlockSync, "failed", base { $0.unlockSync = KitUnlockSync(step: .failed) }),
+        .init(
+            .unlockSync, "start-over-failed",
+            base { $0.unlockSync = KitUnlockSync(step: .startOverFailed) }),
+        .init(.unlockSync, "no-code", base { $0.unlockSync = KitUnlockSync(step: .noCode) }),
+        .init(
+            .unlockSync, "start-over", base { $0.unlockSync = KitUnlockSync(step: .startOver) }),
+        .init(.recoveryCode, "show", base { $0.recoveryCode = KitRecoveryCode() }),
+        .init(
+            .recoveryCode, "saved", base { $0.recoveryCode = KitRecoveryCode(saved: true) }),
+        .init(
+            .ringChange, "confirm",
+            base {
+                $0.ringChange = KitRingChange(
+                    by: "Maya's MacBook",
+                    served: .init(ringId: "ring_9f3a", epoch: 2, rootKid: "kid_b21c"))
+            }),
+        .init(
+            .ringChange, "confirm", variant: "nothing-served",
+            base { $0.ringChange = KitRingChange(by: "Maya's MacBook") }),
+        .init(
+            .ringChange, "failed",
+            base {
+                $0.ringChange = KitRingChange(
+                    by: "Maya's MacBook",
+                    served: .init(ringId: "ring_9f3a", epoch: 2, rootKid: "kid_b21c"), failed: true)
+            }),
     ]
 }

@@ -140,7 +140,7 @@ var _lock_token := ""
 var _salt_fault: PKeyResult = null
 
 
-## A store for `product`. `root` is the parent directory, which must be under `user://`.
+## A store for `product`. `root` is the parent directory, which must be under `user://` or the no-backup directory (PKeyBackupExclusion).
 ## `memory` keeps the keys in process memory only. `encrypted` turns the engine's file
 ## encryption on (the default) or off. `p_sealer` is a native sealer; null picks the platform's
 ## when its lane is present (see the header).
@@ -149,7 +149,7 @@ func _init(p_product: String, root := "user://pkey", memory := false, encrypted 
 	dir = root.path_join(p_product)
 	var name_ok := RegEx.create_from_string("\\A[A-Za-z0-9][A-Za-z0-9@._-]{0,127}\\z").search(p_product) != null
 	_slug_ok = memory or RegEx.create_from_string("\\A[a-z0-9][a-z0-9._-]{0,63}(?:@[a-z0-9._-]{1,259})?\\z").search(p_product) != null
-	_root_ok = name_ok and not p_product.contains("..") and root.begins_with("user://") and not root.contains("..")
+	_root_ok = name_ok and not p_product.contains("..") and PKeyBackupExclusion.is_private_root(root)
 	_memory = memory
 	_encrypted = encrypted
 	if not memory and encrypted and _root_ok:
@@ -620,6 +620,7 @@ func _ensure_dir() -> int:
 		return err
 	if _unix():
 		FileAccess.set_unix_permissions(dir, _OWNER_RWX)
+	PKeyBackupExclusion.exclude(dir)
 	return OK
 
 

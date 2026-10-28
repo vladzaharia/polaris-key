@@ -145,8 +145,8 @@
       "note": "adapter.config.set/clear/clearAll/setting/onConfigChange (SP-13): validated against the catalog type, refused for an admin-managed key, a change event per resolved-value move. Browser: localStorage per product, a memory fallback reported by config.persistent(). Desktop: forwarded to the host's client.config over bridge v4 (a v3 host is refused typed, reason version). useConfigSetting(key) re-renders on change. test/configLocal.test.tsx."
     },
     "config.sync": {
-      "status": "planned",
-      "wp": "U-20"
+      "status": "implemented",
+      "note": "U-20: adapter.config.setting(key).sync() and useSetting(key).sync over the browser Cloud Sync host (src/browser/cloudSync); test/cloudSyncSettings.test.tsx. A cookie page, the local adapter and the desktop bridge answer the typed N/A (the host serves no Cloud Sync verb on bridge v4, D-6)."
     },
     "devices.fingerprint": {
       "status": "na",
@@ -247,15 +247,15 @@
       "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-46)."
     },
     "identity.link": {
-      "status": "planned",
-      "wp": "I-46",
+      "status": "implemented",
       "except": [
         {
           "runtime": "desktop-bridge",
-          "reason": "runtime"
+          "reason": "runtime",
+          "note": "The desktop renderer holds no device key; the adapter has no `link`, and the kit shows no offer."
         }
       ],
-      "note": "Link offer (I-43.3 transcripts, I-46)."
+      "note": "I-46.13: `link.offer()`, `accept()` (the held handle, else one provider prompt), `decline()` (sha256(issuer ‖ sub) in IndexedDB), lazy after a redirect sign-in; the kit's link-offer, link-done and link-conflict steps over the app. Replays I-43.3's link-* transcripts."
     },
     "identity.keyentry": {
       "status": "implemented",
@@ -523,8 +523,8 @@
       "wp": "U-20"
     },
     "sync.settings": {
-      "status": "planned",
-      "wp": "U-20"
+      "status": "implemented",
+      "note": "U-20.3: config.set routed through the browser Cloud Sync machine while a person is signed in, setting(key).sync(), the onConfigChange origin, the one-time import, the pre-sign-out flush, the sign-in offer; useSetting and useCloudSync. The 17 cloudsync-* transcripts replay through it (test/transcripts.test.ts); test/cloudSyncSettings.test.tsx and cloudSyncHost.test.ts. A cookie page, the local adapter and the desktop bridge answer the typed N/A (the host serves no Cloud Sync verb on bridge v4, D-6)."
     },
     "sync.conflict": {
       "status": "planned",

@@ -72,6 +72,10 @@ export interface RedeemInput {
   /** The request headers for the token POST, `content-type` not yet set. */
   headers: (extra: Record<string, string>) => Record<string, string>;
   now: number;
+  /** The device's own token and the product's base: a device that holds its token presents it
+   *  (V4 §12.5), so the sign-in keeps its licence and refreshes the step-up the link offer needs.
+   *  Only to the Worker that issued it: an endpoint off the base gets none. */
+  held?: { token: string | null; baseUrl: string };
 }
 
 /**
@@ -95,7 +99,14 @@ export async function redeemCallback(
     res = await input.fetchImpl(pending.tokenEndpoint, {
       method: "POST",
       credentials: "omit",
-      headers: input.headers({ "content-type": TOKEN_CONTENT_TYPE }),
+      redirect: "error",
+      headers: input.headers({
+        "content-type": TOKEN_CONTENT_TYPE,
+        ...(input.held?.token &&
+          pending.tokenEndpoint.startsWith(`${input.held.baseUrl}/`) && {
+            authorization: `Bearer ${input.held.token}`,
+          }),
+      }),
       body: tokenForm(pending, checked.code, input.deviceName ?? undefined),
     });
   } catch (e) {

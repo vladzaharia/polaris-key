@@ -196,6 +196,8 @@ public fun PolarisKitScreen(
     onControl: (String) -> Unit = {},
     /** Offered with the license choice when every license is on all its devices (the automatic sign-in). */
     onUseAnotherAccount: (() -> Unit)? = null,
+    /** The new recovery code to draw on the RecoveryCode screen (from the host, shown once); without one that screen draws nothing. */
+    recoveryCode: PolarisRecoveryCode? = null,
 ) {
     // The sign-in form and its hand-off (the code, declined, expired) are focused steps: the
     // product header above a start-aligned title.
@@ -228,6 +230,49 @@ public fun PolarisKitScreen(
             }, onPortal = { onAction(null) }, onRedeem = { onAction(null) }, onDone = { onAction(null) }, catalog = catalog, locale = locale)
 
         screen.component == KitComponent.entitlementGate -> KitEntitlementGate(screen, modifier, catalog, locale) { onAction(null) }
+
+        // The Cloud Sync screens (U-42): drawn from the model, each control reports its matrix action.
+        screen.component == KitComponent.unlockSync ->
+            PolarisUnlockSync(
+                screen, modifier,
+                // The typed recovery code goes to onContinue, then the matrix action: the host passes it to `recover` only.
+                onUnlock = { typed ->
+                    onContinue(typed)
+                    onAction(KitAction.unlock)
+                },
+                onStartOver = { onAction(KitAction.startOver) },
+                onConfirmStartOver = { onAction(KitAction.confirmStartOver) },
+                onRetry = { onAction(KitAction.retry) },
+                onCancel = { onAction(KitAction.cancel) },
+                catalog = catalog, locale = locale,
+            )
+
+        screen.component == KitComponent.ringChange ->
+            PolarisRingChange(
+                screen, modifier,
+                onAccept = { onAction(KitAction.acceptRingChange) },
+                onUseCode = { onAction(KitAction.useRecoveryCode) },
+                onCancel = { onAction(KitAction.cancel) },
+                catalog = catalog, locale = locale,
+            )
+
+        screen.component == KitComponent.recoveryCode ->
+            if (recoveryCode != null) {
+                // The tick is the screen's own state here; Done follows it (the host gets onAction(null) on Done).
+                var saved by remember(screen) { mutableStateOf(screen.state == "saved") }
+                PolarisRecoveryCodeScreen(
+                    screen, recoveryCode, modifier, onSavedChange = { saved = it }, onDone = { onAction(null) },
+                    catalog = catalog, locale = locale, saved = saved,
+                )
+            }
+
+        screen.component == KitComponent.cloudSyncStatus && (screen.state == "locked" || screen.state == "ring-changed") ->
+            PolarisCloudSyncStatus(
+                if (screen.state == "locked") PolarisCloudSync.Locked else PolarisCloudSync.RingChanged,
+                modifier,
+                onUnlock = { onAction(KitAction.unlock) },
+                onReview = { onAction(null) },
+            )
 
         else -> KitScreenBody(
             screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode,

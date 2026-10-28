@@ -97,6 +97,7 @@ The full route table, including every non-document surface, is at
 | [Offline bundles](/docs/reference/protocol/bundles/)                     | `pkey-bundle+jws`, its three time bounds, and the four ordered refusal steps                                                                | §7             |
 | [Pack byte formats](/docs/reference/protocol/packs/)                     | The files index, the patch descriptor, `treeDigest`, the path rules, the codec rules and the zstd window check                              | §2.6, §2.7     |
 | [Fingerprint constants](/docs/reference/protocol/fingerprint-constants/) | The frozen hardware-fingerprint formulas: component order, hash domains, digest lengths                                                     | Fingerprint v1 |
+| [The peer protocol](/docs/reference/protocol/peer/) | `pkey-peer+jws` and `pkey-ring+jws`, discovery, the Noise handshake and modes, records, and the relay envelope | §15 |
 | [Conformance corpus v2](/docs/reference/protocol/corpus/)                | The case families every SDK verifies identically, with live counts                                                                          | §6, §10        |
 
 ## One client, end to end

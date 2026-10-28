@@ -67,7 +67,7 @@ struct KitButton: View {
     private func labelColor(_ p: KitPalette) -> Color {
         switch kind {
         case .primary: return p.accentOn
-        case .destructive: return .white
+        case .destructive: return p.dangerOn
         case .secondary: return p.textStrong
         case .quiet: return p.accentFg
         }
@@ -145,7 +145,7 @@ struct KitButtonSkin: ViewModifier {
                 .buttonStyle(KitQuietStyle(color: p.accentFg, reduceMotion: style.reduceMotion))
         case .primary, .destructive:
             let fill = kind == .destructive ? p.danger : p.accentSolid
-            let label = kind == .destructive ? Color.white : p.accentOn
+            let label = kind == .destructive ? p.dangerOn : p.accentOn
             if style.usesGlass, #available(iOS 26.0, macOS 26.0, *) {
                 #if compiler(>=6.2)
                 content

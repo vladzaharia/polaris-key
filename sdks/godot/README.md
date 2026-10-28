@@ -830,6 +830,71 @@ await PolarisKey.identity.open_account()         # the product's account page, d
   The encoder is pure GDScript, held to fixtures from Nayuki's qrcodegen (`tests/qr/`); about
   8 ms per encode on a release template (11 ms in the editor) on an M-series Mac.
 
+## Key ring (`PolarisKey.keyring`)
+
+The key ring is the root key behind end-to-end encrypted Cloud Sync. One ring per person and
+product; every device holds the same 32-byte root, wrapped to its own agreement key. The Worker
+stores wraps and a recovery blob it cannot open. Encrypted settings sync itself is planned; the
+ring and its codec ship now. A product with Cloud Sync or its E2E setting off answers `not_found`.
+
+```gdscript
+var ring := PolarisKey.keyring
+var made := await ring.create()                 # a new ring, this device's wrap, a recovery blob
+if made.ok:
+	print(made.detail.recovery_code)                # show it once; the SDK keeps it nowhere
+var u := await ring.unlock()                    # opens this device's own wrap (no code needed)
+match u.detail.kind if u.ok else "":
+	"unlocked": pass                                # ring.codec seals and opens values
+	"locked": print(u.detail.reason)                # no-ring, no-wrap or unusable-wrap
+	"ring-changed":                                 # the Worker serves another ring than the pinned one
+		print(u.detail.served.ring_id)                  # nothing was opened; confirm with the person, then:
+		await ring.accept_ring_change(u.detail.served)
+await ring.wrap_to("DEVICE_ID", "AGREE_KEY_B64URL")  # hand the root to another device (nearby approval)
+var code := await ring.set_recovery_code()      # a new code; the old one stops working
+await ring.recover("ABCD-EFGH-...")             # a bad checksum is refused before any request
+await ring.reset()                              # start over; adopt() / open_adopted() keep the old data readable
+await ring.forget()                             # sign-out: drops the root and the pin
+```
+
+- **Pin.** The first root a device acquires pins `{ring_id, epoch, root_kid}` per product. A served
+  ring that differs is `ring-changed` and is never opened or replaced; only the recovery code
+  (`recover`), `accept_ring_change` for the ring the person was shown, or `forget()` change the pin.
+  The stored root is used only while it matches the pin. Sign-out calls `forget()`.
+- **Where the root lives**, besides memory. The pin is a plain JSON file with no secret, under
+  `user://pkey/<product>/`.
+
+| Platform                         | The root                                                                                                                                                                                         |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| iOS and macOS                    | sealed by a Keychain AES-256-GCM key (`PKeyApple` lane)                                                                                                                                          |
+| Android                          | sealed by an Android Keystore key (`PKeyAndroid` lane)                                                                                                                                           |
+| Windows                          | sealed by DPAPI, user scope (`pkey_win` lane)                                                                                                                                                    |
+| Linux, the editor                | the engine-encrypted file, keyed from the device id and a salt: **weaker than the OS keychains**, it keeps the root out of a casual copy of the folder, not out of code running as the same user |
+| Web without persistent `user://` | memory only; the root is gone when the page closes                                                                                                                                               |
+
+**OS backups.** The ring's files (pin, sealed root, device keys) and the Cloud Sync state file stay
+out of OS backups where the platform has a flag (`PKeyBackupExclusion`):
+
+| Platform | Out of backups                                                                                                                                                                                                                                               |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Android  | with the `PolarisKeyAndroid` plugin, under `Context.noBackupFilesDir` (the `no_backup_dir` op) instead of `user://`; without it the files are in `user://pkey` and Auto Backup may take them (sealed with the Keystore key, which does not leave the device) |
+| iOS      | with the `PolarisKeyApple` plugin, `isExcludedFromBackup` is set on `user://pkey/<product>/` once it exists (the `exclude_from_backup` op); without the plugin the folder is backed up (sealed with an engine passphrase from the device's unique id)        |
+| Others   | no flag is set: Windows, Linux and the web have no backup flag here, and macOS keeps `user://` in Time Machine unless the game excludes it                                                                                                                   |
+
+Moving to the no-backup directory does not migrate files an earlier `user://pkey` holds. `store_root`
+is still the root you configure; the ring's stores resolve it. A game that builds the Cloud Sync host
+itself passes `PKeyBackupExclusion.root(store_root)` as the host's `state_dir` root.
+
+`PolarisKey.keyring.status()` reports `root_persistence`, and the vault's `protection()` names
+the store in use (`keychain-sealed`, `keystore-sealed`, `dpapi-sealed`, `encrypted-file`, `file`,
+`memory`). The device's agreement key never leaves its store: a wrap is opened through the
+store's `dh`. The root, the code and every key print as redacted.
+
+- **Crypto in GDScript.** The engine has no AES-GCM, so values seal with AES-256-GCM over the
+  engine's AES block cipher and a constant-time GHASH: about 7 ms for 8 KiB in the editor, at most
+  64 KiB per call (a setting is at most 8 KiB). Files stay native-only.
+- **Device keys.** The ring opens its wrap with the product's own device key store under
+  `store_root`, or the one you give as `PKeyOptions.device_keys`.
+
 ## License notes
 
 - `X-PKey-Channel` is always a canonical §5.1 name: `dev` for `0.0.0-dev*` builds, `pr` for PR

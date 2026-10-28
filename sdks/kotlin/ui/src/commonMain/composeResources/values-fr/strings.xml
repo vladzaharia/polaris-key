@@ -171,6 +171,8 @@
     <string name="a11y_nearbyCode">Code à toucher : %1$s</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">Code de connexion %1$s</string>
+    <!-- Screen reader label; never shown. The recovery code, as groups separated by commas so a screen reader pauses between groups. Arguments: {code} = the code the screen shows; never split or translated. Arguments: 1=code. -->
+    <string name="a11y_recoveryCode">Code de récupération %1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
     <plurals name="a11y_seatMeter">
         <item quantity="one">%1$s sur %2$d appareil utilisés</item>
@@ -731,7 +733,11 @@
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Shown under the field when the code's check characters fail or the server refuses it. -->
     <string name="unlockSync_invalid">Ce code n’est pas correct. Vérifiez-le et réessayez.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code. -->
-    <string name="unlockSync_failed">Impossible de déverrouiller. Réessayez plus tard.</string>
+    <string name="unlockSync_failed">Impossible de déverrouiller. Vérifiez votre connexion et réessayez.</string>
+    <!-- UnlockSync: Start over failed (not an unlock failure); Try again repeats it. -->
+    <string name="unlockSync_startOverFailed">Impossible de recommencer. Vérifiez votre connexion et réessayez.</string>
+    <!-- UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on. -->
+    <string name="unlockSync_noCode">Ce compte n’a pas de code de récupération. Recommencez pour continuer à synchroniser.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->
     <string name="unlockSync_startOverTitle">Tout recommencer ?</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22). -->
@@ -748,7 +754,7 @@
     <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
     <string name="recoveryCode_copy">Copier le code</string>
     <string name="recoveryCode_copy__macos">Copier le code</string>
-    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked. -->
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done is hidden until it is checked. -->
     <string name="recoveryCode_saved">J’ai enregistré mon code de récupération</string>
     <!-- RingChange: confirm a changed sync key (U-42). -->
     <string name="ringChange_title">Votre clé de synchronisation a changé</string>
@@ -757,7 +763,11 @@
     <!-- RingChange: confirm a changed sync key (U-42). Used when no device is named. -->
     <string name="ringChange_bodyUnknown">Un appareil a configuré une nouvelle clé pour vos données synchronisées.</string>
     <!-- RingChange: confirm a changed sync key (U-42). -->
-    <string name="ringChange_warning">Continuez uniquement si c’était vous. Sinon, déverrouillez plutôt avec votre code de récupération.</string>
+    <string name="ringChange_warning">Choisissez « C’était moi » uniquement si c’était vous. Sinon, utilisez votre code de récupération.</string>
+    <!-- RingChange: used when no ring was served, so there is nothing to accept. -->
+    <string name="ringChange_warningNoServed">Déverrouillez avec votre code de récupération pour continuer à synchroniser.</string>
+    <!-- RingChange: accepting the new key failed; That was me stays available to retry. -->
+    <string name="ringChange_failed">Impossible de confirmer la nouvelle clé. Réessayez ou utilisez votre code de récupération.</string>
     <!-- RingChange: confirm a changed sync key (U-42). Passes the ring that was shown (changed.served) to acceptRingChange. -->
     <string name="ringChange_accept">C’était moi</string>
     <string name="ringChange_accept__macos">C’était moi</string>
@@ -1151,6 +1161,10 @@
     <!-- Link offer: declines; the device remembers it. -->
     <string name="signin_linkOffer_decline">Non merci</string>
     <string name="signin_linkOffer_decline__macos">Non merci</string>
+    <!-- Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_stale">Reconnectez-vous pour lier %1$s.</string>
+    <!-- Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_failed">Impossible de lier %1$s sur cet appareil.</string>
     <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_done">%1$s associé</string>
     <!-- Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->

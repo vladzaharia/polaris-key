@@ -222,14 +222,14 @@
           ]
         },
         "link-done": {
-          "copy": ["signin.linkOffer.done", "common.continue"]
+          "copy": ["signin.linkOffer.done", "common.done"]
         },
         "link-conflict": {
           "copy": [
             "signin.linkOffer.conflictTitle",
             "signin.linkOffer.conflict",
             "signin.linkOffer.join",
-            "common.continue"
+            "common.done"
           ]
         },
         "nearby-prompt": {
@@ -1165,6 +1165,22 @@
             "unlockSync.startOverConfirm",
             "common.cancel"
           ]
+        },
+        "no-code": {
+          "copy": [
+            "unlockSync.title",
+            "unlockSync.noCode",
+            "unlockSync.startOver",
+            "common.cancel"
+          ]
+        },
+        "start-over-failed": {
+          "copy": [
+            "unlockSync.title",
+            "unlockSync.startOverFailed",
+            "common.tryAgain",
+            "common.cancel"
+          ]
         }
       }
     },
@@ -1203,6 +1219,19 @@
             "ringChange.body",
             "ringChange.bodyUnknown",
             "ringChange.warning",
+            "ringChange.warningNoServed",
+            "ringChange.accept",
+            "ringChange.useCode",
+            "common.cancel"
+          ]
+        },
+        "failed": {
+          "copy": [
+            "ringChange.title",
+            "ringChange.body",
+            "ringChange.bodyUnknown",
+            "ringChange.warning",
+            "ringChange.failed",
             "ringChange.accept",
             "ringChange.useCode",
             "common.cancel"

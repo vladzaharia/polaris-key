@@ -73,6 +73,8 @@ export type UnlockSyncState =
   | "invalid"
   | "working"
   | "failed"
+  | "start-over-failed"
+  | "no-code"
   | "start-over"
   | "hidden";
 
@@ -103,9 +105,39 @@ export function unlockSyncView(
         tone: "danger",
         errorSlot: "screen",
       });
+    case "start-over-failed":
+      // Start over did not run: not an unlock failure. Try again repeats it.
+      return makeView(ctx, "UnlockSync", {
+        state: "start-over-failed",
+        copy: [
+          "unlockSync.title",
+          "unlockSync.startOverFailed",
+          "common.tryAgain",
+          "common.cancel",
+        ],
+        primary: "common.tryAgain",
+        tone: "danger",
+        errorSlot: "screen",
+      });
+    case "no-code":
+      // The account holds no recovery code: nothing to enter, so Start over is the way on.
+      return makeView(ctx, "UnlockSync", {
+        state: "no-code",
+        copy: [
+          "unlockSync.title",
+          "unlockSync.noCode",
+          "unlockSync.startOver",
+          "common.cancel",
+        ],
+        primary: "unlockSync.startOver",
+        tone: "neutral",
+        focus: null,
+      });
     case "start-over":
       // The warning comes first: the sync key is replaced only from this step (T22). Cancel takes
-      // the first focus, never the destructive control.
+      // the first focus, never the destructive control. `focus` means KEYBOARD focus (and the
+      // focus engine) in native kits; a screen reader's first stop is the heading, which names
+      // what is being confirmed before any button is read.
       return makeView(ctx, "UnlockSync", {
         state: "start-over",
         copy: [
@@ -169,7 +201,7 @@ export function recoveryCodeView(
 
 // ── RingChange ─────────────────────────────────────────────────────────────────────────────────
 
-export type RingChangeState = "confirm" | "hidden";
+export type RingChangeState = "confirm" | "failed" | "hidden";
 
 /** Confirm a changed ring: it names the device (`changed.by`) and offers to accept the ring that
  *  was shown (`changed.served`). The recovery code is the primary, safer way in. */
@@ -179,20 +211,23 @@ export function ringChangeView(
   const r = ctx.input.ringChange;
   if (!ctx.on("sync") || !r) return hiddenView(ctx, "RingChange");
   const by = r.by?.trim() ? r.by : undefined;
+  const failed = r.failed === true;
   return makeView(ctx, "RingChange", {
-    state: "confirm",
+    state: failed ? "failed" : "confirm",
     copy: [
       "ringChange.title",
       by ? "ringChange.body" : "ringChange.bodyUnknown",
-      "ringChange.warning",
       // Nothing was served to confirm: no Accept, only the recovery code.
+      r.served ? "ringChange.warning" : "ringChange.warningNoServed",
+      failed && "ringChange.failed",
       r.served && "ringChange.accept",
       "ringChange.useCode",
       "common.cancel",
     ],
     args: { device: by },
     primary: "ringChange.useCode",
-    tone: "neutral",
+    tone: failed ? "danger" : "neutral",
+    errorSlot: failed ? "screen" : null,
   });
 }
 

@@ -2061,9 +2061,9 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "config.mint": { status: "implemented", service: "config", na: [] },
   "config.mirror": { status: "implemented", service: "config", na: [] },
   "config.local": { status: "implemented", service: "sdk", na: [] },
-  "config.sync": { status: "planned", service: "sync", na: [] },
+  "config.sync": { status: "implemented", service: "sync", na: [] },
   "sync.scenarios": { status: "planned", service: "sync", na: [] },
-  "sync.settings": { status: "planned", service: "sync", na: [] },
+  "sync.settings": { status: "implemented", service: "sync", na: [] },
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
   "sync.keyring": { status: "implemented", service: "sync", na: [] },
@@ -2163,7 +2163,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "identity.autosignin": { status: "planned", service: "identity", na: [] },
   "identity.link": {
-    status: "planned",
+    status: "implemented",
     service: "identity",
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
@@ -2351,4 +2351,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "a5b6fa76cd822c9969c3bd55721e3701d305141853a85f2772007d4cba2a9769";
+  "2edcc0caa111f97dd5065a9de308893db428b88a47437b07b7b3e1fd95d6881a";

@@ -456,6 +456,11 @@ msgstr "Código que tocar: {code}"
 msgid "a11y.code"
 msgstr "Código de inicio de sesión {code}"
 
+#. Recovery code {code}
+#. Screen reader label; never shown. The recovery code, as groups separated by commas so a screen reader pauses between groups. Arguments: {code} = the code the screen shows; never split or translated.
+msgid "a11y.recoveryCode"
+msgstr "Código de recuperación {code}"
+
 #. {used} of {limit, plural, one {# device} other {# devices}} in use
 #. Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number.
 #. Plural on {limit}.
@@ -1977,10 +1982,20 @@ msgstr "Empezar de cero"
 msgid "unlockSync.invalid"
 msgstr "Ese código no es correcto. Revísalo e inténtalo de nuevo."
 
-#. Couldn't unlock. Try again later.
+#. Couldn't unlock. Check your connection and try again.
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code.
 msgid "unlockSync.failed"
-msgstr "No se pudo desbloquear. Inténtalo más tarde."
+msgstr "No se pudo desbloquear. Comprueba tu conexión e inténtalo de nuevo."
+
+#. Couldn't start over. Check your connection and try again.
+#. UnlockSync: Start over failed (not an unlock failure); Try again repeats it.
+msgid "unlockSync.startOverFailed"
+msgstr "No se pudo empezar de nuevo. Comprueba tu conexión e inténtalo de nuevo."
+
+#. This account has no recovery code. Start over to keep syncing.
+#. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
+msgid "unlockSync.noCode"
+msgstr "Esta cuenta no tiene código de recuperación. Empieza de nuevo para seguir sincronizando."
 
 #. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
@@ -2028,7 +2043,7 @@ msgid "recoveryCode.copy"
 msgstr "Copiar código"
 
 #. I've saved my recovery code
-#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked.
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done is hidden until it is checked.
 msgid "recoveryCode.saved"
 msgstr "He guardado mi código de recuperación"
 
@@ -2047,10 +2062,20 @@ msgstr "{device} configuró una clave nueva para tus datos sincronizados."
 msgid "ringChange.bodyUnknown"
 msgstr "Un dispositivo configuró una clave nueva para tus datos sincronizados."
 
-#. Continue only if that was you. If not, unlock with your recovery code instead.
+#. Choose “That was me” only if you did this. If not, use your recovery code.
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.warning"
-msgstr "Continúa solo si fuiste tú. Si no, desbloquea con tu código de recuperación."
+msgstr "Elige «Fui yo» solo si lo hiciste tú. Si no, usa tu código de recuperación."
+
+#. Unlock with your recovery code to keep syncing.
+#. RingChange: used when no ring was served, so there is nothing to accept.
+msgid "ringChange.warningNoServed"
+msgstr "Desbloquea con tu código de recuperación para seguir sincronizando."
+
+#. Couldn't confirm the new key. Try again, or use your recovery code.
+#. RingChange: accepting the new key failed; That was me stays available to retry.
+msgid "ringChange.failed"
+msgstr "No se pudo confirmar la nueva clave. Inténtalo de nuevo o usa tu código de recuperación."
 
 #. That was me
 #. RingChange: confirm a changed sync key (U-42). Passes the ring that was shown (changed.served) to acceptRingChange.
@@ -3078,17 +3103,17 @@ msgstr "Usar otra cuenta"
 msgid "signin.linkOffer.title"
 msgstr "¿Iniciar sesión con {provider} la próxima vez?"
 
-#. Then {app} and other apps that use Polaris Locker can sign you in by themselves.
+#. Then {app} and other apps that use Polaris Locker can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyGlobal"
 msgstr "Entonces {app} y otras apps que usan Polaris Locker podrán iniciar tu sesión solas."
 
-#. Then apps from {developer} can sign you in by themselves.
+#. Then apps from {developer} can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated).
 msgid "signin.linkOffer.bodyDeveloper"
 msgstr "Entonces las apps de {developer} podrán iniciar tu sesión solas."
 
-#. Then {app} and its developer's other apps can sign you in by themselves.
+#. Then {app} and its developer's other apps can sign you in automatically.
 #. Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyApp"
 msgstr "Entonces {app} y las demás apps de su desarrollador podrán iniciar tu sesión solas."
@@ -3107,6 +3132,16 @@ msgstr "No, gracias"
 msgctxt "macos"
 msgid "signin.linkOffer.decline"
 msgstr "No, gracias"
+
+#. Sign in again to link {provider}.
+#. Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.stale"
+msgstr "Inicia sesión de nuevo para vincular {provider}."
+
+#. Couldn't link {provider} on this device.
+#. Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.failed"
+msgstr "No se pudo vincular {provider} en este dispositivo."
 
 #. {provider} linked
 #. Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated).

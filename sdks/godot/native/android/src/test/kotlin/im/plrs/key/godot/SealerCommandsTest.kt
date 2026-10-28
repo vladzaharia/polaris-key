@@ -95,3 +95,17 @@ class SealerCommandsTest {
         assertEquals("bad_input", op("ks_seal", "product" to "diceroll", "context" to "A", "plain" to "A").getString("error"))
     }
 }
+
+/** The no-backup directory the GDScript stores root their sensitive files in (GODOT-BACKUP-EXCL). */
+@RunWith(RobolectricTestRunner::class)
+class NoBackupDirTest {
+    @Test
+    fun answersTheNoBackupFilesDir() {
+        val host = TestHost()
+        val r = Commands(host).json(JSONObject().put("op", "no_backup_dir"))
+        assertTrue(r.getBoolean("ok"))
+        val path = r.getString("path")
+        assertEquals(host.appContext.noBackupFilesDir.absolutePath, path)
+        assertTrue(java.io.File(path).isDirectory)
+    }
+}

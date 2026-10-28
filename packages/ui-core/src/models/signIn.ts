@@ -65,9 +65,13 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
   };
   const license = ctx.on("license");
   const error = ctx.input.error?.code;
-  // A failed Continue keeps the confirm on screen (autoStepView draws the network line).
+  // A failed Continue (or Link) keeps its step on screen (autoStepView draws the network line).
   const confirmRetry =
-    error === "network" && ctx.input.autoSignIn?.step === "confirm";
+    (error === "network" && ctx.input.autoSignIn?.step === "confirm") ||
+    (ctx.input.autoSignIn?.step === "link-offer" &&
+      (error === "network" ||
+        error === "link-stale" ||
+        error === "link-failed"));
   if (error && !confirmRetry) {
     const primary = methodsPrimary(ctx);
     // Sign-in errors sit under Sign in (DL7); the methods stay.
@@ -316,20 +320,38 @@ function autoStepView(
         : args.developer
           ? "signin.linkOffer.bodyDeveloper"
           : "signin.linkOffer.bodyApp";
+      // A failed Link keeps the offer and says why. Too old a sign-in swaps Link for Sign in
+      // again; the handle lives on, so the next Link is one tap.
+      const code = ctx.input.error?.code;
+      const stale = code === "link-stale";
+      const line =
+        code === "network"
+          ? "core.codes.network.message"
+          : stale
+            ? "signin.linkOffer.stale"
+            : code === "link-failed" && "signin.linkOffer.failed";
+      // Retrying cannot fix a refused device: Link goes, and No thanks is the way on.
+      const refused = code === "link-failed";
+      const primary = stale
+        ? "signin.again"
+        : refused
+          ? "signin.linkOffer.decline"
+          : "signin.linkOffer.primary";
       return view(
         "link-offer",
         [
           "signin.linkOffer.title",
           body,
-          "signin.linkOffer.primary",
+          !refused && primary,
           "signin.linkOffer.decline",
+          line,
         ],
-        { primary: "signin.linkOffer.primary" },
+        { primary, ...(line ? { tone: "danger" as const } : {}) },
       );
     }
     case "link-done":
-      return view("link-done", ["signin.linkOffer.done", "common.continue"], {
-        primary: "common.continue",
+      return view("link-done", ["signin.linkOffer.done", "common.done"], {
+        primary: "common.done",
       });
     case "link-conflict":
       return view(
@@ -338,9 +360,9 @@ function autoStepView(
           "signin.linkOffer.conflictTitle",
           "signin.linkOffer.conflict",
           "signin.linkOffer.join",
-          "common.continue",
+          "common.done",
         ],
-        { primary: "common.continue", tone: "neutral" },
+        { primary: "common.done", tone: "neutral" },
       );
     case "nearby-prompt":
       return view(

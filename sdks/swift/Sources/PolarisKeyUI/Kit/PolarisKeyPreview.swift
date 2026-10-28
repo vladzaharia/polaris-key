@@ -166,6 +166,24 @@ public struct PolarisKeyPreview: View {
                         ? ["render.quality": ["Low", "Medium", "High"]] : [:],
                     onRetry: {}, onReset: state.variant == "controls" ? { _ in } : nil)
             }
+        case .unlockSync:
+            UnlockSyncView(model: UnlockSyncModel(inputs: model.inputs, armDelay: .zero))
+        case .recoveryCode:
+            let recovery = RecoveryCodeModel(inputs: model.inputs)
+            let _ = recovery.show(code: PolarisKeyPreviewState.sampleRecoveryCode)
+            let _ = recovery.setSaved(model.inputs.recoveryCode?.saved == true)
+            RecoveryCodeView(model: recovery)
+        case .ringChange:
+            RingChangeView(model: RingChangeModel(inputs: model.inputs))
+        case .cloudSyncStatus:
+            // A still: the buttons draw as the settings host (U-07) will wire them.
+            PreviewSettingsHost {
+                Section {
+                    CloudSyncStatusView(
+                        screen: KitStates.cloudSyncStatus(model.inputs), onUnlock: {},
+                        onReview: {})
+                }
+            }
         case .paywall:
             PaywallView(
                 screen: KitStates.paywall(model.inputs),

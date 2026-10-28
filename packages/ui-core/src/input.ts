@@ -440,7 +440,14 @@ export interface UiInput {
   /** UnlockSync's step (U-42). `nearby` says the host could unlock from a nearby device:
    *  v0.10.0 never offers it, because NearbyApproval does not ship. */
   unlockSync?: {
-    step: "code" | "invalid" | "working" | "failed" | "start-over";
+    step:
+      | "code"
+      | "invalid"
+      | "working"
+      | "failed"
+      | "start-over-failed"
+      | "no-code"
+      | "start-over";
     nearby?: boolean;
   };
   /** RecoveryCode (U-42). The code is never an input: the kit draws it from the host, once. */
@@ -450,6 +457,8 @@ export interface UiInput {
   ringChange?: {
     by?: string;
     served?: { ringId: string; epoch: number; rootKid: string };
+    /** Accepting did not open a root: the screen says so; Accept stays available. */
+    failed?: boolean;
   };
   /** `store` is the store that fixes the channel ("App Store", "Google Play", "Steam"). */
   channel?: {
