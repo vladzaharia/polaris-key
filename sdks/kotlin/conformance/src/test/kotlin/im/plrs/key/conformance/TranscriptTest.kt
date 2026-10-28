@@ -8,6 +8,7 @@
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
+// @pkey-feature identity.exchange
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -81,6 +82,10 @@ import im.plrs.key.core.longValue
 import im.plrs.key.core.stringValue
 import im.plrs.key.identity.AttachResult
 import im.plrs.key.identity.ChoiceResult
+import im.plrs.key.identity.ConsentInput
+import im.plrs.key.identity.ExchangeKind
+import im.plrs.key.identity.ExchangeNonce
+import im.plrs.key.identity.ExchangeOutcome
 import im.plrs.key.identity.LicenseChoice
 import im.plrs.key.identity.ConformanceReplayOnly
 import im.plrs.key.identity.RedirectEntropy
@@ -290,11 +295,17 @@ object KotlinReplay {
                         val recorded = args["choice"].objectValue
                             ?: step["exchanges"]!!.obj["items"]!!.arrayValue!!.firstOrNull()?.obj?.get("request")?.obj
                                 ?.get("body").objectValue?.get("json").objectValue?.get("choice").objectValue
-                        val r = if (recorded == null) choice.completeRecorded(grant, null) else choice.complete(grant, LicenseChoice.fromJson(recorded)!!)
+                        // The consent the person gave rides the same request (identity.exchange, confirm).
+                        val consent = step["exchanges"]!!.obj["items"]!!.arrayValue!!.firstOrNull()?.obj?.get("request")?.obj
+                            ?.get("body").objectValue?.get("json").objectValue?.get("consent").objectValue
+                            ?.get("claims")?.arrayValue?.map { it.stringValue!! }?.let { ConsentInput(it) }
+                        val r = if (consent != null) choice.complete(grant, recorded?.let { LicenseChoice.fromJson(it)!! }, consent)
+                        else if (recorded == null) choice.completeRecorded(grant, null) else choice.complete(grant, LicenseChoice.fromJson(recorded)!!)
                         when (r) {
                             is ChoiceResult.Ok -> {
                                 out["licenseId"] = r.value.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
                                 out["subject"] = JsonPrimitive(r.value.subject)
+                                out["scope"] = JsonPrimitive(r.value.scope)
                                 r.value.keyEntries?.let { out["keyEntries"] = JsonObject(mapOf("used" to jsonInt(it.used), "limit" to jsonInt(it.limit))) }
                             }
                             is ChoiceResult.Refused -> refused = r
@@ -350,6 +361,63 @@ object KotlinReplay {
                 )
                 // core.presentation: the member the client now exposes (null when it went away).
                 out["presentation"] = client.presentation()?.toJson() ?: JsonNull
+                // identity.exchange: the Identity fragment's `exchange` member and nonce route.
+                client.core.discoveryDocument()?.let { doc ->
+                    val identity = doc.services[ServiceSlug.identity]
+                    out["exchange"] = if (identity?.enabled == true) identity.extras["exchange"] ?: JsonNull else JsonNull
+                    out["nonceEndpoint"] = JsonPrimitive(identity?.enabled == true && identity.endpoints["nonce"] != null)
+                }
+            }
+            // `client.identity.exchange` (I-45.3, `identity.exchange`): a platform ID token for a device token. A step with
+            // no `nonce` asks for its own (the recordings do); one with a `nonce` spends that recorded one. A refusal is thrown.
+            "exchange" -> {
+                val label = args["keyLabel"].stringValue!!
+                if (session.keyLabel != label) {
+                    session.keys.use(label)
+                    session.keyLabel = label
+                }
+                client.identity.useDeviceKeys(session.keys)
+                // `tokenHeld` is whether this step stored a device token (an earlier step's stays in the store).
+                val before = store.getToken()
+                val kind = ExchangeKind.entries.first { it.wire == args["kind"].stringValue }
+                // A step that dials nothing (the product offers no exchange) carries no token; the SDK never reads it.
+                val subject = args["subjectToken"].stringValue ?: "not-a-token"
+                try {
+                    val outcome = args["nonce"].stringValue?.let { client.identity.exchange(kind, subject, ExchangeNonce(it)) }
+                        ?: client.identity.exchangeWithFreshNonce(kind, subject)
+                    when (outcome) {
+                        is ExchangeOutcome.SignedIn -> {
+                            out["result"] = JsonPrimitive("ok")
+                            out["scope"] = JsonPrimitive(outcome.scope)
+                            out["issuedTokenType"] = outcome.issuedTokenType?.let { JsonPrimitive(it) } ?: JsonNull
+                            out["licenseId"] = outcome.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
+                        }
+                        is ExchangeOutcome.PendingConsent -> {
+                            out["result"] = JsonPrimitive("confirm")
+                            out["firstTime"] = JsonPrimitive(outcome.consent.firstTime)
+                            out["changed"] = JsonPrimitive(outcome.consent.changed)
+                            out["as"] = JsonObject(
+                                mapOf(
+                                    "provider" to (outcome.consent.asProvider?.let { JsonPrimitive(it) } ?: JsonNull),
+                                    "email" to (outcome.consent.asEmail?.let { JsonPrimitive(it) } ?: JsonNull),
+                                ),
+                            )
+                        }
+                        is ExchangeOutcome.PendingSignIn -> out["result"] = JsonPrimitive("choose")
+                        is ExchangeOutcome.NeedsSignIn -> {
+                            out["result"] = JsonPrimitive("interstitial-required")
+                            out["reason"] = JsonPrimitive(outcome.reason)
+                            out["url"] = outcome.url?.let { JsonPrimitive(it) } ?: JsonNull
+                            out["linkHandle"] = outcome.linkHandle?.let { JsonPrimitive(it) } ?: JsonNull
+                            out["expiresIn"] = outcome.expiresInSeconds?.let { JsonPrimitive(it) } ?: JsonNull
+                        }
+                        is ExchangeOutcome.Unavailable -> out["result"] = JsonPrimitive("unavailable")
+                    }
+                } catch (e: PolarisException) {
+                    out["result"] = JsonPrimitive("refused")
+                    out["code"] = JsonPrimitive(e.code)
+                }
+                out["tokenHeld"] = JsonPrimitive(store.getToken().let { it != null && it != before })
             }
             // `client.connect` (CC-06.4, `connect.identity`): the identity and the device list.
             "connectIdentity", "connectDevices" -> {
@@ -615,7 +683,8 @@ object KotlinReplay {
         }
         out["services"] = JsonObject(client.capabilities().entries.associate { it.key.slug to JsonPrimitive(it.value) })
         out["licenseStatus"] = JsonPrimitive(client.status().status.wire)
-        out["tokenHeld"] = JsonPrimitive(store.getToken() != null)
+        // The `exchange` verb reports its own: whether that step stored a token.
+        out.putIfAbsent("tokenHeld", JsonPrimitive(store.getToken() != null))
         return out
     }
 
@@ -787,9 +856,9 @@ object KotlinReplay {
                 },
             ),
         )
-        // The redirect recordings hold the token exchange, not the sync a sign-in triggers after it.
+        // The redirect and platform-exchange recordings hold the token exchange, not the sync a sign-in triggers after it.
         @OptIn(ConformanceReplayOnly::class)
-        if (redirects) client.identity.redirectAcquisitionSync = false
+        if (redirects || t.steps.any { it["action"].stringValue == "exchange" }) client.identity.redirectAcquisitionSync = false
         try {
             t.steps.forEachIndexed { i, _ ->
                 val step = server.beginStep(i)
@@ -981,6 +1050,9 @@ class TranscriptTest : ConformanceSuite() {
             "redirect-web-happy", "redirect-web-errors", "locker-redirect-web", "identity-request-hints",
             // I-10b.19: the licence choice.
             "choice-key-app", "choice-replace-app", "choice-grant-errors",
+            // I-45.3: the platform-token exchange.
+            "discovery-identity-exchange", "exchange-silent", "exchange-confirm", "exchange-choose", "exchange-no-link",
+            "exchange-errors", "exchange-disabled", "exchange-gate-off", "exchange-gate-off-stale",
         )
     }
 }
