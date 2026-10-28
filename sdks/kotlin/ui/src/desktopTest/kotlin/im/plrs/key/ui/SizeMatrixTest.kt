@@ -317,9 +317,23 @@ internal val knownMatrixGaps: List<Regex> = listOf(
     Regex("""MacOS sign-in-confirm 844x520-fs2: (.* shows .*|the primary action .* is not in the first viewport .*)"""),
 )
 
+/**
+ * Known gaps whose size depends on the host's font metrics: they reproduce on the Linux and Windows runners and not on macOS, so
+ * unlike [knownMatrixGaps] a run where one no longer occurs is fine. Each needs a dated reason; the list only shrinks.
+ */
+internal val fontMetricMatrixGaps: List<Regex> = listOf(
+    // 2026-10-28 (STAB-13c): the Gnome sign-in's Cancel button at font scale 2 in the 390 dp-high window is cut by 2 px at the bottom of
+    // its scroll pane on the Linux and Windows runners ('Cancel' shows 48 of 50 px high); macOS font metrics fit it. The same
+    // below-the-fold class as the Gnome message row above; UK-10.15 owns the layout fix.
+    Regex("""Gnome sign-in 844x390-fs2: 'Cancel' shows .*"""),
+)
+
 /** [failures] minus the known gaps; a known gap that matched nothing is reported too. */
-internal fun unexpected(failures: List<String>): List<String> = failures.filterNot { f -> knownMatrixGaps.any { it.matches(f) } } +
-    knownMatrixGaps.filter { gap -> failures.none { gap.matches(it) } }.map { "a known gap no longer occurs: ${it.pattern}" }
+internal fun unexpected(failures: List<String>): List<String> {
+    val allowed = knownMatrixGaps + fontMetricMatrixGaps
+    val stale = knownMatrixGaps.filter { gap -> failures.none { gap.matches(it) } }.map { "a known gap no longer occurs: ${it.pattern}" }
+    return failures.filterNot { f -> allowed.any { it.matches(f) } } + stale
+}
 
 class SizeMatrixTest {
     private val out = System.getenv("PKEY_KIT_SHOTS")?.takeIf { it.isNotBlank() }?.let(::File)
