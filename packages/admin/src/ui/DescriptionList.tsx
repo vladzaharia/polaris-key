@@ -19,7 +19,7 @@ export function DescriptionList({
   className,
 }: {
   items: DescriptionItem[];
-  columns?: 1 | 2 | 3;
+  columns?: 1 | 2 | 3 | 4;
   /**
    * A label column and a flush-right value column with a rule between rows, from 640 px up (a drawer's facts);
    * below that each fact stacks.
@@ -33,6 +33,7 @@ export function DescriptionList({
         rows ? "divide-y divide-border" : "grid gap-x-6 gap-y-4",
         columns === 2 && "sm:grid-cols-2",
         columns === 3 && "sm:grid-cols-2 lg:grid-cols-3",
+        columns === 4 && "sm:grid-cols-2 lg:grid-cols-4",
         className,
       )}
     >

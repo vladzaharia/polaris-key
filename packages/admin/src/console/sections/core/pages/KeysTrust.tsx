@@ -42,15 +42,16 @@ import { announce } from "../../../../ui/LiveRegion.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { coreBReads } from "../data.js";
+import { PolicySummary, helpFor, type Services } from "./KeysTrustSummary.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import {
   DEFAULT_POLICY,
-  SYNC_OPERATION,
   TRUST_OPERATIONS,
   TRUST_POLICY_KEY,
   changeLines,
   isDefaultPolicy,
   level,
+  operationRow,
   policyProblems,
   relaxesTrustPolicy,
   samePolicy,
@@ -93,11 +94,11 @@ function describeError(error: unknown): {
 
 export function TrustPolicySection({
   slug,
-  syncOn = false,
+  services,
 }: {
   slug: string;
-  /** Cloud Sync is on: only then is "Cloud Sync writes" shown (U-05 L11). */
-  syncOn?: boolean;
+  /** The product's services: a row tied to a service that is off is hidden (see `operationRow`). */
+  services?: Services;
 }): React.ReactElement {
   const query = useQuery(coreBReads.trustPolicy(slug));
   const [editing, setEditing] = React.useState(false);
@@ -107,7 +108,7 @@ export function TrustPolicySection({
         label="Device trust policy"
         align="block"
         chip={<code className="font-mono text-xs">{TRUST_POLICY_KEY}</code>}
-        help="Which operations need a device that proved a genuine store install. Relaxing it lets unattested clients through."
+        help="Which operations need a device that proved a genuine store install. Relaxing it lets unattested devices through."
         source={
           query.data ? <SourceBadge source={query.data.source} /> : undefined
         }
@@ -116,6 +117,7 @@ export function TrustPolicySection({
             <Button
               variant="outline"
               size="sm"
+              aria-label="Edit device trust"
               iconStart={<Pencil aria-hidden />}
               onClick={() => setEditing(true)}
             >
@@ -134,11 +136,11 @@ export function TrustPolicySection({
           />
         ) : (
           <>
-            <PolicySummary policy={query.data.policy} syncOn={syncOn} />
+            <PolicySummary policy={query.data.policy} services={services} />
             <PolicyDrawer
               slug={slug}
               open={editing}
-              syncOn={syncOn}
+              services={services}
               current={query.data}
               onClose={() => setEditing(false)}
               reload={async () => {
@@ -152,50 +154,6 @@ export function TrustPolicySection({
   );
 }
 
-function PolicySummary({
-  policy,
-  syncOn,
-}: {
-  policy: TrustPolicyDto;
-  syncOn: boolean;
-}): React.ReactElement {
-  return (
-    <DescriptionList
-      columns={3}
-      items={[
-        ...TRUST_OPERATIONS.filter((op) => shown(op.id, syncOn)).map((op) => ({
-          term: op.label,
-          detail: levelLabel(level(policy, op.id)),
-        })),
-        {
-          term: "A miss",
-          detail: policy.enforce ? "Refused" : "Logged, let through",
-        },
-        {
-          term: "App Attest",
-          detail: policy.appAttest
-            ? `${policy.appAttest.teamId ?? "Platform Team ID"}, ${policy.appAttest.environment}`
-            : "Off",
-        },
-        {
-          term: "Play Integrity",
-          detail: policy.playIntegrity
-            ? `${policy.playIntegrity.cloudProjectNumber ?? "Platform project"}${policy.playIntegrity.allowTestingResponses ? ", testing responses allowed" : ""}`
-            : "Off",
-        },
-      ]}
-    />
-  );
-}
-
-function levelLabel(l: string): string {
-  return l === "attested" ? "Attested device" : "Any device";
-}
-
-function shown(id: string, syncOn: boolean): boolean {
-  return id !== SYNC_OPERATION || syncOn;
-}
-
 type Pending =
   | { kind: "save"; next: TrustPolicyDto }
   | { kind: "reset"; next: TrustPolicyDto };
@@ -203,14 +161,14 @@ type Pending =
 function PolicyDrawer({
   slug,
   open,
-  syncOn,
+  services,
   current,
   onClose,
   reload,
 }: {
   slug: string;
   open: boolean;
-  syncOn: boolean;
+  services: Services;
   current: TrustPolicyResponse;
   onClose: () => void;
   reload: () => Promise<void>;
@@ -347,32 +305,36 @@ function PolicyDrawer({
               <legend className="text-sm font-semibold text-fg-strong">
                 Needs
               </legend>
-              {TRUST_OPERATIONS.filter((op) => shown(op.id, syncOn)).map(
-                (op) => (
-                  <FormField
-                    key={op.id}
-                    name={op.id}
-                    label={op.label}
-                    value={level(draft, op.id)}
-                    onChange={(v: string) =>
-                      set({ [op.id]: v as "basic" | "attested" })
-                    }
-                  >
-                    {(f) => (
-                      <Select
-                        {...f}
-                        options={LEVELS}
-                        value={level(draft, op.id)}
-                        onChange={(v) =>
-                          set({
-                            [op.id]: (v ?? "basic") as "basic" | "attested",
-                          })
-                        }
-                      />
-                    )}
-                  </FormField>
-                ),
-              )}
+              {TRUST_OPERATIONS.filter(
+                (op) => operationRow(op.id, stored, services).show,
+              ).map((op) => (
+                <FormField
+                  key={op.id}
+                  name={op.id}
+                  label={op.label}
+                  help={helpFor(
+                    op.id,
+                    operationRow(op.id, stored, services).off,
+                  )}
+                  value={level(draft, op.id)}
+                  onChange={(v: string) =>
+                    set({ [op.id]: v as "basic" | "attested" })
+                  }
+                >
+                  {(f) => (
+                    <Select
+                      {...f}
+                      options={LEVELS}
+                      value={level(draft, op.id)}
+                      onChange={(v) =>
+                        set({
+                          [op.id]: (v ?? "basic") as "basic" | "attested",
+                        })
+                      }
+                    />
+                  )}
+                </FormField>
+              ))}
               <Switch
                 label="Refuse a device that falls short"
                 description="Off: a miss is logged in activity and the request goes through."
@@ -531,7 +493,7 @@ function PolicyDrawer({
           }
           lead={
             relax
-              ? "Devices need to prove less than they do now. Unattested clients can enrol and fetch."
+              ? "Devices need to prove less than they do now."
               : "Devices need to prove more than they do now."
           }
           consequences={lines}
