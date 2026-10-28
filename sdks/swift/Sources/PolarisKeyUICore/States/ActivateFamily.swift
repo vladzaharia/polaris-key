@@ -129,7 +129,7 @@ extension KitStates {
             c.line(
                 limit
                     ? "core.activation.key-entry-limit.message" : "core.codes.license_owned.message"),
-            c.line("signin.key.ownedSignIn"),
+            c.line(limit ? "signin.key.signIn" : "signin.key.ownedSignIn"),
         ]
         if limit, KitLinks.valid(a.manageUrl) != nil {
             lines +=

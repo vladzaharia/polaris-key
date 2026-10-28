@@ -24,8 +24,11 @@ public enum SignInState: String, KitStateID {
 }
 
 public enum NearbyApprovalState: String, KitStateID {
-    case entry, ask, approved
+    case entry, ask, approved, mismatch, denied, expired, choose
     case notNearby = "not-nearby"
+    case deviceLimit = "device-limit"
+    case accountRequired = "account-required"
+    case rateLimited = "rate-limited"
     public static let component = KitComponent.nearbyApproval
 }
 
@@ -171,56 +174,121 @@ extension KitStates {
     /// across apps.
     static func autoStep(_ c: Ctx, _ auto: KitAutoSignIn) -> KitScreen<SignInState> {
         let provider = c.i.provider ?? "Polaris Locker"
-        let args: [String: CopyArgument] =
+        var args: [String: CopyArgument] =
             c.productArg.merging(c.developerArg) { a, _ in a }.merging([
                 "provider": .text(provider), "app": c.product,
-                "email": .text(auto.email ?? ""),
+                "email": .text(auto.email ?? ""), "tier": .text(c.i.account?.tier ?? ""),
+                "code": .text(auto.code ?? ""),
             ]) { a, _ in a }
-        func lines(_ keys: String...) -> [CopyLine] { keys.map { c.line($0, args) } }
+        let hasDeveloper = c.identity.developer != nil
+        if !hasDeveloper { args["developer"] = nil }
+        func lines(_ keys: String?...) -> [CopyLine] { keys.compactMap { $0 }.map { c.line($0, args) } }
         switch auto.step {
         case .confirm:
+            let license = auto.license
+            let also = auto.alsoGets == true
             return KitScreen(
                 .confirm,
                 lines(
                     "signin.auto.confirm.title",
                     auto.email == nil ? "signin.auto.confirm.asApple" : "signin.auto.confirm.as",
+                    license != nil ? "signin.consent.license" : nil,
+                    license == "new" ? "signin.consent.newLicense" : nil,
+                    license == "existing" ? "signin.consent.licenseLine" : nil,
+                    also ? "signin.consent.alsoGets" : nil,
+                    also ? "signin.consent.profile" : nil,
+                    also ? "signin.consent.pairwise" : nil,
                     "signin.auto.confirm.primary", "signin.auto.confirm.other"))
         case .linkOffer:
             let perDeveloper = provider == "Apple" || auto.reach != .global
+            let body =
+                !perDeveloper
+                ? "signin.linkOffer.bodyGlobal"
+                : (hasDeveloper ? "signin.linkOffer.bodyDeveloper" : "signin.linkOffer.bodyApp")
             return KitScreen(
                 .linkOffer,
                 lines(
-                    "signin.linkOffer.title",
-                    perDeveloper ? "signin.linkOffer.bodyDeveloper" : "signin.linkOffer.bodyGlobal",
-                    "signin.linkOffer.primary", "signin.linkOffer.decline"))
-        case .linkDone: return KitScreen(.linkDone, lines("signin.linkOffer.done"))
-        case .linkConflict: return KitScreen(.linkConflict, lines("signin.linkOffer.conflict"))
+                    "signin.linkOffer.title", body, "signin.linkOffer.primary",
+                    "signin.linkOffer.decline"))
+        case .linkDone:
+            return KitScreen(.linkDone, lines("signin.linkOffer.done", "common.continue"))
+        case .linkConflict:
+            return KitScreen(
+                .linkConflict,
+                lines(
+                    "signin.linkOffer.conflictTitle", "signin.linkOffer.conflict",
+                    "signin.linkOffer.join", "common.continue"))
         case .nearbyPrompt:
             return KitScreen(
                 .nearbyPrompt,
-                lines("signin.nearby.prePrompt", "signin.auto.confirm.primary", "common.notNow"))
+                lines(
+                    "signin.nearby.promptTitle", "signin.nearby.prePrompt", "common.continue",
+                    "common.notNow"))
         case .nearbyWait:
             return KitScreen(
-                .nearbyWait, lines("signin.nearby.title", "signin.nearby.body", "signin.nearby.code"))
+                .nearbyWait,
+                lines(
+                    "signin.nearby.title", "signin.nearby.body", "signin.nearby.match",
+                    auto.code != nil ? "a11y.nearbyCode" : nil, "signin.nearby.code"))
         case .nearbyDone:
-            return KitScreen(.nearbyDone, lines("signin.nearby.done", "signin.nearby.notYou"))
+            return KitScreen(
+                .nearbyDone, lines("signin.nearby.done", "common.continue", "signin.nearby.notYou"))
         }
     }
 
-    /// The approving device's side of nearby sign-in. No primary: choosing the matching code is
-    /// the action, and Not now the only other.
+    /// The approving device's side of nearby sign-in. No primary on the prompt: choosing the
+    /// matching code is the action, and Deny the only other. Every outcome has a title and one
+    /// way on.
     public static func nearbyApproval(_ i: KitInputs) -> KitScreen<NearbyApprovalState> {
         let c = Ctx(i)
         guard i.isOn(.identity) else { return .hidden }
         let n = i.nearbyApproval ?? KitNearbyApproval(step: .entry)
-        let args: [String: CopyArgument] = ["device": .text(n.device ?? "")]
+        let device: CopyArgument =
+            n.device.map { .text($0) } ?? .line(CopyLine("part.newDeviceTitle"))
+        let args: [String: CopyArgument] = ["device": device, "product": c.product]
         func lines(_ keys: String...) -> [CopyLine] { keys.map { c.line($0, args) } }
         switch n.step {
         case .ask:
             return KitScreen(
-                .ask, lines("signin.nearby.ask", "signin.nearby.askBody", "signin.nearby.deny"))
-        case .approved: return KitScreen(.approved, lines("signin.nearby.approved"))
-        case .notNearby: return KitScreen(.notNearby, lines("signin.nearby.notNearby"))
+                .ask,
+                lines(
+                    "signin.nearby.ask", "signin.nearby.askBody", "signin.approve.warning",
+                    "signin.approve.deny"))
+        case .approved: return KitScreen(.approved, lines("signin.nearby.approved", "common.done"))
+        case .notNearby:
+            return KitScreen(
+                .notNearby,
+                lines("signin.nearby.notNearby", "signin.nearby.notNearbyBody", "common.done"))
+        case .mismatch: return KitScreen(.mismatch, lines("signin.nearby.mismatch", "common.done"))
+        case .denied: return KitScreen(.denied, lines("signin.approve.deniedDone", "common.done"))
+        case .expired:
+            return KitScreen(
+                .expired,
+                lines(
+                    "core.codes.sign-in-expired.title", "core.codes.sign-in-expired.message",
+                    "common.done"))
+        case .deviceLimit:
+            return KitScreen(
+                .deviceLimit,
+                lines(
+                    "core.codes.device_limit.title", "core.codes.device_limit.message",
+                    "devices.manage"))
+        case .choose:
+            return KitScreen(
+                .choose,
+                lines("signin.choice.title", "signin.choice.lede", "signin.choice.continue"))
+        case .accountRequired:
+            return KitScreen(
+                .accountRequired,
+                lines(
+                    "core.codes.account_required.title", "core.codes.account_required.message",
+                    "signin.key.signIn"))
+        case .rateLimited:
+            return KitScreen(
+                .rateLimited,
+                lines(
+                    "core.codes.rate_limited.title", "core.codes.rate_limited.message",
+                    "common.tryAgain"))
         case .entry: return KitScreen(.entry, lines("signin.nearby.menu"))
         }
     }

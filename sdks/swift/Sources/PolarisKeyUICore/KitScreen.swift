@@ -63,6 +63,7 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
         "devices.manage": .openManageURL,
         "signin.key.addInLocker": .openManageURL,
         "signin.key.ownedSignIn": .startSignIn,
+        "signin.key.signIn": .startSignIn,
         "signin.handoff.copyLink": .copyLink,
         "a11y.copyAddress": .copyLink,
         "common.tryAgain": .retry,

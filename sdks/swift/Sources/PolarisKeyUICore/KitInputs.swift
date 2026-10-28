@@ -900,19 +900,33 @@ public struct KitAutoSignIn: Sendable, Codable, Equatable, Hashable {
     public var step: KitAutoSignInStep
     public var email: String?
     public var reach: KitLinkReach?
+    /// The license line of the confirm step: `new` or `existing`.
+    public var license: String?
+    /// Whether the confirm step lists what the account also gets.
+    public var alsoGets: Bool?
+    /// The code the nearby wait shows, to match on the other device.
+    public var code: String?
 
-    public init(step: KitAutoSignInStep, email: String? = nil, reach: KitLinkReach? = nil) {
+    public init(
+        step: KitAutoSignInStep, email: String? = nil, reach: KitLinkReach? = nil,
+        license: String? = nil, alsoGets: Bool? = nil, code: String? = nil
+    ) {
         self.step = step
         self.email = email
         self.reach = reach
+        self.license = license
+        self.alsoGets = alsoGets
+        self.code = code
     }
 }
 
 /// The approving device's side of nearby sign-in: where it is, and the device asking.
 public struct KitNearbyApproval: Sendable, Codable, Equatable, Hashable {
     public enum Step: String, Sendable, Codable, CaseIterable {
-        case entry, ask, approved
+        case entry, ask, approved, mismatch, denied, expired, choose, rateLimited = "rate-limited"
         case notNearby = "not-nearby"
+        case deviceLimit = "device-limit"
+        case accountRequired = "account-required"
     }
 
     public var step: Step

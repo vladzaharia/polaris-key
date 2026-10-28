@@ -19,9 +19,7 @@ public struct NearbyApprovalView: View {
             EmptyView()
         case .entry:
             entry(screen)
-        case .ask:
-            step(screen)
-        case .approved, .notNearby:
+        default:
             step(screen)
         }
     }
@@ -59,13 +57,24 @@ public struct NearbyApprovalView: View {
                         KitText(body, .body, color: .default)
                     }
                     codeRow
+                    if let warning = screen.line("signin.approve.warning") {
+                        KitText(warning, .meta, color: .muted)
+                    }
+                } else {
+                    // An outcome: its sentences under the title; the last line is the way on.
+                    ForEach(Array(screen.copy.dropFirst().dropLast()), id: \.key) { line in
+                        KitText(line, .body, color: .default)
+                    }
                 }
             }
         } actions: {
             KitActionStack {
-                if screen.state == .ask, let deny = screen.line("signin.nearby.deny") {
+                if screen.state == .ask, let deny = screen.line("signin.approve.deny") {
                     KitButton(line: deny, kind: .quiet) { model.onDeny?() }
                         .keyboardShortcut(.cancelAction)
+                } else if screen.state != .ask, let way = screen.copy.last {
+                    KitButton(line: way, kind: .primary) { model.onPrimary?() }
+                        .keyboardShortcut(.defaultAction)
                 }
             }
         }

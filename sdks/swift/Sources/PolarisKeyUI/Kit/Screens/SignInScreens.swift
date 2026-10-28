@@ -204,12 +204,19 @@ public struct SignInView: View {
                     }
                 #endif
             }
-        case .confirm, .linkOffer, .nearbyWait:
-            // The step's sentence under its title; the controls are the actions.
-            if let body = screen.copy.dropFirst().first(where: { !Self.autoControls.contains($0.key) }) {
-                KitText(body, .body, color: .default)
+        case .confirm, .linkOffer, .nearbyWait, .linkConflict, .nearbyPrompt:
+            // The step's sentences under its title; the controls are the actions.
+            VStack(alignment: .leading, spacing: style.space(.sm)) {
+                ForEach(
+                    Array(screen.copy.dropFirst().filter { !Self.autoControls.contains($0.key) }),
+                    id: \.key
+                ) { line in
+                    KitText(
+                        line, line.key == "a11y.nearbyCode" ? .title : .body,
+                        color: line.key == "signin.nearby.match" ? .muted : .default)
+                }
             }
-        case .linkDone, .linkConflict, .nearbyPrompt, .nearbyDone:
+        case .linkDone, .nearbyDone:
             EmptyView()
         case .done:
             if screen.shows("signin.desktop.toast") {
@@ -237,6 +244,7 @@ public struct SignInView: View {
     private static let autoControls: Set<String> = [
         "signin.auto.confirm.primary", "signin.auto.confirm.other", "signin.linkOffer.primary",
         "signin.linkOffer.decline", "common.notNow", "signin.nearby.code", "signin.nearby.notYou",
+        "common.continue", "signin.linkOffer.join",
     ]
 
     /// The refusal's page when the server gave a valid one: the add-key page for the limit, the
@@ -354,19 +362,27 @@ public struct SignInView: View {
                 autoButton("signin.linkOffer.primary", .primary, screen: screen)
                 autoButton("signin.linkOffer.decline", .quiet)
             case .nearbyPrompt:
-                autoButton("signin.auto.confirm.primary", .primary)
+                autoButton("common.continue", .primary)
                 autoButton("common.notNow", .quiet)
             case .nearbyWait:
                 autoButton("signin.nearby.code", .quiet)
                 cancelButton
             case .nearbyDone:
+                autoButton("common.continue", .primary)
                 autoButton("signin.nearby.notYou", .quiet)
-            case .linkDone, .linkConflict:
-                EmptyView()
+            case .linkDone:
+                autoButton("common.continue", .primary)
+            case .linkConflict:
+                autoButton("common.continue", .primary)
+                autoButton("signin.linkOffer.join", .quiet)
             case .keyRefused:
                 // Sign in finishes in the app (the account that holds the license); the page is a
                 // secondary, and the primary only where the kit has no sign-in to start.
-                KitButton(line: CopyLine("signin.key.ownedSignIn"), kind: .primary) {
+                KitButton(
+                    line: screen.shows("core.activation.key-entry-limit.message")
+                        ? CopyLine("signin.key.signIn") : CopyLine("signin.key.ownedSignIn"),
+                    kind: .primary
+                ) {
                     model.beginSignIn()
                 }
                 .keyboardShortcut(.defaultAction)

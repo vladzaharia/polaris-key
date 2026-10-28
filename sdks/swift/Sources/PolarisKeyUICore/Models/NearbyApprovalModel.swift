@@ -19,6 +19,8 @@ public final class NearbyApprovalModel {
     public var onDeny: (@MainActor () -> Void)?
     /// Told when the account menu's entry is chosen.
     public var onOpen: (@MainActor () -> Void)?
+    /// Told when an outcome's one way on is chosen (Done, Manage devices, Sign in, Try again).
+    public var onPrimary: (@MainActor () -> Void)?
 
     public init(inputs: KitInputs = KitInputs(), codes: [String] = []) {
         self.inputs = inputs

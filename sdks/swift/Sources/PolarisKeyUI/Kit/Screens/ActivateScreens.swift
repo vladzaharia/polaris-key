@@ -94,8 +94,10 @@ struct RefusalStep: View {
                     // no sign-in to start.
                     if let onSignIn {
                         KitButton(
-                            line: CopyLine("signin.key.ownedSignIn"), kind: .primary,
-                            action: onSignIn)
+                            line: CopyLine(
+                                refusal == .keyEntryLimit
+                                    ? "signin.key.signIn" : "signin.key.ownedSignIn"),
+                            kind: .primary, action: onSignIn)
                             .keyboardShortcut(.defaultAction)
                     }
                     if let onOpenLink, !Self.isTV, refusal == .keyEntryLimit || onSignIn == nil {

@@ -21,7 +21,7 @@ final class NearbyApprovalTests: XCTestCase {
         i.provider = "Apple"
         i.autoSignIn = KitAutoSignIn(step: .linkOffer, reach: .global)
         let s = KitStates.signIn(i)
-        XCTAssertTrue(s.shows("signin.linkOffer.bodyDeveloper"))
+        XCTAssertTrue(s.shows("signin.linkOffer.bodyApp"))
         XCTAssertFalse(s.shows("signin.linkOffer.bodyGlobal"))
     }
 
@@ -30,7 +30,7 @@ final class NearbyApprovalTests: XCTestCase {
         XCTAssertEqual(model.screen.state, .entry)
         model.show(.ask, device: "Kitchen iPad")
         XCTAssertEqual(model.screen.state, .ask)
-        XCTAssertTrue(model.screen.shows("signin.nearby.deny"))
+        XCTAssertTrue(model.screen.shows("signin.approve.deny"))
         model.show(.approved, device: "Kitchen iPad")
         XCTAssertEqual(model.screen.state, .approved)
     }

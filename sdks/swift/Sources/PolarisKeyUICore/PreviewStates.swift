@@ -399,24 +399,26 @@ extension PolarisKeyPreviewState {
 
     private static func auto(
         _ step: KitAutoSignInStep, provider: String = "Google", email: String? = nil,
-        reach: KitLinkReach? = nil
+        reach: KitLinkReach? = nil, license: String? = nil, also: Bool? = nil, code: String? = nil
     ) -> KitInputs {
         base {
             $0.signIn = sign()
             $0.provider = provider
-            $0.autoSignIn = KitAutoSignIn(step: step, email: email, reach: reach)
+            $0.autoSignIn = KitAutoSignIn(
+                step: step, email: email, reach: reach, license: license, alsoGets: also, code: code)
         }
     }
 
     static let nearby: [PolarisKeyPreviewState] = [
-        .init(.signIn, "confirm", auto(.confirm, email: "maya@example.com")),
+        .init(
+            .signIn, "confirm", auto(.confirm, email: "maya@example.com", license: "new", also: true)),
         .init(.signIn, "confirm", variant: "apple", auto(.confirm, provider: "Apple")),
         .init(.signIn, "link-offer", variant: "global", auto(.linkOffer, reach: .global)),
         .init(.signIn, "link-offer", auto(.linkOffer, reach: .developer)),
         .init(.signIn, "link-done", auto(.linkDone)),
         .init(.signIn, "link-conflict", auto(.linkConflict)),
         .init(.signIn, "nearby-prompt", auto(.nearbyPrompt)),
-        .init(.signIn, "nearby-wait", auto(.nearbyWait)),
+        .init(.signIn, "nearby-wait", auto(.nearbyWait, code: "482 913")),
         .init(.signIn, "nearby-done", auto(.nearbyDone, email: "maya@example.com")),
         .init(
             .signIn, "key-refused",
@@ -439,6 +441,29 @@ extension PolarisKeyPreviewState {
         .init(
             .nearbyApproval, "approved",
             base { $0.nearbyApproval = KitNearbyApproval(step: .approved, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "mismatch",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .mismatch, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "denied",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .denied, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "expired",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .expired) }),
+        .init(
+            .nearbyApproval, "device-limit",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .deviceLimit, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "choose",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .choose, device: "Kitchen iPad") }),
+        .init(
+            .nearbyApproval, "account-required",
+            base {
+                $0.nearbyApproval = KitNearbyApproval(step: .accountRequired, device: "Kitchen iPad")
+            }),
+        .init(
+            .nearbyApproval, "rate-limited",
+            base { $0.nearbyApproval = KitNearbyApproval(step: .rateLimited, device: "Kitchen iPad") }),
         .init(
             .nearbyApproval, "not-nearby",
             base {
