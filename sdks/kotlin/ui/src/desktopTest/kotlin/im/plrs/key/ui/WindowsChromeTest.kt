@@ -481,14 +481,14 @@ class WindowsChromeTest {
     }
 
     @Test
-    fun theExternalGlyphLeadsTheLabelWithAnEightDpGap() = runDesktopComposeUiTest(width = 400, height = 120) {
+    fun theExternalGlyphLeadsTheLabelInline() = runDesktopComposeUiTest(width = 400, height = 160) {
         setContent {
             Themed(PolarisPlatformVariant.Windows) {
-                // In an action row a button is as wide as its label, so the label's offset is the glyph's.
+                // In an action row a button is as wide as its label.
                 CompositionLocalProvider(LocalPolarisActionRow provides true) {
                     Column(Modifier.padding(20.dp)) {
                         PolarisPrimaryButton("Open the portal", onClick = {}, external = true)
-                        PolarisPrimaryButton("Plain", onClick = {})
+                        PolarisPrimaryButton("Open the portal", onClick = {})
                     }
                 }
             }
@@ -496,9 +496,11 @@ class WindowsChromeTest {
         waitForIdle()
         val buttons = onAllNodes(isButton).fetchSemanticsNodes()
         val ext = buttons[0].boundsInRoot
-        val label = onNode(hasText("Open the portal"), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        // 12 dp inset, a 16 dp glyph, the 8 dp gap, then the label.
-        assertEquals(12f + 16f + 8f, label.left - ext.left, 1.5f)
+        val plain = buttons[1].boundsInRoot
+        // The glyph is part of the label's own text (R2: it stays beside the first word of a wrapped label): a 16 dp glyph and its space.
+        assertTrue(ext.width - plain.width in 16f..28f, "the glyph adds its width: ${ext.width} vs ${plain.width}")
+        // Assistive tech reads the plain label; the control says where it goes.
+        assertEquals(2, onAllNodes(hasText("Open the portal") and isButton).fetchSemanticsNodes().size)
     }
 
     @Test

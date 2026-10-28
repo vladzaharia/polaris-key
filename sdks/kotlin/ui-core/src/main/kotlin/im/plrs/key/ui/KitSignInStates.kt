@@ -22,6 +22,7 @@ internal fun signInScreen(inputs: KitInputs): KitScreen {
             screen(KitComponent.signIn, "error", listOf(context.line("signIn.methodError", args)))
         }
     }
+    inputs.obj("autoSignIn")?.let { return autoSignInScreen(context, it) }
     if (signIn.string("outcome") == "expired") {
         return screen(KitComponent.signIn, "expired", listOf(context.line("signin.handoff.tooLong"), context.line("signin.again")))
     }
@@ -42,7 +43,11 @@ internal fun signInScreen(inputs: KitInputs): KitScreen {
             signIn.boolean("issuedNow") == true -> screen(
                 KitComponent.signIn,
                 "done",
-                listOf(context.line("signin.return.signedInShort"), context.line("signin.done.start", context.productArgs)),
+                listOf(
+                    inputs.obj("account").string("tier")?.let { context.line("signin.return.signedInTier", mapOf("tier" to CopyArgument.Text(it))) }
+                        ?: context.line("signin.return.signedInShort"),
+                    context.line("signin.done.start", context.productArgs),
+                ),
             )
             else -> screen(
                 KitComponent.signIn,
@@ -53,6 +58,9 @@ internal fun signInScreen(inputs: KitInputs): KitScreen {
     }
     if (signIn.string("outcome") == "choose" && signIn.string("channel") == "browser") {
         if (signIn.string("event") == "have-key" && keyPath) {
+            inputs.obj("activation")?.let { activation ->
+                keyRefusalOf(activation)?.let { return keyRefusalScreen(KitComponent.signIn, it, activation, context) }
+            }
             val lines = mutableListOf(context.line("signin.key.addTitle", context.productArgs), context.line("part.keyField.label"))
             if (inputs.obj("activation").string("result") == "refused") lines += context.codeLines(inputs.obj("activation").string("code"))
             return screen(KitComponent.signIn, "key", lines)
@@ -91,6 +99,97 @@ internal fun signInScreen(inputs: KitInputs): KitScreen {
         )
     }
     return screen(KitComponent.signIn, "methods", signInMethodLines(context, keyPath))
+}
+
+/**
+ * Automatic sign-in's steps, drawn in the form's body (plans/auto-sign-in.md §3). Every outcome has a
+ * title that takes focus and one way on (Continue).
+ */
+private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
+    val provider = context.inputs.string("provider") ?: SIGN_IN_PROVIDER_NAME
+    val perDeveloper = provider == "Apple" || auto.string("reach") != "global"
+    val tier = context.inputs.obj("account").string("tier")
+    val args = mapOf(
+        "app" to context.product,
+        "product" to context.product,
+        "provider" to CopyArgument.Text(provider),
+        "developer" to CopyArgument.Text(context.identity.developer ?: context.identity.name),
+        "email" to CopyArgument.Text(auto.string("email") ?: ""),
+        "tier" to CopyArgument.Text(tier ?: ""),
+        "code" to CopyArgument.Text(auto.string("code") ?: ""),
+    )
+    fun step(state: String, vararg keys: String?) = screen(KitComponent.signIn, state, keys.filterNotNull().map { context.line(it, args) })
+    return when (auto.string("step")) {
+        "confirm" -> {
+            val license = auto.string("license")
+            val also = auto.boolean("alsoGets") == true
+            step(
+                "confirm",
+                "signin.auto.confirm.title",
+                if (auto.string("email") != null) "signin.auto.confirm.as" else "signin.auto.confirm.asApple",
+                "signin.consent.license".takeIf { license != null },
+                "signin.consent.newLicense".takeIf { license == "new" },
+                "signin.consent.licenseLine".takeIf { license == "existing" },
+                "signin.consent.alsoGets".takeIf { also },
+                "signin.consent.profile".takeIf { also },
+                "signin.consent.pairwise".takeIf { also },
+                "signin.auto.confirm.primary",
+                "signin.auto.confirm.other",
+            )
+        }
+        "link-offer" -> step(
+            "link-offer",
+            "signin.linkOffer.title",
+            when {
+                !perDeveloper -> "signin.linkOffer.bodyGlobal"
+                context.identity.developer != null -> "signin.linkOffer.bodyDeveloper"
+                else -> "signin.linkOffer.bodyApp"
+            },
+            "signin.linkOffer.primary",
+            "signin.linkOffer.decline",
+        )
+        "link-done" -> step("link-done", "signin.linkOffer.done", "common.continue")
+        "link-conflict" -> step("link-conflict", "signin.linkOffer.conflictTitle", "signin.linkOffer.conflict", "signin.linkOffer.join", "common.continue")
+        "nearby-prompt" -> step("nearby-prompt", "signin.nearby.promptTitle", "signin.nearby.prePrompt", "common.continue", "common.notNow")
+        "nearby-wait" -> step(
+            "nearby-wait",
+            "signin.nearby.title",
+            "signin.nearby.body",
+            "signin.nearby.match",
+            "a11y.nearbyCode".takeIf { auto.string("code") != null },
+            "signin.nearby.code",
+        )
+        else -> step("nearby-done", "signin.nearby.done", "common.continue", "signin.nearby.notYou")
+    }
+}
+
+/**
+ * The approving device's side of nearby sign-in (D-A9); the protocol is CC-15's. No primary on the
+ * prompt: choosing the matching code is the action, and Deny the only other. Every outcome has a
+ * title and one way on.
+ */
+internal fun nearbyApprovalScreen(inputs: KitInputs): KitScreen {
+    val context = KitContext(inputs)
+    if (!inputs.isOn("identity")) return hidden(KitComponent.nearbyApproval)
+    val approval = inputs.obj("nearbyApproval") ?: JsonObject(emptyMap())
+    // A request with no device name reads "the new device".
+    val name = approval.string("device")?.takeIf { it.isNotBlank() }
+    val device = name?.let { CopyArgument.Text(it) } ?: CopyArgument.Line(context.line("part.newDevice"))
+    val args = mapOf("device" to device, "product" to context.product)
+    fun step(state: String, vararg keys: String) = screen(KitComponent.nearbyApproval, state, keys.map { context.line(it, args) })
+    return when (approval.string("step")) {
+        "ask" -> step("ask", "signin.nearby.ask", "signin.nearby.askBody", "signin.approve.warning", "signin.approve.deny")
+        "approved" -> step("approved", "signin.nearby.approved", "common.done")
+        "not-nearby" -> step("not-nearby", "signin.nearby.notNearby", "signin.nearby.notNearbyBody", "common.done")
+        "mismatch" -> step("mismatch", "signin.nearby.mismatch", "common.done")
+        "denied" -> step("denied", "signin.approve.deniedDone", "common.done")
+        "expired" -> step("expired", "core.codes.sign-in-expired.title", "core.codes.sign-in-expired.message", "common.done")
+        "device-limit" -> step("device-limit", "core.codes.device_limit.title", "core.codes.device_limit.message", "devices.manage")
+        "choose" -> step("choose", "signin.choice.title", "signin.choice.lede", "signin.choice.continue")
+        "account-required" -> step("account-required", "core.codes.account_required.title", "core.codes.account_required.message", "signin.key.signIn")
+        "rate-limited" -> step("rate-limited", "core.codes.rate_limited.title", "core.codes.rate_limited.message", "common.tryAgain")
+        else -> step("entry", "signin.nearby.menu")
+    }
 }
 
 private fun signInMethodLines(context: KitContext, keyPath: Boolean): List<CopyLine> {

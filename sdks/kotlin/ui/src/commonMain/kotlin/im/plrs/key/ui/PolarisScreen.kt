@@ -771,7 +771,8 @@ public fun PolarisPrimaryButton(
         modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
     ) {
         if (busy) PolarisBusyRing()
-        Text(text, textAlign = TextAlign.Center)
+        // The glyph stays beside a label that wraps (GNOME at a large font scale), not pushed out of the pill.
+        Text(text, textAlign = TextAlign.Center, modifier = if (external) Modifier.weight(1f, fill = false) else Modifier)
         if (external) PolarisNewWindowGlyph()
     }
 }
@@ -840,7 +841,8 @@ public fun PolarisSecondaryButton(
         modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
     ) {
         if (busy) PolarisBusyRing()
-        Text(text, textAlign = TextAlign.Center)
+        // The glyph stays beside a label that wraps (GNOME at a large font scale), not pushed out of the pill.
+        Text(text, textAlign = TextAlign.Center, modifier = if (external) Modifier.weight(1f, fill = false) else Modifier)
         if (external) PolarisNewWindowGlyph()
     }
 }

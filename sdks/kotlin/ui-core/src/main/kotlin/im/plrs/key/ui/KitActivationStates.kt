@@ -60,6 +60,46 @@ private fun activateBase(context: KitContext): List<CopyLine> = listOf(
     context.line("common.paste"),
 )
 
+/** The focused refusals a different key cannot fix: the key-entry limit, or a license another account holds. */
+internal enum class KeyRefusal(val state: String) { KeyEntryLimit("key-entry-limit"), LicenseOwned("license-owned") }
+
+/** The focused refusal [activation] is, or null: any other refusal stays stacked under the field. */
+internal fun keyRefusalOf(activation: JsonObject): KeyRefusal? {
+    val result = activation.string("result")
+    return when {
+        result == "key-entry-limit" -> KeyRefusal.KeyEntryLimit
+        result == "license-owned" || ((result == "refused" || result == "error") && activation.string("code") == "license_owned") -> KeyRefusal.LicenseOwned
+        else -> null
+    }
+}
+
+/**
+ * The focused step (UI-KITS DL6): no field, lede or paste; Sign in is the primary. For the limit,
+ * the add-key page (a QR with its caption on a TV), then Use a different key. The state is
+ * `key-entry-limit` / `license-owned` on Activate and `key-refused` on SignIn.
+ */
+internal fun keyRefusalScreen(component: KitComponent, refusal: KeyRefusal, activation: JsonObject, context: KitContext): KitScreen {
+    val limit = refusal == KeyRefusal.KeyEntryLimit
+    val link = if (limit) KitLinks.valid(activation.string("manageUrl")) else null
+    val lines = mutableListOf(
+        context.line(if (limit) "core.activation.key-entry-limit.title" else "core.codes.license_owned.title"),
+        context.line(if (limit) "core.activation.key-entry-limit.message" else "core.codes.license_owned.message"),
+        context.line(if (limit) "signin.key.signIn" else "signin.key.ownedSignIn"),
+    )
+    if (link != null) {
+        if (context.inputs.isTv) {
+            lines += context.line("signin.key.scan")
+            lines += context.line("a11y.qrAddKey")
+        } else {
+            lines += context.line("signin.key.addInLocker")
+            lines += context.line("a11y.externalLink")
+        }
+    }
+    lines += context.line("signin.key.differentKey")
+    val state = if (component == KitComponent.signIn) "key-refused" else refusal.state
+    return screen(component, state, lines)
+}
+
 /** The refusal's lines less its title: the screen's own heading is already in the base. */
 private fun messageOnly(lines: List<CopyLine>): List<CopyLine> = lines.filter { !it.key.endsWith(".title") }
 
@@ -115,6 +155,7 @@ internal fun activateScreen(inputs: KitInputs): KitScreen {
 
 private fun activationOutcome(activation: JsonObject, context: KitContext): KitScreen {
     val result = activation.string("result")
+    keyRefusalOf(activation)?.let { return keyRefusalScreen(KitComponent.activate, it, activation, context) }
     return when (result) {
         "ok" -> screen(
             KitComponent.activate,

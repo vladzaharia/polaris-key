@@ -28,6 +28,7 @@ public enum class KitComponent(public val id: String) {
     welcome("Welcome"),
     signIn("SignIn"),
     signInHandoff("SignInHandoff"),
+    nearbyApproval("NearbyApproval"),
     activate("Activate"),
     offlineActivation("OfflineActivation"),
     deviceLimit("DeviceLimit"),
@@ -57,6 +58,7 @@ public enum class KitAction(public val id: String) {
     openBrowser("open-browser"),
     replaceInBrowser("replace-in-browser"),
     openManageUrl("open-manage-url"),
+    startSignIn("start-sign-in"),
     copyLink("copy-link"),
     retry("retry"),
     cancel("cancel"),
@@ -70,6 +72,9 @@ public enum class KitAction(public val id: String) {
             "signin.handoff.openBrowser" to openBrowser,
             "deviceLimit.openBrowser" to openManageUrl,
             "devices.manage" to openManageUrl,
+            "signin.key.addInLocker" to openManageUrl,
+            "signin.key.ownedSignIn" to startSignIn,
+            "signin.key.signIn" to startSignIn,
             "signin.handoff.copyLink" to copyLink,
             "a11y.copyAddress" to copyLink,
             "common.tryAgain" to retry,
@@ -343,6 +348,7 @@ public object KitStates {
         KitComponent.welcome -> welcomeScreen(inputs)
         KitComponent.signIn -> signInScreen(inputs)
         KitComponent.signInHandoff -> signInHandoffScreen(inputs)
+        KitComponent.nearbyApproval -> nearbyApprovalScreen(inputs)
         KitComponent.activate -> activateScreen(inputs)
         KitComponent.offlineActivation -> offlineActivationScreen(inputs)
         KitComponent.deviceLimit -> deviceLimitScreen(inputs)

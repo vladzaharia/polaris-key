@@ -153,7 +153,7 @@ internal fun signedInMessage(who: SignedInAs?, locale: String): String {
     return when {
         who?.tier == null -> short
         who.name != null -> catalog.format("signin.desktop.toast", locale, mapOf("name" to CopyArgument.Text(who.name), "tier" to CopyArgument.Text(who.tier)))
-        else -> "$short \u00B7 " + catalog.format("account.tier", locale, mapOf("tier" to CopyArgument.Text(who.tier)))
+        else -> catalog.format("signin.return.signedInTier", locale, mapOf("tier" to CopyArgument.Text(who.tier)))
     }
 }
 
@@ -348,8 +348,7 @@ public fun PolarisActivationScreen(
     val qrOnScreen = keyLimit != null && manageAsQr && manage != null && !polarisWindow.variant.isDesktop
     val linkIsCopy = noBrowser || manageAsQr
     val hasLink = keyLimit != null && !qrOnScreen && ManageLink.isValid(manage)
-    // "Add {product} to your account" until I-46.1 lands signin.key.addInLocker.
-    val linkLabel = if (linkIsCopy) copy.signInCopyLink else KitCopy.bundled.format("signin.key.addTitle", kitLocale(), mapOf("product" to CopyArgument.Text(copy.productName)))
+    val linkLabel = if (linkIsCopy) copy.signInCopyLink else KitCopy.bundled.format("signin.key.addInLocker", kitLocale())
     val copyManage: () -> Unit = {
         scope.launch { clipboard.setText(copy.signInCopyLink, manage!!) }
         onCopied()
@@ -395,7 +394,10 @@ public fun PolarisActivationScreen(
     val refusalNote: @Composable () -> Unit = {
         if (qrOnScreen) {
             Spacer(Modifier.height(polarisWindow.section))
-            PolarisQr(manage, KitCopy.bundled.format("a11y.qrManage", kitLocale()), Modifier.size(polarisWindow.qrSize))
+            PolarisQr(manage, KitCopy.bundled.format("a11y.qrAddKey", kitLocale()), Modifier.size(polarisWindow.qrSize))
+            // The caption sits under the code.
+            Spacer(Modifier.height(PolarisSpace.tight))
+            PolarisBody(KitCopy.bundled.format("signin.key.scan", kitLocale()))
         }
     }
     // Opening the key path puts the cursor in the field, so the person can type or paste at once.
@@ -515,8 +517,8 @@ public fun PolarisActivationScreen(
                         hasLink -> linkGo
                         else -> null
                     }
-                    // A long label wraps in a stacked group, not in a row of fixed-height Mac controls.
-                    PolarisActionGroup(row = LocalDensity.current.fontScale <= 1f, visualOrder = true, modifier = Modifier.polarisMacDefaultKeys(if (ui.busy) null else goes)) {
+                    // The row's own fallback stacks whole with the primary first, so a long label never reorders it.
+                    PolarisActionGroup(row = true, visualOrder = true, modifier = Modifier.polarisMacDefaultKeys(if (ui.busy) null else goes)) {
                         PolarisSecondaryButton(text = differentKey, onClick = { onKeyChange("") }, enabled = !ui.busy)
                         // The manage link is the secondary beside Sign in; it is the primary only when there is no sign-in.
                         if (hasLink && onSignIn != null) PolarisSecondaryButton(text = linkLabel, onClick = linkGo, enabled = !ui.busy, external = !linkIsCopy)

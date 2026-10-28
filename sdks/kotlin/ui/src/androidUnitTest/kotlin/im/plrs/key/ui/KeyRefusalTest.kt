@@ -53,10 +53,10 @@ class KeyRefusalTest {
         show {
             PolarisActivationScreen(limit(), onKeyChange = { edits += it }, onSignIn = { signIns++ }, onOpenManage = { opened = it })
         }
-        rule.onNodeWithText("This key has no entries left. Add it to your account and sign in instead.").assertIsDisplayed()
+        rule.onNodeWithText("Sign in and add this key to your Polaris Locker account instead.").assertIsDisplayed()
         shot("key-entry-limit-411x891")
         rule.onNodeWithText("Activate license").assertDoesNotExist()
-        rule.onNodeWithText("Add Diceroll to your account").performClick()
+        rule.onNodeWithText("Add it in Polaris Locker").performClick()
         assertEquals(add, opened)
         rule.onNodeWithText("Sign in").performClick()
         assertEquals(1, signIns)
@@ -75,9 +75,10 @@ class KeyRefusalTest {
     fun onTvTheLinkIsAQrCodeAndSignInIsThePrimary() {
         var signIns = 0
         show { PolarisActivationScreen(limit(), onSignIn = { signIns++ }, manageAsQr = true) }
-        rule.onNodeWithContentDescription("QR code that opens the device management page").assertIsDisplayed()
+        rule.onNodeWithContentDescription("QR code that opens the add-key page").assertIsDisplayed()
+        rule.onNodeWithText("Scan to add this key in Polaris Locker on your phone.").assertIsDisplayed()
         shot("key-entry-limit-tv-960x540")
-        rule.onNodeWithText("Add Diceroll to your account").assertDoesNotExist()
+        rule.onNodeWithText("Add it in Polaris Locker").assertDoesNotExist()
         rule.onNodeWithText("Sign in").performClick()
         assertEquals(1, signIns)
     }
