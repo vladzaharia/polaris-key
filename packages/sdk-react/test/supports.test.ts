@@ -124,7 +124,7 @@ describe("supports() — the browser adapter (runtime web)", () => {
   it("a planned feature or an unknown id is version", async () => {
     const a = browser();
     await ready(a);
-    expect(a.supports(Feature.configSync)).toMatchObject({ reason: "version" });
+    expect(a.supports(Feature.syncE2e)).toMatchObject({ reason: "version" });
     expect(a.supports("future.feature")).toMatchObject({ reason: "version" });
     a.dispose();
   });
