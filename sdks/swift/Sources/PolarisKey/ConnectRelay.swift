@@ -31,7 +31,9 @@ private let certMarginSeconds = 60
 
 /// The only `PeerChannel` mode that may cross the relay (G16).
 public func assertRelayMode(_ mode: PeerNoiseMode) throws {
-    if mode != .a { throw ConnectRelayError(.modeNotAllowed, "Mode \(mode.rawValue) never crosses the relay; it is LAN only.") }
+    if mode != .a {
+        throw ConnectRelayError(.modeNotAllowed, "Mode \(mode.rawValue) never crosses the relay; it is LAN only.")
+    }
 }
 
 // MARK: - The socket seam
@@ -55,14 +57,17 @@ public protocol ConnectRelaySocket: Sendable {
     func close(code: Int) async
 }
 
-public typealias ConnectRelayOpener = @Sendable (_ url: URL, _ protocols: [String]) async throws -> any ConnectRelaySocket
+public typealias ConnectRelayOpener =
+    @Sendable (_ url: URL, _ protocols: [String]) async throws -> any ConnectRelaySocket
 
 // MARK: - URLSessionWebSocketTask
 
 /// The default opener. It offers the protocols, requires `pkey-relay.1` echoed back, caps messages at
 /// 65,564 bytes and refuses any URL that is not `wss:`. `allowInsecureLoopback` accepts `ws:` to
 /// 127.0.0.1 and ::1 only, for this SDK's own tests.
-public func urlSessionRelayOpener(openSeconds: TimeInterval = 15, allowInsecureLoopback: Bool = false) -> ConnectRelayOpener {
+public func urlSessionRelayOpener(openSeconds: TimeInterval = 15, allowInsecureLoopback: Bool = false)
+    -> ConnectRelayOpener
+{
     { url, protocols in
         let host = url.host?.lowercased() ?? ""
         let loopback = host == "127.0.0.1" || host == "::1" || host == "localhost"
@@ -158,7 +163,9 @@ final class URLSessionRelaySocket: NSObject, ConnectRelaySocket, URLSessionWebSo
     private func closedError() async -> RelaySocketClosed {
         for _ in 0..<25 {
             if let c = lock.withLock({ closeCode }) { return RelaySocketClosed(code: c) }
-            if let t = lock.withLock({ task }), t.closeCode != .invalid { return RelaySocketClosed(code: t.closeCode.rawValue) }
+            if let t = lock.withLock({ task }), t.closeCode != .invalid {
+                return RelaySocketClosed(code: t.closeCode.rawValue)
+            }
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
         return RelaySocketClosed(code: nil)
@@ -256,7 +263,10 @@ public struct ConnectRelayOptions: Sendable {
 }
 
 private final class RelaySubs<T: Sendable>: Sendable {
-    private struct S { var next = 0; var fns: [(Int, @Sendable (T) -> Void)] = [] }
+    private struct S {
+        var next = 0
+        var fns: [(Int, @Sendable (T) -> Void)] = []
+    }
     private let state = LockedValue(S())
     func add(_ fn: @escaping @Sendable (T) -> Void) -> @Sendable () -> Void {
         let id = state.with { s -> Int in
@@ -315,7 +325,9 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
     private var nextWaiter = 0
     private var held: (at: Int, gen: Int, src: PeerSource)?
 
-    public init(source: ConnectLanSource, ticket: @escaping Ticket, options: ConnectRelayOptions = ConnectRelayOptions()) {
+    public init(
+        source: ConnectLanSource, ticket: @escaping Ticket, options: ConnectRelayOptions = ConnectRelayOptions()
+    ) {
         src = source
         self.ticket = ticket
         o = options
@@ -378,7 +390,13 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         let gate = LockedValue(false)
         let wake = AsyncStream<Void>.makeStream()
         let off = onMembers { _ in
-            if !gate.with({ g in let was = g; g = true; return was }) { wake.continuation.finish() }
+            if !gate.with({ g in
+                let was = g
+                g = true
+                return was
+            }) {
+                wake.continuation.finish()
+            }
         }
         sendEnv(.list)
         let t = Task {
@@ -452,7 +470,10 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
     /// Force-stop for a sign-out that cannot wait (D-12): cancel the socket now, with no graceful close and no
     /// await on the actor, then drop the sessions and the held identity. Safe beside a `stop()` that is stuck.
     public nonisolated func abort() {
-        if let s = liveSocket.with({ v -> (any ConnectRelaySocket)? in defer { v = nil }; return v }) {
+        if let s = liveSocket.with({ v -> (any ConnectRelaySocket)? in
+            defer { v = nil }
+            return v
+        }) {
             Task { await s.close(code: 1001) }
         }
         docs.close()
@@ -525,18 +546,22 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         lastLimit = nil
         guard let code else { return nil }
         if code == 4009 {
-            return ConnectRelayError(.replaced, "Another connection of this device took the relay socket.", closeCode: code)
+            return ConnectRelayError(
+                .replaced, "Another connection of this device took the relay socket.", closeCode: code)
         }
         if code == 4003 {
             // The roster this device holds is out of date: fetch it, and stop if it keeps happening.
             wantRing()
             notMember += 1
-            if notMember >= 3 { return ConnectRelayError(.notMember, "The room does not know this device.", closeCode: code) }
+            if notMember >= 3 {
+                return ConnectRelayError(.notMember, "The room does not know this device.", closeCode: code)
+            }
             return nil
         }
         notMember = 0
         if code == 4008, let l = limit, l == 2 || l == 3 {
-            return ConnectRelayError(.quota, "The relay quota is spent.", scope: l == 3 ? "product" : "person", closeCode: code)
+            return ConnectRelayError(
+                .quota, "The relay quota is spent.", scope: l == 3 ? "product" : "person", closeCode: code)
         }
         return nil
     }
@@ -669,7 +694,9 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
             q.purge(tag: victim)
             if victim == tag || !q.roomFor(need) { return }
         }
-        guard isOpen, let q = outbox, let d = try? PeerRelayEnvelope.encode(.send(to: peer, session: session, noise: noise)) else {
+        guard isOpen, let q = outbox,
+            let d = try? PeerRelayEnvelope.encode(.send(to: peer, session: session, noise: noise))
+        else {
             return
         }
         q.put(d, force: true, tag: tag)
@@ -722,7 +749,8 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         let why: ConnectRelayReason = reason == 1 ? .rateLimited : reason == 4 ? .paused : .quota
         let msg =
             why == .paused
-            ? "The relay is paused." : why == .quota ? "The relay quota is spent." : "Slow down: the relay is rate limiting this device."
+            ? "The relay is paused."
+            : why == .quota ? "The relay quota is spent." : "Slow down: the relay is rate limiting this device."
         let scope: String? = (reason == 2 || reason == 3) ? (reason == 3 ? "product" : "person") : nil
         error = ConnectRelayError(why, msg, scope: scope)
         set(state)
@@ -750,7 +778,8 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         if deviceId == ident.deviceId || !ident.roster.contains(deviceId) {
             throw ConnectRelayError(.unknownPeer, "That device is not one of this person's devices.")
         }
-        guard let entry = try await makeLink(peer: peer, session: newSessionId(peer), role: .initiator, ident: ident) else {
+        guard let entry = try await makeLink(peer: peer, session: newSessionId(peer), role: .initiator, ident: ident)
+        else {
             throw ConnectRelayError(.busy, "Too many relay sessions are open.")
         }
         do {
@@ -958,7 +987,11 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
     /// A RECV payload (an unframed Noise message).
     func push(_ noise: Data) {
         guard let framed = try? PeerFrame.encode(noise) else { return }
-        enum R { case none, hand(CheckedContinuation<Data?, Never>), overflow }
+        enum R {
+            case none
+            case hand(CheckedContinuation<Data?, Never>)
+            case overflow
+        }
         let r: R = state.with { s in
             if s.closed { return .none }
             if let w = s.waiter {

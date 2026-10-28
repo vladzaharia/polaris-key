@@ -221,7 +221,8 @@ public struct SignInView: View {
                         PolarisQRCode(
                             link.absoluteString,
                             accessibilityLabel: strings.string(
-                                "a11y.qrAddKey"))
+                                "a11y.qrAddKey")
+                        )
                         .frame(width: 200, height: 200)
                         KitText(CopyLine("signin.key.scan"), .meta, color: .muted)
                     }
@@ -710,7 +711,8 @@ public struct SignInMethodsView: View {
                     KitText(lede, .body, color: .default)
                 }
                 KitMethodsStack {
-                    let email = screen.line("signin.email.continue")
+                    let email =
+                        screen.line("signin.email.continue")
                         ?? screen.line("signin.desktop.continue")
                     let hasProviders = !providers.isEmpty && screen.shows("signin.provider.continue")
                     // The primary is the model's (SIGN-IN §3.19): Continue in browser on a desktop,

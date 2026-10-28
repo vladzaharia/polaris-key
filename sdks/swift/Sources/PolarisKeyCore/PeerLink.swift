@@ -138,7 +138,8 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
     /// Bind a channel to a pipe. The link's event and deadline tasks start here.
     public static func make(
         pipe: any PeerBytePipe, options: PeerChannelOptions, handlers: PeerLinkHandlers = PeerLinkHandlers(),
-        handshakeSeconds: TimeInterval = PeerLink.handshakeSeconds, pipeGraceSeconds: TimeInterval = PeerLink.pipeGraceSeconds
+        handshakeSeconds: TimeInterval = PeerLink.handshakeSeconds,
+        pipeGraceSeconds: TimeInterval = PeerLink.pipeGraceSeconds
     ) async throws -> PeerLink {
         let l = try PeerLink(
             pipe: pipe, options: options, handlers: handlers, handshakeSeconds: handshakeSeconds,
@@ -167,7 +168,12 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
             caps: o.caps, hello: o.hello,
             send: { d in
                 ocont.yield(d)
-                if bl.with({ $0 += d.count + 2; return $0 }) > peerLinkWriteMaxBytes { oh.current?() }
+                if bl.with({
+                    $0 += d.count + 2
+                    return $0
+                }) > peerLinkWriteMaxBytes {
+                    oh.current?()
+                }
             }, onEvent: { econt.yield($0) }, mode: o.mode,
             now: o.now, mono: o.mono, rekeyMessages: o.rekeyMessages, rekeySeconds: o.rekeySeconds)
         // The writer drains in order and closes the pipe once the link ends, so a CLOSE record is
@@ -338,7 +344,9 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         case .sas:
             break
         case .closed(let reason, let byPeer):
-            finish(PeerLinkClosed(code: lost && !byPeer && !overflowed ? "connection_lost" : reason.rawValue, byPeer: byPeer))
+            finish(
+                PeerLinkClosed(
+                    code: lost && !byPeer && !overflowed ? "connection_lost" : reason.rawValue, byPeer: byPeer))
         }
     }
 

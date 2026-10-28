@@ -20,7 +20,7 @@
 import Foundation
 
 #if canImport(Network)
-import Network
+    import Network
 #endif
 
 // MARK: - Dial policy (G6, D-10)
@@ -38,7 +38,9 @@ public struct BonjourDialPolicy: Sendable, Equatable {
         case 4: return allowsIPv4(b)
         case 16:
             // IPv4-mapped is the same address as its IPv4 form.
-            if b[0..<10].allSatisfy({ $0 == 0 }) && b[10] == 0xFF && b[11] == 0xFF { return allowsIPv4(Array(b[12..<16])) }
+            if b[0..<10].allSatisfy({ $0 == 0 }) && b[10] == 0xFF && b[11] == 0xFF {
+                return allowsIPv4(Array(b[12..<16]))
+            }
             if b[0..<15].allSatisfy({ $0 == 0 }) && b[15] == 1 { return allowLoopback }
             if b[0] == 0xFE && (b[1] & 0xC0) == 0x80 { return true }  // fe80::/10
             if (b[0] & 0xFE) == 0xFC { return true }  // fc00::/7
@@ -56,14 +58,14 @@ public struct BonjourDialPolicy: Sendable, Equatable {
     }
 
     #if canImport(Network)
-    public func allows(host: NWEndpoint.Host) -> Bool {
-        switch host {
-        case .ipv4(let a): return allows(addressBytes: Array(a.rawValue))
-        case .ipv6(let a): return allows(addressBytes: Array(a.rawValue))
-        case .name: return false
-        @unknown default: return false
+        public func allows(host: NWEndpoint.Host) -> Bool {
+            switch host {
+            case .ipv4(let a): return allows(addressBytes: Array(a.rawValue))
+            case .ipv6(let a): return allows(addressBytes: Array(a.rawValue))
+            case .name: return false
+            @unknown default: return false
+            }
         }
-    }
     #endif
 }
 
@@ -176,359 +178,386 @@ public enum BonjourRegistration {
 
 #if canImport(Network)
 
-// MARK: - The pipe
+    // MARK: - The pipe
 
-/// One TCP connection as a duplex byte stream. `read()` is pull-based.
-public final class NWPipe: @unchecked Sendable {
-    private static let readMax = 65_536
+    /// One TCP connection as a duplex byte stream. `read()` is pull-based.
+    public final class NWPipe: @unchecked Sendable {
+        private static let readMax = 65_536
 
-    private let conn: NWConnection
-    private let queue: DispatchQueue
-    private let lock = NSLock()
-    private var isClosed = false
-    private var releaseSlot: (() -> Void)?
-    private var authenticated = false
-    public let remoteAddress: String
+        private let conn: NWConnection
+        private let queue: DispatchQueue
+        private let lock = NSLock()
+        private var isClosed = false
+        private var releaseSlot: (() -> Void)?
+        private var authenticated = false
+        public let remoteAddress: String
 
-    fileprivate init(conn: NWConnection, queue: DispatchQueue, remote: String, release: (() -> Void)?) {
-        self.conn = conn
-        self.queue = queue
-        self.remoteAddress = remote
-        self.releaseSlot = release
-    }
-
-    /// The next chunk; nil at the end of the stream or after `close()`.
-    public func read() async throws -> Data? {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Data?, Error>) in
-            conn.receive(minimumIncompleteLength: 1, maximumLength: Self.readMax) { [self] data, _, isComplete, error in
-                if let data, !data.isEmpty { return cont.resume(returning: data) }
-                if let error {
-                    if lock.withLock({ isClosed }) { return cont.resume(returning: nil) }
-                    return cont.resume(throwing: BonjourPipeError.failed("\(error)"))
-                }
-                _ = isComplete
-                cont.resume(returning: nil)
-            }
+        fileprivate init(conn: NWConnection, queue: DispatchQueue, remote: String, release: (() -> Void)?) {
+            self.conn = conn
+            self.queue = queue
+            self.remoteAddress = remote
+            self.releaseSlot = release
         }
-    }
 
-    /// Completes when the OS has taken the bytes.
-    public func write(_ bytes: Data) async throws {
-        if lock.withLock({ isClosed }) { throw BonjourPipeError.closed }
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-            conn.send(content: bytes, completion: .contentProcessed { error in
-                if let error { cont.resume(throwing: BonjourPipeError.failed("\(error)")) } else { cont.resume() }
-            })
-        }
-    }
-
-    public func close() async { shut() }
-
-    /// The session is admitted: this socket no longer counts against the unauthenticated limits.
-    public func markAuthenticated() {
-        lock.withLock { authenticated = true }
-        freeSlot()
-    }
-
-    /// The pre-auth deadline: closes the socket unless the session was admitted. Idempotent.
-    fileprivate func closeUnlessAuthenticated() {
-        if lock.withLock({ authenticated }) { return }
-        shut()
-    }
-
-    fileprivate func shut() {
-        lock.withLock { isClosed = true }
-        conn.cancel()
-        freeSlot()
-    }
-
-    fileprivate func freeSlot() {
-        let r = lock.withLock { () -> (() -> Void)? in
-            defer { releaseSlot = nil }
-            return releaseSlot
-        }
-        r?()
-    }
-
-    /// Starts `conn` and reports the first ready or failure to `onReady` exactly once. A later end
-    /// frees the slot.
-    fileprivate static func open(
-        _ conn: NWConnection, queue: DispatchQueue, remote: String, release: (() -> Void)?,
-        onReady: @escaping @Sendable (NWPipe) -> Void, onFail: @escaping @Sendable (BonjourPipeError) -> Void
-    ) -> NWPipe {
-        let pipe = NWPipe(conn: conn, queue: queue, remote: remote, release: release)
-        let once = Once()
-        conn.stateUpdateHandler = { state in
-            switch state {
-            case .ready:
-                if once.claim() { onReady(pipe) }
-            case .waiting(let e):
-                if case .dns(let code) = e {
-                    let c = BonjourErrors.classify(dnsError: code)
-                    if c == .permissionDenied || c == .notConfigured {
-                        if once.claim() { pipe.shut(); onFail(.browse(c)) }
+        /// The next chunk; nil at the end of the stream or after `close()`.
+        public func read() async throws -> Data? {
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Data?, Error>) in
+                conn.receive(minimumIncompleteLength: 1, maximumLength: Self.readMax) {
+                    [self] data, _, isComplete, error in
+                    if let data, !data.isEmpty { return cont.resume(returning: data) }
+                    if let error {
+                        if lock.withLock({ isClosed }) { return cont.resume(returning: nil) }
+                        return cont.resume(throwing: BonjourPipeError.failed("\(error)"))
                     }
-                }
-            case .failed(let e):
-                pipe.shut()
-                conn.stateUpdateHandler = nil  // breaks the pipe <-> handler cycle
-                if once.claim() { onFail(.failed("\(e)")) }
-            case .cancelled:
-                pipe.freeSlot()
-                conn.stateUpdateHandler = nil
-                if once.claim() { onFail(.closed) }
-            default:
-                break
-            }
-        }
-        conn.start(queue: queue)
-        return pipe
-    }
-
-    fileprivate func fail(_ error: BonjourPipeError, to onFail: @Sendable (BonjourPipeError) -> Void) {
-        shut()
-        onFail(error)
-    }
-}
-
-// MARK: - Dial
-
-public enum BonjourPipes {
-    /// Dial a browse hit.
-    public static func dial(_ endpoint: BonjourEndpoint, options: BonjourDialOptions = BonjourDialOptions()) async throws
-        -> NWPipe
-    {
-        guard let network = endpoint.network else { throw BonjourPipeError.unresolvable }
-        return try await dial(network, options: options)
-    }
-
-    /// Dial an endpoint. The pipe is handed back only after the connected path passed the policy;
-    /// a refused or failed dial has sent nothing.
-    public static func dial(_ endpoint: NWEndpoint, options: BonjourDialOptions = BonjourDialOptions()) async throws -> NWPipe {
-        let params = NWParameters.tcp
-        params.includePeerToPeer = options.peerToPeer
-        let conn = NWConnection(to: endpoint, using: params)
-        let queue = DispatchQueue(label: "im.plrs.key.bonjour-dial")
-        return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<NWPipe, Error>) in
-            let done = Once()
-            let finishFail: @Sendable (BonjourPipeError) -> Void = { e in
-                if done.claim() { cont.resume(throwing: e) }
-            }
-            _ = NWPipe.open(
-                conn, queue: queue, remote: "", release: nil,
-                onReady: { pipe in
-                    guard case .hostPort(let host, _)? = conn.currentPath?.remoteEndpoint,
-                        options.policy.allows(host: host)
-                    else {
-                        pipe.fail(.addressRefused, to: finishFail)
-                        return
-                    }
-                    if done.claim() { cont.resume(returning: pipe) }
-                },
-                onFail: finishFail)
-            queue.asyncAfter(deadline: .now() + options.timeout) {
-                // Only a dial still pending times out; a delivered pipe is the caller's.
-                if done.claim() {
-                    conn.cancel()
-                    cont.resume(throwing: BonjourPipeError.timedOut)
+                    _ = isComplete
+                    cont.resume(returning: nil)
                 }
             }
         }
-    }
-}
 
-// MARK: - Listener
-
-/// Listens for peers on a random TCP port and (optionally) advertises `_pkeypeer._tcp`.
-public final class BonjourListener: @unchecked Sendable {
-    /// G7: an accepted socket that is not admitted as a session within this many seconds is closed.
-    public static let preAuthSeconds: TimeInterval = 30
-    /// `start` throws when the listener has not reached `.ready` this long after `.waiting`.
-    public static let readySeconds: TimeInterval = 10
-
-    private let peerToPeer: Bool
-    private let limiter: UnauthenticatedLimiter
-    private let policy: BonjourDialPolicy
-    private let preAuth: TimeInterval
-    private let readyBound: TimeInterval
-    private let lock = NSLock()
-    private var listener: NWListener?
-    private var advert: BonjourAdvert?
-    private var stopped = false
-    private let queue = DispatchQueue(label: "im.plrs.key.bonjour-listen")
-
-    /// `peerToPeer` is D-5's opt-in (AWDL), off by default.
-    /// `policy` is the accept-side address policy (G6): only LAN sources are served; loopback only on
-    /// the test opt-in.
-    public init(
-        peerToPeer: Bool = false, limiter: UnauthenticatedLimiter = UnauthenticatedLimiter(),
-        policy: BonjourDialPolicy = BonjourDialPolicy(), preAuthSeconds: TimeInterval = BonjourListener.preAuthSeconds,
-        readySeconds: TimeInterval = BonjourListener.readySeconds
-    ) {
-        self.peerToPeer = peerToPeer
-        self.limiter = limiter
-        self.policy = policy
-        self.preAuth = preAuthSeconds
-        self.readyBound = readySeconds
-    }
-
-    /// The limiter key of a source the policy allows, else nil. An IPv4-mapped IPv6 source and its
-    /// IPv4 form share one key; the scope id is not part of it.
-    static func allowedSource(_ e: NWEndpoint, policy: BonjourDialPolicy) -> String? {
-        guard case .hostPort(let host, _) = e, policy.allows(host: host) else { return nil }
-        if case .ipv6(let a) = host {
-            let b = Array(a.rawValue)
-            if b.count == 16, b[0..<10].allSatisfy({ $0 == 0 }), b[10] == 0xFF, b[11] == 0xFF {
-                return b[12..<16].map(String.init).joined(separator: ".")
+        /// Completes when the OS has taken the bytes.
+        public func write(_ bytes: Data) async throws {
+            if lock.withLock({ isClosed }) { throw BonjourPipeError.closed }
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+                conn.send(
+                    content: bytes,
+                    completion: .contentProcessed { error in
+                        if let error {
+                            cont.resume(throwing: BonjourPipeError.failed("\(error)"))
+                        } else {
+                            cont.resume()
+                        }
+                    })
             }
         }
-        let text = "\(host)"
-        return String(text.split(separator: "%", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
-    }
 
-    /// Policy first, then a slot: a refused source never takes one.
-    static func gate(_ e: NWEndpoint, policy: BonjourDialPolicy, limiter: UnauthenticatedLimiter)
-        -> (address: String, slot: UnauthenticatedLimiter.Slot)?
-    {
-        guard let address = allowedSource(e, policy: policy), let slot = limiter.admit(address: address) else {
-            return nil
+        public func close() async { shut() }
+
+        /// The session is admitted: this socket no longer counts against the unauthenticated limits.
+        public func markAuthenticated() {
+            lock.withLock { authenticated = true }
+            freeSlot()
         }
-        return (address, slot)
-    }
 
-    /// What a listener `.waiting` error means: a refused permission or missing plist fails `start` now;
-    /// anything else waits for the ready bound.
-    static func waitingFailure(_ e: NWError) -> BonjourBrowseError? {
-        guard case .dns(let code) = e else { return nil }
-        let c = BonjourErrors.classify(dnsError: code)
-        return c == .permissionDenied || c == .notConfigured ? c : nil
-    }
-
-    /// Start listening and return the port. With `advert` the service is registered; each accepted,
-    /// ready connection goes to `onPipe`, which should call `markAuthenticated()` once the session
-    /// is admitted.
-    @discardableResult
-    public func start(
-        advert: BonjourAdvert? = nil, onPipe: @escaping @Sendable (NWPipe) -> Void,
-        onEvent: @escaping @Sendable (BonjourListenerEvent) -> Void = { _ in }
-    ) async throws -> UInt16 {
-        let params = NWParameters.tcp
-        params.includePeerToPeer = peerToPeer
-        let l: NWListener
-        do { l = try NWListener(using: params) } catch { throw BonjourPipeError.failed("\(error)") }
-        let ok = lock.withLock { () -> Bool in
-            if listener != nil || stopped { return false }
-            listener = l
-            self.advert = advert
-            return true
+        /// The pre-auth deadline: closes the socket unless the session was admitted. Idempotent.
+        fileprivate func closeUnlessAuthenticated() {
+            if lock.withLock({ authenticated }) { return }
+            shut()
         }
-        guard ok else { l.cancel(); throw BonjourPipeError.closed }
-        if let advert { l.service = Self.service(advert) }
 
-        l.serviceRegistrationUpdateHandler = { [weak self, weak l] change in
-            guard let self, let l else { return }
-            guard case .add(let ep) = change, case .service(let name, _, _, _) = ep else { return }
-            let requested = lock.withLock { self.advert?.instance }
-            guard let requested else { return }
-            switch BonjourRegistration.action(requested: requested, registeredAs: name) {
-            case .keep: onEvent(.registered(name))
-            case .withdraw(let got):
-                l.service = nil
-                lock.withLock { self.advert = nil }
-                onEvent(.withdrawn(requested: requested, got: got))
+        fileprivate func shut() {
+            lock.withLock { isClosed = true }
+            conn.cancel()
+            freeSlot()
+        }
+
+        fileprivate func freeSlot() {
+            let r = lock.withLock { () -> (() -> Void)? in
+                defer { releaseSlot = nil }
+                return releaseSlot
             }
+            r?()
         }
-        let limiter = limiter
-        let policy = policy
-        let preAuth = preAuth
-        l.newConnectionHandler = { [queue] conn in
-            guard let (address, slot) = Self.gate(conn.endpoint, policy: policy, limiter: limiter) else {
-                conn.cancel()  // a non-LAN source or a full pool: refused before a byte is read
-                return
-            }
-            let pipe = NWPipe.open(
-                conn, queue: queue, remote: address, release: { limiter.release(slot) },
-                onReady: { onPipe($0) }, onFail: { _ in })
-            // The 30 s clock starts at accept, not when the host gets round to the handshake (G7).
-            queue.asyncAfter(deadline: .now() + preAuth) { pipe.closeUnlessAuthenticated() }
-        }
-        let readyBound = readyBound
-        let queue = queue
-        return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<UInt16, Error>) in
+
+        /// Starts `conn` and reports the first ready or failure to `onReady` exactly once. A later end
+        /// frees the slot.
+        fileprivate static func open(
+            _ conn: NWConnection, queue: DispatchQueue, remote: String, release: (() -> Void)?,
+            onReady: @escaping @Sendable (NWPipe) -> Void, onFail: @escaping @Sendable (BonjourPipeError) -> Void
+        ) -> NWPipe {
+            let pipe = NWPipe(conn: conn, queue: queue, remote: remote, release: release)
             let once = Once()
-            l.stateUpdateHandler = { state in
+            conn.stateUpdateHandler = { state in
                 switch state {
                 case .ready:
-                    if once.claim() { cont.resume(returning: l.port?.rawValue ?? 0) }
+                    if once.claim() { onReady(pipe) }
                 case .waiting(let e):
-                    // No usable interface or a policy refusal: never leave `start` suspended.
-                    if let c = Self.waitingFailure(e) {
-                        if once.claim() { l.cancel(); cont.resume(throwing: BonjourPipeError.browse(c)) }
-                    } else {
-                        queue.asyncAfter(deadline: .now() + readyBound) {
+                    if case .dns(let code) = e {
+                        let c = BonjourErrors.classify(dnsError: code)
+                        if c == .permissionDenied || c == .notConfigured {
                             if once.claim() {
-                                l.cancel()
-                                cont.resume(throwing: BonjourPipeError.failed("listener not ready"))
+                                pipe.shut()
+                                onFail(.browse(c))
                             }
                         }
                     }
                 case .failed(let e):
-                    let c = Self.classify(e)
-                    if once.claim() { cont.resume(throwing: BonjourPipeError.browse(c)) } else { onEvent(.failed(c)) }
+                    pipe.shut()
+                    conn.stateUpdateHandler = nil  // breaks the pipe <-> handler cycle
+                    if once.claim() { onFail(.failed("\(e)")) }
                 case .cancelled:
-                    if once.claim() { cont.resume(throwing: BonjourPipeError.closed) }
+                    pipe.freeSlot()
+                    conn.stateUpdateHandler = nil
+                    if once.claim() { onFail(.closed) }
                 default:
                     break
                 }
             }
-            l.start(queue: queue)
+            conn.start(queue: queue)
+            return pipe
+        }
+
+        fileprivate func fail(_ error: BonjourPipeError, to onFail: @Sendable (BonjourPipeError) -> Void) {
+            shut()
+            onFail(error)
         }
     }
 
-    /// Replace the advert (the next epoch, or a new K_disc) on the same port. Nil withdraws it.
-    public func update(advert: BonjourAdvert?) {
-        let l = lock.withLock { () -> NWListener? in
-            guard !stopped, listener != nil else { return nil }
-            self.advert = advert
-            return listener
-        }
-        l?.service = advert.map(Self.service)
-    }
+    // MARK: - Dial
 
-    public func stop() {
-        let l = lock.withLock { () -> NWListener? in
-            stopped = true
-            defer { listener = nil; advert = nil }
-            return listener
+    public enum BonjourPipes {
+        /// Dial a browse hit.
+        public static func dial(_ endpoint: BonjourEndpoint, options: BonjourDialOptions = BonjourDialOptions())
+            async throws
+            -> NWPipe
+        {
+            guard let network = endpoint.network else { throw BonjourPipeError.unresolvable }
+            return try await dial(network, options: options)
         }
-        l?.cancel()
-    }
 
-    static func txtRecord(_ advert: BonjourAdvert) -> NWTXTRecord {
-        var record = NWTXTRecord()
-        for entry in advert.txt {
-            if let i = entry.firstIndex(of: "=") {
-                record[String(entry[..<i])] = String(entry[entry.index(after: i)...])
-            } else {
-                record.setEntry(.none, for: entry)
+        /// Dial an endpoint. The pipe is handed back only after the connected path passed the policy;
+        /// a refused or failed dial has sent nothing.
+        public static func dial(_ endpoint: NWEndpoint, options: BonjourDialOptions = BonjourDialOptions()) async throws
+            -> NWPipe
+        {
+            let params = NWParameters.tcp
+            params.includePeerToPeer = options.peerToPeer
+            let conn = NWConnection(to: endpoint, using: params)
+            let queue = DispatchQueue(label: "im.plrs.key.bonjour-dial")
+            return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<NWPipe, Error>) in
+                let done = Once()
+                let finishFail: @Sendable (BonjourPipeError) -> Void = { e in
+                    if done.claim() { cont.resume(throwing: e) }
+                }
+                _ = NWPipe.open(
+                    conn, queue: queue, remote: "", release: nil,
+                    onReady: { pipe in
+                        guard case .hostPort(let host, _)? = conn.currentPath?.remoteEndpoint,
+                            options.policy.allows(host: host)
+                        else {
+                            pipe.fail(.addressRefused, to: finishFail)
+                            return
+                        }
+                        if done.claim() { cont.resume(returning: pipe) }
+                    },
+                    onFail: finishFail)
+                queue.asyncAfter(deadline: .now() + options.timeout) {
+                    // Only a dial still pending times out; a delivered pipe is the caller's.
+                    if done.claim() {
+                        conn.cancel()
+                        cont.resume(throwing: BonjourPipeError.timedOut)
+                    }
+                }
             }
         }
-        return record
     }
 
-    static func service(_ advert: BonjourAdvert) -> NWListener.Service {
-        NWListener.Service(
-            name: advert.instance, type: bonjourPeerServiceType, domain: nil, txtRecord: txtRecord(advert))
-    }
+    // MARK: - Listener
 
-    static func hostString(_ e: NWEndpoint) -> String {
-        if case .hostPort(let host, _) = e { return "\(host)" }
-        return "\(e)"
-    }
+    /// Listens for peers on a random TCP port and (optionally) advertises `_pkeypeer._tcp`.
+    public final class BonjourListener: @unchecked Sendable {
+        /// G7: an accepted socket that is not admitted as a session within this many seconds is closed.
+        public static let preAuthSeconds: TimeInterval = 30
+        /// `start` throws when the listener has not reached `.ready` this long after `.waiting`.
+        public static let readySeconds: TimeInterval = 10
 
-    static func classify(_ e: NWError) -> BonjourBrowseError {
-        if case .dns(let code) = e { return BonjourErrors.classify(dnsError: code) }
-        return .unavailable("\(e)")
+        private let peerToPeer: Bool
+        private let limiter: UnauthenticatedLimiter
+        private let policy: BonjourDialPolicy
+        private let preAuth: TimeInterval
+        private let readyBound: TimeInterval
+        private let lock = NSLock()
+        private var listener: NWListener?
+        private var advert: BonjourAdvert?
+        private var stopped = false
+        private let queue = DispatchQueue(label: "im.plrs.key.bonjour-listen")
+
+        /// `peerToPeer` is D-5's opt-in (AWDL), off by default.
+        /// `policy` is the accept-side address policy (G6): only LAN sources are served; loopback only on
+        /// the test opt-in.
+        public init(
+            peerToPeer: Bool = false, limiter: UnauthenticatedLimiter = UnauthenticatedLimiter(),
+            policy: BonjourDialPolicy = BonjourDialPolicy(),
+            preAuthSeconds: TimeInterval = BonjourListener.preAuthSeconds,
+            readySeconds: TimeInterval = BonjourListener.readySeconds
+        ) {
+            self.peerToPeer = peerToPeer
+            self.limiter = limiter
+            self.policy = policy
+            self.preAuth = preAuthSeconds
+            self.readyBound = readySeconds
+        }
+
+        /// The limiter key of a source the policy allows, else nil. An IPv4-mapped IPv6 source and its
+        /// IPv4 form share one key; the scope id is not part of it.
+        static func allowedSource(_ e: NWEndpoint, policy: BonjourDialPolicy) -> String? {
+            guard case .hostPort(let host, _) = e, policy.allows(host: host) else { return nil }
+            if case .ipv6(let a) = host {
+                let b = Array(a.rawValue)
+                if b.count == 16, b[0..<10].allSatisfy({ $0 == 0 }), b[10] == 0xFF, b[11] == 0xFF {
+                    return b[12..<16].map(String.init).joined(separator: ".")
+                }
+            }
+            let text = "\(host)"
+            return String(text.split(separator: "%", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
+        }
+
+        /// Policy first, then a slot: a refused source never takes one.
+        static func gate(_ e: NWEndpoint, policy: BonjourDialPolicy, limiter: UnauthenticatedLimiter)
+            -> (address: String, slot: UnauthenticatedLimiter.Slot)?
+        {
+            guard let address = allowedSource(e, policy: policy), let slot = limiter.admit(address: address) else {
+                return nil
+            }
+            return (address, slot)
+        }
+
+        /// What a listener `.waiting` error means: a refused permission or missing plist fails `start` now;
+        /// anything else waits for the ready bound.
+        static func waitingFailure(_ e: NWError) -> BonjourBrowseError? {
+            guard case .dns(let code) = e else { return nil }
+            let c = BonjourErrors.classify(dnsError: code)
+            return c == .permissionDenied || c == .notConfigured ? c : nil
+        }
+
+        /// Start listening and return the port. With `advert` the service is registered; each accepted,
+        /// ready connection goes to `onPipe`, which should call `markAuthenticated()` once the session
+        /// is admitted.
+        @discardableResult
+        public func start(
+            advert: BonjourAdvert? = nil, onPipe: @escaping @Sendable (NWPipe) -> Void,
+            onEvent: @escaping @Sendable (BonjourListenerEvent) -> Void = { _ in }
+        ) async throws -> UInt16 {
+            let params = NWParameters.tcp
+            params.includePeerToPeer = peerToPeer
+            let l: NWListener
+            do { l = try NWListener(using: params) } catch { throw BonjourPipeError.failed("\(error)") }
+            let ok = lock.withLock { () -> Bool in
+                if listener != nil || stopped { return false }
+                listener = l
+                self.advert = advert
+                return true
+            }
+            guard ok else {
+                l.cancel()
+                throw BonjourPipeError.closed
+            }
+            if let advert { l.service = Self.service(advert) }
+
+            l.serviceRegistrationUpdateHandler = { [weak self, weak l] change in
+                guard let self, let l else { return }
+                guard case .add(let ep) = change, case .service(let name, _, _, _) = ep else { return }
+                let requested = lock.withLock { self.advert?.instance }
+                guard let requested else { return }
+                switch BonjourRegistration.action(requested: requested, registeredAs: name) {
+                case .keep: onEvent(.registered(name))
+                case .withdraw(let got):
+                    l.service = nil
+                    lock.withLock { self.advert = nil }
+                    onEvent(.withdrawn(requested: requested, got: got))
+                }
+            }
+            let limiter = limiter
+            let policy = policy
+            let preAuth = preAuth
+            l.newConnectionHandler = { [queue] conn in
+                guard let (address, slot) = Self.gate(conn.endpoint, policy: policy, limiter: limiter) else {
+                    conn.cancel()  // a non-LAN source or a full pool: refused before a byte is read
+                    return
+                }
+                let pipe = NWPipe.open(
+                    conn, queue: queue, remote: address, release: { limiter.release(slot) },
+                    onReady: { onPipe($0) }, onFail: { _ in })
+                // The 30 s clock starts at accept, not when the host gets round to the handshake (G7).
+                queue.asyncAfter(deadline: .now() + preAuth) { pipe.closeUnlessAuthenticated() }
+            }
+            let readyBound = readyBound
+            let queue = queue
+            return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<UInt16, Error>) in
+                let once = Once()
+                l.stateUpdateHandler = { state in
+                    switch state {
+                    case .ready:
+                        if once.claim() { cont.resume(returning: l.port?.rawValue ?? 0) }
+                    case .waiting(let e):
+                        // No usable interface or a policy refusal: never leave `start` suspended.
+                        if let c = Self.waitingFailure(e) {
+                            if once.claim() {
+                                l.cancel()
+                                cont.resume(throwing: BonjourPipeError.browse(c))
+                            }
+                        } else {
+                            queue.asyncAfter(deadline: .now() + readyBound) {
+                                if once.claim() {
+                                    l.cancel()
+                                    cont.resume(throwing: BonjourPipeError.failed("listener not ready"))
+                                }
+                            }
+                        }
+                    case .failed(let e):
+                        let c = Self.classify(e)
+                        if once.claim() {
+                            cont.resume(throwing: BonjourPipeError.browse(c))
+                        } else {
+                            onEvent(.failed(c))
+                        }
+                    case .cancelled:
+                        if once.claim() { cont.resume(throwing: BonjourPipeError.closed) }
+                    default:
+                        break
+                    }
+                }
+                l.start(queue: queue)
+            }
+        }
+
+        /// Replace the advert (the next epoch, or a new K_disc) on the same port. Nil withdraws it.
+        public func update(advert: BonjourAdvert?) {
+            let l = lock.withLock { () -> NWListener? in
+                guard !stopped, listener != nil else { return nil }
+                self.advert = advert
+                return listener
+            }
+            l?.service = advert.map(Self.service)
+        }
+
+        public func stop() {
+            let l = lock.withLock { () -> NWListener? in
+                stopped = true
+                defer {
+                    listener = nil
+                    advert = nil
+                }
+                return listener
+            }
+            l?.cancel()
+        }
+
+        static func txtRecord(_ advert: BonjourAdvert) -> NWTXTRecord {
+            var record = NWTXTRecord()
+            for entry in advert.txt {
+                if let i = entry.firstIndex(of: "=") {
+                    record[String(entry[..<i])] = String(entry[entry.index(after: i)...])
+                } else {
+                    record.setEntry(.none, for: entry)
+                }
+            }
+            return record
+        }
+
+        static func service(_ advert: BonjourAdvert) -> NWListener.Service {
+            NWListener.Service(
+                name: advert.instance, type: bonjourPeerServiceType, domain: nil, txtRecord: txtRecord(advert))
+        }
+
+        static func hostString(_ e: NWEndpoint) -> String {
+            if case .hostPort(let host, _) = e { return "\(host)" }
+            return "\(e)"
+        }
+
+        static func classify(_ e: NWError) -> BonjourBrowseError {
+            if case .dns(let code) = e { return BonjourErrors.classify(dnsError: code) }
+            return .unavailable("\(e)")
+        }
     }
-}
 #endif

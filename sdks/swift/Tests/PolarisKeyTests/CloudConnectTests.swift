@@ -26,7 +26,8 @@ private final class Link: ConnectSessionLink, @unchecked Sendable {
 
 private func session(_ link: Link) -> ConnectSession {
     ConnectSession(
-        link: link, peerDeviceId: otherId, caps: [], hello: PeerHello(label: nil, platform: "t", app: "djdl", maxMessage: 65_536),
+        link: link, peerDeviceId: otherId, caps: [],
+        hello: PeerHello(label: nil, platform: "t", app: "djdl", maxMessage: 65_536),
         role: "responder", remoteAddress: "10.0.0.2")
 }
 
@@ -49,7 +50,13 @@ private final class LifeNet: ConnectLanNetwork, @unchecked Sendable {
         lock.withLock { _listening = true }
         return 1
     }
-    func release() { lock.withLock { let g = gate; gate = nil; return g }?.resume() }
+    func release() {
+        lock.withLock {
+            let g = gate
+            gate = nil
+            return g
+        }?.resume()
+    }
     func advertise(_ a: BonjourAdvert?) async { lock.withLock { _advert = a?.instance } }
     func browse(
         onUp: @escaping @Sendable (BonjourFound) -> Void, onDown: @escaping @Sendable (String) -> Void,
@@ -156,7 +163,8 @@ final class CloudConnectTests: XCTestCase {
                 #"{"iss":"key.plrs.im","aud":"djdl","sub":"\#(sub)","deviceId":"\#(selfId)","signKey":"\#(keys.signKey)","agreeKey":"\#(keys.agreeKey)","ringEpoch":5,"issuedAt":\#(now),"expiresAt":\#(now + 604_800)}"#,
             typ: JwsTyp.peer.rawValue)
         let disc = Base64URL.encode(Data((0..<32).map { _ in UInt8.random(in: 0...255) }))
-        await server.reply("/djdl/connect/identity", body: #"{"ring":"\#(ring)","certificate":"\#(cert)","discKeys":["\#(disc)"]}"#)
+        await server.reply(
+            "/djdl/connect/identity", body: #"{"ring":"\#(ring)","certificate":"\#(cert)","discKeys":["\#(disc)"]}"#)
         await server.reply("/djdl/devices/keys", body: #"{"keySeq":1}"#)
     }
 
@@ -174,11 +182,13 @@ final class CloudConnectTests: XCTestCase {
         }
         XCTAssertNil(cloudConnectRelayWanted(nil), "unknown discovery allows it")
         XCTAssertNil(cloudConnectRelayWanted(doc(ServiceFragment(enabled: true))))
-        XCTAssertEqual(cloudConnectRelayWanted(doc(ServiceFragment(enabled: true, extras: ["relay": .bool(false)]))), "product")
+        XCTAssertEqual(
+            cloudConnectRelayWanted(doc(ServiceFragment(enabled: true, extras: ["relay": .bool(false)]))), "product")
         XCTAssertEqual(
             cloudConnectRelayWanted(doc(ServiceFragment(enabled: true, endpoints: ["devices": "/x"]))), "no_ticket")
         XCTAssertNil(
-            cloudConnectRelayWanted(doc(ServiceFragment(enabled: true, endpoints: ["ticket": "/t"], extras: ["relay": .bool(true)]))))
+            cloudConnectRelayWanted(
+                doc(ServiceFragment(enabled: true, endpoints: ["ticket": "/t"], extras: ["relay": .bool(true)]))))
     }
 
     // MARK: lifecycle
@@ -190,14 +200,20 @@ final class CloudConnectTests: XCTestCase {
         XCTAssertFalse(st.running)
         XCTAssertEqual(st.lan, "off")
         XCTAssertEqual(st.relay, "off")
-        do { _ = try await c.cloudConnect.open(otherId); XCTFail("not started") } catch {
+        do {
+            _ = try await c.cloudConnect.open(otherId)
+            XCTFail("not started")
+        } catch {
             XCTAssertEqual((error as? ConnectLanError)?.reason, .notStarted)
         }
     }
 
     func testStartWithoutATokenThrowsTheIdentitysAnswer() async throws {
         let c = try await client(token: false)
-        do { try await c.cloudConnect.start(options: lanOnly); XCTFail("no token") } catch {
+        do {
+            try await c.cloudConnect.start(options: lanOnly)
+            XCTFail("no token")
+        } catch {
             XCTAssertTrue(error is CloudConnectError)
         }
         XCTAssertFalse(c.cloudConnect.status().running)
@@ -215,7 +231,10 @@ final class CloudConnectTests: XCTestCase {
         let none = await c.cloudConnect.peers()
         XCTAssertEqual(none, [])
         // A device that is not on the network, with the relay off, is not found.
-        do { _ = try await c.cloudConnect.open(otherId); XCTFail("unknown") } catch {
+        do {
+            _ = try await c.cloudConnect.open(otherId)
+            XCTFail("unknown")
+        } catch {
             XCTAssertEqual((error as? ConnectLanError)?.reason, .unknownPeer)
         }
         await c.cloudConnect.stop()
@@ -255,7 +274,11 @@ final class CloudConnectTests: XCTestCase {
     func testARaceHandsALateValueToTheCleanup() async throws {
         let late = LockedValue<[Int]>([])
         let r: CloudConnectCore.Race<Int> = await CloudConnectCore.race(
-            0.05, { try await Task.sleep(nanoseconds: 200_000_000); return 7 }, late: { v in late.with { $0.append(v) } })
+            0.05,
+            {
+                try await Task.sleep(nanoseconds: 200_000_000)
+                return 7
+            }, late: { v in late.with { $0.append(v) } })
         guard case .timedOut = r else { return XCTFail("\(r)") }
         for _ in 0..<100 where late.current.isEmpty { try await Task.sleep(nanoseconds: 10_000_000) }
         XCTAssertEqual(late.current, [7])
@@ -285,9 +308,13 @@ final class CloudConnectTests: XCTestCase {
             let opts = lifeOptions(net, sockets)
             let started = Task { try? await c.cloudConnect.start(options: opts) }
             // A stop before start() has begun is a stop of nothing; the window is from the first await on.
-            for _ in 0..<500 where !(await c.cloudConnect.core.startInFlight) { try await Task.sleep(nanoseconds: 100_000) }
+            for _ in 0..<500 where !(await c.cloudConnect.core.startInFlight) {
+                try await Task.sleep(nanoseconds: 100_000)
+            }
             if delayMs < 0 {
-                for _ in 0..<500 where !c.cloudConnect.status().running { try await Task.sleep(nanoseconds: 10_000_000) }
+                for _ in 0..<500 where !c.cloudConnect.status().running {
+                    try await Task.sleep(nanoseconds: 10_000_000)
+                }
             } else if delayMs > 0 {
                 try await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
             }
@@ -299,7 +326,8 @@ final class CloudConnectTests: XCTestCase {
             XCTAssertEqual(st.relay, "off", "delay \(delayMs)")
             XCTAssertFalse(net.listening, "delay \(delayMs)")
             XCTAssertNil(net.advert, "delay \(delayMs)")
-            XCTAssertTrue(sockets.list.allSatisfy { $0.closeCode != nil }, "every relay socket is closed, delay \(delayMs)")
+            XCTAssertTrue(
+                sockets.list.allSatisfy { $0.closeCode != nil }, "every relay socket is closed, delay \(delayMs)")
         }
     }
 
@@ -311,7 +339,10 @@ final class CloudConnectTests: XCTestCase {
         let opts = CloudConnectOptions(
             lan: true, relay: false, lanOptions: ConnectLanOptions(advertise: true, browse: false, network: net))
         let began = Date()
-        do { try await c.cloudConnect.core.start(opts, timeout: 0.3); XCTFail("must time out") } catch {
+        do {
+            try await c.cloudConnect.core.start(opts, timeout: 0.3)
+            XCTFail("must time out")
+        } catch {
             XCTAssertTrue(error is ConnectLanError)
         }
         XCTAssertLessThan(Date().timeIntervalSince(began), 5)
@@ -335,7 +366,8 @@ final class CloudConnectTests: XCTestCase {
         let off = c.cloudConnect.onChannel { _ in }
         // An inbound session whose close never returns: the graceful stop cannot get past it.
         let stuck = ConnectSession(
-            link: StuckLink(), peerDeviceId: otherId, caps: [], hello: PeerHello(label: nil, platform: "t", app: "djdl", maxMessage: 65_536),
+            link: StuckLink(), peerDeviceId: otherId, caps: [],
+            hello: PeerHello(label: nil, platform: "t", app: "djdl", maxMessage: 65_536),
             role: "responder", remoteAddress: "10.0.0.2")
         await c.cloudConnect.deliverInbound(stuck)
         let began = Date()

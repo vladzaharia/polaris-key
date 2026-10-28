@@ -85,7 +85,9 @@ public enum SyncUnlockResult: Sendable, Equatable {
     /// person, then `recover(_:)` or `acceptRingChange(confirmed:)`. `by` is the device that wrapped.
     case ringChanged(pinned: SyncRingPin, served: SyncRingPin, createdAt: Int, by: String?)
 
-    public enum LockReason: String, Sendable { case noRing = "no-ring", noWrap = "no-wrap", unusableWrap = "unusable-wrap" }
+    public enum LockReason: String, Sendable {
+        case noRing = "no-ring", noWrap = "no-wrap", unusableWrap = "unusable-wrap"
+    }
 }
 
 /// A new ring. It prints without the recovery code.
@@ -148,7 +150,12 @@ private final class RingMemory: @unchecked Sendable, CustomReflectable {
         for l in ls { l.setRoot(present: held != nil) }
     }
 
-    func addOther(_ h: HeldRoot) { lock.withLock { othersValue.removeAll { $0.ringId == h.ringId }; othersValue.append(h) } }
+    func addOther(_ h: HeldRoot) {
+        lock.withLock {
+            othersValue.removeAll { $0.ringId == h.ringId }
+            othersValue.append(h)
+        }
+    }
 
     func attach(_ l: any SyncRootListener) -> @Sendable () -> Void {
         let (id, present) = lock.withLock { () -> (Int, Bool) in
@@ -701,7 +708,9 @@ public actor SyncKeyring: CustomReflectable {
     }
 
     private static func segment(_ s: String) -> String {
-        s.addingPercentEncoding(withAllowedCharacters: CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"))
+        s.addingPercentEncoding(
+            withAllowedCharacters: CharacterSet(
+                charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"))
             ?? s
     }
 

@@ -7,9 +7,10 @@
 import Foundation
 import PolarisKey
 import PolarisKeyPlatform
+import XCTest
+
 @testable import PolarisKeyCore
 @testable import PolarisKeyIdentity
-import XCTest
 
 private final class FakeProvider: PlatformIdentityProvider, @unchecked Sendable {
     let kind: ExchangeKind = .apple
@@ -82,7 +83,11 @@ final class AutoSignInTests: XCTestCase {
             trust = signer.trust
             let t = Int(Date().timeIntervalSince1970)
             await store.writeCache(
-                CacheRecord(docs: [.license: signer.sign(Fixtures.license(deviceId: "DEVICE00000000000000000000000001", licenseId: "lic_auto", issuedAt: t))]))
+                CacheRecord(docs: [
+                    .license: signer.sign(
+                        Fixtures.license(
+                            deviceId: "DEVICE00000000000000000000000001", licenseId: "lic_auto", issuedAt: t))
+                ]))
         }
         let c = try await PolarisKeyClient.create(
             options: PolarisKeyClientOptions(
@@ -485,7 +490,8 @@ final class AutoSignInTests: XCTestCase {
         await discovery()
         let spy = SpyAuthorizer()
         let (c, _) = try await client()
-        c.identity.installPlatformIdentity(AppleSignInProvider(apple: AppleSignIn(authorizer: spy, userIDs: MemoryIDs())))
+        c.identity.installPlatformIdentity(
+            AppleSignInProvider(apple: AppleSignIn(authorizer: spy, userIDs: MemoryIDs())))
         let result = try await c.identity.autoSignIn()
         XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .noCredential))
         XCTAssertEqual(spy.count, 0)

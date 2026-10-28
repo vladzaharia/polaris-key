@@ -114,10 +114,12 @@ public actor ConfigClient {
         self.envPrefix = options.envPrefix
         self.environment = options.environment ?? ProcessInfo.processInfo.environment
         self.reacquire = reacquire
-        let store = options.local.store ?? UserDefaultsLocalConfigStore(
-            product: core.product,
-            namespace: storeNamespace(productSlug: core.product, baseUrl: core.endpoints.baseUrl),
-            suiteName: options.local.suiteName)
+        let store =
+            options.local.store
+            ?? UserDefaultsLocalConfigStore(
+                product: core.product,
+                namespace: storeNamespace(productSlug: core.product, baseUrl: core.endpoints.baseUrl),
+                suiteName: options.local.suiteName)
         self.localStore = store
         self.persisted = store.load()
     }
@@ -249,7 +251,9 @@ public actor ConfigClient {
             guard entry.accepts(value) else {
                 throw PolarisError(
                     code: ErrorCode.invalidOptions,
-                    message: "\(key) takes a \(entry.schemaType ?? "value") the catalog allows; the value given does not match.")
+                    message:
+                        "\(key) takes a \(entry.schemaType ?? "value") the catalog allows; the value given does not match."
+                )
             }
         }
         if persisted[key] == value { return }
@@ -290,7 +294,9 @@ public actor ConfigClient {
         let after = await snapshot()
         for key in Set(before.keys).union(after.keys).sorted() where before[key] != after[key] {
             deliver(
-                ConfigChange(key: key, value: after[key], previous: before[key], source: await getConfigSource(key), origin: takeSyncOrigin(key)))
+                ConfigChange(
+                    key: key, value: after[key], previous: before[key], source: await getConfigSource(key),
+                    origin: takeSyncOrigin(key)))
         }
     }
 

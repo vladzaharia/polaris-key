@@ -63,8 +63,14 @@ final class HostRig: @unchecked Sendable {
     let codec = FixtureCodec(hRoot)
     let dir = FileManager.default.temporaryDirectory.appendingPathComponent("pk-host-\(UUID().uuidString)")
 
-    var now: Int { get { lock.withLock { nowValue } } set { lock.withLock { nowValue = newValue } } }
-    var subject: String? { get { lock.withLock { subjectValue } } set { lock.withLock { subjectValue = newValue } } }
+    var now: Int {
+        get { lock.withLock { nowValue } }
+        set { lock.withLock { nowValue = newValue } }
+    }
+    var subject: String? {
+        get { lock.withLock { subjectValue } }
+        set { lock.withLock { subjectValue = newValue } }
+    }
     var sent: [SyncRequest] { lock.withLock { sentValue } }
     var fetchCount: Int { lock.withLock { fetches } }
     func setSchema(_ s: JSONValue?) { lock.withLock { schema = s } }
@@ -118,4 +124,3 @@ func hSignedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptions(cata
     await h.touch()
     return h
 }
-

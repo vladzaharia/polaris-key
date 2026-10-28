@@ -25,9 +25,18 @@ final class CloudSyncModelTests: XCTestCase {
         }
     ) -> CloudSyncScreenHost {
         CloudSyncScreenHost(
-            recover: { try await recover($0); await calls.recover($0) },
-            reset: { await calls.reset(); return "NEW-CODE" },
-            acceptRingChange: { await calls.accept($0); return try await accept($0) },
+            recover: {
+                try await recover($0)
+                await calls.recover($0)
+            },
+            reset: {
+                await calls.reset()
+                return "NEW-CODE"
+            },
+            acceptRingChange: {
+                await calls.accept($0)
+                return try await accept($0)
+            },
             newRecoveryCode: { "FRESH-CODE" })
     }
 
@@ -196,7 +205,8 @@ final class CloudSyncModelTests: XCTestCase {
     func testAStartOverInFlightCannotBeCancelledAndKeepsItsCode() async {
         let gate = AsyncStream<Void>.makeStream()
         let slow = CloudSyncScreenHost(
-            recover: { _ in }, reset: {
+            recover: { _ in },
+            reset: {
                 for await _ in gate.stream { break }
                 return "MINTED"
             }, acceptRingChange: { _ in .locked(reason: .noRing) }, newRecoveryCode: { "X" })
@@ -240,7 +250,8 @@ final class CloudSyncModelTests: XCTestCase {
         let calls = Calls()
         let attempts = Attempts()
         let flaky = CloudSyncScreenHost(
-            recover: { _ in }, reset: {
+            recover: { _ in },
+            reset: {
                 if await attempts.next() == 1 { throw PolarisError(code: "network", message: "x") }
                 return "MINTED"
             }, acceptRingChange: { _ in .locked(reason: .noRing) }, newRecoveryCode: { "X" })
@@ -259,5 +270,8 @@ final class CloudSyncModelTests: XCTestCase {
 
 private actor Attempts {
     var n = 0
-    func next() -> Int { n += 1; return n }
+    func next() -> Int {
+        n += 1
+        return n
+    }
 }

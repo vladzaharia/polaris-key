@@ -88,7 +88,11 @@ private final class Side: @unchecked Sendable {
         label: String? = nil, rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600
     ) {
         if let h { held.value = HeldRing(jws: h.0, epoch: h.1) }
-        let held = self.held, clock = self.clock, now = self.now, events = self.events, out = self.out
+        let held = self.held
+        let clock = self.clock
+        let now = self.now
+        let events = self.events
+        let out = self.out
         let acct = PeerAccountContext(
             trust: signer.trust, expectedAud: "djdl", certJws: dev.cert, ownSub: sub, ownDeviceId: dev.id,
             heldRing: { held.value.map { (jws: $0.jws, epoch: $0.epoch) } }, discKeys: disc)
@@ -100,7 +104,9 @@ private final class Side: @unchecked Sendable {
             now: { now.value }, mono: { clock.value }, rekeyMessages: rekeyMessages, rekeySeconds: rekeySeconds)
     }
 
-    var closed: [PeerSessionEvent] { events.value.filter { if case .closed = $0 { return true } else { return false } } }
+    var closed: [PeerSessionEvent] {
+        events.value.filter { if case .closed = $0 { return true } else { return false } }
+    }
     var established: [PeerEstablished] {
         events.value.compactMap { if case .established(let e) = $0 { return e } else { return nil } }
     }
@@ -173,8 +179,10 @@ final class PeerSessionTests: XCTestCase {
     }
 
     func testAWrongDiscoveryKeyEndsTheResponderSilently() async {
-        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
-        let a = Side(.initiator, A, [rnd()]), b = Side(.responder, B, [rnd()])
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
+        let a = Side(.initiator, A, [rnd()])
+        let b = Side(.responder, B, [rnd()])
         await a.s.start()
         await pump(a, b)
         XCTAssertTrue(b.out.value.isEmpty)
@@ -182,22 +190,27 @@ final class PeerSessionTests: XCTestCase {
     }
 
     func testTheResponderAlsoTriesThePreviousDiscoveryKey() async {
-        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
         let old = rnd()
-        let a = Side(.initiator, A, [old]), b = Side(.responder, B, [rnd(), old])
+        let a = Side(.initiator, A, [old])
+        let b = Side(.responder, B, [rnd(), old])
         await a.s.start()
         await pump(a, b)
         XCTAssertEqual(b.established.count, 1)
     }
 
     func testAnAbsentPreviousKeyIsSkippedAndAWrongCurrentKeyFailsCleanly() async {
-        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
         let k = rnd()
-        let a = Side(.initiator, A, [k]), b = Side(.responder, B, [k, nil])
+        let a = Side(.initiator, A, [k])
+        let b = Side(.responder, B, [k, nil])
         await a.s.start()
         await pump(a, b)
         XCTAssertEqual(b.established.count, 1)
-        let c = Side(.initiator, A, [rnd()]), d = Side(.responder, B, [k, nil])
+        let c = Side(.initiator, A, [rnd()])
+        let d = Side(.responder, B, [k, nil])
         await c.s.start()
         await pump(c, d)
         XCTAssertEqual(d.closed.count, 1)
@@ -212,15 +225,18 @@ final class PeerSessionTests: XCTestCase {
     }
 
     func testAnUnusableHeldRosterRefusesAndAsksForAFreshOneButNoneAtAllAdmits() async {
-        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
         let k = rnd()
-        let a = Side(.initiator, A, [k]), b = Side(.responder, B, [k], held: ("not-a-roster", 1))
+        let a = Side(.initiator, A, [k])
+        let b = Side(.responder, B, [k], held: ("not-a-roster", 1))
         await a.s.start()
         await pump(a, b)
         XCTAssertEqual(b.ringWanted, 1)
         XCTAssertTrue(b.established.isEmpty)
         XCTAssertEqual(b.closed.count, 1)
-        let c = Side(.initiator, A, [k]), d = Side(.responder, B, [k])
+        let c = Side(.initiator, A, [k])
+        let d = Side(.responder, B, [k])
         await c.s.start()
         await pump(c, d)
         XCTAssertEqual(d.established.count, 1)
@@ -228,7 +244,8 @@ final class PeerSessionTests: XCTestCase {
     }
 
     func testAPeerMissingFromANewerRosterIsRevoked() async {
-        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
         let k = rnd()
         let a = Side(.initiator, A, [k])
         let b = Side(.responder, B, [k], held: (ring([B], epoch: 2), 2))
@@ -238,13 +255,15 @@ final class PeerSessionTests: XCTestCase {
     }
 
     func testANewerRosterIsPushedVerifiedAndApplied() async {
-        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
         let k = rnd()
         let a = Side(.initiator, A, [k], held: (ring([A, B], epoch: 3), 3))
         let b = Side(.responder, B, [k], held: (ring([A, B], epoch: 2), 2))
         await a.s.start()
         await pump(a, b)
-        let got = b.events.value.compactMap { e -> Int? in if case .ring(_, let n) = e { return n } else { return nil } }
+        let got = b.events.value.compactMap { e -> Int? in if case .ring(_, let n) = e { return n } else { return nil }
+        }
         XCTAssertEqual(got, [3])
         let ao = await a.s.isOpen
         let bo = await b.s.isOpen
@@ -252,7 +271,8 @@ final class PeerSessionTests: XCTestCase {
     }
 
     func testARosterOfAnotherSubjectChangesNothing() async throws {
-        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
         let k = rnd()
         let a = Side(.initiator, A, [k])
         let b = Side(.responder, B, [k], held: (ring([A, B], epoch: 2), 2))
@@ -268,7 +288,8 @@ final class PeerSessionTests: XCTestCase {
     }
 
     func testAPeerOnANewerRosterThanTheHeldOneAsksForIt() async {
-        let A = Dev(idA, signByte: 1, epoch: 5), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1, epoch: 5)
+        let B = Dev(idB, signByte: 2)
         let k = rnd()
         let a = Side(.initiator, A, [k], held: (ring([A, B], epoch: 5), 5))
         let b = Side(.responder, B, [k], held: (ring([A, B], epoch: 2), 2))
@@ -293,7 +314,8 @@ final class PeerSessionTests: XCTestCase {
     }
 
     func testHelloDisplayDataIsCleaned() async {
-        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
         let k = rnd()
         let a = Side(.initiator, A, [k], label: "  Cafe\u{301} \u{202E}TV\u{0}  ")
         let b = Side(.responder, B, [k])
@@ -303,7 +325,8 @@ final class PeerSessionTests: XCTestCase {
     }
 
     func testTheFirstRecordMustBeHelloAndTheRefusalIsSaid() async throws {
-        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
         let k = rnd()
         let b = Side(.responder, B, [k])
         let raw = try PeerNoiseHandshake(
@@ -365,9 +388,11 @@ final class PeerSessionTests: XCTestCase {
     }
 
     func testAPeerCertificateThatRunsOutClosesTheSession() async {
-        let A = Dev(idA, signByte: 1, exp: nowT + 50), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1, exp: nowT + 50)
+        let B = Dev(idB, signByte: 2)
         let k = rnd()
-        let a = Side(.initiator, A, [k]), b = Side(.responder, B, [k])
+        let a = Side(.initiator, A, [k])
+        let b = Side(.responder, B, [k])
         await a.s.start()
         await pump(a, b)
         let w = await b.s.wakeIn()
@@ -380,9 +405,11 @@ final class PeerSessionTests: XCTestCase {
     }
 
     func testAnAlreadyExpiredPeerCertificateIsRefusedAtTheHandshake() async {
-        let A = Dev(idA, signByte: 1, exp: nowT - 1000), B = Dev(idB, signByte: 2)
+        let A = Dev(idA, signByte: 1, exp: nowT - 1000)
+        let B = Dev(idB, signByte: 2)
         let k = rnd()
-        let a = Side(.initiator, A, [k]), b = Side(.responder, B, [k])
+        let a = Side(.initiator, A, [k])
+        let b = Side(.responder, B, [k])
         await a.s.start()
         await pump(a, b)
         XCTAssertEqual(b.closed, [.closed(.handshakeFailed, byPeer: false)])
@@ -424,7 +451,8 @@ final class PeerSessionTests: XCTestCase {
 
     func testTheAccountContextMustFitTheMode() throws {
         let acct = PeerAccountContext(
-            trust: [:], expectedAud: "djdl", certJws: "x", ownSub: sub, ownDeviceId: idA, heldRing: { nil }, discKeys: [])
+            trust: [:], expectedAud: "djdl", certJws: "x", ownSub: sub, ownDeviceId: idA, heldRing: { nil },
+            discKeys: [])
         let key = try PeerNoiseRawStaticKey(privateKey: rnd())
         // Mode a needs an account; v and p take none; an approver needs a limiter.
         XCTAssertThrowsError(
@@ -540,7 +568,8 @@ final class PeerSessionTests: XCTestCase {
                     PeerRecord(type: Int(rec.type, radix: 16)!, flags: UInt8(rec.flags ?? 0), body: rec.body.data))
                 switch r {
                 case .close(let c): close = (c.rawValue, i)
-                case .message(let t, let body): delivered.append(.init(type: h4(t), length: body.count, sha256: sha(body)))
+                case .message(let t, let body):
+                    delivered.append(.init(type: h4(t), length: body.count, sha256: sha(body)))
                 default: break
                 }
             }

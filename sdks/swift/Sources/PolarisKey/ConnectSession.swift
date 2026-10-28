@@ -260,7 +260,8 @@ public final class ConnectSession: Sendable, CustomStringConvertible, CustomRefl
     }
 
     func ended(_ c: ConnectSessionClosed) {
-        let (dropped, subs, waiters, first) = state.with { s -> (Int, [@Sendable (ConnectSessionClosed) -> Void], [Waiter], Bool) in
+        let (dropped, subs, waiters, first) = state.with {
+            s -> (Int, [@Sendable (ConnectSessionClosed) -> Void], [Waiter], Bool) in
             if s.closed != nil { return (0, [], [], false) }
             s.closed = c
             let d = s.bytes

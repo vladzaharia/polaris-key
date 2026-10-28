@@ -23,10 +23,10 @@
 import Foundation
 
 #if canImport(StoreKit)
-import StoreKit
+    import StoreKit
 #endif
 #if os(iOS) && canImport(UIKit)
-import UIKit
+    import UIKit
 #endif
 
 /// A product, as the host shows it.
@@ -189,7 +189,9 @@ public actor StoreService {
             case .success(let t, let confirmIn):
                 // The listener will see this purchase again; it is already reported here.
                 seen.insert(t.updateKey)
-                return ["ok": true, "result": "success", "confirmIn": .string(confirmIn), "transaction": .object(t.json)]
+                return [
+                    "ok": true, "result": "success", "confirmIn": .string(confirmIn), "transaction": .object(t.json),
+                ]
             case .pending:
                 return ["ok": true, "result": "pending"]
             case .userCancelled:
@@ -215,129 +217,133 @@ public actor StoreService {
 }
 
 #if canImport(StoreKit)
-/// Loaded products and the verified, unfinished transactions kept for `finish`.
-private actor StoreKitState {
-    var products: [String: Product] = [:]
-    var pending: [UInt64: Transaction] = [:]
+    /// Loaded products and the verified, unfinished transactions kept for `finish`.
+    private actor StoreKitState {
+        var products: [String: Product] = [:]
+        var pending: [UInt64: Transaction] = [:]
 
-    func add(_ ps: [Product]) { for p in ps { products[p.id] = p } }
-    func product(_ id: String) -> Product? { products[id] }
-    func keep(_ t: Transaction) { pending[t.id] = t }
-    func take(_ id: UInt64) -> Transaction? { pending.removeValue(forKey: id) }
-}
-
-/// StoreKit 2.
-public struct SystemStoreClient: StoreClient {
-    private let state = StoreKitState()
-    private let availability: PlatformAvailability
-
-    public init(availability: PlatformAvailability = .current) { self.availability = availability }
-
-    public func products(_ ids: [String]) async throws -> [ProductInfo] {
-        let found = try await Product.products(for: ids)
-        await state.add(found)
-        return found.map {
-            ProductInfo(
-                id: $0.id, type: $0.type.rawValue, displayName: $0.displayName, displayPrice: $0.displayPrice,
-                price: "\($0.price)")
-        }
+        func add(_ ps: [Product]) { for p in ps { products[p.id] = p } }
+        func product(_ id: String) -> Product? { products[id] }
+        func keep(_ t: Transaction) { pending[t.id] = t }
+        func take(_ id: UInt64) -> Transaction? { pending.removeValue(forKey: id) }
     }
 
-    @MainActor
-    public func purchase(productID: String, appAccountToken: UUID?) async throws -> PurchaseOutcome {
-        #if os(visionOS)
-        throw PurchaseUnsupported()
-        #else
-        guard let product = await state.product(productID) else { throw ProductNotLoaded(productID: productID) }
-        var options: Set<Product.PurchaseOption> = []
-        if let token = appAccountToken { options.insert(.appAccountToken(token)) }
-        let result: Product.PurchaseResult
-        var confirmIn = "default"
-        #if os(iOS) && canImport(UIKit)
-        if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) {
-            confirmIn = "scene"
-            result = try await product.purchase(confirmIn: scene, options: options)
-        } else {
-            result = try await product.purchase(options: options)
-        }
-        #else
-        result = try await product.purchase(options: options)
-        #endif
-        switch result {
-        case .success(let r):
-            if case .verified(let t) = r { await state.keep(t) }
-            return .success(Self.describe(r), confirmIn: confirmIn)
-        case .pending:
-            return .pending
-        case .userCancelled:
-            return .userCancelled
-        @unknown default:
-            return .pending
-        }
-        #endif
-    }
+    /// StoreKit 2.
+    public struct SystemStoreClient: StoreClient {
+        private let state = StoreKitState()
+        private let availability: PlatformAvailability
 
-    public func currentEntitlements(productID: String?) async -> [TransactionInfo] {
-        var out: [TransactionInfo] = []
-        #if compiler(>=6.1) && !os(watchOS)
-        if let productID, availability.entitlementsForID, #available(iOS 18.4, macOS 15.4, tvOS 18.4, visionOS 2.4, *) {
-            for await r in Transaction.currentEntitlements(for: productID) { out.append(Self.describe(r)) }
+        public init(availability: PlatformAvailability = .current) { self.availability = availability }
+
+        public func products(_ ids: [String]) async throws -> [ProductInfo] {
+            let found = try await Product.products(for: ids)
+            await state.add(found)
+            return found.map {
+                ProductInfo(
+                    id: $0.id, type: $0.type.rawValue, displayName: $0.displayName, displayPrice: $0.displayPrice,
+                    price: "\($0.price)")
+            }
+        }
+
+        @MainActor
+        public func purchase(productID: String, appAccountToken: UUID?) async throws -> PurchaseOutcome {
+            #if os(visionOS)
+                throw PurchaseUnsupported()
+            #else
+                guard let product = await state.product(productID) else { throw ProductNotLoaded(productID: productID) }
+                var options: Set<Product.PurchaseOption> = []
+                if let token = appAccountToken { options.insert(.appAccountToken(token)) }
+                let result: Product.PurchaseResult
+                var confirmIn = "default"
+                #if os(iOS) && canImport(UIKit)
+                    if let scene = UIApplication.shared.connectedScenes.first(where: {
+                        $0.activationState == .foregroundActive
+                    }) {
+                        confirmIn = "scene"
+                        result = try await product.purchase(confirmIn: scene, options: options)
+                    } else {
+                        result = try await product.purchase(options: options)
+                    }
+                #else
+                    result = try await product.purchase(options: options)
+                #endif
+                switch result {
+                case .success(let r):
+                    if case .verified(let t) = r { await state.keep(t) }
+                    return .success(Self.describe(r), confirmIn: confirmIn)
+                case .pending:
+                    return .pending
+                case .userCancelled:
+                    return .userCancelled
+                @unknown default:
+                    return .pending
+                }
+            #endif
+        }
+
+        public func currentEntitlements(productID: String?) async -> [TransactionInfo] {
+            var out: [TransactionInfo] = []
+            #if compiler(>=6.1) && !os(watchOS)
+                if let productID, availability.entitlementsForID,
+                    #available(iOS 18.4, macOS 15.4, tvOS 18.4, visionOS 2.4, *)
+                {
+                    for await r in Transaction.currentEntitlements(for: productID) { out.append(Self.describe(r)) }
+                    return out
+                }
+            #endif
+            for await r in Transaction.currentEntitlements {
+                let t = Self.describe(r)
+                if productID == nil || t.productID == productID { out.append(t) }
+            }
             return out
         }
-        #endif
-        for await r in Transaction.currentEntitlements {
-            let t = Self.describe(r)
-            if productID == nil || t.productID == productID { out.append(t) }
-        }
-        return out
-    }
 
-    public func updates() -> AsyncStream<TransactionInfo> {
-        let state = self.state
-        return AsyncStream { continuation in
-            let task = Task.detached {
-                for await r in Transaction.updates {
-                    if case .verified(let t) = r, t.revocationDate == nil { await state.keep(t) }
-                    continuation.yield(Self.describe(r))
+        public func updates() -> AsyncStream<TransactionInfo> {
+            let state = self.state
+            return AsyncStream { continuation in
+                let task = Task.detached {
+                    for await r in Transaction.updates {
+                        if case .verified(let t) = r, t.revocationDate == nil { await state.keep(t) }
+                        continuation.yield(Self.describe(r))
+                    }
+                    continuation.finish()
                 }
-                continuation.finish()
+                continuation.onTermination = { _ in task.cancel() }
             }
-            continuation.onTermination = { _ in task.cancel() }
         }
-    }
 
-    public func finish(transactionID: UInt64) async -> Bool {
-        if let t = await state.take(transactionID) {
-            await t.finish()
-            return true
-        }
-        for await r in Transaction.unfinished {
-            if case .verified(let t) = r, t.id == transactionID {
+        public func finish(transactionID: UInt64) async -> Bool {
+            if let t = await state.take(transactionID) {
                 await t.finish()
                 return true
             }
+            for await r in Transaction.unfinished {
+                if case .verified(let t) = r, t.id == transactionID {
+                    await t.finish()
+                    return true
+                }
+            }
+            return false
         }
-        return false
-    }
 
-    static func describe(_ r: VerificationResult<Transaction>) -> TransactionInfo {
-        let t: Transaction
-        var verified = true
-        var verificationError: String?
-        switch r {
-        case .verified(let v):
-            t = v
-        case .unverified(let v, let e):
-            t = v
-            verified = false
-            verificationError = "\(e)"
+        static func describe(_ r: VerificationResult<Transaction>) -> TransactionInfo {
+            let t: Transaction
+            var verified = true
+            var verificationError: String?
+            switch r {
+            case .verified(let v):
+                t = v
+            case .unverified(let v, let e):
+                t = v
+                verified = false
+                verificationError = "\(e)"
+            }
+            return TransactionInfo(
+                id: t.id, originalID: t.originalID, productID: t.productID, environment: t.environment.rawValue,
+                appAccountToken: t.appAccountToken?.uuidString.lowercased(), revoked: t.revocationDate != nil,
+                revocationReason: t.revocationReason?.rawValue, ownershipType: t.ownershipType.rawValue,
+                purchaseDate: t.purchaseDate.timeIntervalSince1970, verified: verified,
+                verificationError: verificationError, jws: r.jwsRepresentation)
         }
-        return TransactionInfo(
-            id: t.id, originalID: t.originalID, productID: t.productID, environment: t.environment.rawValue,
-            appAccountToken: t.appAccountToken?.uuidString.lowercased(), revoked: t.revocationDate != nil,
-            revocationReason: t.revocationReason?.rawValue, ownershipType: t.ownershipType.rawValue,
-            purchaseDate: t.purchaseDate.timeIntervalSince1970, verified: verified,
-            verificationError: verificationError, jws: r.jwsRepresentation)
     }
-}
 #endif

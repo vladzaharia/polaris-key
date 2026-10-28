@@ -480,7 +480,9 @@ public final class CloudSyncMachine {
     /// Write a record: compare-and-swap for `revision`, a stamped `set` for `lastWrite`, `max` and
     /// `min`, member operations for `merge`.
     public func put(_ collection: String, _ recordId: String, _ value: JSONValue) -> CallResult {
-        guard let decl = collectionDecl(collection), decl.policy != "union" else { return .failed("collection-unknown") }
+        guard let decl = collectionDecl(collection), decl.policy != "union" else {
+            return .failed("collection-unknown")
+        }
         guard s.subject != nil else { return .failed("signed-out") }
         let name = activeName
         let rk = syncRecordKey(collection, recordId)
@@ -684,7 +686,8 @@ public final class CloudSyncMachine {
     public func status() -> SyncStatus {
         let pending = pendingCount
         if pinnedOut {
-            return SyncStatus(state: .unsupported, pending: pending, reason: .encryption, code: "sync-encryption-pinned")
+            return SyncStatus(
+                state: .unsupported, pending: pending, reason: .encryption, code: "sync-encryption-pinned")
         }
         if let b = s.blocked { return SyncStatus(state: .blocked, pending: pending, reason: b) }
         if s.subject == nil { return SyncStatus(state: .local, pending: pending) }
@@ -888,7 +891,8 @@ public final class CloudSyncMachine {
         return m
     }
 
-    func emitChanges(_ before: [String: JSONValue], _ overrides: [String: SyncChangeOrigin], _ origin: SyncChangeOrigin) {
+    func emitChanges(_ before: [String: JSONValue], _ overrides: [String: SyncChangeOrigin], _ origin: SyncChangeOrigin)
+    {
         let after = valueMap()
         var groups: [SyncChangeOrigin: [String]] = [:]
         for k in Set(before.keys).union(after.keys) {
@@ -961,7 +965,8 @@ public final class CloudSyncMachine {
         if d.clear {
             _ = enqueue(
                 name,
-                SyncOp(mutationId: 0, target: targetOf(key), op: .clear, editedHlc: d.editedHlc, preContact: d.preContact))
+                SyncOp(
+                    mutationId: 0, target: targetOf(key), op: .clear, editedHlc: d.editedHlc, preContact: d.preContact))
             return
         }
         enqueueSetting(name, key, d.value, d.editedHlc, moved: false, preContact: d.preContact)
@@ -1032,7 +1037,9 @@ public final class CloudSyncMachine {
     }
 
     func unionOp(_ collection: String, _ recordId: String, _ element: JSONValue, _ op: SyncOpName) -> CallResult {
-        guard let decl = collectionDecl(collection), decl.policy == "union" else { return .failed("collection-unknown") }
+        guard let decl = collectionDecl(collection), decl.policy == "union" else {
+            return .failed("collection-unknown")
+        }
         guard s.subject != nil else { return .failed("signed-out") }
         let name = activeName
         _ = enqueue(
@@ -1104,7 +1111,11 @@ public final class CloudSyncMachine {
         guard requiresE2E, op.op == .set, op.baseVersion == nil, !op.baseAny, case .setting(let k, _) = op.target,
             ["max", "min"].contains(policyOf(k)), case .object(var w) = op.wire
         else { return op.wire }
-        if let row = p.settings[alias(k)] { w["baseVersion"] = .int(row.version) } else { w["baseVersion"] = .string("*") }
+        if let row = p.settings[alias(k)] {
+            w["baseVersion"] = .int(row.version)
+        } else {
+            w["baseVersion"] = .string("*")
+        }
         return .object(w)
     }
 

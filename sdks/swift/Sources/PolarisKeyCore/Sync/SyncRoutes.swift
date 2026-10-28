@@ -113,14 +113,19 @@ public func syncedSettings(_ catalog: JSONValue) -> [SettingRoute] {
     let routes = (o["entries"]?.arrayValue ?? []).map(settingRoute)
     guard o["cloudSync"] != nil else { return routes }
     let mode = cloudSyncEncryption(catalog)
-    return routes.map { var r = $0; r.encryption = mode; return r }
+    return routes.map {
+        var r = $0
+        r.encryption = mode
+        return r
+    }
 }
 
 private func schemaTypeIn(_ schema: [String: JSONValue], _ types: [String]) -> Bool {
     switch schema["type"] {
     case .string(let t)?: return types.contains(t)
     case .array(let a)?:
-        return !a.isEmpty && a.allSatisfy { if case .string(let s) = $0 { return types.contains(s) } else { return false } }
+        return !a.isEmpty
+            && a.allSatisfy { if case .string(let s) = $0 { return types.contains(s) } else { return false } }
     default: return false
     }
 }

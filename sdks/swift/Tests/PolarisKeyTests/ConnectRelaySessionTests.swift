@@ -48,7 +48,13 @@ private final class Tally: @unchecked Sendable {
     var count: Int { lock.withLock { n } }
     var total: Int { lock.withLock { bytes } }
     var sizes: [Int] { lock.withLock { _sizes } }
-    func add(_ b: Int) { lock.withLock { n += 1; bytes += b; _sizes.append(b) } }
+    func add(_ b: Int) {
+        lock.withLock {
+            n += 1
+            bytes += b
+            _sizes.append(b)
+        }
+    }
 }
 
 private final class FakeClock: @unchecked Sendable {
@@ -88,7 +94,8 @@ private final class World: @unchecked Sendable {
     func start(_ d: Dev, _ tweak: (inout ConnectRelayOptions) -> Void = { _ in }) async throws -> ConnectRelayService {
         var o = ConnectRelayOptions(opener: room.opener, random: { 0.5 }, pingSeconds: 1000)
         tweak(&o)
-        let s = ConnectRelayService(source: source(d), ticket: { [room] in .granted(room.issue(device: d.id)) }, options: o)
+        let s = ConnectRelayService(
+            source: source(d), ticket: { [room] in .granted(room.issue(device: d.id)) }, options: o)
         await s.start()
         try await s.ready(timeout: 5)
         services.append(s)
@@ -164,13 +171,20 @@ final class ConnectRelaySessionTests: XCTestCase {
         let w = try await World()
         let a = try await w.start(w.a)
         for id in [idA, "ZZZZ", "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"] {
-            do { _ = try await a.dial(id); XCTFail(id) } catch { XCTAssertEqual((error as? ConnectRelayError)?.reason, .unknownPeer) }
+            do {
+                _ = try await a.dial(id)
+                XCTFail(id)
+            } catch { XCTAssertEqual((error as? ConnectRelayError)?.reason, .unknownPeer) }
         }
         // A first message from a device outside the roster opens nothing.
         let b = try await w.start(w.b)
         let seen = Tally()
         b.onSession { _ in seen.add(1) }
-        w.room.push(idB, .recv(from: Base64URL.decode("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ")!, session: 5, noise: Data(repeating: 1, count: 48)))
+        w.room.push(
+            idB,
+            .recv(
+                from: Base64URL.decode("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ")!, session: 5,
+                noise: Data(repeating: 1, count: 48)))
         try await Task.sleep(nanoseconds: 100_000_000)
         XCTAssertEqual(seen.count, 0)
         await w.close()
@@ -181,7 +195,10 @@ final class ConnectRelaySessionTests: XCTestCase {
         let a = try await w.start(w.a) { $0.maxSessions = 1 }
         _ = try await w.start(w.b)
         let first = try await a.dial(idB)
-        do { _ = try await a.dial(idB); XCTFail("full") } catch { XCTAssertEqual((error as? ConnectRelayError)?.reason, .busy) }
+        do {
+            _ = try await a.dial(idB)
+            XCTFail("full")
+        } catch { XCTAssertEqual((error as? ConnectRelayError)?.reason, .busy) }
         await first.close()
         await w.close()
     }
@@ -190,7 +207,10 @@ final class ConnectRelaySessionTests: XCTestCase {
         let w = try await World()
         let a = try await w.start(w.a) { $0.handshakeSeconds = 0.5 }
         _ = try await w.start(w.b) { $0.maxPendingPerPeer = 0 }
-        do { _ = try await a.dial(idB); XCTFail("not answered") } catch {
+        do {
+            _ = try await a.dial(idB)
+            XCTFail("not answered")
+        } catch {
             XCTAssertEqual((error as? ConnectRelayError)?.reason, .handshakeFailed)
         }
         await w.close()
@@ -238,10 +258,12 @@ final class ConnectRelaySessionTests: XCTestCase {
     func testAcquireSleepsUntilATokenIsAvailable() async throws {
         let clock = FakeClock()
         let slept = LockedValue<[TimeInterval]>([])
-        let p = ConnectPacer(rate: 10, burst: 1, clock: { clock.now }, sleep: { s in
-            slept.with { $0.append(s) }
-            clock.advance(s)
-        })
+        let p = ConnectPacer(
+            rate: 10, burst: 1, clock: { clock.now },
+            sleep: { s in
+                slept.with { $0.append(s) }
+                clock.advance(s)
+            })
         try await p.acquire()
         try await p.acquire()
         XCTAssertEqual(slept.current.count, 1)

@@ -122,7 +122,9 @@ struct SyncVectorsTests {
     @Test(arguments: corpus.hkdfCases.map(\.id))
     func hkdf(id: String) {
         let c = corpus.hkdfCases.first { $0.id == id }!
-        let ikm = hex(c.ikmHex), salt = hex(c.saltHex), info = hex(c.infoHex)
+        let ikm = hex(c.ikmHex)
+        let salt = hex(c.saltHex)
+        let info = hex(c.infoHex)
         #expect(
             hexString(SyncCrypto.hkdf(ikm: ikm, salt: salt, info: info, length: c.length))
                 == c.okmHex)
@@ -151,7 +153,8 @@ struct SyncVectorsTests {
     @Test(arguments: corpus.envelopeCases.map(\.id))
     func envelope(id: String) throws {
         let c = corpus.envelopeCases.first { $0.id == id }!
-        let root = hex(c.rootHex), env = hex(c.envelopeHex)
+        let root = hex(c.rootHex)
+        let env = hex(c.envelopeHex)
         if let seal = c.seal {
             // An alias case was sealed under the source name the reader accepts (expect.name).
             let again = try SyncEnvelope.seal(
@@ -228,10 +231,11 @@ struct SyncVectorsTests {
 
     @Test func numberPrinterMatchesEcmaScript() throws {
         let cases: [(Double, String)] = [
-            (0.1, "0.1"), (-0.0, "0"), (1e21, "1e+21"), (1e-7, "1e-7"), (1.2345678901234568e20, "123456789012345680000"),
+            (0.1, "0.1"), (-0.0, "0"), (1e21, "1e+21"), (1e-7, "1e-7"),
+            (1.2345678901234568e20, "123456789012345680000"),
             (1.5e-7, "1.5e-7"), (100, "100"), (0.000001, "0.000001"), (5e-324, "5e-324"),
             (1.7976931348623157e308, "1.7976931348623157e+308"), (-2.5, "-2.5"),
-            (1152921504606846976, "1152921504606847000"), (12345.678, "12345.678"),
+            (1_152_921_504_606_846_976, "1152921504606847000"), (12345.678, "12345.678"),
         ]
         for (d, s) in cases { #expect(try CanonicalJSON.numberString(d) == s) }
     }
@@ -240,7 +244,9 @@ struct SyncVectorsTests {
 
     @Test func hpkeAnchor() async throws {
         let a = corpus.hpkeAnchor.vector
-        let info = hex(a.info), aad = hex(a.encryption.aad), pt = hex(a.encryption.pt)
+        let info = hex(a.info)
+        let aad = hex(a.encryption.aad)
+        let pt = hex(a.encryption.pt)
         let sealed = try SyncHPKE.seal(
             recipientPublicKey: hex(a.pkRm), info: info, aad: aad, plaintext: pt,
             ephemeralPrivate: hex(a.skEm))
@@ -273,7 +279,9 @@ struct SyncVectorsTests {
         let suite = HPKE.Ciphersuite(kem: .Curve25519_HKDF_SHA256, kdf: .HKDF_SHA256, aead: .AES_GCM_256)
         let skR = Curve25519.KeyAgreement.PrivateKey()
         let pkR = skR.publicKey.rawRepresentation
-        let info = Data("cross-check".utf8), aad = Data("aad".utf8), pt = Data("hello".utf8)
+        let info = Data("cross-check".utf8)
+        let aad = Data("aad".utf8)
+        let pt = Data("hello".utf8)
         var sender = try HPKE.Sender(recipientKey: skR.publicKey, ciphersuite: suite, info: info)
         let ct = try sender.seal(pt, authenticating: aad)
         let dh: (Data) async throws -> Data? = { peer in
@@ -340,7 +348,9 @@ struct SyncVectorsTests {
         case "parse":
             #expect(SyncRecovery.parse(c.input!).map(hexString) == c.expectCodeHex)
         default:
-            let code = hex(c.codeHex!), kid = hex(c.kidHex!), blob = hex(c.blobHex!)
+            let code = hex(c.codeHex!)
+            let kid = hex(c.kidHex!)
+            let blob = hex(c.blobHex!)
             let got = SyncRecovery.unwrap(
                 code: code, ringId: c.ringId!, epoch: c.epoch!, kid: kid, blob: blob)
             #expect(got.map(hexString) == c.expectRootHex)

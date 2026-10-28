@@ -256,7 +256,8 @@ public final class SignInSession: Sendable {
         if let begun { return try begun.get() }
         task = state.with { st in
             if let running = st.task { return running }
-            let client = self.client, prompt = self.prompt
+            let client = self.client
+            let prompt = self.prompt
             let created = Task { try await client.waitDeviceCode(prompt) }
             st.task = created
             return created

@@ -18,8 +18,16 @@ private final class Fake: @unchecked Sendable {
     var newCodes = 0
     var cont: AsyncStream<CloudSyncEvent>.Continuation?
 
-    func set(_ body: () -> Void) { lock.lock(); body(); lock.unlock() }
-    func get<T>(_ body: () throws -> T) rethrows -> T { lock.lock(); defer { lock.unlock() }; return try body() }
+    func set(_ body: () -> Void) {
+        lock.lock()
+        body()
+        lock.unlock()
+    }
+    func get<T>(_ body: () throws -> T) rethrows -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return try body()
+    }
 
     func source() -> CloudSyncSource {
         CloudSyncSource(
@@ -29,7 +37,12 @@ private final class Fake: @unchecked Sendable {
                     return status
                 }
             },
-            flush: { [self] in get { flushes += 1; return status } },
+            flush: { [self] in
+                get {
+                    flushes += 1
+                    return status
+                }
+            },
             probe: { [self] in get { probe } },
             events: { [self] in
                 let (stream, c) = AsyncStream<CloudSyncEvent>.makeStream()
@@ -38,14 +51,23 @@ private final class Fake: @unchecked Sendable {
             },
             screens: CloudSyncScreenHost(
                 recover: { [self] code in
-                    set { recovered.append(code); status = SyncStatus(state: .idle, pending: 0) }
+                    set {
+                        recovered.append(code)
+                        status = SyncStatus(state: .idle, pending: 0)
+                    }
                 },
                 reset: { "RESET-CODE" },
                 acceptRingChange: { [self] pin in
-                    set { accepted.append(pin); status = SyncStatus(state: .idle, pending: 0) }
+                    set {
+                        accepted.append(pin)
+                        status = SyncStatus(state: .idle, pending: 0)
+                    }
                     return .unlocked(ringId: pin.ringId, epoch: pin.epoch)
                 },
-                newRecoveryCode: { [self] in set { newCodes += 1 }; return "NEW-CODE" }))
+                newRecoveryCode: { [self] in
+                    set { newCodes += 1 }
+                    return "NEW-CODE"
+                }))
     }
 }
 

@@ -139,7 +139,8 @@ final class SyncScenariosTests: XCTestCase {
         }
     }
 
-    private func assertStep(_ m: SyncScenarioMachine, _ o: [String: JSONValue], at: String, licence: JSONValue?) throws {
+    private func assertStep(_ m: SyncScenarioMachine, _ o: [String: JSONValue], at: String, licence: JSONValue?) throws
+    {
         let requests = m.takeRequests()
         let events = m.takeEvents()
         if let want = o["requests"] { XCTAssertEqual(.array(requests), want, "\(at): requests") }
@@ -259,7 +260,8 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
         o.contacted = clock["contacted"]?.boolValue ?? false
         o.subject = i["subject"]?.stringValue
         o.network = i["network"]?.stringValue.flatMap(SyncNetwork.init(rawValue:)) ?? .online
-        o.onSignOut = i["options"]?.objectValue?["onSignOut"]?.stringValue.flatMap(SyncOnSignOut.init(rawValue:)) ?? .clear
+        o.onSignOut =
+            i["options"]?.objectValue?["onSignOut"]?.stringValue.flatMap(SyncOnSignOut.init(rawValue:)) ?? .clear
         o.encryption = i["encryption"]?.stringValue.flatMap(SyncEncryption.init(rawValue:)) ?? .e2e
         o.hasRoot = i["hasRoot"]?.boolValue ?? false
         opts = o

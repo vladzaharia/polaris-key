@@ -61,10 +61,12 @@ struct RefusalStep: View {
     var body: some View {
         kitStyle { style in
             let product: [String: CopyArgument] = ["product": .text(style.identity.name)]
-            let title = refusal == .keyEntryLimit
+            let title =
+                refusal == .keyEntryLimit
                 ? CopyLine("core.activation.key-entry-limit.title")
                 : CopyLine("core.codes.license_owned.title", product)
-            let message = refusal == .keyEntryLimit
+            let message =
+                refusal == .keyEntryLimit
                 ? CopyLine("core.activation.key-entry-limit.message")
                 : CopyLine("core.codes.license_owned.message", product)
             KitScreenScaffold(header: true) {
@@ -97,8 +99,9 @@ struct RefusalStep: View {
                             line: CopyLine(
                                 refusal == .keyEntryLimit
                                     ? "signin.key.signIn" : "signin.key.ownedSignIn"),
-                            kind: .primary, action: onSignIn)
-                            .keyboardShortcut(.defaultAction)
+                            kind: .primary, action: onSignIn
+                        )
+                        .keyboardShortcut(.defaultAction)
                     }
                     if let onOpenLink, !Self.isTV, refusal == .keyEntryLimit || onSignIn == nil {
                         KitButton(
@@ -482,8 +485,7 @@ public struct DeviceLimitView: View {
                 if let count = screen.line("deviceLimit.heading") {
                     KitText(count, .headline, color: .strong)
                 }
-                if let lede = screen.line("deviceLimit.lede") ?? screen.line("deviceLimit.browser")
-                {
+                if let lede = screen.line("deviceLimit.lede") ?? screen.line("deviceLimit.browser") {
                     KitText(lede, .body, color: .default)
                 }
             }

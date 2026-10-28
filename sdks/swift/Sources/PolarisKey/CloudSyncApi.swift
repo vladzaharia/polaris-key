@@ -227,7 +227,10 @@ actor CloudSyncApi {
     /// With `maxMs`, the wait ends at the bound whatever the consumer is doing (S-3).
     private func drain(maxMs: Int? = nil) async {
         await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
-            if consumer == nil { c.resume(); return }
+            if consumer == nil {
+                c.resume()
+                return
+            }
             let once = Once(c)
             if let maxMs {
                 once.sleeper = Task.detached {

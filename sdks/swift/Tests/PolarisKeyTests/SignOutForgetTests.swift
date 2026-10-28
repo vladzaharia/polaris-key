@@ -82,7 +82,8 @@ final class SignOutForgetTests: XCTestCase {
                 #"{"iss":"key.plrs.im","aud":"djdl","sub":"\#(sub)","deviceId":"\#(selfId)","signKey":"\#(me.signKey)","agreeKey":"\#(me.agreeKey)","ringEpoch":5,"issuedAt":\#(now),"expiresAt":\#(now + 604_800)}"#,
             typ: JwsTyp.peer.rawValue)
         let disc = Base64URL.encode(Data((0..<32).map { _ in UInt8.random(in: 0...255) }))
-        await server.reply("/djdl/connect/identity", body: #"{"ring":"\#(ring)","certificate":"\#(cert)","discKeys":["\#(disc)"]}"#)
+        await server.reply(
+            "/djdl/connect/identity", body: #"{"ring":"\#(ring)","certificate":"\#(cert)","discKeys":["\#(disc)"]}"#)
         await server.reply("/djdl/devices/keys", body: #"{"keySeq":1}"#)
     }
 

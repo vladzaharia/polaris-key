@@ -175,7 +175,11 @@ final class FakeRoom: @unchecked Sendable {
         for s in lock.withLock({ sockets.filter { $0.device == device } }) { s.deliver(m) }
     }
     func sends(_ device: String) -> [PeerRelayMessage] {
-        lock.withLock { received.filter { $0.device == device }.map(\.message).filter { if case .send = $0 { return true } else { return false } } }
+        lock.withLock {
+            received.filter { $0.device == device }.map(\.message).filter {
+                if case .send = $0 { return true } else { return false }
+            }
+        }
     }
     func count(_ device: String, where f: (PeerRelayMessage) -> Bool) -> Int {
         lock.withLock { received.filter { $0.device == device && f($0.message) }.count }
@@ -196,7 +200,10 @@ final class ManualSleep: @unchecked Sendable {
     var pendingSeconds: [TimeInterval] { lock.withLock { pending.values.map(\.seconds) } }
 
     func sleep(_ seconds: TimeInterval) async throws {
-        let id = lock.withLock { () -> Int in nextId += 1; return nextId }
+        let id = lock.withLock { () -> Int in
+            nextId += 1
+            return nextId
+        }
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, Error>) in
                 let cancelled = lock.withLock { () -> Bool in

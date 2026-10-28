@@ -336,7 +336,8 @@ final class ConnectClientTests: XCTestCase {
         await serve(keys: keys)
         await server.reply(
             "/djdl/connect/identity", status: 403,
-            body: #"{"error":{"code":"account_required","message":"Sign in to link this device.","signInUrl":"https://key.example/signin"}}"#
+            body:
+                #"{"error":{"code":"account_required","message":"Sign in to link this device.","signInUrl":"https://key.example/signin"}}"#
         )
         var r = await c.connect.identity(refresh: true)
         guard case .refused(let a) = r else { return XCTFail("\(r)") }
@@ -360,7 +361,8 @@ final class ConnectClientTests: XCTestCase {
         _ = await c.connect.identity(refresh: true)
         // The Worker lost the keys: 409 once, then the roster again.
         let me = PeerDeviceKeys(deviceId: selfId, signKey: keys.signKey, agreeKey: keys.agreeKey)
-        let good = #"{"ring":"\#(ringJws(epoch: 6, members: [me, other]))","certificate":"\#(certJws(keys: keys, epoch: 6))","discKeys":["\#(randomKey())"]}"#
+        let good =
+            #"{"ring":"\#(ringJws(epoch: 6, members: [me, other]))","certificate":"\#(certJws(keys: keys, epoch: 6))","discKeys":["\#(randomKey())"]}"#
         let calls = Counter()
         await server.route("/djdl/connect/identity") { _ in
             calls.bump() == 1
@@ -530,7 +532,8 @@ final class ConnectClientTests: XCTestCase {
         let c = try await client()
         await server.reply(
             "/djdl/connect/devices",
-            body: #"{"devices":[{"deviceId":"\#(selfId)","label":"Mac","platform":"macos","lastSeen":1700000000,"self":true},{"deviceId":"\#(otherId)","label":null,"platform":null,"lastSeen":1,"self":false}]}"#
+            body:
+                #"{"devices":[{"deviceId":"\#(selfId)","label":"Mac","platform":"macos","lastSeen":1700000000,"self":true},{"deviceId":"\#(otherId)","label":null,"platform":null,"lastSeen":1,"self":false}]}"#
         )
         let r = await c.connect.listDevices()
         XCTAssertEqual(r.list?.count, 2)
@@ -777,7 +780,9 @@ private final class ConnectFakeKeychain: KeychainAPI, @unchecked Sendable {
     }
     func update(_ q: [String: Any], _ a: [String: Any]) -> OSStatus {
         lock.withLock {
-            guard (q[kSecUseDataProtectionKeychain as String] as? Bool) == true, item != nil else { return errSecItemNotFound }
+            guard (q[kSecUseDataProtectionKeychain as String] as? Bool) == true, item != nil else {
+                return errSecItemNotFound
+            }
             item = a[kSecValueData as String] as? Data
             return errSecSuccess
         }

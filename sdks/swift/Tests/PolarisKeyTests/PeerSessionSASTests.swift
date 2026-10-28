@@ -38,7 +38,9 @@ private final class Side: @unchecked Sendable {
         _ mode: PeerNoiseMode, _ role: PeerChannel.Role, admission: HandshakeLimiter? = nil, label: String? = nil,
         nonce: Data? = nil
     ) {
-        let clock = self.clock, events = self.events, out = self.out
+        let clock = self.clock
+        let events = self.events
+        let out = self.out
         let lim = admission ?? (role == .responder ? HandshakeLimiter() : nil)
         s = try! PeerChannel(
             role: role, slug: "djdl", staticKey: try! PeerNoiseRawStaticKey(privateKey: rnd()), admission: lim,
@@ -48,7 +50,9 @@ private final class Side: @unchecked Sendable {
             mono: { clock.value })
     }
 
-    var closed: [PeerSessionEvent] { events.value.filter { if case .closed = $0 { return true } else { return false } } }
+    var closed: [PeerSessionEvent] {
+        events.value.filter { if case .closed = $0 { return true } else { return false } }
+    }
     var sas: [(code: Int, display: String)] {
         events.value.compactMap { if case .sas(let c, let d) = $0 { return (c, d) } else { return nil } }
     }
@@ -114,10 +118,12 @@ final class PeerSessionSASTests: XCTestCase {
 
     func testBothSidesShowTheSameCodeThenRecordsFlow() async throws {
         for mode in [PeerNoiseMode.v, .p] {
-            let d = Side(mode, .initiator), a = Side(mode, .responder)
+            let d = Side(mode, .initiator)
+            let a = Side(mode, .responder)
             await d.s.start()
             await pump(d, a)
-            let sd = try XCTUnwrap(d.sas.first), sm = try XCTUnwrap(a.sas.first)
+            let sd = try XCTUnwrap(d.sas.first)
+            let sm = try XCTUnwrap(a.sas.first)
             XCTAssertEqual(sd.display, PeerSAS.display(sd.code))
             XCTAssertEqual(sd.display.count, 7)
             XCTAssertEqual(sd.code, sm.code)
@@ -137,14 +143,16 @@ final class PeerSessionSASTests: XCTestCase {
             let expect = mode == .p ? [PeerRecordType.confirm] : []
             XCTAssertEqual(a.types, expect)
             XCTAssertEqual(d.types, expect)
-            let open = await d.s.isOpen, aopen = await a.s.isOpen
+            let open = await d.s.isOpen
+            let aopen = await a.s.isOpen
             XCTAssertTrue(open && aopen)
             XCTAssertTrue(d.closed.isEmpty)
         }
     }
 
     func testAHostRecordIsHeldUntilThisSideConfirms() async throws {
-        let d = Side(.v, .initiator), a = Side(.v, .responder)
+        let d = Side(.v, .initiator)
+        let a = Side(.v, .responder)
         await d.s.start()
         await pump(d, a)
         await d.s.confirmSas()
@@ -157,7 +165,8 @@ final class PeerSessionSASTests: XCTestCase {
     }
 
     func testAtMostSixteenRecordsAreHeld() async throws {
-        let d = Side(.v, .initiator), a = Side(.v, .responder)
+        let d = Side(.v, .initiator)
+        let a = Side(.v, .responder)
         await d.s.start()
         await pump(d, a)
         await d.s.confirmSas()
@@ -177,7 +186,8 @@ final class PeerSessionSASTests: XCTestCase {
     }
 
     func testHelloDisplayDataIsUnauthenticatedAndCleaned() async throws {
-        let d = Side(.v, .initiator, label: "  Cafe\u{301} \u{202E}TV\u{0}  "), a = Side(.v, .responder)
+        let d = Side(.v, .initiator, label: "  Cafe\u{301} \u{202E}TV\u{0}  ")
+        let a = Side(.v, .responder)
         await d.s.start()
         await pump(d, a)
         let est = try XCTUnwrap(a.established.first)
@@ -197,14 +207,16 @@ final class PeerSessionSASTests: XCTestCase {
         let t = Box<TimeInterval>(0)
         let lim = HandshakeLimiter(maxPerMinute: 5, maxPending: 2, mono: { t.value })
         func hello() async -> (Side, Side) {
-            let a = Side(.v, .responder, admission: lim), d = Side(.v, .initiator)
+            let a = Side(.v, .responder, admission: lim)
+            let d = Side(.v, .initiator)
             await d.s.start()
             await pump(d, a)
             return (d, a)
         }
         let (d1, a1) = await hello()
         _ = await hello()
-        let third = Side(.v, .responder, admission: lim), d3 = Side(.v, .initiator)
+        let third = Side(.v, .responder, admission: lim)
+        let d3 = Side(.v, .initiator)
         await d3.s.start()
         await pump(d3, third)
         XCTAssertTrue(third.out.value.isEmpty)
@@ -216,7 +228,8 @@ final class PeerSessionSASTests: XCTestCase {
 
     func testAReleaseRunsOnceAndAClosedSessionFreesItsSlot() async {
         let lim = HandshakeLimiter(maxPerMinute: 99, maxPending: 1)
-        let a = Side(.v, .responder, admission: lim), d = Side(.v, .initiator)
+        let a = Side(.v, .responder, admission: lim)
+        let d = Side(.v, .initiator)
         await d.s.start()
         await pump(d, a)
         XCTAssertNil(lim.begin())
@@ -230,7 +243,8 @@ final class PeerSessionSASTests: XCTestCase {
     }
 
     func testTheCodeDeadlineEndsAnUnconfirmedSession() async {
-        let d = Side(.v, .initiator), a = Side(.v, .responder)
+        let d = Side(.v, .initiator)
+        let a = Side(.v, .responder)
         await d.s.start()
         await pump(d, a)
         var w = await a.s.wakeIn()
@@ -244,7 +258,8 @@ final class PeerSessionSASTests: XCTestCase {
         await pump(d, a)
         XCTAssertEqual(d.closed, [.closed(.peerTimeout, byPeer: true)])
         // Confirming ends the deadline.
-        let d2 = Side(.v, .initiator), a2 = Side(.v, .responder)
+        let d2 = Side(.v, .initiator)
+        let a2 = Side(.v, .responder)
         await d2.s.start()
         await pump(d2, a2)
         await a2.s.confirmSas()
@@ -253,7 +268,8 @@ final class PeerSessionSASTests: XCTestCase {
     }
 
     func testTheTransportDeadlineClosesAStalledHandshake() async {
-        let d = Side(.v, .initiator), a = Side(.v, .responder)
+        let d = Side(.v, .initiator)
+        let a = Side(.v, .responder)
         await d.s.start()
         await a.s.receive(d.take()[0])
         a.clock.value = 30
@@ -319,7 +335,8 @@ final class PeerSessionSASTests: XCTestCase {
     func testPinnedNoncesGiveTheCodeTheCorpusFunctionPins() async throws {
         let nd = unhex(m.sas.commits[0].nD)
         let nm = Data(repeating: 9, count: 32)
-        let d = Side(.v, .initiator, nonce: nd), a = Side(.v, .responder, nonce: nm)
+        let d = Side(.v, .initiator, nonce: nd)
+        let a = Side(.v, .responder, nonce: nm)
         await d.s.start()
         await pump(d, a)
         let got = try XCTUnwrap(d.sas.first)
@@ -347,7 +364,8 @@ final class PeerSessionSASTests: XCTestCase {
     }
 
     func testNoHostRecordIsDeliveredBeforeTheCodeIsConfirmed() async {
-        let d = Side(.p, .initiator), a = Side(.p, .responder)
+        let d = Side(.p, .initiator)
+        let a = Side(.p, .responder)
         await d.s.start()
         await pump(d, a)
         XCTAssertTrue(d.types.isEmpty && a.types.isEmpty)

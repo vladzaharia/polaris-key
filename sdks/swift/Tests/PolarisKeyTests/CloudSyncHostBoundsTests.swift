@@ -57,15 +57,24 @@ private func withPendingEdit(_ rig: HostRig, _ h: CloudSyncHost) async {
             let leak: JSONValue = .object([
                 "setting": .string(SyncBlind.blind(root: hRoot, kind: .setting, ctx: hC, n: "leak.key")),
                 "scope": .string("user"), "version": .int(9),
-                "ct": .string(Base64URL.encode(try! SyncEnvelope.seal(root: hRoot, collection: hC, name: "leak.key", value: .int(1)))),
+                "ct": .string(
+                    Base64URL.encode(
+                        try! SyncEnvelope.seal(root: hRoot, collection: hC, name: "leak.key", value: .int(1)))),
             ])
-            return .answer(status: 200, body: hReply(["encryptionSince": .int(0), "changes": .array([leak]),
-                "results": .array([.object(["mutationId": .int(1), "status": .string("ok"), "version": .int(9)])])]))
+            return .answer(
+                status: 200,
+                body: hReply([
+                    "encryptionSince": .int(0), "changes": .array([leak]),
+                    "results": .array([.object(["mutationId": .int(1), "status": .string("ok"), "version": .int(9)])]),
+                ]))
         }
         Task {
             // Watch for the generation to move, then release the send.
             for _ in 0..<300 {
-                if await h.generationCount() != gen { rig.purgeStarted.set(true); return }
+                if await h.generationCount() != gen {
+                    rig.purgeStarted.set(true)
+                    return
+                }
                 try? await Task.sleep(nanoseconds: 10_000_000)
             }
         }
@@ -132,8 +141,14 @@ private func withPendingEdit(_ rig: HostRig, _ h: CloudSyncHost) async {
         _ = try await h.signIn(ALICE)
         let done = Task { await h.touch() }
         let finished = await withTaskGroup(of: Bool.self) { g in
-            g.addTask { await done.value; return true }
-            g.addTask { try? await Task.sleep(nanoseconds: 10_000_000_000); return false }
+            g.addTask {
+                await done.value
+                return true
+            }
+            g.addTask {
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                return false
+            }
             let r = await g.next() ?? false
             g.cancelAll()
             return r
@@ -170,7 +185,8 @@ private func withPendingEdit(_ rig: HostRig, _ h: CloudSyncHost) async {
         await h.flush(maxMs: 3_000)
         await pump.value
         let posts = rig.sent.filter { $0.method == .post }
-        let wire = posts.map { String(decoding: (try? JSONEncoder().encode($0.body)) ?? Data(), as: UTF8.self) }.joined()
+        let wire = posts.map { String(decoding: (try? JSONEncoder().encode($0.body)) ?? Data(), as: UTF8.self) }
+            .joined()
         #expect(posts.count >= 2 || wire.contains("ct"))
         #expect(await h.status()?.pending == 0)
     }

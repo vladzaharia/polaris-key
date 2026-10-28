@@ -33,10 +33,10 @@ import Foundation
 import PolarisKeyCore
 
 #if canImport(UIKit)
-import UIKit
+    import UIKit
 #endif
 #if canImport(AppKit)
-import AppKit
+    import AppKit
 #endif
 
 /// What app code sets. Never read from the Worker.
@@ -118,10 +118,10 @@ public struct CloudSyncHostDeps: Sendable {
             codec: keyring.codec, keyringUnlocked: { keyring.unlocked }, attachKeyring: { keyring.attach($0) },
             syncEnabled: {
                 #if canImport(FoundationNetworking)
-                // S-4: this build cannot refuse a redirect or stream under the body cap; Cloud Sync is off.
-                return false
+                    // S-4: this build cannot refuse a redirect or stream under the body cap; Cloud Sync is off.
+                    return false
                 #else
-                return await core.enabled(.sync)
+                    return await core.enabled(.sync)
                 #endif
             },
             discovery: {
@@ -162,7 +162,12 @@ private final class RootFeed: SyncRootListener, @unchecked Sendable {
         }
     }
 
-    func take() -> Bool? { lock.withLock { () -> Bool? in defer { pending = nil }; return pending } }
+    func take() -> Bool? {
+        lock.withLock { () -> Bool? in
+            defer { pending = nil }
+            return pending
+        }
+    }
 }
 
 public actor CloudSyncHost {
@@ -273,7 +278,11 @@ public actor CloudSyncHost {
 
     /// The routes of a catalog, without any mode the catalog states (the app decides the mode).
     private static func routesOf(_ catalog: JSONValue) -> [SettingRoute] {
-        syncedSettings(catalog).map { var r = $0; r.encryption = nil; return r }
+        syncedSettings(catalog).map {
+            var r = $0
+            r.encryption = nil
+            return r
+        }
     }
 
     /// A catalog fit to route by: the right shape and size, every entry key a valid sync key, and one
@@ -486,7 +495,7 @@ public actor CloudSyncHost {
     /// Hand the machine its answer, unless the machine it was for is gone or no longer waits.
     private func receive(_ m: CloudSyncMachine, _ gen: Int, _ res: SyncResponse, _ opened: SyncOpenedBody? = nil) {
         guard generation == gen, machine === m, m.awaitingAnswer else { return }
-        do { try m.receive(res, opened: opened) } catch { /* a host-made id is always valid */ }
+        do { try m.receive(res, opened: opened) } catch { /* a host-made id is always valid */  }
     }
 
     /// One request: seal it (E2E), send it, open the answer, hand both to the machine.
@@ -598,7 +607,9 @@ public actor CloudSyncHost {
     /// Own mutations: a setting that is not declared is an open key.
     private func noteOpenKeys(_ mutations: [JSONValue]) {
         for mu in mutations {
-            if case .string(let s)? = mu.objectValue?["target"]?.objectValue?["setting"], !isDeclared(s) { addOpenKey(s) }
+            if case .string(let s)? = mu.objectValue?["target"]?.objectValue?["setting"], !isDeclared(s) {
+                addOpenKey(s)
+            }
         }
     }
 
@@ -738,10 +749,10 @@ public actor CloudSyncHost {
     static var lifecycleNames: [(name: Notification.Name, blocking: Bool)] {
         var out: [(Notification.Name, Bool)] = []
         #if canImport(UIKit)
-        out.append((UIApplication.didEnterBackgroundNotification, false))
+            out.append((UIApplication.didEnterBackgroundNotification, false))
         #endif
         #if canImport(AppKit)
-        out.append((NSApplication.willTerminateNotification, true))
+            out.append((NSApplication.willTerminateNotification, true))
         #endif
         return out
     }
@@ -794,7 +805,10 @@ final class Once: @unchecked Sendable {
     var sleeper: Task<Void, Never>?
     init(_ c: CheckedContinuation<Void, Never>) { cont = c }
     func fire() {
-        let c = lock.withLock { () -> CheckedContinuation<Void, Never>? in defer { cont = nil }; return cont }
+        let c = lock.withLock { () -> CheckedContinuation<Void, Never>? in
+            defer { cont = nil }
+            return cont
+        }
         sleeper?.cancel()
         c?.resume()
     }

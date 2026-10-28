@@ -8,8 +8,9 @@
 import Foundation
 import PolarisKey
 import PolarisKeyCore
-@testable import PolarisKeyIdentity
 import XCTest
+
+@testable import PolarisKeyIdentity
 
 final class RedirectSessionTests: XCTestCase {
     private var server = StubServer()
@@ -256,7 +257,9 @@ final class RedirectSessionTests: XCTestCase {
     func testCompleteBelongsToTheRedirectChannel() async throws {
         await server.reply(
             "/djdl/identity/auth/device/start",
-            body: #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1}"#)
+            body:
+                #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1}"#
+        )
         let c = try await client()
         let s = try await c.identity.signIn.start()
         XCTAssertEqual(s.channel, .deviceCode)

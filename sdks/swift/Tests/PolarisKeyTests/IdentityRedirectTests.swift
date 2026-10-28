@@ -7,8 +7,9 @@
 
 import Foundation
 import PolarisKeyCore
-@testable import PolarisKeyIdentity
 import XCTest
+
+@testable import PolarisKeyIdentity
 
 final class IdentityRedirectTests: XCTestCase {
     private let iss = "https://key.plrs.im/djdl/identity"
@@ -249,7 +250,8 @@ final class IdentityRedirectTests: XCTestCase {
         let form = IdentityRedirect.tokenForm(
             clientId: "djdl", codeVerifier: verifier, redirectUri: redirect, code: "c",
             deviceName: "Ada's PC")
-        XCTAssertTrue(form.hasSuffix("&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&device_name=Ada%27s+PC"), form)
+        XCTAssertTrue(
+            form.hasSuffix("&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&device_name=Ada%27s+PC"), form)
     }
 
     // ── parseTokenAnswer ─────────────────────────────────────────────────────────────────
@@ -300,7 +302,10 @@ final class IdentityRedirectTests: XCTestCase {
     func testRefusals() {
         let vectors: [(Int, String, TokenAnswer)] = [
             (400, #"{"error":"invalid_grant"}"#, .refused(error: "invalid_grant", status: 400, retryAfterSeconds: nil)),
-            (401, #"{"error":"invalid_client"}"#, .refused(error: "invalid_client", status: 401, retryAfterSeconds: nil)),
+            (
+                401, #"{"error":"invalid_client"}"#,
+                .refused(error: "invalid_client", status: 401, retryAfterSeconds: nil)
+            ),
             (
                 429, #"{"error":"rate_limited","retryAfter":2.2}"#,
                 .refused(error: "rate_limited", status: 429, retryAfterSeconds: 3)

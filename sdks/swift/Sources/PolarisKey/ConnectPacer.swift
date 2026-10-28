@@ -174,7 +174,9 @@ public final class ConnectOutbox: Sendable {
             var q: [Data] = []
             var tags: [Int?] = []
             for (d, t) in zip(s.q, s.tags) {
-                if t == tag { s.bytes -= d.count } else {
+                if t == tag {
+                    s.bytes -= d.count
+                } else {
                     q.append(d)
                     tags.append(t)
                 }

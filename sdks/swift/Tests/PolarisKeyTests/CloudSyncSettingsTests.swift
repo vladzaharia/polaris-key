@@ -75,7 +75,10 @@ final class CloudSyncSettingsTests: XCTestCase {
     private var stateFile: URL { (stateDirURL ?? dir).appendingPathComponent(cloudSyncFileName) }
     private var marker: URL { (stateDirURL ?? dir).appendingPathComponent("cloud-sync-imported.json") }
 
-    private func serve(_ roots: RingRootStore, subject: String = ALICE, pull: String? = nil, push403: Bool = false, pushChange: String = "") async {
+    private func serve(
+        _ roots: RingRootStore, subject: String = ALICE, pull: String? = nil, push403: Bool = false,
+        pushChange: String = ""
+    ) async {
         await server.reply(
             "/djdl/.well-known/polaris.json",
             body: """
@@ -92,14 +95,16 @@ final class CloudSyncSettingsTests: XCTestCase {
             log.with { $0.append("push:root=\(held)") }
             if push403 {
                 return StubServer.Reply(
-                    status: 403, body: #"{"error":{"code":"account_required","signInUrl":"https://evil.example/login"}}"#)
+                    status: 403,
+                    body: #"{"error":{"code":"account_required","signInUrl":"https://evil.example/login"}}"#)
             }
             let ids =
                 ((try? JSONSerialization.jsonObject(with: req.body ?? Data())) as? [String: Any])
                 .flatMap { $0["mutations"] as? [[String: Any]] }?.compactMap { $0["mutationId"] as? Int } ?? []
             let results = ids.map { #"{"mutationId":\#($0),"status":"ok","version":2}"# }.joined(separator: ",")
             return StubServer.Reply(
-                body: pullBody(subject, pushChange).replacingOccurrences(of: #""changes":["#, with: #""results":[\#(results)],"changes":["#))
+                body: pullBody(subject, pushChange).replacingOccurrences(
+                    of: #""changes":["#, with: #""results":[\#(results)],"changes":["#))
         }
     }
 
@@ -216,7 +221,9 @@ final class CloudSyncSettingsTests: XCTestCase {
         // The credential in use becomes Bob's, then the identity says so.
         try await r.client.core.setToken("pkeyt_bob", source: .signin, person: true)
         r.client.identity.updateSubject(BOB)
-        await eventually("alice's value left memory") { await r.client.config.get(VOL, default: .null) != .double(0.31) }
+        await eventually("alice's value left memory") {
+            await r.client.config.get(VOL, default: .null) != .double(0.31)
+        }
         let sent = await server.requests(forPath: "/djdl/sync/ops")
         XCTAssertEqual(sent.count, before, "nothing of Alice's was sent after the change")
         for req in sent.dropFirst(before) {
@@ -232,13 +239,17 @@ final class CloudSyncSettingsTests: XCTestCase {
         let hits = LockedValue<Int>(0)
         let hold = HoldTransport(
             inner: server.transport,
-            holdFor: { $0.headers["authorization"] == "Bearer pkeyt_bob" && !$0.url.path.hasPrefix("/djdl/sync") ? 5 : nil },
+            holdFor: {
+                $0.headers["authorization"] == "Bearer pkeyt_bob" && !$0.url.path.hasPrefix("/djdl/sync") ? 5 : nil
+            },
             hits: hits)
         let r = try await rig(transport: hold)
         await signIn(r)
         await server.reply(
             "/djdl/identity/auth/device/start",
-            body: #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1}"#)
+            body:
+                #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1}"#
+        )
         await server.reply(
             "/djdl/identity/auth/device/poll",
             body: #"{"status":"ready","token":"pkeyt_bob","schemaVersion":1,"subject":"\#(BOB)"}"#)
@@ -246,8 +257,11 @@ final class CloudSyncSettingsTests: XCTestCase {
         let prompt = try await r.client.identity.startDeviceCode()
         _ = try await r.client.identity.pollDeviceCode(prompt)  // the window is the 5 s licence-sync hold
         XCTAssertGreaterThan(hits.current, 0, "the window did not open")
-        for req in await server.requests(forPath: "/djdl/sync/ops") where req.headers["authorization"] == "Bearer pkeyt_bob" {
-            XCTAssertFalse(String(decoding: req.body ?? Data(), as: UTF8.self).contains("0.31"), "Alice's value went out under Bob's token")
+        for req in await server.requests(forPath: "/djdl/sync/ops")
+        where req.headers["authorization"] == "Bearer pkeyt_bob" {
+            XCTAssertFalse(
+                String(decoding: req.body ?? Data(), as: UTF8.self).contains("0.31"),
+                "Alice's value went out under Bob's token")
         }
     }
 
@@ -261,7 +275,9 @@ final class CloudSyncSettingsTests: XCTestCase {
         await signIn(r)
         await server.reply(
             "/djdl/identity/auth/device/start",
-            body: #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1}"#)
+            body:
+                #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1}"#
+        )
         await server.reply(
             "/djdl/identity/auth/device/poll",
             body: #"{"status":"ready","token":"pkeyt_bob","schemaVersion":1,"subject":"\#(BOB)"}"#)
@@ -378,7 +394,9 @@ final class CloudSyncSettingsTests: XCTestCase {
         XCTAssertEqual(seen.current.last { $0.key == VOL }?.origin, .local)
         // Another device wrote a key; the next answer brings it.
         await serve(
-            r.roots, pushChange: #"{"setting":"remote.only","scope":"user","value":"hi","version":50,"editedHlc":"0000ffffffff:0000"}"#)
+            r.roots,
+            pushChange:
+                #"{"setting":"remote.only","scope":"user","value":"hi","version":50,"editedHlc":"0000ffffffff:0000"}"#)
         try await r.client.cloudSync.flush()
         await eventually("remote change") { seen.current.contains { $0.key == "remote.only" } }
         XCTAssertEqual(seen.current.first { $0.key == "remote.only" }?.origin, .remote)
