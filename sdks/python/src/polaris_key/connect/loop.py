@@ -29,6 +29,11 @@ class ConnectLoop:
         with self._lock:
             return self._thread is not None and self._thread.is_alive()
 
+    def in_loop(self) -> bool:
+        """True on the loop's own thread (where a blocking call would wait on itself)."""
+        t = self._thread
+        return t is not None and t is threading.current_thread()
+
     def _ensure(self) -> Any:
         import asyncio
 

@@ -13,9 +13,13 @@ from .client import (
     RelayGrant,
     RingAdoption,
 )
+from .cloud_connect import CloudConnect, CloudConnectStatus, CloudPeer
 from .errors import LanError, RelayError
 
 __all__ = [
+    "CloudConnect",
+    "CloudConnectStatus",
+    "CloudPeer",
     "ConnectClient",
     "ConnectDevice",
     "ConnectIdentity",

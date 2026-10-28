@@ -34,7 +34,7 @@ import httpx
 
 from .backend import BackendClient
 from .core.device_keys import DeviceKeyPort
-from .connect import ConnectClient
+from .connect import CloudConnect, ConnectClient
 from .keyring import KeyringClient
 from .commerce import CommerceClient
 from .cloud_sync.api import CloudSyncApi, CloudSyncClient
@@ -332,8 +332,16 @@ class PolarisKeyClient:
             device_keys=device_keys,
             allow_ephemeral_keys=allow_ephemeral_keys,
         )
-        # Signing out forgets the held roster, certificate and K_disc (the device keys stay). A
-        # state that cannot be deleted raises, and the sign-out stops (fail closed).
+        #: Cloud Connect (WIRE-CONTRACT-V5 §15): LAN and relay behind one facade. Nothing starts until
+        #: ``cloud_connect.start()``: no thread, no socket.
+        self.cloud_connect = CloudConnect(
+            self.connect, lambda: self._discovery_doc, apply_trust=self._apply_peer_trust, now=self.core.now
+        )
+        # Signing out first stops Cloud Connect (the sessions, the relay and the LAN service are this
+        # person's devices' business), then forgets the held roster, certificate and K_disc (the device
+        # keys stay). Hooks run in this order. A state that cannot be deleted raises, and the sign-out
+        # stops (fail closed).
+        self.identity.on_before_sign_out(self.cloud_connect.stop)
         self.identity.on_before_sign_out(self.connect.leave)
 
         #: The Cloud Sync host (WIRE-CONTRACT-V5 §13): the machine, its transport and the state file.
@@ -504,8 +512,29 @@ class PolarisKeyClient:
         if self._observed is not None:
             self._observed["config"][key] = value
 
+    def _apply_peer_trust(self, jws: str) -> Any:
+        """A trust manifest a connected peer pushed: verified and installed by the trust custodian, then
+        persisted in the same slices a sync writes. Refused (with the reason) when the host turned trust
+        refresh off, or the manifest is invalid or not newer."""
+        from .core.trust import PeerTrustResult
+
+        if not self.core.trust_refresh_enabled:
+            return PeerTrustResult(False, "trust_refresh_off")
+        r = self._trust.accept_peer(jws)
+        if r.applied:
+            patch: Dict[str, Any] = {"trust_jws": jws}
+            evidence = self._trust.pin_revocations
+            if evidence:
+                patch["pin_revocations"] = evidence
+            self._cache.patch(**patch)
+        return r
+
     def close(self) -> None:
-        """Stop the refresh thread and release the HTTP client. Safe to call twice."""
+        """Stop Cloud Connect, the refresh thread and release the HTTP client. Safe to call twice."""
+        try:
+            self.cloud_connect.stop()
+        except Exception:
+            pass
         self._timer_stop.set()
         self._cloud_sync_api.close()
         self.cloud_sync_host.close()

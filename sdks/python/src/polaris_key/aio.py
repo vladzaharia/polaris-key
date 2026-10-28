@@ -232,6 +232,21 @@ class _AsyncEvents(_AsyncFacet):
         return _queue_stream(lambda fn: self._target.subscribe(fn, k))
 
 
+class _AsyncCloudConnect(_AsyncFacet):
+    """``cloud_connect`` on the async client: the blocking calls (``start``, ``stop``, ``open``, ``peers``,
+    ``refresh_peers``, ``devices``) are coroutines run on a worker thread. The registrations and
+    ``status`` return at once; their callbacks run on the Connect thread, not the event loop."""
+
+    def on_channel(self, fn: Callable[..., Any]) -> Callable[[], None]:
+        return self._target.on_channel(fn)  # type: ignore[no-any-return]
+
+    def on_notice(self, fn: Callable[..., Any]) -> Callable[[], None]:
+        return self._target.on_notice(fn)  # type: ignore[no-any-return]
+
+    def status(self) -> Any:
+        return self._target.status()
+
+
 class AsyncPolarisKeyClient:
     """The asyncio face of :class:`~polaris_key.PolarisKeyClient` (see the module doc)."""
 
@@ -248,6 +263,8 @@ class AsyncPolarisKeyClient:
         self.distribution = _AsyncFacet(sync_client.distribution)
         self.backend = _AsyncFacet(sync_client.backend)
         self.events = _AsyncEvents(sync_client.events)
+        #: Cloud Connect: the blocking calls are coroutines (see :class:`_AsyncCloudConnect`).
+        self.cloud_connect = _AsyncCloudConnect(sync_client.cloud_connect)
         #: The Cloud Sync host: ``touch``, ``flush``, ``purge`` and the rest run on a worker thread.
         self.cloud_sync_host = _AsyncFacet(sync_client.cloud_sync_host)
 

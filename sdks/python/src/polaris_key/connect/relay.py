@@ -963,12 +963,12 @@ class RelayLink:
                 self._deadline.cancel()
                 self._deadline = None
             self._open = True
-            self._host = h.on_established(self, e) if h.on_established else None
+            self._host = h.on_established(self, e) if h.on_established else None  # type: ignore[arg-type]
             if not self.opened.done():
                 self.opened.set_result(self._host)
         elif isinstance(e, Record):
             if h.on_record:
-                h.on_record(self, e.record_type, e.body)
+                h.on_record(self, e.record_type, e.body)  # type: ignore[arg-type]
         elif isinstance(e, RingReceived):
             if h.on_ring:
                 h.on_ring(e.jws, e.epoch)

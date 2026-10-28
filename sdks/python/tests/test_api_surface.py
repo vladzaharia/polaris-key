@@ -5,6 +5,7 @@ import pytest
 
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
+from polaris_key.connect.cloud_connect import CloudConnect
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
@@ -19,6 +20,7 @@ CLASSES = {
     "SignInSession": SignInSession,
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
+    "CloudConnect": CloudConnect,
 }
 
 ATTRS = [
@@ -95,6 +97,15 @@ ATTRS = [
     ("license.getLicenseUser", "LicenseClient", "get_license_user"),
     ("license.status", "LicenseClient", "status"),
     ("license.isLicensed", "LicenseClient", "is_licensed"),
+    ("cloudConnect.start", "CloudConnect", "start"),
+    ("cloudConnect.stop", "CloudConnect", "stop"),
+    ("cloudConnect.peers", "CloudConnect", "peers"),
+    ("cloudConnect.devices", "CloudConnect", "devices"),
+    ("cloudConnect.open", "CloudConnect", "open"),
+    ("cloudConnect.onChannel", "CloudConnect", "on_channel"),
+    ("cloudConnect.refreshPeers", "CloudConnect", "refresh_peers"),
+    ("cloudConnect.status", "CloudConnect", "status"),
+    ("cloudConnect.onNotice", "CloudConnect", "on_notice"),
 ]
 OPTION_PARAMS = [
     ("options.productSlug", "product_slug"),
