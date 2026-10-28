@@ -62,4 +62,12 @@ class PlatformSignInTest {
         assertEquals(PlatformIdentityResult.Unavailable(PlatformIdentity.REASON_NO_ACTIVITY), s.silent("c", "n"))
         assertFalse(s.signOutCleanup())
     }
+
+    @Test
+    fun signOutCleanupRunsWithTheApplicationContextWhenNoActivityIsInFront() = runTest {
+        val fake = Fake()
+        val s = PlatformSignIn({ null }, fake, activity.applicationContext)
+        assertTrue(s.signOutCleanup())
+        assertEquals(listOf("clear"), fake.calls)
+    }
 }
