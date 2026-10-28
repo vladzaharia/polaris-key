@@ -73,7 +73,7 @@ extends RefCounted
 ## the blob sealed under a platform key that never leaves secure storage, bound to the product
 ## through the context `pkey-device-keys/1/<product>`. `protection()` is then
 ## `<sealer id>-sealed` ("keychain-sealed", "keystore-sealed", "dpapi-sealed"), `hardware_backed()`
-## is true for the first two, and `best_effort()` is false. Linux has no sealer and keeps the
+## is true only where the key is known to be in secure hardware (iOS, and an Android key that reports it), and `best_effort()` is false. Linux has no sealer and keeps the
 ## engine-encrypted file. The rules above still hold, and these are added:
 ##
 ##  * a sealed record that cannot be opened (the platform key is gone or invalidated, the tag fails,
@@ -125,6 +125,8 @@ var unique_id := OS.get_unique_id()
 var _memory: bool
 ## False when `root` is outside `user://`: raw keys are never written to a shared or exported path.
 var _root_ok := true
+## False when the product is not a canonical lower-case slug (the sealers accept no other): every member refuses with invalid-options.
+var _slug_ok := true
 var _encrypted: bool
 ## The native sealer in use (null: the engine-encrypted file, CC-26.6).
 var sealer: PKeyRecordSealer = null
@@ -146,6 +148,7 @@ func _init(p_product: String, root := "user://pkey", memory := false, encrypted 
 	product = p_product
 	dir = root.path_join(p_product)
 	var name_ok := RegEx.create_from_string("\\A[A-Za-z0-9][A-Za-z0-9@._-]{0,127}\\z").search(p_product) != null
+	_slug_ok = memory or RegEx.create_from_string("\\A[a-z0-9][a-z0-9._-]{0,63}(?:@[a-z0-9._-]{1,259})?\\z").search(p_product) != null
 	_root_ok = name_ok and not p_product.contains("..") and root.begins_with("user://") and not root.contains("..")
 	_memory = memory
 	_encrypted = encrypted
@@ -183,10 +186,11 @@ func protection() -> String:
 	return "file"
 
 
-## True when a native sealer holds the platform key in hardware-backed storage (the Apple Keychain,
-## the Android Keystore). DPAPI is OS-protected but not reported as hardware.
+## True only when the sealer's key is known to be in secure hardware: the iOS data-protection
+## keychain, or an Android Keystore key that reports secure hardware. The macOS login keychain and
+## DPAPI are OS-protected but not reported as hardware.
 func hardware_backed() -> bool:
-	return sealer != null and (sealer.id() == "keychain" or sealer.id() == "keystore")
+	return sealer != null and sealer.hardware_backed()
 
 
 ## True on mobile and consoles, where this store is a fallback for the native lane (CC-26.7).
@@ -210,6 +214,8 @@ func ensure() -> PKeyResult:
 
 ## The public keys, or ok with a null detail when the store holds none. Never makes keys.
 func public_keys() -> PKeyResult:
+	if not _slug_ok:
+		return _bad_slug()
 	_mutex.lock()
 	var r := _public_keys_locked()
 	_mutex.unlock()
@@ -218,6 +224,8 @@ func public_keys() -> PKeyResult:
 
 ## The 64-byte Ed25519 signature by the signing key over `msg`. ok, detail PackedByteArray.
 func sign(msg: PackedByteArray) -> PKeyResult:
+	if not _slug_ok:
+		return _bad_slug()
 	_mutex.lock()
 	var r := _sign_locked(msg)
 	_mutex.unlock()
@@ -230,6 +238,8 @@ func sign(msg: PackedByteArray) -> PKeyResult:
 func dh(peer_public: PackedByteArray) -> PKeyResult:
 	if peer_public.size() != 32 or PKeyCurve25519.is_low_order(peer_public):
 		return PKeyResult.success(null)
+	if not _slug_ok:
+		return _bad_slug()
 	_mutex.lock()
 	var r := _dh_locked(peer_public)
 	_mutex.unlock()
@@ -472,6 +482,10 @@ func _load() -> PKeyResult:
 
 # ── Storage ──────────────────────────────────────────────────────────────────────────────
 
+func _bad_slug() -> PKeyResult:
+	return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "device keys: the product must be a lower-case slug")
+
+
 func _fault(what: String, err: int) -> PKeyResult:
 	return PKeyResult.failure(STORE_FAULT, "device keys: could not %s the record (%s)" % [what, error_string(err)])
 
@@ -533,6 +547,8 @@ func _fetch_file(path: String) -> PKeyResult:
 		if sealer != null:
 			# Not written by a sealer: not read through the weaker path, and never replaced.
 			return PKeyResult.failure(KEYS_UNREADABLE, "device keys: the record is unreadable")
+	if head == null and sealer != null:
+		return _fault("open", FileAccess.get_open_error())
 	var f: FileAccess = null
 	if _encrypted:
 		_salt_fault = null
@@ -667,6 +683,8 @@ func _store(bytes: PackedByteArray) -> PKeyResult:
 ## Runs `op` (an `() -> PKeyResult`) under the process mutex and, for the file store, the lock
 ## directory. A lock that cannot be taken is a store fault: nothing was changed.
 func _locked(op: Callable) -> PKeyResult:
+	if not _slug_ok:
+		return _bad_slug()
 	if not _memory and not _root_ok:
 		return PKeyResult.failure(STORE_FAULT, "device keys: the store directory must be under user://")
 	_mutex.lock()

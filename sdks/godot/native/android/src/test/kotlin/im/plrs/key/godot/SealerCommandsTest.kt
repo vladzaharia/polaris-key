@@ -66,7 +66,7 @@ class SealerCommandsTest {
         assertTrue(op("ks_destroy", "product" to "diceroll").getBoolean("ok"))
         val gone = op("ks_open", "product" to "diceroll", "context" to b64(ctx), "blob" to blob)
         assertEquals("unopenable", gone.getString("error"))
-        assertEquals(0, keys.created - 1, "open never created a key")
+        assertEquals("open never created a key", 1, keys.created)
     }
 
     @Test

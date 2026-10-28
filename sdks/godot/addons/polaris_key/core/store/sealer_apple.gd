@@ -26,6 +26,11 @@ func id() -> String:
 	return "keychain"
 
 
+## The iOS data-protection keychain only; the macOS login keychain is a file-based store, not hardware.
+func hardware_backed() -> bool:
+	return not _login
+
+
 func unavailable() -> String:
 	if apple == null:
 		return "the PolarisKeyApple GDExtension is not in this build"

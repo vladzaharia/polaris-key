@@ -119,13 +119,13 @@ class Commands(
         "ks_delete" -> store(q) { s -> JSONObject().put("ok", true).put("existed", s.delete(q.getString("account"))) }
         "ks_info" -> store(q) { s -> s.info().put("ok", true) }
         "ks_seal" -> sealer(q) { s ->
-            JSONObject().put("ok", true).put("blob", b64(s.seal(bytes(q, "plain"), bytes(q, "context"))))
+            JSONObject().put("ok", true).put("blob", b64(s.seal(bytes(q, "plain"), bytes(q, "context")))).put("hardware", hardware(s.alias))
         }
         "ks_open" -> sealer(q) { s ->
             // null is a blob that can never open (key gone or invalidated, bad tag, other format); a
             // Keystore fault that may pass throws SecureStoreException and is an error, never "gone".
             val plain = s.open(bytes(q, "blob"), bytes(q, "context"))
-            if (plain == null) JSONObject().put("ok", false).put("error", "unopenable") else JSONObject().put("ok", true).put("plain", b64(plain))
+            if (plain == null) JSONObject().put("ok", false).put("error", "unopenable") else JSONObject().put("ok", true).put("plain", b64(plain)).put("hardware", hardware(s.alias))
         }
         "ks_destroy" -> sealer(q) { s ->
             s.destroy()
@@ -176,6 +176,14 @@ class Commands(
         fail("keystore", e.message).put("reason", e.reason)
     } catch (e: IllegalArgumentException) {
         fail("bad_input", null)
+    }
+
+    /** Whether the Keystore key reports secure hardware (TEE or StrongBox); false when unknown. */
+    private fun hardware(alias: String): Boolean = try {
+        val d = keyProvider().describe(alias)
+        d.optBoolean("insideSecureHardware", false) || d.optInt("securityLevel", 0) >= 1
+    } catch (e: Exception) {
+        false
     }
 
     private fun bytes(q: JSONObject, key: String): ByteArray = Base64.decode(q.getString(key), Base64.NO_WRAP)

@@ -7,6 +7,7 @@ extends PKeyRecordSealer
 
 var product: String
 var android: PKeyAndroid
+var _hardware := false
 
 
 func _init(p_product: String, p_android: PKeyAndroid) -> void:
@@ -16,6 +17,12 @@ func _init(p_product: String, p_android: PKeyAndroid) -> void:
 
 func id() -> String:
 	return "keystore"
+
+
+## What the last reply said about the Keystore key (KeyInfo.isInsideSecureHardware or the API 31
+## security level); false until a call has answered.
+func hardware_backed() -> bool:
+	return _hardware
 
 
 func unavailable() -> String:
@@ -39,4 +46,7 @@ func destroy() -> PKeyResult:
 
 func _call(q: Dictionary) -> Dictionary:
 	q["product"] = product
-	return android.call_sync(q)
+	var r := android.call_sync(q)
+	if r.get("ok", false) and r.has("hardware"):
+		_hardware = r["hardware"] == true
+	return r

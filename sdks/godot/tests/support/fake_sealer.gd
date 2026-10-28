@@ -17,6 +17,8 @@ var fault_destroy := false
 var why := ""
 var calls: Array[String] = []
 var made := 0
+## What hardware_backed() answers.
+var hardware := false
 var _id := "keystore"
 
 
@@ -26,6 +28,10 @@ func _init(p_id := "keystore") -> void:
 
 func id() -> String:
 	return _id
+
+
+func hardware_backed() -> bool:
+	return hardware
 
 
 func unavailable() -> String:

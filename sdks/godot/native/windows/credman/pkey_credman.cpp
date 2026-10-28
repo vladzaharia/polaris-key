@@ -176,7 +176,10 @@ class PKeyWinDpapiNative : public RefCounted {
     DATA_BLOB in = view(blob), ent = view(entropy), out = {};
     if (!CryptUnprotectData(&in, nullptr, &ent, nullptr, nullptr, CRYPTPROTECT_UI_FORBIDDEN, &out)) {
       DWORD err = GetLastError();
-      bool never = err == ERROR_INVALID_DATA || err == (DWORD)NTE_BAD_DATA || err == (DWORD)NTE_BAD_KEY_STATE;
+      // Only an error that can never pass is "unopenable". NTE_BAD_KEY_STATE is deliberately NOT one:
+      // it can mean the user profile or master key is not loaded yet, a transient condition that must
+      // never read as "the keys are gone".
+      bool never = err == ERROR_INVALID_DATA || err == (DWORD)NTE_BAD_DATA;
       return fault("CryptUnprotectData", err, never);
     }
     Dictionary d = success();

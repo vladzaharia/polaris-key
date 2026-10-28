@@ -36,6 +36,11 @@ func unavailable() -> String:
 	return "no native sealer"
 
 
+## True only when this sealer's key is known to sit in secure hardware right now. Unknown is false.
+func hardware_backed() -> bool:
+	return false
+
+
 func seal(_plain: PackedByteArray, _context: PackedByteArray) -> PKeyResult:
 	return _unsupported()
 
