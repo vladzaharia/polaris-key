@@ -28,3 +28,15 @@ export function formatBytes(bytes: number, locale?: string): string {
     return new Intl.NumberFormat("en", options).format(value);
   }
 }
+
+/**
+ * An email with its middle hidden: the first character and the domain, `a•••@example.com`. What
+ * a screen shows of an address it did not just type (the license was sent to it). An address
+ * with no local part or no domain is `""`, so a screen shows no half-hidden fragment.
+ */
+export function maskEmail(email: string | null | undefined): string {
+  const at = (email ?? "").lastIndexOf("@");
+  const first = at > 0 ? Array.from(email!.slice(0, at))[0] : undefined;
+  const domain = at > 0 ? email!.slice(at + 1) : "";
+  return first && domain ? `${first}•••@${domain}` : "";
+}
