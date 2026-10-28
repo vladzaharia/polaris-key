@@ -22,6 +22,7 @@ import im.plrs.key.platform.KeyProvider
 import im.plrs.key.platform.KeystoreSealer
 import im.plrs.key.platform.SecureStore
 import im.plrs.key.platform.SecureStoreException
+import im.plrs.key.sdk.PolarisKeyClientOptions
 import java.io.File
 
 /** Adapts :platform's core-free [KeystoreSealer] to :core's [DeviceKeySealer]. A transient Keystore failure surfaces as a [StoreException]. */
@@ -52,3 +53,23 @@ public fun androidDeviceKeyStore(
         "pkey-device-keys/1/$productSlug".toByteArray(Charsets.UTF_8),
     ),
 )
+
+/**
+ * Where the Cloud Sync root lives on Android: the same Keystore-wrapped file as the device keys, with its
+ * own wrapping alias ([KeystoreSealer.rootAliasFor]) and file (`noBackupFilesDir/pkey/<product>/sync-root.bin`).
+ * Never backed up. `forget()` deletes the file and destroys that alias, and no other.
+ */
+public fun androidSyncRootStorage(
+    context: Context,
+    productSlug: String,
+    keys: KeyProvider = AndroidKeyStoreProvider(context),
+    file: File = File(context.noBackupFilesDir, "pkey/${SecureStore.checkProductName(productSlug)}/sync-root.bin"),
+): FileDeviceKeyStorage = FileDeviceKeyStorage(
+    file,
+    AndroidDeviceKeySealer(KeystoreSealer(keys, KeystoreSealer.rootAliasFor(productSlug))),
+    "pkey-sync-root/1/$productSlug".toByteArray(Charsets.UTF_8),
+)
+
+/** These client options with the Cloud Sync root in [androidSyncRootStorage], unless the host chose a storage. */
+internal fun PolarisKeyClientOptions.withAndroidKeyring(context: Context, productSlug: String): PolarisKeyClientOptions =
+    copy(keyring = keyring.copy(rootStorage = keyring.rootStorage ?: androidSyncRootStorage(context, productSlug)))

@@ -138,7 +138,12 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
         step = s
         stepIndex = index
         served = BooleanArray(items(s).size)
-        for ((k, v) in s["args"]!!.obj) v.stringValue?.let { bindings[k] = it }
+        for ((k, v) in s["args"]!!.obj) {
+            // `deviceId` in a key ring step names the TARGET device (the path); the `{deviceId}` in a header stays
+            // the calling device's, which is `initial.deviceId`.
+            if (k == "deviceId" && s["action"].stringValue.orEmpty().startsWith("keyring")) continue
+            v.stringValue?.let { bindings[k] = it }
+        }
         s
     }
 

@@ -143,6 +143,8 @@ public data class PolarisKeyClientOptions @JvmOverloads constructor(
     val accountOpener: im.plrs.key.identity.AccountOpener? = null,
     /** Cloud Connect (CC-12.1): the device keys and the state storage; see [ConnectOptions]. */
     val connect: ConnectOptions = ConnectOptions(),
+    /** The Cloud Sync key ring (U-39.8): this device's keys and where the root is kept; see [KeyringOptions]. */
+    val keyring: KeyringOptions = KeyringOptions(),
 )
 
 /**
@@ -457,6 +459,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public suspend fun useDeviceKeys(keys: im.plrs.key.core.DeviceKeyPort) {
         identity.useDeviceKeys(keys)
         connect.useDeviceKeys(keys)
+        keyring.useDeviceKeys(keys)
     }
 
     /**
@@ -475,6 +478,16 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
             cc.stopForSignOut()
             connect.leave()
         }
+    }
+
+    /**
+     * The Cloud Sync key ring (WIRE-CONTRACT-V5 section 13.10): `status`, `unlock`, `create`, `reset`,
+     * `wrapTo`, `recover`, `forget` and the `codec` the E2E machine seals with. Signing out forgets the
+     * root (after Connect's roster), in memory and in storage.
+     */
+    public val keyring: SyncKeyring = SyncKeyring(core, options.keyring.copy(keys = options.keyring.keys ?: options.connect.deviceKeys)).also { k ->
+        // Registered after Connect's hook: the roster goes first, then the root. A root that cannot be deleted stops the sign-out.
+        identity.onBeforeSignOut { k.forget() }
     }
 
     private val stateFlow = kotlinx.coroutines.flow.MutableStateFlow<LicenseState?>(null)

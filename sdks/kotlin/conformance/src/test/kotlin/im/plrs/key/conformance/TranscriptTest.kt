@@ -8,7 +8,7 @@
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
-// @pkey-feature identity.exchange
+// @pkey-feature identity.exchange sync.keyring
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -58,7 +58,9 @@ import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.DevicePublicKeys
 import im.plrs.key.core.InMemoryDeviceKeyStorage
+import im.plrs.key.core.DeviceKeyStore
 import im.plrs.key.sdk.ConnectOptions
+import im.plrs.key.sdk.KeyringOptions
 import im.plrs.key.sdk.RelayException
 import im.plrs.key.core.DiscoveryResult
 import im.plrs.key.core.DocOutcome
@@ -182,6 +184,9 @@ class ReplaySession(val platform: String? = null) {
     /** The fixture device keys behind `client.connect` and the label they were last set to. */
     val keys = FixtureKeyPort()
     var keyLabel: String? = null
+
+    /** The ring id of the first ring this conversation created (`keyringAdopt` adopts its root). */
+    var firstRingId: String? = null
     var prompt: SignInSession? = null
 
     /** The SDK clock of the step being replayed (seconds), for an action that reports a time left. */
@@ -464,6 +469,13 @@ object KotlinReplay {
                     }
                 }
             }
+            // The key ring verbs (U-39.9, `sync.keyring`) over `client.keyring`. The transcripts hold no key material
+            // the client could use, so the client makes its own: create and reset draw a root, wrap seals it to a
+            // fresh agreement key for the named device (`deviceId` is the TARGET), and adopt takes the root of the
+            // first ring this conversation created. A refusal reads as `refused` with the status and the code.
+            "keyringGet", "keyringCreate", "keyringReset", "keyringWrap", "keyringUnwrap", "keyringAdopt",
+            "keyringRecoverySet", "keyringRecoveryGet",
+            -> keyring(client, step, session, out)
             // `client.connect.relayTicket()` (CC-12.4, `connect.relay`). A refusal reads as `result: "refused"`
             // with the status, the Worker's code and, where it answers them, `retryAfter` and `scope`.
             "relayTicket" -> {
@@ -823,6 +835,62 @@ object KotlinReplay {
         is ActivationResult.Error -> "error"
     }
 
+    /** The key ring verbs of [act]; see there. */
+    private suspend fun keyring(
+        client: PolarisKeyClient,
+        step: JsonObject,
+        session: ReplaySession,
+        out: MutableMap<String, JsonElement>,
+    ) {
+        val k = client.keyring
+        val action = step["action"].stringValue
+        val args = step["args"]!!.obj
+        try {
+            when (action) {
+                "keyringGet" -> {
+                    val r = k.read()
+                    out["ring"] = r.ring?.let { g ->
+                        JsonObject(
+                            mapOf(
+                                "ringId" to JsonPrimitive(g.ringId), "epoch" to jsonInt(g.epoch.toLong()), "rootKid" to JsonPrimitive(g.rootKid),
+                                "state" to JsonPrimitive(g.state), "recoverySet" to JsonPrimitive(g.recoverySet),
+                                "previous" to (g.previous?.let { JsonPrimitive(it.ringId) } ?: JsonNull),
+                                "adopted" to JsonArray(g.adopted.map { JsonPrimitive(it.ringId) }),
+                            ),
+                        )
+                    } ?: JsonNull
+                    out["wrap"] = r.wrap?.let { w ->
+                        JsonObject(
+                            mapOf(
+                                "epoch" to jsonInt(w.epoch.toLong()), "kid" to JsonPrimitive(w.kid),
+                                "by" to (w.by?.let { JsonPrimitive(it) } ?: JsonNull),
+                            ),
+                        )
+                    } ?: JsonNull
+                }
+                "keyringCreate", "keyringReset" -> {
+                    val made = if (action == "keyringCreate") k.create() else k.reset()
+                    if (action == "keyringCreate" && session.firstRingId == null) session.firstRingId = made.ringId
+                    // The ring id is the client's own draw and the recording's is a fixture: both must be a well
+                    // formed id, and the replay reports the recorded one when ours is.
+                    val ok = Regex("^rg_[A-Za-z0-9_-]{22}$").matches(made.ringId)
+                    out["ringId"] = if (ok) (step["expect"]!!.obj["ringId"] ?: JsonPrimitive(made.ringId)) else JsonPrimitive(made.ringId)
+                    out["epoch"] = jsonInt(made.epoch.toLong())
+                }
+                "keyringWrap" -> k.wrapTo(args["deviceId"].stringValue ?: "", DeviceKeyStore(InMemoryDeviceKeyStorage()).ensure().agreeKey)
+                "keyringUnwrap" -> k.removeWrap(args["deviceId"].stringValue ?: "")
+                "keyringAdopt" -> k.adopt(session.firstRingId ?: "")
+                "keyringRecoverySet" -> k.setRecoveryCode()
+                else -> out["ct"] = JsonPrimitive(k.recoveryBlob().ct)
+            }
+            out["result"] = JsonPrimitive("ok")
+        } catch (e: PolarisException) {
+            out["result"] = JsonPrimitive("refused")
+            e.httpStatus?.let { out["status"] = jsonInt(it.toLong()) }
+            out["code"] = JsonPrimitive(e.code)
+        }
+    }
+
     /** Replay [t] step by step; throws on the first step whose traffic or outcome disagrees. */
     fun replay(t: Transcript) = runBlocking {
         val server = ReplayServer(t)
@@ -853,6 +921,8 @@ object KotlinReplay {
         val client = PolarisKeyClient.create(
             PolarisKeyClientOptions(
                 connect = ConnectOptions(deviceKeys = session.keys, state = InMemoryDeviceKeyStorage()),
+                // The key ring's own device keys and root storage: memory only, nothing touches a file or a keystore.
+                keyring = KeyringOptions(keys = DeviceKeyStore(InMemoryDeviceKeyStorage()), rootStorage = InMemoryDeviceKeyStorage()),
                 core = CoreOptions(
                     productSlug = t.product, baseUrl = t.baseUrl,
                     version = installed?.get("version").stringValue ?: t.initial["version"].stringValue!!,
@@ -1052,6 +1122,8 @@ class TranscriptTest : ConformanceSuite() {
         val REQUIRED = listOf(
             "discovery-capabilities", "discovery-failure", "sync-etag-304", "sync-errors",
             "activate-enroll-deactivate", "config-schema-fetch", "devicecode-denied", "devicecode-failed", "devicecode-mint-retry", "devicecode-expired", "devicecode-happy",
+            // U-39.9: the key ring (`sync.keyring`).
+            "keyring-create", "keyring-wrap", "keyring-wrap-read", "keyring-recovery", "keyring-adopt-reset", "keyring-gate-off", "keyring-sync-off",
             "edge-mint", "register-open", "register-reregister-401", "release-changelog",
             "release-changelog-entitled", "telemetry-report",
             // P6-08: the v4 update decision.
