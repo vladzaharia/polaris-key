@@ -216,6 +216,10 @@ public final class SyncCodec: Sendable, CustomReflectable, CustomStringConvertib
     }
 }
 
+/// `SyncCodec` is the host codec's port (U-07.5). `open` gains no default here: the host passes the
+/// app's aliases explicitly.
+extension SyncCodec: SyncCodecPort {}
+
 private func hexOf(_ d: Data) -> String { d.map { String(format: "%02x", $0) }.joined() }
 
 private func unhex(_ s: String) -> Data? {
