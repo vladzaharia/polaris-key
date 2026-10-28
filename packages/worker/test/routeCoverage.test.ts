@@ -220,6 +220,10 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/platform/ready", ["get"]],
     // ST-29, ST-31.5: who can give the caller access to an area.
     ["/manage/api/access/admins", ["get"]],
+    // ST-32.5: the SSO rules' preview and the admin_group conversion offers.
+    ["/manage/api/access/rules/preview", ["post"]],
+    ["/manage/api/access/offers", ["get", "post"]],
+    ["/manage/api/access/offers/{slug}", ["post"]],
     // ST-30c.3 (SM-3(a), (d)): the signed-in operator's own sign-in methods.
     ["/manage/api/me/prefs", ["put"]],
     ["/manage/api/me/methods", ["get"]],
@@ -920,6 +924,8 @@ function concrete(template: string): string {
     id: "dst_AAAAAAAAAAAA",
     runId: "mig_AAAAAAAAAAAA",
     code: "K7M-4QX-9TZ",
+    // ST-32.5: an admin_group offer's product.
+    slug: "acme",
     // UK-04b: the Elements CDN module's file.
     file: "pk.js",
   };

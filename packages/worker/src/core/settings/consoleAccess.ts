@@ -69,6 +69,8 @@ export async function writeConsoleAccess(
     {
       key: CONSOLE_ACCESS_KEY,
       op,
+      // ST-32.5: a rule write is an `rbac.*` row, like a grant, so Members' trail reads one family.
+      audit: { action: "rbac.access_rules" },
       ...(op === "set" ? { value } : {}),
       expectedVersion:
         typeof input.expectedVersion === "number"

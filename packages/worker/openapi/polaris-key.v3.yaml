@@ -20406,6 +20406,232 @@ paths:
         "404": { description: "Not one of the caller's methods." }
         "409": { description: "Already strong (reason `already_strong`)." }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/access/rules/preview:
+    post:
+      operationId: previewAccessRuleAdmin
+      tags: [admin]
+      summary: Preview who a draft SSO rule would give access to
+      description: >
+        ST-32.5. Body `{rule: {label?, when, grant}}`, the shape of one `console.access` rule with no
+        `id`. The draft is checked as the write checks it (an operator connection, an enforced
+        domain for a `domain` match) and then evaluated by the same function sign-in uses, against
+        the stored facts of every strong sign-in link the connection last asserted (at most 300 are
+        read; `truncated` says there were more). `members` names only people who already hold a role
+        or the root rule, by `memberId`, display name and address, the way the roster does, with the
+        grant each would get. `otherLinks` counts matching people who hold no role yet, and only a
+        Superadmin gets it (`null` for anyone else); no one is named. A draft the write would refuse
+        is a `422` with its `reason`. Needs the Members area at platform scope; admin session
+        cookie, CSRF-protected. A token cannot call it.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rule]
+              additionalProperties: false
+              properties:
+                rule: { type: object }
+      responses:
+        "200":
+          description: The people the draft would match.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [
+                    members,
+                    matchedMembers,
+                    otherLinks,
+                    scanned,
+                    truncated,
+                    incomplete,
+                  ]
+                properties:
+                  members:
+                    type: array
+                    maxItems: 100
+                    items:
+                      type: object
+                      required: [memberId, name, email, grant]
+                      properties:
+                        memberId: { type: string }
+                        name: { type: string }
+                        email: { type: string }
+                        grant:
+                          type: object
+                          required: [role, scope, areas]
+                          properties:
+                            role: { type: string }
+                            scope: { type: string }
+                            areas:
+                              type: [array, "null"]
+                              items: { type: string }
+                  matchedMembers: { type: integer }
+                  otherLinks: { type: [integer, "null"] }
+                  scanned: { type: integer }
+                  truncated: { type: boolean }
+                  incomplete: { type: boolean }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "422":
+          description: >
+            The draft is malformed or the write would refuse it (`reason`: `invalid_rules`,
+            `not_operator_connection`, `domain_not_enforced`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/access/offers:
+    get:
+      operationId: listAdminGroupOffersAdmin
+      tags: [admin]
+      summary: List the open admin group conversion offers
+      description: >
+        ST-32.5. A product whose `admin_group` is set to something other than the default `admin`
+        is offered a rule that gives that group Product admin on it. An offer is open until it has
+        an outcome. Needs the Members area at platform scope; admin session cookie.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The open offers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [offers]
+                properties:
+                  offers:
+                    type: array
+                    items:
+                      type: object
+                      required: [product, name, group]
+                      properties:
+                        product: { type: string }
+                        name: { type: string }
+                        group: { type: string }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    post:
+      operationId: dismissAdminGroupOffersAdmin
+      tags: [admin]
+      summary: Dismiss every open admin group offer
+      description: >
+        ST-32.5. Body `{action: "dismiss_all"}`. Writes one `rbac.admin_group_offer` row (`dismissed`)
+        per product, on the platform trail and the product's. A Superadmin only; CSRF-protected.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              additionalProperties: false
+              properties:
+                action: { type: string, enum: [dismiss_all] }
+      responses:
+        "200":
+          description: The products whose offer was dismissed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, dismissed]
+                properties:
+                  ok: { type: boolean }
+                  dismissed:
+                    type: array
+                    items: { type: string }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "422":
+          description: An unknown action or field.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/access/offers/{slug}:
+    post:
+      operationId: decideAdminGroupOfferAdmin
+      tags: [admin]
+      summary: Accept or dismiss one admin group offer
+      description: >
+        ST-32.5. Body `{action: "dismiss"}`, or `{action: "accept", connection, areas?, label?,
+        reason, confirm}`. Accept appends one rule to `console.access`: the product's stored group
+        on the named operator connection gets Product admin on the product, for `areas` (all product
+        areas by default). The group and the rule id are the server's. It is the `console.access`
+        write: a Superadmin, a console step-up (`403 step_up_required`), the typed confirmation
+        `console.access` and a reason; every Superadmin is emailed afterwards. Either outcome writes
+        one `rbac.admin_group_offer` row per trail. A product with no open offer is a `404`
+        (`no_such_offer`). Session only and CSRF-protected.
+      security:
+        - adminSession: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          description: The product slug.
+          schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,63}$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              additionalProperties: false
+              properties:
+                action: { type: string, enum: [accept, dismiss] }
+                connection: { type: string }
+                areas:
+                  type: array
+                  items: { type: string }
+                label: { type: string, maxLength: 80 }
+                reason: { type: string }
+                confirm: { type: string }
+      responses:
+        "200":
+          description: The outcome.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, product, outcome]
+                properties:
+                  ok: { type: boolean }
+                  product: { type: string }
+                  outcome: { type: string, enum: [accepted, dismissed] }
+                  ruleId: { type: string }
+                  notified:
+                    type: object
+                    properties:
+                      sent: { type: integer }
+                      of: { type: integer }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No open offer for that product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The rules changed while this was written; read again and retry.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: The rule or the confirmation was refused.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
   /manage/api/members:
     get:
       operationId: listMembersAdmin

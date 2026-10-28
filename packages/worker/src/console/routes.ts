@@ -89,6 +89,12 @@ import {
   handleBindingRevoke,
 } from "./handlers/bindings.js";
 import { handleMemberGet, handleMembersList } from "./handlers/members.js";
+import {
+  handleOfferDecide,
+  handleOffersBulk,
+  handleOffersList,
+  handleRulePreview,
+} from "./handlers/accessRules.js";
 
 /** What every handler receives once the dispatcher has authorized the request. */
 export interface AdminCtx {
@@ -419,6 +425,14 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   }),
   ...rows(["PATCH"], "/bindings/:id", "members", handleBindingEdit),
   ...rows(["DELETE"], "/bindings/:id", "members", handleBindingRevoke),
+
+  // ST-32.5: the SSO rules' preview and the `admin_group` conversion offers
+  // (`./handlers/accessRules.ts`). The table gates the area; the handlers ask for a Superadmin
+  // (and, for an accept, the step-up) before they write.
+  ...rows(["POST"], "/access/rules/preview", "members", handleRulePreview),
+  ...rows(["GET"], "/access/offers", "members", handleOffersList),
+  ...rows(["POST"], "/access/offers", "members", handleOffersBulk),
+  ...rows(["POST"], "/access/offers/:slug", "members", handleOfferDecide),
 
   // ── One product: the record ───────────────────────────────────────────────────────────────
   // The record every holder of any of the product's areas reads (the shell's name and services);

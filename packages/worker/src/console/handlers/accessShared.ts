@@ -4,6 +4,8 @@
  * (ST-31.6 follow-up: the old bindings <-> productMembers import cycle).
  */
 
+import { ErrorCode } from "../../core/errors.js";
+import { err } from "../../core/console/respond.js";
 import { deliverEmail } from "../../core/notify/emailDelivery.js";
 import { recipientHash } from "../../core/notify/emailLimits.js";
 import type { NoticeMessage } from "../../core/notify/templates.js";
@@ -95,4 +97,23 @@ export function scopeLabel(
   if (scope === "platform") return "the platform";
   if (scope === "products:*") return "all products";
   return productName ?? scope.slice("product:".length);
+}
+
+/** A 422 `bad_request` naming the offending fields (and, optionally, why). */
+export const invalidRequest = (
+  fields: string[],
+  reason?: string,
+  message?: string,
+) =>
+  err(422, ErrorCode.BadRequest, message ?? "invalid request", {
+    fields,
+    ...(reason ? { reason } : {}),
+  });
+
+/** Only these body fields are read; anything else is refused, not ignored. */
+export function unknownFields(
+  body: Record<string, unknown>,
+  allowed: readonly string[],
+): string[] {
+  return Object.keys(body).filter((k) => !allowed.includes(k));
 }

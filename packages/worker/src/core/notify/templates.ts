@@ -1150,6 +1150,44 @@ export function accessChangedNotice(input: {
   };
 }
 
+/**
+ * ST-32.5 (ST-28 G5): the SSO access rules (`console.access`) changed. Sent as Polaris Key to every
+ * Superadmin, so a stolen session cannot widen who gets in without the others hearing. It names
+ * who did it and what the rules now say in general terms, never a group or a person.
+ */
+export function accessRulesNotice(input: {
+  actor: string | null | undefined;
+  /** `added` for one rule, `changed` for any other edit, `cleared` for a reset. */
+  change: "added" | "changed" | "cleared";
+  /** How many rules are stored after the change. */
+  ruleCount: number;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const actor = operatorText(input.actor, "An operator");
+  const subject = "Sign-in rules changed";
+  const what =
+    input.change === "added"
+      ? "added a sign-in rule"
+      : input.change === "cleared"
+        ? "removed every sign-in rule"
+        : "changed the sign-in rules";
+  const line = `${actor} ${what}. Rules now stored: ${input.ruleCount}. A rule gives console access to people who sign in through a company identity provider.`;
+  const footer =
+    "You get this because you are a Superadmin. " +
+    "If you did not expect it, open Members in the console and remove the rule.";
+  return {
+    subject,
+    text: [subject, line, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      paragraphs: [line],
+      heading: subject,
+      origin: emailAssetOrigin(input.origin),
+      footer,
+    }),
+  };
+}
+
 /** The invite's link: the console sign-in page with the address as a hint. No secret, no token. */
 export function consoleInviteLink(
   origin: string | null | undefined,

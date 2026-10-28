@@ -7554,6 +7554,17 @@ operator IdP can mint what its rules match. An attribute the IdP lets its users 
 group or claim, is only as trustworthy as that IdP's admin settings. That is why making a connection an operator connection
 is a Superadmin write with a step-up. Tests: `test/core/ruleGrants.test.ts`.
 
+**Rule preview and offers (ST-32.5).** `POST /access/rules/preview` and the `admin_group` offers sit
+on the Members area. The preview hands the draft to `ruleMatchesFor`, the call sign-in makes, so it
+cannot disagree with a grant. It checks the draft as the write does (operator connection, enforced
+domain), is rate-limited and reads at most 300 accounts. It names only a person the roster already
+names (member id, display name, address) and never an account id; people who hold no role are a
+count, and only a Superadmin gets it, so a Platform admin cannot probe the IdP's directory through
+it. Accept is the `console.access` write (Superadmin, step-up, typed confirmation, reason) with the
+group read from the stored product and the id minted by the server; every Superadmin is mailed. An
+offer's outcome is an `rbac.admin_group_offer` row on both trails, written once. Tests:
+`test/surfaces/console/accessRules.test.ts`.
+
 **Residual.**
 
 - The grant handlers (ST-31.6, below) call the engine.

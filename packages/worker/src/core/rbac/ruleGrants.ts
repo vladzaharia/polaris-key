@@ -184,3 +184,27 @@ export async function ruleGrantsFor(
     return [];
   }
 }
+
+/**
+ * The accounts whose stored facts a draft rule on `connection` could read: strong OIDC links last
+ * asserted by that connection. At most `limit` are answered; `truncated` says there were more.
+ * Preview only (ST-32.5): it names no one, the caller evaluates each through `ruleMatchesFor`.
+ */
+export async function candidateAccountsFor(
+  db: Db,
+  connection: string,
+  limit: number,
+): Promise<{ accountIds: string[]; truncated: boolean }> {
+  const rows = await db.all<{ account_id: string }>(
+    `SELECT DISTINCT account_id FROM account_links
+      WHERE asserted_connection_id = ? AND tenant_scope = '' AND kind = 'oidc'
+        AND strong_at IS NOT NULL
+      ORDER BY account_id LIMIT ?`,
+    connection,
+    limit + 1,
+  );
+  return {
+    accountIds: rows.slice(0, limit).map((r) => r.account_id),
+    truncated: rows.length > limit,
+  };
+}
