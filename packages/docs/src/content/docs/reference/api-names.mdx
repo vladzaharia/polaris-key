@@ -198,8 +198,12 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.choice` | `identity.choice` | `usePolarisAuth().choice` | planned (I-10a) | planned (I-10b) | `identity.choice` | `PKeyIdentity.choice` | `identity.choice` |
 | `identity.choice.licenses` | `identity.choice.licenses` | `usePolarisAuth().choice.licenses` | planned (I-10a) | `ChoiceNamespace.licenses` | `ChoiceClient.licenses` | `PKeyIdentityChoice.licenses` | `identity.choice` |
 | `identity.choice.devices` | `identity.choice.devices` | `usePolarisAuth().choice.devices` | planned (I-10a) | `ChoiceNamespace.devices` | `ChoiceClient.devices` | `PKeyIdentityChoice.devices` | `identity.choice` |
-| `identity.choice.complete` | `identity.choice.complete` | `usePolarisAuth().choice.complete` | planned (I-10a) | `ChoiceNamespace.complete` | `ChoiceClient.complete` | `PKeyIdentityChoice.complete` | `identity.choice` |
+| `identity.choice.complete` | `identity.choice.complete` | `usePolarisAuth().choice.complete` (planned: I-46) | planned (I-10a) | `ChoiceNamespace.complete` (planned: I-44) | `ChoiceClient.complete` (planned: I-45) | `PKeyIdentityChoice.complete` (planned: I-48) | `identity.choice` |
 | `identity.choice.cancel` | `identity.choice.cancel` | `usePolarisAuth().choice.cancel` | planned (I-10a) | `ChoiceNamespace.cancel` | `ChoiceClient.cancel` | `PKeyIdentityChoice.cancel` | `identity.choice` |
+| `identity.autoSignIn` | planned (I-47) | planned (I-46) | planned (I-47) | `IdentityNamespace.autoSignIn` (planned: I-44) | `IdentityClient.autoSignIn` (planned: I-45) | `PKeyIdentity.auto_sign_in` (planned: I-48) | `identity.autosignin` |
+| `identity.link.offer` | — | planned (I-46) | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
+| `identity.link.accept` | — | planned (I-46) | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
+| `identity.link.decline` | — | planned (I-46) | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
 | `identity.useLicenseChoice` | `identity.choice` | `useLicenseChoice` | `identity.choice` | `LicenseChoiceModel` | `identity.choice` | `identity.choice` | `identity.choice` |
 | `identity.attachLicense` | `attach` | planned (I-10a) | `attach` | `attach` | `attach` | `attach` | `identity.attach` |
 | `identity.openAccount` | `identity.openAccount` | planned (I-10a) | `identity.open_account` | `identity.openAccount` | `identity.openAccount` | `identity.open_account` | `identity.account` |

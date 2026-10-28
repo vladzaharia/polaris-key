@@ -164,6 +164,7 @@ export type {
 export {
   choiceEndpointsOf,
   type ChoiceCancelResult,
+  type ChoiceCompleteOptions,
   type ChoiceCompleteResult,
   type ChoiceEndpoints,
   type ChoiceNamespace,
