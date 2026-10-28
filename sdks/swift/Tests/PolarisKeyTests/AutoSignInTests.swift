@@ -133,18 +133,18 @@ final class AutoSignInTests: XCTestCase {
         await server.reply("/djdl/identity/token", body: tokenOk)
         let provider = FakeProvider(silent: false)
         let (c, _) = try await client(provider: provider)
-        let result = await c.identity.autoSignIn()
+        let result = await c.identity.autoSignIn(AutoSignInOptions(prompt: .optional))
         guard case .signedIn = result else { return XCTFail("\(result)") }
         XCTAssertEqual(provider.calls.current, ["silent", "sheet"])
         let nonces = await count("/djdl/identity/nonce")
         XCTAssertEqual(nonces, 2, "each attempt takes a fresh nonce")
     }
 
-    func testPromptNeverStopsAfterRung3() async throws {
+    func testTheDefaultIsSilentOnlySoTheSheetNeverRunsUnlessAskedFor() async throws {
         await discovery()
         let provider = FakeProvider(silent: false)
         let (c, _) = try await client(provider: provider)
-        let result = await c.identity.autoSignIn(AutoSignInOptions(prompt: .never))
+        let result = await c.identity.autoSignIn()
         XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .noCredential))
         XCTAssertEqual(provider.calls.current, ["silent"])
     }
@@ -153,7 +153,7 @@ final class AutoSignInTests: XCTestCase {
         await discovery()
         let provider = FakeProvider(silent: false, sheet: false)
         let (c, _) = try await client(provider: provider)
-        let result = await c.identity.autoSignIn()
+        let result = await c.identity.autoSignIn(AutoSignInOptions(prompt: .optional))
         XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .noCredential))
         XCTAssertEqual(provider.calls.current, ["silent", "sheet"])
     }

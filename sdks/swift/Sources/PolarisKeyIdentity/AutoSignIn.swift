@@ -61,9 +61,9 @@ public protocol PlatformIdentityProvider: Sendable {
 
 /// Whether the ladder may show the provider's sheet (rung 4).
 public enum AutoSignInPrompt: Sendable, Equatable {
-    /// Rung 3 only.
+    /// Rung 3 only (silent). The default.
     case never
-    /// Rung 4 after rung 3 finds nothing: at most one OS sheet. The default.
+    /// Rung 4 after rung 3 finds nothing: at most one OS sheet. The developer opts in.
     case optional
 }
 
@@ -72,7 +72,7 @@ public struct AutoSignInOptions: Sendable {
     public var provider: (any PlatformIdentityProvider)?
     public var prompt: AutoSignInPrompt
 
-    public init(provider: (any PlatformIdentityProvider)? = nil, prompt: AutoSignInPrompt = .optional) {
+    public init(provider: (any PlatformIdentityProvider)? = nil, prompt: AutoSignInPrompt = .never) {
         self.provider = provider
         self.prompt = prompt
     }

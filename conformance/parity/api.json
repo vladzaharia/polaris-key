@@ -524,6 +524,11 @@
   "ignore": [
     {
       "sdk": "swift",
+      "path": "identity.installDeviceKeys",
+      "reason": "an internal hand-over seam: the umbrella gives the identity client the Connect key port; no host calls it"
+    },
+    {
+      "sdk": "swift",
       "path": "client.connect",
       "reason": "Cloud Connect identity (CC-11.1): its api.json concepts (cloudConnect.*) land with the Node API slice (CC-08.3); until then the Swift namespace is held back from the registry"
     },

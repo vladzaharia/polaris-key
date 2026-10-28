@@ -163,7 +163,7 @@ final class ExchangeTests: XCTestCase {
         let c = try await client(keys: keys)
         for _ in 0..<2 {
             do {
-                _ = try await c.identity.exchange(kind: .google, subjectToken: providerToken)
+                _ = try await c.identity.exchange(kind: .google, subjectToken: providerToken, optionalNonce: nil)
                 XCTFail("a refusal was accepted")
             } catch is ExchangeError {}
         }
@@ -275,6 +275,46 @@ final class ExchangeTests: XCTestCase {
             kind: .google, subjectToken: providerToken, nonce: nonce)
         else { return XCTFail("not needsSignIn") }
         XCTAssertEqual(m.reason, .noLink)
+
+        // no_link without a handle is still needsSignIn(noLink).
+        await server.reply(
+            "/djdl/identity/token", status: 403,
+            body: #"{"error":"interstitial_required","reason":"no_link","url":"\#(api)/identity/authorize"}"#)
+        guard case .needsSignIn(let k) = try await c.identity.exchange(
+            kind: .google, subjectToken: providerToken, nonce: nonce)
+        else { return XCTFail("not needsSignIn") }
+        XCTAssertEqual(k.reason, .noLink)
+        XCTAssertNil(k.linkHandle)
+    }
+
+    func testTheCardUrlMustBeHttpsOrLoopback() async throws {
+        await discovery()
+        let c = try await client()
+        for (url, ok) in [
+            ("http://evil.example/card", false), ("javascript:alert(1)", false), ("/relative", false),
+            ("http://127.0.0.1:8787/card", true), ("https://key.example/card", true),
+        ] {
+            await server.reply(
+                "/djdl/identity/token", status: 403,
+                body: #"{"error":"interstitial_required","reason":"terms","url":"\#(url)"}"#)
+            do {
+                let outcome = try await c.identity.exchange(
+                    kind: .google, subjectToken: providerToken, nonce: nonce)
+                XCTAssertTrue(ok, "\(url) was accepted: \(outcome)")
+            } catch let e as PolarisError {
+                XCTAssertFalse(ok, "\(url) was refused")
+                XCTAssertEqual(e.code, ErrorCode.badResponse)
+            }
+        }
+    }
+
+    func testATokenRoute404IsUnavailable() async throws {
+        await discovery()
+        await server.reply("/djdl/identity/token", status: 404, body: "{}")
+        let c = try await client()
+        let outcome = try await c.identity.exchange(
+            kind: .google, subjectToken: providerToken, nonce: nonce)
+        XCTAssertEqual(outcome, .unavailable(code: ErrorCode.notFound))
     }
 
     func testRefusalsAreTypedAndChangeNothingLocal() async throws {
@@ -315,7 +355,7 @@ final class ExchangeTests: XCTestCase {
         await discovery()
         await server.reply("/djdl/identity/nonce", status: 404, body: #"{"error":{"code":"not_found"}}"#)
         let c = try await client()
-        let outcome = try await c.identity.exchange(kind: .google, subjectToken: providerToken)
+        let outcome = try await c.identity.exchange(kind: .google, subjectToken: providerToken, optionalNonce: nil)
         XCTAssertEqual(outcome, .unavailable(code: ErrorCode.notFound))
         let tokenCalls = await server.requests(forPath: "/djdl/identity/token")
         XCTAssertTrue(tokenCalls.isEmpty)
@@ -355,7 +395,7 @@ final class ExchangeTests: XCTestCase {
         let c = try await client()
         for (token, n) in [("", nonce as String?), (providerToken, "short")] {
             do {
-                _ = try await c.identity.exchange(kind: .google, subjectToken: token, nonce: n)
+                _ = try await c.identity.exchange(kind: .google, subjectToken: token, optionalNonce: n)
                 XCTFail("a bad argument was sent")
             } catch let e as PolarisError {
                 XCTAssertEqual(e.code, ErrorCode.invalidArgument)

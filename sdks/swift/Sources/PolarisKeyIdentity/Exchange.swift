@@ -26,7 +26,8 @@
 //     description, a mirror, a log or an error shows `[redacted]` or omits them.
 //   - Both routes come from discovery and must be on this product. A product that publishes no
 //     `exchange` member, or not the requested kind, is `unavailable`, with no request sent.
-//   - A refusal is a typed `ExchangeError` and changes nothing local. `404` is `unavailable`.
+//   - A refusal is a typed `ExchangeError` and changes nothing local. `404` (either route) is `unavailable(not_found)`.
+//   - The sign-in card `url` of an interstitial must be https, or http on loopback.
 
 import CryptoKit
 import Foundation
@@ -213,9 +214,17 @@ extension IdentityClient {
     }
 
     /// Exchange a platform ID token for a device token. `nonce` is the value the token was
-    /// requested with (`exchangeNonce`); nil asks for a fresh one first, which only suits a token
-    /// the caller already holds for it. Any answer spends the nonce.
-    public func exchange(kind: ExchangeKind, subjectToken: String, nonce: String? = nil) async throws
+    /// requested with (`exchangeNonce`): the platform signs it into the token, so the Worker can
+    /// only match one asked for first. Any answer spends the nonce.
+    public func exchange(kind: ExchangeKind, subjectToken: String, nonce: String) async throws
+        -> ExchangeOutcome
+    {
+        try await exchange(kind: kind, subjectToken: subjectToken, optionalNonce: nonce)
+    }
+
+    /// Conformance and tests only: nil takes a fresh nonce after the token exists, which the
+    /// Worker refuses for a real platform token (the nonce is not inside it).
+    func exchange(kind: ExchangeKind, subjectToken: String, optionalNonce nonce: String?) async throws
         -> ExchangeOutcome
     {
         guard !subjectToken.isEmpty else {
@@ -349,6 +358,7 @@ extension IdentityClient {
         if response.status == 403, object["error"]?.stringValue == ErrorCode.interstitialRequired {
             return try await needsSignIn(object)
         }
+        if response.status == 404 { return .unavailable(code: ErrorCode.notFound) }
         guard response.status == 200 else { throw exchangeRefusal(response) }
         if object["status"]?.stringValue == "confirm" {
             guard let grant = object["grant"]?.stringValue, Self.grantOK(grant),
@@ -390,24 +400,31 @@ extension IdentityClient {
         s.hasPrefix("sg_") && urlSafe(String(s.dropFirst(3)), count: 43)
     }
 
-    /// An unknown `reason` reads as `no_link`; a `no_link` without a well-formed handle is bad.
+    /// An unknown `reason` reads as `no_link`; a `no_link` without a usable handle carries none.
     private func needsSignIn(_ o: [String: JSONValue]) async throws -> ExchangeOutcome {
-        guard let url = o["url"]?.stringValue, !url.isEmpty else { throw Self.badAnswer }
+        guard let url = o["url"]?.stringValue, Self.cardUrlOK(url) else { throw Self.badAnswer }
         let reason = o["reason"]?.stringValue == NeedsSignInReason.terms.rawValue ? NeedsSignInReason.terms : .noLink
         var handle: String?
         var expiresIn: Int?
         var expiresAt: Int?
-        if reason == .noLink {
-            guard let h = o["linkHandle"]?.stringValue, h.hasPrefix("lh_"),
-                Self.urlSafe(String(h.dropFirst(3)), count: 43),
-                let seconds = wholeSeconds(o["expiresIn"]?.doubleValue)
-            else { throw Self.badAnswer }
+        if reason == .noLink, let h = o["linkHandle"]?.stringValue, h.hasPrefix("lh_"),
+            Self.urlSafe(String(h.dropFirst(3)), count: 43),
+            let seconds = wholeSeconds(o["expiresIn"]?.doubleValue)
+        {
             handle = h
             expiresIn = seconds
             expiresAt = await core.now() + seconds
         }
         return .needsSignIn(
             NeedsSignIn(reason: reason, url: url, linkHandle: handle, expiresIn: expiresIn, expiresAt: expiresAt))
+    }
+
+    /// https, or http on loopback: the card is a page the person opens.
+    static func cardUrlOK(_ raw: String) -> Bool {
+        guard let u = URL(string: raw), let scheme = u.scheme?.lowercased(), let host = u.host?.lowercased()
+        else { return false }
+        if scheme == "https" { return true }
+        return scheme == "http" && (host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]")
     }
 
     /// A refusal: the flat OAuth `{"error": "code"}` or the nested `{"error": {"code"}}` body. A 5xx
