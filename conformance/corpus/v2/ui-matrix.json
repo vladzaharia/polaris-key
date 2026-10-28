@@ -5110,7 +5110,7 @@
       "expect": {
         "component": "SignIn",
         "state": "link-done",
-        "copy": ["common.continue", "signin.linkOffer.done"]
+        "copy": ["common.done", "signin.linkOffer.done"]
       }
     },
     {
@@ -5127,7 +5127,7 @@
       "expect": {
         "component": "SignIn",
         "state": "link-done",
-        "copy": ["common.continue", "signin.linkOffer.done"]
+        "copy": ["common.done", "signin.linkOffer.done"]
       }
     },
     {
@@ -5145,7 +5145,7 @@
         "component": "SignIn",
         "state": "link-conflict",
         "copy": [
-          "common.continue",
+          "common.done",
           "signin.linkOffer.conflict",
           "signin.linkOffer.conflictTitle",
           "signin.linkOffer.join"
@@ -5167,7 +5167,7 @@
         "component": "SignIn",
         "state": "link-conflict",
         "copy": [
-          "common.continue",
+          "common.done",
           "signin.linkOffer.conflict",
           "signin.linkOffer.conflictTitle",
           "signin.linkOffer.join"

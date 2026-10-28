@@ -278,11 +278,11 @@ static func _auto_step_view(ctx: RefCounted, auto: Dictionary, base_args: Dictio
 			copy = ["signin.linkOffer.title", body, "signin.linkOffer.primary", "signin.linkOffer.decline"]
 			primary = "signin.linkOffer.primary"
 		"link-done":
-			copy = ["signin.linkOffer.done", "common.continue"]
-			primary = "common.continue"
+			copy = ["signin.linkOffer.done", "common.done"]
+			primary = "common.done"
 		"link-conflict":
-			copy = ["signin.linkOffer.conflictTitle", "signin.linkOffer.conflict", "signin.linkOffer.join", "common.continue"]
-			primary = "common.continue"
+			copy = ["signin.linkOffer.conflictTitle", "signin.linkOffer.conflict", "signin.linkOffer.join", "common.done"]
+			primary = "common.done"
 			tone = "neutral"
 		"nearby-prompt":
 			copy = ["signin.nearby.promptTitle", "signin.nearby.prePrompt", "common.continue", "common.notNow"]
