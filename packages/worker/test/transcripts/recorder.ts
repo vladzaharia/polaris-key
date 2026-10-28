@@ -65,7 +65,7 @@ export interface World {
 }
 
 export interface ExchangeSpec {
-  method: "GET" | "POST" | "PATCH" | "DELETE" | "OPTIONS";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
   /** Path (and query) under the origin, e.g. `/djdl/license/document`. */
   path: string;
   /** The host the request is made to; default the API host. A `browser` step on the customer

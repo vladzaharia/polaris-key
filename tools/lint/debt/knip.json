@@ -8,9 +8,6 @@
     "conformance/runners/browser/package.json": {
       "knip:dependencies": 2
     },
-    "conformance/runners/node/package.json": {
-      "knip:dependencies": 1
-    },
     "package.json": {
       "knip:binaries": 1,
       "knip:devDependencies": 1

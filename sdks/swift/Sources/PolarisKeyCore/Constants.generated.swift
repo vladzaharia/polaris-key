@@ -652,6 +652,7 @@ public enum Feature {
     public static let syncSettings = "sync.settings"
     public static let syncConflict = "sync.conflict"
     public static let syncSaves = "sync.saves"
+    public static let syncKeyring = "sync.keyring"
     public static let connectIdentity = "connect.identity"
     public static let connectNoise = "connect.noise"
     public static let connectProtocol = "connect.protocol"
@@ -677,6 +678,7 @@ public enum Feature {
     public static let identityRedirectWeb = "identity.redirect.web"
     public static let identityChoice = "identity.choice"
     public static let identitySigninHints = "identity.signin.hints"
+    public static let identityExchange = "identity.exchange"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
     public static let releaseRecord = "release.record"
@@ -779,6 +781,7 @@ public let FEATURE_VALUES: [String] = [
     "sync.settings",
     "sync.conflict",
     "sync.saves",
+    "sync.keyring",
     "connect.identity",
     "connect.noise",
     "connect.protocol",
@@ -804,6 +807,7 @@ public let FEATURE_VALUES: [String] = [
     "identity.redirect.web",
     "identity.choice",
     "identity.signin.hints",
+    "identity.exchange",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1906,6 +1910,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.settings": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.conflict": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.saves": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.keyring": CapabilityRow(status: "planned", service: "sync", na: []),
     "connect.identity": CapabilityRow(status: "planned", service: "connect", na: []),
     "connect.noise": CapabilityRow(status: "planned", service: "connect", na: []),
     "connect.protocol": CapabilityRow(status: "planned", service: "connect", na: []),
@@ -1931,6 +1936,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.redirect.web": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.exchange": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1997,4 +2003,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "3179447cccdc7b46986c33897907fb195164f81d976e9dd4dae36fc1ef3471ed"
+public let CAPABILITY_DIGEST = "d6710551999ee5878e2964a236844a23a7e9d4181ef74de3c15ee42e0ebaa336"

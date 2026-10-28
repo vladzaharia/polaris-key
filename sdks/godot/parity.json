@@ -202,6 +202,21 @@
     "identity.signin.hints": {
       "status": "implemented"
     },
+    "identity.exchange": {
+      "status": "planned",
+      "wp": "I-48",
+      "except": [
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Sign in with Apple on iOS and macOS, Credential Manager on Android (I-48); desktop Linux and Windows have none."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10b.1: activate_with_key() and enroll() return key-entry-limit (key_entries, manage_url) and license-owned (sign_in_url); key_entries on ok."
@@ -564,6 +579,10 @@
     "sync.saves": {
       "status": "planned",
       "wp": "U-23"
+    },
+    "sync.keyring": {
+      "status": "planned",
+      "wp": "U-40"
     },
     "connect.identity": {
       "status": "planned",

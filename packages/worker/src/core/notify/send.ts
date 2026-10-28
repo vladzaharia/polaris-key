@@ -14,7 +14,7 @@ import { portalAudit } from "../accounts/portalAudit.js";
 import { deliverEmail } from "./emailDelivery.js";
 import { linkText, whatIsLockerLink } from "../helpLinks.js";
 import { emailAssetOrigin, renderEmail } from "./render.js";
-import { securityNoticeRecipients } from "./recipients.js";
+import { securityNoticeRecipients, type AlsoTo } from "./recipients.js";
 import type { NoticeMessage } from "./templates.js";
 
 /**
@@ -182,7 +182,7 @@ export async function sendSecurityNotice(
   env: Env,
   db: Db,
   accountId: string,
-  alsoTo: string | null | undefined,
+  alsoTo: AlsoTo,
   message: NoticeMessage,
   now: number,
 ): Promise<number> {

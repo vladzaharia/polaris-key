@@ -701,6 +701,15 @@ function buildRecords(): unknown {
     { type: 0x0100, flags: 1, body: "" },
     { type: 0x0100, flags: 0, body: "" },
   ]);
+  // Chain cap: MAX_CHAIN_RECORDS (18) records in one MORE chain; empty parts keep the size low.
+  const chain = (n: number): RecIn[] =>
+    Array.from({ length: n }, (_, k) => ({
+      type: 0x0100,
+      flags: k === n - 1 ? 0 : 1,
+      body: "",
+    }));
+  run("chain-18-records-delivers", "a", chain(18));
+  run("chain-19-records-closes", "a", chain(19));
   run("more-on-not-allowed-type", "v", [
     { type: 0x0100, flags: 1, body: "01" },
   ]);

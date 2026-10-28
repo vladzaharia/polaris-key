@@ -63,6 +63,7 @@ import {
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 import { getProduct } from "../../../core/products/store.js";
+import { getDevice } from "../../../core/devices/store.js";
 import { loadProductPublic } from "../../../core/products.js";
 import { json } from "../../../core/errors.js";
 import { signIn } from "../accounts/signIn.js";
@@ -96,6 +97,11 @@ export interface ExchangeLinkRecord {
   /** Narrowed by `providerVouchesForEmail`, never the raw claim. */
   emailVerified: boolean;
   issuedAt: number;
+  /**
+   * The subject bound on the device when the handle was issued, if any. A link by handle needs the
+   * device to carry the same subject (I-43.2): a handle never follows the device to another person.
+   */
+  boundSubject?: string | null;
 }
 
 /** The store address of a link handle. */
@@ -228,6 +234,8 @@ export async function handleExchange(ctx: {
       email: id.email,
       emailVerified: id.emailVerified,
       issuedAt: now,
+      boundSubject:
+        (await getDevice(db, product.slug, deviceId))?.subject ?? null,
     };
     await putArtefact(
       env,

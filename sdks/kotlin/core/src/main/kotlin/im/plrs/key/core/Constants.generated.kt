@@ -654,6 +654,7 @@ public object Feature {
     public const val syncSettings: String = "sync.settings"
     public const val syncConflict: String = "sync.conflict"
     public const val syncSaves: String = "sync.saves"
+    public const val syncKeyring: String = "sync.keyring"
     public const val connectIdentity: String = "connect.identity"
     public const val connectNoise: String = "connect.noise"
     public const val connectProtocol: String = "connect.protocol"
@@ -679,6 +680,7 @@ public object Feature {
     public const val identityRedirectWeb: String = "identity.redirect.web"
     public const val identityChoice: String = "identity.choice"
     public const val identitySigninHints: String = "identity.signin.hints"
+    public const val identityExchange: String = "identity.exchange"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
     public const val releaseRecord: String = "release.record"
@@ -781,6 +783,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "sync.settings",
     "sync.conflict",
     "sync.saves",
+    "sync.keyring",
     "connect.identity",
     "connect.noise",
     "connect.protocol",
@@ -806,6 +809,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.redirect.web",
     "identity.choice",
     "identity.signin.hints",
+    "identity.exchange",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1928,6 +1932,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "sync.settings" to CapabilityRow("planned", "sync", listOf()),
     "sync.conflict" to CapabilityRow("planned", "sync", listOf()),
     "sync.saves" to CapabilityRow("planned", "sync", listOf()),
+    "sync.keyring" to CapabilityRow("planned", "sync", listOf()),
     "connect.identity" to CapabilityRow("planned", "connect", listOf()),
     "connect.noise" to CapabilityRow("planned", "connect", listOf()),
     "connect.protocol" to CapabilityRow("planned", "connect", listOf()),
@@ -1953,6 +1958,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.redirect.web" to CapabilityRow("implemented", "identity", listOf()),
     "identity.choice" to CapabilityRow("implemented", "identity", listOf()),
     "identity.signin.hints" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.exchange" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -2019,4 +2025,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "b6b5b42ad0a9129ba0a764d8cd27f3921573add8bdac11d03e9206e6f0885977"
+public const val CAPABILITY_DIGEST: String = "e046ea2b3db8345ac77fe31c331b98d056ca9477cad71145865844c19de1ac45"

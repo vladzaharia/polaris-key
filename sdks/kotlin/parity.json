@@ -204,6 +204,17 @@
     "identity.signin.hints": {
       "status": "implemented"
     },
+    "identity.exchange": {
+      "status": "planned",
+      "wp": "I-45",
+      "except": [
+        {
+          "runtime": "jvm",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Credential Manager on the Android play flavour (I-45); JVM desktop has no platform identity."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10b.14: ActivationResult.Ok.keyEntries, KeyEntryLimit(manageUrl, keyEntries) and LicenseOwned(signInUrl); keyentry-* transcripts replayed."
@@ -501,6 +512,10 @@
     "sync.saves": {
       "status": "planned",
       "wp": "U-23"
+    },
+    "sync.keyring": {
+      "status": "planned",
+      "wp": "U-39"
     },
     "connect.identity": {
       "status": "planned",

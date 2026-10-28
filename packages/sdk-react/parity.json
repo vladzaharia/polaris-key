@@ -226,6 +226,17 @@
       "status": "implemented",
       "note": "I-10a.10: bearer mode: loginHint, nameHint and purpose go on the authorize URL (redirect) and the device start body (device code). The desktop bridge's beginSignIn carries only deviceName, so a hint there is a typed unsupported (runtime) rather than a silent drop."
     },
+    "identity.exchange": {
+      "status": "planned",
+      "wp": "I-46",
+      "except": [
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime"
+        }
+      ],
+      "note": "FedCM and Google Identity Services on the web (I-46); the desktop renderer holds no device key."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10a.9: activateWithKey resolves with keyEntries; key_entry_limit (manageUrl, keyEntries) and license_owned (signInUrl) are typed activation outcomes that keep the token, cache and store. Desktop through submitKey's BridgeActivation."
@@ -502,6 +513,10 @@
     "sync.saves": {
       "status": "planned",
       "wp": "U-22"
+    },
+    "sync.keyring": {
+      "status": "planned",
+      "wp": "U-38"
     },
     "connect.identity": {
       "status": "planned",

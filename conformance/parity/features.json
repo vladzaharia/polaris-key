@@ -691,6 +691,20 @@
       "allowedNa": []
     },
     {
+      "id": "sync.keyring",
+      "family": "sync",
+      "title": "The key ring: create, wraps, recovery, adopt and reset over /devices/keyring",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "U-36"
+        }
+      ],
+      "allowedNa": [],
+      "note": "WIRE-CONTRACT-V5 §13.11.2. The keyring-* transcripts pin the routes with opaque fixture keys; the E2E codec and the ring client are U-38 to U-40."
+    },
+    {
       "id": "connect.identity",
       "family": "connect",
       "title": "Device certificates and rings: verify, key choice and admission",
@@ -1170,6 +1184,51 @@
       ],
       "allowedNa": [],
       "note": "I-08 (WIRE-CONTRACT-V4 §12.4, absorbing PX-W18): the authorize request may carry login_hint (an email), name_hint and purpose (signin or attach). The card prefills from them and nothing is verified by them. Pinned by identity-request-hints.json; I-10a and I-10b implement it."
+    },
+    {
+      "id": "identity.exchange",
+      "family": "devices",
+      "title": "Platform sign-in: a Google or Apple ID token for a device token (the exchange)",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-13"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "A Node process (a server, a CLI, Electron's main process) has no OS account to take a Google or Apple identity from; it signs in by loopback or device code."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "A Python process has no OS account to take a Google or Apple identity from; it signs in by loopback or device code."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Windows has no platform identity provider for Google or Apple that an app can ask without a browser."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Linux has no platform identity provider for Google or Apple that an app can ask without a browser."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "A JVM desktop app has no platform identity provider for Google or Apple that it can ask without a browser."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer holds no device key and no platform identity; the host signs in."
+        }
+      ],
+      "note": "I-13 (WIRE-CONTRACT-V5 §12.11.2, §12.11.3): with discovery's exchange member and nonce endpoint, the SDK posts the device's signing and agreement keys to nonce, asks the platform (Credential Manager, Sign in with Apple, FedCM) for an ID token carrying that nonce, and trades it at token with the RFC 8693 grant and the pkey-proof/1 exchange proof. The answer is a device token, `confirm` (consent first), `choose` (a licence choice), 403 interstitial_required (no link) or the one invalid_grant. Pinned by discovery-identity-exchange.json and the exchange-* transcripts; the Node conformance runner replays them with a reference client (exchangeTranscripts.test.ts). I-44 (Swift), I-45 (Kotlin), I-46 (React) and I-48 (Godot) implement it."
     },
     {
       "id": "release.changelog",

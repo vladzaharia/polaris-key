@@ -427,7 +427,7 @@ export async function handleChoice(
       summary: `Granted ${granted.join(", ") || "no claims"} to the app (scope ${taken.consent.scopeHash})`,
     });
   }
-  if (taken.fresh) await markFresh(env, product.slug, deviceId);
+  if (taken.fresh) await markFresh(env, product.slug, deviceId, taken.subject);
   await appendAudit(db, {
     product: product.slug,
     id: randomId("aud"),

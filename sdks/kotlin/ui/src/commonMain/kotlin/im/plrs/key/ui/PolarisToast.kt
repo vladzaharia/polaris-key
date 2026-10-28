@@ -112,7 +112,8 @@ public fun PolarisToast(
     )
     val glyph = when (kind) {
         PolarisToastKind.Warning, PolarisToastKind.Error -> PolarisSymbols.Warning
-        else -> PolarisSymbols.Info
+        PolarisToastKind.Success -> PolarisSymbols.Check
+        PolarisToastKind.Info -> PolarisSymbols.Info
     }
     val tint = when (kind) {
         PolarisToastKind.Warning -> status.warning

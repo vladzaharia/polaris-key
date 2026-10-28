@@ -865,6 +865,7 @@ class Feature:
     SYNC_SETTINGS: Final = "sync.settings"
     SYNC_CONFLICT: Final = "sync.conflict"
     SYNC_SAVES: Final = "sync.saves"
+    SYNC_KEYRING: Final = "sync.keyring"
     CONNECT_IDENTITY: Final = "connect.identity"
     CONNECT_NOISE: Final = "connect.noise"
     CONNECT_PROTOCOL: Final = "connect.protocol"
@@ -890,6 +891,7 @@ class Feature:
     IDENTITY_REDIRECT_WEB: Final = "identity.redirect.web"
     IDENTITY_CHOICE: Final = "identity.choice"
     IDENTITY_SIGNIN_HINTS: Final = "identity.signin.hints"
+    IDENTITY_EXCHANGE: Final = "identity.exchange"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
     RELEASE_RECORD: Final = "release.record"
@@ -992,6 +994,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "sync.settings",
     "sync.conflict",
     "sync.saves",
+    "sync.keyring",
     "connect.identity",
     "connect.noise",
     "connect.protocol",
@@ -1017,6 +1020,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.redirect.web",
     "identity.choice",
     "identity.signin.hints",
+    "identity.exchange",
     "release.changelog",
     "release.download",
     "release.record",
@@ -2380,6 +2384,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.settings": CapabilityRow("planned", "sync", ()),
         "sync.conflict": CapabilityRow("planned", "sync", ()),
         "sync.saves": CapabilityRow("planned", "sync", ()),
+        "sync.keyring": CapabilityRow("planned", "sync", ()),
         "connect.identity": CapabilityRow("planned", "connect", ()),
         "connect.noise": CapabilityRow("planned", "connect", ()),
         "connect.protocol": CapabilityRow("planned", "connect", ()),
@@ -2402,9 +2407,10 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.keyentry": CapabilityRow("implemented", "identity", ()),
         "identity.attach": CapabilityRow("implemented", "identity", ()),
         "identity.account": CapabilityRow("implemented", "identity", ()),
-        "identity.redirect.web": CapabilityRow("planned", "identity", ()),
-        "identity.choice": CapabilityRow("planned", "identity", ()),
-        "identity.signin.hints": CapabilityRow("planned", "identity", ()),
+        "identity.redirect.web": CapabilityRow("implemented", "identity", ()),
+        "identity.choice": CapabilityRow("implemented", "identity", ()),
+        "identity.signin.hints": CapabilityRow("implemented", "identity", ()),
+        "identity.exchange": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -2472,4 +2478,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "f5ad7f5d9a24aa8686f829be95d79cdeaafebc84c206b0df064992c47dd7b6c6"
+CAPABILITY_DIGEST: Final[str] = "05148313c8262834ef5dfa484d78039e9c62f9e7a99d7a69bf5ebe58b62f0be3"

@@ -56,7 +56,7 @@ private val ownedUi = PolarisActivationUi(
 )
 
 private val refusalScreens: List<MatrixScreen> = listOf(
-    MatrixScreen("key-entry-limit", Regex("open in browser", RegexOption.IGNORE_CASE)) {
+    MatrixScreen("key-entry-limit", Regex("^sign in$", RegexOption.IGNORE_CASE)) {
         PolarisGateScreen(PolarisGateUi(license = needs()), limitUi(), onSignIn = {})
     },
     MatrixScreen("key-entry-limit-tv", Regex("^sign in$", RegexOption.IGNORE_CASE)) {
@@ -115,14 +115,20 @@ class KeyRefusalMatrixTest {
     @Test
     fun theRefusalsSayTheCatalogsWords() {
         withPlatform("Windows") {
-            matrixFrame(844, 600, dark = false, content = refusalScreens[0].content, after = {
+            matrixFrame(390, 844, dark = false, content = refusalScreens[0].content, after = {
                 onNodeWithText("This key has no entries left. Add it to your account and sign in instead.").assertExists()
-                onNodeWithText("3 of 3 key entries used").assertExists()
+                onNodeWithText("Tidewater Studio").assertExists()
+                onNodeWithText("Add Tidewater Studio to your account").assertExists()
                 onNodeWithText("Use a different key").assertExists()
             })
-            matrixFrame(844, 600, dark = false, content = refusalScreens[3].content, after = {
+            matrixFrame(390, 844, dark = false, content = refusalScreens[3].content, after = {
                 onNodeWithText("Sign in to that account").assertExists()
                 onNodeWithText("Use a different key").assertExists()
+                onNodeWithText("License in another account").assertExists()
+            })
+            // A desktop host cannot draw the QR: the link is copied instead.
+            matrixFrame(844, 600, dark = false, content = refusalScreens[1].content, after = {
+                onNodeWithText("Copy link").assertExists()
             })
         }
     }
@@ -149,7 +155,7 @@ class KeyRefusalMatrixTest {
                     PolarisGateScreen(
                         PolarisGateUi(license = LicenseState(LicenseStatus.ok)),
                         PolarisActivationUi(),
-                        toast = PolarisToastSpec(text, PolarisToastKind.Success),
+                        toast = PolarisToastSpec(text, if (name == "signed-in") PolarisToastKind.Success else PolarisToastKind.Info),
                     ) { Box(Modifier.fillMaxSize()) { BoardFixtures.Product() } }
                 }, after = {
                     onNodeWithText(text).assertExists()

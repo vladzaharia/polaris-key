@@ -187,9 +187,13 @@ describe("availability", () => {
     expect((await call(w, D1, "GET", "")).status).toBe(200);
   });
 
-  it("does not reach routes U-36.3 owns", async () => {
-    expect((await call(w, D1, "GET", "/recovery")).status).toBe(404);
-    expect((await call(w, D1, "POST", "/reset", {})).status).toBe(404);
+  it("is 404 for the U-36.3 routes while Cloud Sync is off, and for unknown sub-paths", async () => {
+    const off = await world(false);
+    expect((await call(off, D1, "GET", "/recovery")).status).toBe(404);
+    expect((await call(off, D1, "POST", "/reset", {})).status).toBe(404);
+    expect((await call(off, D1, "POST", "/adopt", {})).status).toBe(404);
+    expect((await call(w, D1, "GET", "/recoveries")).status).toBe(404);
+    expect((await call(w, D1, "GET", "/recovery/x")).status).toBe(404);
   });
 
   it("refuses the wrong method with 405", async () => {
@@ -426,5 +430,288 @@ describe("wraps", () => {
       { kind: "keys", product: P, deviceId: D2 } as never,
     );
     expect((await call(w, D2, "GET", "")).body.wrap).toBeNull();
+  });
+});
+
+// ── Recovery, adopt and reset (U-36.3) ─────────────────────────────────────────────────────────
+
+/** A 61-byte blob in the contract layout (version 1), distinguished by `fill`. */
+const blob = (fill: number, version = 1, len = 61): string => {
+  const b = new Uint8Array(len).fill(fill);
+  b[0] = version;
+  return Buffer.from(b).toString("base64url");
+};
+const REC = blob(7);
+const RING2 = "rg_BBBBBBBBBBBBBBBBBBBBBB";
+const KID2 = "fedcba9876543210fedcba9876543210";
+
+const auditActions = async (db: Db) =>
+  (
+    await db.all<{ action: string; target_id: string; summary: string }>(
+      "SELECT action, target_id, summary FROM audit WHERE action LIKE 'keyring.%' ORDER BY at, id",
+    )
+  ).map((r) => r.action);
+
+describe("recovery", () => {
+  it("answers 404 until a blob is set, and fetches a set one without a wrap", async () => {
+    await create(w, D1, { recovery: undefined });
+    expect((await call(w, D2, "GET", "/recovery")).status).toBe(404);
+    expect(
+      (await call(w, D1, "PUT", "/recovery", { ct: REC, epoch: 1, kid: KID }))
+        .status,
+    ).toBe(204);
+    // D2 holds no wrap and still fetches: it is the device with no root.
+    const r = await call(w, D2, "GET", "/recovery");
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ ct: REC, epoch: 1, kid: KID });
+  });
+
+  it("audits every fetch and write, with no blob in the row", async () => {
+    await create(w);
+    await call(w, D1, "PUT", "/recovery", { ct: REC, epoch: 1, kid: KID });
+    await call(w, D2, "GET", "/recovery");
+    expect((await auditActions(w.db)).sort()).toEqual([
+      "keyring.recovery.fetch",
+      "keyring.recovery.set",
+    ]);
+    const rows = await w.db.all<Record<string, unknown>>(
+      "SELECT * FROM audit WHERE action LIKE 'keyring.%'",
+    );
+    expect(JSON.stringify(rows)).not.toContain(REC);
+    expect(
+      rows.find((r) => r.action === "keyring.recovery.fetch")?.target_id,
+    ).toBe(D2);
+  });
+
+  it("limits the fetch to 5 a day per device and counts a not-set answer", async () => {
+    await create(w);
+    await call(w, D1, "PUT", "/recovery", { ct: REC, epoch: 1, kid: KID });
+    const limited: string[] = [];
+    // The test env's limiter is the real Durable Object stand-in; D1 and D2 have separate budgets.
+    for (let i = 0; i < 6; i++)
+      limited.push(String((await call(w, D2, "GET", "/recovery")).status));
+    expect(limited).toEqual(["200", "200", "200", "200", "200", "429"]);
+    expect((await call(w, D1, "GET", "/recovery")).status).toBe(200);
+    expect(
+      (await call(w, D2, "GET", "/recovery", undefined, NOW + 86_401)).status,
+    ).toBe(200);
+  });
+
+  it("emails the account on a fetch, a write and a reset, saying no one asks for the code", async () => {
+    const sent: { subject: string; text: string }[] = [];
+    w.env.EMAIL = {
+      send: async (m: { subject: string; text: string }) => {
+        sent.push(m);
+      },
+    } as unknown as Env["EMAIL"];
+    await create(w);
+    await call(w, D1, "PUT", "/recovery", { ct: REC, epoch: 1, kid: KID });
+    await call(w, D2, "GET", "/recovery");
+    await call(w, D1, "POST", "/reset", {
+      ringId: RING2,
+      rootKid: KID2,
+      wrap: wrapOf("9"),
+    });
+    expect(sent.map((m) => m.subject)).toEqual([
+      expect.stringMatching(/recovery code changed/i),
+      expect.stringMatching(/^Recovery started on /),
+      expect.stringMatching(/encryption was reset/i),
+    ]);
+    expect(sent[0]!.text).toContain(
+      "No one will ask you for your recovery code.",
+    );
+    expect(sent[1]!.text).toContain(
+      "No one will ask you for your recovery code.",
+    );
+    expect(JSON.stringify(sent)).not.toContain(REC);
+  });
+
+  it("checks the blob layout, the epoch and kid, and who may write", async () => {
+    await create(w);
+    const put = (body: unknown, d = D1) => call(w, d, "PUT", "/recovery", body);
+    const ok = { ct: REC, epoch: 1, kid: KID };
+    expect((await put({ ...ok, ct: blob(7, 2) })).status).toBe(400);
+    expect((await put({ ...ok, ct: blob(7, 1, 60) })).status).toBe(400);
+    expect((await put({ ...ok, ct: blob(7, 1, 62) })).status).toBe(400);
+    expect((await put({ ...ok, ct: "rec" })).status).toBe(400);
+    expect((await put({ ...ok, ct: `${REC}=` })).status).toBe(400);
+    expect((await put({ ...ok, epoch: 0 })).status).toBe(400);
+    expect((await put({ ...ok, kid: "nope" })).status).toBe(400);
+    expect((await put({ ...ok, epoch: 2 })).status).toBe(409);
+    expect((await put({ ...ok, kid: KID2 })).status).toBe(409);
+    // D2 holds no wrap, so it cannot seal.
+    expect((await put(ok, D2)).status).toBe(403);
+    expect((await put(ok)).status).toBe(204);
+    expect(await auditActions(w.db)).toEqual(["keyring.recovery.set"]);
+  });
+
+  it("is 409 for a subject with no ring and 405 for other methods", async () => {
+    expect(
+      (await call(w, D1, "PUT", "/recovery", { ct: REC, epoch: 1, kid: KID }))
+        .status,
+    ).toBe(403);
+    expect((await call(w, D1, "DELETE", "/recovery")).status).toBe(405);
+    expect((await call(w, D1, "POST", "/recovery", {})).status).toBe(405);
+  });
+
+  it("needs a live device token and a signed-in subject", async () => {
+    await create(w);
+    expect((await call(w, null, "GET", "/recovery")).status).toBe(401);
+    await addDevice(w, D3, null);
+    expect((await call(w, D3, "GET", "/recovery")).status).toBe(403);
+    expect(
+      (await call(w, D3, "PUT", "/recovery", { ct: REC, epoch: 1, kid: KID }))
+        .status,
+    ).toBe(403);
+  });
+});
+
+describe("reset", () => {
+  const reset = (d = D1, over: Record<string, unknown> = {}) =>
+    call(w, d, "POST", "/reset", {
+      ringId: RING2,
+      rootKid: KID2,
+      wrap: wrapOf("9"),
+      recovery: { ct: REC },
+      ...over,
+    });
+
+  it("replaces the ring, keeps the old one 30 days, audits and drops the old wraps from view", async () => {
+    await create(w);
+    await putWrap(w, D1, D2);
+    const r = await reset();
+    expect(r.status).toBe(201);
+    expect(r.body).toEqual({ ringId: RING2, epoch: 1 });
+    const ring = (await call(w, D1, "GET", "")).body;
+    expect(ring.ring.ringId).toBe(RING2);
+    expect(ring.ring.rootKid).toBe(KID2);
+    expect(ring.ring.recovery.set).toBe(true);
+    expect(ring.ring.previous).toEqual({
+      ringId: RING,
+      kid: KID,
+      until: NOW + 30 * 86_400,
+    });
+    expect(ring.wrap.kid).toBe(KID2);
+    // D2's wrap was for the old ring: not served for the new one.
+    expect((await call(w, D2, "GET", "")).body.wrap).toBeNull();
+    expect(await auditActions(w.db)).toEqual(["keyring.reset"]);
+  });
+
+  it("needs no wrap (start over), but a ring, a new id and keys", async () => {
+    await create(w);
+    // D2 holds no wrap: it can still reset.
+    expect((await reset(D2)).status).toBe(201);
+    expect((await reset(D2)).status).toBe(409); // same ringId as the current one
+    const none = await world();
+    expect(
+      (
+        await call(none, D1, "POST", "/reset", {
+          ringId: RING2,
+          rootKid: KID2,
+          wrap: wrapOf("9"),
+        })
+      ).status,
+    ).toBe(409);
+  });
+
+  it("checks the body and the recovery blob layout", async () => {
+    await create(w);
+    expect((await reset(D1, { ringId: "x" })).status).toBe(400);
+    expect((await reset(D1, { rootKid: "x" })).status).toBe(400);
+    expect((await reset(D1, { wrap: {} })).status).toBe(400);
+    expect((await reset(D1, { recovery: { ct: "rec" } })).status).toBe(400);
+    expect((await reset(D1, { recovery: { ct: blob(7, 3) } })).status).toBe(
+      400,
+    );
+    expect((await reset(D1, { recovery: undefined })).status).toBe(201);
+    expect((await call(w, D1, "GET", "")).body.ring.recovery.set).toBe(false);
+  });
+});
+
+describe("adopt", () => {
+  const adopt = (d: string, over: Record<string, unknown> = {}) =>
+    call(w, d, "POST", "/adopt", {
+      fromRingId: RING,
+      epoch: 1,
+      kid: KID,
+      ct: blob(5),
+      ...over,
+    });
+
+  async function afterReset() {
+    await create(w);
+    expect(
+      (
+        await call(w, D1, "POST", "/reset", {
+          ringId: RING2,
+          rootKid: KID2,
+          wrap: wrapOf("9"),
+        })
+      ).status,
+    ).toBe(201);
+  }
+
+  it("stores the previous root sealed under the new one, once", async () => {
+    await afterReset();
+    expect((await adopt(D1)).status).toBe(204);
+    expect((await adopt(D1, { ct: blob(6) })).status).toBe(204);
+    const { ring } = (await call(w, D1, "GET", "")).body;
+    expect(ring.adopted).toEqual([
+      { ringId: RING, epoch: 1, kid: KID, ct: blob(5) },
+    ]);
+  });
+
+  it("refuses a root the server does not name, an expired previous ring, and non-holders", async () => {
+    await afterReset();
+    expect(
+      (await adopt(D1, { fromRingId: "rg_CCCCCCCCCCCCCCCCCCCCCC" })).status,
+    ).toBe(409);
+    expect((await adopt(D1, { kid: KID2 })).status).toBe(409);
+    expect((await adopt(D2)).status).toBe(403);
+    expect(
+      (
+        await call(
+          w,
+          D1,
+          "POST",
+          "/adopt",
+          {
+            fromRingId: RING,
+            epoch: 1,
+            kid: KID,
+            ct: blob(5),
+          },
+          NOW + 31 * 86_400,
+        )
+      ).status,
+    ).toBe(409);
+  });
+
+  it("checks the blob layout and the members", async () => {
+    await afterReset();
+    expect((await adopt(D1, { ct: blob(5, 2) })).status).toBe(400);
+    expect((await adopt(D1, { ct: blob(5, 1, 60) })).status).toBe(400);
+    expect((await adopt(D1, { fromRingId: "x" })).status).toBe(400);
+    expect((await adopt(D1, { epoch: 0 })).status).toBe(400);
+    expect((await adopt(D1, { kid: "x" })).status).toBe(400);
+    expect((await call(w, D1, "GET", "/adopt")).status).toBe(405);
+  });
+
+  it("completes a merge candidate", async () => {
+    await create(w);
+    await w.db.run(
+      "INSERT INTO keyring_adopted (product, subject, ring_id, epoch, kid, ct, created_at) VALUES (?, ?, ?, 1, ?, NULL, ?)",
+      P,
+      w.subject,
+      RING2,
+      KID2,
+      NOW,
+    );
+    expect((await adopt(D1, { fromRingId: RING2, kid: KID2 })).status).toBe(
+      204,
+    );
+    expect((await call(w, D1, "GET", "")).body.ring.adopted[0].ct).toBe(
+      blob(5),
+    );
   });
 });

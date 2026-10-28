@@ -1079,7 +1079,7 @@ export function defineCorpusSuites({
   // @pkey-feature connect.identity
   describe(`conformance corpus v${corpus.corpusVersion} — ringCases (V5 §15.3)`, () => {
     it("has every ringCases vector", () => {
-      expect(corpus.ringCases.length).toBe(70);
+      expect(corpus.ringCases.length).toBe(76);
     });
     for (const c of corpus.ringCases) {
       if (c.kind === "verify") {

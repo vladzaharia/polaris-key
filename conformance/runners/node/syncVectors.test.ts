@@ -4,18 +4,28 @@
 // Runs the named sections it implements: `hkdfCases` (the port's HKDF and, for every label, the
 // matching derivation helper), `envelopeCases` (open every row, seal every row that has a `seal`
 // member and compare the bytes, and the reader's check order through the invalid reasons) and
-// `blindCases`, `hpkeAnchor`, `wrapCases`, `recoveryCodeCases` and `adoptCases`. Other sections are
+// `blindCases`, `hpkeAnchor`, `wrapCases`, `recoveryCodeCases`, `adoptCases`, `cdcCases` (the
+// streaming chunker, fed in uneven pieces), `chunkCases` and `manifestCases`. Other sections are
 // another slice's.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import { decode as zstdDecode } from "@polaris-key/zstd-wasm";
 import {
   ENVELOPE_FIXED_BYTES,
   ENVELOPE_OVERHEAD_BYTES,
   ENVELOPE_PAD_BLOCK,
+  CdcChunker,
   blind,
+  chunkIdHex,
+  cdcParams,
+  encodeManifest,
+  openChunk,
+  parseManifest,
+  sealChunk,
   HPKE_KEM_X25519,
   deriveAdoptKey,
   deriveChunkIdKey,
@@ -139,6 +149,51 @@ interface Vectors {
   wrapCases: WrapCase[];
   recoveryCodeCases: RecoveryRow[];
   adoptCases: AdoptCase[];
+  cdcCases: CdcCase[];
+  chunkCases: ChunkRow[];
+  manifestCases: ManifestCase[];
+}
+type Verdict<T> =
+  | ({ result: "ok" } & T)
+  | { result: "invalid"; reason: string };
+interface CdcCase {
+  id: string;
+  avg: number;
+  min: number;
+  max: number;
+  input:
+    | { kind: "stream"; label: string; length: number }
+    | { kind: "byte"; value: number; length: number };
+  lens: number[];
+}
+type ChunkRow =
+  | {
+      kind: "id";
+      id: string;
+      rootHex: string;
+      collection: string;
+      plainHex: string;
+      e2eIdHex: string;
+      serverIdHex: string;
+    }
+  | {
+      kind: "object";
+      id: string;
+      rootHex: string;
+      collection: string;
+      idHex: string;
+      objectHex: string;
+      seal?: { codec: number; bodyHex: string };
+      expect: Verdict<{ plainHex: string; codec: number }>;
+    };
+interface ManifestCase {
+  id: string;
+  manifestHex: string;
+  expect: Verdict<{
+    plainSize: number;
+    plainSha256Hex: string;
+    records: Array<{ idHex: string; plainLen: number }>;
+  }>;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -378,6 +433,110 @@ describe("sync-vectors.json: adoptCases", () => {
         );
         expect(hex(blob)).toBe(c.blobHex);
       }
+    });
+  }
+});
+
+/** The deterministic input of a `cdcCases` row (SHA-256 counter blocks, or one repeated byte). */
+function cdcInput(i: CdcCase["input"]): Uint8Array {
+  if (i.kind === "byte") return new Uint8Array(i.length).fill(i.value);
+  const out = new Uint8Array(i.length);
+  for (let at = 0, n = 0; at < i.length; n++, at += 32) {
+    const ctr = new Uint8Array(4);
+    new DataView(ctr.buffer).setUint32(0, n);
+    const block = createHash("sha256")
+      .update(`pkey-sync vector cdc ${i.label}`)
+      .update(ctr)
+      .digest();
+    out.set(block.subarray(0, Math.min(32, i.length - at)), at);
+  }
+  return out;
+}
+
+describe("sync-vectors.json: cdcCases", () => {
+  for (const c of vectors.cdcCases) {
+    it(c.id, () => {
+      expect(cdcParams(c.avg)).toEqual({ avg: c.avg, min: c.min, max: c.max });
+      const input = cdcInput(c.input);
+      // Whole, then in awkward pieces: the cuts do not depend on how the input arrives.
+      for (const piece of [input.length || 1, 1000, 65537]) {
+        const chunker = new CdcChunker(cdcParams(c.avg));
+        const lens: number[] = [];
+        for (let at = 0; at < input.length; at += piece)
+          for (const ch of chunker.push(input.subarray(at, at + piece)))
+            lens.push(ch.length);
+        for (const ch of chunker.finish()) lens.push(ch.length);
+        expect(lens).toEqual(c.lens);
+      }
+    });
+  }
+});
+
+describe("sync-vectors.json: chunkCases", () => {
+  for (const c of vectors.chunkCases) {
+    it(c.id, async () => {
+      const root = unhex(c.rootHex);
+      if (c.kind === "id") {
+        const plain = unhex(c.plainHex);
+        expect(await chunkIdHex(port, root, c.collection, plain)).toBe(
+          c.e2eIdHex,
+        );
+        expect(await chunkIdHex(port, null, c.collection, plain)).toBe(
+          c.serverIdHex,
+        );
+        return;
+      }
+      const opened = await openChunk(
+        port,
+        root,
+        c.collection,
+        unhex(c.idHex),
+        unhex(c.objectHex),
+        zstdDecode,
+      );
+      if (c.expect.result === "ok") {
+        expect(opened.ok).toBe(true);
+        if (opened.ok) {
+          expect(hex(opened.plain)).toBe(c.expect.plainHex);
+          expect(opened.codec).toBe(c.expect.codec);
+        }
+      } else {
+        expect(opened).toEqual({ ok: false, reason: c.expect.reason });
+      }
+      if (c.seal !== undefined) {
+        const object = await sealChunk(
+          port,
+          root,
+          c.collection,
+          unhex(c.idHex),
+          c.seal.codec,
+          unhex(c.seal.bodyHex),
+        );
+        expect(hex(object)).toBe(c.objectHex);
+      }
+    });
+  }
+});
+
+describe("sync-vectors.json: manifestCases", () => {
+  for (const c of vectors.manifestCases) {
+    it(c.id, () => {
+      const parsed = parseManifest(unhex(c.manifestHex));
+      if (c.expect.result === "invalid") {
+        expect(parsed).toEqual({ ok: false, reason: c.expect.reason });
+        return;
+      }
+      expect(parsed.ok).toBe(true);
+      if (!parsed.ok) return;
+      expect(parsed.manifest.plainSize).toBe(c.expect.plainSize);
+      expect(hex(parsed.manifest.plainSha256)).toBe(c.expect.plainSha256Hex);
+      expect(
+        parsed.manifest.records.map((r) => ({
+          idHex: hex(r.id),
+          plainLen: r.plainLen,
+        })),
+      ).toEqual(c.expect.records);
+      expect(hex(encodeManifest(parsed.manifest))).toBe(c.manifestHex);
     });
   }
 });

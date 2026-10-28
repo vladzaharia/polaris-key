@@ -98,6 +98,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   // I-13.2: the exchange nonce route writes one single-use record per call (per network, per device).
   identityNonce: "closed",
   identityNonceDevice: "closed",
+  identityLink: "closed",
+  identityLinkDevice: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
   // ST-30c.5: the console's passkey sign-in (challenge and assertion, per client network). The
@@ -169,6 +171,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // CC-03.2: a device's key registrations and rotations, 4 a day. Closed: each change moves the
   // keys Cloud Sync wraps the root key to.
   deviceKeys: "closed",
+  // U-36.3: the recovery fetch, 5 a day per device (T23). Each one is audited and emailed, so an
+  // outage refuses rather than letting a stolen token fetch the blob unmetered.
+  keyringRecovery: "closed",
   // I-02: the email send limits (`core/notify/emailLimits.ts`). A refused send is answered exactly
   // like a sent one by the caller (enumeration safety, I-08), so failing closed costs a real
   // user one resend and an outage can never become an unlimited mail cannon at a victim's

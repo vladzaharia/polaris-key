@@ -239,6 +239,9 @@ export function refFrameDecode(stream: Uint8Array): FrameDecode {
 // ── Records (§15.6) ──────────────────────────────────────────────────────────
 
 export const REF_MAX_PEER_MESSAGE = 1_048_576;
+/** A record body is at most 65535 − 16 (tag) − 3 (header); a full message in the smallest
+ *  records is ceil(1 MiB / 65516) = 17, plus one. */
+export const REF_MAX_CHAIN_RECORDS = 18;
 export type PeerMode = "a" | "v" | "p" | "c";
 const ALL: PeerMode[] = ["a", "v", "p", "c"];
 
@@ -328,6 +331,8 @@ export function refRecordSession(
     if (!row.modes.includes(mode)) return close("peer_not_allowed");
     const size: number = (open?.size ?? 0) + r.body.length;
     if (size > REF_MAX_PEER_MESSAGE) return close("peer_bad_frame");
+    if ((open?.parts.length ?? 0) >= REF_MAX_CHAIN_RECORDS)
+      return close("peer_bad_frame");
     const parts: Uint8Array[] = [...(open?.parts ?? []), r.body];
     if ((r.flags & 1) !== 0) {
       open = { type: r.type, parts, size };

@@ -526,6 +526,86 @@ function emailDate(at: number): string {
   return `${d.getUTCDate()} ${month} ${d.getUTCFullYear()}, ${hh}:${mm} UTC`;
 }
 
+// ── Key ring (U-36.3; WIRE-CONTRACT-V5 §13.11, THREAT-MODEL T23) ─────────────────────────────
+
+const RING_NO_ASK = "No one will ask you for your recovery code.";
+
+interface RingNoticeInput {
+  deviceLabel: string | null | undefined;
+  productName: string | null | undefined;
+  productSlug: string;
+  at: number;
+  origin: string;
+}
+
+/** "See your devices" and the secure link, for a notice about a device of the account. */
+function devicesLinks(input: { productSlug: string; origin: string }) {
+  return {
+    action: {
+      label: "See your devices",
+      url: appLink(input.origin, productRoute(input.productSlug, "devices")),
+    },
+    secureUrl: appLink(input.origin, "account/methods"),
+  };
+}
+
+/** The three key ring notices share their shape: copy, "See your devices", the secure link. */
+function ringNotice(
+  input: RingNoticeInput,
+  copy: (
+    device: string,
+    name: string,
+    when: string,
+  ) => {
+    subject: string;
+    paragraphs: string[];
+  },
+): NoticeMessage {
+  const device = displayValue(input.deviceLabel, "");
+  const name = displayValue(input.productName, "your product");
+  const { subject, paragraphs } = copy(device, name, emailDate(input.at));
+  // No `help` anchor yet: the Help Emails page is over its word budget; U-42 owns its entries.
+  return buildNotice({
+    subject,
+    paragraphs: [...paragraphs, RING_NO_ASK],
+    ...devicesLinks(input),
+    origin: input.origin,
+  });
+}
+
+/** A device fetched the recovery data: "Recovery started on Studio PC". */
+export function recoveryStartedNotice(input: RingNoticeInput): NoticeMessage {
+  return ringNotice(input, (device, name, when) => ({
+    subject: `Recovery started on ${device || "a device"}`,
+    paragraphs: [
+      `${device || "A device"} started recovering your ${name} data on ${when}. Enter your recovery code in ${name} only.`,
+    ],
+  }));
+}
+
+/** The recovery code was replaced: the old code no longer opens the data. */
+export function recoveryCodeChangedNotice(
+  input: RingNoticeInput,
+): NoticeMessage {
+  return ringNotice(input, (device, name, when) => ({
+    subject: `Your ${name} recovery code changed`,
+    paragraphs: [
+      `${device || "A device"} made a new recovery code for your ${name} data on ${when}. The old code no longer works.`,
+    ],
+  }));
+}
+
+/** Encryption was reset: new key, new code; the old key's data moves over for 30 days. */
+export function encryptionResetNotice(input: RingNoticeInput): NoticeMessage {
+  return ringNotice(input, (device, name, when) => ({
+    subject: `${name} encryption was reset`,
+    paragraphs: [
+      `${device || "A device"} reset the encryption for your ${name} data on ${when}. There is a new key and a new recovery code.`,
+      "A device that still has the old key can move your data over for 30 days. After that it can't be recovered.",
+    ],
+  }));
+}
+
 /**
  * A new device signed in to the account (SIGN-IN.md §3.15): `signin.mail.newDevice.subject`,
  * `signin.mail.newDevice.body` and **Open Polaris Locker** (`signin.mail.open`).
@@ -622,13 +702,18 @@ export function signInMethodAddedNotice(input: {
   /** The method by its own name: "Apple", "Google", "Steam", "A passkey", an email address. */
   method: string;
   origin: string;
+  /** The app that made the link (the link offer, I-43.2); absent for a link made in the portal. */
+  app?: string | undefined;
 }): NoticeMessage {
   const method = displayValue(input.method, "A sign-in method");
+  const app = input.app ? displayValue(input.app, "an app") : null;
   return buildNotice({
     help: "sign-in-method-added",
     subject: `${method} was connected to your Polaris Locker account`,
     paragraphs: [
-      `${method} was added as a way to sign in to your Polaris Locker account.`,
+      app
+        ? `${method} was added in ${app} as a way to sign in to your Polaris Locker account.`
+        : `${method} was added as a way to sign in to your Polaris Locker account.`,
     ],
     action: {
       label: "See your sign-in methods",

@@ -1212,6 +1212,208 @@ paths:
         Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/devices/keyring/recovery:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+    get:
+      operationId: getKeyringRecovery
+      tags: [core]
+      summary: Fetch the sealed recovery blob (U-36.3)
+      description: >
+        The sealed recovery blob of the person's ring (V5 §13.11.4) with its `epoch` and `kid`, for
+        a device that holds no root. The blob opens only with the recovery code, which the server
+        never sees. At most 5 a day per device (`429 rate_limited`, counted before the read). Each
+        fetch is audited and the account is emailed "Recovery started on" the device's label.
+        `404` when no blob is set. `cache-control: no-store`.
+      security: [{ deviceToken: [] }]
+      responses:
+        "200":
+          description: The blob.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KeyringRecovery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: No account is signed in on the device (`account_required`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: The device fetched 5 times in the last day.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+    put:
+      operationId: putKeyringRecovery
+      tags: [core]
+      summary: Replace the sealed recovery blob (U-36.3)
+      description: >
+        Stores a new `recoveryWrap`: exactly 61 bytes, version `0x01`, unpadded base64url. Only a
+        device that holds a current wrap may write one (`403 forbidden`). `epoch` and `kid` must be
+        the ring's (`409 keyring_conflict`; the server keeps neither with the blob). Audited, and
+        the account is emailed that the recovery code changed.
+      security: [{ deviceToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/KeyringRecovery" }
+      responses:
+        "204": { description: Stored. }
+        "400":
+          description: A malformed body, or a blob that is not 61 bytes of version 1 (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            No account is signed in on the device (`account_required`), or the device holds no
+            wrap (`forbidden`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: The epoch or `kid` is not the ring's, or there is no ring.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                conflict: { value: { error: { code: keyring_conflict } } }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightKeyringRecovery
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/devices/keyring/adopt:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+    post:
+      operationId: adoptKeyringRoot
+      tags: [core]
+      summary: Store a previous or merged root sealed under the current one (U-36.3)
+      description: >
+        Stores `ct` (61 bytes, version `0x01`, sealed under `K_adopt`, V5 §13.11.4) for a root the
+        server already names: the ring a reset replaced, while its 30 days run, or a candidate an
+        account merge left. Any other `fromRingId` is `409 keyring_conflict`. Only a device that
+        holds a current wrap may adopt (`403 forbidden`). Idempotent: a sealed entry stays as it is.
+      security: [{ deviceToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/KeyringAdoptRequest" }
+      responses:
+        "204": { description: Stored. }
+        "400":
+          description: A malformed body or blob (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            No account is signed in on the device (`account_required`), or the device holds no
+            wrap (`forbidden`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: The server names no such root to adopt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                conflict: { value: { error: { code: keyring_conflict } } }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightKeyringAdopt
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/devices/keyring/reset:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+    post:
+      operationId: resetKeyring
+      tags: [core]
+      summary: Reset encryption with a new ring (U-36.3)
+      description: >
+        Replaces the ring with a new one at epoch 1 (a new `ringId`) and the calling device's wrap,
+        and optionally a new recovery blob (61 bytes, version `0x01`). The old ring becomes
+        `previous` for 30 days (its wraps stay with it, so a device that holds that root can
+        adopt it); the nightly sweep then forgets it. It needs no wrap: this is the way out for a
+        person who lost every root. The device must have registered its keys. `409
+        keyring_conflict` when there is no ring (create one) or `ringId` is the current ring's.
+        Audited, and the account is emailed.
+      security: [{ deviceToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/KeyringCreateRequest" }
+      responses:
+        "201":
+          description: Reset.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KeyringCreated" }
+        "400":
+          description: A malformed body or blob, or the device has no registered keys (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: No account is signed in on the device (`account_required`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: There is no ring, or `ringId` is the current ring's.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                conflict: { value: { error: { code: keyring_conflict } } }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightKeyringReset
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/devices/attest:
     post:
       operationId: attestDevice
@@ -8623,9 +8825,18 @@ paths:
     post:
       operationId: identityToken
       tags: [identity]
-      summary: Redeem an authorization code for a device token (OAuth-shaped token)
+      summary: Redeem an authorization code, or exchange a platform ID token, for a device token (OAuth-shaped token)
       description: >
-        I-08 (WIRE-CONTRACT-V4 §12.5), grant `authorization_code`. A form-encoded body
+        Two grants share this form endpoint. `grant_type=authorization_code` is I-08
+        (WIRE-CONTRACT-V4 §12.5); `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`
+        is the native platform sign-in (I-13.4, WIRE-CONTRACT-V5 §12.11.3, `TokenExchangeRequest`):
+        a Google or Apple ID token for the nonce of `identity/nonce`, with the device's
+        `pkey-proof/1` `exchange` proof. The exchange answers a token (`issued_token_type`), a
+        pending grant with `status: "choose"` or `status: "confirm"` (a first consent, or a
+        changed scope), `403 interstitial_required` (no link yet, or unaccepted terms), and one
+        byte-identical `400 invalid_grant` for every verifier failure. It is served only while the
+        `launch.identityExchange` gate is on; off, its `grant_type` is `unsupported_grant_type`.
+        The rest of this text is the `authorization_code` grant. A form-encoded body
         (`application/x-www-form-urlencoded`; a JSON body is `invalid_request`) with `client_id`,
         `code`, `code_verifier` and, optionally, `redirect_uri` (compared exactly when sent) and
         `device_name`. Needs `X-PKey-Device`; the device metadata headers are read when present.
@@ -8643,19 +8854,24 @@ paths:
         required: true
         content:
           application/x-www-form-urlencoded:
-            schema: { $ref: "#/components/schemas/TokenRequest" }
+            schema:
+              oneOf:
+                - { $ref: "#/components/schemas/TokenRequest" }
+                - { $ref: "#/components/schemas/TokenExchangeRequest" }
       responses:
         "200":
           description: >
             The token response, or (I-08b, `license_choice=app` and a choice is due) the pending
-            sign-in: `{status: "choose", grant, expiresIn, choices}`. Only the `choose` body has
-            a `status` member. `cache-control: no-store`.
+            sign-in: `{status: "choose", grant, expiresIn, choices}`. Only the exchange grant
+            (§12.11.3) can also answer `{status: "confirm", grant, expiresIn, consent, choices}`,
+            and only its token answer carries `issued_token_type`. `cache-control: no-store`.
           content:
             application/json:
               schema:
                 oneOf:
                   - { $ref: "#/components/schemas/TokenResponse" }
                   - { $ref: "#/components/schemas/PendingSignIn" }
+                  - { $ref: "#/components/schemas/ConfirmSignIn" }
               examples:
                 licenceLess:
                   summary: test/surfaces/identityAuthorize.test.ts
@@ -8684,7 +8900,8 @@ paths:
           description: >
             `invalid_request` (not a form, a missing or repeated parameter, no device id),
             `unsupported_grant_type`, `invalid_grant` (unknown, used, expired, or a mismatching
-            verifier, `client_id` or `redirect_uri`) or `invalid_scope` — FLAT.
+            verifier, `client_id` or `redirect_uri`) or `invalid_scope` — FLAT. On the exchange
+            grant `invalid_grant` is the one answer for a bad token, nonce, proof or key.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -8698,10 +8915,24 @@ paths:
         "403":
           description: >
             `not_entitled`, `device_limit` (with `limit`, `deviceCount`, `manageUrl`) or
-            `fingerprint_required` — FLAT, the shape `license/activate` answers.
+            `fingerprint_required` — FLAT, the shape `license/activate` answers. The exchange
+            grant (§12.11.3) can also answer `interstitial_required` with `reason` `no_link`
+            (and a `linkHandle`) or `terms`, and the url of the sign-in card.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/FlatError" }
+                  - { $ref: "#/components/schemas/InterstitialRequired" }
+              examples:
+                noLink:
+                  summary: exchange-no-link.json
+                  value:
+                    error: interstitial_required
+                    reason: no_link
+                    url: https://key.plrs.im/djdl/identity/authorize
+                    linkHandle: lh_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
+                    expiresIn: 600
         "409":
           description: >
             `license_choice_required`: the account holds licences for the product and none was
@@ -8788,6 +9019,131 @@ paths:
                 limited: { value: { error: { code: rate_limited } } }
     options:
       operationId: preflightIdentityNonce
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/link:
+    get:
+      operationId: identityLinkOffer
+      tags: [identity]
+      summary: What the app may offer to link (I-43.2)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.4. The device bearer with its `X-PKey-Device`. Lists the product's
+        declared platform kinds (Google, Apple) that have no link on the signed-in account in their
+        scope. `reach` is `null`: what a link would cover is not known before a token. The list is
+        empty unless a same-device sign-in at most 300 seconds old is live on this device. Reading
+        the list does not spend that step-up. `launch.identityExchange` off, or Identity off,
+        answers `404 not_found`. NESTED errors. 30 calls a minute per client network and 10 per
+        device.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      responses:
+        "200":
+          description: "The offer, possibly empty. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LinkOfferResponse" }
+              examples:
+                offered:
+                  value: { offer: [{ kind: google, reach: null }] }
+                none:
+                  value: { offer: [] }
+        "400":
+          description: No or malformed `X-PKey-Device` (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401":
+          description: The device token is missing or not valid for this device (`unauthorized`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Over the network or device limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    post:
+      operationId: identityLink
+      tags: [identity]
+      summary: Add a Google or Apple identity to the signed-in account (I-43.2)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.4. The device bearer with its `X-PKey-Device`. The body is a
+        `linkHandle` from a token exchange that found no link, or a token of its own with a nonce
+        (§12.11.2) and the device's keys. `proof` is a `pkey-proof/1` signature of purpose `link`
+        (§12.11.1) by the device's key. The request spends the same-device step-up (`signin-fresh`)
+        and links in the same press. A handle is taken only when its record names this product,
+        this device and the proving key; a handle alone does nothing. A Google link is global only
+        when the provider vouches for the token's address and the account has already verified it;
+        otherwise it is scoped to the developer. An Apple link is always scoped to the team. The
+        account's verified addresses, and the linked address, receive the "sign-in method added"
+        email. Every proof, key, nonce and token failure is the same `400 invalid_grant`. NESTED
+        errors. `launch.identityExchange` off, or Identity off, answers `404 not_found`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LinkRequest" }
+      responses:
+        "200":
+          description: "The link, new or already on this account. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LinkResponse" }
+              examples:
+                linked:
+                  { value: { linked: { kind: google, reach: developer } } }
+        "400":
+          description: >
+            `invalid_grant` for any proof, key, nonce, token or handle-binding failure, or
+            `bad_request` for a malformed body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                refused: { value: { error: { code: invalid_grant } } }
+        "401":
+          description: >
+            `step_up_required` (no live same-device sign-in on this device, or none bound to an
+            account), or `unauthorized` (the device token).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                stepUp: { value: { error: { code: step_up_required } } }
+        "404":
+          description: An unknown or spent handle, or the gate or Identity is off (`not_found`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "409":
+          description: The identity is already linked to another account (`link_conflict`). Nothing moves.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                conflict: { value: { error: { code: link_conflict } } }
+        "429":
+          description: Over the network or device limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityLink
       tags: [identity]
       summary: CORS preflight
       description: >
@@ -8930,7 +9286,9 @@ paths:
         the code (`X-PKey-Device` is required). JSON body, `no-store`, nested Polaris errors.
         Only while the product's Identity service is on.
         Consumes the grant and answers exactly what `token` answers (`TokenResponse`, plus
-        `keyEntries` after a key). `choice.kind` is `license` (with an optional
+        `keyEntries` after a key). A grant issued with `status: "confirm"` (§12.11.3) needs
+        `consent` in the body (`400 bad_request` without it, the grant left open); the consent
+        row is written in the same press that binds the device. `choice.kind` is `license` (with an optional
         `replaceDeviceId`, committed in one batch with the device claim), `keep` (needs the device's own
         `Authorization: Bearer`), `create` or `key`. A key is PX-W9's app key entry, counted once
         with the device claim, and refuses with `license_owned` and `key_entry_limit`. A refusal the
@@ -27887,6 +28245,51 @@ components:
       properties:
         nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
         expiresIn: { type: integer, enum: [300] }
+    LinkOfferResponse:
+      type: object
+      required: [offer]
+      properties:
+        offer:
+          type: array
+          items:
+            type: object
+            required: [kind, reach]
+            properties:
+              kind: { type: string, enum: [google, apple] }
+              reach:
+                type: [string, "null"]
+                enum: [global, developer, null]
+                description: What a link would cover; `null` while that is not known before a token.
+    LinkRequest:
+      description: >
+        A `linkHandle` (`lh_` and 43 base64url characters), or a token of the app's own with the
+        nonce and keys of §12.11.2. `proof` is a `pkey-proof/1` signature of purpose `link`.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [linkHandle, proof]
+          properties:
+            linkHandle: { type: string, pattern: "^lh_[A-Za-z0-9_-]{43}$" }
+            proof: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
+        - type: object
+          additionalProperties: false
+          required: [subjectToken, nonce, signKey, agreeKey, proof]
+          properties:
+            subjectToken: { type: string, maxLength: 4096 }
+            nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+            signKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+            agreeKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+            proof: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
+    LinkResponse:
+      type: object
+      required: [linked]
+      properties:
+        linked:
+          type: object
+          required: [kind, reach]
+          properties:
+            kind: { type: string, enum: [google, apple] }
+            reach: { type: string, enum: [global, developer] }
     DeviceKeysResult:
       type: object
       required: [keySeq]
@@ -27923,6 +28326,24 @@ components:
           required: [ct]
           properties:
             ct: { type: string, pattern: "^[A-Za-z0-9_-]+$", maxLength: 512 }
+    KeyringRecovery:
+      type: object
+      description: >
+        The sealed recovery blob (V5 §13.11.4): 61 bytes, version `0x01`, unpadded base64url, with
+        the ring's `epoch` and `kid`.
+      required: [ct, epoch, kid]
+      properties:
+        ct: { type: string, pattern: "^[A-Za-z0-9_-]{82}$" }
+        epoch: { type: integer, minimum: 1 }
+        kid: { type: string, pattern: "^[0-9a-f]{32}$" }
+    KeyringAdoptRequest:
+      type: object
+      required: [fromRingId, epoch, kid, ct]
+      properties:
+        fromRingId: { type: string, pattern: "^rg_[A-Za-z0-9_-]{22}$" }
+        epoch: { type: integer, minimum: 1 }
+        kid: { type: string, pattern: "^[0-9a-f]{32}$" }
+        ct: { type: string, pattern: "^[A-Za-z0-9_-]{82}$" }
     KeyringCreated:
       type: object
       required: [ringId, epoch]
@@ -28076,11 +28497,107 @@ components:
             type: string,
             description: The device's label; normalised as in §12.7.1.,
           }
+    TokenExchangeRequest:
+      type: object
+      description: >
+        `POST /{product}/identity/token` (I-13.4, §12.11.3): the form body of the RFC 8693 token
+        exchange. `X-PKey-Device` is required. `proof` is the `exchange` proof (§12.11.1): its
+        fifth line is `<nonce>.<device_key>` and its sixth the base64url SHA-256 of
+        `subject_token`.
+      required:
+        - grant_type
+        - client_id
+        - subject_token
+        - subject_token_type
+        - nonce
+        - device_key
+        - proof
+      additionalProperties: false
+      properties:
+        grant_type:
+          {
+            type: string,
+            const: "urn:ietf:params:oauth:grant-type:token-exchange",
+          }
+        client_id: { type: string, description: The product slug. }
+        subject_token: { type: string, description: The provider's ID token. }
+        subject_token_type:
+          { type: string, const: "urn:ietf:params:oauth:token-type:id_token" }
+        nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        device_key: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        proof: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
+        license_choice: { type: string, enum: [app, card], default: app }
+        device_name:
+          {
+            type: string,
+            description: The device's label; normalised as in §12.7.1.,
+          }
+    ConfirmSignIn:
+      type: object
+      description: >
+        I-13.5 (§12.11.3 rule 1): the exchange's `200` when the link exists but the person has
+        not consented to this app, or what it asks changed. The grant is `PendingSignIn`'s
+        (300 s, bound to the redeeming device); `choice/complete` then requires `consent`.
+      required: [status, grant, expiresIn, consent, choices]
+      additionalProperties: false
+      properties:
+        status: { type: string, const: confirm }
+        grant: { type: string, pattern: "^sg_[A-Za-z0-9_-]{43}$" }
+        expiresIn: { type: integer, const: 300 }
+        consent: { $ref: "#/components/schemas/ExchangeConsentView" }
+        choices: { $ref: "#/components/schemas/LicenseChoiceView" }
+    ExchangeConsentView:
+      type: object
+      description: >
+        What the person is asked to consent to, in the app's own form (§12.11.3 rule 1).
+        `as.email` is the token's own address. `scopeHash` and `items` are §12.7.3's.
+      required: [client, as, items, scopeHash, firstTime, changed]
+      additionalProperties: false
+      properties:
+        client:
+          type: object
+          required: [appName, developerName, iconUrl, nameVerified]
+          properties:
+            appName: { type: string }
+            developerName: { type: [string, "null"] }
+            iconUrl: { type: [string, "null"] }
+            nameVerified: { type: boolean }
+        as:
+          type: object
+          required: [provider, email]
+          properties:
+            provider: { type: string, enum: [google, apple] }
+            email: { type: [string, "null"] }
+        items:
+          type: array
+          items:
+            type: object
+            required: [kind]
+            properties:
+              kind: { type: string, enum: [license, cloudSync, profile] }
+              claims: { type: array, items: { type: string } }
+        scopeHash: { type: string, pattern: "^[0-9a-f]{64}$" }
+        firstTime: { type: boolean }
+        changed: { type: boolean }
+    InterstitialRequired:
+      type: object
+      description: >
+        The exchange's flat `403` (§12.11.3 rule 4). `linkHandle` (`lh_` and 43 base64url
+        characters, used once by the link offer) and `expiresIn` (600) come with `no_link` only.
+      required: [error, reason, url]
+      additionalProperties: false
+      properties:
+        error: { type: string, const: interstitial_required }
+        reason: { type: string, enum: [no_link, terms] }
+        url: { type: string, description: The sign-in card for this product. }
+        linkHandle: { type: string, pattern: "^lh_[A-Za-z0-9_-]{43}$" }
+        expiresIn: { type: integer, const: 600 }
     TokenResponse:
       type: object
       description: >
         The activation response under its OAuth names (I-08, §12.5): exactly these members. No
-        `expires_in` and no `refresh_token` before I-21.
+        `expires_in` and no `refresh_token` before I-21. The exchange grant's token answer adds
+        `issued_token_type` (§12.11.3).
       required:
         [
           access_token,
@@ -28094,6 +28611,12 @@ components:
       additionalProperties: false
       properties:
         access_token: { type: string, description: The `pkeyt_` device token. }
+        issued_token_type:
+          {
+            type: string,
+            const: "urn:polaris-key:token-type:device",
+            description: Present on the token-exchange grant's answer only (RFC 8693).,
+          }
         token_type: { type: string, const: Bearer }
         scope:
           { type: string, description: The granted subset, space-delimited. }

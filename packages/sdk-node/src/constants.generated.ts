@@ -652,6 +652,7 @@ export const Feature = {
   syncSettings: "sync.settings",
   syncConflict: "sync.conflict",
   syncSaves: "sync.saves",
+  syncKeyring: "sync.keyring",
   connectIdentity: "connect.identity",
   connectNoise: "connect.noise",
   connectProtocol: "connect.protocol",
@@ -677,6 +678,7 @@ export const Feature = {
   identityRedirectWeb: "identity.redirect.web",
   identityChoice: "identity.choice",
   identitySigninHints: "identity.signin.hints",
+  identityExchange: "identity.exchange",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -780,6 +782,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "sync.settings",
   "sync.conflict",
   "sync.saves",
+  "sync.keyring",
   "connect.identity",
   "connect.noise",
   "connect.protocol",
@@ -805,6 +808,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.redirect.web",
   "identity.choice",
   "identity.signin.hints",
+  "identity.exchange",
   "release.changelog",
   "release.download",
   "release.record",
@@ -2001,6 +2005,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.settings": { status: "planned", service: "sync", na: [] },
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
+  "sync.keyring": { status: "planned", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
   "connect.protocol": { status: "implemented", service: "connect", na: [] },
@@ -2041,6 +2046,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     status: "implemented",
     service: "identity",
     na: [],
+  },
+  "identity.exchange": {
+    status: "na",
+    service: "identity",
+    na: [{ runtime: "node", reason: "runtime" }],
   },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
@@ -2161,4 +2171,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "b2b76c04bd8af1bdc27f94c1cce5d4564787a20074a8436712bebdc0d9c2ec18";
+  "02e2eb332a74a28862c7a8968400ba636739461ef04a7bb2adbd410a7a9b61f1";

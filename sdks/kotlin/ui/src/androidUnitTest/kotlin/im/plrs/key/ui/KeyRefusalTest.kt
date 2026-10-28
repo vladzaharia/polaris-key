@@ -54,10 +54,9 @@ class KeyRefusalTest {
             PolarisActivationScreen(limit(), onKeyChange = { edits += it }, onSignIn = { signIns++ }, onOpenManage = { opened = it })
         }
         rule.onNodeWithText("This key has no entries left. Add it to your account and sign in instead.").assertIsDisplayed()
-        rule.onNodeWithText("3 of 3 key entries used").assertIsDisplayed()
         shot("key-entry-limit-411x891")
         rule.onNodeWithText("Activate license").assertDoesNotExist()
-        rule.onNodeWithText("Open in browser").performClick()
+        rule.onNodeWithText("Add Diceroll to your account").performClick()
         assertEquals(add, opened)
         rule.onNodeWithText("Sign in").performClick()
         assertEquals(1, signIns)
@@ -78,7 +77,7 @@ class KeyRefusalTest {
         show { PolarisActivationScreen(limit(), onSignIn = { signIns++ }, manageAsQr = true) }
         rule.onNodeWithContentDescription("QR code that opens the device management page").assertIsDisplayed()
         shot("key-entry-limit-tv-960x540")
-        rule.onNodeWithText("Open in browser").assertDoesNotExist()
+        rule.onNodeWithText("Add Diceroll to your account").assertDoesNotExist()
         rule.onNodeWithText("Sign in").performClick()
         assertEquals(1, signIns)
     }

@@ -207,10 +207,10 @@ def test_no_provider_set_up_is_disabled_before_any_request(clock) -> None:
     assert not any(x["path"].endswith("/device/start") for x in w.calls)
 
 
-def test_the_redirect_channel_is_the_typed_version_na_until_its_slice(clock) -> None:
+def test_a_channel_this_version_lacks_is_the_typed_version_na(clock) -> None:
     c = make(worker(READY))
     with pytest.raises(UnsupportedError) as e:
-        c.identity.sign_in.start(channel="redirect", redirect_uri="https://app.example/cb")
+        c.identity.sign_in.start(channel="loopback", redirect_uri="http://127.0.0.1:8080/cb")
     assert e.value.reason == "version" and e.value.feature == "identity.redirect.web"
 
 
