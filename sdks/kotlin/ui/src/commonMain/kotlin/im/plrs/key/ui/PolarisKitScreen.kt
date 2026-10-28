@@ -387,12 +387,12 @@ private fun KitScreenBody(
             if (tertiary.isNotEmpty() && !quietInRow) {
                 Spacer(Modifier.height(if (buttons.isEmpty()) 0.dp else 20.dp))
                 // The extras: one quiet row of links, no divider and no glyph (UI-KITS.md 4.3 Welcome).
-                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)) {
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(PolarisSpace.hairline, Alignment.CenterHorizontally)) {
                     for (line in tertiary) PolarisTextButton(line.text, onClick = { onControl(line.key); onAction(KitAction.forCopyKey(line.key)) })
                 }
             }
             if (attribution) {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(PolarisSpace.medium))
                 PolarisPoweredByLine()
             }
         }
@@ -422,7 +422,7 @@ private fun KitScreenBody(
                 if (line.key == "signin.key.scan" && addKeyUrl != null) {
                     lines.firstOrNull { it.key == "a11y.qrAddKey" }?.let {
                         PolarisQr(addKeyUrl, it.text, Modifier.size(polarisWindow.qrSize))
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(PolarisSpace.tight))
                     }
                 }
                 val step = if (offline) offlineStep(line.key) else null
@@ -440,7 +440,7 @@ private fun KitScreenBody(
                 // kit never makes up a code (DL14).
                 if (step == 1 && requestCode != null && qrLabel != null) {
                     PolarisQr(requestCode, qrLabel, Modifier.size(polarisWindow.qrSize))
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(PolarisSpace.tight))
                 }
                 val copyLine = lines.firstOrNull { it.key == "offlineActivation.copyCode" }
                 if (step == 1 && copyLine != null) {
@@ -453,7 +453,7 @@ private fun KitScreenBody(
                             onAction(KitAction.forCopyKey(copyLine.key))
                         },
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(PolarisSpace.tight))
                 }
                 if (meters && line.key in setOf("deviceLimit.lede", "deviceLimit.browser", "deviceLimit.noManage")) KitSeatMeter(screen)
             }
@@ -525,7 +525,7 @@ private fun KitConfirmLines(lines: List<KitLine>) {
             "signin.consent.license", "signin.consent.alsoGets" -> {
                 if (index > 0 && lines.take(index).any { it.key.startsWith("signin.consent.") }) Spacer(Modifier.height(PolarisSpace.controls))
                 Text(line.text, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(PolarisSpace.hairline))
             }
             "signin.consent.licenseLine", "signin.consent.newLicense", "signin.consent.profile" -> {
                 val strong = line.key != "signin.consent.profile"
@@ -535,7 +535,7 @@ private fun KitConfirmLines(lines: List<KitLine>) {
                     color = scheme.onSurface,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(PolarisSpace.hairline))
             }
             "signin.consent.pairwise" -> {
                 Text(line.text, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
@@ -547,10 +547,10 @@ private fun KitConfirmLines(lines: List<KitLine>) {
             else -> {
                 if (index == 0) {
                     PolarisTitle(line.text)
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(PolarisSpace.hairline))
                 } else {
                     PolarisBody(line.text)
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(PolarisSpace.hairline))
                 }
             }
         }
@@ -738,7 +738,7 @@ private fun KitRow(label: String, onClick: (() -> Unit)? = null, danger: Boolean
     val color = if (danger) PolarisTheme.status.danger else MaterialTheme.colorScheme.onSurface
     val base = Modifier.fillMaxWidth().heightIn(min = 52.dp)
     Row(
-        modifier = (if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base).polarisExternalSemantics(external).padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = (if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base).polarisExternalSemantics(external).padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.controls),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = color)
@@ -756,7 +756,7 @@ private fun offlineStep(key: String): Int? = when (key) {
 /** One numbered step: the kit draws the number (a formatted integer, not copy); the sentence is the step. */
 @Composable
 private fun PolarisStep(number: Int, text: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+    Row(horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls), verticalAlignment = Alignment.Top) {
         Box(
             Modifier.size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
                 .clearAndSetSemantics {},

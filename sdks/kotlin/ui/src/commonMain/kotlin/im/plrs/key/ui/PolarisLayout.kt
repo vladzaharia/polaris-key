@@ -125,11 +125,17 @@ internal class PolarisWindow(
 
 /** The fixed steps of the kit's spacing rhythm (the window adds `section`). */
 internal object PolarisSpace {
+    /** A caption under its line; the gap between wrapped chips. */
+    val hairline: Dp = 4.dp
+
     /** A title and its lede; a value and its caption. */
     val tight: Dp = 8.dp
 
     /** Stacked controls in one group. */
     val controls: Dp = 12.dp
+
+    /** A block and the controls that follow it. */
+    val medium: Dp = 16.dp
 
     /** Two groups inside one region. */
     val group: Dp = 24.dp
