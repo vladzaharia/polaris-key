@@ -81,9 +81,9 @@
       "toast": "{kind}: the toast being shown.",
       "error": "{code}: a core.codes code the step failed with.",
       "cloudSync": "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed, signedIn?, canReview?, lastSynced?}. `ring-changed` always offers Review: the kit owns the confirmation.",
-      "unlockSync": "UnlockSync's step: {step: code | invalid | working | failed | start-over, nearby?}. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
+      "unlockSync": "UnlockSync's step: {step: code | invalid | working | failed | start-over-failed | no-code | start-over, nearby?}. `no-code`: the account has no recovery code, so only Start over helps. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
       "recoveryCode": "RecoveryCode: {saved?}. The code itself is never an input of the view: the kit draws it from the host, once, and keeps nothing.",
-      "ringChange": "RingChange: {by?, served?: {ringId, epoch, rootKid}}. `by` is the name of the device that wrapped (`changed.by`); `served` is the ring the person was shown (`changed.served`), the one value `acceptRingChange` takes. No `served`: nothing to accept, only the recovery code."
+      "ringChange": "RingChange: {by?, served?: {ringId, epoch, rootKid}, failed?}. `failed`: accepting the ring did not open a root; the screen says so and Accept stays available. `by` is the name of the device that wrapped (`changed.by`); `served` is the ring the person was shown (`changed.served`), the one value `acceptRingChange` takes. No `served`: nothing to accept, only the recovery code."
     },
     "defaults": {
       "presentation": {
@@ -12401,6 +12401,41 @@
       }
     },
     {
+      "name": "UnlockSync/start-over-failed: Start over did not run",
+      "input": { "unlockSync": { "step": "start-over-failed" } },
+      "expect": {
+        "component": "UnlockSync",
+        "state": "start-over-failed",
+        "copy": [
+          "common.cancel",
+          "common.tryAgain",
+          "unlockSync.startOverFailed",
+          "unlockSync.title"
+        ],
+        "actions": ["cancel", "retry"]
+      }
+    },
+    {
+      "name": "UnlockSync/no-code: the account has no recovery code",
+      "input": { "unlockSync": { "step": "no-code" } },
+      "expect": {
+        "component": "UnlockSync",
+        "state": "no-code",
+        "copy": [
+          "common.cancel",
+          "unlockSync.noCode",
+          "unlockSync.startOver",
+          "unlockSync.title"
+        ],
+        "actions": ["cancel", "start-over"]
+      },
+      "mustNot": {
+        "invariant": "With no recovery code there is nothing to enter.",
+        "copy": ["unlockSync.field", "unlockSync.unlock"],
+        "actions": ["unlock"]
+      }
+    },
+    {
       "name": "UnlockSync/start-over: warns that synced data will be lost",
       "input": { "unlockSync": { "step": "start-over" } },
       "expect": {
@@ -12534,6 +12569,34 @@
       }
     },
     {
+      "name": "RingChange/failed: accepting did not open a root",
+      "input": {
+        "ringChange": {
+          "by": "Maya's MacBook",
+          "served": {
+            "ringId": "ring_9f3a",
+            "epoch": 2,
+            "rootKid": "kid_b21c"
+          },
+          "failed": true
+        }
+      },
+      "expect": {
+        "component": "RingChange",
+        "state": "failed",
+        "copy": [
+          "common.cancel",
+          "ringChange.accept",
+          "ringChange.body",
+          "ringChange.failed",
+          "ringChange.title",
+          "ringChange.useCode",
+          "ringChange.warning"
+        ],
+        "actions": ["accept-ring-change", "cancel", "use-recovery-code"]
+      }
+    },
+    {
       "name": "RingChange/confirm: nothing served, nothing to accept",
       "input": { "ringChange": { "by": "Maya's MacBook" } },
       "expect": {
@@ -12544,7 +12607,7 @@
           "ringChange.body",
           "ringChange.title",
           "ringChange.useCode",
-          "ringChange.warning"
+          "ringChange.warningNoServed"
         ],
         "actions": ["cancel", "use-recovery-code"]
       },

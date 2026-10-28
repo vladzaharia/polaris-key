@@ -344,6 +344,11 @@
       "role": "a11y",
       "note": "Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated."
     },
+    "a11y.recoveryCode": {
+      "value": "Recovery code {code}",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. The recovery code, as groups separated by commas so a screen reader pauses between groups. Arguments: {code} = the code the screen shows; never split or translated."
+    },
     "a11y.seatMeter": {
       "value": "{used} of {limit, plural, one {# device} other {# devices}} in use",
       "role": "a11y",
@@ -1588,9 +1593,19 @@
       "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Shown under the field when the code's check characters fail or the server refuses it."
     },
     "unlockSync.failed": {
-      "value": "Couldn't unlock. Try again later.",
+      "value": "Couldn't unlock. Check your connection and try again.",
       "role": "body",
       "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code."
+    },
+    "unlockSync.startOverFailed": {
+      "value": "Couldn't start over. Check your connection and try again.",
+      "role": "body",
+      "note": "UnlockSync: Start over failed (not an unlock failure); Try again repeats it."
+    },
+    "unlockSync.noCode": {
+      "value": "This account has no recovery code. Start over to keep syncing.",
+      "role": "body",
+      "note": "UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on."
     },
     "unlockSync.startOverTitle": {
       "value": "Start over?",
@@ -1630,7 +1645,7 @@
     "recoveryCode.saved": {
       "value": "I've saved my recovery code",
       "role": "label",
-      "note": "RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked."
+      "note": "RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done is hidden until it is checked."
     },
     "ringChange.title": {
       "value": "Your sync key changed",
@@ -1648,9 +1663,19 @@
       "note": "RingChange: confirm a changed sync key (U-42). Used when no device is named."
     },
     "ringChange.warning": {
-      "value": "Continue only if that was you. If not, unlock with your recovery code instead.",
+      "value": "Choose “That was me” only if you did this. If not, use your recovery code.",
       "role": "body",
       "note": "RingChange: confirm a changed sync key (U-42)."
+    },
+    "ringChange.warningNoServed": {
+      "value": "Unlock with your recovery code to keep syncing.",
+      "role": "body",
+      "note": "RingChange: used when no ring was served, so there is nothing to accept."
+    },
+    "ringChange.failed": {
+      "value": "Couldn't confirm the new key. Try again, or use your recovery code.",
+      "role": "body",
+      "note": "RingChange: accepting the new key failed; That was me stays available to retry."
     },
     "ringChange.accept": {
       "value": "That was me",

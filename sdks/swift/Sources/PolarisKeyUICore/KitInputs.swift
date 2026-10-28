@@ -958,6 +958,85 @@ public struct KitNearbyApproval: Sendable, Codable, Equatable, Hashable {
     }
 }
 
+// MARK: - Cloud Sync
+
+/// CloudSyncStatus's state (ui-matrix `cloudSync`).
+public struct KitCloudSync: Sendable, Codable, Equatable, Hashable {
+    public enum State: String, Sendable, Codable, CaseIterable {
+        case synced, syncing, offline, conflict, error, locked
+        case ringChanged = "ring-changed"
+    }
+
+    public var state: State
+    public var signedIn: Bool?
+    /// The host handles Review for a conflict.
+    public var canReview: Bool?
+    /// When it last synced, relative ("2 min ago").
+    public var lastSynced: String?
+
+    public init(
+        state: State, signedIn: Bool? = nil, canReview: Bool? = nil, lastSynced: String? = nil
+    ) {
+        self.state = state
+        self.signedIn = signedIn
+        self.canReview = canReview
+        self.lastSynced = lastSynced
+    }
+}
+
+/// UnlockSync's step. `nearby` says the host could unlock from a nearby device: v0.10.0 never
+/// offers it, because NearbyApproval does not ship.
+public struct KitUnlockSync: Sendable, Codable, Equatable, Hashable {
+    public enum Step: String, Sendable, Codable, CaseIterable {
+        case code, invalid, working, failed
+        case startOverFailed = "start-over-failed"
+        case noCode = "no-code"
+        case startOver = "start-over"
+    }
+
+    public var step: Step
+    public var nearby: Bool?
+
+    public init(step: Step, nearby: Bool? = nil) {
+        self.step = step
+        self.nearby = nearby
+    }
+}
+
+/// RecoveryCode. The code is never an input: the kit draws it from the host, once.
+public struct KitRecoveryCode: Sendable, Codable, Equatable, Hashable {
+    public var saved: Bool?
+
+    public init(saved: Bool? = nil) { self.saved = saved }
+}
+
+/// RingChange: `by` is the device that wrapped (`changed.by`), `served` the ring the person was
+/// shown (`changed.served`), the one value `acceptRingChange` takes.
+public struct KitRingChange: Sendable, Codable, Equatable, Hashable {
+    public struct Ring: Sendable, Codable, Equatable, Hashable {
+        public var ringId: String
+        public var epoch: Int
+        public var rootKid: String
+
+        public init(ringId: String, epoch: Int, rootKid: String) {
+            self.ringId = ringId
+            self.epoch = epoch
+            self.rootKid = rootKid
+        }
+    }
+
+    public var by: String?
+    public var served: Ring?
+    /// Accepting did not open a root: the screen says so; Accept stays available.
+    public var failed: Bool?
+
+    public init(by: String? = nil, served: Ring? = nil, failed: Bool? = nil) {
+        self.by = by
+        self.served = served
+        self.failed = failed
+    }
+}
+
 // MARK: - The inputs
 
 /// Everything a kit screen is drawn from. Every member is optional in the matrix; the defaults
@@ -1005,6 +1084,10 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
     public var offers: KitOffers?
     public var toast: KitToast?
     public var error: KitError?
+    public var cloudSync: KitCloudSync?
+    public var unlockSync: KitUnlockSync?
+    public var recoveryCode: KitRecoveryCode?
+    public var ringChange: KitRingChange?
 
     public init(
         integrator: KitIntegrator? = nil, presentation: KitPresentation? = nil,
@@ -1021,7 +1104,9 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         replacement: KitReplacement? = nil, update: KitUpdate? = nil,
         releaseNotes: [KitReleaseNote]? = nil, config: [KitConfigRow]? = nil,
         account: KitAccount? = nil, entitlement: KitEntitlement? = nil,
-        offers: KitOffers? = nil, toast: KitToast? = nil, error: KitError? = nil
+        offers: KitOffers? = nil, toast: KitToast? = nil, error: KitError? = nil,
+        cloudSync: KitCloudSync? = nil, unlockSync: KitUnlockSync? = nil,
+        recoveryCode: KitRecoveryCode? = nil, ringChange: KitRingChange? = nil
     ) {
         self.integrator = integrator
         self.presentation = presentation
@@ -1059,6 +1144,10 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         self.offers = offers
         self.toast = toast
         self.error = error
+        self.cloudSync = cloudSync
+        self.unlockSync = unlockSync
+        self.recoveryCode = recoveryCode
+        self.ringChange = ringChange
     }
 
     /// Whether `service` is on (an absent list means all are).

@@ -456,6 +456,11 @@ msgstr "Código para tocar: {code}"
 msgid "a11y.code"
 msgstr "Código de acesso {code}"
 
+#. Recovery code {code}
+#. Screen reader label; never shown. The recovery code, as groups separated by commas so a screen reader pauses between groups. Arguments: {code} = the code the screen shows; never split or translated.
+msgid "a11y.recoveryCode"
+msgstr "Código de recuperação {code}"
+
 #. {used} of {limit, plural, one {# device} other {# devices}} in use
 #. Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number.
 #. Plural on {limit}.
@@ -1977,10 +1982,20 @@ msgstr "Começar do zero"
 msgid "unlockSync.invalid"
 msgstr "Esse código não está correto. Confira e tente novamente."
 
-#. Couldn't unlock. Try again later.
+#. Couldn't unlock. Check your connection and try again.
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code.
 msgid "unlockSync.failed"
-msgstr "Não foi possível desbloquear. Tente novamente mais tarde."
+msgstr "Não foi possível desbloquear. Verifique sua conexão e tente novamente."
+
+#. Couldn't start over. Check your connection and try again.
+#. UnlockSync: Start over failed (not an unlock failure); Try again repeats it.
+msgid "unlockSync.startOverFailed"
+msgstr "Não foi possível começar de novo. Verifique sua conexão e tente novamente."
+
+#. This account has no recovery code. Start over to keep syncing.
+#. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
+msgid "unlockSync.noCode"
+msgstr "Esta conta não tem código de recuperação. Comece de novo para continuar sincronizando."
 
 #. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
@@ -2028,7 +2043,7 @@ msgid "recoveryCode.copy"
 msgstr "Copiar código"
 
 #. I've saved my recovery code
-#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked.
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done is hidden until it is checked.
 msgid "recoveryCode.saved"
 msgstr "Salvei meu código de recuperação"
 
@@ -2047,10 +2062,20 @@ msgstr "{device} configurou uma nova chave para seus dados sincronizados."
 msgid "ringChange.bodyUnknown"
 msgstr "Um dispositivo configurou uma nova chave para seus dados sincronizados."
 
-#. Continue only if that was you. If not, unlock with your recovery code instead.
+#. Choose “That was me” only if you did this. If not, use your recovery code.
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.warning"
-msgstr "Continue somente se foi você. Caso contrário, desbloqueie com seu código de recuperação."
+msgstr "Escolha “Fui eu” somente se foi você. Caso contrário, use seu código de recuperação."
+
+#. Unlock with your recovery code to keep syncing.
+#. RingChange: used when no ring was served, so there is nothing to accept.
+msgid "ringChange.warningNoServed"
+msgstr "Desbloqueie com seu código de recuperação para continuar sincronizando."
+
+#. Couldn't confirm the new key. Try again, or use your recovery code.
+#. RingChange: accepting the new key failed; That was me stays available to retry.
+msgid "ringChange.failed"
+msgstr "Não foi possível confirmar a nova chave. Tente novamente ou use seu código de recuperação."
 
 #. That was me
 #. RingChange: confirm a changed sync key (U-42). Passes the ring that was shown (changed.served) to acceptRingChange.

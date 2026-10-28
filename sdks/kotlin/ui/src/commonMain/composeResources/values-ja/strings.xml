@@ -169,6 +169,8 @@
     <string name="a11y_nearbyCode">タップするコード：%1$s</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">サインインコード：%1$s</string>
+    <!-- Screen reader label; never shown. The recovery code, as groups separated by commas so a screen reader pauses between groups. Arguments: {code} = the code the screen shows; never split or translated. Arguments: 1=code. -->
+    <string name="a11y_recoveryCode">リカバリーコード：%1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
     <plurals name="a11y_seatMeter">
         <item quantity="other">%2$d台のデバイス中%1$s台を使用中</item>
@@ -721,7 +723,11 @@
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Shown under the field when the code's check characters fail or the server refuses it. -->
     <string name="unlockSync_invalid">コードが正しくありません。確認してもう一度お試しください。</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code. -->
-    <string name="unlockSync_failed">ロックを解除できませんでした。しばらくしてからもう一度お試しください。</string>
+    <string name="unlockSync_failed">ロックを解除できませんでした。接続を確認して、もう一度お試しください。</string>
+    <!-- UnlockSync: Start over failed (not an unlock failure); Try again repeats it. -->
+    <string name="unlockSync_startOverFailed">やり直せませんでした。接続を確認して、もう一度お試しください。</string>
+    <!-- UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on. -->
+    <string name="unlockSync_noCode">このアカウントにはリカバリーコードがありません。同期を続けるには、最初からやり直してください。</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->
     <string name="unlockSync_startOverTitle">最初からやり直しますか？</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22). -->
@@ -738,7 +744,7 @@
     <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
     <string name="recoveryCode_copy">コードをコピー</string>
     <string name="recoveryCode_copy__macos">コードをコピー</string>
-    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked. -->
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done is hidden until it is checked. -->
     <string name="recoveryCode_saved">リカバリーコードを保存しました</string>
     <!-- RingChange: confirm a changed sync key (U-42). -->
     <string name="ringChange_title">同期キーが変更されました</string>
@@ -747,7 +753,11 @@
     <!-- RingChange: confirm a changed sync key (U-42). Used when no device is named. -->
     <string name="ringChange_bodyUnknown">デバイスが同期データの新しいキーを設定しました。</string>
     <!-- RingChange: confirm a changed sync key (U-42). -->
-    <string name="ringChange_warning">ご自身で行った場合のみ続けてください。そうでない場合は、リカバリーコードでロックを解除してください。</string>
+    <string name="ringChange_warning">ご自身で行った場合のみ「自分です」を選んでください。そうでない場合は、リカバリーコードを使ってください。</string>
+    <!-- RingChange: used when no ring was served, so there is nothing to accept. -->
+    <string name="ringChange_warningNoServed">同期を続けるには、リカバリーコードでロックを解除してください。</string>
+    <!-- RingChange: accepting the new key failed; That was me stays available to retry. -->
+    <string name="ringChange_failed">新しいキーを確認できませんでした。もう一度お試しいただくか、リカバリーコードを使ってください。</string>
     <!-- RingChange: confirm a changed sync key (U-42). Passes the ring that was shown (changed.served) to acceptRingChange. -->
     <string name="ringChange_accept">自分で行いました</string>
     <string name="ringChange_accept__macos">自分で行いました</string>
