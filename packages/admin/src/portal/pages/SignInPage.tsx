@@ -665,6 +665,19 @@ function startErrorText(err: unknown): string {
   return portalErrorCopy(err).line;
 }
 
+/**
+ * The storefront link's product (`#/discover/<slug>`) for the signed-out card. Only the slug from
+ * the URL: nothing a signed-out caller can read says whether the product exists or is listed.
+ */
+const STOREFRONT_SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/i;
+export function storefrontSlug(
+  route: ReturnType<typeof useRoute>,
+): string | null {
+  return route.kind === "storefront" && STOREFRONT_SLUG.test(route.product)
+    ? route.product
+    : null;
+}
+
 function MethodsStep({
   caps,
   context,
@@ -787,15 +800,20 @@ function MethodsStep({
   const carriedCheck = carried ? checkKey(carried) : null;
   const carriedName =
     carriedCheck?.kind === "valid" ? productLabel(carriedCheck.slug) : null;
+  const storefront = storefrontSlug(useRoute());
   const title = other
     ? other.email
       ? t("signin.join.again", { email: other.email })
       : t("signin.join.otherTitle")
     : carriedName
       ? t("signin.key.carriedTitle", { product: carriedName })
-      : context
-        ? t("signin.methods.titleApp")
-        : t("signin.methods.title");
+      : storefront && !context
+        ? t("signin.key.carriedTitle", {
+            product: productLabel(storefront),
+          })
+        : context
+          ? t("signin.methods.titleApp")
+          : t("signin.methods.title");
   const lede = other
     ? t("signin.join.otherLede")
     : carriedName
