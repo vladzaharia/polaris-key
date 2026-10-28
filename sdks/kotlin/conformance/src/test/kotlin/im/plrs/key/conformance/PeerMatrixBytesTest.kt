@@ -45,7 +45,10 @@ class PeerMatrixBytesTest : ConformanceSuite() {
     @Test
     fun prologueAndPskDerivations() {
         val f = Failures("peer-matrix prologue and psk")
-        for (r in rows(m["prologue"])) f.equal(r.s("prologue"), hex(peerPrologue(r.s("slug"), PeerMode.valueOf(r.s("mode"))))) { "prologue ${r.s("slug")} ${r.s("mode")}" }
+        for (r in rows(m["prologue"])) {
+            val got = hex(peerPrologue(r.s("slug"), PeerMode.valueOf(r.s("mode"))))
+            f.equal(r.s("prologue"), got) { "prologue ${r.s("slug")} ${r.s("mode")}" }
+        }
         for (r in rows(m["psk"])) f.equal(r.s("psk"), hex(peerPsk(unhex(r.s("kDisc")), r.s("slug")))) { "psk ${r.s("slug")}" }
         f.done(10)
     }
@@ -77,33 +80,35 @@ class PeerMatrixBytesTest : ConformanceSuite() {
         f.done(10)
     }
 
+    private fun checkDecodeRow(f: Failures, r: JsonObject) {
+        val id = r.s("id")
+        val stream = unhex(r.s("stream"))
+        val want = r.o("want")
+        val got = decodeFrames(stream)
+        val reader = FrameReader()
+        // Trickle one byte at a time: the reader must reach the same frames, or the same close.
+        var readerFrames: MutableList<ByteArray>? = ArrayList()
+        for (b in stream) readerFrames = reader.push(byteArrayOf(b))?.let { readerFrames?.apply { addAll(it) } }
+        if (want["error"] != null) {
+            f.check(got === FrameDecode.BadFrame) { "$id: expected peer_bad_frame" }
+            f.check(readerFrames == null) { "$id: reader expected a close" }
+            f.equal("peer_bad_frame", want.s("error")) { "$id code" }
+            return
+        }
+        val ok = got as? FrameDecode.Frames
+        f.check(ok != null) { "$id: expected frames" }
+        if (ok == null) return
+        val wantFrames = want["frames"]!!.arrayValue!!.map { it.stringValue!! }
+        f.equal(wantFrames, ok.frames.map(::hex)) { "$id frames" }
+        f.equal(want.s("rest"), hex(ok.rest)) { "$id rest" }
+        f.equal(wantFrames, readerFrames?.map(::hex)) { "$id reader frames" }
+        f.check(reader.copied <= 4L * stream.size + 8) { "$id: the reader copied ${reader.copied} bytes for ${stream.size}" }
+    }
+
     @Test
     fun frameDecodeAndTheStatefulReaderAgree() {
         val f = Failures("peer-matrix frames decode")
-        for (r in rows(m.o("frames")["decode"])) {
-            val id = r.s("id")
-            val stream = unhex(r.s("stream"))
-            val want = r.o("want")
-            val got = decodeFrames(stream)
-            val reader = FrameReader()
-            // Trickle one byte at a time: the reader must reach the same frames, or the same close.
-            var readerFrames: MutableList<ByteArray>? = ArrayList()
-            for (b in stream) readerFrames = reader.push(byteArrayOf(b))?.let { readerFrames?.apply { addAll(it) } }
-            if (want["error"] != null) {
-                f.check(got === FrameDecode.BadFrame) { "$id: expected peer_bad_frame" }
-                f.check(readerFrames == null) { "$id: reader expected a close" }
-                f.equal("peer_bad_frame", want.s("error")) { "$id code" }
-            } else {
-                val ok = got as? FrameDecode.Frames
-                f.check(ok != null) { "$id: expected frames" }
-                if (ok == null) continue
-                val wantFrames = want["frames"]!!.arrayValue!!.map { it.stringValue!! }
-                f.equal(wantFrames, ok.frames.map(::hex)) { "$id frames" }
-                f.equal(want.s("rest"), hex(ok.rest)) { "$id rest" }
-                f.equal(wantFrames, readerFrames?.map(::hex)) { "$id reader frames" }
-                f.check(reader.copied <= 4L * stream.size + 8) { "$id: the reader copied ${reader.copied} bytes for ${stream.size}" }
-            }
-        }
+        for (r in rows(m.o("frames")["decode"])) checkDecodeRow(f, r)
         f.done(10)
     }
 
@@ -142,7 +147,10 @@ class PeerMatrixBytesTest : ConformanceSuite() {
     fun relayRefusedAndSizes() {
         val env = m.o("relayEnvelopes")
         val f = Failures("peer-matrix relay refused and sizes")
-        for (r in rows(env["refused"])) f.check(decodeRelay(RelayDirection.valueOf(r.s("dir")), unhex(r.s("bytes"))) == null) { "${r.s("id")} must be refused" }
+        for (r in rows(env["refused"])) {
+            val got = decodeRelay(RelayDirection.valueOf(r.s("dir")), unhex(r.s("bytes")))
+            f.check(got == null) { "${r.s("id")} must be refused" }
+        }
         for (r in rows(env["sizes"])) {
             val prefix = unhex(r.o("bytes").s("prefix"))
             val b = ByteArray(r["total"].longValue!!.toInt()) { r.o("bytes").s("fill").toInt(16).toByte() }

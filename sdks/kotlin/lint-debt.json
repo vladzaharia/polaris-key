@@ -3231,6 +3231,33 @@
       "ktlint:standard:multiline-if-else": 2,
       "ktlint:standard:property-wrapping": 3,
       "ktlint:standard:statement-wrapping": 6
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/NoiseVectorsTest.kt": {
+      "detekt:style.LoopWithTooManyJumpStatements": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/PeerMatrixBytesTest.kt": {
+      "detekt:exceptions.SwallowedException": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/Frames.kt": {
+      "detekt:style.MagicNumber": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/Noise.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 2,
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:naming.EnumNaming": 17,
+      "detekt:style.MagicNumber": 27,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:enum-entry-name-case": 17
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/RelayEnvelope.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.EnumNaming": 2,
+      "detekt:style.MagicNumber": 5,
+      "ktlint:standard:enum-entry-name-case": 2
     }
   }
 }

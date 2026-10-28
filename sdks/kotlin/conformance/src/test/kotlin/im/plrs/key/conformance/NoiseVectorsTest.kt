@@ -225,13 +225,12 @@ class NoiseVectorsTest : ConformanceSuite() {
         }
     }
 
-    private suspend fun failureOf(block: suspend () -> Unit): String? =
-        try {
-            block()
-            null
-        } catch (e: NoiseException) {
-            e.code.name
-        }
+    private suspend fun failureOf(block: suspend () -> Unit): String? = try {
+        block()
+        null
+    } catch (e: NoiseException) {
+        e.code.name
+    }
 
     @Test
     fun everyFailureRowFailsWhereAndWhyTheCorpusSays() {
@@ -243,7 +242,12 @@ class NoiseVectorsTest : ConformanceSuite() {
             val run = runHandshake(
                 r.s("protocol"),
                 Side(r.s("prologue"), r.sOrNull("psk"), r.s("initStatic"), r.s("initEphemeral")),
-                Side(r.sOrNull("responderPrologue") ?: r.s("prologue"), r.sOrNull("responderPsk") ?: r.sOrNull("psk"), r.s("respStatic"), r.s("respEphemeral")),
+                Side(
+                    r.sOrNull("responderPrologue") ?: r.s("prologue"),
+                    r.sOrNull("responderPsk") ?: r.sOrNull("psk"),
+                    r.s("respStatic"),
+                    r.s("respEphemeral"),
+                ),
                 r["payloads"]!!.arrayValue!!.map { bytes(it.stringValue!!) },
                 r.sOrNull("initEphemeralPublic")?.let(::bytes),
             )

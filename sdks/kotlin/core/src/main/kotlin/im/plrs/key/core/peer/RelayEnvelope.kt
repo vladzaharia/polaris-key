@@ -78,16 +78,24 @@ private fun routed(op: Int, device: ByteArray, session: Long, noise: ByteArray):
 public fun encodeRelay(m: RelayMessage): ByteArray {
     val out = when (m) {
         is RelayMessage.Send -> routed(OP_SEND, m.to, m.session, m.noise)
+
         is RelayMessage.Recv -> routed(OP_RECV, m.from, m.session, m.noise)
+
         RelayMessage.List -> byteArrayOf(OP_LIST.toByte())
+
         is RelayMessage.Ping -> byteArrayOf(OP_PING.toByte()) + m.data.also { need(it.size == PING) }
+
         is RelayMessage.Pong -> byteArrayOf(OP_PONG.toByte()) + m.data.also { need(it.size == PING) }
+
         is RelayMessage.Members -> {
             need(m.devices.size <= MAX_DEVICES && m.devices.all { it.size == DEVICE })
-            cat(byteArrayOf(OP_MEMBERS.toByte(), m.devices.size.toByte()), *m.devices.toTypedArray())
+            m.devices.fold(byteArrayOf(OP_MEMBERS.toByte(), m.devices.size.toByte())) { acc, d -> acc + d }
         }
+
         is RelayMessage.Ring -> byteArrayOf(OP_RING.toByte()) + u64(m.epoch.also { need(it >= 0) })
+
         is RelayMessage.Gone -> byteArrayOf(OP_GONE.toByte()) + m.device.also { need(it.size == DEVICE) }
+
         is RelayMessage.Limit -> byteArrayOf(OP_LIMIT.toByte(), m.reason.also { need(it in 1..MAX_REASON) }.toByte())
     }
     need(out.size <= RELAY_MAX_MESSAGE)
@@ -105,20 +113,29 @@ public fun decodeRelay(dir: RelayDirection, b: ByteArray): RelayMessage? {
 private fun decodeToRoom(op: Int, rest: ByteArray): RelayMessage? = when {
     op == OP_SEND && rest.size >= DEVICE + SESSION + 1 ->
         RelayMessage.Send(rest.copyOfRange(0, DEVICE), readU32(rest, DEVICE), rest.copyOfRange(DEVICE + SESSION, rest.size))
+
     op == OP_LIST && rest.isEmpty() -> RelayMessage.List
+
     op == OP_PING && rest.size == PING -> RelayMessage.Ping(rest)
+
     else -> null
 }
 
 private fun decodeToClient(op: Int, rest: ByteArray): RelayMessage? = when {
     op == OP_RECV && rest.size >= DEVICE + SESSION + 1 ->
         RelayMessage.Recv(rest.copyOfRange(0, DEVICE), readU32(rest, DEVICE), rest.copyOfRange(DEVICE + SESSION, rest.size))
+
     op == OP_MEMBERS && rest.isNotEmpty() && rest.size == 1 + (rest[0].toInt() and BYTE) * DEVICE ->
         RelayMessage.Members(List(rest[0].toInt() and BYTE) { rest.copyOfRange(1 + it * DEVICE, 1 + (it + 1) * DEVICE) })
+
     op == OP_RING && rest.size == PING -> decodeRing(rest)
+
     op == OP_PONG && rest.size == PING -> RelayMessage.Pong(rest)
+
     op == OP_GONE && rest.size == DEVICE -> RelayMessage.Gone(rest)
+
     op == OP_LIMIT && rest.size == 1 && (rest[0].toInt() and BYTE) in 1..MAX_REASON -> RelayMessage.Limit(rest[0].toInt() and BYTE)
+
     else -> null
 }
 

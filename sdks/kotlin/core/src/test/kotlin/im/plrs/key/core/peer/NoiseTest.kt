@@ -56,16 +56,18 @@ class NoiseTest {
 
     @Test
     fun roundTripsWithRandomKeysOnEveryBackend() = runBlocking<Unit> {
-        for (c in backends) for (mode in PeerMode.values()) {
-            val (i, r) = pair(c, mode)
-            assertTrue(i.finished && r.finished)
-            assertArrayEquals(i.handshakeHash, r.handshakeHash)
-            val ti = i.transport()
-            val tr = r.transport()
-            val ct = ti.send.encrypt(none, "hello".toByteArray())
-            assertEquals("hello", String(tr.receive.decrypt(none, ct)))
-            val back = tr.send.encrypt(none, "yo".toByteArray())
-            assertEquals("yo", String(ti.receive.decrypt(none, back)))
+        for (c in backends) {
+            for (mode in PeerMode.values()) {
+                val (i, r) = pair(c, mode)
+                assertTrue(i.finished && r.finished)
+                assertArrayEquals(i.handshakeHash, r.handshakeHash)
+                val ti = i.transport()
+                val tr = r.transport()
+                val ct = ti.send.encrypt(none, "hello".toByteArray())
+                assertEquals("hello", String(tr.receive.decrypt(none, ct)))
+                val back = tr.send.encrypt(none, "yo".toByteArray())
+                assertEquals("yo", String(ti.receive.decrypt(none, back)))
+            }
         }
     }
 
@@ -169,9 +171,12 @@ class NoiseTest {
         val (i, _) = pair(JcaDeviceCurves, PeerMode.v)
         val t = i.transport()
         val text = listOf(
-            t.toString(), t.send.toString(), i.toString(),
+            t.toString(),
+            t.send.toString(),
+            i.toString(),
             options(JcaDeviceCurves, NoiseRole.initiator, PeerMode.a, psk).toString(),
-            RawNoiseStatic(psk).toString(), NoiseException(NoiseErrorCode.decrypt).message!!,
+            RawNoiseStatic(psk).toString(),
+            NoiseException(NoiseErrorCode.decrypt).message!!,
         ).joinToString(" ")
         val hex = psk.joinToString("") { "%02x".format(it) }
         assertFalse(text.contains(hex))
