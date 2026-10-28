@@ -204,8 +204,10 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 ## The key ring over this Core: the options' device keys and vault, else the product's own under
 ## `store_root`. Sign-out forgets the root and the pin (one hook, registered once, reads the current ring).
 func _build_keyring(opts: PKeyOptions) -> void:
-	var keys: Object = opts.device_keys if opts.device_keys != null else PKeyDeviceKeyStore.new(core.product, opts.store_root)
-	var vault: PKeySyncRingVault = opts.ring_vault if opts.ring_vault != null else PKeySyncRingVault.new(core.product, opts.store_root)
+	# The ring's files stay out of OS backups: Android's no-backup directory when the plugin is present.
+	var sensitive_root := PKeyBackupExclusion.root(opts.store_root)
+	var keys: Object = opts.device_keys if opts.device_keys != null else PKeyDeviceKeyStore.new(core.product, sensitive_root)
+	var vault: PKeySyncRingVault = opts.ring_vault if opts.ring_vault != null else PKeySyncRingVault.new(core.product, sensitive_root)
 	keyring = PKeySyncRing.for_core(core, keys, vault)
 	if not _ring_hook_added:
 		_ring_hook_added = true

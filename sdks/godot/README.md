@@ -871,6 +871,19 @@ await ring.forget()                             # sign-out: drops the root and t
 | Linux, the editor                | the engine-encrypted file, keyed from the device id and a salt: **weaker than the OS keychains**, it keeps the root out of a casual copy of the folder, not out of code running as the same user |
 | Web without persistent `user://` | memory only; the root is gone when the page closes                                                                                                                                               |
 
+**OS backups.** The ring's files (pin, sealed root, device keys) and the Cloud Sync state file stay
+out of OS backups where the platform has a flag (`PKeyBackupExclusion`):
+
+| Platform | Out of backups                                                                                                                                                                                                                                               |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Android  | with the `PolarisKeyAndroid` plugin, under `Context.noBackupFilesDir` (the `no_backup_dir` op) instead of `user://`; without it the files are in `user://pkey` and Auto Backup may take them (sealed with the Keystore key, which does not leave the device) |
+| iOS      | with the `PolarisKeyApple` plugin, `isExcludedFromBackup` is set on `user://pkey/<product>/` once it exists (the `exclude_from_backup` op); without the plugin the folder is backed up (sealed with an engine passphrase from the device's unique id)        |
+| Others   | no flag is set: Windows, Linux and the web have no backup flag here, and macOS keeps `user://` in Time Machine unless the game excludes it                                                                                                                   |
+
+Moving to the no-backup directory does not migrate files an earlier `user://pkey` holds. `store_root`
+is still the root you configure; the ring's stores resolve it. A game that builds the Cloud Sync host
+itself passes `PKeyBackupExclusion.root(store_root)` as the host's `state_dir` root.
+
 `PolarisKey.keyring.status()` reports `root_persistence`, and the vault's `protection()` names
 the store in use (`keychain-sealed`, `keystore-sealed`, `dpapi-sealed`, `encrypted-file`, `file`,
 `memory`). The device's agreement key never leaves its store: a wrap is opened through the

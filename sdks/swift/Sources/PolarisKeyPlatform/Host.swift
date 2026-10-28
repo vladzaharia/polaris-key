@@ -126,6 +126,21 @@ public final class PlatformHost: Sendable {
         return ["ok": true, "req": .int(req)]
     }
 
+    /// `exclude_from_backup` {path}: sets `isExcludedFromBackup` on a file or directory (a directory's
+    /// contents follow it), so iCloud and device backups skip it. The path must exist.
+    static func excludeFromBackup(_ path: String) -> PlatformObject {
+        guard FileManager.default.fileExists(atPath: path) else { return ["ok": false, "error": "not_found"] }
+        var url = URL(fileURLWithPath: path)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        do {
+            try url.setResourceValues(values)
+            return ["ok": true]
+        } catch {
+            return ["ok": false, "error": "exclude_failed", "detail": .string((error as NSError).localizedDescription)]
+        }
+    }
+
     static func unsupported(_ reason: String, _ detail: String) -> PlatformObject {
         ["ok": false, "unsupported": true, "reason": .string(reason), "detail": .string(detail)]
     }
@@ -198,6 +213,10 @@ public final class PlatformHost: Sendable {
 
         case "dk_seal", "dk_open", "dk_destroy":
             return deviceKeySealer(op, q)
+
+        case "exclude_from_backup":
+            guard let path = str("path"), path.hasPrefix("/") else { return ["ok": false, "error": "bad_path"] }
+            return Self.excludeFromBackup(path)
 
         case "packs_status":
             guard let id = str("id") else { return ["ok": false, "error": "missing_id"] }

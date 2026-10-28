@@ -78,7 +78,7 @@ abstract class FlavorCommands(protected val c: Commands) {
  * result arrives later as a queued event `{ev: "result", req, ok, …}`.
  *
  * Common ops: capabilities, install_source, ks_get / ks_set / ks_delete / ks_info, ks_seal / ks_open /
- * ks_destroy (the Godot device key store's sealer, CC-26.7), poll.
+ * ks_destroy (the Godot device key store's sealer, CC-26.7), no_backup_dir, poll.
  * Unsolicited events: update_state, update_result, pack_state, install_status, resumed.
  *
  * Calls arrive on Godot's render thread (notes/S-10 §5); Play Core and activity work is posted to
@@ -108,6 +108,11 @@ class Commands(
         "poll" -> queue.drain().put("ok", true)
         "capabilities" -> capabilities()
         "install_source" -> InstallSource.read(host.appContext).toJson().put("ok", true)
+        // The app's no-backup directory (noBackupFilesDir; created if absent): Auto Backup and
+        // device-to-device transfer skip it, so GDScript roots its sensitive files here.
+        "no_backup_dir" -> host.appContext.noBackupFilesDir.let { d ->
+            if (d != null && (d.isDirectory || d.mkdirs())) JSONObject().put("ok", true).put("path", d.absolutePath) else fail("no_backup_dir", "unavailable")
+        }
         "ks_get" -> store(q) { s ->
             val r = s.get(q.getString("account"))
             JSONObject().put("ok", true).put("value", r.value ?: JSONObject.NULL).put("reset", r.reset ?: JSONObject.NULL)
