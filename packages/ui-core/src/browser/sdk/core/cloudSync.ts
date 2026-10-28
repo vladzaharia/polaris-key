@@ -143,7 +143,11 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
       if (src.enabled()) await (await ready()).attach();
     },
     identity: async (note) => {
-      if (src.enabled()) await (await ready()).identity(note);
+      if (!src.enabled()) return;
+      // Nothing loaded holds no person to leave.
+      if (note.kind === "signedOut" && real === null && loading === null)
+        return;
+      await (await ready()).identity(note);
     },
     // Nothing loaded means nothing waiting: a page that never synced pays nothing to sign out.
     beforeSignOut: async () => {

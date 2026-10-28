@@ -8,6 +8,7 @@
 // import with its own marker, the pre-sign-out flush, the sign-in offer after `account_required`,
 // the tabs following each other's sign-in, and the hooks `useSetting` and `useCloudSync`.
 
+import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -24,6 +25,8 @@ import type {
   TabChannel,
   TabMessage,
 } from "../src/browser/cloudSync/writer.js";
+import { safeSignInUrl } from "../src/browser/cloudSync/api.js";
+import { sendSync } from "../src/browser/cloudSync/transport.js";
 import { lazyCloudSync, unsupportedCloudSync } from "../src/core/cloudSync.js";
 import {
   LocalConfigEngine,
@@ -60,6 +63,8 @@ type Body = Record<string, unknown>;
 
 class World {
   pushes: Body[] = [];
+  /** The token each request carried, and its body. */
+  tokens: Array<{ token: string; body: string }> = [];
   version = 100;
   pull: () => Body = () => this.body();
   push: (b: Body) => Response | Body = (b) => ({
@@ -170,7 +175,7 @@ class Browser {
 async function tab(
   w: World,
   b: Browser,
-  who: { current: string | null | undefined },
+  who: { current: string | null | undefined; token?: string },
   seed: Record<string, JSONValue> = {},
 ) {
   const ring = {
@@ -183,7 +188,10 @@ async function tab(
   const host = new BrowserCloudSyncHost(
     {
       product: PRODUCT,
-      request: w.request,
+      request: (path, init) => {
+        w.tokens.push({ token: who.token ?? "P1", body: init.body ?? "" });
+        return w.request(path, init);
+      },
       ring,
       discovery: () => null,
       fetchSchema: async () => CATALOG as never,
@@ -228,6 +236,7 @@ async function tab(
     subject: async () => who.current,
     marker,
     log,
+    signInOrigin: "https://k.test",
   });
   const events: SyncEvent[] = [];
   api.onEvents((e) => events.push(...e));
@@ -407,6 +416,138 @@ describe("the identity wiring", () => {
     expect(writer.config.setting("theme").sync()).toBe("synced");
     await writer.host.close();
     await follower.host.close();
+  });
+});
+
+describe("SEC-HOST3", () => {
+  it("B-1: an offline boot (no discovery) is not a sign-out", async () => {
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      auth: "bearer",
+      autoStart: false,
+      trust: { pinnedKeys: {} },
+      fetchImpl: (async () => {
+        throw new Error("offline");
+      }) as typeof fetch,
+    });
+    const syncSubject = (
+      adapter as unknown as { syncSubject(): Promise<unknown> }
+    ).syncSubject;
+    const owner = { bearer: { hasToken: true }, discovery_: null };
+    expect(await syncSubject.call(owner)).toBeUndefined();
+    // A discovery with no account endpoint is a real "no account".
+    expect(
+      await syncSubject.call({ ...owner, discovery_: { product: "acme" } }),
+    ).toBeNull();
+  });
+
+  it("B-2: a change of person never sends the first person's edits under the new token", async () => {
+    const w = new World();
+    const b = new Browser();
+    const who = {
+      current: SUBJECT as string | null | undefined,
+      token: "P1",
+    };
+    const t = await tab(w, b, who);
+    await t.api.attach();
+    await t.config.set("theme", "P1-VALUE");
+    expect(t.config.setting("theme").get("x")).toBe("P1-VALUE");
+    const before = w.tokens.length;
+    // The session now holds the second person's token.
+    who.token = "P2";
+    who.current = OTHER;
+    const switching = t.api.identity({ kind: "signedIn", subject: OTHER });
+    await switching;
+    const sent = w.tokens.slice(before).filter((r) => r.token === "P2");
+    expect(sent.some((r) => r.body.includes("P1-VALUE"))).toBe(false);
+    expect(w.pushes.some((p) => JSON.stringify(p).includes("P1-VALUE"))).toBe(
+      false,
+    );
+    // The new person reads none of the first person's values, and the old ring is gone.
+    expect(t.config.setting("theme").get("x")).toBe("x");
+    expect(t.ring.forget).toHaveBeenCalled();
+    await t.host.close();
+  });
+
+  it("S-3: a follower whose record another tab purged follows, and signs in again", async () => {
+    const w = new World();
+    const b = new Browser();
+    const who = { current: SUBJECT as string | null | undefined };
+    const writer = await tab(w, b, who);
+    await writer.api.attach();
+    const follower = await tab(w, b, who);
+    await follower.api.attach();
+    await writer.host.purge();
+    await settle();
+    await settle();
+    who.current = null;
+    await follower.api.identity({ kind: "signedOut" });
+    who.current = SUBJECT;
+    await follower.api.identity({ kind: "signedIn", subject: SUBJECT });
+    expect(follower.host.machine.persist().subject).toBe(SUBJECT);
+    await writer.host.close();
+    await follower.host.close();
+  });
+
+  it("S-4: a sign-in URL is a path or https on the Worker's origin, else null", () => {
+    const o = "https://k.test";
+    expect(safeSignInUrl("javascript:alert(1)", o)).toBeNull();
+    expect(safeSignInUrl("data:text/html,x", o)).toBeNull();
+    expect(safeSignInUrl("https://evil.test/in", o)).toBeNull();
+    expect(safeSignInUrl("http://k.test/in", o)).toBeNull();
+    expect(safeSignInUrl("//evil.test/in", o)).toBeNull();
+    expect(safeSignInUrl("https://k.test/in", o)).toBe("https://k.test/in");
+    expect(safeSignInUrl("/signin", o)).toBe("/signin");
+    expect(safeSignInUrl(null, o)).toBeNull();
+  });
+
+  it("S-4: a hostile signInUrl never reaches the app", async () => {
+    const w = new World();
+    const t = await tab(w, new Browser(), { current: SUBJECT });
+    await t.api.attach();
+    w.push = () =>
+      new Response(
+        JSON.stringify({
+          error: { code: "account_required", signInUrl: "javascript:alert(1)" },
+        }),
+        { status: 403 },
+      );
+    await t.config.set("theme", "dark");
+    await t.api.flush();
+    expect(t.events.find((e) => e.type === "signInOffered")).toEqual({
+      type: "signInOffered",
+      signInUrl: null,
+    });
+    await t.host.close();
+  });
+
+  it("N-1: a voluntary sign-out is not an offer", async () => {
+    const w = new World();
+    const t = await tab(w, new Browser(), { current: SUBJECT });
+    await t.api.attach();
+    await t.api.beforeSignOut();
+    await settle();
+    expect(t.events.some((e) => e.type === "signInOffered")).toBe(false);
+    await t.host.close();
+  });
+
+  it("S-2: a request that never answers is no answer, and a purge does not wait for it", async () => {
+    const hung = () => new Promise<Response>(() => undefined);
+    const res = await sendSync(
+      "djdl",
+      hung,
+      { method: "GET", path: "/djdl/sync?cursor=0" },
+      false,
+      20,
+    );
+    expect(res).toEqual({ error: "transport" });
+  });
+
+  it("S-1: a signed-out note loads nothing where Cloud Sync never ran", async () => {
+    const load = vi.fn();
+    const c = lazyCloudSync({ enabled: () => true, dbName: "x", load });
+    await c.identity({ kind: "signedOut" });
+    expect(load).not.toHaveBeenCalled();
   });
 });
 

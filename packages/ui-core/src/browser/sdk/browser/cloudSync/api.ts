@@ -77,6 +77,25 @@ export function importMarker(
   };
 }
 
+/** A sign-in URL fit to hand to the app: a same-site path, or https on `origin`; else null. */
+export function safeSignInUrl(
+  url: string | null,
+  origin: string | undefined,
+): string | null {
+  if (url === null) return null;
+  if (/^\/(?![/\\])/.test(url)) return url;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" &&
+      origin !== undefined &&
+      u.origin === origin
+      ? u.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface BrowserCloudSyncApiDeps {
   host: BrowserCloudSyncHost;
   keyring: Pick<KeyringClient, "forget">;
@@ -85,6 +104,8 @@ export interface BrowserCloudSyncApiDeps {
    *  is not a sign-out). */
   subject: () => Promise<string | null | undefined>;
   marker: ImportMarker;
+  /** The Worker's origin: a sign-in URL it offers must be a path or on it (https). */
+  signInOrigin?: string;
   /** Diagnostics; never given a value or a secret. */
   log?: (message: string) => void;
 }
@@ -152,6 +173,9 @@ export class BrowserCloudSyncApi {
 
   /** Ask the session who it is and follow it. An answer that could not be read changes nothing. */
   async #settle(): Promise<void> {
+    // A purge in another tab left this tab's machine with no principal: follow it (SEC-HOST3 S-3).
+    if (this.#d.host.started && this.#d.host.machine.persist().subject === null)
+      this.#subject = null;
     const subject = await this.#d.subject().catch(() => undefined);
     if (subject === undefined) return;
     if (subject !== null) await this.#signIn(subject);
@@ -167,7 +191,8 @@ export class BrowserCloudSyncApi {
   async #signIn(subject: string): Promise<void> {
     const { host, config } = this.#d;
     if (!host.started) return;
-    // Another person: the first one is signed out (flushed, then forgotten) before this one starts.
+    // Another person: the first one is dropped (never flushed: the token is the new person's now)
+    // and forgotten before this one starts.
     if (this.#subject !== null && this.#subject !== subject)
       await this.#signOutNow();
     if (this.#subject === subject) return;
@@ -202,14 +227,10 @@ export class BrowserCloudSyncApi {
     return run;
   }
 
+  /** Another person holds the token: the previous person's unsent edits are discarded, never sent
+   *  (SEC-HOST3 B-2). The projection is cleared before anything awaits. */
   async #signOutNow(): Promise<void> {
-    const { host } = this.#d;
-    if (host.isWriter) {
-      host.machine.signOut();
-      await host.flush(SYNC_SIGNOUT_FLUSH_MS);
-      await host.touch();
-    }
-    await this.#chain;
+    await this.#leave();
   }
 
   /** The identity client's pre-sign-out hook: flush (bounded), sign out, forget. */
@@ -237,15 +258,16 @@ export class BrowserCloudSyncApi {
     }
   }
 
-  /** The person went (the session ended): leave the principal without a flush. */
+  /** The person went (the session ended, or another person holds the token): leave the principal
+   *  without a flush, and without a moment in which the old values read as the new person's. */
   async #leave(): Promise<void> {
     const { host } = this.#d;
     if (this.#subject === null) return;
+    this.#subject = null;
+    this.#d.config.noteSyncChange(null, "remote");
     if (host.isWriter) {
-      host.machine.signOut();
+      host.machine.signOut({ discardUnsynced: true });
       await host.touch();
-    } else {
-      this.#subject = null;
     }
     await this.#chain;
     this.#d.config.noteSyncChange(null, "remote");
@@ -270,16 +292,30 @@ export class BrowserCloudSyncApi {
       this.#emit(e);
     }
     if (left) {
+      // A voluntary sign-out is not an offer; losing the account or the person is.
+      const involuntary = events.some(
+        (e) =>
+          e.type === "signedOut" &&
+          (e.reason === "accountRequired" || e.reason === "subjectChanged"),
+      );
       this.#chain = this.#chain.then(async () => {
         await this.#d.host.forgotten();
-        if (offers.length === 0)
+        if (offers.length === 0 && involuntary)
           this.#emit({ type: "signInOffered", signInUrl: null });
         for (const o of offers) this.#emit(o);
       });
     }
   }
 
-  #emit(e: SyncEvent): void {
+  #emit(event: SyncEvent): void {
+    // The Worker's sign-in URL goes to the app only if it is a path or on the Worker's own origin.
+    const e: SyncEvent =
+      event.type === "signInOffered"
+        ? {
+            type: "signInOffered",
+            signInUrl: safeSignInUrl(event.signInUrl, this.#d.signInOrigin),
+          }
+        : event;
     for (const fn of this.#listeners) {
       try {
         fn([e]);

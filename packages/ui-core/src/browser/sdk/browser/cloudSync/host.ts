@@ -129,6 +129,28 @@ export const TICK_MS = 250;
 /** The most exchanges one pump makes, whatever the machine keeps asking for. */
 const MAX_EXCHANGES = 64;
 
+/** How long a purge waits for a running pump or save before it goes on. */
+export const PURGE_WAIT_MS = 2000;
+
+/** `p`, or nothing after `ms` (the promise itself keeps running). */
+async function within(
+  p: Promise<unknown> | undefined,
+  ms: number,
+): Promise<void> {
+  if (p === undefined) return;
+  let cut: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      p,
+      new Promise<void>((resolve) => {
+        cut = setTimeout(resolve, ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(cut);
+  }
+}
+
 const EMPTY_CATALOG: ProductCatalog = { schemaVersion: 0, entries: [] };
 const SYNC_KEY = new RegExp(SYNC_KEY_PATTERN);
 /** The most entries and bytes of a catalog the host will route by. */
@@ -964,10 +986,15 @@ export class BrowserCloudSyncHost {
     this.#queued = [];
     this.#clearTimer();
     if (this.started) {
-      await this.#pumping?.catch(() => undefined);
+      // A hung request must not hold the purge: wait a short while, then go on. The pump's own
+      // save is skipped (`#purged`), so nothing is written back (SEC-HOST3 S-2).
+      await within(
+        this.#pumping?.catch(() => undefined),
+        PURGE_WAIT_MS,
+      );
       // A save already inside the lock lands before this resolves; only then is `#rev` zeroed, so
       // the next sign-in does not read its own first save as a purge (SEC-HOST2 S5).
-      await this.#write;
+      await within(this.#write, PURGE_WAIT_MS);
       this.#rev = 0;
       this.#openKeys = new Set();
       this.#emitFrom(this.machine);
@@ -999,6 +1026,8 @@ export class BrowserCloudSyncHost {
     } finally {
       clearTimeout(cut);
     }
+    // A forget this pump started (the person left) is finished before the journal is saved again.
+    await this.#forgetting;
     await this.#save();
   }
 

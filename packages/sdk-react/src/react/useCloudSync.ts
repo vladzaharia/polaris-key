@@ -98,7 +98,14 @@ export function useCloudSync(): UseCloudSync {
     const offStatus = client.onStatus(next);
     const offEvents = client.onEvents((events) => {
       for (const e of events)
-        if (e.type === "signInOffered") setOffer({ signInUrl: e.signInUrl });
+        if (e.type === "signInOffered")
+          setOffer({
+            // The API already checked the origin; a scheme other than https is never handed on.
+            signInUrl:
+              e.signInUrl !== null && /^(https:|\/(?![/\\]))/.test(e.signInUrl)
+                ? e.signInUrl
+                : null,
+          });
       next();
     });
     return () => (offStatus(), offEvents());

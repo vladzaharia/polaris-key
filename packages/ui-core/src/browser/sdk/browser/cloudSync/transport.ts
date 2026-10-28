@@ -14,6 +14,9 @@ export const MAX_RESPONSE_BYTES = MAX_BODY_BYTES;
 
 const TRANSPORT: SyncResponse = { error: "transport" };
 
+/** How long one exchange may take before it counts as no answer. */
+export const SYNC_REQUEST_MS = 15_000;
+
 /** One authenticated request under `/<product>/` (`BearerSession.ringRequest`); the path is
  *  relative to the product. */
 export type ProductRequest = (
@@ -34,16 +37,29 @@ export async function sendSync(
   request: ProductRequest,
   req: SyncRequest,
   keepalive = false,
+  timeoutMs = SYNC_REQUEST_MS,
 ): Promise<SyncResponse> {
   if (!isSyncPath(product, req.path)) return TRANSPORT;
   const rel = req.path.slice(product.length + 2);
+  let cut: ReturnType<typeof setTimeout> | undefined;
   try {
-    const res = await request(rel, {
-      method: req.method,
-      ...(req.method === "POST" ? { body: JSON.stringify(req.body) } : {}),
-      ...(keepalive ? { keepalive: true } : {}),
+    // A request that never answers is no answer: a hung one must not hold a sign-out (S-2).
+    const timeout = new Promise<null>((resolve) => {
+      cut = setTimeout(() => resolve(null), timeoutMs);
     });
-    const text = await readCappedText(res, MAX_RESPONSE_BYTES);
+    const res = await Promise.race([
+      request(rel, {
+        method: req.method,
+        ...(req.method === "POST" ? { body: JSON.stringify(req.body) } : {}),
+        ...(keepalive ? { keepalive: true } : {}),
+      }),
+      timeout,
+    ]);
+    if (res === null) return TRANSPORT;
+    const text = await Promise.race([
+      readCappedText(res, MAX_RESPONSE_BYTES),
+      timeout,
+    ]);
     if (text === null) return TRANSPORT;
     if (text === "") return { status: res.status };
     try {
@@ -56,5 +72,7 @@ export async function sendSync(
     }
   } catch {
     return TRANSPORT;
+  } finally {
+    clearTimeout(cut);
   }
 }

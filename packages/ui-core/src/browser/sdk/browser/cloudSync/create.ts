@@ -29,6 +29,8 @@ export interface CloudSyncOwner {
   store: { get(): { configEntries: Record<string, ManagedEntry> } };
   capabilities: { sync: { enabled: boolean } };
   config: LocalConfigEngine;
+  /** The Worker's base URL. */
+  base: string;
   /** The signed-in person, null for none, undefined when it could not be read. */
   syncSubject(): Promise<string | null | undefined>;
 }
@@ -111,6 +113,7 @@ export async function createBrowserCloudSync(
     config: o.config,
     subject: () => o.syncSubject(),
     marker: importMarker(`${dbName}:imported`),
+    signInOrigin: new URL(o.base).origin,
   });
   return clientOf(api, host);
 }

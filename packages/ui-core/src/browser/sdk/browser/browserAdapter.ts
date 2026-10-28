@@ -2208,6 +2208,8 @@ export class BrowserAdapter implements PolarisAdapter {
   private async syncSubject(): Promise<string | null | undefined> {
     const b = this.bearer;
     if (!b || !b.hasToken) return null;
+    // No discovery (an offline boot) cannot say who is signed in: that is not a sign-out.
+    if (this.discovery_ === null) return undefined;
     if (!accountEndpointsOf(this.discovery_)?.subject) return null;
     try {
       return await b.subject();
@@ -2287,6 +2289,11 @@ export class BrowserAdapter implements PolarisAdapter {
         // The person's synced settings go with the ring (a failure reaches the caller).
         await this.cloudSync.purge();
       } finally {
+        // Tell Cloud Sync the person is gone, so a tab that loaded mid-sign-out cannot bring
+        // the snapshot back (the pre-sign-out hook ran before the server's answer).
+        await this.cloudSync
+          .identity({ kind: "signedOut" })
+          .catch(() => undefined);
         // The relay stops first: a session must not outlive the roster it was admitted under.
         await this.cloudConnect.stop().catch(() => undefined);
         await this.connect.leave();
