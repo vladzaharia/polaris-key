@@ -69,6 +69,7 @@ import {
 import { CHOICE_SCENARIOS } from "./choice.js";
 import { CLOUD_SYNC_SCENARIOS } from "./cloudSync.js";
 import { LOCKER_SCENARIOS } from "./locker.js";
+import { EXCHANGE_SCENARIOS } from "./exchange.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -118,5 +119,6 @@ export const SCENARIOS: Scenario[] = [
   identityRequestHints,
   ...CHOICE_SCENARIOS,
   ...LOCKER_SCENARIOS,
+  ...EXCHANGE_SCENARIOS,
   ...CLOUD_SYNC_SCENARIOS,
 ];

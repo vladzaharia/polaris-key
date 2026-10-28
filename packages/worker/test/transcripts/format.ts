@@ -222,6 +222,26 @@
 // body is held to its shape); U-06 may tighten both. The CORS exchanges of `cloudsync-cors` are
 // `browser` steps and record the `access-control-*` response headers they carry.
 //
+// exchange (I-13.7, WIRE-CONTRACT-V5 §12.11.2, §12.11.3, `identity.exchange`) — the platform
+// sign-in as one SDK call: `POST …/identity/nonce` with the device's keys (unless `args.nonce`
+// holds one the client fetched earlier), the platform's ID token for that nonce, then the
+// RFC 8693 grant at `…/identity/token` with the `exchange` proof. `args`: `kind`
+// ("google" | "apple"), `keyLabel`, `subjectToken` (what the platform's provider returns for the
+// nonce; the replaying client's provider stub hands it back, the token is never built from the
+// nonce here) and the optional `nonce`. The device keys are fixtures derived from `keyLabel`: the
+// Ed25519 signing key's seed is SHA-256(label), the agreement key is SHA-256(label + ":agree")
+// with the top bit of its last byte clear; `pkey-proof/1` lines are joined by LF (§12.11.1) and
+// the signature is base64url, all of which the recorded request bodies pin exactly. `expect`:
+//   result          "ok" (a device token; then `tokenHeld`, `scope`, `issuedTokenType`,
+//                   `licenseId` or null) | "confirm" (`firstTime`, `changed`, `as`: the consent
+//                   view the SDK shows) | "choose" | "interstitial-required" (`reason`, `url`,
+//                   `linkHandle`, `expiresIn`, `tokenHeld` false) | "refused" (`code`: the
+//                   refusal's wire code, `tokenHeld` false)
+// A `confirm` or `choose` answer is completed by a `choiceComplete` step whose body (the
+// consent, the choice) is the one the recording sent; its `expect` is an exchange `ok`.
+// A `discover` step in these transcripts also pins `exchange` (the fragment's member or null)
+// and `nonceEndpoint` (whether the identity endpoints name `nonce`).
+//
 // chunkRange (P4-32, plans/P4-32.md §4) — `{ bundle, offset, length }`: the SDK's chunk-range
 // fetch (client-core `chunkRangeFetch`, Python `chunk_range_fetch`, Swift `chunkRangeFetch`,
 // Kotlin `chunkRangeFetch`, Godot `PKeyPackChunks.chunk_range_fetch`) of `length` bytes at
@@ -336,7 +356,9 @@ export type Action =
   /** U-05.16 (WIRE-CONTRACT-V4 §13.4): the Cloud Sync pull, `GET /<p>/sync?cursor=<n>`. */
   | "cloudSyncPull"
   /** U-05.16 (§13.3): the Cloud Sync push, `POST /<p>/sync/ops`. */
-  | "cloudSyncPush";
+  | "cloudSyncPush"
+  /** I-13.7 (WIRE-CONTRACT-V5 §12.11.3): the native-token exchange, nonce then grant. */
+  | "exchange";
 
 export interface Step {
   action: Action;

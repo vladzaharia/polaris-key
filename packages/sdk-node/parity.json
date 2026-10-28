@@ -177,6 +177,12 @@
     "identity.signin.hints": {
       "status": "implemented"
     },
+    "identity.exchange": {
+      "status": "na",
+      "runtime": ["node"],
+      "reason": "runtime",
+      "note": "No OS account to take a platform identity from (I-13). The Node conformance runner still replays the exchange transcripts with a reference client (exchangeTranscripts.test.ts)."
+    },
     "identity.keyentry": {
       "status": "implemented"
     },

@@ -960,7 +960,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // I-10a.10). identity.choice (I-10a.11) is I-08b's redirect-web-choose*, choice-* transcripts (the
     // choice.* primitives). sync.settings is U-05's cloudsync-*
     // transcripts (the cloudSyncPull and cloudSyncPush steps); React's port is U-20.
-    const plannedHere = ["sync.settings"];
+    // identity.exchange is I-13.7's exchange-* transcripts (FedCM and GIS, I-46); the Node
+    // runner replays them with a reference client (exchangeTranscripts.test.ts).
+    const plannedHere = ["sync.settings", "identity.exchange"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];

@@ -8825,9 +8825,18 @@ paths:
     post:
       operationId: identityToken
       tags: [identity]
-      summary: Redeem an authorization code for a device token (OAuth-shaped token)
+      summary: Redeem an authorization code, or exchange a platform ID token, for a device token (OAuth-shaped token)
       description: >
-        I-08 (WIRE-CONTRACT-V4 §12.5), grant `authorization_code`. A form-encoded body
+        Two grants share this form endpoint. `grant_type=authorization_code` is I-08
+        (WIRE-CONTRACT-V4 §12.5); `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`
+        is the native platform sign-in (I-13.4, WIRE-CONTRACT-V5 §12.11.3, `TokenExchangeRequest`):
+        a Google or Apple ID token for the nonce of `identity/nonce`, with the device's
+        `pkey-proof/1` `exchange` proof. The exchange answers a token (`issued_token_type`), a
+        pending grant with `status: "choose"` or `status: "confirm"` (a first consent, or a
+        changed scope), `403 interstitial_required` (no link yet, or unaccepted terms), and one
+        byte-identical `400 invalid_grant` for every verifier failure. It is served only while the
+        `launch.identityExchange` gate is on; off, its `grant_type` is `unsupported_grant_type`.
+        The rest of this text is the `authorization_code` grant. A form-encoded body
         (`application/x-www-form-urlencoded`; a JSON body is `invalid_request`) with `client_id`,
         `code`, `code_verifier` and, optionally, `redirect_uri` (compared exactly when sent) and
         `device_name`. Needs `X-PKey-Device`; the device metadata headers are read when present.
@@ -8845,19 +8854,24 @@ paths:
         required: true
         content:
           application/x-www-form-urlencoded:
-            schema: { $ref: "#/components/schemas/TokenRequest" }
+            schema:
+              oneOf:
+                - { $ref: "#/components/schemas/TokenRequest" }
+                - { $ref: "#/components/schemas/TokenExchangeRequest" }
       responses:
         "200":
           description: >
             The token response, or (I-08b, `license_choice=app` and a choice is due) the pending
-            sign-in: `{status: "choose", grant, expiresIn, choices}`. Only the `choose` body has
-            a `status` member. `cache-control: no-store`.
+            sign-in: `{status: "choose", grant, expiresIn, choices}`. Only the exchange grant
+            (§12.11.3) can also answer `{status: "confirm", grant, expiresIn, consent, choices}`,
+            and only its token answer carries `issued_token_type`. `cache-control: no-store`.
           content:
             application/json:
               schema:
                 oneOf:
                   - { $ref: "#/components/schemas/TokenResponse" }
                   - { $ref: "#/components/schemas/PendingSignIn" }
+                  - { $ref: "#/components/schemas/ConfirmSignIn" }
               examples:
                 licenceLess:
                   summary: test/surfaces/identityAuthorize.test.ts
@@ -8886,7 +8900,8 @@ paths:
           description: >
             `invalid_request` (not a form, a missing or repeated parameter, no device id),
             `unsupported_grant_type`, `invalid_grant` (unknown, used, expired, or a mismatching
-            verifier, `client_id` or `redirect_uri`) or `invalid_scope` — FLAT.
+            verifier, `client_id` or `redirect_uri`) or `invalid_scope` — FLAT. On the exchange
+            grant `invalid_grant` is the one answer for a bad token, nonce, proof or key.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -8900,10 +8915,24 @@ paths:
         "403":
           description: >
             `not_entitled`, `device_limit` (with `limit`, `deviceCount`, `manageUrl`) or
-            `fingerprint_required` — FLAT, the shape `license/activate` answers.
+            `fingerprint_required` — FLAT, the shape `license/activate` answers. The exchange
+            grant (§12.11.3) can also answer `interstitial_required` with `reason` `no_link`
+            (and a `linkHandle`) or `terms`, and the url of the sign-in card.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/FlatError" }
+                  - { $ref: "#/components/schemas/InterstitialRequired" }
+              examples:
+                noLink:
+                  summary: exchange-no-link.json
+                  value:
+                    error: interstitial_required
+                    reason: no_link
+                    url: https://key.plrs.im/djdl/identity/authorize
+                    linkHandle: lh_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
+                    expiresIn: 600
         "409":
           description: >
             `license_choice_required`: the account holds licences for the product and none was
@@ -9132,7 +9161,9 @@ paths:
         the code (`X-PKey-Device` is required). JSON body, `no-store`, nested Polaris errors.
         Only while the product's Identity service is on.
         Consumes the grant and answers exactly what `token` answers (`TokenResponse`, plus
-        `keyEntries` after a key). `choice.kind` is `license` (with an optional
+        `keyEntries` after a key). A grant issued with `status: "confirm"` (§12.11.3) needs
+        `consent` in the body (`400 bad_request` without it, the grant left open); the consent
+        row is written in the same press that binds the device. `choice.kind` is `license` (with an optional
         `replaceDeviceId`, committed in one batch with the device claim), `keep` (needs the device's own
         `Authorization: Bearer`), `create` or `key`. A key is PX-W9's app key entry, counted once
         with the device claim, and refuses with `license_owned` and `key_entry_limit`. A refusal the
@@ -28296,11 +28327,107 @@ components:
             type: string,
             description: The device's label; normalised as in §12.7.1.,
           }
+    TokenExchangeRequest:
+      type: object
+      description: >
+        `POST /{product}/identity/token` (I-13.4, §12.11.3): the form body of the RFC 8693 token
+        exchange. `X-PKey-Device` is required. `proof` is the `exchange` proof (§12.11.1): its
+        fifth line is `<nonce>.<device_key>` and its sixth the base64url SHA-256 of
+        `subject_token`.
+      required:
+        - grant_type
+        - client_id
+        - subject_token
+        - subject_token_type
+        - nonce
+        - device_key
+        - proof
+      additionalProperties: false
+      properties:
+        grant_type:
+          {
+            type: string,
+            const: "urn:ietf:params:oauth:grant-type:token-exchange",
+          }
+        client_id: { type: string, description: The product slug. }
+        subject_token: { type: string, description: The provider's ID token. }
+        subject_token_type:
+          { type: string, const: "urn:ietf:params:oauth:token-type:id_token" }
+        nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        device_key: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        proof: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
+        license_choice: { type: string, enum: [app, card], default: app }
+        device_name:
+          {
+            type: string,
+            description: The device's label; normalised as in §12.7.1.,
+          }
+    ConfirmSignIn:
+      type: object
+      description: >
+        I-13.5 (§12.11.3 rule 1): the exchange's `200` when the link exists but the person has
+        not consented to this app, or what it asks changed. The grant is `PendingSignIn`'s
+        (300 s, bound to the redeeming device); `choice/complete` then requires `consent`.
+      required: [status, grant, expiresIn, consent, choices]
+      additionalProperties: false
+      properties:
+        status: { type: string, const: confirm }
+        grant: { type: string, pattern: "^sg_[A-Za-z0-9_-]{43}$" }
+        expiresIn: { type: integer, const: 300 }
+        consent: { $ref: "#/components/schemas/ExchangeConsentView" }
+        choices: { $ref: "#/components/schemas/LicenseChoiceView" }
+    ExchangeConsentView:
+      type: object
+      description: >
+        What the person is asked to consent to, in the app's own form (§12.11.3 rule 1).
+        `as.email` is the token's own address. `scopeHash` and `items` are §12.7.3's.
+      required: [client, as, items, scopeHash, firstTime, changed]
+      additionalProperties: false
+      properties:
+        client:
+          type: object
+          required: [appName, developerName, iconUrl, nameVerified]
+          properties:
+            appName: { type: string }
+            developerName: { type: [string, "null"] }
+            iconUrl: { type: [string, "null"] }
+            nameVerified: { type: boolean }
+        as:
+          type: object
+          required: [provider, email]
+          properties:
+            provider: { type: string, enum: [google, apple] }
+            email: { type: [string, "null"] }
+        items:
+          type: array
+          items:
+            type: object
+            required: [kind]
+            properties:
+              kind: { type: string, enum: [license, cloudSync, profile] }
+              claims: { type: array, items: { type: string } }
+        scopeHash: { type: string, pattern: "^[0-9a-f]{64}$" }
+        firstTime: { type: boolean }
+        changed: { type: boolean }
+    InterstitialRequired:
+      type: object
+      description: >
+        The exchange's flat `403` (§12.11.3 rule 4). `linkHandle` (`lh_` and 43 base64url
+        characters, used once by the link offer) and `expiresIn` (600) come with `no_link` only.
+      required: [error, reason, url]
+      additionalProperties: false
+      properties:
+        error: { type: string, const: interstitial_required }
+        reason: { type: string, enum: [no_link, terms] }
+        url: { type: string, description: The sign-in card for this product. }
+        linkHandle: { type: string, pattern: "^lh_[A-Za-z0-9_-]{43}$" }
+        expiresIn: { type: integer, const: 600 }
     TokenResponse:
       type: object
       description: >
         The activation response under its OAuth names (I-08, §12.5): exactly these members. No
-        `expires_in` and no `refresh_token` before I-21.
+        `expires_in` and no `refresh_token` before I-21. The exchange grant's token answer adds
+        `issued_token_type` (§12.11.3).
       required:
         [
           access_token,
@@ -28314,6 +28441,12 @@ components:
       additionalProperties: false
       properties:
         access_token: { type: string, description: The `pkeyt_` device token. }
+        issued_token_type:
+          {
+            type: string,
+            const: "urn:polaris-key:token-type:device",
+            description: Present on the token-exchange grant's answer only (RFC 8693).,
+          }
         token_type: { type: string, const: Bearer }
         scope:
           { type: string, description: The granted subset, space-delimited. }
