@@ -97,6 +97,10 @@ internal fun recoveryCodeScreen(inputs: KitInputs): KitScreen {
     return screen(KitComponent.recoveryCode, if (saved) "saved" else "show", lines)
 }
 
+// TODO(U-42 swift fix round): the ui-matrix gains a `failed` row for RingChange (an accept that could not
+// run) and the catalog `a11y.recoveryCode` ("Recovery code {code}", the shown code's spoken label). Plug
+// both in when they reach this branch: `ringChangeScreen` gets its failed state, and the recovery code
+// block takes `a11y.recoveryCode` as its content description in place of the merged group text.
 internal fun ringChangeScreen(inputs: KitInputs): KitScreen {
     val context = KitContext(inputs)
     val change = inputs.obj("ringChange")

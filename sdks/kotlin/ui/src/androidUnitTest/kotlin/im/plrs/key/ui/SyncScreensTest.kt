@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertCountEquals
@@ -27,6 +28,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -75,6 +77,38 @@ class SyncScreensTest {
         assertEquals(1, startedOver)
         // The nearby option is not offered in v0.10.0.
         rule.onNodeWithText("Use a nearby device").assertDoesNotExist()
+    }
+
+    @Test
+    fun theInvalidLineGoesAsSoonAsThePersonEdits() {
+        var edits = 0
+        show { PolarisUnlockSync(unlock("invalid"), onEdit = { edits++ }) }
+        rule.onNodeWithText("That code isn't right. Check it and try again.").assertIsDisplayed()
+        rule.onNode(hasSetTextAction()).performTextInput("A")
+        rule.waitForIdle()
+        rule.onNodeWithText("That code isn't right. Check it and try again.").assertDoesNotExist()
+        assertEquals(1, edits)
+    }
+
+    @Test
+    fun theKeyboardDoneKeySubmitsTheCode() {
+        val sent = mutableListOf<String>()
+        show { PolarisUnlockSync(unlock("code"), onUnlock = { sent += it }) }
+        rule.onNode(hasSetTextAction()).performTextInput("AAAA")
+        rule.onNode(hasSetTextAction()).performImeAction()
+        assertEquals(listOf("AAAA"), sent)
+    }
+
+    @Test
+    fun theRecoveryCodeIsAGridOfWholeGroups() {
+        show { PolarisRecoveryCodeScreen(syncScreen(KitComponent.recoveryCode, "recoveryCode"), sampleRecoveryCode) }
+        val tops = listOf("K7QM", "2XRD", "9TBA", "WF4N", "HC6P", "VJ3E", "M4TS", "8YGK").map {
+            rule.onNodeWithText(it, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
+        }
+        // Four to a row on a phone: two rows of four.
+        assertEquals(setOf(tops[0]), tops.take(4).toSet())
+        assertEquals(setOf(tops[4]), tops.drop(4).toSet())
+        assertTrue(tops[4] > tops[0])
     }
 
     @Test
@@ -149,7 +183,7 @@ class SyncScreensTest {
             )
         }
         rule.onNodeWithText("K7QM").assertIsDisplayed()
-        rule.onNodeWithText("VJ3E").assertIsDisplayed()
+        rule.onNodeWithText("8YGK").assertIsDisplayed()
         rule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
         rule.onNodeWithText("No one will ever ask for this code. Enter it only in the app.").assertIsDisplayed()
         rule.onNodeWithText("Done").assertDoesNotExist()
@@ -164,7 +198,7 @@ class SyncScreensTest {
         rule.onNodeWithText("Copy code").performClick()
         rule.waitForIdle()
         val manager = ApplicationProvider.getApplicationContext<Context>().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        assertEquals("K7QM-2XRD-9TBA-WF4N-HC6P-VJ3E", manager.primaryClip?.getItemAt(0)?.text?.toString())
+        assertEquals("K7QM-2XRD-9TBA-WF4N-HC6P-VJ3E-M4TS-8YGK", manager.primaryClip?.getItemAt(0)?.text?.toString())
         rule.onNodeWithText("Copied").assertIsDisplayed()
     }
 
@@ -193,6 +227,12 @@ class SyncScreensTest {
         rule.onNodeWithText("A device set up a new key for your synced data.").assertIsDisplayed()
         rule.onNodeWithText("That was me").assertDoesNotExist()
         rule.onNodeWithText("Use recovery code").assertIsDisplayed()
+    }
+
+    @Test
+    fun reviewShowsForAChangedRingEvenWithoutAHandler() {
+        show { PolarisCloudSyncStatus(PolarisCloudSync.RingChanged) }
+        rule.onNodeWithText("Review").assertIsDisplayed()
     }
 
     @Test

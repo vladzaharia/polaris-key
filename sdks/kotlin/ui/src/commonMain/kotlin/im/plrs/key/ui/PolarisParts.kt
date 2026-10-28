@@ -550,7 +550,8 @@ public fun PolarisCloudSyncStatus(
             status == PolarisCloudSync.Error && onRetry != null -> catalog.format("common.tryAgain", locale) to onRetry
             status == PolarisCloudSync.SignedOut && onSignIn != null -> catalog.format("cloudSync.signIn", locale) to onSignIn
             status == PolarisCloudSync.Locked && onUnlock != null -> catalog.format("cloudSync.unlock", locale) to onUnlock
-            status == PolarisCloudSync.RingChanged && onReview != null -> catalog.format("common.review", locale) to onReview
+            // Review always shows for a changed ring (the matrix row); without a handler it does nothing yet (host binding, Q-7).
+            status == PolarisCloudSync.RingChanged -> catalog.format("common.review", locale) to (onReview ?: {})
             else -> null
         }
         if (action != null) {

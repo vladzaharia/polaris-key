@@ -17,8 +17,7 @@
 package im.plrs.key.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
@@ -77,6 +77,8 @@ public fun PolarisUnlockSync(
     onCancel: () -> Unit = {},
     catalog: KitCopy = KitCopy.bundled,
     locale: String = kitLocale(),
+    /** Called when the person edits the code, so the host clears an `invalid` step. */
+    onEdit: () -> Unit = {},
 ) {
     if (screen.isHidden) return
     val lines = remember(screen, catalog, locale) { KitLines(screen, catalog, locale) }
@@ -107,8 +109,8 @@ public fun PolarisUnlockSync(
             host,
             title = lines.text("unlockSync.startOverTitle").orEmpty(),
             actions = {
-                // The confirm is the primary; Cancel has the focus (T22).
-                PolarisPrimaryButton(lines.text("unlockSync.startOverConfirm").orEmpty(), onConfirmStartOver)
+                // Start over first, in the danger fill; Cancel last and first to take focus (T22).
+                PolarisPrimaryButton(lines.text("unlockSync.startOverConfirm").orEmpty(), onConfirmStartOver, danger = true)
                 Spacer(Modifier.height(PolarisSpace.controls))
                 PolarisTextButton(lines.text("common.cancel").orEmpty(), onCancel, initialFocus = true)
             },
@@ -118,7 +120,9 @@ public fun PolarisUnlockSync(
         }
 
         else -> {
-            val invalid = screen.state == "invalid"
+            // "That code isn't right" goes as soon as the person edits (the host's step follows through onEdit).
+            var edited by remember(screen.state) { mutableStateOf(false) }
+            val invalid = screen.state == "invalid" && !edited
             val field = remember { FocusRequester() }
             val screenReader = rememberScreenReaderOn()
             // The field takes the first focus; with a screen reader the heading does (PolarisTitle).
@@ -140,12 +144,22 @@ public fun PolarisUnlockSync(
                 val paste = lines.format("common.paste")
                 PolarisTextField(
                     value = code,
-                    onValueChange = { code = it },
+                    onValueChange = {
+                        code = it
+                        edited = true
+                        onEdit()
+                    },
                     label = lines.text("unlockSync.field").orEmpty(),
                     error = if (invalid) lines.text("unlockSync.invalid") else null,
                     focusRequester = field,
                     monospace = true,
-                    trailing = { PolarisPasteButton(paste) { code = it } },
+                    trailing = {
+                        PolarisPasteButton(paste) {
+                            code = it
+                            edited = true
+                            onEdit()
+                        }
+                    },
                     // A secret: no suggestions, no autocorrect, no learning.
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Characters,
@@ -153,7 +167,7 @@ public fun PolarisUnlockSync(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Done,
                     ),
-                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                    keyboardActions = KeyboardActions(onDone = { submit() }, onGo = { submit() }),
                 )
                 Spacer(Modifier.height(PolarisSpace.medium))
                 lines.text("recoveryCode.noAsk")?.let { PolarisInlineNotice(it) }
@@ -161,6 +175,8 @@ public fun PolarisUnlockSync(
         }
     }
 }
+
+private const val LARGE_TYPE = 1.5f
 
 // ── RecoveryCode ─────────────────────────────────────────────────────────────────────────────
 
@@ -170,7 +186,6 @@ public fun PolarisUnlockSync(
  *
  * @param code what to draw, from `client.keyring` (create, reset or setRecoveryCode); the kit keeps it nowhere.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 public fun PolarisRecoveryCodeScreen(
     screen: KitScreen,
@@ -188,8 +203,9 @@ public fun PolarisRecoveryCodeScreen(
     val scope = rememberCoroutineScope()
     var copied by remember { mutableStateOf(false) }
     val copy = lines.text("recoveryCode.copy").orEmpty()
+    // Back and the system gesture do nothing until the code is marked saved; then they are Done.
     PolarisSyncStep(
-        modifier,
+        modifier.then(PolarisBackHandler(enabled = true) { if (saved) onDone() }),
         title = lines.text("recoveryCode.title").orEmpty(),
         actions = {
             lines.text("common.done")?.let { PolarisPrimaryButton(it, onDone, initialFocus = true) }
@@ -199,18 +215,26 @@ public fun PolarisRecoveryCodeScreen(
         PolarisBody(lines.text("recoveryCode.lede").orEmpty(), textAlign = TextAlign.Start)
         Spacer(Modifier.height(PolarisSpace.medium))
         PolarisSection(title = null) {
-            // Each group stays whole and the groups wrap between themselves, so a large font never splits one.
-            FlowRow(
+            // A grid of whole groups, four to a row (two at a large font), so a group never splits (8 groups of 4).
+            val perRow = if (LocalDensity.current.fontScale >= LARGE_TYPE) 2 else 4
+            Column(
                 Modifier.fillMaxWidth().padding(16.dp).semantics(mergeDescendants = true) {},
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(PolarisSpace.hairline),
+                verticalArrangement = Arrangement.spacedBy(PolarisSpace.tight),
             ) {
-                for (group in code.reveal().split('-')) {
-                    Text(
-                        group,
-                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                for (row in code.reveal().split('-').chunked(perRow)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(PolarisSpace.medium)) {
+                        for (group in row) {
+                            Text(
+                                group,
+                                style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                softWrap = false,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        // A short last row keeps its column widths.
+                        repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
                 }
             }
         }
@@ -301,7 +325,8 @@ public fun PolarisSyncFlow(
     val screen = remember(step) { step.kitScreen(base) } ?: return
     when (step) {
         is PolarisSyncUi.Unlock -> PolarisUnlockSync(
-            screen, modifier, state::submitCode, state::startOver, state::confirmStartOver, state::retry, state::cancel, catalog, locale,
+            screen, modifier, state::submitCode, state::startOver, state::confirmStartOver, state::retry, state::cancel,
+            catalog, locale, state::editCode,
         )
 
         is PolarisSyncUi.RecoveryCode -> PolarisRecoveryCodeScreen(

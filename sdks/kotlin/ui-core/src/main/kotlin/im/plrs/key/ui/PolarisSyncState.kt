@@ -166,14 +166,21 @@ public class PolarisSyncState(private val actions: PolarisSyncActions, private v
                 retryOp = null
                 PolarisSyncUi.Done
             } catch (e: PolarisException) {
-                if (e.code == ErrorCode.recoveryCodeInvalid) {
-                    retryOp = null
-                    PolarisSyncUi.Unlock(PolarisUnlockStep.Invalid)
-                } else {
-                    throw e
+                when (e.code) {
+                    ErrorCode.recoveryCodeInvalid -> PolarisSyncUi.Unlock(PolarisUnlockStep.Invalid).also { retryOp = null }
+
+                    // No recovery code on the account: trying again cannot help, so show the way out (Start over's warning).
+                    ErrorCode.notFound -> PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver).also { retryOp = null }
+
+                    else -> throw e
                 }
             }
         }
+    }
+
+    /** The person edited the code: an `invalid` step goes back to the plain code step. */
+    public fun editCode() {
+        if (_ui.value == PolarisSyncUi.Unlock(PolarisUnlockStep.Invalid)) _ui.value = PolarisSyncUi.Unlock(PolarisUnlockStep.Code)
     }
 
     /** Show Start over's warning. Nothing is replaced yet. */

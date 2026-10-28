@@ -319,7 +319,7 @@ internal fun samplePaywall(pending: String? = null, purchased: Boolean = false):
 }
 
 /** A recovery code as the keyring makes one: groups of letters and digits. */
-internal val sampleRecoveryCode = PolarisRecoveryCode("K7QM-2XRD-9TBA-WF4N-HC6P-VJ3E")
+internal val sampleRecoveryCode = PolarisRecoveryCode("K7QM-2XRD-9TBA-WF4N-HC6P-VJ3E-M4TS-8YGK")
 
 /** The [component] state [member] says, resolved by KitStates (a `served: true` stands for a ring to confirm). */
 internal fun syncScreen(component: KitComponent, member: String, vararg fields: Pair<String, Any>): KitScreen {

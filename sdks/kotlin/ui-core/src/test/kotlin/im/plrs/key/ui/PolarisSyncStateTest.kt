@@ -137,6 +137,34 @@ class PolarisSyncStateTest {
     }
 
     @Test
+    fun noRecoveryCodeOnTheAccountShowsStartOverNotARetryLoop() = runTest {
+        val fake = Fake()
+        fake.unlock = { SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap) }
+        fake.recover = { throw PolarisException(ErrorCode.notFound, "none") }
+        val state = state(fake)
+        state.open()
+        runCurrent()
+        state.submitCode("AAAA")
+        runCurrent()
+        assertEquals(PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver), state.ui.value)
+    }
+
+    @Test
+    fun editingTheCodeClearsAnInvalidStep() = runTest {
+        val fake = Fake()
+        fake.unlock = { SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap) }
+        fake.recover = { throw PolarisException(ErrorCode.recoveryCodeInvalid, "no") }
+        val state = state(fake)
+        state.open()
+        runCurrent()
+        state.submitCode("AAAA")
+        runCurrent()
+        assertEquals(PolarisSyncUi.Unlock(PolarisUnlockStep.Invalid), state.ui.value)
+        state.editCode()
+        assertEquals(PolarisSyncUi.Unlock(PolarisUnlockStep.Code), state.ui.value)
+    }
+
+    @Test
     fun aBlankCodeIsNeverSent() = runTest {
         val fake = Fake()
         fake.unlock = { SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap) }
