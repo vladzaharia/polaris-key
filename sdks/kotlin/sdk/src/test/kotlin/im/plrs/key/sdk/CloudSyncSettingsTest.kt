@@ -102,7 +102,7 @@ class CloudSyncSettingsTest {
                 )
             }
 
-        r.path.endsWith("/identity/subject") -> respond(200, """{"subject":"$who"}""")
+        r.path.endsWith("/identity/subject") -> respond(200, if (who.isEmpty()) """{"subject":null}""" else """{"subject":"$who"}""")
 
         r.path.endsWith("/identity/signout") -> {
             log += "signout"
@@ -251,6 +251,28 @@ class CloudSyncSettingsTest {
         r.client.identity.signOut()
         assertTrue(log.contains("signout"))
         assertFalse(r.stateFile.exists())
+    }
+
+    // ── a sign-out elsewhere (onSubject(null)) follows D-13 too ────────────────────────────────────
+
+    @Test
+    fun aRootThatCannotBeForgottenAfterASignOutElsewhereIsRetriedAndNothingIsPurgedMeanwhile() = runBlocking {
+        val locked = LockedStorage(InMemoryDeviceKeyStorage())
+        val r = Rig(roots = locked)
+        r.signIn()
+        r.client.config.set(VOL, json(0.3))
+        // The person is gone with the account: a readable "no session".
+        who = ""
+        r.client.identity.subject()
+        eventually("the machine left") { r.client.cloudSync.status().state == SyncState.Local }
+        delay(300)
+        assertTrue("the forget failed, so nothing is purged", r.stateFile.exists())
+        // The keystore heals; the next touch retries, and only then is the data purged.
+        locked.failing = false
+        r.client.cloudSync.touch()
+        eventually("retried") { !r.stateFile.exists() }
+        assertFalse(r.client.keyring.unlocked)
+        assertNull(RingVault(r.client.core, KeyringOptions(rootStorage = locked.inner)).load())
     }
 
     // ── A-1 ──────────────────────────────────────────────────────────────────────────────────────

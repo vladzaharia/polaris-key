@@ -60,6 +60,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -114,6 +115,9 @@ public class CloudSyncClient internal constructor(private val api: CloudSyncApi)
     /** A new recovery code for the key ring (`SyncKeyring.setRecoveryCode`). Shown once, kept nowhere. */
     public suspend fun newRecoveryCode(): String = api.newRecoveryCode()
 
+    /** The app came back to the foreground: nudge the machine and retry a key ring forget that failed. Quiet for a product without Sync. */
+    public suspend fun touch(): Unit = api.touch()
+
     /** The recovery-code screen's model. */
     public val recoveryCode: RecoveryCodeModel = RecoveryCodeModel { api.newRecoveryCode() }
 }
@@ -133,6 +137,7 @@ internal fun safeSignInUrl(url: String?, origin: String): String? {
 }
 
 private const val HTTPS_PORT = 443
+private val RETRY_DELAYS_MS = listOf(1_000L, 5_000L, 30_000L)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class CloudSyncApi(
@@ -207,6 +212,7 @@ internal class CloudSyncApi(
     /** Start the host and sign the machine in as the held subject. Idempotent; a no-op while the product does not run the Sync service. */
     suspend fun attach() {
         withContext(dispatcher) {
+            if (forgetPending) startForget()
             if (attached || !core.enabled(ServiceSlug.sync)) return@withContext
             attachLock.withLock {
                 if (attached) return@withContext
@@ -421,22 +427,55 @@ internal class CloudSyncApi(
         return "$scheme://$host" + if (u.port != -1) ":${u.port}" else ""
     }
 
-    /** Ring first, then the purge; single-flight so two events never forget twice at once. */
+    /** Set while a forget the machine's own sign-out asked for has not succeeded: retried, never dropped silently (D-13). */
+    private var forgetPending = false
+    private var forgetAttempts = 0
+
+    /**
+     * Ring first, then the purge; single-flight so two events never forget twice at once. A forget that fails
+     * (a locked keystore) leaves the root where it was, purges nothing, logs a static line and is retried: after
+     * a delay (three times) and at the next attach, touch or flush.
+     */
     private fun startForget(): Job {
         forgetJob?.let { return it }
         val job = scope.launch {
-            withContext(NonCancellable) {
+            val ok = withContext(NonCancellable) {
                 try {
                     forgetRing()
+                    true
                 } catch (e: Exception) {
-                    // a failed forget here is the machine's own sign-out; the explicit hook is the one that stops a sign-out
+                    false
                 }
-                purge()
+            }
+            if (ok) {
+                forgetPending = false
+                forgetAttempts = 0
+                withContext(NonCancellable) { purge() }
+            } else {
+                forgetPending = true
+                java.util.logging.Logger.getLogger("im.plrs.key.sdk").warning("Cloud Sync: the key ring root could not be removed; it will be retried.")
+                if (forgetAttempts < RETRY_DELAYS_MS.size) {
+                    val wait = RETRY_DELAYS_MS[forgetAttempts++]
+                    scope.launch {
+                        delay(wait)
+                        if (forgetPending) startForget()
+                    }
+                }
             }
             forgetJob = null
         }
         forgetJob = job
         return job
+    }
+
+    /** A touch from the host (the app came back): retries a forget that failed, and nudges the machine. Never throws for a product without Sync. */
+    suspend fun touch() {
+        withContext(dispatcher) {
+            if (!core.enabled(ServiceSlug.sync)) return@withContext
+            attach()
+            if (forgetPending) startForget()
+            startedHost()?.kick()
+        }
     }
 
     /** Wait for a forget the machine's events started. */
