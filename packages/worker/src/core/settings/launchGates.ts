@@ -22,7 +22,7 @@ export const LAUNCH_GATES: readonly SettingDef[] = [
     area: "launch",
     label: "Launch gate: native token exchange",
     description:
-      "Serves the RFC 8693 token-exchange grant on the identity token route, the exchange nonce route and the link offer routes. Off answers unsupported_grant_type and not_found, as before the exchange existed.",
+      "Serves the RFC 8693 token exchange on the identity token route, the exchange nonce route and the link offer routes. Off answers unsupported_grant_type and not_found, as before the exchange existed.",
     keywords: ["launch", "token exchange", "native sign-in", "rollout"],
     docs: PLATFORM_DOCS,
     value: { kind: "switch" },
