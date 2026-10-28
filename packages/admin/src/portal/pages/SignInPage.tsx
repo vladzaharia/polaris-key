@@ -43,7 +43,7 @@ import { LegalNav } from "../components/signin/LegalNav.js";
 import { AuthLockup } from "../components/Lockup.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { KeyField } from "../components/KeyField.js";
-import { useCapabilities } from "../data.js";
+import { useCapabilities, useStorefrontName } from "../data.js";
 import { portalErrorCopy, ssoNextOf } from "../errors.js";
 import {
   blocksResend,
@@ -666,8 +666,9 @@ function startErrorText(err: unknown): string {
 }
 
 /**
- * The storefront link's product (`#/discover/<slug>`) for the signed-out card. Only the slug from
- * the URL: nothing a signed-out caller can read says whether the product exists or is listed.
+ * The storefront link's slug (`#/discover/<slug>`), from the URL only. The card names the product
+ * only when `GET /api/storefront/<slug>` answers (LK-12d: a product Discover offers a new
+ * account); a refusal or an error leaves the generic title, never a name made from the slug.
  */
 const STOREFRONT_SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/i;
 export function storefrontSlug(
@@ -800,17 +801,17 @@ function MethodsStep({
   const carriedCheck = carried ? checkKey(carried) : null;
   const carriedName =
     carriedCheck?.kind === "valid" ? productLabel(carriedCheck.slug) : null;
-  const storefront = storefrontSlug(useRoute());
+  const storefront = useStorefrontName(
+    context ? null : storefrontSlug(useRoute()),
+  );
   const title = other
     ? other.email
       ? t("signin.join.again", { email: other.email })
       : t("signin.join.otherTitle")
     : carriedName
       ? t("signin.key.carriedTitle", { product: carriedName })
-      : storefront && !context
-        ? t("signin.key.carriedTitle", {
-            product: productLabel(storefront),
-          })
+      : storefront
+        ? t("signin.key.carriedTitle", { product: storefront.name })
         : context
           ? t("signin.methods.titleApp")
           : t("signin.methods.title");
@@ -825,6 +826,16 @@ function MethodsStep({
   return (
     <>
       <div className="space-y-2">
+        {storefront && !carriedName && !other ? (
+          <ProductIcon
+            slug={storefront.name}
+            name={storefront.name}
+            tint={null}
+            src={storefront.iconUrl}
+            size={48}
+            neutral
+          />
+        ) : null}
         <Title>{title}</Title>
         {lede ? <p className="text-fg-muted">{lede}</p> : null}
         {notice ? (

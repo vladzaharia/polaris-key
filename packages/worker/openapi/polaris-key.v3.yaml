@@ -14332,6 +14332,51 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  /api/storefront/{product}:
+    get:
+      operationId: getStorefrontName
+      tags: [portal]
+      summary: A product's name and icon for the signed-out sign-in card
+      description: >
+        LK-12d. Anonymous: no cookie is read or set, and nothing is written. Answers `name` and
+        `iconUrl` (the image-host URL the public download page draws, or `null`) only for a
+        product Discover offers a new account an Add action (the `discoverVisibility` hook). Every
+        other input (an unknown or malformed slug, an unlisted, purchase-only or operator-issued
+        product, the storefront, the portal or Identity off) answers the same `404 not_found`,
+        identical in body and headers. 60 requests per client network per minute, charged first
+        (fails closed). The answer is `cache-control: public, max-age=300`.
+      parameters:
+        - {
+            name: product,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+          }
+      responses:
+        "200":
+          description: "The product's name and icon."
+          headers:
+            Cache-Control:
+              schema: { type: string, example: "public, max-age=300" }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name, iconUrl]
+                additionalProperties: false
+                properties:
+                  name: { type: string }
+                  iconUrl: { type: [string, "null"] }
+        "404":
+          description: "`not_found`, for every product Discover would not offer."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /api/key/preview:
     post:
       operationId: previewKeySignedOut
