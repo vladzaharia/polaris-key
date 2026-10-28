@@ -29,8 +29,8 @@ import {
   DeviceKeysInvalidError,
   getDeviceKeys,
   upsertDeviceKeys,
-  verifyKeyPop,
 } from "./keys.js";
+import { verifyKeyPop } from "./proof.js";
 import { notifyDeviceChange } from "./lifecycle.js";
 
 /** A change a device may make to its keys, per day (a registration counts). */

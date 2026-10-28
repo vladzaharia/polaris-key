@@ -16,7 +16,7 @@ conformance/
   corpus/v2/            golden vectors from one signer (wire contract v5); generated
     cases.json          signed documents, JWS cases, trust, bundles, feeds, release records
     *-matrix.json       gate, stage, config, update, outlet, plan, feed-url, presentation, ui, backend
-    fingerprint.json, headers.json, device-label.json, sync-scenarios.json, noise-vectors.json, sync-vectors.json, peer-matrix.json
+    fingerprint.json, headers.json, device-label.json, sync-scenarios.json, noise-vectors.json, sync-vectors.json, peer-matrix.json, device-proof.json
     content/            content corpus: cases.json (generated) and blobs/ (inputs)
   transcripts/          one JSON per HTTP conversation, recorded through the Worker router; generated
   parity/
@@ -79,7 +79,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 
 These are output; never edit them:
 
-- `corpus/v2/cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`, `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `plan-matrix.json`, `feed-url-matrix.json`, `sync-scenarios.json`, `device-label.json`, `presentation-matrix.json`, `portal-matrix.json`, `ui-matrix.json`, `backend-matrix.json`, `noise-vectors.json`, `sync-vectors.json`, `peer-matrix.json`
+- `corpus/v2/cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`, `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `plan-matrix.json`, `feed-url-matrix.json`, `sync-scenarios.json`, `device-label.json`, `presentation-matrix.json`, `portal-matrix.json`, `ui-matrix.json`, `backend-matrix.json`, `noise-vectors.json`, `sync-vectors.json`, `peer-matrix.json`, `device-proof.json`
 - `corpus/v2/content/cases.json`
 - the one generator-owned mirror, `sdks/godot/tests/corpus/v2/` (an exported Godot pack reads only `res://`; `content/` is not mirrored)
 

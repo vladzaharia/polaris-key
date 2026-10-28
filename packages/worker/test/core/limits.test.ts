@@ -28,7 +28,7 @@ const INTERNAL: Record<string, string[]> = {
   // The 30 days a reset keeps the replaced ring, fixed by the wire contract (V5 §13.11.4).
   "core/keyring/store.ts": ["PREVIOUS_RING_SECONDS"],
   // The `keys` proof skew, fixed by the wire contract (V5 §15.8), not an operator setting.
-  "core/devices/keys.ts": ["KEY_POP_SKEW_SECONDS"],
+  "core/devices/proof.ts": ["KEY_POP_SKEW_SECONDS"],
   // The floating-major Cache-Control max-age of the elements CDN: a cache header, not a limit.
   "core/elements.ts": ["ELEMENTS_MAJOR_MAX_AGE"],
   "console/handlers/access.ts": ["ACCESS_ADMINS_LIMIT"],
