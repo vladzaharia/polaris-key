@@ -583,6 +583,31 @@ public class CoreContext(options: CoreOptions) {
         return true
     }
 
+    /**
+     * Verify a manifest a peer pushed and install it (WIRE-CONTRACT-V5 §15.8), under the rules the
+     * Worker's own manifest meets: signed by a usable pin, bound to this product, fresh, and newer
+     * than the one held (anti-rollback). Runs under the state lock, so it never interleaves with a
+     * refresh's install and exactly one of several equal pushes applies. A refusal changes nothing
+     * and names its reason. The caller persists the manifest and [pinRevocations] when it applies.
+     */
+    public suspend fun acceptPeer(jws: String): PeerTrustResult = locked {
+        val probe = verifyTrustManifest(
+            jws,
+            VerifyTrustManifestOptions(
+                pinned = pinnedTrust, tombstones = tombstones, expectedAud = product, now = clock.effectiveNow(systemClock()),
+            ),
+        )
+        val doc = probe.doc ?: return@locked PeerTrustResult(false, PEER_TRUST_INVALID)
+        val held = manifest?.issuedAt
+        if (held != null && doc.issuedAt <= held) return@locked PeerTrustResult(false, PEER_TRUST_NOT_NEWER)
+        if (!applyTrustManifest(jws, checkFreshness = true)) return@locked PeerTrustResult(false, PEER_TRUST_INVALID)
+        reloadUpdateSlices()
+        PeerTrustResult(true)
+    }
+
+    /** The `pinRevocations` slice as it should be written: kid to the revoking manifest. */
+    public suspend fun pinRevocations(): Map<String, String> = locked { evidence }
+
     private suspend fun installTrust(jws: String): Boolean = locked {
         applyTrustManifest(jws, checkFreshness = true).also { ok ->
             // The effective trust set may have changed: the committed feeds are re-verified.
