@@ -11,15 +11,32 @@ from .account import (
     OpenAccountResult,
     SignOutResult,
 )
+from .choice import (
+    ChoiceCancelOk,
+    ChoiceCompleteOk,
+    ChoiceRefused,
+    ChoiceViewOk,
+    LicenseChoiceView,
+    ReplaceView,
+)
 from .client import (
     SLOW_DOWN_STEP_SECONDS,
     IdentityClient,
     SignedInIdentity,
     SignInNamespace,
 )
+from .redirect import RedirectSession, SignInError
 from .sign_in import SignInActivation, SignInOutcome, SignInSession
 
 __all__ = [
+    "ChoiceCancelOk",
+    "ChoiceCompleteOk",
+    "ChoiceRefused",
+    "ChoiceViewOk",
+    "LicenseChoiceView",
+    "RedirectSession",
+    "ReplaceView",
+    "SignInError",
     "AttachConfirm",
     "AttachLicense",
     "AttachOk",

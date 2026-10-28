@@ -890,7 +890,6 @@ class Feature:
     IDENTITY_REDIRECT_WEB: Final = "identity.redirect.web"
     IDENTITY_CHOICE: Final = "identity.choice"
     IDENTITY_SIGNIN_HINTS: Final = "identity.signin.hints"
-    IDENTITY_EXCHANGE: Final = "identity.exchange"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
     RELEASE_RECORD: Final = "release.record"
@@ -1018,7 +1017,6 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.redirect.web",
     "identity.choice",
     "identity.signin.hints",
-    "identity.exchange",
     "release.changelog",
     "release.download",
     "release.record",
@@ -2404,10 +2402,9 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.keyentry": CapabilityRow("implemented", "identity", ()),
         "identity.attach": CapabilityRow("implemented", "identity", ()),
         "identity.account": CapabilityRow("implemented", "identity", ()),
-        "identity.redirect.web": CapabilityRow("planned", "identity", ()),
-        "identity.choice": CapabilityRow("planned", "identity", ()),
-        "identity.signin.hints": CapabilityRow("planned", "identity", ()),
-        "identity.exchange": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
+        "identity.redirect.web": CapabilityRow("implemented", "identity", ()),
+        "identity.choice": CapabilityRow("implemented", "identity", ()),
+        "identity.signin.hints": CapabilityRow("implemented", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -2475,4 +2472,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "a919efd0a655976711a295da7b67520dbe0ca14b85df46bc4c06b9d71070eecd"
+CAPABILITY_DIGEST: Final[str] = "aadd17d84a20ae2d0600ca7c1ac99488767d717ebaae5e3df365f6c1be824a65"

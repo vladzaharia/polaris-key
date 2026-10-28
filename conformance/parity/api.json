@@ -3115,7 +3115,10 @@
       "feature": "identity.choice",
       "sdks": {
         "node": {},
-        "react": { "spelling": "usePolarisAuth().choice", "shape": "hook" },
+        "react": {
+          "spelling": "usePolarisAuth().choice",
+          "shape": "hook"
+        },
         "python": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3292,7 +3295,10 @@
           "shape": "property",
           "reason": "no hook: Node calls the identity.choice primitives"
         },
-        "react": { "spelling": "useLicenseChoice", "shape": "hook" },
+        "react": {
+          "spelling": "useLicenseChoice",
+          "shape": "hook"
+        },
         "swift": {
           "spelling": "LicenseChoiceModel"
         },
@@ -3305,6 +3311,11 @@
           "spelling": "identity.choice",
           "shape": "property",
           "reason": "no hook: Kotlin calls the identity.choice primitives"
+        },
+        "python": {
+          "spelling": "identity.choice",
+          "shape": "property",
+          "reason": "no hook: Python calls the identity.choice primitives"
         }
       },
       "layer": "client"
