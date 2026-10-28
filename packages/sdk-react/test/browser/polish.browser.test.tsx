@@ -376,10 +376,11 @@ describe("minor polish", () => {
     );
     await shot("update", "390-dark");
     const icon = q(el, ".identity .icon, .identity .monogram, .identity img")!;
+    // The update prompt is a dialog over the host page, so its title is an h2 (UK-06.16).
     expect(
       Math.abs(
         icon.getBoundingClientRect().left -
-          q(el, "h1")!.getBoundingClientRect().left,
+          q(el, "h2")!.getBoundingClientRect().left,
       ),
     ).toBeLessThan(2);
   });

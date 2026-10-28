@@ -232,6 +232,9 @@ NOT_DRAWN = {
     ("Activate", "key-entry-limit"): "the terminal prints the refusal with its fix, `login` (the activate verb); no QR",
     ("Activate", "license-owned"): "the terminal prints the refusal with its fix, `login` (the activate verb)",
     ("SignIn", "key-refused"): "the key path is the activate verb",
+    ("SignIn", "key-done"): "the key path is the activate verb",
+    ("SignIn", "attach"): "the terminal adds a key to an account through login, not a form",
+    ("SignIn", "added"): "the terminal adds a key to an account through login, not a form",
     ("SignIn", "confirm"): _AUTO_SIGN_IN,
     ("SignIn", "link-offer"): _AUTO_SIGN_IN,
     ("SignIn", "link-done"): _AUTO_SIGN_IN,
@@ -280,4 +283,6 @@ OUT_OF_SCOPE = {
     "UnlockSync": "should tier; no CLI verb for unlocking synced data yet",
     "RecoveryCode": "should tier; no CLI verb for the recovery code yet",
     "RingChange": "should tier; no CLI verb for a linked-device change yet",
+    "ActivateDone": "should tier; the activate verb prints the result and the account hint in its own lines",
+    "AddToAccount": "should tier; the terminal adds a key to an account through login, not a form",
 }

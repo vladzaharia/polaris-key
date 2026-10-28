@@ -405,7 +405,7 @@ func _style_destructive(b: Button) -> void:
 		on = PKeyBrand.Dark.DANGER_ON if dark else PKeyBrand.Light.DANGER_ON
 	else:
 		fill = get_theme_color(&"font_color", &"PKeyError")
-		var ink := Color("#060912")
+		var ink := PKeyBrand.Dark.SURFACE_PAGE
 		on = ink if _contrast(fill, ink) >= _contrast(fill, Color.WHITE) else Color.WHITE
 	var base := b.get_theme_stylebox(&"normal")
 	b.custom_minimum_size.y = role("control_height")
