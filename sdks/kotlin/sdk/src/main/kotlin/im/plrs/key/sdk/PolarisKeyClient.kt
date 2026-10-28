@@ -501,7 +501,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     /** The identity callback reaches the API through this, because `identity` is built before the API. */
     private val cloudSyncApi = java.util.concurrent.atomic.AtomicReference<CloudSyncApi?>(null)
 
-    @Volatile private var tempStateDir: java.io.File? = null
+    @Volatile internal var tempStateDir: java.io.File? = null
 
     private val cloudSyncImpl: CloudSyncApi = CloudSyncApi(
         core = core,

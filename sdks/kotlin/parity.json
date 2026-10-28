@@ -133,8 +133,8 @@
       "note": "config.set/clear/clearAll persist device-local overrides in local-config.json beside the store, checked against the catalog (or the document's type), never over an enforced or hidden entry (managed_by_admin); config.setting(key) handles (value, source, locked, visibility, set, clear, on, flow) and config.changes emit every change (ConfigLocalTest, ConfigSettingTest)."
     },
     "config.sync": {
-      "status": "planned",
-      "wp": "U-07"
+      "status": "implemented",
+      "note": "client.config.set/clear/setting route a synced key through the Cloud Sync machine while a person is signed in (ConfigSyncPort); setting(key).sync() answers local, pending or synced, and ConfigChange.origin names local, remote, merge or migration. CloudSyncSettingsTest and SyncScenariosTest settingCases."
     },
     "devices.fingerprint": {
       "status": "implemented",
@@ -152,7 +152,7 @@
     },
     "devices.report": {
       "status": "implemented",
-      "note": "PolarisKeyClient.report(): the facts, the verified config and entitlement values, caps, content.packSetId, gate {status}, outlet, and the update-health journal (`updates`, at most 16 per report, marked sent once accepted; notes/SDK-PARITY-PASS.md §3.13). UpdateClient journals update_offered, the boot guard update_applied, update_reverted, boot_rolled_back and update_confirmed, PacksClient update_downloaded, update_applied and pack_failed, and both Android install drivers update_downloaded and update_applied (UpdateEventJournalTest, BootGuardEventsTest, DevicesTest, DirectInstallDriverTest)."
+      "note": "PolarisKeyClient.report(): the facts, the verified config and entitlement values, caps, content.packSetId, gate {status}, outlet, and the update-health journal (`updates`, at most 16 per report, marked sent once accepted; notes/SDK-PARITY-PASS.md \u00a73.13). UpdateClient journals update_offered, the boot guard update_applied, update_reverted, boot_rolled_back and update_confirmed, PacksClient update_downloaded, update_applied and pack_failed, and both Android install drivers update_downloaded and update_applied (UpdateEventJournalTest, BootGuardEventsTest, DevicesTest, DirectInstallDriverTest)."
     },
     "telemetry.updates": {
       "status": "implemented",
@@ -219,7 +219,7 @@
     },
     "identity.autosignin": {
       "status": "implemented",
-      "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in §1, I-45): a stored sign-in, the platform provider silently, then its one sheet; every refusal is a result."
+      "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in \u00a71, I-45): a stored sign-in, the platform provider silently, then its one sheet; every refusal is a result."
     },
     "identity.link": {
       "status": "planned",
@@ -272,11 +272,11 @@
     },
     "update.content": {
       "status": "implemented",
-      "note": ":core's feedContent, holdsOf (stampHolds), selectPackRows and decideUpdate with UpdateContentInput; runUpdateCheck runs P4-13 §2.5 steps 10–14 with the packs facet as the UpdateContentHost (every feedContentCases vector and contentRows row, ContentDecisionTest)."
+      "note": ":core's feedContent, holdsOf (stampHolds), selectPackRows and decideUpdate with UpdateContentInput; runUpdateCheck runs P4-13 \u00a72.5 steps 10\u201314 with the packs facet as the UpdateContentHost (every feedContentCases vector and contentRows row, ContentDecisionTest)."
     },
     "update.driver": {
       "status": "implemented",
-      "note": ":update's InstallDriver port; :android's PlayInstallDriver (play: In-App Updates, flexible or immediate by the decision's urgency and optionally Play's priority and staleness, completing a downloaded update, staging-aware) and DirectInstallDriver (direct: the verified record's one payload downloaded to private storage, size and SHA-256 checked, then :platform's verified PackageInstaller session, every refusal surfaced as swap-refused), against FakeAppUpdateManager and an installer fake (PlayInstallDriverTest, DirectInstallDriverTest); the flavour boundary holds (tools/check_flavours.sh). A Play flexible update reports its download and finishes with a restart (ProgressiveInstallDriver: progress, finish, resume). JVM desktop (UK-40): :update's DesktopInstallDriver, the default UpdateClient.install uses on a JVM and PolarisKeyDesktop wires: the verified record's one payload for the decision's build, fetched resumably by OkHttpArtifactFetch (the minimal fetch until SP-K13's release.fetch; the bearer kept to the control plane's origin), size and SHA-256 checked before the OS opens it (open, ShellExec, xdg-open or an AppImage run), a mismatch opening nothing (DesktopInstallDriverTest); UpdateClient.install journals update_applied when it hands off (§3.13). UK-10.9: DesktopInstallDriver is an InstallProgressSource (Downloading bytes, then Idle or Failed) that the kit's update prompt follows; the verification and the hand-off are unchanged (DesktopInstallDriverTest). The internal-track and self-update device runs are the owner's (P6-12 brief)."
+      "note": ":update's InstallDriver port; :android's PlayInstallDriver (play: In-App Updates, flexible or immediate by the decision's urgency and optionally Play's priority and staleness, completing a downloaded update, staging-aware) and DirectInstallDriver (direct: the verified record's one payload downloaded to private storage, size and SHA-256 checked, then :platform's verified PackageInstaller session, every refusal surfaced as swap-refused), against FakeAppUpdateManager and an installer fake (PlayInstallDriverTest, DirectInstallDriverTest); the flavour boundary holds (tools/check_flavours.sh). A Play flexible update reports its download and finishes with a restart (ProgressiveInstallDriver: progress, finish, resume). JVM desktop (UK-40): :update's DesktopInstallDriver, the default UpdateClient.install uses on a JVM and PolarisKeyDesktop wires: the verified record's one payload for the decision's build, fetched resumably by OkHttpArtifactFetch (the minimal fetch until SP-K13's release.fetch; the bearer kept to the control plane's origin), size and SHA-256 checked before the OS opens it (open, ShellExec, xdg-open or an AppImage run), a mismatch opening nothing (DesktopInstallDriverTest); UpdateClient.install journals update_applied when it hands off (\u00a73.13). UK-10.9: DesktopInstallDriver is an InstallProgressSource (Downloading bytes, then Idle or Failed) that the kit's update prompt follows; the verification and the hand-off are unchanged (DesktopInstallDriverTest). The internal-track and self-update device runs are the owner's (P6-12 brief)."
     },
     "update.bootguard": {
       "status": "implemented",
@@ -344,7 +344,7 @@
           "note": "Without the opt-in pack decoder (polaris-key-zstd, whose JVM variant is zstd-jni's JAR; SP-50), or where zstd-jni ships no native binary for the OS or arch; supports() reports dependency."
         }
       ],
-      "note": "zstd-jni (libzstd 1.5.7): the base as a raw-content dictionary (ZSTD_DCtx_loadDictionary; §2.7 rule 5's magic refusal runs first) with ZSTD_d_windowLogMax, the window check in the applier before every prefix decode; a start-up probe gates zstd-patch-from (applyCases, feedDeltaApplyCases, PackZstdTest)."
+      "note": "zstd-jni (libzstd 1.5.7): the base as a raw-content dictionary (ZSTD_DCtx_loadDictionary; \u00a72.7 rule 5's magic refusal runs first) with ZSTD_d_windowLogMax, the window check in the applier before every prefix decode; a start-up probe gates zstd-patch-from (applyCases, feedDeltaApplyCases, PackZstdTest)."
     },
     "packs.state": {
       "status": "implemented",
@@ -426,7 +426,7 @@
     },
     "ui.kit": {
       "status": "implemented",
-      "note": "Android only: there is no JVM desktop kit yet (SP-K12's Compose Multiplatform target), and the registry allows no jvm exception for ui.kit until SP-00 adds one (notes/SDK-PARITY-PASS.md SP-01). P6-11's :ui (polaris-key-ui, Jetpack Compose + Material 3, Android): PolarisKeyGate (the one-call wiring, formerly PolarisKeyApp; LocalPolarisKey and the remember* helpers), PolarisBoot over :core's stage machine, the gate (every terminal state and the grace banner), activation, sign-in with QR, settings, devices, the update banner and prompt and pack progress, each with a StateFlow state holder; neutral over the host's MaterialTheme by default, Polaris Key branding behind PolarisBranding.PolarisKey and the Powered-by badge behind showPoweredBy. Routes and deep links (UK-09b.3): PolarisKeyRoute and PolarisKeyLinks, an allow-list parser (the host's return URI plus one known route, nothing else) with PolarisKeyLinksTest as its table; PolarisKeyGateStartTest pins one client start. Responsive (UI-KITS.md §1.4, §1.5): one scaffold picks the layout from the window: a tall window top-anchors a focused step and docks its controls; sign-in and activation go two-pane at compact height, on Android TV and in wide landscape windows; message screens never split (a trailing action row, a card on TV and wide windows). Sign-in resumes the same code after rotation or navigation, leads with the QR on TV (no browser opener there; every opener guarded), and can run inside the gate. The product is the hero: the host's icon or a monogram tile, never the Pinned K outside the Powered-by badge; an optional product accent resolved against the host's own surfaces under the native preset. Proof: every screen's Roborazzi snapshots (light, dark, 200 % font, phone, tablet; neutral and branded); the responsive set at 360x640, 891x411, 640x360, 673x841, 1920x1080, 150 % font, 960x540, 1280x720, 2560x1440 and TV 960x540, plus focus-ring and accent references; ResponsiveLayoutTest (every control on screen and 48 dp tall at those sizes and 800x600, 1280x800, 1366x768, 411x440, 891x411 at 150/200 % and 640x360 at 150 %); FlowTest; the branding (dynamic colour, product accent), contrast and TalkBack suites. Desktop (UK-10.6): the GNOME (libadwaita) chrome behind the forced `Gnome` variant: 34 px controls at radius 8 with a pill suggested action, an AdwDialog for the update sheet (radius 12, soft shadow, 7 % edge in light), AdwStatusPage message screens, an AdwAlertDialog for Replace (responses side by side, stacked when narrow), the portal's accent for the native preset; GnomeChromeTest asserts each rule and GnomeBoardShotsTest renders the board to PKEY_KIT_SHOTS (UK-10.12 commits the set). Desktop sizes (UK-10.11): SizeMatrixTest renders six screens in the three chromes at the seven §7.1 window sizes (the Mac at its 480 x 520 floor, scrolling below it), font scale 2 at 390x844, 844x390 and 1440x900, and touch at 390x844, asserting no control clipped, no cut text, no sideways scroll, the primary action in the first viewport and targets of 24 dp (mouse) or 44 dp (touch); PresetIdentityContrastTest covers a fake presentation source (accent and icon, no integrator code), every §3.1 theme field, label contrast measured on the render for #ff6a3d and a dark accent, and high contrast (GNOME reads the portal) and reduced transparency rendering opaque. Desktop windows (UK-10.8, K3): ApplicationScope composables in the OS frame: PolarisKeyWindow (the gate window; every close goes to the host's onCloseRequest, exit by default; a mandatory update is a dialog inside it with no close; the Mac sheet floats 52 dp down only with fullSizeContent, else 12 dp; the Mac window's minimumSize is 480 x 520), PolarisUpdateWindow (an optional update: one 440 dp column, not resizable, sized to its content), PolarisSettingsWindow (650 dp, the pane named in the title, Escape or the OS close button closes it, no Done) and PolarisMenuItems for MenuBar (Check for updates, Manage license; the macos variants on macOS; Sign out only there and in Settings, Account). DesktopWindowsTest covers the state holders, the menu labels and the contents laid out offscreen."
+      "note": "Android only: there is no JVM desktop kit yet (SP-K12's Compose Multiplatform target), and the registry allows no jvm exception for ui.kit until SP-00 adds one (notes/SDK-PARITY-PASS.md SP-01). P6-11's :ui (polaris-key-ui, Jetpack Compose + Material 3, Android): PolarisKeyGate (the one-call wiring, formerly PolarisKeyApp; LocalPolarisKey and the remember* helpers), PolarisBoot over :core's stage machine, the gate (every terminal state and the grace banner), activation, sign-in with QR, settings, devices, the update banner and prompt and pack progress, each with a StateFlow state holder; neutral over the host's MaterialTheme by default, Polaris Key branding behind PolarisBranding.PolarisKey and the Powered-by badge behind showPoweredBy. Routes and deep links (UK-09b.3): PolarisKeyRoute and PolarisKeyLinks, an allow-list parser (the host's return URI plus one known route, nothing else) with PolarisKeyLinksTest as its table; PolarisKeyGateStartTest pins one client start. Responsive (UI-KITS.md \u00a71.4, \u00a71.5): one scaffold picks the layout from the window: a tall window top-anchors a focused step and docks its controls; sign-in and activation go two-pane at compact height, on Android TV and in wide landscape windows; message screens never split (a trailing action row, a card on TV and wide windows). Sign-in resumes the same code after rotation or navigation, leads with the QR on TV (no browser opener there; every opener guarded), and can run inside the gate. The product is the hero: the host's icon or a monogram tile, never the Pinned K outside the Powered-by badge; an optional product accent resolved against the host's own surfaces under the native preset. Proof: every screen's Roborazzi snapshots (light, dark, 200 % font, phone, tablet; neutral and branded); the responsive set at 360x640, 891x411, 640x360, 673x841, 1920x1080, 150 % font, 960x540, 1280x720, 2560x1440 and TV 960x540, plus focus-ring and accent references; ResponsiveLayoutTest (every control on screen and 48 dp tall at those sizes and 800x600, 1280x800, 1366x768, 411x440, 891x411 at 150/200 % and 640x360 at 150 %); FlowTest; the branding (dynamic colour, product accent), contrast and TalkBack suites. Desktop (UK-10.6): the GNOME (libadwaita) chrome behind the forced `Gnome` variant: 34 px controls at radius 8 with a pill suggested action, an AdwDialog for the update sheet (radius 12, soft shadow, 7 % edge in light), AdwStatusPage message screens, an AdwAlertDialog for Replace (responses side by side, stacked when narrow), the portal's accent for the native preset; GnomeChromeTest asserts each rule and GnomeBoardShotsTest renders the board to PKEY_KIT_SHOTS (UK-10.12 commits the set). Desktop sizes (UK-10.11): SizeMatrixTest renders six screens in the three chromes at the seven \u00a77.1 window sizes (the Mac at its 480 x 520 floor, scrolling below it), font scale 2 at 390x844, 844x390 and 1440x900, and touch at 390x844, asserting no control clipped, no cut text, no sideways scroll, the primary action in the first viewport and targets of 24 dp (mouse) or 44 dp (touch); PresetIdentityContrastTest covers a fake presentation source (accent and icon, no integrator code), every \u00a73.1 theme field, label contrast measured on the render for #ff6a3d and a dark accent, and high contrast (GNOME reads the portal) and reduced transparency rendering opaque. Desktop windows (UK-10.8, K3): ApplicationScope composables in the OS frame: PolarisKeyWindow (the gate window; every close goes to the host's onCloseRequest, exit by default; a mandatory update is a dialog inside it with no close; the Mac sheet floats 52 dp down only with fullSizeContent, else 12 dp; the Mac window's minimumSize is 480 x 520), PolarisUpdateWindow (an optional update: one 440 dp column, not resizable, sized to its content), PolarisSettingsWindow (650 dp, the pane named in the title, Escape or the OS close button closes it, no Done) and PolarisMenuItems for MenuBar (Check for updates, Manage license; the macos variants on macOS; Sign out only there and in Settings, Account). DesktopWindowsTest covers the state holders, the menu labels and the contents laid out offscreen."
     },
     "ui.kit.manage": {
       "status": "implemented",
@@ -434,7 +434,7 @@
     },
     "ui.kit.account": {
       "status": "implemented",
-      "note": "I-10b.20: License in another account on the activation screen (Sign in to that account: the kit's sign-in, else the product's sign-in page), the signed-in toast with the tier (Signed in as <name> · <Tier> license; You're signed in · <Tier> license without a name), and rememberLicenseChoiceState over PolarisLicenseChoiceState. PolarisSignInActions now returns the session's SignInOutcome (a refusal is a SignInError) and shows a PolarisSignInCode; SignInResult and the public SignInPrompt are gone. KeyRefusalMatrixTest renders each state in the three desktop chromes at the seven sizes, font scale 2 and touch."
+      "note": "I-10b.20: License in another account on the activation screen (Sign in to that account: the kit's sign-in, else the product's sign-in page), the signed-in toast with the tier (Signed in as <name> \u00b7 <Tier> license; You're signed in \u00b7 <Tier> license without a name), and rememberLicenseChoiceState over PolarisLicenseChoiceState. PolarisSignInActions now returns the session's SignInOutcome (a refusal is a SignInError) and shows a PolarisSignInCode; SignInResult and the public SignInPrompt are gone. KeyRefusalMatrixTest renders each state in the three desktop chromes at the seven sizes, font scale 2 and touch."
     },
     "ui.kit.keyentry": {
       "status": "implemented",
@@ -515,12 +515,12 @@
       "note": "client.commerce (:sdk's CommerceClient, P6-01): binding() and claim(store, payload) with claimPlay, claimSteam and claimAppStore, ClaimResult Ok / NotOwned / AttestationRequired / Refused(code, reason) (the host syncs after an Ok claim, as the transcript pins), attest-and-retry on attestation_required, hiddenHere/isUnlocked (App Store 3.1.3(b)); the commerce-claim transcript replays. Steam claims work on the JVM (the host passes the GetAuthTicketForWebApi hex ticket); Play Billing's one-call purchase and restore are :billing's PolarisPlayBilling in polaris-key-billing (obfuscatedAccountId = the binding, claim, acknowledge after the claim)."
     },
     "sync.scenarios": {
-      "status": "planned",
-      "wp": "U-07"
+      "status": "implemented",
+      "note": "conformance SyncScenariosTest drives settingCases and every sync-scenarios.json scenario through :core's CloudSyncMachine, on the JCA and on Tink."
     },
     "sync.settings": {
-      "status": "planned",
-      "wp": "U-07"
+      "status": "implemented",
+      "note": "client.cloudSync.status()/flush()/newRecoveryCode() (and statusFuture/flushFuture on PolarisKeyFutures) and PolarisEvent.CloudSync on client.events (sdk/CloudSyncApi.kt): one machine per client over the key ring, driven by identity subject changes, with the discovery gate and the typed N/A while the product has no Sync service. The sign-out chain is Connect stop and leave, a bounded flush with the root held, ring forget (a failure stops the sign-out), machine sign-out, purge; a person change never flushes under the new token. State is cloud-sync.json in the store's state directory (noBackupFilesDir on Android). PolarisKeyLifecycle flushes (bounded) when the last activity stops. CloudSyncSettingsTest, CloudSyncHostTest, CloudSyncHostBoundsTest, CloudSyncTransportOkHttpTest and the cloudsync-* transcripts in TranscriptTest."
     },
     "sync.conflict": {
       "status": "planned",
@@ -548,7 +548,7 @@
     },
     "sync.e2e.recovery": {
       "status": "planned",
-      "wp": "U-07"
+      "wp": "U-39"
     },
     "sync.transfer.background": {
       "status": "planned",
@@ -629,7 +629,7 @@
           "note": "An Android app is not a server."
         }
       ],
-      "note": "No package yet: the framework drop-ins plan (§5.7) gives serverClient() to Node and Python only (SP-63). The normal client with a memory store works on a server today."
+      "note": "No package yet: the framework drop-ins plan (\u00a75.7) gives serverClient() to Node and Python only (SP-63). The normal client with a memory store works on a server today."
     },
     "server.webhooks": {
       "status": "planned",

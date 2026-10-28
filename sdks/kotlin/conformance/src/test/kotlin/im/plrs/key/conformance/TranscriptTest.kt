@@ -1,3 +1,4 @@
+// @pkey-feature sync.settings
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
@@ -1136,6 +1137,12 @@ class TranscriptTest : ConformanceSuite() {
         val REQUIRED = listOf(
             "discovery-capabilities", "discovery-failure", "sync-etag-304", "sync-errors",
             "activate-enroll-deactivate", "config-schema-fetch", "devicecode-denied", "devicecode-failed", "devicecode-mint-retry", "devicecode-expired", "devicecode-happy",
+            // U-07.KF: Cloud Sync (`sync.settings`).
+            "cloudsync-account-required", "cloudsync-atomic", "cloudsync-client-mismatch", "cloudsync-conflict",
+            "cloudsync-cors", "cloudsync-cursor-expired", "cloudsync-duplicate", "cloudsync-e2e-settings",
+            "cloudsync-first-signin", "cloudsync-hlc-clamp", "cloudsync-members", "cloudsync-migrations",
+            "cloudsync-open-settings", "cloudsync-paused", "cloudsync-push-pull", "cloudsync-quota",
+            "cloudsync-trust",
             // U-39.9: the key ring (`sync.keyring`).
             "keyring-create", "keyring-wrap", "keyring-wrap-read", "keyring-recovery", "keyring-adopt-reset", "keyring-gate-off", "keyring-sync-off",
             "edge-mint", "register-open", "register-reregister-401", "release-changelog",

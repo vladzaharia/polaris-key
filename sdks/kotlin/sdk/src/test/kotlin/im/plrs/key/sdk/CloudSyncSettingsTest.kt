@@ -1,4 +1,4 @@
-// @pkey-feature sync.settings
+// @pkey-feature sync.settings config.sync
 //
 // U-07.K9: the Cloud Sync settings API on a real client against a scripted Worker (server mode, so no ring
 // root is needed to talk; a root sits in an in-memory storage so the sign-out chain can be observed). A-1
@@ -316,9 +316,6 @@ class CloudSyncSettingsTest {
 
     @Test
     fun theStateOfAMemoryStoreIsDeletedWhenTheClientCloses() = runBlocking {
-        val tmpRoot = File(System.getProperty("java.io.tmpdir"))
-        fun dirs() = tmpRoot.listFiles { f -> f.name.startsWith("pkey-sync-") }.orEmpty().map { it.name }.toSet()
-        val before = dirs()
         val store = im.plrs.key.core.InMemoryStore("djdl", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").also { it.setToken("pkeyt_alice") }
         val client = PolarisKeyClient.create(
             PolarisKeyClientOptions(
@@ -340,10 +337,11 @@ class CloudSyncSettingsTest {
         eventually("signed in") { client.cloudSync.status().state != SyncState.Local }
         client.config.set(VOL, json(0.3))
         client.cloudSync.flush()
-        val made = dirs() - before
-        assertTrue("a private directory holds the snapshot", made.isNotEmpty() && made.any { File(tmpRoot, it, CLOUD_SYNC_FILE).exists() })
+        // This client's own directory (never a diff of the shared temp dir, which other tests also write to).
+        val own = checkNotNull(client.tempStateDir)
+        assertTrue("a private directory holds the snapshot", java.io.File(own, CLOUD_SYNC_FILE).exists())
         client.close()
-        eventually("the tree is gone") { (dirs() - before).isEmpty() }
+        eventually("the tree is gone") { !own.exists() }
     }
 
     // ── A-1 ──────────────────────────────────────────────────────────────────────────────────────

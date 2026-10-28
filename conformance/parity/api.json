@@ -2939,9 +2939,7 @@
         "swift": {
           "planned": "U-07"
         },
-        "kotlin": {
-          "planned": "U-07"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "U-21"
         }
@@ -3718,9 +3716,7 @@
         "swift": {
           "planned": "U-07"
         },
-        "kotlin": {
-          "planned": "U-07"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "U-21"
         }
@@ -3744,9 +3740,7 @@
         "swift": {
           "planned": "U-07"
         },
-        "kotlin": {
-          "planned": "U-07"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "U-21"
         }
@@ -3771,7 +3765,7 @@
           "planned": "U-07"
         },
         "kotlin": {
-          "planned": "U-07"
+          "path": "cloudSync.encryption"
         },
         "godot": {
           "planned": "U-21"
@@ -3801,7 +3795,8 @@
           "planned": "U-07"
         },
         "kotlin": {
-          "planned": "U-07"
+          "spelling": "client.events",
+          "reason": "one event stream on the client (client.events), PolarisEvent.CloudSync"
         },
         "godot": {
           "planned": "U-21"

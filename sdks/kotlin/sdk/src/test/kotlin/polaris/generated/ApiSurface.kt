@@ -17,6 +17,8 @@ import im.plrs.key.release.DistributionClient
 import im.plrs.key.release.ReleaseClient
 import im.plrs.key.sdk.BackendClient
 import im.plrs.key.sdk.CloudConnect
+import im.plrs.key.sdk.CloudSyncClient
+import im.plrs.key.sdk.CloudSyncHostOptions
 import im.plrs.key.sdk.CommerceClient
 import im.plrs.key.sdk.PolarisKeyClient
 import im.plrs.key.sdk.boot
@@ -64,6 +66,10 @@ internal suspend fun apiSurface() {
     IdentityClient::attach  // identity.attachLicense
     IdentityClient::openAccount  // identity.openAccount
     PolarisKeyClient::events  // events
+    CloudSyncClient::status  // cloudSync.status
+    CloudSyncClient::flush  // cloudSync.flush
+    CloudSyncHostOptions::encryption  // cloudSync.encryption
+    PolarisKeyClient::events  // cloudSync.event
     PolarisKeyClient::discover  // client.discover
     PolarisKeyClient::presentation  // client.presentation
     PolarisKeyClient::presentationIcon  // client.presentationIcon
