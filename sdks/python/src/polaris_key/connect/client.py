@@ -106,6 +106,9 @@ class DiscoveryKeys:
     def __repr__(self) -> str:
         return "<DiscoveryKeys>"
 
+    def __reduce__(self) -> Any:
+        raise TypeError("discovery keys cannot be pickled")
+
 
 def _refuse(reason: str) -> PolarisError:
     return PolarisError(ErrorCode.BAD_RESPONSE, f"The Cloud Connect identity was refused: {reason}.")
