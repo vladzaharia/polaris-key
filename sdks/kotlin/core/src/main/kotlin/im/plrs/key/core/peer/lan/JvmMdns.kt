@@ -16,6 +16,9 @@
 // - the tables of instances and addresses hold at most 256 entries each, an entry expires five minutes
 //   after it was last refreshed, and when a table is full the least recently refreshed entry is
 //   evicted, so a flood cannot stop discovery;
+// - one source may create at most [MDNS_NEW_PER_MINUTE] new instance entries a minute, so a neighbour
+//   cannot churn the table (its own entries, or the least recently refreshed real ones) by naming
+//   instances faster than that;
 // - query replies go out at most once a second; the packet parser's own limits live in the codec.
 //
 // The socket is IPv4 only. It is bound with address reuse and joins 224.0.0.251 on every interface
@@ -46,6 +49,11 @@ public const val MDNS_MAX_INSTANCES: Int = 256
 
 /** Addresses kept per host name. */
 public const val MDNS_MAX_ADDRS: Int = 4
+
+/** New instance entries one source may create per minute. */
+public const val MDNS_NEW_PER_MINUTE: Int = 32
+
+private const val BIRTH_WINDOW_SECONDS = 60.0
 
 /** Seconds a learned record is believed after it was last refreshed. */
 public const val MDNS_ENTRY_TTL_SECONDS: Double = 5 * 60.0
@@ -284,6 +292,7 @@ public class JvmMdns(
         val lock = Any()
         val seen = LinkedHashMap<String, Entry>()
         val addr = LinkedHashMap<String, Addrs>()
+        val births = LinkedHashMap<String, ArrayDeque<Double>>()
         var sock: MdnsSocket? = null
         var closed = false
         val jobs = ArrayList<Job>()
@@ -358,6 +367,17 @@ public class JvmMdns(
         }
     }
 
+    /** True when [src] may create another entry now; counts it. The table of sources is bounded too. */
+    private fun allowBirth(b: Browse, src: String, now: Double): Boolean {
+        val q = b.births.remove(src) ?: ArrayDeque()
+        while (q.isNotEmpty() && now - q.first() > BIRTH_WINDOW_SECONDS) q.removeFirst()
+        val ok = q.size < MDNS_NEW_PER_MINUTE
+        if (ok) q.addLast(now)
+        b.births[src] = q
+        while (b.births.size > MDNS_MAX_INSTANCES) b.births.remove(b.births.keys.first())
+        return ok
+    }
+
     private fun trimAddr(b: Browse, now: Double) {
         b.addr.entries.removeAll { now - it.value.at > MDNS_ENTRY_TTL_SECONDS }
         while (b.addr.size >= MDNS_MAX_INSTANCES) b.addr.remove(b.addr.keys.first())
@@ -404,9 +424,11 @@ public class JvmMdns(
                 if (b.seen.remove(inst) != null) downs += inst
                 continue
             }
-            val e = b.seen.remove(inst) ?: run {
+            var e = b.seen.remove(inst)
+            if (e == null) {
+                if (!allowBirth(b, src, now)) continue
                 if (b.seen.size >= MDNS_MAX_INSTANCES) trimSeen(b, now, downs)
-                Entry(now, src)
+                e = Entry(now, src)
             }
             e.at = now
             b.seen[inst] = e
