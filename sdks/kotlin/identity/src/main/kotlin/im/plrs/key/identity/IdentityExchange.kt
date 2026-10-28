@@ -374,6 +374,12 @@ internal suspend fun IdentityClient.exchangeTokens(
     if (answer !is TokenAnswer.Token) throw PolarisException(ErrorCode.badResponse, "the exchange answered without a complete sign-in.")
     if (mayStore != null && !mayStore()) throw SignedOutDuringExchange()
     core.setToken(answer.accessToken, TokenSource.signin, personInitiated = personInitiated)
+    // A sign-out may have run between the check and the store (it bumps the generation, then reads the token):
+    // it would not have seen this one and its provenance write came last. Re-check and take the token back out.
+    if (mayStore != null && !mayStore()) {
+        core.clearAll()
+        throw SignedOutDuringExchange()
+    }
     if (core.setSubject(answer.subject)) onSubject(answer.subject)
     if (redirectAcquisitionSyncValue) onAcquired?.invoke()
     return ExchangeOutcome.SignedIn(answer.subject, answer.scope, answer.license?.get("id").stringValue, o["issued_token_type"].stringValue)

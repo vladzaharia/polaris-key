@@ -28,7 +28,7 @@ answers an `AutoSignInResult`. The rungs, in order:
 2. **Silent restore.** Planned; the ladder skips it.
 3. **Platform account, silently.** On Android the Google account the person already used with your app,
    through Credential Manager. The exchange runs over a fresh nonce from the Worker.
-4. **Platform sheet.** One Google account sheet, only when you pass `AutoSignInPrompt.OPTIONAL`.
+4. **Platform sheet.** One Google account sheet, listing the accounts already used with your app, only when you pass `AutoSignInPrompt.OPTIONAL`.
 
 Anything else is the regular sign-in form. A JVM desktop app has no platform account: the ladder is
 rung 1, then `NeedsSignIn`.
@@ -56,25 +56,40 @@ From Java, `PolarisKeyFutures.autoSignIn(options)` returns a `CompletableFuture`
 ### Android
 
 Install the provider once, before the first `autoSignIn()`. The `play` flavor carries Credential
-Manager; in the `direct` flavor every call answers unavailable and the ladder stops at rung 1.
+Manager. In the `direct` flavor the provider answers unavailable: the ladder still asks the Worker for a
+nonce at each of rungs 3 and 4, finds nothing, and ends at `NeedsSignIn(NoCredential)`, so install it
+in the `play` flavor only.
+
+`PolarisKeyAndroid.client` also gives the client its device keys (`androidDeviceKeyStore`, Keystore-wrapped,
+in `noBackupFilesDir`), which the platform exchange signs its proof with. Pass `ConnectOptions(deviceKeys = ...)`
+to use your own.
 
 ```kotlin android
 import android.app.Activity
+import android.content.Context
 import im.plrs.key.android.PlatformSignIn
 import im.plrs.key.android.asProvider
 import im.plrs.key.sdk.PolarisKeyClient
 
-fun installSignIn(client: PolarisKeyClient, currentActivity: () -> Activity?) {
-    client.identity.installPlatformIdentity(PlatformSignIn(currentActivity).asProvider())
+fun installSignIn(client: PolarisKeyClient, context: Context, currentActivity: () -> Activity?) {
+    client.identity.installPlatformIdentity(PlatformSignIn(currentActivity, appContext = context).asProvider())
 }
 ```
+
+`PlatformSignIn` needs `appContext` so sign-out can clear Credential Manager's state with no Activity in
+front.
+
+Rung 3 is silent only when the person has exactly one authorised Google account. With two or more,
+Credential Manager shows its account chooser, and it gives no signal to stop that, so the "silent" rung can
+show one sheet even under `AutoSignInPrompt.NEVER`. Do not install the provider if your app must never show one.
 
 The Google web client id comes from the product's discovery document. `asProvider(fallbackClientId)`
 takes a fallback for a product that publishes none.
 
 ### Signing out
 
-`identity.signOut()` sets a flag on the device and clears Credential Manager's state. While it is set,
+`identity.signOut()` sets a flag on the device and, on Android, clears Credential Manager's state (through
+the Activity in front, else the `appContext` you gave `PlatformSignIn`; without either, only the flag is set). While it is set,
 rungs 3 and 4 do not run: nothing signs the person back in behind their back. The next sign-in the person
 starts clears it. A provider that reports its credential revoked at launch signs the device out the
 same way.
