@@ -38,6 +38,14 @@ export {
 } from "./react/hooks.js";
 // sync.keyring (U-38.2): the key ring's lock state and the recovery-code actions.
 export { useSyncLock, useRecoveryCode } from "./react/useKeyring.js";
+// sync.settings (U-20.3): a setting's Cloud Sync state, and the machine's status, flush and offer.
+export {
+  useSetting,
+  useCloudSync,
+  type UseSetting,
+  type UseCloudSync,
+  type SignInOffer,
+} from "./react/useCloudSync.js";
 // connect.app (CC-09.2): Cloud Connect over the relay, the only path a page has.
 export {
   useCloudConnect,
@@ -273,8 +281,10 @@ export {
   type GateInput,
   type BlockedState,
   type ConfigSource,
+  type ChangeOrigin,
   type ConfigChange,
   type ConfigSetting,
+  type SettingSync,
   type ConfigStorage,
   type LocalConfig,
   type Store,

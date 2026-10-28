@@ -2,7 +2,11 @@
 // settings part with `Settings` from `@polaris-key/react/kit`.
 export { useManagedConfig, useConfigSetting } from "../react/hooks.js";
 export type { UseManagedConfig, UseConfigSetting } from "../react/hooks.js";
+export { useSetting } from "../react/useCloudSync.js";
+export type { UseSetting } from "../react/useCloudSync.js";
 export type {
+  ChangeOrigin,
+  SettingSync,
   ConfigChange,
   ConfigSetting,
   ConfigStorage,

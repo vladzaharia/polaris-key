@@ -35,6 +35,32 @@ export interface ConfigChange {
   value: JSONValue | undefined;
   previous: JSONValue | undefined;
   source: ConfigSource;
+  /** What caused the change: this device (`local`), a sync (`remote`, `merge`) or the one-time
+   *  import of the device-local values (`migration`). Never carries a value of its own. */
+  origin: ChangeOrigin;
+}
+
+/** Where a change came from (the machine's origin names, and `@polaris-key/node`'s). */
+export type ChangeOrigin = "local" | "remote" | "merge" | "migration";
+
+/** How a setting relates to Cloud Sync: `local` with Cloud Sync off, no principal or a `local`
+ *  key; `pending` while an edit waits to be sent; `synced` otherwise. */
+export type SettingSync = "local" | "pending" | "synced";
+
+type SyncCall = { ok: true } | { ok: false; error: string };
+
+/** What the Cloud Sync API gives the engine (U-20.3). While `active()` is true `set` and `clear`
+ *  go through the machine, which answers the refusals in its own order. */
+export interface ConfigSyncPort {
+  /** Cloud Sync is running and a principal is signed in. */
+  active(): boolean;
+  set(key: string, value: JSONValue): Promise<SyncCall>;
+  clear(key: string): Promise<SyncCall>;
+  /** The machine's effective value; `from: "document"` means the signed document decides. */
+  get(key: string): { value: JSONValue; from: string };
+  state(key: string): SettingSync;
+  /** The keys the machine can hold a value for (the declared settings and the open ones). */
+  keys(): string[];
 }
 
 /** A reactive handle on one key (`config.setting(key)`). */
@@ -46,6 +72,9 @@ export interface ConfigSetting<T = JSONValue> {
   locked(): boolean;
   set(value: T): Promise<void>;
   clear(): Promise<void>;
+  /** `local` with Cloud Sync off, no principal or a `local` key; `pending` while an edit waits to
+   *  be sent; `synced` otherwise. */
+  sync(): SettingSync;
   /** Subscribe to this key's changes; returns the unsubscribe function. */
   on(listener: (change: ConfigChange) => void): () => void;
 }
@@ -119,6 +148,11 @@ export class LocalConfigEngine implements LocalConfig {
   >();
   private last: PolarisState;
   private readonly off: () => void;
+  private syncPort: ConfigSyncPort | null = null;
+  /** The machine's values for the keys it holds, projected into the resolved config. */
+  private synced: Record<string, JSONValue> = {};
+  /** The origin of the change being applied right now (a diff outside one is a `remote`). */
+  private origin: ChangeOrigin = "remote";
 
   constructor(private readonly deps: LocalConfigDeps) {
     this.persisted = { ...deps.backend.read() };
@@ -127,9 +161,52 @@ export class LocalConfigEngine implements LocalConfig {
     this.off = deps.subscribe((s) => this.observe(s));
   }
 
-  /** The override map the adapter projects with: the host's, then the persisted values. */
+  /** The override map the adapter projects with: the host's, the persisted values, then the
+   *  machine's synced ones. */
   merged(): Record<string, JSONValue> {
-    return { ...this.deps.hostOverrides, ...this.persisted };
+    return { ...this.deps.hostOverrides, ...this.persisted, ...this.synced };
+  }
+
+  /** The legacy device-local values, for the one-time import into Cloud Sync. */
+  importable(): Record<string, JSONValue> {
+    return { ...this.persisted };
+  }
+
+  /** Cloud Sync's port (set once the host runs; null drops the synced values). */
+  useSync(port: ConfigSyncPort | null): void {
+    this.syncPort = port;
+    this.noteSyncChange(null, "remote");
+  }
+
+  /** The machine changed these keys (or, with null, may have changed any): re-read them and report
+   *  each resolved value that moved, with `origin`. */
+  noteSyncChange(keys: readonly string[] | null, origin: ChangeOrigin): void {
+    const port = this.syncPort;
+    const next: Record<string, JSONValue> = {};
+    if (port?.active()) {
+      const all = new Set([
+        ...(keys ?? []),
+        ...Object.keys(this.synced),
+        ...port.keys(),
+      ]);
+      for (const key of all) {
+        const e = port.get(key);
+        if (e.from !== "document" && e.value !== null) next[key] = e.value;
+      }
+    }
+    if (JSON.stringify(next) === JSON.stringify(this.synced)) return;
+    this.synced = next;
+    this.apply(origin);
+  }
+
+  private apply(origin: ChangeOrigin): void {
+    const was = this.origin;
+    this.origin = origin;
+    try {
+      this.deps.applyOverrides(this.merged());
+    } finally {
+      this.origin = was;
+    }
   }
 
   /** Take the persisted layer from the backend's owner (the desktop host's reported values).
@@ -156,6 +233,8 @@ export class LocalConfigEngine implements LocalConfig {
   }
 
   async set(key: string, value: JSONValue): Promise<void> {
+    if (this.syncPort?.active())
+      return this.viaMachine(await this.syncPort.set(key, value), key);
     if (this.isLocked(key))
       throw new PolarisError(
         ErrorCode.managedByAdmin,
@@ -181,7 +260,25 @@ export class LocalConfigEngine implements LocalConfig {
   }
 
   async clear(key: string): Promise<void> {
+    if (this.syncPort?.active())
+      return this.viaMachine(await this.syncPort.clear(key), key);
     await this.write(key, undefined);
+  }
+
+  private viaMachine(r: SyncCall, key: string): void {
+    // The machine has queued the edit: report it now, from this device.
+    if (r.ok) return this.noteSyncChange([key], "local");
+    throw new PolarisError(
+      r.error === "managed_by_admin"
+        ? ErrorCode.managedByAdmin
+        : ErrorCode.badRequest,
+      r.error === "managed_by_admin"
+        ? `${key} is managed by an administrator.`
+        : `${key}: the value is not accepted.`,
+      r.error === "managed_by_admin"
+        ? ErrorCode.managedByAdmin
+        : ErrorCode.badRequest,
+    );
   }
 
   async clearAll(): Promise<void> {
@@ -200,6 +297,8 @@ export class LocalConfigEngine implements LocalConfig {
       locked: () => this.isLocked(key),
       set: (value: T) => this.set(key, value as unknown as JSONValue),
       clear: () => this.clear(key),
+      sync: () =>
+        this.syncPort?.active() ? this.syncPort.state(key) : "local",
       on: (listener) => this.onConfigChange(key, listener),
     };
   }
@@ -229,7 +328,7 @@ export class LocalConfigEngine implements LocalConfig {
     // The backend first: a refused write (a v3 bridge, a host-side refusal) changes nothing.
     await this.deps.backend.write(next, { key, value });
     this.persisted = next;
-    this.deps.applyOverrides(this.merged());
+    this.apply("local");
   }
 
   /** Emit one change per key whose resolved value moved since the last state. */
@@ -249,6 +348,7 @@ export class LocalConfigEngine implements LocalConfig {
         value: after,
         previous: before,
         source: configSource(s, key),
+        origin: this.origin,
       });
     }
   }
