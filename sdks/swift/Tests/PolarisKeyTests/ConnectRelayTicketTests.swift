@@ -157,6 +157,15 @@ final class ConnectRelayTicketTests: XCTestCase {
         }
     }
 
+    func testATicketWithATrailingNewlineIsRefused() async throws {
+        let c = try await client()
+        // `\\n` in the JSON body decodes to a real newline after a valid ticket.
+        await server.reply("/djdl/connect/relay/ticket", body: grantBody(t: ticket + "\\n"))
+        let r = await c.connect.relayTicket()
+        guard case .relay(let e) = r else { return XCTFail("\(r)") }
+        XCTAssertEqual(e.reason, .ticketInvalid)
+    }
+
     func testTheRefusalsAreTyped() async throws {
         let c = try await client()
         func ask(_ status: Int, _ body: String, headers: [String: String] = [:]) async -> ConnectRelayTicketResult {
