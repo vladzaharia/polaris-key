@@ -328,7 +328,6 @@ final class KitRenderTests: XCTestCase {
 
         var issues: [String] = Self.textOutsideItsButton(app)
         // The audit's frames are in the app's coordinates, the upright render's.
-        let pixels = upright.cgImage
         let scale = upright.scale
         let window = app.windows.firstMatch.frame
         try app.performAccessibilityAudit(for: .all) { issue in
@@ -353,9 +352,13 @@ final class KitRenderTests: XCTestCase {
                 )
                 return true
             }
+            // The audit scrolls a long screen to reach an element, so its frames are those of
+            // the layout it left behind, not of the render taken before it: measure a screenshot
+            // taken now.
             if issue.compactDescription.contains("Contrast"), let element = issue.element,
-                let pixels,
-                let ratio = Self.measuredContrast(pixels, in: element.frame, scale: scale)
+                let now = (orientation == .portrait
+                    ? XCUIScreen.main.screenshot().image : Self.upright(XCUIScreen.main.screenshot().image)).cgImage,
+                let ratio = Self.measuredContrast(now, in: element.frame, scale: scale)
             {
                 // A label is text at body size, so 4.5:1 whatever element carries it; only a
                 // glyph on its own may stop at 3:1.

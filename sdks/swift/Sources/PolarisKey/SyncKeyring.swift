@@ -269,7 +269,7 @@ public actor SyncKeyring: CustomReflectable {
     private static let pinRecord = "sync-ring-pin"
 
     private let core: CoreContext
-    private let options: SyncKeyringOptions
+    nonisolated let options: SyncKeyringOptions
     private nonisolated let memory = RingMemory()
     private var madeKeys: (any DeviceKeyPort)?
     private var madeRoots: RingRootStore?
@@ -801,7 +801,8 @@ extension PolarisKeyClient {
         attachments.with { table in
             let key = ObjectIdentifier(KeyringAttachment.self)
             if let k = table[key] as? SyncKeyring { return k }
-            let k = SyncKeyring(core: core)
+            // The client's Keychain access group, so a host sharing one stores the root in it.
+            let k = SyncKeyring(core: core, options: SyncKeyringOptions(accessGroup: core.keychainAccessGroup))
             table[key] = k
             return k
         }

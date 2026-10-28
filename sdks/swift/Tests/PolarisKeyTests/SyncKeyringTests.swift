@@ -124,6 +124,18 @@ final class SyncKeyringTests: XCTestCase {
         return Device(keyring: keyring, core: core, roots: roots, store: store, keys: keys, name: name)
     }
 
+    func testDefaultKeyringUsesTheClientKeychainAccessGroup() throws {
+        func ring(_ group: String?) throws -> SyncKeyring {
+            let core = try CoreContext(
+                options: CoreOptions(
+                    productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0", pinnedKeys: [:],
+                    trustRefresh: false, store: InMemoryStore(productSlug: "djdl", deviceId: "dev_x"), keychainAccessGroup: group))
+            return PolarisKeyClient.keyring(core: core, attachments: LockedValue([:]))
+        }
+        XCTAssertEqual(try ring("TEAM.group.shared").options.accessGroup, "TEAM.group.shared")
+        XCTAssertNil(try ring(nil).options.accessGroup)
+    }
+
     private func code(_ e: Error) -> String? { (e as? PolarisError)?.code }
 
     func testCreateHoldsTheRootPinsAndKeepsItInTheKeychain() async throws {
