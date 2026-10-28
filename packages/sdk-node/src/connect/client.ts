@@ -144,9 +144,11 @@ export interface ConnectDeps {
   applyTrust?: (jws: string) => Promise<TrustApplication>;
 }
 
-const refuse = (reason: string): PolarisError =>
+/** A refusal of the identity answer: `peer-cert-invalid` when a certificate or roster failed
+ *  verification, `bad_response` when the answer is not in the contract shape. */
+const refuse = (reason: string, cert = true): PolarisError =>
   new PolarisError(
-    ErrorCode.badResponse,
+    cert ? ErrorCode.peerCertInvalid : ErrorCode.badResponse,
     `The Cloud Connect identity was refused: ${reason}.`,
   );
 
@@ -203,7 +205,7 @@ export class ConnectClient {
    * The held identity, fetching it first when none is held, when it is nearing its end (the
    * certificate has less than `PEER_CERT_RENEW_SECONDS` left, or the roster expired), when this
    * device's keys changed, or when `refresh` is set. Makes and registers the device keys on first
-   * need. Throws `PolarisError`: `service-unavailable` (Connect off here), `invalid-options` (a
+   * need. Throws `PolarisError`: `connect-unavailable` (Connect off here), `invalid-options` (a
    * memory-only key store the host did not allow), `no-token`, the Worker's own refusals
    * (`account_required`, `device_keys_required`, `ring_too_large`, …) and `bad_response` for an
    * answer that fails verification.
@@ -238,14 +240,14 @@ export class ConnectClient {
       const body = await readJson<unknown>(res, "connect devices");
       const list = isRecord(body) ? body.devices : null;
       if (!Array.isArray(list) || list.length > MAX_RING_DEVICES)
-        throw refuse("the device list is not in the contract shape");
+        throw refuse("the device list is not in the contract shape", false);
       return list.map((d): ConnectDevice => {
         if (
           !isRecord(d) ||
           typeof d.deviceId !== "string" ||
           typeof d.self !== "boolean"
         )
-          throw refuse("a device entry is not in the contract shape");
+          throw refuse("a device entry is not in the contract shape", false);
         return {
           deviceId: d.deviceId,
           label: typeof d.label === "string" ? d.label : null,
@@ -266,7 +268,9 @@ export class ConnectClient {
   discoveryKeys(): Promise<DiscoveryKeys | null> {
     return this.#serial(async () => {
       const held = await this.#load();
-      if (held === null) return null;
+      // After a pushed roster removed a device the Worker replaced K_disc; this copy is not used
+      // (not for adverts, not for browsing) until an identity fetch brings the new one.
+      if (held === null || held.keysStale === true) return null;
       const now = this.ctx.now();
       const prev =
         held.discKeys.length === 2 &&
@@ -371,7 +375,6 @@ export class ConnectClient {
       const wire = c.wireCode ?? c.code;
       const retry = {
         status: c.status,
-        wireCode: wire,
         ...(c.retryAfterSeconds !== undefined
           ? { retryAfterSeconds: c.retryAfterSeconds }
           : {}),
@@ -475,8 +478,14 @@ export class ConnectClient {
         prior !== null
           ? keysAfterRing(held.discKeys, prior, ring)
           : held.discKeys;
+      const removed =
+        prior !== null &&
+        !prior.devices.every((d) => ring.devices.some((n) => sameDevice(n, d)));
       const rec: ConnectStateRecord = {
         ...held,
+        ...(removed || held.keysStale === true
+          ? { keysStale: true as const }
+          : {}),
         ring: jws,
         epoch: ring.epoch,
         discKeys: keys,
@@ -697,7 +706,7 @@ export class ConnectClient {
           reason: "product",
           detail: d,
         },
-        ErrorCode.serviceUnavailable,
+        ErrorCode.connectUnavailable,
       );
     if (!isRecord(f) || f.enabled !== true)
       throw detail("this product has Cloud Connect off");
@@ -855,7 +864,7 @@ function parseAnswer(body: unknown): {
     !body.discKeys.every(validDiscKey) ||
     (body.discKeys.length === 2 && body.discKeys[0] === body.discKeys[1])
   )
-    throw refuse("the answer is not in the contract shape");
+    throw refuse("the answer is not in the contract shape", false);
   return {
     ring: body.ring,
     certificate: body.certificate,

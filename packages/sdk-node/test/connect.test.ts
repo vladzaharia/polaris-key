@@ -228,7 +228,7 @@ async function setup(
 
 const badRefresh = (c: PolarisKeyClient): Promise<void> =>
   expect(c.connect.identity({ refresh: true })).rejects.toMatchObject({
-    code: "bad_response",
+    code: "peer-cert-invalid",
   });
 
 beforeEach(() => {
@@ -342,7 +342,7 @@ describe("client.connect.identity", () => {
     const s = await setup();
     s.worker.connectOn = false;
     await expect(s.client.connect.identity()).rejects.toMatchObject({
-      code: "service-unavailable",
+      code: "connect-unavailable",
     });
     expect(s.worker.reqs.some((r) => r.includes("connect/identity"))).toBe(
       false,
@@ -379,7 +379,7 @@ describe("verification and replacement", () => {
       const s = await setup();
       mutate(s.worker);
       await expect(s.client.connect.identity()).rejects.toMatchObject({
-        code: "bad_response",
+        code: "peer-cert-invalid",
       });
       expect(existsSync(s.file), name).toBe(false);
       expect(await s.client.connect.current()).toBeNull();
@@ -389,7 +389,7 @@ describe("verification and replacement", () => {
   it("refuses a document signed by a key that is not pinned", async () => {
     const s = await setup({ pinned: { other: "A".repeat(43) } });
     await expect(s.client.connect.identity()).rejects.toMatchObject({
-      code: "bad_response",
+      code: "peer-cert-invalid",
     });
     expect(existsSync(s.file)).toBe(false);
   });

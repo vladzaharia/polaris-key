@@ -19,6 +19,9 @@
 //    and the backoff; a replaced socket (4009) does not fight back.
 
 import { randomBytes } from "node:crypto";
+import { PolarisError } from "@polaris-key/client-core";
+import { ErrorCode } from "../constants.generated.js";
+import { printAs } from "../core/redact.js";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import {
   PeerChannel,
@@ -31,9 +34,8 @@ import {
 } from "@polaris-key/client-core/peer";
 import {
   PeerDocs,
+  channelBase,
   defaultTimer,
-  peerAccount,
-  peerPorts,
   type ConnectNotice,
 } from "./channel.js";
 import type { LanIdentity, LanSource } from "./lan.js";
@@ -78,13 +80,28 @@ export type RelayErrorReason =
   | "mode_not_allowed"
   | "stopped";
 
-export class RelayError extends Error {
-  readonly retryAfterSeconds: number | undefined;
+/** The registered code of each reason: the Worker's own for the four it answers with. */
+const RELAY_CODE: Record<RelayErrorReason, string> = {
+  disabled: ErrorCode.relayDisabled,
+  paused: ErrorCode.relayPaused,
+  quota: ErrorCode.relayQuotaExceeded,
+  ticket_invalid: ErrorCode.relayTicketInvalid,
+  rate_limited: ErrorCode.rateLimited,
+  busy: ErrorCode.rateLimited,
+  unavailable: ErrorCode.networkError,
+  not_connected: ErrorCode.connectUnavailable,
+  not_member: ErrorCode.peerCertInvalid,
+  handshake_failed: ErrorCode.peerCertInvalid,
+  wrong_peer: ErrorCode.peerCertInvalid,
+  unknown_peer: ErrorCode.invalidArgument,
+  mode_not_allowed: ErrorCode.invalidArgument,
+  replaced: ErrorCode.cancelled,
+  stopped: ErrorCode.cancelled,
+};
+
+export class RelayError extends PolarisError {
   readonly scope: "person" | "product" | undefined;
   readonly closeCode: SessionCloseCode | number | undefined;
-  /** For a refusal at the ticket route: the HTTP status and the Worker's code. */
-  readonly status: number | undefined;
-  readonly wireCode: string | undefined;
   constructor(
     readonly reason: RelayErrorReason,
     message: string,
@@ -93,17 +110,20 @@ export class RelayError extends Error {
       retryAfterSeconds?: number;
       scope?: "person" | "product";
       closeCode?: SessionCloseCode | number;
+      /** For a refusal at the ticket route: the HTTP status. */
       status?: number;
-      wireCode?: string;
     },
   ) {
-    super(message, { cause: options?.cause });
+    super(RELAY_CODE[reason], message, {
+      ...(options?.cause !== undefined ? { cause: options.cause } : {}),
+      ...(options?.retryAfterSeconds !== undefined
+        ? { retryAfterSeconds: options.retryAfterSeconds }
+        : {}),
+      ...(options?.status !== undefined ? { status: options.status } : {}),
+    });
     this.name = "RelayError";
-    this.retryAfterSeconds = options?.retryAfterSeconds;
     this.scope = options?.scope;
     this.closeCode = options?.closeCode;
-    this.status = options?.status;
-    this.wireCode = options?.wireCode;
   }
 }
 
@@ -145,6 +165,10 @@ export interface RelayOptions {
   /** Reconnect backoff: base 1 s, doubling to 60 s, with jitter. */
   backoffBaseMs?: number;
   backoffMaxMs?: number;
+  /** The least a reconnect waits (default 500 ms). */
+  backoffMinMs?: number;
+  /** How long a socket must stay open before the backoff resets (default 30 s). */
+  stableMs?: number;
   /** Keep-alive ping (default 25 s). */
   pingMs?: number;
   /** Wait for the socket to open (default 15 s). */
@@ -174,6 +198,7 @@ export interface RelayStatus {
 }
 
 const HANDSHAKE_MS = 30_000;
+const MAX_RETRY_AFTER_S = 3600;
 const ENDED_MEMORY = 256;
 const MAX_SESSION_ID = 0xffffffff;
 const hex = (b: Uint8Array): string =>
@@ -202,7 +227,7 @@ class RelayLink {
     channel: Omit<PeerSessionOptions, "send" | "onEvent" | "mode" | "role">,
     private readonly out: (noise: Uint8Array) => void,
     private readonly cb: {
-      onRing(jws: string): void;
+      onRing(jws: string, epoch: number): void;
       onTrust(jws: string): void;
       onRingWanted(): void;
       onEstablished(s: ConnectSession): void;
@@ -210,6 +235,7 @@ class RelayLink {
     },
     handshakeMs: number,
   ) {
+    printAs(this, () => ({ link: "RelayLink", session: sessionId }));
     this.opened = new Promise((resolve, reject) => {
       this.#settle = { resolve, reject };
     });
@@ -263,7 +289,7 @@ class RelayLink {
         routeRecord(this, this.#session, e.recordType, e.body);
         break;
       case "ring":
-        this.cb.onRing(e.jws);
+        this.cb.onRing(e.jws, e.epoch);
         break;
       case "trust-unverified":
         this.cb.onTrust(e.jws);
@@ -323,7 +349,6 @@ export class RelayService {
   #chain: Promise<unknown> = Promise.resolve();
   #docs: PeerDocs;
   #id: { at: number; v: LanIdentity } | null = null;
-  #ring: { jws: string; epoch: number } | null = null;
 
   constructor(
     private readonly src: RelaySource,
@@ -333,6 +358,7 @@ export class RelayService {
     this.#docs = new PeerDocs(src, () => {
       this.#id = null;
     });
+    printAs(this, () => ({ service: "RelayService", state: this.#state }));
   }
 
   /** Begin connecting. Resolves when the first attempt has been started; use `ready()` to wait. */
@@ -459,6 +485,7 @@ export class RelayService {
   async stop(): Promise<void> {
     if (this.#stopped) return;
     this.#stopped = true;
+    this.#docs.close();
     this.#cancel?.();
     this.#pingCancel?.();
     this.#wake?.();
@@ -509,7 +536,10 @@ export class RelayService {
       if (stop !== null) return this.#block(stop);
       this.#attempts++;
       this.#set("backoff");
-      await this.#sleep(Math.max(this.#backoff(), waitS * 1000));
+      // Retry-After is the server's hint, capped so a bad value cannot stall or spin the loop.
+      await this.#sleep(
+        Math.max(this.#backoff(), Math.min(waitS, MAX_RETRY_AFTER_S) * 1000),
+      );
     }
   }
 
@@ -527,7 +557,6 @@ export class RelayService {
     if (code === 4003) {
       // The roster this device holds is out of date: fetch it, and stop if it keeps happening.
       this.#docs.wantRing();
-      this.#id = null;
       if (++this.#notMember >= 3)
         return new RelayError(
           "not_member",
@@ -571,6 +600,7 @@ export class RelayService {
       ws.binaryType = "arraybuffer";
       this.#ws = ws;
       let done = false;
+      let openedAt = 0;
       const cancelOpen = (this.#o.timer ?? defaultTimer)(() => {
         try {
           ws.close(1000);
@@ -585,6 +615,8 @@ export class RelayService {
         cancelOpen();
         this.#pingCancel?.();
         const was = this.#open;
+        if (was && performance.now() - openedAt >= (this.#o.stableMs ?? 30_000))
+          this.#attempts = 0;
         this.#open = false;
         if (this.#ws === ws) this.#ws = null;
         this.#members.clear();
@@ -596,7 +628,10 @@ export class RelayService {
         if (this.#stopped) return;
         cancelOpen();
         this.#open = true;
-        this.#attempts = 0;
+        // A socket that is accepted and then dropped must not reset the backoff: only a stable
+        // one does (see `finish`).
+        openedAt = performance.now();
+        this.#lastLimit = null;
         this.#error = null;
         this.#set("open");
         for (const w of this.#waiters.splice(0)) w.resolve();
@@ -663,10 +698,7 @@ export class RelayService {
         // The roster changed. Fetch the newer one under the normal replacement rules; the
         // epoch is only a hint of whether it is newer than the one held.
         const id = await this.#identity(false).catch(() => null);
-        if (id === null || m.epoch > id.ringEpoch) {
-          this.#id = null;
-          this.#docs.wantRing();
-        }
+        if (id === null || m.epoch > id.ringEpoch) this.#docs.wantRing();
         return;
       }
       case "gone": {
@@ -737,37 +769,21 @@ export class RelayService {
   ): RelayLink | null {
     if (this.#links.size >= (this.#o.maxSessions ?? 64)) return null;
     const key = `${hex(peer)}:${sessionId}`;
-    const handle = new Uint8Array(32);
     const link: RelayLink = new RelayLink(
       peer,
       sessionId,
       key,
       role,
-      {
-        slug: id.slug,
-        staticKey: handle,
-        account: peerAccount(id, () => this.#ring),
-        caps: this.#o.caps ?? ["app/1"],
-        hello: {
-          label: this.#o.label,
-          platform: process.platform,
-          app: id.slug,
-        },
-        ports: peerPorts(id, handle),
-        now: () => this.src.now(),
-        timer: this.#o.timer,
-        rekeyMessages: this.#o.rekeyMessages,
-        rekeySeconds: this.#o.rekeySeconds,
-      },
+      channelBase(
+        id,
+        this.#o,
+        () => this.src.now(),
+        () => this.#docs.pushed,
+      ),
       (noise) =>
         this.#sendEnv({ op: "send", to: peer, session: sessionId, noise }),
       {
-        onRing: (jws) => this.#docs.ring(jws),
-        onTrust: (jws) => this.#docs.trust(jws),
-        onRingWanted: () => {
-          this.#id = null;
-          this.#docs.wantRing();
-        },
+        ...this.#docs.hooks,
         onEstablished: (s) => {
           if (role === "responder") for (const f of [...this.#onSession]) f(s);
         },
@@ -807,6 +823,8 @@ export class RelayService {
       return this.#id.v;
     const v = await this.src.load();
     this.#id = { at: now, v };
+    if (this.#docs.pushed !== null && this.#docs.pushed.epoch <= v.ringEpoch)
+      this.#docs.pushed = null;
     return v;
   }
 
@@ -816,8 +834,11 @@ export class RelayService {
     const base = this.#o.backoffBaseMs ?? 1000;
     const max = this.#o.backoffMaxMs ?? 60_000;
     const cap = Math.min(max, base * 2 ** Math.min(this.#attempts - 1, 16));
-    // Equal jitter: half fixed, half random.
-    return Math.floor(cap / 2 + ((this.#o.random ?? Math.random)() * cap) / 2);
+    // Equal jitter: half fixed, half random, never under the floor.
+    const jittered = Math.floor(
+      cap / 2 + ((this.#o.random ?? Math.random)() * cap) / 2,
+    );
+    return Math.max(this.#o.backoffMinMs ?? 500, jittered);
   }
 
   #sleep(ms: number): Promise<void> {

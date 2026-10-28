@@ -9,9 +9,13 @@ import {
   encodeRelay,
   type RelayMessage,
 } from "@polaris-key/client-core/peer";
+import { rmSync } from "node:fs";
+import { afterEach, beforeEach, vi } from "vitest";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
+import type { PolarisKeyClient } from "../src/client.js";
+import { RelayService } from "../src/connect/relay.js";
 import type { RelaySocket } from "../src/connect/relay.js";
-import type { MultiWorker } from "./lanFixtures.js";
+import { MultiWorker, T0, makeClient } from "./lanFixtures.js";
 
 export class FakeSock implements RelaySocket {
   binaryType = "blob";
@@ -174,4 +178,57 @@ export class ManualTimer {
     p.fn();
     return true;
   }
+}
+
+/**
+ * The shared setup of the relay tests: Date frozen at T0, a worker with two registered devices
+ * and a room, and everything started is stopped afterwards.
+ */
+export function relayHarness() {
+  const dirs: string[] = [];
+  const clients: PolarisKeyClient[] = [];
+  const services: RelayService[] = [];
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(T0 * 1000);
+  });
+  afterEach(async () => {
+    await Promise.all(services.splice(0).map((s) => s.stop()));
+    await Promise.all(clients.map((c) => c.cloudConnect.stop()));
+    for (const c of clients.splice(0)) c.close();
+    vi.useRealTimers();
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  });
+  return {
+    dirs,
+    clients,
+    async world(trustRefresh = false) {
+      const worker = new MultiWorker();
+      const room = new FakeRoom(worker);
+      const a = await makeClient(worker, "1", dirs, { trustRefresh });
+      const b = await makeClient(worker, "2", dirs, { trustRefresh });
+      clients.push(a, b);
+      await a.connect.identity();
+      await b.connect.identity();
+      await a.connect.identity({ refresh: true });
+      return { worker, room, a, b };
+    },
+    /** A bare relay service for `a`, driven by a manual timer. */
+    svc(
+      a: PolarisKeyClient,
+      room: FakeRoom,
+      t: ManualTimer,
+      extra: object = {},
+    ) {
+      const r = new RelayService(a.connect.relaySource(), {
+        webSocket: room.webSocket,
+        timer: t.timer,
+        random: () => 0.5,
+        ...extra,
+      });
+      services.push(r);
+      r.start();
+      return r;
+    },
+  };
 }

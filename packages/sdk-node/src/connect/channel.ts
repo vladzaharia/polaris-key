@@ -16,7 +16,8 @@ import {
   type AccountContext,
   type NoisePorts,
 } from "@polaris-key/client-core/peer";
-import type { LanIdentity, LanSource } from "./lan.js";
+import type { PeerSessionOptions } from "@polaris-key/client-core/peer";
+import type { LanIdentity, LanOptions, LanSource } from "./lan.js";
 
 /** A pushed document's outcome, for the host to log or show. */
 export type ConnectNotice =
@@ -63,32 +64,60 @@ export function peerPorts(id: LanIdentity, handle: Uint8Array): NoisePorts {
 }
 
 const REFRESH_GAP_S = 60;
+/** Pushed documents handled at once; the rest are refused as `busy`. */
+const MAX_DOCS_QUEUED = 8;
+const MAX_RETRIES = 5;
 
 export class PeerDocs {
   #tail: Promise<unknown> = Promise.resolve();
+  #queued = new Set<string>();
   #lastRefresh = -Infinity;
+  #retry: NodeJS.Timeout | null = null;
+  #tries = 0;
   #fns = new Set<(n: ConnectNotice) => void>();
+  readonly #src: LanSource;
+  readonly #onStored: () => void;
 
-  constructor(
-    private readonly src: LanSource,
-    private readonly onStored: () => void,
-  ) {}
+  constructor(src: LanSource, onStored: () => void) {
+    this.#src = src;
+    this.#onStored = onStored;
+  }
 
   onNotice(fn: (n: ConnectNotice) => void): () => void {
     this.#fns.add(fn);
     return () => this.#fns.delete(fn);
   }
 
+  /** Stop a pending retry. */
+  close(): void {
+    if (this.#retry !== null) clearTimeout(this.#retry);
+    this.#retry = null;
+  }
+
+  /** The newest roster a session handed up, held until an identity load catches up to it. */
+  pushed: { jws: string; epoch: number } | null = null;
+
+  /** What a link reports; spread into its options. */
+  readonly hooks = {
+    onRing: (jws: string, epoch: number): void => {
+      if (this.pushed === null || epoch > this.pushed.epoch)
+        this.pushed = { jws, epoch };
+      this.ring(jws);
+    },
+    onTrust: (jws: string): void => this.trust(jws),
+    onRingWanted: (): void => void this.wantRing(),
+  };
+
   /** A roster a peer pushed (already verified once by the session). */
   ring(jws: string): void {
-    this.#run(async () => {
-      if (this.src.adoptRing === undefined)
+    this.#run("ring", jws, async () => {
+      if (this.#src.adoptRing === undefined)
         return this.#emit({
           type: "ring",
           outcome: "refused",
           reason: "unsupported",
         });
-      const r = await this.src.adoptRing(jws);
+      const r = await this.#src.adoptRing(jws);
       if (!r.stored)
         return this.#emit({
           type: "ring",
@@ -96,22 +125,23 @@ export class PeerDocs {
           reason: r.reason,
         });
       this.#emit({ type: "ring", outcome: "stored", epoch: r.epoch });
-      this.onStored();
-      // The certificate and K_disc that go with the new roster come from the Worker.
-      this.wantRing();
+      this.#onStored();
+      // The certificate and K_disc that go with the new roster come from the Worker. If the
+      // minute's slot is taken, or the fetch fails, it is tried again.
+      this.#want(true);
     });
   }
 
   /** A trust manifest a peer pushed (not verified by the session). */
   trust(jws: string): void {
-    this.#run(async () => {
-      if (this.src.applyTrust === undefined)
+    this.#run("trust", jws, async () => {
+      if (this.#src.applyTrust === undefined)
         return this.#emit({
           type: "trust",
           outcome: "refused",
           reason: "unsupported",
         });
-      const r = await this.src.applyTrust(jws);
+      const r = await this.#src.applyTrust(jws);
       this.#emit(
         r.applied
           ? { type: "trust", outcome: "applied" }
@@ -123,27 +153,58 @@ export class PeerDocs {
   /**
    * A peer is on a newer roster, or the relay said the roster changed: fetch it (a fresh
    * `identity({refresh: true})`, verified under the normal replacement rules). At most one a
-   * minute.
+   * minute. True when a fetch started.
    */
-  wantRing(): void {
-    const t = this.src.now();
-    if (this.src.refresh === undefined || t - this.#lastRefresh < REFRESH_GAP_S)
-      return;
-    this.#lastRefresh = t;
-    this.src
-      .refresh()
-      .then(this.onStored, () => undefined)
-      .catch(() => undefined);
+  wantRing(): boolean {
+    return this.#want(false);
   }
 
-  #run(f: () => Promise<void>): void {
-    this.#tail = this.#tail.then(f).catch((e: unknown) => {
-      this.#emit({
-        type: "ring",
-        outcome: "refused",
-        reason: e instanceof Error ? e.message : "failed",
-      });
-    });
+  #want(retry: boolean): boolean {
+    const t = this.#src.now();
+    if (this.#src.refresh === undefined) return false;
+    if (t - this.#lastRefresh < REFRESH_GAP_S) {
+      if (retry) this.#defer(this.#lastRefresh + REFRESH_GAP_S - t);
+      return false;
+    }
+    this.#lastRefresh = t;
+    this.#src
+      .refresh()
+      .then(
+        () => {
+          this.#tries = 0;
+          this.#onStored();
+        },
+        () => {
+          if (retry && ++this.#tries <= MAX_RETRIES) this.#defer(REFRESH_GAP_S);
+        },
+      )
+      .catch(() => undefined);
+    return true;
+  }
+
+  #defer(seconds: number): void {
+    if (this.#retry !== null) return;
+    this.#retry = setTimeout(
+      () => {
+        this.#retry = null;
+        this.#want(true);
+      },
+      Math.max(1, seconds) * 1000,
+    );
+    this.#retry.unref();
+  }
+
+  /** One at a time, at most `MAX_DOCS_QUEUED` waiting, and a document already waiting is not
+   *  queued twice: the excess is refused visibly, not worked on. */
+  #run(type: "ring" | "trust", jws: string, f: () => Promise<void>): void {
+    const key = `${type}:${jws}`;
+    if (this.#queued.has(key) || this.#queued.size >= MAX_DOCS_QUEUED)
+      return this.#emit({ type, outcome: "refused", reason: "busy" });
+    this.#queued.add(key);
+    this.#tail = this.#tail
+      .then(f)
+      .catch(() => this.#emit({ type, outcome: "refused", reason: "failed" }))
+      .finally(() => this.#queued.delete(key));
   }
 
   #emit(n: ConnectNotice): void {
@@ -187,4 +248,29 @@ export function keysAfterRing(
     ),
   );
   return intact ? keys : [keys[0]!];
+}
+
+/** What a transport tells every `PeerChannel` it builds (the same for LAN and relay). */
+export function channelBase(
+  id: LanIdentity,
+  o: Pick<
+    LanOptions,
+    "caps" | "label" | "timer" | "rekeyMessages" | "rekeySeconds"
+  >,
+  now: () => number,
+  ring: () => { jws: string; epoch: number } | null,
+): Omit<PeerSessionOptions, "send" | "onEvent" | "mode" | "role"> {
+  const handle = new Uint8Array(32);
+  return {
+    slug: id.slug,
+    staticKey: handle,
+    account: peerAccount(id, ring),
+    caps: o.caps ?? ["app/1"],
+    hello: { label: o.label, platform: process.platform, app: id.slug },
+    ports: peerPorts(id, handle),
+    now,
+    timer: o.timer,
+    rekeyMessages: o.rekeyMessages,
+    rekeySeconds: o.rekeySeconds,
+  };
 }
