@@ -125,8 +125,11 @@ export function decodeRelay(
         rest.slice(1 + i * 24, 25 + i * 24),
       ),
     };
-  if (op === 0x83 && rest.length === 8)
-    return { op: "ring", epoch: Number(view.getBigUint64(0)) };
+  if (op === 0x83 && rest.length === 8) {
+    const epoch = view.getBigUint64(0);
+    if (epoch > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+    return { op: "ring", epoch: Number(epoch) };
+  }
   if (op === 0x84 && rest.length === 8) return { op: "pong", data: rest };
   if (op === 0x85 && rest.length === 24) return { op: "gone", device: rest };
   if (op === 0x86 && rest.length === 1 && rest[0]! >= 1 && rest[0]! <= 4)

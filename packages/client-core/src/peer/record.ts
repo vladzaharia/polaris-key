@@ -5,6 +5,10 @@ export const MAX_PEER_MESSAGE_BYTES = 1_048_576;
 /** A Noise message is at most 65,535 bytes; 16 are the tag and 3 the record header. */
 export const MAX_RECORD_BODY = 65535 - 16 - 3;
 
+/** Records in one MORE chain: a full 1 MiB message in the smallest records, plus one. */
+export const MAX_CHAIN_RECORDS =
+  Math.ceil(MAX_PEER_MESSAGE_BYTES / MAX_RECORD_BODY) + 1;
+
 export type RecordMode = "a" | "v" | "p" | "c";
 export type PeerCloseCode =
   | "peer_revoked"
@@ -13,6 +17,7 @@ export type PeerCloseCode =
   | "peer_unknown_critical"
   | "peer_not_allowed"
   | "peer_busy"
+  | "peer_timeout"
   | "peer_bye";
 
 export const RECORD = {
@@ -147,9 +152,13 @@ export class RecordAssembler {
       return { kind: "ignored" };
     }
     if (!row.modes.includes(this.mode)) return bad("peer_not_allowed");
+    // The corpus (`more-empty-parts`) accepts an empty MORE record, so the chain's record count
+    // is what bounds the work.
     const size = (this.open?.size ?? 0) + r.body.length;
     if (size > MAX_PEER_MESSAGE_BYTES) return bad("peer_bad_frame");
-    const parts = [...(this.open?.parts ?? []), r.body];
+    const parts = this.open?.parts ?? [];
+    if (parts.length >= MAX_CHAIN_RECORDS) return bad("peer_bad_frame");
+    parts.push(r.body);
     if (more) {
       this.open = { type: r.type, parts, size };
       return { kind: "pending" };

@@ -86,6 +86,9 @@ function side(
     send: (n) => out.push(n),
     onEvent: (e) => events.push(e),
     now: () => NOW,
+    ...(mode !== "a" && role === "responder"
+      ? { admission: new HandshakeLimiter() }
+      : {}),
     ...extra,
   });
   return { s, events, out };
@@ -117,24 +120,102 @@ describe("PeerSession modes v and p", () => {
         { type: "established" }
       >;
       expect(est.caps).toEqual(["app/1", "ring/1"]);
-      const type = mode === "v" ? RECORD.VOUCH_RESULT : RECORD.CONFIRM;
-      await d.s.sendRecord(type, utf8("{}"));
+      // Nothing flows until the person confirms; an inbound record is held, not refused.
+      await expect(d.s.sendRecord(RECORD.VOUCH_RESULT, NONE)).rejects.toThrow();
+      await d.s.confirmSas();
       await pump(d, m);
-      expect(of(m, "record")).toHaveLength(1);
+      expect(of(m, "record")).toHaveLength(0);
+      await m.s.confirmSas();
+      await pump(d, m);
+      // mode p: the confirmation itself sent CONFIRM, held at m until m confirmed.
+      expect(of(m, "record").map((e) => (e as any).recordType)).toEqual(
+        mode === "p" ? [RECORD.CONFIRM] : [],
+      );
+      expect(of(d, "record").map((e) => (e as any).recordType)).toEqual(
+        mode === "p" ? [RECORD.CONFIRM] : [],
+      );
     });
   }
 
-  it("refuses a host record before the code is settled", async () => {
+  it("holds an inbound host record until this side confirms, then delivers it", async () => {
     const d = side("v", "initiator", rnd());
     const m = side("v", "responder", rnd());
     await d.s.start();
-    // Stop the exchange after both HELLOs: the initiator's commit is in flight.
+    await pump(d, m);
+    await d.s.confirmSas();
+    await d.s.sendRecord(RECORD.VOUCH_REQ, utf8("{}"));
+    await pump(d, m);
+    expect(of(m, "record")).toHaveLength(0);
+    expect(m.s.closed).toBe(false);
+    await m.s.confirmSas();
+    expect(of(m, "record")).toHaveLength(1);
+  });
+
+  it("marks HELLO display data unauthenticated and cleans the label", async () => {
+    const d = side("v", "initiator", rnd(), {
+      hello: {
+        platform: "t",
+        app: "a",
+        label: "  Cafe\u0301 \u202eTV\u0000  ",
+      },
+    });
+    const m = side("v", "responder", rnd());
+    await d.s.start();
+    await pump(d, m);
+    const est = of(m, "established")[0] as any;
+    expect(est.helloAuthenticated).toBe(false);
+    expect(est.hello.label).toBe("Caf\u00e9 TV");
+  });
+
+  it("an approver needs an admission limiter", () => {
+    expect(() =>
+      side("v", "responder", rnd(), { admission: undefined }),
+    ).toThrow();
+  });
+
+  it("refuses over the limit and past the pending cap, and releases on confirm", async () => {
+    let t = 0;
+    const lim = new HandshakeLimiter(5, 2, () => t);
+    const mk = () => side("v", "responder", rnd(), { admission: lim });
+    const hello = async () => {
+      const m = mk();
+      const d = side("v", "initiator", rnd());
+      await d.s.start();
+      await pump(d, m);
+      return { d, m };
+    };
+    const one = await hello();
+    await hello();
+    const third = mk();
+    const d3 = side("v", "initiator", rnd());
+    await d3.s.start();
+    await pump(d3, third);
+    expect(third.out).toEqual([]);
+    expect(of(third, "closed")).toEqual([
+      { type: "closed", code: "peer_busy", byPeer: false },
+    ]);
+    await one.m.s.confirmSas();
+    expect(lim.begin()).not.toBeNull();
+    t = 61;
+  });
+
+  it("closes with peer_timeout when the transport or the code takes too long", async () => {
+    const fns: (() => void)[] = [];
+    const timer = (fn: () => void) => {
+      fns.push(fn);
+      return () => undefined;
+    };
+    const m = side("v", "responder", rnd(), { timer });
+    const d = side("v", "initiator", rnd());
+    await d.s.start();
     await m.s.receive(d.out.splice(0)[0]!);
-    await d.s.receive(m.out.splice(0)[0]!);
-    await m.s.receive(d.out.splice(0)[0]!);
-    await d.s.receive(m.out.splice(0)[0]!);
-    // d now holds its HELLO and commit; m gets VOUCH_REQ-like data before the SAS: refuse.
-    await expect(m.s.sendRecord(RECORD.VOUCH_RESULT, NONE)).rejects.toThrow();
+    fns[0]!();
+    await m.s.close();
+    expect(of(m, "closed")[0]).toEqual({
+      type: "closed",
+      code: "peer_timeout",
+      byPeer: false,
+    });
   });
 });
 
@@ -225,6 +306,65 @@ describe("PeerSession mode a", () => {
   });
 });
 
+describe("PeerSession mode a: keys", () => {
+  it("skips an absent previous discovery key", async () => {
+    const A = await device("AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH");
+    const B = await device("HHHHGGGGFFFFEEEEDDDDCCCCBBBBAAAA");
+    const k = rnd();
+    const acct = (me: typeof A, ks: (Uint8Array | null)[]) => ({
+      trust,
+      expectedAud: "djdl",
+      certJws: me.certJws,
+      ownSub: SUB,
+      ownDeviceId: me.id,
+      heldRing: () => null,
+      discKeys: ks,
+    });
+    const a = side("a", "initiator", A.priv, { account: acct(A, [k]) });
+    const b = side("a", "responder", B.priv, { account: acct(B, [k, null]) });
+    await a.s.start();
+    await pump(a, b);
+    expect(of(b, "established")).toHaveLength(1);
+    // And a wrong current key with a null previous one fails cleanly.
+    const c = side("a", "initiator", A.priv, { account: acct(A, [rnd()]) });
+    const d = side("a", "responder", B.priv, { account: acct(B, [k, null]) });
+    await c.s.start();
+    await pump(c, d);
+    expect(of(d, "closed")).toHaveLength(1);
+  });
+});
+
+describe("PeerSession mode a: held roster", () => {
+  it("refuses a peer when the held roster is unusable, and asks for a fresh one", async () => {
+    const A = await device("AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH");
+    const B = await device("HHHHGGGGFFFFEEEEDDDDCCCCBBBBAAAA");
+    const k = rnd();
+    const acct = (me: typeof A, held: boolean) => ({
+      trust,
+      expectedAud: "djdl",
+      certJws: me.certJws,
+      ownSub: SUB,
+      ownDeviceId: me.id,
+      heldRing: () => (held ? { jws: "not-a-roster", epoch: 1 } : null),
+      discKeys: [k],
+    });
+    const a = side("a", "initiator", A.priv, { account: acct(A, false) });
+    const b = side("a", "responder", B.priv, { account: acct(B, true) });
+    await a.s.start();
+    await pump(a, b);
+    expect(of(b, "ring-wanted")).toHaveLength(1);
+    expect(of(b, "established")).toHaveLength(0);
+    expect(of(b, "closed")).toHaveLength(1);
+    // With no roster at all (first run) the certificate alone admits, and a roster is wanted.
+    const c = side("a", "initiator", A.priv, { account: acct(A, false) });
+    const d = side("a", "responder", B.priv, { account: acct(B, false) });
+    await c.s.start();
+    await pump(c, d);
+    expect(of(d, "established")).toHaveLength(1);
+    expect(of(d, "ring-wanted")).toHaveLength(1);
+  });
+});
+
 describe("PeerSession refusals", () => {
   it("closes when the first record is not HELLO, and says so", async () => {
     const m = side("p", "responder", rnd());
@@ -257,10 +397,10 @@ describe("PeerSession refusals", () => {
     );
   });
 
-  it("limits an approver to five handshakes a minute", () => {
+  it("limits an approver to five handshakes a minute on a monotonic clock", () => {
     let t = 0;
-    const l = new HandshakeLimiter(5, () => t);
-    expect([1, 2, 3, 4, 5, 6].map(() => l.allow())).toEqual([
+    const l = new HandshakeLimiter(5, 99, () => t);
+    expect([1, 2, 3, 4, 5, 6].map(() => l.begin() !== null)).toEqual([
       true,
       true,
       true,
@@ -269,6 +409,6 @@ describe("PeerSession refusals", () => {
       false,
     ]);
     t = 61;
-    expect(l.allow()).toBe(true);
+    expect(l.begin()).not.toBeNull();
   });
 });

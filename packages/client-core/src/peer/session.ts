@@ -9,7 +9,8 @@
 // transport exists nothing is sent, after it a CLOSE record names the code.
 
 import { base64UrlEncodeBytes, type TrustSet } from "@polaris-key/jws";
-import { admitPeer, replaceRing } from "./cert.js";
+import { normalizeDeviceLabel } from "../deviceLabel.js";
+import { admitPeer, replaceRing, ringExpired, verifyRing } from "./cert.js";
 import {
   NoiseError,
   NoiseHandshake,
@@ -70,8 +71,11 @@ export interface AccountContext {
   ownDeviceId: string;
   /** The held roster and its epoch, read at use. */
   heldRing: () => { jws: string; epoch: number } | null;
-  /** The delivered discovery keys, newest first; the initiator uses the first. */
-  discKeys: readonly Uint8Array[];
+  /**
+   * The delivered discovery keys, newest first; the initiator uses the first. The responder tries
+   * the first two; an absent (null) previous key is skipped.
+   */
+  discKeys: readonly (Uint8Array | null)[];
 }
 
 export interface PeerSessionOptions {
@@ -88,8 +92,17 @@ export interface PeerSessionOptions {
   send: (noise: Uint8Array) => void;
   onEvent: (e: SessionEvent) => void;
   ports?: NoisePorts;
-  /** Seconds since the epoch. */
+  /** Seconds since the epoch (certificate and roster clocks). */
   now?: () => number;
+  /** A monotonic clock in seconds, for rekey age. Default `performance.now() / 1000`. */
+  mono?: () => number;
+  /** Schedule `fn` after `ms`; returns the cancel. Default `setTimeout`. */
+  timer?: (fn: () => void, ms: number) => () => void;
+  /**
+   * Required for a responder in modes v and p (the approver): the limiter that admits a new
+   * handshake and caps the sessions waiting on a code. The constructor refuses without it.
+   */
+  admission?: HandshakeLimiter;
   /** Rekey after this many sent messages (default 2^20) or seconds (default 3600). */
   rekeyMessages?: number;
   rekeySeconds?: number;
@@ -100,22 +113,45 @@ export type SessionEvent =
   | {
       type: "established";
       caps: string[];
+      /** Display data. Unauthenticated in modes v and p (`helloAuthenticated` is false). */
       hello: PeerHello;
+      helloAuthenticated: boolean;
       remoteStatic: Uint8Array;
       /** Mode a: the admitted certificate's device id. */
       peerDeviceId?: string;
     }
-  /** Modes v and p: the code both screens show. */
+  /** Modes v and p: the code both screens show; the host calls `confirmSas()` when the person agrees. */
   | { type: "sas"; code: number; display: string }
-  /** A record the host owns. */
+  /**
+   * A record the host owns, delivered only once the session is open (in modes v and p, after
+   * `confirmSas()`). The host must close on an APP_CRITICAL type (0x8100 to 0xFFFD) it does not
+   * understand.
+   */
   | { type: "record"; recordType: number; body: Uint8Array }
-  /** Mode a: a roster that replaced the held one; the host stores it. */
-  | { type: "ring"; jws: string }
+  /** Mode a: a roster that replaced the held one at `epoch`; the host stores it. */
+  | { type: "ring"; jws: string; epoch: number }
+  /** Mode a: a `TRUST` document the peer sent. Not verified here; the host verifies it (V4 §1). */
+  | { type: "trust-unverified"; jws: string }
   /** Mode a: the peer is on a newer roster than the held one; fetch it. */
   | { type: "ring-wanted" }
   | { type: "closed"; code: ClosedReason; byPeer: boolean };
 
-type Phase = "hs" | "hello" | "sas" | "open" | "closed";
+type Phase = "hs" | "hello" | "sas" | "sas-shown" | "open" | "closed";
+
+/** Seconds from the first byte to the transport, and to the person's confirmation (v, p). */
+export const TRANSPORT_DEADLINE_SECONDS = 30;
+export const SAS_DEADLINE_SECONDS = 120;
+const MAX_QUEUED = 16;
+const KNOWN_CLOSE = new Set<string>([
+  "peer_revoked",
+  "peer_expired",
+  "peer_bad_frame",
+  "peer_unknown_critical",
+  "peer_not_allowed",
+  "peer_busy",
+  "peer_bye",
+  "peer_timeout",
+]);
 
 class SessionFail extends Error {
   constructor(readonly code: ClosedReason) {
@@ -144,22 +180,93 @@ export class PeerSession {
   private sasDone = false;
   private sasStep = 0;
   private readonly now: () => number;
+  private readonly mono: () => number;
+  private readonly timer: (fn: () => void, ms: number) => () => void;
   private readonly ports: NoisePorts;
   private caps: string[];
+  private cancels: (() => void)[] = [];
+  private transportCancel: (() => void) | null = null;
+  private sasCancel: (() => void) | null = null;
+  private release: (() => void) | null = null;
+  private started = false;
+  private queued: { type: number; body: Uint8Array }[] = [];
+  private peerCertJws = "";
+  private peerRemote: Uint8Array | null = null;
 
   constructor(private readonly o: PeerSessionOptions) {
     if ((o.mode === "a") !== (o.account !== undefined))
       throw new RangeError("account context");
+    if (o.mode !== "a" && o.role === "responder" && o.admission === undefined)
+      throw new RangeError("an approver needs an admission limiter");
     this.ports = o.ports ?? webCryptoNoisePorts;
     this.now = o.now ?? ((): number => Math.floor(Date.now() / 1000));
+    this.mono = o.mono ?? ((): number => performance.now() / 1000);
+    this.timer =
+      o.timer ??
+      ((fn, ms): (() => void) => {
+        const h = setTimeout(fn, ms);
+        (h as { unref?: () => void }).unref?.();
+        return (): void => clearTimeout(h);
+      });
     this.asm = new RecordAssembler(o.mode);
     this.caps = [...(o.caps ?? [])];
-    this.keyedAt = this.now();
+    this.keyedAt = this.mono();
   }
 
   get isOpen(): boolean {
-    return this.phase === "open" || this.phase === "sas";
+    return this.phase === "open";
   }
+
+  /**
+   * Modes v and p: the person confirmed the code. Opens the session, sends `CONFIRM` in mode p
+   * and delivers the host records held meanwhile.
+   */
+  confirmSas(): Promise<void> {
+    return this.run(async () => {
+      if (this.phase !== "sas-shown") throw new SessionFail("peer_not_allowed");
+      this.phase = "open";
+      this.settle();
+      if (this.o.mode === "p")
+        await this.emitRecords(RECORD.CONFIRM, utf8("{}"));
+      const q = this.queued;
+      this.queued = [];
+      for (const m of q)
+        this.o.onEvent({ type: "record", recordType: m.type, body: m.body });
+    });
+  }
+
+  private startClock(): void {
+    if (this.started) return;
+    this.started = true;
+    const guard = (sec: number): (() => void) =>
+      this.timer(
+        () => void this.run(() => this.fail("peer_timeout", false)),
+        sec * 1000,
+      );
+    this.transportCancel = guard(TRANSPORT_DEADLINE_SECONDS);
+    if (this.o.mode !== "a") this.sasCancel = guard(SAS_DEADLINE_SECONDS);
+  }
+
+  /** The transport is up: its deadline ends. */
+  private transportUp(): void {
+    this.transportCancel?.();
+    this.transportCancel = null;
+  }
+
+  /** Modes v and p: the person confirmed. The deadline and the limiter slot end. */
+  private settle(): void {
+    this.sasCancel?.();
+    this.sasCancel = null;
+    this.release?.();
+    this.release = null;
+  }
+
+  private stopClock(): void {
+    this.transportUp();
+    this.settle();
+    for (const c of this.cancels.splice(0)) c();
+  }
+
   get closed(): boolean {
     return this.phase === "closed";
   }
@@ -169,7 +276,11 @@ export class PeerSession {
     return this.run(async () => {
       if (this.o.role !== "initiator" || this.hs !== null)
         throw new SessionFail("handshake_failed");
-      this.hs = await this.newHandshake(this.o.account?.discKeys[0]);
+      const key = this.o.account?.discKeys[0] ?? undefined;
+      if (this.o.mode === "a" && key === undefined)
+        throw new SessionFail("handshake_failed");
+      this.startClock();
+      this.hs = await this.newHandshake(key);
       this.o.send(await this.hs.writeMessage(payload1()));
       this.hsStep = 1;
     });
@@ -179,6 +290,14 @@ export class PeerSession {
   receive(noise: Uint8Array): Promise<void> {
     return this.run(async () => {
       if (this.phase === "closed") return;
+      if (!this.started && this.o.role === "responder") {
+        // An approver counts the attempt only now that a session starts.
+        if (this.o.admission !== undefined) {
+          this.release = this.o.admission.begin();
+          if (this.release === null) throw new SessionFail("peer_busy");
+        }
+        this.startClock();
+      }
       if (this.phase === "hs") await this.onHandshake(noise);
       else await this.onTransport(noise);
     });
@@ -186,14 +305,18 @@ export class PeerSession {
 
   /** Send one message of the host's, split into records. Only once the session is open. */
   sendRecord(type: number, body: Uint8Array): Promise<void> {
-    const ready =
-      this.phase === "open" ||
-      (this.phase === "sas" &&
-        (type === RECORD.SAS_COMMIT ||
-          type === RECORD.SAS_NONCE ||
-          type === RECORD.SAS_REVEAL));
-    if (!ready) return Promise.reject(new Error("session not open"));
-    if (type === RECORD.HELLO || type === RECORD.CLOSE || type === RECORD.REKEY)
+    // Host records wait for the person's confirmation (modes v and p); the session owns the rest.
+    if (this.phase !== "open")
+      return Promise.reject(new Error("session not open"));
+    if (
+      type === RECORD.HELLO ||
+      type === RECORD.CLOSE ||
+      type === RECORD.REKEY ||
+      type === RECORD.SAS_COMMIT ||
+      type === RECORD.SAS_NONCE ||
+      type === RECORD.SAS_REVEAL ||
+      (type === RECORD.CONFIRM && this.o.mode === "p")
+    )
       return Promise.reject(new Error("record owned by the session"));
     if (body.length > this.maxSend)
       return Promise.reject(new Error("message too large"));
@@ -231,6 +354,8 @@ export class PeerSession {
     if (this.phase === "closed") return;
     const wasUp = this.tp !== null;
     this.phase = "closed";
+    this.stopClock();
+    this.queued = [];
     if (wasUp && !byPeer && code !== "handshake_failed") {
       try {
         await this.emitRecords(RECORD.CLOSE, utf8(JSON.stringify({ code })));
@@ -270,12 +395,13 @@ export class PeerSession {
     if (role === "responder" && this.hs === null) {
       // Message 1. In mode a try the current then the previous discovery key; a failed tag
       // closes silently.
-      const keys: (Uint8Array | undefined)[] =
+      const keys: (Uint8Array | null | undefined)[] =
         mode === "a" ? this.o.account!.discKeys.slice(0, 2) : [undefined];
       let payload: Uint8Array | null = null;
       for (const k of keys) {
-        const h = await this.newHandshake(k);
+        if (k === null) continue;
         try {
+          const h = await this.newHandshake(k);
           payload = await h.readMessage(noise);
           this.hs = h;
           break;
@@ -304,21 +430,37 @@ export class PeerSession {
     if (mode === "a") {
       const a = this.o.account!;
       const held = a.heldRing();
-      const adm = await admitPeer(verdict.cert!, held?.jws ?? null, {
-        trust: a.trust,
-        expectedAud: a.expectedAud,
-        now: this.now(),
-        session: {
-          mode: "a",
-          remoteStatic: base64UrlEncodeBytes(remote),
-          ownSub: a.ownSub,
-          ownDeviceId: a.ownDeviceId,
-        },
-      });
+      if (held !== null) {
+        // A held roster that is expired, unverifiable or another account's must not admit: ask
+        // for a fresh one and refuse. Only a device with no roster at all (first run) admits.
+        const v = await verifyRing(held.jws, {
+          trust: a.trust,
+          expectedAud: a.expectedAud,
+        });
+        if (
+          !v.ok ||
+          ringExpired(v.ring, this.now()) ||
+          v.ring.sub !== a.ownSub
+        ) {
+          this.o.onEvent({ type: "ring-wanted" });
+          throw new SessionFail("handshake_failed");
+        }
+      } else this.o.onEvent({ type: "ring-wanted" });
+      const adm = await this.admit(verdict.cert!, held?.jws ?? null, remote);
       if (!adm.admit)
         throw new SessionFail(
           adm.reason === "peer_revoked" ? "peer_revoked" : "handshake_failed",
         );
+      this.peerCertJws = verdict.cert!;
+      this.peerRemote = remote;
+      const wait = adm.cert.expiresAt - this.now();
+      if (wait <= 0) throw new SessionFail("peer_expired");
+      this.cancels.push(
+        this.timer(
+          () => void this.run(() => this.fail("peer_expired", false)),
+          Math.min(wait, 2 ** 31 / 1000 - 1) * 1000,
+        ),
+      );
       peerDeviceId = adm.cert.deviceId;
       this.peerRing = verdict.ring!;
       if (adm.ringSync === "request") this.o.onEvent({ type: "ring-wanted" });
@@ -328,10 +470,26 @@ export class PeerSession {
       this.o.send(await hs.writeMessage(this.ownPayload()));
     }
     this.tp = await hs.transport();
-    this.keyedAt = this.now();
+    this.transportUp();
+    this.keyedAt = this.mono();
     this.phase = "hello";
     this.pending = { remote, peerDeviceId };
     await this.sendHello();
+  }
+
+  private admit(certJws: string, ringJws: string | null, remote: Uint8Array) {
+    const a = this.o.account!;
+    return admitPeer(certJws, ringJws, {
+      trust: a.trust,
+      expectedAud: a.expectedAud,
+      now: this.now(),
+      session: {
+        mode: "a",
+        remoteStatic: base64UrlEncodeBytes(remote),
+        ownSub: a.ownSub,
+        ownDeviceId: a.ownDeviceId,
+      },
+    });
   }
 
   private pending: { remote: Uint8Array; peerDeviceId?: string } | null = null;
@@ -374,6 +532,7 @@ export class PeerSession {
         type: "established",
         caps,
         hello,
+        helloAuthenticated: this.o.mode === "a",
         remoteStatic: p.remote,
         peerDeviceId: p.peerDeviceId,
       });
@@ -404,13 +563,22 @@ export class PeerSession {
         const o = parseStrictObject(body);
         const code = typeof o?.code === "string" ? o.code : "";
         this.phase = "closed";
+        this.stopClock();
+        this.queued = [];
         this.o.onEvent({
           type: "closed",
-          code: /^peer_[a-z_]+$/.test(code)
+          code: KNOWN_CLOSE.has(code)
             ? (code as PeerCloseCode)
-            : "peer_bye",
+            : "peer_bad_frame",
           byPeer: true,
         });
+        return;
+      }
+      case RECORD.TRUST: {
+        const o = parseStrictObject(body);
+        if (o === null || typeof o.trust !== "string")
+          throw new SessionFail("peer_bad_frame");
+        this.o.onEvent({ type: "trust-unverified", jws: o.trust });
         return;
       }
       case RECORD.SAS_COMMIT:
@@ -423,6 +591,12 @@ export class PeerSession {
         return;
     }
     // Everything else belongs to the host, and only once the code is settled.
+    if (this.phase === "sas-shown") {
+      // The peer may confirm first: hold the record (bounded) until this side's person does.
+      if (this.queued.length >= MAX_QUEUED) throw new SessionFail("peer_busy");
+      this.queued.push({ type, body });
+      return;
+    }
     if (this.phase !== "open") throw new SessionFail("peer_not_allowed");
     this.o.onEvent({ type: "record", recordType: type, body });
   }
@@ -433,6 +607,11 @@ export class PeerSession {
     if (typeof o.platform !== "string" || typeof o.app !== "string")
       return null;
     if (o.label !== undefined && typeof o.label !== "string") return null;
+    // Display data from an unauthenticated peer: NFC, controls and bidi stripped, 64 code points.
+    const label =
+      o.label === undefined
+        ? null
+        : normalizeDeviceLabel(o.label.normalize("NFC"));
     if (
       typeof o.maxMessage !== "number" ||
       !Number.isSafeInteger(o.maxMessage) ||
@@ -440,7 +619,7 @@ export class PeerSession {
     )
       return null;
     return {
-      ...(o.label !== undefined ? { label: o.label } : {}),
+      ...(label !== null ? { label } : {}),
       platform: o.platform,
       app: o.app,
       maxMessage: o.maxMessage,
@@ -484,7 +663,7 @@ export class PeerSession {
     const h = this.hs!.handshakeHash;
     const code = await sasValue(h, this.nD!, this.nM!, this.o.mode);
     this.sasDone = true;
-    this.phase = "open";
+    this.phase = "sas-shown";
     this.o.onEvent({ type: "sas", code, display: sasDisplay(code) });
   }
 
@@ -507,7 +686,12 @@ export class PeerSession {
       expectedAud: a.expectedAud,
       now: this.now(),
     });
-    if (r.replace) this.o.onEvent({ type: "ring", jws: o.ring });
+    // A roster that is stale, older or another account's changes nothing.
+    if (!r.replace || r.ring.sub !== a.ownSub) return;
+    this.o.onEvent({ type: "ring", jws: o.ring, epoch: r.ring.epoch });
+    // The new roster may have dropped this peer.
+    const adm = await this.admit(this.peerCertJws, o.ring, this.peerRemote!);
+    if (!adm.admit) throw new SessionFail("peer_revoked");
   }
 
   /** Seal records onto the wire, one at a time so a REKEY never interleaves. */
@@ -530,7 +714,7 @@ export class PeerSession {
     const tp = this.tp!;
     const byCount = this.sentCount >= (this.o.rekeyMessages ?? 1 << 20);
     const bySeconds =
-      this.now() - this.keyedAt >= (this.o.rekeySeconds ?? 3600);
+      this.mono() - this.keyedAt >= (this.o.rekeySeconds ?? 3600);
     if (!byCount && !bySeconds) return;
     this.o.send(
       await tp.send.encrypt(
@@ -540,23 +724,37 @@ export class PeerSession {
     );
     await tp.send.rekey();
     this.sentCount = 0;
-    this.keyedAt = this.now();
+    this.keyedAt = this.mono();
   }
 }
 
-/** The approver's limit: at most `max` handshakes a minute per advert (default 5). */
+/**
+ * The approver's admission: at most `max` handshakes a minute per advert (default 5) and at most
+ * `maxPending` sessions waiting on a code (default 4). A monotonic clock. An attempt counts only
+ * when `begin()` is called, which a session does when it starts.
+ */
 export class HandshakeLimiter {
   private stamps: number[] = [];
+  private pending = 0;
   constructor(
     private readonly max = 5,
-    private readonly now: () => number = () => Date.now() / 1000,
+    private readonly maxPending = 4,
+    private readonly now: () => number = () => performance.now() / 1000,
   ) {}
-  /** True when one more handshake may start now. */
-  allow(): boolean {
+  /** A release function when one more session may start now; null when refused. */
+  begin(): (() => void) | null {
     const t = this.now();
     this.stamps = this.stamps.filter((s) => t - s < 60);
-    if (this.stamps.length >= this.max) return false;
+    if (this.stamps.length >= this.max || this.pending >= this.maxPending)
+      return null;
     this.stamps.push(t);
-    return true;
+    this.pending++;
+    let done = false;
+    return (): void => {
+      if (!done) {
+        done = true;
+        this.pending--;
+      }
+    };
   }
 }
