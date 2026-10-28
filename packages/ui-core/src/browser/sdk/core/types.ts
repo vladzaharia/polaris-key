@@ -255,6 +255,9 @@ export interface KeyActivation {
  *  gone), false when the device keeps its key activation and only the account is forgotten. */
 export interface SignOutResult {
   released: boolean;
+  /** The sign-out itself completed, but the browser could not store the "signed out" flag, so
+   *  only this page remembers it: a reload may sign in again silently. */
+  warning?: "sign-out-flag-not-saved";
 }
 
 /** `attach({confirm})`'s typed answer (identity.attach). A refusal is a result, never a throw: it

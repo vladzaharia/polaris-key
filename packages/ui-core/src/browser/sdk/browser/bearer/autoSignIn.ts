@@ -34,7 +34,7 @@ import {
 } from "../platformIdentity/fedcm.js";
 import type { KeyringClient } from "../../core/keyring.js";
 import type { BearerSession } from "./session.js";
-import { hidden, type ExchangeOutcome } from "./exchange.js";
+import { EXCHANGE_ABORTED, hidden, type ExchangeOutcome } from "./exchange.js";
 
 /** What the ladder reads from the adapter. */
 export interface AutoSignInContext {
@@ -46,6 +46,9 @@ export interface AutoSignInContext {
   endpoints: ExchangeDiscovery | null;
   /** True after an explicit sign-out and until the next explicit sign-in. */
   explicitSignOut(): Promise<boolean>;
+  /** The sign-out generation: bumped by every `signOut()`. A ladder whose generation changed
+   *  abandons its sign-in before it stores a token. */
+  generation(): number;
   /** `present`/`needed` from the ring engine when E2E is on here, else undefined. */
   syncKey(): Promise<AutoSyncKey | undefined>;
 }
@@ -93,6 +96,9 @@ export async function runSignOutCleanup(
 
 /** Thrown from `subjectToken` when the provider offered nothing; ends the rung, not the call. */
 class NoProviderToken extends Error {}
+
+/** A sign-out happened while the ladder ran. */
+class SignedOutDuringLadder extends Error {}
 
 const unavailable = (code: AutoSignInUnavailable): AutoSignInResult => ({
   kind: "unavailable",
@@ -150,21 +156,32 @@ async function attempt(
   provider: PlatformIdentityProvider,
   mediation: PlatformMediation,
   opts: AutoSignInOptions,
+  generation: number,
 ): Promise<AutoSignInResult | null> {
+  const stillOn = async () =>
+    ctx.generation() === generation && !(await ctx.explicitSignOut());
   try {
     const outcome = await ctx.bearer.exchange(ctx.port, {
+      mayStore: stillOn,
       kind: provider.kind,
       licenseChoice: opts.licenseChoice ?? "app",
       ...(opts.deviceName !== undefined ? { deviceName: opts.deviceName } : {}),
       subjectToken: async (nonce) => {
         const token = await provider.token(nonce, mediation);
         if (token === null) throw new NoProviderToken();
+        // Signed out while the provider was answering: the token goes nowhere.
+        if (!(await stillOn())) throw new SignedOutDuringLadder();
         return token;
       },
     });
     return resultOf(outcome);
   } catch (e) {
     if (e instanceof NoProviderToken) return null;
+    if (
+      e instanceof SignedOutDuringLadder ||
+      (e as { name?: string } | null)?.name === EXCHANGE_ABORTED
+    )
+      return needs("signedOut");
     if (e instanceof PolarisError) {
       if (e.wireCode === ErrorCode.deviceLimit)
         return {
@@ -178,11 +195,36 @@ async function attempt(
   }
 }
 
+/** True for a cancellation, the one thing the ladder rethrows. */
+const isAbort = (e: unknown): boolean =>
+  (e as { name?: string } | null)?.name === "AbortError";
+
+/**
+ * The ladder. It never throws except a cancellation (`AbortError`): a refusal or a failure is
+ * `unavailable(code)`, and `device_limit` is `deviceLimit`.
+ */
 export async function runAutoSignIn(
   ctx: AutoSignInContext,
   opts: AutoSignInOptions = {},
 ): Promise<AutoSignInResult> {
+  try {
+    return await ladder(ctx, opts);
+  } catch (e) {
+    if (isAbort(e)) throw e;
+    return unavailable(
+      e instanceof PolarisError && e.code === ErrorCode.networkError
+        ? "network"
+        : "refused",
+    );
+  }
+}
+
+async function ladder(
+  ctx: AutoSignInContext,
+  opts: AutoSignInOptions,
+): Promise<AutoSignInResult> {
   const b = ctx.bearer;
+  const generation = ctx.generation();
   await b.init();
 
   // Rung 1. Only a token a sign-in produced counts: an anonymous registration, a key activation
@@ -208,11 +250,11 @@ export async function runAutoSignIn(
   }
   if (provider === null || !provider.available()) return needs("noCredential");
 
-  const silent = await attempt(ctx, provider, "silent", opts);
+  const silent = await attempt(ctx, provider, "silent", opts, generation);
   const result =
     silent ??
     (opts.prompt === "optional"
-      ? await attempt(ctx, provider, "optional", opts)
+      ? await attempt(ctx, provider, "optional", opts, generation)
       : null);
   if (result === null) return needs("noCredential");
   if (result.kind !== "signedIn") return result;

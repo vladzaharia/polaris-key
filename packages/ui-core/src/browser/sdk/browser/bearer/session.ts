@@ -729,17 +729,22 @@ export class BearerSession {
     return this.opts.store as Partial<BrowserStore>;
   }
 
-  private async setToken(token: string, source: TokenSource): Promise<void> {
+  private async setToken(
+    token: string,
+    source: TokenSource,
+    keepProvenance = false,
+  ): Promise<void> {
+    const keep = keepProvenance || source === "reacquire";
     // A rotation keeps what the token already was; every other source says what it is now.
     const next: TokenProvenance | null =
       source === "signin"
         ? "signin"
         : source === "register"
           ? "register"
-          : source === "reacquire"
+          : keep
             ? this.provenanceValue
             : "key";
-    if (source !== "reacquire") this.provenanceValue = null;
+    if (!keep) this.provenanceValue = null;
     // A token just arrived from the server, so it is reachable: drop any sync backoff.
     this.syncFailures = 0;
     this.syncNotBefore = 0;
@@ -748,9 +753,9 @@ export class BearerSession {
     this.tokenSource = source;
     try {
       // Cleared first and written last: a crash between leaves "not signed in", never a stale yes.
-      if (source !== "reacquire") await this.store().provenance?.set(null);
+      if (!keep) await this.store().provenance?.set(null);
       await this.opts.store.setToken(token);
-      if (source !== "reacquire") await this.store().provenance?.set(next);
+      if (!keep) await this.store().provenance?.set(next);
       this.provenanceValue = next;
     } catch (e) {
       throw new PolarisError(
@@ -1028,7 +1033,16 @@ export class BearerSession {
         "sign-out answered without `released`.",
       );
     if (b.released) await this.wipeLocal();
-    else this.subjectValue = null;
+    else {
+      this.subjectValue = null;
+      // The device keeps its token but is no longer the person's sign-in.
+      this.provenanceValue = "key";
+      try {
+        await this.store().provenance?.set("key");
+      } catch {
+        // The in-memory value holds for this page; a stale "signin" is the store's to fail closed.
+      }
+    }
     return { released: b.released };
   }
 
@@ -1068,12 +1082,8 @@ export class BearerSession {
         "bad_response",
         "attach answered without a token.",
       );
-    await this.setToken(b.token, "activate");
-    // The device is now in a signed-in account.
-    this.provenanceValue = "signin";
-    await this.store()
-      .provenance?.set("signin")
-      .catch(() => undefined);
+    // Attaching never upgrades what the token was: a sign-out may have downgraded it.
+    await this.setToken(b.token, "activate", true);
     this.subjectValue = isString(b.subject) ? b.subject : null;
     return {
       kind: "ok",
@@ -1277,6 +1287,10 @@ export class BearerSession {
         send: (url, init) => this.sendTo(url, init),
         now: () => this.now(),
         accept: async (token, subject) => {
+          if (opts.mayStore && !(await opts.mayStore()))
+            throw Object.assign(new Error("the sign-in was abandoned."), {
+              name: "ExchangeAborted",
+            });
           await this.setToken(token, "signin");
           this.subjectValue = subject;
           // The session is stored: a sync failure is reported beside the sign-in, not instead.
