@@ -142,6 +142,42 @@ export interface Env {
    */
   LAZY_DELTAS?: string;
   /**
+   * LG-1 launch gate for the native token-exchange grant and nonce route. Off until the feature's security sign-off. A `[vars]` value, read
+   * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
+   * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the
+   * console says off. An unreadable store reads off.
+   * @inventory var jobs
+   * @editable LAUNCH_IDENTITY_EXCHANGE
+   */
+  LAUNCH_IDENTITY_EXCHANGE?: string;
+  /**
+   * LG-1 launch gate for the Cloud Connect identity and devices routes. Off until the feature's security sign-off. A `[vars]` value, read
+   * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
+   * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the
+   * console says off. An unreadable store reads off.
+   * @inventory var jobs
+   * @editable LAUNCH_CONNECT
+   */
+  LAUNCH_CONNECT?: string;
+  /**
+   * LG-1 launch gate for the end-to-end key ring routes. Off until the feature's security sign-off. A `[vars]` value, read
+   * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
+   * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the
+   * console says off. An unreadable store reads off.
+   * @inventory var jobs
+   * @editable LAUNCH_SYNC_E2E
+   */
+  LAUNCH_SYNC_E2E?: string;
+  /**
+   * LG-1 launch gate for the Cloud Connect relay routes (none yet). Off until the feature's security sign-off. A `[vars]` value, read
+   * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
+   * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the
+   * console says off. An unreadable store reads off.
+   * @inventory var jobs
+   * @editable LAUNCH_RELAY
+   */
+  LAUNCH_RELAY?: string;
+  /**
    * The lazy-delta queue (P4-17; `pkey-deltas-<env>`). The main Worker only PRODUCES to it (the
    * nightly sweep's hot pairs); the consumer is its own Worker script (`wrangler.deltas.toml`,
    * `src/deltasEntry.ts`), which produces to it too (an R2 event fans out into pair jobs), so no

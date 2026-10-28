@@ -92,6 +92,7 @@ import { redeemAuthorizationCode } from "./code.js";
 import { acceptsKeys, licenseChoiceView, offerFor } from "./choice.js";
 import { issueGrant } from "./grant.js";
 import { bindChoice, type BindRefusal, type BindResult } from "./bind.js";
+import { launchGateOn } from "../../../core/settings/platformRead.js";
 import { handleExchange } from "./exchange.js";
 import { markFresh } from "./fresh.js";
 
@@ -183,7 +184,11 @@ export async function handleToken(ctx: {
   const grant = form.get("grant_type");
   if (!grant)
     return oauth(400, ErrorCode.InvalidRequest, "grant_type is required.");
-  if (grant === TOKEN_EXCHANGE_GRANT_TYPE)
+  // LG-1: with the gate off the grant is not one this build knows (`unsupported_grant_type`).
+  if (
+    grant === TOKEN_EXCHANGE_GRANT_TYPE &&
+    (await launchGateOn(env, db, "launch.identityExchange"))
+  )
     return handleExchange({ req, env, db, product, now, form, settings });
   if (grant !== "authorization_code")
     return oauth(400, ErrorCode.UnsupportedGrantType);

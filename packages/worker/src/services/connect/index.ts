@@ -18,6 +18,7 @@ import type {
   DiscoveryContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
+import { launchGateOn } from "../../core/settings/platformRead.js";
 import { connectIntegration } from "./integration.js";
 import { connectProductDeletion } from "./productDeletion.js";
 import { CONNECT_ROUTES } from "./routes.js";
@@ -31,7 +32,11 @@ export const connectService: ServiceDescriptor = {
     subjectStores: { [CONNECT_RINGS_STORE]: connectRingsStore },
     productDeletion: connectProductDeletion,
   },
-  handle: CONNECT_ROUTES.handle,
+  // LG-1: with the launch gate off the routes do not exist (the registry's not-found).
+  handle: async (ctx) =>
+    (await launchGateOn(ctx.env, ctx.db, "launch.connect"))
+      ? CONNECT_ROUTES.handle(ctx)
+      : null,
   surface: CONNECT_ROUTES.surface,
   /** CC-02.2: the manifest switches and the product ceiling; CC-07.3 reads them. */
   settings: CONNECT_SETTINGS_SLICE,
@@ -40,15 +45,20 @@ export const connectService: ServiceDescriptor = {
    * (CC-07.3) and inter-account links (CC-18) ship. An endpoint is `null` until its route is served
    * (WIRE-CONTRACT-V5 §15.9).
    */
-  discoveryFragment: async ({ base }: DiscoveryContext) => ({
-    enabled: true,
-    lan: true,
-    relay: false,
-    interAccount: false,
-    endpoints: {
-      identity: `${base}/connect/identity`,
-      devices: `${base}/connect/devices`,
-      ticket: null,
-    },
-  }),
+  discoveryFragment: async ({ base, env, db }: DiscoveryContext) =>
+    // LG-1: gate off reads as the service off (V5 §15.9: `{"enabled":false}`), the one shape
+    // every SDK already treats as "do not try".
+    !(await launchGateOn(env, db, "launch.connect"))
+      ? { enabled: false }
+      : {
+          enabled: true,
+          lan: true,
+          relay: false,
+          interAccount: false,
+          endpoints: {
+            identity: `${base}/connect/identity`,
+            devices: `${base}/connect/devices`,
+            ticket: null,
+          },
+        },
 };
