@@ -2384,6 +2384,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_management_unsupported_message">I dispositivi non possono essere gestiti da qui. Gestiscili nel tuo account.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_unreadable_title">Chiavi del dispositivo illeggibili</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_unreadable_message">Le chiavi salvate di questo dispositivo non sono leggibili. Reimpostale per continuare.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_key_store_error_title">Chiavi del dispositivo non disponibili</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_key_store_error_message">Le chiavi di questo dispositivo non sono raggiungibili ora. Riprova.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_title">Impossibile caricare i dispositivi</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_message">Impossibile caricare i tuoi dispositivi. Controlla la connessione e riprova.</string>

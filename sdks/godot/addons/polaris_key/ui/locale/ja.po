@@ -6208,6 +6208,26 @@ msgstr "ここでは利用できません"
 msgid "core.codes.device-management-unsupported.message"
 msgstr "ここではデバイスを管理できません。アカウントで管理してください。"
 
+#. Device keys unreadable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-keys-unreadable.title"
+msgstr "デバイスキーを読み取れません"
+
+#. This device's saved keys can't be read. Reset them to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-keys-unreadable.message"
+msgstr "このデバイスに保存されたキーを読み取れません。リセットして続行してください。"
+
+#. Device keys unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-key-store-error.title"
+msgstr "デバイスキーを利用できません"
+
+#. This device's keys can't be reached right now. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-key-store-error.message"
+msgstr "このデバイスのキーに今はアクセスできません。もう一度お試しください。"
+
 #. Couldn't load devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_list_failed.title"

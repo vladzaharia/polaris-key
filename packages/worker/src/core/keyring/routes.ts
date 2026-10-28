@@ -97,7 +97,8 @@ import {
 
 const RING_ID = new RegExp(SYNC_RING_ID_PATTERN);
 const KID = new RegExp(SYNC_KID_PATTERN);
-const KEM = /^[A-Za-z0-9._-]{1,32}$/;
+/** §13.11.1: the wrap's `kem` is the JSON integer 32 (X25519), nothing else. */
+const KEM_X25519 = 32;
 const B64URL = /^[A-Za-z0-9_-]+$/;
 
 /** A wrap is an `enc` and a `ct` of a few dozen bytes each; the body is far under this. */
@@ -154,7 +155,7 @@ function epochKid(
 }
 
 interface WrapBody {
-  kem: string;
+  kem: number;
   enc: string;
   ct: string;
 }
@@ -162,7 +163,7 @@ interface WrapBody {
 /** The `{kem, enc, ct}` of a wrap, or null when any member is not the expected shape. */
 function wrapBody(o: Record<string, unknown>): WrapBody | null {
   const { kem, enc, ct } = o;
-  if (typeof kem !== "string" || !KEM.test(kem)) return null;
+  if (kem !== KEM_X25519) return null;
   if (!isB64urlField(enc, MAX_ENC) || !isB64urlField(ct, MAX_WRAP_CT))
     return null;
   return { kem, enc, ct };

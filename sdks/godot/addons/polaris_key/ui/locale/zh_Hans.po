@@ -6208,6 +6208,26 @@ msgstr "此处不可用"
 msgid "core.codes.device-management-unsupported.message"
 msgstr "无法在此管理设备。请在你的账户中管理。"
 
+#. Device keys unreadable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-keys-unreadable.title"
+msgstr "设备密钥无法读取"
+
+#. This device's saved keys can't be read. Reset them to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-keys-unreadable.message"
+msgstr "无法读取此设备已保存的密钥。请重置后继续。"
+
+#. Device keys unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-key-store-error.title"
+msgstr "设备密钥不可用"
+
+#. This device's keys can't be reached right now. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-key-store-error.message"
+msgstr "暂时无法访问此设备的密钥。请重试。"
+
 #. Couldn't load devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_list_failed.title"

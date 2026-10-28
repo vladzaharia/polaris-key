@@ -145,6 +145,7 @@ export class ConnectRelayDO implements DurableObject {
   async fetch(request: Request): Promise<Response> {
     await this.loaded;
     if (request.method === "POST") return this.purge(request);
+    if (request.method === "PUT") return this.poke(request);
     // Fail closed: an unreadable gate is off. The route gated already; this is the second lock.
     if (!(await this.gateOn())) return new Response(null, { status: 404 });
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket")
@@ -247,6 +248,66 @@ export class ConnectRelayDO implements DurableObject {
     return new Response(null, { status: 204 });
   }
 
+  /**
+   * A ring bump (CC-07.4), reached only through `do/client.ts`. The room re-derives the roster at
+   * once, by the rule the alarm uses: devices that left lose their sockets (4003) and are
+   * announced gone, and the sockets that remain hear RING with the new epoch. Behind the launch
+   * gate, pinned like every other call. The room is never created here, and an unreadable roster
+   * closes nothing (the alarm retries it); RING is still sent.
+   */
+  private async poke(request: Request): Promise<Response> {
+    let body: { product?: unknown; subject?: unknown; epoch?: unknown };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return new Response(null, { status: 400 });
+    }
+    const epoch = body.epoch;
+    if (typeof epoch !== "number" || !Number.isSafeInteger(epoch) || epoch < 0)
+      return new Response(null, { status: 400 });
+    const room = this.cached;
+    if (!room) return new Response(null, { status: 204 });
+    if (room.product !== body.product || room.subject !== body.subject)
+      return new Response(null, { status: 403 });
+    if (!(await this.gateOn())) return new Response(null, { status: 404 });
+    const now = this.now();
+    this.wake(now);
+    let roster: Uint8Array[] | null = null;
+    try {
+      roster = await this.readRoster(room, now);
+    } catch {
+      roster = null;
+    }
+    if (roster !== null) {
+      if (roster.length === 0) {
+        await this.eraseRoom(RELAY_CLOSE.notMember);
+        return new Response(null, { status: 204 });
+      }
+      await this.carryOut(
+        this.engine.step({ kind: "members", members: roster }),
+      );
+      await this.persist(room.product, room.subject, room.monthCeiling);
+    }
+    await this.carryOut(this.engine.step({ kind: "ring", epoch }));
+    return new Response(null, { status: 204 });
+  }
+
+  /** The person's devices now (the ring's members, read fresh), as 24-byte ids. */
+  private async readRoster(room: Room, now: number): Promise<Uint8Array[]> {
+    const keys = await accountDeviceKeys(
+      this.db(),
+      room.product,
+      room.subject,
+      {
+        seatsHeld: room.seatsHeld ?? true,
+        now: Math.floor(now / 1000),
+      },
+    );
+    return keys
+      .map((k) => deviceIdBytes(k.deviceId))
+      .filter((b): b is Uint8Array => b !== null);
+  }
+
   // ── hibernation handlers ───────────────────────────────────────────────────────────────────
 
   async webSocketMessage(
@@ -326,15 +387,7 @@ export class ConnectRelayDO implements DurableObject {
         readFailed = true;
       }
       try {
-        const keys = await accountDeviceKeys(
-          this.db(),
-          room.product,
-          room.subject,
-          { seatsHeld: room.seatsHeld ?? true, now: Math.floor(now / 1000) },
-        );
-        roster = keys
-          .map((k) => deviceIdBytes(k.deviceId))
-          .filter((b): b is Uint8Array => b !== null);
+        roster = await this.readRoster(room, now);
       } catch {
         readFailed = true;
       }

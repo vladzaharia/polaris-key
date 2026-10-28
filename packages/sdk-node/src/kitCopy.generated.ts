@@ -1347,6 +1347,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device-management-unsupported.title": "Not available here",
     "core.codes.device-management-unsupported.message":
       "Devices can't be managed from here. Manage them in your account.",
+    "core.codes.device-keys-unreadable.title": "Device keys unreadable",
+    "core.codes.device-keys-unreadable.message":
+      "This device's saved keys can't be read. Reset them to continue.",
+    "core.codes.device-key-store-error.title": "Device keys unavailable",
+    "core.codes.device-key-store-error.message":
+      "This device's keys can't be reached right now. Try again.",
     "core.codes.device_list_failed.title": "Couldn't load devices",
     "core.codes.device_list_failed.message":
       "Your devices couldn't be loaded. Check your connection and try again.",
@@ -3098,6 +3104,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device-management-unsupported.title": "Hier nicht verfügbar",
     "core.codes.device-management-unsupported.message":
       "Geräte können hier nicht verwaltet werden. Verwalten Sie sie in Ihrem Konto.",
+    "core.codes.device-keys-unreadable.title": "Gerätschlüssel nicht lesbar",
+    "core.codes.device-keys-unreadable.message":
+      "Die gespeicherten Schlüssel dieses Geräts sind nicht lesbar. Setzen Sie sie zurück, um fortzufahren.",
+    "core.codes.device-key-store-error.title": "Gerätschlüssel nicht verfügbar",
+    "core.codes.device-key-store-error.message":
+      "Die Schlüssel dieses Geräts sind gerade nicht erreichbar. Versuchen Sie es erneut.",
     "core.codes.device_list_failed.title":
       "Geräte konnten nicht geladen werden",
     "core.codes.device_list_failed.message":
@@ -4843,6 +4855,13 @@ export const KIT_COPY: Readonly<
     "core.codes.device-management-unsupported.title": "Indisponible ici",
     "core.codes.device-management-unsupported.message":
       "Les appareils ne peuvent pas être gérés ici. Gérez-les dans votre compte.",
+    "core.codes.device-keys-unreadable.title": "Clés de l'appareil illisibles",
+    "core.codes.device-keys-unreadable.message":
+      "Les clés enregistrées de cet appareil sont illisibles. Réinitialisez-les pour continuer.",
+    "core.codes.device-key-store-error.title":
+      "Clés de l'appareil indisponibles",
+    "core.codes.device-key-store-error.message":
+      "Les clés de cet appareil sont inaccessibles pour le moment. Réessayez.",
     "core.codes.device_list_failed.title":
       "Chargement des appareils impossible",
     "core.codes.device_list_failed.message":
@@ -6576,6 +6595,14 @@ export const KIT_COPY: Readonly<
     "core.codes.device-management-unsupported.title": "No disponible aquí",
     "core.codes.device-management-unsupported.message":
       "Los dispositivos no se pueden administrar desde aquí. Adminístralos en tu cuenta.",
+    "core.codes.device-keys-unreadable.title":
+      "Claves del dispositivo ilegibles",
+    "core.codes.device-keys-unreadable.message":
+      "Las claves guardadas de este dispositivo no se pueden leer. Restablécelas para continuar.",
+    "core.codes.device-key-store-error.title":
+      "Claves del dispositivo no disponibles",
+    "core.codes.device-key-store-error.message":
+      "Las claves de este dispositivo no están accesibles ahora. Inténtalo de nuevo.",
     "core.codes.device_list_failed.title":
       "No se pudieron cargar los dispositivos",
     "core.codes.device_list_failed.message":
@@ -8282,6 +8309,14 @@ export const KIT_COPY: Readonly<
     "core.codes.device-management-unsupported.title": "Indisponível aqui",
     "core.codes.device-management-unsupported.message":
       "Não é possível gerenciar dispositivos aqui. Gerencie-os na sua conta.",
+    "core.codes.device-keys-unreadable.title":
+      "Chaves do dispositivo ilegíveis",
+    "core.codes.device-keys-unreadable.message":
+      "As chaves salvas deste dispositivo não podem ser lidas. Redefina-as para continuar.",
+    "core.codes.device-key-store-error.title":
+      "Chaves do dispositivo indisponíveis",
+    "core.codes.device-key-store-error.message":
+      "As chaves deste dispositivo não estão acessíveis agora. Tente novamente.",
     "core.codes.device_list_failed.title": "Falha ao carregar dispositivos",
     "core.codes.device_list_failed.message":
       "Não foi possível carregar seus dispositivos. Verifique sua conexão e tente novamente.",
@@ -9997,6 +10032,14 @@ export const KIT_COPY: Readonly<
     "core.codes.device-management-unsupported.title": "Non disponibile qui",
     "core.codes.device-management-unsupported.message":
       "I dispositivi non possono essere gestiti da qui. Gestiscili nel tuo account.",
+    "core.codes.device-keys-unreadable.title":
+      "Chiavi del dispositivo illeggibili",
+    "core.codes.device-keys-unreadable.message":
+      "Le chiavi salvate di questo dispositivo non sono leggibili. Reimpostale per continuare.",
+    "core.codes.device-key-store-error.title":
+      "Chiavi del dispositivo non disponibili",
+    "core.codes.device-key-store-error.message":
+      "Le chiavi di questo dispositivo non sono raggiungibili ora. Riprova.",
     "core.codes.device_list_failed.title": "Impossibile caricare i dispositivi",
     "core.codes.device_list_failed.message":
       "Impossibile caricare i tuoi dispositivi. Controlla la connessione e riprova.",
@@ -11732,6 +11775,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device-management-unsupported.title": "ここでは利用できません",
     "core.codes.device-management-unsupported.message":
       "ここではデバイスを管理できません。アカウントで管理してください。",
+    "core.codes.device-keys-unreadable.title": "デバイスキーを読み取れません",
+    "core.codes.device-keys-unreadable.message":
+      "このデバイスに保存されたキーを読み取れません。リセットして続行してください。",
+    "core.codes.device-key-store-error.title": "デバイスキーを利用できません",
+    "core.codes.device-key-store-error.message":
+      "このデバイスのキーに今はアクセスできません。もう一度お試しください。",
     "core.codes.device_list_failed.title": "デバイスを読み込めませんでした",
     "core.codes.device_list_failed.message":
       "デバイスを読み込めませんでした。接続を確認して、もう一度お試しください。",
@@ -13398,6 +13447,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device-management-unsupported.title": "여기에서 사용할 수 없음",
     "core.codes.device-management-unsupported.message":
       "여기에서는 기기를 관리할 수 없어요. 계정에서 관리하세요.",
+    "core.codes.device-keys-unreadable.title": "기기 키를 읽을 수 없음",
+    "core.codes.device-keys-unreadable.message":
+      "이 기기에 저장된 키를 읽을 수 없어요. 초기화한 뒤 계속하세요.",
+    "core.codes.device-key-store-error.title": "기기 키를 사용할 수 없음",
+    "core.codes.device-key-store-error.message":
+      "지금은 이 기기의 키에 접근할 수 없어요. 다시 시도하세요.",
     "core.codes.device_list_failed.title": "기기를 불러오지 못함",
     "core.codes.device_list_failed.message":
       "기기 목록을 불러오지 못했어요. 연결 상태를 확인하고 다시 시도하세요.",
@@ -14957,6 +15012,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device-management-unsupported.title": "此处不可用",
     "core.codes.device-management-unsupported.message":
       "无法在此管理设备。请在你的账户中管理。",
+    "core.codes.device-keys-unreadable.title": "设备密钥无法读取",
+    "core.codes.device-keys-unreadable.message":
+      "无法读取此设备已保存的密钥。请重置后继续。",
+    "core.codes.device-key-store-error.title": "设备密钥不可用",
+    "core.codes.device-key-store-error.message":
+      "暂时无法访问此设备的密钥。请重试。",
     "core.codes.device_list_failed.title": "无法加载设备",
     "core.codes.device_list_failed.message":
       "无法加载你的设备。请检查网络连接后重试。",

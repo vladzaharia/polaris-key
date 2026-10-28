@@ -6234,6 +6234,26 @@ msgstr "Indisponível aqui"
 msgid "core.codes.device-management-unsupported.message"
 msgstr "Não é possível gerenciar dispositivos aqui. Gerencie-os na sua conta."
 
+#. Device keys unreadable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-keys-unreadable.title"
+msgstr "Chaves do dispositivo ilegíveis"
+
+#. This device's saved keys can't be read. Reset them to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-keys-unreadable.message"
+msgstr "As chaves salvas deste dispositivo não podem ser lidas. Redefina-as para continuar."
+
+#. Device keys unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-key-store-error.title"
+msgstr "Chaves do dispositivo indisponíveis"
+
+#. This device's keys can't be reached right now. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-key-store-error.message"
+msgstr "As chaves deste dispositivo não estão acessíveis agora. Tente novamente."
+
 #. Couldn't load devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_list_failed.title"

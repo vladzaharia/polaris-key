@@ -461,6 +461,14 @@
       "title": "Indisponível aqui",
       "message": "Não é possível gerenciar dispositivos aqui. Gerencie-os na sua conta."
     },
+    "device-keys-unreadable": {
+      "title": "Chaves do dispositivo ilegíveis",
+      "message": "As chaves salvas deste dispositivo não podem ser lidas. Redefina-as para continuar."
+    },
+    "device-key-store-error": {
+      "title": "Chaves do dispositivo indisponíveis",
+      "message": "As chaves deste dispositivo não estão acessíveis agora. Tente novamente."
+    },
     "device_list_failed": {
       "title": "Falha ao carregar dispositivos",
       "message": "Não foi possível carregar seus dispositivos. Verifique sua conexão e tente novamente."

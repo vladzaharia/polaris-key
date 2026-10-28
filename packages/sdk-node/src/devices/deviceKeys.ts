@@ -59,6 +59,7 @@ import {
 import {
   DeviceKeyUnsupportedError,
   DeviceKeysUnreadableError,
+  PolarisError,
   type DeviceKeyPort,
   type DevicePublicKeys,
 } from "@polaris-key/client-core";
@@ -71,9 +72,9 @@ export { DeviceKeysUnreadableError };
  * mode, symlink), or a lock it could not take. Nothing was changed, and nothing reads as "no
  * keys".
  */
-export class DeviceKeyStoreError extends Error {
+export class DeviceKeyStoreError extends PolarisError {
   constructor(message: string) {
-    super(message);
+    super("device-key-store-error", message);
     this.name = "DeviceKeyStoreError";
   }
 }

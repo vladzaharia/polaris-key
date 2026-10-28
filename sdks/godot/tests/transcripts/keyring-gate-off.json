@@ -86,7 +86,7 @@
                 "json": {
                   "ringId": "",
                   "rootKid": "",
-                  "wrap": { "kem": "", "enc": "", "ct": "" },
+                  "wrap": { "kem": 0, "enc": "", "ct": "" },
                   "recovery": { "ct": "" }
                 },
                 "match": "shape",

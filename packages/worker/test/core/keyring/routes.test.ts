@@ -32,7 +32,7 @@ const D1 = "dev-ring-1";
 const D2 = "dev-ring-2";
 const D3 = "dev-ring-3";
 const wrapOf = (tag: string) => ({
-  kem: "x25519",
+  kem: 32,
   enc: `enc${tag}`,
   ct: `ct${tag}`,
 });
@@ -244,7 +244,7 @@ describe("GET and POST", () => {
     expect(g.body.wrap).toEqual({
       epoch: 1,
       kid: KID,
-      kem: "x25519",
+      kem: 32,
       enc: "enc1",
       ct: "ct1",
       by: D1,
@@ -268,8 +268,12 @@ describe("GET and POST", () => {
     for (const over of [
       { ringId: "rg_short" },
       { rootKid: "ABC" },
-      { wrap: { kem: "x25519", enc: "a b", ct: "ct" } },
+      { wrap: { kem: 32, enc: "a b", ct: "ct" } },
       { wrap: { kem: "", enc: "e", ct: "c" } },
+      { wrap: { kem: "x25519", enc: "e", ct: "c" } },
+      { wrap: { kem: "32", enc: "e", ct: "c" } },
+      { wrap: { kem: 33, enc: "e", ct: "c" } },
+      { wrap: { enc: "e", ct: "c" } },
       { wrap: "x" },
       { recovery: { ct: "bad ct" } },
       { recovery: 1 },
@@ -349,7 +353,7 @@ describe("wraps", () => {
     expect(g.body.wrap).toEqual({
       epoch: 1,
       kid: KID,
-      kem: "x25519",
+      kem: 32,
       enc: `enc${D2}`,
       ct: `ct${D2}`,
       by: D1,

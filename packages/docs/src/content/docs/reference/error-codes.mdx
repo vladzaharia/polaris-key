@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 17 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
-(202 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+(204 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -110,6 +110,8 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `bundle-import-unsupported` | `core` | React: this adapter cannot import offline bundles (a desktop bridge older than protocol v3, or a browser without pinned trust keys or IndexedDB). | [Help](/docs/help/messages/other/#bundle-import-unsupported) |
 | `report-unsupported` | `core` | React: device telemetry cannot be reported from here (a browser session has no device token, or the desktop bridge does not expose it). | [Help](/docs/help/messages/other/#report-unsupported) |
 | `device-management-unsupported` | `core` | Remote device management needs a credential or backend this client does not have. | [Help](/docs/help/messages/other/#device-management-unsupported) |
+| `device-keys-unreadable` | `core` | Node, client-core: the stored device key record exists but cannot be used. It is never replaced; only wiping the device keys resets it. | developer only |
+| `device-key-store-error` | `core` | Node: the device key store could not be used right now (an I/O fault, a refused path or a lock timeout). Nothing was changed. | developer only |
 | `device_list_failed` | `core` | Python, Swift: listing the fleet's devices failed. | [Help](/docs/help/messages/devices/#device_list_failed) |
 | `device_rename_failed` | `core` | Python, Swift: renaming a device failed. | [Help](/docs/help/messages/devices/#device_rename_failed) |
 | `device_deauthorize_failed` | `core` | Python, Swift: deauthorizing another device failed. | [Help](/docs/help/messages/devices/#device_deauthorize_failed) |
