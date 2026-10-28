@@ -157,7 +157,7 @@ async function offer(
 ): Promise<Response> {
   const empty = (): Response =>
     noStore(json({ offer: [] } satisfies LinkOfferResponse));
-  if (!(await freshLive(env, product.slug, deviceId))) return empty();
+  if (!(await freshLive(env, product.slug, deviceId, bound))) return empty();
   const holder = await deviceHolder(env, db, product.slug, bound, now);
   if (!holder || holder === "unavailable") return empty();
   const row = await getProduct(db, product.slug);
@@ -280,8 +280,9 @@ async function link(
   const holder = await deviceHolder(env, db, product.slug, bound, now);
   if (holder === "unavailable") return noStore(wireError(503, "unavailable"));
   if (!holder) return stepUp();
-  // The step-up is spent here, before any handle, nonce or token is touched: one try per sign-in.
-  if (!(await spendFresh(env, product.slug, deviceId))) return stepUp();
+  // The step-up is read here and spent once the handle or token has checked out, so a missing
+  // handle or an unreachable provider does not burn it.
+  if (!(await freshLive(env, product.slug, deviceId, bound))) return stepUp();
 
   let source: LinkSource;
   if (body.linkHandle !== undefined) {
@@ -301,6 +302,10 @@ async function link(
       rec.keyThumbprint !== (await signKeyThumbprint(signKey))
     )
       return refused();
+    // A handle issued to one person is not spent into another's account.
+    if (rec.boundSubject && rec.boundSubject !== bound) return refused();
+    if (!(await spendFresh(env, product.slug, deviceId, bound)))
+      return stepUp();
     if ((await consumeArtefact(env, ref)) === null)
       return noStore(wireError(404, ErrorCode.NotFound));
     source = {
@@ -335,6 +340,8 @@ async function link(
         return noStore(wireError(503, "unavailable"));
       return refused();
     }
+    if (!(await spendFresh(env, product.slug, deviceId, bound)))
+      return stepUp();
     source = {
       kind: id.kind,
       issuerKey: id.issuerKey,

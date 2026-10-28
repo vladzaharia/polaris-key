@@ -28,17 +28,22 @@ const FRESH_SIGNIN_TTL_SECONDS = 300;
 const freshRef = (product: string, deviceId: string): ArtefactRef =>
   artefactRef("signin-fresh", `${product}:${deviceId}`);
 
-/** Mark a same-device sign-in. A store that cannot be reached leaves no mark: no step-up. */
+/**
+ * Mark a same-device sign-in. The mark holds the pairwise subject that was bound, so it counts for
+ * that person only: a different person bound to the device later finds no step-up. A store that
+ * cannot be reached leaves no mark: no step-up.
+ */
 export async function markFresh(
   env: Env,
   product: string,
   deviceId: string,
+  subject: string,
 ): Promise<void> {
   try {
     await putArtefact(
       env,
       freshRef(product, deviceId),
-      "1",
+      subject,
       FRESH_SIGNIN_TTL_SECONDS,
     );
   } catch {
@@ -46,20 +51,31 @@ export async function markFresh(
   }
 }
 
-/** True while the device's step-up is live. Reads the mark without spending it (the offer list). */
+/**
+ * True while the device's step-up is live for `subject`, the subject bound on the device now.
+ * Reads the mark without spending it; a mark of another subject, or no bound subject, is no
+ * step-up.
+ */
 export async function freshLive(
   env: Env,
   product: string,
   deviceId: string,
+  subject: string | null | undefined,
 ): Promise<boolean> {
-  return (await getArtefact(env, freshRef(product, deviceId))) !== null;
+  if (!subject) return false;
+  return (await getArtefact(env, freshRef(product, deviceId))) === subject;
 }
 
-/** Spend the device's step-up. True for exactly one caller per mark; an unreachable store is false. */
+/**
+ * Spend the device's step-up for `subject`. The mark is compared before it is taken, so another
+ * person's request never burns it. True for exactly one caller per mark.
+ */
 export async function spendFresh(
   env: Env,
   product: string,
   deviceId: string,
+  subject: string | null | undefined,
 ): Promise<boolean> {
-  return (await consumeArtefact(env, freshRef(product, deviceId))) !== null;
+  if (!(await freshLive(env, product, deviceId, subject))) return false;
+  return (await consumeArtefact(env, freshRef(product, deviceId))) === subject;
 }

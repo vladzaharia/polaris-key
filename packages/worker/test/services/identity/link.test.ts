@@ -97,7 +97,7 @@ async function device(
   key: string,
   email: string,
   keys?: Dev["keys"],
-): Promise<Dev & { accountId: string }> {
+): Promise<Dev & { accountId: string; subject: string }> {
   const product = (await loadProduct(h.env, h.db, SLUG))!;
   const res = await handleActivate(
     mkReq("POST", { authorization: `Bearer ${key}`, "x-pkey-device": id }),
@@ -124,10 +124,16 @@ async function device(
   expect(await setDeviceSubject(h.env, h.db, SLUG, id, r.subject!)).toBe(true);
   const k = keys ?? (await newKeys());
   await upsertDeviceKeys(h.db, SLUG, id, k, NOW);
-  return { id, token, keys: k, accountId: r.account.id };
+  return {
+    id,
+    token,
+    keys: k,
+    accountId: r.account.id,
+    subject: r.subject!,
+  };
 }
 
-let ada: Dev & { accountId: string };
+let ada: Dev & { accountId: string; subject: string };
 
 beforeEach(async () => {
   h = await makeProviderHarness();
@@ -303,7 +309,7 @@ describe("the offer list", () => {
     let res = await call("GET", ada);
     expect(res.status).toBe(200);
     expect(await body(res)).toEqual({ offer: [] });
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     res = await call("GET", ada);
     expect(await body(res)).toEqual({
       offer: [
@@ -318,10 +324,10 @@ describe("the offer list", () => {
   });
 
   it("leaves out a kind the account already has in the product's scope", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({});
     expect((await postHandle(ada, HANDLE)).status).toBe(200);
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     expect(await body(await call("GET", ada))).toEqual({
       offer: [{ kind: "apple", reach: null }],
     });
@@ -335,7 +341,7 @@ describe("the offer list", () => {
 
 describe("the scope of an app-made link (C5)", () => {
   it("a Google token whose address the account has not verified is developer-scoped, never global", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     const res = await tokenForm(
       ada,
       google({ sub: "attacker-sub", email: "mallory@gmail.com" }),
@@ -353,7 +359,7 @@ describe("the scope of an app-made link (C5)", () => {
       }),
     ]);
     // The same through a handle.
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor(
       { subject: "attacker-2", email: "mallory@gmail.com" },
       HANDLE_2,
@@ -365,7 +371,7 @@ describe("the scope of an app-made link (C5)", () => {
   });
 
   it("an address the account has verified, vouched by the provider, is global", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     const res = await tokenForm(ada, google({ email: "Ada@Gmail.com" }));
     expect(await body(res)).toEqual({
       linked: { kind: "google", reach: "global" },
@@ -376,7 +382,7 @@ describe("the scope of an app-made link (C5)", () => {
   });
 
   it("an address the provider does not vouch for is developer-scoped even when it matches", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     const res = await tokenForm(
       ada,
       google({ email: "ada@gmail.com", email_verified: false }),
@@ -385,7 +391,7 @@ describe("the scope of an app-made link (C5)", () => {
   });
 
   it("an Apple link always stays inside the team", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     const res = await tokenForm(ada, apple({ email: "ada@gmail.com" }));
     expect(await body(res)).toEqual({
       linked: { kind: "apple", reach: "developer" },
@@ -409,7 +415,7 @@ describe("step-up", () => {
   });
 
   it("is spent by a link: a second link needs a new sign-in", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({}, HANDLE);
     await handleFor({ subject: "g-2" }, HANDLE_2);
     expect((await postHandle(ada, HANDLE)).status).toBe(200);
@@ -421,16 +427,16 @@ describe("step-up", () => {
 
 describe("a handle alone does nothing", () => {
   it("a replayed handle is refused", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({});
     expect((await postHandle(ada, HANDLE)).status).toBe(200);
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     const again = await postHandle(ada, HANDLE);
     expect(again.status).toBe(404);
   });
 
   it("a proof by another key is refused, and nothing is spent", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({});
     const thief = await newKeys();
     const res = await postHandle(ada, HANDLE, { signer: thief.priv });
@@ -441,7 +447,7 @@ describe("a handle alone does nothing", () => {
   });
 
   it("a proof for another purpose or device is refused", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({});
     for (const bad of [{ purpose: "exchange" }, { device: OTHER_DEVICE }]) {
       const res = await postHandle(ada, HANDLE, bad);
@@ -458,7 +464,7 @@ describe("a handle alone does nothing", () => {
       key,
       "mallory-account@example.com",
     );
-    await markFresh(h.env, SLUG, OTHER_DEVICE);
+    await markFresh(h.env, SLUG, OTHER_DEVICE, mallory.subject);
     await handleFor({}); // bound to ada's device and key
     const res = await postHandle(mallory, HANDLE);
     expect(res.status).toBe(400);
@@ -468,7 +474,7 @@ describe("a handle alone does nothing", () => {
   });
 
   it("a handle recorded for another device is refused even with the right key", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({ deviceId: OTHER_DEVICE });
     const res = await postHandle(ada, HANDLE);
     expect(res.status).toBe(400);
@@ -477,7 +483,7 @@ describe("a handle alone does nothing", () => {
 
   it("a device with no registered key cannot use a handle", async () => {
     await h.db.run("DELETE FROM device_keys WHERE device_id = ?", DEVICE);
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({});
     const res = await postHandle(ada, HANDLE);
     expect(res.status).toBe(400);
@@ -485,7 +491,7 @@ describe("a handle alone does nothing", () => {
   });
 
   it("an unknown handle is 404; a malformed body is 400 bad_request", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     expect((await postHandle(ada, HANDLE)).status).toBe(404);
     const res = await call("POST", ada, { linkHandle: "nope", proof: "x" });
     expect(res.status).toBe(400);
@@ -504,7 +510,7 @@ describe("the token form", () => {
       [google({ nonce: "another" }), {}],
       [async () => "not.a.jwt", {}],
     ] as const) {
-      await markFresh(h.env, SLUG, DEVICE);
+      await markFresh(h.env, SLUG, DEVICE, ada.subject);
       refusals.push(await tokenForm(ada, mint, o));
     }
     const texts: string[] = [];
@@ -518,7 +524,7 @@ describe("the token form", () => {
   });
 
   it("a nonce is spent by the first attempt", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     const nonceRes = await dispatchWith(
       new Request(`${BASE}/${SLUG}/identity/nonce`, {
         method: "POST",
@@ -548,7 +554,7 @@ describe("the token form", () => {
         }),
       });
     expect((await req()).status).toBe(200);
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     expect((await req()).status).toBe(400);
   });
 });
@@ -572,7 +578,7 @@ describe("conflict", () => {
       },
     );
     if (other.status !== "signed_in") throw new Error("seed failed");
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({});
     const res = await postHandle(ada, HANDLE);
     expect(res.status).toBe(409);
@@ -596,7 +602,7 @@ describe("conflict", () => {
       { unfenced: true },
     );
     if (other.status !== "signed_in") throw new Error("seed failed");
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({ email: "ada@gmail.com" });
     const res = await postHandle(ada, HANDLE);
     expect(res.status).toBe(409);
@@ -609,7 +615,7 @@ describe("conflict", () => {
 
 describe("the notice and the audit", () => {
   it("goes to the primary and the linked address, names the app, and the audit holds no token", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     const res = await tokenForm(ada, google({ email: "mallory@gmail.com" }));
     expect(res.status).toBe(200);
     const to = mail.map((m) => m.to).sort();
@@ -624,9 +630,70 @@ describe("the notice and the audit", () => {
   });
 });
 
+describe("the step-up belongs to one person", () => {
+  /** Sign `email` in on the device by a channel that writes no step-up (the device code). */
+  async function rebind(email: string): Promise<string> {
+    const r = await signIn(
+      h.db,
+      {
+        issuerKey: "email",
+        subject: email,
+        kind: "email",
+        email,
+        emailVerified: true,
+      },
+      NOW,
+      { unfenced: true, product: { slug: SLUG } },
+    );
+    if (r.status !== "signed_in") throw new Error("sign-in failed");
+    expect(await setDeviceSubject(h.env, h.db, SLUG, DEVICE, r.subject!)).toBe(
+      true,
+    );
+    return r.subject!;
+  }
+
+  it("another person bound later finds no step-up, and the mark is not burned", async () => {
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    await rebind("bob@gmail.com");
+    expect(await body(await call("GET", ada))).toEqual({ offer: [] });
+    const res = await tokenForm(ada, google({ sub: "a-google" }));
+    expect(res.status).toBe(401);
+    expect(await body(res)).toMatchObject({
+      error: { code: "step_up_required" },
+    });
+    expect(await freshIsLive()).toBe(true);
+    expect(await links()).toEqual([]);
+    // The first person back on the device has their step-up again.
+    await rebind("ada@gmail.com");
+    expect(await body(await call("GET", ada))).toMatchObject({
+      offer: [{}, {}],
+    });
+  });
+
+  it("a handle issued to one person is refused once the device carries another", async () => {
+    await handleFor({ boundSubject: ada.subject });
+    const bob = await rebind("bob@gmail.com");
+    await markFresh(h.env, SLUG, DEVICE, bob);
+    const res = await postHandle(ada, HANDLE);
+    expect(res.status).toBe(400);
+    expect(await body(res)).toEqual({ error: { code: "invalid_grant" } });
+    expect(await live(HANDLE)).toBe(true);
+    expect(await freshIsLive()).toBe(true);
+    expect(await links()).toEqual([]);
+  });
+
+  it("a missing handle or an unverifiable token does not burn the step-up", async () => {
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    expect((await postHandle(ada, HANDLE)).status).toBe(404);
+    expect(await freshIsLive()).toBe(true);
+    expect((await tokenForm(ada, google({ aud: "evil" }))).status).toBe(400);
+    expect(await freshIsLive()).toBe(true);
+  });
+});
+
 describe("off", () => {
   it("Identity off answers 404 and writes nothing", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({});
     await services({ identity: false });
     expect((await postHandle(ada, HANDLE)).status).toBe(404);
@@ -635,7 +702,7 @@ describe("off", () => {
   });
 
   it("the launch gate off answers 404 on both methods and spends nothing", async () => {
-    await markFresh(h.env, SLUG, DEVICE);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({});
     delete (h.env as unknown as Record<string, unknown>)
       .LAUNCH_IDENTITY_EXCHANGE;
