@@ -63,5 +63,20 @@ func _run() -> void:
 	await process_frame
 	await pk.identity.sign_out()
 	await process_frame
+	# The Cloud Sync host: start, sign in (no token: nothing is sent), flush, purge, close.
+	var sync_host: Node = load("res://addons/polaris_key/services/cloud_sync/host.gd").new()
+	root.add_child(sync_host)
+	sync_host.configure({
+		"product": "djdl", "state_dir": "user://pkey-test/exit-probe-sync", "token": func() -> String: return "",
+		"headers": func(x: Dictionary) -> Dictionary: return x, "url": func(p: String) -> String: return "http://127.0.0.1:9" + p,
+		"document": func() -> Dictionary: return {"values": {}}, "fetch_schema": func() -> Variant: return null,
+	}, {"encryption": "server"})
+	await sync_host.start()
+	sync_host.sign_in("sub_probe")
+	await sync_host.flush(500)
+	await sync_host.purge()
+	sync_host.close()
+	sync_host.queue_free()
+	await process_frame
 	print("PROBE done")
 	quit()
