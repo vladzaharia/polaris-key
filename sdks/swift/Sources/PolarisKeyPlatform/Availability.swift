@@ -8,7 +8,7 @@
 //                        (localStatus, ensureLocalAvailability    that has them (Xcode 26.4,
 //                        (of:requireLatestVersion:), …)           Swift 6.3)
 //   assetPackManifest    AssetPackManager.manifest              iOS / macOS 27 (Xcode 27 SDK)
-//   entitlementsForID    Transaction.currentEntitlements(for:)  iOS 18.4 / macOS 15.4
+//   entitlementsForID    Transaction.currentEntitlements(for:)  iOS 18.4 / macOS 15.4 / tvOS 18.4 / visionOS 2.4
 //
 // The package floor stays iOS 17 / macOS 14 (sdks/swift/Package.swift); nothing here raises it.
 
@@ -50,7 +50,7 @@ public struct PlatformAvailability: Sendable, Equatable {
         if #available(iOS 27, macOS 27, *) { a.assetPackManifest = true }
         #endif
         #if compiler(>=6.1) && canImport(StoreKit)
-        if #available(iOS 18.4, macOS 15.4, *) { a.entitlementsForID = true }
+        if #available(iOS 18.4, macOS 15.4, tvOS 18.4, visionOS 2.4, *) { a.entitlementsForID = true }
         #endif
         return a
     }

@@ -49,6 +49,16 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(cancelled["result"], "userCancelled")
     }
 
+    func testPurchaseWhereStoreKitCannotSellIsTheTypedUnsupportedResult() async {
+        let client = FakeStoreClient(catalog: catalog)
+        client.purchaseUnsupported = true
+        let s = StoreService(client: client, sink: PlatformEventSink())
+        let r = await s.purchase(productID: "pack.foes", appAccountToken: nil)
+        XCTAssertEqual(r["ok"], false)
+        XCTAssertEqual(r["unsupported"], true)
+        XCTAssertEqual(r["reason"], "runtime")
+    }
+
     func testUpdatesAreDeduplicatedByTransactionAndRevocation() async {
         let sink = PlatformEventSink()
         let log = EventLog(sink)

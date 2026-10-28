@@ -341,6 +341,9 @@ public actor CommerceClient {
                 await onClaimed()
                 return .claimed(c, transactionID: t.id)
             }
+        } catch let e as PurchaseUnsupported {
+            return .unsupported(
+                Unsupported(feature: Feature.commerceReceipt, reason: UnsupportedReason.runtime, detail: e.detail))
         } catch let e as ProductNotLoaded {
             return .failed(
                 code: ErrorCode.notFound, message: "\(e.productID) is not on sale in this storefront.")

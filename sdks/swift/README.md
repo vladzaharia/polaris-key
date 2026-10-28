@@ -1058,6 +1058,9 @@ swift test --filter PkeyDevLiveTests   # the quickstart against a live `pkey dev
 xcodebuild -scheme PolarisKeyCore -destination 'generic/platform=iOS' build
 xcodebuild -scheme PolarisKeyUpdate -destination 'generic/platform=iOS' build
 xcodebuild -scheme PolarisKeyPacks -destination 'generic/platform=iOS' build
+
+# Availability guard: the PolarisKey scheme builds for tvOS, visionOS, iOS and macOS (CI should run it).
+tools/build_platforms.sh
 ```
 
 The tests read the corpus (`conformance/corpus/v2/`, `content/` included) and the HTTP transcripts
