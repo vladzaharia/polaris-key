@@ -145,6 +145,13 @@ export const qk = {
     "tokens",
     license,
   ],
+  /** F-36: the cleanup setting and its notice. */
+  pkgFeedRetention: (scope: FeedScope): QueryKey => [
+    ...qkFeeds(scope),
+    "retention",
+  ],
+  /** F-38a: the cleanup dry run (a POST that stores nothing). */
+  pkgFeedPrune: (scope: FeedScope): QueryKey => [...qkFeeds(scope), "prune"],
   /** Every product's queries (a platform-wide write that changes what each product shows). */
   allProducts: (): QueryKey => ["product"],
   /** The product detail row. Match it with `exact: true`; as a prefix it is the whole product. */

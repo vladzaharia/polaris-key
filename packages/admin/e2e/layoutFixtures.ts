@@ -340,6 +340,22 @@ const ROUTES: Record<string, unknown> = {
       updatedBy: null,
     },
   },
+  // F-38a: the cleanup notice (a week from the dry run) behind the Packages callout.
+  [`${P}/distribution/feeds/retention`]: {
+    product: "djdl",
+    prunePrereleases: false,
+    locked: false,
+    source: "default",
+    notice: {
+      noticedAt: NOW - 3 * DAY,
+      startsAt: NOW + 4 * DAY,
+      packages: 3,
+      versions: 41,
+      bytes: 18_600_000,
+      freedBytes: 18_000_000,
+    },
+    version: 0,
+  },
   [`${P}/devices`]: { devices, nextCursor: null },
   [`${P}/devices/summary`]: { ...core("/devices/summary"), total: 40 },
   [`${P}/activity`]: { items: activity, nextCursor: null },
@@ -786,4 +802,67 @@ export function resolve(pathname: string): unknown {
       return ROUTES[`${P}${pathname.slice(base.length)}`];
   }
   return ROUTES[pathname];
+}
+
+/** F-38a: the answer to `POST …/feeds/prune {apply: false}` (long names and a held-back version). */
+export function prunePlan(): unknown {
+  const version = (v: string, bytes: number) => ({
+    releaseId: `x@${v}`,
+    version: v,
+    files: 3,
+    bytes,
+    freedBytes: bytes,
+  });
+  const retention = (ROUTES[`${P}/distribution/feeds/retention`] ??
+    {}) as Record<string, unknown>;
+  return {
+    product: "djdl",
+    dryRun: true,
+    prunePrereleases: false,
+    retention,
+    packages: [
+      {
+        deliverableId: "source-kit",
+        ecosystem: "npm",
+        name: "@djdl/source-kit-with-a-very-long-package-name",
+        nameNorm: "@djdl/source-kit-with-a-very-long-package-name",
+        stable: "2.3.0",
+        stableReleaseId: "source-kit@2.3.0",
+        prune: [
+          version("2.0.0-dev.1", 14_000_000),
+          version("2.3.0-beta.4", 900_000),
+        ],
+        kept: [
+          {
+            releaseId: "source-kit@2.2.0-beta.6",
+            version: "2.2.0-beta.6",
+            reason: "pinned",
+          },
+        ],
+        bytes: 14_900_000,
+        freedBytes: 14_900_000,
+      },
+      {
+        deliverableId: "crates",
+        ecosystem: "pypi",
+        name: "djdl-crates",
+        nameNorm: "djdl-crates",
+        stable: "1.1.0",
+        stableReleaseId: "crates@1.1.0",
+        prune: [version("1.0.0b1", 3_500_000)],
+        kept: [],
+        bytes: 3_500_000,
+        freedBytes: 3_500_000,
+      },
+    ],
+    skipped: [],
+    totals: {
+      versions: 3,
+      bytes: 18_400_000,
+      freedBytes: 18_400_000,
+      failed: 0,
+      skipped: 0,
+    },
+    more: false,
+  };
 }

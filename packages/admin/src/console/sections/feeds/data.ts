@@ -17,6 +17,7 @@ import {
   type FeedScope,
   type FeedsOverviewDto,
 } from "../../../api.js";
+import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
 
 export function fetchFeedsOverview(scope: FeedScope) {
@@ -41,6 +42,20 @@ export const registryTokensQuery = (scope: FeedScope, licenseId?: string) =>
   queryOptions({
     queryKey: qk.pkgFeedTokens(scope, licenseId ?? ""),
     queryFn: () => api.registryTokens(scope, licenseId),
+  });
+
+/** The cleanup setting and its notice (F-36), read for the Packages callout. */
+export const feedRetentionQuery = (scope: FeedScope) =>
+  queryOptions({
+    queryKey: qk.pkgFeedRetention(scope),
+    queryFn: () => api.feedRetention(scope),
+  });
+
+/** The cleanup dry run (F-38a): a POST that stores nothing, read like a query. */
+export const feedPruneQuery = (scope: FeedScope) =>
+  queryOptions({
+    queryKey: qk.pkgFeedPrune(scope),
+    queryFn: () => mutate("previewFeedPrune", scope),
   });
 
 export function useFeedsOverview(
