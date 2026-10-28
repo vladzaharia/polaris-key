@@ -167,7 +167,7 @@ describe("the dry-run dialog", () => {
     const log = open();
     const d = await openDialog();
     await d.findByText("These go with the first stable release after Oct 14.");
-    expect(d.getByText(/Dry run Oct 7/)).toBeTruthy();
+    expect(d.getByText(/^Read /)).toBeTruthy();
     expect(d.getByText("Copies on public registries stay.")).toBeTruthy();
     const call = log.calls.find(
       (c) => c.method === "POST" && c.path === PRUNE,
@@ -177,7 +177,7 @@ describe("the dry-run dialog", () => {
     expect(d.getByText("2.0.0-dev.1 … 2.2.0-beta.6")).toBeTruthy();
     expect(d.getByText("2.1.0-beta.2")).toBeTruthy();
     expect(d.getByText(/pinned by a channel/)).toBeTruthy();
-    expect(d.getAllByText(/Stable 2\.3\.0 and newer/).length).toBe(1);
+    expect(d.getAllByText(/Every stable version/).length).toBe(2);
     expect(d.getByText("3 versions · 3 MB")).toBeTruthy();
     // The primary only closes; nothing was written.
     expect(
@@ -252,9 +252,25 @@ describe("the dry-run dialog", () => {
     expect(
       confirm.getByText("A deleted version can't be published again."),
     ).toBeTruthy();
-    await userEvent.click(
-      confirm.getByRole("button", { name: "Delete 3 versions" }),
+    const applyBtn = () =>
+      confirm.getByRole("button", { name: "Delete 3 versions" });
+    const apply = applyBtn();
+    // A typed confirmation: nothing is sent until the product slug is typed.
+    await userEvent.click(apply);
+    expect(
+      log.calls.some(
+        (c) => (c.json as { apply?: boolean } | undefined)?.apply === true,
+      ),
+    ).toBe(false);
+    await userEvent.type(
+      confirm.getByLabelText(/Type the product slug/),
+      "djdl",
     );
+    await waitFor(
+      () => expect(applyBtn().getAttribute("aria-disabled")).not.toBe("true"),
+      { timeout: 8000 },
+    );
+    await userEvent.click(applyBtn());
     await waitFor(() =>
       expect(
         log.calls.some(
@@ -263,6 +279,65 @@ describe("the dry-run dialog", () => {
       ).toBe(true),
     );
     await d.findByText("Nothing to delete.");
+    // Focus lands on the dialog title, not <body>.
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("Cleanup dry run"),
+    );
+  });
+
+  it("says when the plan was read and names packages with no stable release", async () => {
+    open({
+      [`POST ${PRUNE}`]: plan({
+        skipped: [{ deliverableId: "c", reason: "no-stable" }],
+      }),
+    });
+    const d = await openDialog();
+    expect(await d.findByText(/^Read /)).toBeTruthy();
+    expect(d.queryByText(/^Dry run /)).toBeNull();
+    expect(d.getByText(/1 package has no stable release yet/)).toBeTruthy();
+  });
+
+  it("turns cleanup off with the version it read, and closes", async () => {
+    const log = open({
+      [`PUT ${RETENTION}`]: retention({ source: "operator", version: 4 }),
+    });
+    const d = await openDialog();
+    await userEvent.click(
+      await d.findByRole("button", { name: "Turn off cleanup" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
+        expectedVersion: 0,
+        prunePrereleases: false,
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Cleanup dry run" }),
+      ).toBeNull(),
+    );
+  });
+
+  it("re-reads and says so when the setting moved under a Turn off", async () => {
+    const log = open({
+      [`PUT ${RETENTION}`]: new Response(
+        JSON.stringify({ error: "bad_request", reason: "version_conflict" }),
+        { status: 409 },
+      ),
+    });
+    const d = await openDialog();
+    await userEvent.click(
+      await d.findByRole("button", { name: "Turn off cleanup" }),
+    );
+    await screen.findByText(/cleanup setting changed/);
+    expect(
+      screen.getByRole("dialog", { name: "Cleanup dry run" }),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        log.calls.filter((c) => c.method === "POST" && c.path === PRUNE).length,
+      ).toBeGreaterThan(1),
+    );
   });
 
   it("keeps Delete soft-disabled for a member who cannot edit Ship builds", async () => {

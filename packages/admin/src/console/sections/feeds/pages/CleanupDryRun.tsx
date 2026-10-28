@@ -112,8 +112,8 @@ export function CleanupNotice({
           </Button>
         }
       >
-        Dev and beta builds older than the latest stable release are deleted
-        with the next stable release after that. Nothing goes before.
+        From {day(r.notice.startsAt)}, each stable release deletes the dev and
+        beta builds older than it. Nothing goes before.
       </Callout>
       <CleanupDryRun scope={scope} open={open} onOpenChange={setOpen} />
     </>
@@ -124,7 +124,7 @@ function PlanRow({ p }: { p: FeedPrunePackage }): React.ReactElement {
   const eco = ECOSYSTEM_LABELS[p.ecosystem as keyof typeof ECOSYSTEM_LABELS];
   const cell = "px-3 py-2 align-top max-sm:block max-sm:px-0 max-sm:py-1";
   return (
-    <tr className="border-b border-border max-sm:block max-sm:py-2">
+    <tr className="border-b border-border max-sm:block max-sm:px-3 max-sm:py-2">
       <td className={cell}>
         <div className="font-mono text-sm break-all text-fg-strong">
           {p.name}
@@ -148,7 +148,10 @@ function PlanRow({ p }: { p: FeedPrunePackage }): React.ReactElement {
       </td>
       <td className={cell}>
         <span className="text-xs text-fg-muted sm:hidden">Keeps </span>
-        <div>Stable {p.stable} and newer</div>
+        <div>Every stable version</div>
+        <div className="text-xs text-fg-muted">
+          Dev and beta newer than {p.stable}
+        </div>
         {p.kept.map((k) => (
           <div key={k.releaseId} className="text-xs text-fg-muted">
             <span className="font-mono break-all">{k.version}</span>,{" "}
@@ -160,7 +163,13 @@ function PlanRow({ p }: { p: FeedPrunePackage }): React.ReactElement {
   );
 }
 
-function Body({ report }: { report: FeedPruneReport }): React.ReactElement {
+function Body({
+  report,
+  readAt,
+}: {
+  report: FeedPruneReport;
+  readAt: number;
+}): React.ReactElement {
   const n = report.totals.versions;
   const held = report.packages.reduce((a, p) => a + p.kept.length, 0);
   const notice = report.retention.notice;
@@ -174,11 +183,9 @@ function Body({ report }: { report: FeedPruneReport }): React.ReactElement {
   return (
     <div className="space-y-4">
       <div className="space-y-1 text-sm">
-        {notice ? (
-          <p className="m-0 text-xs text-fg-muted">
-            Dry run {formatShort(notice.noticedAt * 1000, { time: true })}
-          </p>
-        ) : null}
+        <p className="m-0 text-xs text-fg-muted">
+          Read {formatShort(readAt, { time: true })}
+        </p>
         <p className="m-0 font-semibold text-fg-strong">
           {n ? when : "Nothing to delete."}
         </p>
@@ -215,15 +222,29 @@ function Body({ report }: { report: FeedPruneReport }): React.ReactElement {
                     {report.packages.length === 1 ? "package" : "packages"}
                   </td>
                   <td className="px-3 py-2 max-sm:block max-sm:px-0">
+                    <span className="text-xs font-normal text-fg-muted sm:hidden">
+                      Deletes{" "}
+                    </span>
                     {versions(n)} · {formatBytes(report.totals.bytes)}
                   </td>
                   <td className="px-3 py-2 max-sm:block max-sm:px-0">
+                    <span className="text-xs font-normal text-fg-muted sm:hidden">
+                      Keeps{" "}
+                    </span>
                     {held ? `${formatCount(held)} held back` : null}
                   </td>
                 </tr>
               </tfoot>
             </table>
           </div>
+          {report.skipped.length ? (
+            <p className="m-0 text-sm text-fg-muted">
+              {formatCount(report.skipped.length)}{" "}
+              {report.skipped.length === 1 ? "package has" : "packages have"} no
+              stable release yet; nothing of{" "}
+              {report.skipped.length === 1 ? "its" : "theirs"} goes.
+            </p>
+          ) : null}
           <p className="m-0 text-sm text-fg-muted">
             Kept: every stable version, and any dev or beta newer than the
             latest stable.{" "}
@@ -267,7 +288,34 @@ export function CleanupDryRun({
     scope.kind === "product" ? scope.slug : null,
   );
   const [confirming, setConfirming] = React.useState(false);
+  const [turningOff, setTurningOff] = React.useState(false);
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
   const report = plan.data;
+  const canTurnOff =
+    !!report &&
+    !report.retention.locked &&
+    (report.retention.prunePrereleases ||
+      report.retention.source === "default");
+
+  const turnOff = async (): Promise<void> => {
+    if (!report) return;
+    setTurningOff(true);
+    try {
+      await mutate("saveFeedRetention", scope, {
+        expectedVersion: report.retention.version,
+        prunePrereleases: false,
+      });
+      toast.success("Cleanup turned off");
+      onOpenChange(false);
+    } catch (e) {
+      if ((e as { status?: unknown } | null)?.status === 409) {
+        toast.error("The cleanup setting changed. Review it and try again.");
+        void plan.refetch();
+      } else toast.error(errorCopy(e).title);
+    } finally {
+      setTurningOff(false);
+    }
+  };
   const n = report?.totals.versions ?? 0;
   const start =
     report?.retention.notice && report.retention.source === "default"
@@ -286,6 +334,8 @@ export function CleanupDryRun({
         `${versions(gone)} deleted. More remain: delete again to continue.`,
       );
     else toast.success(`${versions(gone)} deleted`);
+    // The Delete button unmounts with the last version: focus the dialog title instead.
+    requestAnimationFrame(() => titleRef.current?.focus());
   };
 
   return (
@@ -295,6 +345,7 @@ export function CleanupDryRun({
         onOpenChange={onOpenChange}
         size="lg"
         title="Cleanup dry run"
+        titleRef={titleRef}
         glyph={<ListChecks aria-hidden className="size-5 text-fg-muted" />}
       >
         <DialogBody>
@@ -316,10 +367,21 @@ export function CleanupDryRun({
               }}
             />
           ) : (
-            <Body report={report} />
+            <Body report={report} readAt={plan.dataUpdatedAt} />
           )}
         </DialogBody>
         <DialogFooter>
+          {canTurnOff ? (
+            <Button
+              variant="ghost"
+              className="sm:mr-auto"
+              loading={turningOff}
+              disabledReason={gate.disabledReason}
+              onClick={() => void turnOff()}
+            >
+              Turn off cleanup
+            </Button>
+          ) : null}
           {n ? (
             <Button
               variant="outline"
@@ -340,6 +402,10 @@ export function CleanupDryRun({
         open={confirming}
         onOpenChange={setConfirming}
         intent="danger"
+        typedConfirmation={{
+          value: scope.kind === "product" ? scope.slug : "delete",
+          label: "Type the product slug",
+        }}
         title={`Delete ${versions(n)} now?`}
         consequences={[
           "A deleted version can't be published again.",

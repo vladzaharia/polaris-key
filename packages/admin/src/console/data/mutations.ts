@@ -182,6 +182,7 @@ export type WriteMethod =
   | "feedVersionAction"
   | "rebuildFeed"
   | "previewFeedPrune"
+  | "saveFeedRetention"
   | "pruneFeeds"
   | "bootstrapPlatformFeeds"
   | "savePackageFeeds"
@@ -1104,6 +1105,11 @@ export const MUTATIONS: MutationTable = {
     label: "feed cleanup dry run",
     invalidates: () => [],
     why: "A POST that stores nothing (apply: false): the plan is read like a query and shown in the dry-run dialog.",
+  },
+  saveFeedRetention: {
+    label: "feed cleanup setting save",
+    // The notice and the plan's wording follow the setting; the activity trail gains a row.
+    invalidates: (scope) => feeds(scope),
   },
   pruneFeeds: {
     label: "feed cleanup apply",

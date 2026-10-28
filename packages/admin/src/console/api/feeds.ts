@@ -526,6 +526,15 @@ export const feedsApi = {
   /** F-36: the cleanup setting and its notice. */
   feedRetention: (scope: FeedScope) =>
     call<FeedRetentionDto>(`${feedsBase(scope)}/retention`),
+  /** F-38a: turn cleanup on or off. 409 `version_conflict` when the setting moved. */
+  saveFeedRetention: (
+    scope: FeedScope,
+    body: { expectedVersion: number; prunePrereleases: boolean },
+  ) =>
+    call<FeedRetentionDto>(`${feedsBase(scope)}/retention`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
   /** F-38a: what cleanup would delete (`apply: false`: a plan, nothing is stored). */
   previewFeedPrune: (scope: FeedScope) =>
     call<FeedPruneReport>(`${feedsBase(scope)}/prune`, {
