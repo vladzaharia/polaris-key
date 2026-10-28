@@ -1986,13 +1986,13 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "sync.transfer.background" to CapabilityRow("planned", "sync", listOf(CapabilityNa("jvm", "runtime"))),
     "sync.e2e" to CapabilityRow("planned", "sync", listOf()),
     "connect.identity" to CapabilityRow("implemented", "connect", listOf()),
-    "connect.noise" to CapabilityRow("planned", "connect", listOf()),
-    "connect.protocol" to CapabilityRow("planned", "connect", listOf()),
+    "connect.noise" to CapabilityRow("implemented", "connect", listOf()),
+    "connect.protocol" to CapabilityRow("implemented", "connect", listOf()),
     "connect.lan" to CapabilityRow("planned", "connect", listOf()),
-    "connect.relay" to CapabilityRow("planned", "connect", listOf()),
+    "connect.relay" to CapabilityRow("implemented", "connect", listOf()),
     "connect.links" to CapabilityRow("planned", "connect", listOf()),
     "connect.transfer" to CapabilityRow("planned", "connect", listOf()),
-    "connect.app" to CapabilityRow("planned", "connect", listOf()),
+    "connect.app" to CapabilityRow("implemented", "connect", listOf()),
     "devices.fingerprint" to CapabilityRow("implemented", "core", listOf()),
     "devices.facts" to CapabilityRow("implemented", "core", listOf()),
     "devices.register" to CapabilityRow("implemented", "core", listOf()),
@@ -2079,4 +2079,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "de29774b8313030541240c9b488a69fe831b54aa2fe66766d0f5e4822ec7729e"
+public const val CAPABILITY_DIGEST: String = "c8ec4e075d2197d815187e69d3a9818c89c1b01eb28c8dd33f905aeae797e357"

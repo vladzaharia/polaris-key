@@ -13,7 +13,7 @@ Cloud Connect (service slug `connect`) lets one person's devices find each other
 
 ## Status
 
-Cloud Connect is off by default and not available yet. The service row exists, so a product can turn it on, but it serves no route, issues no certificate and holds no data. The pieces arrive in later releases: device keys, certificates, local discovery, the relay, the SDK calls and the console pages.
+Cloud Connect is off by default and not available yet. The service row exists, so a product can turn it on, but it serves no route, issues no certificate and holds no data. The Kotlin SDK already ships the client side (see below). The pieces arrive in later releases: device keys, certificates, local discovery, the relay, the SDK calls and the console pages.
 
 ## Turn it on
 
@@ -32,6 +32,10 @@ The `connect:` block in `.pkey/product` sets `relay` (on by default) and `interA
 A page has no LAN, so the relay is its only path. In React, `useCloudConnect()` gives `start()`, `open(deviceId)`, `peers`, `onChannel()` and `status`. Start it in an effect and call `stop()` in that effect's cleanup: nothing stops it for you on unmount, and a session another device opens is closed at once when nothing listens to `onChannel()`.
 
 The page's Content-Security-Policy must allow the relay: add `connect-src wss://<Worker host>`. Without it the socket never opens, and after five tries `status.relayError` says so and retries slow to every five minutes. With the app open in several tabs, one tab holds the socket and the others report `elsewhere`.
+
+## In a Kotlin app
+
+`client.cloudConnect` (`start()`, `stop()`, `peers`, `devices()`, `open(deviceId)`, `onChannel`) uses the relay on the JVM and on Android, and the LAN on the JVM; Android's LAN path is planned (the SDK reports it `off` with reason `unsupported` and the relay still works).
 
 ## In the console
 

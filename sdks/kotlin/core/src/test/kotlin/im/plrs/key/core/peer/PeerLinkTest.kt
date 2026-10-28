@@ -62,10 +62,12 @@ class PeerLinkTest {
             other!!.inbox.trySend(bytes.copyOf())
         }
 
+        // The far end's stream ends before our own does, so the closing side's link cannot write a CLOSE
+        // record into a stream the other side has yet to see end (a real socket close delivers nothing after it).
         override fun close() {
             closedGate.complete(Unit)
-            inbox.close()
             other?.inbox?.close()
+            inbox.close()
         }
     }
 

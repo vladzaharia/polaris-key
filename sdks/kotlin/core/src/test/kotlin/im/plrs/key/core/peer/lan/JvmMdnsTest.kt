@@ -379,16 +379,37 @@ class JvmMdnsTest {
 
     private fun name(i: Int, pad: Char) = "p1-" + alphabet[i / 32] + alphabet[i % 32] + pad.toString().repeat(14)
 
+    /** One LAN source per index, so a flood test is not held back by the per-source cap. */
+    private fun sourceOf(i: Int) = "10.0.${i / 100}.${i % 100 + 1}"
+
+    @Test
+    fun aSourceMayCreateOnlyAFewNewEntriesAMinute() {
+        val r = Rig()
+        r.browse()
+        val ip = "192.168.1.20"
+        val names = (0 until MDNS_NEW_PER_MINUTE + 5).map { name(it, 'd') }
+        for (n in names) r.push(listOf(ptr(n), srv(n), txt(n), a(n, ip)), ip)
+        assertEquals(MDNS_NEW_PER_MINUTE, r.up.size)
+        // a name already held is still refreshed, and a minute later the source may add more
+        r.t += 61
+        for (n in names.takeLast(5)) r.push(listOf(ptr(n), srv(n), txt(n), a(n, ip)), ip)
+        assertEquals(MDNS_NEW_PER_MINUTE + 5, r.up.size)
+        // another source is not held back by the first one's use
+        val other = name(200, 'e')
+        r.push(listOf(ptr(other), srv(other), txt(other), a(other, "192.168.1.21")), "192.168.1.21")
+        assertTrue(r.up.any { it.instance == other })
+        r.close()
+    }
+
     @Test
     fun theInstanceTableIsBoundedAndEvictsTheLeastRecentlyRefreshed() {
         val r = Rig()
         r.browse()
         val names = (0 until MDNS_MAX_INSTANCES + 40).map { name(it, 'a') }
-        for (n in names) r.push(listOf(ptr(n), srv(n), txt(n)))
-        val ip = "192.168.1.20"
-        r.push(listOf(a(names.last(), ip)), ip)
+        for ((i, n) in names.withIndex()) r.push(listOf(ptr(n), srv(n), txt(n)), sourceOf(i))
+        r.push(listOf(a(names.last(), sourceOf(names.size - 1))), sourceOf(names.size - 1))
         assertTrue(r.up.any { it.instance == names.last() })
-        r.push(listOf(a(names.first(), ip)), ip)
+        r.push(listOf(a(names.first(), sourceOf(0))), sourceOf(0))
         assertFalse(r.up.any { it.instance == names.first() }) // evicted: its SRV and TXT are forgotten
         r.close()
     }
@@ -399,7 +420,7 @@ class JvmMdnsTest {
         r.browse()
         r.push(full())
         r.t += MDNS_ENTRY_TTL_SECONDS + 1
-        for (i in 0 until MDNS_MAX_INSTANCES + 2) r.push(listOf(ptr(name(i, 'c'))))
+        for (i in 0 until MDNS_MAX_INSTANCES + 2) r.push(listOf(ptr(name(i, 'c'))), sourceOf(i))
         assertEquals(listOf(inst), r.down)
         r.close()
     }
