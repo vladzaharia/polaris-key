@@ -94,6 +94,9 @@ public data class LicenseChoiceView(val state: String, val choices: List<JsonObj
     /** The ids of [choices], in order. */
     public val licenseIds: List<String> get() = choices.mapNotNull { it["id"].stringValue }
 
+    /** Redacted: [raw] holds other devices' labels. */
+    override fun toString(): String = "LicenseChoiceView(state=$state, choices=${choices.size}, raw=[redacted])"
+
     public companion object {
         /** A wire view (`state`, `choices`, ...) read as one; null when it is not one. */
         @JvmStatic
@@ -109,6 +112,9 @@ public data class LicenseChoiceView(val state: String, val choices: List<JsonObj
 public data class ReplaceView(val licenseId: String, val devices: List<JsonObject>, val raw: JsonObject) {
     /** The ids of [devices], in order. */
     public val deviceIds: List<String> get() = devices.mapNotNull { it["id"].stringValue }
+
+    /** Redacted: the devices carry labels. */
+    override fun toString(): String = "ReplaceView(licenseId=$licenseId, devices=${devices.size}, raw=[redacted])"
 }
 
 /** A licence's key-entry count (`identity.keyentry`). */
@@ -205,7 +211,7 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
         if (answer !is TokenAnswer.Token) throw PolarisException(ErrorCode.badResponse, "choice complete answered without a complete sign-in.")
         val o = json.objectValue
         val entries = o?.get("keyEntries").objectValue?.let { counts(it) }
-        core.setToken(answer.accessToken, TokenSource.signin)
+        core.setToken(answer.accessToken, TokenSource.signin, personInitiated = true)
         if (core.setSubject(answer.subject)) client.onSubject(answer.subject)
         if (client.redirectAcquisitionSyncValue) client.onAcquired?.invoke()
         return ChoiceResult.Ok(

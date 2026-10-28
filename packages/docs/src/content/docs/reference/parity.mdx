@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 94 | 11 | 24 | 0 |
-| React | `web`, `desktop-bridge` | 92 | 21 | 16 | 0 |
-| Python | `python` | 89 | 11 | 29 | 0 |
-| Swift | `macos`, `ios` | 98 | 9 | 21 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 97 | 9 | 23 | 0 |
-| Kotlin | `android`, `jvm` | 100 | 8 | 20 | 1 |
+| Node | `node` | 94 | 11 | 23 | 0 |
+| React | `web`, `desktop-bridge` | 92 | 21 | 15 | 0 |
+| Python | `python` | 89 | 11 | 28 | 0 |
+| Swift | `macos`, `ios` | 97 | 9 | 21 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 97 | 9 | 22 | 0 |
+| Kotlin | `android`, `jvm` | 99 | 8 | 20 | 1 |
 
 ## Core
 
@@ -82,7 +82,6 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `sync.conflict` | One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records | unit + transcripts (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | — |
 | `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
 | `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | ✓ | ✓ | ✓ | planned (U-39) | planned (U-40) | planned (U-39) | — |
-| `sync.e2e` | End-to-end encrypted Cloud Sync on the client: envelope, blinding, root wrap and the encryption-mode machine | `sync-vectors.json` + `sync-scenarios.json` + transcripts (U-33) | planned (U-38) | planned (U-38) | planned (U-38) | planned (U-39) | planned (U-40) | planned (U-39) | — |
 
 ## Cloud Connect
 
@@ -118,7 +117,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.redirect.web` | Web redirect sign-in: authorize with PKCE, then the code redeemed at token | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.choice` | Licence choice in the app: the choice.* primitives over a pending sign-in grant | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `identity.exchange` | Platform sign-in: a Google or Apple ID token for a device token (the exchange) | transcripts | N/A (node: runtime) | planned (I-46); N/A (desktop-bridge: runtime) | N/A (python: runtime) | ✓ | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
+| `identity.exchange` | Platform sign-in: a Google or Apple ID token for a device token (the exchange) | transcripts | N/A (node: runtime) | planned (I-46); N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 | `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | planned (I-47) | planned (I-46) | planned (I-47) | planned (I-44) | planned (I-48) | planned (I-45) | — |
 | `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | planned (I-46); N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 

@@ -138,7 +138,8 @@ public class IdentityClient(
 ) {
     private val sleep: suspend (Long) -> Unit = sleep ?: { seconds -> delay(seconds * 1000) }
     internal val beforeSignOut = java.util.concurrent.CopyOnWriteArrayList<BeforeSignOutHook>()
-    private val account = IdentityAccount(core, opener, { beforeSignOut.toList() }, onSubject, onSignedOut)
+    internal val platformProvider = java.util.concurrent.atomic.AtomicReference<PlatformIdentityProvider?>(null)
+    private val account = IdentityAccount(core, opener, { beforeSignOut.toList() }, onSubject, onSignedOut) { markSignedOut() }
 
     @Volatile
     private var deviceKeys: DeviceKeyPort? = deviceKeys
@@ -147,6 +148,21 @@ public class IdentityClient(
     public fun useDeviceKeys(keys: DeviceKeyPort?) {
         deviceKeys = keys
     }
+
+    internal fun deviceKeyPort(): DeviceKeyPort? = deviceKeys
+
+    /** Install the platform provider `signOut()` cleans up after and `autoSignIn()` uses by default. */
+    public fun installPlatformIdentity(provider: PlatformIdentityProvider?) {
+        platformProvider.set(provider)
+    }
+
+    /**
+     * The automatic sign-in ladder (AutoSignIn.kt): the stored session, then the platform provider
+     * silently and, with `prompt = OPTIONAL`, through its one sheet. Never throws: a refusal is an
+     * [AutoSignInResult]. On the JVM desktop there is no provider: the ladder is rung 1, then `NeedsSignIn`.
+     */
+    @JvmOverloads
+    public suspend fun autoSignIn(options: AutoSignInOptions = AutoSignInOptions()): AutoSignInResult = runAutoSignIn(options)
 
     /**
      * `POST nonce`: a new single-use nonce for the platform provider to sign into its token (V5 section 12.11.2).
@@ -163,11 +179,13 @@ public class IdentityClient(
     /**
      * `POST token` with the token-exchange grant (V5 section 12.11.3): the platform's ID token for a device
      * token. [nonce] is the one the provider signed into [subjectToken]. A token is stored only for
-     * [ExchangeOutcome.SignedIn]. Throws on a network failure, a 5xx, or a Worker refusal (a [PolarisException] with the wire `code`, `httpStatus`, `retryAfterSeconds`).
+     * [ExchangeOutcome.SignedIn]. [personInitiated] is true when the person started this sign-in from the sign-in UI: it ends the
+     * signed-out state; a silent exchange (the default) never does. Throws on a network failure, a 5xx, or a Worker refusal (a [PolarisException] with the wire `code`, `httpStatus`, `retryAfterSeconds`).
      */
-    public suspend fun exchange(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce): ExchangeOutcome {
+    @JvmOverloads
+    public suspend fun exchange(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce, personInitiated: Boolean = false): ExchangeOutcome {
         val port = deviceKeys ?: return ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noDeviceKeys)
-        return exchangeTokens(kind, subjectToken, nonce, port)
+        return exchangeTokens(kind, subjectToken, nonce, port, personInitiated)
     }
 
     /** Conformance replay only: an exchange that asks for its own nonce, as the recorded conversations do. */
@@ -280,7 +298,7 @@ public class IdentityClient(
             "ready" -> {
                 val token = body?.get("token").stringValue
                 if (token.isNullOrEmpty()) return SignInPoll.Error("ready without a token.")
-                core.setToken(token, TokenSource.signin)
+                core.setToken(token, TokenSource.signin, personInitiated = true)
                 // The pairwise subject the Worker reports (`identity.account`); the facade hears of a change.
                 val subject = body?.get("subject").stringValue?.takeIf { it.isNotEmpty() }
                 if (subject != null && core.setSubject(subject)) onSubject(subject)

@@ -310,10 +310,23 @@ private fun refusalOf(res: PolarisResponse): ExchangeOutcome {
     throw PolarisException(
         code, "the exchange was refused ($code).", httpStatus = res.status,
         retryAfterSeconds = IdentityExchange.retryAfter(res, b),
+        view = if (code == ErrorCode.deviceLimit || code == "license_choice_required") b?.get("view").objectValue else null,
+        manageUrl = if (code == ErrorCode.deviceLimit) b?.get("manageUrl").stringValue?.takeIf { IdentityExchange.safeUrl(it) } else null,
     )
 }
 
-internal suspend fun IdentityClient.exchangeTokens(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce?, port: DeviceKeyPort): ExchangeOutcome {
+/** The person signed out while an automatic exchange was in flight: nothing was stored. */
+internal class SignedOutDuringExchange : Exception("signed out during the exchange")
+
+internal suspend fun IdentityClient.exchangeTokens(
+    kind: ExchangeKind,
+    subjectToken: String,
+    nonce: ExchangeNonce?,
+    port: DeviceKeyPort,
+    personInitiated: Boolean = false,
+    /** Answers false to stop before the token is stored (the ladder's sign-out generation check). */
+    mayStore: (suspend () -> Boolean)? = null,
+): ExchangeOutcome {
     if (port.persistence() == DeviceKeyPersistence.memory) return ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys)
     val (url, why) = exchangeEndpoint(kind, "token")
     if (url == null) return ExchangeOutcome.Unavailable(why!!)
@@ -359,7 +372,8 @@ internal suspend fun IdentityClient.exchangeTokens(kind: ExchangeKind, subjectTo
     }
     val answer = IdentityRedirect.parseTokenAnswer(200, json)
     if (answer !is TokenAnswer.Token) throw PolarisException(ErrorCode.badResponse, "the exchange answered without a complete sign-in.")
-    core.setToken(answer.accessToken, TokenSource.signin)
+    if (mayStore != null && !mayStore()) throw SignedOutDuringExchange()
+    core.setToken(answer.accessToken, TokenSource.signin, personInitiated = personInitiated)
     if (core.setSubject(answer.subject)) onSubject(answer.subject)
     if (redirectAcquisitionSyncValue) onAcquired?.invoke()
     return ExchangeOutcome.SignedIn(answer.subject, answer.scope, answer.license?.get("id").stringValue, o["issued_token_type"].stringValue)
