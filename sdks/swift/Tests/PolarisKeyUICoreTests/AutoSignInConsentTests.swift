@@ -37,6 +37,16 @@ final class AutoSignInConsentTests: XCTestCase {
         XCTAssertTrue(text.hasPrefix("Pro · Lifetime · "), text)
     }
 
+    func testAnUnnamedDeviceReadsLowerCaseMidLine() throws {
+        let screen = confirm(
+            KitAutoSignIn(
+                step: .confirm, license: "existing", licenseName: "Pro", position: 2, limit: 3))
+        let text = KitCopy.bundled.format(
+            try XCTUnwrap(screen.line("signin.consent.licenseLine")), locale: "en")
+        XCTAssertTrue(text.contains(" · this "), text)
+        XCTAssertFalse(text.contains(" · This "), text)
+    }
+
     func testANamedLicenseWithNoSeatLeavesTheLineOut() {
         let screen = confirm(
             KitAutoSignIn(step: .confirm, license: "existing", licenseName: "Pro"))

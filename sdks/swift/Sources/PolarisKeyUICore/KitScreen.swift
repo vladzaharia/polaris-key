@@ -62,6 +62,7 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
         "deviceLimit.openBrowser": .openManageURL,
         "devices.manage": .openManageURL,
         "signin.key.addInLocker": .openManageURL,
+        "signin.deviceLimit.replace": .openManageURL,
         "signin.key.ownedSignIn": .startSignIn,
         "signin.key.signIn": .startSignIn,
         "signin.handoff.copyLink": .copyLink,

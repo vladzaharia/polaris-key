@@ -18,6 +18,8 @@ public enum SignInState: String, KitStateID {
     case nearbyPrompt = "nearby-prompt"
     case nearbyWait = "nearby-wait"
     case nearbyDone = "nearby-done"
+    /// A device limit with no license rows, reached from automatic sign-in or a provider sign-in.
+    case deviceLimit = "device-limit"
     /// The key step ended in a refusal only an account fixes.
     case keyRefused = "key-refused"
     public static let component = KitComponent.signIn
@@ -130,7 +132,7 @@ extension KitStates {
             if s.event == .openReplace, s.replace == .inline {
                 var lines = [
                     c.line("signin.replace.open"),
-                    c.line("signin.replace.lede", ["thisDevice": c.thisDeviceTitle]),
+                    c.line("signin.replace.lede", ["thisDevice": c.thisDevice]),
                 ]
                 if i.platform.confirmsReplaceInSystem {
                     lines.append(c.line("signin.replace.openSystem"))
@@ -191,7 +193,7 @@ extension KitStates {
                 auto.term.map {
                     .line(CopyLine("signin.term.until", ["date": .text(KitFormat.date($0))]))
                 } ?? .line(CopyLine("signin.term.lifetime"))
-            args["device"] = auto.device.map { .text($0) } ?? c.thisDeviceTitle
+            args["device"] = auto.device.map { .text($0) } ?? c.thisDevice
             args["position"] = .number(auto.position ?? 0)
             args["limit"] = .number(auto.limit ?? 0)
         }
@@ -251,6 +253,16 @@ extension KitStates {
         case .nearbyDone:
             return KitScreen(
                 .nearbyDone, lines("signin.nearby.done", "common.continue", "signin.nearby.notYou"))
+        case .deviceLimit:
+            // Replace opens the refusal's manageUrl; without a usable link the fix is named in words.
+            let replace = KitLinks.valid(auto.manageUrl) != nil
+            return KitScreen(
+                .deviceLimit,
+                lines(
+                    "core.codes.device_limit.title", "core.codes.device_limit.message",
+                    replace ? "signin.deviceLimit.replace" : "deviceLimit.noManage",
+                    replace ? "a11y.externalLink" : nil, "signin.auto.confirm.other",
+                    "common.cancel"))
         }
     }
 
