@@ -2325,6 +2325,16 @@
       "reason": "wiring: installs the platform provider the ladder uses and signOut cleans up after; not an app verb"
     },
     {
+      "sdk": "kotlin",
+      "path": "identity.hasPlatformProvider",
+      "reason": "wiring: tells the kit's sign-in form whether to offer the provider row; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.signInWithProvider",
+      "reason": "wiring: the kit's sign-in form runs the installed provider's sheet and exchange (personInitiated); apps use the kit or exchange()"
+    },
+    {
       "sdk": "swift",
       "path": "identity.installIdentityEvents",
       "reason": "wiring the client installs (the `identity` event's sink); not an app verb"
