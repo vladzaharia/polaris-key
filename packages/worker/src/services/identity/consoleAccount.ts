@@ -68,6 +68,7 @@ import {
   openAccountSessionRow,
   sessionIdHash,
 } from "./portal/accountSessions.js";
+import { CONSOLE_IDP_CONNECTION } from "../../core/rbac/operatorConnections.js";
 import { portalIdentityIssuerKey, recordLinkGroups } from "./portal/repo.js";
 import { providerVouchesForEmail } from "./providers/vouch.js";
 import { handleAccountPasskeys, passkeyAddable } from "./passkeys/routes.js";
@@ -228,7 +229,15 @@ export async function consoleSignIn(
   // links predate `strong_at`) get in at once; nothing else marks it.
   const strong = Boolean(known?.strong_at) || opts.operator || linkCreated;
   if (!strong) return { status: "refused", reason: "method" };
-  await recordLinkGroups(db, result.linkId, identity.groups, now);
+  // Groups, the (empty) claims and the asserting connection in one statement: the console IdP has
+  // no claim map, so no claim outlives the sign-in that dropped it (ST-32.3).
+  await recordLinkGroups(
+    db,
+    result.linkId,
+    identity.groups,
+    now,
+    CONSOLE_IDP_CONNECTION,
+  );
   if (
     !known?.strong_at &&
     !(await markLinkStrong(db, result.account.id, result.linkId, now))

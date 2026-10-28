@@ -207,6 +207,7 @@ export interface ProviderSignIn {
 interface LinkAssertion {
   groups: string[] | null;
   claims: Record<string, string> | null;
+  connectionId: string;
 }
 
 type Identity = NonNullable<ReturnType<typeof normalizeIdentity>>;

@@ -561,17 +561,21 @@ describe("the computed root rule", () => {
     await recordLinkAssertion(
       db,
       link0.id,
-      { groups: [GROUP], claims: null },
+      { groups: [GROUP], claims: null, connectionId: "ops" },
       NOW + 800,
     );
     expect((await consoleLink(db))!.asserted_at).toBe(NOW + 800);
     await recordLinkAssertion(
       db,
       link0.id,
-      { groups: null, claims: null },
+      { groups: null, claims: null, connectionId: "ops" },
       NOW + 900,
     );
-    expect((await consoleLink(db))!.asserted_at).toBeNull();
+    // A connection's sign-in refreshes `asserted_at` even with nothing mapped (ST-32.3, S2), with
+    // no groups, so it can never root anyone.
+    const empty = (await consoleLink(db))!;
+    expect(empty.asserted_at).toBe(NOW + 900);
+    expect(empty.groups_json).toBeNull();
   });
 
   it("a v1 cookie keeps its groups-only behaviour until it expires", async () => {

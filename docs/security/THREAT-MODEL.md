@@ -7532,12 +7532,17 @@ computed on every request (`core/rbac/ruleGrants.ts`), never stored:
 - Only a Superadmin with a step-up writes the rules. The writer refuses a connection that is not
   an operator connection and a `domain` rule without a verified, enforced domain. A rule grants
   Product admin or Console access; `evaluate` never returns Superadmin or Platform admin.
-- A rule reads only the account's links through the rule's own connection: the issuer's link,
-  `kind = 'oidc'`, with `strong_at` set. A group, claim or address from another connection or from
-  an email-code link never counts.
+- A rule reads only the account's link through the rule's own connection: the issuer's link,
+  `kind = 'oidc'`, with `strong_at` set, and only while `asserted_connection_id` is that
+  connection. Connections that share an issuer share a link row, so each sign-in records which
+  connection wrote the groups, claims and `asserted_at`; a link last written by another connection
+  (a product-scope one, say) or by none is not read. An email-code link never counts.
 - A link counts for 8 h from `asserted_at`, the root rule's bound. A stale, future or missing
   value grants nothing, so removing a person at the IdP ends the grant at their next sign-in or
-  after 8 h.
+  after 8 h. Every sign-in rewrites groups, claims, `asserted_at` and the connection in one
+  statement, so a dropped group or claim cannot outlive the sign-in that dropped it, and a
+  sign-in that maps neither still refreshes `asserted_at`. The console IdP has no claim map, so
+  its sign-in stores no claims.
 - A `domain` rule matches only an address the IdP marked verified, on a domain still enforced for
   the connection. An address confirmed by an email code is not passed to the matcher.
 - A connection that stops qualifying (disabled, audience narrowed, issuer off the allowlist) grants
@@ -7545,7 +7550,8 @@ computed on every request (`core/rbac/ruleGrants.ts`), never stored:
 - A document that cannot be read or parsed grants nothing.
 
 Residual: a group or claim the IdP asserts is trusted as asserted, so whoever administers an
-operator IdP can mint what its rules match. That is why making a connection an operator connection
+operator IdP can mint what its rules match. An attribute the IdP lets its users edit, mapped as a
+group or claim, is only as trustworthy as that IdP's admin settings. That is why making a connection an operator connection
 is a Superadmin write with a step-up. Tests: `test/core/ruleGrants.test.ts`.
 
 **Residual.**

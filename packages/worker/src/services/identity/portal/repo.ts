@@ -207,13 +207,21 @@ export async function recordLinkGroups(
   linkId: string,
   groups: readonly string[] | undefined,
   now: number,
+  /**
+   * The connection that asserted them (`console-idp` for the console's own sign-in); null for a
+   * caller with no connection, whose facts no access rule reads. Claims are replaced with the
+   * groups, in the same statement: a path that has no claim map writes none, so a claim the IdP
+   * dropped cannot outlive the sign-in that dropped it (ST-32.3).
+   */
+  connectionId: string | null = null,
 ): Promise<void> {
   // `asserted_at` (ST-30, ST-28 §2.4) moves in THIS statement and nowhere else: it is when the IdP
   // last asserted these groups, so a sign-in that does not rewrite them cannot freshen them.
   await db.run(
-    "UPDATE account_links SET groups_json = ?, asserted_at = ? WHERE id = ?",
+    "UPDATE account_links SET groups_json = ?, claims_json = NULL, asserted_at = ?, asserted_connection_id = ? WHERE id = ?",
     groups ? JSON.stringify(groups) : null,
     groups ? now : null,
+    connectionId,
     linkId,
   );
 }
@@ -221,7 +229,7 @@ export async function recordLinkGroups(
 /**
  * What a connection asserted at this sign-in, on the link it signed in through (I-30; plans/I-27.md
  * §2.3 "Links"): the mapped groups and the access-rule claims, replaced together in ONE `UPDATE`.
- * `null` is "not asserted" (fail closed). `asserted_at` (ST-30) is written in this same statement, when anything was asserted;
+ * `null` is "not asserted" (fail closed). `asserted_at` (ST-30) is written in this same statement, always;
  * nothing else writes these columns for a connection link.
  */
 export async function recordLinkAssertion(
@@ -230,14 +238,19 @@ export async function recordLinkAssertion(
   assertion: {
     groups: readonly string[] | null;
     claims: Readonly<Record<string, string>> | null;
+    /** The asserting connection's id: the only connection whose rules read these facts. */
+    connectionId: string;
   },
   now: number,
 ): Promise<void> {
+  // `asserted_at` and the connection id are set at every sign-in through a connection, even one
+  // that maps nothing, so a `domain` rule works on an IdP with no groups or claims mapped (ST-32.3).
   await db.run(
-    "UPDATE account_links SET groups_json = ?, claims_json = ?, asserted_at = ? WHERE id = ?",
+    "UPDATE account_links SET groups_json = ?, claims_json = ?, asserted_at = ?, asserted_connection_id = ? WHERE id = ?",
     assertion.groups ? JSON.stringify(assertion.groups) : null,
     assertion.claims ? JSON.stringify(assertion.claims) : null,
-    assertion.groups || assertion.claims ? now : null,
+    now,
+    assertion.connectionId,
     linkId,
   );
 }

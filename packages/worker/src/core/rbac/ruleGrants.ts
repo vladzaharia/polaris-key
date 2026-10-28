@@ -11,6 +11,7 @@
  *     `console-idp` its issuer must still be allowed;
  *   - the link is the `account_links` row of that connection's issuer (`tenant_scope = ''`,
  *     `kind = 'oidc'`) with `strong_at` set;
+ *   - the link's facts were written by that same connection (`asserted_connection_id`);
  *   - `asserted_at` is no older than 8 h and not from the future, the same freshness as the root
  *     rule. A link without it contributes nothing;
  *   - `email` is passed only when the IdP marked the address verified. An address confirmed by an
@@ -87,6 +88,7 @@ interface LinkRow {
   email_verified: number;
   strong_at: number | null;
   asserted_at: number | null;
+  asserted_connection_id: string | null;
 }
 
 /** The facts every rule is evaluated against, for the connections the rules name. */
@@ -103,7 +105,8 @@ export async function linkFactsFor(
     const issuer = await operatorIssuerOf(env, db, connection);
     if (issuer === null) continue;
     const rows = await db.all<LinkRow>(
-      `SELECT groups_json, claims_json, email, email_verified, strong_at, asserted_at
+      `SELECT groups_json, claims_json, email, email_verified, strong_at, asserted_at,
+              asserted_connection_id
          FROM account_links
         WHERE account_id = ? AND issuer_key = ? AND tenant_scope = '' AND kind = 'oidc'
           AND strong_at IS NOT NULL
@@ -112,6 +115,9 @@ export async function linkFactsFor(
       issuer,
     );
     for (const r of rows) {
+      // Several connections can share an issuer and so a link. The facts count only for the
+      // connection that wrote them; a link last asserted by another (or by none) is not read.
+      if (r.asserted_connection_id !== connection) continue;
       if (!assertionFresh(r.asserted_at, now, ADMIN_SESSION_TTL_SECONDS))
         continue;
       const claims = parseJsonOr<unknown>(r.claims_json, {});

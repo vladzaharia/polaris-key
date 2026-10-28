@@ -542,7 +542,11 @@ async function completeConnectionCallback(
         label: conn.label,
         birthdate: identity.birthdate,
       },
-      linkAssertion: { groups: identity.groups, claims: identity.claims },
+      linkAssertion: {
+        groups: identity.groups,
+        claims: identity.claims,
+        connectionId: conn.id,
+      },
       amr: [`connection:${conn.id}`],
       returnTo: flow.returnTo ?? null,
       // B-063: a sign-in the card opened for a product goes through it, with its terms. The

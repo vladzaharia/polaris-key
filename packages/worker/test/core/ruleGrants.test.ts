@@ -23,6 +23,10 @@ import {
   ruleGrantsFor,
   ruleMatchesFor,
 } from "../../src/core/rbac/ruleGrants.js";
+import {
+  recordLinkAssertion,
+  recordLinkGroups,
+} from "../../src/services/identity/portal/repo.js";
 import { can, PLATFORM } from "../../src/core/rbac/can.js";
 import {
   parseAccessRules,
@@ -86,6 +90,24 @@ async function operatorConnection(id = "ops", issuer = ISSUER) {
   await insertConnection(db, { id, audience: "operators", issuer });
 }
 
+async function enforceDomain() {
+  await db.run(
+    `INSERT INTO identity_connection_domains (connection_id, scope, domain, token, verified_at, checked_at, enforce)
+     VALUES ('ops', 'platform', 'example.com', 't', ?, ?, 1)`,
+    NOW,
+    NOW,
+  );
+}
+
+async function writeDomainRule() {
+  await writeRules([
+    {
+      when: { connection: "ops", domain: "example.com" },
+      grant: { role: "console_access", scope: "platform" },
+    },
+  ]);
+}
+
 async function account(id = "acc_1") {
   await db.run(
     "INSERT INTO accounts (id, created_at, modified_at) VALUES (?, ?, ?)",
@@ -106,6 +128,8 @@ interface LinkOver {
   strongAt?: number | null;
   assertedAt?: number | null;
   subject?: string;
+  /** Default: the connection of the issuer (`ops`, or `console-idp`). */
+  assertedBy?: string | null;
 }
 
 let n = 0;
@@ -113,8 +137,8 @@ async function link(accountId: string, over: LinkOver = {}) {
   n += 1;
   await db.run(
     `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind, email,
-       email_verified, groups_json, claims_json, strong_at, asserted_at, created_at, last_used_at)
-     VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       email_verified, groups_json, claims_json, strong_at, asserted_at, asserted_connection_id, created_at, last_used_at)
+     VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     `lnk_${n}`,
     accountId,
     over.issuer ?? ISSUER,
@@ -126,6 +150,11 @@ async function link(accountId: string, over: LinkOver = {}) {
     over.claims ? JSON.stringify(over.claims) : null,
     over.strongAt === undefined ? NOW : over.strongAt,
     over.assertedAt === undefined ? NOW : over.assertedAt,
+    over.assertedBy === undefined
+      ? over.issuer === CONSOLE_ISSUER
+        ? "console-idp"
+        : "ops"
+      : over.assertedBy,
     NOW,
     NOW,
   );
@@ -175,18 +204,8 @@ describe("sign-in and preview give the same grants", () => {
 describe("what a link must be", () => {
   it("matches a domain rule only on an address the IdP verified, never an email-code address", async () => {
     await operatorConnection();
-    await db.run(
-      `INSERT INTO identity_connection_domains (connection_id, scope, domain, token, verified_at, checked_at, enforce)
-       VALUES ('ops', 'platform', 'example.com', 't', ?, ?, 1)`,
-      NOW,
-      NOW,
-    );
-    await writeRules([
-      {
-        when: { connection: "ops", domain: "example.com" },
-        grant: { role: "console_access", scope: "platform" },
-      },
-    ]);
+    await enforceDomain();
+    await writeDomainRule();
     // Confirmed only by an email code: a different link, kind "email", never read.
     const viaCode = await account("acc_code");
     await link(viaCode, {
@@ -288,6 +307,80 @@ describe("what a link must be", () => {
       NOW,
     );
     expect(p.grants).toEqual([]);
+  });
+});
+
+describe("which connection asserted the facts", () => {
+  it("a product-scope connection on the same issuer cannot satisfy an operator rule", async () => {
+    await operatorConnection();
+    await insertConnection(db, {
+      id: "shop",
+      scope: "product:alpha",
+      audience: "customers",
+      issuer: ISSUER,
+    });
+    await writeRules([groupRule()]);
+    const a = await account();
+    await link(a, { groups: [], assertedBy: "ops" });
+    expect(await ruleGrantsFor(env, db, a, NOW)).toEqual([]);
+    // The user signs in through the product connection, whose map names an attribute they edit.
+    await recordLinkAssertion(
+      db,
+      "lnk_" + n,
+      { groups: ["release"], claims: null, connectionId: "shop" },
+      NOW,
+    );
+    expect(await ruleGrantsFor(env, db, a, NOW)).toEqual([]);
+    // The operator connection's own assertion still grants.
+    await recordLinkAssertion(
+      db,
+      "lnk_" + n,
+      { groups: ["release"], claims: null, connectionId: "ops" },
+      NOW,
+    );
+    expect(await ruleGrantsFor(env, db, a, NOW)).toHaveLength(1);
+    // A link that no connection claimed (NULL) is not read either.
+    await db.run("UPDATE account_links SET asserted_connection_id = NULL");
+    expect(await ruleGrantsFor(env, db, a, NOW)).toEqual([]);
+  });
+
+  it("a claim removed at the next console sign-in stops matching", async () => {
+    await writeRules([
+      {
+        when: {
+          connection: "console-idp",
+          claim: { name: "dept", equals: "games" },
+        },
+        grant: { role: "console_access", scope: "platform" },
+      },
+    ]);
+    const a = await account();
+    await link(a, { issuer: CONSOLE_ISSUER, claims: { dept: "games" } });
+    expect(await ruleGrantsFor(env, db, a, NOW)).toHaveLength(1);
+    await recordLinkGroups(db, "lnk_" + n, ["x"], NOW + 5, "console-idp");
+    expect(await ruleGrantsFor(env, db, a, NOW + 5)).toEqual([]);
+  });
+
+  it("a sign-in that maps no groups or claims still lets a domain rule work", async () => {
+    await operatorConnection();
+    await enforceDomain();
+    await writeDomainRule();
+    const a = await account();
+    await link(a, {
+      email: "ada@example.com",
+      emailVerified: 1,
+      groups: null,
+      assertedAt: null,
+      assertedBy: null,
+    });
+    expect(await ruleGrantsFor(env, db, a, NOW)).toEqual([]);
+    await recordLinkAssertion(
+      db,
+      "lnk_" + n,
+      { groups: null, claims: null, connectionId: "ops" },
+      NOW,
+    );
+    expect(await ruleGrantsFor(env, db, a, NOW)).toHaveLength(1);
   });
 });
 
