@@ -6,3 +6,5 @@ export {
   type ConnectOptions,
   type DiscoveryKeys,
 } from "./client.js";
+export { LanService, type LanSource } from "./lan.js";
+export { ConnectSession, LanError } from "./session.js";
