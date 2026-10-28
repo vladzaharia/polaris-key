@@ -52,7 +52,7 @@ export function liveSubjectFor(env: Env, db: Db, now: number): LiveSubject {
       now,
     );
     // "Sign out" also writes the operator's mark (sessionRevocation.ts): it ends every cookie that
-    // operator holds, including a v1 one signed before this deploy.
+    // operator holds.
     if (
       subject &&
       (await isAdminSessionRevoked(env, { sub: subject.sub, exp: claims.exp }))

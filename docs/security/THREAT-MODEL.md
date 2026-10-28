@@ -7231,10 +7231,13 @@ name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and 
   read that throws (database down) is neither remembered nor swallowed: the request fails, it does
   not grant. A v2 cookie presented where no database is passed (the docs gate before this change)
   is refused, never trusted.
-- **v1 cookies keep working until they expire** (`sessionFromRequest`): the reader still accepts a
-  v1 token (8 h at most) and checks the sign-out mark, so a deploy does not sign anyone out. The
-  sign-in no longer mints v1 (`issueSession` stays as the v1 minter for tests). Delete the v1
-  reader and `issueSession` once the last v1 cookie has expired.
+- **A v1 cookie is no session (ST-30c.8).** The v1 reader and `issueSession` are deleted: a token
+  in the retired `pkey.admin.v1|` realm, valid or forged, reaches no session in `sessionFromRequest`
+  and is answered exactly as a request with no cookie (401 on the API, the sign-in redirect on
+  `/docs`), so the refusal never says why. The merge gate was the v0.9.16 deploy that began minting
+  v2 (2026-10-23 21:05Z, `deploy.yml` success): the last v1 cookie expired 8 h later, and
+  production has run later releases since. This also closes SEC-RB1's N1: a "Sign out everywhere"
+  mark keyed only by member id did not end a v1 cookie, and there is no v1 cookie left to end.
 - **One account per operator** (`consoleSignIn`, I-05 `signIn` through the portal's issuer key):
   the callback gates on the principal first, so an identity outside the platform-admin group gets
   no account and no cookie. An operator whose verified address another account already uses (a
@@ -7304,7 +7307,7 @@ name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and 
   rewrite them, so it is not `last_used_at` and a path that skips the groups cannot extend a stale
   group. `consoleSubject` offers the stored groups only while that holds (else `[]` and
   `root: false`), and a v2 session's principal takes `root` from it; the 8 h bound still applies to
-  a v1 cookie (its own expiry) and to a session kept open after the group was removed at the IdP.
+  a session kept open after the group was removed at the IdP.
   The groups gate at the callback still uses the groups the IdP asserted in that request.
 - **The audit actor is the member id.** A v2 session's `sub` is `mbr_` + the first 22 base64url
   characters of `HMAC-SHA-256(memberKey, accountId)`, where `memberKey =
@@ -7319,11 +7322,11 @@ HMAC-SHA-256(KEY_HASH_PEPPER, "pkey/console-member-key/v1")` (`core/console/memb
   **recomputed from that account and must equal the filter** (a stale or planted column maps
   nothing), then the account's console-IdP subjects are read; an unknown value matches only itself.
   `/me.priorSubs` carries the IdP `sub` so the SPA still says "you" on old records. Sign-out writes
-  the sign-out mark under the member id and the IdP `sub`; a v1 cookie's sign-out resolves the
-  member id from its IdP subject and writes both, so it ends the operator's v2 sessions too.
-- **v1 cookies and API tokens stay groups-only roots.** Until the last v1 cookie expires (at most
-  8 h after the deploy) and for admin API tokens, a session's groups alone root it; the computed
-  rule applies to v2 sessions only.
+  the sign-out mark under the session's `sub`: the member id for a v2 session (what the live check
+  reads), the IdP subject for a break-glass session. With no v1 cookie left, no IdP-subject mark is
+  needed for the operator's ordinary sessions.
+- **API tokens and break-glass stay groups-only roots.** For admin API tokens and a break-glass
+  session, the groups alone root it; the computed rule applies to v2 sessions only.
 - **Merge, disable and delete end console eligibility on the link side.** A merge clears
   `strong_at` and `asserted_at` on the absorbed account's links in the same batch that moves them
   (the survivor does not inherit the operator's access; the person signs in through the console IdP
@@ -7373,8 +7376,8 @@ root rule alone.
   all of which still answer 401 whatever the account's bindings. A cache on the bindings that
   outlived 30 s would be a trigger under ST-28 section 5.3 "New section 9 triggers" (listed in section 9).
 - **`aid` points, it does not grant.** `aid` comes from a v2 cookie whose session row the live check
-  resolved to this account (`row.account_id === cookie.aid`). A v1 cookie and a `pkeya_` token session
-  carry none (`verifySession` now deletes `aid`, `sid` and `root` from a v1 body as well), so they stay
+  resolved to this account (`row.account_id === cookie.aid`). A `pkeya_` token session and a
+  break-glass session carry none (a v1 body is not read at all), so they stay
   root-only: a token never gains a stored grant. The sign-in gate in `console/auth.ts` still resolves
   the root rule alone and is unchanged, so until ST-31.8 no non-root person can mint a cookie.
 - **Fail closed on a row it cannot read.** `rowToGrant` drops an unknown area (checked against
@@ -7405,7 +7408,7 @@ root rule alone.
 - **Tests:** `test/surfaces/console/rbacStoredPrincipal.test.ts` (narrowed areas with the refusal naming the area,
   `products:*` and the system product, Platform admin, Console access, a stranger, root plus a
   binding, deletion on the next request and at 30 s, a disabled account, email rows, another
-  account's binding, a malformed row, a v1 cookie and a token, a forged signed v1 body naming `aid` / `sid` / `root`, the
+  account's binding, a malformed row, a token, a v1 cookie and a forged signed v1 body naming `aid` / `sid` / `root` (both no session), the
   token-mint refusal, a missing bindings table).
 
 **Residual.** A binding for an account that is later disabled stays in the table; it is inert
@@ -7547,7 +7550,7 @@ before a handler runs. `handlers/bindings.ts` holds every check; the twins are t
 **Control, in the order the handler applies it.**
 
 1. **Identity of the writer.** A signed-in account with a member id (`aid` and an `mbr_` sub). A
-   v1 cookie has neither and cannot be told apart from its grantee, so it writes nothing. The
+   break-glass session or a token has neither and cannot be told apart from its grantee, so it writes nothing. The
    member id is the audit actor and `granted_by`.
 2. **Write budget.** `adminGrantWrite`, 30 writes per 5 minutes per member, **failing closed**: a
    limiter outage refuses, it does not leave grants unmetered.
@@ -7786,7 +7789,7 @@ a fallback: no error page offers it and no ordinary sign-in turns into it.
   `csrf`, `exp`, `authAt`, `stepUpAt?`, `bg: true`; an extra or mistyped field fails), a lifetime of
   `BREAK_GLASS_TTL_SECONDS` = 3600 s in code and never a setting, and an `exp` that outlives the
   realm is refused. A v1, v2 or portal token with the same body fails to verify in it, and a
-  break-glass body signed under the v1 tag reads as a v1 session that cannot claim `breakGlass`.
+  break-glass body signed under the v1 tag is no session.
   Sign-out writes the operator-subject mark and the reader refuses a session minted at or before it;
   logout of a break-glass session leaves the operator's ordinary sessions alone.
 - **Audit and notice.** Every use writes `rbac.breakglass` to `platform_audit` (actor: the IdP
@@ -7843,7 +7846,7 @@ a passkey already in the account. A passkey added in the Locker account is never
   `stepUpAt`) cannot enrol. I-16's verified-email rule, passkey cap, per-account rate limit and
   session-bound single-use ceremony apply unchanged; the ceremony is bound to the console session row.
 - **Session only.** `requireAccountSession` refuses a break-glass session (no account, reason
-  `break_glass_session`) and a v1 cookie (`account_session_required`); the rows name no `tokenScope`,
+  `break_glass_session`) (`account_session_required`) and a v1 cookie (no session, 401); the rows name no `tokenScope`,
   so an admin API token is refused before the handler.
 - **Eligibility (the lead's RP-ID decision).** The console's RP id is the host of `CONSOLE_ORIGIN`
   (`key.plrs.im`) whatever the customer RP becomes. A passkey is `consoleEligible` only when its stored
@@ -7997,7 +8000,7 @@ revoking the token recalls no bundle.
   is `account_id = ? AND id = ?`, so another account's id is a 404, indistinguishable from an absent
   one, and nothing is revoked or audited. The list and the id revoke carry no `personalToken` flag
   and so refuse every token (personal or `pkeya_`): a stolen token cannot enumerate or kill its
-  siblings, and cannot learn their labels. A v1 cookie names no account and answers 409 `reauth`. No
+  siblings, and cannot learn their labels. A v1 cookie is no session and answers 401. No
   response carries the account id, a hash, the plaintext or `revokedBy`.
 - **Self-revoke only narrows.** `current` revokes `session.tokenId`, which the dispatcher set from the
   token it just resolved (a cookie body cannot name one: `verifySession` drops `tokenId`). The row
@@ -12098,7 +12101,7 @@ admins to someone without an area of that product.
 
 For stored role bindings (ST-31, ST-28 section 5.3 "New section 9 triggers"): the bindings or the
 principal are cached beyond `LIVE_CHECK_SECONDS`; an account id is taken from anything but a
-live-checked v2 session; an email row grants; a token or a v1 cookie reads stored grants; an admin
+live-checked v2 session; an email row grants; a token reads stored grants; a v1 cookie is read as a session at all; an admin
 API token is minted by anyone but a Superadmin while `tokenSession` carries the root group.
 
 ### The shared assets root and the docs gate (SEC-WEB-1)

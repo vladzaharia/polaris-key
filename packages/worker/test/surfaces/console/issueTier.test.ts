@@ -24,8 +24,8 @@ import { handleAdmin } from "../../../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
 } from "../../../src/core/console/session.js";
+import { consoleTestSession } from "../../consoleSessionHelper.js";
 import { loadProduct, type Product } from "../../../src/core/products.js";
 import {
   customerTierOf,
@@ -81,8 +81,9 @@ beforeEach(async () => {
     "client",
     JSON.stringify({ members: { role: "user" } }),
   );
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "op-1", name: "Op", email: "op@x.io", groups: [GROUP] },
     NOW,
   );

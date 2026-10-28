@@ -544,7 +544,7 @@ describe("who may call", () => {
     expect(await audits()).toHaveLength(0);
   });
 
-  it("refuses a v1 session (no account) and an admin API token", async () => {
+  it("refuses a v1 cookie (no session since ST-30c.8) and an admin API token", async () => {
     // An account-less v1 cookie, signed directly (the console no longer mints them).
     const v1Token = await signHmacToken(
       await importHmacKey(env.ADMIN_SESSION_SECRET!),
@@ -565,10 +565,7 @@ describe("who may call", () => {
       "GET",
       "/api/me/methods",
     );
-    expect(v1.status).toBe(403);
-    expect(JSON.stringify(await v1.json())).toContain(
-      "account_session_required",
-    );
+    expect(v1.status).toBe(401);
     // A stepped-up operator session mints the admin API token.
     const { token, session } = await consoleTestSession(
       env,

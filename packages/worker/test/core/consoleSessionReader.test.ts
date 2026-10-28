@@ -46,10 +46,9 @@ describe("the console session reader", () => {
     });
   });
 
-  it("verifySession() is reached only through sessionFromRequest()", () => {
-    expect(callers("verifySession")).toEqual({
-      "core/console/session.ts": 2,
-    });
+  it("the v1 reader and minter are gone (ST-30c.8): nothing in src names them", () => {
+    expect(callers("verifySession")).toEqual({});
+    expect(callers("issueSession")).toEqual({});
   });
 
   it("the docs gate asks the dispatcher's resolver, not the cookie", () => {

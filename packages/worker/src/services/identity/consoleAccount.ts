@@ -614,26 +614,6 @@ export async function consoleActorAliases(
   return [...out];
 }
 
-/**
- * The member id of the account behind a console IdP subject, or `null` when no account holds it.
- * A v1 sign-out uses it to end that operator's v2 sessions too (their mark is under the member id).
- */
-export async function consoleMemberIdForIdpSub(
-  env: Env,
-  db: Db,
-  sub: string,
-): Promise<string | null> {
-  const rp = adminOidcConfig(env);
-  if (!rp || !sub) return null;
-  const row = await db.first<{ account_id: string }>(
-    `SELECT account_id FROM account_links
-      WHERE issuer_key = ? AND tenant_scope = '' AND subject = ? LIMIT 1`,
-    portalIdentityIssuerKey(rp.issuer),
-    sub,
-  );
-  return row ? memberIdFor(env, row.account_id) : null;
-}
-
 /** A console member as the Members page shows them (ST-31.4). Never carries the account id. */
 export interface ConsoleDirectoryEntry {
   memberId: string;

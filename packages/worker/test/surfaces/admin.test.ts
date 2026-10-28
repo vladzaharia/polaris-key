@@ -18,7 +18,6 @@ import { handleAdminLogin } from "../../src/console/auth.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  verifySession,
   type SessionIdentity,
 } from "../../src/core/console/session.js";
 import {
@@ -48,7 +47,11 @@ import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import { getTokenRecord, putTokenRecord } from "../../src/platform/kv.js";
 import { hashKey } from "../../src/platform/crypto.js";
-import { consoleTestSession, consoleActor } from "../consoleSessionHelper.js";
+import {
+  consoleTestSession,
+  consoleActor,
+  readConsoleCookie,
+} from "../consoleSessionHelper.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -947,7 +950,7 @@ describe("admin api", () => {
       ),
     ).rejects.toThrow("ADMIN_SESSION_SECRET is required");
     // Verification of any token is null (no request can authenticate), not a thrown error.
-    expect(await verifySession(env, "forged.token", NOW)).toBeNull();
+    expect(await readConsoleCookie(env, "forged.token", NOW)).toBeNull();
   });
 
   it("manual create with an uploaded schema yields a usable product (loadProduct + /config sign)", async () => {

@@ -405,7 +405,7 @@ describe("freshness and refusal", () => {
 });
 
 describe("credentials without an account", () => {
-  it("a v1 cookie keeps its root-only principal; a payload naming aid/sid is ignored", async () => {
+  it("a v1 cookie is no session, whatever its groups say (ST-30c.8)", async () => {
     const p = await person(env, db, "v1x");
     await bind(db, p.accountId, "platform_admin", "platform", null);
     // An account-less v1 cookie, signed directly (the console no longer mints them).
@@ -433,8 +433,8 @@ describe("credentials without an account", () => {
       PLATFORM,
       { now: NOW + 1 },
     );
-    expect(res.status).toBe(403);
-    // And the group still roots a v1 cookie, as before.
+    expect(res.status).toBe(401);
+    // The root group changes nothing: the shape is not read.
     const rooted = { token: await v1([GROUP]) };
     const ok = await handleAdmin(
       new Request(`https://key.plrs.im/manage${PLATFORM}`, {
@@ -445,7 +445,7 @@ describe("credentials without an account", () => {
       PLATFORM,
       { now: NOW + 1 },
     );
-    expect(allowed(ok)).toBe(true);
+    expect(ok.status).toBe(401);
   });
 
   it("a pkeya_ token session carries no account id, so it resolves root-only", async () => {
@@ -476,7 +476,7 @@ describe("credentials without an account", () => {
   });
 });
 
-describe("a forged v1 body", () => {
+describe("a forged v1 body (ST-30c.8: no session)", () => {
   it("signed with the right key, aid / sid / root in the body are ignored", async () => {
     const p = await person(env, db, "forge");
     await bind(db, p.accountId, "platform_admin", "platform", null);
@@ -504,8 +504,9 @@ describe("a forged v1 body", () => {
       PLATFORM,
       { now: NOW + 1 },
     );
-    // Neither root (`root: true`) nor the account's platform_admin binding (`aid`) took effect.
-    expect(res.status).toBe(403);
+    // Neither root (`root: true`) nor the account's platform_admin binding (`aid`) took effect:
+    // the body is not read at all.
+    expect(res.status).toBe(401);
   });
 });
 

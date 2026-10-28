@@ -19,7 +19,6 @@ export {
   type ConsoleDirectoryPerson,
   consoleRootHolders,
   type ConsoleDirectoryEntry,
-  consoleMemberIdForIdpSub,
   consoleSignIn,
   consoleSubject,
   consolePasskeyCeremony,

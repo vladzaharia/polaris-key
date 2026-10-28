@@ -11,8 +11,8 @@ import { handleAdmin } from "../../../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
 } from "../../../src/core/console/session.js";
+import { consoleTestSession } from "../../consoleSessionHelper.js";
 import {
   getLicense,
   listKeysByLicense,
@@ -56,8 +56,9 @@ describe("send-invite (LX-27c.2)", () => {
   });
 
   async function admin(method: string, path: string, body?: unknown) {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
       clock,
     );

@@ -6,10 +6,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Principal } from "../../../src/core/rbac/can.js";
 import { handleAdmin } from "../../../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  issueSession,
-} from "../../../src/core/console/session.js";
+import { ADMIN_COOKIE } from "../../../src/core/console/session.js";
+import { consoleTestSession } from "../../consoleSessionHelper.js";
 import {
   accountDeviceKeys,
   upsertDeviceKeys,
@@ -51,8 +49,9 @@ async function setup() {
   w.env.ADMIN_SESSION_SECRET = "connect-admin-secret";
   w.env.PLATFORM_ADMIN_GROUP = GROUP;
   const get = async (sub: string, groups: string[], path: string) => {
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       w.env,
+      w.db,
       { sub, groups, name: "A", email: "a@example.test" },
       NOW,
     );
@@ -195,8 +194,8 @@ describe("GET connect/people", () => {
 
   it("allows the connect area and refuses a member without it", async () => {
     const w = await setup();
-    expect((await w.get("m-djdl-connect", [], PEOPLE)).status).toBe(200);
-    const res = await w.get(PRINCIPALS.alphaShip!.memberId, [], PEOPLE);
+    expect((await w.get("m-djdl-connect", [GROUP], PEOPLE)).status).toBe(200);
+    const res = await w.get(PRINCIPALS.alphaShip!.memberId, [GROUP], PEOPLE);
     expect(res.status).toBe(403);
     expect(await res.text()).not.toContain(w.subject);
   });
@@ -257,7 +256,7 @@ describe("GET connect/usage", () => {
   it("refuses without the area and answers off when Connect is off", async () => {
     const w = await setup();
     expect(
-      (await w.get(PRINCIPALS.alphaShip!.memberId, [], USAGE)).status,
+      (await w.get(PRINCIPALS.alphaShip!.memberId, [GROUP], USAGE)).status,
     ).toBe(403);
     await enable(w.db, ["license", "identity"]);
     expect(await (await w.get("u1", [GROUP], USAGE)).json()).toEqual({

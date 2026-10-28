@@ -16,11 +16,8 @@ import { CONSOLE, enableServices, envFor } from "../releaseRoutesFixture.js";
 import type { Db } from "../../src/db/types.js";
 import type { Env } from "../../src/platform/env.js";
 import { handleAdmin } from "../../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../../src/core/console/session.js";
+import { consoleActor, consoleTestSession } from "../consoleSessionHelper.js";
 import { authorizeFeedRead } from "../../src/services/distribution/registry/authorize.js";
 import { forgetRegistrySettings } from "../../src/services/distribution/registry/settings.js";
 import {
@@ -66,8 +63,9 @@ async function admin(
   body?: unknown,
   groups = ["platform-admins"],
 ): Promise<{ status: number; json: Loose }> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups },
     NOW,
   );
@@ -128,7 +126,7 @@ describe("the packageFeeds registry setting", () => {
     expect(on.status).toBe(200);
     expect(await packageFeedsOf(db, OWNER)).toMatchObject({
       enabled: true,
-      updatedBy: "u1",
+      updatedBy: await consoleActor(env, db, "u1"),
     });
     // The render of every package feed rides the same batch.
     expect(
@@ -156,7 +154,7 @@ describe("the packageFeeds registry setting", () => {
     expect(on.json.packageFeeds).toMatchObject({
       enabled: true,
       version: 1,
-      updatedBy: "u1",
+      updatedBy: await consoleActor(env, db, "u1"),
     });
     // The registry's own row exists too: one write path, one version history.
     const view = await admin("GET", setting);
@@ -325,7 +323,7 @@ describe("reset to default", () => {
     expect(reset.status).toBe(200);
     expect(await packageFeedsOf(db, OWNER)).toMatchObject({
       enabled: false,
-      updatedBy: "u1",
+      updatedBy: await consoleActor(env, db, "u1"),
     });
     const rows = await db.all<{ summary: string }>(
       "SELECT summary FROM audit WHERE product = ? AND action = 'distribution.package_feeds.update' ORDER BY rowid",

@@ -499,13 +499,9 @@ describe("realms", () => {
       const token = await sign(domain, body, secret);
       expect((await call(token, NOW + 1)).status).toBe(401);
     }
-    // v1: the v1 reader takes its own shape, and never believes the `bg` flag.
+    // v1: the retired shape is no session at all (ST-30c.8), so `bg` is moot.
     const v1 = await sign("pkey.admin.v1|", body);
-    const me = await call(v1, NOW + 1);
-    expect(me.status).toBe(200);
-    expect(((await me.json()) as { breakGlass: boolean }).breakGlass).toBe(
-      false,
-    );
+    expect((await call(v1, NOW + 1)).status).toBe(401);
   });
 
   it("v1, v2 and portal tokens with the same body do not verify as break-glass", async () => {

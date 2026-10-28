@@ -27,8 +27,9 @@ import { afterEach } from "vitest";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
 } from "../../../src/core/console/session.js";
+import { syntheticKey } from "../../syntheticPrincipals.js";
+import { consoleTestSession } from "../../consoleSessionHelper.js";
 
 import type { Principal } from "../../../src/core/rbac/can.js";
 
@@ -43,7 +44,9 @@ vi.mock("../../../src/core/rbac/principal.js", async (importOriginal) => {
     ...real,
     resolvePrincipal: async (
       ...args: Parameters<typeof real.resolvePrincipal>
-    ) => SYNTHETIC.get(args[2].sub) ?? real.resolvePrincipal(...args),
+    ) =>
+      SYNTHETIC.get(syntheticKey(args[2].sub)) ??
+      real.resolvePrincipal(...args),
   };
 });
 
@@ -75,8 +78,9 @@ async function admin(
   sub = "u1",
   database: Db = db,
 ): Promise<JsonResponse> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    database,
     { sub, name: "Ada", email: "ada@x.io", groups },
     NOW,
   );
@@ -353,7 +357,32 @@ describe("the summary's cost and robustness (A-20.4)", () => {
   it("the one-product read stays within a D1 read budget", async () => {
     await planned(["macos", "windows", "linux"]);
     const w = watched(db);
-    const res = await admin("GET", `/products/${SLUG}`, undefined, "u1", w.db);
+    // Sign in and warm the console's 30 s live check on the plain Db first, so the count is the
+    // product read alone (the live check is the session's, not the read's).
+    const { token } = await consoleTestSession(
+      env,
+      db,
+      {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups: ["platform-admins"],
+      },
+      NOW,
+    );
+    const path = `/api/products/${SLUG}`;
+    const get = (database: Db) =>
+      handleAdmin(
+        new Request(`${CONSOLE}/manage${path}`, {
+          headers: { cookie: `${ADMIN_COOKIE}=${token}` },
+        }),
+        env,
+        database,
+        path,
+        { now: NOW },
+      );
+    expect((await get(db)).status).toBe(200);
+    const res = await get(w.db);
     expect(res.status).toBe(200);
     // The whole record, channels included: 35 statements now, 65 before the cost fix (platforms
     // and live builds were computed two or three times; three queries per credential slot).
