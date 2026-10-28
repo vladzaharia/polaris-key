@@ -246,6 +246,11 @@ public class PolarisSyncState(
         run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working), mints = true) { shown(mint { actions.create() }) }
     }
 
+    /** Shows a code the host already made (Settings' "New recovery code"). Only from idle; the code is held for the screen alone. */
+    public fun showCode(code: String) {
+        if (_ui.value == PolarisSyncUi.Idle) _ui.value = PolarisSyncUi.RecoveryCode(PolarisRecoveryCode(code))
+    }
+
     /** A new recovery code for the ring this device holds. */
     public fun newRecoveryCode() {
         retryOp = ::newRecoveryCode
