@@ -62,6 +62,14 @@ export type ChoiceCompleteResult =
 
 export type ChoiceCancelResult = { kind: "ok" } | ChoiceRefusal;
 
+/** What `complete` may also carry. */
+export interface ChoiceCompleteOptions {
+  /** The person's consent (V5 §12.11.3 rule 2): the claims granted, a subset of the consent
+   *  view's items. Required on a grant that came with `confirm`; the Worker refuses its absence
+   *  with `bad_request` and leaves the grant open. */
+  consent?: { claims: readonly string[] };
+}
+
 /** `usePolarisAuth().choice`. */
 export interface ChoiceNamespace {
   licenses(grant: string): Promise<ChoiceViewResult<LicenseChoiceView>>;
@@ -69,7 +77,11 @@ export interface ChoiceNamespace {
     grant: string,
     licenseId: string,
   ): Promise<ChoiceViewResult<ReplaceView>>;
-  complete(grant: string, choice: LicenseChoice): Promise<ChoiceCompleteResult>;
+  complete(
+    grant: string,
+    choice?: LicenseChoice,
+    opts?: ChoiceCompleteOptions,
+  ): Promise<ChoiceCompleteResult>;
   cancel(grant: string): Promise<ChoiceCancelResult>;
 }
 
