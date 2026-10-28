@@ -28,27 +28,27 @@ Card/Scroll/Body/Actions/Secondary: Button "Use another account" [focus 2]
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Words/Title: Label "Sign in with \u2068Polaris Locker\u2069 next time?"
-Card/Scroll/Body/Words/Line0: Label "Then \u2068Polaris Key SDK\u2069 and other apps that use Polaris Locker can sign you in by themselves."
+Card/Scroll/Body/Words/Line0: Label "Then \u2068Polaris Key SDK\u2069 and other apps that use Polaris Locker can sign you in automatically."
 Card/Scroll/Body/Actions/Primary: Button "Link \u2068Polaris Locker\u2069" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "No thanks" [focus 2]
 == link offer, per developer ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Words/Title: Label "Sign in with \u2068Polaris Locker\u2069 next time?"
-Card/Scroll/Body/Words/Line0: Label "Then apps from \u2068Drift Studio\u2069 can sign you in by themselves."
+Card/Scroll/Body/Words/Line0: Label "Then apps from \u2068Drift Studio\u2069 can sign you in automatically."
 Card/Scroll/Body/Actions/Primary: Button "Link \u2068Polaris Locker\u2069" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "No thanks" [focus 2]
 == link done ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Words/Title: Label "\u2068Polaris Locker\u2069 linked"
-Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
+Card/Scroll/Body/Actions/Primary: Button "Done" [focus 1]
 == link conflict ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Words/Title: Label "\u2068Polaris Locker\u2069 not linked"
 Card/Scroll/Body/Words/Line0: Label "This \u2068Polaris Locker\u2069 account belongs to another Polaris Locker account. You're still signed in."
-Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
+Card/Scroll/Body/Actions/Primary: Button "Done" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "Join accounts" [focus 2]
 == nearby prompt ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
