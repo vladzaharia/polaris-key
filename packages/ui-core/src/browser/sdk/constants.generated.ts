@@ -678,6 +678,11 @@ export const Feature = {
   syncConflict: "sync.conflict",
   syncSaves: "sync.saves",
   syncKeyring: "sync.keyring",
+  syncRecords: "sync.records",
+  syncFiles: "sync.files",
+  syncFilesDelta: "sync.files.delta",
+  syncE2eRecovery: "sync.e2e.recovery",
+  syncTransferBackground: "sync.transfer.background",
   syncE2e: "sync.e2e",
   connectIdentity: "connect.identity",
   connectNoise: "connect.noise",
@@ -812,6 +817,11 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "sync.conflict",
   "sync.saves",
   "sync.keyring",
+  "sync.records",
+  "sync.files",
+  "sync.files.delta",
+  "sync.e2e.recovery",
+  "sync.transfer.background",
   "sync.e2e",
   "connect.identity",
   "connect.noise",
@@ -2054,6 +2064,18 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
   "sync.keyring": { status: "implemented", service: "sync", na: [] },
+  "sync.records": { status: "planned", service: "sync", na: [] },
+  "sync.files": { status: "planned", service: "sync", na: [] },
+  "sync.files.delta": { status: "planned", service: "sync", na: [] },
+  "sync.e2e.recovery": { status: "planned", service: "sync", na: [] },
+  "sync.transfer.background": {
+    status: "na",
+    service: "sync",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
   "sync.e2e": { status: "planned", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
@@ -2326,4 +2348,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "b0819878fb65be178e93d884f7e219d56c3182088709b3241f8cba126eb391f7";
+  "a5b6fa76cd822c9969c3bd55721e3701d305141853a85f2772007d4cba2a9769";
