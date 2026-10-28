@@ -20189,6 +20189,47 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/prefs:
+    put:
+      operationId: setMyPrefsAdmin
+      tags: [admin]
+      summary: Set the signed-in operator's console preferences
+      description: >
+        LK-FU-2. `{ setupGuideHidden }` stores whether Home's Platform ready guide is hidden, per
+        operator, so it follows them across browsers. `GET /manage/api/me` returns the same under
+        `prefs`. Admin session cookie with the CSRF header; a token cannot call it.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [setupGuideHidden]
+              properties:
+                setupGuideHidden: { type: boolean }
+      responses:
+        "200":
+          description: The stored preferences.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [prefs]
+                properties:
+                  prefs:
+                    type: object
+                    required: [setupGuideHidden]
+                    properties:
+                      setupGuideHidden: { type: boolean }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "422":
+          description: "`setupGuideHidden` is not a boolean."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/me/methods:
     get:
       operationId: listMyMethodsAdmin

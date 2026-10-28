@@ -160,6 +160,7 @@
   "POST /products/kek": "platform",
   "POST /products/link-repo": "platform",
   "POST /tokens": "platform",
+  "PUT /me/prefs": "console",
   "PUT /platform/feeds/**": "platform",
   "PUT /platform/store-connections/**": "platform",
   "PUT /products/:slug/ci-publisher": "keys",

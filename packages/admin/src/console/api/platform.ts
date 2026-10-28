@@ -54,6 +54,11 @@ export interface Me {
    * The shell warns, and the account-bound screens stay out of reach (the server refuses them).
    */
   breakGlass?: boolean;
+  /**
+   * LK-FU-2: the operator's own preferences, kept on the server so they follow them across
+   * browsers. Absent from an older worker: the console then keeps them in this browser.
+   */
+  prefs?: { setupGuideHidden: boolean };
 }
 
 /** The console's authorization areas (worker `core/rbac/areas.ts`; append-only). */
@@ -1339,6 +1344,12 @@ export const platformApi = {
       `/manage/api/account-tokens/${enc(id)}`,
       { method: "DELETE" },
     ),
+  /** Store the operator's own preferences (LK-FU-2). */
+  setMyPrefs: (prefs: { setupGuideHidden: boolean }) =>
+    call<{ prefs: { setupGuideHidden: boolean } }>("/manage/api/me/prefs", {
+      method: "PUT",
+      body: JSON.stringify(prefs),
+    }),
   /** The signed-in operator's own sign-in methods (ST-30c.3). */
   myMethods: () =>
     call<{

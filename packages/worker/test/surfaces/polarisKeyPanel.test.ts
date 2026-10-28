@@ -235,6 +235,8 @@ describe("GET …/storefronts/polaris-key (the first-party status op)", () => {
     expect(body.available).toEqual(["group", "auto_issue"]);
     expect(body.active).toEqual(["group", "auto_issue"]);
     expect(body.everyone).toBe(false);
+    // Release is off for this product: no direct download, so no "Download from" badge.
+    expect(body.directDownload).toBe(false);
     expect(body.groups).toEqual([
       { group: "aperture-beta", tier: "beta", label: "Aperture Seven" },
       { group: "crew", tier: null, label: null },

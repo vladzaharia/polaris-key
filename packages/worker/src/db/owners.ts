@@ -79,6 +79,8 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "entitlement_events",
     // ST-28 (plans/ST-28.md §10): operator-owned console role bindings (migration 0129_a, ST-31); store: core/rbac/bindings.ts.
     "console_role_bindings",
+    // LK-FU-2: per-operator console preferences (migration 0148); store: core/accounts/operatorPrefs.ts.
+    "operator_prefs",
     // U-27's backfill ledger (no values, `entry_sha256` only); dropped in U-27b.
     "provisioned_secret_moves",
   ],
