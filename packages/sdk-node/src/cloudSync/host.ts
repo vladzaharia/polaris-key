@@ -289,11 +289,25 @@ export class CloudSyncHost {
       this.#again = true;
       return this.#pumping;
     }
-    this.#pumping = this.#pump().finally(() => {
+    this.#pumping = this.#run();
+    return this.#pumping;
+  }
+
+  /**
+   * Pump, and pump again while a `touch()` arrived during the last one. The check and the release
+   * of `#pumping` happen with no await between them, so a wake-up is either seen here or starts a
+   * run of its own (it was lost when it landed between the pump's last check and its settling).
+   */
+  async #run(): Promise<void> {
+    try {
+      for (let i = 0; i < 4; i++) {
+        await this.#pump();
+        if (!this.#again) break;
+      }
+    } finally {
       this.#pumping = null;
       this.#arm();
-    });
-    return this.#pumping;
+    }
   }
 
   async #pump(): Promise<void> {
