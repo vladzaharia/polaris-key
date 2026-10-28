@@ -86,6 +86,8 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   "sync-usage": "sync",
   "sync-data": "sync",
   "connect-setup": "connect",
+  "connect-devices": "connect",
+  "connect-usage": "connect",
 };
 
 /** The area of every global page: Home and the product list are every member's. */

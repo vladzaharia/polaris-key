@@ -142,7 +142,12 @@ export function StatTile({
         </div>
       ) : (
         <>
-          <div className={cn("flex items-end justify-between gap-3", fade)}>
+          <div
+            className={cn(
+              "flex flex-wrap items-end justify-between gap-3",
+              fade,
+            )}
+          >
             <p className="text-2xl font-semibold tabular-nums text-fg-strong">
               {counting === null ? (
                 // A number reads as formatCount draws it, counting or not.

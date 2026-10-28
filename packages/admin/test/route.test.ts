@@ -558,6 +558,8 @@ describe("the nav model (nav.ts)", () => {
       "sync-usage",
       "sync-data",
       "connect-setup",
+      "connect-devices",
+      "connect-usage",
     ];
     expect(ALL_PAGES.map((p) => p.page).sort()).toEqual([...expected].sort());
   });

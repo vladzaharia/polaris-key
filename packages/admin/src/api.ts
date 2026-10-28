@@ -56,6 +56,7 @@ import { licenseApi } from "./console/api/license.js";
 import { feedsApi } from "./console/api/feeds.js";
 import { activityApi } from "./console/api/activity.js";
 import { settingsApi } from "./console/api/settings.js";
+import { connectApi } from "./console/api/connect.js";
 import { syncApi } from "./console/api/sync.js";
 import { searchApi } from "./console/api/search.js";
 export * from "./console/api/platform.js";
@@ -70,6 +71,7 @@ export * from "./console/api/feeds.js";
 export * from "./console/api/activity.js";
 export * from "./console/api/settings.js";
 export * from "./console/api/sync.js";
+export * from "./console/api/connect.js";
 export * from "./console/api/search.js";
 export {
   HttpError,
@@ -99,6 +101,7 @@ const rawApi = {
   ...activityApi,
   ...settingsApi,
   ...syncApi,
+  ...connectApi,
   ...searchApi,
 };
 

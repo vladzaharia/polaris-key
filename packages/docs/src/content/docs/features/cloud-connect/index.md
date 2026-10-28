@@ -35,7 +35,7 @@ The page's Content-Security-Policy must allow the relay: add `connect-src wss://
 
 ## In the console
 
-The **Cloud Connect** section has one page today, with nothing to set up. Setup, Usage and Linked devices come later.
+The **Cloud Connect** section has three pages: Setup (the relay switch and the monthly relay ceiling), Usage (relay data and sessions per day) and Linked devices (each person and their devices).
 
 ## Next steps
 

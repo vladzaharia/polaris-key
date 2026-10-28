@@ -566,6 +566,8 @@ export const r = {
   syncSetup: (slug: string) => productPage(slug, "sync-setup"),
   syncUsage: (slug: string) => productPage(slug, "sync-usage"),
   connectSetup: (slug: string) => productPage(slug, "connect-setup"),
+  connectDevices: (slug: string) => productPage(slug, "connect-devices"),
+  connectUsage: (slug: string) => productPage(slug, "connect-usage"),
   syncData: (slug: string) => productPage(slug, "sync-data"),
 };
 

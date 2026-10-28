@@ -77,6 +77,7 @@ export const DOCS_LINKS = {
   notSeenYet: "/docs/build/troubleshooting/#not-seen-yet",
   // U-05.20: Cloud Sync → Usage (the nav table carries page paths only, never a fragment).
   syncUsage: "/docs/features/cloud-sync/#in-the-console",
+  connect: "/docs/features/cloud-connect/",
   // The server card (SP-64): the contract, then the framework-free core.
   serverVerify: "/docs/build/servers/",
   serverCore: "/docs/build/servers/#use-the-core-directly",

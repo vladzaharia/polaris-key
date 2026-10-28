@@ -27,6 +27,7 @@ import { Link } from "../router.js";
 import { globalPage, productPage } from "../routes.js";
 import {
   SETTINGS_HUB_PAGES,
+  CONNECT_PAGES,
   SYNC_PAGES,
   type GlobalPageId,
   type ProductPageId,
@@ -396,7 +397,11 @@ function isActivePage(activePage: PageId | null, page: string): boolean {
     // Cloud Sync's Data tab is Cloud Sync.
     (page === "sync-setup" &&
       activePage !== null &&
-      SYNC_PAGES.includes(activePage as ProductPageId))
+      SYNC_PAGES.includes(activePage as ProductPageId)) ||
+    // Cloud Connect's tabs are Cloud Connect.
+    (page === "connect-setup" &&
+      activePage !== null &&
+      CONNECT_PAGES.includes(activePage as ProductPageId))
   );
 }
 

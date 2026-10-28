@@ -31,6 +31,8 @@ const ADDED_PAGE_IDS = [
   "platform-members",
   "sign-in-methods",
   "connect-setup",
+  "connect-devices",
+  "connect-usage",
 ]; // ST-51, A-27.11, ST-31.11, ST-30c.4, CC-02.3
 
 const inNav = (id: string): boolean =>
