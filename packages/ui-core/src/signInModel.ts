@@ -192,6 +192,10 @@ export class SignInModel {
   private epoch = 0;
   /** False for a model restored from an input with no sign-in session (Identity off). */
   private live = true;
+  /** The device limit's `manageUrl`, kept for a Replace on a row with no link of its own. */
+  private manage: string | null = null;
+  /** Replace a device opened the browser; the next return runs the provider sign-in again. */
+  private awaitingReturn = false;
 
   constructor(options: SignInModelOptions = {}) {
     this.primitives = options.primitives;
@@ -705,12 +709,14 @@ export class SignInModel {
   }
 
   /** Every seat is taken. With the list, the license step opens with the card's Replace (there
-   *  is no grant to replace with here); without it, the device-limit words and the portal link. */
+   *  is no grant to replace with here); without it, the device-limit step of the form (never the
+   *  key screen): the words, Replace a device (the refusal's `manageUrl`), Use another account. */
   private showDeviceLimit(
     view: LicenseChoiceView | undefined,
     manageUrl: string | undefined,
   ): void {
     this.grant = null;
+    this.manage = manageUrl ?? null;
     if (view) {
       this.patch(
         { choices: view, loading: false, autoSignIn: undefined },
@@ -725,15 +731,42 @@ export class SignInModel {
     }
     this.patch(
       {
-        autoSignIn: undefined,
-        activation: {
-          result: "device-limit",
+        autoSignIn: {
+          step: "device-limit",
           ...(manageUrl ? { manageUrl } : {}),
         },
-        keyField: { text: "" },
+        activation: undefined,
+        keyField: undefined,
+        choices: undefined,
+        loading: false,
       },
-      { outcome: "choose", event: "have-key" },
+      {
+        outcome: undefined,
+        event: undefined,
+        raced: false,
+        grantExpired: false,
+      },
     );
+  }
+
+  /** The refusal's `manageUrl` of the device limit last shown: where a device is replaced when a
+   *  row has no link of its own. */
+  get manageUrl(): string | null {
+    return this.manage;
+  }
+
+  /** The kit opened the browser to replace a device: when the person comes back (`returned()`),
+   *  the provider sign-in runs once more. */
+  leftToReplace(): void {
+    this.awaitingReturn = true;
+  }
+
+  /** The person is back from the browser. After a Replace it runs the provider sign-in once
+   *  more, so they do not start again by hand (a no-op otherwise, and only once per Replace). */
+  async returned(): Promise<void> {
+    if (!this.awaitingReturn) return;
+    this.awaitingReturn = false;
+    await this.signInWithProvider();
   }
 
   /** Continue on the confirm step: the person consents to what it listed. */

@@ -191,16 +191,45 @@ export function licenseRows(c: KitCtx): ReactNode {
           <span />
         </div>
       );
+    // The full row (SIGN-IN §3.19, SwiftUI's layout): the title, then the pill, the count and the
+    // tag on one line, then the meter and the meta, then its Replace a device.
+    const fullBody = (
+      <>
+        {r.name ? (
+          <span className="row-name" data-part="row-name">
+            <bdi>{r.name}</bdi>
+          </span>
+        ) : null}
+        <span className="row-line">
+          <span className="pill">{r.tierName}</span>
+          {r.seats.limit !== null && has("signin.choice.devices") ? (
+            <span className="row-title num">
+              {text(c, "signin.choice.devices", {
+                used: r.seats.used,
+                limit: r.seats.limit,
+              })}
+            </span>
+          ) : null}
+          {tag("signin.choice.tag.full")}
+          {r.current ? tag("signin.choice.tag.current") : null}
+        </span>
+        {r.seats.limit !== null
+          ? seatMeter(c, r.seats.used, r.seats.limit, false)
+          : null}
+        {meta ? <span className="meta">{meta}</span> : null}
+      </>
+    );
     return (
       <div
         key={e.id}
         className="row"
         role="group"
         data-part="license-row"
+        data-layout="full"
         data-id={e.id}
-        aria-label={r.tierName}
+        aria-label={r.name ?? r.tierName}
       >
-        {body}
+        {fullBody}
         {replaceHere ? (
           button(c, "signin.replace.open", lone ? "primary" : "secondary", {
             detail: { licenseId: r.id },
