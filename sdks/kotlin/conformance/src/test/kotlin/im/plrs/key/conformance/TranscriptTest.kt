@@ -7,7 +7,7 @@
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
-// @pkey-feature identity.redirect.web identity.signin.hints identity.choice
+// @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -52,7 +52,12 @@
 
 package im.plrs.key.conformance
 
+import im.plrs.key.core.Base64Url
 import im.plrs.key.core.CoreOptions
+import im.plrs.key.core.DeviceKeyPort
+import im.plrs.key.core.DevicePublicKeys
+import im.plrs.key.core.InMemoryDeviceKeyStorage
+import im.plrs.key.sdk.ConnectOptions
 import im.plrs.key.core.DiscoveryResult
 import im.plrs.key.core.DocOutcome
 import im.plrs.key.core.FingerprintSource
@@ -168,9 +173,39 @@ fun packsObjectFetch(packs: PacksClient, transport: PackObjectTransport): Object
 /** The replay's memory between steps: the session the last `beginSignIn` started, the last whole
  *  `releaseFetch` payload, the scratch directories to remove and the device's `initial.platform`. */
 class ReplaySession(val platform: String? = null) {
+    /** The fixture device keys behind `client.connect` and the label they were last set to. */
+    val keys = FixtureKeyPort()
+    var keyLabel: String? = null
     var prompt: SignInSession? = null
     var payload: ByteArray? = null
     val dirs = ArrayList<java.io.File>()
+}
+
+/**
+ * The fixture device keys of a label (format.ts, `connectIdentity`) as a key port: the Ed25519 seed is
+ * SHA-256(label), the agreement key's 32 bytes are SHA-256(label + ":agree") with the top bit of the last
+ * byte clear. The agreement key has no private half here (identity needs none), so `dh` answers null.
+ * Test-only; [use] with another label is a key rotation.
+ */
+class FixtureKeyPort : DeviceKeyPort {
+    private var seed = ByteArray(32)
+    private var keys = DevicePublicKeys("", "", 1)
+
+    fun use(label: String) {
+        val sha = java.security.MessageDigest.getInstance("SHA-256")
+        seed = sha.digest(label.toByteArray(Charsets.UTF_8))
+        val agree = sha.digest("$label:agree".toByteArray(Charsets.UTF_8))
+        agree[31] = (agree[31].toInt() and 0x7f).toByte()
+        val pub = com.google.crypto.tink.subtle.Ed25519Sign.KeyPair.newKeyPairFromSeed(seed).publicKey
+        keys = DevicePublicKeys(Base64Url.encode(pub), Base64Url.encode(agree), 1)
+    }
+
+    override suspend fun ensure(): DevicePublicKeys = keys
+    override suspend fun publicKeys(): DevicePublicKeys? = keys
+    override suspend fun sign(message: ByteArray): ByteArray = com.google.crypto.tink.subtle.Ed25519Sign(seed).sign(message)
+    override suspend fun dh(peerPublic: ByteArray): ByteArray? = null
+    override suspend fun rotate(): DevicePublicKeys = keys
+    override suspend fun wipe() {}
 }
 
 /** An in-memory store with a state directory, for a transcript that seeds the update journal. */
@@ -315,6 +350,47 @@ object KotlinReplay {
                 )
                 // core.presentation: the member the client now exposes (null when it went away).
                 out["presentation"] = client.presentation()?.toJson() ?: JsonNull
+            }
+            // `client.connect` (CC-06.4, `connect.identity`): the identity and the device list.
+            "connectIdentity", "connectDevices" -> {
+                val label = args["keyLabel"].stringValue!!
+                if (session.keyLabel != label) {
+                    // A different label is a different key pair: the next call registers it.
+                    session.keys.use(label)
+                    session.keyLabel = label
+                }
+                try {
+                    if (action == "connectIdentity") {
+                        val id = client.connect.identity(refresh = args["refresh"].boolValue == true)
+                        out["result"] = JsonPrimitive("ok")
+                        out["epoch"] = jsonInt(id.epoch)
+                        out["devices"] = JsonArray(id.devices.map { JsonPrimitive(it.deviceId) })
+                        out["deviceId"] = JsonPrimitive(id.deviceId)
+                        out["discKeys"] = jsonInt(if (client.connect.discoveryKeys()?.previous != null) 2 else 1)
+                    } else {
+                        out["result"] = JsonPrimitive("ok")
+                        out["devices"] = JsonArray(
+                            client.connect.listDevices().map { d ->
+                                JsonObject(
+                                    mapOf(
+                                        "deviceId" to JsonPrimitive(d.deviceId),
+                                        "label" to (d.label?.let { JsonPrimitive(it) } ?: JsonNull),
+                                        "platform" to (d.platform?.let { JsonPrimitive(it) } ?: JsonNull),
+                                        "lastSeen" to (d.lastSeen?.let { jsonInt(it) } ?: JsonNull),
+                                        "self" to JsonPrimitive(d.self),
+                                    ),
+                                )
+                            },
+                        )
+                    }
+                } catch (e: PolarisException) {
+                    if (e.unsupported != null) {
+                        out["result"] = JsonPrimitive("unavailable")
+                    } else {
+                        out["result"] = JsonPrimitive("refused")
+                        out["code"] = JsonPrimitive(e.code)
+                    }
+                }
             }
             "sync" -> {
                 val r = client.sync(force = args["force"].boolValue == true)
@@ -683,8 +759,10 @@ object KotlinReplay {
             )
             ?.mapNotNull { ServiceSlug.of(it) }
         val installed = u?.get("installed").objectValue
+        val session = ReplaySession(t.initial["platform"].stringValue)
         val client = PolarisKeyClient.create(
             PolarisKeyClientOptions(
+                connect = ConnectOptions(deviceKeys = session.keys, state = InMemoryDeviceKeyStorage()),
                 core = CoreOptions(
                     productSlug = t.product, baseUrl = t.baseUrl,
                     version = installed?.get("version").stringValue ?: t.initial["version"].stringValue!!,
@@ -712,7 +790,6 @@ object KotlinReplay {
         // The redirect recordings hold the token exchange, not the sync a sign-in triggers after it.
         @OptIn(ConformanceReplayOnly::class)
         if (redirects) client.identity.redirectAcquisitionSync = false
-        val session = ReplaySession(t.initial["platform"].stringValue)
         try {
             t.steps.forEachIndexed { i, _ ->
                 val step = server.beginStep(i)
