@@ -200,13 +200,16 @@ struct KeychainDeviceKeyVault: DeviceKeyVault {
     let keychain: any KeychainAPI
     let service: String
     let accessGroup: String?
-    static let account = "device-keys"
+    /// The item's account: the device keys by default; the Connect state record uses its own
+    /// (`ConnectStateStore`), so the two never share an item.
+    var account: String = KeychainDeviceKeyVault.deviceKeysAccount
+    static let deviceKeysAccount = "device-keys"
 
     private func query(dataProtection: Bool) -> [String: Any] {
         var q: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: Self.account,
+            kSecAttrAccount as String: account,
         ]
         if dataProtection {
             q[kSecUseDataProtectionKeychain as String] = true

@@ -455,7 +455,7 @@ final class WireContractV3Tests: XCTestCase {
             Set(JwsTyp.allCases.map(\.rawValue)),
             [
                 "pkey-license+jws", "pkey-config+jws", "pkey-trust+jws", "pkey-bundle+jws",
-                "pkey-feed+jws", "pkey-release+jws",
+                "pkey-feed+jws", "pkey-release+jws", "pkey-peer+jws", "pkey-ring+jws",
             ])
     }
 }

@@ -24,3 +24,7 @@ Swift Cloud Connect: CryptoKit, Network.framework Bonjour and AWDL, prompts. Sco
 ## Acceptance criteria
 
 [ ] see plan
+
+## Progress and continuation
+
+2026-10-27, CC-11.1 (identity) done on `wp/CC-11.1-swift-connect-identity`: `PeerDocs` (certificate, roster, replacement, admission), `ConnectStateStore` (Keychain item `connect-state`), `client.connect` (`identity()`, `held()`, `listDevices()`, `leave()`), `connect.identity` implemented. Continue with CC-11.2 (Bonjour adverts and browse, `NWListener`, `NWConnection` TCP, sessions), then the relay client and the `cloudConnect` API rows in `api.json` (the `client.connect` ignore entry in `conformance/parity/api.json` goes then).

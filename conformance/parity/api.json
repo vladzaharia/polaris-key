@@ -523,6 +523,11 @@
   },
   "ignore": [
     {
+      "sdk": "swift",
+      "path": "client.connect",
+      "reason": "Cloud Connect identity (CC-11.1): its api.json concepts (cloudConnect.*) land with the Node API slice (CC-08.3); until then the Swift namespace is held back from the registry"
+    },
+    {
       "path": "client-core",
       "reason": "the isomorphic core and the bridge v4 verbs are SP-31's, not an SDK surface"
     },

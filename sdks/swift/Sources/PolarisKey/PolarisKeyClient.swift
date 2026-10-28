@@ -46,6 +46,8 @@ public struct PolarisKeyClientOptions: Sendable {
     public let pinnedReleaseKeys: TrustSet
     /// App Attest seams for `client.devices.attest()`; the defaults are the system's.
     public let attest: AttestOptions
+    /// The key port and the identity store behind `client.connect`; the defaults are the Keychain.
+    public let connect: ConnectOptions
     /// StoreKit behind its seam, for `client.commerce`; nil uses StoreKit 2 where available.
     public let storeClient: (any StoreClient)?
     /// `backend.origins`: the exact origins `client.backend.data(for:)` may send the licence to
@@ -61,8 +63,10 @@ public struct PolarisKeyClientOptions: Sendable {
         pinnedReleaseKeys: TrustSet = [:],
         attest: AttestOptions = AttestOptions(),
         storeClient: (any StoreClient)? = nil,
-        backendOrigins: [String] = []
+        backendOrigins: [String] = [],
+        connect: ConnectOptions = ConnectOptions()
     ) {
+        self.connect = connect
         self.backendOrigins = backendOrigins
         self.core = core
         self.license = license
@@ -95,8 +99,10 @@ public struct PolarisKeyClientOptions: Sendable {
         storeClient: (any StoreClient)? = nil,
         keychainAccessGroup: String? = nil,
         appGroup: String? = nil,
-        backendOrigins: [String] = []
+        backendOrigins: [String] = [],
+        connect: ConnectOptions = ConnectOptions()
     ) {
+        self.connect = connect
         self.backendOrigins = backendOrigins
         self.pinnedReleaseKeys = pinnedReleaseKeys
         self.attest = attest
@@ -179,6 +185,8 @@ public actor PolarisKeyClient {
     public nonisolated let identity: IdentityClient
     /// The device roster and App Attest (`attest()`).
     public nonisolated let devices: DevicesClient
+    /// Cloud Connect identity (`identity()`, `held()`, `listDevices()`, `leave()`).
+    public nonisolated let connect: ConnectClient
     /// Store purchases to licence flags: binding, claim, and the StoreKit one-calls.
     public nonisolated let commerce: CommerceClient
     /// The download page's model (`downloadModel()`, `thisPlatform()`).
@@ -281,6 +289,8 @@ public actor PolarisKeyClient {
         self.capabilityEngine = engine
         self.fingerprintEnabled = options.license.fingerprint
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
+        let connect = ConnectClient(core: core, options: options.connect)
+        self.connect = connect
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
         // does NOT fire it — a keyless registration is a provisioning step a host may want to
         // take long before it wants documents (an installer that registers at setup and syncs on
@@ -295,7 +305,11 @@ public actor PolarisKeyClient {
                     fingerprintEnabled: options.license.fingerprint, publisher: publisher)
             },
             // `client.license.deactivate()` reaches the same event as `client.deactivate()`.
-            onReleased: { await publisher.publish() })
+            onReleased: {
+                // A released device holds no roster and no discovery key.
+                try? await connect.leave()
+                await publisher.publish()
+            })
         self.entitlements = EntitlementsClient(license: self.license)
         let license = self.license
         licenseBox.set(license)
@@ -320,6 +334,7 @@ public actor PolarisKeyClient {
                 await publisher.publish()
                 throw error
             }
+            try? await connect.leave()
             await publisher.publish()
         }
         backendSync.set { [weak self] force in
@@ -793,7 +808,7 @@ extension PolarisKeyClient {
                 core: local, license: options.license, config: options.config,
                 probes: options.probes, refreshIntervalSeconds: nil,
                 pinnedReleaseKeys: options.pinnedReleaseKeys, attest: options.attest,
-                storeClient: options.storeClient))
+                storeClient: options.storeClient, connect: options.connect))
     }
 
     /// A local-only client provisioned from an offline activation bundle in one step.

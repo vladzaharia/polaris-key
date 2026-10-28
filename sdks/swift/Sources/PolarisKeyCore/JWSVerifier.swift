@@ -56,6 +56,10 @@ public enum JwsTyp: String, Sendable, Equatable, CaseIterable {
     case feed = "pkey-feed+jws"
     /// Wire contract v4 §2.4: the release record, signed by a CI-held release key.
     case release = "pkey-release+jws"
+    /// Wire contract v5 §15.2: a device certificate, signed by the product key.
+    case peer = "pkey-peer+jws"
+    /// Wire contract v5 §15.3: the roster of an account's devices, signed by the product key.
+    case ring = "pkey-ring+jws"
 }
 
 /// The RFC 6901 pointers of a payload's number tokens that cannot be wire integers (a fraction
@@ -365,7 +369,7 @@ public enum JWSVerifier {
 package enum StrictJSON {
     /// Decode `T`, first pre-scanning the RAW bytes for duplicate keys. `JSONDecoder` alone
     /// cannot help: duplicates are collapsed before any `Decodable` sees them.
-    static func decode<T: Decodable>(_ type: T.Type, from data: Data) -> T? {
+    package static func decode<T: Decodable>(_ type: T.Type, from data: Data) -> T? {
         guard !hasDuplicateKeys(data) else { return nil }
         return try? JSONDecoder().decode(type, from: data)
     }

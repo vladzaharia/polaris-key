@@ -96,6 +96,11 @@ public struct Endpoints: Sendable, Equatable {
     public var devicesRegister: URL { url("devices/register") }
     public var devicesReport: URL { url("devices/report") }
     public var devices: URL { url("devices") }
+    /// `PUT` the device's signing and agreement keys (WIRE-CONTRACT-V5 §15.8).
+    public var deviceKeys: URL { url("devices/keys") }
+    // ── Connect (V5 §15) ──
+    public var connectIdentity: URL { url("connect/identity") }
+    public var connectDevices: URL { url("connect/devices") }
     public func device(_ id: String) -> URL {
         url("devices/\(Endpoints.segment(id))")
     }
