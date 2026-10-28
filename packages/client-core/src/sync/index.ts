@@ -1,8 +1,11 @@
 // Cloud Sync's end-to-end core (WIRE-CONTRACT-V5 §13.10): the crypto port and key hierarchy,
-// `pkey-sync-value/1` envelopes and blinded names. `@polaris-key/client-core/sync`.
+// `pkey-sync-value/1` envelopes, blinded names, the chunker, chunk objects and the chunk manifest. `@polaris-key/client-core/sync`.
 
 export * from "./crypto.js";
 export * from "./envelope.js";
 export * from "./blind.js";
 export * from "./hpke.js";
 export * from "./recovery.js";
+export * from "./cdc.js";
+export * from "./chunks.js";
+export * from "./manifest.js";

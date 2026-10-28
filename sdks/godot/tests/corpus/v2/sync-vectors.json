@@ -1,6 +1,6 @@
 {
   "syncVectorsVersion": 1,
-  "description": "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
+  "description": "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames). manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
   "constants": {
     "envelopeOverheadBytes": 113,
     "envelopeFixedBytes": 49,
@@ -1150,6 +1150,478 @@
       "kidHex": "2a2524db571a6f4d8103a00bc48b538a",
       "blobHex": "01806dbddf1e2f2a65ba2daa07d0eb1f1cd1238d44e42568df340831d0451cfcf40a7c6a5fd08b2f7fdd7efd6aeb86850cc8b142d8c2f1e01148ef7366",
       "expectRootHex": null
+    }
+  ],
+  "cdcCases": [
+    {
+      "id": "empty",
+      "description": "An empty input has no chunks.",
+      "avg": 262144,
+      "min": 65536,
+      "max": 1048576,
+      "input": { "kind": "byte", "value": 0, "length": 0 },
+      "lens": []
+    },
+    {
+      "id": "one-byte",
+      "description": "One byte is one chunk.",
+      "avg": 262144,
+      "min": 65536,
+      "max": 1048576,
+      "input": { "kind": "byte", "value": 7, "length": 1 },
+      "lens": [1]
+    },
+    {
+      "id": "exactly-min",
+      "description": "An input of exactly min (avg / 4) bytes is one chunk: a remainder of at most min is never cut.",
+      "avg": 1024,
+      "min": 256,
+      "max": 4096,
+      "input": { "kind": "stream", "label": "min", "length": 256 },
+      "lens": [256]
+    },
+    {
+      "id": "min-plus-one",
+      "description": "One byte past min: the scan starts at offset min and sees one byte.",
+      "avg": 1024,
+      "min": 256,
+      "max": 4096,
+      "input": { "kind": "stream", "label": "min1", "length": 257 },
+      "lens": [257]
+    },
+    {
+      "id": "exactly-max",
+      "description": "An input of exactly max (avg * 4) bytes of zeros: the gear hash of zeros never meets either mask, so the cut is at max.",
+      "avg": 1024,
+      "min": 256,
+      "max": 4096,
+      "input": { "kind": "byte", "value": 0, "length": 4096 },
+      "lens": [4096]
+    },
+    {
+      "id": "max-plus-one",
+      "description": "One byte past max: a max chunk and a one-byte remainder.",
+      "avg": 1024,
+      "min": 256,
+      "max": 4096,
+      "input": { "kind": "byte", "value": 0, "length": 4097 },
+      "lens": [4096, 1]
+    },
+    {
+      "id": "zeros-real",
+      "description": "3 MiB of zeros at the real parameters: three max chunks.",
+      "avg": 262144,
+      "min": 65536,
+      "max": 1048576,
+      "input": { "kind": "byte", "value": 0, "length": 3145728 },
+      "lens": [1048576, 1048576, 1048576]
+    },
+    {
+      "id": "stream-small-1k",
+      "description": "Pseudo-random input, avg 1 KiB (min 256, max 4 KiB).",
+      "avg": 1024,
+      "min": 256,
+      "max": 4096,
+      "input": { "kind": "stream", "label": "a", "length": 65536 },
+      "lens": [
+        1283, 1284, 1680, 1226, 2334, 429, 1112, 1444, 1077, 1227, 1282, 1063,
+        1120, 1204, 267, 1075, 287, 1333, 1155, 845, 923, 1358, 1094, 2024, 317,
+        499, 1236, 494, 1790, 1444, 1557, 952, 2142, 1288, 1229, 1175, 281,
+        1052, 3079, 652, 1322, 1516, 1846, 1050, 1287, 1810, 2205, 998, 956,
+        1749, 505, 1133, 1173, 673
+      ]
+    },
+    {
+      "id": "stream-small-4k",
+      "description": "Pseudo-random input, avg 4 KiB (min 1 KiB, max 16 KiB).",
+      "avg": 4096,
+      "min": 1024,
+      "max": 16384,
+      "input": { "kind": "stream", "label": "b", "length": 262144 },
+      "lens": [
+        4227, 7679, 6435, 5616, 6288, 4225, 7925, 11470, 4875, 4642, 5766, 5494,
+        1804, 5947, 7286, 6075, 1134, 4853, 6088, 6019, 4266, 3374, 5575, 5186,
+        1381, 1268, 4120, 6906, 1121, 4701, 7425, 4635, 5201, 5499, 4714, 9906,
+        5685, 4204, 2841, 4394, 1270, 9763, 9206, 4050, 6050, 1203, 8435, 1309,
+        14232, 376
+      ]
+    },
+    {
+      "id": "stream-real-avg",
+      "description": "Pseudo-random input at the real parameters: avg 256 KiB, min 64 KiB, max 1 MiB.",
+      "avg": 262144,
+      "min": 65536,
+      "max": 1048576,
+      "input": { "kind": "stream", "label": "c", "length": 6303801 },
+      "lens": [
+        208771, 406951, 525463, 331021, 275125, 212696, 357148, 250682, 339540,
+        333625, 580346, 199140, 245551, 312114, 452839, 268815, 182528, 523521,
+        291077, 6848
+      ]
+    },
+    {
+      "id": "stream-real-tail",
+      "description": "The same stream cut 100 bytes shorter: the cuts before the tail are unchanged.",
+      "avg": 262144,
+      "min": 65536,
+      "max": 1048576,
+      "input": { "kind": "stream", "label": "c", "length": 6303701 },
+      "lens": [
+        208771, 406951, 525463, 331021, 275125, 212696, 357148, 250682, 339540,
+        333625, 580346, 199140, 245551, 312114, 452839, 268815, 182528, 523521,
+        291077, 6748
+      ]
+    }
+  ],
+  "chunkCases": [
+    {
+      "id": "id-300-bytes",
+      "description": "E2E id is HMAC-SHA256(K_cid(c), chunk); server id is SHA-256(chunk).",
+      "kind": "id",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "plainHex": "b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a",
+      "e2eIdHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "serverIdHex": "79e74ba12b0453a8236e270163b5e4a9dc88fe3c70e65239789f2d88ad190dd5"
+    },
+    {
+      "id": "id-empty",
+      "description": "Ids are defined for an empty chunk too (the manifest refuses such a record).",
+      "kind": "id",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "plainHex": "",
+      "e2eIdHex": "a7ec3755bb24d25624d7e757886df58613bada2f495fdb6b2f6d92e0270f1603",
+      "serverIdHex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "id-collection-scoped",
+      "description": "The same plaintext in another collection has another E2E id (K_cid is per collection) and the same server id.",
+      "kind": "id",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "other",
+      "plainHex": "b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a",
+      "e2eIdHex": "efebdc5c953a60396eaaf826282632b35a24bde785de5f3bbd9c57d34e0fd309",
+      "serverIdHex": "79e74ba12b0453a8236e270163b5e4a9dc88fe3c70e65239789f2d88ad190dd5"
+    },
+    {
+      "id": "object-raw",
+      "description": "codec 0: 0x01 0x00, then AES-256-GCM of the chunk under K_chunk(id), nonce zero, aad = 0x01 0x00 id.",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "0100d960f316b100877df0b5bc1c018bffe9da6ec4793c0ee81c8fb1a93bf5c059efc5c1a10563de281989c5a2e094099d8f47c7bbdb39f41f0532b3166cef47b38856a455abfa6a615bc44953cded99adb7a127e2e095773acaa763b369e4bf2de5fdf6e8ee24731c557705208555d577d903db5d09388694a9cbceaf3f2ed8c826bc29ca524cd1d3ea5bf486b88385c07f0f81491ab5487171c5839876a89d9b99848d3284fd436bac5f3d82d89b6a0373ff03626d24c17569a7989a704827e7fdf126fdd2a6a0e3a9dfc868764336f84e4fbb1b2e3a0051f3510cfe214353c89cb4b872105bfb82d9407bdcfac8f5cab59c22c6d4e2933c179f98c6cab586a4741dfc299f21524d2bb00c341b8ea25c1784ae352520da3f3c7ee0c8ee7d871c59fe652a2bf91db90bb10914be6e6e0f7be8dbd37c5da8131e0293fd88",
+      "seal": {
+        "codec": 0,
+        "bodyHex": "b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a"
+      },
+      "expect": {
+        "result": "ok",
+        "plainHex": "b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a",
+        "codec": 0
+      }
+    },
+    {
+      "id": "object-zstd",
+      "description": "codec 1: the body is one zstd frame with its content size (here raw blocks); a reader decodes both codecs.",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "0101421ac17aeb37b7c9d7475e04769ed7fa1fe6417b66986ff016b1e6b3286e930ce557da6da747398a3c75cad2992183736887ec204f44fb1a6ebbfb82c9bdd4cfaa878f5ff5bc144dbc67ffd7dcef52c493b92541d60f2480bb8ca9b75b6e78c5c5acf461200bf5ab66163aec0ece9142ca91328a7748ade26e78d429e1e6a16d03ecf4318355faca54a0f3c36a847a19cc397885057b502669c2c24fb305a83567782fb18ff8eda1edf7f26b61decf88f540b0b8a267a965120aca6041fb7bb7ff8cddf7cdb81838593a6f64103f51146a9a55c1d0cb3ac30106b289e293e5d2476f0806247badfe94fcfdf107f4a9f6dcc1354d41413099363a73c386184584c063792739e10803607ff07ea792cd585ba77c6bc022abf8efc785f5973cf2be29fe9edcde697333b6831f5e27e6d855b333c971987ce924b2fd3c23485b146801452542871e",
+      "seal": {
+        "codec": 1,
+        "bodyHex": "28b52ffd602c00610900b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a"
+      },
+      "expect": {
+        "result": "ok",
+        "plainHex": "b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a",
+        "codec": 1
+      }
+    },
+    {
+      "id": "refuse-shape",
+      "description": "Fewer than 2 + 16 bytes.",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "0100d960f316b100877df0b5bc1c018bff",
+      "expect": { "result": "invalid", "reason": "shape" }
+    },
+    {
+      "id": "refuse-version",
+      "description": "Version byte 0x02.",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "0200d960f316b100877df0b5bc1c018bffe9da6ec4793c0ee81c8fb1a93bf5c059efc5c1a10563de281989c5a2e094099d8f47c7bbdb39f41f0532b3166cef47b38856a455abfa6a615bc44953cded99adb7a127e2e095773acaa763b369e4bf2de5fdf6e8ee24731c557705208555d577d903db5d09388694a9cbceaf3f2ed8c826bc29ca524cd1d3ea5bf486b88385c07f0f81491ab5487171c5839876a89d9b99848d3284fd436bac5f3d82d89b6a0373ff03626d24c17569a7989a704827e7fdf126fdd2a6a0e3a9dfc868764336f84e4fbb1b2e3a0051f3510cfe214353c89cb4b872105bfb82d9407bdcfac8f5cab59c22c6d4e2933c179f98c6cab586a4741dfc299f21524d2bb00c341b8ea25c1784ae352520da3f3c7ee0c8ee7d871c59fe652a2bf91db90bb10914be6e6e0f7be8dbd37c5da8131e0293fd88",
+      "expect": { "result": "invalid", "reason": "version" }
+    },
+    {
+      "id": "refuse-codec",
+      "description": "Codec 2 is unknown (checked before any decryption).",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "0102d960f316b100877df0b5bc1c018bffe9da6ec4793c0ee81c8fb1a93bf5c059efc5c1a10563de281989c5a2e094099d8f47c7bbdb39f41f0532b3166cef47b38856a455abfa6a615bc44953cded99adb7a127e2e095773acaa763b369e4bf2de5fdf6e8ee24731c557705208555d577d903db5d09388694a9cbceaf3f2ed8c826bc29ca524cd1d3ea5bf486b88385c07f0f81491ab5487171c5839876a89d9b99848d3284fd436bac5f3d82d89b6a0373ff03626d24c17569a7989a704827e7fdf126fdd2a6a0e3a9dfc868764336f84e4fbb1b2e3a0051f3510cfe214353c89cb4b872105bfb82d9407bdcfac8f5cab59c22c6d4e2933c179f98c6cab586a4741dfc299f21524d2bb00c341b8ea25c1784ae352520da3f3c7ee0c8ee7d871c59fe652a2bf91db90bb10914be6e6e0f7be8dbd37c5da8131e0293fd88",
+      "expect": { "result": "invalid", "reason": "codec" }
+    },
+    {
+      "id": "refuse-auth-tag",
+      "description": "A flipped bit in the tag.",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "0100d960f316b100877df0b5bc1c018bffe9da6ec4793c0ee81c8fb1a93bf5c059efc5c1a10563de281989c5a2e094099d8f47c7bbdb39f41f0532b3166cef47b38856a455abfa6a615bc44953cded99adb7a127e2e095773acaa763b369e4bf2de5fdf6e8ee24731c557705208555d577d903db5d09388694a9cbceaf3f2ed8c826bc29ca524cd1d3ea5bf486b88385c07f0f81491ab5487171c5839876a89d9b99848d3284fd436bac5f3d82d89b6a0373ff03626d24c17569a7989a704827e7fdf126fdd2a6a0e3a9dfc868764336f84e4fbb1b2e3a0051f3510cfe214353c89cb4b872105bfb82d9407bdcfac8f5cab59c22c6d4e2933c179f98c6cab586a4741dfc299f21524d2bb00c341b8ea25c1784ae352520da3f3c7ee0c8ee7d871c59fe652a2bf91db90bb10914be6e6e0f7be8dbd37c5da8131e0293fd89",
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-auth-codec-swapped",
+      "description": "Codec 0 relabelled 1: the codec is in the associated data.",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "0101d960f316b100877df0b5bc1c018bffe9da6ec4793c0ee81c8fb1a93bf5c059efc5c1a10563de281989c5a2e094099d8f47c7bbdb39f41f0532b3166cef47b38856a455abfa6a615bc44953cded99adb7a127e2e095773acaa763b369e4bf2de5fdf6e8ee24731c557705208555d577d903db5d09388694a9cbceaf3f2ed8c826bc29ca524cd1d3ea5bf486b88385c07f0f81491ab5487171c5839876a89d9b99848d3284fd436bac5f3d82d89b6a0373ff03626d24c17569a7989a704827e7fdf126fdd2a6a0e3a9dfc868764336f84e4fbb1b2e3a0051f3510cfe214353c89cb4b872105bfb82d9407bdcfac8f5cab59c22c6d4e2933c179f98c6cab586a4741dfc299f21524d2bb00c341b8ea25c1784ae352520da3f3c7ee0c8ee7d871c59fe652a2bf91db90bb10914be6e6e0f7be8dbd37c5da8131e0293fd88",
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-auth-wrong-id",
+      "description": "A chunk object opened under another id.",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "3d5a050c56370ba0e025a2513e01795811945061ba824b04d1532c4668ad6ff5",
+      "objectHex": "0100d960f316b100877df0b5bc1c018bffe9da6ec4793c0ee81c8fb1a93bf5c059efc5c1a10563de281989c5a2e094099d8f47c7bbdb39f41f0532b3166cef47b38856a455abfa6a615bc44953cded99adb7a127e2e095773acaa763b369e4bf2de5fdf6e8ee24731c557705208555d577d903db5d09388694a9cbceaf3f2ed8c826bc29ca524cd1d3ea5bf486b88385c07f0f81491ab5487171c5839876a89d9b99848d3284fd436bac5f3d82d89b6a0373ff03626d24c17569a7989a704827e7fdf126fdd2a6a0e3a9dfc868764336f84e4fbb1b2e3a0051f3510cfe214353c89cb4b872105bfb82d9407bdcfac8f5cab59c22c6d4e2933c179f98c6cab586a4741dfc299f21524d2bb00c341b8ea25c1784ae352520da3f3c7ee0c8ee7d871c59fe652a2bf91db90bb10914be6e6e0f7be8dbd37c5da8131e0293fd88",
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-auth-wrong-collection",
+      "description": "A chunk object opened in another collection.",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "other",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "0100d960f316b100877df0b5bc1c018bffe9da6ec4793c0ee81c8fb1a93bf5c059efc5c1a10563de281989c5a2e094099d8f47c7bbdb39f41f0532b3166cef47b38856a455abfa6a615bc44953cded99adb7a127e2e095773acaa763b369e4bf2de5fdf6e8ee24731c557705208555d577d903db5d09388694a9cbceaf3f2ed8c826bc29ca524cd1d3ea5bf486b88385c07f0f81491ab5487171c5839876a89d9b99848d3284fd436bac5f3d82d89b6a0373ff03626d24c17569a7989a704827e7fdf126fdd2a6a0e3a9dfc868764336f84e4fbb1b2e3a0051f3510cfe214353c89cb4b872105bfb82d9407bdcfac8f5cab59c22c6d4e2933c179f98c6cab586a4741dfc299f21524d2bb00c341b8ea25c1784ae352520da3f3c7ee0c8ee7d871c59fe652a2bf91db90bb10914be6e6e0f7be8dbd37c5da8131e0293fd88",
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "refuse-decode-garbage",
+      "description": "Codec 1 whose body is not a zstd frame.",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "0101d960f316b100877df0b5bc1c018bffe9da6ec4793c0ee81c8fb1a93bf5c059efc5c1a10563de281989c5a2e094099d8f47c7bbdb39f41f0532b3166cef47b38856a455abfa6a615bc44953cded99adb7a127e2e095773acaa763b369e4bf2de5fdf6e8ee24731c557705208555d577d903db5d09388694a9cbceaf3f2ed8c826bc29ca524cd1d3ea5bf486b88385c07f0f81491ab5487171c5839876a89d9b99848d3284fd436bac5f3d82d89b6a0373ff03626d24c17569a7989a704827e7fdf126fdd2a6a0e3a9dfc868764336f84e4fbb1b2e3a0051f3510cfe214353c89cb4b872105bfb82d9407bdcfac8f5cab59c22c6d4e2933c179f98c6cab586a4741dfc299f21524d2bb00c341b8ea25c1784ae352520da3f3c7ee0c8ee7d871c59fe652a2bf91db90bb10914be8f66b88199d133e6fc8646881384c01a",
+      "expect": { "result": "invalid", "reason": "decode" }
+    },
+    {
+      "id": "refuse-decode-no-content-size",
+      "description": "Codec 1 whose frame header declares no content size.",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "0101421ac17a8b1bb6a8de2c76b1592e83e09762ac302e03a97963",
+      "expect": { "result": "invalid", "reason": "decode" }
+    },
+    {
+      "id": "refuse-size-declared",
+      "description": "Codec 1 whose frame declares 2 MiB: refused before decoding (max is 1 MiB).",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "0101421ac17a0b1bb7a8fe47f6fa84f89a92bc8f55d94f5605c21417",
+      "expect": { "result": "invalid", "reason": "size" }
+    },
+    {
+      "id": "refuse-id-mismatch",
+      "description": "Sealed under idA with a body that is not the chunk idA names: it opens, and the keyed hash of the plaintext differs from the id.",
+      "kind": "object",
+      "rootHex": "d8bc204d41a7c3887ae94537cce6cd27868a90ada81f29f95f8395f202fcc882",
+      "collection": "saves",
+      "idHex": "0cd25dde75cb126ed36a58ab9ed498bc72cc435807fb6055f772dbd4491a6e94",
+      "objectHex": "01004a451f4dab9486cfc998639a3e9a169029e50f2dd3",
+      "expect": { "result": "invalid", "reason": "id" }
+    }
+  ],
+  "manifestCases": [
+    {
+      "id": "empty-file",
+      "description": "An empty file: no records, plainSize 0, the SHA-256 of nothing.",
+      "manifestHex": "504b53594e434348010030000000000000000000000000000000000000000000e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expect": {
+        "result": "ok",
+        "plainSize": 0,
+        "plainSha256Hex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": []
+      }
+    },
+    {
+      "id": "one-chunk",
+      "description": "One record: 64 + 48 = 112 bytes.",
+      "manifestHex": "504b53594e4343480100300000000000010000000000000005000000000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c05000000000000000000000000000000",
+      "expect": {
+        "result": "ok",
+        "plainSize": 5,
+        "plainSha256Hex": "0289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5",
+        "records": [
+          {
+            "idHex": "f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c",
+            "plainLen": 5
+          }
+        ]
+      }
+    },
+    {
+      "id": "repeated-id",
+      "description": "Three records, one id twice: file order, duplicates allowed (content repeats).",
+      "manifestHex": "504b53594e43434801003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": {
+        "result": "ok",
+        "plainSize": 141234,
+        "plainSha256Hex": "0289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5",
+        "records": [
+          {
+            "idHex": "f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c",
+            "plainLen": 70000
+          },
+          {
+            "idHex": "6a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d39943447",
+            "plainLen": 70000
+          },
+          {
+            "idHex": "f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c",
+            "plainLen": 1234
+          }
+        ]
+      }
+    },
+    {
+      "id": "refuse-shape",
+      "description": "Shorter than the 64-byte header.",
+      "manifestHex": "504b53594e43434801003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4",
+      "expect": { "result": "invalid", "reason": "shape" }
+    },
+    {
+      "id": "refuse-magic",
+      "description": "The magic is not PKSYNCCH.",
+      "manifestHex": "584b53594e43434801003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "magic" }
+    },
+    {
+      "id": "refuse-version",
+      "description": "version 2.",
+      "manifestHex": "504b53594e43434802003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "version" }
+    },
+    {
+      "id": "refuse-record-size",
+      "description": "recordSize 64.",
+      "manifestHex": "504b53594e43434801004000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "recordSize" }
+    },
+    {
+      "id": "refuse-flags",
+      "description": "Header flags are not zero.",
+      "manifestHex": "504b53594e43434801003000010000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "flags" }
+    },
+    {
+      "id": "refuse-reserved",
+      "description": "Header reserved is not zero.",
+      "manifestHex": "504b53594e43434801003000000000000300000001000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "reserved" }
+    },
+    {
+      "id": "refuse-count",
+      "description": "chunkCount 16,385 (over SYNC_MAX_CHUNKS_PER_FILE), checked before the length.",
+      "manifestHex": "504b53594e43434801003000000000000140000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "count" }
+    },
+    {
+      "id": "refuse-length-short",
+      "description": "A record is missing.",
+      "manifestHex": "504b53594e43434801003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "length" }
+    },
+    {
+      "id": "refuse-length-long",
+      "description": "A trailing byte.",
+      "manifestHex": "504b53594e43434801003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd204000000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "length" }
+    },
+    {
+      "id": "refuse-plain-size-over-cap",
+      "description": "plainSize 1 GiB + 1.",
+      "manifestHex": "504b53594e4343480100300000000000030000000000000001000040000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "size" }
+    },
+    {
+      "id": "refuse-record-flags",
+      "description": "A record's flags are not zero.",
+      "manifestHex": "504b53594e43434801003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100010000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "record" }
+    },
+    {
+      "id": "refuse-record-reserved",
+      "description": "A record's reserved is not zero.",
+      "manifestHex": "504b53594e43434801003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000001000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "record" }
+    },
+    {
+      "id": "refuse-chunk-len-zero",
+      "description": "A record of length 0.",
+      "manifestHex": "504b53594e43434801003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c000000000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "chunkLen" }
+    },
+    {
+      "id": "refuse-chunk-len-over-max",
+      "description": "A record over 1 MiB.",
+      "manifestHex": "504b53594e43434801003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c010010000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "chunkLen" }
+    },
+    {
+      "id": "refuse-size-sum",
+      "description": "The records do not add up to plainSize.",
+      "manifestHex": "504b53594e4343480100300000000000030000000000000041270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "size" }
+    },
+    {
+      "id": "order-magic-before-version",
+      "description": "Bad magic and bad version: magic.",
+      "manifestHex": "004b53594e43434809003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c701101000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "magic" }
+    },
+    {
+      "id": "order-flags-before-count",
+      "description": "Bad flags and a short body: flags comes first.",
+      "manifestHex": "504b53594e43434801003000010000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c70110100",
+      "expect": { "result": "invalid", "reason": "flags" }
+    },
+    {
+      "id": "order-count-before-length",
+      "description": "Count over the cap and a short body: count.",
+      "manifestHex": "504b53594e43434801003000000000000140000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c70110100",
+      "expect": { "result": "invalid", "reason": "count" }
+    },
+    {
+      "id": "order-record-before-chunk-len",
+      "description": "A bad flag in record 2 and a zero length in record 1: record 1 is checked first, so chunkLen.",
+      "manifestHex": "504b53594e43434801003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c000000000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100010000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "chunkLen" }
+    },
+    {
+      "id": "order-chunk-len-before-size",
+      "description": "A zero length also breaks the sum: chunkLen.",
+      "manifestHex": "504b53594e43434801003000000000000300000000000000b2270200000000000289a8b8d513af59e5d95ea19501b0a66bf3b7f07b45df3379281526f617c4d5f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630c000000000000000000000000000000006a9167e6a80fd3729c0de034fe3186911f47417cc226d623cf0adf1d3994344770110100000000000000000000000000f752c2a113f35f0ee01b84a241e1d254f166588bd4df9d298bf96798586c630cd2040000000000000000000000000000",
+      "expect": { "result": "invalid", "reason": "chunkLen" }
     }
   ]
 }

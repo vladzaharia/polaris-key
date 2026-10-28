@@ -1,6 +1,7 @@
 // `sync-vectors.json`: Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 §13.10,
 // §13.8.1; plans/CC-01-cloud-sync.md §2.4). `syncVectorsVersion` 1.
 //
+// Slice U-34.3 adds `cdcCases`, `chunkCases` and `manifestCases`.
 // Slice U-34.1 holds `hkdfCases`, `envelopeCases`, `blindCases` and `transferPlanCases`; U-34.2
 // adds `hpkeAnchor`, `wrapCases`, `recoveryCodeCases` and `adoptCases`. The
 // remaining sections (`cdcCases`, `chunkCases`,
@@ -43,6 +44,18 @@ import {
   refSealValue,
   refTransferPlan,
   refBe32,
+  REF_CDC,
+  REF_CODEC_RAW,
+  REF_CODEC_ZSTD,
+  refCdc,
+  refChunkId,
+  refEncodeManifest,
+  refOpenChunk,
+  refParseManifest,
+  refSealChunk,
+  refStream,
+  refZstdRawFrame,
+  type RefManifest,
   toHex,
   utf8,
 } from "./reference/syncVectors.js";
@@ -1242,11 +1255,526 @@ function buildAdoptCases(): unknown[] {
   ];
 }
 
+// ── Content-defined chunking, chunk objects and the manifest (§13.8.3) ───────────────────────
+
+type CdcInput =
+  | { kind: "stream"; label: string; length: number }
+  | { kind: "byte"; value: number; length: number };
+
+function cdcInput(i: CdcInput): Uint8Array {
+  return i.kind === "stream"
+    ? refStream(`pkey-sync vector cdc ${i.label}`, i.length)
+    : new Uint8Array(i.length).fill(i.value);
+}
+
+function buildCdcCases(): unknown[] {
+  const real = REF_CDC.avg;
+  const rows: Array<[string, string, number, CdcInput]> = [
+    [
+      "empty",
+      "An empty input has no chunks.",
+      real,
+      { kind: "byte", value: 0, length: 0 },
+    ],
+    [
+      "one-byte",
+      "One byte is one chunk.",
+      real,
+      { kind: "byte", value: 7, length: 1 },
+    ],
+    [
+      "exactly-min",
+      "An input of exactly min (avg / 4) bytes is one chunk: a remainder of at most min is never cut.",
+      1024,
+      { kind: "stream", label: "min", length: 256 },
+    ],
+    [
+      "min-plus-one",
+      "One byte past min: the scan starts at offset min and sees one byte.",
+      1024,
+      { kind: "stream", label: "min1", length: 257 },
+    ],
+    [
+      "exactly-max",
+      "An input of exactly max (avg * 4) bytes of zeros: the gear hash of zeros never meets either mask, so the cut is at max.",
+      1024,
+      { kind: "byte", value: 0, length: 4096 },
+    ],
+    [
+      "max-plus-one",
+      "One byte past max: a max chunk and a one-byte remainder.",
+      1024,
+      { kind: "byte", value: 0, length: 4097 },
+    ],
+    [
+      "zeros-real",
+      "3 MiB of zeros at the real parameters: three max chunks.",
+      real,
+      { kind: "byte", value: 0, length: 3 * 1024 * 1024 },
+    ],
+    [
+      "stream-small-1k",
+      "Pseudo-random input, avg 1 KiB (min 256, max 4 KiB).",
+      1024,
+      { kind: "stream", label: "a", length: 64 * 1024 },
+    ],
+    [
+      "stream-small-4k",
+      "Pseudo-random input, avg 4 KiB (min 1 KiB, max 16 KiB).",
+      4096,
+      { kind: "stream", label: "b", length: 256 * 1024 },
+    ],
+    [
+      "stream-real-avg",
+      "Pseudo-random input at the real parameters: avg 256 KiB, min 64 KiB, max 1 MiB.",
+      real,
+      { kind: "stream", label: "c", length: 6 * 1024 * 1024 + 12345 },
+    ],
+    [
+      "stream-real-tail",
+      "The same stream cut 100 bytes shorter: the cuts before the tail are unchanged.",
+      real,
+      { kind: "stream", label: "c", length: 6 * 1024 * 1024 + 12245 },
+    ],
+  ];
+  return rows.map(([id, description, avg, input]) => {
+    const buf = cdcInput(input);
+    const lens = refCdc(buf, avg);
+    if (lens.reduce((a, b) => a + b, 0) !== buf.length)
+      throw new Error(`syncVectors ${id}: chunks do not tile the input`);
+    const min = avg / 4;
+    const max = avg * 4;
+    lens.forEach((n, k) => {
+      if (n > max || (n < min && k !== lens.length - 1))
+        throw new Error(`syncVectors ${id}: chunk ${k} out of bounds`);
+    });
+    return { id, description, avg, min, max, input, lens };
+  });
+}
+
+const CHUNK_ROOT = mat("chunk root");
+const CHUNK_COLL = "saves";
+
+interface ChunkIdCase {
+  id: string;
+  description: string;
+  kind: "id";
+  rootHex: string;
+  collection: string;
+  plainHex: string;
+  e2eIdHex: string;
+  serverIdHex: string;
+}
+interface ChunkObjectCase {
+  id: string;
+  description: string;
+  kind: "object";
+  rootHex: string;
+  collection: string;
+  idHex: string;
+  objectHex: string;
+  seal?: { codec: number; bodyHex: string };
+  expect:
+    | { result: "ok"; plainHex: string; codec: number }
+    | { result: "invalid"; reason: string };
+}
+
+function buildChunkCases(): Array<ChunkIdCase | ChunkObjectCase> {
+  const rows: Array<ChunkIdCase | ChunkObjectCase> = [];
+  const idRow = (id: string, description: string, plain: Uint8Array) => {
+    rows.push({
+      id,
+      description,
+      kind: "id",
+      rootHex: toHex(CHUNK_ROOT),
+      collection: CHUNK_COLL,
+      plainHex: toHex(plain),
+      e2eIdHex: toHex(refChunkId(CHUNK_ROOT, CHUNK_COLL, plain)),
+      serverIdHex: toHex(refChunkId(null, CHUNK_COLL, plain)),
+    });
+  };
+  const plainA = refStream("pkey-sync vector chunk a", 300);
+  const plainB = refStream("pkey-sync vector chunk b", 5);
+  idRow(
+    "id-300-bytes",
+    "E2E id is HMAC-SHA256(K_cid(c), chunk); server id is SHA-256(chunk).",
+    plainA,
+  );
+  idRow(
+    "id-empty",
+    "Ids are defined for an empty chunk too (the manifest refuses such a record).",
+    new Uint8Array(0),
+  );
+  rows.push({
+    id: "id-collection-scoped",
+    description:
+      "The same plaintext in another collection has another E2E id (K_cid is per collection) and the same server id.",
+    kind: "id",
+    rootHex: toHex(CHUNK_ROOT),
+    collection: "other",
+    plainHex: toHex(plainA),
+    e2eIdHex: toHex(refChunkId(CHUNK_ROOT, "other", plainA)),
+    serverIdHex: toHex(refChunkId(null, "other", plainA)),
+  });
+  const idA = refChunkId(CHUNK_ROOT, CHUNK_COLL, plainA);
+  const rawA = refSealChunk(CHUNK_ROOT, CHUNK_COLL, idA, REF_CODEC_RAW, plainA);
+  const frameA = refZstdRawFrame(plainA);
+  const zstdA = refSealChunk(
+    CHUNK_ROOT,
+    CHUNK_COLL,
+    idA,
+    REF_CODEC_ZSTD,
+    frameA,
+  );
+  const obj = (
+    id: string,
+    description: string,
+    idBytes: Uint8Array,
+    object: Uint8Array,
+    expect: ChunkObjectCase["expect"],
+    seal?: ChunkObjectCase["seal"],
+    collection = CHUNK_COLL,
+  ) => {
+    const got = refOpenChunk(CHUNK_ROOT, collection, idBytes, object);
+    const want =
+      expect.result === "ok"
+        ? got.ok &&
+          toHex(got.plain) === expect.plainHex &&
+          got.codec === expect.codec
+        : !got.ok && got.reason === expect.reason;
+    if (!want) throw new Error(`syncVectors chunk ${id}: reference disagrees`);
+    rows.push({
+      id,
+      description,
+      kind: "object",
+      rootHex: toHex(CHUNK_ROOT),
+      collection,
+      idHex: toHex(idBytes),
+      objectHex: toHex(object),
+      ...(seal === undefined ? {} : { seal }),
+      expect,
+    });
+  };
+  obj(
+    "object-raw",
+    "codec 0: 0x01 0x00, then AES-256-GCM of the chunk under K_chunk(id), nonce zero, aad = 0x01 0x00 id.",
+    idA,
+    rawA,
+    { result: "ok", plainHex: toHex(plainA), codec: 0 },
+    { codec: 0, bodyHex: toHex(plainA) },
+  );
+  obj(
+    "object-zstd",
+    "codec 1: the body is one zstd frame with its content size (here raw blocks); a reader decodes both codecs.",
+    idA,
+    zstdA,
+    { result: "ok", plainHex: toHex(plainA), codec: 1 },
+    { codec: 1, bodyHex: toHex(frameA) },
+  );
+  const ids = (b: Uint8Array) => new Uint8Array(b);
+  const flipAt = (b: Uint8Array, i: number) => {
+    const c = ids(b);
+    c[i] = c[i]! ^ 1;
+    return c;
+  };
+  obj("refuse-shape", "Fewer than 2 + 16 bytes.", idA, rawA.subarray(0, 17), {
+    result: "invalid",
+    reason: "shape",
+  });
+  obj(
+    "refuse-version",
+    "Version byte 0x02.",
+    idA,
+    (() => {
+      const c = ids(rawA);
+      c[0] = 2;
+      return c;
+    })(),
+    { result: "invalid", reason: "version" },
+  );
+  obj(
+    "refuse-codec",
+    "Codec 2 is unknown (checked before any decryption).",
+    idA,
+    (() => {
+      const c = ids(rawA);
+      c[1] = 2;
+      return c;
+    })(),
+    { result: "invalid", reason: "codec" },
+  );
+  obj(
+    "refuse-auth-tag",
+    "A flipped bit in the tag.",
+    idA,
+    flipAt(rawA, rawA.length - 1),
+    { result: "invalid", reason: "auth" },
+  );
+  obj(
+    "refuse-auth-codec-swapped",
+    "Codec 0 relabelled 1: the codec is in the associated data.",
+    idA,
+    (() => {
+      const c = ids(rawA);
+      c[1] = 1;
+      return c;
+    })(),
+    { result: "invalid", reason: "auth" },
+  );
+  obj(
+    "refuse-auth-wrong-id",
+    "A chunk object opened under another id.",
+    refChunkId(CHUNK_ROOT, CHUNK_COLL, plainB),
+    rawA,
+    { result: "invalid", reason: "auth" },
+  );
+  obj(
+    "refuse-auth-wrong-collection",
+    "A chunk object opened in another collection.",
+    idA,
+    rawA,
+    { result: "invalid", reason: "auth" },
+    undefined,
+    "other",
+  );
+  obj(
+    "refuse-decode-garbage",
+    "Codec 1 whose body is not a zstd frame.",
+    idA,
+    refSealChunk(CHUNK_ROOT, CHUNK_COLL, idA, REF_CODEC_ZSTD, plainA),
+    { result: "invalid", reason: "decode" },
+  );
+  obj(
+    "refuse-decode-no-content-size",
+    "Codec 1 whose frame header declares no content size.",
+    idA,
+    refSealChunk(
+      CHUNK_ROOT,
+      CHUNK_COLL,
+      idA,
+      REF_CODEC_ZSTD,
+      Uint8Array.of(0x28, 0xb5, 0x2f, 0xfd, 0x00, 0x00, 0x01, 0x00, 0x00),
+    ),
+    { result: "invalid", reason: "decode" },
+  );
+  obj(
+    "refuse-size-declared",
+    "Codec 1 whose frame declares 2 MiB: refused before decoding (max is 1 MiB).",
+    idA,
+    refSealChunk(
+      CHUNK_ROOT,
+      CHUNK_COLL,
+      idA,
+      REF_CODEC_ZSTD,
+      Uint8Array.of(0x28, 0xb5, 0x2f, 0xfd, 0x80, 0x00, 0x00, 0x00, 0x20, 0x00),
+    ),
+    { result: "invalid", reason: "size" },
+  );
+  obj(
+    "refuse-id-mismatch",
+    "Sealed under idA with a body that is not the chunk idA names: it opens, and the keyed hash of the plaintext differs from the id.",
+    idA,
+    refSealChunk(CHUNK_ROOT, CHUNK_COLL, idA, REF_CODEC_RAW, plainB),
+    { result: "invalid", reason: "id" },
+  );
+  return rows;
+}
+
+const MF_SHA = new Uint8Array(
+  createHash("sha256").update("pkey-sync vector manifest").digest(),
+);
+const mid = (l: string): Uint8Array => mat(`manifest chunk ${l}`);
+
+interface ManifestCase {
+  id: string;
+  description: string;
+  manifestHex: string;
+  expect:
+    | {
+        result: "ok";
+        plainSize: number;
+        plainSha256Hex: string;
+        records: Array<{ idHex: string; plainLen: number }>;
+      }
+    | { result: "invalid"; reason: string };
+}
+
+function buildManifestCases(): ManifestCase[] {
+  const good: RefManifest = {
+    plainSize: 70000 + 70000 + 1234,
+    plainSha256: MF_SHA,
+    records: [
+      { id: mid("a"), plainLen: 70000 },
+      { id: mid("b"), plainLen: 70000 },
+      { id: mid("a"), plainLen: 1234 },
+    ],
+  };
+  const rows: ManifestCase[] = [];
+  const ok = (id: string, description: string, m: RefManifest) => {
+    const bytes = refEncodeManifest(m);
+    const p = refParseManifest(bytes);
+    if (!p.ok) throw new Error(`syncVectors manifest ${id}: reference refuses`);
+    rows.push({
+      id,
+      description,
+      manifestHex: toHex(bytes),
+      expect: {
+        result: "ok",
+        plainSize: m.plainSize,
+        plainSha256Hex: toHex(m.plainSha256),
+        records: m.records.map((r) => ({
+          idHex: toHex(r.id),
+          plainLen: r.plainLen,
+        })),
+      },
+    });
+  };
+  ok(
+    "empty-file",
+    "An empty file: no records, plainSize 0, the SHA-256 of nothing.",
+    {
+      plainSize: 0,
+      plainSha256: new Uint8Array(createHash("sha256").digest()),
+      records: [],
+    },
+  );
+  ok("one-chunk", "One record: 64 + 48 = 112 bytes.", {
+    plainSize: 5,
+    plainSha256: MF_SHA,
+    records: [{ id: mid("a"), plainLen: 5 }],
+  });
+  ok(
+    "repeated-id",
+    "Three records, one id twice: file order, duplicates allowed (content repeats).",
+    good,
+  );
+  const base = refEncodeManifest(good);
+  const bad = (
+    id: string,
+    description: string,
+    reason: string,
+    edit: (b: Uint8Array) => Uint8Array,
+  ) => {
+    const bytes = edit(new Uint8Array(base));
+    const p = refParseManifest(bytes);
+    if (p.ok || p.reason !== reason)
+      throw new Error(
+        `syncVectors manifest ${id}: reference says ${p.ok ? "ok" : p.reason}`,
+      );
+    rows.push({
+      id,
+      description,
+      manifestHex: toHex(bytes),
+      expect: { result: "invalid", reason },
+    });
+  };
+  const set = (at: number, v: number[]) => (b: Uint8Array) => {
+    b.set(v, at);
+    return b;
+  };
+  const hi = (at: number, v: number[]) => (b: Uint8Array) => set(at, v)(b);
+  bad("refuse-shape", "Shorter than the 64-byte header.", "shape", (b) =>
+    b.subarray(0, 63),
+  );
+  bad("refuse-magic", "The magic is not PKSYNCCH.", "magic", set(0, [0x58]));
+  bad("refuse-version", "version 2.", "version", set(8, [2]));
+  bad("refuse-record-size", "recordSize 64.", "recordSize", set(10, [64]));
+  bad("refuse-flags", "Header flags are not zero.", "flags", set(12, [1]));
+  bad(
+    "refuse-reserved",
+    "Header reserved is not zero.",
+    "reserved",
+    set(20, [1]),
+  );
+  bad(
+    "refuse-count",
+    "chunkCount 16,385 (over SYNC_MAX_CHUNKS_PER_FILE), checked before the length.",
+    "count",
+    set(16, [0x01, 0x40, 0, 0]),
+  );
+  bad("refuse-length-short", "A record is missing.", "length", (b) =>
+    b.subarray(0, b.length - 48),
+  );
+  bad(
+    "refuse-length-long",
+    "A trailing byte.",
+    "length",
+    (b) => new Uint8Array([...b, 0]),
+  );
+  bad(
+    "refuse-plain-size-over-cap",
+    "plainSize 1 GiB + 1.",
+    "size",
+    set(24, [1, 0, 0, 0x40, 0, 0, 0, 0]),
+  );
+  bad(
+    "refuse-record-flags",
+    "A record's flags are not zero.",
+    "record",
+    set(64 + 48 + 36, [1]),
+  );
+  bad(
+    "refuse-record-reserved",
+    "A record's reserved is not zero.",
+    "record",
+    set(64 + 40, [1]),
+  );
+  bad(
+    "refuse-chunk-len-zero",
+    "A record of length 0.",
+    "chunkLen",
+    set(64 + 32, [0, 0, 0, 0]),
+  );
+  bad(
+    "refuse-chunk-len-over-max",
+    "A record over 1 MiB.",
+    "chunkLen",
+    set(64 + 32, [1, 0, 0x10, 0]),
+  );
+  bad(
+    "refuse-size-sum",
+    "The records do not add up to plainSize.",
+    "size",
+    set(24, [0x41]),
+  );
+  bad(
+    "order-magic-before-version",
+    "Bad magic and bad version: magic.",
+    "magic",
+    (b) => hi(8, [9])(set(0, [0])(b)),
+  );
+  bad(
+    "order-flags-before-count",
+    "Bad flags and a short body: flags comes first.",
+    "flags",
+    (b) => set(12, [1])(b.subarray(0, 100)),
+  );
+  bad(
+    "order-count-before-length",
+    "Count over the cap and a short body: count.",
+    "count",
+    (b) => set(16, [0x01, 0x40, 0, 0])(b.subarray(0, 100)),
+  );
+  bad(
+    "order-record-before-chunk-len",
+    "A bad flag in record 2 and a zero length in record 1: record 1 is checked first, so chunkLen.",
+    "chunkLen",
+    (b) => set(64 + 48 + 36, [1])(set(64 + 32, [0, 0, 0, 0])(b)),
+  );
+  bad(
+    "order-chunk-len-before-size",
+    "A zero length also breaks the sum: chunkLen.",
+    "chunkLen",
+    set(64 + 32, [0, 0, 0, 0]),
+  );
+  return rows;
+}
+
 export function buildSyncVectors(): unknown {
   return {
     syncVectorsVersion: 1,
     description:
-      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
+      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames). manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
     constants: {
       envelopeOverheadBytes: REF_E2E_OVERHEAD,
       envelopeFixedBytes: REF_ENVELOPE_FIXED,
@@ -1261,5 +1789,8 @@ export function buildSyncVectors(): unknown {
     wrapCases: buildWrapCases(),
     recoveryCodeCases: buildRecoveryCodeCases(),
     adoptCases: buildAdoptCases(),
+    cdcCases: buildCdcCases(),
+    chunkCases: buildChunkCases(),
+    manifestCases: buildManifestCases(),
   };
 }

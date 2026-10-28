@@ -515,3 +515,303 @@ export function refTransferPlan(size: number, delta: boolean): RefPlan {
   const partBytes = Math.min(Math.max(8 * MIB, rounded), 64 * MIB);
   return { mode: "multipart", partBytes, parts: Math.ceil(size / partBytes) };
 }
+
+// ── Content-defined chunking, chunk objects and the chunk manifest (§13.8.3) ─────────────────
+// `fastcdc-2016-nc1` restated from the spec as a whole-buffer scan (the client implementation
+// streams): xorshift32 gear table from seed 0x9e3779b9, min = avg / 4, max = avg * 4, the hash
+// starts at 0 at offset `min` of every chunk, the strict mask up to `avg` and the loose mask
+// after it, a remainder of at most `min` bytes is one chunk.
+
+export const REF_CDC = { avg: 262144, min: 65536, max: 1048576 } as const;
+export const REF_CHUNK_VERSION = 0x01;
+export const REF_CODEC_RAW = 0;
+export const REF_CODEC_ZSTD = 1;
+
+function refGear(): number[] {
+  const step = (x: number): number => {
+    const a = (x ^ (x << 13)) >>> 0;
+    const b = (a ^ (a >>> 17)) >>> 0;
+    return (b ^ (b << 5)) >>> 0;
+  };
+  const table: number[] = [step(0x9e3779b9)];
+  while (table.length < 256) table.push(step(table[table.length - 1]!));
+  return table;
+}
+const REF_GEAR = refGear();
+
+/** The cut length of the chunk that starts at `buf[0]`; `buf` is everything that remains. */
+function refCutLength(buf: Uint8Array, avg: number): number {
+  const min = avg / 4;
+  const max = avg * 4;
+  if (buf.length <= min) return buf.length;
+  const bits = Math.round(Math.log2(avg));
+  const top = (n: number): number => (~(0xffffffff >>> n) & 0xffffffff) >>> 0;
+  const strict = top(bits + 1);
+  const loose = top(bits - 1);
+  const limit = Math.min(buf.length, max);
+  const mid = Math.min(limit, avg);
+  let h = 0;
+  for (let i = min; i < limit; i++) {
+    h = ((h << 1) + REF_GEAR[buf[i]!]!) >>> 0;
+    if ((h & (i < mid ? strict : loose)) === 0) return i + 1;
+  }
+  return limit;
+}
+
+/** The chunk lengths of `buf`; they tile it. */
+export function refCdc(buf: Uint8Array, avg: number): number[] {
+  const lens: number[] = [];
+  for (let at = 0; at < buf.length; ) {
+    const n = refCutLength(buf.subarray(at), avg);
+    lens.push(n);
+    at += n;
+  }
+  return lens;
+}
+
+/** Deterministic input: SHA-256(label ‖ u32be(counter)) blocks, cut to `length`. */
+export function refStream(label: string, length: number): Uint8Array {
+  const out = new Uint8Array(length);
+  for (let at = 0, i = 0; at < length; i++, at += 32) {
+    const block = createHash("sha256")
+      .update(utf8(label))
+      .update(refBe32(i))
+      .digest();
+    out.set(block.subarray(0, Math.min(32, length - at)), at);
+  }
+  return out;
+}
+
+/** A chunk id: HMAC-SHA256(K_cid(c), chunk) in E2E mode, SHA-256(chunk) in server mode. */
+export function refChunkId(
+  root: Uint8Array | null,
+  collection: string,
+  plain: Uint8Array,
+): Uint8Array {
+  return root === null
+    ? new Uint8Array(createHash("sha256").update(plain).digest())
+    : hmac(refKCid(root, collection), plain);
+}
+
+/** `0x01 ‖ codec ‖ AES-256-GCM(K_chunk, nonce 0¹², aad = 0x01 ‖ codec ‖ id, body)`. */
+export function refSealChunk(
+  root: Uint8Array,
+  collection: string,
+  id: Uint8Array,
+  codec: number,
+  body: Uint8Array,
+): Uint8Array {
+  const aad = cat(Uint8Array.of(REF_CHUNK_VERSION, codec), id);
+  const key = refKChunk(refKColl(root, collection), id);
+  return cat(aad.subarray(0, 2), gcmSeal(key, new Uint8Array(12), aad, body));
+}
+
+/** One zstd frame that stores `data` in raw blocks, with its content size in the header. */
+export function refZstdRawFrame(data: Uint8Array): Uint8Array {
+  const n = data.length;
+  const fcs =
+    n < 256
+      ? Uint8Array.of(n)
+      : n < 65792
+        ? Uint8Array.of((n - 256) & 255, (n - 256) >>> 8)
+        : cat(refBe32(n).reverse());
+  const flag = n < 256 ? 0 : n < 65792 ? 1 : 2;
+  const parts: Uint8Array[] = [
+    Uint8Array.of(0x28, 0xb5, 0x2f, 0xfd, (flag << 6) | 0x20),
+    fcs,
+  ];
+  const BLOCK = 131072;
+  for (let at = 0; at === 0 || at < n; at += BLOCK) {
+    const len = Math.min(BLOCK, n - at);
+    const last = at + BLOCK >= n ? 1 : 0;
+    const head = (len << 3) | last;
+    parts.push(
+      Uint8Array.of(head & 255, (head >>> 8) & 255, (head >>> 16) & 255),
+    );
+    parts.push(data.subarray(at, at + len));
+  }
+  return cat(...parts);
+}
+
+/** The content size a zstd frame header declares, or null when it declares none. */
+function refZstdContentSize(f: Uint8Array): number | null {
+  if (f.length < 6 || toHex(f.subarray(0, 4)) !== "28b52ffd") return null;
+  const d = f[4]!;
+  const flag = d >>> 6;
+  const single = (d >>> 5) & 1;
+  const dictLen = [0, 1, 2, 4][d & 3]!;
+  const at = 5 + (single === 1 ? 0 : 1) + dictLen;
+  if (flag === 0) return single === 1 && f.length > at ? f[at]! : null;
+  const size = [0, 2, 4, 8][flag]!;
+  if (f.length < at + size) return null;
+  if (flag === 1) return 256 + readLe(f, at, 2);
+  return readLe(f, at, size);
+}
+
+/** Decodes a frame made of raw blocks only (what `refZstdRawFrame` writes); null for anything else. */
+function refZstdUnraw(f: Uint8Array, max: number): Uint8Array | "size" | null {
+  const size = refZstdContentSize(f);
+  if (size === null) return null;
+  if (size > max) return "size";
+  const d = f[4]!;
+  const flag = d >>> 6;
+  let at =
+    5 +
+    ((d >>> 5) & 1 ? 0 : 1) +
+    [0, 1, 2, 4][d & 3]! +
+    [(d >>> 5) & 1 ? 1 : 0, 2, 4, 8][flag]!;
+  const out: Uint8Array[] = [];
+  for (;;) {
+    if (f.length < at + 3) return null;
+    const head = f[at]! | (f[at + 1]! << 8) | (f[at + 2]! << 16);
+    if (((head >>> 1) & 3) !== 0) return null;
+    const len = head >>> 3;
+    at += 3;
+    if (f.length < at + len) return null;
+    out.push(f.subarray(at, at + len));
+    at += len;
+    if ((head & 1) === 1) break;
+  }
+  const plain = cat(...out);
+  return at === f.length && plain.length === size ? plain : null;
+}
+
+export type ChunkInvalid =
+  | "shape"
+  | "version"
+  | "codec"
+  | "auth"
+  | "decode"
+  | "size"
+  | "id";
+
+export type RefChunkOpen =
+  | { ok: true; plain: Uint8Array; codec: number }
+  | { ok: false; reason: ChunkInvalid };
+
+/** Opens a chunk object under its id; the checks run in the order of `ChunkInvalid`. */
+export function refOpenChunk(
+  root: Uint8Array,
+  collection: string,
+  id: Uint8Array,
+  obj: Uint8Array,
+): RefChunkOpen {
+  const fail = (reason: ChunkInvalid): RefChunkOpen => ({ ok: false, reason });
+  if (obj.length < 2 + REF_TAG) return fail("shape");
+  if (obj[0] !== REF_CHUNK_VERSION) return fail("version");
+  const codec = obj[1]!;
+  if (codec !== REF_CODEC_RAW && codec !== REF_CODEC_ZSTD) return fail("codec");
+  const aad = cat(obj.subarray(0, 2), id);
+  const key = refKChunk(refKColl(root, collection), id);
+  const body = gcmOpen(key, new Uint8Array(12), aad, obj.subarray(2));
+  if (body === null) return fail("auth");
+  let plain: Uint8Array;
+  if (codec === REF_CODEC_RAW) {
+    plain = body;
+  } else {
+    const z = refZstdUnraw(body, REF_CDC.max);
+    if (z === "size") return fail("size");
+    if (z === null) return fail("decode");
+    plain = z;
+  }
+  if (plain.length > REF_CDC.max) return fail("size");
+  if (toHex(refChunkId(root, collection, plain)) !== toHex(id))
+    return fail("id");
+  return { ok: true, plain, codec };
+}
+
+/** `pkey-sync-chunks/1` (§13.8.3). */
+export const REF_MANIFEST = {
+  magic: "PKSYNCCH",
+  headerBytes: 64,
+  recordBytes: 48,
+  maxChunks: 16384,
+  maxFileBytes: 1024 * 1024 * 1024,
+} as const;
+
+const le = (n: number, bytes: number): Uint8Array => {
+  const out = new Uint8Array(bytes);
+  let v = n;
+  for (let i = 0; i < bytes; i++) {
+    out[i] = v % 256;
+    v = Math.floor(v / 256);
+  }
+  return out;
+};
+const readLe = (b: Uint8Array, at: number, bytes: number): number => {
+  let v = 0;
+  for (let i = bytes - 1; i >= 0; i--) v = v * 256 + b[at + i]!;
+  return v;
+};
+
+export interface RefManifest {
+  plainSize: number;
+  plainSha256: Uint8Array;
+  records: { id: Uint8Array; plainLen: number }[];
+}
+
+export function refEncodeManifest(m: RefManifest): Uint8Array {
+  return cat(
+    utf8(REF_MANIFEST.magic),
+    le(1, 2),
+    le(48, 2),
+    le(0, 4),
+    le(m.records.length, 4),
+    le(0, 4),
+    le(m.plainSize, 8),
+    m.plainSha256,
+    ...m.records.map((r) => cat(r.id, le(r.plainLen, 4), le(0, 4), le(0, 8))),
+  );
+}
+
+export type ManifestInvalid =
+  | "shape"
+  | "magic"
+  | "version"
+  | "recordSize"
+  | "flags"
+  | "reserved"
+  | "count"
+  | "length"
+  | "size"
+  | "record"
+  | "chunkLen";
+
+export type RefManifestParse =
+  | { ok: true; manifest: RefManifest }
+  | { ok: false; reason: ManifestInvalid };
+
+/** Refuses the first violation, in the order of `ManifestInvalid`; a final `size` is the sum. */
+export function refParseManifest(b: Uint8Array): RefManifestParse {
+  const fail = (reason: ManifestInvalid): RefManifestParse => ({
+    ok: false,
+    reason,
+  });
+  if (b.length < 64) return fail("shape");
+  if (Buffer.from(b.subarray(0, 8)).toString("latin1") !== REF_MANIFEST.magic)
+    return fail("magic");
+  if (readLe(b, 8, 2) !== 1) return fail("version");
+  if (readLe(b, 10, 2) !== 48) return fail("recordSize");
+  if (readLe(b, 12, 4) !== 0) return fail("flags");
+  if (readLe(b, 20, 4) !== 0) return fail("reserved");
+  const count = readLe(b, 16, 4);
+  if (count > REF_MANIFEST.maxChunks) return fail("count");
+  if (b.length !== 64 + 48 * count) return fail("length");
+  const plainSize = readLe(b, 24, 8);
+  if (plainSize > REF_MANIFEST.maxFileBytes) return fail("size");
+  const records: RefManifest["records"] = [];
+  for (let i = 0; i < count; i++) {
+    const at = 64 + 48 * i;
+    if (readLe(b, at + 36, 4) !== 0 || readLe(b, at + 40, 8) !== 0)
+      return fail("record");
+    const plainLen = readLe(b, at + 32, 4);
+    if (plainLen === 0 || plainLen > REF_CDC.max) return fail("chunkLen");
+    records.push({ id: b.slice(at, at + 32), plainLen });
+  }
+  if (records.reduce((s, r) => s + r.plainLen, 0) !== plainSize)
+    return fail("size");
+  return {
+    ok: true,
+    manifest: { plainSize, plainSha256: b.slice(32, 64), records },
+  };
+}
