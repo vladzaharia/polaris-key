@@ -2,6 +2,14 @@
   "$comment": "Strings the string lint (pnpm ui:lint) accepts that are not catalog messages: the mockup fixtures (UI-KITS.md §8: Tidewater Studio by Harbor Audio, Drift Kart by Lanternworks, Fennick Studio's devices and people), the product's own content the kit only displays (release notes, store prices), glyphs, and values a kit formats rather than translates (keys, codes, versions). Every entry needs a reason. Copy belongs in packages/brand/kit-copy/en.json, never here; a board string that should be copy and is not in the catalog is recorded in strings.debt.json instead.",
   "allow": [
     {
+      "pattern": "\\d{3} \\d{3}",
+      "reason": "A fixture nearby sign-in code (six digits): the code the waiting device shows, formatted by the kit, not copy."
+    },
+    {
+      "pattern": "as [\\w.+-]+@[\\w.-]+",
+      "reason": "The automatic sign-in confirm step's account line, `signin.auto.confirm.as` (\"as {email}\") with a fixture email: the lead-in is two letters, too few to pass the argument-weight rule."
+    },
+    {
       "pattern": "[^\\p{L}\\p{N}]+",
       "reason": "Glyphs only: separators, status marks, progress bars and spinner frames carry no copy."
     },

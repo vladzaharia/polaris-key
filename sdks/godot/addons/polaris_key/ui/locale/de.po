@@ -177,6 +177,16 @@ msgctxt "tv"
 msgid "part.thisDevice"
 msgstr "diesen Fernseher"
 
+#. the new device
+#. The device that asked to sign in, when its name is unknown (nearby approval). Mid-sentence form.
+msgid "part.newDevice"
+msgstr "das neue Gerät"
+
+#. The new device
+#. The device that asked to sign in, when its name is unknown (nearby approval). Sentence-start form.
+msgid "part.newDeviceTitle"
+msgstr "Das neue Gerät"
+
 #. {formFactor, select, iphone {This iPhone} ipad {This iPad} mac {This Mac} phone {This phone} tablet {This tablet} computer {This computer} tv {This TV} other {This device}}
 #. The current device as a tag in a device list. Each case is the platform's own word, capitalized as a label. Arguments: {formFactor} = the device's form factor; each case is a whole phrase.
 msgid "part.thisDeviceTitle"
@@ -429,6 +439,16 @@ msgstr "QR-Code mit dem Anforderungscode"
 #. Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page.
 msgid "a11y.qrManage"
 msgstr "QR-Code, der die Seite zur Geräteverwaltung öffnet"
+
+#. QR code that opens the add-key page
+#. Screen reader label; never shown. Describes the QR code on the key-refusal step that opens the add-key page.
+msgid "a11y.qrAddKey"
+msgstr "QR-Code, der die Seite zum Hinzufügen des Schlüssels öffnet"
+
+#. Code to tap: {code}
+#. Screen reader label; never shown. Reads the code the other device must tap. Arguments: {code} = a code shown to the person; never split or translated.
+msgid "a11y.nearbyCode"
+msgstr "Code zum Tippen: {code}"
 
 #. Sign-in code {code}
 #. Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
@@ -2834,6 +2854,16 @@ msgctxt "macos"
 msgid "signin.key.ownedSignIn"
 msgstr "Bei diesem Konto anmelden"
 
+#. Sign in
+#. The key-entry limit's refusal step: starts the kit's own sign-in; the key is added to the account afterwards.
+msgid "signin.key.signIn"
+msgstr "Anmelden"
+
+#. macos: Sign In
+msgctxt "macos"
+msgid "signin.key.signIn"
+msgstr "Anmelden"
+
 #. Use a different key
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.differentKey"
@@ -2843,6 +2873,201 @@ msgstr "Anderen Schlüssel verwenden"
 msgctxt "macos"
 msgid "signin.key.differentKey"
 msgstr "Anderen Schlüssel verwenden"
+
+#. Continue to {app}
+#. Automatic sign-in (I-46.1): the confirm step. Arguments: {app} = the app's name (never translated).
+msgid "signin.auto.confirm.title"
+msgstr "Weiter zu {app}"
+
+#. as {email}
+#. Automatic sign-in: the confirm step names the account. Arguments: {email} = the account's email address (never translated).
+msgid "signin.auto.confirm.as"
+msgstr "als {email}"
+
+#. with your Apple Account
+#. Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private).
+msgid "signin.auto.confirm.asApple"
+msgstr "mit Ihrem Apple Account"
+
+#. Continue
+#. Automatic sign-in: the confirm step's main button.
+msgid "signin.auto.confirm.primary"
+msgstr "Weiter"
+
+#. Use another account
+#. Automatic sign-in: the confirm step's secondary button; opens the regular sign-in.
+msgid "signin.auto.confirm.other"
+msgstr "Anderes Konto verwenden"
+
+#. macos: Use Another Account
+msgctxt "macos"
+msgid "signin.auto.confirm.other"
+msgstr "Anderes Konto verwenden"
+
+#. Sign in with {provider} next time?
+#. Link offer, after a regular sign-in: link the provider so the next sign-in is automatic. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.title"
+msgstr "Nächstes Mal mit {provider} anmelden?"
+
+#. Then {app} and other apps that use Polaris Locker can sign you in by themselves.
+#. Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated).
+msgid "signin.linkOffer.bodyGlobal"
+msgstr "Dann können {app} und andere Apps mit Polaris Locker Sie selbstständig anmelden."
+
+#. Then apps from {developer} can sign you in by themselves.
+#. Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated).
+msgid "signin.linkOffer.bodyDeveloper"
+msgstr "Dann können Apps von {developer} Sie selbstständig anmelden."
+
+#. Then {app} and its developer's other apps can sign you in by themselves.
+#. Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated).
+msgid "signin.linkOffer.bodyApp"
+msgstr "Dann können {app} und die anderen Apps des Entwicklers Sie selbstständig anmelden."
+
+#. Link {provider}
+#. Link offer: the main button. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.primary"
+msgstr "{provider} verknüpfen"
+
+#. No thanks
+#. Link offer: declines; the device remembers it.
+msgid "signin.linkOffer.decline"
+msgstr "Nein, danke"
+
+#. macos: No Thanks
+msgctxt "macos"
+msgid "signin.linkOffer.decline"
+msgstr "Nein, danke"
+
+#. {provider} linked
+#. Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.done"
+msgstr "{provider} verknüpft"
+
+#. {provider} not linked
+#. Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.conflictTitle"
+msgstr "{provider} nicht verknüpft"
+
+#. This {provider} account belongs to another Polaris Locker account. You're still signed in.
+#. Link offer: the provider account belongs to another Polaris Locker account; the sign-in stands. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.conflict"
+msgstr "Dieses {provider}-Konto gehört zu einem anderen Konto bei Polaris Locker. Sie bleiben angemeldet."
+
+#. Join accounts
+#. Link offer conflict: opens Help on joining two accounts.
+msgid "signin.linkOffer.join"
+msgstr "Konten zusammenführen"
+
+#. macos: Join Accounts
+msgctxt "macos"
+msgid "signin.linkOffer.join"
+msgstr "Konten zusammenführen"
+
+#. Approve on your other device
+#. Nearby sign-in, on the device that signs in: waits for approval on another device.
+msgid "signin.nearby.title"
+msgstr "Auf Ihrem anderen Gerät bestätigen"
+
+#. Sign in with your phone
+#. Nearby sign-in, before the system asks for access to the local network.
+msgid "signin.nearby.promptTitle"
+msgstr "Mit dem Telefon anmelden"
+
+#. Open {app} on a phone or computer that's signed in and on this network.
+#. Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated).
+msgid "signin.nearby.body"
+msgstr "Öffnen Sie {app} auf einem Telefon oder Computer, der angemeldet und in diesem Netzwerk ist."
+
+#. Tap this code there:
+#. Nearby sign-in, waiting: the line above the code the other device must tap.
+msgid "signin.nearby.match"
+msgstr "Tippen Sie dort auf diesen Code:"
+
+#. Use a code instead
+#. Nearby sign-in, waiting: switches to the device code.
+msgid "signin.nearby.code"
+msgstr "Stattdessen einen Code verwenden"
+
+#. macos: Use a Code Instead
+msgctxt "macos"
+msgid "signin.nearby.code"
+msgstr "Stattdessen einen Code verwenden"
+
+#. Signed in as {email}
+#. Nearby sign-in, done. Arguments: {email} = the account's email address (never translated).
+msgid "signin.nearby.done"
+msgstr "Angemeldet als {email}"
+
+#. Not you?
+#. Nearby sign-in, done: opens the sign-out and review step when the account is not the person's.
+msgid "signin.nearby.notYou"
+msgstr "Nicht Sie?"
+
+#. macos: Not You?
+msgctxt "macos"
+msgid "signin.nearby.notYou"
+msgstr "Nicht Sie?"
+
+#. Next, allow {app} to find devices on your network, so your phone can sign you in.
+#. Nearby sign-in: shown before the system asks for access to devices on the local network (L-11). Arguments: {app} = the app's name (never translated).
+msgid "signin.nearby.prePrompt"
+msgstr "Erlauben Sie {app} als Nächstes, Geräte in Ihrem Netzwerk zu finden, damit Ihr Telefon Sie anmelden kann."
+
+#. Let {device} sign in?
+#. Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.ask"
+msgstr "{device} die Anmeldung erlauben?"
+
+#. Tap the code it shows.
+#. Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.askBody"
+msgstr "Tippen Sie auf den Code, den es anzeigt."
+
+#. {device} is signed in
+#. Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.approved"
+msgstr "{device} ist angemeldet"
+
+#. {device} isn't on this network
+#. Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.notNearby"
+msgstr "{device} ist nicht in diesem Netzwerk"
+
+#. Connect both to the same Wi-Fi, or sign in with a code on {device}.
+#. Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.notNearbyBody"
+msgstr "Verbinden Sie beide mit demselben WLAN oder melden Sie sich auf {device} mit einem Code an."
+
+#. That code didn't match, so {device} wasn't signed in.
+#. Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.mismatch"
+msgstr "Dieser Code stimmte nicht überein, daher wurde {device} nicht angemeldet."
+
+#. Approve a nearby device
+#. Account menu entry: opens the nearby approval list on the signed-in device.
+msgid "signin.nearby.menu"
+msgstr "Gerät in der Nähe bestätigen"
+
+#. macos: Approve a Nearby Device
+msgctxt "macos"
+msgid "signin.nearby.menu"
+msgstr "Gerät in der Nähe bestätigen"
+
+#. Add it in Polaris Locker
+#. The key was refused and the person adds it to their account on the web (↗, opens the browser).
+msgid "signin.key.addInLocker"
+msgstr "In Polaris Locker hinzufügen"
+
+#. macos: Add It in Polaris Locker
+msgctxt "macos"
+msgid "signin.key.addInLocker"
+msgstr "In Polaris Locker hinzufügen"
+
+#. Scan to add this key in Polaris Locker on your phone.
+#. The key-refusal step on TV and console: caption of the QR that opens the add-key page.
+msgid "signin.key.scan"
+msgstr "Scannen, um diesen Schlüssel auf Ihrem Telefon in Polaris Locker hinzuzufügen."
 
 #. {product} is yours
 #. Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -3093,6 +3318,11 @@ msgstr "Kehren Sie zu {app} zurück, um eine Lizenz auszuwählen. Sie können di
 #. Return step, short form (SIGN-IN.md §3.10).
 msgid "signin.return.signedInShort"
 msgstr "Sie sind angemeldet"
+
+#. You're signed in · {tier} license
+#. Done step: signed in, with the license's tier. Arguments: {tier} = the tier's name (never translated).
+msgid "signin.return.signedInTier"
+msgstr "Sie sind angemeldet · Lizenz {tier}"
 
 #. Sign-in was canceled in {app}. Start again from {app}.
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
@@ -5606,10 +5836,10 @@ msgstr "Schließen Sie die Anmeldung auf der Polaris Locker-Seite ab und kehren 
 msgid "core.codes.not_nearby.title"
 msgstr "Nicht in der Nähe"
 
-#. The other device isn't on this network. Move closer, or sign in with a code instead.
+#. The other device isn't on this network. Connect both to the same Wi-Fi, or use a code instead.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_nearby.message"
-msgstr "Das andere Gerät ist nicht in diesem Netzwerk. Gehen Sie näher heran oder melden Sie sich stattdessen mit einem Code an."
+msgstr "Das andere Gerät ist nicht in diesem Netzwerk. Verbinden Sie beide mit demselben WLAN oder verwenden Sie stattdessen einen Code."
 
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7336,10 +7566,10 @@ msgstr "Diese App bietet keine kostenlose Lizenz an. Geben Sie einen Lizenzschl�
 msgid "core.activation.key-entry-limit.title"
 msgstr "Keine Schlüsseleingaben mehr"
 
-#. This key has no entries left. Add it to your account and sign in instead.
+#. Sign in and add this key to your Polaris Locker account instead.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
-msgstr "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
+msgstr "Melden Sie sich an und fügen Sie diesen Schlüssel stattdessen Ihrem Polaris-Locker-Konto hinzu."
 
 #. License in another account
 #. Core copy (conformance/parity/copy.en.json, activation).

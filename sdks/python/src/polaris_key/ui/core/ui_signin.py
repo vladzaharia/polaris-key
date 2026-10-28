@@ -16,7 +16,7 @@ from typing import Any, List, Mapping, Optional, Union
 from urllib.parse import quote
 
 from ...constants_generated import DEVICE_CODE_PAGE, SIGN_IN_PROVIDER_NAME, TV_CODE_PAGE
-from .ui_activate import activation_copy
+from .ui_activate import activation_copy, key_refusal_of, key_refusal_spec
 from .ui_contract import Context, platform_class, system_confirm
 from .ui_view import (
     LinkVerdict,
@@ -30,7 +30,7 @@ from .ui_view import (
     valid_link,
 )
 
-__all__ = ["sign_in_handoff_view", "sign_in_view", "verification_url"]
+__all__ = ["nearby_approval_view", "sign_in_handoff_view", "sign_in_view", "verification_url"]
 
 _Copy = List[Union[str, bool, None]]
 
@@ -99,6 +99,149 @@ def _methods_copy(ctx: Context) -> _Copy:
     ]
 
 
+def _per_developer(provider: str, reach: Any) -> bool:
+    """The provider's identity is per developer: Apple always, Google unless shared across apps."""
+    return provider == "Apple" or reach != "global"
+
+
+def _auto_step_view(ctx: Context, auto: Mapping[str, Any], args: Mapping[str, Any], provider: str) -> View:
+    """Automatic sign-in's steps, drawn in the form's body: confirm the account, offer to link the
+    provider, and the nearby wait (plans/auto-sign-in.md §3). Every outcome has a title that takes
+    focus and one way on (Continue)."""
+    step = auto.get("step")
+    account = _mapping(ctx.input.get("account"))
+    a = {**args, "provider": provider, "tier": account.get("tier"), "code": auto.get("code")}
+
+    def view(state: str, copy: _Copy, primary: Optional[str] = None, tone: Optional[str] = None) -> View:
+        return make_view(ctx, "SignIn", state, copy, args=a, primary=primary, tone=tone, focus="heading")
+
+    if step == "confirm":
+        license_kind = auto.get("license")
+        also = bool(auto.get("alsoGets"))
+        return view(
+            "confirm",
+            [
+                "signin.auto.confirm.title",
+                "signin.auto.confirm.as" if auto.get("email") else "signin.auto.confirm.asApple",
+                "signin.consent.license" if license_kind else None,
+                "signin.consent.newLicense" if license_kind == "new" else None,
+                "signin.consent.licenseLine" if license_kind == "existing" else None,
+                "signin.consent.alsoGets" if also else None,
+                "signin.consent.profile" if also else None,
+                "signin.consent.pairwise" if also else None,
+                "signin.auto.confirm.primary",
+                "signin.auto.confirm.other",
+            ],
+            "signin.auto.confirm.primary",
+        )
+    if step == "link-offer":
+        if not _per_developer(provider, auto.get("reach")):
+            body = "signin.linkOffer.bodyGlobal"
+        elif a.get("developer"):
+            body = "signin.linkOffer.bodyDeveloper"
+        else:
+            body = "signin.linkOffer.bodyApp"
+        return view(
+            "link-offer",
+            ["signin.linkOffer.title", body, "signin.linkOffer.primary", "signin.linkOffer.decline"],
+            "signin.linkOffer.primary",
+        )
+    if step == "link-done":
+        return view("link-done", ["signin.linkOffer.done", "common.continue"], "common.continue")
+    if step == "link-conflict":
+        return view(
+            "link-conflict",
+            ["signin.linkOffer.conflictTitle", "signin.linkOffer.conflict", "signin.linkOffer.join", "common.continue"],
+            "common.continue",
+            "neutral",
+        )
+    if step == "nearby-prompt":
+        return view(
+            "nearby-prompt",
+            ["signin.nearby.promptTitle", "signin.nearby.prePrompt", "common.continue", "common.notNow"],
+            "common.continue",
+        )
+    if step == "nearby-wait":
+        return view(
+            "nearby-wait",
+            [
+                "signin.nearby.title",
+                "signin.nearby.body",
+                "signin.nearby.match",
+                "a11y.nearbyCode" if auto.get("code") else None,
+                "signin.nearby.code",
+            ],
+        )
+    return view("nearby-done", ["signin.nearby.done", "common.continue", "signin.nearby.notYou"], "common.continue")
+
+
+def nearby_approval_view(ctx: Context) -> View:
+    """NearbyApproval: the approving device's side of nearby sign-in (D-A9). No primary on the prompt:
+    choosing the matching code is the action, and Deny the only other. Every outcome has a title that
+    takes focus and one way on."""
+    if not ctx.on("identity"):
+        return hidden_view(ctx, "NearbyApproval")
+    n = _mapping(ctx.input.get("nearbyApproval"))
+    args = {"device": n.get("device"), "product": identity_text(ctx).name}
+    step = n.get("step")
+
+    def outcome(state: str, copy: _Copy, primary: Optional[str], tone: Optional[str] = None) -> View:
+        return make_view(ctx, "NearbyApproval", state, copy, args=args, primary=primary, tone=tone, focus="heading")
+
+    if step == "ask":
+        return make_view(
+            ctx,
+            "NearbyApproval",
+            "ask",
+            ["signin.nearby.ask", "signin.nearby.askBody", "signin.approve.warning", "signin.approve.deny"],
+            args=args,
+            focus="heading",
+        )
+    if step == "approved":
+        return outcome("approved", ["signin.nearby.approved", "common.done"], "common.done")
+    if step == "not-nearby":
+        return outcome(
+            "not-nearby", ["signin.nearby.notNearby", "signin.nearby.notNearbyBody", "common.done"], "common.done", "neutral"
+        )
+    if step == "mismatch":
+        return outcome("mismatch", ["signin.nearby.mismatch", "common.done"], "common.done")
+    if step == "denied":
+        return outcome("denied", ["signin.approve.deniedDone", "common.done"], "common.done")
+    if step == "expired":
+        return outcome(
+            "expired",
+            ["core.codes.sign-in-expired.title", "core.codes.sign-in-expired.message", "common.done"],
+            "common.done",
+            "neutral",
+        )
+    if step == "device-limit":
+        return outcome(
+            "device-limit",
+            ["core.codes.device_limit.title", "core.codes.device_limit.message", "devices.manage"],
+            "devices.manage",
+            "neutral",
+        )
+    if step == "choose":
+        return outcome(
+            "choose", ["signin.choice.title", "signin.choice.lede", "signin.choice.continue"], "signin.choice.continue"
+        )
+    if step == "account-required":
+        return outcome(
+            "account-required",
+            ["core.codes.account_required.title", "core.codes.account_required.message", "signin.key.signIn"],
+            "signin.key.signIn",
+            "neutral",
+        )
+    if step == "rate-limited":
+        return outcome(
+            "rate-limited",
+            ["core.codes.rate_limited.title", "core.codes.rate_limited.message", "common.tryAgain"],
+            "common.tryAgain",
+            "neutral",
+        )
+    return make_view(ctx, "NearbyApproval", "entry", ["signin.nearby.menu"], args=args, focus=None)
+
+
 def _methods_view(ctx: Context, args: Mapping[str, Any]) -> View:
     return make_view(ctx, "SignIn", "methods", _methods_copy(ctx), args=args, primary=_methods_primary(ctx))
 
@@ -126,6 +269,9 @@ def sign_in_view(ctx: Context) -> View:
             tone="danger",
             error_slot=primary,
         )
+    auto = _mapping(ctx.input.get("autoSignIn"))
+    if auto:
+        return _auto_step_view(ctx, auto, {**args, "developer": ident.developer, "email": auto.get("email")}, provider)
     if s.get("outcome") == "expired" or (dc and (dc.get("phase") == "expired" or code_expired(dc.get("secondsLeft")))):
         return make_view(
             ctx,
@@ -145,7 +291,7 @@ def sign_in_view(ctx: Context) -> View:
         copy: List[str] = (
             ["signin.return.signedInShort"]
             if not license_on
-            else ["signin.done.start", "signin.return.signedInShort"]
+            else ["signin.done.start", "signin.return.signedInTier" if account.get("tier") else "signin.return.signedInShort"]
             if s.get("issuedNow")
             else ["signin.desktop.toast"]
         )
@@ -165,6 +311,20 @@ def sign_in_view(ctx: Context) -> View:
         if s.get("event") == "have-key" and license_on and ctx.caps["keyEntry"]:
             a = _mapping(ctx.input.get("activation"))
             refused = bool(a) and a.get("result") != "ok"
+            refusal = key_refusal_of(a) if a else None
+            if refusal is not None:  # a different key cannot fix it: the field is left behind (DL6)
+                spec = key_refusal_spec(ctx, refusal, a)
+                return make_view(
+                    ctx,
+                    "SignIn",
+                    "key-refused",
+                    spec["copy"],
+                    args=args,
+                    primary=spec["primary"],
+                    tone="neutral",
+                    link=spec["link"],
+                    qr=spec["qr"],
+                )
             return make_view(
                 ctx,
                 "SignIn",

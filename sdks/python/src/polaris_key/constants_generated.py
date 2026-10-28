@@ -1836,7 +1836,7 @@ PORTAL_MATRIX_VERSION: Final[int] = 1
 
 
 #: `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-UI_MATRIX_VERSION: Final[int] = 6
+UI_MATRIX_VERSION: Final[int] = 7
 
 
 #: `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).

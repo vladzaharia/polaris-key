@@ -215,7 +215,7 @@
     },
     "not_nearby": {
       "title": "근처에 없음",
-      "message": "다른 기기가 이 네트워크에 없습니다. 가까이 이동하거나 코드로 로그인하세요."
+      "message": "다른 기기가 이 네트워크에 없어요. 두 기기를 같은 Wi-Fi에 연결하거나 코드를 대신 사용하세요."
     },
     "auth_method_disabled": {
       "title": "로그인 방법 사용 불가",
@@ -911,7 +911,7 @@
     },
     "key-entry-limit": {
       "title": "남은 키 등록 횟수 없음",
-      "message": "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요."
+      "message": "로그인한 뒤 이 키를 Polaris Locker 계정에 추가하세요."
     },
     "license-owned": {
       "title": "다른 계정의 라이선스",

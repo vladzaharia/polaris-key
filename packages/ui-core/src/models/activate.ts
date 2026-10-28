@@ -8,6 +8,7 @@ import { activationCopy } from "../errors.js";
 import type { Context } from "../input.js";
 import { linkVerdict } from "../link.js";
 import { identityText, hiddenView, makeView, type View } from "../view.js";
+import { keyRefusalOf, keyRefusalSpec } from "./keyRefusal.js";
 
 // ── Welcome ────────────────────────────────────────────────────────────────────────────────────
 
@@ -129,6 +130,8 @@ export type ActivateState =
   | "cut-short"
   | "busy"
   | "rejected"
+  | "key-entry-limit"
+  | "license-owned"
   | "device-limit"
   | "done"
   | "hidden";
@@ -198,6 +201,20 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
         tone: "neutral",
         errorSlot: FIELD,
         link,
+      });
+    }
+    // The two refusals a different key cannot fix are a focused step, not a field with a callout.
+    const refusal = keyRefusalOf(activation);
+    if (refusal !== null) {
+      const spec = keyRefusalSpec(ctx, refusal, activation);
+      return makeView(ctx, "Activate", {
+        state: refusal,
+        copy: spec.copy,
+        args: { product },
+        primary: spec.primary,
+        tone: "neutral",
+        link: spec.link,
+        qr: spec.qr,
       });
     }
     // A refusal of a well-formed key: the key is not wrong, so no danger stroke on the field

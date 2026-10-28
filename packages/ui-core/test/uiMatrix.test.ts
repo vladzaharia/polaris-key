@@ -165,6 +165,13 @@ const RENDERER_ARGS: Readonly<Record<string, readonly string[]>> = {
   "a11y.renameDevice": ["device"],
   "a11y.removeDevice": ["device"],
   "signin.choice.devices": ["used", "limit"],
+  "signin.consent.licenseLine": [
+    "license",
+    "term",
+    "device",
+    "position",
+    "limit",
+  ],
   "signin.choice.meta": ["origin", "term"],
   "signin.term.until": ["date"],
   "releaseNotes.version": ["version"],

@@ -66,6 +66,10 @@
     <string name="part_thisDevice__tablet">このタブレット</string>
     <string name="part_thisDevice__computer">このコンピュータ</string>
     <string name="part_thisDevice__tv">このテレビ</string>
+    <!-- The device that asked to sign in, when its name is unknown (nearby approval). Mid-sentence form. -->
+    <string name="part_newDevice">新しいデバイス</string>
+    <!-- The device that asked to sign in, when its name is unknown (nearby approval). Sentence-start form. -->
+    <string name="part_newDeviceTitle">新しいデバイス</string>
     <!-- The current device as a tag in a device list. Each case is the platform's own word, capitalized as a label. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
     <string name="part_thisDeviceTitle">このデバイス</string>
     <string name="part_thisDeviceTitle__iphone">このiPhone</string>
@@ -159,6 +163,10 @@
     <string name="a11y_qrRequest">リクエストコードのQRコード</string>
     <!-- Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page. -->
     <string name="a11y_qrManage">デバイス管理ページを開くQRコード</string>
+    <!-- Screen reader label; never shown. Describes the QR code on the key-refusal step that opens the add-key page. -->
+    <string name="a11y_qrAddKey">キーの追加ページを開く QR コード</string>
+    <!-- Screen reader label; never shown. Reads the code the other device must tap. Arguments: {code} = a code shown to the person; never split or translated. Arguments: 1=code. -->
+    <string name="a11y_nearbyCode">タップするコード：%1$s</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">サインインコード：%1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
@@ -1038,9 +1046,83 @@
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_ownedSignIn">そのアカウントにサインイン</string>
     <string name="signin_key_ownedSignIn__macos">そのアカウントにサインイン</string>
+    <!-- The key-entry limit's refusal step: starts the kit's own sign-in; the key is added to the account afterwards. -->
+    <string name="signin_key_signIn">サインイン</string>
+    <string name="signin_key_signIn__macos">サインイン</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_differentKey">別のキーを使う</string>
     <string name="signin_key_differentKey__macos">別のキーを使う</string>
+    <!-- Automatic sign-in (I-46.1): the confirm step. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_auto_confirm_title">%1$s に進む</string>
+    <!-- Automatic sign-in: the confirm step names the account. Arguments: {email} = the account's email address (never translated). Arguments: 1=email. -->
+    <string name="signin_auto_confirm_as">%1$s で</string>
+    <!-- Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private). -->
+    <string name="signin_auto_confirm_asApple">Apple アカウントで</string>
+    <!-- Automatic sign-in: the confirm step's main button. -->
+    <string name="signin_auto_confirm_primary">続ける</string>
+    <!-- Automatic sign-in: the confirm step's secondary button; opens the regular sign-in. -->
+    <string name="signin_auto_confirm_other">別のアカウントを使う</string>
+    <string name="signin_auto_confirm_other__macos">別のアカウントを使う</string>
+    <!-- Link offer, after a regular sign-in: link the provider so the next sign-in is automatic. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_title">次回から %1$s でサインインしますか？</string>
+    <!-- Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_linkOffer_bodyGlobal">%1$s など Polaris Locker を使うアプリが、自動でサインインできるようになります。</string>
+    <!-- Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_linkOffer_bodyDeveloper">%1$s のアプリが、自動でサインインできるようになります。</string>
+    <!-- Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_linkOffer_bodyApp">%1$s と開発元の他のアプリが、自動でサインインできるようになります。</string>
+    <!-- Link offer: the main button. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_primary">%1$s を連携</string>
+    <!-- Link offer: declines; the device remembers it. -->
+    <string name="signin_linkOffer_decline">今はしない</string>
+    <string name="signin_linkOffer_decline__macos">今はしない</string>
+    <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_done">%1$s を連携しました</string>
+    <!-- Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_conflictTitle">%1$s は連携されていません</string>
+    <!-- Link offer: the provider account belongs to another Polaris Locker account; the sign-in stands. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_conflict">この %1$s アカウントは、別の Polaris Locker アカウントのものです。サインインはそのままです。</string>
+    <!-- Link offer conflict: opens Help on joining two accounts. -->
+    <string name="signin_linkOffer_join">アカウントを統合</string>
+    <string name="signin_linkOffer_join__macos">アカウントを統合</string>
+    <!-- Nearby sign-in, on the device that signs in: waits for approval on another device. -->
+    <string name="signin_nearby_title">もう一方のデバイスで承認</string>
+    <!-- Nearby sign-in, before the system asks for access to the local network. -->
+    <string name="signin_nearby_promptTitle">スマートフォンでサインイン</string>
+    <!-- Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_body">サインイン済みで、このネットワークにあるスマートフォンまたはパソコンで %1$s を開いてください。</string>
+    <!-- Nearby sign-in, waiting: the line above the code the other device must tap. -->
+    <string name="signin_nearby_match">そちらでこのコードをタップ：</string>
+    <!-- Nearby sign-in, waiting: switches to the device code. -->
+    <string name="signin_nearby_code">代わりにコードを使う</string>
+    <string name="signin_nearby_code__macos">代わりにコードを使う</string>
+    <!-- Nearby sign-in, done. Arguments: {email} = the account's email address (never translated). Arguments: 1=email. -->
+    <string name="signin_nearby_done">%1$s でサインインしました</string>
+    <!-- Nearby sign-in, done: opens the sign-out and review step when the account is not the person's. -->
+    <string name="signin_nearby_notYou">ご本人ではありませんか？</string>
+    <string name="signin_nearby_notYou__macos">ご本人ではありませんか？</string>
+    <!-- Nearby sign-in: shown before the system asks for access to devices on the local network (L-11). Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_prePrompt">次に、%1$s がネットワーク上のデバイスを見つけることを許可してください。スマートフォンからサインインできます。</string>
+    <!-- Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_ask">%1$s のサインインを許可しますか？</string>
+    <!-- Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated). -->
+    <string name="signin_nearby_askBody">表示されているコードをタップしてください。</string>
+    <!-- Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_approved">%1$s がサインインしました</string>
+    <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_notNearby">%1$s はこのネットワークにありません</string>
+    <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_notNearbyBody">両方を同じ Wi-Fi に接続するか、%1$s でコードを使ってサインインしてください。</string>
+    <!-- Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_mismatch">コードが一致しなかったため、%1$s はサインインしませんでした。</string>
+    <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
+    <string name="signin_nearby_menu">近くのデバイスを承認</string>
+    <string name="signin_nearby_menu__macos">近くのデバイスを承認</string>
+    <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
+    <string name="signin_key_addInLocker">Polaris Locker で追加</string>
+    <string name="signin_key_addInLocker__macos">Polaris Locker で追加</string>
+    <!-- The key-refusal step on TV and console: caption of the QR that opens the add-key page. -->
+    <string name="signin_key_scan">スマートフォンでスキャンして、このキーを Polaris Locker で追加します。</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_return_yours">%1$sがあなたのものになりました</string>
     <!-- Return step (SIGN-IN.md §3.10): the product row under "&lt;Product&gt; is yours". Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
@@ -1131,6 +1213,8 @@
     <string name="signin_return_chooseInApp">%1$sに戻ってライセンスを選択してください。このタブは閉じてかまいません。</string>
     <!-- Return step, short form (SIGN-IN.md §3.10). -->
     <string name="signin_return_signedInShort">サインインしました</string>
+    <!-- Done step: signed in, with the license's tier. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_return_signedInTier">サインインしました · %1$s ライセンス</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_cancelled">%1$sでサインインがキャンセルされました。%1$sからやり直してください。</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
@@ -2112,7 +2196,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_nearby_title">近くにありません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_nearby_message">もう一方のデバイスがこのネットワークにありません。近づくか、コードでサインインしてください。</string>
+    <string name="core_codes_not_nearby_message">もう一方のデバイスはこのネットワークにありません。両方を同じ Wi-Fi に接続するか、代わりにコードを使ってください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">サインイン方法を利用できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2804,7 +2888,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_title">キーの入力回数が残っていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_key_entry_limit_message">このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。</string>
+    <string name="core_activation_key_entry_limit_message">代わりにサインインして、このキーを Polaris Locker アカウントに追加してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_license_owned_title">別のアカウントのライセンス</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->

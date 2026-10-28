@@ -215,7 +215,7 @@
     },
     "not_nearby": {
       "title": "Não está por perto",
-      "message": "O outro dispositivo não está nesta rede. Aproxime-se ou entre com um código."
+      "message": "O outro dispositivo não está nesta rede. Conecte os dois ao mesmo Wi-Fi ou use um código."
     },
     "auth_method_disabled": {
       "title": "Método de acesso indisponível",
@@ -911,7 +911,7 @@
     },
     "key-entry-limit": {
       "title": "Nenhum uso restante da chave",
-      "message": "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."
+      "message": "Entre e adicione esta chave à sua conta do Polaris Locker."
     },
     "license-owned": {
       "title": "Licença em outra conta",

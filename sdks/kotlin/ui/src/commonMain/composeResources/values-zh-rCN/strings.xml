@@ -66,6 +66,10 @@
     <string name="part_thisDevice__tablet">这台平板电脑</string>
     <string name="part_thisDevice__computer">这台电脑</string>
     <string name="part_thisDevice__tv">这台电视</string>
+    <!-- The device that asked to sign in, when its name is unknown (nearby approval). Mid-sentence form. -->
+    <string name="part_newDevice">新设备</string>
+    <!-- The device that asked to sign in, when its name is unknown (nearby approval). Sentence-start form. -->
+    <string name="part_newDeviceTitle">新设备</string>
     <!-- The current device as a tag in a device list. Each case is the platform's own word, capitalized as a label. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
     <string name="part_thisDeviceTitle">此设备</string>
     <string name="part_thisDeviceTitle__iphone">此iPhone</string>
@@ -159,6 +163,10 @@
     <string name="a11y_qrRequest">包含请求代码的二维码</string>
     <!-- Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page. -->
     <string name="a11y_qrManage">打开设备管理页面的二维码</string>
+    <!-- Screen reader label; never shown. Describes the QR code on the key-refusal step that opens the add-key page. -->
+    <string name="a11y_qrAddKey">打开添加密钥页面的二维码</string>
+    <!-- Screen reader label; never shown. Reads the code the other device must tap. Arguments: {code} = a code shown to the person; never split or translated. Arguments: 1=code. -->
+    <string name="a11y_nearbyCode">要点按的代码：%1$s</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">登录码%1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
@@ -1038,9 +1046,83 @@
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_ownedSignIn">登录那个账户</string>
     <string name="signin_key_ownedSignIn__macos">登录那个账户</string>
+    <!-- The key-entry limit's refusal step: starts the kit's own sign-in; the key is added to the account afterwards. -->
+    <string name="signin_key_signIn">登录</string>
+    <string name="signin_key_signIn__macos">登录</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_differentKey">使用其他密钥</string>
     <string name="signin_key_differentKey__macos">使用其他密钥</string>
+    <!-- Automatic sign-in (I-46.1): the confirm step. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_auto_confirm_title">继续前往 %1$s</string>
+    <!-- Automatic sign-in: the confirm step names the account. Arguments: {email} = the account's email address (never translated). Arguments: 1=email. -->
+    <string name="signin_auto_confirm_as">以 %1$s 身份</string>
+    <!-- Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private). -->
+    <string name="signin_auto_confirm_asApple">使用你的 Apple 账户</string>
+    <!-- Automatic sign-in: the confirm step's main button. -->
+    <string name="signin_auto_confirm_primary">继续</string>
+    <!-- Automatic sign-in: the confirm step's secondary button; opens the regular sign-in. -->
+    <string name="signin_auto_confirm_other">使用其他账户</string>
+    <string name="signin_auto_confirm_other__macos">使用其他账户</string>
+    <!-- Link offer, after a regular sign-in: link the provider so the next sign-in is automatic. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_title">下次使用 %1$s 登录？</string>
+    <!-- Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_linkOffer_bodyGlobal">之后 %1$s 和其他使用 Polaris Locker 的应用可以自动为你登录。</string>
+    <!-- Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_linkOffer_bodyDeveloper">之后 %1$s 的应用可以自动为你登录。</string>
+    <!-- Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_linkOffer_bodyApp">之后 %1$s 及其开发者的其他应用可以自动为你登录。</string>
+    <!-- Link offer: the main button. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_primary">关联 %1$s</string>
+    <!-- Link offer: declines; the device remembers it. -->
+    <string name="signin_linkOffer_decline">不用了</string>
+    <string name="signin_linkOffer_decline__macos">不用了</string>
+    <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_done">已关联 %1$s</string>
+    <!-- Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_conflictTitle">未关联 %1$s</string>
+    <!-- Link offer: the provider account belongs to another Polaris Locker account; the sign-in stands. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_conflict">此 %1$s 账户属于另一个 Polaris Locker 账户。你仍保持登录。</string>
+    <!-- Link offer conflict: opens Help on joining two accounts. -->
+    <string name="signin_linkOffer_join">合并账户</string>
+    <string name="signin_linkOffer_join__macos">合并账户</string>
+    <!-- Nearby sign-in, on the device that signs in: waits for approval on another device. -->
+    <string name="signin_nearby_title">在你的另一台设备上批准</string>
+    <!-- Nearby sign-in, before the system asks for access to the local network. -->
+    <string name="signin_nearby_promptTitle">用手机登录</string>
+    <!-- Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_body">在已登录且处于此网络的手机或电脑上打开 %1$s。</string>
+    <!-- Nearby sign-in, waiting: the line above the code the other device must tap. -->
+    <string name="signin_nearby_match">在那边点按此代码：</string>
+    <!-- Nearby sign-in, waiting: switches to the device code. -->
+    <string name="signin_nearby_code">改用代码</string>
+    <string name="signin_nearby_code__macos">改用代码</string>
+    <!-- Nearby sign-in, done. Arguments: {email} = the account's email address (never translated). Arguments: 1=email. -->
+    <string name="signin_nearby_done">已以 %1$s 身份登录</string>
+    <!-- Nearby sign-in, done: opens the sign-out and review step when the account is not the person's. -->
+    <string name="signin_nearby_notYou">不是你？</string>
+    <string name="signin_nearby_notYou__macos">不是你？</string>
+    <!-- Nearby sign-in: shown before the system asks for access to devices on the local network (L-11). Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_prePrompt">接下来请允许 %1$s 查找网络中的设备，这样你的手机就能为你登录。</string>
+    <!-- Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_ask">允许 %1$s 登录？</string>
+    <!-- Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated). -->
+    <string name="signin_nearby_askBody">点按它显示的代码。</string>
+    <!-- Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_approved">%1$s 已登录</string>
+    <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_notNearby">%1$s 不在此网络中</string>
+    <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_notNearbyBody">请将两台设备连接到同一 Wi-Fi，或在 %1$s 上用代码登录。</string>
+    <!-- Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_mismatch">代码不匹配，因此 %1$s 未登录。</string>
+    <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
+    <string name="signin_nearby_menu">批准附近的设备</string>
+    <string name="signin_nearby_menu__macos">批准附近的设备</string>
+    <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
+    <string name="signin_key_addInLocker">在 Polaris Locker 中添加</string>
+    <string name="signin_key_addInLocker__macos">在 Polaris Locker 中添加</string>
+    <!-- The key-refusal step on TV and console: caption of the QR that opens the add-key page. -->
+    <string name="signin_key_scan">扫描后在手机上的 Polaris Locker 中添加此密钥。</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_return_yours">%1$s已归你所有</string>
     <!-- Return step (SIGN-IN.md §3.10): the product row under "&lt;Product&gt; is yours". Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
@@ -1131,6 +1213,8 @@
     <string name="signin_return_chooseInApp">返回%1$s选择许可证。你可以关闭此标签页。</string>
     <!-- Return step, short form (SIGN-IN.md §3.10). -->
     <string name="signin_return_signedInShort">你已登录</string>
+    <!-- Done step: signed in, with the license's tier. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_return_signedInTier">已登录 · %1$s 许可证</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_cancelled">已在%1$s中取消登录。请从%1$s重新开始。</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
@@ -2112,7 +2196,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_nearby_title">不在附近</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_nearby_message">另一台设备不在此网络中。请靠近一些，或改用代码登录。</string>
+    <string name="core_codes_not_nearby_message">另一台设备不在此网络中。请将两台设备连接到同一 Wi-Fi，或改用代码。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">登录方式不可用</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2804,7 +2888,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_title">密钥已无剩余输入次数</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_key_entry_limit_message">此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。</string>
+    <string name="core_activation_key_entry_limit_message">请登录，并将此密钥添加到你的 Polaris Locker 账户。</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_license_owned_title">许可证在另一个账户中</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->

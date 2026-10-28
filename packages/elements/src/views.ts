@@ -30,6 +30,7 @@ import {
   callout,
   a11yOnly,
   codeDisplay,
+  nearbyCode,
   copyAddress,
   GLYPHS,
   qrCode,
@@ -59,6 +60,24 @@ const isErrorKey = (k: string) =>
   /(Failed|\.failed|methodError|\.error)$/.test(k);
 
 /** Keys the content of a component draws itself. */
+/** What scanning the key refusal's QR does, under the QR. */
+function scanCaption(c: RenderCtx): TemplateResult | typeof nothing {
+  return c.view.copy.includes("signin.key.scan")
+    ? html`<p class="body" data-key="signin.key.scan">
+        ${text(c, "signin.key.scan")}
+      </p>`
+    : nothing;
+}
+
+/** The automatic sign-in steps that end on their own button, so no Cancel beside it. */
+const OWN_EXIT: ReadonlySet<string> = new Set([
+  "link-offer",
+  "link-done",
+  "link-conflict",
+  "nearby-prompt",
+  "nearby-done",
+]);
+
 function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
   const { view, input } = c;
   const keys = new Set(view.copy);
@@ -90,7 +109,11 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
       // as ui-core's tone says.
       const refused = view.state === "rejected" || view.state === "cut-short";
       const wrong = refused && view.decisions.tone === "danger";
-      return html`${editing
+      // The refusal a different key cannot fix has no field; a TV scans the add-key page instead.
+      const addKey = view.decisions.link;
+      return html`${qrCode(c, addKey?.qr ? addKey.url : null, "a11y.qrAddKey")}
+      ${scanCaption(c)}
+      ${editing
         ? keyField(
             c,
             invalid || wrong,
@@ -123,7 +146,13 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
       // The address is shown as text whenever there is one (a no-browser device has only it).
       const shown = url?.display ?? url?.url?.replace(/^https?:\/\//, "");
       const showUrl = keys.has("signin.handoff.url") && shown;
-      return html`${code} ${qrCode(c, url?.qr ? url.url : null)}
+      return html`${code} ${nearbyCode(c)}
+      ${qrCode(
+        c,
+        url?.qr ? url.url : null,
+        keys.has("a11y.qrAddKey") ? "a11y.qrAddKey" : "a11y.qr",
+      )}
+      ${scanCaption(c)}
       ${showUrl
         ? html`<p class="body" data-key="signin.handoff.url">
             ${text(c, "signin.handoff.url", { url: shown as string })}
@@ -665,15 +694,25 @@ function withBase(c: RenderCtx): View {
       if (view.state === "done") {
         const licensed = !input.services || input.services.includes("license");
         if (!licensed) return view;
-        const done = add("signin.return.signedInShort", "signin.done.start");
+        // One heading: the tier line replaces the short one.
+        const done = add(
+          ...(view.copy.includes("signin.return.signedInTier")
+            ? []
+            : ["signin.return.signedInShort"]),
+          "signin.done.start",
+        );
         return {
           ...done,
           decisions: { ...done.decisions, primary: "signin.done.start" },
         };
       }
       const sheet = input.signIn?.presentation === "sheet";
+      // Steps with their own way on (an offer's No thanks, an outcome's Continue) have no Cancel:
+      // after a sign-in it would read as undoing it.
       const step =
-        view.state === "methods" && !sheet ? view : add("common.cancel");
+        (view.state === "methods" && !sheet) || OWN_EXIT.has(view.state)
+          ? view
+          : add("common.cancel");
       // No "or" divider over the providers (DL4), and no "Sign in…" link on the sign-in step.
       return step.state === "methods" || step.state === "error"
         ? {

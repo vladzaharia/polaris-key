@@ -51,12 +51,18 @@
 // discovery's `core.portal`; the `cli` outcomes `status-version-too-new-no-page` and
 // `status-channel-not-entitled-no-page` set up a stub whose discovery says the portal is off and
 // expect `link: "contact"`, and the vocabulary's `contact` is where the kit resolves no page.
+// Version 7 (I-46.1, automatic sign-in): the `autoSignIn` and `nearbyApproval` input members; the
+// SignIn states confirm, link-offer, link-done, link-conflict, nearby-prompt, nearby-wait and
+// nearby-done; the NearbyApproval component; the `start-sign-in` action; the focused refusal step
+// for the key-entry limit and a license another account holds (Activate states `key-entry-limit`
+// and `license-owned`, SignIn `key-refused`, which replace the stacked `rejected` rows: no field,
+// lede or paste; Sign in, then the add-key page); and the done step's `signin.return.signedInTier`.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const UI_MATRIX_VERSION = 6;
+export const UI_MATRIX_VERSION = 7;
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -245,6 +251,8 @@ export const ACTIONS: Readonly<Record<string, string>> = {
     "Replace a device on the card, for a form set to `replace: browser`.",
   "open-manage-url":
     "Open the refusal's `manageUrl` or the account's device page in the browser.",
+  "start-sign-in":
+    "Start the kit's own sign-in, from a refusal that only a sign-in fixes (Sign in to that account).",
   "copy-link": "Copy the sign-in link or the address to the clipboard.",
   retry:
     "Repeat the step that failed or lapsed (Try again, Reconnect, Sign in again, Get a new code).",
@@ -255,7 +263,12 @@ export const ACTIONS: Readonly<Record<string, string>> = {
 export const ACTION_KEYS: Readonly<Record<string, readonly string[]>> = {
   "open-card": ["signin.desktop.continue", "signin.email.continue"],
   "open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
-  "open-manage-url": ["deviceLimit.openBrowser", "devices.manage"],
+  "start-sign-in": ["signin.key.signIn", "signin.key.ownedSignIn"],
+  "open-manage-url": [
+    "deviceLimit.openBrowser",
+    "devices.manage",
+    "signin.key.addInLocker",
+  ],
   "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
   retry: [
     "common.tryAgain",
@@ -373,6 +386,7 @@ export const MUST_NOT: Readonly<Record<string, string>> = {
   Boot: "animate invented progress, or trap metered consent off-screen",
   SignIn: "restart the flow or erase account context on a step change",
   SignInHandoff: "use the public user code as the polling handle",
+  NearbyApproval: "approve on any code but the one the other device shows",
   Activate: "require an account for a floating key",
   OfflineActivation: "treat a loaded file as a verified activation",
   DeviceLimit: "delete local files when access is removed",
@@ -400,6 +414,20 @@ const ACTIVATE_BASE = [
   "common.paste",
 ];
 
+/** The focused refusal step (DL6): the key field, its lede and Paste are gone. */
+const FOCUSED_REFUSAL = {
+  invariant:
+    "leave the key field, lede or paste over a refusal that only a sign-in fixes",
+  states: ["rejected"],
+  copy: [
+    "activate.title",
+    "activate.lede",
+    "part.keyField.label",
+    "part.keyField.placeholder",
+    "common.paste",
+  ],
+};
+
 const REVOKED_MUST_NOT = {
   invariant: "offer Sign out on a device already signed out",
   copy: ["common.signOut"],
@@ -407,6 +435,13 @@ const REVOKED_MUST_NOT = {
 
 /** Further invariants a component's rows may name besides its UI-KITS §4.1 one. */
 export const EXTRA_MUST_NOT: Readonly<Record<string, readonly string[]>> = {
+  Activate: [
+    "leave the key field, lede or paste over a refusal that only a sign-in fixes",
+  ],
+  SignIn: [
+    "leave the key field, lede or paste over a refusal that only a sign-in fixes",
+    "say all apps for Apple",
+  ],
   StatusScreen: [
     "offer Sign out on a device already signed out",
     "offer Try again or Reconnect on an expired license (Renew and Use another license are its controls)",
@@ -433,6 +468,7 @@ export const SERVICE_DEPENDENCIES: Readonly<Record<string, readonly string[]>> =
     Welcome: ["identity", "license"],
     SignIn: ["identity", "license"],
     SignInHandoff: ["identity"],
+    NearbyApproval: ["identity"],
     LicenseChoice: ["identity", "license"],
     Activate: ["license"],
     OfflineActivation: ["license"],
@@ -602,6 +638,12 @@ const INPUTS: Record<string, string> = {
     "An activation result: {result: activationResult, code?, limit?, deviceCount?, manageUrl?}.",
   offline:
     "Offline activation: {copied?, file?, submitted?, verified?} (the request code copied, a response loaded, submitted, its signature verified).",
+  provider:
+    "The sign-in provider's name (Apple, Google, Steam), for the strings that name it: the link offer, the failed sign-in. Absent: Polaris Locker, the sign-in the generic row opens.",
+  autoSignIn:
+    "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done, email?, reach?: global | developer | unknown}. No email: the provider shared none. The provider is `provider`.",
+  nearbyApproval:
+    "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby, device?}. Absent: the account-menu entry.",
   signIn:
     "The sign-in session: {presentation, replace, channel, outcome?, browserOpened?, redeeming?, event?, issuedNow?, raced?, grantExpired?}. outcome is session.wait()'s; issuedNow is true when this sign-in added or issued the license.",
   deviceCode:
@@ -637,7 +679,7 @@ const PRECEDENCE: Record<string, string> = {
   LicenseChoice:
     "loading, grant-expired, raced, replace-open (open-replace with replace inline), none-keys or none-no-keys (state none), new (state autoIssue), create (create selected), all-full (no free row), keep, current, mixed (account and seat licences together), one, many.",
   SignIn:
-    "error, expired, done (signedIn), key (have-key while choosing), replace (open-replace with replace inline), choose, finishing (redeeming, or device-code ok), code (device code, or use-code), handoff (pending), methods.",
+    "error, auto (autoSignIn), expired, done (signedIn), key-refused or key (have-key while choosing; the key-entry limit and an owned license are key-refused), replace (open-replace with replace inline), choose, finishing (redeeming, or device-code ok), code (device code, or use-code), handoff (pending), methods.",
   Settings:
     "loading, error, saving (pending save or saved), dirty, locked (a locked row), list.",
   Devices:
@@ -1570,25 +1612,64 @@ function activateFamily(a: A): Draft[] {
       "rejected",
       [...ACTIVATE_BASE, "core.activation.license-disabled.message"],
     ),
+    // The refusals a different key cannot fix are a focused step (DL6): no field, lede or paste;
+    // Sign in, then (for the limit) the add-key page, a QR on a TV.
     row(
-      "Activate/rejected: another account holds the license",
+      "Activate/license-owned: another account holds the license",
       {
         keyField: { text: KEY, submitted: true },
         activation: { result: "refused", code: "license_owned" },
       },
       "Activate",
-      "rejected",
-      [...ACTIVATE_BASE, "core.codes.license_owned.message"],
+      "license-owned",
+      "all",
+      { mustNot: FOCUSED_REFUSAL },
     ),
     row(
-      "Activate/rejected: the key-entry limit",
+      "Activate/key-entry-limit: a link to add the key in Polaris Locker",
+      {
+        keyField: { text: KEY, submitted: true },
+        activation: { result: "key-entry-limit", manageUrl: MANAGE_URL },
+      },
+      "Activate",
+      "key-entry-limit",
+      but("Activate", "key-entry-limit", "signin.key.scan", "a11y.qrAddKey"),
+      { mustNot: FOCUSED_REFUSAL },
+    ),
+    row(
+      "Activate/key-entry-limit: no link",
       {
         keyField: { text: KEY, submitted: true },
         activation: { result: "key-entry-limit" },
       },
       "Activate",
-      "rejected",
-      [...ACTIVATE_BASE, "core.activation.key-entry-limit.message"],
+      "key-entry-limit",
+      but(
+        "Activate",
+        "key-entry-limit",
+        "signin.key.addInLocker",
+        "a11y.externalLink",
+        "signin.key.scan",
+        "a11y.qrAddKey",
+      ),
+      { mustNot: FOCUSED_REFUSAL },
+    ),
+    row(
+      "Activate/key-entry-limit: Android TV shows a QR",
+      {
+        platform: ANDROID_TV,
+        keyField: { text: KEY, submitted: true },
+        activation: { result: "key-entry-limit", manageUrl: MANAGE_URL },
+      },
+      "Activate",
+      "key-entry-limit",
+      but(
+        "Activate",
+        "key-entry-limit",
+        "signin.key.addInLocker",
+        "a11y.externalLink",
+      ),
+      { mustNot: FOCUSED_REFUSAL },
     ),
     row(
       "Activate/device-limit: no link to replace a device",
@@ -1757,6 +1838,12 @@ function signInFamily(a: A): Draft[] {
     choices,
     ...o,
   });
+  /** The key-entry limit's keys: not the owned refusal's. */
+  const OWNED_ONLY = [
+    "core.codes.license_owned.title",
+    "core.codes.license_owned.message",
+    "signin.key.ownedSignIn",
+  ];
   const manyCopy = [
     "signin.choice.title",
     "signin.choice.lede",
@@ -1948,16 +2035,343 @@ function signInFamily(a: A): Draft[] {
       { mustNot: { states: ["methods"] } },
     ),
     row(
-      "SignIn/key: another account holds the key's license",
+      "SignIn/key-refused: another account holds the key's license",
       lc(
         VIEW_MANY,
         { activation: { result: "refused", code: "license_owned" } },
         { event: "have-key" },
       ),
       "SignIn",
-      "key",
+      "key-refused",
+      [
+        "core.codes.license_owned.title",
+        "core.codes.license_owned.message",
+        "signin.key.ownedSignIn",
+        "signin.key.differentKey",
+      ],
+      {
+        mustNot: {
+          ...FOCUSED_REFUSAL,
+          states: ["key"],
+          copy: ["part.keyField.label", "signin.key.addTitle"],
+        },
+      },
+    ),
+    row(
+      "SignIn/key-refused: the key-entry limit, with a link",
+      lc(
+        VIEW_MANY,
+        {
+          activation: { result: "key-entry-limit", manageUrl: MANAGE_URL },
+        },
+        { event: "have-key" },
+      ),
+      "SignIn",
+      "key-refused",
+      but(
+        "SignIn",
+        "key-refused",
+        ...OWNED_ONLY,
+        "signin.key.scan",
+        "a11y.qrAddKey",
+      ),
+    ),
+    row(
+      "SignIn/key-refused: the key-entry limit, on Android TV",
+      {
+        platform: ANDROID_TV,
+        ...lc(
+          VIEW_MANY,
+          {
+            activation: { result: "key-entry-limit", manageUrl: MANAGE_URL },
+          },
+          { event: "have-key" },
+        ),
+      },
+      "SignIn",
+      "key-refused",
+      but(
+        "SignIn",
+        "key-refused",
+        ...OWNED_ONLY,
+        "signin.key.addInLocker",
+        "a11y.externalLink",
+      ),
+    ),
+
+    // Automatic sign-in (I-46.1, plans/auto-sign-in.md §3). The provider is `provider`.
+    row(
+      "SignIn/confirm: the account's email, a new license",
+      {
+        provider: "Google",
+        signIn: si(),
+        account: { signedIn: true, tier: "Pro" },
+        autoSignIn: {
+          step: "confirm",
+          email: "maya@example.com",
+          license: "new",
+          alsoGets: true,
+        },
+      },
+      "SignIn",
+      "confirm",
+      but(
+        "SignIn",
+        "confirm",
+        "signin.auto.confirm.asApple",
+        "signin.consent.licenseLine",
+      ),
+    ),
+    row(
+      "SignIn/confirm: Apple shared no email, an existing license",
+      {
+        provider: "Apple",
+        signIn: si(),
+        autoSignIn: { step: "confirm", license: "existing" },
+      },
+      "SignIn",
+      "confirm",
+      [
+        "signin.auto.confirm.title",
+        "signin.auto.confirm.asApple",
+        "signin.consent.license",
+        "signin.consent.licenseLine",
+        "signin.auto.confirm.primary",
+        "signin.auto.confirm.other",
+      ],
+    ),
+    row(
+      "SignIn/link-offer: Google shared across apps",
+      {
+        provider: "Google",
+        signIn: si(),
+        autoSignIn: { step: "link-offer", reach: "global" },
+      },
+      "SignIn",
+      "link-offer",
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyDeveloper",
+        "signin.linkOffer.bodyApp",
+      ),
+    ),
+    row(
+      "SignIn/link-offer: Google per developer",
+      {
+        provider: "Google",
+        signIn: si(),
+        autoSignIn: { step: "link-offer", reach: "developer" },
+      },
+      "SignIn",
+      "link-offer",
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyGlobal",
+        "signin.linkOffer.bodyApp",
+      ),
+    ),
+    row(
+      "SignIn/link-offer: Google, reach unknown, is per developer",
+      { provider: "Google", signIn: si(), autoSignIn: { step: "link-offer" } },
+      "SignIn",
+      "link-offer",
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyGlobal",
+        "signin.linkOffer.bodyApp",
+      ),
+    ),
+    row(
+      "SignIn/link-offer: Apple is always per developer",
+      {
+        provider: "Apple",
+        signIn: si(),
+        autoSignIn: { step: "link-offer", reach: "global" },
+      },
+      "SignIn",
+      "link-offer",
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyGlobal",
+        "signin.linkOffer.bodyApp",
+      ),
+      {
+        mustNot: {
+          copy: ["signin.linkOffer.bodyGlobal"],
+          invariant: "say all apps for Apple",
+        },
+      },
+    ),
+    row(
+      "SignIn/link-offer: Google per developer, no developer name",
+      {
+        provider: "Google",
+        presentation: { name: "Tidewater Studio", icon: true },
+        signIn: si(),
+        autoSignIn: { step: "link-offer", reach: "developer" },
+      },
+      "SignIn",
+      "link-offer",
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyGlobal",
+        "signin.linkOffer.bodyDeveloper",
+      ),
+    ),
+    row(
+      "SignIn/link-offer: Apple, no developer name",
+      {
+        provider: "Apple",
+        presentation: { name: "Tidewater Studio", icon: true },
+        signIn: si(),
+        autoSignIn: { step: "link-offer" },
+      },
+      "SignIn",
+      "link-offer",
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyGlobal",
+        "signin.linkOffer.bodyDeveloper",
+      ),
+      {
+        mustNot: {
+          copy: ["signin.linkOffer.bodyGlobal"],
+          invariant: "say all apps for Apple",
+        },
+      },
+    ),
+    row(
+      "SignIn/link-done",
+      {
+        provider: "Google",
+        signIn: si(),
+        autoSignIn: { step: "link-done" },
+      },
+      "SignIn",
+      "link-done",
       "all",
     ),
+    row(
+      "SignIn/link-conflict",
+      {
+        provider: "Google",
+        signIn: si(),
+        autoSignIn: { step: "link-conflict" },
+      },
+      "SignIn",
+      "link-conflict",
+      "all",
+    ),
+    row(
+      "SignIn/nearby-prompt: before the system asks for the local network",
+      { signIn: si(), autoSignIn: { step: "nearby-prompt" } },
+      "SignIn",
+      "nearby-prompt",
+      "all",
+    ),
+    row(
+      "SignIn/nearby-wait: approve on the other device",
+      { signIn: si(), autoSignIn: { step: "nearby-wait", code: "482 913" } },
+      "SignIn",
+      "nearby-wait",
+      "all",
+    ),
+    row(
+      "SignIn/nearby-done",
+      {
+        signIn: si(),
+        autoSignIn: { step: "nearby-done", email: "maya@example.com" },
+      },
+      "SignIn",
+      "nearby-done",
+      "all",
+    ),
+    row(
+      "NearbyApproval/entry: the account menu",
+      {},
+      "NearbyApproval",
+      "entry",
+      "all",
+      { default: true },
+    ),
+    row(
+      "NearbyApproval/ask: tap the code the other device shows",
+      { nearbyApproval: { step: "ask", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "ask",
+      "all",
+      { mustNot: { states: ["approved"] } },
+    ),
+    row(
+      "NearbyApproval/approved",
+      { nearbyApproval: { step: "approved", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "approved",
+      "all",
+    ),
+    row(
+      "NearbyApproval/not-nearby",
+      { nearbyApproval: { step: "not-nearby", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "not-nearby",
+      "all",
+    ),
+    row(
+      "NearbyApproval/mismatch: a wrong code denies and says so",
+      { nearbyApproval: { step: "mismatch", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "mismatch",
+      "all",
+    ),
+    row(
+      "NearbyApproval/denied: Deny",
+      { nearbyApproval: { step: "denied", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "denied",
+      "all",
+    ),
+    row(
+      "NearbyApproval/expired: the request lapsed while the prompt was open",
+      { nearbyApproval: { step: "expired", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "expired",
+      "all",
+    ),
+    row(
+      "NearbyApproval/device-limit: the license is full: Manage devices",
+      { nearbyApproval: { step: "device-limit", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "device-limit",
+      "all",
+    ),
+    row(
+      "NearbyApproval/choose: the license is chosen here, never on the new device",
+      { nearbyApproval: { step: "choose", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "choose",
+      "all",
+    ),
+    row(
+      "NearbyApproval/account-required: this device has no sign-in",
+      { nearbyApproval: { step: "account-required", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "account-required",
+      "all",
+    ),
+    row(
+      "NearbyApproval/rate-limited: too many approvals",
+      { nearbyApproval: { step: "rate-limited", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "rate-limited",
+      "all",
+    ),
+    hidden("NearbyApproval: Identity off", identityOff, "NearbyApproval"),
 
     // Step 4 (§4.5: how the form ends; sheet rows are the inline rows' twins).
     row(
@@ -1966,6 +2380,16 @@ function signInFamily(a: A): Draft[] {
       "SignIn",
       "done",
       issued,
+    ),
+    row(
+      "SignIn/done: the tier is named in one string",
+      {
+        signIn: si({ outcome: "signedIn", issuedNow: true }),
+        account: { signedIn: true, holder: "Maya", tier: "Pro" },
+      },
+      "SignIn",
+      "done",
+      ["signin.done.start", "signin.return.signedInTier"],
     ),
     row(
       "SignIn/done: inline, an existing license opens the app with the toast",
@@ -5132,7 +5556,12 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
         const want = !on("license")
           ? ["signin.return.signedInShort"]
           : signIn?.issuedNow === true
-            ? ["signin.done.start", "signin.return.signedInShort"]
+            ? [
+                "signin.done.start",
+                (input.account as Obj | undefined)?.tier
+                  ? "signin.return.signedInTier"
+                  : "signin.return.signedInShort",
+              ]
             : ["signin.desktop.toast"];
         if (copy.join() !== [...want].sort().join())
           errors.push(`${where}: the form ends with ${want.join(", ")}`);

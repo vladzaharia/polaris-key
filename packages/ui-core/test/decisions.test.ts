@@ -28,6 +28,11 @@ type Expect = {
 
 const none: Expect = { primary: null, tone: null, errorSlot: null };
 const quiet: Expect = { ...none, focus: null };
+const heading = (primary: string | null): Expect => ({
+  ...none,
+  primary,
+  focus: "heading",
+});
 const refusal = (primary: string | null): Expect => ({
   primary,
   tone: "neutral",
@@ -121,6 +126,9 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
     errorSlot: KEY,
     focus: KEY,
   }),
+  // DL6: a refusal only a sign-in fixes is a focused step; Sign in is its one primary, no field.
+  "Activate.key-entry-limit": () => refusal("signin.key.signIn"),
+  "Activate.license-owned": () => refusal("signin.key.ownedSignIn"),
   "Activate.device-limit": (i) => ({
     primary: i.activation?.manageUrl ? "deviceLimit.title" : null,
     tone: "neutral",
@@ -167,6 +175,52 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
     tone: i.activation ? "neutral" : null,
     errorSlot: i.activation ? KEY : null,
     focus: KEY,
+  }),
+  "SignIn.key-refused": (i) =>
+    refusal(
+      i.activation?.result === "key-entry-limit"
+        ? "signin.key.signIn"
+        : "signin.key.ownedSignIn",
+    ),
+  // Automatic sign-in: every step's title takes focus (a screen reader hears the outcome), and
+  // Continue or Link is the one primary; a conflict is a neutral refusal.
+  "SignIn.confirm": () => ({ ...heading("signin.auto.confirm.primary") }),
+  "SignIn.link-offer": () => heading("signin.linkOffer.primary"),
+  "SignIn.link-done": () => heading("common.continue"),
+  "SignIn.link-conflict": () => ({
+    ...refusal("common.continue"),
+    focus: "heading",
+  }),
+  "SignIn.nearby-prompt": () => heading("common.continue"),
+  "SignIn.nearby-wait": () => heading(null),
+  "SignIn.nearby-done": () => heading("common.continue"),
+  // NearbyApproval: choosing the matching code is the action, so no control is filled; each
+  // outcome ends on Done (or its own fix) and the title takes focus.
+  "NearbyApproval.entry": () => quiet,
+  "NearbyApproval.ask": () => heading(null),
+  "NearbyApproval.approved": () => heading("common.done"),
+  "NearbyApproval.not-nearby": () => ({
+    ...refusal("common.done"),
+    focus: "heading",
+  }),
+  "NearbyApproval.mismatch": () => heading("common.done"),
+  "NearbyApproval.denied": () => heading("common.done"),
+  "NearbyApproval.expired": () => ({
+    ...refusal("common.done"),
+    focus: "heading",
+  }),
+  "NearbyApproval.device-limit": () => ({
+    ...refusal("devices.manage"),
+    focus: "heading",
+  }),
+  "NearbyApproval.choose": () => heading("signin.choice.continue"),
+  "NearbyApproval.account-required": () => ({
+    ...refusal("signin.key.signIn"),
+    focus: "heading",
+  }),
+  "NearbyApproval.rate-limited": () => ({
+    ...refusal("common.tryAgain"),
+    focus: "heading",
   }),
   "SignIn.done": (i) =>
     i.signIn?.issuedNow === true && i.services?.includes("license") !== false

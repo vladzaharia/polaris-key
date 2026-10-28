@@ -215,7 +215,7 @@
     },
     "not_nearby": {
       "title": "Nicht in der Nähe",
-      "message": "Das andere Gerät ist nicht in diesem Netzwerk. Gehen Sie näher heran oder melden Sie sich stattdessen mit einem Code an."
+      "message": "Das andere Gerät ist nicht in diesem Netzwerk. Verbinden Sie beide mit demselben WLAN oder verwenden Sie stattdessen einen Code."
     },
     "auth_method_disabled": {
       "title": "Anmeldemethode nicht verfügbar",
@@ -911,7 +911,7 @@
     },
     "key-entry-limit": {
       "title": "Keine Schlüsseleingaben mehr",
-      "message": "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
+      "message": "Melden Sie sich an und fügen Sie diesen Schlüssel stattdessen Ihrem Polaris-Locker-Konto hinzu."
     },
     "license-owned": {
       "title": "Lizenz in einem anderen Konto",

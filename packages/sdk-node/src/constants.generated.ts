@@ -1580,7 +1580,7 @@ export const PRESENTATION_MATRIX_VERSION = 1;
 export const PORTAL_MATRIX_VERSION = 1;
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-export const UI_MATRIX_VERSION = 6;
+export const UI_MATRIX_VERSION = 7;
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 export const BACKEND_MATRIX_VERSION = 1;

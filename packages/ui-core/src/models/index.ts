@@ -27,6 +27,7 @@ import {
   paywallView,
   settingsView,
 } from "./settings.js";
+import { nearbyApprovalView } from "./nearby.js";
 import { licenseChoiceView, signInHandoffView, signInView } from "./signIn.js";
 import {
   releaseNotesView,
@@ -42,6 +43,7 @@ export const MODELS: Readonly<Record<ComponentName, Model>> = {
   Welcome: welcomeView,
   SignIn: signInView,
   SignInHandoff: signInHandoffView,
+  NearbyApproval: nearbyApprovalView,
   Activate: activateView,
   OfflineActivation: offlineActivationView,
   DeviceLimit: deviceLimitView,
@@ -69,6 +71,8 @@ export function viewOf(component: ComponentName, input: UiInput): View {
 
 export * from "./activate.js";
 export * from "./devices.js";
+export * from "./keyRefusal.js";
+export * from "./nearby.js";
 export * from "./gate.js";
 export * from "./settings.js";
 export * from "./signIn.js";

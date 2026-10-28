@@ -1,6 +1,6 @@
 # @pkey-feature ui.signin
-"""The Python headless runner for the ``signIn`` family in ``ui-matrix.json``: SignIn, SignInHandoff
-and LicenseChoice. LicenseChoice reads the grant roster (a device-code sign-in never reaches it: the
+"""The Python headless runner for the ``signIn`` family in ``ui-matrix.json``: SignIn, SignInHandoff,
+NearbyApproval and LicenseChoice. LicenseChoice reads the grant roster (a device-code sign-in never reaches it: the
 card chooses), so a runtime kit cannot show it before I-10b; the model runs against the matrix alone."""
 
 from __future__ import annotations
@@ -14,11 +14,16 @@ import pytest
 from polaris_key.constants_generated import UI_MATRIX_VERSION
 from polaris_key.ui.core.ui_choice import license_choice_view
 from polaris_key.ui.core.ui_contract import context_of
-from polaris_key.ui.core.ui_signin import sign_in_handoff_view, sign_in_view
+from polaris_key.ui.core.ui_signin import nearby_approval_view, sign_in_handoff_view, sign_in_view
 
 ROOT = Path(__file__).resolve().parents[3]
 MATRIX = json.loads((ROOT / "conformance" / "corpus" / "v2" / "ui-matrix.json").read_text(encoding="utf-8"))
-MODELS = {"SignIn": sign_in_view, "SignInHandoff": sign_in_handoff_view, "LicenseChoice": license_choice_view}
+MODELS = {
+    "SignIn": sign_in_view,
+    "SignInHandoff": sign_in_handoff_view,
+    "NearbyApproval": nearby_approval_view,
+    "LicenseChoice": license_choice_view,
+}
 ROWS = [row for row in MATRIX["signIn"] if row["expect"]["component"] in MODELS]
 
 

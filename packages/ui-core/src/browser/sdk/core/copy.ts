@@ -245,7 +245,7 @@ const FR: CopyBundle = {
     interstitial_required:
       "Terminez la connexion sur la page Polaris Locker, puis revenez à l’app.",
     not_nearby:
-      "L’autre appareil n’est pas sur ce réseau. Rapprochez-vous ou connectez-vous avec un code.",
+      "L’autre appareil n’est pas sur ce réseau. Connectez les deux au même Wi-Fi, ou utilisez un code à la place.",
     auth_method_disabled:
       "Cette méthode de connexion est désactivée. Choisissez-en une autre.",
     email_unavailable:
@@ -381,7 +381,7 @@ const FR: CopyBundle = {
       unauthorized:
         "Cette clé de licence n’a pas été acceptée. Vérifiez-la, puis réessayez.",
       keyEntryLimit:
-        "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.",
+        "Connectez-vous et ajoutez plutôt cette clé à votre compte Polaris Locker.",
     },
   },
 };

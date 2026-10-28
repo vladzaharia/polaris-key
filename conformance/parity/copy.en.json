@@ -214,7 +214,7 @@
     },
     "not_nearby": {
       "title": "Not nearby",
-      "message": "The other device isn't on this network. Move closer, or sign in with a code instead."
+      "message": "The other device isn't on this network. Connect both to the same Wi-Fi, or use a code instead."
     },
     "auth_method_disabled": {
       "title": "Sign-in method unavailable",
@@ -910,7 +910,7 @@
     },
     "key-entry-limit": {
       "title": "No key entries left",
-      "message": "This key has no entries left. Add it to your account and sign in instead."
+      "message": "Sign in and add this key to your Polaris Locker account instead."
     },
     "license-owned": {
       "title": "License in another account",

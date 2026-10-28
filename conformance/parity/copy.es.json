@@ -215,7 +215,7 @@
     },
     "not_nearby": {
       "title": "No está cerca",
-      "message": "El otro dispositivo no está en esta red. Acércate o inicia sesión con un código."
+      "message": "El otro dispositivo no está en esta red. Conecta ambos a la misma red Wi-Fi o usa un código."
     },
     "auth_method_disabled": {
       "title": "Método de inicio de sesión no disponible",
@@ -911,7 +911,7 @@
     },
     "key-entry-limit": {
       "title": "No quedan usos de la clave",
-      "message": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar."
+      "message": "Inicia sesión y añade esta clave a tu cuenta de Polaris Locker."
     },
     "license-owned": {
       "title": "Licencia en otra cuenta",

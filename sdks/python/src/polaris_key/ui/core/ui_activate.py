@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
-from .ui_contract import Context
+from .ui_contract import Context, platform_class
 from .ui_view import View, hidden_view, identity_text, link_verdict, make_view
 
 __all__ = [
@@ -14,6 +14,8 @@ __all__ = [
     "KeyParse",
     "activate_view",
     "activation_copy",
+    "key_refusal_of",
+    "key_refusal_spec",
     "offline_activation_view",
     "parse_key",
     "welcome_view",
@@ -161,6 +163,38 @@ def welcome_view(ctx: Context) -> View:
     )
 
 
+def key_refusal_of(activation: Mapping[str, Any]) -> Optional[str]:
+    """The focused refusal an activation answer is (the key-entry limit, or a license another
+    account holds), or None: a refusal a different key can fix stays stacked under the field."""
+    result = activation.get("result")
+    if result == "key-entry-limit":
+        return "key-entry-limit"
+    if result == "license-owned" or (result in ("refused", "error") and activation.get("code") == "license_owned"):
+        return "license-owned"
+    return None
+
+
+def key_refusal_spec(ctx: Context, kind: str, activation: Mapping[str, Any]) -> dict:
+    """The focused step's copy and decisions (UI-KITS DL6): no field, lede or paste; Sign in is the
+    primary; for the limit, the add-key page (a QR with its caption on a TV), then Use a different key."""
+    limit = kind == "key-entry-limit"
+    link = link_verdict(activation.get("manageUrl"), ctx.platform, "manage") if limit else None
+    tv = platform_class(ctx.platform) in ("tv", "console")
+    add = link is not None and link.url is not None
+    copy = [
+        "core.activation.key-entry-limit.title" if limit else "core.codes.license_owned.title",
+        "core.activation.key-entry-limit.message" if limit else "core.codes.license_owned.message",
+        "signin.key.signIn" if limit else "signin.key.ownedSignIn",
+        *(
+            (["signin.key.scan", "a11y.qrAddKey"] if tv else ["signin.key.addInLocker", "a11y.externalLink"])
+            if add
+            else []
+        ),
+        "signin.key.differentKey",
+    ]
+    return {"copy": copy, "primary": "signin.key.signIn" if limit else "signin.key.ownedSignIn", "link": link, "qr": add and tv}
+
+
 def activate_view(ctx: Context) -> View:
     """License-key entry with a live public verdict and a neutral full-seat outcome."""
     if not ctx.on("license"):
@@ -209,6 +243,20 @@ def activate_view(ctx: Context) -> View:
                 tone="neutral",
                 error_slot=_FIELD,
                 link=link,
+            )
+        refusal = key_refusal_of(activation)
+        if refusal is not None:
+            spec = key_refusal_spec(ctx, refusal, activation)
+            return make_view(
+                ctx,
+                "Activate",
+                refusal,
+                spec["copy"],
+                args={"product": product},
+                primary=spec["primary"],
+                tone="neutral",
+                link=spec["link"],
+                qr=spec["qr"],
             )
         result_name = result if isinstance(result, str) else "error"
         return make_view(

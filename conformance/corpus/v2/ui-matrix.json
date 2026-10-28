@@ -1,5 +1,5 @@
 {
-  "uiMatrixVersion": 6,
+  "uiMatrixVersion": 7,
   "description": "The UI state matrix (plans/UK-02.md \u00a74, plans/UK-02b.md): layer (c) of every UI kit, pinned once for every language. Component rows: drive the headless model of expect.component with input (a member input omits takes vocabulary.defaults) and compare state, the sorted copy keys and the sorted actions (absent means none). A state is a components.json state of the component, or hidden: the drop-in renders nothing and a styled part renders empty; hidden appears only on rows that turn a service off. copy lists the keys this input shows: a subset of the state's components.json list plus core.* keys the input selects (D7); vocabulary.unreached names the listed keys no row can show yet. actions are the controls the copy names (vocabulary.actionKeys) plus replace-in-browser. vocabulary.gaps declares the variants not pinned yet, each with the work package that appends its rows. mustNot marks a negative case (UI-KITS \u00a74.1): the expectation holds and none of its states, copy or actions appear. Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6). theme rows pin UI-KITS \u00a71.2 and \u00a73.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter). vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy. cli is the terminal drop-in contract (plans/UK-51.md), one object rather than component rows: verbs (the end-user set a mount offers, the developer verbs it offers only by name, the aliases), mount and help (what registering into a host CLI mounts, refuses with polaris-verb-collision, skips, hides and lists), gate (every licenseStatus x tty x json x entitled: run, the inline flow, or a refusal that is a triangle with its fix and exits 4), outcomes (a kit verb in a vocabulary.cli.situations situation: its mark, exit, result fields, stdout and fix verbs), stdin (what activate with no key reads, per vocabulary.cli.stdinKinds), capabilities (environment x streams x flags) and exit (the exit table). vocabulary.cli holds the rules; mount, help, gate and capabilities are computed by the generator's references. Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 6: a changed row, input member or rule bumps it.",
   "vocabulary": {
     "actions": {
@@ -7,6 +7,7 @@
       "open-browser": "Open the sign-in already in flight in the browser again; never a second request (Open browser again, the code view's Open browser).",
       "replace-in-browser": "Replace a device on the card, for a form set to `replace: browser`.",
       "open-manage-url": "Open the refusal's `manageUrl` or the account's device page in the browser.",
+      "start-sign-in": "Start the kit's own sign-in, from a refusal that only a sign-in fixes (Sign in to that account).",
       "copy-link": "Copy the sign-in link or the address to the clipboard.",
       "retry": "Repeat the step that failed or lapsed (Try again, Reconnect, Sign in again, Get a new code).",
       "cancel": "Leave the step or the flow (Cancel)."
@@ -14,7 +15,12 @@
     "actionKeys": {
       "open-card": ["signin.desktop.continue", "signin.email.continue"],
       "open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
-      "open-manage-url": ["deviceLimit.openBrowser", "devices.manage"],
+      "start-sign-in": ["signin.key.signIn", "signin.key.ownedSignIn"],
+      "open-manage-url": [
+        "deviceLimit.openBrowser",
+        "devices.manage",
+        "signin.key.addInLocker"
+      ],
       "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
       "retry": [
         "common.tryAgain",
@@ -40,6 +46,9 @@
       "keyField": "The license key field: {text, submitted?}. A key is `pkey_<slug>_` and a 22-character secret.",
       "activation": "An activation result: {result: activationResult, code?, limit?, deviceCount?, manageUrl?}.",
       "offline": "Offline activation: {copied?, file?, submitted?, verified?} (the request code copied, a response loaded, submitted, its signature verified).",
+      "provider": "The sign-in provider's name (Apple, Google, Steam), for the strings that name it: the link offer, the failed sign-in. Absent: Polaris Locker, the sign-in the generic row opens.",
+      "autoSignIn": "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done, email?, reach?: global | developer | unknown}. No email: the provider shared none. The provider is `provider`.",
+      "nearbyApproval": "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby, device?}. Absent: the account-menu entry.",
       "signIn": "The sign-in session: {presentation, replace, channel, outcome?, browserOpened?, redeeming?, event?, issuedNow?, raced?, grantExpired?}. outcome is session.wait()'s; issuedNow is true when this sign-in added or issued the license.",
       "deviceCode": "The device-code poll: {phase, secondsLeft?}. Present exactly on rows with signIn.channel device-code; it alone selects SignInHandoff's state.",
       "choices": "plans/I-04.md's LicenseChoiceView, field for field.",
@@ -81,7 +90,7 @@
     },
     "precedence": {
       "LicenseChoice": "loading, grant-expired, raced, replace-open (open-replace with replace inline), none-keys or none-no-keys (state none), new (state autoIssue), create (create selected), all-full (no free row), keep, current, mixed (account and seat licences together), one, many.",
-      "SignIn": "error, expired, done (signedIn), key (have-key while choosing), replace (open-replace with replace inline), choose, finishing (redeeming, or device-code ok), code (device code, or use-code), handoff (pending), methods.",
+      "SignIn": "error, auto (autoSignIn), expired, done (signedIn), key-refused or key (have-key while choosing; the key-entry limit and an owned license are key-refused), replace (open-replace with replace inline), choose, finishing (redeeming, or device-code ok), code (device code, or use-code), handoff (pending), methods.",
       "Settings": "loading, error, saving (pending save or saved), dirty, locked (a locked row), list.",
       "Devices": "loading, error, browser-mode, renaming or confirming (edit), empty, list.",
       "Paywall": "loading, purchasing (pending purchase), restore (pending restore), purchased, not-available, offers."
@@ -103,6 +112,7 @@
       "Welcome": ["identity", "license"],
       "SignIn": ["identity", "license"],
       "SignInHandoff": ["identity"],
+      "NearbyApproval": ["identity"],
       "LicenseChoice": ["identity", "license"],
       "Activate": ["license"],
       "OfflineActivation": ["license"],
@@ -125,6 +135,7 @@
       "Boot": "animate invented progress, or trap metered consent off-screen",
       "SignIn": "restart the flow or erase account context on a step change",
       "SignInHandoff": "use the public user code as the polling handle",
+      "NearbyApproval": "approve on any code but the one the other device shows",
       "Activate": "require an account for a floating key",
       "OfflineActivation": "treat a loaded file as a verified activation",
       "DeviceLimit": "delete local files when access is removed",
@@ -1598,7 +1609,7 @@
       }
     },
     {
-      "name": "Activate/rejected: another account holds the license",
+      "name": "Activate/license-owned: another account holds the license",
       "input": {
         "keyField": {
           "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
@@ -1608,19 +1619,66 @@
       },
       "expect": {
         "component": "Activate",
-        "state": "rejected",
+        "state": "license-owned",
+        "copy": [
+          "core.codes.license_owned.message",
+          "core.codes.license_owned.title",
+          "signin.key.differentKey",
+          "signin.key.ownedSignIn"
+        ],
+        "actions": ["start-sign-in"]
+      },
+      "mustNot": {
+        "invariant": "leave the key field, lede or paste over a refusal that only a sign-in fixes",
+        "states": ["rejected"],
         "copy": [
           "activate.lede",
           "activate.title",
           "common.paste",
-          "core.codes.license_owned.message",
           "part.keyField.label",
           "part.keyField.placeholder"
         ]
       }
     },
     {
-      "name": "Activate/rejected: the key-entry limit",
+      "name": "Activate/key-entry-limit: a link to add the key in Polaris Locker",
+      "input": {
+        "keyField": {
+          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
+          "submitted": true
+        },
+        "activation": {
+          "result": "key-entry-limit",
+          "manageUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_pro&for=MacBook%20Pro"
+        }
+      },
+      "expect": {
+        "component": "Activate",
+        "state": "key-entry-limit",
+        "copy": [
+          "a11y.externalLink",
+          "core.activation.key-entry-limit.message",
+          "core.activation.key-entry-limit.title",
+          "signin.key.addInLocker",
+          "signin.key.differentKey",
+          "signin.key.signIn"
+        ],
+        "actions": ["open-manage-url", "start-sign-in"]
+      },
+      "mustNot": {
+        "invariant": "leave the key field, lede or paste over a refusal that only a sign-in fixes",
+        "states": ["rejected"],
+        "copy": [
+          "activate.lede",
+          "activate.title",
+          "common.paste",
+          "part.keyField.label",
+          "part.keyField.placeholder"
+        ]
+      }
+    },
+    {
+      "name": "Activate/key-entry-limit: no link",
       "input": {
         "keyField": {
           "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
@@ -1630,12 +1688,60 @@
       },
       "expect": {
         "component": "Activate",
-        "state": "rejected",
+        "state": "key-entry-limit",
+        "copy": [
+          "core.activation.key-entry-limit.message",
+          "core.activation.key-entry-limit.title",
+          "signin.key.differentKey",
+          "signin.key.signIn"
+        ],
+        "actions": ["start-sign-in"]
+      },
+      "mustNot": {
+        "invariant": "leave the key field, lede or paste over a refusal that only a sign-in fixes",
+        "states": ["rejected"],
         "copy": [
           "activate.lede",
           "activate.title",
           "common.paste",
+          "part.keyField.label",
+          "part.keyField.placeholder"
+        ]
+      }
+    },
+    {
+      "name": "Activate/key-entry-limit: Android TV shows a QR",
+      "input": {
+        "platform": { "os": "android", "formFactor": "tv" },
+        "keyField": {
+          "text": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
+          "submitted": true
+        },
+        "activation": {
+          "result": "key-entry-limit",
+          "manageUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_pro&for=MacBook%20Pro"
+        }
+      },
+      "expect": {
+        "component": "Activate",
+        "state": "key-entry-limit",
+        "copy": [
+          "a11y.qrAddKey",
           "core.activation.key-entry-limit.message",
+          "core.activation.key-entry-limit.title",
+          "signin.key.differentKey",
+          "signin.key.scan",
+          "signin.key.signIn"
+        ],
+        "actions": ["start-sign-in"]
+      },
+      "mustNot": {
+        "invariant": "leave the key field, lede or paste over a refusal that only a sign-in fixes",
+        "states": ["rejected"],
+        "copy": [
+          "activate.lede",
+          "activate.title",
+          "common.paste",
           "part.keyField.label",
           "part.keyField.placeholder"
         ]
@@ -3854,7 +3960,7 @@
       }
     },
     {
-      "name": "SignIn/key: another account holds the key's license",
+      "name": "SignIn/key-refused: another account holds the key's license",
       "input": {
         "signIn": {
           "presentation": "inline",
@@ -3958,17 +4064,23 @@
       },
       "expect": {
         "component": "SignIn",
-        "state": "key",
+        "state": "key-refused",
         "copy": [
           "core.codes.license_owned.message",
           "core.codes.license_owned.title",
-          "part.keyField.label",
-          "signin.key.addTitle"
-        ]
+          "signin.key.differentKey",
+          "signin.key.ownedSignIn"
+        ],
+        "actions": ["start-sign-in"]
+      },
+      "mustNot": {
+        "invariant": "leave the key field, lede or paste over a refusal that only a sign-in fixes",
+        "states": ["key"],
+        "copy": ["part.keyField.label", "signin.key.addTitle"]
       }
     },
     {
-      "name": "SignIn/key: another account holds the key's license (sheet)",
+      "name": "SignIn/key-refused: another account holds the key's license (sheet)",
       "input": {
         "signIn": {
           "presentation": "sheet",
@@ -4072,14 +4184,1289 @@
       },
       "expect": {
         "component": "SignIn",
-        "state": "key",
+        "state": "key-refused",
         "copy": [
           "core.codes.license_owned.message",
           "core.codes.license_owned.title",
-          "part.keyField.label",
-          "signin.key.addTitle"
+          "signin.key.differentKey",
+          "signin.key.ownedSignIn"
+        ],
+        "actions": ["start-sign-in"]
+      },
+      "mustNot": {
+        "invariant": "leave the key field, lede or paste over a refusal that only a sign-in fixes",
+        "states": ["key"],
+        "copy": ["part.keyField.label", "signin.key.addTitle"]
+      }
+    },
+    {
+      "name": "SignIn/key-refused: the key-entry limit, with a link",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "outcome": "choose",
+          "event": "have-key"
+        },
+        "choices": {
+          "state": "choose",
+          "choices": [
+            {
+              "id": "lic_pro",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "purchase",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_store",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "store",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_key",
+              "tierName": "Standard",
+              "name": null,
+              "origin": "key",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_free",
+              "tierName": "Free",
+              "name": null,
+              "origin": "free",
+              "access": "seats",
+              "seats": { "used": 0, "limit": 1 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_comp",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "developer",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_edu",
+              "tierName": "Edu",
+              "name": "Fennick Studio Edu",
+              "origin": "developer",
+              "access": "seats",
+              "seats": { "used": 3, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "full",
+              "replace": { "allowed": true, "retryAfter": null },
+              "freeDeviceUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_edu&for=MacBook%20Pro&return=/signin?request=req_tidewater"
+            }
+          ],
+          "keep": false,
+          "preselected": "lic_pro",
+          "create": null,
+          "getLicense": {
+            "activateUrl": "https://polaris.locker/activate?product=tidewater",
+            "purchaseUrl": "https://tidewater.example/buy",
+            "keyEntry": true
+          }
+        },
+        "activation": {
+          "result": "key-entry-limit",
+          "manageUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_pro&for=MacBook%20Pro"
+        }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "key-refused",
+        "copy": [
+          "a11y.externalLink",
+          "core.activation.key-entry-limit.message",
+          "core.activation.key-entry-limit.title",
+          "signin.key.addInLocker",
+          "signin.key.differentKey",
+          "signin.key.signIn"
+        ],
+        "actions": ["open-manage-url", "start-sign-in"]
+      }
+    },
+    {
+      "name": "SignIn/key-refused: the key-entry limit, with a link (sheet)",
+      "input": {
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser",
+          "outcome": "choose",
+          "event": "have-key"
+        },
+        "choices": {
+          "state": "choose",
+          "choices": [
+            {
+              "id": "lic_pro",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "purchase",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_store",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "store",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_key",
+              "tierName": "Standard",
+              "name": null,
+              "origin": "key",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_free",
+              "tierName": "Free",
+              "name": null,
+              "origin": "free",
+              "access": "seats",
+              "seats": { "used": 0, "limit": 1 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_comp",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "developer",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_edu",
+              "tierName": "Edu",
+              "name": "Fennick Studio Edu",
+              "origin": "developer",
+              "access": "seats",
+              "seats": { "used": 3, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "full",
+              "replace": { "allowed": true, "retryAfter": null },
+              "freeDeviceUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_edu&for=MacBook%20Pro&return=/signin?request=req_tidewater"
+            }
+          ],
+          "keep": false,
+          "preselected": "lic_pro",
+          "create": null,
+          "getLicense": {
+            "activateUrl": "https://polaris.locker/activate?product=tidewater",
+            "purchaseUrl": "https://tidewater.example/buy",
+            "keyEntry": true
+          }
+        },
+        "activation": {
+          "result": "key-entry-limit",
+          "manageUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_pro&for=MacBook%20Pro"
+        }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "key-refused",
+        "copy": [
+          "a11y.externalLink",
+          "core.activation.key-entry-limit.message",
+          "core.activation.key-entry-limit.title",
+          "signin.key.addInLocker",
+          "signin.key.differentKey",
+          "signin.key.signIn"
+        ],
+        "actions": ["open-manage-url", "start-sign-in"]
+      }
+    },
+    {
+      "name": "SignIn/key-refused: the key-entry limit, on Android TV",
+      "input": {
+        "platform": { "os": "android", "formFactor": "tv" },
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "outcome": "choose",
+          "event": "have-key"
+        },
+        "choices": {
+          "state": "choose",
+          "choices": [
+            {
+              "id": "lic_pro",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "purchase",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_store",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "store",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_key",
+              "tierName": "Standard",
+              "name": null,
+              "origin": "key",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_free",
+              "tierName": "Free",
+              "name": null,
+              "origin": "free",
+              "access": "seats",
+              "seats": { "used": 0, "limit": 1 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_comp",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "developer",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_edu",
+              "tierName": "Edu",
+              "name": "Fennick Studio Edu",
+              "origin": "developer",
+              "access": "seats",
+              "seats": { "used": 3, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "full",
+              "replace": { "allowed": true, "retryAfter": null },
+              "freeDeviceUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_edu&for=MacBook%20Pro&return=/signin?request=req_tidewater"
+            }
+          ],
+          "keep": false,
+          "preselected": "lic_pro",
+          "create": null,
+          "getLicense": {
+            "activateUrl": "https://polaris.locker/activate?product=tidewater",
+            "purchaseUrl": "https://tidewater.example/buy",
+            "keyEntry": true
+          }
+        },
+        "activation": {
+          "result": "key-entry-limit",
+          "manageUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_pro&for=MacBook%20Pro"
+        }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "key-refused",
+        "copy": [
+          "a11y.qrAddKey",
+          "core.activation.key-entry-limit.message",
+          "core.activation.key-entry-limit.title",
+          "signin.key.differentKey",
+          "signin.key.scan",
+          "signin.key.signIn"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "SignIn/key-refused: the key-entry limit, on Android TV (sheet)",
+      "input": {
+        "platform": { "os": "android", "formFactor": "tv" },
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser",
+          "outcome": "choose",
+          "event": "have-key"
+        },
+        "choices": {
+          "state": "choose",
+          "choices": [
+            {
+              "id": "lic_pro",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "purchase",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_store",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "store",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_key",
+              "tierName": "Standard",
+              "name": null,
+              "origin": "key",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_free",
+              "tierName": "Free",
+              "name": null,
+              "origin": "free",
+              "access": "seats",
+              "seats": { "used": 0, "limit": 1 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_comp",
+              "tierName": "Pro",
+              "name": null,
+              "origin": "developer",
+              "access": "seats",
+              "seats": { "used": 1, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_edu",
+              "tierName": "Edu",
+              "name": "Fennick Studio Edu",
+              "origin": "developer",
+              "access": "seats",
+              "seats": { "used": 3, "limit": 3 },
+              "current": false,
+              "expiresAt": 1798761600,
+              "state": "full",
+              "replace": { "allowed": true, "retryAfter": null },
+              "freeDeviceUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_edu&for=MacBook%20Pro&return=/signin?request=req_tidewater"
+            }
+          ],
+          "keep": false,
+          "preselected": "lic_pro",
+          "create": null,
+          "getLicense": {
+            "activateUrl": "https://polaris.locker/activate?product=tidewater",
+            "purchaseUrl": "https://tidewater.example/buy",
+            "keyEntry": true
+          }
+        },
+        "activation": {
+          "result": "key-entry-limit",
+          "manageUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_pro&for=MacBook%20Pro"
+        }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "key-refused",
+        "copy": [
+          "a11y.qrAddKey",
+          "core.activation.key-entry-limit.message",
+          "core.activation.key-entry-limit.title",
+          "signin.key.differentKey",
+          "signin.key.scan",
+          "signin.key.signIn"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "SignIn/confirm: the account's email, a new license",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "account": { "signedIn": true, "tier": "Pro" },
+        "autoSignIn": {
+          "step": "confirm",
+          "email": "maya@example.com",
+          "license": "new",
+          "alsoGets": true
+        }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "confirm",
+        "copy": [
+          "signin.auto.confirm.as",
+          "signin.auto.confirm.other",
+          "signin.auto.confirm.primary",
+          "signin.auto.confirm.title",
+          "signin.consent.alsoGets",
+          "signin.consent.license",
+          "signin.consent.newLicense",
+          "signin.consent.pairwise",
+          "signin.consent.profile"
         ]
       }
+    },
+    {
+      "name": "SignIn/confirm: the account's email, a new license (sheet)",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "account": { "signedIn": true, "tier": "Pro" },
+        "autoSignIn": {
+          "step": "confirm",
+          "email": "maya@example.com",
+          "license": "new",
+          "alsoGets": true
+        }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "confirm",
+        "copy": [
+          "signin.auto.confirm.as",
+          "signin.auto.confirm.other",
+          "signin.auto.confirm.primary",
+          "signin.auto.confirm.title",
+          "signin.consent.alsoGets",
+          "signin.consent.license",
+          "signin.consent.newLicense",
+          "signin.consent.pairwise",
+          "signin.consent.profile"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/confirm: Apple shared no email, an existing license",
+      "input": {
+        "provider": "Apple",
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "confirm", "license": "existing" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "confirm",
+        "copy": [
+          "signin.auto.confirm.asApple",
+          "signin.auto.confirm.other",
+          "signin.auto.confirm.primary",
+          "signin.auto.confirm.title",
+          "signin.consent.license",
+          "signin.consent.licenseLine"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/confirm: Apple shared no email, an existing license (sheet)",
+      "input": {
+        "provider": "Apple",
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "confirm", "license": "existing" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "confirm",
+        "copy": [
+          "signin.auto.confirm.asApple",
+          "signin.auto.confirm.other",
+          "signin.auto.confirm.primary",
+          "signin.auto.confirm.title",
+          "signin.consent.license",
+          "signin.consent.licenseLine"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Google shared across apps",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer", "reach": "global" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyGlobal",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Google shared across apps (sheet)",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer", "reach": "global" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyGlobal",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Google per developer",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer", "reach": "developer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyDeveloper",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Google per developer (sheet)",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer", "reach": "developer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyDeveloper",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Google, reach unknown, is per developer",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyDeveloper",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Google, reach unknown, is per developer (sheet)",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyDeveloper",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Apple is always per developer",
+      "input": {
+        "provider": "Apple",
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer", "reach": "global" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyDeveloper",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "say all apps for Apple",
+        "copy": ["signin.linkOffer.bodyGlobal"]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Apple is always per developer (sheet)",
+      "input": {
+        "provider": "Apple",
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer", "reach": "global" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyDeveloper",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "say all apps for Apple",
+        "copy": ["signin.linkOffer.bodyGlobal"]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Google per developer, no developer name",
+      "input": {
+        "provider": "Google",
+        "presentation": { "name": "Tidewater Studio", "icon": true },
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer", "reach": "developer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyApp",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Google per developer, no developer name (sheet)",
+      "input": {
+        "provider": "Google",
+        "presentation": { "name": "Tidewater Studio", "icon": true },
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer", "reach": "developer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyApp",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Apple, no developer name",
+      "input": {
+        "provider": "Apple",
+        "presentation": { "name": "Tidewater Studio", "icon": true },
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyApp",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "say all apps for Apple",
+        "copy": ["signin.linkOffer.bodyGlobal"]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Apple, no developer name (sheet)",
+      "input": {
+        "provider": "Apple",
+        "presentation": { "name": "Tidewater Studio", "icon": true },
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyApp",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "say all apps for Apple",
+        "copy": ["signin.linkOffer.bodyGlobal"]
+      }
+    },
+    {
+      "name": "SignIn/link-done",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-done" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-done",
+        "copy": ["common.continue", "signin.linkOffer.done"]
+      }
+    },
+    {
+      "name": "SignIn/link-done (sheet)",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-done" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-done",
+        "copy": ["common.continue", "signin.linkOffer.done"]
+      }
+    },
+    {
+      "name": "SignIn/link-conflict",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-conflict" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-conflict",
+        "copy": [
+          "common.continue",
+          "signin.linkOffer.conflict",
+          "signin.linkOffer.conflictTitle",
+          "signin.linkOffer.join"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-conflict (sheet)",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-conflict" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-conflict",
+        "copy": [
+          "common.continue",
+          "signin.linkOffer.conflict",
+          "signin.linkOffer.conflictTitle",
+          "signin.linkOffer.join"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/nearby-prompt: before the system asks for the local network",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "nearby-prompt" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "nearby-prompt",
+        "copy": [
+          "common.continue",
+          "common.notNow",
+          "signin.nearby.prePrompt",
+          "signin.nearby.promptTitle"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/nearby-prompt: before the system asks for the local network (sheet)",
+      "input": {
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "nearby-prompt" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "nearby-prompt",
+        "copy": [
+          "common.continue",
+          "common.notNow",
+          "signin.nearby.prePrompt",
+          "signin.nearby.promptTitle"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/nearby-wait: approve on the other device",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "nearby-wait", "code": "482 913" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "nearby-wait",
+        "copy": [
+          "a11y.nearbyCode",
+          "signin.nearby.body",
+          "signin.nearby.code",
+          "signin.nearby.match",
+          "signin.nearby.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/nearby-wait: approve on the other device (sheet)",
+      "input": {
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "nearby-wait", "code": "482 913" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "nearby-wait",
+        "copy": [
+          "a11y.nearbyCode",
+          "signin.nearby.body",
+          "signin.nearby.code",
+          "signin.nearby.match",
+          "signin.nearby.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/nearby-done",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "nearby-done", "email": "maya@example.com" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "nearby-done",
+        "copy": [
+          "common.continue",
+          "signin.nearby.done",
+          "signin.nearby.notYou"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/nearby-done (sheet)",
+      "input": {
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "nearby-done", "email": "maya@example.com" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "nearby-done",
+        "copy": [
+          "common.continue",
+          "signin.nearby.done",
+          "signin.nearby.notYou"
+        ]
+      }
+    },
+    {
+      "name": "NearbyApproval/entry: the account menu",
+      "input": {},
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "entry",
+        "copy": ["signin.nearby.menu"]
+      }
+    },
+    {
+      "name": "NearbyApproval: presentation absent",
+      "input": {
+        "presentation": null,
+        "bundle": { "slug": "tidewater", "name": "Tidewater Studio" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "entry",
+        "copy": ["signin.nearby.menu"]
+      }
+    },
+    {
+      "name": "NearbyApproval/ask: tap the code the other device shows",
+      "input": {
+        "nearbyApproval": { "step": "ask", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "ask",
+        "copy": [
+          "signin.approve.deny",
+          "signin.approve.warning",
+          "signin.nearby.ask",
+          "signin.nearby.askBody"
+        ]
+      },
+      "mustNot": {
+        "invariant": "approve on any code but the one the other device shows",
+        "states": ["approved"]
+      }
+    },
+    {
+      "name": "NearbyApproval/approved",
+      "input": {
+        "nearbyApproval": { "step": "approved", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "approved",
+        "copy": ["common.done", "signin.nearby.approved"]
+      }
+    },
+    {
+      "name": "NearbyApproval/not-nearby",
+      "input": {
+        "nearbyApproval": { "step": "not-nearby", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "not-nearby",
+        "copy": [
+          "common.done",
+          "signin.nearby.notNearby",
+          "signin.nearby.notNearbyBody"
+        ]
+      }
+    },
+    {
+      "name": "NearbyApproval/mismatch: a wrong code denies and says so",
+      "input": {
+        "nearbyApproval": { "step": "mismatch", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "mismatch",
+        "copy": ["common.done", "signin.nearby.mismatch"]
+      }
+    },
+    {
+      "name": "NearbyApproval/denied: Deny",
+      "input": {
+        "nearbyApproval": { "step": "denied", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "denied",
+        "copy": ["common.done", "signin.approve.deniedDone"]
+      }
+    },
+    {
+      "name": "NearbyApproval/expired: the request lapsed while the prompt was open",
+      "input": {
+        "nearbyApproval": { "step": "expired", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "expired",
+        "copy": [
+          "common.done",
+          "core.codes.sign-in-expired.message",
+          "core.codes.sign-in-expired.title"
+        ]
+      }
+    },
+    {
+      "name": "NearbyApproval/device-limit: the license is full: Manage devices",
+      "input": {
+        "nearbyApproval": { "step": "device-limit", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "device-limit",
+        "copy": [
+          "core.codes.device_limit.message",
+          "core.codes.device_limit.title",
+          "devices.manage"
+        ],
+        "actions": ["open-manage-url"]
+      }
+    },
+    {
+      "name": "NearbyApproval/choose: the license is chosen here, never on the new device",
+      "input": {
+        "nearbyApproval": { "step": "choose", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "choose",
+        "copy": [
+          "signin.choice.continue",
+          "signin.choice.lede",
+          "signin.choice.title"
+        ]
+      }
+    },
+    {
+      "name": "NearbyApproval/account-required: this device has no sign-in",
+      "input": {
+        "nearbyApproval": {
+          "step": "account-required",
+          "device": "Kitchen iPad"
+        }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "account-required",
+        "copy": [
+          "core.codes.account_required.message",
+          "core.codes.account_required.title",
+          "signin.key.signIn"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "NearbyApproval/rate-limited: too many approvals",
+      "input": {
+        "nearbyApproval": { "step": "rate-limited", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "rate-limited",
+        "copy": [
+          "common.tryAgain",
+          "core.codes.rate_limited.message",
+          "core.codes.rate_limited.title"
+        ],
+        "actions": ["retry"]
+      }
+    },
+    {
+      "name": "NearbyApproval: Identity off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
+        "capabilities": { "signIn": false }
+      },
+      "expect": { "component": "NearbyApproval", "state": "hidden", "copy": [] }
     },
     {
       "name": "first-automatic-license",
@@ -4113,6 +5500,42 @@
         "component": "SignIn",
         "state": "done",
         "copy": ["signin.done.start", "signin.return.signedInShort"]
+      }
+    },
+    {
+      "name": "SignIn/done: the tier is named in one string",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "outcome": "signedIn",
+          "issuedNow": true
+        },
+        "account": { "signedIn": true, "holder": "Maya", "tier": "Pro" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "done",
+        "copy": ["signin.done.start", "signin.return.signedInTier"]
+      }
+    },
+    {
+      "name": "SignIn/done: the tier is named in one string (sheet)",
+      "input": {
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser",
+          "outcome": "signedIn",
+          "issuedNow": true
+        },
+        "account": { "signedIn": true, "holder": "Maya", "tier": "Pro" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "done",
+        "copy": ["signin.done.start", "signin.return.signedInTier"]
       }
     },
     {

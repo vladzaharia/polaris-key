@@ -66,6 +66,10 @@
     <string name="part_thisDevice__tablet">questo tablet</string>
     <string name="part_thisDevice__computer">questo computer</string>
     <string name="part_thisDevice__tv">questa TV</string>
+    <!-- The device that asked to sign in, when its name is unknown (nearby approval). Mid-sentence form. -->
+    <string name="part_newDevice">il nuovo dispositivo</string>
+    <!-- The device that asked to sign in, when its name is unknown (nearby approval). Sentence-start form. -->
+    <string name="part_newDeviceTitle">Il nuovo dispositivo</string>
     <!-- The current device as a tag in a device list. Each case is the platform's own word, capitalized as a label. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
     <string name="part_thisDeviceTitle">Questo dispositivo</string>
     <string name="part_thisDeviceTitle__iphone">Questo iPhone</string>
@@ -161,6 +165,10 @@
     <string name="a11y_qrRequest">Codice QR con il codice di richiesta</string>
     <!-- Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page. -->
     <string name="a11y_qrManage">Codice QR che apre la pagina di gestione dei dispositivi</string>
+    <!-- Screen reader label; never shown. Describes the QR code on the key-refusal step that opens the add-key page. -->
+    <string name="a11y_qrAddKey">Codice QR che apre la pagina per aggiungere la chiave</string>
+    <!-- Screen reader label; never shown. Reads the code the other device must tap. Arguments: {code} = a code shown to the person; never split or translated. Arguments: 1=code. -->
+    <string name="a11y_nearbyCode">Codice da toccare: %1$s</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">Codice di accesso %1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
@@ -1056,9 +1064,83 @@
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_ownedSignIn">Accedi a quell'account</string>
     <string name="signin_key_ownedSignIn__macos">Accedi a quell'account</string>
+    <!-- The key-entry limit's refusal step: starts the kit's own sign-in; the key is added to the account afterwards. -->
+    <string name="signin_key_signIn">Accedi</string>
+    <string name="signin_key_signIn__macos">Accedi</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_differentKey">Usa una chiave diversa</string>
     <string name="signin_key_differentKey__macos">Usa una chiave diversa</string>
+    <!-- Automatic sign-in (I-46.1): the confirm step. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_auto_confirm_title">Continua su %1$s</string>
+    <!-- Automatic sign-in: the confirm step names the account. Arguments: {email} = the account's email address (never translated). Arguments: 1=email. -->
+    <string name="signin_auto_confirm_as">come %1$s</string>
+    <!-- Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private). -->
+    <string name="signin_auto_confirm_asApple">con il tuo account Apple</string>
+    <!-- Automatic sign-in: the confirm step's main button. -->
+    <string name="signin_auto_confirm_primary">Continua</string>
+    <!-- Automatic sign-in: the confirm step's secondary button; opens the regular sign-in. -->
+    <string name="signin_auto_confirm_other">Usa un altro account</string>
+    <string name="signin_auto_confirm_other__macos">Usa un altro account</string>
+    <!-- Link offer, after a regular sign-in: link the provider so the next sign-in is automatic. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_title">Accedere con %1$s la prossima volta?</string>
+    <!-- Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_linkOffer_bodyGlobal">Così %1$s e le altre app che usano Polaris Locker potranno farti accedere da sole.</string>
+    <!-- Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_linkOffer_bodyDeveloper">Così le app di %1$s potranno farti accedere da sole.</string>
+    <!-- Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_linkOffer_bodyApp">Così %1$s e le altre app dello sviluppatore potranno farti accedere da sole.</string>
+    <!-- Link offer: the main button. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_primary">Collega %1$s</string>
+    <!-- Link offer: declines; the device remembers it. -->
+    <string name="signin_linkOffer_decline">No, grazie</string>
+    <string name="signin_linkOffer_decline__macos">No, grazie</string>
+    <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_done">%1$s collegato</string>
+    <!-- Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_conflictTitle">%1$s non collegato</string>
+    <!-- Link offer: the provider account belongs to another Polaris Locker account; the sign-in stands. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_conflict">Questo account %1$s appartiene a un altro account Polaris Locker. Hai ancora effettuato l’accesso.</string>
+    <!-- Link offer conflict: opens Help on joining two accounts. -->
+    <string name="signin_linkOffer_join">Unisci gli account</string>
+    <string name="signin_linkOffer_join__macos">Unisci gli account</string>
+    <!-- Nearby sign-in, on the device that signs in: waits for approval on another device. -->
+    <string name="signin_nearby_title">Approva sull’altro dispositivo</string>
+    <!-- Nearby sign-in, before the system asks for access to the local network. -->
+    <string name="signin_nearby_promptTitle">Accedi con il telefono</string>
+    <!-- Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_body">Apri %1$s su un telefono o computer con l’accesso effettuato e in questa rete.</string>
+    <!-- Nearby sign-in, waiting: the line above the code the other device must tap. -->
+    <string name="signin_nearby_match">Tocca lì questo codice:</string>
+    <!-- Nearby sign-in, waiting: switches to the device code. -->
+    <string name="signin_nearby_code">Usa invece un codice</string>
+    <string name="signin_nearby_code__macos">Usa invece un codice</string>
+    <!-- Nearby sign-in, done. Arguments: {email} = the account's email address (never translated). Arguments: 1=email. -->
+    <string name="signin_nearby_done">Accesso eseguito come %1$s</string>
+    <!-- Nearby sign-in, done: opens the sign-out and review step when the account is not the person's. -->
+    <string name="signin_nearby_notYou">Non sei tu?</string>
+    <string name="signin_nearby_notYou__macos">Non sei tu?</string>
+    <!-- Nearby sign-in: shown before the system asks for access to devices on the local network (L-11). Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_prePrompt">Ora consenti a %1$s di trovare i dispositivi della tua rete, così il telefono può farti accedere.</string>
+    <!-- Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_ask">Lasciare accedere %1$s?</string>
+    <!-- Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated). -->
+    <string name="signin_nearby_askBody">Tocca il codice che mostra.</string>
+    <!-- Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_approved">%1$s ha effettuato l’accesso</string>
+    <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_notNearby">%1$s non è in questa rete</string>
+    <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_notNearbyBody">Collega entrambi allo stesso Wi-Fi, oppure accedi con un codice su %1$s.</string>
+    <!-- Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_mismatch">Quel codice non corrispondeva, quindi %1$s non ha effettuato l’accesso.</string>
+    <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
+    <string name="signin_nearby_menu">Approva un dispositivo vicino</string>
+    <string name="signin_nearby_menu__macos">Approva un dispositivo vicino</string>
+    <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
+    <string name="signin_key_addInLocker">Aggiungila in Polaris Locker</string>
+    <string name="signin_key_addInLocker__macos">Aggiungila in Polaris Locker</string>
+    <!-- The key-refusal step on TV and console: caption of the QR that opens the add-key page. -->
+    <string name="signin_key_scan">Inquadra per aggiungere questa chiave in Polaris Locker dal telefono.</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_return_yours">%1$s è tuo</string>
     <!-- Return step (SIGN-IN.md §3.10): the product row under "&lt;Product&gt; is yours". Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
@@ -1149,6 +1231,8 @@
     <string name="signin_return_chooseInApp">Torna a %1$s per scegliere una licenza. Puoi chiudere questa scheda.</string>
     <!-- Return step, short form (SIGN-IN.md §3.10). -->
     <string name="signin_return_signedInShort">Hai effettuato l'accesso</string>
+    <!-- Done step: signed in, with the license's tier. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_return_signedInTier">Accesso eseguito · licenza %1$s</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_cancelled">L'accesso è stato annullato in %1$s. Ricomincia da %1$s.</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
@@ -2138,7 +2222,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_nearby_title">Non nelle vicinanze</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_nearby_message">L'altro dispositivo non è su questa rete. Avvicinati oppure accedi con un codice.</string>
+    <string name="core_codes_not_nearby_message">L’altro dispositivo non è in questa rete. Collega entrambi allo stesso Wi-Fi oppure usa un codice.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">Metodo di accesso non disponibile</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2830,7 +2914,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_title">Nessun inserimento rimasto</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_key_entry_limit_message">Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.</string>
+    <string name="core_activation_key_entry_limit_message">Accedi e aggiungi invece questa chiave al tuo account Polaris Locker.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_license_owned_title">Licenza in un altro account</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->

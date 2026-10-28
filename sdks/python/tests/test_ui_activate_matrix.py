@@ -70,5 +70,6 @@ def test_a_refused_key_is_danger_only_when_the_key_itself_is_wrong(result: str, 
             )
         )
     )
-    assert view.state == "rejected"
+    # The key-entry limit is a focused step (no field), not a stacked callout.
+    assert view.state == ("key-entry-limit" if result == "key-entry-limit" else "rejected")
     assert view.decisions.tone == tone

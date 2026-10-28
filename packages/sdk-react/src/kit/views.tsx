@@ -29,6 +29,7 @@ import {
   button,
   callout,
   codeDisplay,
+  nearbyCode,
   copyAddress,
   days,
   GLYPHS,
@@ -91,8 +92,16 @@ function contentFor(c: KitCtx): ReactNode {
       const wrong = refused && view.decisions.tone === "danger";
       const used = input.activation?.deviceCount;
       const limit = input.activation?.limit;
+      // The refusal a different key cannot fix has no field; a TV scans the add-key page instead.
+      const addKey = view.decisions.link;
       return (
         <>
+          {qrCode(c, addKey?.qr ? addKey.url : null, "a11y.qrAddKey")}
+          {keys.has("signin.key.scan") ? (
+            <p className="body" data-key="signin.key.scan">
+              {text(c, "signin.key.scan")}
+            </p>
+          ) : null}
           {editing
             ? keyField(
                 c,
@@ -132,7 +141,17 @@ function contentFor(c: KitCtx): ReactNode {
       return (
         <>
           {codeDisplay(c)}
-          {qrCode(c, url?.qr ? url.url : null)}
+          {nearbyCode(c)}
+          {qrCode(
+            c,
+            url?.qr ? url.url : null,
+            keys.has("a11y.qrAddKey") ? "a11y.qrAddKey" : "a11y.qr",
+          )}
+          {keys.has("signin.key.scan") ? (
+            <p className="body" data-key="signin.key.scan">
+              {text(c, "signin.key.scan")}
+            </p>
+          ) : null}
           {showUrl ? (
             <p className="body" data-key="signin.handoff.url">
               {text(c, "signin.handoff.url", { url: shown as string })}

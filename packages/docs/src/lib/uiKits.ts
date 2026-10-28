@@ -278,4 +278,7 @@ export function frameworkHref(kit: UiKit): string {
  * `build/ui/components/`; one in this list is a "Not built yet" row of the components index and
  * has no page. A component leaves this list in the change that ships it.
  */
-export const COMPONENTS_NOT_BUILT: readonly string[] = [];
+export const COMPONENTS_NOT_BUILT: readonly string[] = [
+  // The catalog's states and copy (I-46.1); the kits that draw it follow (I-44, I-45, I-46, I-48).
+  "NearbyApproval",
+];
