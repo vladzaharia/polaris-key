@@ -272,6 +272,8 @@ class PolarisKeyClient:
             loaded_discovery=lambda: self._discovery_doc,
             license_id=lambda: self.license.get_license_id(),
             emit=self.events.emit,
+            # Sign-out and deactivation both end in `identity.forget()`: the root and its pin go with them.
+            on_forget=lambda: self.keyring.forget(),
         )
         self.release = ReleaseClient(self.core, self._tokens, lambda: self._discovery_doc)
         #: The public download model (``distribution/download.json``, SDK parity pass §3.8).
@@ -426,7 +428,7 @@ class PolarisKeyClient:
         self._start_timer()
 
     def _forget_identity_and_ring(self) -> None:
-        self.keyring.lock()
+        self.keyring.forget()
         self.identity.forget()
 
     def close(self) -> None:

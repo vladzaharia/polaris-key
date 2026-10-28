@@ -13,6 +13,7 @@ from .client import (
     KeyringWrapInfo,
     RecoveredRing,
     RecoveryBlob,
+    RingPin,
     SyncCodec,
     UnlockResult,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "KeyringWrapInfo",
     "RecoveredRing",
     "RecoveryBlob",
+    "RingPin",
     "SyncCodec",
     "UnlockResult",
 ]
