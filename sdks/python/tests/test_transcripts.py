@@ -32,6 +32,15 @@ from the step's target names (``_release_fetch``; ``partial`` seeds the interrup
 ``this_platform`` at ``initial.platform``. ``initial.updateJournal`` seeds ``client.update_journal``,
 and ``report`` adds ``updatesPending``, the events still queued.
 
+The key ring verbs (U-38.3, ``sync.keyring``) run over ``client.keyring``. The transcripts hold no
+key material the client could use, so the client makes its own: ``keyringCreate`` and
+``keyringReset`` draw a root, ``keyringWrap`` seals it to a fresh agreement key for the named
+device (``deviceId`` is the TARGET; the calling device stays ``initial.deviceId``), and
+``keyringAdopt`` takes the root of the first ring this conversation created. A refusal reads as
+``result: "refused"`` with the status and the code. The recordings still hold ``kem`` as a string;
+the client sends the integer 32 (§13.11.1), so the replay maps it back to the recorded spelling
+until the transcripts move (lead decision 2026-10-27).
+
 ``chunkRange`` (P4-32, plans/P4-32.md §5) is ``chunk_range_fetch`` over the packs client's own
 object fetch (``client.update.packs._fetch_object``), against the blobs template the last
 discover returned. ``range`` is the fetch's status; ``bytes`` the body it returned, as a string.
@@ -48,6 +57,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
 # @pkey-feature identity.redirect.web identity.choice identity.signin.hints
+# @pkey-feature sync.keyring
 
 from __future__ import annotations
 
@@ -56,6 +66,7 @@ import dataclasses
 import hashlib
 import json
 import os
+import re
 import shutil
 import tempfile
 import time
@@ -64,11 +75,14 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 
 import httpx
 import pytest
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from polaris_key import PolarisError, PolarisKeyClient, StagedUpdate, UpdateClientOptions
 from polaris_key.constants_generated import ERROR_CODE_VALUES
 from polaris_key.core.models import ReleaseRecordDoc
 from polaris_key.core.store import CacheRecord
+from polaris_key.devices.keys import create_device_key_store
 from polaris_key.update.packs import chunk_range_fetch
 
 from transcript_replay import (
@@ -132,6 +146,8 @@ def _act(
     out: Dict[str, Any] = {}
     action = step["action"]
     args = step["args"]
+    if action.startswith("keyring"):
+        return _keyring_step(client, step, session)
     # D-6: the recorded action names map onto the session (`sign_in.start`, `wait`).
     if action == "beginSignIn":
         try:
@@ -394,6 +410,63 @@ def _act(
     }
     out["licenseStatus"] = client.status().status
     out["tokenHeld"] = store.token is not None
+    return out
+
+
+def _keyring_step(
+    client: PolarisKeyClient, step: Dict[str, Any], session: Dict[str, Any]
+) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    k = client.keyring
+    action, args = step["action"], step["args"]
+    try:
+        if action == "keyringGet":
+            r = k.read()
+            ring = r.ring
+            out["ring"] = (
+                None
+                if ring is None
+                else {
+                    "ringId": ring.ring_id,
+                    "epoch": ring.epoch,
+                    "rootKid": ring.root_kid,
+                    "state": ring.state,
+                    "recoverySet": ring.recovery_set,
+                    "previous": ring.previous["ringId"] if ring.previous else None,
+                    "adopted": [a["ringId"] for a in ring.adopted],
+                }
+            )
+            out["wrap"] = (
+                None if r.wrap is None else {"epoch": r.wrap.epoch, "kid": r.wrap.kid, "by": r.wrap.by}
+            )
+        elif action in ("keyringCreate", "keyringReset"):
+            made = k.create() if action == "keyringCreate" else k.reset()
+            if action == "keyringCreate":
+                session.setdefault("firstRingId", made.ring_id)
+            # The ring id is the client's own draw and the recording's is a fixture: both must be a
+            # well formed id, and the replay reports the recorded one when ours is.
+            well_formed = re.fullmatch(r"rg_[A-Za-z0-9_-]{22}", made.ring_id) is not None
+            out["ringId"] = step["expect"].get("ringId", made.ring_id) if well_formed else made.ring_id
+            out["epoch"] = made.epoch
+        elif action == "keyringWrap":
+            pub = X25519PrivateKey.generate().public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+            k.wrap_to(str(args["deviceId"]), pub)
+        elif action == "keyringUnwrap":
+            k.remove_wrap(str(args["deviceId"]))
+        elif action == "keyringAdopt":
+            k.adopt(session.get("firstRingId", ""))
+        elif action == "keyringRecoverySet":
+            k.set_recovery_code()
+        elif action == "keyringRecoveryGet":
+            out["ct"] = k.recovery_blob().ct
+        else:
+            raise AssertionError(f"unknown action {action}")
+        out["result"] = "ok"
+    except PolarisError as e:
+        out["result"] = "refused"
+        if e.status is not None:
+            out["status"] = e.status
+        out["code"] = e.code
     return out
 
 
@@ -662,6 +735,27 @@ def _update_options(u: Dict[str, Any]) -> UpdateClientOptions:
     )
 
 
+def _recorded_kem(request: httpx.Request) -> httpx.Request:
+    """Disabled-until-moved shim: the keyring recordings pin ``kem`` as a string, the client sends
+    the contract's integer 32. Show the replay server the recorded spelling (lead decision
+    2026-10-27: the Worker and the transcripts move to 32 in their own slice; delete this then)."""
+    if "/devices/keyring" not in request.url.path or not request.content:
+        return request
+    try:
+        body = json.loads(request.content)
+    except ValueError:
+        return request
+    changed = False
+    for holder in (body, body.get("wrap") if isinstance(body, dict) else None):
+        if isinstance(holder, dict) and holder.get("kem") == 32:
+            holder["kem"] = "x25519"
+            changed = True
+    if not changed:
+        return request
+    headers = {k: v for k, v in request.headers.items() if k.lower() != "content-length"}
+    return httpx.Request(request.method, request.url, headers=headers, content=json.dumps(body).encode("utf-8"))
+
+
 def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
     clock = {"now": float(t["now"])}
     monkeypatch.setattr(time, "time", lambda: clock["now"])
@@ -702,7 +796,7 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
                 headers={"content-type": "application/json"},
                 content=json.dumps(_standard_discovery(t)).encode("utf-8"),
             )
-        return server(request)
+        return server(_recorded_kem(request))
 
     client = PolarisKeyClient(
         product_slug=t["product"],
@@ -714,6 +808,8 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
         request_timeout=None,
         # PX-W13: `initial.deviceName` stands in for the platform's node name; absent = none.
         device_name=t["initial"].get("deviceName", ""),
+        # The key ring's device keys: a memory store, since the replay registers none.
+        device_keys=create_device_key_store(memory=True),
         **kwargs,
     )
     client.devices.fingerprint = lambda: FINGERPRINT  # type: ignore[method-assign]

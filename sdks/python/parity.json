@@ -452,8 +452,8 @@
       "wp": "U-22"
     },
     "sync.keyring": {
-      "status": "planned",
-      "wp": "U-38"
+      "status": "implemented",
+      "note": "client.keyring (sdks/python/src/polaris_key/keyring/client.py) over polaris_key.core.sync_crypto on `cryptography` (HKDF, AES-256-GCM, X25519, HPKE mode_base written out): create(), unlock() (opens this device's wrap through the DeviceKeyPort's dh, so the agreement key never leaves the store), wrap_to()/remove_wrap(), set_recovery_code()/recover(), reset()/adopt()/open_adopted(), attach(machine) feeding set_root, and the codec. The root is held in memory only, never written, returned or shown in a repr, error or pickle; the host decides how a wrap travels (R-9). tests/test_keyring.py, tests/test_sync_crypto_conformance.py (sync-vectors.json: hkdf, envelope, blind, hpke anchor, wrap, recovery, adopt); the keyring-* transcripts replay in tests/test_transcripts.py."
     },
     "connect.identity": {
       "status": "planned",

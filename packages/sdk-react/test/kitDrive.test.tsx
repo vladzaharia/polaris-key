@@ -112,13 +112,13 @@ describe("the gate's way back", () => {
       return b!;
     });
     fireEvent.click(another);
-    // The refusal is gone, the field is back, and it still holds the refused key.
+    // The refusal is gone and the field is back, empty (a different key starts afresh).
     const again = await waitFor(() => {
       const f = container.querySelector<HTMLInputElement>("#pk-key");
       expect(f).not.toBeNull();
       return f!;
     });
-    expect(again.value).toBe(KEY);
+    expect(again.value).toBe("");
     expect(container.querySelector('[data-part="callout"]')).toBeNull();
     adapter.dispose();
   });
@@ -539,19 +539,28 @@ describe("the key refusals no other key can fix", () => {
     const manage = control(container, "signin.key.addTitle")!;
     expect(manage.dataset.variant).toBe("secondary");
     expect(manage.querySelector("svg")).not.toBeNull();
-    const hint = container.querySelector(
-      `#${manage.getAttribute("aria-describedby")}`,
+    const hint = document.getElementById(
+      manage.getAttribute("aria-describedby")!,
     );
+    expect(manage.contains(hint)).toBe(false);
     expect(hint?.textContent).toBe("Opens Polaris Locker in your browser");
     expect(control(container, "signin.key.differentKey")?.dataset.variant).toBe(
       "link",
     );
     fireEvent.click(manage);
-    expect(String(open.mock.calls[0]![0])).toBe(ADD_KEY);
-    // Use a different key goes back to the field.
+    // The link carries the typed key in the fragment (and the return address when the app gives one).
+    const opened = String(open.mock.calls[0]![0]);
+    expect(opened.startsWith(ADD_KEY)).toBe(true);
+    expect(opened).toContain("#key=");
+    // The name is the label alone (the hint is a description, outside the button).
+    expect(manage.textContent).toContain("Add Acme Studio to your account");
+    expect(manage.textContent).not.toContain("Opens Polaris Locker");
+    // Use a different key goes back to an empty field.
     fireEvent.click(control(container, "signin.key.differentKey")!);
     await waitFor(() =>
-      expect(container.querySelector("#pk-key")).not.toBeNull(),
+      expect(container.querySelector<HTMLInputElement>("#pk-key")?.value).toBe(
+        "",
+      ),
     );
     adapter.dispose();
   });
@@ -566,8 +575,12 @@ describe("the key refusals no other key can fix", () => {
     expect(container.textContent).toContain(
       "Acme Studio license is already in another Polaris Locker account",
     );
-    expect(control(container, "welcome.signIn")?.dataset.variant).toBe(
+    // The primary names the account that holds the license; no manage link.
+    expect(control(container, "signin.key.ownedSignIn")?.dataset.variant).toBe(
       "primary",
+    );
+    expect(control(container, "signin.key.ownedSignIn")?.textContent).toContain(
+      "Sign in to that account",
     );
     expect(control(container, "signin.key.addTitle")).toBeNull();
     adapter.dispose();

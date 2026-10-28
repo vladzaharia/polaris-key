@@ -32,6 +32,8 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 import httpx
 
 from .backend import BackendClient
+from .core.device_keys import DeviceKeyPort
+from .keyring import KeyringClient
 from .commerce import CommerceClient
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .core.bundle import ImportBundleResult, import_bundle
@@ -178,6 +180,10 @@ class PolarisKeyClient:
         # {"origins": [...]}: the origins `client.backend` may send the licence to. Exact,
         # HTTPS only except loopback; a bad one raises `invalid-options` here.
         backend: Optional[Mapping[str, Any]] = None,
+        # ── client.keyring (Cloud Sync key ring, U-38.3) ─────────────────────────────
+        # This device's keys (a DeviceKeyPort, e.g. from create_device_key_store). Without it,
+        # anything that needs the agreement key refuses with `device_keys_required`.
+        device_keys: Optional[DeviceKeyPort] = None,
     ) -> None:
         self.product = product_slug
         self.core = CoreContext(
@@ -232,7 +238,7 @@ class PolarisKeyClient:
             # A deactivation changes the gate with no sync after it: publish from here, so
             # `client.license.deactivate()` raises the same one event `client.deactivate()` does.
             on_changed=lambda: self._license_changed(),
-            on_deactivated=lambda: self.identity.forget(),
+            on_deactivated=lambda: self._forget_identity_and_ring(),
         )
         #: ``client.entitlements`` (SP-35.20): a thin view over the licence gate above.
         self.entitlements = EntitlementsClient(self.license)
@@ -294,6 +300,10 @@ class PolarisKeyClient:
             sync=self._backend_sync,
             origins=(backend or {}).get("origins", ()),
         )
+
+        #: The Cloud Sync key ring: the end-to-end root, its wraps and recovery (WIRE-CONTRACT-V5
+        #: §13.11). Named ``keyring`` because ``sync()`` is the licence sync.
+        self.keyring = KeyringClient(self.core, self._tokens, device_keys=device_keys)
 
         # Store purchases → licence flags (P6-01). The one-call claim helpers sync on success.
         self.commerce = CommerceClient(
@@ -415,9 +425,14 @@ class PolarisKeyClient:
             )
         self._start_timer()
 
+    def _forget_identity_and_ring(self) -> None:
+        self.keyring.lock()
+        self.identity.forget()
+
     def close(self) -> None:
         """Stop the refresh thread and release the HTTP client. Safe to call twice."""
         self._timer_stop.set()
+        self.keyring.lock()
         timer = self._timer
         if timer is not None:
             timer.join(timeout=1.0)

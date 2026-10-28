@@ -346,6 +346,60 @@ describe("live: the form drives the SDK primitives", () => {
     expect(container.querySelector(".success")).not.toBeNull();
   });
 
+  it("a refused key takes focus to the refusal's title, and Use a different key to the empty field", async () => {
+    const calls: string[] = [];
+    const primitives = primitivesOf(calls);
+    primitives.activate = async () => {
+      throw Object.assign(new Error("sign-in-failed"), {
+        activation: {
+          kind: "keyEntryLimit",
+          manageUrl: "https://key.plrs.im/activate?product=acme&next=add-key",
+        },
+      });
+    };
+    const base = input("SignIn/methods: web");
+    delete base.signIn;
+    const { container } = render(
+      <SignIn input={base} primitives={primitives} />,
+    );
+    await flush();
+    fireEvent.click(
+      container.querySelector<HTMLElement>('[data-variant="primary"]')!,
+    );
+    await flush();
+    fireEvent.click(
+      container.querySelector<HTMLElement>(
+        '[data-key="signin.choice.keyInstead"]',
+      )!,
+    );
+    await flush();
+    const field = container.querySelector<HTMLInputElement>("#pk-key")!;
+    fireEvent.change(field, {
+      target: { value: "pkey_acme_Q2xvdWRzT3ZlclRoZUhpbG" },
+    });
+    fireEvent.click(
+      container.querySelector<HTMLElement>('[data-key="activate.submit"]')!,
+    );
+    await flush();
+    // The refusal is its own step: no field, the title holds focus (never <body>).
+    expect(container.querySelector("#pk-key")).toBeNull();
+    const title = container.querySelector<HTMLElement>('[data-part="title"]')!;
+    expect(title.textContent).toContain("No key entries left");
+    expect(document.activeElement).toBe(title);
+    fireEvent.click(
+      container.querySelector<HTMLElement>(
+        '[data-key="signin.key.differentKey"]',
+      )!,
+    );
+    await flush();
+    await act(async () => {
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+    });
+    const again = container.querySelector<HTMLInputElement>("#pk-key")!;
+    expect(again.value).toBe("");
+    expect(document.activeElement).toBe(again);
+  });
+
   const full = (
     id: string,
     tier: string,

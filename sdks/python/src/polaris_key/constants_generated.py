@@ -2405,7 +2405,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.settings": CapabilityRow("planned", "sync", ()),
         "sync.conflict": CapabilityRow("planned", "sync", ()),
         "sync.saves": CapabilityRow("planned", "sync", ()),
-        "sync.keyring": CapabilityRow("planned", "sync", ()),
+        "sync.keyring": CapabilityRow("implemented", "sync", ()),
         "connect.identity": CapabilityRow("planned", "connect", ()),
         "connect.noise": CapabilityRow("planned", "connect", ()),
         "connect.protocol": CapabilityRow("planned", "connect", ()),
@@ -2499,4 +2499,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "e48109582d79b3d4f7f018af13f0bb1f5e707b4542eaa8ec8f353e5ab0a5a8fe"
+CAPABILITY_DIGEST: Final[str] = "33c1c30037f68f251e8fa06f07dcbe8ca292cefcd5ca65bfb3e0ebfe72a2237c"
