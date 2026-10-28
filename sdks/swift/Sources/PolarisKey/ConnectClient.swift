@@ -30,6 +30,81 @@ public struct ConnectIdentity: Sendable, Equatable {
     /// Newest first. A device advertises under the first only; the second is the previous key,
     /// present for 24 hours after a bump and never after a leave.
     public let discKeys: [DiscoveryKey]
+    /// A pushed roster removed a device, so K_disc was replaced at the Worker: `discKeys` is empty
+    /// (the held copy is not used for adverts or browsing) until `identity(refresh:)` fetches it.
+    public let keysStale: Bool
+}
+
+/// K_disc as a session reads it: the current key and, for 24 hours after a bump, the previous one.
+public struct DiscoveryKeys: Sendable, Equatable, CustomStringConvertible, CustomReflectable {
+    public let current: DiscoveryKey
+    public let previous: DiscoveryKey?
+    /// Newest first.
+    public var all: [DiscoveryKey] { previous.map { [current, $0] } ?? [current] }
+    public var description: String { "DiscoveryKeys(redacted)" }
+    public var customMirror: Mirror { Mirror(self, children: [], displayStyle: .struct) }
+}
+
+/// The ticket answer (§15.7), checked. The ticket is single use and never in a description.
+public struct RelayGrant: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
+    public let ticket: String
+    public let url: URL
+    public let protocolName: String
+    /// Seconds since the epoch.
+    public let expiresAt: Int
+    public var description: String { "RelayGrant(redacted)" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: [], displayStyle: .struct) }
+}
+
+public enum ConnectRelayTicketResult: Sendable, Equatable {
+    case granted(RelayGrant)
+    /// `disabled`, `paused` (with `retryAfterSeconds`), `quota` (with `scope`) or `ticketInvalid`
+    /// (also a grant that is not in the contract shape).
+    case relay(ConnectRelayError)
+    /// The typed N/A: `product` when the product does not run Cloud Connect.
+    case unsupported(Unsupported)
+    /// The Worker's other refusals, verbatim (`unauthorized`, `not_found`, `device_keys_required`, …).
+    case refused(ConnectRefusal)
+    /// No usable answer: `network`, `no-token`, `invalid-response`.
+    case error(code: String, message: String)
+
+    public var grant: RelayGrant? {
+        if case .granted(let g) = self { return g }
+        return nil
+    }
+}
+
+/// What storing a peer-pushed roster answers: `stored` with the new `epoch`, or a `reason`.
+public struct RingAdoption: Sendable, Equatable {
+    public let stored: Bool
+    public let epoch: Int?
+    public let reason: String?
+}
+
+/// A snapshot of what a LAN or relay session reads of the held identity (Node's `LanIdentity`).
+/// K_disc and the certificate are in it, so it prints as redacted and mirrors nothing.
+public struct PeerSource: Sendable, CustomStringConvertible, CustomReflectable {
+    public let slug: String
+    public let trust: TrustSet
+    public let sub: String
+    public let deviceId: String
+    public let certJws: String
+    public let certExpiresAt: Int
+    public let ringJws: String
+    public let ringEpoch: Int
+    /// Every roster device id, this one included.
+    public let roster: [String]
+    /// K_disc, newest first.
+    public let keys: DiscoveryKeys
+    /// The device's X25519 public key.
+    public let agreePublic: Data
+    /// The Noise static key: the private half stays in the device key port (G1).
+    public let staticKey: PeerNoiseDeviceKey
+    public var description: String { "PeerSource(redacted)" }
+    public var customMirror: Mirror { Mirror(self, children: [], displayStyle: .struct) }
 }
 
 /// A refusal by the Worker, verbatim, or by this client before any request.
@@ -196,7 +271,8 @@ public actor ConnectClient {
         } catch {
             return .error(code: "store-failed", message: "The device keys or the held identity could not be read.")
         }
-        if !refresh, let record, let id = await verified(record, deviceId: await core.deviceId, now: await core.now()),
+        if !refresh, let record, record.keysStale != true,
+            let id = await verified(record, deviceId: await core.deviceId, now: await core.now()),
             id.certificate.signKey == keys.signKey, id.certificate.agreeKey == keys.agreeKey,
             id.certificate.expiresAt - (await core.now()) > Self.certFreshSeconds
         {
@@ -277,6 +353,187 @@ public actor ConnectClient {
         let store = try self.store()
         guard try store.exists() else { return }
         try store.clear()
+    }
+
+    // ── Relay ticket, peer source, pushed roster (CC-11.4) ───────────────────────────────
+
+    private static let ticketShape = try! NSRegularExpression(pattern: #"^pkeyrt_[A-Za-z0-9_-]{32}$"#)
+
+    /// `POST /<p>/connect/relay/ticket`: a single-use `pkeyrt_` ticket for the WebSocket. A new one
+    /// every call. The four relay refusals come back typed; see `ConnectRelayTicketResult`.
+    public func relayTicket() async -> ConnectRelayTicketResult {
+        await serialised { await relayTicketLocked() }
+    }
+
+    private func relayTicketLocked() async -> ConnectRelayTicketResult {
+        // The Worker answers `device_keys_required` for a device without registered keys, and 404
+        // when the operator's launch gate is off; identity() is what registers and checks discovery.
+        guard let token = await core.token else {
+            return .error(code: ErrorCode.noToken, message: "Activate or register before using Cloud Connect.")
+        }
+        let response: PolarisResponse
+        do {
+            response = try await core.request(
+                core.endpoints.connectRelayTicket, method: "POST", headers: ["authorization": "Bearer \(token)"])
+        } catch let e as PolarisError {
+            return .error(code: e.code, message: e.message)
+        } catch {
+            return .error(code: ErrorCode.network, message: "The request failed.")
+        }
+        guard response.isOK else { return relayRefusal(response) }
+        return grant(response.body)
+    }
+
+    private func relayRefusal(_ response: PolarisResponse) -> ConnectRelayTicketResult {
+        // The wire code is the nested `{"error":{"code":"x"}}` or the flat `{"error":"x"}`.
+        let json = (try? JSONSerialization.jsonObject(with: response.body)) as? [String: Any]
+        let nested = json?["error"] as? [String: Any]
+        let wire = (nested?["code"] as? String) ?? (json?["error"] as? String)
+        let scopeText = json?["scope"] as? String
+        let retry = Self.retryAfterSeconds(response.header("retry-after"))
+        let status = response.status
+        switch wire {
+        case ErrorCode.relayDisabled:
+            return .relay(
+                ConnectRelayError(
+                    .disabled, "This product has its relay off.", retryAfterSeconds: retry, status: status))
+        case ErrorCode.relayPaused:
+            return .relay(
+                ConnectRelayError(
+                    .paused, "The relay is paused; try again later.", retryAfterSeconds: retry, status: status))
+        case ErrorCode.relayQuotaExceeded:
+            let scope = scopeText.flatMap { ["person", "product"].contains($0) ? $0 : nil }
+            return .relay(
+                ConnectRelayError(
+                    .quota, "The relay quota is spent.", retryAfterSeconds: retry, scope: scope, status: status))
+        case ErrorCode.relayTicketInvalid:
+            return .relay(
+                ConnectRelayError(
+                    .ticketInvalid, "The relay refused the device.", retryAfterSeconds: retry, status: status))
+        default:
+            if let wire {
+                return .refused(
+                    ConnectRefusal(
+                        code: wire, status: status, message: nested?["message"] as? String,
+                        signInUrl: nested?["signInUrl"] as? String))
+            }
+            return .error(code: ErrorCode.invalidResponse, message: "The server answered \(status).")
+        }
+    }
+
+    /// Whole seconds from a `Retry-After` header: delay-seconds or an HTTP date, never negative.
+    static func retryAfterSeconds(_ header: String?, now: Date = Date()) -> Int? {
+        let text = (header ?? "").trimmingCharacters(in: .whitespaces)
+        if text.isEmpty { return nil }
+        if text.range(of: #"^[0-9]+(\.[0-9]+)?$"#, options: .regularExpression) != nil {
+            return Double(text).map { Int($0.rounded(.up)) }
+        }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "GMT")
+        f.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        guard let at = f.date(from: text) else { return nil }
+        return max(0, Int(at.timeIntervalSince(now).rounded(.up)))
+    }
+
+    /// The ticket answer, shape-checked, and bound to this Worker: the ticket goes only to the
+    /// Worker's own host over `wss:` and only for the protocol this client speaks (G13).
+    private func grant(_ data: Data) -> ConnectRelayTicketResult {
+        struct Body: Decodable {
+            let ticket: String
+            let url: String
+            let protocolName: String
+            let expiresAt: Int
+            enum CodingKeys: String, CodingKey {
+                case ticket, url, expiresAt
+                case protocolName = "protocol"
+            }
+        }
+        func bad() -> ConnectRelayTicketResult {
+            .relay(ConnectRelayError(.ticketInvalid, "The relay ticket answer is not in the contract shape."))
+        }
+        guard let b = StrictJSON.decode(Body.self, from: data), b.protocolName == connectRelayProtocol,
+            abs(b.expiresAt) <= 9_007_199_254_740_991,
+            Self.ticketShape.firstMatch(in: b.ticket, range: NSRange(b.ticket.startIndex..., in: b.ticket)) != nil,
+            let target = URLComponents(string: b.url), let home = URLComponents(string: core.endpoints.baseUrl),
+            target.scheme == "wss", let host = target.host, !host.isEmpty,
+            host.lowercased() == home.host?.lowercased(), target.port == home.port, let url = target.url
+        else { return bad() }
+        return .granted(RelayGrant(ticket: b.ticket, url: url, protocolName: b.protocolName, expiresAt: b.expiresAt))
+    }
+
+    /// A snapshot of the held identity for a LAN or relay session. Throws `ConnectLanError`:
+    /// `noIdentity` without a verified identity, `noKeys` without K_disc or device keys.
+    public func peerSource() async throws -> PeerSource {
+        await acquire()
+        defer { release() }
+        guard let held = await held() else {
+            throw ConnectLanError(.noIdentity, "No Cloud Connect identity is held; call identity() first.")
+        }
+        guard let port = try? keyPort(), let pub = try? await port.publicKeys(), let current = held.discKeys.first,
+            let agree = Base64URL.decodeStrict(pub.agreeKey), agree.count == 32
+        else { throw ConnectLanError(.noKeys, "The device keys or K_disc are not held.") }
+        return PeerSource(
+            slug: core.product, trust: await core.trust, sub: held.subject, deviceId: held.deviceId,
+            certJws: held.certificateJws, certExpiresAt: held.certificate.expiresAt, ringJws: held.ringJws,
+            ringEpoch: held.ring.epoch, roster: held.ring.devices.map(\.deviceId),
+            keys: DiscoveryKeys(current: current, previous: held.discKeys.count > 1 ? held.discKeys[1] : nil),
+            agreePublic: agree, staticKey: PeerNoiseDeviceKey(port))
+    }
+
+    /// Store a roster a peer pushed, under the identity fetch's rules (§15.3): it must verify, be for
+    /// the held subject, have a higher epoch than the held one, not be expired, and still list this
+    /// device with the keys it registered. The certificate is kept; the next `identity()` fetches
+    /// the one that goes with the new epoch. A roster that dropped a device marks K_disc stale.
+    public func adoptRing(_ jws: String) async -> RingAdoption {
+        await serialised { await adoptRingLocked(jws) }
+    }
+
+    private func refuse(_ reason: String) -> RingAdoption { RingAdoption(stored: false, epoch: nil, reason: reason) }
+
+    private func adoptRingLocked(_ jws: String) async -> RingAdoption {
+        let store: ConnectStateStore
+        let record: ConnectRecord?
+        do {
+            store = try self.store()
+            record = try store.load()
+        } catch { return refuse("store_failed") }
+        guard let held = record else { return refuse("no_identity") }
+        let now = await core.now()
+        let trust = await core.trust
+        let aud = core.product
+        let heldRing: DeviceRing?
+        if case .ok(let r) = PeerDocs.verifyRing(held.ring, trust: trust, expectedAud: aud) {
+            heldRing = r
+        } else {
+            heldRing = nil
+        }
+        var heldCert: PeerCert?
+        if case .ok(let c) = PeerDocs.verifyPeerCert(
+            held.certificate, options: VerifyPeerCertOptions(trust: trust, expectedAud: aud, now: now))
+        {
+            heldCert = c
+        }
+        guard let subject = heldRing?.sub ?? heldCert?.sub else { return refuse("held_unverified") }
+        let ring: DeviceRing
+        switch PeerDocs.replaceRing(held: held.ring, new: jws, trust: trust, expectedAud: aud, now: now) {
+        case .keep(let why): return refuse(why.rawValue)
+        case .replace(let r): ring = r
+        }
+        guard ring.sub == subject else { return refuse("other_subject") }
+        let deviceId = await core.deviceId
+        guard let mine = held.registered,
+            ring.devices.contains(where: {
+                $0.deviceId == deviceId && $0.signKey == mine.signKey && $0.agreeKey == mine.agreeKey
+            })
+        else { return refuse("device_not_in_roster") }
+        let keys = heldRing.map { connectKeysAfterRing(held.discKeys, prior: $0, next: ring) } ?? held.discKeys
+        let removed = heldRing.map { prior in !prior.devices.allSatisfy { ring.devices.contains($0) } } ?? false
+        let next = ConnectRecord(
+            ring: jws, certificate: held.certificate, discKeys: keys, registered: held.registered, storedAt: now,
+            prevFirstSeen: keys.count == 2 ? held.prevFirstSeen : nil, keysStale: removed || held.keysStale == true)
+        do { try store.save(next) } catch { return refuse("store_failed") }
+        return RingAdoption(stored: true, epoch: ring.epoch, reason: nil)
     }
 
     // ── Seams ────────────────────────────────────────────────────────────────────────────
@@ -480,7 +737,8 @@ public actor ConnectClient {
         return .ready(
             ConnectIdentity(
                 subject: ring.sub, deviceId: deviceId, ring: ring, certificate: cert, ringJws: body.ring,
-                certificateJws: body.certificate, discKeys: disc.compactMap { DiscoveryKey(base64url: $0) }))
+                certificateJws: body.certificate, discKeys: disc.compactMap { DiscoveryKey(base64url: $0) },
+                keysStale: false))
     }
 
     /// A stored record is trusted only as far as it verifies again.
@@ -492,11 +750,13 @@ public actor ConnectClient {
                 r.certificate, options: VerifyPeerCertOptions(trust: trust, expectedAud: core.product, now: now)),
             cert.sub == ring.sub, cert.deviceId == deviceId, (1...2).contains(r.discKeys.count)
         else { return nil }
-        let active = Self.activeDiscKeys(r, now: now)
+        let stale = r.keysStale == true
+        // A stale copy is not used (not for adverts, not for browsing) until a fetch brings the new one.
+        let active = stale ? [] : Self.activeDiscKeys(r, now: now)
         let disc = active.compactMap { DiscoveryKey(base64url: $0) }
         guard disc.count == active.count else { return nil }
         return ConnectIdentity(
             subject: ring.sub, deviceId: deviceId, ring: ring, certificate: cert, ringJws: r.ring,
-            certificateJws: r.certificate, discKeys: disc)
+            certificateJws: r.certificate, discKeys: disc, keysStale: stale)
     }
 }

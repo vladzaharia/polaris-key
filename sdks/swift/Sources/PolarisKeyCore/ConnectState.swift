@@ -57,11 +57,16 @@ package struct ConnectRecord: Codable, Equatable, CustomStringConvertible, Custo
     package var storedAt: Int
     /// When the second K_disc (the previous key) was first seen; nil with no previous key.
     package var prevFirstSeen: Int?
+    /// A pushed roster removed a device, so the Worker replaced K_disc and this copy is stale until
+    /// the next identity fetch (CC-11.4; `keysStale` in Node's record). Nil when false, and then
+    /// absent from the stored item.
+    package var keysStale: Bool?
 
     package init(
         ring: String, certificate: String, discKeys: [String], registered: RegisteredDeviceKeys?, storedAt: Int,
-        prevFirstSeen: Int? = nil
+        prevFirstSeen: Int? = nil, keysStale: Bool? = nil
     ) {
+        self.keysStale = keysStale == true ? true : nil
         self.prevFirstSeen = prevFirstSeen
         self.ring = ring
         self.certificate = certificate
@@ -73,6 +78,13 @@ package struct ConnectRecord: Codable, Equatable, CustomStringConvertible, Custo
     package var description: String { "ConnectRecord(redacted)" }
     package var debugDescription: String { description }
     package var customMirror: Mirror { Mirror(self, children: [], displayStyle: .struct) }
+}
+
+/// The previous K_disc survives a roster change only while no device left or changed its keys
+/// (§15.4); otherwise only the newest key is kept.
+package func connectKeysAfterRing(_ keys: [String], prior: DeviceRing, next: DeviceRing) -> [String] {
+    guard keys.count == 2 else { return keys }
+    return prior.devices.allSatisfy { next.devices.contains($0) } ? keys : [keys[0]]
 }
 
 public enum ConnectStateError: Error, Sendable, Equatable {
