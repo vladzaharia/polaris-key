@@ -135,7 +135,9 @@ def test_a_peer_of_another_account_is_refused() -> None:
 
         async def go() -> Any:
             svc = RelayService(
-                src, lambda: n.room.issue(ID_C), RelayOptions(opener=n.room.opener, sleep=ManualSleep(), ping_seconds=PING, handshake_seconds=1.0)
+                src,
+                lambda: n.room.issue(ID_C),
+                RelayOptions(opener=n.room.opener, sleep=ManualSleep(), ping_seconds=PING, handshake_seconds=1.0),
             )
             n.services.append(svc)
             svc.start()

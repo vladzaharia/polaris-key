@@ -749,7 +749,12 @@ class RelayService:
     async def _identity(self, force: bool, quiet: bool = False) -> Optional[PeerSource]:
         now = self._src.now()
         held = self._id
-        if not force and held is not None and now - held[0] < IDENTITY_TTL_S and held[1].cert_expires_at - now > CERT_MARGIN_S:
+        if (
+            not force
+            and held is not None
+            and now - held[0] < IDENTITY_TTL_S
+            and held[1].cert_expires_at - now > CERT_MARGIN_S
+        ):
             return held[1]  # type: ignore[no-any-return]
         try:
             v: PeerSource = await self._loop.run_in_executor(None, self._src.load)

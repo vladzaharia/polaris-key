@@ -197,7 +197,7 @@ class ConnectLanTest {
         }
     }
 
-    private fun pair(w: World, la: LanService, lb: LanService): Pair<ConnectSession, ConnectSession> {
+    private fun pair(la: LanService, lb: LanService): Pair<ConnectSession, ConnectSession> {
         val inbound = CopyOnWriteArrayList<ConnectSession>()
         la.onSession { inbound += it }
         until { lb.peers().any { it.deviceId == idA } }
@@ -222,7 +222,7 @@ class ConnectLanTest {
         assertEquals(listOf("v=1", "m=a"), w.net.adverts[name]!!.txt)
         assertTrue(la.port != lb.port)
 
-        val (out, inn) = pair(w, la, lb)
+        val (out, inn) = pair(la, lb)
         assertEquals(idA, out.peerDeviceId)
         assertEquals(idB, inn.peerDeviceId)
         assertEquals(listOf("app/1"), out.caps)
@@ -257,7 +257,7 @@ class ConnectLanTest {
         val w = World()
         val la = w.start(w.a)
         val lb = w.start(w.b)
-        val (out, inn) = pair(w, la, lb)
+        val (out, inn) = pair(la, lb)
         val big = ByteArray(1_048_576) { (it % 251).toByte() }
         out.send(big)
         assertTrue(big.contentEquals(inn.receive(10_000).body))
@@ -487,7 +487,7 @@ class ConnectLanTest {
         val w = World()
         val la = w.start(w.a)
         val lb = w.start(w.b)
-        val (_, inn) = pair(w, la, lb)
+        val (_, inn) = pair(la, lb)
         val gone = CountDownLatch(1)
         inn.onClose { gone.countDown() }
         val port = la.port
@@ -657,7 +657,7 @@ class ConnectLanTest {
         val w = World()
         val la = w.start(w.a)
         val lb = w.start(w.b)
-        pair(w, la, lb)
+        pair(la, lb)
         until { la.pendingCount == 0 && la.pendingAddresses.isEmpty() }
     }
 

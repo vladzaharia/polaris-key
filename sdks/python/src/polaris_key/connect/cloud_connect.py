@@ -210,7 +210,11 @@ class CloudConnect:
             lan_opt = opts.get("lan", True)
             if lan_opt is not False:
                 try:
-                    lo = lan_opt if isinstance(lan_opt, LanOptions) else LanOptions(**(lan_opt if isinstance(lan_opt, Mapping) else {}))
+                    lo = (
+                        lan_opt
+                        if isinstance(lan_opt, LanOptions)
+                        else LanOptions(**(lan_opt if isinstance(lan_opt, Mapping) else {}))
+                    )
                     lan = await LanService.start(src, lo)
                     self._lan = lan
                     self._unsub.append(lan.on_session(self._inbound))
@@ -220,7 +224,11 @@ class CloudConnect:
                     if not relay_on:
                         raise
             if relay_on:
-                ro = relay_opt if isinstance(relay_opt, RelayOptions) else RelayOptions(**(relay_opt if isinstance(relay_opt, Mapping) else {}))
+                ro = (
+                    relay_opt
+                    if isinstance(relay_opt, RelayOptions)
+                    else RelayOptions(**(relay_opt if isinstance(relay_opt, Mapping) else {}))
+                )
                 relay = RelayService(src, self._connect.relay_ticket, ro)
                 self._relay = relay
                 self._unsub.append(relay.on_session(self._inbound))

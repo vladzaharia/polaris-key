@@ -92,7 +92,12 @@ class Rig:
         o["lan"] = (
             False
             if lan is False
-            else {"mdns": self.net, "host": "127.0.0.1", "allow_loopback": True, **(lan if isinstance(lan, dict) else {})}
+            else {
+                "mdns": self.net,
+                "host": "127.0.0.1",
+                "allow_loopback": True,
+                **(lan if isinstance(lan, dict) else {}),
+            }
         )
         o["relay"] = (
             False
@@ -175,7 +180,10 @@ def test_lan_options_pass_through_including_interfaces() -> None:
 @pytest.mark.parametrize(
     "discovery,reason",
     [
-        ({"services": {"connect": {"enabled": True, "relay": False, "endpoints": {"ticket": "https://k/t"}}}}, "product"),
+        (
+            {"services": {"connect": {"enabled": True, "relay": False, "endpoints": {"ticket": "https://k/t"}}}},
+            "product",
+        ),
         ({"services": {"connect": {"enabled": True, "relay": True, "endpoints": {"ticket": None}}}}, "no_ticket"),
     ],
 )
@@ -194,7 +202,8 @@ def test_discovery_turns_the_relay_off_with_no_socket_and_no_ticket(discovery: A
 
 def test_the_host_can_turn_the_relay_off_and_a_missing_discovery_allows_it() -> None:
     assert relay_wanted(None) is None and relay_wanted({}) is None
-    assert relay_wanted({"services": {"connect": {"enabled": True, "relay": True, "endpoints": {"ticket": "u"}}}}) is None
+    on = {"services": {"connect": {"enabled": True, "relay": True, "endpoints": {"ticket": "u"}}}}
+    assert relay_wanted(on) is None
     assert relay_wanted({"services": {"connect": {"enabled": True}}}) is None
     with Rig() as r:
         a = r.make(r.world.a)

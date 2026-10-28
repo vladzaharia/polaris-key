@@ -312,7 +312,7 @@ def test_4003_fetches_the_roster_and_stops_after_three_in_a_row() -> None:
     with Rig(members=set()) as r:
         svc = r.start()
         for n in range(1, 3):
-            until(lambda: len(r.room.offered) == n)
+            until(lambda n=n: len(r.room.offered) == n)
             until(lambda: svc.status.state == "backoff" and r.sleep.pending)
             r.wake()
         until(lambda: svc.status.state == "blocked")
@@ -326,7 +326,7 @@ def test_five_attempts_that_never_open_make_the_relay_unavailable_and_slow_the_r
             r.errors.append(RelayError("unavailable", "down"))
         svc = r.start()
         for n in range(1, 5):
-            until(lambda: svc.status.attempts == n and r.sleep.pending)
+            until(lambda n=n: svc.status.attempts == n and r.sleep.pending)
             assert svc.status.state == "backoff"
             r.wake()
         until(lambda: svc.status.attempts == 5 and svc.status.state == "unavailable")
@@ -343,15 +343,15 @@ def test_an_envelope_that_does_not_match_its_layout_closes_1002_and_nothing_is_a
     for bad in (b"\xff\x00", b"\x82\x05\x00", b"", "text frame", b"\x81" + b"\x00" * RELAY_MAX_MESSAGE):
         with Rig() as r:
             svc = r.ready()
-            until(lambda: svc.members() == [ID_A])
+            until(lambda svc=svc: svc.members() == [ID_A])
             n = len(r.room.received)
             sock = r.room.sockets[0]
             r.room.push(ID_A, bad)
-            until(lambda: sock.closed)
+            until(lambda sock=sock: sock.closed)
             assert sock.close_code == 1002
             time.sleep(0.05)
             assert len(r.room.received) == n
-            until(lambda: svc.status.state == "backoff")
+            until(lambda svc=svc: svc.status.state == "backoff")
 
 
 def test_a_bad_room_message_is_not_a_crash_for_the_next_socket() -> None:
