@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  activationFromOutcome,
   SignInModel,
   type ChoiceComplete,
   type LicenseChoiceInput,
@@ -354,5 +355,94 @@ describe("SignInModel: the one form over the SDK primitives", () => {
     // A Node main process sends views over a bridge: they survive JSON as they are.
     const views = m.views();
     expect(JSON.parse(JSON.stringify(views))).toEqual(views);
+  });
+});
+
+describe("UK-02b D3: the SDK's activation outcomes in the views' vocabulary", () => {
+  it("maps the typed refusals and the key entries of an ok", () => {
+    expect(
+      activationFromOutcome({
+        activation: {
+          kind: "keyEntryLimit",
+          manageUrl: "https://key.plrs.im/add",
+          keyEntries: { used: 3, limit: 3 },
+        },
+      }),
+    ).toEqual({
+      result: "key-entry-limit",
+      code: "key_entry_limit",
+      manageUrl: "https://key.plrs.im/add",
+      keyEntries: { used: 3, limit: 3 },
+    });
+    expect(
+      activationFromOutcome({
+        activation: {
+          kind: "licenseOwned",
+          code: "license_owned",
+          signInUrl: "https://key.plrs.im/signin?product=tidewater",
+        },
+      }),
+    ).toEqual({
+      result: "refused",
+      code: "license_owned",
+      signInUrl: "https://key.plrs.im/signin?product=tidewater",
+    });
+    expect(
+      activationFromOutcome({ kind: "ok", keyEntries: { used: 1, limit: 3 } }),
+    ).toEqual({ result: "ok", keyEntries: { used: 1, limit: 3 } });
+    expect(
+      activationFromOutcome({
+        activation: { kind: "deviceLimit", limit: 3, deviceCount: 3 },
+      }),
+    ).toEqual({ result: "device-limit", limit: 3, deviceCount: 3 });
+    expect(activationFromOutcome(new Error("offline"))).toEqual({
+      result: "error",
+    });
+  });
+
+  it("a thrown refusal stays in the key step; Use a different key clears it", async () => {
+    const sdk = fakeSdk([{ outcome: "choose", grant: "sg_9", choices: VIEW }]);
+    sdk.primitives.activate = async () => {
+      throw Object.assign(new Error("sign-in-failed"), {
+        activation: {
+          kind: "keyEntryLimit",
+          manageUrl: "https://key.plrs.im/add",
+        },
+      });
+    };
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC },
+    });
+    await m.start();
+    await tick();
+    m.haveKey();
+    await m.submitKey("pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG");
+    expect(m.snapshot.activation).toMatchObject({
+      result: "key-entry-limit",
+      manageUrl: "https://key.plrs.im/add",
+    });
+    expect(m.views().signIn.state).toBe("key");
+    m.differentKey();
+    expect(m.snapshot.activation).toBeUndefined();
+    expect(m.snapshot.keyField).toEqual({ text: "" });
+  });
+
+  it("an ok keeps its key entries in the snapshot for the toast", async () => {
+    const sdk = fakeSdk([{ outcome: "choose", grant: "sg_8", choices: VIEW }]);
+    sdk.primitives.activate = async () => ({
+      result: "ok",
+      keyEntries: { used: 1, limit: 3 },
+    });
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC },
+    });
+    await m.start();
+    await tick();
+    m.haveKey();
+    await m.submitKey("pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG");
+    expect(m.snapshot.activation?.keyEntries).toEqual({ used: 1, limit: 3 });
+    expect(m.views().signIn.state).toBe("done");
   });
 });

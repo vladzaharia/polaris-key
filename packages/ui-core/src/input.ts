@@ -119,8 +119,14 @@ export interface ActivationInput {
    *  ("Lifetime", "Until Dec 4, 2026"). The key field's verdict line names both. */
   tier?: string;
   term?: string;
-  /** PX-W8's refusal link: the page that frees a seat. */
+  /** PX-W8's refusal link: the page that frees a seat. For `key-entry-limit`, the page that adds
+   *  the key to the person's account. */
   manageUrl?: string;
+  /** `license_owned`'s sign-in page (`<origin>/signin?product=<slug>`): the kit's fallback when
+   *  it cannot start its own sign-in. It carries no key and names no account. */
+  signInUrl?: string;
+  /** The license's key entries after a key activation, or on the `key-entry-limit` refusal. */
+  keyEntries?: { used: number; limit: number };
 }
 
 export interface SignInSession {
