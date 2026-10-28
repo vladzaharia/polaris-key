@@ -37,6 +37,7 @@ export const COMPONENT_FAMILIES = [
   "update",
   "settings",
   "paywall",
+  "cloudSync",
 ] as const;
 
 export function readMatrix(): Obj & { vocabulary: Obj & { defaults: Obj } } {

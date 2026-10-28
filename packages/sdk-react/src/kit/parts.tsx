@@ -25,7 +25,13 @@ import {
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
-import { monogramOf, OPENS, spellOut, type Resolved } from "./contract.js";
+import {
+  monogramOf,
+  OPENS,
+  spellOut,
+  type Layout,
+  type Resolved,
+} from "./contract.js";
 import { encodeQr } from "./lazy.js";
 import {
   isRefusalStep,
@@ -73,6 +79,9 @@ export interface KitCtx {
   /** The window is wider than a docked sheet (35 rem). */
   wide?: boolean;
   chrome?: Chrome;
+  /** A component whose layout and content load on demand (the Cloud Sync screens) hands both. */
+  layout?: Layout;
+  content?: ReactNode;
   view: View;
   copy: Copy;
   resolved: Resolved;

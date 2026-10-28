@@ -81,6 +81,8 @@ async function draw(row: Row): Promise<PkElement> {
   const el = document.createElement(tag) as PkElement;
   // A row without `elapsedMs` means the DL7 delay has passed; the element's live model would
   // otherwise hold the loading state empty for its first 250 ms.
+  // The runner plays a host that answers the controls that open another screen.
+  el.handles = "unlock review use-code";
   el.input = { elapsedMs: 60_000, ...withDefaults(row.input, defaults) };
   document.body.replaceChildren(el);
   await el.updateComplete;
@@ -200,6 +202,8 @@ for (const family of COMPONENT_FAMILIES) {
           // The form's Done step always offers Start.
           ...(view.component === "SignIn" ? ["signin.done.start"] : []),
           ...(view.component === "Activate" ? ["common.done"] : []),
+          // Working keeps the pressed control, busy, so focus stays on it.
+          ...(view.component === "UnlockSync" ? ["unlockSync.unlock"] : []),
         ]).toContain(filled[0]!.getAttribute("data-key"));
       // DL4/DL6: a view with a primary draws it as the one filled control (a destructive
       // confirm's is the danger fill).

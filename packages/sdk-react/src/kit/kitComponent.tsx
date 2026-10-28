@@ -4,13 +4,18 @@
 // drop-in parts (drive.tsx) and the per-component exports use stays out of the gate's chunk.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { MODELS, type ComponentName } from "@polaris-key/ui-core";
+import {
+  MODELS,
+  type ComponentName,
+  type SyncScreenName,
+} from "@polaris-key/ui-core";
 import { platformVariant } from "@polaris-key/ui-core/theme";
 
 import { KitRoot, useKit, type KitProps } from "./component.js";
 import { adaptPane, adaptUpdate, oneVerb, withoutLede } from "./adapt.js";
 import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
+import { SYNC_LAYOUTS, syncContent } from "./syncParts.js";
 
 /** One §4.1 component as a React component: its view, drawn in the kit's look. */
 /** States of an update that own the window; every other is a dialog over the running app (DL2). */
@@ -75,8 +80,18 @@ function UpdateDialog(props: {
   );
 }
 
+/** What a Cloud Sync screen takes besides a kit component's props. */
+export interface SyncScreenProps extends KitProps {
+  /** RecoveryCode: the new recovery code, handed over once. It is drawn as text, held in no
+   *  input or view, and never an input's value. */
+  code?: string;
+}
+
+const isSyncScreen = (c: ComponentName): c is SyncScreenName =>
+  c in SYNC_LAYOUTS;
+
 export function kitComponent(component: ComponentName) {
-  function KitComponent(props: KitProps): ReactNode {
+  function KitComponent(props: SyncScreenProps): ReactNode {
     // The state the person dismissed: the update dialog stays closed until the state changes.
     const [dismissed, setDismissed] = useState<string | null>(null);
     const stateRef = useRef("");
@@ -138,12 +153,22 @@ export function kitComponent(component: ComponentName) {
         !props.embedded &&
         props.asWindow !== true &&
         !UPDATE_BLOCKING.has(view.state)) ||
-      (component === "Settings" && props.onDismiss !== undefined);
-    const ctx = {
+      (component === "Settings" && props.onDismiss !== undefined) ||
+      // A Cloud Sync screen the host opened over its page (`onDismiss`) is a modal dialog too.
+      (isSyncScreen(component) && props.onDismiss !== undefined);
+    const base = {
       ...withChoice(kit.ctxFor(view, labels ? { labels } : undefined)),
       dialog: asDialog,
       ...(asDialog && props.account ? { account: props.account } : {}),
     };
+    // A Cloud Sync screen draws its own fields and actions on its own layout.
+    const ctx = isSyncScreen(component)
+      ? {
+          ...base,
+          layout: SYNC_LAYOUTS[component],
+          content: syncContent(base, props.code ?? ""),
+        }
+      : base;
     const body = renderView(ctx);
     return (
       <KitRoot
@@ -151,6 +176,11 @@ export function kitComponent(component: ComponentName) {
         bare={props.bare}
         fill={props.fill}
         className={props.className}
+        onEscape={
+          isSyncScreen(component) && view.copy.includes("common.cancel")
+            ? () => ctx.act("common.cancel")
+            : undefined
+        }
       >
         {asDialog ? (
           <UpdateDialog
@@ -159,6 +189,12 @@ export function kitComponent(component: ComponentName) {
             later={() => ctx.act("update.later")}
             dismissed={dismissed}
             close={() => {
+              // A step with no Cancel (working, the recovery code) cannot be dismissed.
+              if (
+                isSyncScreen(component) &&
+                !view.copy.includes("common.cancel")
+              )
+                return;
               setDismissed(view.state);
               props.onDismiss?.();
             }}

@@ -131,7 +131,7 @@ export function unlockSyncView(
         ],
         primary: "unlockSync.startOver",
         tone: "neutral",
-        focus: null,
+        // Start over takes the focus: it is the way on, and the line above it is a status.
       });
     case "start-over":
       // The warning comes first: the sync key is replaced only from this step (T22). Cancel takes
@@ -195,7 +195,8 @@ export function recoveryCodeView(
       saved && "common.done",
     ],
     primary: saved ? "common.done" : null,
-    focus: saved ? undefined : "heading",
+    // Checking the box keeps focus on it: Done arrives announced, never under a second Space.
+    focus: saved ? null : "heading",
   });
 }
 

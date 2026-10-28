@@ -40,6 +40,7 @@ import {
   type ThemeHost,
 } from "./theme.js";
 import { LAYOUTS } from "./layout.js";
+import { SYNC_LAYOUTS } from "./syncLayouts.js";
 import { renderView } from "./views.js";
 
 /** DL9: the ring shows only after a key was pressed since load (no ring at rest on a cold start). */
@@ -69,6 +70,9 @@ if (typeof document !== "undefined") {
   );
 }
 
+/** How long the Start over confirm ignores presses after the warning appears. */
+const ARM_MS = 500;
+
 /** The detail of `pk-action`: the control's copy key and the vocabulary action it performs. */
 export interface PkActionDetail {
   key: string;
@@ -97,6 +101,8 @@ export abstract class PkElement extends LitElement {
     preset: {},
     bare: { type: Boolean, reflect: true },
     fill: { type: Boolean, reflect: true },
+    code: { attribute: false },
+    handles: {},
   };
 
   /** The headless input (ui-core `UiInput`): what the SDK adapter or the host knows now. */
@@ -110,11 +116,23 @@ export abstract class PkElement extends LitElement {
   bare = false;
   /** Own the window (DL2): the React kit's `fill`, for a screen the host mounts as the page. */
   fill = false;
+  /** RecoveryCode only: the new recovery code, handed over once by the host. It is held here, in
+   *  no input or view, and drawn as text; it is never an attribute or an input's value. */
+  code?: string;
+  /** The host actions this page answers, space separated: `unlock` and `review` (the sync status's
+   *  Unlock sync and Review). A control only a
+   *  host can act on is not drawn otherwise (a dev-mode warning says so). */
+  handles?: string;
 
   /** The component this element draws. */
   abstract readonly component: ComponentName;
 
   private model: ViewModel | null = null;
+  private lastSyncStep = "";
+  private copied = false;
+  private armUntil = 0;
+  /** Where Cancel on the Start over warning goes back to. */
+  private unlockFrom: "code" | "no-code" = "code";
   private provider: ThemeHost | null = null;
   private unsubs: (() => void)[] = [];
   private stopIdentity: (() => void) | null = null;
@@ -356,6 +374,15 @@ export abstract class PkElement extends LitElement {
     super.willUpdate(changed);
     const model = this.ensureModel();
     model.update(() => this.modelInput());
+    // The Start over confirm waits half a second before it takes a press.
+    const step = `${model.view.component}.${model.view.state}`;
+    if (step !== this.lastSyncStep) {
+      this.lastSyncStep = step;
+      if (step === "UnlockSync.start-over") {
+        this.armUntil = Date.now() + ARM_MS;
+        setTimeout(() => this.requestUpdate(), ARM_MS + 10);
+      }
+    }
   }
 
   /** Update the input from inside (a typed key, a picked row) and tell the host. */
@@ -390,6 +417,20 @@ export abstract class PkElement extends LitElement {
       shape: this.shape,
       wide: this.wide,
       input: this.modelInput(),
+      ...(this.code ? { code: this.code } : {}),
+      copied: this.copied,
+      markCopied: () => {
+        this.copied = true;
+        this.requestUpdate();
+        setTimeout(() => {
+          this.copied = false;
+          this.requestUpdate();
+        }, 2000);
+      },
+      handles: (this.handles ?? "").split(/[\s,]+/).filter(Boolean),
+      ...(view.component === "UnlockSync" && view.state === "start-over"
+        ? { armed: Date.now() >= this.armUntil }
+        : {}),
       act: (key, extra = {}) => {
         const detail: PkActionDetail = {
           key,
@@ -409,6 +450,24 @@ export abstract class PkElement extends LitElement {
             },
           };
         }
+        // The Start over confirm ignores a press until it is armed (a double-click on Start over).
+        if (key === "unlockSync.startOverConfirm" && Date.now() < this.armUntil)
+          return;
+        // The typed recovery code leaves only here, with the press that unlocks (S13). An empty
+        // field sends nothing and keeps focus in it.
+        if (key === "unlockSync.unlock") {
+          const field = this.renderRoot.querySelector<HTMLTextAreaElement>(
+            '[data-key="unlockSync.field"]',
+          );
+          detail.value = field?.value.replace(/\s+/g, " ").trim() ?? "";
+          if (detail.value === "") {
+            field?.focus();
+            return;
+          }
+        }
+        this.unlockStep(key, view);
+        if (key === "ringChange.accept" && this.input.ringChange?.served)
+          detail.served = this.input.ringChange.served;
         if (this.localAction(key, detail, view)) return;
         this.dispatchEvent(
           new CustomEvent<PkActionDetail>("pk-action", {
@@ -448,6 +507,13 @@ export abstract class PkElement extends LitElement {
           ...(stale ? { activation: undefined } : {}),
         };
       }
+      case "recoverySaved":
+        return { recoveryCode: { saved: value === true } };
+      case "recoveryEdited":
+        // Editing the code clears "That code isn't right".
+        return input.unlockSync?.step === "invalid"
+          ? { unlockSync: { ...input.unlockSync, step: "code" } }
+          : {};
       case "setting":
         return {
           config: (input.config ?? []).map((r) =>
@@ -647,10 +713,43 @@ export abstract class PkElement extends LitElement {
         data-pk-platform=${platformVariant(r.theme)}
         ?data-keyboard=${keyboard}
         lang=${c.copy.locale}
+        @keydown=${(e: KeyboardEvent) => this.escapes(e, c)}
       >
         ${this.renderBody(c)}
       </div>
       ${this.renderProjected(view)}`;
+  }
+
+  /** The steps of UnlockSync that only move the screen (Start over to its warning, Cancel back,
+   *  Try again to the field) are answered here, and still reported to the host. */
+  private unlockStep(key: string, view: View): void {
+    if (view.component !== "UnlockSync") return;
+    const input = this.input;
+    const to = (step: NonNullable<UiInput["unlockSync"]>["step"]) => {
+      this.input = { ...input, unlockSync: { ...input.unlockSync, step } };
+    };
+    if (key === "unlockSync.startOver") {
+      this.unlockFrom = view.state === "no-code" ? "no-code" : "code";
+      to("start-over");
+    } else if (key === "common.cancel" && view.state === "start-over")
+      to(this.unlockFrom);
+    else if (key === "common.tryAgain" && view.state === "failed")
+      // Back to the field. After a failed Start over, Try again repeats it: the host's to run.
+      to("code");
+  }
+
+  /** Escape leaves a Cloud Sync screen by its Cancel (DL9), where it has one. */
+  private escapes(e: KeyboardEvent, c: RenderCtx): void {
+    const v = c.view;
+    if (
+      e.key !== "Escape" ||
+      e.defaultPrevented ||
+      !(v.component in SYNC_LAYOUTS) ||
+      !v.copy.includes("common.cancel")
+    )
+      return;
+    e.preventDefault();
+    c.act("common.cancel");
   }
 
   private appliedVars = new Set<string>();
