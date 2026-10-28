@@ -64,7 +64,9 @@ export type ExchangeUnavailableReason =
   /** The product does not accept this kind. */
   | "kind"
   /** The device key store cannot sign here, or holds its keys in memory only. */
-  | "device-keys";
+  | "device-keys"
+  /** Discovery named a nonce or token endpoint off the product's origin, or not https. */
+  | "endpoint";
 
 /** `200 confirm`: the link exists, the person has not consented to this app (or what it asks
  *  changed). Show `consent`, then `choice.complete(grant, choice, {consent})`. */
@@ -105,6 +107,8 @@ export type ExchangeOutcome =
       subject: string;
       scope: string;
       activation: { licenseId: string | null };
+      /** The token is stored, but the sync that follows failed. */
+      syncError?: PolarisError;
     }
   | PendingConsent
   | PendingSignIn
@@ -119,9 +123,12 @@ export interface ExchangeContext {
   endpoints: ExchangeDiscovery | null;
   identityEnabled: boolean;
   headers(extra: Record<string, string>): Record<string, string>;
-  fetchImpl: typeof fetch;
-  /** Store the device token like any sign-in. */
-  accept(token: string, subject: string): Promise<void>;
+  /** The product's origin base (`https://host`); the endpoints must share its origin. */
+  baseUrl: string;
+  /** POST transport: no ambient credential, the request deadline. */
+  send(url: string, init: RequestInit): Promise<Response>;
+  /** Store the device token like any sign-in; a sync failure after it is returned, not thrown. */
+  accept(token: string, subject: string): Promise<PolarisError | null>;
   now(): number;
 }
 
@@ -207,14 +214,26 @@ async function post(
   body: string,
 ): Promise<Response> {
   try {
-    return await ctx.fetchImpl(url, {
+    return await ctx.send(url, {
       method: "POST",
       credentials: "omit",
+      redirect: "error",
       headers: ctx.headers({ "content-type": contentType }),
       body,
     });
   } catch (e) {
     throw new PolarisError(ErrorCode.networkError, (e as Error).message);
+  }
+}
+
+function sameOrigin(base: string, endpoint: string): boolean {
+  try {
+    return (
+      isSecureTransportUrl(endpoint) &&
+      new URL(endpoint).origin === new URL(base).origin
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -252,6 +271,13 @@ export async function runExchange(
   const found = ctx.endpoints;
   if (!ctx.identityEnabled || found === null) return unavailable("product");
   if (!found.kinds.includes(opts.kind)) return unavailable("kind");
+  // Discovery is data the network supplied: the nonce and the proof go only to the product's own
+  // origin, over https (or loopback), so a poisoned document cannot aim them elsewhere.
+  if (
+    !sameOrigin(ctx.baseUrl, found.nonceEndpoint) ||
+    !sameOrigin(ctx.baseUrl, found.tokenEndpoint)
+  )
+    return unavailable("endpoint");
 
   let keys;
   try {
@@ -350,7 +376,8 @@ async function answer(
       url: b.url,
       ...(typeof b.expiresIn === "number" ? { expiresIn: b.expiresIn } : {}),
     };
-    return reason === "no_link" &&
+    // The handle comes only with a literal no_link; an unknown reason carries none.
+    return b.reason === "no_link" &&
       typeof b.linkHandle === "string" &&
       new RegExp(LINK_HANDLE_PATTERN).test(b.linkHandle)
       ? hidden(out, "linkHandle", b.linkHandle)
@@ -389,7 +416,7 @@ async function answer(
         parsed.grant,
       );
     case "token":
-      await ctx.accept(parsed.accessToken, parsed.subject);
+      const syncError = await ctx.accept(parsed.accessToken, parsed.subject);
       return {
         kind: "signedIn",
         subject: parsed.subject,
@@ -400,6 +427,7 @@ async function answer(
               ? parsed.license.id
               : null,
         },
+        ...(syncError ? { syncError } : {}),
       };
   }
 }

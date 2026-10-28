@@ -79,7 +79,7 @@ export interface ChoiceNamespace {
   ): Promise<ChoiceViewResult<ReplaceView>>;
   complete(
     grant: string,
-    choice: LicenseChoice,
+    choice?: LicenseChoice,
     opts?: ChoiceCompleteOptions,
   ): Promise<ChoiceCompleteResult>;
   cancel(grant: string): Promise<ChoiceCancelResult>;

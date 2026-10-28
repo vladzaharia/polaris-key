@@ -688,7 +688,12 @@ export class BearerSession {
     return `${this.opts.baseUrl}/${this.opts.product}/${path}`;
   }
 
-  private async send(path: string, init: RequestInit): Promise<Response> {
+  private send(path: string, init: RequestInit): Promise<Response> {
+    return this.sendTo(this.url(path), init);
+  }
+
+  /** `fetch` with no ambient credential and the request deadline, to an absolute URL. */
+  private async sendTo(url: string, init: RequestInit): Promise<Response> {
     // Bearer mode never sends an ambient credential: no cookie, ever. Every request carries a
     // deadline (Node's 15 s), so a hung connection fails like a dropped one instead of
     // stalling the sync forever. Like `AbortSignal.timeout`, it also covers reading the body.
@@ -700,7 +705,7 @@ export class BearerSession {
           : new Error("The request timed out."),
       );
     }, REQUEST_TIMEOUT_MS);
-    return this.opts.fetchImpl(this.url(path), {
+    return this.opts.fetchImpl(url, {
       credentials: "omit",
       signal: deadline.signal,
       ...init,
@@ -1158,12 +1163,12 @@ export class BearerSession {
    *  `license_choice_required`) leaves the grant open. */
   async choiceComplete(
     grant: string,
-    choice: LicenseChoice,
+    choice?: LicenseChoice,
     opts: ChoiceCompleteOptions = {},
   ): Promise<ChoiceCompleteResult> {
     const { res, json } = await this.choicePost("choiceComplete", {
       grant,
-      choice,
+      ...(choice ? { choice } : {}),
       ...(opts.consent
         ? { consent: { claims: [...opts.consent.claims] } }
         : {}),
@@ -1199,7 +1204,7 @@ export class BearerSession {
       subject: answer.subject,
       scope: answer.scope,
       ...(keyEntries ? { keyEntries } : {}),
-      ...(choice.kind === "keep" ? { attachable: true as const } : {}),
+      ...(choice?.kind === "keep" ? { attachable: true as const } : {}),
     };
   }
 
@@ -1231,12 +1236,21 @@ export class BearerSession {
         endpoints: this.opts.exchangeEndpoints?.() ?? null,
         identityEnabled: this.opts.enabled("identity"),
         headers: (extra) => this.headers(extra),
-        fetchImpl: this.opts.fetchImpl,
+        baseUrl: this.opts.baseUrl,
+        send: (url, init) => this.sendTo(url, init),
         now: () => this.now(),
         accept: async (token, subject) => {
           await this.setToken(token, "signin");
-          await this.syncAfterSignIn();
           this.subjectValue = subject;
+          // The session is stored: a sync failure is reported beside the sign-in, not instead.
+          try {
+            await this.syncAfterSignIn();
+          } catch (e) {
+            return e instanceof PolarisError
+              ? e
+              : new PolarisError(ErrorCode.networkError, (e as Error).message);
+          }
+          return null;
         },
       },
       port,
