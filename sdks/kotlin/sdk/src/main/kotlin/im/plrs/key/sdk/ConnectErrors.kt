@@ -23,6 +23,9 @@ public enum class LanErrorReason(public val code: String) {
     too_large(ErrorCode.invalidArgument),
     bad_type(ErrorCode.invalidArgument),
     queue_full(ErrorCode.rateLimited),
+
+    /** The OS refused local network access (D-8); hosts show the permission hint. */
+    permission_denied(ErrorCode.nearbyPermissionDenied),
 }
 
 /** A LAN failure. [closeCode] is the session's close code when a session ended. */

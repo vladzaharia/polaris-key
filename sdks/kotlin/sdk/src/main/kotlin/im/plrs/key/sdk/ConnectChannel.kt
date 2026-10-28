@@ -180,6 +180,11 @@ internal class PeerDocs(
         ring(jws)
     }
 
+    /** An identity load caught up with the pushed roster: forget it. */
+    fun clearPushed() {
+        pushed = null
+    }
+
     fun onTrust(jws: String) = trust(jws)
 
     fun onRingWanted() = spawnJob { want(false) }
