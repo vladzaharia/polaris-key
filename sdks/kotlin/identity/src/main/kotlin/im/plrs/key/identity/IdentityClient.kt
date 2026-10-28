@@ -156,6 +156,15 @@ public class IdentityClient(
         platformProvider.set(provider)
     }
 
+    /** Whether a platform provider is installed (`installPlatformIdentity`): the sign-in form offers its row. */
+    public val hasPlatformProvider: Boolean get() = platformProvider.get() != null
+
+    /**
+     * The sign-in form's provider row (AutoSignIn.kt): the installed provider's explicit sheet, then an
+     * `exchange` with `personInitiated = true`, which clears the sign-out flag. Never throws.
+     */
+    public suspend fun signInWithProvider(): AutoSignInResult = runProviderSignIn()
+
     /**
      * The automatic sign-in ladder (AutoSignIn.kt): the stored session, then the platform provider
      * silently and, with `prompt = OPTIONAL`, through its one sheet. Never throws: a refusal is an

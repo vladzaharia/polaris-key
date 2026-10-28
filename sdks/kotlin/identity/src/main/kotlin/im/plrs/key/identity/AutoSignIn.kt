@@ -51,6 +51,12 @@ public interface PlatformIdentityProvider {
     /** An identity token through the platform's one account sheet. */
     public suspend fun sheet(nonce: String, serverClientId: String?): PlatformSubjectToken?
 
+    /**
+     * The sign-in form's explicit provider row ("Continue with Google", `GetSignInWithGoogleOption` on Android): the
+     * person pressed it, so it may show the OS sheet. Defaults to [sheet].
+     */
+    public suspend fun providerSheet(nonce: String, serverClientId: String?): PlatformSubjectToken? = sheet(nonce, serverClientId)
+
     /** Forget the platform's session state (called by `identity.signOut()`). Must not throw. */
     public suspend fun signOutCleanup()
 
@@ -138,6 +144,38 @@ internal suspend fun IdentityClient.runAutoSignIn(options: AutoSignInOptions): A
     attempt(provider, silent = true, generation)?.let { return it }
     if (options.prompt == AutoSignInPrompt.OPTIONAL) attempt(provider, silent = false, generation)?.let { return it }
     return AutoSignInResult.NeedsSignIn(null, AutoSignInReason.NoCredential)
+}
+
+/**
+ * The sign-in form's provider row: the person pressed it, so the provider's explicit sheet runs and the
+ * exchange is `personInitiated` (it clears the sign-out flag). Never throws: a dismissed sheet is
+ * `NeedsSignIn(NoCredential)`, a refusal is a result like the ladder's.
+ */
+internal suspend fun IdentityClient.runProviderSignIn(): AutoSignInResult {
+    val provider = platformProvider.get() ?: return AutoSignInResult.NeedsSignIn(null, AutoSignInReason.NoCredential)
+    try {
+        val nonce = when (val n = exchangeNonce(provider.kind)) {
+            is ExchangeNonceResult.Issued -> n.nonce
+            is ExchangeNonceResult.Ended -> return AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable)
+        }
+        val audience = core.discoveryDocument()?.identity?.exchange?.googleServerClientId
+        val subject = try {
+            provider.providerSheet(nonce.value, audience)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: return AutoSignInResult.NeedsSignIn(null, AutoSignInReason.NoCredential)
+        val port = deviceKeyPort() ?: return AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable)
+        return result(exchangeTokens(provider.kind, subject.token, nonce, port, personInitiated = true))
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: PolarisException) {
+        if (e.code == ErrorCode.deviceLimit) return AutoSignInResult.DeviceLimit(e.manageUrl, LicenseChoiceView.of(e.view))
+        return AutoSignInResult.Unavailable(e.code)
+    } catch (e: Exception) {
+        return AutoSignInResult.Unavailable(ErrorCode.networkError)
+    }
 }
 
 /** Called by `signOut()` once the Worker accepted it. */

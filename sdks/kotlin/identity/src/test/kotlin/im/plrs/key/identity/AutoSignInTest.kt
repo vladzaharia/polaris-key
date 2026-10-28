@@ -62,6 +62,12 @@ class AutoSignInTest {
             sheetCalls++
             return sheetToken?.let { PlatformSubjectToken(it, nonce) }
         }
+        var providerToken: String? = "id-token-provider"
+        var providerCalls = 0
+        override suspend fun providerSheet(nonce: String, serverClientId: String?): PlatformSubjectToken? {
+            providerCalls++
+            return providerToken?.let { PlatformSubjectToken(it, nonce) }
+        }
         override suspend fun signOutCleanup() { cleanups++ }
         override suspend fun credentialRevoked(): Boolean = revoked
     }
@@ -401,6 +407,37 @@ class AutoSignInTest {
         assertEquals(TokenProvenance.key, w.core.tokenProvenance())
         w.core.setExplicitSignOut(false)
         assertTrue(w.client.autoSignIn() is AutoSignInResult.NeedsSignIn)
+    }
+
+    @Test
+    fun theProviderRowClearsTheSignOutFlagAndTheLadderNeverDoes() = runBlocking {
+        val w = world()
+        val p = FakeProvider()
+        w.client.installPlatformIdentity(p)
+        assertTrue(w.client.hasPlatformProvider)
+        w.core.setExplicitSignOut(true)
+        // The ladder stays quiet while signed out.
+        assertTrue(w.client.autoSignIn(AutoSignInOptions(prompt = AutoSignInPrompt.OPTIONAL)) is AutoSignInResult.NeedsSignIn)
+        assertTrue(w.core.explicitSignOut())
+        // The person pressed the provider row: the explicit sheet runs and the flag clears.
+        val r = w.client.signInWithProvider() as AutoSignInResult.SignedIn
+        assertEquals("ps_QQMMVm-ciTWvmWEIfhAVgQ", r.subject)
+        assertEquals(1, p.providerCalls)
+        assertEquals(0, p.sheetCalls)
+        assertFalse(w.core.explicitSignOut())
+    }
+
+    @Test
+    fun aDismissedProviderRowIsNeedsSignInAndNeverThrows() = runBlocking {
+        val w = world()
+        val p = FakeProvider().also { it.providerToken = null }
+        w.client.installPlatformIdentity(p)
+        val r = w.client.signInWithProvider() as AutoSignInResult.NeedsSignIn
+        assertEquals(AutoSignInReason.NoCredential, r.reason)
+        // No provider installed (the JVM desktop): the same answer.
+        val bare = world().client
+        assertFalse(bare.hasPlatformProvider)
+        assertTrue(bare.signInWithProvider() is AutoSignInResult.NeedsSignIn)
     }
 
     @Test

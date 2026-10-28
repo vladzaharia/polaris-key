@@ -87,6 +87,12 @@ public fun PolarisGate(
     onUpdate: (() -> Unit)? = null,
     onRenew: (() -> Unit)? = null,
     signedInAs: (suspend () -> SignedInAs?)? = null,
+    /**
+     * Automatic sign-in (I-45.6): the gate runs `autoSignIn()` once at boot and draws its steps (consent,
+     * licence choice, device limit, the sign-in form) before the activation screen. False is the opt-out;
+     * it also keeps the ladder from running when [state] is the host's own (`PolarisGateState(autoSignIn = false)`).
+     */
+    autoSignIn: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val gate by state.gate.collectAsState()
@@ -126,6 +132,7 @@ public fun PolarisGate(
         onSignIn = onSignIn,
         onRetry = state::refresh,
         signIn = signIn,
+        auto = state.auto.takeIf { autoSignIn },
         onUpdate = onUpdate,
         onRenew = onRenew,
         toast = toast,
@@ -162,7 +169,7 @@ internal fun keyEntriesLeftLine(used: Long, limit: Long, locale: String): String
     KitCopy.bundled.format("signin.key.entriesLeftShort", locale, mapOf("left" to CopyArgument.Number((limit - used).coerceIn(0, Int.MAX_VALUE.toLong()).toInt())))
 
 /** Which screen a gate state shows; the key Crossfade animates between. */
-internal enum class GateScreen { Loading, Content, Grace, Activation, Message, SignIn }
+internal enum class GateScreen { Loading, Content, Grace, Activation, Message, SignIn, Auto }
 
 internal fun gateScreen(status: LicenseStatus?): GateScreen = when (status) {
     null -> GateScreen.Loading
@@ -190,6 +197,7 @@ public fun PolarisGateScreen(
     onRenew: (() -> Unit)? = null,
     manageAsQr: Boolean = false,
     signIn: PolarisSignInState? = null,
+    auto: PolarisAutoSignInState? = null,
     onUpdate: (() -> Unit)? = null,
     toast: PolarisToastSpec? = null,
     onToastDismiss: () -> Unit = {},
@@ -213,7 +221,11 @@ public fun PolarisGateScreen(
         // The banner comes back the next time the licence goes offline.
         if (base != GateScreen.Grace) graceDismissed = false
     }
+    // Automatic sign-in's steps come before the gate's own stop; a usable licence ends them.
+    val autoUi = auto?.ui?.collectAsState()?.value
+    val autoShown = autoUi != null && autoUi.takesOver() && base != GateScreen.Content && base != GateScreen.Grace
     val screen = when {
+        autoShown -> GateScreen.Auto
         base == GateScreen.Message && status == LicenseStatus.expired && anotherLicense ->
             if (signingIn && signIn != null) GateScreen.SignIn else GateScreen.Activation
         base == GateScreen.Activation && signingIn && signIn != null -> GateScreen.SignIn
@@ -249,6 +261,7 @@ public fun PolarisGateScreen(
                 focusKey = focusKey,
                 onCopied = onLinkCopied,
             )
+            GateScreen.Auto -> if (auto != null && autoUi != null) PolarisAutoSignInScreen(autoUi, auto)
             GateScreen.SignIn -> if (signIn != null) {
                 PolarisSignIn(
                     state = signIn,
