@@ -51,6 +51,9 @@ _SYNC = frozenset(
         "on_change",
         "on_config_change",
         "emit",
+        # client.cloud_sync_host: the context manager and the subscription are not coroutines.
+        "locked",
+        "on_events",
         "setting",
         "supports",
         "caps",
@@ -245,6 +248,8 @@ class AsyncPolarisKeyClient:
         self.distribution = _AsyncFacet(sync_client.distribution)
         self.backend = _AsyncFacet(sync_client.backend)
         self.events = _AsyncEvents(sync_client.events)
+        #: The Cloud Sync host: ``touch``, ``flush``, ``purge`` and the rest run on a worker thread.
+        self.cloud_sync_host = _AsyncFacet(sync_client.cloud_sync_host)
 
     @classmethod
     async def create(cls, *, auto_discover: Optional[bool] = None, **opts: Any) -> "AsyncPolarisKeyClient":

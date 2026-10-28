@@ -61,6 +61,7 @@ __all__ = [
     "canonical_json",
     "seal_value",
     "open_value",
+    "open_value_any_name",
     "OpenedValue",
     "blind",
     "is_blinded_name",
@@ -341,6 +342,19 @@ def open_value(
     """Open an envelope for ``name`` (or one of its ``aliases`` sources) in ``collection``. The
     checks run in the order of the reasons; ``kid`` is checked before any decryption, so a caller can
     look for another root. A match on an alias answers that alias as ``name``."""
+    al = aliases or []
+    return _open_envelope(root, collection, envelope, lambda k: k == name or k in al)
+
+
+def open_value_any_name(root: Bytes, collection: str, envelope: Bytes) -> OpenedValue:
+    """Open an envelope whose name the caller does not know yet (a blinded open key or merge member:
+    the name is inside). It answers the envelope's own ``k``. The caller MUST check that ``k`` is the
+    name it expected (for a blinded one, that ``blind(k)`` equals the served name) before it trusts the
+    value; the same checks as :func:`open_value` run first."""
+    return _open_envelope(root, collection, envelope, lambda _k: True)
+
+
+def _open_envelope(root: Bytes, collection: str, envelope: Bytes, accepts: Callable[[str], bool]) -> OpenedValue:
     env = bytes(envelope)
     n = len(env)
     if n < ENVELOPE_FIXED_BYTES + ENVELOPE_PAD_BLOCK or (n - ENVELOPE_FIXED_BYTES) % ENVELOPE_PAD_BLOCK != 0:
@@ -367,7 +381,7 @@ def open_value(
     k = parsed["k"]
     if not isinstance(k, str):
         return _bad("json")
-    if k != name and k not in (aliases or []):
+    if not accepts(k):
         return _bad("name")
     return OpenedValue(ok=True, name=k, value=parsed["v"])
 
