@@ -39,6 +39,7 @@ import {
 import {
   formatCount,
   formatDateTime,
+  formatShort,
   fromSeconds,
 } from "../../../../lib/format.js";
 import { cn } from "../../../../lib/cn.js";
@@ -781,11 +782,7 @@ function activityWhen(at: number, now = Date.now()): string {
     minute: "2-digit",
   }).format(at);
   if (day(at) === day(now)) return `Today, ${time}`;
-  const date = new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-  }).format(at);
-  return `${date}, ${time}`;
+  return `${formatShort(at)}, ${time}`;
 }
 
 function activityInitials(name: string): string {

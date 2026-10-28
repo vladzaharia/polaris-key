@@ -285,7 +285,6 @@ describe("product scope", () => {
         enabled: false,
         // E12: a new feed starts as customers-only, not public.
         accessMode: "licensed",
-        accessDisplay: "licensed",
         version: 0,
         maxPackageBytes: 52428800,
       },
@@ -1084,7 +1083,6 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     expect(res.status).toBe(200);
     expect((await res.json()).settings).toMatchObject({
       accessMode: "licensed",
-      accessDisplay: "licensed",
     });
     await db.run(
       `UPDATE dist_registry_feeds SET access_mode = 'entitled' WHERE product = ? AND ecosystem = 'npm'`,
@@ -1097,15 +1095,7 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     expect(res.status).toBe(200);
     expect((await res.json()).settings).toMatchObject({
       accessMode: "entitled",
-      accessDisplay: "licensed, gated per package",
     });
-    await db.run(
-      `UPDATE dist_registry_feeds SET access_mode = 'authenticated' WHERE product = ? AND ecosystem = 'npm'`,
-      OWNER,
-    );
-    const detail = await (await admin("GET", product("/npm"))).json();
-    expect(detail.settings.accessDisplay).toBe("licensed");
-    expect(detail.feed.accessDisplay).toBe("licensed");
   });
 
   it("tolerates a legacy ext key on read and drops it on the next write (F10)", async () => {

@@ -151,8 +151,8 @@ function useVerifier(
   };
 }
 
-/** A step's action names what it sends, so it wraps in a narrow column instead of running off it (B-217). */
-const WRAPS = "h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-start";
+/** A step's action names what it sends; Button wraps it in a narrow column (B-217, CB200). */
+const WRAPS = "max-w-full text-start";
 
 export function StepCard({
   slug,

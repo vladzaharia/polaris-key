@@ -59,6 +59,8 @@ export interface Me {
    * browsers. Absent from an older worker: the console then keeps them in this browser.
    */
   prefs?: { setupGuideHidden: boolean };
+  /** Whether the worker can send email (an `EMAIL` binding); absent from an older worker (read as on). */
+  emailOn?: boolean;
 }
 
 /** The console's authorization areas (worker `core/rbac/areas.ts`; append-only). */

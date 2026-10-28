@@ -1937,3 +1937,40 @@ describe("focus ring on primary and danger buttons", () => {
     }
   }
 });
+
+// ── Overlays pass axe: the account menu and a tooltip (CX-FU-1) ───────────────────────────────
+describe("the account menu and a tooltip pass axe at 1440 and 390", () => {
+  const HOME: Case = { name: "global:home", hash: "#/" };
+  for (const theme of THEMES) {
+    for (const [width, height] of [
+      [1440, 900],
+      [390, 844],
+    ] as const) {
+      for (const what of ["menu", "tooltip"] as const) {
+        it(`${what}, ${theme} at ${width}`, async () => {
+          const { page } = await open(HOME, theme, { width, height });
+          try {
+            if (what === "menu") {
+              await page.getByRole("button", { name: "Account menu" }).click();
+              await page.getByRole("menu").waitFor();
+            } else {
+              // Keyboard focus opens a tooltip on the first control that has one.
+              let found = false;
+              for (let i = 0; i < 40 && !found; i++) {
+                await page.keyboard.press("Tab");
+                found = await page
+                  .waitForSelector('[role="tooltip"]', { timeout: 400 })
+                  .then(() => true)
+                  .catch(() => false);
+              }
+              expect(found).toBe(true);
+            }
+            expect(await axeWithin(page, "html"), "axe").toEqual([]);
+          } finally {
+            await closeContext(page.context());
+          }
+        });
+      }
+    }
+  }
+});

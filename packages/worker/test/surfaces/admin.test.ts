@@ -205,13 +205,16 @@ describe("admin api", () => {
     expect(sessionExpiresAt).toBe(NOW + 8 * 60 * 60);
   });
 
-  it("/api/me names the customer origin only while the customer host is usable (LK-17)", async () => {
-    const customerOrigin = async (
+  it("/api/me names the customer origin only while the customer host is usable (LK-17), and says whether email can be sent", async () => {
+    const read = async (
       set: boolean,
-    ): Promise<string | null | undefined> => {
+    ): Promise<{ customerOrigin?: string | null; emailOn?: boolean }> => {
       const env = adminEnv(new KvMock(), []);
       env.CONSOLE_ORIGIN = "https://key.plrs.im";
-      if (set) env.CUSTOMER_ORIGIN = "https://polaris.locker";
+      if (set) {
+        env.CUSTOMER_ORIGIN = "https://polaris.locker";
+        env.EMAIL = { send: async () => ({}) } as never;
+      }
       const db = makeTestDb();
       const { cookie } = await sessionCookie(env, db, {
         sub: "u1",
@@ -225,11 +228,19 @@ describe("admin api", () => {
         db,
         "/api/me",
       );
-      return ((await res.json()) as { customerOrigin?: string | null })
-        .customerOrigin;
+      return (await res.json()) as {
+        customerOrigin?: string | null;
+        emailOn?: boolean;
+      };
     };
-    expect(await customerOrigin(true)).toBe("https://polaris.locker");
-    expect(await customerOrigin(false)).toBeNull();
+    expect(await read(true)).toMatchObject({
+      customerOrigin: "https://polaris.locker",
+      emailOn: true,
+    });
+    expect(await read(false)).toMatchObject({
+      customerOrigin: null,
+      emailOn: false,
+    });
   });
 
   it("every deployment in wrangler.toml names itself to the console", async () => {

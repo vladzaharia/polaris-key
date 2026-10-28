@@ -107,7 +107,6 @@ import {
   FEED_EXTENSIONS,
   PACKAGE_ECOSYSTEMS,
   SETTABLE_ACCESS_MODES,
-  accessDisplay,
   applyExtPatch,
   dropUnknownExt,
   feedBaseUrl,
@@ -271,7 +270,6 @@ function settingsView(
     return {
       enabled: false,
       accessMode: DEFAULT_ACCESS_MODE,
-      accessDisplay: accessDisplay(DEFAULT_ACCESS_MODE),
       namespace: {},
       namespaceSource: "console",
       maxPackageBytes: policy?.max_package_bytes_ceiling ?? 0,
@@ -290,7 +288,6 @@ function settingsView(
   return {
     enabled: feed.enabled === 1,
     accessMode,
-    accessDisplay: accessDisplay(accessMode),
     namespace: parseJsonObject(feed.namespace_json) ?? {},
     namespaceSource:
       feed.namespace_source === "manifest" ? "manifest" : "console",
@@ -345,7 +342,6 @@ async function readContext(env: Env, db: Db, scope: FeedScope) {
       configured: feed !== undefined,
       enabled: feed?.enabled === 1,
       accessMode: settingsView(feed, policy).accessMode,
-      accessDisplay: settingsView(feed, policy).accessDisplay,
       status,
       reason,
       packages: s.packages,

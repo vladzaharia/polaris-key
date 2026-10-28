@@ -95,8 +95,6 @@ export function feedBaseUrl(
 export interface FeedSettingsView {
   enabled: boolean;
   accessMode: string;
-  /** `accessMode` as the console shows it: public, customers, or customers gated per package. */
-  accessDisplay: string;
   namespace: Record<string, unknown>;
   /** Where the namespace came from: provisioned from `.pkey/release`, or set by an operator. */
   namespaceSource: "manifest" | "console";
@@ -121,13 +119,6 @@ export const SETTABLE_ACCESS_MODES: readonly string[] = ["public", "licensed"];
 
 /** What a new feed starts as (E12). */
 export const DEFAULT_ACCESS_MODE = "licensed";
-
-/** A stored mode in the console's words (the admin now derives its own text from the mode). */
-export function accessDisplay(mode: string): string {
-  if (mode === "public") return "public";
-  if (mode === "entitled") return "licensed, gated per package";
-  return "licensed";
-}
 
 /** Drop the ext keys the ecosystem's adapter no longer accepts (a legacy key is tolerated on read). */
 export function dropUnknownExt(

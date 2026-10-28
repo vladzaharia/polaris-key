@@ -15,7 +15,6 @@
  */
 
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Fingerprint } from "lucide-react";
 import {
   HttpError,
@@ -41,7 +40,7 @@ import {
 import { Drawer, DrawerBody } from "../../ui/Drawer.js";
 import { toast } from "../../ui/toast.js";
 import { startStepUp } from "../../lib/stepUp.js";
-import { formatRelative } from "../../lib/format.js";
+import { formatRelative, formatShort } from "../../lib/format.js";
 
 import { mutate } from "../data/mutations.js";
 import {
@@ -76,7 +75,7 @@ import {
   type ProductName,
 } from "./InviteDrawerParts.js";
 import { RoleSet } from "./RoleTag.js";
-import { reads } from "../data/reads.js";
+import { useMe } from "../data/hooks.js";
 
 /** The one stash key: only one drawer is open at a time. */
 export const DRAWER_KEY = "members:drawer";
@@ -98,13 +97,7 @@ const roleName = (r: MemberRole, productName: ProductName): string =>
 
 /** "Sep 28", with the year only when it is not this year. */
 export function expiresText(ms: number): string {
-  const d = new Date(ms);
-  const year = d.getFullYear() !== new Date().getFullYear();
-  return new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    month: "short",
-    ...(year ? { year: "numeric" } : {}),
-  }).format(d);
+  return formatShort(ms);
 }
 
 const article = (label: string): string =>
@@ -270,13 +263,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   }
 
   // Email on or off (a refused or failed read counts as on: the Worker says when a link is needed).
-  const ops = useQuery({
-    ...reads.platformOperations(),
-    enabled: open,
-    retry: false,
-    staleTime: 60_000,
-  });
-  const emailOn = ops.data?.probes?.email?.bound ?? true;
+  const emailOn = useMe().data?.emailOn ?? true;
 
   const name = member?.name || member?.email || "";
   const stepUp = isStepUpRequired(error);

@@ -1470,23 +1470,23 @@ describe("Members: Undo that stops half way, and email off", () => {
 
   it("does not promise email when it is off, and the links carry the role and expiry", async () => {
     const user = userEvent.setup();
-    open({
-      "/manage/api/platform/operations": {
-        probes: { email: { bound: false } },
+    open(
+      {
+        [`POST ${BINDINGS}`]: OK_INVITE(
+          [
+            {
+              email: "one@example.com",
+              status: "invited",
+              bindingId: "b1",
+              expiresAt: 1_790_000_000 + 7 * 86_400,
+              link: "https://key.example/manage/?login_hint=one%40example.com",
+            } as never,
+          ],
+          { emailOff: true },
+        ),
       },
-      [`POST ${BINDINGS}`]: OK_INVITE(
-        [
-          {
-            email: "one@example.com",
-            status: "invited",
-            bindingId: "b1",
-            expiresAt: 1_790_000_000 + 7 * 86_400,
-            link: "https://key.example/manage/?login_hint=one%40example.com",
-          } as never,
-        ],
-        { emailOff: true },
-      ),
-    });
+      { ...asRole("superadmin"), emailOn: false },
+    );
     const drawer = await openInvite(user);
     await typeEmails(user, drawer, "one@example.com ");
     const send = await within(drawer).findByRole("button", {
@@ -1891,11 +1891,7 @@ describe("Members: the second fix round", () => {
 
   it("does not say Superadmins are told when email is off, in Edit roles too", async () => {
     const user = userEvent.setup();
-    open({
-      "/manage/api/platform/operations": {
-        probes: { email: { bound: false } },
-      },
-    });
+    open({}, { ...asRole("superadmin"), emailOn: false });
     const drawer = await openEdit(user, "Kenji Mori");
     await user.click(
       within(drawer).getByRole("button", { name: "Add a role" }),
