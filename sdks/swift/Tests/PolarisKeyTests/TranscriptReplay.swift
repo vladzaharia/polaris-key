@@ -11,6 +11,7 @@
 // RECORDED and answered with a 599, and `endStep()` fails with the full list.
 
 import Foundation
+@testable import PolarisKey
 import PolarisKeyCore
 @testable import PolarisKeyPacks
 
@@ -573,5 +574,179 @@ struct ReplayPackObjectTransport: PackObjectTransport {
                 if !bytes.isEmpty { c.yield(bytes) }
                 c.finish()
             })
+    }
+}
+
+// ── Cloud Sync settings (U-07.9, `sync.settings`) ──────────────────────────────────────────
+
+/// Forwards to the replay transport and remembers the last response's headers (lower-cased), which
+/// `CloudSyncTransport`'s `SyncResponse` does not carry (the ETag, Retry-After).
+final class HeaderTap: PolarisTransport, @unchecked Sendable {
+    private let inner: any PolarisTransport
+    private let lock = NSLock()
+    private var last: [String: String] = [:]
+    init(_ inner: any PolarisTransport) { self.inner = inner }
+    var lastHeaders: [String: String] { lock.withLock { last } }
+    func send(_ request: PolarisRequest) async throws -> PolarisResponse {
+        lock.withLock { last = [:] }
+        let r = try await inner.send(request)
+        lock.withLock { last = Dictionary(uniqueKeysWithValues: r.headers.map { ($0.key.lowercased(), $0.value) }) }
+        return r
+    }
+}
+
+enum CloudSyncReplay {
+    static let declared = ["ui.theme", "audio.volume"]
+    static let e2eNames = ["ui.theme", "my.open.key", "game.best"]
+    static let e2eRoutes = [
+        SettingRoute(key: "ui.theme", route: .synced, scope: .user, policy: .lastWrite),
+        SettingRoute(key: "game.best", route: .synced, scope: .user, policy: .lastWrite),
+    ]
+    static let clientId = "c_AAAAAAAAAAAAAAAAAAAAAA"
+    static let hlc = "018bcfe56418:0000"
+    /// A ring root made for the replay: not the recorder's, so every recorded `ct` reads invalid.
+    static let root = Data((0..<32).map { UInt8(truncatingIfNeeded: 11 * $0 + 5) })
+
+    /// One label per mutation result, in the transcript format's words.
+    static func resultLabel(_ r: JSONValue) -> String {
+        guard case .object(let o) = r, let status = o["status"]?.stringValue else { return "?" }
+        switch status {
+        case "ok":
+            if let to = o["renamedTo"]?.stringValue { return "ok:renamedTo:\(to)" }
+            return o["dropped"]?.boolValue == true ? "ok:dropped" : "ok"
+        case "rejected":
+            let code = o["code"]?.stringValue ?? "?"
+            if let scope = o["scope"]?.stringValue { return "rejected:\(code):\(scope)" }
+            return "rejected:\(code)"
+        default: return status
+        }
+    }
+
+    /// `cloudSyncPull` / `cloudSyncPush` (WIRE-CONTRACT-V4 section 13.3 and 13.4, V5 13.10): through
+    /// `CloudSyncTransport` (the bearer and the X-PKey headers). A pull sends the last ETag it saw
+    /// as If-None-Match. The end-to-end transcript is sealed by `HostCodec.sealPush` and opened by
+    /// `openPull`, over a fixture root, so every recorded `ct` reads invalid.
+    static func run(
+        _ client: PolarisKeyClient, step: Transcript.Step, session: ReplaySession,
+        server: ReplayServer, into out: inout [String: JSONValue]
+    ) async throws {
+        guard let tap = session.tap else { throw ReplayError("no header tap") }
+        let codec = session.codec
+        let core = client.core
+        let pull = step.action == "cloudSyncPull"
+        let etag = session.syncEtag
+        let transport = CloudSyncTransport(
+            product: core.product, baseUrl: core.endpoints.baseUrl, transport: tap,
+            headers: {
+                var h = await core.headers()
+                if pull, !etag.isEmpty { h["if-none-match"] = etag }
+                return h
+            },
+            token: { await core.token })
+        let cursor = step.args["cursor"]?.intValue ?? 0
+        var mutations: [JSONValue] = []
+        var request: SyncRequest
+        if pull {
+            request = SyncRequest(method: .get, path: "/\(core.product)/sync?cursor=\(cursor)")
+        } else {
+            let names = codec != nil ? e2eNames : declared
+            for i in 0..<(step.args["mutations"]?.intValue ?? 0) {
+                let id = session.syncNextId + i
+                mutations.append(
+                    .object([
+                        "mutationId": .int(id),
+                        "target": .object(["setting": .string(names[i % names.count]), "scope": .string("user")]),
+                        "op": .string("set"), "value": .string("generated-\(id)"), "editedHlc": .string(hlc),
+                    ]))
+            }
+            var body: [String: JSONValue] = [
+                "clientId": .string(clientId), "cursor": .int(cursor), "mutations": .array(mutations),
+            ]
+            if step.args["atomic"]?.boolValue == true { body["atomic"] = .bool(true) }
+            var sealed: JSONValue = .object(body)
+            if let codec { sealed = try HostCodec.sealPush(sealed, codec: codec, routes: e2eRoutes) }
+            request = SyncRequest(method: .post, path: "/\(core.product)/sync/ops", body: sealed)
+        }
+        let answer = await transport.send(request)
+        guard case .answer(let status, let body) = answer else {
+            out["result"] = .string("transport")
+            return
+        }
+        let headers = tap.lastHeaders
+        if pull, let tag = headers["etag"] { session.syncEtag = tag }
+        if status == 304 {
+            out["result"] = .string("not-modified")
+            return
+        }
+        if status < 200 || status >= 300 {
+            out["result"] = .string("refused")
+            out["status"] = .int(status)
+            if let code = body?.objectValue?["error"]?.objectValue?["code"]?.stringValue, !code.isEmpty {
+                out["code"] = .string(code)
+            }
+            if let after = headers["retry-after"], let n = Int(after) { out["retryAfter"] = .int(n) }
+            return
+        }
+        var served = body
+        if let codec, let b = body {
+            let opened = try HostCodec.openPull(b, codec: codec, mutations: mutations)
+            served = opened.body
+            var rows = opened.opened.changes.compactMap { $0 }
+            rows += Array(opened.opened.conflicts.values)
+            for row in rows where !(row.invalid && !row.sealed) {
+                throw ReplayError("a fixture ct opened: \(row)")
+            }
+            if rows.isEmpty, !(b.objectValue?["changes"]?.arrayValue ?? []).isEmpty {
+                throw ReplayError("e2e answer carried changes but no opened rows")
+            }
+        }
+        out["result"] = .string("ok")
+        guard case .object(let b)? = served else { return }
+        if let c = b["cursor"], c.doubleValue != nil { out["cursor"] = c }
+        if let m = b["more"]?.boolValue { out["more"] = .bool(m) }
+        out["empty"] = .bool(b["empty"]?.boolValue == true)
+        var names: [String] = []
+        for c in b["changes"]?.arrayValue ?? [] {
+            if let s = c.objectValue?["setting"]?.stringValue { names.append(s) }
+        }
+        out["settings"] = .array(names.sorted().map(JSONValue.string))
+        if let q = b["quota"]?.objectValue {
+            if let bytes = q["bytes"], bytes.doubleValue != nil { out["quotaBytes"] = bytes }
+            if let f = q["files"]?.boolValue { out["files"] = .bool(f) }
+        }
+        if let e = b["encryption"]?.stringValue { out["encryption"] = .string(e) }
+        if let s = b["encryptionSince"], s.doubleValue != nil { out["encryptionSince"] = s }
+        if let a = b["aliases"], a.objectValue != nil { out["aliases"] = a }
+        if !pull {
+            if let last = b["lastMutationId"], let n = last.intValue {
+                out["lastMutationId"] = last
+                session.syncNextId = n + 1
+            }
+            out["results"] = .array(
+                (b["results"]?.arrayValue ?? []).map { .string(resultLabel($0)) })
+        }
+    }
+
+    /// A CORS exchange (`cloudsync-cors`): the browser's own. The preflight is the test's own bare
+    /// request (no SDK headers); the push is the SDK's own POST with its headers, the bearer and the
+    /// recorded origin.
+    static func cors(_ client: PolarisKeyClient, step: Transcript.Step, server: ReplayServer) async {
+        let core = client.core
+        let transport = ReplayTransport(server: server)
+        for item in step.exchanges.items {
+            let req = item.request
+            guard let url = URL(string: core.endpoints.baseUrl + req.path) else { continue }
+            if req.method == "OPTIONS" {
+                _ = try? await transport.send(PolarisRequest(url: url, method: "OPTIONS", headers: req.headers))
+                continue
+            }
+            var extra = ["content-type": "application/json", "accept": "application/json"]
+            if let origin = req.headers["origin"] { extra["origin"] = origin }
+            if let token = await core.token { extra["authorization"] = "Bearer \(token)" }
+            let body = req.body.flatMap { try? JSONEncoder().encode($0.json) }
+            _ = try? await transport.send(
+                PolarisRequest(
+                    url: url, method: req.method, headers: await core.headers(extra), body: body))
+        }
     }
 }
