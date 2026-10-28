@@ -380,7 +380,7 @@
   "signin.term.lifetime": "永久",
   "signin.term.until": "有效期至{date}",
   "signin.term.yearlyUntil": "按年订阅，有效期至{date}",
-  "signin.choice.origin.signIn": "自动授予",
+  "signin.choice.origin.signIn": "登录",
   "signin.choice.origin.key": "尾号为{last6}的密钥",
   "signin.choice.origin.keyAdded": "通过密钥添加",
   "signin.choice.origin.storeKey": "尾号为{last6}的{store}密钥",

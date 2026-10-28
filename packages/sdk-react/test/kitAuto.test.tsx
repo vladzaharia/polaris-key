@@ -311,6 +311,37 @@ describe("automatic sign-in: the confirm step and the Google button (KFA-react)"
     );
   });
 
+  it("Continue on an expired grant asks the provider again for a fresh one", async () => {
+    const m = mount(
+      { kind: "confirm", grant: "sg_1", expiresIn: 300, consent: CONSENT },
+      { complete: { kind: "refused", code: "invalid_grant" } },
+    );
+    await shows(m, "signin.auto.confirm.primary");
+    fireEvent.click(control(m.container, "signin.auto.confirm.primary")!);
+    await waitFor(() => expect(m.autoSignIn).toHaveBeenCalledTimes(2));
+    await shows(m, "signin.auto.confirm.primary");
+  });
+
+  it("a network failure on Continue keeps the confirm, says so, and Continue retries", async () => {
+    const m = mount({
+      kind: "confirm",
+      grant: "sg_1",
+      expiresIn: 300,
+      consent: CONSENT,
+    });
+    await shows(m, "signin.auto.confirm.primary");
+    m.complete.mockRejectedValueOnce(new Error("offline"));
+    fireEvent.click(control(m.container, "signin.auto.confirm.primary")!);
+    await waitFor(() => expect(m.complete).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(m.container.textContent).toMatch(/connect|connection/i),
+    );
+    expect(control(m.container, "signin.auto.confirm.primary")).not.toBeNull();
+    expect(control(m.container, "signin.desktop.continue")).toBeNull();
+    fireEvent.click(control(m.container, "signin.auto.confirm.primary")!);
+    await waitFor(() => expect(m.complete).toHaveBeenCalledTimes(2));
+  });
+
   it("Escape on the confirm leaves for Welcome, as Cancel did", async () => {
     const m = mount({
       kind: "confirm",

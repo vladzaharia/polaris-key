@@ -453,6 +453,8 @@ export function button(
     detail?: Record<string, unknown>;
     /** Not available now (a Save over a value out of range): announced, and ignores presses. */
     disabled?: boolean;
+    /** The control leaves the app (a Replace that runs in the browser): the new-window glyph. */
+    external?: boolean;
   } = {},
 ): TemplateResult {
   const device =
@@ -473,6 +475,7 @@ export function button(
   // Renew opens a page only when the host gave one; otherwise the host handles the press.
   const external =
     (key === "status.renew" ? renewTarget(c.input) != null : OPENS.has(key)) ||
+    extra.external === true ||
     download !== null;
   const label =
     device !== null

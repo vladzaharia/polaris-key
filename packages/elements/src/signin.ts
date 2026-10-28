@@ -15,7 +15,13 @@
 // the new step's h1.
 
 import { html, nothing, type PropertyValues } from "lit";
-import { SignInModel, type SignInPrimitives } from "@polaris-key/ui-core";
+import {
+  SignInModel,
+  type AutoOutcome,
+  type SignInPrimitives,
+  type View,
+} from "@polaris-key/ui-core";
+import { openManage, safeLink } from "@polaris-key/ui-core/browser";
 
 import { PkElement } from "./element.js";
 import { GLYPHS, text, type RenderCtx } from "./render.js";
@@ -40,6 +46,36 @@ const reduced = (el: PkElement): boolean =>
   (typeof matchMedia === "function" &&
     matchMedia("(prefers-reduced-motion: reduce)").matches);
 
+/** The existing-license line's words, from the kit's own copy: the term as the license rows say
+ *  it, and this device by its platform. The model supplies the license and the seat. */
+function confirmWords(view: View, c: RenderCtx): View {
+  const anchor = c.input.autoSignIn?.anchor;
+  if (view.state !== "confirm" || !anchor) return view;
+  const lifetime = anchor.term === "perpetual";
+  const key = lifetime ? "signin.term.lifetime" : "signin.term.until";
+  const date = lifetime
+    ? ""
+    : new Date((anchor.term as number) * 1000).toLocaleDateString(
+        c.copy.locale,
+      );
+  return {
+    ...view,
+    args: {
+      ...view.args,
+      term: c.copy.has(key) ? c.copy.format(key, { date }) : "",
+      // The line reads on after a separator: the lower-case phrase ("this Mac"), never the
+      // capitalised one.
+      device:
+        view.args.device ??
+        (c.copy.has("part.thisDevice")
+          ? c.copy.format("part.thisDevice", {
+              formFactor: c.input.platform?.formFactor ?? "other",
+            })
+          : "this device"),
+    },
+  };
+}
+
 /**
  * `<pk-sign-in>`: the one sign-in form. With `primitives` it runs the sign-in itself; with only
  * `input` it draws the snapshot it is given and reports every control as `pk-action`.
@@ -53,6 +89,8 @@ export class PkSignIn extends PkElement {
     replace: { reflect: true },
     open: { type: Boolean, reflect: true },
     primitives: { attribute: false },
+    seed: { attribute: false },
+    embedded: { type: Boolean, reflect: true },
   };
 
   /** Where the form lives (D-79): in the page, in a modal sheet, or on the hosted card. */
@@ -63,6 +101,10 @@ export class PkSignIn extends PkElement {
   open = false;
   /** The SDK's sign-in primitives (plans/I-04.md §G.9); the form drives them itself. */
   primitives?: SignInPrimitives;
+  /** What automatic sign-in found, shown first (a confirm, the license list, the device limit). */
+  seed?: AutoOutcome;
+  /** The gate's own in-app form: Cancel on the methods step, and Done, leave it (`pk-close`). */
+  embedded = false;
 
   private formModel: SignInModel | null = null;
   private stopForm: (() => void) | null = null;
@@ -106,8 +148,15 @@ export class PkSignIn extends PkElement {
     const m = this.formModel!;
     const s = m.snapshot;
     switch (d.key) {
-      case "signin.desktop.continue":
       case "signin.provider.continue":
+        // The provider's account chooser first, then what the ladder found (this press lifts a
+        // sign-out); without a platform provider it starts the browser sign-in.
+        return m.signInWithProvider();
+      case "signin.auto.confirm.primary":
+        return m.confirm();
+      case "signin.auto.confirm.other":
+        return m.useAnother();
+      case "signin.desktop.continue":
       case "signin.email.continue":
       case "signin.passkey":
         return m.start({ channel: "browser" });
@@ -125,6 +174,15 @@ export class PkSignIn extends PkElement {
       case "common.cancel":
         // In a sheet, Cancel leaves it (and drops a sign-in in flight); in the page it backs out.
         if (this.sheet) return this.close();
+        // An automatic sign-in's step (the confirm, the device limit) leaves the form for the
+        // gate's Welcome, Escape included; so does Cancel on the methods step in the gate.
+        if (
+          s.autoSignIn ||
+          (this.embedded &&
+            (this.step.form.state === "methods" ||
+              s.session.outcome === "choose"))
+        )
+          return this.leave();
         return m.cancel();
       case "signin.choice.continue": {
         // Pressed once: a second press while the license is redeemed does nothing.
@@ -137,6 +195,16 @@ export class PkSignIn extends PkElement {
         return m.haveKey();
       case "activate.submit":
         return m.submitKey(s.keyField?.text ?? "");
+      case "signin.deviceLimit.replace": {
+        // The device limit with no license rows: the refusal's link, then back to the provider
+        // sign-in once the person returns (`returned()`).
+        const url = s.autoSignIn?.manageUrl ?? m.manageUrl;
+        if (url) {
+          m.leftToReplace();
+          openManage(url, window.location.href);
+        }
+        return;
+      }
       case "signin.replace.open":
       case "signin.replace.openSystem": {
         // A full license names itself; else the pick, the preselected, or the only full one.
@@ -148,7 +216,24 @@ export class PkSignIn extends PkElement {
           s.selected ??
           s.choices?.preselected ??
           (full.length === 1 ? full[0]!.id : undefined);
-        return id ? m.openReplace(id) : undefined;
+        if (!id) return undefined;
+        // Replace runs in the browser (no grant to replace with here): the row's own link, else
+        // the refusal's, and the provider sign-in runs again on return.
+        if (s.session.replace === "browser") {
+          const url =
+            safeLink(
+              s.choices?.choices.find((r) => r.id === id)?.freeDeviceUrl,
+            ) ?? m.manageUrl;
+          if (url) {
+            m.leftToReplace();
+            openManage(url, window.location.href);
+          }
+        }
+        const opened = m.openReplace(id);
+        // In the browser the row redraws with its new-window glyph: the pressed button keeps focus.
+        if (this.formModel?.snapshot.session.replace === "browser")
+          void this.updateComplete.then(() => this.refocusRowReplace(id));
+        return opened;
       }
       case "signin.replace.confirm": {
         if (s.session.redeeming) return;
@@ -161,8 +246,22 @@ export class PkSignIn extends PkElement {
       case "signin.done.start":
         this.finish();
         if (this.sheet) this.close();
+        else if (this.embedded) this.leave();
         return;
     }
+  }
+
+  /** The row's Replace button after a redraw of its row (focus fell to the page). */
+  private refocusRowReplace(id: string | undefined): void {
+    const root = this.renderRoot as ShadowRoot;
+    if (root.activeElement) return;
+    const rows = [
+      ...root.querySelectorAll<HTMLElement>('[data-part="license-row"]'),
+    ];
+    const row = rows.find((r) => r.dataset.id === id) ?? rows[0];
+    row
+      ?.querySelector<HTMLElement>('[data-key="signin.replace.open"]')
+      ?.focus({ preventScroll: true });
   }
 
   private tierOf(id: string | null): string | undefined {
@@ -181,6 +280,24 @@ export class PkSignIn extends PkElement {
     );
   }
 
+  /** The gate's own form is done with: the host (the gate) draws its Welcome again. */
+  private leave(): void {
+    this.dispatchEvent(
+      new CustomEvent("pk-close", { bubbles: true, composed: true }),
+    );
+  }
+
+  /** Back from the browser after Replace a device: the model runs the provider sign-in again. */
+  private back = (): void => {
+    if (document.visibilityState !== "hidden") void this.formModel?.returned();
+  };
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener("focus", this.back);
+    document.addEventListener("visibilitychange", this.back);
+  }
+
   /** The live form model (ui-core `SignInModel`), once `primitives` are set. */
   get signIn(): SignInModel | null {
     return this.formModel;
@@ -188,6 +305,8 @@ export class PkSignIn extends PkElement {
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
+    window.removeEventListener("focus", this.back);
+    document.removeEventListener("visibilitychange", this.back);
     this.stopForm?.();
     this.stopForm = null;
     if (this.countTimer !== null) clearInterval(this.countTimer);
@@ -200,7 +319,11 @@ export class PkSignIn extends PkElement {
   }
 
   protected override willUpdate(changed: PropertyValues): void {
-    if (changed.has("primitives") || (this.primitives && !this.formModel))
+    if (
+      changed.has("primitives") ||
+      changed.has("seed") ||
+      (this.primitives && !this.formModel)
+    )
       this.restartForm();
     else if (this.formModel && changed.has("input"))
       this.formModel.setBase(this.input ?? {});
@@ -218,6 +341,7 @@ export class PkSignIn extends PkElement {
       replace: this.replace ?? "inline",
       base: this.input ?? {},
     });
+    if (this.seed) this.formModel.presentAuto(this.seed);
     this.stopForm = this.formModel.subscribe(() => this.requestUpdate());
   }
 
@@ -225,7 +349,7 @@ export class PkSignIn extends PkElement {
     const base: FormInput = this.formModel
       ? { ...(this.input ?? {}), ...this.formModel.input() }
       : { ...(this.input ?? {}) };
-    if (base.signIn && (this.presentation || this.replace))
+    if (!this.formModel && base.signIn && (this.presentation || this.replace))
       base.signIn = {
         ...base.signIn,
         ...(this.presentation ? { presentation: this.presentation } : {}),
@@ -307,7 +431,11 @@ export class PkSignIn extends PkElement {
 
   protected override renderBody(c: RenderCtx): unknown {
     const step = formStep(c.input);
-    const body = renderView({ ...c, view: step.body, form: true });
+    const body = renderView({
+      ...c,
+      view: confirmWords(step.body, c),
+      form: true,
+    });
     const announce = step.announce.length
       ? html`<p class="visually-hidden" role="status">
           ${step.announce.map(
@@ -437,6 +565,16 @@ export class PkSignIn extends PkElement {
     const from = this.morphFrom;
     this.morphFrom = null;
     const moved = this.lastStep !== null && key !== this.lastStep;
+    // The gate opened straight on the license list (automatic sign-in): the step's h1 takes
+    // focus, as the confirm's and the device limit's do (the list has no radio to take it).
+    if (
+      this.lastStep === null &&
+      this.embedded &&
+      step.body.component === "LicenseChoice"
+    )
+      (this.renderRoot as ShadowRoot)
+        .querySelector<HTMLElement>("h1")
+        ?.focus({ preventScroll: true });
     this.lastStep = key;
     const out = this.baseInput().signIn?.outcome;
     // The sign-in finished: the host hears it once, and the person gets Done (their way out).

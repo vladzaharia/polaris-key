@@ -26,6 +26,10 @@
       "reason": "Fixture tier and term names (license data, not copy)."
     },
     {
+      "pattern": "Fennick Studio Edu",
+      "reason": "Fixture license name (data, not copy): a full license row's own title (SIGN-IN §3.19)."
+    },
+    {
       "pattern": "Harbor Audio|Lanternworks|Fennick Studio|Mara Lindqvist|Tidewater|Harbor Cloud",
       "reason": "Fixture developer, organisation and person names."
     },

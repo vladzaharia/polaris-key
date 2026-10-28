@@ -380,7 +380,7 @@
   "signin.term.lifetime": "À vie",
   "signin.term.until": "Jusqu’au {date}",
   "signin.term.yearlyUntil": "Annuelle, jusqu’au {date}",
-  "signin.choice.origin.signIn": "Attribution automatique",
+  "signin.choice.origin.signIn": "Connexion",
   "signin.choice.origin.key": "Clé se terminant par {last6}",
   "signin.choice.origin.keyAdded": "Ajoutée avec une clé",
   "signin.choice.origin.storeKey": "Clé {store} se terminant par {last6}",

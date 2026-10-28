@@ -14,7 +14,12 @@ import type {
 } from "@polaris-key/ui-core";
 
 import { formStep, type PkSignIn } from "../src/index.js";
-import { readMatrix, withDefaults, type Row } from "./fixtures.js";
+import {
+  readMatrix,
+  stubResizeObserver,
+  withDefaults,
+  type Row,
+} from "./fixtures.js";
 
 const matrix = readMatrix();
 const rows = matrix.signIn as Row[];
@@ -27,13 +32,7 @@ const input = (name: string): UiInput => {
   };
 };
 
-beforeAll(() => {
-  globalThis.ResizeObserver ??= class {
-    observe() {}
-    disconnect() {}
-    unobserve() {}
-  } as unknown as typeof ResizeObserver;
-});
+beforeAll(stubResizeObserver);
 
 async function draw(
   tag: string,

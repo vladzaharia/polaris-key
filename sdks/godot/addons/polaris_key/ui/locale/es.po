@@ -2425,10 +2425,10 @@ msgstr "Hasta el {date}"
 msgid "signin.term.yearlyUntil"
 msgstr "Anual, hasta el {date}"
 
-#. Automatic grant
+#. Sign-in
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
 msgid "signin.choice.origin.signIn"
-msgstr "Asignación automática"
+msgstr "Inicio de sesión"
 
 #. Key ending {last6}
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is.

@@ -65,7 +65,10 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
   };
   const license = ctx.on("license");
   const error = ctx.input.error?.code;
-  if (error) {
+  // A failed Continue keeps the confirm on screen (autoStepView draws the network line).
+  const confirmRetry =
+    error === "network" && ctx.input.autoSignIn?.step === "confirm";
+  if (error && !confirmRetry) {
     const primary = methodsPrimary(ctx);
     // Sign-in errors sit under Sign in (DL7); the methods stay.
     return makeView(ctx, "SignIn", {
@@ -252,7 +255,7 @@ function autoStepView(
     copy: (string | false | undefined)[],
     o: {
       primary?: string | null;
-      tone?: "neutral";
+      tone?: "neutral" | "danger";
       focus?: string | null;
     } = {},
   ) =>
@@ -296,8 +299,15 @@ function autoStepView(
           auto.alsoGets && "signin.consent.pairwise",
           "signin.auto.confirm.primary",
           "signin.auto.confirm.other",
+          // Continue failed on the network: the grant is still good, Continue tries again.
+          ctx.input.error?.code === "network" && "core.codes.network.message",
         ],
-        { primary: "signin.auto.confirm.primary" },
+        {
+          primary: "signin.auto.confirm.primary",
+          ...(ctx.input.error?.code === "network"
+            ? { tone: "danger" as const }
+            : {}),
+        },
       );
     case "link-offer": {
       // Per developer: named when the developer is known, else the app and its developer's others.
@@ -360,7 +370,9 @@ function autoStepView(
         state: "device-limit",
         copy: [
           "core.codes.device_limit.title",
-          "core.codes.device_limit.message",
+          // The refusal's message tells the person to replace a device: with no link there is
+          // one instruction only, to sign out on another device (`deviceLimit.noManage`).
+          replace && "core.codes.device_limit.message",
           replace ? "signin.deviceLimit.replace" : "deviceLimit.noManage",
           replace && "a11y.externalLink",
           "signin.auto.confirm.other",

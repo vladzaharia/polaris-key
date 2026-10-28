@@ -380,7 +380,7 @@
   "signin.term.lifetime": "Lifetime",
   "signin.term.until": "Until {date}",
   "signin.term.yearlyUntil": "Yearly, until {date}",
-  "signin.choice.origin.signIn": "Automatic grant",
+  "signin.choice.origin.signIn": "Sign-in",
   "signin.choice.origin.key": "Key ending {last6}",
   "signin.choice.origin.keyAdded": "Added with a key",
   "signin.choice.origin.storeKey": "{store} key ending {last6}",

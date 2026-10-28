@@ -72,6 +72,10 @@ function scanCaption(c: RenderCtx): TemplateResult | typeof nothing {
 
 /** The automatic sign-in steps that end on their own button, so no Cancel beside it. */
 const OWN_EXIT: ReadonlySet<string> = new Set([
+  // The confirm ends on Continue and Use another account (ui-matrix v7, no Cancel); Escape is
+  // its way out. The device limit lists its own Cancel.
+  "confirm",
+  "device-limit",
   "link-offer",
   "link-done",
   "link-conflict",
@@ -290,8 +294,15 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
     meta: placed.meta.filter((k) => !own.includes(k)),
     controls: placed.controls.filter((k) => !own.includes(k)),
   };
-  const errorKeys = p.body.filter(isErrorKey);
-  const body = p.body.filter((k) => !isErrorKey(k));
+  // The device limit with no license rows (SIGN-IN §3.19): Replace a device, Use another account,
+  // then Cancel as the quiet exit; its sentences read in the body, not in a callout.
+  const limit = view.component === "SignIn" && view.state === "device-limit";
+  if (limit) {
+    p.controls = DEVICE_LIMIT_ACTIONS.filter((k) => view.copy.includes(k));
+    p.links = view.copy.includes("common.cancel") ? ["common.cancel"] : [];
+  }
+  const errorKeys = limit ? [] : p.body.filter(isErrorKey);
+  const body = limit ? p.body : p.body.filter((k) => !isErrorKey(k));
   const heroTitle = layout.header === "hero";
   const ambient = c.resolved.theme.ambient;
   const showIdentity = layout.header !== "none";
@@ -362,10 +373,12 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
               ${text(c, "common.byDeveloper")}
             </p>`
           : nothing}
-        ${paragraphs(
-          c,
-          body.filter((k) => k !== "common.byDeveloper"),
-        )}
+        ${view.component === "SignIn" && view.state === "confirm"
+          ? consentBody(c, body)
+          : paragraphs(
+              c,
+              body.filter((k) => k !== "common.byDeveloper"),
+            )}
         ${statusLine(c, p.meta)}
       </div>
       ${contentFor(c)} ${progressFor(c)} ${percentFor(c)}
@@ -376,6 +389,59 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
       ${attribution(c, p.meta)}
     </div>
   </section>`;
+}
+
+const DEVICE_LIMIT_ACTIONS = [
+  "signin.deviceLimit.replace",
+  "signin.auto.confirm.other",
+];
+
+/** The confirm step's body (SIGN-IN §3.19): "as {email}" under the title, then each group as a
+ *  small muted label over its value, the license line strong. */
+function consentBody(c: RenderCtx, keys: string[]): TemplateResult {
+  const has = (k: string) => keys.includes(k);
+  const sub = keys.find((k) => k.startsWith("signin.auto.confirm.as"));
+  const used = new Set<string>();
+  const label = (k: string) => {
+    used.add(k);
+    return has(k)
+      ? html`<p class="consent-label" data-part="consent-label" data-key=${k}>
+          ${text(c, k)}
+        </p>`
+      : nothing;
+  };
+  const line = (k: string, cls: string) => {
+    used.add(k);
+    return has(k)
+      ? html`<p class=${cls} data-part=${cls} data-key=${k}>${text(c, k)}</p>`
+      : nothing;
+  };
+  if (sub) used.add(sub);
+  const license = [
+    label("signin.consent.license"),
+    line("signin.consent.newLicense", "consent-line"),
+    line("signin.consent.licenseLine", "consent-line"),
+  ];
+  const also = [
+    label("signin.consent.alsoGets"),
+    line("signin.consent.profile", "consent-value"),
+    line("signin.consent.pairwise", "consent-note"),
+  ];
+  const rest = keys.filter((k) => !used.has(k) && k !== "common.byDeveloper");
+  return html`${sub
+      ? html`<p class="subtitle" data-part="subtitle" data-key=${sub}>
+          ${text(c, sub)}
+        </p>`
+      : nothing}
+    <div class="consent" data-part="consent">
+      ${license.some((x) => x !== nothing)
+        ? html`<div class="consent-group">${license}</div>`
+        : nothing}
+      ${also.some((x) => x !== nothing)
+        ? html`<div class="consent-group">${also}</div>`
+        : nothing}
+      ${rest.length ? paragraphs(c, rest) : nothing}
+    </div>`;
 }
 
 /** The meta line of a screen or pane: its keys joined by a middle dot, announced politely. A
@@ -652,7 +718,12 @@ function withBase(c: RenderCtx): View {
         "signin.choice.tag.full",
         ...rowKeys,
         "common.cancel",
-        ...(keyInstead ? ["signin.choice.keyInstead"] : []),
+        // Every license full and none replaceable: Use another account (SIGN-IN §3.19).
+        ...(view.copy.includes("signin.choice.noneReplaceable")
+          ? ["signin.auto.confirm.other"]
+          : keyInstead
+            ? ["signin.choice.keyInstead"]
+            : []),
       );
       // One lede: the browser's, where the form runs in one (the model's own names the desktop).
       const one = (v: View): View =>
@@ -1281,20 +1352,47 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
       >
         ${body} <span></span>
       </div>`;
+    // The full row (SIGN-IN §3.19): the title, then the pill, the count and the tag on one line,
+    // then the meter and the meta, then its Replace a device.
+    const fullBody = html`${r.name
+        ? html`<span class="row-name" data-part="row-name"
+            ><bdi>${r.name}</bdi></span
+          >`
+        : nothing}
+      <span class="row-line"
+        ><span class="pill">${r.tierName}</span>${r.seats.limit !== null &&
+        has("signin.choice.devices")
+          ? html`<span class="row-title num"
+              >${text(c, "signin.choice.devices", {
+                used: r.seats.used,
+                limit: r.seats.limit,
+              })}</span
+            >`
+          : nothing}${tag("signin.choice.tag.full")}${r.current
+          ? tag("signin.choice.tag.current")
+          : nothing}</span
+      >
+      ${r.seats.limit !== null
+        ? seatMeter(c, r.seats.used, r.seats.limit, false)
+        : nothing}
+      ${meta ? html`<span class="meta">${meta}</span>` : nothing}`;
     return html`<div
       class="row"
       role="group"
       part="license-row"
       data-part="license-row"
+      data-layout="full"
       data-id=${r.id}
-      aria-label=${r.tierName}
+      aria-label=${r.name ?? r.tierName}
     >
-      ${body}
+      ${fullBody}
       ${replaceHere
         ? button(c, "signin.replace.open", lone ? "primary" : "secondary", {
             detail: { licenseId: r.id },
+            // Replace in the browser leaves the app.
+            external: c.input.signIn?.replace === "browser",
           })
-        : html`<span></span>`}
+        : nothing}
     </div>`;
   };
   return html`<div

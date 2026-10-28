@@ -278,6 +278,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "signin.replace.open",
       "signin.replace.openSystem",
       "signin.choice.keyInstead",
+      "signin.auto.confirm.other",
     ],
     quiet: ["signin.replace.open", "signin.replace.openSystem"],
     titles: ["deviceLimit.title"],

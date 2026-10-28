@@ -303,9 +303,6 @@ const KIT_CSS = String.raw`
 .pk-root[data-shape="landscape"] .stage[data-split] .links {
   justify-content: start;
 }
-.pk-root[data-shape="landscape"] .stage[data-split] .links {
-  margin-inline-start: calc(-1 * var(--pk-space-1));
-}
 .pk-root[data-shape="short"] .stage {
   padding-block: var(--pk-space-4);
 }
@@ -542,6 +539,7 @@ p {
   margin: 0;
   color: var(--pk-text-muted);
   text-wrap: pretty;
+  overflow-wrap: anywhere;
 }
 .consent {
   display: grid;
@@ -1735,10 +1733,10 @@ dialog.sheet .identity {
 
 /* ── Forced colours: system colours, borders where fills carried the shape ───────────────── */
 @media (forced-colors: active) {
-  /* The card carries no padding when it is split or full-bleed: its frame would touch the title
-     and buttons and sit on the viewport edge. Those frame their panes instead. */
-  .pk-root:not([data-fill]) .stage:not([data-split]) .card,
-  .stage[data-split] .passport,
+  /* The card is framed, split or not (its inset shadow is dropped here). A full-bleed card sits
+     on the viewport edge: a split one frames its identity pane instead. */
+  .pk-root:not([data-fill]) .stage .card,
+  .pk-root[data-fill] .stage[data-split] .passport,
   .pane,
   .list,
   .banner,
@@ -1753,6 +1751,8 @@ dialog.sheet .identity {
   }
   .btn[data-variant="link"] {
     color: LinkText;
+    /* The border is drawn here: the text keeps clear of it. */
+    padding-inline: var(--pk-space-2);
   }
   .pk-root[data-keyboard] :focus-visible,
   .field input:focus-visible {

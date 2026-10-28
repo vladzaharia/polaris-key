@@ -1085,8 +1085,9 @@ refusal's title ("Device limit reached"), the lede its message, and the actions 
 
 - **Replace a device ↗** (`signin.deviceLimit.replace`, the primary): opens the refusal's
   `manageUrl` in the browser, drawn with the new-window glyph and described by `a11y.externalLink`.
-  With no valid `manageUrl` this action and the glyph are absent, and the lede is followed by
-  `deviceLimit.noManage` instead.
+  With no valid `manageUrl` this action and the glyph are absent, and the lede is
+  `deviceLimit.noManage` alone: the refusal's message tells the person to replace a device, which
+  they cannot do here, so it is not shown (one instruction only).
 - **Use another account** (`signin.auto.confirm.other`): drops the grant and returns to the methods.
 - **Cancel** (`common.cancel`): leaves the form to the gate's Welcome.
 
@@ -1097,7 +1098,9 @@ system sheet where the platform allows it); they do not start again by hand.
 title, then the tier pill, the device count and the tag on one line, then the seat meter and the
 meta. The lede sits above the rows in every kit. Replace is offered only when some full row has
 `replace.allowed`; otherwise the lede is `signin.choice.noneReplaceable` with Cancel and Use another
-account, and no Replace button.
+account, and no Replace button. The web kits draw Use another account
+(`signin.auto.confirm.other`) there, not Use a license key instead (I-46.9 fix round; §3.6 rule 7
+lists the key link for the other sheets, which keep it).
 
 **Large type.** At the largest text sizes (Dynamic Type AX5, Android font scale 2) the actions dock
 to the bottom edge of the form, outside the scrolling body, so the primary stays in the first

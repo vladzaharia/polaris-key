@@ -12,6 +12,7 @@ import {
 import {
   drivenInput,
   gateScreen,
+  AutoSignInRun,
   GateBinding,
   parseHandles,
   type GateConfig,
@@ -60,6 +61,7 @@ export class PkGate extends PkElement {
     config: {},
     handles: {},
     seams: { attribute: false },
+    autoSignIn: { attribute: "auto-sign-in" },
   };
 
   /** The one config object, as the attribute's JSON or an object (`product` is required). */
@@ -68,8 +70,18 @@ export class PkGate extends PkElement {
   handles?: string;
   /** Embedding and test seams: a built client, or the fetch and navigation the client uses. */
   seams?: GateSeams;
+  /** `off` turns automatic sign-in off: no ladder at boot, Welcome opens the hosted sign-in. */
+  autoSignIn?: string;
 
   private binding = new GateBinding(() => this.requestUpdate());
+  private auto = new AutoSignInRun(() => this.requestUpdate());
+
+  private get autoOn(): boolean {
+    const v = String(this.autoSignIn ?? "")
+      .trim()
+      .toLowerCase();
+    return v !== "off" && v !== "false";
+  }
   private reported: string | null = null;
   private lastStep: GateStep = "home";
 
@@ -96,11 +108,12 @@ export class PkGate extends PkElement {
 
   protected override baseInput(): UiInput {
     const snap = this.driven ? this.snapshot : null;
-    return snap
-      ? drivenInput(snap, parseHandles(this.handles))
-      : this.driven
-        ? {}
-        : super.baseInput();
+    if (!snap) return this.driven ? {} : super.baseInput();
+    const input = drivenInput(snap, parseHandles(this.handles));
+    // While automatic sign-in is out the gate keeps its checking screen.
+    return this.auto.holds(this.autoOn)
+      ? { ...input, gate: { checking: true, cached: false } }
+      : input;
   }
 
   override connectedCallback(): void {
@@ -108,6 +121,9 @@ export class PkGate extends PkElement {
     this.addEventListener("pk-action", this.onAction);
     this.addEventListener("pk-input", this.onEdit);
     this.addEventListener("keydown", this.onKey);
+    this.addEventListener("pk-close", this.onFormLeave);
+    this.addEventListener("pk-done", this.onFormLeave);
+    this.auto.start();
     this.binding.attach();
   }
 
@@ -116,6 +132,9 @@ export class PkGate extends PkElement {
     this.removeEventListener("pk-action", this.onAction);
     this.removeEventListener("pk-input", this.onEdit);
     this.removeEventListener("keydown", this.onKey);
+    this.removeEventListener("pk-close", this.onFormLeave);
+    this.removeEventListener("pk-done", this.onFormLeave);
+    this.auto.stop();
     this.binding.detach();
   }
 
@@ -133,6 +152,8 @@ export class PkGate extends PkElement {
     );
     // The new client's presentation (the product's name, accent and icon) applies from here.
     if (this.binding.driver !== before) this.restartIdentity();
+    this.auto.follow(this.driven ? this.binding.driver : null);
+    this.auto.tick(this.autoOn);
     const error = this.binding.error;
     const code = error ? `${error.code}:${error.message}` : null;
     if (code !== this.reported) {
@@ -151,15 +172,45 @@ export class PkGate extends PkElement {
     super.willUpdate(changed);
   }
 
+  /** The in-app form's own controls and fields belong to the form, not to the gate's driver. */
+  private fromForm(e: Event): boolean {
+    return e.composedPath().some((n) => n instanceof PkSignIn);
+  }
+
+  /** The form is done (Cancel, Done, Use of the gate's own sign-in): the gate draws its Welcome. */
+  private onFormLeave = (e: Event): void => {
+    if (this.fromForm(e)) this.closeForm();
+  };
+
+  /** The form closes for Welcome: its Sign in button, which opened it, takes focus back (the
+   *  gate's view stays Welcome underneath, so the step-change focus rule never fires). */
+  private closeForm(): void {
+    this.auto.close();
+    void this.updateComplete.then(() =>
+      (this.renderRoot as ShadowRoot)
+        .querySelector<HTMLElement>('[data-key="welcome.signIn"]')
+        ?.focus({ preventScroll: true }),
+    );
+  }
+
   private onAction = (e: Event): void => {
+    if (this.fromForm(e)) return;
     const d = (e as CustomEvent<PkActionDetail>).detail;
     const driver = this.binding.driver;
     if (!d || !driver) return;
+    if (
+      d.key === "welcome.signIn" &&
+      this.autoOn &&
+      this.snapshot?.step === "home" &&
+      this.auto.openMethods()
+    )
+      return;
     if (d.component === "UpdatePrompt") driver.actUpdate(d.key);
     else driver.act(d.key);
   };
 
   private onEdit = (e: Event): void => {
+    if (this.fromForm(e)) return;
     const d = (e as CustomEvent<{ field?: string; value?: unknown }>).detail;
     if (d?.field && typeof d.value === "string")
       this.binding.driver?.edit(d.field, d.value);
@@ -168,10 +219,46 @@ export class PkGate extends PkElement {
   /** Escape backs out of a step. */
   private onKey = (e: KeyboardEvent): void => {
     const snap = this.snapshot;
+    if (e.key === "Escape" && this.formShown) {
+      e.preventDefault();
+      this.closeForm();
+      return;
+    }
     if (e.key !== "Escape" || !snap || snap.step === "home") return;
     e.preventDefault();
     this.binding.driver?.act("common.back");
   };
+
+  /** The in-app sign-in form replaces the gate's screens: automatic sign-in found something to
+   *  show, or Welcome's Sign in opened the provider's methods. */
+  private get formShown(): boolean {
+    return (
+      this.driven &&
+      this.auto.formOpen &&
+      this.view.state === "needs-activation" &&
+      this.step === "home"
+    );
+  }
+
+  protected override render(): unknown {
+    if (!this.formShown) return super.render();
+    const driver = this.binding.driver;
+    const primitives = this.auto.primitives(() =>
+      driver?.act("welcome.signIn"),
+    );
+    if (!primitives) return super.render();
+    // The platform provider on the web is Google: the button names it.
+    return html`<pk-sign-in
+      embedded
+      fill
+      presentation="inline"
+      replace="inline"
+      .primitives=${primitives}
+      .seed=${this.auto.seed ?? undefined}
+      .input=${{ ...this.baseInput(), provider: "Google" }}
+      .theme=${this.options}
+    ></pk-sign-in>`;
+  }
 
   /** The gate's step morphs the card between its screens (not into the app or the banner). */
   protected override morphKey(): string | null {

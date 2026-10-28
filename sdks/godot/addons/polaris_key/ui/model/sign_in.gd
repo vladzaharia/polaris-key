@@ -302,7 +302,7 @@ static func _auto_step_view(ctx: RefCounted, auto: Dictionary, base_args: Dictio
 			var replace: bool = link["url"] != null
 			copy = [
 				"core.codes.device_limit.title",
-				"core.codes.device_limit.message",
+				"core.codes.device_limit.message" if replace else null,
 				"signin.deviceLimit.replace" if replace else "deviceLimit.noManage",
 				"a11y.externalLink" if replace else null,
 				"signin.auto.confirm.other",

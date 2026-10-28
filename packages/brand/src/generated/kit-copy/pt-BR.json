@@ -380,7 +380,7 @@
   "signin.term.lifetime": "Vitalícia",
   "signin.term.until": "Até {date}",
   "signin.term.yearlyUntil": "Anual, até {date}",
-  "signin.choice.origin.signIn": "Atribuição automática",
+  "signin.choice.origin.signIn": "Acesso",
   "signin.choice.origin.key": "Chave terminada em {last6}",
   "signin.choice.origin.keyAdded": "Adicionada com uma chave",
   "signin.choice.origin.storeKey": "Chave {store} terminada em {last6}",

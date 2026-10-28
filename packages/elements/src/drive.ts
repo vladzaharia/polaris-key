@@ -15,7 +15,15 @@ import {
   type GateStep,
   type PolarisAdapter,
 } from "@polaris-key/ui-core/browser";
-import type { ComponentName, UiInput, View } from "@polaris-key/ui-core";
+import type {
+  AutoOutcome,
+  ComponentName,
+  SignInPrimitives,
+  UiInput,
+  View,
+} from "@polaris-key/ui-core";
+
+import { AUTO_WAIT_MS, autoSupported, primitivesOf, runAuto } from "./auto.js";
 
 export { type GateConfig, type GateSnapshot, type GateStep };
 
@@ -171,5 +179,116 @@ export class GateBinding {
   dispose(): void {
     this.stop();
     this.attached = false;
+  }
+}
+
+/**
+ * Automatic sign-in for one driven gate (I-46.9): the ladder once at boot, when the page needs a
+ * sign-in and the product can sign in; what it found (`seed`) steps the gate into the in-app form
+ * (a confirm, the license list, the device limit). `enabled` is false for `auto-sign-in="off"`:
+ * no ladder, no hold, Welcome as before. A sign-in that landed moves the license state by itself.
+ */
+export class AutoSignInRun {
+  /** The one run at boot is out: the gate keeps its checking screen, never a flash of Welcome. */
+  pending = false;
+  /** What the ladder found, for the form to show first (null: the methods). */
+  seed: AutoOutcome | null = null;
+  /** The gate draws the in-app form instead of its screens. */
+  formOpen = false;
+  private adapter: PolarisAdapter | null = null;
+  private started = false;
+  private alive = true;
+  private prims: SignInPrimitives | null = null;
+  private readonly onChange: () => void;
+
+  constructor(onChange: () => void) {
+    this.onChange = onChange;
+  }
+
+  /** Follow the gate's driver: a new client starts over. */
+  follow(driver: GateDriver | null): void {
+    const adapter = driver?.adapter ?? null;
+    if (adapter === this.adapter) return;
+    this.adapter = adapter;
+    this.started = false;
+    this.pending = false;
+    this.seed = null;
+    this.formOpen = false;
+    this.prims = null;
+  }
+
+  stop(): void {
+    this.alive = false;
+  }
+
+  start(): void {
+    this.alive = true;
+  }
+
+  /** The ladder holds the checking screen only where the build has one to run. */
+  holds(enabled: boolean): boolean {
+    return (
+      enabled &&
+      this.pending &&
+      this.adapter !== null &&
+      autoSupported(this.adapter)
+    );
+  }
+
+  /** Called on every update: run the ladder once, when the first answer says it is needed. */
+  tick(enabled: boolean): void {
+    const a = this.adapter;
+    if (!enabled || !a || this.started || typeof a.autoSignIn !== "function")
+      return;
+    const state = a.snapshot();
+    if (
+      state.phase === "loading" ||
+      state.status !== "needs-activation" ||
+      state.capabilities?.identity.enabled !== true
+    )
+      return;
+    this.started = true;
+    this.pending = true;
+    void runAuto(a, AUTO_WAIT_MS)
+      .catch(() => ({ seed: null, open: false }))
+      .then(({ seed, open }) => {
+        if (!this.alive || this.adapter !== a) return;
+        this.pending = false;
+        this.seed = seed;
+        this.formOpen = open;
+        this.onChange();
+      });
+  }
+
+  /** Welcome's Sign in: the ladder found no account to continue with, so the form opens with the
+   *  provider's button. True when it did. */
+  openMethods(): boolean {
+    if (this.seed?.kind !== "needsSignIn" || this.formOpen) return false;
+    this.formOpen = true;
+    this.onChange();
+    return true;
+  }
+
+  /** The person left the form for Welcome (or the gate's own sign-in): what it held is spent. */
+  close(): void {
+    if (!this.formOpen) return;
+    this.formOpen = false;
+    this.seed = this.seed ? { kind: "needsSignIn" } : null;
+    this.onChange();
+  }
+
+  /** The form's primitives: the SDK's calls, with `leave` for the gate's own sign-in. */
+  primitives(leave: () => void): SignInPrimitives | null {
+    const a = this.adapter;
+    if (!a) return null;
+    this.prims ??= primitivesOf(
+      a,
+      () => {
+        this.close();
+        leave();
+      },
+      () => this.seed?.kind === "confirm" && this.seed.input.license === "new",
+    );
+    return this.prims;
   }
 }

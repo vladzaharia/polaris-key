@@ -884,7 +884,7 @@
     <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
     <string name="signin_term_yearlyUntil">按年订阅，有效期至%1$s</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
-    <string name="signin_choice_origin_signIn">自动授予</string>
+    <string name="signin_choice_origin_signIn">登录</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is. Arguments: 1=last6. -->
     <string name="signin_choice_origin_key">尾号为%1$s的密钥</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->

@@ -387,7 +387,7 @@
     "signin.term.lifetime": "Unbefristet",
     "signin.term.until": "Bis {date}",
     "signin.term.yearlyUntil": "Jährlich, bis {date}",
-    "signin.choice.origin.signIn": "Automatisch zugewiesen",
+    "signin.choice.origin.signIn": "Anmeldung",
     "signin.choice.origin.key": "Schlüssel mit Endung {last6}",
     "signin.choice.origin.keyAdded": "Mit einem Schlüssel hinzugefügt",
     "signin.choice.origin.storeKey": "{store}-Schlüssel mit Endung {last6}",
