@@ -2371,6 +2371,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_management_unsupported_message">Geräte können hier nicht verwaltet werden. Verwalten Sie sie in Ihrem Konto.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_unreadable_title">Gerätschlüssel nicht lesbar</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_unreadable_message">Die gespeicherten Schlüssel dieses Geräts sind nicht lesbar. Setzen Sie sie zurück, um fortzufahren.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_key_store_error_title">Gerätschlüssel nicht verfügbar</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_key_store_error_message">Die Schlüssel dieses Geräts sind gerade nicht erreichbar. Versuchen Sie es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_title">Geräte konnten nicht geladen werden</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_message">Ihre Geräte konnten nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.</string>

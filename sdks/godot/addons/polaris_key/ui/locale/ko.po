@@ -6208,6 +6208,26 @@ msgstr "여기에서 사용할 수 없음"
 msgid "core.codes.device-management-unsupported.message"
 msgstr "여기에서는 기기를 관리할 수 없어요. 계정에서 관리하세요."
 
+#. Device keys unreadable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-keys-unreadable.title"
+msgstr "기기 키를 읽을 수 없음"
+
+#. This device's saved keys can't be read. Reset them to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-keys-unreadable.message"
+msgstr "이 기기에 저장된 키를 읽을 수 없어요. 초기화한 뒤 계속하세요."
+
+#. Device keys unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-key-store-error.title"
+msgstr "기기 키를 사용할 수 없음"
+
+#. This device's keys can't be reached right now. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-key-store-error.message"
+msgstr "지금은 이 기기의 키에 접근할 수 없어요. 다시 시도하세요."
+
 #. Couldn't load devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_list_failed.title"

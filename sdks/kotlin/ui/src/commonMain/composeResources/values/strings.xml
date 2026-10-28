@@ -2371,6 +2371,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_management_unsupported_message">Devices can't be managed from here. Manage them in your account.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_unreadable_title">Device keys unreadable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_unreadable_message">This device's saved keys can't be read. Reset them to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_key_store_error_title">Device keys unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_key_store_error_message">This device's keys can't be reached right now. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_title">Couldn't load devices</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_message">Your devices couldn't be loaded. Check your connection and try again.</string>

@@ -2358,6 +2358,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_management_unsupported_message">여기에서는 기기를 관리할 수 없어요. 계정에서 관리하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_unreadable_title">기기 키를 읽을 수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_unreadable_message">이 기기에 저장된 키를 읽을 수 없어요. 초기화한 뒤 계속하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_key_store_error_title">기기 키를 사용할 수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_key_store_error_message">지금은 이 기기의 키에 접근할 수 없어요. 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_title">기기를 불러오지 못함</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_message">기기 목록을 불러오지 못했어요. 연결 상태를 확인하고 다시 시도하세요.</string>
