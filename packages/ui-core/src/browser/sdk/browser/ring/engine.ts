@@ -42,6 +42,7 @@ import { UnsupportedError } from "../../core/caps.js";
 import { PolarisError, type PolarisErrorCode } from "../../core/types.js";
 import type {
   RingCode,
+  RingIdentity,
   RingPersistence,
   RingStatus,
   KeyringClient,
@@ -441,19 +442,30 @@ export class RingEngine implements KeyringClient {
     return this.shape("locked", ring, persistence, canCreate);
   }
 
-  async acceptRingChange(): Promise<RingStatus> {
+  async acceptRingChange(confirmed: RingIdentity): Promise<RingStatus> {
     const { ring, wrap } = await this.read();
     const { vault, persistence, canCreate } = await this.where();
     if (!ring) return this.shape("none", null, persistence, canCreate);
-    // The person confirmed this ring: the old root opens nothing in it, so it goes, and the
-    // served ring is pinned before anything is opened.
-    await vault.clear();
-    this.dropSession();
-    this.setHeld(false);
-    await vault.putPin(identityPin(ring));
+    const pin = await vault.getPin();
+    // An accept holds only for the ring the person was shown. A ring that moved since is
+    // reported again, and nothing is opened or replaced.
+    const changed = (): RingStatus =>
+      this.shape("ring-changed", ring, persistence, canCreate, {
+        pinned: identityOf(pin ?? confirmed),
+        served: identityOf(ring),
+        by: wrap?.by ?? "",
+      });
+    if (!pinMatches(identityPin(confirmed), ring)) {
+      this.setHeld(false);
+      return changed();
+    }
+    // The stored root and the pin change only once this device's wrap for the served ring
+    // opens (that is what replaces the root and re-pins). Otherwise both stay as they were
+    // and the recovery code is the way in.
     if (wrap && canCreate && (await this.openOwnWrap(ring, wrap)))
       return this.shape("unlocked", ring, persistence, canCreate);
-    return this.shape("locked", ring, persistence, canCreate);
+    this.setHeld(false);
+    return changed();
   }
 
   private shape(

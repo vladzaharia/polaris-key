@@ -8471,7 +8471,12 @@ ring for the product. The routes are recorded in the `keyring-*` transcripts.
   `ring-changed`, and only the recovery code, or an explicit accept the person confirmed in the
   app, re-pins. A reset made by the same device re-pins itself. Sign-out and deactivation lock the
   client and drop the pin and, in the browser, the stored root. A client that has never held a root
-  has no pin and trusts the first ring it is wrapped into. Residual: the server's device directory
+  has no pin and trusts the first ring it is wrapped into. The same trust on first use applies
+  wherever the pin is not durable: a Node client upgraded from a build without pins or run with an
+  ephemeral state directory, a Python client with no state directory, and a browser using the
+  memory vault or a degraded IndexedDB. The pin does not depend on the subject the Worker serves;
+  only sign-out or deactivation drops it. A confirmed accept names the ring the person was shown,
+  and a ring that changed again before the accept is refused. Residual: the server's device directory
   is trusted for listing devices and nothing else, a client that skips the nearby step is not
   stopped by the server, and a person who confirms a changed ring in the app accepts its root.
 - **T22, key loss.** With every device lost and neither a recovery code nor a platform backup, the

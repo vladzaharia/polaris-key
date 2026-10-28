@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Unsupported } from "@polaris-key/client-core";
 import type { PolarisError } from "../core/index.js";
 import { PolarisError as PolarisErrorClass } from "../core/types.js";
-import type { RingCode, RingStatus } from "../core/keyring.js";
+import type { RingCode, RingIdentity, RingStatus } from "../core/keyring.js";
 import { useCtx } from "./hooks.js";
 
 export type SyncLockState =
@@ -98,9 +98,9 @@ export interface UseRecoveryCode {
   replace: () => Promise<RingCode | null>;
   /** "Start over": a new ring and a new code. */
   reset: () => Promise<RingCode | null>;
-  /** After `ring-changed`, once the person confirmed in UI: pin the served ring. True when the
-   *  root is now held. */
-  accept: () => Promise<boolean>;
+  /** After `ring-changed`, once the person confirmed in UI: `served` is `status.changed.served`,
+   *  the ring they were shown. True when the root is now held. */
+  accept: (served: RingIdentity) => Promise<boolean>;
 }
 
 /** The recovery-code actions over the adapter's key ring. */
@@ -133,8 +133,8 @@ export function useRecoveryCode(): UseRecoveryCode {
     create: () => run(() => ring.create()),
     replace: () => run(() => ring.setRecoveryCode()),
     reset: () => run(() => ring.reset()),
-    accept: async () => {
-      const s = await run(() => ring.acceptRingChange());
+    accept: async (served) => {
+      const s = await run(() => ring.acceptRingChange(served));
       return s?.state === "unlocked";
     },
   };

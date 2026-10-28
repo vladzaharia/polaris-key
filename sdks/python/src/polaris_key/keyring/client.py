@@ -299,7 +299,6 @@ class KeyringClient:
         self.codec = SyncCodec(self)
         state_dir = ctx.local_state_dir()
         self._pin_file = JsonStateFile(os.path.join(state_dir, "keyring-pin.json") if state_dir else None, lambda: {})
-        self._subject_file = JsonStateFile(os.path.join(state_dir, "subject.json") if state_dir else None, lambda: {})
 
     def __repr__(self) -> str:
         h = self._held
@@ -361,22 +360,13 @@ class KeyringClient:
             return None
         if not (isinstance(v.get("ringId"), str) and type(v.get("epoch")) is int and isinstance(v.get("rootKid"), str)):
             return None
-        # A pin recorded for another person does not bind this one.
-        subject = self._stored_subject()
-        if isinstance(v.get("subject"), str) and subject is not None and v["subject"] != subject:
-            return None
+        # The pin never depends on the subject the Worker serves: only forget() drops it.
         return RingPin(v["ringId"], v["epoch"], v["rootKid"])
-
-    def _stored_subject(self) -> Optional[str]:
-        v = self._subject_file.load()
-        s = v.get("subject") if isinstance(v, dict) else None
-        return s if isinstance(s, str) else None
 
     def _write_pin(self, ring_id: str, epoch: int, root_kid: str) -> None:
         self._pin_file.save(
             {
                 "product": self._ctx.product,
-                "subject": self._stored_subject(),
                 "ringId": ring_id,
                 "epoch": epoch,
                 "rootKid": root_kid,
@@ -400,28 +390,28 @@ class KeyringClient:
         """Open this device's wrap and hold the root. A device with no ring, no wrap, or a wrap it
         cannot use stays locked (a result, not an error); a ring that is not the pinned one is
         ``ring-changed`` and is not opened; a network or server failure raises."""
-        return self._unlock(False)
+        return self._unlock(None)
 
-    def accept_ring_change(self) -> UnlockResult:
-        """The person confirmed that the served ring is theirs (after a ``ring-changed`` answer):
-        open this device's wrap for it and pin it. Call it only from UI the person has confirmed.
+    def accept_ring_change(self, confirmed: RingPin) -> UnlockResult:
+        """The person confirmed that the ring they were shown (``served`` of a ``ring-changed``
+        answer) is theirs: open this device's wrap for it and pin it. If the Worker now serves a
+        different ring, the answer is ``ring-changed`` again. Call it only from confirmed UI.
         A wrap that does not open leaves the pin as it was."""
-        return self._unlock(True)
+        return self._unlock(confirmed)
 
-    def _unlock(self, accept: bool) -> UnlockResult:
+    def _unlock(self, accept: Optional[RingPin]) -> UnlockResult:
         state = self.read()
         ring, wrap = state.ring, state.wrap
         if ring is None:
             return UnlockResult("locked", reason="no-ring")
         pinned = self.pin()
-        if (
-            not accept
-            and pinned is not None
-            and (pinned.ring_id != ring.ring_id or pinned.epoch != ring.epoch or pinned.root_kid != ring.root_kid)
+        expected = accept if accept is not None else pinned
+        if expected is not None and (
+            expected.ring_id != ring.ring_id or expected.epoch != ring.epoch or expected.root_kid != ring.root_kid
         ):
             return UnlockResult(
                 "ring-changed",
-                pinned=pinned,
+                pinned=pinned or expected,
                 served=RingPin(ring.ring_id, ring.epoch, ring.root_kid),
                 served_by=wrap.by if wrap is not None else None,
                 served_created_at=ring.created_at,
@@ -620,9 +610,9 @@ class KeyringClient:
         return h
 
     def _hold(self, h: _Held) -> None:
-        # Pinned first: no root is held without a pin.
-        self._write_pin(h.ring_id, h.epoch, h.kid.hex())
         with self._lock:
+            # Pinned first: no root is held without a pin.
+            self._write_pin(h.ring_id, h.epoch, h.kid.hex())
             cur = self._held
             if cur is not None:
                 # A root for a ring is never replaced by another for the same ring and epoch (§13.11.1).

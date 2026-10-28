@@ -528,11 +528,27 @@ def test_recover_re_pins_and_the_old_code_does_not_open_the_attackers_ring(tmp_p
 def test_accept_ring_change_re_pins_after_confirmation(tmp_path) -> None:
     s, victim, vkeys, _attacker, _made, _sealed = _attacked(tmp_path)
     again = make_client(s, store=victim.core.store, device_keys=vkeys, state_dir=str(tmp_path))
-    assert again.keyring.unlock().kind == "ring-changed"
-    r = again.keyring.accept_ring_change()
+    shown = again.keyring.unlock()
+    assert shown.kind == "ring-changed"
+    # The ring moves between the prompt and the accept: refused, nothing pinned.
+    real = dict(s.ring)
+    s.ring = {**real, "rootKid": "e" * 32}
+    assert again.keyring.accept_ring_change(shown.served).kind == "ring-changed"
+    assert again.keyring.pin().ring_id != real["ringId"]
+    s.ring = real
+    r = again.keyring.accept_ring_change(shown.served)
     assert r.kind == "unlocked" and r.ring_id == s.ring["ringId"]
     assert again.keyring.pin().ring_id == s.ring["ringId"]
     assert again.keyring.unlock().kind == "unlocked"
+
+
+def test_a_subject_the_worker_serves_never_drops_the_pin(tmp_path) -> None:
+    s, victim, vkeys, _attacker, _made, _sealed = _attacked(tmp_path)
+    for f in tmp_path.rglob("keyring-pin.json"):
+        (f.parent / "subject.json").write_text(json.dumps({"subject": "ps_" + "n" * 30}))
+    again = make_client(s, store=victim.core.store, device_keys=vkeys, state_dir=str(tmp_path))
+    assert again.keyring.unlock().kind == "ring-changed"
+    assert not again.keyring.unlocked
 
 
 def test_a_reset_by_this_device_re_pins_itself(tmp_path) -> None:

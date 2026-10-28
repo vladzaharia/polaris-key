@@ -84,10 +84,12 @@ export interface KeyringClient {
    */
   forget(): Promise<void>;
   /**
-   * After `ring-changed`, and only once the person confirmed in UI: pin the served ring, drop the
-   * stored root of the old one and open this device's wrap for the new one when it has one.
+   * After `ring-changed`, and only once the person confirmed in UI: `confirmed` is the ring they
+   * were shown (`status.changed.served`). If the Worker now serves another, the answer is
+   * `ring-changed` again. When this device's wrap for the ring opens, the root is replaced and
+   * the ring pinned; otherwise the stored root and pin stay and the recovery code is the way in.
    */
-  acceptRingChange(): Promise<RingStatus>;
+  acceptRingChange(confirmed: RingIdentity): Promise<RingStatus>;
   /** Whether this device holds the root right now (what the sync machine's `setRoot` takes). */
   hasRoot(): boolean;
   /** Called on every change of `hasRoot()`. Returns the unsubscribe. */
