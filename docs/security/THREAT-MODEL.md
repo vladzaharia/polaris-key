@@ -8541,7 +8541,19 @@ every `ct` is `encryption_mismatch` and discovery says nothing of E2E.
   opened a sealed row; a later, higher value never raises the boundary. A value served below the
   real one only makes legacy rows read as invalid. A switch of a product's catalog from `e2e` to
   `server` leaves sealed rows no client can open
-  (V5 §13.10.1). Ciphertext length is visible to the server, padded to 64 bytes; budgets are
+  (V5 §13.10.1). Forged plaintext rows (U43-F6): a Worker can serve a row with no `ct` and a low
+  `version`, which would read as legacy and overwrite a sealed row. The machine refuses it three
+  ways: a change at or below the request's cursor is ignored (E2E, cursor above 0); a plaintext
+  row is legacy only when the request's cursor is below `encryptionSince`; and a bounded
+  per-key "ever sealed" latch (`sealedKeys`, 4096 keys per partition, oldest out, persisted and
+  kept across a snapshot reset) makes a plaintext row for a key this device has pushed or opened
+  sealed invalid. Residual (trust on first use): a fresh device, or a key it has not yet seen
+  sealed, takes a plaintext row served in a cursor-0 snapshot below the boundary as legacy; a
+  key evicted from the latch loses its protection. A Worker can also serve a tombstone for any
+  key (T24, T26): the client deletes the row, which is availability loss, not forgery, and the
+  device's own journal is unaffected. The plaintext snapshot file (`CloudSyncPersisted`) holds
+  opened values and the latch in the clear on the device: it is as protected as the app's
+  other local state, and a process that can write it can plant rows or clear the latch. Ciphertext length is visible to the server, padded to 64 bytes; budgets are
   charged on the length less the envelope overhead, so they match the client's.
 - **T24 and T26, the envelope AAD.** The envelope's associated data is the version, the `kid` and
   the salt. The collection is bound through its key and the name through the inner key, but not
