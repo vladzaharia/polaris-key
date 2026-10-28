@@ -2501,7 +2501,7 @@ against the effective set.
 `devices` holds 1 to `MAX_RING_DEVICES` (128) entries, sorted by `deviceId` bytes, with unique ids
 and keys checked as in §15.2 step 4. At 128 entries the payload is about 20 KiB, under the 64 KiB cap.
 
-**Lifetime.** A roster's `expiresAt − issuedAt` is 1 to `RING_SECONDS` (604 800), and the Worker issues every roster at exactly `RING_SECONDS`. The signer refuses to sign one whose `expiresAt` precedes or equals `issuedAt`, or whose span is longer than `RING_SECONDS`, so a roster cannot outlive the horizon on which a removed device's certificate expires (§15.2 step 5 sets the same bound for a certificate). A verifier refusing a roster outside that span is a wire change for every language and is not yet enforced: the corpus case and each verifier's check land together (CC-06.2). Until then a verifier accepts any span, and the bound holds because only the Worker signs rosters.
+**Lifetime.** A roster's `expiresAt − issuedAt` is 1 to `RING_SECONDS` (604 800), and the Worker issues every roster at exactly `RING_SECONDS`. The signer refuses to sign one whose `expiresAt` precedes or equals `issuedAt`, or whose span is longer than `RING_SECONDS`, so a roster cannot outlive the horizon on which a removed device's certificate expires (§15.2 step 5 sets the same bound for a certificate). A verifier refuses a roster whose `expiresAt − issuedAt` is outside 1 to `RING_SECONDS` (reason `lifetime`), checked after the integer and subject checks and before the device list; the corpus pins it (`ring-lifetime-*`, `ring-valid-span-*`) and so does the certificate bound (`peer-lifetime-*`).
 
 **Held ring and replacement.** The held ring R is replaced by R′ only when all of these hold:
 

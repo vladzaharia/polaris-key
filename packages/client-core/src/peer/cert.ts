@@ -20,6 +20,7 @@ import {
   PEER_CERT_TYP,
   PEER_DEVICE_ID_PATTERN,
   PEER_KEY_PATTERN,
+  RING_SECONDS,
   RING_TYP,
   type PeerCertDoc,
   type PeerDeviceKeys,
@@ -191,6 +192,7 @@ export type RingRefusal =
   | "issuer-or-audience"
   | "integer"
   | "subject"
+  | "lifetime"
   | "devices-size"
   | "device"
   | "keys"
@@ -234,6 +236,8 @@ export async function verifyRing(
     return ringFail("integer");
   if (typeof d.sub !== "string" || !SUB_RE.test(d.sub))
     return ringFail("subject");
+  const span = (d.expiresAt as number) - (d.issuedAt as number);
+  if (span < 1 || span > RING_SECONDS) return ringFail("lifetime");
   const devices = d.devices;
   if (
     !Array.isArray(devices) ||

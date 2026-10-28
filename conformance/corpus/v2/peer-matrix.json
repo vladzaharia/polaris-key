@@ -2014,6 +2014,65 @@
         }
       },
       {
+        "id": "chain-18-records-delivers",
+        "mode": "a",
+        "records": [
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "body": "" }
+        ],
+        "want": {
+          "delivered": [
+            {
+              "type": "0100",
+              "length": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ]
+        }
+      },
+      {
+        "id": "chain-19-records-closes",
+        "mode": "a",
+        "records": [
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "flags": 1, "body": "" },
+          { "type": "0100", "body": "" }
+        ],
+        "want": { "close": "peer_bad_frame", "at": 18 }
+      },
+      {
         "id": "more-on-not-allowed-type",
         "mode": "v",
         "records": [{ "type": "0100", "flags": 1, "body": "01" }],

@@ -21142,6 +21142,78 @@
     },
     {
       "kind": "verify",
+      "id": "ring-valid-span-max",
+      "description": "expiresAt − issuedAt = 604800.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19BYkNkRWZHaElqS2xNbk9wUXJTdFV2IiwiZXBvY2giOjcsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDA2MDQ4MDAsImRldmljZXMiOlt7ImRldmljZUlkIjoiSjBWT2R4aU1iaXdsUjFJYWNXSmJ5NzFhWnFtOUtOcXgiLCJzaWduS2V5IjoiZnNMc2taYndpeU5EQU9jdldkempQYVdUQnhUUkNrb1VRbkNRaGU4ZUpCUSIsImFncmVlS2V5IjoiV2d3OWlGTWlXcEFZRU05ZzkySjFmcTkyODQ3M1lfWHdzMDc1aWdWQUpEQSJ9LHsiZGV2aWNlSWQiOiJXaHotTkhCdlFhY093WTZKd0RrLURzQnRkYXotV01nWCIsInNpZ25LZXkiOiI1WkxhakprZ3ROaUxOcjV4aFhTcW5jU0dET3l4TklINXFJWmIxZVBLeHhRIiwiYWdyZWVLZXkiOiJQb0o3ZWlYVlU0M2N1TkFaVlRrczV6VEhaWGlPVTc1QW9pWVhBR2ZLYUFRIn0seyJkZXZpY2VJZCI6Il9uUEtHZ2RNZmJFOUxTZDRteGR3c21aVTNPTldNWXFBIiwic2lnbktleSI6Ii1TNjVWQzZMb2ZTUlpQUGQ0OXo0QTFBb25SeE5JYkthb3VPeTg5Mmg4eWciLCJhZ3JlZUtleSI6Ii10UVpiQTJwZEtUZ2NKWTBBRWNYR0EtUTVOMzV3bkx4engxWndxVHZSeUEifV19.8zh_llyF2BGBV4xgbY6f4jKFDbUOv2guPhmsa6oJnNrnAzVd-B7F7AgjCGN6UuDml-Y4qomkWkfqukwdA36PAw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "now": 1700001000,
+      "expect": { "valid": true, "epoch": 7, "devices": 3, "expired": false }
+    },
+    {
+      "kind": "verify",
+      "id": "ring-valid-span-min",
+      "description": "expiresAt − issuedAt = 1.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19BYkNkRWZHaElqS2xNbk9wUXJTdFV2IiwiZXBvY2giOjcsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDAwMDEsImRldmljZXMiOlt7ImRldmljZUlkIjoiSjBWT2R4aU1iaXdsUjFJYWNXSmJ5NzFhWnFtOUtOcXgiLCJzaWduS2V5IjoiZnNMc2taYndpeU5EQU9jdldkempQYVdUQnhUUkNrb1VRbkNRaGU4ZUpCUSIsImFncmVlS2V5IjoiV2d3OWlGTWlXcEFZRU05ZzkySjFmcTkyODQ3M1lfWHdzMDc1aWdWQUpEQSJ9LHsiZGV2aWNlSWQiOiJXaHotTkhCdlFhY093WTZKd0RrLURzQnRkYXotV01nWCIsInNpZ25LZXkiOiI1WkxhakprZ3ROaUxOcjV4aFhTcW5jU0dET3l4TklINXFJWmIxZVBLeHhRIiwiYWdyZWVLZXkiOiJQb0o3ZWlYVlU0M2N1TkFaVlRrczV6VEhaWGlPVTc1QW9pWVhBR2ZLYUFRIn0seyJkZXZpY2VJZCI6Il9uUEtHZ2RNZmJFOUxTZDRteGR3c21aVTNPTldNWXFBIiwic2lnbktleSI6Ii1TNjVWQzZMb2ZTUlpQUGQ0OXo0QTFBb25SeE5JYkthb3VPeTg5Mmg4eWciLCJhZ3JlZUtleSI6Ii10UVpiQTJwZEtUZ2NKWTBBRWNYR0EtUTVOMzV3bkx4engxWndxVHZSeUEifV19.X30BITRcYcJUPbwoY2Ix9O3Ny6q0d4Y4KRd-eDaR6dwB0-eh2yDTdmfUVIQgcHaezYZFSHPxviGL9EjGx54oBQ",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "now": 1700001000,
+      "expect": { "valid": true, "epoch": 7, "devices": 3, "expired": true }
+    },
+    {
+      "kind": "verify",
+      "id": "ring-lifetime-over-max",
+      "description": "expiresAt − issuedAt = 604801.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19BYkNkRWZHaElqS2xNbk9wUXJTdFV2IiwiZXBvY2giOjcsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDA2MDQ4MDEsImRldmljZXMiOlt7ImRldmljZUlkIjoiSjBWT2R4aU1iaXdsUjFJYWNXSmJ5NzFhWnFtOUtOcXgiLCJzaWduS2V5IjoiZnNMc2taYndpeU5EQU9jdldkempQYVdUQnhUUkNrb1VRbkNRaGU4ZUpCUSIsImFncmVlS2V5IjoiV2d3OWlGTWlXcEFZRU05ZzkySjFmcTkyODQ3M1lfWHdzMDc1aWdWQUpEQSJ9LHsiZGV2aWNlSWQiOiJXaHotTkhCdlFhY093WTZKd0RrLURzQnRkYXotV01nWCIsInNpZ25LZXkiOiI1WkxhakprZ3ROaUxOcjV4aFhTcW5jU0dET3l4TklINXFJWmIxZVBLeHhRIiwiYWdyZWVLZXkiOiJQb0o3ZWlYVlU0M2N1TkFaVlRrczV6VEhaWGlPVTc1QW9pWVhBR2ZLYUFRIn0seyJkZXZpY2VJZCI6Il9uUEtHZ2RNZmJFOUxTZDRteGR3c21aVTNPTldNWXFBIiwic2lnbktleSI6Ii1TNjVWQzZMb2ZTUlpQUGQ0OXo0QTFBb25SeE5JYkthb3VPeTg5Mmg4eWciLCJhZ3JlZUtleSI6Ii10UVpiQTJwZEtUZ2NKWTBBRWNYR0EtUTVOMzV3bkx4engxWndxVHZSeUEifV19.yS1g34WURgf0RLQTBdOJlde46UOZJBk2XJvS-QlURzViOzguh0X7zUzXxfHz8XBYOeRpiT1-CiK-4QyZQZYiDA",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "now": 1700001000,
+      "expect": { "valid": false, "reason": "lifetime" }
+    },
+    {
+      "kind": "verify",
+      "id": "ring-lifetime-zero",
+      "description": "expiresAt = issuedAt.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19BYkNkRWZHaElqS2xNbk9wUXJTdFV2IiwiZXBvY2giOjcsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDAwMDAwMDAsImRldmljZXMiOlt7ImRldmljZUlkIjoiSjBWT2R4aU1iaXdsUjFJYWNXSmJ5NzFhWnFtOUtOcXgiLCJzaWduS2V5IjoiZnNMc2taYndpeU5EQU9jdldkempQYVdUQnhUUkNrb1VRbkNRaGU4ZUpCUSIsImFncmVlS2V5IjoiV2d3OWlGTWlXcEFZRU05ZzkySjFmcTkyODQ3M1lfWHdzMDc1aWdWQUpEQSJ9LHsiZGV2aWNlSWQiOiJXaHotTkhCdlFhY093WTZKd0RrLURzQnRkYXotV01nWCIsInNpZ25LZXkiOiI1WkxhakprZ3ROaUxOcjV4aFhTcW5jU0dET3l4TklINXFJWmIxZVBLeHhRIiwiYWdyZWVLZXkiOiJQb0o3ZWlYVlU0M2N1TkFaVlRrczV6VEhaWGlPVTc1QW9pWVhBR2ZLYUFRIn0seyJkZXZpY2VJZCI6Il9uUEtHZ2RNZmJFOUxTZDRteGR3c21aVTNPTldNWXFBIiwic2lnbktleSI6Ii1TNjVWQzZMb2ZTUlpQUGQ0OXo0QTFBb25SeE5JYkthb3VPeTg5Mmg4eWciLCJhZ3JlZUtleSI6Ii10UVpiQTJwZEtUZ2NKWTBBRWNYR0EtUTVOMzV3bkx4engxWndxVHZSeUEifV19.YBIOnJz65OCNvvEGlbmAs5AJR5UQp6txDeYbnOl6O9tnruqTWezZvpKSVp9M85zHs3G9iX9aCGSt5OXNHgu4Dw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "now": 1700001000,
+      "expect": { "valid": false, "reason": "lifetime" }
+    },
+    {
+      "kind": "verify",
+      "id": "ring-lifetime-negative",
+      "description": "expiresAt before issuedAt.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19BYkNkRWZHaElqS2xNbk9wUXJTdFV2IiwiZXBvY2giOjcsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE2OTk5OTk5OTksImRldmljZXMiOlt7ImRldmljZUlkIjoiSjBWT2R4aU1iaXdsUjFJYWNXSmJ5NzFhWnFtOUtOcXgiLCJzaWduS2V5IjoiZnNMc2taYndpeU5EQU9jdldkempQYVdUQnhUUkNrb1VRbkNRaGU4ZUpCUSIsImFncmVlS2V5IjoiV2d3OWlGTWlXcEFZRU05ZzkySjFmcTkyODQ3M1lfWHdzMDc1aWdWQUpEQSJ9LHsiZGV2aWNlSWQiOiJXaHotTkhCdlFhY093WTZKd0RrLURzQnRkYXotV01nWCIsInNpZ25LZXkiOiI1WkxhakprZ3ROaUxOcjV4aFhTcW5jU0dET3l4TklINXFJWmIxZVBLeHhRIiwiYWdyZWVLZXkiOiJQb0o3ZWlYVlU0M2N1TkFaVlRrczV6VEhaWGlPVTc1QW9pWVhBR2ZLYUFRIn0seyJkZXZpY2VJZCI6Il9uUEtHZ2RNZmJFOUxTZDRteGR3c21aVTNPTldNWXFBIiwic2lnbktleSI6Ii1TNjVWQzZMb2ZTUlpQUGQ0OXo0QTFBb25SeE5JYkthb3VPeTg5Mmg4eWciLCJhZ3JlZUtleSI6Ii10UVpiQTJwZEtUZ2NKWTBBRWNYR0EtUTVOMzV3bkx4engxWndxVHZSeUEifV19.YV3nxqNY32FNn6oAu7ZNECNcDEaxG0MbYnZ2QddQR5Uv8pNVXjvWx-ivl-loGB2_8_aIl1hrXSMHZfz_IWOCAg",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "now": 1700001000,
+      "expect": { "valid": false, "reason": "lifetime" }
+    },
+    {
+      "kind": "verify",
+      "id": "ring-lifetime-huge",
+      "description": "A thirty-day span.",
+      "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcmluZytqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19BYkNkRWZHaElqS2xNbk9wUXJTdFV2IiwiZXBvY2giOjcsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDI1OTIwMDAsImRldmljZXMiOlt7ImRldmljZUlkIjoiSjBWT2R4aU1iaXdsUjFJYWNXSmJ5NzFhWnFtOUtOcXgiLCJzaWduS2V5IjoiZnNMc2taYndpeU5EQU9jdldkempQYVdUQnhUUkNrb1VRbkNRaGU4ZUpCUSIsImFncmVlS2V5IjoiV2d3OWlGTWlXcEFZRU05ZzkySjFmcTkyODQ3M1lfWHdzMDc1aWdWQUpEQSJ9LHsiZGV2aWNlSWQiOiJXaHotTkhCdlFhY093WTZKd0RrLURzQnRkYXotV01nWCIsInNpZ25LZXkiOiI1WkxhakprZ3ROaUxOcjV4aFhTcW5jU0dET3l4TklINXFJWmIxZVBLeHhRIiwiYWdyZWVLZXkiOiJQb0o3ZWlYVlU0M2N1TkFaVlRrczV6VEhaWGlPVTc1QW9pWVhBR2ZLYUFRIn0seyJkZXZpY2VJZCI6Il9uUEtHZ2RNZmJFOUxTZDRteGR3c21aVTNPTldNWXFBIiwic2lnbktleSI6Ii1TNjVWQzZMb2ZTUlpQUGQ0OXo0QTFBb25SeE5JYkthb3VPeTg5Mmg4eWciLCJhZ3JlZUtleSI6Ii10UVpiQTJwZEtUZ2NKWTBBRWNYR0EtUTVOMzV3bkx4engxWndxVHZSeUEifV19.JQk99hVB-qf4HgzD7CtuC1QRyRAd5CH_JCpcSCPMLpOqFgNE6iwl0nunqba7JEo1NxxsTAWnzXwJTH0rLGd6Bw",
+      "trust": {
+        "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+      },
+      "expectedAud": "djdl",
+      "now": 1700001000,
+      "expect": { "valid": false, "reason": "lifetime" }
+    },
+    {
+      "kind": "verify",
       "id": "ring-wrong-typ-peer",
       "description": "A roster payload under pkey-peer+jws.",
       "jws": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktcGVlcitqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJzdWIiOiJwc19BYkNkRWZHaElqS2xNbk9wUXJTdFV2IiwiZXBvY2giOjcsImlzc3VlZEF0IjoxNzAwMDAwMDAwLCJleHBpcmVzQXQiOjE3MDA2MDQ4MDAsImRldmljZXMiOlt7ImRldmljZUlkIjoiSjBWT2R4aU1iaXdsUjFJYWNXSmJ5NzFhWnFtOUtOcXgiLCJzaWduS2V5IjoiZnNMc2taYndpeU5EQU9jdldkempQYVdUQnhUUkNrb1VRbkNRaGU4ZUpCUSIsImFncmVlS2V5IjoiV2d3OWlGTWlXcEFZRU05ZzkySjFmcTkyODQ3M1lfWHdzMDc1aWdWQUpEQSJ9LHsiZGV2aWNlSWQiOiJXaHotTkhCdlFhY093WTZKd0RrLURzQnRkYXotV01nWCIsInNpZ25LZXkiOiI1WkxhakprZ3ROaUxOcjV4aFhTcW5jU0dET3l4TklINXFJWmIxZVBLeHhRIiwiYWdyZWVLZXkiOiJQb0o3ZWlYVlU0M2N1TkFaVlRrczV6VEhaWGlPVTc1QW9pWVhBR2ZLYUFRIn0seyJkZXZpY2VJZCI6Il9uUEtHZ2RNZmJFOUxTZDRteGR3c21aVTNPTldNWXFBIiwic2lnbktleSI6Ii1TNjVWQzZMb2ZTUlpQUGQ0OXo0QTFBb25SeE5JYkthb3VPeTg5Mmg4eWciLCJhZ3JlZUtleSI6Ii10UVpiQTJwZEtUZ2NKWTBBRWNYR0EtUTVOMzV3bkx4engxWndxVHZSeUEifV19.iwTnkz3ktzAw0ShT9qy0IVCk0bAQhNlb28VVS8aOElyPvGw42OJHy0yTVbUr0uMvHVhe1qi6sUYQOrRA_VRlCA",
