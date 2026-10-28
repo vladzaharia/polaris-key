@@ -42,7 +42,7 @@
     },
     "core.sync": {
       "status": "implemented",
-      "note": "client.events (license, config, updateAvailable, packs) as one SharedFlow, config.setting(key) StateFlows and config.changes; on Android PolarisKeyLifecycle syncs on foreground (throttled; ETags and backoff apply). A periodic background sync is the host's WorkManager worker (no WorkManager dependency). SP-51: every licence transition emits (LiveStateTest), a revoked foreground licence shows the activation screen (RevokedInForegroundTest), and close() ends a JVM main (CloseTest)."
+      "note": "client.events (license, config, updateAvailable, packs) as one SharedFlow, config.setting(key) handles (value, source, locked, visibility, set, clear, on, flow) and config.changes; on Android PolarisKeyLifecycle syncs on foreground (throttled; ETags and backoff apply). A periodic background sync is the host's WorkManager worker (no WorkManager dependency). SP-51: every licence transition emits (LiveStateTest), a revoked foreground licence shows the activation screen (RevokedInForegroundTest), and close() ends a JVM main (CloseTest)."
     },
     "core.local": {
       "status": "implemented"
@@ -130,7 +130,7 @@
     },
     "config.local": {
       "status": "implemented",
-      "note": "config.set/clear/clearAll persist device-local overrides in local-config.json beside the store, checked against the catalog (or the document's type), never over an enforced or hidden entry (managed_by_admin); config.setting(key) StateFlows and config.changes emit every change (ConfigLocalTest)."
+      "note": "config.set/clear/clearAll persist device-local overrides in local-config.json beside the store, checked against the catalog (or the document's type), never over an enforced or hidden entry (managed_by_admin); config.setting(key) handles (value, source, locked, visibility, set, clear, on, flow) and config.changes emit every change (ConfigLocalTest, ConfigSettingTest)."
     },
     "config.sync": {
       "status": "planned",

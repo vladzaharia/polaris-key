@@ -6,6 +6,9 @@ deprecated aliases).
 
 ## Unreleased
 
+- **`config.setting(key)` is the setting handle (U-07.K8).** It returns a `ConfigSetting` with `value`, `source`, `locked`, `visibility`, `set`, `clear`, `on` (a `ConfigSubscription`) and `flow: StateFlow<JsonElement?>`; the reads are the last resolution, kept current by every `set`, `clear` and new document. `setting(k)` no longer is the `StateFlow`; `rememberPolarisSetting` reads `.flow`. No aliases.
+  Migrating: a `setting(k)` collector becomes `setting(k).flow`; `setting(k).value` is unchanged.
+
 - **Automatic sign-in, rungs 1 to 4 (I-45).** `identity.autoSignIn(AutoSignInOptions)` answers an `AutoSignInResult` (`SignedIn`, `Confirm`, `Choose`, `NeedsSignIn`, `DeviceLimit`, `Unavailable`) and never throws. Rung 1 is the stored session; rungs 3 and 4 run a `PlatformIdentityProvider` (`installPlatformIdentity`) over a Worker nonce and `identity.exchange`; rung 4 needs `AutoSignInPrompt.OPTIONAL`. `:android`'s `PlatformSignIn(...).asProvider()` is the Google provider (Credential Manager, `play` flavor; `direct` answers unavailable). `signOut()` sets a persisted flag that stops rungs 3 and 4 until the person signs in again. `PolarisKeyGate` runs it at boot; `autoSignIn = false` opts out. The JVM desktop has no provider. `PolarisKeyFutures.autoSignIn` is the Java form.
 
 - `identity.signIn.start(SignInOptions)` returns a `SignInSession` (`wait()`, `wait(once = true)`, `cancel()`, `reopen()`; `PolarisKeyFutures.signInStart` and `signInWait`); a refusal is a typed `SignInError`; the subject is stored on sign-in. `beginSignIn`, `pollSignIn` and `waitForSignIn` are removed.
