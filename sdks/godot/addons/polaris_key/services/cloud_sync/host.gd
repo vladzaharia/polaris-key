@@ -23,8 +23,14 @@ extends Node
 ## whose bound person is known and differs from the session's is dropped, an unknown session is
 ## allowed. Nothing on the licence path imports this script.
 ##
-## Not yet (U-21.7): the bounded `flush` rules and tests (H-8, H-9), the purge generation and
-## ordering tests (H-7), and the lifecycle notifications. U-21.9 adds the API layer over this node.
+## Bounds (U-21.7): H-7 purge deletes the file first and bumps the generation, waits for the pump
+## (bounded), rebuilds, deletes again and sweeps; H-8 a listener may call `touch`, `flush` or edit
+## the machine during event delivery (events are delivered between exchanges, never inside the
+## machine, and a call during a pump only asks it to go round once more); H-9 `flush(max_ms)` is
+## bounded, trailing touch included, and a touch that lands as the pump ends still sends. The
+## close-request and paused notifications flush (bounded) and never touch auto-accept-quit: the
+## app owns quit and may `await flush()` itself first. The served catalog is never persisted (a
+## fresh start refetches; the mirror wins). U-21.9 adds the API layer over this node.
 
 const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const Machine := preload("res://addons/polaris_key/core/sync/cloud_sync_machine.gd")
@@ -74,6 +80,9 @@ var _purged := false
 var _root_pending: Variant = null
 ## Bumped on every (re)build: an answer for an older machine is dropped.
 var _gen := 0
+## How long `purge` waits for a pump in progress (ms); a test may shorten it.
+var purge_wait_ms := 2000
+var _closing_flush := false
 var _timer: Timer
 var _sync_key_re: RegEx
 
@@ -89,6 +98,8 @@ var _sync_key_re: RegEx
 ##   fetch_schema: Callable() -> Variant    coroutine; the `/config/schema` body or null
 ##   document: Callable() -> Dictionary     {values, locked?}
 ##   codec: CodecPort (default: locked), sealer: PKeyRecordSealer (default: none)
+##   exchange_gate: Callable() -> coroutine, awaited before each request is sent (a test seam to
+##   interleave a purge, a close or an edit with an exchange in flight)
 ##   transport: PKeyTransport (default: Transport.make(self)), clock: Callable() -> int (ms),
 ##   new_client_id: Callable() -> String (default: random)
 ## `opts` (app code only): {encryption: "e2e"|"server", catalog: Dictionary, aliases: Dictionary}.
@@ -137,13 +148,13 @@ func start() -> Dictionary:
 	for k in saved["openKeys"]:
 		_open_keys[k] = true
 	_mirror = _vetted(_opts.get("catalog"))
-	_served = _vetted(saved["catalog"])
+	_served = null  # never persisted: a fresh start refetches, and the mirror wins
 	var built := _build(saved["persisted"])
 	if not built["ok"]:
 		_started = false
 		return built
-	if saved["catalog"] == null and _opts.get("catalog") == null:
-		await _refetch_catalog(null)
+	await _refetch_catalog(null)
+	_used = 0
 	touch()
 	return Types.ok()
 
@@ -368,6 +379,7 @@ func _receive(m: Machine, res: Dictionary, opened: Variant = null) -> void:
 
 ## One request: seal it (E2E), send it, open the answer, hand both to the machine.
 func _exchange(m: Machine, req: Dictionary, bound: Variant) -> void:
+	var gen := _gen
 	var e2e: bool = m.encryption_mode() == "e2e"
 	# S3 / H-10: a locked codec sends nothing, a pull included.
 	if e2e and _codec.locked():
@@ -384,6 +396,11 @@ func _exchange(m: Machine, req: Dictionary, bound: Variant) -> void:
 				# Locked, or a mutation that cannot be sealed: nothing is sent (HC-6).
 				return _receive(m, Transport.TRANSPORT_ERROR)
 			wire = {"method": "POST", "path": req["path"], "body": sealed["body"]}
+	var gate: Variant = _deps.get("exchange_gate")
+	if gate is Callable and (gate as Callable).is_valid():
+		await (gate as Callable).call()
+	if m != _machine or gen != _gen:
+		return  # purged or rebuilt while it waited: nothing is sent
 	# HOST-BIND: a request bound to one person never goes out under another's session. An unknown
 	# session subject (discovery not loaded, an offline boot) is allowed.
 	var who: Variant = _deps["session_subject"].call() if _deps.get("session_subject") is Callable else null
@@ -396,7 +413,7 @@ func _exchange(m: Machine, req: Dictionary, bound: Variant) -> void:
 		"url": _deps["url"],
 	}
 	var res: Dictionary = await Transport.send_sync(_transport, ctx, wire)
-	if m != _machine:
+	if m != _machine or gen != _gen:
 		return  # rebuilt or purged while the request was out: the answer is dropped
 	var ok: bool = res.get("status") == 200 and res.get("body") is Dictionary
 	if not e2e or not ok:
@@ -534,7 +551,7 @@ func _save(persisted: Variant = null) -> void:
 		"v": 1,
 		"product": _deps["product"],
 		"persisted": snapshot,
-		"catalog": _served,
+		"catalog": null,
 		"openKeys": _open_keys.keys(),
 	})
 	if not ok:
@@ -561,22 +578,65 @@ func _on_timer() -> void:
 # ── calls the API layer makes ─────────────────────────────────────────────────────────────────
 
 
-## Forget the person's synced data (S6): the file, which holds the opened snapshot, is deleted first;
-## the machine is rebuilt empty; nothing is saved again until `sign_in`. A request still out has its
-## answer dropped (`_gen`). U-21.7 adds the waits and tests of H-7.
+## Forget the person's synced data (S6, H-7). In this order: mark purged and bump the generation
+## (so an exchange in flight is dropped and nothing saves again), delete the file FIRST, wait for the
+## pump to end (bounded by `purge_wait_ms`), rebuild the machine empty, delete the file again and
+## sweep temporary siblings. Nothing is saved again until `sign_in`. True when the file is gone.
 func purge() -> bool:
 	_purged = true
+	_gen += 1
 	var removed := _file.remove()
 	_open_keys = {}
 	if _timer != null:
 		_timer.stop()
 	if is_started() and _machine != null:
+		await idle(purge_wait_ms)
 		_emit(_machine)
+		_gen += 1
 		_build(null)
 		if _machine != null:
 			_machine.import_local({})
-	_file.remove()
-	return removed
+	# Whatever a save in flight wrote meanwhile: gone, with its temporary siblings.
+	removed = _file.remove() and removed
+	return removed and not FileAccess.file_exists(_file.path())
+
+
+## Send what is waiting and save, giving up (the journal is kept) after `max_ms` (H-9). Every pass
+## commits the debounced edits and touches, so an edit a listener makes during the pump, or one that
+## lands as the pump ends, is sent before this returns. True when nothing was left to send.
+func flush(max_ms: int = PKeyConstants.SYNC_SIGNOUT_FLUSH_MS) -> bool:
+	if not is_started() or _machine == null:
+		return true
+	var deadline := Time.get_ticks_msec() + max_ms
+	var settled := false
+	var tree := get_tree()
+	while true:
+		if not _enabled():
+			settled = true
+			break
+		_machine.flush()
+		touch()
+		var left := deadline - Time.get_ticks_msec()
+		if left <= 0 or not await idle(left):
+			break
+		if _used == 0 and not _rebuild_wanted:
+			settled = true
+			break
+		await tree.process_frame
+	_save()
+	return settled
+
+
+## The window is closing or the app is pausing: flush, bounded by `SYNC_SIGNOUT_FLUSH_MS`. The host
+## never accepts or defers the quit; the app owns it and may `await flush()` before quitting.
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_WM_CLOSE_REQUEST and what != NOTIFICATION_APPLICATION_PAUSED:
+		return
+	if not is_started() or _closing_flush:
+		return
+	_closing_flush = true
+	await flush(PKeyConstants.SYNC_SIGNOUT_FLUSH_MS)
+	_closing_flush = false
 
 
 ## Stop the timer and detach from the codec; save the journal. Safe to call more than once.

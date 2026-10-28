@@ -47,6 +47,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _transport(t)
 	_state(t)
 	await _host(t)
+	await _bounds(t)
 	return true
 
 
@@ -204,14 +205,17 @@ func _host(t: PKeyTestContext) -> void:
 		if req["method"] == "GET":
 			return {"status": 200, "body": JSON.stringify({"cursor": 1, "catalogVersion": 2, "changes": [], "tombstones": [], "serverNow": 1760000000000})}
 		return {"status": 200, "body": JSON.stringify({"results": [], "cursor": 1})}
+	var serve := [false]
 	var c := _make(t, "catalog", handler, {"fetch_schema": func() -> Variant:
 		fetches[0] += 1
-		return served[0]})
+		return served[0] if serve[0] else null})
 	var host: Node = c["host"]
 	var started: Dictionary = await host.start()
 	t.check("host: start builds the machine", started["ok"] and host.machine() != null)
 	var routes: Array = host._routes
 	t.check("H-1: before a fetch the app's mirror routes", routes.size() == 1 and routes[0]["key"] == "a.x" and routes[0]["schema"]["type"] == "number")
+	serve[0] = true
+	c["clock"][0] += 5 * 60_000 + 1
 	await host._refetch_catalog(2)
 	await _settle(host)
 	routes = host._routes
@@ -232,7 +236,7 @@ func _host(t: PKeyTestContext) -> void:
 
 	# H-2: refetch on a changed catalogVersion, at most every 5 minutes, an equal rebuild skipped.
 	fetches[0] = 0
-	var body_version := [2]
+	var body_version := [5]
 	var h2 := func(req: Dictionary) -> Dictionary:
 		if req["method"] == "GET":
 			return {"status": 200, "body": JSON.stringify({"cursor": 1, "catalogVersion": body_version[0], "changes": [], "tombstones": [], "serverNow": 1760000000000})}
@@ -243,20 +247,23 @@ func _host(t: PKeyTestContext) -> void:
 		return same_routes})
 	host = c2["host"]
 	await host.start()
+	fetches[0] = 0
+	host._last_fetch_at = null
 	var r: Dictionary = host.sign_in("sub_a")
 	t.check("host: sign_in passes the machine's result", r["ok"])
 	await _settle(host)
 	t.check("H-2: a pull naming another catalogVersion fetches the catalog once", fetches[0] == 1, str(fetches[0]))
 	var gen: int = host._gen
 	t.check("H-2: an equal rebuild is skipped (same routes, no new machine)", gen == host._gen and not host._rebuild_wanted)
-	body_version[0] = 3
+	body_version[0] = 6
 	await _pull(c2)
 	t.check("H-2: a second version inside five minutes does not fetch", fetches[0] == 1, str(fetches[0]))
 	c2["clock"][0] += 5 * 60_000 + 1
-	body_version[0] = 4
+	body_version[0] = 7
 	await _pull(c2)
 	t.check("H-2: after five minutes it fetches again", fetches[0] == 2, str(fetches[0]))
 	t.check("H-2: the journal was saved sealed after the exchange", FileAccess.file_exists(host._file.path()))
+	t.check("H-1: the served catalog is never persisted", host._file.load_file()["catalog"] == null and host._served != null)
 	_done(c2)
 
 	# H-10: a locked codec sends nothing and adds no GET.
@@ -341,3 +348,144 @@ func _host(t: PKeyTestContext) -> void:
 	host.purge()
 	t.check("H-6: purge deletes the state file and the machine is empty", not FileAccess.file_exists(host._file.path()) and host.machine().journal().get("sub_a") == null)
 	_done(cr)
+
+
+## The server's answer to a push: every mutation ok, version counting up.
+func _answer(version: Array) -> Callable:
+	return func(req: Dictionary) -> Dictionary:
+		if req["method"] == "GET":
+			return {"status": 200, "body": "{\"cursor\":1,\"serverNow\":1760000000000}"}
+		var parsed: Variant = JSON.parse_string((req["body"] as PackedByteArray).get_string_from_utf8())
+		var results := []
+		for mu in parsed["mutations"]:
+			version[0] += 1
+			results.append({"mutationId": int(mu["mutationId"]), "status": "ok", "version": version[0]})
+		return {"status": 200, "body": JSON.stringify({"results": results, "cursor": version[0], "serverNow": 1760000000000})}
+
+
+func _posts(server: PKeyFakeServer) -> int:
+	var n := 0
+	for r: Dictionary in server.requests:
+		if r["method"] == "POST":
+			n += 1
+	return n
+
+
+func _bounds(t: PKeyTestContext) -> void:
+	# H-7: a purge interleaved with an exchange in flight. The file goes first, the generation is
+	# bumped, the pump is waited for (bounded), and the late exchange neither sends nor saves.
+	var version := [0]
+	var held := [true]
+	var gate := func() -> void:
+		while held[0]:
+			await PKeyTestFixtures.frames(1)
+	var c := _make(t, "purge", _answer(version), {"exchange_gate": gate})
+	var host: Node = c["host"]
+	await host.start()
+	host.purge_wait_ms = 150
+	host.sign_in("sub_a")
+	host.touch()  # the pump stops at the gate with the first pull taken
+	await PKeyTestFixtures.frames(2)
+	host._save()
+	t.check("H-7 setup: a journal is on disk and a pump is parked at the gate", FileAccess.file_exists(host._file.path()) and host._pumping)
+	var old_machine: Object = host.machine()
+	var purge_done := [false]
+	var purging := func() -> void:
+		await host.purge()
+		purge_done[0] = true
+	purging.call()
+	t.check("H-7: the file is deleted first, before the pump is waited for", not FileAccess.file_exists(host._file.path()) and not purge_done[0] and host._purged)
+	await PKeyTestFixtures.frames(3)
+	var started := Time.get_ticks_msec()
+	while not purge_done[0] and Time.get_ticks_msec() - started < 3000:
+		await PKeyTestFixtures.frames(1)
+	t.check("H-7: the wait for a stuck pump is bounded, then the machine is rebuilt empty", purge_done[0] and host.machine() != old_machine and host.machine().journal().get("sub_a") == null)
+	held[0] = false
+	await host.idle()
+	t.check("H-7: the late exchange sends nothing and the pump never re-saves", c["server"].requests.is_empty() and not FileAccess.file_exists(host._file.path()), str(c["server"].requests.size()))
+	t.check("H-7: a sign-in after a purge saves again", host.sign_in("sub_b")["ok"] and not host._purged)
+	_done(c)
+
+	# H-8: a listener that touches, flushes and edits during event delivery: no deadlock, one pump.
+	version[0] = 0
+	var c8 := _make(t, "reentrant", _answer(version))
+	host = c8["host"]
+	await host.start()
+	host.sign_in("sub_a")
+	await host.idle()
+	var calls := [0, 0]
+	host.events.connect(func(batch: Array) -> void:
+		calls[0] += 1
+		if calls[0] == 1:
+			host.touch()
+			host.machine().set_value("a.x", 3)
+			host.touch()
+			calls[1] = 1 if host._pumping else 0)
+	host.machine().set_value("a.x", 2)
+	var settled: bool = await host.flush(5000)
+	t.check("H-8: a listener that touches and edits during delivery neither hangs nor starts a second pump", settled and calls[1] == 1 and calls[0] >= 1)
+	t.check("H-8: the edit made inside the listener reached the server", _posts(c8["server"]) >= 1 and (c8["server"].requests.back()["body"] as PackedByteArray).get_string_from_utf8().contains("\"value\":3"), str(c8["server"].requests.size()))
+	_done(c8)
+
+	# H-9: flush is bounded, includes the trailing touch, and loses no wake-up.
+	version[0] = 0
+	var c9 := _make(t, "flush", _answer(version))
+	host = c9["host"]
+	await host.start()
+	host.sign_in("sub_a")
+	await host.idle()
+	host.machine().set_value("a.x", 5)
+	var before_posts := _posts(c9["server"])
+	var ok: bool = await host.flush(5000)
+	t.check("H-9: flush commits the debounced edit and sends it before it returns", ok and _posts(c9["server"]) == before_posts + 1 and host.machine().status()["pending"] == 0, str(host.machine().status()))
+	# A touch landing as the pump ends: the edit is made from the pump's last event delivery.
+	var once := [false]
+	host.events.connect(func(_b: Array) -> void:
+		if not once[0]:
+			once[0] = true
+			host.machine().set_value("a.x", 6))
+	host.machine().set_value("a.x", 5.5)
+	ok = await host.flush(5000)
+	t.check("H-9: an edit that lands during the last delivery is still sent (no lost wake-up)", ok and host.machine().status()["pending"] == 0 and (c9["server"].requests.back()["body"] as PackedByteArray).get_string_from_utf8().contains("6"), str(host.machine().status()))
+	_done(c9)
+
+	# H-9 bound: a server that never answers cannot hold flush past its bound.
+	var ch := _make(t, "hang", func(_r: Dictionary) -> Dictionary: return {"hang": true})
+	host = ch["host"]
+	await host.start()
+	host.sign_in("sub_a")
+	var t0 := Time.get_ticks_msec()
+	ok = await host.flush(300)
+	var took := Time.get_ticks_msec() - t0
+	t.check("H-9: flush against a server that never answers returns within its bound", not ok and took < 2000, "%d ms" % took)
+	_done(ch)
+
+	# Close-request and pause notifications flush, bounded, and leave auto-accept-quit alone.
+	version[0] = 0
+	var cn := _make(t, "notify", _answer(version))
+	host = cn["host"]
+	await host.start()
+	host.sign_in("sub_a")
+	await host.idle()
+	var auto := get_tree_auto_accept()
+	host.machine().set_value("a.x", 7)
+	var posts := _posts(cn["server"])
+	host.notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
+	await host.idle()
+	var started2 := Time.get_ticks_msec()
+	while _posts(cn["server"]) == posts and Time.get_ticks_msec() - started2 < 4000:
+		await PKeyTestFixtures.frames(1)
+	t.check("close request: the pending edit is flushed", _posts(cn["server"]) == posts + 1)
+	host.machine().set_value("a.x", 8)
+	posts = _posts(cn["server"])
+	host.notification(Node.NOTIFICATION_APPLICATION_PAUSED)
+	started2 = Time.get_ticks_msec()
+	while _posts(cn["server"]) == posts and Time.get_ticks_msec() - started2 < 4000:
+		await PKeyTestFixtures.frames(1)
+	t.check("paused: the pending edit is flushed", _posts(cn["server"]) == posts + 1)
+	t.check("the host never changes auto-accept-quit", get_tree_auto_accept() == auto)
+	_done(cn)
+
+
+func get_tree_auto_accept() -> bool:
+	return (Engine.get_main_loop() as SceneTree).auto_accept_quit
