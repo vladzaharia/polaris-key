@@ -1824,6 +1824,10 @@
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:max-line-length": 1
     },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/ConnectChannel.kt": {
+      "detekt:naming.EnumNaming": 5,
+      "ktlint:standard:enum-entry-name-case": 5
+    },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt": {
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 8,
