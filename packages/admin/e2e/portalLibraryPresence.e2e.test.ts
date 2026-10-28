@@ -123,8 +123,8 @@ async function geometry(page: Page) {
 
 /**
  * The header lockup's wordmark, in px. BR-lockups trimmed the Locker horizontal lockup to its mark
- * and wordmark (`LOCKER_TRIM`), so the wordmark is 3.7 times the lockup's height; the header draws
- * the lockup 33 px tall (the 180 px minimum width), see `HeaderBrand`.
+ * and wordmark (`LOCKER_TRIM`, re-laid to BRAND.md §1.4), so the wordmark is 6.4 times the lockup's
+ * height; the header draws the lockup 23 px tall (the name at about 22 px), see `HeaderBrand`.
  */
 async function wordmarkWidth(page: Page): Promise<number> {
   return page.evaluate(() => {
@@ -224,7 +224,7 @@ describe.concurrent("library 2-7 grid presence", () => {
                 const wordmark = await wordmarkWidth(o.page);
                 expect
                   .soft(wordmark, "header wordmark width")
-                  .toBeCloseTo(3.7 * 33, 0);
+                  .toBeCloseTo(6.4 * 23, -1);
               }
             } finally {
               await o.close();

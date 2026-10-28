@@ -719,9 +719,9 @@ describe("the console sign-in error cards", () => {
 });
 
 describe("the phone header rules are scoped to the Locker card", () => {
-  it("the console card keeps its Key lockup at the brand size (no unscoped 36 px rule)", () => {
+  it("the console card keeps its Key lockup at the brand size (no unscoped 26 px rule)", () => {
     const css = BRAND_PAGE_CSS_CONSOLE;
-    expect(css).not.toContain(".ac-brand svg{height:36px");
-    expect(BRAND_PAGE_CSS_LOCKER).toContain(".ac-brand svg{height:36px");
+    expect(css).not.toContain(".ac-brand svg{height:26px");
+    expect(BRAND_PAGE_CSS_LOCKER).toContain(".ac-brand svg{height:26px");
   });
 });
