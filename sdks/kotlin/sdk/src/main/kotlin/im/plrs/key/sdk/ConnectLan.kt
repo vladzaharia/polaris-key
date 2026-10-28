@@ -78,6 +78,9 @@ private const val BACKLOG = 128
 /** `stop()` gives up waiting after this long, so a blocked host callback cannot hang sign-out. */
 private const val STOP_TIMEOUT_MILLIS = 15_000L
 
+/** How long an abort waits for a socket or an advert to let go. */
+private const val ABORT_CLOSE_MILLIS = 1_000L
+
 /** A roster device seen on the network. */
 public data class LanPeer(val deviceId: String, val host: String, val port: Int)
 
@@ -206,6 +209,25 @@ internal class LanService private constructor(
     /** Notices for tests that reach for the document handler directly. */
     internal val documents: PeerDocs get() = docs
 
+    /** Last resort after a stop that ran out of time: drop the advert and the listener and cancel the scope; waits for nothing. */
+    suspend fun abort() {
+        synchronized(lock) { stopped = true }
+        val a = adv
+        val b = browseHandle
+        adv = null
+        browseHandle = null
+        try {
+            server?.close()
+        } catch (e: IOException) {
+            // already closed
+        }
+        if (ownsScope) scope.cancel()
+        withTimeoutOrNull(ABORT_CLOSE_MILLIS) {
+            quiet { a?.stop() }
+            quiet { b?.stop() }
+        }
+    }
+
     suspend fun stop() {
         synchronized(lock) {
             if (stopped) return
@@ -217,14 +239,6 @@ internal class LanService private constructor(
             cancelEpoch = null
             val socks = synchronized(lock) { pending.toList() }
             for (s in socks) abort(s)
-            val open = synchronized(lock) { sessions.toList() }
-            for (s in open) {
-                try {
-                    s.close()
-                } catch (e: Exception) {
-                    // the session is going away anyway
-                }
-            }
             quiet { adv?.stop() }
             quiet { browseHandle?.stop() }
             try {
@@ -234,8 +248,12 @@ internal class LanService private constructor(
             }
             adv = null
             browseHandle = null
+            // The listener and the advert are down before any session is closed: a host callback that
+            // blocks a session's close cannot keep them up. Each close is bounded.
+            val open = synchronized(lock) { sessions.toList() }
+            for (s in open) quiet { withTimeoutOrNull(SESSION_CLOSE_MILLIS) { s.close() } }
             val ls = synchronized(lock) { links.toList() }
-            for (l in ls) quiet { l.close() }
+            for (l in ls) quiet { withTimeoutOrNull(SESSION_CLOSE_MILLIS) { l.close() } }
         }
         if (ownsScope) scope.cancel()
     }
@@ -500,12 +518,19 @@ internal class LanService private constructor(
 
     companion object {
         /**
-         * Listen, then advertise and browse. Throws [LanException]: `permission_denied` when the OS refused
+         * Listen, then advertise and browse; [onSession] is subscribed before the listener opens. Throws [LanException]: `permission_denied` when the OS refused
          * local network access, `no_identity` or `no_keys` when there is no identity to start with.
          */
-        suspend fun start(src: LanSource, options: LanOptions = LanOptions(), scope: CoroutineScope? = null): LanService {
+        suspend fun start(
+            src: LanSource,
+            options: LanOptions = LanOptions(),
+            scope: CoroutineScope? = null,
+            onSession: ((ConnectSession) -> Unit)? = null,
+        ): LanService {
             val own = scope == null
             val s = LanService(src, options, scope ?: CoroutineScope(SupervisorJob() + Dispatchers.Default), own)
+            // Subscribed before the listener opens, so a session admitted at once reaches the host (G9).
+            if (onSession != null) s.onSession(onSession)
             try {
                 if (!options.lanPermission()) {
                     throw LanException(LanErrorReason.permission_denied, "Local network access was refused.")

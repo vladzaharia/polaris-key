@@ -58,6 +58,9 @@ public const val CLOUD_LAN_ATTEMPT_SECONDS: Double = 4.0
 /** How long `stop()` waits for the teardown (milliseconds). */
 public const val CLOUD_STOP_MILLIS: Long = 15_000
 
+/** How long one session may take to close during teardown (milliseconds). */
+internal const val SESSION_CLOSE_MILLIS: Long = 2_000
+
 /** Why a pushed trust manifest was refused when the host turned trust refresh off. */
 public const val PEER_TRUST_REFRESH_OFF: String = "trust_refresh_off"
 
@@ -128,6 +131,16 @@ public class CloudConnect internal constructor(
 
     @Volatile
     private var relay: RelayService? = null
+
+    /** Test seam: the bound `stop()` waits ([CLOUD_STOP_MILLIS]). */
+    @Volatile
+    internal var stopMillis: Long = CLOUD_STOP_MILLIS
+
+    @Volatile
+    private var dyingLan: LanService? = null
+
+    @Volatile
+    private var dyingRelay: RelayService? = null
 
     @Volatile
     private var lanFailed: Throwable? = null
@@ -205,9 +218,8 @@ public class CloudConnect internal constructor(
                 lanReason = "unsupported" // the :android glue supplies the adapter (CC-12b); the relay still works
             } else {
                 try {
-                    val svc = LanService.start(src, o.lanOptions)
+                    val svc = LanService.start(src, o.lanOptions, onSession = { inbound(it) })
                     lan = svc
-                    unsub += svc.onSession { inbound(it) }
                     unsub += svc.onNotice { notice(it) }
                 } catch (e: CancellationException) {
                     throw e
@@ -242,8 +254,37 @@ public class CloudConnect internal constructor(
     public suspend fun stop() {
         if (!touched) return
         val job = scope.async { gate.withLock { teardown() } }
-        if (withTimeoutOrNull(CLOUD_STOP_MILLIS) { job.await() } == null) {
+        if (withTimeoutOrNull(stopMillis) { job.await() } == null) {
+            // Past the bound: cancel what is left and let go of the transports, so sign-out goes on (D-12).
+            job.cancel()
+            abortLeft()
             throw LanException(LanErrorReason.closed, "Cloud Connect did not stop in time: a callback is blocking it.")
+        }
+    }
+
+    /** What teardown is still holding when `stop()` gives up on it. */
+    private suspend fun abortLeft() {
+        val l = dyingLan
+        val r = dyingRelay
+        dyingLan = null
+        dyingRelay = null
+        running = false
+        lan = null
+        relay = null
+        synchronized(lock) { unsub.clear() }
+        quietly { l?.abort() }
+        quietly { r?.abort() }
+        val open = synchronized(lock) { sessions.toList().also { sessions.clear() } }
+        for (s in open) quietly { withTimeoutOrNull(SESSION_CLOSE_MILLIS) { s.close() } }
+    }
+
+    private suspend inline fun quietly(f: () -> Unit) {
+        try {
+            f()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // best effort on the way out
         }
     }
 
@@ -255,28 +296,16 @@ public class CloudConnect internal constructor(
         val r = relay
         lan = null
         relay = null
+        dyingLan = l
+        dyingRelay = r
+        // The services first: each bounds itself and closes its own sessions and sockets, so a host
+        // callback that blocks a session close cannot keep the listener or the relay socket up.
+        quietly { l?.stop() }
+        quietly { r?.stop() }
+        dyingLan = null
+        dyingRelay = null
         val open = synchronized(lock) { sessions.toList().also { sessions.clear() } }
-        for (s in open) {
-            try {
-                s.close()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // the session is going away anyway
-            }
-        }
-        for (svc in listOf<Any?>(l, r)) {
-            try {
-                when (svc) {
-                    is LanService -> svc.stop()
-                    is RelayService -> svc.stop()
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // best effort on the way out
-            }
-        }
+        for (s in open) quietly { withTimeoutOrNull(SESSION_CLOSE_MILLIS) { s.close() } }
     }
 
     /** Sign-out and `close()`: stop, never fail. A timeout is swallowed; the teardown stays queued. */

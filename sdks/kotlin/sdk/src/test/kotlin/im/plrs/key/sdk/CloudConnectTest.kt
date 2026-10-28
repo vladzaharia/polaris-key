@@ -408,6 +408,38 @@ class CloudConnectTest {
     }
 
     @Test
+    fun aBlockedHostCallbackDoesNotHoldSignOutOrKeepTheTransportsUp() = runBlocking {
+        val w = World()
+        val (ca, cb) = both(w)
+        val release = CountDownLatch(1)
+        val inCallback = CountDownLatch(1)
+        cb.cloudConnect.onChannel { s ->
+            s.onMessage {
+                inCallback.countDown()
+                release.await() // a host callback that never returns
+            }
+        }
+        until { ca.cloudConnect.peers().any { it.deviceId == idB && it.lan } }
+        val s = ca.cloudConnect.open(idB)
+        s.send("hello".toByteArray())
+        assertTrue(inCallback.await(5, TimeUnit.SECONDS))
+        cb.cloudConnect.stopMillis = 3000
+        val t0 = System.nanoTime()
+        cb.cloudConnect.stopForSignOut() // never fails
+        val took = (System.nanoTime() - t0) / 1_000_000
+        try {
+            assertTrue("sign-out waited $took ms", took < 12_000)
+            assertFalse(cb.cloudConnect.status().running)
+            assertEquals("off", cb.cloudConnect.status().relay)
+            assertEquals("off", cb.cloudConnect.status().lan)
+            until { w.room.sockets.none { it.device == idB } }
+            until { s.closed != null }
+        } finally {
+            release.countDown()
+        }
+    }
+
+    @Test
     fun signingOutStopsConnectBeforeTheCredentialGoes() = runBlocking {
         val w = World()
         val c = w.client(w.a)
