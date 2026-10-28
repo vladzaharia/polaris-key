@@ -481,7 +481,7 @@ class WindowsChromeTest {
     }
 
     @Test
-    fun theExternalGlyphLeadsTheLabelInline() = runDesktopComposeUiTest(width = 400, height = 160) {
+    fun theExternalGlyphEndsTheLabel() = runDesktopComposeUiTest(width = 400, height = 160) {
         setContent {
             Themed(PolarisPlatformVariant.Windows) {
                 // In an action row a button is as wide as its label.
@@ -497,10 +497,29 @@ class WindowsChromeTest {
         val buttons = onAllNodes(isButton).fetchSemanticsNodes()
         val ext = buttons[0].boundsInRoot
         val plain = buttons[1].boundsInRoot
-        // The glyph is part of the label's own text (R2: it stays beside the first word of a wrapped label): a 16 dp glyph and its space.
-        assertTrue(ext.width - plain.width in 16f..28f, "the glyph adds its width: ${ext.width} vs ${plain.width}")
+        // The glyph is part of the label's own text (N6: it ends the last line of a wrapped label), so it adds width.
+        assertTrue(ext.width > plain.width, "the glyph adds its width: ${ext.width} vs ${plain.width}")
         // Assistive tech reads the plain label; the control says where it goes.
         assertEquals(2, onAllNodes(hasText("Open the portal") and isButton).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun theExternalGlyphStaysOnTheLastLineOfAWrappedLabel() = runDesktopComposeUiTest(width = 150, height = 200) {
+        setContent {
+            Themed(PolarisPlatformVariant.Windows) {
+                Column(Modifier.padding(8.dp)) { PolarisSecondaryButton("Add it in Polaris Locker", onClick = {}, external = true) }
+            }
+        }
+        waitForIdle()
+        val node = onAllNodes(isButton).fetchSemanticsNodes().single()
+        val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        node.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
+        val layout = results.single()
+        assertTrue(layout.lineCount >= 2, "the label wraps at this width")
+        val last = layout.layoutInput.text.text.substring(layout.getLineStart(layout.lineCount - 1))
+        assertTrue(last.trimEnd().endsWith("\u2197") && last.any { it.isLetter() }, "the glyph shares the last line with a word: '$last'")
+        // Assistive tech reads the plain label: the glyph is decoration.
+        assertEquals(1, onAllNodes(hasText("Add it in Polaris Locker") and isButton).fetchSemanticsNodes().size)
     }
 
     @Test
