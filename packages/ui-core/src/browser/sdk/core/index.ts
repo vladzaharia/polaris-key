@@ -151,6 +151,13 @@ export {
 export type { AttachResult, KeyActivation, SignOutResult } from "./types.js";
 export type {
   AuthorizePurpose,
+  AutoSignInOptions,
+  AutoSignInPrompt,
+  AutoSignInResult,
+  AutoSignInUnavailable,
+  AutoSyncKey,
+  PlatformIdentityProvider,
+  PlatformMediation,
   DeviceCodeSignInOptions,
   DeviceCodeSignInSession,
   RedirectSignInOptions,
@@ -164,6 +171,7 @@ export type {
 export {
   choiceEndpointsOf,
   type ChoiceCancelResult,
+  type ChoiceCompleteOptions,
   type ChoiceCompleteResult,
   type ChoiceEndpoints,
   type ChoiceNamespace,
