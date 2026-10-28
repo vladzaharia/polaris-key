@@ -250,6 +250,22 @@ export class LanService {
     this.#adv = this.#browse = null;
   }
 
+  /** Stop at once: no goodbyes, nothing waited on, the held identity dropped. The sign-out
+   *  bound's force path. */
+  abort(): void {
+    if (this.#stopped) return;
+    this.#stopped = true;
+    this.#docs.close();
+    this.#cancelEpoch?.();
+    for (const s of [...this.#pending]) s.destroy();
+    for (const k of [...this.#links]) k.destroy();
+    this.#id = null;
+    void this.#adv?.stop().catch(() => undefined);
+    void this.#browse?.stop().catch(() => undefined);
+    this.#adv = this.#browse = null;
+    this.#server?.close();
+  }
+
   // ── Identity ────────────────────────────────────────────────────────────────────────────────
 
   async #identity(force: boolean): Promise<LanIdentity> {

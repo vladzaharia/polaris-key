@@ -350,8 +350,8 @@ function autoStepView(
       );
     }
     case "link-done":
-      return view("link-done", ["signin.linkOffer.done", "common.continue"], {
-        primary: "common.continue",
+      return view("link-done", ["signin.linkOffer.done", "common.done"], {
+        primary: "common.done",
       });
     case "link-conflict":
       return view(
@@ -360,9 +360,9 @@ function autoStepView(
           "signin.linkOffer.conflictTitle",
           "signin.linkOffer.conflict",
           "signin.linkOffer.join",
-          "common.continue",
+          "common.done",
         ],
-        { primary: "common.continue", tone: "neutral" },
+        { primary: "common.done", tone: "neutral" },
       );
     case "nearby-prompt":
       return view(

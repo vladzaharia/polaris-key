@@ -76,6 +76,7 @@ const FAMILIES = [
   "update",
   "settings",
   "paywall",
+  "cloudSync",
 ] as const;
 
 const matrix = matrixJson as Obj & { vocabulary: Obj & { defaults: Obj } };
@@ -276,9 +277,13 @@ const frame = (): Promise<void> =>
 const COMPONENTS = {
   ...Kit,
   NearbyApproval: kitComponent("NearbyApproval"),
+  // The Cloud Sync screens' public exports load on demand: the suite draws the part they load.
+  UnlockSync: kitComponent("UnlockSync"),
+  RecoveryCode: kitComponent("RecoveryCode"),
+  RingChange: kitComponent("RingChange"),
 } as unknown as Record<
   string,
-  (p: Kit.KitProps & { children?: ReactNode }) => ReactNode
+  (p: Kit.KitProps & { children?: ReactNode; code?: string }) => ReactNode
 >;
 
 /** The corpus elides the served device code; a visual render must show a real grouped value. */
@@ -333,6 +338,12 @@ async function mount(
   root.render(
     <Component
       input={input}
+      // The recovery code reaches RecoveryCode as a prop, never in the input (U-42.2).
+      code={
+        fixture.component === "RecoveryCode"
+          ? "K7QF-2M9D-XR4T-8WHB-3JNC-6PEZ-V5GD-HT0S"
+          : undefined
+      }
       fill={LAYOUTS[fixture.component].kind === "screen"}
       theme={{
         product: PRODUCT,

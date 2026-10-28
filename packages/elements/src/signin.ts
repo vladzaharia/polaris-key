@@ -164,8 +164,8 @@ export class PkSignIn extends PkElement {
       case "signin.linkOffer.join":
         openLink(JOIN_ACCOUNTS_URL);
         return;
-      case "common.continue":
-        // The link offer's Done and its conflict end the form.
+      case "common.done":
+        // The link offer's conflict ends the form (its done closes with a toast).
         if (
           s.autoSignIn?.step === "link-done" ||
           s.autoSignIn?.step === "link-conflict"
@@ -548,8 +548,14 @@ export class PkSignIn extends PkElement {
     if (this.formModel && this.formModel.snapshot.session.outcome !== undefined)
       void this.formModel.cancel();
     this.open = false;
+    // `toast`: a line stays on after the sheet, so the host keeps this element mounted for it.
+    const toast = this.toast !== null;
     this.dispatchEvent(
-      new CustomEvent("pk-close", { bubbles: true, composed: true }),
+      new CustomEvent("pk-close", {
+        bubbles: true,
+        composed: true,
+        detail: { toast },
+      }),
     );
     this.restoreFocus();
   }
@@ -611,6 +617,17 @@ export class PkSignIn extends PkElement {
       if (this.sheet && this.open && !this.baseInput().signIn?.issuedNow)
         this.closeWithToast();
     } else this.doneSent = false;
+    // A linked account closes the sheet with the toast, not a second tap.
+    if (
+      this.formModel &&
+      this.sheet &&
+      this.open &&
+      this.baseInput().autoSignIn?.step === "link-done"
+    )
+      this.closeWithToast({
+        key: "signin.linkOffer.done",
+        args: { provider: this.baseInput().provider ?? "Google" },
+      });
     this.syncDialog();
     if (this.countFrom !== null && this.countTimer === null)
       this.countTimer = setInterval(() => this.requestUpdate(), 1000);
@@ -622,14 +639,18 @@ export class PkSignIn extends PkElement {
   }
 
   /** Close the sheet and say who signed in, for a few seconds, in the page. */
-  private closeWithToast(): void {
+  private closeWithToast(line?: {
+    key: string;
+    args: Record<string, string>;
+  }): void {
     const input = this.baseInput();
     const holder = input.account?.holder?.trim();
     const tier = input.account?.tier ?? this.pickedTier;
     this.toast =
-      holder && tier
+      line ??
+      (holder && tier
         ? { key: "signin.desktop.toast", args: { name: holder, tier } }
-        : { key: "signin.return.signedInShort", args: {} };
+        : { key: "signin.return.signedInShort", args: {} });
     if (this.toastTimer !== null) clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => {
       this.toast = null;

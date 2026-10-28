@@ -69,7 +69,7 @@ export class PkGate extends PkElement {
   /** The one config object, as the attribute's JSON or an object (`product` is required). */
   config?: string | GateConfig;
   /** Host actions this page answers: `trial`, `restore`, `continue-free`, `renew`. */
-  handles?: string;
+  override handles?: string;
   /** Embedding and test seams: a built client, or the fetch and navigation the client uses. */
   seams?: GateSeams;
   /** `off` turns automatic sign-in off: no ladder at boot, Welcome opens the hosted sign-in. */
@@ -86,6 +86,8 @@ export class PkGate extends PkElement {
   }
   /** The link offer after a redirect sign-in (identity.link): what to show, once per page. */
   private linkSeed: AutoOutcome | null = null;
+  /** The link sheet is closed and only its toast shows. */
+  private linkClosing = false;
   private linkChecked = false;
   private linkPrims: SignInPrimitives | null = null;
   private reported: string | null = null;
@@ -198,9 +200,17 @@ export class PkGate extends PkElement {
     });
   }
 
-  private onLinkClose = (): void => {
+  private onLinkClose = (e?: Event): void => {
     void this.binding.driver?.adapter.link?.dismiss();
-    this.linkSeed = null;
+    // A line the sheet leaves behind ("Google linked") needs the element a few seconds more.
+    if ((e as CustomEvent<{ toast?: boolean }> | undefined)?.detail?.toast) {
+      this.linkClosing = true;
+      setTimeout(() => {
+        this.linkSeed = null;
+        this.linkClosing = false;
+        this.requestUpdate();
+      }, 6000);
+    } else this.linkSeed = null;
     this.requestUpdate();
   };
 
@@ -315,7 +325,7 @@ export class PkGate extends PkElement {
         ? html`<pk-sign-in
             presentation="sheet"
             replace="inline"
-            .open=${true}
+            .open=${!this.linkClosing}
             .primitives=${this.linkPrims}
             .seed=${this.linkSeed}
             .input=${{ provider: "Google" }}

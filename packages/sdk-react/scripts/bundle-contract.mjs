@@ -70,8 +70,13 @@ await build(
 await build(
   buildOf({ desktopCss: join(root, "src", "kit", "desktopCss.ts") }, []),
 );
+// The Cloud Sync screens' layouts and rules: only the scoper and their own text, never the sheet.
+await build(
+  buildOf({ syncAssets: join(root, "src", "kit", "syncAssets.ts") }, []),
+);
 rmSync(join(root, "dist", "kit", "contract.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "qr.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "contractForm.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "desktopCss.js.map"), { force: true });
+rmSync(join(root, "dist", "kit", "syncAssets.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "contract.d.ts.map"), { force: true });

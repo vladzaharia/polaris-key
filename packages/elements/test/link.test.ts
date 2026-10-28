@@ -67,7 +67,7 @@ const press = async (el: PkSignIn, key: string) => {
 };
 
 describe("the link offer", () => {
-  it("offers Link and No thanks, and Link ends on Done then closes", async () => {
+  it("offers Link and No thanks, and Link closes the sheet with a toast", async () => {
     const { primitives, link } = prims(async () => "linked");
     const el = await draw(primitives);
     expect(keys(el)).toEqual([
@@ -76,20 +76,20 @@ describe("the link offer", () => {
     ]);
     await press(el, "signin.linkOffer.primary");
     expect(link.accept).toHaveBeenCalledTimes(1);
-    expect(keys(el)).toContain("common.continue");
-    const closed = vi.fn();
-    el.addEventListener("pk-close", closed);
-    await press(el, "common.continue");
-    expect(closed).toHaveBeenCalled();
     expect(el.open).toBe(false);
+    expect(
+      el
+        .shadowRoot!.querySelector('[data-part="toast"]')
+        ?.getAttribute("data-key"),
+    ).toBe("signin.linkOffer.done");
   });
 
-  it("a conflict names Help and ends on Continue", async () => {
+  it("a conflict names Help and ends on Done", async () => {
     const { primitives } = prims(async () => "conflict");
     const el = await draw(primitives);
     await press(el, "signin.linkOffer.primary");
     expect(keys(el)).toContain("signin.linkOffer.join");
-    expect(keys(el)).toContain("common.continue");
+    expect(keys(el)).toContain("common.done");
   });
 
   it("No thanks is stored and closes the sheet", async () => {
@@ -166,7 +166,7 @@ describe("what a refused Link says", () => {
     expect(el.open).toBe(true);
     finish("linked");
     await settle(el);
-    expect(keys(el)).toContain("common.continue");
+    expect(keys(el)).toContain("common.done");
   });
 
   it("nothing happened (the chooser was dismissed): the offer stays as it was", async () => {

@@ -9,6 +9,7 @@
 //    `RelayError` or `LanError` is thrown;
 //  - a pushed roster or trust manifest is reported as a `ConnectNotice`, stored or refused.
 
+import { stopWithin } from "@polaris-key/client-core/peer";
 import type { ConnectClient, ConnectDevice } from "./index.js";
 import type { ConnectNotice } from "./channel.js";
 import { LanError, RelayError } from "./errors.js";
@@ -16,6 +17,9 @@ import { RelayService, type RelayOptions, type RelayStatus } from "./relay.js";
 import { serialQueue } from "./redact.js";
 import { locks } from "./lock.js";
 import type { ConnectSession } from "./session.js";
+
+/** The most a sign-out waits on Connect (decision D-12). */
+export const SIGN_OUT_BOUND_MS = 15_000;
 
 export interface CloudConnectOptions {
   /** Options for the relay client (the socket factory, timers, caps, label). */
@@ -49,7 +53,12 @@ export class CloudConnect {
   #elsewhere = false;
   #release: (() => void) | null = null;
   #abort: AbortController | null = null;
-  readonly #serial = serialQueue();
+  /** Replaced by a forced stop, so a stop that never settles cannot block what comes after. */
+  #serial = serialQueue();
+  /** Bumped by a forced stop, so a `start()` it overtook tears down what it made. */
+  #epoch = 0;
+  /** The relay a `stop()` in flight is still closing, for the forced stop to reach. */
+  #draining: RelayService | null = null;
 
   constructor(
     private readonly connect: ConnectClient,
@@ -77,7 +86,9 @@ export class CloudConnect {
   start(opts: CloudConnectOptions = {}): Promise<void> {
     return this.#serial(async () => {
       if (this.#running) return;
+      const epoch = this.#epoch;
       const id = await this.connect.identity();
+      if (epoch !== this.#epoch) return;
       this.#self = id.deviceId;
       this.#running = true;
       const lock = locks();
@@ -143,22 +154,47 @@ export class CloudConnect {
   stop(): Promise<void> {
     return this.#serial(async () => {
       if (!this.#running && this.#relay === null) return;
-      this.#running = false;
-      this.#elsewhere = false;
-      this.#abort?.abort();
-      this.#abort = null;
-      this.#release?.();
-      this.#release = null;
-      for (const u of this.#unsub.splice(0)) u();
+      const epoch = this.#epoch;
+      this.#unlock();
       const relay = this.#relay;
       this.#relay = null;
+      this.#draining = relay;
       await Promise.all(
         [...this.#sessions].map((s) => s.close().catch(() => undefined)),
       );
-      this.#sessions.clear();
+      if (epoch === this.#epoch) this.#sessions.clear();
       await relay?.stop().catch(() => undefined);
+      if (epoch === this.#epoch) this.#draining = null;
       this.hooks.change();
     });
+  }
+
+  /** Not running any more: release the relay-socket lock and the listeners. */
+  #unlock(): void {
+    this.#running = false;
+    this.#elsewhere = false;
+    this.#abort?.abort();
+    this.#abort = null;
+    this.#release?.();
+    this.#release = null;
+    for (const u of this.#unsub.splice(0)) u();
+  }
+
+  /**
+   * The sign-out step (decision D-12): `stop()`, but never past `boundMs` (default 15 s) and never
+   * failing. When it is held up, the relay socket is force-cancelled, the held identity is dropped
+   * and the sign-out goes on.
+   */
+  async stopForSignOut(boundMs: number = SIGN_OUT_BOUND_MS): Promise<void> {
+    if (!(await stopWithin(() => this.stop(), boundMs))) return;
+    this.#epoch++;
+    this.#serial = serialQueue();
+    this.#unlock();
+    const relays = [this.#relay, this.#draining];
+    this.#relay = this.#draining = null;
+    this.#sessions.clear();
+    for (const r of relays) r?.abort();
+    this.hooks.change();
   }
 
   /** The person's other devices online in the relay room right now. */

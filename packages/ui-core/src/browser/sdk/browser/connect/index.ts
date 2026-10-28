@@ -23,6 +23,7 @@ import type {
 } from "./cloud.js";
 import type { ConnectNotice } from "./channel.js";
 import type { ConnectSession } from "./session.js";
+import { setSignOutStop } from "./signout.js";
 import { LanError } from "./errors.js";
 import type { Unsupported } from "@polaris-key/client-core";
 
@@ -231,7 +232,7 @@ export function createCloudConnect(connect: ConnectClient): CloudConnectClient {
           },
         })),
     ));
-  return {
+  const client: CloudConnectClient = {
     unsupported: null,
     onChange: (fn) => {
       change.add(fn);
@@ -267,4 +268,9 @@ export function createCloudConnect(connect: ConnectClient): CloudConnectClient {
         relayError: null,
       },
   };
+  // Never loaded means never started: nothing to stop at sign-out.
+  setSignOutStop(client, async () => {
+    if (loading !== null) await (await loading).stopForSignOut();
+  });
+  return client;
 }

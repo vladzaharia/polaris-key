@@ -37,6 +37,15 @@ import "@polaris-key/elements"; // registers pk-gate, pk-welcome, pk-activate, .
 
 The elements draw the views of `@polaris-key/ui-core` with the tokens and fonts of `@polaris-key/brand`. Most apps on a framework want that framework's kit instead; see [UI kits](https://key.plrs.im/docs/build/ui/).
 
+## Cloud Sync screens
+
+`pk-unlock-sync`, `pk-recovery-code` and `pk-ring-change` are parts: you set `input` and listen for
+`pk-action` (Unlock carries the typed code as `detail.value`, Accept carries `detail.served`).
+`pk-recovery-code` takes the code as the `code` property, never in `input`.
+`pk-cloud-sync-status` draws Unlock sync (locked) and Review (ring changed) only when the element
+names them: `handles="unlock review"`. Without it they are left out, and the element warns in
+development, so no press goes nowhere.
+
 ## Docs
 
 - [UI kits](https://key.plrs.im/docs/build/ui/)

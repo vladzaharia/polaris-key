@@ -5,7 +5,11 @@
 // test/matrix.test.ts holds the table to the catalog's roles (every `button` key a control, every
 // `title` key a heading) for every row of ui-matrix.json.
 
-import type { ComponentName } from "@polaris-key/ui-core";
+import type { ComponentName, SyncScreenName } from "@polaris-key/ui-core";
+
+import { SYNC_LAYOUTS } from "./syncLayouts.js";
+
+export { SYNC_LAYOUTS };
 
 export type Kind =
   /** A blocking step that owns its box: the card on the product ambient (DL2). */
@@ -48,7 +52,11 @@ export interface Layout {
 
 const ERRORS = ["common.tryAgain"];
 
-export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
+/** Every component but the Cloud Sync screens. The React kit imports this table alone, so its
+ *  gate's entry never carries the sync screens' layouts (they load with the screens). */
+export const KIT_LAYOUTS: Readonly<
+  Record<Exclude<ComponentName, SyncScreenName>, Layout>
+> = {
   PolarisKeyGate: {
     kind: "screen",
     header: "hero",
@@ -448,7 +456,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
   CloudSyncStatus: {
     kind: "inline",
     header: "none",
-    controls: ["cloudSync.signIn", "common.review"],
+    controls: ["cloudSync.signIn", "cloudSync.unlock", "common.review"],
     meta: ["cloudSync.synced", "cloudSync.syncing", "cloudSync.offline"],
   },
   About: {
@@ -472,6 +480,10 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
     order: ["updateProgress.downloading"],
   },
 };
+
+/** Every component's layout. */
+export const LAYOUTS: Readonly<Record<ComponentName, Layout>> =
+  /* @__PURE__ */ Object.assign({}, KIT_LAYOUTS, SYNC_LAYOUTS);
 
 /** A key that titles its screen or section. */
 export function isTitleKey(key: string, layout: Layout): boolean {
@@ -506,6 +518,9 @@ export const TAGS: Readonly<Record<ComponentName, string>> = {
   About: "pk-about",
   ChannelPicker: "pk-channel-picker",
   Toast: "pk-toast",
+  UnlockSync: "pk-unlock-sync",
+  RecoveryCode: "pk-recovery-code",
+  RingChange: "pk-ring-change",
 };
 
 // ── Dialog controls (UK-06.6) ────────────────────────────────────────────────────────────────

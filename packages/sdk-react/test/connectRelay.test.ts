@@ -21,7 +21,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inspect } from "node:util";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory } from "fake-indexeddb";
 import type { DeviceKeyPort } from "@polaris-key/client-core";
 import { signJws } from "@polaris-key/jws";
@@ -29,6 +29,7 @@ import {
   decodeRelay,
   deviceIdBytes,
   encodeRelay,
+  RelayPacer,
   type RelayMessage,
 } from "@polaris-key/client-core/peer";
 import { BrowserAdapter } from "../src/browser/browserAdapter.js";
@@ -1138,6 +1139,103 @@ describe("adapter.cloudConnect", () => {
     await cc.stop();
     expect(calls).toEqual([]);
     await expect(cc.start()).rejects.toMatchObject({ code: "no-token" });
+  });
+});
+
+// ── D-9 pacing and D-12 sign-out ─────────────────────────────────────────────────────────────
+
+describe("D-9: the relay send path is paced", () => {
+  it("LIMIT 1 halves the rate for 10 s, then it recovers", async () => {
+    const w = await world();
+    let now = 0;
+    const pacer = new RelayPacer(180, 360, () => now);
+    const r = await w.svc(w.a, new ManualTimer(), { outbox: { pacer } });
+    await r.ready();
+    expect(pacer.rate).toBe(180);
+    w.room.made[0]!.deliver({ op: "limit", reason: 1 });
+    await until(() => pacer.rate === 90);
+    now = 9_999;
+    expect(pacer.rate).toBe(90);
+    now = 10_001;
+    expect(pacer.rate).toBe(180);
+  });
+
+  it("a session message past the queue cap closes that session peer_busy", async () => {
+    const w = await world();
+    let now = 0;
+    const pacer = new RelayPacer(180, 360, () => now);
+    const ra = await w.svc(w.a, new ManualTimer());
+    const rb = await w.svc(w.b, new ManualTimer(), {
+      outbox: { pacer, maxBytes: 4096 },
+    });
+    await ra.ready();
+    await rb.ready();
+    await until(() => rb.members().includes(A));
+    const out = await rb.dial(A);
+    // The clock is frozen: spend the burst, so nothing leaves the queue.
+    while (pacer.tryTake() === 0);
+    await out.send(new Uint8Array(100_000)).catch(() => undefined);
+    expect(out.closed).toEqual({ code: "peer_busy", byPeer: false });
+  });
+});
+
+describe("D-12: Connect stops before sign-out, within a bound", () => {
+  const beforeSignOut = (adapter: unknown) =>
+    (
+      adapter as {
+        bearer: { beforeSignOut: { run(): Promise<void> } };
+      }
+    ).bearer.beforeSignOut.run();
+
+  async function started() {
+    const { adapter } = await adapterWorld();
+    const room = new FakeRoom();
+    room.members.add(ME);
+    const cc = adapter.cloudConnect;
+    await cc.start({
+      relay: {
+        webSocket: (url, protocols) => {
+          room.tickets.set(protocols[1]!, ME);
+          return room.webSocket(url, protocols);
+        },
+        timer: new ManualTimer().timer,
+      },
+    });
+    await until(() => cc.status().relay === "open");
+    return { adapter, cc, room };
+  }
+
+  it("the before-sign-out hooks stop it", async () => {
+    const { adapter, cc, room } = await started();
+    await beforeSignOut(adapter);
+    expect(cc.status()).toMatchObject({ running: false, relay: "off" });
+    expect(room.made[0]!.closed).toBe(true);
+  });
+
+  it("a stop that is held up is force-cancelled at 15 s, and the sign-out goes on", async () => {
+    const { adapter, cc, room } = await started();
+    // The graceful close never settles: a host callback holding it would wait for ever.
+    const real = RelayService.prototype.stop;
+    const stop = vi
+      .spyOn(RelayService.prototype, "stop")
+      .mockImplementation(function (this: RelayService, graceful = true) {
+        return graceful
+          ? new Promise<void>(() => undefined)
+          : real.call(this, false);
+      });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const done = beforeSignOut(adapter);
+      await vi.advanceTimersByTimeAsync(14_999);
+      expect(room.made[0]!.closed).toBe(false);
+      await vi.advanceTimersByTimeAsync(2);
+      await done;
+    } finally {
+      vi.useRealTimers();
+      stop.mockRestore();
+    }
+    expect(cc.status()).toMatchObject({ running: false, relay: "off" });
+    expect(room.made[0]!.closed).toBe(true);
   });
 });
 

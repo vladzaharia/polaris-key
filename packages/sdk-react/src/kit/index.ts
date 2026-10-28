@@ -14,6 +14,12 @@
 import type { ComponentName } from "@polaris-key/ui-core";
 
 import { kitComponent } from "./kitComponent.js";
+import { syncScreen } from "./syncLazy.js";
+import type {
+  RecoveryCodeProps,
+  RingChangeProps,
+  UnlockSyncProps,
+} from "./syncScreens.js";
 
 export { kitComponent } from "./kitComponent.js";
 export {
@@ -76,6 +82,10 @@ export const GraceBanner = c("GraceBanner");
 export const AccountAndLicense = c("AccountAndLicense");
 export const Paywall = c("Paywall");
 export const EntitlementGate = c("EntitlementGate");
-export const CloudSyncStatus = c("CloudSyncStatus");
+export { CloudSyncStatus } from "./statusDrive.js";
+// The Cloud Sync screens load on demand (their chunk is fetched the first time one is drawn).
+export const UnlockSync = syncScreen<UnlockSyncProps>("UnlockSync");
+export const RecoveryCode = syncScreen<RecoveryCodeProps>("RecoveryCode");
+export const RingChange = syncScreen<RingChangeProps>("RingChange");
 export const ChannelPicker = c("ChannelPicker");
 export const Toast = c("Toast");

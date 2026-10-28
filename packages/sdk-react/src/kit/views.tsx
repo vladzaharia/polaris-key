@@ -649,7 +649,7 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
               )}
           {statusLine(c, p.meta)}
         </div>
-        {contentFor(c)}
+        {c.content ?? contentFor(c)}
         {progressFor(c)}
         {percentFor(c)}
         {callout(c, errorKeys)}
@@ -700,7 +700,7 @@ function pane(c: KitCtx, layout: Layout): ReactNode {
         </div>
       ) : null}
       {locked(c)}
-      {contentFor(c)}
+      {c.content ?? contentFor(c)}
       {progressFor(c)}
       {callout(c, errorKeys)}
       {actions(c, p.controls, true)}
@@ -721,7 +721,7 @@ function statusGlyph(view: View): ReactNode {
         : GLYPHS.info();
   if (view.component === "GraceBanner") return GLYPHS.offline();
   if (view.component === "CloudSyncStatus")
-    return s === "error" && view.decisions.tone === "neutral"
+    return view.decisions.tone === "neutral"
       ? GLYPHS.info()
       : s === "offline"
         ? GLYPHS.offline()
@@ -744,7 +744,7 @@ function statusOf(view: View): string {
           : "neutral";
   if (view.component === "CloudSyncStatus")
     // A sync that failed for want of a sign-in is neutral, not a fault (DL6).
-    return view.state === "error" && view.decisions.tone === "neutral"
+    return view.decisions.tone === "neutral"
       ? "neutral"
       : view.state === "conflict" || view.state === "error"
         ? "warning"
@@ -835,9 +835,10 @@ export function renderView(c0: KitCtx): ReactNode {
   // still loading: draw nothing rather than a missing string (any other missing key throws, as
   // before). The kit redraws when it arrives.
   if (c.view.copy.some((k) => !c.copy.has(k) && copyPending(k))) return null;
-  const layout = isRefusalStep(c.view)
-    ? refusalLayout(LAYOUTS[c.view.component], c.view.component)
-    : LAYOUTS[c.view.component];
+  const own = LAYOUTS[c.view.component as keyof typeof LAYOUTS];
+  const layout =
+    c.layout ??
+    (isRefusalStep(c.view) ? refusalLayout(own, c.view.component) : own);
   // A page of the app's holds a screen-form part as a pane (no stage, no ambient, its own width).
   if (c.embedded && layout.kind === "screen")
     return pane(c, { ...layout, kind: "pane", split: false });

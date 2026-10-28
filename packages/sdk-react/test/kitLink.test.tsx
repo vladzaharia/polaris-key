@@ -70,28 +70,31 @@ const appears = (m: { container: HTMLElement }, key: string) =>
   waitFor(() => expect(button(m.container, key)).toBeTruthy());
 
 describe("the link offer after a redirect sign-in", () => {
-  it("shows over the app, and Link ends on Done", async () => {
+  it("shows over the app, and Link closes with a toast", async () => {
     const m = mount();
     await appears(m, "signin.linkOffer.primary");
     expect(button(m.container, "signin.linkOffer.decline")).not.toBeNull();
     expect(m.container.querySelector('[data-testid="app"]')).not.toBeNull();
     fireEvent.click(button(m.container, "signin.linkOffer.primary")!);
-    await appears(m, "common.continue");
-    expect(m.link.accept).toHaveBeenCalledTimes(1);
-    fireEvent.click(button(m.container, "common.continue")!);
     await waitFor(() =>
-      expect(button(m.container, "common.continue")).toBeNull(),
+      expect(
+        m.container
+          .querySelector('[data-part="toast"]')
+          ?.getAttribute("data-key"),
+      ).toBe("signin.linkOffer.done"),
     );
+    expect(m.link.accept).toHaveBeenCalledTimes(1);
+    expect(button(m.container, "common.done")).toBeNull();
   });
 
-  it("a conflict says so, points to Help, and ends on Continue", async () => {
+  it("a conflict says so, points to Help, and ends on Done", async () => {
     const m = mount({
       accept: { kind: "refused", status: 409, code: "link_conflict" },
     });
     await appears(m, "signin.linkOffer.primary");
     fireEvent.click(button(m.container, "signin.linkOffer.primary")!);
     await appears(m, "signin.linkOffer.join");
-    expect(button(m.container, "common.continue")).not.toBeNull();
+    expect(button(m.container, "common.done")).not.toBeNull();
   });
 
   it("No thanks is remembered and closes the offer", async () => {

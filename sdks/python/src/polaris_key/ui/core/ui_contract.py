@@ -55,6 +55,9 @@ COMPONENTS: Tuple[str, ...] = (
     "Paywall",
     "EntitlementGate",
     "CloudSyncStatus",
+    "UnlockSync",
+    "RecoveryCode",
+    "RingChange",
     "About",
     "ChannelPicker",
     "Toast",
@@ -72,6 +75,12 @@ ACTIONS: Tuple[str, ...] = (
     "copy-link",
     "retry",
     "cancel",
+    "unlock",
+    "start-over",
+    "confirm-start-over",
+    "accept-ring-change",
+    "use-recovery-code",
+    "copy-code",
 )
 
 # The controls whose catalog keys perform an action.  Views derive actions from their copy so a
@@ -95,6 +104,12 @@ ACTION_KEYS: Mapping[str, Tuple[str, ...]] = {
         "signInHandoff.newCode",
     ),
     "cancel": ("common.cancel",),
+    "unlock": ("unlockSync.unlock", "cloudSync.unlock"),
+    "start-over": ("unlockSync.startOver",),
+    "confirm-start-over": ("unlockSync.startOverConfirm",),
+    "accept-ring-change": ("ringChange.accept",),
+    "use-recovery-code": ("ringChange.useCode",),
+    "copy-code": ("recoveryCode.copy",),
 }
 
 # The product services and their transitive dependency rule.  This deliberately mirrors

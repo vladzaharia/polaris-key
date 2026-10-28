@@ -277,7 +277,7 @@ public struct SignInView: View {
     private static let autoControls: Set<String> = [
         "signin.auto.confirm.primary", "signin.auto.confirm.other", "signin.linkOffer.primary",
         "signin.linkOffer.decline", "common.notNow", "signin.nearby.code", "signin.nearby.notYou",
-        "common.continue", "signin.linkOffer.join", "signin.deviceLimit.replace",
+        "common.continue", "common.done", "signin.linkOffer.join", "signin.deviceLimit.replace",
         "a11y.externalLink", "common.cancel",
     ]
 
@@ -430,9 +430,9 @@ public struct SignInView: View {
                 autoButton("signin.auto.confirm.other", .quiet, shortcut: false)
                 cancelButton
             case .linkDone:
-                autoButton("common.continue", .primary)
+                autoButton("common.done", .primary)
             case .linkConflict:
-                autoButton("common.continue", .primary)
+                autoButton("common.done", .primary)
                 autoButton("signin.linkOffer.join", .quiet)
             case .keyRefused:
                 // Sign in finishes in the app (the account that holds the license); the page is a

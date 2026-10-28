@@ -161,7 +161,8 @@ export interface SignInProps extends KitProps {
   /** The person pressed Done's Start. */
   onDone?: () => void;
   /** `sheet` only: the dialog closed (Escape, Cancel before a sign-in starts, Done). */
-  onClose?: () => void;
+  /** `toast`: a line stays on after the sheet, so the host keeps the form mounted for it. */
+  onClose?: (toast?: boolean) => void;
 }
 
 /** The view a step draws: the model's, with the form's drawing rules (no "or" divider, a code
@@ -307,8 +308,10 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       (out !== undefined || model.snapshot.autoSignIn)
     )
       void model.cancel();
-    props.onClose?.();
+    props.onClose?.(toastClose.current);
+    toastClose.current = false;
   };
+  const toastClose = useRef(false);
   const closeRef = useRef(close);
   closeRef.current = close;
   // The host hears the sign-in finished once per sign-in (it can finish its own task).
@@ -359,8 +362,8 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       case "signin.linkOffer.join":
         openLink(JOIN_ACCOUNTS_URL);
         return;
-      case "common.continue":
-        // The link offer's Done and its conflict end the form.
+      case "common.done":
+        // The link offer's conflict ends the form (its done closes with a toast).
         if (
           s.autoSignIn?.step === "link-done" ||
           s.autoSignIn?.step === "link-conflict"
@@ -605,6 +608,17 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       closeRef.current();
     }
   }, [outcome]);
+  // A linked account closes the sheet with the toast, not a second tap.
+  const linked = input.autoSignIn?.step === "link-done";
+  useEffect(() => {
+    if (!linked || !model || !sheet || !props.open) return;
+    setToast({
+      key: "signin.linkOffer.done",
+      args: { provider: input.provider ?? "Google" },
+    });
+    toastClose.current = true;
+    closeRef.current();
+  }, [linked]);
   const [pending, setPending] = useState<typeof toast>(null);
   useEffect(() => {
     if (pending && !(sheet && props.open)) {

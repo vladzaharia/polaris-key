@@ -8,7 +8,7 @@
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay
-// @pkey-feature identity.exchange sync.keyring
+// @pkey-feature identity.exchange sync.keyring sync.settings
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -189,6 +189,14 @@ class ReplaySession(val platform: String? = null) {
     var firstRingId: String? = null
     var prompt: SignInSession? = null
 
+    /** Cloud Sync's replay memory (U-07.K11): the last pull's ETag, the next mutation id, the header tap and the codec. */
+    var syncEtag: String = ""
+    var syncNextId: Int = 1
+    var tap: HeaderTap? = null
+
+    /** The host codec over a fixture root of its own (`cloudsync-e2e-settings`). */
+    var codec: FixtureSyncCodec? = null
+
     /** The SDK clock of the step being replayed (seconds), for an action that reports a time left. */
     var now: Long = 0
     var payload: ByteArray? = null
@@ -239,7 +247,10 @@ object KotlinReplay {
         val out = LinkedHashMap<String, JsonElement>()
         val args = step["args"]!!.obj
         when (val action = step["action"].stringValue) {
-            "browser" -> {
+            "cloudSyncPull", "cloudSyncPush" -> CloudSyncReplay.run(client.core, step, session, out)
+            "browser" -> if (server?.transcript?.id == "cloudsync-cors") {
+                CloudSyncReplay.cors(client.core, step, session.tap ?: throw AssertionError("no header tap"))
+            } else {
                 // The browser's half is the recording's; the SDK's half is the authorize URL it builds for the
                 // request the Worker answered with a 303 to the card.
                 val replay = server ?: throw AssertionError("browser without a replay server")
@@ -910,7 +921,7 @@ object KotlinReplay {
             store.writeCache(CacheRecord(feeds = strings("feeds"), releaseRecords = strings("releaseRecords")))
         }
         // The redirect conversations ride a product that runs Identity (their discovery names it).
-        val redirects = t.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }
+        val redirects = t.id != "cloudsync-cors" && t.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }
         val services = (
             t.initial["services"]?.arrayValue?.map { it.stringValue!! }
                 ?: if (u != null) listOf("release", "distribution", "update") else if (redirects) listOf("license", "config", "identity") else null
@@ -918,6 +929,9 @@ object KotlinReplay {
             ?.mapNotNull { ServiceSlug.of(it) }
         val installed = u?.get("installed").objectValue
         val session = ReplaySession(t.initial["platform"].stringValue)
+        val tap = HeaderTap(server)
+        session.tap = tap
+        if (t.id == "cloudsync-e2e-settings") session.codec = FixtureSyncCodec(CloudSyncReplay.root)
         val client = PolarisKeyClient.create(
             PolarisKeyClientOptions(
                 connect = ConnectOptions(deviceKeys = session.keys, state = InMemoryDeviceKeyStorage()),
@@ -926,7 +940,7 @@ object KotlinReplay {
                 core = CoreOptions(
                     productSlug = t.product, baseUrl = t.baseUrl,
                     version = installed?.get("version").stringValue ?: t.initial["version"].stringValue!!,
-                    pinnedKeys = t.trust, store = store, transport = server, requestTimeoutSeconds = 0.0,
+                    pinnedKeys = t.trust, store = store, transport = tap, requestTimeoutSeconds = 0.0,
                     expectedServices = services, clock = { clock },
                     // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
                     deviceName = t.initial["deviceName"].stringValue ?: "",

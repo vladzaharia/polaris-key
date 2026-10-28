@@ -39,7 +39,7 @@ const STEPS: [string, string, string][] = [
     "SignIn/link-offer: Google per developer",
     "signin.linkOffer.primary",
   ],
-  ["done", "SignIn/link-done", "common.continue"],
+  ["done", "SignIn/link-done", "common.done"],
   ["conflict", "SignIn/link-conflict", "signin.linkOffer.join"],
 ];
 

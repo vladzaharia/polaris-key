@@ -111,6 +111,9 @@ export interface KitAction {
   [k: string]: unknown;
 }
 
+/** The kit's own layouts: a Cloud Sync screen's is not in this table (it loads with the screen). */
+type OwnLayouts = keyof typeof LAYOUTS;
+
 /** The props every kit component takes. */
 export interface KitProps {
   /** The headless input (ui-core `UiInput`): what the SDK or the host knows now. */
@@ -551,7 +554,9 @@ export function useKit(
     wide,
     headingLevel:
       props.headingLevel ??
-      (props.embedded || LAYOUTS[v.component].kind === "pane" ? 2 : 1),
+      (props.embedded || LAYOUTS[v.component as OwnLayouts]?.kind === "pane"
+        ? 2
+        : 1),
     interactive: props.onInput !== undefined,
     ...(props.fill ? { fill: true } : {}),
     ...(props.driven ? { driven: true } : {}),
@@ -630,7 +635,9 @@ export function useKit(
     // The one focus-on-mount rule (ui-core): screens and dialogs only, when asked, already
     // inside, or on a cold start of a window-filling kit; the heading under a coarse pointer.
     const where = focusOnMount(target, {
-      owns: LAYOUTS[focusView.component].kind === "screen",
+      owns:
+        (LAYOUTS[focusView.component as OwnLayouts]?.kind ?? "screen") ===
+        "screen",
       asked: props.autoFocus === true,
       within: root.contains(document.activeElement),
       coldStart:
