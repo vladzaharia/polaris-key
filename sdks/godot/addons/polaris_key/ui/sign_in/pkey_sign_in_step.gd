@@ -46,7 +46,7 @@ const LAYOUT := {
 	set(value):
 		reach = value
 		refresh_view()
-## The developer's name, for "Apps from {developer} sign you in by themselves."
+## The developer's name, for "Apps from {developer} sign you in automatically."
 @export var developer := "":
 	set(value):
 		developer = value
