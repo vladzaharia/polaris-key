@@ -2538,7 +2538,7 @@ devices expire on the same horizon.
 - **K_disc.** It is 32 random bytes per `(product, subject)` per ring epoch, stored in
   `connect_rings`. `GET /connect/identity` delivers the current key and the previous one (for 24 h
   after a bump). A device advertises only under the newest key.
-  The previous key is delivered only when every device of the earlier epoch is still a member: a bump in which a device left drops it, so a removed device has no window. A bump that only adds devices keeps it.
+  The previous key is delivered only when every device of the earlier epoch is still a member: a bump in which a device left drops it, so a removed device has no window. A bump caused by a device rotating its keys is treated as a leave and drops it too. A bump that only adds devices keeps it.
 - **Why server-delivered.** This keeps L-13's server-delivered key over a root-key derivation.
   Connect then works without Cloud Sync E2E, and rotation is trivial.
 - **Byte-level choices (`peer-matrix.json` `adverts`).** `deviceId` in the HMAC is the 24 bytes the 32 base64url characters decode to. The instance suffix is the first 16 characters of the RFC 4648 base32 alphabet in lower case (`a-z2-7`), unpadded, of the 32-byte MAC. A browser matches an instance against the current epoch and the one before, newest key first, and against no other. A TXT entry splits at its first `=`; an entry without `=` and a key this section does not define are ignored; keys are case-sensitive; a repeated key refuses the whole advert. `v` must be `1`; `m` must be `a`, `v` or `p`; `h` is read for `v` and `p` only and must be 16 lower-case hex characters.
