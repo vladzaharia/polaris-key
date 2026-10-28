@@ -1,9 +1,9 @@
 package im.plrs.key.platform.play
 
 import android.content.Context
+import android.os.CancellationSignal
 import android.os.Handler
 import android.os.Looper
-import android.os.CancellationSignal
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CredentialManagerCallback

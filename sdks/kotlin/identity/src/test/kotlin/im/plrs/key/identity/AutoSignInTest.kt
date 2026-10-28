@@ -27,7 +27,6 @@ import im.plrs.key.core.testing.ScriptedTransport
 import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.TestSigner
 import im.plrs.key.core.testing.path
-import java.io.File
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -37,6 +36,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class AutoSignInTest {
     private class DurableMem(private val inner: InMemoryDeviceKeyStorage = InMemoryDeviceKeyStorage()) : DeviceKeyStorage by inner {
@@ -68,7 +68,9 @@ class AutoSignInTest {
             providerCalls++
             return providerToken?.let { PlatformSubjectToken(it, nonce) }
         }
-        override suspend fun signOutCleanup() { cleanups++ }
+        override suspend fun signOutCleanup() {
+            cleanups++
+        }
         override suspend fun credentialRevoked(): Boolean = revoked
     }
 
@@ -79,7 +81,9 @@ class AutoSignInTest {
         """"device":{"id":"D"},"license":null,"subject":"ps_QQMMVm-ciTWvmWEIfhAVgQ","issued_token_type":"urn:polaris-key:token-type:device"}"""
     private val consent = """{"status":"confirm","grant":"$grant","expiresIn":300,"consent":{"client":{"appName":"djdl","nameVerified":true},""" +
         """"as":{"provider":"google","email":"a@example.com"},"items":[],"scopeHash":"abc","firstTime":true,"changed":false}}"""
-    private val choose = """{"status":"choose","grant":"$grant","expiresIn":300,"choices":{"state":"choose","choices":[{"id":"lic_1","state":"free"}]}}"""
+    private val choose =
+        """{"status":"choose","grant":"$grant","expiresIn":300,""" +
+            """"choices":{"state":"choose","choices":[{"id":"lic_1","state":"free"}]}}"""
     private val view = """{"state":"choose","choices":[{"id":"lic_1","state":"free"}]}"""
 
     private val signer = TestSigner()
@@ -98,8 +102,12 @@ class AutoSignInTest {
         provenance: TokenProvenance? = if (withLicense) TokenProvenance.signin else null,
     ): World {
         runBlocking { store.setToken("pkeyt_old") }
-        if (withLicense) runBlocking {
-            store.writeCache(CacheRecord(docs = mapOf(DocumentSlice.license to signer.licenseDoc("djdl", deviceId, 1_700_000_000L, licenseId = "lic_cached"))))
+        if (withLicense) {
+            runBlocking {
+                store.writeCache(
+                    CacheRecord(docs = mapOf(DocumentSlice.license to signer.licenseDoc("djdl", deviceId, 1_700_000_000L, licenseId = "lic_cached"))),
+                )
+            }
         }
         var n = 0
         val transport = ScriptedTransport { r: PolarisRequest ->
@@ -110,16 +118,28 @@ class AutoSignInTest {
                         """"exchange":{"kinds":["google"],"google":{"serverClientId":"1234-web.apps.googleusercontent.com"}},""" +
                         """"endpoints":{"nonce":"$base/nonce","token":"$base/token","signout":"$base/signout","subject":"$base/subject"}}}}""",
                 )
-                "/djdl/identity/nonce" -> respond(nonceStatus, """{"nonce":"${"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP"}${n++ % 10}","expiresIn":300}""")
+
+                "/djdl/identity/nonce" -> respond(
+                    nonceStatus,
+                    """{"nonce":"${"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP"}${n++ % 10}","expiresIn":300}""",
+                )
+
                 "/djdl/identity/token" -> respond(tokenStatus, tokenBody)
+
                 "/djdl/identity/signout" -> respond(revokedSignOutStatus, signOutBody)
+
                 else -> respond(404)
             }
         }
         val core = CoreContext(
             CoreOptions(
-                productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
-                store = store, transport = transport, clock = { 1_700_000_000L },
+                productSlug = "djdl",
+                version = "1.0.0",
+                pinnedKeys = signer.trust,
+                trustRefresh = false,
+                store = store,
+                transport = transport,
+                clock = { 1_700_000_000L },
             ),
         )
         runBlocking { core.start() }
@@ -215,7 +235,11 @@ class AutoSignInTest {
 
     @Test
     fun noLinkAndTermsAreNeedsSignInAndOnlyNoLinkCarriesTheHandle() = runBlocking {
-        val noLink = world(tokenStatus = 403, tokenBody = """{"error":"interstitial_required","reason":"no_link","url":"https://key.plrs.im/x","linkHandle":"$handle","expiresIn":300}""")
+        val noLink = world(
+            tokenStatus = 403,
+            tokenBody = """{"error":"interstitial_required","reason":"no_link","url":"https://key.plrs.im/x",""" +
+                """"linkHandle":"$handle","expiresIn":300}""",
+        )
             .client.autoSignIn(AutoSignInOptions(provider = FakeProvider())) as AutoSignInResult.NeedsSignIn
         assertEquals(AutoSignInReason.NoLink, noLink.reason)
         assertEquals(handle, noLink.linkHandle)
@@ -234,7 +258,10 @@ class AutoSignInTest {
         val without = world(tokenStatus = 403, tokenBody = """{"error":{"code":"device_limit"}}""")
             .client.autoSignIn(AutoSignInOptions(provider = FakeProvider())) as AutoSignInResult.DeviceLimit
         assertNull(without.view)
-        val manage = world(tokenStatus = 403, tokenBody = """{"error":{"code":"device_limit"},"manageUrl":"https://key.plrs.im/manage","view":$view}""")
+        val manage = world(
+            tokenStatus = 403,
+            tokenBody = """{"error":{"code":"device_limit"},"manageUrl":"https://key.plrs.im/manage","view":$view}""",
+        )
             .client.autoSignIn(AutoSignInOptions(provider = FakeProvider())) as AutoSignInResult.DeviceLimit
         assertEquals("https://key.plrs.im/manage", manage.manageUrl)
         assertFalse(withView.view.toString().contains("lic_1"))
@@ -291,7 +318,10 @@ class AutoSignInTest {
             val second = world(store = FileStore("djdl", dir))
             assertTrue(second.core.explicitSignOut())
             val p = FakeProvider()
-            assertEquals(AutoSignInReason.SignedOut, (second.client.autoSignIn(AutoSignInOptions(provider = p)) as AutoSignInResult.NeedsSignIn).reason)
+            assertEquals(
+                AutoSignInReason.SignedOut,
+                (second.client.autoSignIn(AutoSignInOptions(provider = p)) as AutoSignInResult.NeedsSignIn).reason,
+            )
             assertEquals(0, p.silentCalls)
             // A token from an explicit sign-in ends it; an activation token does not.
             second.core.setToken("pkeyt_act", TokenSource.activate)
@@ -336,7 +366,10 @@ class AutoSignInTest {
         var checks = 0
         val outcome = try {
             w.client.exchangeTokens(
-                ExchangeKind.google, "id-token", null, w.client.deviceKeyPort()!!,
+                ExchangeKind.google,
+                "id-token",
+                null,
+                w.client.deviceKeyPort()!!,
                 mayStore = {
                     val ok = w.core.signOutGeneration() == generation
                     // A sign-out lands right after the first check, before the token is stored.
@@ -366,7 +399,20 @@ class AutoSignInTest {
         val p = FakeProvider(revoked = true)
         w.client.installPlatformIdentity(p)
         // Reload with no token held: restart the core's view of the store.
-        val fresh = CoreContext(CoreOptions(productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false, store = store, transport = w.transport, clock = { 1_700_000_000L }))
+        val fresh =
+            CoreContext(
+                CoreOptions(
+                    productSlug = "djdl",
+                    version = "1.0.0",
+                    pinnedKeys = signer.trust,
+                    trustRefresh = false,
+                    store = store,
+                    transport = w.transport,
+                    clock = {
+                        1_700_000_000L
+                    },
+                ),
+            )
         fresh.start()
         val client = IdentityClient(fresh, deviceKeys = DeviceKeyStore(DurableMem()))
         client.installPlatformIdentity(p)
@@ -422,7 +468,12 @@ class AutoSignInTest {
             flag.mkdirs()
             assertTrue(w.core.explicitSignOut())
             val warnings = mutableListOf<String>()
-            val collector = kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Unconfined) { w.core.stateWarnings.collect { warnings += it } }
+            val collector = kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Unconfined) {
+                w.core.stateWarnings.collect {
+                    warnings +=
+                        it
+                }
+            }
             // The write fails (the path is a directory) but the sign-out still clears everything.
             assertEquals(SignOutResult.SignedOut(true), w.client.signOut())
             assertNull(w.store.getToken())

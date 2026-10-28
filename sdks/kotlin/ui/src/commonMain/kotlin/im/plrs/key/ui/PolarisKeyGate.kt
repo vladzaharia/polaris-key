@@ -18,7 +18,8 @@ import im.plrs.key.sdk.PolarisKeyClient
  * The whole kit wired to [client]: boot (with the gate, pack progress and the update banner) and
  * then [content]. [onSignIn] starts sign-in from the activation screen (null hides the button);
  * [signIn] runs the device-code sign-in inside the gate instead, whose "Use a license key instead"
- * and Cancel come back to the key field; [autoSignIn] runs the automatic sign-in ladder once at boot; [onQuit] is the host's quit, called once a desktop installer
+ * and Cancel come back to the key field; [autoSignIn] runs the automatic sign-in ladder once at boot; [onQuit] is the
+ * host's quit, called once a desktop installer
  * is open (the kit never quits by itself); [packs] shows per-pack progress during the boot fetch.
  */
 @Composable
@@ -36,5 +37,8 @@ public fun PolarisKeyGate(
 ) {
     val update = remember(client) { PolarisUpdateState() }
     val updateActions = remember(client) { client.updateActions() }
-    PolarisKeyAppHost(client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, update, updateActions, optionalUpdateInDialog = true, autoSignIn = autoSignIn, content = content)
+    PolarisKeyAppHost(
+        client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, update, updateActions,
+        optionalUpdateInDialog = true, autoSignIn = autoSignIn, content = content,
+    )
 }

@@ -44,11 +44,7 @@ public data class DiscoveryCore(
 )
 
 /** The published trust pointers. `pinnedKeys` is informational ONLY: never a key source (§1). */
-public data class DiscoveryTrust(
-    val jwksUrl: String? = null,
-    val trustManifestUrl: String? = null,
-    val pinnedKeys: TrustSet = emptyMap(),
-)
+public data class DiscoveryTrust(val jwksUrl: String? = null, val trustManifestUrl: String? = null, val pinnedKeys: TrustSet = emptyMap())
 
 /** The Identity fragment's `exchange` member (WIRE-CONTRACT-V5 section 12.11.6): the platform kinds the product accepts. */
 public data class IdentityExchangeDiscovery(

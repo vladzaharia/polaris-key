@@ -34,6 +34,7 @@ class GoogleSignInTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val clientId = "web-client.apps.googleusercontent.com"
     private val nonce = "server-nonce-1"
+
     // The googleid builder decodes the JWT payload, so the fake is a well-formed (unsigned) JWT.
     private val secretToken: String = run {
         fun b64(s: String) = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(s.toByteArray())

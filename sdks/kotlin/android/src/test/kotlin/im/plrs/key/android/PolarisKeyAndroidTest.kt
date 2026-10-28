@@ -11,7 +11,6 @@ import im.plrs.key.core.PolarisException
 import im.plrs.key.core.testing.TestSigner
 import im.plrs.key.sdk.PolarisKeyClientOptions
 import im.plrs.key.update.UpdateClientOptions
-import java.io.File
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -25,6 +24,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.File
 
 /** The umbrella wiring and the build download. */
 @RunWith(RobolectricTestRunner::class)
@@ -61,6 +61,7 @@ class PolarisKeyAndroidTest {
                         """"exchange":{"kinds":["google"],"google":{"serverClientId":"1234-web.apps.googleusercontent.com"}},""" +
                         """"endpoints":{"nonce":"$base/diceroll/identity/nonce","token":"$base/diceroll/identity/token"}}}}""",
                 )
+
                 else -> MockResponse().setResponseCode(404).setBody("""{"error":{"code":"not_found"}}""")
             }
         }
@@ -120,7 +121,16 @@ class PolarisKeyAndroidTest {
         server.start()
         try {
             val base = server.url("/").toString().trimEnd('/')
-            val core = CoreContext(CoreOptions(productSlug = "diceroll", baseUrl = base, version = "1.0.0", pinnedKeys = signer.trust, store = InMemoryStore("diceroll")))
+            val core =
+                CoreContext(
+                    CoreOptions(
+                        productSlug = "diceroll",
+                        baseUrl = base,
+                        version = "1.0.0",
+                        pinnedKeys = signer.trust,
+                        store = InMemoryStore("diceroll"),
+                    ),
+                )
             val dl = OkHttpBuildDownload(core)
             val dest = File(tmp.root, "a.apk")
             dl.download("$base/diceroll/distribution/builds/1.1.0/android-arm64", dest)

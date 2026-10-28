@@ -9,14 +9,14 @@
 
 package im.plrs.key.ui
 
-import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.graphics.toAwtImage
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.LicenseStatus
 import im.plrs.key.identity.AutoSignInReason
@@ -48,21 +48,24 @@ class AutoSignInScreensTest {
     private val consent = ExchangeConsentView.of(
         obj(
             """{"client":{"appName":"Tidewater Studio","nameVerified":true},"as":{"provider":"google","email":"sam@example.com"},""" +
-                """"items":[{"kind":"license","anchor":{"name":"Tidewater Pro","tierName":"Pro","term":1893456000,"seat":{"position":2,"limit":3}},"more":0},""" +
+                """"items":[{"kind":"license","anchor":{"name":"Tidewater Pro","tierName":"Pro",""" +
+                """"term":1893456000,"seat":{"position":2,"limit":3}},"more":0},""" +
                 """{"kind":"profile","claims":["name","email"]}],"scopeHash":"abc","firstTime":true,"changed":false}""",
         ),
     )!!
 
     private val full = LicenseChoiceView.of(
         obj(
-            """{"state":"choose","choices":[{"id":"lic_1","state":"full","tierName":"Pro","name":"Tidewater Pro","origin":"signin","seats":{"used":3,"limit":3},"replace":{"allowed":true}}]}""",
+            """{"state":"choose","choices":[{"id":"lic_1","state":"full","tierName":"Pro","name":"Tidewater Pro","origin":"signin",""" +
+                """"seats":{"used":3,"limit":3},"replace":{"allowed":true}}]}""",
         ),
     )!!
 
     /** The same row with Replace refused (the developer manages devices): the lede names them, no Replace button. */
     private val fullManaged = LicenseChoiceView.of(
         obj(
-            """{"state":"choose","choices":[{"id":"lic_1","state":"full","tierName":"Pro","name":"Tidewater Pro","origin":"signin","seats":{"used":3,"limit":3},"replace":{"allowed":false,"retryAfter":null}}]}""",
+            """{"state":"choose","choices":[{"id":"lic_1","state":"full","tierName":"Pro","name":"Tidewater Pro","origin":"signin",""" +
+                """"seats":{"used":3,"limit":3},"replace":{"allowed":false,"retryAfter":null}}]}""",
         ),
     )!!
 
@@ -77,7 +80,9 @@ class AutoSignInScreensTest {
             completed = consent
             return ChoiceResult.Ok(ChoiceCompleted("lic", "ps_x", "profile"))
         }
-        override suspend fun cancelGrant(grant: String) { cancelled = true }
+        override suspend fun cancelGrant(grant: String) {
+            cancelled = true
+        }
         override suspend fun providerSignIn(): AutoSignInResult = providerResult.also { providerCalls++ }
         override fun choiceActions(): PolarisLicenseChoiceActions = object : PolarisLicenseChoiceActions {
             override suspend fun licenses(grant: String) = error("unused")
@@ -100,7 +105,12 @@ class AutoSignInScreensTest {
     }
 
     private fun texts(test: ComposeUiTest, vararg wanted: String) {
-        val shown = test.onAllNodes(androidx.compose.ui.test.SemanticsMatcher("text") { it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.Text) }, useUnmergedTree = true)
+        val shown = test.onAllNodes(
+            androidx.compose.ui.test.SemanticsMatcher("text") {
+                it.config.contains(androidx.compose.ui.semantics.SemanticsProperties.Text)
+            },
+            useUnmergedTree = true,
+        )
             .fetchSemanticsNodes().flatMap { it.config[androidx.compose.ui.semantics.SemanticsProperties.Text] }.map { it.text }
         for (t in wanted) assertTrue(shown.any { it.contains(t, ignoreCase = true) }, "missing: $t in $shown")
     }
@@ -194,7 +204,9 @@ class AutoSignInScreensTest {
         val state = stateOf(fake)
         val foreground = androidx.compose.runtime.mutableStateOf(true)
         matrixFrame(
-            420, 760, dark = false,
+            420,
+            760,
+            dark = false,
             content = {
                 androidx.compose.runtime.CompositionLocalProvider(LocalPolarisForeground provides { foreground.value }) { PolarisAutoSignIn(state) }
             },
@@ -228,11 +240,15 @@ class AutoSignInScreensTest {
         })
         assertEquals(1, fake.calls)
         val off = Fake(AutoSignInResult.Confirm(ExchangeOutcome.PendingConsent(grant, 300.0, consent)))
-        val quiet = PolarisGateState(object : PolarisGateActions {
-            override val autoSignIn: PolarisAutoSignInActions = off
-            override suspend fun status(): LicenseState = LicenseState(LicenseStatus.needsActivation)
-            override suspend fun activate(key: String): ActivationResult = ActivationResult.Error("unused")
-        }, CoroutineScope(Dispatchers.Unconfined), autoSignIn = false).also { it.start() }
+        val quiet = PolarisGateState(
+            object : PolarisGateActions {
+                override val autoSignIn: PolarisAutoSignInActions = off
+                override suspend fun status(): LicenseState = LicenseState(LicenseStatus.needsActivation)
+                override suspend fun activate(key: String): ActivationResult = ActivationResult.Error("unused")
+            },
+            CoroutineScope(Dispatchers.Unconfined),
+            autoSignIn = false,
+        ).also { it.start() }
         matrixFrame(420, 760, dark = false, content = { PolarisGate(quiet) { androidx.compose.material3.Text("Product") } }, after = {
             assertTrue(onAllNodesWithText("Use another account", ignoreCase = true).fetchSemanticsNodes().isEmpty())
         })
@@ -251,10 +267,18 @@ class AutoSignInScreensTest {
             "device-limit-no-rows" to Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", null)),
         )
         // The Android phone layout at 420 x 760 and the macOS desktop layout at 900 x 640.
-        for ((variant, size) in listOf("Android" to (420 to 760), "MacOS" to (900 to 640))) withPlatform(variant) {
-            for ((name, fake) in frames) for (dark in listOf(false, true)) for (scale in listOf(1f, 2f)) {
-                val state = stateOf(Fake(fake.ladder, fake.hasProvider))
-                matrixFrame(size.first, size.second, dark = dark, fontScale = scale, content = { PolarisAutoSignIn(state) }, after = { shot("${variant.lowercase()}-$name", dark, scale, this) })
+        for ((variant, size) in listOf("Android" to (420 to 760), "MacOS" to (900 to 640))) {
+            withPlatform(variant) {
+                for ((name, fake) in frames) {
+                    for (dark in listOf(false, true)) {
+                        for (scale in listOf(1f, 2f)) {
+                            val state = stateOf(Fake(fake.ladder, fake.hasProvider))
+                            matrixFrame(size.first, size.second, dark = dark, fontScale = scale, content = {
+                                PolarisAutoSignIn(state)
+                            }, after = { shot("${variant.lowercase()}-$name", dark, scale, this) })
+                        }
+                    }
+                }
             }
         }
     }

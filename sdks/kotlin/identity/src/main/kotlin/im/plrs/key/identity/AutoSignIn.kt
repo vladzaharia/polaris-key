@@ -115,7 +115,10 @@ public sealed interface AutoSignInResult {
             "AutoSignInResult.NeedsSignIn(linkHandle=${if (linkHandle == null) "null" else "[redacted]"}, reason=${reason.wire})"
     }
 
-    /** Every seat is taken; [manageUrl] is the Worker's page for freeing one and [view] is the choice view (with the replace rows) when the Worker sent it. */
+    /**
+     * Every seat is taken; [manageUrl] is the Worker's page for freeing one and [view] is the choice view (with the
+     * replace rows) when the Worker sent it.
+     */
     public class DeviceLimit(public val manageUrl: String?, public val view: LicenseChoiceView?) : AutoSignInResult {
         override fun toString(): String = "AutoSignInResult.DeviceLimit"
     }
@@ -241,11 +244,16 @@ private fun signedOutResult() = AutoSignInResult.NeedsSignIn(null, AutoSignInRea
 
 private fun result(outcome: ExchangeOutcome): AutoSignInResult = when (outcome) {
     is ExchangeOutcome.SignedIn -> AutoSignInResult.SignedIn(outcome.subject, outcome.licenseId)
+
     is ExchangeOutcome.PendingConsent -> AutoSignInResult.Confirm(outcome)
+
     is ExchangeOutcome.PendingSignIn -> AutoSignInResult.Choose(outcome)
+
     is ExchangeOutcome.NeedsSignIn -> AutoSignInResult.NeedsSignIn(
-        outcome.linkHandle, if (outcome.reason == "terms") AutoSignInReason.Terms else AutoSignInReason.NoLink,
+        outcome.linkHandle,
+        if (outcome.reason == "terms") AutoSignInReason.Terms else AutoSignInReason.NoLink,
     )
+
     is ExchangeOutcome.Unavailable -> AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable, outcome.reason)
 }
 
