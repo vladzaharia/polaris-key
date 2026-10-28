@@ -72,6 +72,9 @@ public class Endpoints(baseUrl: String, public val product: String) {
     public val devicesRegister: String get() = url("devices/register")
     public val devicesReport: String get() = url("devices/report")
     public val devices: String get() = url("devices")
+    public val deviceKeys: String get() = url("devices/keys")
+    public val connectIdentity: String get() = url("connect/identity")
+    public val connectDevices: String get() = url("connect/devices")
 
     public fun device(id: String): String = url("devices/${segment(id)}")
 

@@ -26,6 +26,8 @@ public enum class JwsTyp(public val wire: String) {
     bundle("pkey-bundle+jws"),
     feed("pkey-feed+jws"),
     release("pkey-release+jws"),
+    peer("pkey-peer+jws"),
+    ring("pkey-ring+jws"),
     ;
 
     public companion object {

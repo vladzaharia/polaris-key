@@ -68,6 +68,7 @@ import im.plrs.key.core.registerDevice
 import im.plrs.key.core.renameDevice
 import im.plrs.key.core.requestDeviceRegistration
 import im.plrs.key.identity.IdentityClient
+import im.plrs.key.identity.onBeforeSignOut
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.EntitlementsClient
 import im.plrs.key.license.LicenseClient
@@ -139,6 +140,8 @@ public data class PolarisKeyClientOptions @JvmOverloads constructor(
      * it answers the URL for the host to show.
      */
     val accountOpener: im.plrs.key.identity.AccountOpener? = null,
+    /** Cloud Connect (CC-12.1): the device keys and the state storage; see [ConnectOptions]. */
+    val connect: ConnectOptions = ConnectOptions(),
 )
 
 /**
@@ -442,6 +445,15 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
             publishLicense(force = true)
         },
     )
+
+    /**
+     * Cloud Connect (WIRE-CONTRACT-V5 section 15): this device's keys, roster, certificate and discovery
+     * key. Refuses with `service-unavailable` while the product has Connect off.
+     */
+    public val connect: ConnectClient = ConnectClient(core, options.connect).also { c ->
+        // Signing out leaves the person's devices: the roster and K_disc are not this device's to keep.
+        identity.onBeforeSignOut { c.leave() }
+    }
 
     private val stateFlow = kotlinx.coroutines.flow.MutableStateFlow<LicenseState?>(null)
 
