@@ -3,6 +3,10 @@ extends RefCounted
 # `open_pull` proves, and that the machine only ever takes the host's own open result. Cases are
 # client-core's `hostCodec.test.ts` as Python and Swift port them (HostCodecTests). HC-1 to HC-6 each
 # name their test below, and each of those fails on the naive version of its rule (the comment says how).
+# Mutation-checked (U-21.8): without the locked check HC-6's three checks fail; with a conflict copy opened
+# against a default name instead of the mutation's own, 'a conflict with no mutations of the request reads as
+# invalid' fails; without the repeated-id check, the re-blind, the NUL byte check, the alias replacement or
+# the strip, the HC-1, HC-5, HC-4, HC-3 and HC-2 checks fail.
 
 const Codec := preload("res://addons/polaris_key/core/sync/host_codec.gd")
 const Host := preload("res://addons/polaris_key/services/cloud_sync/host.gd")
