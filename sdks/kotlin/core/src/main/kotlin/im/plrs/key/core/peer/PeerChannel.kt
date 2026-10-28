@@ -2,9 +2,9 @@
 // Mirrors client-core's `peer/session.ts` and the Python engine; modes `v` and `p` (the SAS) follow in
 // CC-12.9.
 //
-// The engine owns no socket and starts no timer: Noise messages come in through [PeerSession.receive]
+// The engine owns no socket and starts no timer: Noise messages come in through [PeerChannel.receive]
 // (already de-framed) and go out through the `send` callback; the host's loop calls
-// [PeerSession.tick] when [PeerSession.wakeIn] says a deadline is due. Clocks are injected. Calls are
+// [PeerChannel.tick] when [PeerChannel.wakeIn] says a deadline is due. Clocks are injected. Calls are
 // serialised by one mutex, so an event callback must not call back into the session from its own
 // thread (launch a coroutine instead).
 //
@@ -121,7 +121,7 @@ private class Pending(val remote: ByteArray, val peerDeviceId: String?)
  * One session in mode `a`. [staticKey] is the device's agreement key (a [NoiseStatic]); [send] takes
  * one Noise message (the host frames it); [onEvent] runs inside whichever call produced the event.
  */
-public class PeerSession(
+public class PeerChannel(
     private val role: NoiseRole,
     private val slug: String,
     private val staticKey: NoiseStatic,
@@ -156,7 +156,7 @@ public class PeerSession(
     private var peerRemote: ByteArray? = null
     private var pending: Pending? = null
 
-    override fun toString(): String = "PeerSession(mode=a, role=$role, phase=$phase)"
+    override fun toString(): String = "PeerChannel(mode=a, role=$role, phase=$phase)"
 
     /** True once HELLO has been exchanged and until the session closes. */
     public val isOpen: Boolean get() = phase == "open"

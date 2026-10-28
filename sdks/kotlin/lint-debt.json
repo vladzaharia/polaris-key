@@ -3298,7 +3298,7 @@
       "detekt:style.MagicNumber": 20,
       "detekt:style.ThrowsCount": 2
     },
-    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/PeerSession.kt": {
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/PeerChannel.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,
       "detekt:complexity.LongParameterList": 2,
       "detekt:complexity.TooManyFunctions": 1,
@@ -3317,7 +3317,7 @@
       "detekt:style.ReturnCount": 1,
       "ktlint:standard:enum-entry-name-case": 12
     },
-    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/PeerSessionTest.kt": {
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/PeerChannelTest.kt": {
       "detekt:complexity.LongParameterList": 2
     }
   }

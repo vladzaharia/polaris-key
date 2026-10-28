@@ -1,6 +1,6 @@
 // @pkey-feature connect.protocol
 //
-// `PeerSession` in mode `a` (WIRE-CONTRACT-V5 sections 15.5 and 15.6): two sessions wired in memory
+// `PeerChannel` in mode `a` (WIRE-CONTRACT-V5 sections 15.5 and 15.6): two sessions wired in memory
 // and the refusals the matrix cannot show. Mirrors client-core's `peerSession.test.ts` and the
 // Python engine's tests.
 
@@ -20,7 +20,7 @@ import org.junit.Assert.fail
 import org.junit.Test
 import java.security.SecureRandom
 
-class PeerSessionTest {
+class PeerChannelTest {
     private val sub = "ps_AAAAAAAAAAAAAAAAAAAAAA"
     private val now = 1_700_001_000L
     private val signer = TestSigner("test-key")
@@ -81,7 +81,7 @@ class PeerSessionTest {
         val out = ArrayList<ByteArray>()
         var clock = 0.0
         var wall = now
-        val s = PeerSession(
+        val s = PeerChannel(
             role, "djdl", dev.stat,
             AccountContext(signer.trust, "djdl", dev.cert, sub, dev.id, { held }, disc),
             HelloInfo("test", "demo", label),
