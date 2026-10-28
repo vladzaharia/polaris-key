@@ -78,7 +78,7 @@ public struct PolarisKeyPreview: View {
         case .signIn, .signInHandoff, .licenseChoice:
             SignInView(model: model)
         case .nearbyApproval:
-            NearbyApprovalView(model: NearbyApprovalModel(inputs: model.inputs, codes: ["42", "17", "86"]))
+            NearbyApprovalView(model: NearbyApprovalModel(inputs: model.inputs, codes: ["482 913", "716 204", "359 078"]))
         case .activate:
             ActivateView(
                 screen: model.activate, text: $model.keyText, onSubmit: {},

@@ -182,6 +182,7 @@ extension KitStates {
             ]) { a, _ in a }
         let hasDeveloper = c.identity.developer != nil
         if !hasDeveloper { args["developer"] = nil }
+        let tierKnown = !(c.i.account?.tier ?? "").isEmpty
         func lines(_ keys: String?...) -> [CopyLine] { keys.compactMap { $0 }.map { c.line($0, args) } }
         switch auto.step {
         case .confirm:
@@ -193,7 +194,10 @@ extension KitStates {
                     "signin.auto.confirm.title",
                     auto.email == nil ? "signin.auto.confirm.asApple" : "signin.auto.confirm.as",
                     license != nil ? "signin.consent.license" : nil,
-                    license == "new" ? "signin.consent.newLicense" : nil,
+                    // Without a tier the line would read "New:  license"; the tierless copy is
+                    // the choice row's "Created when you continue".
+                    license == "new"
+                        ? (tierKnown ? "signin.consent.newLicense" : "signin.choice.metaNew") : nil,
                     license == "existing" ? "signin.consent.licenseLine" : nil,
                     also ? "signin.consent.alsoGets" : nil,
                     also ? "signin.consent.profile" : nil,
