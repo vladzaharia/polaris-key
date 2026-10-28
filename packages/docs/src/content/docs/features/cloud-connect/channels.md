@@ -55,7 +55,7 @@ The Worker never emits these codes. They travel between devices in a `CLOSE` rec
 
 ## Sign-out
 
-A sign-out stops Cloud Connect first, then forgets the person's roster and discovery key, before anything else is wiped. The stop is bounded. In the Swift, Python and Kotlin SDKs it waits 15 seconds for sessions and sockets to close, then cancels what is left without a graceful close and goes on. A callback of yours that blocks the stop cannot hold the sign-out. In Kotlin the stop then throws `LanException(closed)`; in Swift and Python it returns.
+A sign-out stops Cloud Connect first, then forgets the person's roster and discovery key, before anything else is wiped. The stop is bounded. In every SDK it waits at most 15 seconds for sessions and sockets to close, then cancels what is left without a graceful close and goes on. A callback of yours that blocks the stop cannot hold the sign-out. In Kotlin the stop then throws `LanException(closed)`; in the others it returns.
 
 Call `stop()` yourself when the person leaves the screen that uses channels. In React, put it in the cleanup of the effect that called `start()`.
 

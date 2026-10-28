@@ -220,8 +220,7 @@ anywhere else.
 
 ## Cloud Sync settings
 
-Synced settings are planned: the calls below are in the SDK source, and the `sync.settings` parity
-row stays `planned` until the release flips it. With Cloud Sync on and a person signed in, the
+With Cloud Sync on and a person signed in, the
 settings calls you already use go to the person's synced copy: `config.set` and `config.clear` send
 the edit, and `setting(key).value` reads what the person's other devices sent. The same code runs with
 Cloud Sync off. Which keys sync is the catalog's decision (see
@@ -233,7 +232,7 @@ End-to-end encryption is on by default: `CloudSyncHostOptions.encryption` is `"e
 the app out, and an app that says `"server"` still refuses a Worker it has seen speak end-to-end. The
 mode is the app's choice and is never read from the Worker. Settings are sealed with the
 [key ring](#cloud-sync-key-ring) above, so edits wait on the device while the ring is locked. The
-end-to-end default is in review; the `sync.e2e` parity row is `planned`.
+end-to-end mode is in review; `sync.e2e` is planned.
 
 Pass the options as `PolarisKeyClientOptions(cloudSync = ...)`. `catalog` (the `pkey mirror` output)
 and `aliases` (renamed keys) sit beside `encryption`.
