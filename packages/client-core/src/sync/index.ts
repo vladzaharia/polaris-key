@@ -9,3 +9,6 @@ export * from "./recovery.js";
 export * from "./cdc.js";
 export * from "./chunks.js";
 export * from "./manifest.js";
+export * from "./sha256.js";
+export * from "./fileStream.js";
+export * from "./transferPlan.js";

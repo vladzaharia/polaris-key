@@ -1,7 +1,7 @@
 // `sync-vectors.json`: Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 §13.10,
 // §13.8.1; plans/CC-01-cloud-sync.md §2.4). `syncVectorsVersion` 1.
 //
-// Slice U-34.3 adds `cdcCases`, `chunkCases` and `manifestCases`.
+// Slice U-34.4 adds `fileStreamCases`. Slice U-34.3 adds `cdcCases`, `chunkCases` and `manifestCases`.
 // Slice U-34.1 holds `hkdfCases`, `envelopeCases`, `blindCases` and `transferPlanCases`; U-34.2
 // adds `hpkeAnchor`, `wrapCases`, `recoveryCodeCases` and `adoptCases`. The
 // remaining sections (`cdcCases`, `chunkCases`,
@@ -54,6 +54,11 @@ import {
   refParseManifest,
   refSealChunk,
   refStream,
+  REF_FILE,
+  refFilePlainSize,
+  refOpenFile,
+  refOpenFileRange,
+  refSealFile,
   refZstdRawFrame,
   type RefManifest,
   toHex,
@@ -769,6 +774,521 @@ function buildTransferPlanCases(): unknown[] {
       expect: { mode: p.mode, partBytes: p.partBytes, parts: p.parts },
     };
   });
+}
+
+// ── pkey-sync-file/1 (§13.10.4) ──────────────────────────────────────────────────────────────
+
+const FILE_ROOT = mat("file root");
+const FILE_COLL = "saves";
+const FILE_SEG = REF_FILE.segmentBytes;
+const FILE_STRIDE = FILE_SEG + REF_FILE.tag;
+
+const sha256Hex = (b: Uint8Array): string =>
+  createHash("sha256").update(b).digest("hex");
+
+/** The plaintext of a seal row: SHA-256 blocks of the label and a counter, cut to length. */
+const filePlain = (label: string, length: number): Uint8Array =>
+  refStream(`pkey-sync vector file ${label}`, length);
+const fileSalt = (label: string): Uint8Array => mat(`file salt ${label}`);
+
+type FileOp =
+  | { op: "truncate"; length: number }
+  | { op: "dropSegment"; index: number }
+  | { op: "swapSegments"; a: number; b: number }
+  | { op: "appendSegment"; from: number }
+  | { op: "xor"; offset: number; value: number }
+  | { op: "setHex"; offset: number; hex: string }
+  | { op: "appendHex"; hex: string };
+
+/** Applies `ops` in order. Segment `i` is at 64 + i * (1 MiB + 16) and ends at the next one. */
+function applyFileOps(stream: Uint8Array, ops: FileOp[]): Uint8Array {
+  let b: Uint8Array = Uint8Array.from(stream);
+  const seg = (s: Uint8Array, i: number): [number, number] => {
+    const a = 64 + i * FILE_STRIDE;
+    return [a, Math.min(s.length, a + FILE_STRIDE)];
+  };
+  for (const o of ops) {
+    if (o.op === "truncate") b = b.slice(0, o.length);
+    else if (o.op === "dropSegment") {
+      const [x, y] = seg(b, o.index);
+      b = cat(b.subarray(0, x), b.subarray(y));
+    } else if (o.op === "swapSegments") {
+      const [lo, hi] = o.a < o.b ? [o.a, o.b] : [o.b, o.a];
+      const [x1, y1] = seg(b, lo);
+      const [x2, y2] = seg(b, hi);
+      b = cat(
+        b.subarray(0, x1),
+        b.subarray(x2, y2),
+        b.subarray(y1, x2),
+        b.subarray(x1, y1),
+        b.subarray(y2),
+      );
+    } else if (o.op === "appendSegment") {
+      const [x, y] = seg(b, o.from);
+      b = cat(b, b.subarray(x, y));
+    } else if (o.op === "xor") b[o.offset] = b[o.offset]! ^ o.value;
+    else if (o.op === "setHex") b.set(fromHex(o.hex), o.offset);
+    else b = cat(b, fromHex(o.hex));
+  }
+  return b;
+}
+
+function buildFileStreamCases(): unknown[] {
+  const rows: unknown[] = [];
+  const kid = refKid(FILE_ROOT);
+  const base = { rootHex: toHex(FILE_ROOT), collection: FILE_COLL };
+  const seals: Array<[string, string, string, number]> = [
+    [
+      "seal-empty",
+      "empty",
+      "An empty file is one empty last segment: the header and a 16-byte tag.",
+      0,
+    ],
+    ["seal-one-byte", "one", "One byte: one last segment.", 1],
+    [
+      "seal-segment-minus-one",
+      "segm1",
+      "1 MiB - 1: one short last segment.",
+      FILE_SEG - 1,
+    ],
+    [
+      "seal-segment-exact",
+      "seg",
+      "Exactly 1 MiB: one full segment that is the last; no empty segment follows.",
+      FILE_SEG,
+    ],
+    [
+      "seal-segment-plus-one",
+      "segp1",
+      "1 MiB + 1: a full segment (flag 0, counter 0) and a one-byte last segment (flag 1, counter 1).",
+      FILE_SEG + 1,
+    ],
+    [
+      "seal-two-segments-exact",
+      "two",
+      "Exactly 2 MiB: two full segments, only the second last.",
+      2 * FILE_SEG,
+    ],
+    [
+      "seal-three-segments",
+      "three",
+      "2.5 MiB: two full segments and a half-size last.",
+      2 * FILE_SEG + FILE_SEG / 2,
+    ],
+  ];
+  const sealed = new Map<string, Uint8Array>();
+  const plains = new Map<string, Uint8Array>();
+  for (const [id, label, description, length] of seals) {
+    const salt = fileSalt(label);
+    const plain = filePlain(label, length);
+    const stream = refSealFile(FILE_ROOT, FILE_COLL, salt, plain);
+    const back = refOpenFile(FILE_ROOT, FILE_COLL, kid, stream);
+    if (!back.ok || toHex(back.plain) !== toHex(plain))
+      throw new Error(`syncVectors file ${id}: reference disagrees`);
+    sealed.set(id, stream);
+    plains.set(id, plain);
+    rows.push({
+      id,
+      description,
+      kind: "seal",
+      ...base,
+      saltHex: toHex(salt),
+      plain: { label, length },
+      expect: {
+        sealedSize: stream.length,
+        headerHex: toHex(stream.subarray(0, 64)),
+        sealedSha256Hex: sha256Hex(stream),
+        plainSha256Hex: sha256Hex(plain),
+        ...(stream.length <= 256 ? { sealedHex: toHex(stream) } : {}),
+      },
+    });
+  }
+
+  rows.push({
+    id: "sizes",
+    description:
+      "plainSize -> sealedSize = 64 + plainSize + 16 * max(1, ceil(plainSize / 1 MiB)); a sealed size no stream has maps to null.",
+    kind: "sizes",
+    plainToSealed: [
+      0,
+      1,
+      FILE_SEG - 1,
+      FILE_SEG,
+      FILE_SEG + 1,
+      2 * FILE_SEG,
+      1024 * FILE_SEG,
+    ].map((p) => [p, 64 + p + 16 * Math.max(1, Math.ceil(p / FILE_SEG))]),
+    sealedToPlain: (
+      [
+        [64 + 16, 0],
+        [64 + 17, 1],
+        [64 + FILE_STRIDE, FILE_SEG],
+        [64 + FILE_STRIDE + 17, FILE_SEG + 1],
+        [0, null],
+        [63, null],
+        [64, null],
+        [64 + 15, null],
+        [64 + FILE_STRIDE + 16, null],
+        [64 + FILE_STRIDE + 5, null],
+      ] as Array<[number, number | null]>
+    ).map(([sz, want]) => {
+      if (refFilePlainSize(sz) !== want)
+        throw new Error(`syncVectors file sizes ${sz}: reference disagrees`);
+      return [sz, want];
+    }),
+  });
+
+  const open = (
+    id: string,
+    description: string,
+    baseId: string,
+    mutate: FileOp[],
+    reason: string | null,
+    over: { collection?: string; expectKidHex?: string } = {},
+  ) => {
+    const stream = applyFileOps(sealed.get(baseId)!, mutate);
+    const got = refOpenFile(
+      FILE_ROOT,
+      over.collection ?? FILE_COLL,
+      over.expectKidHex === undefined ? kid : fromHex(over.expectKidHex),
+      stream,
+    );
+    const ok = reason === null ? got.ok : !got.ok && got.reason === reason;
+    if (!ok) throw new Error(`syncVectors file ${id}: reference disagrees`);
+    rows.push({
+      id,
+      description,
+      kind: "open",
+      base: baseId,
+      mutate,
+      ...(over.collection === undefined
+        ? {}
+        : { openCollection: over.collection }),
+      ...(over.expectKidHex === undefined
+        ? {}
+        : { expectKidHex: over.expectKidHex }),
+      expect:
+        reason === null
+          ? { result: "ok", plainSha256Hex: sha256Hex(plains.get(baseId)!) }
+          : { result: "invalid", reason },
+    });
+  };
+  for (const [id] of seals)
+    open(`open-${id.slice(5)}`, `Opens ${id}.`, id, [], null);
+
+  const b3 = "seal-three-segments";
+  const b2 = "seal-two-segments-exact";
+  const b1 = "seal-segment-plus-one";
+  open(
+    "refuse-truncated-at-boundary",
+    "The last segment dropped: the new final segment was sealed with last = 0, so its tag fails as the last.",
+    b3,
+    [{ op: "dropSegment", index: 2 }],
+    "auth",
+  );
+  open(
+    "refuse-truncated-mid-segment",
+    "The stream cut inside the last segment.",
+    b3,
+    [{ op: "truncate", length: 64 + 2 * FILE_STRIDE + 100 }],
+    "auth",
+  );
+  open(
+    "refuse-truncated-to-header",
+    "Only the header remains: no segment at all.",
+    b3,
+    [{ op: "truncate", length: 64 }],
+    "shape",
+  );
+  open(
+    "refuse-truncated-header",
+    "Fewer than 64 bytes.",
+    b3,
+    [{ op: "truncate", length: 63 }],
+    "shape",
+  );
+  open(
+    "refuse-truncated-in-tag",
+    "A tail shorter than a tag.",
+    b1,
+    [{ op: "truncate", length: 64 + FILE_STRIDE + 7 }],
+    "shape",
+  );
+  open(
+    "refuse-reordered",
+    "The two full segments swapped: each was sealed under its own counter.",
+    b2,
+    [{ op: "swapSegments", a: 0, b: 1 }],
+    "auth",
+  );
+  open(
+    "refuse-reordered-with-last",
+    "The first and the last segment swapped (the stream length changes too).",
+    b3,
+    [{ op: "swapSegments", a: 0, b: 2 }],
+    "auth",
+  );
+  open(
+    "refuse-duplicated-segment",
+    "A full segment appended after the last: the old last now fails as a non-last.",
+    b2,
+    [{ op: "appendSegment", from: 0 }],
+    "auth",
+  );
+  open(
+    "refuse-dropped-first-segment",
+    "The first segment removed: the rest are one counter short.",
+    b3,
+    [{ op: "dropSegment", index: 0 }],
+    "auth",
+  );
+  open(
+    "refuse-empty-trailing-segment",
+    "An empty last segment after a full one is refused before any tag is tried: only the empty file has one.",
+    b1,
+    [
+      { op: "truncate", length: 64 + FILE_STRIDE },
+      { op: "appendHex", hex: "00".repeat(16) },
+    ],
+    "size",
+  );
+  open(
+    "refuse-last-flag-missing",
+    "The first segment of a two-segment file standing alone: it was sealed with last = 0, so it fails as a last segment.",
+    b2,
+    [{ op: "truncate", length: 64 + FILE_STRIDE }],
+    "auth",
+  );
+  open(
+    "refuse-tampered-ciphertext",
+    "One bit flipped in the first segment.",
+    b2,
+    [{ op: "xor", offset: 64 + 100, value: 1 }],
+    "auth",
+  );
+  open(
+    "refuse-tampered-tag",
+    "One bit flipped in the last tag.",
+    b3,
+    [{ op: "xor", offset: sealed.get(b3)!.length - 1, value: 1 }],
+    "auth",
+  );
+  open(
+    "refuse-tampered-header-salt",
+    "A flipped salt byte changes K_file, so every segment fails.",
+    b1,
+    [{ op: "xor", offset: 40, value: 1 }],
+    "auth",
+  );
+  open(
+    "refuse-wrong-collection",
+    "Opened under another collection's K_coll.",
+    b1,
+    [],
+    "auth",
+    { collection: "other" },
+  );
+  open(
+    "refuse-bad-magic",
+    "The magic is not PKSYNCF1.",
+    b1,
+    [{ op: "xor", offset: 0, value: 1 }],
+    "magic",
+  );
+  open(
+    "refuse-bad-version",
+    "version u16 (little-endian) is 2.",
+    b1,
+    [{ op: "setHex", offset: 8, hex: "0200" }],
+    "version",
+  );
+  open(
+    "refuse-flags-set",
+    "flags u16 is not 0: no flag is defined.",
+    b1,
+    [{ op: "setHex", offset: 10, hex: "0100" }],
+    "flags",
+  );
+  open(
+    "refuse-segment-size-smaller",
+    "segmentBytes u32 (little-endian) is 64 KiB, not 1 MiB.",
+    b1,
+    [{ op: "setHex", offset: 12, hex: "00000100" }],
+    "segmentSize",
+  );
+  open(
+    "refuse-segment-size-big-endian",
+    "segmentBytes written big-endian (00 10 00 00) reads as 4096 little-endian and is refused.",
+    b1,
+    [{ op: "setHex", offset: 12, hex: "00100000" }],
+    "segmentSize",
+  );
+  open(
+    "refuse-wrong-kid",
+    "The header's kid is not the kid of the ring the reader holds.",
+    b1,
+    [],
+    "kid",
+    { expectKidHex: toHex(refKid(mat("another root"))) },
+  );
+  open(
+    "refuse-header-kid-tampered",
+    "A flipped kid byte in the header.",
+    b1,
+    [{ op: "xor", offset: 16, value: 1 }],
+    "kid",
+  );
+
+  const range = (
+    id: string,
+    description: string,
+    baseId: string,
+    mutate: FileOp[],
+    start: number,
+    end: number,
+  ) => {
+    const stream = applyFileOps(sealed.get(baseId)!, mutate);
+    const got = refOpenFileRange(FILE_ROOT, FILE_COLL, kid, stream, start, end);
+    if (
+      got.ok &&
+      mutate.length === 0 &&
+      toHex(got.plain) !== toHex(plains.get(baseId)!.subarray(start, end))
+    )
+      throw new Error(`syncVectors file ${id}: reference disagrees`);
+    rows.push({
+      id,
+      description,
+      kind: "range",
+      base: baseId,
+      mutate,
+      start,
+      end,
+      expect: got.ok
+        ? {
+            result: "ok",
+            length: end - start,
+            sha256Hex: sha256Hex(got.plain),
+            reads: got.reads,
+          }
+        : { result: "invalid", reason: got.reason },
+    });
+  };
+  const all3 = 2 * FILE_SEG + FILE_SEG / 2;
+  range(
+    "range-first-bytes",
+    "Bytes 0..100 read the header and segment 0 only.",
+    b3,
+    [],
+    0,
+    100,
+  );
+  range("range-empty", "start = end reads only the header.", b3, [], 5, 5);
+  range(
+    "range-inside-one-segment",
+    "A range inside segment 1.",
+    b3,
+    [],
+    FILE_SEG + 10,
+    FILE_SEG + 4000,
+  );
+  range(
+    "range-across-boundary",
+    "A range across the segment 0 / 1 boundary reads two segments.",
+    b3,
+    [],
+    FILE_SEG - 8,
+    FILE_SEG + 8,
+  );
+  range(
+    "range-ends-at-boundary",
+    "end exactly at a boundary reads only segment 0.",
+    b3,
+    [],
+    FILE_SEG - 100,
+    FILE_SEG,
+  );
+  range(
+    "range-starts-at-boundary",
+    "start exactly at a boundary reads only segment 1.",
+    b3,
+    [],
+    FILE_SEG,
+    FILE_SEG + 100,
+  );
+  range(
+    "range-last-segment",
+    "The tail of a short last segment: its read length is its actual length.",
+    b3,
+    [],
+    2 * FILE_SEG + 5,
+    all3,
+  );
+  range(
+    "range-whole-file",
+    "The whole plaintext reads every segment.",
+    b3,
+    [],
+    0,
+    all3,
+  );
+  range(
+    "range-exact-single-segment",
+    "A file of exactly 1 MiB: segment 0 is the last.",
+    "seal-segment-exact",
+    [],
+    10,
+    FILE_SEG,
+  );
+  range(
+    "range-empty-file",
+    "The empty file has an empty range only.",
+    "seal-empty",
+    [],
+    0,
+    0,
+  );
+  range(
+    "refuse-range-past-end",
+    "end is past the plaintext size.",
+    b3,
+    [],
+    0,
+    all3 + 1,
+  );
+  range("refuse-range-inverted", "start is after end.", b3, [], 10, 5);
+  range(
+    "range-ignores-tampered-other-segment",
+    "A flipped bit in segment 2 does not touch a range inside segment 0: only the segments read are authenticated.",
+    b3,
+    [{ op: "xor", offset: 64 + 2 * FILE_STRIDE + 3, value: 1 }],
+    0,
+    100,
+  );
+  range(
+    "refuse-range-in-tampered-segment",
+    "The same flip, with a range that reads segment 2.",
+    b3,
+    [{ op: "xor", offset: 64 + 2 * FILE_STRIDE + 3, value: 1 }],
+    2 * FILE_SEG,
+    2 * FILE_SEG + 10,
+  );
+  range(
+    "refuse-range-truncated-stream",
+    "A stream cut at a segment boundary has another size, so the size alone moves the last flag: a range in segment 1 now fails.",
+    b3,
+    [{ op: "dropSegment", index: 2 }],
+    FILE_SEG,
+    FILE_SEG + 10,
+  );
+  range(
+    "refuse-range-impossible-size",
+    "A stored size no stream has is refused before any read.",
+    b1,
+    [{ op: "truncate", length: 64 + FILE_STRIDE + 7 }],
+    0,
+    10,
+  );
+  return rows;
 }
 
 // ── Wrap, recovery and adopt (§13.11) ────────────────────────────────────────────────────────
@@ -1774,7 +2294,7 @@ export function buildSyncVectors(): unknown {
   return {
     syncVectorsVersion: 1,
     description:
-      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames). manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
+      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames). fileStreamCases: pkey-sync-file/1 (header little-endian, nonce counter big-endian; the plaintext of a seal row is SHA-256(UTF-8 of `pkey-sync vector file ` + label, u32be counter) blocks cut to length; the salt is in the row). kind seal: seal that plaintext under rootHex and collection with saltHex and expect sealedSize, headerHex, sealedSha256Hex and plainSha256Hex (and sealedHex when present). kind sizes: plainToSealed pairs and sealedToPlain pairs (null: no stream has that size). kind open: take the sealed stream of the row named by base (a seal row), apply the mutate ops in order (truncate length; dropSegment index; swapSegments a b; appendSegment from; xor offset value; setHex offset hex; appendHex hex; segment i starts at 64 + i * (1 MiB + 16)), open it under openCollection (default collection) expecting the kid derived from the root unless expectKidHex is given, and expect ok with plainSha256Hex or a refusal; the reasons are shape, magic, version, flags, segmentSize, kid, size and auth in that order (auth covers truncation, reordering, a missing last flag and a tampered header). kind range: the same stored stream, open plaintext [start, end) through a reader that sees only offset and length; expect ok with length, sha256Hex and the exact reads (the header first, then one per segment overlapped, in order) or a refusal (range adds to the reasons). Only the segments read are authenticated; the stored size alone says which is last. manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
     constants: {
       envelopeOverheadBytes: REF_E2E_OVERHEAD,
       envelopeFixedBytes: REF_ENVELOPE_FIXED,
@@ -1791,6 +2311,7 @@ export function buildSyncVectors(): unknown {
     adoptCases: buildAdoptCases(),
     cdcCases: buildCdcCases(),
     chunkCases: buildChunkCases(),
+    fileStreamCases: buildFileStreamCases(),
     manifestCases: buildManifestCases(),
   };
 }
