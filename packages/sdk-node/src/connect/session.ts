@@ -231,6 +231,8 @@ export class ConnectSession {
  * A record the channel hands up: the APP range goes to the host's session; an APP-critical type
  * (0x8100 to 0xFFFD) the host cannot understand closes the session; the rest is ignored.
  */
+// CANDIDATES (0x0006, WIRE-CONTRACT-V5 §15.6) is deliberately neither delivered nor refused: the
+// spec defines no client action for a direct upgrade, so a non-critical record is ignored.
 export function routeRecord(
   link: ChannelLink,
   session: ConnectSession | null,
