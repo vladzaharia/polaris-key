@@ -354,6 +354,7 @@ class PolarisKeyClient:
                 discovery=lambda: self._discovery_doc,
                 fetch_schema=self.config.fetch_schema,
                 document=self._sync_document,
+                subject=self.identity._account.stored_subject,
             ),
             cloud_sync
             if isinstance(cloud_sync, CloudSyncHostOptions)

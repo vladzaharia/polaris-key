@@ -88,7 +88,7 @@ class CloudSyncApi:
         self._log = log or (lambda _m: None)
         self._attach_lock = threading.RLock()
         self._attached = False
-        self._subject: Optional[str] = None
+        self._subject_value: Optional[str] = None
         self._forgot = False
         self._closed = False
         self._chain: List[threading.Thread] = []
@@ -126,6 +126,16 @@ class CloudSyncApi:
     def attach_soon(self) -> None:
         """:meth:`attach` on the worker thread; never raises (the client's discovery calls it)."""
         self._submit(self._quietly(self._attach))
+
+    @property
+    def _subject(self) -> Optional[str]:
+        """The person the machine is signed in as; the host is told, so no request outlives them."""
+        return self._subject_value
+
+    @_subject.setter
+    def _subject(self, subject: Optional[str]) -> None:
+        self._subject_value = subject
+        self._host.bind_subject(subject)
 
     def on_identity(self, change: str, subject: Optional[str] = None) -> None:
         """An ``identity`` event: queued, handled in order on the worker thread."""

@@ -47,6 +47,30 @@ async function rig(w: World, opts: { catalog?: boolean } = {}) {
   return { client, host: client.cloudSyncHost, stateDir };
 }
 
+/** A host over the client's own parts, with a clock the test moves. */
+const timed = (
+  client: PolarisKeyClient,
+  mirror?: object,
+  subject?: () => Promise<string | null>,
+) => {
+  const clock = { t: 1_700_000_000_000 };
+  const inner = client as unknown as { core: never; tokens: never };
+  const host = new CloudSyncHost(
+    {
+      ctx: inner.core,
+      tokens: inner.tokens,
+      keyring: client.keyring,
+      discovery: () => null,
+      fetchSchema: () => client.config.fetchSchema(),
+      document: () => ({ values: {} }),
+      clock: { now: () => clock.t },
+      ...(subject ? { subject } : {}),
+    },
+    mirror ? { catalog: mirror as never } : {},
+  );
+  return { host, clock };
+};
+
 /** A rig with a created ring (the root held), the host started and `SUBJECT` signed in. */
 async function live(w: World) {
   const r = await rig(w);
@@ -301,25 +325,6 @@ describe("cloud sync host: mode, catalog and state", () => {
     client.close();
   });
 
-  /** A host over the client's own parts, with a clock the test moves. */
-  const timed = (client: PolarisKeyClient, mirror?: object) => {
-    const clock = { t: 1_700_000_000_000 };
-    const inner = client as unknown as { core: never; tokens: never };
-    const host = new CloudSyncHost(
-      {
-        ctx: inner.core,
-        tokens: inner.tokens,
-        keyring: client.keyring,
-        discovery: () => null,
-        fetchSchema: () => client.config.fetchSchema(),
-        document: () => ({ values: {} }),
-        clock: { now: () => clock.t },
-      },
-      mirror ? { catalog: mirror as never } : {},
-    );
-    return { host, clock };
-  };
-
   it("fetches the catalog once when none is cached or compiled, and again only after the refetch window", async () => {
     const w = new World();
     const { client, stateDir } = await rig(w, { catalog: false });
@@ -529,6 +534,44 @@ describe("cloud sync host: bounded bodies", () => {
     const { client } = await rig(w);
     w.schemaLength = String(2 ** 30);
     expect(await client.config.fetchSchema()).toBeNull();
+    client.close();
+  });
+});
+
+describe("cloud sync host: requests are bound to the person they were queued for", () => {
+  it("a request queued for one person is never sent once the session is another's", async () => {
+    const w = new World();
+    const { client } = await rig(w);
+    await client.keyring.create();
+    const now = { v: SUBJECT as string | null };
+    const { host } = timed(client, undefined, async () => now.v);
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    host.bindSubject(SUBJECT);
+    await host.touch();
+    const before = w.syncReqs.length;
+    host.machine.set("theme", "P1-VALUE");
+    now.v = "P2";
+    await host.flush(1000);
+    expect(w.syncReqs.slice(before)).toEqual([]);
+    client.close();
+  });
+
+  it("an unknown subject still sends", async () => {
+    const w = new World();
+    const { client } = await rig(w);
+    await client.keyring.create();
+    const { host } = timed(client, undefined, async () => null);
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    host.bindSubject(SUBJECT);
+    await host.touch();
+    const before = w.syncReqs.length;
+    host.machine.set("theme", "offline-boot");
+    await host.flush(1000);
+    expect(w.syncReqs.slice(before).some((r) => r.method === "POST")).toBe(
+      true,
+    );
     client.close();
   });
 });

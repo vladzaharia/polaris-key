@@ -50,7 +50,15 @@ export interface CloudSyncApiDeps {
 export class CloudSyncApi {
   readonly #d: CloudSyncApiDeps;
   #attached: Promise<void> | null = null;
-  #subject: string | null = null;
+  #subjectValue: string | null = null;
+  /** The person the machine is signed in as; the host is told, so no request outlives them. */
+  get #subject(): string | null {
+    return this.#subjectValue;
+  }
+  set #subject(s: string | null) {
+    this.#subjectValue = s;
+    this.#d.host.bindSubject(s);
+  }
   #forgot = false;
   #chain: Promise<void> = Promise.resolve();
   /** Identity events, one at a time and in order. */
