@@ -242,21 +242,6 @@ describe("a console issuer configured with a double trailing slash", () => {
   });
 });
 
-describe("a console issuer configured with a trailing slash", () => {
-  it("is still guarded: the link key is the slash-trimmed issuer", async () => {
-    const w = await seededWorld();
-    w.env.ADMIN_OIDC_ISSUER = `${ISSUER}//`;
-    w.env.ADMIN_OIDC_CLIENT_ID = "console";
-    w.env.PLATFORM_ADMIN_GROUP = GROUP;
-    await secondConnection(w);
-    await strongLink(w, true);
-    await signInThrough(w);
-    const r = (await row(w))!;
-    expect(r.groups_json).toBeNull();
-    expect(r.asserted_at).toBeNull();
-  });
-});
-
 describe("a connection on an unrelated issuer", () => {
   it("still records groups, claims and asserted_at", async () => {
     const w = await seededWorld();
