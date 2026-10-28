@@ -6221,6 +6221,26 @@ msgstr "Not available here"
 msgid "core.codes.device-management-unsupported.message"
 msgstr "Devices can't be managed from here. Manage them in your account."
 
+#. Device keys unreadable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-keys-unreadable.title"
+msgstr "Device keys unreadable"
+
+#. This device's saved keys can't be read. Reset them to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-keys-unreadable.message"
+msgstr "This device's saved keys can't be read. Reset them to continue."
+
+#. Device keys unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-key-store-error.title"
+msgstr "Device keys unavailable"
+
+#. This device's keys can't be reached right now. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-key-store-error.message"
+msgstr "This device's keys can't be reached right now. Try again."
+
 #. Couldn't load devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_list_failed.title"

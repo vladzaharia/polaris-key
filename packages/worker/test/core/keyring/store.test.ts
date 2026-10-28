@@ -35,7 +35,7 @@ const wrap = (deviceId: string, over: Partial<WrapInput> = {}): WrapInput => ({
   ringId: RING,
   epoch: 1,
   kid: "k1",
-  kem: "x25519",
+  kem: 32,
   enc: "enc-" + deviceId,
   ct: "ct-" + deviceId,
   by: deviceId,

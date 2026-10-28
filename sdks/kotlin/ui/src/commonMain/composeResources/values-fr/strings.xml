@@ -2384,6 +2384,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_management_unsupported_message">Les appareils ne peuvent pas être gérés ici. Gérez-les dans votre compte.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_unreadable_title">Clés de l'appareil illisibles</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_unreadable_message">Les clés enregistrées de cet appareil sont illisibles. Réinitialisez-les pour continuer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_key_store_error_title">Clés de l'appareil indisponibles</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_key_store_error_message">Les clés de cet appareil sont inaccessibles pour le moment. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_title">Chargement des appareils impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_list_failed_message">Vos appareils n’ont pas pu être chargés. Vérifiez votre connexion, puis réessayez.</string>

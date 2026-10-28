@@ -461,6 +461,14 @@
       "title": "Indisponible ici",
       "message": "Les appareils ne peuvent pas être gérés ici. Gérez-les dans votre compte."
     },
+    "device-keys-unreadable": {
+      "title": "Clés de l'appareil illisibles",
+      "message": "Les clés enregistrées de cet appareil sont illisibles. Réinitialisez-les pour continuer."
+    },
+    "device-key-store-error": {
+      "title": "Clés de l'appareil indisponibles",
+      "message": "Les clés de cet appareil sont inaccessibles pour le moment. Réessayez."
+    },
     "device_list_failed": {
       "title": "Chargement des appareils impossible",
       "message": "Vos appareils n’ont pas pu être chargés. Vérifiez votre connexion, puis réessayez."

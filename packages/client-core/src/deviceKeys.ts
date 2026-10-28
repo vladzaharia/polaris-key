@@ -4,6 +4,7 @@
 // and checks the result against the CC-03.4 verifier before returning it. The private halves of
 // both keys stay inside the port: nothing here asks for them, and nothing here can.
 
+import { PolarisError } from "./errors.js";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import type { DeviceProofPurpose } from "@polaris-key/protocol/identity";
 import {
@@ -65,9 +66,9 @@ export class DeviceKeyUnsupportedError extends Error {
  * that does not parse or match). It is never replaced automatically: replacing it would silently
  * change the device's identity. Only `wipe()` clears it; `ensure()` then makes a new pair.
  */
-export class DeviceKeysUnreadableError extends Error {
+export class DeviceKeysUnreadableError extends PolarisError {
   constructor(message = "device keys: the record is unreadable") {
-    super(message);
+    super("device-keys-unreadable", message);
     this.name = "DeviceKeysUnreadableError";
   }
 }

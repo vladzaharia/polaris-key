@@ -332,6 +332,8 @@ class ErrorCode:
     BUNDLE_IMPORT_UNSUPPORTED: Final = "bundle-import-unsupported"
     REPORT_UNSUPPORTED: Final = "report-unsupported"
     DEVICE_MANAGEMENT_UNSUPPORTED: Final = "device-management-unsupported"
+    DEVICE_KEYS_UNREADABLE: Final = "device-keys-unreadable"
+    DEVICE_KEY_STORE_ERROR: Final = "device-key-store-error"
     DEVICE_LIST_FAILED: Final = "device_list_failed"
     DEVICE_RENAME_FAILED: Final = "device_rename_failed"
     DEVICE_DEAUTHORIZE_FAILED: Final = "device_deauthorize_failed"
@@ -538,6 +540,8 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "bundle-import-unsupported",
     "report-unsupported",
     "device-management-unsupported",
+    "device-keys-unreadable",
+    "device-key-store-error",
     "device_list_failed",
     "device_rename_failed",
     "device_deauthorize_failed",
@@ -746,6 +750,8 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "bundle-import-unsupported": "client",
         "report-unsupported": "client",
         "device-management-unsupported": "client",
+        "device-keys-unreadable": "client",
+        "device-key-store-error": "client",
         "device_list_failed": "client",
         "device_rename_failed": "client",
         "device_deauthorize_failed": "client",

@@ -126,6 +126,8 @@ public object ErrorCode {
     public const val bundleImportUnsupported: String = "bundle-import-unsupported"
     public const val reportUnsupported: String = "report-unsupported"
     public const val deviceManagementUnsupported: String = "device-management-unsupported"
+    public const val deviceKeysUnreadable: String = "device-keys-unreadable"
+    public const val deviceKeyStoreError: String = "device-key-store-error"
     public const val deviceListFailed: String = "device_list_failed"
     public const val deviceRenameFailed: String = "device_rename_failed"
     public const val deviceDeauthorizeFailed: String = "device_deauthorize_failed"
@@ -332,6 +334,8 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "bundle-import-unsupported",
     "report-unsupported",
     "device-management-unsupported",
+    "device-keys-unreadable",
+    "device-key-store-error",
     "device_list_failed",
     "device_rename_failed",
     "device_deauthorize_failed",
@@ -538,6 +542,8 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "bundle-import-unsupported" to "client",
     "report-unsupported" to "client",
     "device-management-unsupported" to "client",
+    "device-keys-unreadable" to "client",
+    "device-key-store-error" to "client",
     "device_list_failed" to "client",
     "device_rename_failed" to "client",
     "device_deauthorize_failed" to "client",

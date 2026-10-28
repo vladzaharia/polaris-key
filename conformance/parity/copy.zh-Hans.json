@@ -461,6 +461,14 @@
       "title": "此处不可用",
       "message": "无法在此管理设备。请在你的账户中管理。"
     },
+    "device-keys-unreadable": {
+      "title": "设备密钥无法读取",
+      "message": "无法读取此设备已保存的密钥。请重置后继续。"
+    },
+    "device-key-store-error": {
+      "title": "设备密钥不可用",
+      "message": "暂时无法访问此设备的密钥。请重试。"
+    },
     "device_list_failed": {
       "title": "无法加载设备",
       "message": "无法加载你的设备。请检查网络连接后重试。"

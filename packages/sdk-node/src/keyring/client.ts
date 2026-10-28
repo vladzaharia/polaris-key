@@ -47,7 +47,7 @@ import { readJson, responseError } from "../core/http.js";
 import { printAs } from "../core/redact.js";
 import type { TokenManager } from "../core/token.js";
 
-/** The `kem` spelling the Worker stores for DHKEM X25519 (the contract's integer 32). */
+/** The `kem` an older Worker sent for DHKEM X25519: read, never written (the contract's integer is 32). */
 export const KEM_WIRE_X25519 = "x25519";
 
 /** The machine side of the unlock: client-core's Cloud Sync machine takes the root as a flag. */
@@ -712,9 +712,9 @@ export class KeyringClient {
   }
 }
 
-function wireWrap(w: SyncWrap): { kem: string; enc: string; ct: string } {
+function wireWrap(w: SyncWrap): { kem: number; enc: string; ct: string } {
   return {
-    kem: KEM_WIRE_X25519,
+    kem: HPKE_KEM_X25519,
     enc: base64UrlEncodeBytes(w.enc),
     ct: base64UrlEncodeBytes(w.ct),
   };

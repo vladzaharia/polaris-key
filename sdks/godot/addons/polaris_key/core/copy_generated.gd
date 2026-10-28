@@ -131,6 +131,8 @@ const COPY_CODES := {
 	"bundle-import-unsupported": {"title": "Not available here", "message": "Offline activation isn't available here."},
 	"report-unsupported": {"title": "Not available here", "message": "Device reports aren't available here."},
 	"device-management-unsupported": {"title": "Not available here", "message": "Devices can't be managed from here. Manage them in your account."},
+	"device-keys-unreadable": {"title": "Device keys unreadable", "message": "This device's saved keys can't be read. Reset them to continue."},
+	"device-key-store-error": {"title": "Device keys unavailable", "message": "This device's keys can't be reached right now. Try again."},
 	"device_list_failed": {"title": "Couldn't load devices", "message": "Your devices couldn't be loaded. Check your connection and try again."},
 	"device_rename_failed": {"title": "Couldn't rename", "message": "The device couldn't be renamed. Try again."},
 	"device_deauthorize_failed": {"title": "Couldn't remove device", "message": "The device couldn't be removed. Try again."},

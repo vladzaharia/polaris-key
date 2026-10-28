@@ -429,19 +429,6 @@ async function browserStep(
   return out;
 }
 
-/**
- * The recordings still hold the Worker's first form of `kem`, the text "x25519", while the client
- * sends the contract's integer 32 (V5 §13.11.1). Until the fix slice moves the Worker and these
- * transcripts to the integer, the replay translates the request's `kem` to the recorded text so
- * the shapes compare; the engine itself, and its unit tests, send 32. Delete this with that slice.
- */
-function recordedKemText(body: string): string {
-  const b = JSON.parse(body) as { kem?: unknown; wrap?: { kem?: unknown } };
-  if (b.kem === 32) b.kem = "x25519";
-  if (b.wrap?.kem === 32) b.wrap.kem = "x25519";
-  return JSON.stringify(b);
-}
-
 async function replay(t: Transcript): Promise<void> {
   const server = new ReplayServer(t);
   let discovered: DiscoveryDocument | null = null;
@@ -507,12 +494,7 @@ async function replay(t: Transcript): Promise<void> {
     product: t.product,
     deviceId: () => session.deviceId,
     transport: {
-      request: (path, init) =>
-        session.ringRequest(path, {
-          ...init,
-          body:
-            init.body === undefined ? undefined : recordedKemText(init.body),
-        }),
+      request: (path, init) => session.ringRequest(path, init),
     },
     keys: createWebDeviceKeyStore({ storage: memoryDeviceKeyStorage() }),
     vault: memoryRootVault(),
