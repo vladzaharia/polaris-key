@@ -28,6 +28,7 @@ import {
   deviceHeaders,
   json,
   observe,
+  offered,
   replay,
   runExchange,
   type Observed,
@@ -53,6 +54,11 @@ async function runStep(
       >;
     };
     const identity = doc.services.identity ?? {};
+    offered.set(
+      server,
+      identity.exchange !== undefined &&
+        typeof identity.endpoints?.nonce === "string",
+    );
     return {
       result: "ok",
       services: Object.fromEntries(
@@ -92,6 +98,7 @@ describe("identity.exchange transcripts, reference client", () => {
       "exchange-disabled",
       "exchange-errors",
       "exchange-gate-off",
+      "exchange-gate-off-stale",
       "exchange-no-link",
       "exchange-silent",
     ]);
