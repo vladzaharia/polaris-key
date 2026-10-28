@@ -211,9 +211,17 @@ public struct SignInView: View {
                     Array(screen.copy.dropFirst().filter { !Self.autoControls.contains($0.key) }),
                     id: \.key
                 ) { line in
-                    KitText(
-                        line, line.key == "a11y.nearbyCode" ? .title : .body,
-                        color: line.key == "signin.nearby.match" ? .muted : .default)
+                    if line.key == "a11y.nearbyCode" {
+                        // The line is the code's screen-reader label, never visible text; the
+                        // code itself is drawn large in monospace digits.
+                        if let code = model.inputs.autoSignIn?.code {
+                            NearbyCodeDigits(code: code, label: strings.string(line))
+                        }
+                    } else {
+                        KitText(
+                            line, .body,
+                            color: line.key == "signin.nearby.match" ? .muted : .default)
+                    }
                 }
             }
         case .linkDone, .nearbyDone:
@@ -1068,6 +1076,26 @@ public struct ReplaceDeviceView: View {
                             ]))
                 }
             }
+        }
+    }
+}
+
+/// The nearby wait's code: large monospace digits, labelled for VoiceOver by `a11y.nearbyCode`
+/// ("Code to tap: 482 913"), which is never drawn.
+struct NearbyCodeDigits: View {
+    let code: String
+    let label: String
+
+    var body: some View {
+        kitStyle { style in
+            Text(code)
+                .font(style.codeFont(size: CodeDisplay.size))
+                .tracking(CodeDisplay.size * CodeDisplay.tracking)
+                .foregroundStyle(style.palette.textStrong)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel(label)
         }
     }
 }

@@ -14,6 +14,28 @@ final class PreviewStateTests: XCTestCase {
         }
     }
 
+    /// Automatic sign-in's confirm step names the new license without a tier when none is known
+    /// ("Created when you continue", not "New:  license"), and with one when it is.
+    func testConfirmNewLicenseFallsBackWithoutATier() {
+        func keys(_ account: KitAccount?) -> [String] {
+            var inputs = PolarisKeyPreviewState.all.first { $0.id == "SignIn.confirm" }!.inputs
+            inputs.account = account
+            return KitStates.signIn(inputs).copy.map(\.key)
+        }
+        XCTAssertTrue(keys(nil).contains("signin.choice.metaNew"))
+        XCTAssertFalse(keys(nil).contains("signin.consent.newLicense"))
+        let withTier = keys(KitAccount(signedIn: true, holder: "account", tier: "Pro"))
+        XCTAssertTrue(withTier.contains("signin.consent.newLicense"))
+        XCTAssertFalse(withTier.contains("signin.choice.metaNew"))
+    }
+
+    /// The nearby wait keeps `a11y.nearbyCode` as the code's screen-reader label, beside the code.
+    func testNearbyWaitCarriesTheCodeLabel() {
+        let preview = PolarisKeyPreviewState.all.first { $0.id == "SignIn.nearby-wait" }!
+        XCTAssertEqual(preview.inputs.autoSignIn?.code, "482 913")
+        XCTAssertTrue(preview.screen.copy.map(\.key).contains("a11y.nearbyCode"))
+    }
+
     /// Boot's stop states each name the state and give the next step (UI-KITS §4.1 Boot).
     func testBootStopsCarryTheirTitleSentenceAndNextStep() {
         func keys(_ id: String) -> [String] {
