@@ -89,7 +89,8 @@ describe("the committed catalog", () => {
       false,
     );
     // v1.3 words (LK-13): the glossary (concepts.md) makes "Automatic grant" Locker's label and lists "From signing in" as the replaced term.
-    expect(m["signin.choice.origin.signIn"]!.value).toBe("Automatic grant");
+    // Sign-in, not "Automatic grant": lead decision 2026-10-28 (I-46.9 UX review: "Automatic grant" is internal vocabulary shown to end users).
+    expect(m["signin.choice.origin.signIn"]!.value).toBe("Sign-in");
     expect(m["signin.choice.origin.key"]!.value).toBe("Key ending {last6}");
     expect(m["signin.choice.origin.storeKey"]!.value).toBe(
       "{store} key ending {last6}",
