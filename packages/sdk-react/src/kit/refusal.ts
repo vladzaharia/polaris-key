@@ -26,14 +26,19 @@ export function refusalOf(input: UiInput): Refusal | null {
  *  I-46.1's `signin.key.addInLocker`). */
 export const MANAGE_KEY = "signin.key.addTitle";
 export const SIGN_IN_KEY = "welcome.signIn";
+/** license-owned's primary: the account that holds the license (M4). */
+export const OWNED_SIGN_IN_KEY = "signin.key.ownedSignIn";
+/** A sign-in that failed to start: the one callout on the step. */
+export const REFUSAL_ERROR_KEY = "core.codes.sign-in-failed.message";
 const DIFFERENT_KEY = "signin.key.differentKey";
 /** Read by the manage link as its description: where it goes. */
 export const OPENS_BROWSER_KEY = "signin.replace.opensBrowser";
 
 const COPY: Record<Refusal, string[]> = {
+  // The title says it; the sentence is the product-named one, not a restatement.
   "key-entry-limit": [
     "core.activation.key-entry-limit.title",
-    "core.activation.key-entry-limit.message",
+    "signin.key.noEntries",
   ],
   // The product-named words: the license is this product's.
   "license-owned": [
@@ -54,23 +59,44 @@ function replaced(view: View): boolean {
 export function refusalView(view: View, input: UiInput): View | null {
   const which = refusalOf(input);
   if (!which || !replaced(view)) return null;
-  const signIn = input.capabilities?.signIn !== false;
+  const canSignIn = input.capabilities?.signIn !== false;
   const manage =
     which === "key-entry-limit" && safeLink(input.activation?.manageUrl);
+  // license-owned: Sign in to that account. Where the build cannot sign in itself, the product's
+  // sign-in page is the link (and says so with the new-window glyph).
+  const ownedLink =
+    which === "license-owned" &&
+    !canSignIn &&
+    safeLink(input.activation?.signInUrl);
+  const signIn =
+    which === "license-owned"
+      ? canSignIn || ownedLink
+        ? OWNED_SIGN_IN_KEY
+        : null
+      : canSignIn
+        ? SIGN_IN_KEY
+        : null;
+  const failed = input.error?.code;
   const copy = [
     ...COPY[which],
-    ...(signIn ? [SIGN_IN_KEY] : []),
+    ...(signIn ? [signIn] : []),
     ...(manage ? [MANAGE_KEY] : []),
     DIFFERENT_KEY,
+    ...(view.component === "SignIn" ? ["common.cancel"] : []),
+    ...(failed ? [REFUSAL_ERROR_KEY] : []),
   ];
   return {
     ...view,
     copy,
     actions: manage ? ["open-manage-url"] : [],
-    args: { ...view.args, refusal: which },
+    args: {
+      ...view.args,
+      refusal: which,
+      ...(ownedLink ? { signInLink: 1 } : {}),
+    },
     decisions: {
       ...view.decisions,
-      primary: signIn ? SIGN_IN_KEY : manage ? MANAGE_KEY : DIFFERENT_KEY,
+      primary: signIn ?? (manage ? MANAGE_KEY : DIFFERENT_KEY),
       tone: "neutral",
       errorSlot: null,
       focus: "heading",
@@ -84,11 +110,15 @@ export const isRefusalStep = (view: View): boolean =>
   view.args.refusal === "license-owned";
 
 /** The layout of a refusal step: the three actions, the quiet one a link, nothing else. */
-export function refusalLayout(layout: Layout): Layout {
+export function refusalLayout(layout: Layout, component: string): Layout {
   return {
     ...layout,
-    controls: [SIGN_IN_KEY, MANAGE_KEY],
-    links: [DIFFERENT_KEY],
+    controls: [SIGN_IN_KEY, OWNED_SIGN_IN_KEY, MANAGE_KEY],
+    // The form's step also offers Cancel (its Escape).
+    links:
+      component === "SignIn"
+        ? [DIFFERENT_KEY, "common.cancel"]
+        : [DIFFERENT_KEY],
     content: [],
   };
 }

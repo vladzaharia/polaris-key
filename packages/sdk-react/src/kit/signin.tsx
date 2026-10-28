@@ -49,7 +49,9 @@ import {
 import { GLYPHS, text, type Chrome } from "./parts.js";
 import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
+import { refusalOf } from "./refusal.js";
 import { openLink, safeLink } from "./links.js";
+import { openManage } from "@polaris-key/ui-core/browser";
 
 export type { FormInput, FormStep } from "./contract.js";
 
@@ -317,7 +319,15 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       case "signin.choice.keyInstead":
         return model.haveKey();
       case "signin.key.differentKey":
-        return model.differentKey();
+        model.differentKey();
+        // The empty field takes focus once the step has drawn it.
+        requestAnimationFrame(() =>
+          kit.rootRef.current
+            ?.querySelector<HTMLInputElement>("#pk-key")
+            ?.focus({ preventScroll: true }),
+        );
+        return;
+      case "signin.key.ownedSignIn":
       case "welcome.signIn":
         // A refusal's Sign in starts the kit's own sign-in; `signInUrl` is only the fallback
         // for a build that cannot (license_owned).
@@ -326,8 +336,14 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
           if (url) openLink(url);
         });
       case "signin.key.addTitle": {
-        const url = safeLink(s.activation?.manageUrl);
-        if (url) openLink(url);
+        const url = s.activation?.manageUrl;
+        // With the page's return address and the typed key, as the gate's link does.
+        if (url)
+          openManage(
+            url,
+            window.location.href,
+            s.keyField?.text.trim() || undefined,
+          );
         return;
       }
       case "activate.submit":
@@ -411,7 +427,11 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
 
   const step = formStep(kit.input as FormInput);
   const body_ = bodyOf(kit.input as FormInput);
-  const stepKey = `${step.body.component}.${step.body.state}`;
+  // A refusal is its own step: the title takes focus when one lands (and a different key's
+  // field when it goes), whichever state the form stays in.
+  const stepKey = `${step.body.component}.${step.body.state}${
+    refusalOf(kit.input as FormInput) ?? ""
+  }`;
 
   // The morph: measured after every commit, so a step change animates from the last height.
   const last = useRef<{ key: string; height: number; index: number } | null>(
@@ -443,7 +463,8 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         ? input.activation.keyEntries
         : undefined;
     if (entries)
-      setToast({
+      // In a sheet it waits for the sheet to close: the Done step is what shows meanwhile.
+      (sheet && props.open ? setPending : setToast)({
         key: "signin.key.entriesLeftShort",
         args: { left: Math.max(0, entries.limit - entries.used) },
       });
@@ -458,6 +479,13 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       closeRef.current();
     }
   }, [outcome]);
+  const [pending, setPending] = useState<typeof toast>(null);
+  useEffect(() => {
+    if (pending && !(sheet && props.open)) {
+      setToast(pending);
+      setPending(null);
+    }
+  }, [pending, sheet, props.open]);
   // The toast lasts a few seconds.
   useEffect(() => {
     if (!toast) return;

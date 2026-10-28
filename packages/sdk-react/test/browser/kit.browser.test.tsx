@@ -530,13 +530,28 @@ async function check(
 
 /** The gate over the app, after a key activation that leaves entries and after a sign-in that
  *  lands: the toast each leaves (shots: react.Gate.toast-entries, react.Gate.toast-signed-in). */
-async function gateToast(kind: "entries" | "signed-in"): Promise<void> {
+type GateKind = "entries" | "signed-in" | "key-entry-limit" | "license-owned";
+async function gateToast(
+  kind: GateKind,
+  scheme: Scheme = "dark",
+): Promise<void> {
   const bridge = makeFakeBridge(emptyBridgeState());
   if (kind === "entries")
     bridge.submitKey = async () => {
       bridge.push(okBridgeState());
       return { kind: "ok", keyEntries: { used: 1, limit: 3 } };
     };
+  else if (kind === "key-entry-limit")
+    bridge.submitKey = async () => ({
+      kind: "key-entry-limit",
+      manageUrl: "https://key.plrs.im/activate?product=tidewater&next=add-key",
+      keyEntries: { used: 3, limit: 3 },
+    });
+  else if (kind === "license-owned")
+    bridge.submitKey = async () => ({
+      kind: "license-owned",
+      signInUrl: "https://key.plrs.im/signin?product=tidewater",
+    });
   else bridge.pollSignIn = () => new Promise(() => {});
   const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
   document.body.style.margin = "0";
@@ -545,7 +560,7 @@ async function gateToast(kind: "entries" | "signed-in"): Promise<void> {
   root = createRoot(host);
   root.render(
     <PolarisKeyProvider config={{ productSlug: "tidewater", adapter }}>
-      <Kit.PolarisKeyGate theme={{ product: PRODUCT, colorScheme: "dark" }}>
+      <Kit.PolarisKeyGate theme={{ product: PRODUCT, colorScheme: scheme }}>
         <main data-host-content="">
           <p>The app</p>
         </main>
@@ -561,7 +576,7 @@ async function gateToast(kind: "entries" | "signed-in"): Promise<void> {
     host!
       .querySelector<HTMLButtonElement>(`button[data-key="${key}"]`)!
       .click();
-  if (kind === "entries") {
+  if (kind !== "signed-in") {
     await until(
       () => host!.querySelector('[data-key="welcome.useKey"]') !== null,
     );
@@ -592,7 +607,12 @@ async function gateToast(kind: "entries" | "signed-in"): Promise<void> {
       }),
     );
   }
-  await until(() => host!.querySelector('[data-part="toast"]') !== null);
+  if (kind === "key-entry-limit" || kind === "license-owned")
+    await until(
+      () =>
+        host!.querySelector('[data-key="signin.key.differentKey"]') !== null,
+    );
+  else await until(() => host!.querySelector('[data-part="toast"]') !== null);
   await document.fonts.ready;
   await frame();
   await Promise.all(
@@ -625,6 +645,29 @@ describe("the gate's toasts after a key activation and a sign-in", () => {
         expect(sidewaysOverflow().join("\n")).toBe("");
         expect(document.querySelector("[data-host-content]")).not.toBeNull();
       });
+});
+
+describe("the live gate's two key refusals, with its chrome", () => {
+  for (const kind of ["key-entry-limit", "license-owned"] as const)
+    for (const scheme of SCHEMES)
+      for (const size of SIZES.filter((s) =>
+        ["320", "390", "844x390", "1440"].includes(s.label),
+      ))
+        it(`${kind} ${size.label} ${scheme}`, async () => {
+          await page.viewport(size.width, size.height);
+          await gateToast(kind, scheme);
+          if (__PKEY_KIT_SHOTS__)
+            await commands.kitShot(
+              `${__PKEY_KIT_SHOTS__}/react.Gate.refusal-${kind}/${size.label}-${scheme}.png`,
+            );
+          expect(document.querySelector("#pk-key")).toBeNull();
+          expect(sidewaysOverflow().join("\n")).toBe("");
+          expect(smallTargets().join("\n")).toBe("");
+          expect(
+            inFirstViewport(document.querySelector('[data-variant="primary"]')),
+          ).toBeNull();
+          expect((await contrast()).join("\n")).toBe("");
+        });
 });
 
 describe("the React kit at every size", () => {
