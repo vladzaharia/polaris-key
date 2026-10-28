@@ -355,6 +355,11 @@
         "ns": "identity",
         "type": "SignInNamespace",
         "file": "sdks/swift/Sources/PolarisKeyIdentity/SignInSession.swift"
+      },
+      {
+        "ns": "cloudConnect",
+        "type": "CloudConnect",
+        "file": "sdks/swift/Sources/PolarisKey/CloudConnect.swift"
       }
     ],
     "kotlin": [
@@ -545,6 +550,11 @@
     {
       "sdk": "swift",
       "path": "client.connect",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.cloudConnect",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
@@ -6202,9 +6212,7 @@
         "python": {
           "planned": "CC-10"
         },
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6234,9 +6242,7 @@
         "python": {
           "planned": "CC-10"
         },
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6260,9 +6266,7 @@
         "python": {
           "planned": "CC-10"
         },
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6286,9 +6290,7 @@
         "python": {
           "planned": "CC-10"
         },
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6312,9 +6314,7 @@
         "python": {
           "planned": "CC-10"
         },
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6344,9 +6344,7 @@
         "python": {
           "planned": "CC-10"
         },
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6376,6 +6374,10 @@
           "shape": "hook",
           "sdkOnly": true,
           "reason": "Node-first helper; the hook and the browser adapter carry it too"
+        },
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Swift carries it too"
         }
       },
       "layer": "client"
@@ -6394,6 +6396,10 @@
           "shape": "hook",
           "sdkOnly": true,
           "reason": "Node-first helper; the hook and the browser adapter carry it too"
+        },
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Swift carries it too"
         }
       },
       "layer": "client"
@@ -6412,6 +6418,10 @@
           "shape": "hook",
           "sdkOnly": true,
           "reason": "Node-first helper; the hook and the browser adapter carry it too"
+        },
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Swift carries it too"
         }
       },
       "layer": "client"

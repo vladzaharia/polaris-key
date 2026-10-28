@@ -276,8 +276,15 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
                     guard let self else { return }
                     Task { await self.accepted(pipe) }
                 },
-                onEvent: { [errorSubs] e in
-                    if case .failed(let b) = e { errorSubs.fire(Self.lanError(b)) }
+                onEvent: { [weak self, errorSubs] e in
+                    switch e {
+                    case .failed(let b): errorSubs.fire(Self.lanError(b))
+                    case .withdrawn:
+                        // Withdrawn, never kept under another name: say so, and advertise afresh next rotation.
+                        errorSubs.fire(ConnectLanError(.registrationRenamed, "The OS registered the advert under another name."))
+                        if let self { Task { await self.advertWithdrawn() } }
+                    case .registered: break
+                    }
                 })
         } catch let e as BonjourPipeError {
             throw Self.lanError(e)
@@ -382,6 +389,8 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
 
     /// A roster or identity was stored: the next read reloads, and the advert follows a new K_disc
     /// inside the epoch.
+    func advertWithdrawn() { advName = "" }
+
     func stored() {
         held = nil
         if !stopped && listening && o.advertise { Task { try? await self.rotate() } }

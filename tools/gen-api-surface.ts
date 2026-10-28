@@ -355,6 +355,7 @@ const SWIFT_TYPE: Record<string, string> = {
   distribution: "DistributionClient",
   commerce: "CommerceClient",
   packs: "PacksClient",
+  cloudConnect: "CloudConnect",
   SignInNamespace: "SignInNamespace",
   SignInSession: "SignInSession",
   ChoiceNamespace: "ChoiceNamespace",
