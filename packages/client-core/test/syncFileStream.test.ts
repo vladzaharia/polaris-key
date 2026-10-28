@@ -38,8 +38,10 @@ const setup = async () => ({
   kid: await deriveKid(port, root),
 });
 
+// Buffer's hex: the old per-byte Array.from(...).join("") built millions of strings for the
+// multi-MiB comparisons and took 20 s+ on a slow CI runner.
 const hexOf = (b: Uint8Array): string =>
-  Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+  Buffer.from(b.buffer, b.byteOffset, b.byteLength).toString("hex");
 
 async function reason(p: Promise<unknown>): Promise<string> {
   try {
