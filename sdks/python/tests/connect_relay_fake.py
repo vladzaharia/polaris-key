@@ -77,6 +77,12 @@ class FakeRoom:
         #: Close the next admission with this code.
         self.reject_with: Optional[int] = None
         self.issued = 0
+        #: A misbehaving room, for the stamped-``from`` check: ``route`` sends envelopes addressed to one
+        #: device to another, ``stamp`` writes a different ``from`` for a device's envelopes, and
+        #: ``mute_to`` drops what is addressed to a device.
+        self.route: Dict[str, str] = {}
+        self.stamp: Dict[str, str] = {}
+        self.mute_to: Set[str] = set()
 
     def issue(self, device: str, url: str = "wss://k.test/djdl/connect/relay") -> RelayGrant:
         self.issued += 1
@@ -113,8 +119,12 @@ class FakeRoom:
         self.received.append((s.device, m))
         if m["op"] == "send":
             to = b64url_encode(m["to"])
+            if to in self.mute_to:
+                return
+            to = self.route.get(to, to)
+            frm = self.stamp.get(s.device, s.device)
             for t in [x for x in self.sockets if x.device == to]:
-                t.deliver({"op": "recv", "from": b64url_decode(s.device), "session": m["session"], "noise": m["noise"]})
+                t.deliver({"op": "recv", "from": b64url_decode(frm), "session": m["session"], "noise": m["noise"]})
         elif m["op"] == "list":
             s.deliver(self.members())
         elif m["op"] == "ping":

@@ -25,6 +25,7 @@ import time
 from collections import deque
 from typing import Any, Callable, Deque, List, NamedTuple, Optional
 
+from ..core.errors import PolarisError
 from ..core.peer_link import LinkHandlers, LinkRefused, SocketLink
 from ..core.peer_session import Closed, Established, PeerHello
 from .errors import LanError
@@ -153,6 +154,8 @@ class ConnectSession:
             if str(e) == "message too large":
                 raise LanError("too_large", "The message is larger than the peer accepts.") from None
             raise LanError("closed", "The session is closed.") from e
+        except PolarisError:
+            raise  # a typed refusal of the link (the relay's queue is full) is the host's to see
         except Exception as e:
             raise LanError("closed", "The session is closed.") from e
 
