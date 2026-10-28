@@ -158,6 +158,8 @@ public object ErrorCode {
     public const val httpError: String = "http-error"
     public const val invalidResponse: String = "invalid-response"
     public const val storeFailed: String = "store-failed"
+    public const val connectUnavailable: String = "connect-unavailable"
+    public const val peerCertInvalid: String = "peer-cert-invalid"
     public const val platformError: String = "platform-error"
     public const val noToken: String = "no-token"
     public const val mintUnavailable: String = "mint-unavailable"
@@ -366,6 +368,8 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "http-error",
     "invalid-response",
     "store-failed",
+    "connect-unavailable",
+    "peer-cert-invalid",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -574,6 +578,8 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "http-error" to "client",
     "invalid-response" to "client",
     "store-failed" to "client",
+    "connect-unavailable" to "client",
+    "peer-cert-invalid" to "client",
     "platform-error" to "client",
     "no-token" to "client",
     "mint-unavailable" to "client",
@@ -1958,7 +1964,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "sync.conflict" to CapabilityRow("planned", "sync", listOf()),
     "sync.saves" to CapabilityRow("planned", "sync", listOf()),
     "sync.keyring" to CapabilityRow("planned", "sync", listOf()),
-    "connect.identity" to CapabilityRow("planned", "connect", listOf()),
+    "connect.identity" to CapabilityRow("implemented", "connect", listOf()),
     "connect.noise" to CapabilityRow("planned", "connect", listOf()),
     "connect.protocol" to CapabilityRow("planned", "connect", listOf()),
     "connect.lan" to CapabilityRow("planned", "connect", listOf()),
@@ -2052,4 +2058,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "83e975325c51ef1839ab805f0279e99ec8ca725dae6d7743546f98c808fda4ff"
+public const val CAPABILITY_DIGEST: String = "3c224973321fa4e7b5c8889c0af7760d087c6e26269f07485f696d2b3dd07208"

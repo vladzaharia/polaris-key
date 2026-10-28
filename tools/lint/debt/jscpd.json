@@ -20,6 +20,12 @@
     "conformance/runners/node/configMatrix.test.ts": {
       "jscpd:duplicate": 4
     },
+    "conformance/runners/node/exchangeTranscripts.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "conformance/runners/node/linkTranscripts.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "conformance/runners/node/noiseVectors.test.ts": {
       "jscpd:duplicate": 3
     },
@@ -4319,6 +4325,9 @@
     "packages/worker/test/transcripts/scenarios/license.ts": {
       "jscpd:duplicate": 7
     },
+    "packages/worker/test/transcripts/scenarios/link.ts": {
+      "jscpd:duplicate": 2
+    },
     "packages/worker/test/transcripts/scenarios/locker.ts": {
       "jscpd:duplicate": 9
     },
@@ -4326,7 +4335,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/transcripts/scenarios/redirect.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 5
     },
     "packages/worker/test/transcripts/scenarios/release.ts": {
       "jscpd:duplicate": 4
