@@ -13,7 +13,7 @@ Cloud Connect (service slug `connect`) lets one person's devices find each other
 
 ## Status
 
-Cloud Connect is off by default and not available yet. The service row exists, so a product can turn it on, but it serves no route, issues no certificate and holds no data. The pieces arrive in later releases: device keys, certificates, local discovery, the relay, the SDK calls and the console pages.
+Cloud Connect is off by default, and off in production until it is signed off. The platform setting `launch.connect` serves the identity and devices routes and `launch.relay` serves the relay; both default off and fail closed, and with one off its routes answer not found and discovery reports Cloud Connect as off. A product also has to enable the service (below). The SDK calls and the console pages exist; Swift and Kotlin have the identity client, and their `CloudConnect` call is planned.
 
 ## Turn it on
 
@@ -33,9 +33,46 @@ A page has no LAN, so the relay is its only path. In React, `useCloudConnect()` 
 
 The page's Content-Security-Policy must allow the relay: add `connect-src wss://<Worker host>`. Without it the socket never opens, and after five tries `status.relayError` says so and retries slow to every five minutes. With the app open in several tabs, one tab holds the socket and the others report `elsewhere`.
 
+## Calls per SDK
+
+| SDK     | Entry                                                                                               | State   |
+| ------- | --------------------------------------------------------------------------------------------------- | ------- |
+| Node    | `client.cloudConnect`: `start()`, `stop()`, `peers()`, `open(deviceId)`, `devices()`, `onChannel()` | Shipped |
+| Browser | `useCloudConnect()` in React; the relay is the only path                                            | Shipped |
+| Python  | `client.cloud_connect`: `start()`, `stop()`, `peers()`, `open()`, `devices()`, `on_channel()`       | Shipped |
+| Swift   | `CloudConnect`                                                                                      | Planned |
+| Kotlin  | `CloudConnect`                                                                                      | Planned |
+
+`start()` brings up discovery and the relay; `open(deviceId)` returns a session that carries encrypted messages, over the local network when the other device is there and through the relay when it is not. Nothing starts on its own, and a sign-out stops it. The relay is used only when `relay` is on for the product and the person's quota allows it.
+
+## Local network permission
+
+On iOS, macOS and Android, finding devices on the local network needs the person's permission. When the system refuses, the SDK reports `nearby-permission-denied` ("Local network blocked") and the relay still works. Explain why before the system asks, and point the person to the system settings if they said no. [Use your devices together](/docs/help/nearby-devices/) is the Help page to link to.
+
+## The relay and its quotas
+
+The relay carries only ciphertext between a person's own devices, and only while the local network does not reach. It is not an open relay: each connection needs a one-minute ticket bought with the device's token, the relay stamps the sender, and only devices on the person's roster are admitted.
+
+- A person's bytes per day: the `pkey.cloudConnect.relayBytes` entitlement.
+- A product's bytes per month: the ceiling set in the console, at most 500 GiB.
+- Two sockets per device and 32 per room. A message is at most 64 KiB.
+- 200 messages a second per socket, with a burst of 400. The SDKs pace themselves under that and queue at most 8 MiB.
+- A quota, the switch or a pause closes sockets within a minute. The local network is never metered.
+
 ## In the console
 
-The **Cloud Connect** section has three pages: Setup (the relay switch and the monthly relay ceiling), Usage (relay data and sessions per day) and Linked devices (each person and their devices).
+The **Cloud Connect** section has three pages.
+
+- **Setup:** the relay switch and the monthly relay ceiling, with the platform default beside them.
+- **Usage:** relay bytes and sessions per day.
+- **Linked devices:** each person and their devices, with label, system, certificate expiry and last relay use. Removing a device is the existing device removal, linked from here.
+
+## What you and Polaris Key can see
+
+- **You** see rosters with labels and relay totals. Never message contents.
+- **Polaris Key** stores two public keys per device, each person's roster and discovery key, and relay byte counts per product and day. It signs a certificate on each read and does not keep it.
+- **Nobody** else sees contents: channels are end-to-end encrypted, and the relay forwards ciphertext. One residual: a compromised Worker could sign a certificate for a device it adds to an account, so channels between a person's own devices trust the Worker. Cloud Sync keys never cross such a channel. See [Privacy](/docs/reference/what-apps-collect/).
+- On the local network, a nearby host can still see the device's host name, network address and that an app of this product is there.
 
 ## Next steps
 

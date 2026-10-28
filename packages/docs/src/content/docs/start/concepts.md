@@ -147,6 +147,10 @@ Each service issues its own signed document, and a client derives the license st
 
 **Cloud Sync** stores a signed-in person's settings, records and files for one product. It needs Config and Identity. A **synced setting** is an editable catalog `config` key. A **record** is one JSON value in a **collection**, and a **save** is a record of the `saves` collection template. The SDKs name the namespace `cloudSync`.
 
+## Cloud Connect
+
+**Cloud Connect** lets one signed-in person's devices find each other and open an encrypted channel, on the local network or through a relay. It needs Identity. A **linked device** is a device on that person's roster, one the person is signed in on; removing a device unlinks it. A **relay** carries a channel's ciphertext between two linked devices that the local network does not connect, within a per-person day quota and a per-product month ceiling. End users know a linked device as a nearby device in Polaris Locker.
+
 ## Release model
 
 A **deliverable** is something a product releases: its app, a **pack** or a package. Each release belongs to one deliverable and has a position, its `seq`, in that deliverable's publication order. A **build** is one compiled form of a release for a platform, architecture and format. To **promote**, **pin** or **yank** is to move a release track's pointer, freeze it, or withdraw a release. A yank never deletes anything.

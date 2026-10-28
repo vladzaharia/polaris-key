@@ -290,6 +290,31 @@ repeats another device's key is refused, so a device that can register can tell 
 public key is already in use in that product. This is accepted: the keys are public, and a change
 is limited to four a day per device.
 
+### Cloud Connect — a person's devices finding each other
+
+Cloud Connect (an opt-in service, off in production until launch) lets a signed-in person's devices
+find each other and talk over the local network or a relay.
+
+- **Stored.** The device keys above; per person and product, a roster of device ids with their
+  keys and an epoch, and a random discovery key for the current epoch (the previous one for 24
+  hours after a change that only adds devices). The roster holds a device's label, platform and
+  key dates for the person's own view and the console's Linked devices page.
+- **Signed per read, not stored.** The device certificate and the signed roster are produced when a
+  device asks and are not kept.
+- **Relay.** A counter per product and day for bytes and sessions, with no subject, and a
+  per-person day total with the person's live presence while a socket is open. A relay ticket is
+  kept as a hash for 60 seconds.
+- **Never seen.** Message contents. Channels are end-to-end encrypted with Noise, and the relay
+  forwards ciphertext it cannot read. The server learns who is in a room and how many bytes moved,
+  not what.
+- **On the local network.** An advert carries the service type, a rotating name and a protocol
+  version and mode, with no label, id or subject. The host name, the MAC address and the IP address
+  are still visible to others on the same network, and anyone who knows a product's slug can tell
+  that an app of that product is nearby.
+- **Kept for.** Device keys until the device is removed; the roster and discovery key until the
+  product is removed or the account is deleted; relay counters 90 days.
+- **Admin view.** Rosters with labels and relay totals, never content.
+
 ### Not collected
 
 OS username, browsing or file activity, a list of installed applications, and any raw
