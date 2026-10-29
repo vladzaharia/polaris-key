@@ -10,7 +10,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StrictMode, type ReactNode } from "react";
 
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type {
   LicenseChoiceView,
@@ -564,7 +570,8 @@ describe("a key with no account ends at the holders' screens (UK-42.10)", () => 
     await flush();
     await press(container, "signin.choice.keyInstead");
     await enterKey(container);
-    await flush();
+    // The key's activation settles over several turns; wait for Done itself, not a tick count.
+    await waitFor(() => expect(has(container, "signin.done.start")).toBe(true));
     return container;
   }
 
