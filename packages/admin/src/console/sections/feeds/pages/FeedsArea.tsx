@@ -460,7 +460,8 @@ export function FeedsOverview({
             <InstallCards
               scope={scope}
               owner={scope.slug}
-              ecosystem={feeds[0]!.ecosystem}
+              feeds={feeds}
+              canCreate={!gate.disabledReason}
             />
             <PackagesFoot
               onTurnOff={() => setTurningOff(true)}

@@ -123,17 +123,35 @@ export const FEEDS_SETUP_WRITE_COMMAND = "pkey feeds setup --write";
 /** The environment variable the console's CI card names for the Service token. */
 export const FEEDS_CI_TOKEN_ENV = "PKEY_REGISTRY_TOKEN";
 
+/** Ecosystems `pkey feeds setup --ecosystem` cannot print for CI: Godot authenticates by a token
+ *  in the feed's URL, which only the console shows. */
+export function feedsSetupCiSupported(ecosystem: string): boolean {
+  return ecosystem !== "godot";
+}
+
 /**
- * The command CI runs to print one feed's setup with the Service token read from `tokenEnv`:
- * what `pkey feeds setup --ecosystem <e> --owner <slug> --token-env NAME` accepts. It names the
- * variable, never a token.
+ * The command CI runs to print one feed's setup: what `pkey feeds setup --ecosystem <e> --owner
+ * <slug> [--namespace k=v ...] [--token-env NAME]` accepts. `tokenEnv` (a private feed) names the
+ * variable the printed setup reads, never a token. `namespace` is the feed's stored namespace; a
+ * list value is joined by commas.
  */
 export function feedsSetupCiCommand(
   ecosystem: string,
   owner: string,
-  tokenEnv: string = FEEDS_CI_TOKEN_ENV,
+  opts: { tokenEnv?: string; namespace?: Record<string, unknown> } = {},
 ): string {
-  return `pkey feeds setup --ecosystem ${ecosystem} --owner ${owner} --token-env ${tokenEnv}`;
+  const parts = [
+    "pkey feeds setup",
+    `--ecosystem ${ecosystem}`,
+    `--owner ${owner}`,
+  ];
+  for (const [k, v] of Object.entries(opts.namespace ?? {})) {
+    const value = Array.isArray(v) ? v.join(",") : v;
+    if (typeof value === "string" && value !== "")
+      parts.push(`--namespace ${k}=${value}`);
+  }
+  if (opts.tokenEnv) parts.push(`--token-env ${opts.tokenEnv}`);
+  return parts.join(" ");
 }
 
 /** Is `v` a usable environment-variable name for `--token-env`? */
