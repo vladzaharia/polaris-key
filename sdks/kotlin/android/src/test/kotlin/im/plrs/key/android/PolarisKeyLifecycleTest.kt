@@ -20,7 +20,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -124,10 +123,6 @@ class PolarisKeyLifecycleCloudSyncTest {
         else -> respond(404)
     }
 
-    // Disabled 2026-10-28 under the load rule: it fails only on the Linux CI runners (three runs; "the last stop
-    // pushed the edit") and passes locally, also with two CPUs. Re-enable once the CI run is diagnosed
-    // (_lead/flaky-disabled.md).
-    @Ignore("2026-10-28: fails on Linux CI runners only; see _lead/flaky-disabled.md")
     @Test
     fun theLastActivityStoppingFlushesBoundedAndTheStateLivesUnderNoBackup() {
         val mirror = kotlinx.serialization.json.Json.parseToJsonElement(
@@ -160,9 +155,16 @@ class PolarisKeyLifecycleCloudSyncTest {
         runBlocking {
             client.core.store.setToken("pkeyt_alice")
             client.identity.subject()
+            // Wait for the real precondition, not just "not Local": the machine is signed in and its first pull is
+            // done (Idle, nothing waiting). Until then `config.set` quietly takes the local-only path (no machine
+            // owns the key yet) and there is nothing for the last stop to push, which is what a slow runner showed.
             val end = System.currentTimeMillis() + 8_000
-            while (client.cloudSync.status().state == im.plrs.key.core.sync.SyncState.Local && System.currentTimeMillis() < end) Thread.sleep(20)
+            while (client.cloudSync.status().let { it.state != im.plrs.key.core.sync.SyncState.Idle || it.pending != 0 } && System.currentTimeMillis() < end) Thread.sleep(20)
+            val ready = client.cloudSync.status()
+            assertEquals("the machine is signed in and idle before the edit: $ready", im.plrs.key.core.sync.SyncState.Idle, ready.state)
             client.config.set("audio.volume", kotlinx.serialization.json.JsonPrimitive(0.3))
+            val edited = client.cloudSync.status()
+            assertEquals("the machine took the edit (not the local-only path): $edited", 1, edited.pending)
         }
         val lifecycle = PolarisKeyLifecycle(60, { 1_000L }, CoroutineScope(Dispatchers.Default))
         lifecycle.attach(client)
@@ -172,7 +174,7 @@ class PolarisKeyLifecycleCloudSyncTest {
         lifecycle.onActivityStopped(a)
         val end = System.currentTimeMillis() + 8_000
         while (pushes.get() == 0 && System.currentTimeMillis() < end) Thread.sleep(20)
-        assertTrue("the last stop pushed the edit", pushes.get() > 0)
+        assertTrue("the last stop pushed the edit; status ${runBlocking { client.cloudSync.status() }}", pushes.get() > 0)
         assertTrue(PolarisKeyLifecycle.BACKGROUND_FLUSH_MILLIS <= 10_000)
         // The state file sits beside the Keystore store's files: noBackupFilesDir, never backed up.
         assertTrue(java.io.File(noBackup, im.plrs.key.sdk.CLOUD_SYNC_FILE).exists())
