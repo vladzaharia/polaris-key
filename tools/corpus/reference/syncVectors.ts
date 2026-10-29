@@ -188,6 +188,21 @@ export function refOpenValue(
   aliases: readonly string[],
   env: Uint8Array,
 ): RefOpen {
+  const r = refOpenValueAnyName(root, collection, env);
+  if (r.ok && r.name !== expectName && !aliases.includes(r.name))
+    return { ok: false, reason: "name" };
+  return r;
+}
+
+/**
+ * The same open with the `k` check left to the caller: a record's `k` is split and its blinded
+ * forms recomputed (`refOpenRecord`), so the expected name is not known up front.
+ */
+export function refOpenValueAnyName(
+  root: Uint8Array,
+  collection: string,
+  env: Uint8Array,
+): RefOpen {
   const fail = (reason: ValueInvalid): RefOpen => ({ ok: false, reason });
   if (
     env.length < REF_E2E_OVERHEAD ||
@@ -227,8 +242,55 @@ export function refOpenValue(
   )
     return fail("json");
   const k = (doc as { k: string }).k;
-  if (k !== expectName && !aliases.includes(k)) return fail("name");
   return { ok: true, name: k, value: (doc as { v: unknown }).v };
+}
+
+/** The `k` of a sealed record field or union element: `id ‖ U+0000 ‖ x` (§13.10.4, U-09). */
+export const refRecordName = (id: string, x: string): string =>
+  `${id}\u0000${x}`;
+
+/** The blinded names a record envelope arrived under (§13.10.4): `name` is absent for a value. */
+export interface RefRecordWire {
+  kind: "value" | "field" | "element";
+  id: string;
+  name?: string;
+}
+
+/** True when `canonicalJson(v)` is the name part of an element's `k`. */
+function refElementIsName(v: unknown, rest: string | null): boolean {
+  try {
+    return refCanonicalJson(v) === rest;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The reader of a sealed record value, field or element (§13.10.4, U-09): open the envelope,
+ * split `k` at its first U+0000, recompute the blinded forms with `blind` and compare them with
+ * the names on the wire; any difference is `invalid` (`name`). The container fixes the kind: a
+ * `fields` entry is read as a field and an `elements` entry as an element, whatever `k` looks like,
+ * and an element's `v` must be the element its `k` names (`canonicalJson(v)` is the name part).
+ */
+export function refOpenRecord(
+  root: Uint8Array,
+  collection: string,
+  wire: RefRecordWire,
+  env: Uint8Array,
+): RefOpen {
+  const r = refOpenValueAnyName(root, collection, env);
+  if (!r.ok) return r;
+  const kn = refKNames(root);
+  const cut = r.name.indexOf("\u0000");
+  const id = wire.kind === "value" ? r.name : r.name.slice(0, cut);
+  const rest = wire.kind === "value" ? null : r.name.slice(cut + 1);
+  const match =
+    (wire.kind === "value" || cut >= 0) &&
+    refBlind(kn, "record", collection, id) === wire.id &&
+    (rest === null ||
+      refBlind(kn, wire.kind, collection, rest) === wire.name) &&
+    (wire.kind !== "element" || refElementIsName(r.value, rest));
+  return match ? r : { ok: false, reason: "name" };
 }
 
 // ── HPKE and the wrap (§13.11.1) ─────────────────────────────────────────────────────────────

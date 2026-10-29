@@ -56,6 +56,7 @@ import {
   hpkeSeal,
   openAdopt,
   openValue,
+  openValueAnyName,
   parseRecoveryCode,
   sealAdopt,
   unwrapRecovery,
@@ -88,6 +89,8 @@ interface EnvelopeCase {
   name: string;
   aliases: string[];
   seal?: { saltHex: string; value: SyncJson };
+  /** A record row (U-09): the blinded names the envelope arrived under (§13.10.4). */
+  record?: { kind: "value" | "field" | "element"; id: string; name?: string };
   envelopeHex: string;
   expect:
     | { result: "ok"; name: string; value: SyncJson }
@@ -438,6 +441,35 @@ const expected = (c: EnvelopeCase) =>
     ? { ok: true, name: c.expect.name, value: c.expect.value }
     : { ok: false, reason: c.expect.reason };
 
+/**
+ * Opens a sealed record value, field or element: the envelope first, then `k` split at its first
+ * U+0000, the blinded forms recomputed and compared with the wire names; a difference is `name`.
+ * The container fixes the kind (`wire.kind`), and an element's `canonicalJson(v)` must be the name
+ * part of `k`.
+ */
+async function openRecord(
+  root: Uint8Array,
+  collection: string,
+  wire: NonNullable<EnvelopeCase["record"]>,
+  envelope: Uint8Array,
+) {
+  const r = await openValueAnyName(port, root, collection, envelope);
+  if (!r.ok) return r;
+  const refused = { ok: false, reason: "name" } as const;
+  const cut = r.name.indexOf("\0");
+  if (wire.kind !== "value" && cut < 0) return refused;
+  const id = wire.kind === "value" ? r.name : r.name.slice(0, cut);
+  if ((await blind(port, root, "record", collection, id)) !== wire.id)
+    return refused;
+  if (wire.kind === "value") return r;
+  const rest = r.name.slice(cut + 1);
+  if ((await blind(port, root, wire.kind, collection, rest)) !== wire.name)
+    return refused;
+  if (wire.kind === "element" && canonicalJson(r.value) !== rest)
+    return refused;
+  return r;
+}
+
 describe("sync-vectors.json: envelopeCases", () => {
   for (const c of vectors.envelopeCases) {
     it(c.id, async () => {
@@ -458,6 +490,21 @@ describe("sync-vectors.json: envelopeCases", () => {
         });
       } else {
         expect(opened).toEqual({ ok: false, reason: c.expect.reason });
+      }
+
+      if (c.record !== undefined) {
+        // The reader of a record (§13.10.4): open without a name, split k, recompute, compare.
+        const got = await openRecord(
+          root,
+          c.collection,
+          c.record,
+          unhex(c.envelopeHex),
+        );
+        expect(got).toEqual(
+          c.expect.result === "ok"
+            ? { ok: true, name: c.expect.name, value: c.expect.value }
+            : { ok: false, reason: c.expect.reason },
+        );
       }
 
       if (c.seal !== undefined) {
