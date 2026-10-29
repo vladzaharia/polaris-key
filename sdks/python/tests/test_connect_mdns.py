@@ -104,7 +104,7 @@ class Browser:
         self.down: List[str] = []
 
         async def go() -> Any:
-            return await rig.adapter.browse(self.up.append, self.down.append)
+            return await rig.adapter.browse(self.up.append, self.down.append, kw.get("accept"))
 
         self.handle = run(go())
 
@@ -445,6 +445,62 @@ def test_names_of_the_wrong_shape_and_bad_ports_are_dropped() -> None:
     # A PTR that is not the service's own name is not an advert.
     b.push([Record("_other._tcp.local", "PTR", 0, FQDN)])
     assert b.down == []
+
+
+@pytest.mark.parametrize("port", [0, 1, 80, 1023])
+def test_an_srv_port_below_1024_is_ignored(port: int) -> None:
+    rig = Rig()
+    b = Browser(rig)
+    b.push([ptr(), srv(port=port), txt(), a()])
+    assert b.up == []
+    b.push([srv(port=1024)])
+    assert b.up[-1].port == 1024  # the lowest port a random listen can draw
+
+
+def test_names_fold_by_ascii_in_the_srv_target_and_the_host() -> None:
+    rig = Rig()
+    b = Browser(rig)
+    shouting = Record(INST.upper() + ".Local", "A", 120, "192.168.1.20")
+    b.push([ptr(), srv(target=INST.upper() + ".LOCAL"), txt(), shouting])
+    assert b.up[-1].hosts == ("192.168.1.20",) and b.up[-1].instance == INST
+
+
+def test_the_roster_filter_keeps_only_the_names_it_allows_for_every_record_type() -> None:
+    other = "p1-" + "b" * 16
+    asked: List[str] = []
+
+    def accept(name: str) -> bool:
+        asked.append(name)
+        return name == INST
+
+    rig = Rig()
+    b = Browser(rig, accept=accept)
+    b.push(full(inst=other))
+    for r in (ptr(other), srv(other), txt(other), a(other)):
+        b.push([r])
+    assert b.up == [] and set(asked) == {other}
+    # Nothing of the refused name took a place: the real one is still learned in full.
+    b.push(full())
+    assert [f.instance for f in b.up] == [INST]
+    # A goodbye for a name that is not allowed is not a goodbye.
+    b.push([ptr(other, ttl=0)])
+    assert b.down == []
+
+
+def test_no_source_owns_a_name_and_a_flood_from_one_source_does_not_evict_a_real_peer() -> None:
+    rig = Rig()
+    b = Browser(rig)
+    b.push([ptr(), srv(), txt(), a(ip="10.0.0.66")], src="10.0.0.66")  # a neighbour announces the name first
+    b.push([a(ip="10.0.0.5")], src="10.0.0.5")  # the real device is not locked out
+    assert b.up[-1].hosts == ("10.0.0.66", "10.0.0.5")
+    alphabet = "abcdefghijklmnopqrstuvwxyz234567"
+    for i in range(256):
+        n = "p1-" + alphabet[i // 32] + alphabet[i % 32] + "d" * 14
+        b.push([ptr(n), srv(n), txt(n), a(n, "10.0.0.66")], src="10.0.0.66")
+    assert b.down == []
+    # 16 new names a minute per source; a device takes one in the instance table and one in the address
+    # table (as in Node), so 8 devices are reported from one source.
+    assert len({f.instance for f in b.up}) == 8
 
 
 def test_the_instance_table_is_bounded_and_evicts_the_least_recently_refreshed() -> None:

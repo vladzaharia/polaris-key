@@ -9,19 +9,25 @@ Rules this module keeps:
   is renewed at every 15-minute epoch boundary and when K_disc changes, and uses only the newest key (G4);
 - a browse hit is kept only if it matches a roster device (never this one) under the current or previous
   epoch and either delivered key; everything else is dropped, and a name that did not match is not
-  worked out twice;
+  worked out twice. The mDNS adapter is given the same names up front (``accept``), so a name no roster
+  device can announce never takes a place in its tables;
 - the listener starts a handshake only when this device holds a verified identity. The handshake
   (XXpsk0) and admission (certificate, roster, expiry, revocation) run in the session engine; a failed
   tag closes the socket without a word (G2);
 - sockets that have not been admitted are bounded: at most 32 in total, 4 per source address and 16 per
-  /64, each living at most 30 seconds, handshake frames at most 16 KiB (G7);
+  group (a link, an IPv4 /24 or an IPv6 /64), each living at most 30 seconds, handshake frames at most
+  16 KiB (G7). A socket whose identity read hangs gives its slot back at the 30 second deadline;
 - an address is allowed by ``lan_verdict`` (§15.4.1; RFC 1918, fe80::/10, a ULA or on-link global address;
   loopback only when the caller opts in, for tests). An accepted socket is judged on its own peer and local
   address before it takes a slot and before any byte is read, and one that fails is closed at once; a dialled
   address is judged as text before a socket exists and on the connected socket before its first byte (G6).
   The certificate's device must be the one dialled, or the session closes ``wrong_peer`` (G8);
 - one TCP port serves both families: a dual-stack ``::`` listener (``IPV6_V6ONLY`` off), falling back to
-  ``0.0.0.0``; a device with several learned addresses dials them in a race (:mod:`.dial`);
+  ``0.0.0.0``. The listener can be reached from beyond the LAN, so a connection whose source fails the
+  verdict is closed in ``connection_made`` before the transport reads: no slot, no read, no byte written.
+  A device with several learned addresses dials them in a race (:mod:`.dial`), and when the handshake with
+  the winner fails it races the addresses that are left; a handshake that completes with another device
+  ends the dial as ``wrong_peer``;
 - the device's X25519 private key never leaves the key port (G1): the session is given the
   :class:`~polaris_key.connect.client.PeerSource` static-key handle, whose ``dh`` calls the port.
 """
@@ -58,7 +64,7 @@ __all__ = [
     "lan_source",
 ]
 
-#: Unauthenticated sockets at once, per source address and per /64 (G7, §15.4.1).
+#: Unauthenticated sockets at once, per source address and per group (G7, §15.4.1).
 MAX_PENDING = 32
 MAX_PENDING_PER_ADDRESS = 4
 MAX_PENDING_PER_64 = 16
@@ -181,6 +187,9 @@ class LanService:
         self._peers: Dict[str, Tuple[LanPeer, str]] = {}
         self._miss: Dict[str, int] = {}
         self._tab: Optional[Tuple[Tuple[int, Tuple[bytes, ...], Tuple[str, ...]], Dict[str, BrowseHit]]] = None
+        #: The last identity read, kept when ``_id`` is dropped: the roster filter works from it (``_accepts``).
+        self._known: Optional[PeerSource] = None
+        self._names: Optional[Tuple[PeerSource, int, "frozenset[str]"]] = None
         self._pending: Set[Any] = set()
         self._limit = PendingLimiter(o.max_pending, o.max_pending_per_address, o.max_pending_per_64)
         #: Accepted transports that hold a slot and have not reached ``_accept`` yet.
@@ -399,9 +408,11 @@ class LanService:
                 raise LanError("wrong_peer", "The device that answered is not the one that advertised.") from None
             if e.reason not in ("connect_failed", "handshake_failed"):
                 raise
+            self._abort(writer)  # the failed socket closes before the next race
             return None, e, host
         except Exception:
             task.cancel()
+            self._abort(writer)
             return None, LanError("handshake_failed", "The handshake failed."), host
 
     async def _dial(self, hosts: List[str], port: int) -> Tuple[Any, Any, str]:
@@ -430,6 +441,7 @@ class LanService:
         ):
             return held[1]
         v: PeerSource = await self._loop.run_in_executor(None, self._src.load)
+        self._known = v
         if held is not None and held[1].ring_epoch != v.ring_epoch:
             self._miss.clear()
         self._id = (now, v)
@@ -597,8 +609,9 @@ class LanService:
 
         link: Optional[SocketLink] = None
         try:
-            # The identity is read before the first byte is handled; the socket buffers meanwhile.
-            ident = await self._identity(False)
+            # The identity is read before the first byte is handled; the socket buffers meanwhile. The
+            # read is cancelled at the handshake deadline, so a hung ``load`` cannot hold the slot.
+            ident = await asyncio.wait_for(self._identity(False), self._o.handshake_seconds)
             if self._stopped:
                 return self._abort(writer)
             link = self._link(reader, writer, ident, "responder")
@@ -651,7 +664,22 @@ class LanService:
         return h.cancel
 
     async def _start_browse(self) -> None:
-        self._browse = await self._mdns.browse(self._found_later, self._gone)
+        self._browse = await self._mdns.browse(self._found_later, self._gone, self._accepts)
+
+    def _accepts(self, instance: str) -> bool:
+        """The adapter's roster filter: may this instance name enter its tables? Only a name a roster
+        device (never this one) can announce, under the current or previous epoch and either delivered key.
+        The names are worked out once per (epoch, keys, roster) (``_table``)."""
+        ident = self._known
+        if ident is None:
+            return False
+        epoch = advert_epoch(self._src.now())
+        held = self._names
+        if held is None or held[0] is not ident or held[1] != epoch:
+            keys = [ident.keys.current] + ([ident.keys.previous] if ident.keys.previous else [])
+            names = frozenset(self._table(keys, [d for d in ident.roster if d != ident.device_id]))
+            held = self._names = (ident, epoch, names)
+        return instance in held[2]
 
     def _found_later(self, f: MdnsFound) -> None:
         self._spawn(self._quiet(self._found(f)))

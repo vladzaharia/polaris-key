@@ -102,9 +102,12 @@ class Browser:
 
         self.handle = run(go())
 
-    def push(self, face: Optional[str], records: List[Record], src: str) -> None:
+    def push(self, face: Optional[str], records: List[Record], src: str, zone: bool = True) -> None:
         sock = self.rig.v4[-1] if face is None else self.rig.v6[face]
         data = build_response(records)
+        # What the real receiver passes: a link-local source carries the zone of its interface.
+        if face is not None and src.startswith("fe80:") and zone:
+            src = "%s%%%s" % (src, face)
 
         async def go() -> None:
             sock.on_packet(data, src)
@@ -427,3 +430,70 @@ def test_live_two_adapters_find_each_other_over_ipv6() -> None:
     finally:
         run(ah.stop())
         run(bh.stop())
+
+
+# -- link-local zones, tunnels and the group bind (CC-IPV6.FB) -----------------------------------------
+
+
+def test_a_link_local_source_with_no_zone_or_another_zone_teaches_nothing() -> None:
+    rig = Rig()
+    b = Browser(rig)
+    b.push("en0", full(), "fe80::7", zone=False)  # no zone: not ours
+    assert b.up == []
+    # fe80::7 from a packet that names another link is not this link's neighbour either.
+    rig.v6["en0"].on_packet(build_response(full()), "fe80::7%en1")
+    assert b.up == []
+    b.push("en0", full(), "fe80::7")
+    assert [f.hosts for f in b.up] == [("fe80::7%en0",)]
+
+
+def test_a_link_local_source_on_the_ipv4_socket_is_ignored() -> None:
+    rig = Rig()
+    b = Browser(rig)
+    b.push(None, full(), "fe80::7")
+    b.push(None, full(), "fe80::7%en0")
+    assert b.up == []
+
+
+def test_the_real_receiver_passes_only_the_interfaces_own_link_local_sources_with_their_zone() -> None:
+    from polaris_key.core.peer_mdns import _Receiver
+
+    got: List[str] = []
+    r = _Receiver(lambda d, s: got.append(s), 4, "en0")
+    r.datagram_received(b"x", ("fe80::7", 5353, 0, 4))
+    r.datagram_received(b"x", ("fe80::8", 5353, 0, 0))  # no scope
+    r.datagram_received(b"x", ("fe80::9", 5353, 0, 5))  # another link
+    r.datagram_received(b"x", ("fd12::1", 5353, 0, 0))  # not link-local: no zone added
+    assert got == ["fe80::7%en0", "fd12::1"]
+
+
+def test_the_group_bind_is_tried_first_on_linux_and_the_wildcard_elsewhere(monkeypatch: pytest.MonkeyPatch) -> None:
+    import polaris_key.core.peer_mdns as m
+
+    bound: List[Any] = []
+
+    class S:
+        def setsockopt(self, *a: Any) -> None:
+            pass
+
+        def bind(self, addr: Any) -> None:
+            bound.append(addr)
+
+    monkeypatch.setattr(m.sys, "platform", "linux")
+    m._bind_group4(S())
+    assert bound == [("224.0.0.251", 5353)]
+
+    class Refuses(S):
+        def bind(self, addr: Any) -> None:
+            bound.append(addr)
+            if addr[0]:
+                raise OSError("no")
+
+    bound.clear()
+    m._bind_group4(Refuses())
+    assert bound == [("224.0.0.251", 5353), ("", 5353)]
+    for other in ("darwin", "win32"):
+        bound.clear()
+        monkeypatch.setattr(m.sys, "platform", other)
+        m._bind_group4(S())
+        assert bound == [("", 5353)]

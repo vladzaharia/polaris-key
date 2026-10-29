@@ -58,6 +58,8 @@ class Network:
         self.adverts: Dict[str, MdnsAdvert] = {}
         self.browsers: List[Tuple[Callable[[MdnsFound], None], Optional[Callable[[str], None]]]] = []
         self.log: List[str] = []
+        #: The roster filter each browser was given.
+        self.accepts: List[Optional[Callable[[str], bool]]] = []
         #: The address every advert is found at.
         self.host = "127.0.0.1"
 
@@ -83,8 +85,12 @@ class Network:
         return MdnsHandle(stop)
 
     async def browse(
-        self, on_up: Callable[[MdnsFound], None], on_down: Optional[Callable[[str], None]] = None
+        self,
+        on_up: Callable[[MdnsFound], None],
+        on_down: Optional[Callable[[str], None]] = None,
+        accept: Optional[Callable[[str], bool]] = None,
     ) -> MdnsHandle:
+        self.accepts.append(accept)
         b = (on_up, on_down)
         self.browsers.append(b)
         for a in list(self.adverts.values()):
@@ -1077,3 +1083,88 @@ def test_a_winner_that_fails_the_handshake_does_not_end_the_dial(monkeypatch: py
             assert calls == [["10.0.0.66", "10.0.0.5"], ["10.0.0.5"]]
         finally:
             junk.close()
+
+
+# -- CC-IPV6.FB: groups, roster filter, wrong peer, hung identity -----------------------------------------
+
+
+def test_the_limiter_groups_a_link_a_24_and_a_64() -> None:
+    # fe80::/10 is 2^54 /64s: one neighbour on one link is one group whatever fe80 address it uses.
+    lim = PendingLimiter(64, 4, 16)
+    for n in range(16):
+        assert lim.take(object(), limiter_keys("fe80:0:0:%x::1%%en0" % (n + 1))) is not None
+    assert lim.take(object(), limiter_keys("fe80::99%en0")) is None
+    assert lim.take(object(), limiter_keys("fe80::99%en1")) is not None  # another link
+    # An IPv4 neighbour is bounded by its /24.
+    lim = PendingLimiter(64, 4, 16)
+    for n in range(16):
+        assert lim.take(object(), limiter_keys("192.168.1.%d" % (n + 1))) is not None
+    assert lim.take(object(), limiter_keys("192.168.1.200")) is None
+    assert lim.take(object(), limiter_keys("192.168.2.1")) is not None
+    # The total still bounds a neighbour that spreads over groups.
+    lim = PendingLimiter(32, 4, 16)
+    for n in range(32):
+        assert lim.take(object(), limiter_keys("10.%d.0.1" % n)) is not None
+    assert lim.take(object(), limiter_keys("10.99.0.1")) is None
+
+
+def test_the_adapter_is_given_only_the_names_the_roster_can_announce() -> None:
+    with World() as w:
+        la = w.start(w.a)
+        accept = w.net.accepts[-1]
+        assert accept is not None
+        epoch = advert_epoch(w.now)
+        b_now = account_instance(w.k, epoch, ID_B)
+        b_prev = account_instance(w.k, epoch - 1, ID_B)
+        own = account_instance(w.k, epoch, ID_A)
+        assert accept(b_now) and accept(b_prev)
+        assert not accept(own)  # never this device
+        assert not accept(account_instance(w.k, epoch - 2, ID_B))
+        assert not accept(account_instance(w.k, epoch, ID_C))
+        assert not accept(account_instance(_rnd(), epoch, ID_B))  # another key
+        assert not accept("p1-" + "a" * 16)
+        del la
+
+
+def test_a_device_that_answers_as_another_roster_device_ends_the_dial(monkeypatch: pytest.MonkeyPatch) -> None:
+    with World() as w:
+        la = w.start(w.a)
+        lb = w.start(w.b, advertise=False, browse=False)
+        calls: List[List[str]] = []
+        real = lan_mod.dial_race
+
+        async def counting(hosts: List[str], port: int, allow_loopback: bool, **kw: Any) -> Tuple[socket.socket, str]:
+            calls.append(list(hosts))
+            return await real(["127.0.0.1"], port, allow_loopback, **kw)
+
+        monkeypatch.setattr(lan_mod, "dial_race", counting)
+        # Two addresses for "C"; A answers on the first. That is an authenticated answer, so no second race.
+        with pytest.raises(LanError) as e:
+            run(lb.connect(LanPeer(ID_C, "127.0.0.1", la.port, ("127.0.0.2",))))
+        assert e.value.reason == "wrong_peer"
+        assert len(calls) == 1
+
+
+def test_a_hung_identity_read_gives_the_slot_back_at_the_deadline() -> None:
+    w = World()
+    release = threading.Event()
+    loads = [0]
+    inner = w.source(w.a)
+
+    def load() -> PeerSource:
+        loads[0] += 1
+        if loads[0] > 1:
+            release.wait(20)  # the key store hangs after the first read
+        return inner.load()
+
+    src = LanSource(load=load, now=lambda: w.now)
+    try:
+        la = w.start(w.a, src=src, advertise=False, browse=False, handshake_seconds=0.4)
+        w.now += 31  # the cached identity has lapsed: the next accept reads it again, and hangs
+        s = Raw(la.port)
+        until(lambda: la._pending != set() or la._slots)
+        assert s.closed.wait(5) and s.received == 0
+        until(lambda: la._pending == set() and la._limit.empty and not la._slots, timeout=3)
+    finally:
+        release.set()
+        w.close()

@@ -11,7 +11,22 @@ from polaris_key.core.peer_lan_address import canon_ip, fold_mapped, lan_group_k
 
 def test_a_refused_key_has_no_group() -> None:
     assert lan_group_key(None) is None
-    assert lan_group_key("10.0.0.1") is None
+
+
+@pytest.mark.parametrize(
+    "key,group",
+    [
+        ("10.0.0.1", "10.0.0.0/24"),
+        ("192.168.7.250", "192.168.7.0/24"),
+        ("fe80::1%en0", "fe80::/10%en0"),
+        ("fe80:0:0:5::9%en0", "fe80::/10%en0"),  # another /64 of the same link is the same group
+        ("fe80::1", "fe80::/10"),
+        ("fd12:3:4:5::7", "fd12:3:4:5::/64"),
+        ("2001:db8:1:2::9", "2001:db8:1:2::/64"),
+    ],
+)
+def test_the_group_is_the_link_the_24_or_the_64(key: str, group: str) -> None:
+    assert lan_group_key(key) == group
 
 
 def test_text_helpers_for_learning() -> None:

@@ -263,17 +263,22 @@ def lan_verdict(remote: str, local: Optional[str], allow_loopback: bool) -> LanV
 
 
 def lan_group_key(key: Optional[str]) -> Optional[str]:
-    """The key of the per-/64 count for a verdict ``key``: the /64 of an IPv6 address
-    (``2001:db8:1:2::/64``; a link-local /64 keeps the zone, ``fe80::/64%en0``), ``None`` for IPv4 and
-    for no key."""
-    if key is None or ":" not in key:
+    """The key of the per-group count for a verdict ``key``: ``fe80::/10%zone`` for a link-local address
+    (``fe80::/10`` when the key has no zone), ``a.b.c.0/24`` for IPv4, the /64 (``2001:db8:1:2::/64``)
+    for any other IPv6 address; ``None`` for no key. One neighbour cannot rotate out of its link, its /24
+    or its /64 by changing source address (§15.4.1)."""
+    if key is None:
         return None
     p0 = parse_address(key)
     p = None if p0 is None else _fold(p0)
-    if p is None or p[0] != "v6":
+    if p is None:
         return None
-    text = text6(p[1][:4] + [0, 0, 0, 0]) + "/64"
-    return text if p[2] is None else "%s%%%s" % (text, p[2])
+    if p[0] == "v4":
+        return "%d.%d.%d.0/24" % (p[1][0], p[1][1], p[1][2])
+    g = p[1]
+    if (g[0] & 0xFFC0) == 0xFE80:
+        return "fe80::/10" if p[2] is None else "fe80::/10%%%s" % p[2]
+    return text6(g[:4] + [0, 0, 0, 0]) + "/64"
 
 
 def _bits(p: Parsed) -> Tuple[int, int]:

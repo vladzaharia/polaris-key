@@ -3,8 +3,9 @@
 
 - the address TEXT is judged before a socket is opened, and the connected socket again (its remote and its
   own local address) before its first byte, on a dial and on an accept;
-- the pre-handshake limiter counts per address (4), per /64 (16) and in total (32); a link-local key
-  carries its zone, because the same fe80 address on two links is two hosts.
+- the pre-handshake limiter counts per address (4), per group (16) and in total (32); the group is the
+  link for a link-local address (``fe80::/10%zone``: the same fe80 address on two links is two hosts), the
+  /24 for IPv4 and the /64 for any other IPv6 address (§15.4.1).
 """
 
 from __future__ import annotations
@@ -58,8 +59,8 @@ def socket_verdict(remote: Optional[str], local: Optional[str], allow_loopback: 
 class LimiterKeys(NamedTuple):
     #: The per-address key: the verdict's key (a link-local one keeps its zone).
     address: str
-    #: The /64 the address sits in (a link-local one with its zone); ``None`` for IPv4.
-    net64: Optional[str]
+    #: The group the address sits in: its link, /24 or /64 (``lan_group_key``).
+    group: Optional[str]
 
 
 def limiter_keys(key: str) -> LimiterKeys:
@@ -68,7 +69,7 @@ def limiter_keys(key: str) -> LimiterKeys:
 
 
 class PendingLimiter:
-    """Counts of sockets that have not finished the handshake: in total, per address and per /64."""
+    """Counts of sockets that have not finished the handshake: in total, per address and per group."""
 
     def __init__(self, maximum: int = 32, per_address: int = 4, per_64: int = 16) -> None:
         self._max, self._per_address, self._per_64 = maximum, per_address, per_64
@@ -88,12 +89,12 @@ class PendingLimiter:
         """Take a slot for ``who``; returns the release, or ``None`` when a limit is met."""
         if len(self._total) >= self._max or self._addr.get(k.address, 0) >= self._per_address:
             return None
-        if k.net64 is not None and self._net.get(k.net64, 0) >= self._per_64:
+        if k.group is not None and self._net.get(k.group, 0) >= self._per_64:
             return None
         self._total.add(who)
         self._bump(self._addr, k.address, 1)
-        if k.net64 is not None:
-            self._bump(self._net, k.net64, 1)
+        if k.group is not None:
+            self._bump(self._net, k.group, 1)
         done = [False]
 
         def release() -> None:
@@ -102,8 +103,8 @@ class PendingLimiter:
             done[0] = True
             self._total.discard(who)
             self._bump(self._addr, k.address, -1)
-            if k.net64 is not None:
-                self._bump(self._net, k.net64, -1)
+            if k.group is not None:
+                self._bump(self._net, k.group, -1)
 
         return release
 
