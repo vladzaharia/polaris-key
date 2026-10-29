@@ -116,6 +116,9 @@ function scopesOf(
   return {
     google: server ? ["", `google-client:${server}`] : [],
     apple: teamId && bundleIds.length > 0 ? [`apple-team:${teamId}`] : [],
+    // §12.11.7: the game kinds are wired by I-14.8; until then no scope, so no offer.
+    gamecenter: [],
+    pgs: [],
   };
 }
 

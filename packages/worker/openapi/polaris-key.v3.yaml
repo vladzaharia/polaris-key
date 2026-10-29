@@ -28559,7 +28559,7 @@ components:
             type: object
             required: [kind, reach]
             properties:
-              kind: { type: string, enum: [google, apple] }
+              kind: { type: string, enum: [google, apple, gamecenter, pgs] }
               reach:
                 type: [string, "null"]
                 enum: [global, developer, null]
@@ -28580,6 +28580,18 @@ components:
           required: [subjectToken, nonce, signKey, agreeKey, proof]
           properties:
             subjectToken: { type: string, maxLength: 4096 }
+            subjectTokenType:
+              {
+                type: string,
+                enum:
+                  [
+                    "urn:ietf:params:oauth:token-type:id_token",
+                    "urn:polaris-key:token-type:gamecenter-signature",
+                    "urn:polaris-key:token-type:pgs-server-auth-code",
+                  ],
+                default: "urn:ietf:params:oauth:token-type:id_token",
+                description: The kind of `subjectToken` (§12.11.7).,
+              }
             nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
             signKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
             agreeKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
@@ -28592,7 +28604,7 @@ components:
           type: object
           required: [kind, reach]
           properties:
-            kind: { type: string, enum: [google, apple] }
+            kind: { type: string, enum: [google, apple, gamecenter, pgs] }
             reach: { type: string, enum: [global, developer] }
     DeviceKeysResult:
       type: object
@@ -28825,9 +28837,21 @@ components:
             const: "urn:ietf:params:oauth:grant-type:token-exchange",
           }
         client_id: { type: string, description: The product slug. }
-        subject_token: { type: string, description: The provider's ID token. }
+        subject_token:
+          {
+            type: string,
+            description: "The provider's ID token, the Game Center `gc1.` token or the Play Games server auth code (§12.11.7).",
+          }
         subject_token_type:
-          { type: string, const: "urn:ietf:params:oauth:token-type:id_token" }
+          {
+            type: string,
+            enum:
+              [
+                "urn:ietf:params:oauth:token-type:id_token",
+                "urn:polaris-key:token-type:gamecenter-signature",
+                "urn:polaris-key:token-type:pgs-server-auth-code",
+              ],
+          }
         nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
         device_key: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
         proof: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
@@ -28871,7 +28895,7 @@ components:
           type: object
           required: [provider, email]
           properties:
-            provider: { type: string, enum: [google, apple] }
+            provider: { type: string, enum: [google, apple, gamecenter, pgs] }
             email: { type: [string, "null"] }
         items:
           type: array

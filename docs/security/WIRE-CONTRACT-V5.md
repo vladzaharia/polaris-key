@@ -1981,6 +1981,7 @@ A signed-in device offers to add a platform identity to the person's account, so
 - `GET /<p>/identity/link` (device bearer): `{"offer":[{"kind":"google"|"apple","reach":"global"|"developer"|null}]}`. `kind` is one of the product's declared kinds with no link on the account in its scope. `reach` is what a link would cover, `null` while that is not known before a token. The list is empty without a live step-up.
 - `POST /<p>/identity/link` (device bearer), JSON `{linkHandle, proof}` or `{subjectToken, nonce, signKey, agreeKey, proof}`; the proof's purpose is `link`. A link by handle needs the device's signing key to be registered already (`PUT /<p>/devices/keys`, §15.8); without one it is refused. It consumes the step-up, then links. Answers: `200 {"linked":{"kind","reach"}}`; `401 step_up_required`; `409 link_conflict`; `400 invalid_grant` (nested); `404 not_found` (an unknown or spent handle).
 - **Scope of an app-made link.** The link is global (tenant scope `''`) only when the provider vouches for the token's email and that address is already verified on this account. Otherwise it is scoped to the developer: `google-client:<serverClientId>`. An Apple link is always `apple-team:<teamId>`. An app that supplies a token of its own therefore cannot link an identity the person did not prove they own to the account everywhere: a token for someone else's Google account lands in the developer's scope, where it recognises that person only inside this developer's products, and can never sign in to the card or another developer's app. That holds because a scope belongs to one product: a Google web client id or an Apple team id that one product declares is refused (at the settings write, at manifest ingest and at resync) for every other live product. Sharing one id across a developer's own products needs a verified-ownership model first.
+- **Game links.** `kind` may also be `gamecenter` or `pgs` (§12.11.7). Their `reach` is always `developer`, known before any token, and the token branch of `POST link` takes an optional `subjectTokenType` that defaults to the `id_token` type.
 - The link adds an audit row `identity.link.added` with `via: app`. The "sign-in method added" email goes to the account's primary address and to the linked identity's verified address, and names the app.
 
 #### 12.11.5 Nearby approval
@@ -2006,8 +2007,44 @@ All three live under `/<p>/identity`. The request handle is `nr_` and 22 base64u
 #### 12.11.6 Discovery and errors
 
 - **Discovery** (identity fragment): `exchange: {"kinds":("google"|"apple")[], "google"?: {"serverClientId"}}`, present only when the product declares a kind; `nearby: true`; the endpoints `nonce`, `link`, `nearbyStart`, `nearbyApprove` and `nearbyPoll`. Unsigned and additive. A client that finds none of them starts at the regular sign-in.
+- **Game kinds** (§12.11.7). `exchange.kinds` may also hold `gamecenter` and `pgs`, and `exchange.pgs` is `{"serverClientId"}`. A client ignores a kind it does not know: it is never a decode failure.
 - **Errors.** Two new Worker codes: `interstitial_required` (403, flat, on the exchange) and `not_nearby` (403, nested, on `nearby/approve`). One new client-only code: `platform-identity-unavailable` (no Play services, no declared kind, or the OS refused). The rest are existing codes: `invalid_grant`, `step_up_required`, `link_conflict`, `device_limit`, `license_choice_required`, `account_required`, `not_found`, `rate_limited`, `cancelled` and `sign-in-denied`. The registry is `conformance/parity/errors.json`.
 - **Deployed clients and workers.** The Worker deploys first. A client that predates this subsection ignores the discovery members and never sends the grant. A client of this version against an older Worker sees no `exchange` member and starts at the regular sign-in; an `unsupported_grant_type` is treated as a failed rung. Pending nonces, handles and requests expire within 600 seconds.
+
+#### 12.11.7 Game Center and Play Games (I-14)
+
+Two more platform identities use the exchange. This subsection is unsigned and additive: no signed document, proof or route changes, there is no new error code, and `PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2 and `corpusVersion` 2.
+
+**The grant.** It is §12.11.3's grant with two differences. `nonce`, `device_key` and the `exchange` proof are unchanged: the proof's value is `<nonce>.<device_key>`, and its sixth line is the SHA-256 of `subject_token`.
+
+| Parameter            | Game Center                                         | Play Games                                                                |
+| -------------------- | --------------------------------------------------- | ------------------------------------------------------------------------- |
+| `subject_token_type` | `urn:polaris-key:token-type:gamecenter-signature`   | `urn:polaris-key:token-type:pgs-server-auth-code`                         |
+| `subject_token`      | the `gc1.` token                                    | the server auth code, exactly as the platform returned it                 |
+| Link key             | `(gamecenter, 'apple-team:<teamId>', teamPlayerID)` | `(pgs, 'pgs-app:<applicationId>', player_id)`, then `alternate_player_id` |
+
+**The Game Center token.** `gc1.<publicKeyURL>.<signature>.<salt>.<timestamp>.<teamPlayerID>.<bundleId>`: the prefix `gc1`, then six fields. Every field but the timestamp is base64url without padding over its bytes, with strings encoded as UTF-8. The timestamp is plain decimal. The whole token is at most 4096 characters. The client adds `teamPlayerID` and the main bundle id to what Apple's identity-verification call returns, and never presents Game Center's sign-in view at launch: a player who is not signed in fails the rung (`platform-identity-unavailable`).
+
+**The Play Games code.** The client asks for a server-side access code for the `serverClientId` of discovery's `exchange.pgs`, with no extra scopes, and never starts Play Games' sign-in at launch.
+
+**Checks.** The checks run where §12.11.3's run, after the nonce is spent. Every failure is the one `400 invalid_grant`, with no oracle.
+
+- **Game Center.** The product has Game Center on, a team id, and the bundle id among its Apple bundle ids (declared and outlets). The signature's timestamp is Apple's, in milliseconds, and satisfies `now − 120 s ≤ timestamp ≤ now + 30 s`. The key URL is an `https://static.gc.apple.com/public-key/*.cer` address, fetched without redirects, and its certificate chain must reach a pinned DigiCert root through a pinned intermediate, with the leaf issued to `Apple Inc.` for code signing. The signature is RSASSA-PKCS1-v1_5 with SHA-256 over `teamPlayerID ‖ bundleId ‖ u64be(timestamp) ‖ salt`. One signature is accepted once, for 180 seconds.
+- **Play Games.** The product has `playGames.applicationId` and `playGames.serverClientId` set and a server credential present. The Worker redeems the code once at Google's token endpoint with the product's client id and secret, then calls `applications.verify` for the application with the access token. Both answers must succeed. The access token is discarded, and no refresh token or ID token is kept or read.
+
+**Subject.** Game Center's subject is `teamPlayerID`, the only player id Apple signs, and it is per team. Play Games' subject is `player_id` from `applications.verify`, per application; when no link is found and Google sent `alternate_player_id`, the lookup tries it too. Both links carry no email and `reach` `developer`.
+
+**No nonce.** Neither platform API takes our nonce, so it cannot be signed into the token. The 120-second window and the single use of a Game Center signature, Google's single redemption of a code, `applications.verify`, and the `exchange` proof (which binds SHA-256 of `subject_token` to our single-use nonce and the device key) bind the token instead.
+
+**Answers.** The same as §12.11.3: a token, `confirm`, `choose`, or `interstitial_required` with `no_link` or `terms`. `ExchangeConsentView.as` is `{provider: "gamecenter" | "pgs", email: null}`. Apple's key host unreachable, or Google unreachable, is `503 unavailable`.
+
+**Discovery.** `exchange.kinds` gains `gamecenter` when the product has Game Center on, a team and at least one Apple bundle id, and `pgs` when Play Games is set and its credential is present. `exchange.pgs` is `{serverClientId}`.
+
+**Gate.** The platform launch gate `launch.gameSignIn` is off by default. While it is off, the two token types answer `400 invalid_request` as an unknown type does, and discovery omits both kinds.
+
+**Errors.** No new code. `invalid_grant` covers a refused signature or code, `invalid_request` an unknown token type or the gate being off, `unavailable` an unreachable Apple or Google host, and the client-only `platform-identity-unavailable` a player who is not signed in to Game Center or Play Games.
+
+**Deployed clients and workers.** The Worker deploys first with the gate off. A client of this version against an older Worker, or with the gate off, sees no game kind in discovery and skips the rung; a game token sent anyway is `400 invalid_request`, a failed rung. Links with issuer `gamecenter` or `pgs` stay inert after a rollback, and single-use records expire within 600 seconds.
 
 ## 13. Cloud Sync (HTTP, additive)
 

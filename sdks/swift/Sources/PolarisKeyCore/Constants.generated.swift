@@ -713,6 +713,8 @@ public enum Feature {
     public static let identityChoice = "identity.choice"
     public static let identitySigninHints = "identity.signin.hints"
     public static let identityExchange = "identity.exchange"
+    public static let identityGamecenter = "identity.gamecenter"
+    public static let identityPgs = "identity.pgs"
     public static let identityAutosignin = "identity.autosignin"
     public static let identityLink = "identity.link"
     public static let releaseChangelog = "release.changelog"
@@ -852,6 +854,8 @@ public let FEATURE_VALUES: [String] = [
     "identity.choice",
     "identity.signin.hints",
     "identity.exchange",
+    "identity.gamecenter",
+    "identity.pgs",
     "identity.autosignin",
     "identity.link",
     "release.changelog",
@@ -1991,6 +1995,8 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.exchange": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.gamecenter": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.pgs": CapabilityRow(status: "na", service: "identity", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "identity.autosignin": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.link": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -2060,4 +2066,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "f322906029dcbeaa08cb401da57e7d6cdb1b6248053161961244bc3c8983a3f3"
+public let CAPABILITY_DIGEST = "4df8b276c8f4b6f39f804ffa988c1509ae9f8b03332bf880b2bd411c155d46c0"
