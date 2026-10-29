@@ -1,6 +1,6 @@
 /**
  * Cloud Connect → Linked devices (CC-16.3). The people who have linked a device, paged by subject
- * (50 a page, "Load more"), each with their device roster: label, platform, keys issued and last
+ * (50 a page, "Load more"), each with their device roster: label, platform, linked and last
  * seen, newest first. Read-only; a person opens their user record and a device its record on
  * Devices, where Deauthorize lives.
  *
@@ -87,16 +87,43 @@ export function ConnectDevicesPage({
   const people: ConnectPerson[] = (list.data?.pages ?? []).flatMap((p) =>
     p.enabled ? p.people : [],
   );
+  // Focus has to land somewhere real when the control that held it goes away (a11y): the count
+  // line after "Show everyone", Retry after a failed "Load more".
+  const countRef = React.useRef<HTMLParagraphElement>(null);
+  const errorRef = React.useRef<HTMLDivElement>(null);
+  const wantCount = React.useRef(false);
+  const wantRetry = React.useRef(false);
+  const moreFailed = list.isError && people.length > 0;
+  React.useEffect(() => {
+    if (wantCount.current && !subject && !list.isPending) {
+      wantCount.current = false;
+      countRef.current?.focus();
+    }
+  }, [subject, list.isPending, people.length]);
+  React.useEffect(() => {
+    if (wantRetry.current && moreFailed) {
+      wantRetry.current = false;
+      errorRef.current?.querySelector<HTMLElement>("button")?.focus();
+    }
+  }, [moreFailed]);
   const more = async (): Promise<void> => {
+    wantRetry.current = true;
     const seen = new Set(people.map((p) => p.subject));
     const res = await list.fetchNextPage();
     const next = (res.data?.pages ?? [])
       .flatMap((p) => (p.enabled ? p.people : []))
       .find((p) => !seen.has(p.subject));
+    if (!res.isError) wantRetry.current = false;
     focusPerson(next?.subject);
   };
   const showEveryone = (
-    <Link to={r.connectDevices(slug)} className={LINK}>
+    <Link
+      to={r.connectDevices(slug)}
+      className={LINK}
+      onClick={() => {
+        wantCount.current = true;
+      }}
+    >
       Show everyone
     </Link>
   );
@@ -132,16 +159,15 @@ export function ConnectDevicesPage({
   } else {
     body = (
       <>
-        <p aria-live="polite" className="text-sm text-fg-muted">
-          {subject ? (
-            <>Showing one person. {showEveryone}</>
-          ) : (
-            <>
-              {formatCount(people.length)}{" "}
-              {people.length === 1 ? "person" : "people"}
-              {list.hasNextPage ? " so far" : ""}.
-            </>
-          )}
+        <p
+          ref={countRef}
+          tabIndex={-1}
+          aria-live="polite"
+          className="text-sm text-fg-muted"
+        >
+          Showing {formatCount(people.length)}{" "}
+          {people.length === 1 ? "person" : "people"}
+          {subject ? <> · {showEveryone}</> : null}
         </p>
         <div className="space-y-4">
           {people.map((p) => (
@@ -149,13 +175,15 @@ export function ConnectDevicesPage({
           ))}
         </div>
         {list.isError ? (
-          <ErrorState
-            compact
-            thing="More people"
-            context={{ read: true }}
-            error={list.error}
-            onRetry={() => void more()}
-          />
+          <div ref={errorRef}>
+            <ErrorState
+              compact
+              thing="More people"
+              context={{ read: true }}
+              error={list.error}
+              onRetry={() => void more()}
+            />
+          </div>
         ) : list.hasNextPage ? (
           <div>
             <Button
@@ -222,7 +250,7 @@ function PersonCard({
               {" · "}
             </>
           ) : null}
-          {`${formatCount(n)} ${n === 1 ? "device" : "devices"}`}
+          {`${formatCount(n)}\u00a0${n === 1 ? "device" : "devices"}`}
         </>
       }
     >
@@ -244,7 +272,7 @@ function PersonCard({
                 Platform
               </th>
               <th scope="col" className={thEnd}>
-                Keys issued
+                Linked
               </th>
               <th scope="col" className={thEnd}>
                 Last seen
@@ -289,7 +317,7 @@ function DeviceRow({
           {d.platform ? platformName(d.platform) : "Not reported"}
         </span>
       </td>
-      <td data-label="Keys issued" className={tdEnd}>
+      <td data-label="Linked" className={tdEnd}>
         <span className={muted}>{ago(d.keysSince)}</span>
       </td>
       <td data-label="Last seen" className={tdEnd}>

@@ -10,7 +10,7 @@
  *    in the tier editor): a link to Tiers, with the platform default
  *    `cloudConnect.quota.defaultRelayBytes` beside it when the member can read the platform list.
  *
- * Under the card, one notice while the platform holds the feature back: a launch gate
+ * Above the card, one notice while the platform holds the feature back: a launch gate
  * (`launch.connect`, `launch.relay`) or the relay pause (`cloudConnect.relayPaused`). They are
  * platform settings, so only a member who can read the platform list sees them (and the quota
  * row); for anyone else nothing is drawn: the page never guesses. A product with Cloud Connect off
@@ -20,6 +20,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowRight } from "lucide-react";
 import {
   type PlatformIntegerSetting,
   type PlatformSwitchSetting,
@@ -39,7 +40,6 @@ import { SettingsRow, SettingsSection } from "../../templates/Settings.js";
 import { useSettingTarget } from "../../useSettingTarget.js";
 import { ConnectHeader } from "./ConnectHeader.js";
 import { CeilingDialog, type CeilingCopy } from "../sync/CeilingDialog.js";
-import { PlatformPill, WhoLine } from "../sync/SetupParts.js";
 import { formatBinaryBytes } from "../sync/pages/SyncData.js";
 
 export const CONNECT_AREA = "cloudConnect";
@@ -109,7 +109,7 @@ export function ConnectSetupPage({
   const open = (
     <Link
       to={r.platformSettings()}
-      className="inline-flex py-1 text-sm text-accent-fg underline underline-offset-2"
+      className="inline-flex min-h-6 items-center py-1 text-sm text-fg-strong underline underline-offset-2"
     >
       Open Platform settings
     </Link>
@@ -142,14 +142,17 @@ export function ConnectSetupPage({
         refetching={platform.isFetching && !platform.isPending}
       />
       <div className="max-w-4xl space-y-6 min-[1280px]:max-w-none">
-        <SettingsSection id="connect-relay" title="Relay">
+        {notice}
+        <SettingsSection id="connect-relay" title="Relay limits">
           <ProductSettingsSection
             bare
             slug={slug}
             area={CONNECT_AREA}
             id="connect-relay"
-            title="Relay"
+            title="Relay limits"
             keys={[RELAY]}
+            errorThing="Cloud Connect settings"
+            readOnlyVisible
             copy={{
               [RELAY]: {
                 consequences: (to) =>
@@ -174,7 +177,6 @@ export function ConnectSetupPage({
             </div>
           ) : null}
         </SettingsSection>
-        {notice}
       </div>
     </div>
   );
@@ -206,11 +208,6 @@ function RelayCeiling({ slug }: { slug: string }): React.ReactElement | null {
             by={row.updatedBy ?? undefined}
             at={row.updatedAt ? row.updatedAt * 1000 : undefined}
           />
-        }
-        footer={
-          !gate.allowed && gate.disabledReason ? (
-            <WhoLine text={gate.disabledReason} />
-          ) : undefined
         }
       >
         <p
@@ -263,19 +260,32 @@ function TierQuota({
     <SettingsRow
       id="setting-cloudConnect.quota.tier"
       label="Relay quota per person"
-      help="Per person per day. A tier sets it with the pkey.cloudConnect.relayBytes entitlement; a tier that sets none gets the platform default."
-      source={fallback ? <PlatformPill /> : undefined}
+      help={
+        <>
+          Set on each tier with the{" "}
+          <code className="font-mono text-xs">
+            pkey.cloudConnect.relayBytes
+          </code>{" "}
+          entitlement.
+        </>
+      }
+      source={
+        fallback ? (
+          <SourceBadge source="default" label="Platform default" />
+        ) : undefined
+      }
     >
-      {fallback ? (
-        <p className="tabular-nums text-fg-strong">
-          {formatBinaryBytes(fallback.value)} a day by default
-        </p>
-      ) : null}
+      <p className="tabular-nums text-fg-strong">
+        {fallback
+          ? `${formatBinaryBytes(fallback.value)} a day (platform default)`
+          : "Set on each tier"}
+      </p>
       <Link
         to={r.tiers(slug)}
-        className="inline-flex min-h-6 items-center text-sm text-accent-fg underline underline-offset-2"
+        className="inline-flex min-h-6 items-center gap-1 text-sm text-accent-fg underline underline-offset-2"
       >
-        Edit tiers
+        Edit on Tiers
+        <ArrowRight aria-hidden className="size-3.5 rtl:-scale-x-100" />
       </Link>
     </SettingsRow>
   );

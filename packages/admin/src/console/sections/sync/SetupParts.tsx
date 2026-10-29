@@ -88,7 +88,7 @@ export function RowsSkeleton({
 }
 
 /** The bar's share and the words that say what it means: never colour alone. */
-function ceilingStatus(
+export function ceilingStatus(
   used: number,
   max: number,
 ): { tone: "accent" | "warning" | "danger"; words: string | null } {
@@ -103,6 +103,37 @@ const FILL = {
   warning: "fill-warning",
   danger: "fill-danger",
 } as const;
+
+/** A thin share-of-ceiling bar: decoration beside the words that say the same. */
+export function MeterBar({
+  ratio,
+  tone,
+}: {
+  ratio: number;
+  tone: keyof typeof FILL;
+}): React.ReactElement {
+  return (
+    <svg
+      aria-hidden
+      width="100%"
+      height="6"
+      className="block forced-color-adjust-none"
+    >
+      <rect
+        width="100%"
+        height="6"
+        rx="3"
+        className="fill-border forced-colors:fill-[Canvas] forced-colors:stroke-[CanvasText]"
+      />
+      <FillRect
+        ratio={Math.min(Math.max(ratio, 0), 1)}
+        height={6}
+        rx={3}
+        className={cn(FILL[tone], "forced-colors:fill-[Highlight]")}
+      />
+    </svg>
+  );
+}
 
 /**
  * The product's total: "18.4 GiB of 50 GiB · 37%" at body size, the status in words, then the
@@ -203,30 +234,7 @@ export function TotalStorage({
             {status.words}
           </p>
         ) : null}
-        {status ? (
-          <svg
-            aria-hidden
-            width="100%"
-            height="6"
-            className="block forced-color-adjust-none"
-          >
-            <rect
-              width="100%"
-              height="6"
-              rx="3"
-              className="fill-border forced-colors:fill-[Canvas] forced-colors:stroke-[CanvasText]"
-            />
-            <FillRect
-              ratio={Math.min(Math.max(ratio, 0), 1)}
-              height={6}
-              rx={3}
-              className={cn(
-                FILL[status.tone],
-                "forced-colors:fill-[Highlight]",
-              )}
-            />
-          </svg>
-        ) : null}
+        {status ? <MeterBar ratio={ratio} tone={status.tone} /> : null}
       </div>
       {usageError ? (
         <ErrorState

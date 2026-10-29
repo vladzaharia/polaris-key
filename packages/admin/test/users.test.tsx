@@ -295,6 +295,17 @@ describe("User record", () => {
     );
   });
 
+  it("links the empty Devices tab to linked devices while Cloud Connect is on", async () => {
+    productUser.mockResolvedValue({ user: detail({ devices: [] }) });
+    product.mockResolvedValue({ product: productWith(false, true) });
+    mount(`#/p/djdl/users/${SUBJECT}/devices`);
+    await screen.findByText("No devices");
+    const link = await screen.findByRole("link", { name: "Linked devices" });
+    expect(link.getAttribute("href")).toContain(
+      `connect/devices?subject=${SUBJECT}`,
+    );
+  });
+
   it("offers no linked-devices link while Cloud Connect is off", async () => {
     productUser.mockResolvedValue({ user: withDevice() });
     mount(`#/p/djdl/users/${SUBJECT}/devices`);

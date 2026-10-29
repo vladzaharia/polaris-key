@@ -606,30 +606,26 @@ function UserDevices({
   /** Cloud Connect is on for the product: link to this person's linked devices. */
   connectOn: boolean;
 }): React.ReactElement {
+  const linked = connectOn ? (
+    <Link
+      to={r.connectDevices(slug, user.subject)}
+      className="inline-flex min-h-6 items-center text-sm text-accent-fg underline underline-offset-2"
+    >
+      Linked devices
+    </Link>
+  ) : undefined;
   if (user.devices.length === 0) {
     return (
       <EmptyState
         kind="first-run"
         title="No devices"
         description="This user has no device on a license of theirs, and has not signed in on one."
+        primaryAction={linked}
       />
     );
   }
   return (
-    <SettingsSection
-      id="user-devices"
-      title="Devices"
-      actions={
-        connectOn ? (
-          <Link
-            to={r.connectDevices(slug, user.subject)}
-            className="inline-flex min-h-6 items-center text-sm text-accent-fg underline underline-offset-2"
-          >
-            Linked devices
-          </Link>
-        ) : undefined
-      }
-    >
+    <SettingsSection id="user-devices" title="Devices" actions={linked}>
       <ul className="divide-y divide-border">
         {user.devices.map((d) => (
           <li
