@@ -141,13 +141,16 @@ function readRail(): boolean | null {
   );
 }
 
-/** Narrower than 1280 px the desktop sidebar starts as a rail, unless the viewer chose otherwise. */
+/**
+ * Narrower than 1280 px the desktop sidebar starts as a rail, unless the viewer chose otherwise.
+ * It also starts as a rail when the window is under 80 rem wide at the current text size: at 200 %
+ * text a 15 rem sidebar is 480 px and leaves the content column too narrow (WCAG 1.4.4).
+ */
 function defaultRail(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.innerWidth >= 1024 &&
-    window.innerWidth < 1280
-  );
+  if (typeof window === "undefined" || window.innerWidth < 1024) return false;
+  const rootPx =
+    parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  return window.innerWidth < 1280 || window.innerWidth / rootPx < 80;
 }
 
 /**

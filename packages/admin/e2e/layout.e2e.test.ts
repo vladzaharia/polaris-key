@@ -866,10 +866,8 @@ const TEXT200_CASES = [
   "global:platform-members?edit-roles",
 ];
 /**
- * The pages the desktop-at-200%-text rows open: settings-template pages, App sign-in first. Only
- * pages that hold today are listed; the others still fail there (CX-APPSIGNIN-200 report): at 1280
- * everything but App sign-in scrolls sideways or spills (the sidebar is 480 px wide at 200 %), and
- * at 1440 Integration, Cloud Sync Setup and Sign-in methods fail.
+ * The pages the desktop-at-200%-text rows open: settings-template pages, App sign-in first. The
+ * sidebar starts as a rail there (under 80 rem of window), so the content column keeps its room.
  */
 const DESKTOP_TEXT200_1440 = [
   "djdl:app-sign-in",
@@ -878,8 +876,18 @@ const DESKTOP_TEXT200_1440 = [
   "djdl:portal",
   "djdl:settings-members",
   "djdl:catalog-edit",
+  "djdl:integration",
+  "djdl:sync-setup",
+  "global:sign-in-methods",
 ];
-const DESKTOP_TEXT200_1280 = ["djdl:app-sign-in"];
+const DESKTOP_TEXT200_1280 = [
+  "djdl:app-sign-in",
+  "djdl:settings",
+  "djdl:services",
+  "djdl:portal",
+  "djdl:settings-members",
+  "djdl:catalog-edit",
+];
 /** The product Members tab, with the check that no name breaks inside a word (ST-31.14). */
 const MEMBERS_TAB = ["djdl:settings-members", "djdl:settings-members?words"];
 /** The Members drawer's views (ST-31.12). */

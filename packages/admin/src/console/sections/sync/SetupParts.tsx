@@ -157,7 +157,7 @@ export function TotalStorage({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="min-w-0 grow basis-full sm:basis-0">
+        <div className="min-w-0 grow basis-full sm:basis-48">
           <p className="font-medium text-fg-strong">Total storage</p>
           <p className="text-sm text-fg-muted">
             {ceiling.source === "default"
@@ -266,7 +266,7 @@ export function TierRows({
             key={t.id}
             className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3"
           >
-            <div className="min-w-0 grow basis-full sm:basis-0">
+            <div className="min-w-0 grow basis-full sm:basis-48">
               <p className="font-medium text-fg-strong [overflow-wrap:anywhere]">
                 <Link
                   to={r.tier(slug, t.id)}
@@ -289,7 +289,7 @@ export function TierRows({
         );
       })}
       <li className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
-        <div className="min-w-0 grow basis-full sm:basis-0">
+        <div className="min-w-0 grow basis-full sm:basis-48">
           <p className="font-medium text-fg-strong">Without a license</p>
         </div>
         <p className="tabular-nums text-fg-strong">
