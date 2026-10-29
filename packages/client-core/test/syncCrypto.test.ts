@@ -256,6 +256,30 @@ describe("canonicalJson", () => {
       expect(() => canonicalJson(bad as never)).toThrow(RangeError);
     expect(canonicalJson("\ud83d\ude00")).toBe('"\u{1F600}"');
   });
+
+  it("pins the lone-surrogate boundary (start, middle, end, doubled, reversed)", () => {
+    const bad = [
+      "\udc00",
+      "a\udc00",
+      "\udc00a",
+      "\ud800a",
+      "a\ud800",
+      "\ud800\ud800",
+      "\udc00\udc00",
+      "\ud83d\ude00\udc00",
+      "\ud83d\ude00\ud83d",
+      "\ude00\ud83d",
+    ];
+    for (const s of bad) expect(() => canonicalJson(s)).toThrow(RangeError);
+    const good = [
+      "",
+      "a",
+      "\ud83d\ude00",
+      "x\ud83d\ude00y",
+      "\ud83d\ude00\ud83d\ude00",
+    ];
+    for (const s of good) expect(canonicalJson(s)).toBe(JSON.stringify(s));
+  });
 });
 
 describe("blind", () => {
