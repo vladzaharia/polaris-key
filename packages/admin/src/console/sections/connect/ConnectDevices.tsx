@@ -37,7 +37,9 @@ import { connectPeopleQuery } from "./data.js";
 
 const th =
   "px-4 py-2 text-start text-xs font-semibold text-fg-strong max-sm:sr-only";
+const thEnd = th.replace("text-start", "text-end");
 const td = `px-4 py-2 align-middle text-sm max-sm:flex max-sm:flex-wrap max-sm:gap-x-3 max-sm:py-1 ${LABEL}`;
+const tdEnd = `${td} text-end`;
 const LINK =
   "inline-flex min-h-6 items-center text-accent-fg underline underline-offset-2 [overflow-wrap:anywhere]";
 
@@ -234,20 +236,20 @@ function PersonCard({
               <th scope="col" className={th}>
                 Platform
               </th>
-              <th scope="col" className={th}>
+              <th scope="col" className={thEnd}>
                 Keys issued
               </th>
               {cert ? (
-                <th scope="col" className={th}>
+                <th scope="col" className={thEnd}>
                   Certificate expires
                 </th>
               ) : null}
               {relay ? (
-                <th scope="col" className={th}>
+                <th scope="col" className={thEnd}>
                   Last relay
                 </th>
               ) : null}
-              <th scope="col" className={th}>
+              <th scope="col" className={thEnd}>
                 Last seen
               </th>
             </tr>
@@ -280,7 +282,7 @@ function DeviceRow({
   cert: boolean;
   relay: boolean;
 }): React.ReactElement {
-  const muted = "text-fg-muted max-sm:ms-auto";
+  const muted = "tabular-nums text-fg-muted max-sm:ms-auto";
   return (
     <tr className="border-b border-border last:border-b-0 max-sm:block max-sm:py-2">
       <th
@@ -300,24 +302,24 @@ function DeviceRow({
           {d.platform ? platformName(d.platform) : "Not reported"}
         </span>
       </td>
-      <td data-label="Keys issued" className={td}>
+      <td data-label="Keys issued" className={tdEnd}>
         <span className={muted}>{ago(d.keysSince)}</span>
       </td>
       {cert ? (
-        <td data-label="Certificate expires" className={td}>
+        <td data-label="Certificate expires" className={tdEnd}>
           <span className={muted}>
             {d.certExpiresAt === null ? "None" : ago(d.certExpiresAt)}
           </span>
         </td>
       ) : null}
       {relay ? (
-        <td data-label="Last relay" className={td}>
+        <td data-label="Last relay" className={tdEnd}>
           <span className={muted}>
             {d.lastRelayAt === null ? "Never" : ago(d.lastRelayAt)}
           </span>
         </td>
       ) : null}
-      <td data-label="Last seen" className={td}>
+      <td data-label="Last seen" className={tdEnd}>
         <span className={muted}>{ago(d.lastSeen)}</span>
       </td>
     </tr>

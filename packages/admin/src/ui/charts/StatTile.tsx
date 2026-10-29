@@ -116,7 +116,10 @@ export function StatTile({
     >
       <p id={labelId} className="text-sm text-fg-muted">
         {href ? (
-          <a href={href} className="hover:text-fg-strong hover:underline">
+          <a
+            href={href}
+            className="inline-flex min-h-6 items-center hover:text-fg-strong hover:underline"
+          >
             {label}
           </a>
         ) : (
