@@ -311,6 +311,12 @@ find each other and talk over the local network or a relay.
   version and mode, with no label, id or subject. The host name, the MAC address and the IP address
   are still visible to others on the same network, and anyone who knows a product's slug can tell
   that an app of that product is nearby.
+- **Nearby approval (mode `v`).** A signed-in device that is allowed to approve a nearby device
+  advertises for as long as the person has that screen open or already allowed it. The advert still
+  carries no label. Its first message after the encrypted channel opens does: the approver's device
+  label, platform and app are sent, before any code is checked, to any device on the same network
+  that connects to the advert. The requesting device's label travels the same way. The label is
+  optional, and an app can turn it off.
 - **Kept for.** Device keys until the device is removed; the roster and discovery key until the
   product is removed or the account is deleted; relay counters 90 days.
 - **Admin view.** Rosters with labels and relay totals, never content.
