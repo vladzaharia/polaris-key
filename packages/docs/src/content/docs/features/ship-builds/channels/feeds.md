@@ -4,7 +4,7 @@ sidebar:
 title: "Install sources"
 description: "The per-release track feeds third-party storefronts read: AltStore and SideStore sources, an AltStore PAL source, Obtainium configs, an F-Droid repository signed by CI, a Scoop manifest and Flathub checker JSON."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 ---
 
 Sideload stores and package managers do not ask Polaris Key "what should I install?" — they read
@@ -20,7 +20,7 @@ what Distribution tracks, so a product publishes a release once and every storef
 | Scoop manifest              | `scoop/<channel>.json`                 | `direct`       | Scoop                                    |
 | Flathub checker JSON        | `flathub/<channel>.json`               | `flathub`      | Flathub's External Data Checker          |
 
-In the console, **Channel setup** under Distribution lists the channels `.pkey/distribution` declares, what each one permits, and the feed of each install source.
+In the console, **Ship builds → Channel setup** lists the channels `.pkey/distribution` declares, what each one permits, and the feed of each install source. A row opens the channel's own page: Status, Releases, Listing, Sales and Setup.
 
 A feed exists only when the product declares a live channel of its kind in `.pkey/distribution`.
 With several channels of one kind (`altstore` and `altstore-beta`, say), add `?outlet=<id>`; by

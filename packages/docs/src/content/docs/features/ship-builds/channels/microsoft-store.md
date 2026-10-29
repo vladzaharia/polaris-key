@@ -4,7 +4,7 @@ sidebar:
 title: "Microsoft Store connector"
 description: "How Distribution follows a product's Microsoft Store submissions — the submission API read on the 15-minute connector cron, submission status and certification outcomes, package flights mapped to release tracks, gradual package rollouts mirrored as channel rollouts — and what the read-only connector never does."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 ---
 
 For a product that ships on the Microsoft Store, Distribution can follow the Store instead of
@@ -49,7 +49,7 @@ The connector runs for a product when all of these hold:
    recorded once in the activity log (`distribution.connector.flight_unmapped`), and otherwise
    ignored: the connector does not read its submissions.
 
-2. An **`ms-partner-center` channel credential** is stored under Distribution, on **Channel credentials** — the Entra ID app's
+2. An **`ms-partner-center` channel credential** is stored on the channel's page, **Ship builds → Channel setup → Microsoft Store → Setup** — the Entra ID app's
    tenant id, client id, client secret and seller id — **pinned** to this product's app: the same
    Store ID as the `productId` above (see [Pinning the app](#pinning-the-app)). See
    Channel credentials (platform admins). A credential bound to
@@ -96,7 +96,7 @@ credential at another app of the account and copy its submissions into this prod
 So the credential carries a **pin** that only a platform admin sets: the Store ID it may be used
 for in this product. The connector runs only while the manifest's `productId` equals the pin.
 
-- **Set it with the credential.** **Channel credentials** under Distribution asks for the Store ID with the other fields.
+- **Set it with the credential.** The channel's **Setup** tab asks for the Store ID with the other fields.
   Over the API, send it as `pin`:
 
   ```http title="Request"

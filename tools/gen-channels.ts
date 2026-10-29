@@ -442,7 +442,7 @@ description: "Every distribution channel Polaris Key knows: its id, plane, platf
 {/* GENERATED PAGE — do not edit. Regenerate with \`pnpm gen channels\`.
     Source of truth: tools/channels.json; emitter: tools/gen-channels.ts. */}
 
-A channel is a place builds reach customers. The catalogue holds ids, aliases, platforms, formats and deliverable kinds once; the Worker, the CLI and the console read it. An alias is another spelling that names the same channel, such as a wire outlet kind.
+A channel is a place builds reach customers. The catalogue holds ids, aliases, platforms, formats and deliverable kinds once; the Worker, the CLI and the console read it. An alias is another spelling that names the same channel, such as a wire outlet kind. In the console, each channel has a page under **Ship builds → Channel setup**; see [Channels](/docs/features/ship-builds/channels/#the-channel-page).
 
 | Channel | Id | Aliases | Family | Plane | Platforms | Formats | Builds it takes | Deliverables | Customer | Listing |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

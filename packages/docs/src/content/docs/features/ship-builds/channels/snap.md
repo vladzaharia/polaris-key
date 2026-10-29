@@ -4,7 +4,7 @@ sidebar:
 title: "Snap Store"
 description: "Declare a snap in .pkey/distribution and let the publish step run snapcraft upload for the .snap you build."
 type: "reference"
-lastReviewed: "2026-10-24"
+lastReviewed: "2026-10-28"
 ---
 
 The Snap Store takes builds only through `snapcraft`, whose credentials stay in CI and never reach Polaris Key. The publish step runs it for the Snap Store channel you declare.
@@ -40,3 +40,5 @@ Two metadata steps stay out of sync. Run them as the Action's `command`: `snap m
 - **`pkey storefront snap upload-metadata --snap file.snap`** sends the summary, description and icon the snap carries.
 
 `--dry-run` prints the checked command lines and runs nothing. A step already done in this run is skipped.
+
+In the console, the channel's page (**Ship builds → Channel setup → Snap Store**) shows its status and releases.

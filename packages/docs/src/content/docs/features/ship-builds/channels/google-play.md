@@ -4,7 +4,7 @@ sidebar:
 title: "Google Play connector"
 description: "How Distribution follows a product's Google Play tracks — a throwaway edit read on the 15-minute connector cron, availability by version code, staged rollouts mirrored as channel rollouts — and the operator controls: rollout fraction, halt, resume, complete, the in-app update priority, and the opt-in vitals auto-halt."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 ---
 
 For a product that ships on Google Play, Distribution can follow every Play track instead of
@@ -50,7 +50,7 @@ The connector runs for a product when all of these hold:
    track your map does not name (as **unmapped**) without writing anything for it. A Play channel
    naming another package is ignored; the connector serves one app per product.
 
-2. A **`google-service-account` channel credential** is stored under Distribution, on **Channel credentials** — the service
+2. A **`google-service-account` channel credential** is stored on the channel's page, **Ship builds → Channel setup → Google Play → Setup** — the service
    account's JSON key file — **pinned** to this product's app: the same package name as the
    `packageName` above (see [Pinning the app](#pinning-the-app)). See
    Channel credentials (platform admins). A credential bound to
@@ -104,7 +104,7 @@ So the credential carries a **pin** that only a platform admin sets: the package
 used for in this product. The connector runs only while the manifest's `packageName` equals the
 pin.
 
-- **Set it with the key.** **Channel credentials** under Distribution asks for the package name with the key file. Over the
+- **Set it with the key.** The channel's **Setup** tab asks for the package name with the key file. Over the
   API, send it as `pin`:
 
   ```http title="Request"

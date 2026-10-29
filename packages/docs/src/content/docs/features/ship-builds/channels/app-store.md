@@ -4,7 +4,7 @@ sidebar:
 title: "App Store Connect connector"
 description: "How Distribution follows a product's App Store and TestFlight state from App Store Connect, and the controls it gives you."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 ---
 
 For a product that ships on the App Store or TestFlight, Distribution can follow the store's own
@@ -42,7 +42,7 @@ The connector runs for a product when all of these hold:
        bundleId: gg.acme.dice
    ```
 
-2. An **`asc-api-key` channel credential** is stored under Distribution, on **Channel credentials**: a **team** API key with
+2. An **`asc-api-key` channel credential** is stored on the channel's page, **Ship builds → Channel setup → App Store → Setup**: a **team** API key with
    the **App Manager** role (not Admin), as key id, issuer id and the `.p8` file, **pinned** to
    this product's app — its App Store Connect app id, the same digits as the `appleId` above (see
    [Pinning the app](#pinning-the-app)). See
@@ -83,7 +83,7 @@ another app the key can see.
 So the key carries a **pin** that only a platform admin sets: the app id it may be used for in
 this product. The connector runs only while the manifest's `appleId` equals the pin.
 
-- **Set it with the key.** **Channel credentials** under Distribution asks for the app id with the key. Over the API, send it
+- **Set it with the key.** The channel's **Setup** tab asks for the app id with the key. Over the API, send it
   as `pin`:
 
   ```http title="Request"

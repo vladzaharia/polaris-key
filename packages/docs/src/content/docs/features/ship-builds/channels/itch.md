@@ -4,7 +4,7 @@ sidebar:
 title: "itch.io"
 description: "Declare an itch.io game in .pkey/distribution and let the publish step run butler push for each matched platform build."
 type: "reference"
-lastReviewed: "2026-10-24"
+lastReviewed: "2026-10-28"
 ---
 
 itch.io takes builds only through its own CLI, `butler`, whose key stays in CI and never reaches Polaris Key. The publish step runs it for the itch.io channel you declare.
@@ -31,3 +31,5 @@ With `channels: auto` (the Action's default), an app `release publish` is follow
 - **A step already done in this run is skipped**, so re-running a failed job does not push twice.
 
 To push by hand, or with other flags: `pkey storefront itch push --platform linux --dir build/linux --version 1.2.0 [--channel beta] [--outlet id]` (as the Action's `command: storefront itch push`). `--dry-run` prints the checked command line and runs nothing.
+
+In the console, the channel's page (**Ship builds → Channel setup → itch.io**) shows its status and releases.
