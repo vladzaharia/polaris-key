@@ -6,7 +6,6 @@
     "Polaris Key",
     "Polaris Locker",
     "Game Center",
-    "Google Play Games",
     "{product}",
     "{app}",
     "{tier}",
@@ -123,6 +122,18 @@
       "ja": "クラウド同期",
       "ko": "클라우드 동기화",
       "zh-Hans": "云同步"
+    },
+    "Google Play Games": {
+      "note": "Google's product name. Google localizes it; the Play Store listing shows these names.",
+      "en": "Google Play Games",
+      "de": "Google Play Spiele",
+      "fr": "Google Play Jeux",
+      "es": "Google Play Juegos",
+      "pt-BR": "Google Play Games",
+      "it": "Google Play Giochi",
+      "ja": "Google Play Games",
+      "ko": "Google Play 게임즈",
+      "zh-Hans": "Google Play 游戏"
     }
   }
 }

@@ -513,7 +513,7 @@
   "signin.auto.confirm.as": "come {email}",
   "signin.auto.confirm.asApple": "con il tuo account Apple",
   "signin.auto.confirm.asGameCenter": "con Game Center",
-  "signin.auto.confirm.asPlayGames": "con Google Play Games",
+  "signin.auto.confirm.asPlayGames": "con Google Play Giochi",
   "signin.auto.confirm.primary": "Continua",
   "signin.auto.confirm.other": "Usa un altro account",
   "signin.linkOffer.title": "Accedere con {provider} la prossima volta?",
