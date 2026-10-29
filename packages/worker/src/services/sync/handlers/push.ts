@@ -226,6 +226,7 @@ async function pushInner(
     catalog,
     view.migrations,
     mode.serve,
+    caller.access.entitlements,
   );
 
   // 6. The product ceiling.

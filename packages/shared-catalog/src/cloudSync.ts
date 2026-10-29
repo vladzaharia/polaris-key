@@ -255,6 +255,39 @@ export function resolveCollection(c: CloudSyncCollection): ResolvedCollection {
   };
 }
 
+/**
+ * Matches a concrete record collection name to the catalog's declaration (V5 §13.7, "Matching"):
+ * an exact name beats a pattern, and among `prefix.*` patterns the longest prefix wins. A pattern
+ * matches a name that starts with its prefix, the dot included, and has something after it
+ * (`save.*` matches `save.slot1`, not `save.`). The declaration governs that concrete name alone:
+ * `maxRecords` counts the records of the name, not of the pattern. `null` when nothing matches
+ * (`collection_unknown`). Every SDK and the Worker call this one function's rule.
+ */
+export function matchCollection(
+  catalog:
+    | { cloudSync?: { collections?: readonly CloudSyncCollection[] } }
+    | null
+    | undefined,
+  name: string,
+): ResolvedCollection | null {
+  let pattern: CloudSyncCollection | null = null;
+  let patternPrefix = 0;
+  for (const c of catalog?.cloudSync?.collections ?? []) {
+    if (c.name === name) return resolveCollection(c);
+    if (!c.name.endsWith(".*")) continue;
+    const prefix = c.name.length - 1; // the length of "prefix."
+    if (
+      name.length > prefix &&
+      name.startsWith(c.name.slice(0, prefix)) &&
+      prefix > patternPrefix
+    ) {
+      pattern = c;
+      patternPrefix = prefix;
+    }
+  }
+  return pattern ? resolveCollection(pattern) : null;
+}
+
 // ── Setting routes (§2.5, §3.1) ─────────────────────────────────────────────────────────────
 
 // ── The `user` block rules (shape, 1–5), shared by every checker ─────────────────────────────

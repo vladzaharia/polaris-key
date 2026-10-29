@@ -15,6 +15,15 @@ import type {
 /** The conflict policies a setting route can carry (§13.6; `union` is refused for settings). */
 export type SettingPolicy = "lastWrite" | "max" | "min" | "merge";
 
+/** The conflict policies a record collection can carry (§13.6, `SyncConflict`). */
+export type RecordPolicy =
+  | "revision"
+  | "lastWrite"
+  | "max"
+  | "min"
+  | "merge"
+  | "union";
+
 /** A write's place in the total order: the HLC, with the clientId as the final tie-break. */
 export interface Stamp {
   hlc: string;
@@ -242,6 +251,24 @@ export type Classification =
       /** The Worker's schema check of the mutation's value (or member value) failed. */
       valueInvalid?: boolean;
       /** End-to-end mode: the mutation carries a sealed `ct`, which the object stores as given. */
+      sealed?: boolean;
+    }
+  | {
+      /**
+       * A record target the catalog declares (U-09, §13.3 checks 1 to 3 passed): the matched
+       * declaration's policy and limits. `valueInvalid` is check 4's request-only part (a schema
+       * failure, a cap, a malformed envelope, a stray member); the object adds the checks that
+       * need stored state (an `observedSeq` above the sequence) and then check 5, the policy's
+       * operations.
+       */
+      verdict: "record";
+      policy: RecordPolicy;
+      /** The matched declaration's `maxRecords` (per concrete collection). */
+      maxRecords: number;
+      /** `max` and `min` in server mode: the number property the server compares. */
+      conflictField?: string;
+      valueInvalid?: boolean;
+      /** End-to-end mode: the mutation carries a sealed `ct` (and blinded names). */
       sealed?: boolean;
     }
   | {

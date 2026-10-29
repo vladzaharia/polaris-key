@@ -45,13 +45,15 @@ function applyOne(
 ): MutationResult {
   const route = input.classified[index];
   if (!route) throw new Error("push: classified is shorter than mutations");
-  // A record target reaches the settings rules only by a Worker mistake; U-09 owns records.
+  // A record target: the Worker's refusal stands; the record rules are U-09.4's.
   if (!("setting" in m.target))
     return {
       mutationId: m.mutationId,
       status: "rejected",
-      code: "collection_unknown",
+      code: route.verdict === "reject" ? route.code : "collection_unknown",
     };
+  if (route.verdict === "record")
+    throw new Error("push: a record classification for a setting target");
   // Rule 6: the catalog's migrations speak for a key before its classification does.
   const migration = resolveKey(m.target.setting, input.migrations);
   if (migration.kind === "dropped")
