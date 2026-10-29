@@ -11006,14 +11006,19 @@ Tests are in `test/surfaces/keyReturn.test.ts` and the transcripts `redirect-web
   failing closed, and 5 per request handle in 600 seconds. There is no Turnstile, because nothing is
   emailed.
 - **Limits hold.** An owned licence never moves by key through the card (S-16 D24):
-  `license_owned` is answered whatever `identity.keyEntryRefusals` says. The entry is counted once,
-  at `token`. `device_limit`, `fingerprint_required` and `hardware_mismatch` come from
-  `authorizeDevice`, unchanged.
+  `license_owned` is answered whatever `identity.keyEntryRefusals` says, at the route and again at
+  `token`, where a licence that joined an account inside the code's 60 seconds is a flat `403
+license_owned` with `signInUrl` and nothing is counted. `token` also re-resolves the key by the
+  code's key hash and answers `invalid_grant` if the key is no longer active, the licence is
+  unusable or the product differs, and the same when the gate, Identity or License went off in
+  the window. The entry is counted once, at `token`. `device_limit`, `fingerprint_required` and
+  `hardware_mismatch` come from `authorizeDevice`, unchanged.
 - **The key stays in the body.** It is never in a URL, the redirect, the request or code record,
   browser storage, a log or the audit. The code holds the peppered hash D1 already stores, which
   cannot be presented as a key.
 - **Disclosure.** The answer carries the device, the licence, `keyEntries` and the device's own
-  binding. It never carries an email, an account or the key.
+  binding, the last only when the redeem request carried that device's own bearer token (else
+  `subject` is `null`). It never carries an email, an account or the key.
 
 ### Platform → Connections: the operator's side of connections (I-31)
 
@@ -11986,7 +11991,7 @@ sign-in method from an app. Rows for nearby approval (I-40) are added with the p
 | Device keys and listeners (I-13.9)         | The exchange, `choice/complete` and `PUT /devices/keys` register keys through one Core operation, which raises the `keys` device-change event when the keys changed, so the key ring drops the device's wraps and the Connect roster epoch moves.                                                                                                                                                                                                                                                                          | none known                                                                                                                                                                                  |
 | Consent and the bind (I-13.9)              | `confirm` carries no licence view, so the app learns nothing about the account before consent. The consent row is written right after the bind, in a separate D1 write.                                                                                                                                                                                                                                                                                                                                                    | A failure between the two leaves a bound device whose grant is spent; the person signs in again and is asked again.                                                                         |
 | Nonce route and held keys (I-13.9)         | The nonce route answers `400 device_keys_invalid` when the device already holds another signing key.                                                                                                                                                                                                                                                                                                                                                                                                                       | The answer tells a caller that a 128-bit device id has a different key. Accepted.                                                                                                           |
-| Launch gates (LG-1)                        | The platform settings `launch.identityExchange`, `launch.connect`, `launch.syncE2e` and `launch.relay` default off and fail closed: a `[vars]` value of `off` is a hard off and an unreadable store reads off. An off exchange gate answers as before the feature existed.                                                                                                                                                                                                                                                 | Turning a gate on in production is a review trigger (section 9).                                                                                                                            |
+| Launch gates (LG-1)                        | The platform settings `launch.identityExchange`, `launch.identityKeyReturn`, `launch.connect`, `launch.syncE2e` and `launch.relay` default off and fail closed: a `[vars]` value of `off` is a hard off and an unreadable store reads off. An off exchange gate answers as before the feature existed.                                                                                                                                                                                                                     | Turning a gate on in production is a review trigger (section 9).                                                                                                                            |
 
 ## 8. Out of scope for this model
 

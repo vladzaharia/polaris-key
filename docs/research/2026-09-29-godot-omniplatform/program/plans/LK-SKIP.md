@@ -36,15 +36,15 @@ shows UK-42's "Not in an account · Add your name and email".
 
 **Which V5 sections change.**
 
-| §            | Change                                                                                                                                                                                                                                                                                                                                                                                         |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| §12.4 table  | Adds the row `key_return`: optional, and its only value is `allow` (any other value is `invalid_request`). It is recorded only when `purpose` is `signin`, the product runs License and the gate is on. Otherwise it is dropped silently.                                                                                                                                                      |
-| new §12.4.2  | **The key return [C]**: the route, the order of its refusals (§6) and the code it issues.                                                                                                                                                                                                                                                                                                      |
-| §12.5 rule 3 | The key-return `200` is exactly the §12.5 members plus `via: "key"` and `keyEntries`. In it, `scope` is `""`, `license` is never `null`, and `subject` is the device's existing binding as `GET identity/subject` reads it. That is `null` unless the device was already signed in, because a key entry never writes or clears a binding (§12.3). The Worker sends it only for a §12.4.2 code. |
-| §12.5 rule 5 | On a key code, `license_owned` (with `signInUrl`) and `key_entry_limit` (with `keyEntries` and `manageUrl`) are flat under their own codes, as on `license/activate`. They are not folded into `not_entitled`.                                                                                                                                                                                 |
-| §12.2 rule 1 | `browser` also covers redeeming a key-return code. The device is then the app's, not `browser:<licenseId>`, and the entry is counted once, in the seat batch at `token`.                                                                                                                                                                                                                       |
-| §12.7.2      | `SignInRequestView.keyReturn` is `true` on an opted-in request and absent otherwise, so every existing transcript stays byte-identical.                                                                                                                                                                                                                                                        |
-| §9           | One sentence: LK-SKIP changes no counter.                                                                                                                                                                                                                                                                                                                                                      |
+| §            | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §12.4 table  | Adds the row `key_return`: optional, and its only value is `allow` (any other value is `invalid_request`). It is recorded only when `purpose` is `signin`, the product runs License and the gate is on. Otherwise it is dropped silently.                                                                                                                                                                                                                                                                                                                            |
+| new §12.4.2  | **The key return [C]**: the route, the order of its refusals (§6) and the code it issues.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| §12.5 rule 3 | The key-return `200` is exactly the §12.5 members plus `via: "key"` and `keyEntries`. In it, `scope` is `""`, `license` is never `null`, and `subject` is the device's existing binding as `GET identity/subject` reads it, only when the redeem request carried that device's own bearer token (else `null`). That is `null` unless the device was already signed in, because a key entry never writes or clears a binding (§12.3). A `via: "key"` body that breaks any of these is malformed and a client refuses it. The Worker sends it only for a §12.4.2 code. |
+| §12.5 rule 5 | On a key code, `license_owned` (with `signInUrl`) and `key_entry_limit` (with `keyEntries` and `manageUrl`) are flat under their own codes, as on `license/activate`. They are not folded into `not_entitled`.                                                                                                                                                                                                                                                                                                                                                       |
+| §12.2 rule 1 | `browser` also covers redeeming a key-return code. The device is then the app's, not `browser:<licenseId>`, and the entry is counted once, in the seat batch at `token`.                                                                                                                                                                                                                                                                                                                                                                                             |
+| §12.7.2      | `SignInRequestView.keyReturn` is `true` on an opted-in request and absent otherwise, so every existing transcript stays byte-identical.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| §9           | One sentence: LK-SKIP changes no counter.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 §12.6 (discovery), §12.8 and §12.10 do not change.
 
@@ -102,13 +102,17 @@ None. There is no validator rule (rule 9), manifest key or `shared-catalog` chan
        `subject: null`, `keyEntries` and `tokenHeld: true`;
     4. the same callback again, expecting `invalid_grant`.
   - `redirect-web-key-return-limit.json`: a full licence. `token` answers `403 device_limit`, and
-    the SDK result carries `limit`, `deviceCount` and `manageUrl`.
+    the SDK result carries `limit`, `deviceCount` and `manageUrl`. The code is consumed before the
+    bind, so the retry after a refusal at `token` starts from a fresh card press.
 - **Registry:** `conformance/parity/features.json` gains `identity.keyreturn`. The id must match
   `FEATURE_ID`, which is lowercase only, so UK-42's `identity.signin.keyReturn` is invalid. Then
   run `pnpm gen constants parity`. There is no new error code, and `errors.json` and `enums.json`
   do not change.
 - **Unit vectors** in client-core (no corpus file): the query bytes, the opt-in strictness (a
-  `via: "key"` body without the opt-in is `malformed`) and `details`.
+  `via: "key"` body without the opt-in is `malformed`), the body shape (a `via: "key"` body is
+  `malformed` unless `scope` is `""`, `license` is an object, `keyEntries` is `{used, limit}` of
+  non-negative integers, `subject` is a pairwise-subject string or `null`, and the other members
+  are as in the ordinary answer) and `details`.
 
 ## 5. SDKs, in order
 
@@ -193,8 +197,11 @@ Some notes on the route:
 and `redirect_uri` checks.
 
 - There is no account check, and it never answers `choose`.
-- It re-reads the key by `keyHash`. A key that is gone, or a licence that is no longer usable, is
-  `invalid_grant`.
+- It re-reads the key by `keyHash`. A key that is no longer active, a licence that is no longer
+  usable, or a licence whose product differs is `invalid_grant`, and so is a code redeemed with
+  `launch.identityKeyReturn`, Identity or License off.
+- It repeats the route's owned check whatever `identity.keyEntryRefusals` says: a licence that is
+  in an account is a flat `403 license_owned` with `signInUrl`, and nothing is counted.
 - It binds through `bindKey`, split so that it takes a key hash and an optional account:
   `keyEntryGate`, then `authorizeDevice` with `boundBy: "key"` and `keyEntry.surface: "browser"`.
   It **skips `setDeviceSubject` and `markFresh`**.

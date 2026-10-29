@@ -2,7 +2,7 @@
 // core's values verbatim, so there is no second spelling of `ISSUER` or the `HEADER_*`
 // constants anywhere in the package. If this test fails after an edit, a consumer somewhere
 // is about to verify or sign with the wrong ISSUER or send the wrong header names.
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 import * as barrel from "../src/index.js";
 import * as core from "../src/core.js";
@@ -404,6 +404,13 @@ describe("@polaris-key/protocol layout", () => {
       subject: "ps_x",
     };
     expect(typeof ordinary.subject).toBe("string");
+    // `via` discriminates the two answers: it is `never` on the ordinary one.
+    const tell = (
+      r: identity.TokenResponse | identity.KeyReturnTokenResponse,
+    ) => (r.via === "key" ? r.keyEntries.used : (r.subject as string));
+    expectTypeOf(tell).returns.toEqualTypeOf<number | string>();
+    const ordinaryVia: identity.TokenResponse["via"] = undefined;
+    expect(ordinaryVia).toBeUndefined();
     const view: Pick<identity.SignInRequestView, "keyReturn"> = {
       keyReturn: true,
     };

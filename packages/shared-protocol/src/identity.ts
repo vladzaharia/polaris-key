@@ -454,18 +454,22 @@ export interface TokenResponse {
   subject: string;
   /** I-08b (§12.5.1): the licence's key-entry count after a key entered through `choice/complete`. */
   keyEntries?: { used: number; limit: number };
+  /** LK-SKIP: absent on every ordinary answer, so `via` narrows {@link KeyReturnTokenResponse} apart. */
+  via?: never;
 }
 
 /**
  * LK-SKIP (§12.5 rule 3): the `200` of `token` for a key-return code (§12.4.2). {@link TokenResponse}
  * plus `via: "key"`, with `scope` always `""`, `license` never `null` and `keyEntries` present.
- * `subject` is the device's existing binding as `GET identity/subject` reads it: `null` unless the
- * device was already signed in, because a key entry never writes or clears a binding (§12.3). A
- * client tells this answer apart by `via: "key"` and its own `key_return` opt-in, never by `subject`.
+ * `subject` is the device's existing binding as `GET identity/subject` reads it, and only when the
+ * redeem request carried that device's own bearer token; otherwise, and unless the device was
+ * already signed in, it is `null`, because a key entry never writes or clears a binding (§12.3). A
+ * client tells this answer apart by `via: "key"` and its own `key_return` opt-in, never by
+ * `subject`, and refuses a `via: "key"` body that breaks any member here (§12.5 rule 3).
  */
 export interface KeyReturnTokenResponse extends Omit<
   TokenResponse,
-  "subject" | "license" | "keyEntries" | "scope"
+  "subject" | "license" | "keyEntries" | "scope" | "via"
 > {
   via: "key";
   scope: "";
