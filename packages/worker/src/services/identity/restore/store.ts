@@ -288,15 +288,22 @@ export async function revokeSubjectRestore(
 }
 
 /**
- * The operator's incident action, on the launch gate: every restore row and origin mark of one
- * product. Idempotent. Returns the number of key rows removed; nothing else about the product
+ * Every restore row and origin mark of one product: the operator's incident action, on the launch
+ * gate, and the purge that follows an Identity toggle (`servicesListener.ts`). Idempotent. Returns the number of key rows removed; nothing else about the product
  * changes. With `audit` it writes one row (`identity.restore.purge`) that names the actor and the
  * count and no id or secret.
  */
 export async function purgeProductRestore(
   db: Db,
   product: string,
-  audit?: { actor: AuditActor; now: number },
+  audit?: {
+    actor: AuditActor;
+    now: number;
+    /** Why, in words an operator reads in the activity log. */
+    reason?: string;
+    /** Write no row when nothing was removed (a purge that runs on every services write). */
+    skipEmpty?: boolean;
+  },
 ): Promise<number> {
   const [keys] = (await runCounted(db, [
     {
@@ -308,7 +315,7 @@ export async function purgeProductRestore(
       params: [product],
     },
   ])) as [number, number];
-  if (audit)
+  if (audit && !(audit.skipEmpty && keys === 0))
     await appendAudit(db, {
       product,
       at: audit.now,
@@ -316,7 +323,7 @@ export async function purgeProductRestore(
       action: "identity.restore.purge",
       target_kind: "product",
       target_id: product,
-      summary: `Purged ${keys} restore key(s).`,
+      summary: `Purged ${keys} restore key(s)${audit.reason ? `: ${audit.reason}.` : "."}`,
     });
   return keys;
 }

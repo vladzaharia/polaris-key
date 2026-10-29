@@ -260,7 +260,9 @@ export async function handleServicesAdmin(
     opts("console"),
   );
   if (!written.ok) return settingRefused(written);
-  await applyServiceTransitions(env, db, slug, services, session, now);
+  await applyServiceTransitions(env, db, slug, services, session, now, {
+    before: current.services,
+  });
   const state = serviceStateOf(await getProduct(db, slug));
   return adminJson({ ...state, facts: await featureFactsOf(env, db, slug) });
 }

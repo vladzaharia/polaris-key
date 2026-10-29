@@ -68,6 +68,10 @@ import {
   restoreDeviceListener,
 } from "./restore/listener.js";
 import {
+  IDENTITY_RESTORE_SERVICES_LISTENER,
+  restoreServicesListener,
+} from "./restore/servicesListener.js";
+import {
   IDENTITY_RESTORE_STORE,
   identityRestoreStore,
 } from "./restore/subjectStore.js";
@@ -93,6 +97,10 @@ export const identityService: ServiceDescriptor = {
     // I-49.4: the silent-restore keys, revoked with the account's data and with a device.
     subjectStores: { [IDENTITY_RESTORE_STORE]: identityRestoreStore },
     onDeviceChange: { [IDENTITY_RESTORE_LISTENER]: restoreDeviceListener },
+    // I-49.8: Identity off or back on ends every restore key (`DELETE restore` is 404 while off).
+    onServicesChange: {
+      [IDENTITY_RESTORE_SERVICES_LISTENER]: restoreServicesListener,
+    },
     // P0-49: run by an operator through the migration runner, never by a tick.
     migrations: [platformConnectionSeedJob],
     integration: identityIntegration,
