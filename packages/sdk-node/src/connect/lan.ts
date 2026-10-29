@@ -12,20 +12,15 @@
 //    handshake (XXpsk0) and admission (certificate, ring, expiry, revocation) run in client-core;
 //    a failed tag closes the socket without a word;
 //  - unauthenticated sockets are bounded in number, per address, per group and in time; an accepted
-//    socket is judged (client-core's `lanVerdict` on its own addresses, lanJudge.ts) before it is
-//    read, and one that fails is closed at once;
+//    socket is judged (client-core's `lanVerdict` on its own addresses) before it is read, and one
+//    that fails is closed at once (the shared gate, lanGate.ts);
 //  - one TCP port serves both families: a dual-stack `::` listener, falling back to 0.0.0.0;
 //    a device with several learned addresses dials them in a race (dial.ts), and when the
 //    handshake with the winner fails it races the addresses that are left;
 //  - the device's X25519 private key never leaves the `DeviceKeyPort`: Noise is given a handle
 //    whose static-key operations call `port.dh`.
 
-import {
-  createServer,
-  connect as netConnect,
-  type Server,
-  type Socket,
-} from "node:net";
+import type { Server, Socket } from "node:net";
 import type { TrustSet } from "@polaris-key/jws";
 import {
   accountInstance,
@@ -44,12 +39,7 @@ import {
   type TrustApplication,
 } from "./channel.js";
 import { dialRaceTo } from "./dial.js";
-import {
-  PendingLimiter,
-  limiterKeys,
-  socketVerdict,
-  textVerdict,
-} from "./lanJudge.js";
+import { AcceptGate, listenTcp, textVerdict } from "./lanGate.js";
 import {
   MulticastDnsAdapter,
   type MdnsAdapter,
@@ -147,8 +137,7 @@ export class LanService {
   #namesBusy = false;
   #peers = new Map<string, LanPeer & { instance: string }>();
   #miss = new Map<string, number>();
-  #pending = new Set<Socket>();
-  #limit: PendingLimiter;
+  #gate: AcceptGate;
   #links = new Set<SocketLink>();
   #sessions = new Set<ConnectSession>();
   #onSession = new Set<(s: ConnectSession) => void>();
@@ -163,11 +152,7 @@ export class LanService {
   private constructor(src: LanSource, o: LanOptions) {
     this.#src = src;
     this.#o = o;
-    this.#limit = new PendingLimiter(
-      o.maxPending ?? 32,
-      o.maxPendingPerAddress ?? 4,
-      o.maxPendingPer64 ?? 16,
-    );
+    this.#gate = new AcceptGate(o);
     this.#docs = new PeerDocs(src, () => {
       this.#id = null;
       // A new K_disc changes the advert name inside the epoch.
@@ -295,7 +280,7 @@ export class LanService {
     this.#stopped = true;
     this.#docs.close();
     this.#cancelEpoch?.();
-    for (const s of [...this.#pending]) s.destroy();
+    this.#gate.destroyPending();
     await Promise.all(
       [...this.#sessions].map((s) => s.close().catch(() => undefined)),
     );
@@ -317,7 +302,7 @@ export class LanService {
     this.#stopped = true;
     this.#docs.close();
     this.#cancelEpoch?.();
-    for (const s of [...this.#pending]) s.destroy();
+    this.#gate.destroyPending();
     for (const k of [...this.#links]) k.destroy();
     this.#id = null;
     void this.#adv?.stop().catch(() => undefined);
@@ -439,68 +424,19 @@ export class LanService {
   }
 
   async #listen(): Promise<void> {
-    const port = this.#o.port ?? 0;
-    const on = (host: string): Promise<Server> =>
-      new Promise((resolve, reject) => {
-        const server = createServer(
-          { noDelay: true, pauseOnConnect: true },
-          (s) => this.#accept(s),
-        );
-        server.once("error", reject);
-        // `ipv6Only: false` is the dual-stack `::`; it is ignored for an IPv4 address.
-        server.listen({ port, host, ipv6Only: false }, () => {
-          server.removeListener("error", reject);
-          resolve(server);
-        });
-      });
-    let server: Server;
-    if (this.#o.host !== undefined) server = await on(this.#o.host);
-    else
-      try {
-        server = await on("::");
-      } catch {
-        // No IPv6 here: IPv4 only, on the same single port.
-        server = await on("0.0.0.0");
-      }
+    const server = await listenTcp(this.#o.host, this.#o.port ?? 0, (s) =>
+      this.#accept(s),
+    );
     this.#server = server;
-    server.on("error", () => undefined);
     this.#port = (server.address() as { port: number }).port;
   }
 
   #accept(socket: Socket): void {
-    // Judged first, on the socket's own addresses and before a byte is read: a source off the LAN
-    // is closed at once and costs no slot.
-    const remote = socket.remoteAddress ?? "";
-    const v = socketVerdict(
-      remote,
-      socket.localAddress,
-      this.#o.allowLoopback === true,
+    const slot = this.#gate.admit(
+      socket,
+      this.#stopped || this.#sessions.size >= (this.#o.maxSessions ?? 64),
     );
-    if (!v.dial || v.key === null || this.#stopped) {
-      socket.destroy();
-      return;
-    }
-    const release =
-      this.#sessions.size >= (this.#o.maxSessions ?? 64)
-        ? null
-        : this.#limit.take(socket, limiterKeys(v.key));
-    if (release === null) {
-      socket.destroy();
-      return;
-    }
-    this.#pending.add(socket);
-    // An unauthenticated socket lives for the handshake window and no longer.
-    const deadline = setTimeout(
-      () => socket.destroy(),
-      this.#o.handshakeMs ?? 30_000,
-    );
-    deadline.unref();
-    const done = (): void => {
-      clearTimeout(deadline);
-      if (!this.#pending.delete(socket)) return;
-      release();
-    };
-    socket.once("close", done);
+    if (slot === null) return;
     // The identity is read before the first byte is handled.
     socket.pause();
     this.#identity(false).then(
@@ -509,7 +445,7 @@ export class LanService {
         const link = this.#link(socket, id, "responder");
         link.opened.then(
           (s) => {
-            done();
+            slot.settle();
             for (const f of [...this.#onSession]) f(s);
           },
           () => undefined,

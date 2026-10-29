@@ -49,7 +49,8 @@ export type LanErrorReason =
   | "closed"
   | "too_large"
   | "bad_type"
-  | "not_started";
+  | "not_started"
+  | "not_picked";
 
 /** The registered client code of each reason. */
 const LAN_CODE: Record<LanErrorReason, string> = {
@@ -64,6 +65,7 @@ const LAN_CODE: Record<LanErrorReason, string> = {
   closed: ErrorCode.networkError,
   too_large: ErrorCode.invalidArgument,
   bad_type: ErrorCode.invalidArgument,
+  not_picked: ErrorCode.invalidArgument,
 };
 
 export class LanError extends PolarisError {
@@ -253,6 +255,13 @@ export interface SocketLinkOptions {
   onEstablished?: (s: ConnectSession) => void;
   onEnded?: () => void;
   handshakeMs?: number;
+  /**
+   * Modes v and p (CC-15): the host owns the session. Every event of the channel goes here except
+   * `closed`, there is no `ConnectSession`, and the handshake window ends at `established`.
+   */
+  onEvent?: (e: SessionEvent) => void;
+  /** With `onEvent`: the link is over, with why. Called once. */
+  onClosed?: (c: SessionClosed) => void;
 }
 
 /** A socket bound to one `PeerChannel`. */
@@ -268,6 +277,8 @@ export class SocketLink {
   #deadline: NodeJS.Timeout;
   #ended = false;
   #lost = false;
+  /** Raw mode: the handshake is done (a frame may then be the full 65,535 bytes). */
+  #up = false;
 
   readonly #o: SocketLinkOptions;
 
@@ -314,13 +325,26 @@ export class SocketLink {
     const frames = this.#reader.push(chunk);
     if (frames === null) return this.#fail("peer_bad_frame", false);
     for (const f of frames) {
-      if (this.#session === null && f.length > HANDSHAKE_FRAME_MAX)
+      if (this.#session === null && !this.#up && f.length > HANDSHAKE_FRAME_MAX)
         return this.#fail("handshake_failed", false);
       void this.channel.receive(f);
     }
   }
 
   #event(e: SessionEvent): void {
+    if (this.#o.onEvent !== undefined) {
+      if (e.type === "established") {
+        this.#up = true;
+        clearTimeout(this.#deadline);
+      }
+      if (e.type === "closed")
+        this.#finish({
+          code: this.#lost && !e.byPeer ? "connection_lost" : e.code,
+          byPeer: e.byPeer,
+        });
+      else this.#o.onEvent(e);
+      return;
+    }
     switch (e.type) {
       case "established": {
         if (e.peerDeviceId === undefined) break;
@@ -376,6 +400,7 @@ export class SocketLink {
     if (this.#ended) return;
     this.#ended = true;
     clearTimeout(this.#deadline);
+    this.#o.onClosed?.(c);
     if (this.#session !== null) this.#session.ended(c);
     else
       this.#settle.reject(
