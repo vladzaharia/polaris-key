@@ -3,7 +3,7 @@
  * user record's `dataTab` slot (`core/pages/dataTabSlot.tsx`), shown while Cloud Sync is on.
  *
  * One read (`GET …/sync/subjects/<subject>`, audited on the server): sizes and names, never a
- * value. The sections are Storage and Settings (Collections and Encryption follow). Operators cannot restore
+ * value. The sections are Storage, Settings, Collections (only for a product that has some) and Encryption. Operators cannot restore
  * or edit here (D-11); the one write, delete, arrives with its own confirmation.
  */
 
@@ -16,6 +16,8 @@ import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import type { UserSlotProps } from "../../core/model/userSlots.js";
 import { syncSubjectQuery } from "../data.js";
+import { Collections } from "./Collections.js";
+import { Encryption } from "./Encryption.js";
 import { SettingsTable } from "./SettingsTable.js";
 import { Storage } from "./Storage.js";
 
@@ -79,6 +81,8 @@ export function SyncDataTab({
     <div className="space-y-6">
       <Storage slug={slug} data={data} />
       <SettingsTable data={data} />
+      <Collections data={data} />
+      <Encryption data={data} />
     </div>
   );
 }

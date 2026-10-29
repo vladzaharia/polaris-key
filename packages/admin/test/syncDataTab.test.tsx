@@ -246,6 +246,150 @@ describe("Settings", () => {
   });
 });
 
+const SAVES = {
+  name: "saves",
+  label: "Saves",
+  records: 3,
+  bytes: 600,
+  files: 2,
+  fileBytes: 3_000,
+  revisionBytes: 1_000,
+  lastWriteAt: NOW_S - 300,
+};
+
+describe("Collections", () => {
+  it("lists records, files and size per collection, with the history the files keep", async () => {
+    bootTab(
+      data({
+        collections: [
+          SAVES,
+          {
+            name: "notes",
+            label: "notes",
+            records: 0,
+            bytes: 0,
+            files: 0,
+            fileBytes: 0,
+            revisionBytes: 0,
+            lastWriteAt: null,
+          },
+        ],
+      }),
+    );
+    const table = await screen.findByRole("table", { name: "Collections" });
+    const rows = within(table).getAllByRole("row").slice(1);
+    const cells = within(rows[0]!).getAllByRole("cell");
+    expect(cells.slice(0, 3).map((c) => text(c))).toEqual([
+      "3",
+      "2",
+      "4.49 KiB1,000 bytes history",
+    ]);
+    expect(cells[3]!.querySelector("time")).not.toBeNull();
+    // The label first; the collection's own name beneath it only when the two differ.
+    const head = within(rows[0]!).getByRole("rowheader");
+    expect(text(head)).toBe("Savessaves");
+    expect(text(within(rows[1]!).getByRole("rowheader"))).toBe("notes");
+    expect(within(rows[1]!).getByText("None")).toBeTruthy();
+  });
+
+  it("is absent for a product with no collections", async () => {
+    bootTab();
+    await screen.findByRole("heading", { level: 2, name: "Storage" });
+    expect(screen.queryByRole("heading", { name: "Collections" })).toBeNull();
+  });
+
+  it("says how many uploads are in progress, and nothing when none are", async () => {
+    bootTab(data({ collections: [SAVES], uploadsOpen: 2 }));
+    expect(await screen.findByText(/^2 uploads in progress/)).toBeTruthy();
+    cleanup();
+    resetConsole();
+    bootTab(data({ collections: [SAVES], uploadsOpen: 1 }));
+    expect(await screen.findByText(/^1 upload in progress/)).toBeTruthy();
+    cleanup();
+    resetConsole();
+    bootTab(data({ collections: [SAVES], uploadsOpen: 0 }));
+    await screen.findByRole("table", { name: "Collections" });
+    expect(screen.queryByText(/in progress/)).toBeNull();
+  });
+});
+
+describe("Encryption", () => {
+  it("names a server-mode product as readable by Polaris Key, with no key", async () => {
+    bootTab();
+    expect(await screen.findByText("Readable by Polaris Key")).toBeTruthy();
+    expect(screen.queryByText("Recovery code")).toBeNull();
+    expect(screen.queryByText("No key yet.")).toBeNull();
+  });
+
+  it("shows an end-to-end person's key ring: which key, the recovery code and the devices", async () => {
+    bootTab(
+      data({
+        encryption: "e2e",
+        encryptionSince: 1,
+        ring: {
+          kid: "kid-1",
+          createdAt: NOW_S - 86_400,
+          recoverySet: true,
+          devices: ["Ada's laptop", "Unnamed device"],
+          previousUntil: NOW_S + 86_400,
+        },
+      }),
+    );
+    expect(await screen.findByText("End-to-end")).toBeTruthy();
+    const dl = screen.getByText("Key").closest("dl")!;
+    expect(text(dl.querySelector("code"))).toBe("kid-1");
+    expect(within(dl).getByText("Set")).toBeTruthy();
+    const devices = within(dl).getByText("Devices that can open it")
+      .nextElementSibling as HTMLElement;
+    expect(
+      within(devices)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual(["Ada's laptop", "Unnamed device"]);
+    expect(within(dl).getByText("Previous key")).toBeTruthy();
+  });
+
+  it("says a missing recovery code and a missing key plainly", async () => {
+    bootTab(
+      data({
+        encryption: "e2e",
+        ring: {
+          kid: "kid-2",
+          createdAt: NOW_S - 60,
+          recoverySet: false,
+          devices: [],
+        },
+      }),
+    );
+    expect(await screen.findByText("Not set")).toBeTruthy();
+    expect(screen.getByText("None")).toBeTruthy();
+    expect(screen.queryByText("Previous key")).toBeNull();
+    cleanup();
+    resetConsole();
+    bootTab(data({ encryption: "e2e", ring: null }));
+    expect(await screen.findByText("No key yet.")).toBeTruthy();
+  });
+
+  it("still shows a person who has a key and no data yet", async () => {
+    bootTab(
+      data({
+        empty: true,
+        encryption: "e2e",
+        usage: { bytes: 0, settings: 0, settingsBytes: 0 },
+        settings: { declared: [], open: { count: 0, bytes: 0 } },
+        ring: {
+          kid: "kid-3",
+          createdAt: NOW_S - 60,
+          recoverySet: true,
+          devices: ["Ada's laptop"],
+        },
+      }),
+    );
+    expect(await screen.findByText("End-to-end")).toBeTruthy();
+    expect(screen.queryByText("Nothing synced yet")).toBeNull();
+  });
+});
+
 describe("states", () => {
   it("shows a skeleton while loading, announced, and no data", async () => {
     bootTab(PENDING);

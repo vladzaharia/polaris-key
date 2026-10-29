@@ -54,7 +54,7 @@ export function SettingsTable({
                   scope="row"
                   className={cn(
                     TABLE.cell,
-                    "py-2 text-start font-mono text-xs font-normal text-fg-strong",
+                    "py-2 text-start font-mono text-xs font-normal text-fg-strong border-b border-border",
                   )}
                 >
                   {s.key}
