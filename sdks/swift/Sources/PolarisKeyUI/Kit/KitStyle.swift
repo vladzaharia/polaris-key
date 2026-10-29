@@ -580,6 +580,9 @@ struct PolarisKeyStyleScope: ViewModifier {
             .environment(\.kitIconImage, icon)
             .preferredColorScheme(preferredScheme)
             .tint(style.palette.accentSolid)
+            #if os(macOS)
+                .background(KitHostLabel(name: style.identity.name))
+            #endif
     }
 
     private var preferredScheme: ColorScheme? {
