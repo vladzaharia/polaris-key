@@ -19,7 +19,8 @@ export type OutletCredentialKind =
   | "ms-partner-center"
   | "sentry-integration"
   | "app-store-server-key"
-  | "steam-publisher-key";
+  | "steam-publisher-key"
+  | "pgs-server-client";
 
 /** One outlet credential as the admin API lists it: metadata and health, never the value. */
 export interface OutletCredentialInfo {

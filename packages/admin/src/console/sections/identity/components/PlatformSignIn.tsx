@@ -137,8 +137,11 @@ export function PlatformSignInSection({
     outlets.data?.settings.find((s) => s.key === OUTLETS_KEY)?.value,
   );
   const creds = useQuery({ ...credentialsQuery(slug), retry: false });
+  const held = creds.data?.credentials.find(
+    (c) => c.kind === PGS_CREDENTIAL_KIND,
+  );
   const credential: CredentialState = creds.data
-    ? creds.data.credentials.some((c) => c.kind === PGS_CREDENTIAL_KIND)
+    ? held
       ? "set"
       : "missing"
     : "unknown";
@@ -166,8 +169,15 @@ export function PlatformSignInSection({
             {". Server credential: "}
             {credential === "set" ? "Set" : "Missing"}
             {" in "}
-            <Link to={r.keys(slug)} className={linkClass}>
-              Keys and secrets
+            <Link
+              to={
+                held
+                  ? `${r.credentials(slug)}?credential=${encodeURIComponent(held.id)}`
+                  : r.credentials(slug)
+              }
+              className={linkClass}
+            >
+              Credentials
             </Link>
           </>
         )}

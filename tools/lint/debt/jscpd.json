@@ -639,7 +639,7 @@
       "jscpd:duplicate": 3
     },
     "packages/admin/test/channelSetup.test.tsx": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 2
     },
     "packages/admin/test/commerceIdentity.test.tsx": {
       "jscpd:duplicate": 4
@@ -762,7 +762,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/test/outletCredentials.test.tsx": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 3
     },
     "packages/admin/test/overview.test.tsx": {
       "jscpd:duplicate": 11

@@ -531,6 +531,42 @@ function cases(): Case[] {
         },
       },
     },
+    // I-14.4b: the Play Games server credential, a credential that belongs to no channel.
+    {
+      name: "djdl:credentials/play-games",
+      hash: "#/p/djdl/distribution/credentials",
+      override: {
+        "/manage/api/products/djdl/outlet-credentials": {
+          ok: true,
+          kinds: ["sentry-integration", "pgs-server-client"],
+          pins: {
+            "pgs-server-client": {
+              field: "serverClientId",
+              label: "Play Games server client id",
+            },
+          },
+          credentials: [
+            {
+              id: "play-games-server",
+              kind: "pgs-server-client",
+              outletId: null,
+              meta: {
+                serverClientId:
+                  "1234567890-abcdefghijklmnop.apps.googleusercontent.com",
+              },
+              status: "active",
+              createdAt: 1_790_000_000,
+              createdBy: "u1",
+              rotatedAt: null,
+              expiresAt: null,
+              lastUsedAt: null,
+              lastOkAt: null,
+              lastError: null,
+            },
+          ],
+        },
+      },
+    },
     // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
     {
       name: "waiting:package-feeds",

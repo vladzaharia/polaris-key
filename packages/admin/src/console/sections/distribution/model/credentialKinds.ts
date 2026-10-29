@@ -155,6 +155,25 @@ export const KINDS: KindSpec[] = [
       },
     ],
   },
+  {
+    value: "pgs-server-client",
+    label: "Play Games server credential",
+    description:
+      "Lets Polaris Key redeem Play Games sign-in codes for your game. Serves sign-in, not a store.",
+    pin: {
+      label: "Play Games server client id",
+      help: "The Web client id this secret belongs to, such as 1234567890-abc.apps.googleusercontent.com. It must match the server client id in Platform sign-in.",
+      inputMode: "text",
+    },
+    fields: [
+      {
+        key: "clientSecret",
+        label: "Client secret",
+        secret: true,
+        help: "The Web client's secret from Google Cloud. 8 to 512 characters, no spaces.",
+      },
+    ],
+  },
 ];
 
 export const KIND = new Map(KINDS.map((k) => [k.value as string, k]));
@@ -174,6 +193,7 @@ export function pinField(
         "ms-partner-center": "productId",
         "app-store-server-key": "bundleId",
         "steam-publisher-key": "appId",
+        "pgs-server-client": "serverClientId",
       } as Record<string, string>
     )[kind] ??
     null
