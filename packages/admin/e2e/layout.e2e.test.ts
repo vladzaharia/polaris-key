@@ -1824,7 +1824,7 @@ describe("a typed confirmation with a reason in a short window", () => {
         try {
           await page
             .locator("#keys-trust")
-            .getByRole("button", { name: "Edit…" })
+            .getByRole("button", { name: "Edit device trust" })
             .click();
           const drawer = page.getByRole("dialog", {
             name: "Device trust policy",

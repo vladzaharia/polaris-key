@@ -365,6 +365,64 @@ const ROUTES: Record<string, unknown> = {
   [`${P}/config/catalog/usage`]: { keys: {} },
   // U-05.20: Cloud Sync → Usage, U-05's real shape (see SYNC_USAGE).
   [`${P}/sync/usage`]: SYNC_USAGE,
+  // CC-16.3: Cloud Connect → Usage and Linked devices (the shapes of api/connect.ts).
+  [`${P}/connect/usage`]: {
+    enabled: true,
+    days: Array.from({ length: 30 }, (_, i) => ({
+      day: new Date((NOW - (29 - i) * DAY) * 1000).toISOString().slice(0, 10),
+      bytes: i * 41_943_040,
+      sessions: i % 7 === 0 ? 0 : 3 + (i % 5),
+    })),
+    totals: { bytes: 6_070_886_400, sessions: 98 },
+    people: 2,
+  },
+  [`${P}/connect/people`]: {
+    enabled: true,
+    nextCursor: null,
+    people: [
+      {
+        subject: "ps_7Hk2q9",
+        label: "Ada",
+        ringEpoch: 3,
+        devices: [
+          {
+            deviceId: "dev_a1",
+            label: "Ada's MacBook",
+            platform: "macos",
+            keysSince: NOW - 9 * DAY,
+            certExpiresAt: NOW + 20 * DAY,
+            lastRelayAt: NOW - 3600,
+            lastSeen: NOW - 600,
+          },
+          {
+            deviceId: "dev_a2",
+            label: null,
+            platform: "ios",
+            keysSince: NOW - 2 * DAY,
+            certExpiresAt: null,
+            lastRelayAt: null,
+            lastSeen: NOW - 2 * DAY,
+          },
+        ],
+      },
+      {
+        subject: "ps_Qm3x1Z",
+        label: null,
+        ringEpoch: 1,
+        devices: [
+          {
+            deviceId: "dev_b1",
+            label: "Living room PC",
+            platform: "windows",
+            keysSince: NOW - 40 * DAY,
+            certExpiresAt: NOW + 2 * DAY,
+            lastRelayAt: NOW - 5 * DAY,
+            lastSeen: NOW - 4 * DAY,
+          },
+        ],
+      },
+    ],
+  },
   [`${P}/config/mint`]: {
     registration: "requires-license",
     anonymousEnroll: false,

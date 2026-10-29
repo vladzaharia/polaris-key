@@ -86,7 +86,7 @@ export function PortalShell({
       </a>
       {/* pk-vt-chrome: kept above a list transition's moving content (src/motion.css). */}
       <header className="@container pk-vt-chrome sticky top-0 z-30 border-b border-border bg-surface-page short:static tight:max-desk:static">
-        <div className="mx-auto flex h-[calc(3.5rem-1px)] w-full max-w-[82rem] items-center gap-4 px-4 @max-[16rem]:gap-2 @max-[16rem]:px-2 desk:h-[calc(4rem-1px)] desk:gap-6 desk:px-6 mid:gap-8">
+        <div className="mx-auto flex h-[calc(3.5rem-1px)] w-full max-w-[82rem] items-center gap-4 px-4 @max-[21rem]:gap-2 @max-[21rem]:px-3 @max-[16rem]:gap-2 @max-[16rem]:px-2 desk:h-[calc(4rem-1px)] desk:gap-6 desk:px-6 mid:gap-8">
           <a
             href={href.library()}
             aria-label={t("locker.shell.home")}
@@ -116,7 +116,7 @@ export function PortalShell({
           </nav>
           {/* min-w-0: when the row is tight from 1180 px, the ⌘K field gives way first (its
               wrapper shrinks far faster, down to 11rem), then the account chip's name. */}
-          <div className="ms-auto flex min-w-0 items-center gap-3 @max-[16rem]:gap-1">
+          <div className="ms-auto flex min-w-0 items-center gap-3 @max-[21rem]:gap-1 @max-[16rem]:gap-1">
             {headerExtra ? (
               <div className="hidden shrink-0 desk:flex wide:min-w-44 wide:shrink-[999]">
                 {headerExtra}
