@@ -10,7 +10,7 @@ import type {
   MembersView,
   RulePreview,
 } from "../src/api.js";
-import { setStepUpRedirectForTests } from "../src/lib/stepUp.js";
+import { setStepUpRedirectForTests, stashStepUp } from "../src/lib/stepUp.js";
 import { boot, resetConsole, type FetchLog } from "./consoleHarness.js";
 
 /** Platform → Members → SSO rules (`#/platform/members?tab=sso`, ST-32.7) and the RuleEditor. */
@@ -365,6 +365,11 @@ describe("Saving a rule", () => {
     );
     const { user, dialog } = await fillAndSave();
     await confirmIn(user, dialog, "Add rule");
+    expect(
+      await within(dialog).findByText(
+        "This needs a sign-in from the last 5 minutes.",
+      ),
+    ).toBeTruthy();
     const again = await within(dialog).findByRole("button", {
       name: "Sign in again",
     });
@@ -483,8 +488,8 @@ describe("Offers", () => {
   }
   const posts = (log: FetchLog) =>
     log.calls.filter((c) => c.method === "POST" && c.path.startsWith(OFFERS));
+  const MAP = "Map to DJDL admin…";
 
-  /** The first offer's button of that name. */
   async function clickFirst(
     user: ReturnType<typeof userEvent.setup>,
     name: string,
@@ -493,52 +498,76 @@ describe("Offers", () => {
     await user.click(within(list).getAllByRole("button", { name })[0]!);
   }
 
+  /** Map the first offer, through the editor, to the open confirm dialog. */
+  async function toDialog(user: ReturnType<typeof userEvent.setup>) {
+    await clickFirst(user, MAP);
+    await user.click(await screen.findByRole("button", { name: "Add rule…" }));
+    return screen.findByRole("alertdialog");
+  }
+
   it("lists each product with its group", async () => {
     openOffers();
     const list = await screen.findByTestId("sso-offers");
     expect(within(list).getByText("DJDL")).toBeTruthy();
     expect(within(list).getByText("djdl-admins")).toBeTruthy();
     expect(within(list).getByText("tuner-ops")).toBeTruthy();
-    expect(
-      screen.getByText(/2 products still use an admin group/),
-    ).toBeTruthy();
+    expect(screen.getByText("Admin groups from manifests")).toBeTruthy();
+    expect(screen.queryByText(/Offers/)).toBeNull();
   });
 
-  it("shows no card when nothing is offered", async () => {
+  it("shows nothing when nothing is offered", async () => {
     offers = [];
     openOffers();
     await rulesList();
     expect(screen.queryByTestId("sso-offers")).toBeNull();
   });
 
-  it("is read-only for a Platform admin", async () => {
+  it("is read-only for a Platform admin, and names whom to ask", async () => {
     rules = stored({ editable: false });
     openOffers(asRole("platform_admin"));
     const list = await screen.findByTestId("sso-offers");
     expect(within(list).getByText("DJDL")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Accept/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Dismiss all/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Map to/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Dismiss/ })).toBeNull();
   });
 
-  it("Accept opens the editor with the group, the product and no Members area", async () => {
+  it("Map opens the editor with the group, scrolled to and focused, then Cancel returns focus", async () => {
     const user = userEvent.setup();
-    const log = openOffers();
-    await clickFirst(user, "Accept…");
-    await screen.findByRole("heading", { name: "Accept offer for DJDL" });
+    openOffers();
+    await clickFirst(user, MAP);
+    const heading = await screen.findByRole("heading", {
+      name: "Map djdl-admins to DJDL admin",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
     const group = screen.getByLabelText("Group") as HTMLInputElement;
     expect(group.value).toBe("djdl-admins");
     expect(group.disabled).toBe(true);
     const areas = screen.getByRole("group", { name: "Areas they get" });
-    const members = within(areas).getByRole("checkbox", { name: /Members/ });
-    expect(members.getAttribute("aria-checked")).toBe("false");
     expect(
       within(areas)
-        .getByRole("checkbox", { name: /Ship/ })
+        .getByRole("checkbox", { name: /Members/ })
         .getAttribute("aria-checked"),
-    ).toBe("true");
-    await user.click(screen.getByRole("button", { name: "Add rule…" }));
-    const dialog = await screen.findByRole("alertdialog");
+    ).toBe("false");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    const first = within(await screen.findByTestId("sso-offers")).getAllByRole(
+      "button",
+      { name: MAP },
+    )[0]!;
+    await waitFor(() => expect(document.activeElement).toBe(first));
+  });
+
+  it("sends the accept with the group, a caution dialog, and marks the row done", async () => {
+    const user = userEvent.setup();
+    const log = openOffers();
+    const dialog = await toDialog(user);
+    expect(
+      within(dialog).getByText("Add a rule for DJDL's admin group?"),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        "People in djdl-admins become DJDL admins at their next sign-in.",
+      ),
+    ).toBeTruthy();
     await confirmIn(user, dialog, "Add rule", "convert");
     await waitFor(() => expect(posts(log)).toHaveLength(1));
     const call = posts(log)[0]!;
@@ -552,33 +581,23 @@ describe("Offers", () => {
       confirm: "console.access",
     });
     expect(body.areas).not.toContain("members");
-    // Accept stays off after the success.
-    await waitFor(() =>
-      expect(
-        within(screen.getByTestId("sso-offers")).getAllByRole("button", {
-          name: /^Accepted$/,
-        }).length,
-      ).toBeGreaterThan(0),
-    );
+    await screen.findByText("Rule added");
   });
 
-  it("says the group changed on offer_changed and re-reads the offers", async () => {
+  it("on offer_changed closes the dialog, says so at the card and re-reads", async () => {
     const user = userEvent.setup();
     decideAnswer = json(
-      {
-        error: { code: "bad_request", message: "x", reason: "offer_changed" },
-      },
+      { error: { code: "bad_request", message: "x", reason: "offer_changed" } },
       409,
     );
     const log = openOffers();
-    await clickFirst(user, "Accept…");
-    await user.click(await screen.findByRole("button", { name: "Add rule…" }));
-    const dialog = await screen.findByRole("alertdialog");
+    const dialog = await toDialog(user);
     const before = log.calls.filter(
       (c) => c.path === OFFERS && c.method === "GET",
     ).length;
     await confirmIn(user, dialog, "Add rule");
-    await within(dialog).findByText("The group changed");
+    await screen.findByText("The group changed");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     await waitFor(() =>
       expect(
         log.calls.filter((c) => c.path === OFFERS && c.method === "GET").length,
@@ -586,27 +605,97 @@ describe("Offers", () => {
     );
   });
 
-  it("Dismiss sends one dismissal for that product", async () => {
+  it("Dismiss asks first, then sends one dismissal and moves focus to the next row", async () => {
     const user = userEvent.setup();
     const log = openOffers();
-    await clickFirst(user, "Dismiss");
+    await clickFirst(user, "Dismiss…");
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Dismiss DJDL's admin group?"),
+    ).toBeTruthy();
+    expect(within(dialog).getByText("It won't be offered again.")).toBeTruthy();
+    expect(posts(log)).toHaveLength(0);
+    offers = [offers[1]!];
+    await user.click(within(dialog).getByRole("button", { name: "Dismiss" }));
     await waitFor(() => expect(posts(log)).toHaveLength(1));
     expect(posts(log)[0]!.path).toBe(`${OFFERS}/djdl`);
     expect(posts(log)[0]!.json).toEqual({ action: "dismiss" });
+    await waitFor(() =>
+      expect(
+        document.activeElement
+          ?.closest("[data-offer]")
+          ?.getAttribute("data-offer"),
+      ).toBe("tuner"),
+    );
   });
 
-  it("Dismiss all asks first, then sends dismiss_all", async () => {
+  it("Dismiss all says it can't be undone, then sends dismiss_all and focuses Rules", async () => {
     const user = userEvent.setup();
     const log = openOffers();
     await screen.findByTestId("sso-offers");
     await user.click(screen.getByRole("button", { name: "Dismiss all…" }));
     const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("This can't be undone.")).toBeTruthy();
     expect(posts(log)).toHaveLength(0);
+    offers = [];
     await user.click(
       within(dialog).getByRole("button", { name: "Dismiss all" }),
     );
     await waitFor(() => expect(posts(log)).toHaveLength(1));
-    expect(posts(log)[0]!.path).toBe(OFFERS);
     expect(posts(log)[0]!.json).toEqual({ action: "dismiss_all" });
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("sso-rules-title"),
+    );
+  });
+
+  it("switches Map off with the reason when there is no operator connection", async () => {
+    rules = stored({ connections: [] });
+    openOffers();
+    const list = await screen.findByTestId("sso-offers");
+    const btn = within(list).getAllByRole("button", { name: MAP })[0]!;
+    expect(btn.getAttribute("aria-disabled")).toBe("true");
+    expect(
+      within(list).getAllByText(/Add an operator connection first/).length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(list)
+        .getAllByRole("link", { name: "Connections" })[0]!
+        .getAttribute("href"),
+    ).toBe("#/platform/connections");
+  });
+
+  it("reopens the saved accept after the sign-in when the rules read has not arrived", async () => {
+    window.location.hash = "#/platform/members?tab=sso";
+    stashStepUp("SSO rules", "console.access", {
+      reason: "convert",
+      rules: JSON.stringify([
+        {
+          when: { connection: "console-idp", group: "djdl-admins" },
+          grant: {
+            role: "product_admin",
+            scope: "product:djdl",
+            areas: ["ship"],
+          },
+        },
+      ]),
+      offer: JSON.stringify(offer("djdl", "DJDL", "djdl-admins")),
+      title: "Add a rule for DJDL's admin group?",
+      confirmLabel: "Add rule",
+      lead: "People in djdl-admins become DJDL admins at their next sign-in.",
+      intent: "caution",
+    });
+    openOffers();
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Add a rule for DJDL's admin group?"),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        "People in djdl-admins become DJDL admins at their next sign-in.",
+      ),
+    ).toBeTruthy();
+    expect(
+      (within(dialog).getByLabelText("Reason") as HTMLTextAreaElement).value,
+    ).toBe("convert");
   });
 });

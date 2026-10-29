@@ -21,6 +21,7 @@ import {
   type MembersView,
 } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
+import { readStash } from "../../../../lib/stepUp.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { confirmBlocked, NEEDS_REASON } from "../../../../ui/confirmReasons.js";
@@ -50,11 +51,18 @@ interface Pending {
   title: string;
   confirmLabel: string;
   lead: string;
+  /** Danger is for removing a rule only; adding or saving access is caution. */
+  intent?: "caution" | "danger";
   /** Set when the save accepts a conversion offer: the one rule, written by the offers route. */
   offer?: AccessOffer;
 }
 
 function describeSave(e: unknown) {
+  if (e instanceof HttpError && e.code === "step_up_required")
+    return {
+      title: "Sign in again",
+      description: "This needs a sign-in from the last 5 minutes.",
+    };
   if (e instanceof HttpError && e.reason === "version_conflict")
     return {
       title: "The rules changed",
@@ -102,6 +110,50 @@ export function PlatformSsoRules({
     new Set(),
   );
   const [pending, setPending] = React.useState<Pending | null>(null);
+  // The offers route refused: the group moved or the offer went. Said at the card.
+  const [offerNote, setOfferNote] = React.useState<{
+    title: string;
+    text: string;
+  } | null>(null);
+  // Where focus goes when the editor closes, and after a dismissal.
+  const trigger = React.useRef<HTMLElement | null>(null);
+  const afterDismiss = React.useRef<string | null | undefined>(undefined);
+  // A saved step-up that was never reopened must not pop up later in the visit.
+  React.useEffect(() => () => void readStash(CONFIRM_KEY, true), []);
+  const openEditor = (e: AccessRuleBody | "new" | { offer: AccessOffer }) => {
+    trigger.current = document.activeElement as HTMLElement | null;
+    setOfferNote(null);
+    setEditing(e);
+  };
+  React.useEffect(() => {
+    if (editing !== null || !trigger.current) return;
+    const t = trigger.current;
+    trigger.current = null;
+    // After the dialog's own focus return has run.
+    const id = setTimeout(() => {
+      (t.isConnected && !t.hasAttribute("disabled")
+        ? t
+        : document.getElementById("sso-rules-title")
+      )?.focus();
+    }, 50);
+    return () => clearTimeout(id);
+  }, [editing]);
+  const offerList = offersQ.data?.offers;
+  const [focusTick, setFocusTick] = React.useState(0);
+  React.useEffect(() => {
+    if (afterDismiss.current === undefined) return;
+    const next = afterDismiss.current;
+    const id = setTimeout(() => {
+      const row = next
+        ? Array.from(document.querySelectorAll<HTMLElement>("[data-offer]"))
+            .find((el) => el.dataset.offer === next)
+            ?.querySelector("button")
+        : null;
+      (row ?? document.getElementById("sso-rules-title"))?.focus();
+      afterDismiss.current = undefined;
+    }, 50);
+    return () => clearTimeout(id);
+  }, [focusTick]);
   const [reason, setReason] = React.useState("");
   const canEdit = view?.editable === true && !view.unreadable;
   const group = roster?.rootRule.group ?? null;
@@ -124,9 +176,9 @@ export function PlatformSsoRules({
     const offer = offerOf(editing);
     if (offer) {
       store([rule], {
-        title: "Accept this offer?",
+        title: `Add a rule for ${offer.name}'s admin group?`,
         confirmLabel: "Add rule",
-        lead: `Adds a rule for the admin group of ${offer.name}. Its people get access at their next sign-in.`,
+        lead: `People in ${offer.group} become ${offer.name} admins at their next sign-in.`,
         offer,
       });
       return;
@@ -147,6 +199,7 @@ export function PlatformSsoRules({
       {
         title: "Remove this rule?",
         confirmLabel: "Remove rule",
+        intent: "danger",
         lead: "People who only had access through it lose it at their next sign-in.",
       },
     );
@@ -165,30 +218,31 @@ export function PlatformSsoRules({
             lead: "",
           });
       }}
-      intent="danger"
+      intent={pending?.intent ?? "caution"}
       title={pending?.title ?? "Save sign-in rules?"}
       stepUpKey={CONFIRM_KEY}
       stepUpState={{
         reason,
         rules: JSON.stringify(pending?.rules ?? []),
         offer: JSON.stringify(pending?.offer ?? null),
+        title: pending?.title ?? "",
+        confirmLabel: pending?.confirmLabel ?? "",
+        lead: pending?.lead ?? "",
+        intent: pending?.intent ?? "caution",
       }}
       onRestore={(s) => {
         setReason(s.reason ?? "");
         try {
           const rules = JSON.parse(s.rules ?? "[]") as AccessRuleBody[];
           const offer = JSON.parse(s.offer ?? "null") as AccessOffer | null;
-          setPending((p) => ({
-            title: offer
-              ? "Accept this offer?"
-              : (p?.title ?? "Save sign-in rules?"),
-            confirmLabel: offer
-              ? "Add rule"
-              : (p?.confirmLabel ?? "Save rules"),
-            lead: p?.lead ?? "",
+          setPending({
+            title: s.title || "Save sign-in rules?",
+            confirmLabel: s.confirmLabel || "Save rules",
+            lead: s.lead ?? "",
+            intent: s.intent === "danger" ? "danger" : "caution",
             rules,
             ...(offer ? { offer } : {}),
-          }));
+          });
         } catch {
           setPending(null);
         }
@@ -234,13 +288,18 @@ export function PlatformSsoRules({
                   : undefined,
             });
           } catch (e) {
-            // The group moved or the offer went: re-read, so the card says what is true now.
+            // The group moved or the offer went: say so at the card, re-read, and close the
+            // dialog, so no confirm is left that would send the stale group again.
             if (
               e instanceof HttpError &&
               (e.reason === "offer_changed" || e.reason === "no_such_offer")
             ) {
+              const d = describeSave(e);
+              setOfferNote({ title: d.title, text: d.description ?? "" });
               setEditing(null);
+              setReason("");
               void offersQ.refetch();
+              return;
             }
             throw e;
           }
@@ -298,12 +357,23 @@ export function PlatformSsoRules({
             No rule is applied until a Superadmin fixes the setting.
           </Callout>
         ) : null}
+        {offerNote ? (
+          <Callout tone="warning" alert title={offerNote.title}>
+            {offerNote.text}
+          </Callout>
+        ) : null}
         <OffersCard
-          offers={offersQ.data?.offers ?? []}
+          offers={offerList ?? []}
           canDecide={canEdit}
+          readOnlyNote={askLine(superadmins)}
+          noConnection={(view?.connections.length ?? 1) === 0}
           editing={editing !== null}
           accepted={accepted}
-          onAccept={(offer) => setEditing({ offer })}
+          onAccept={(offer) => openEditor({ offer })}
+          onDismissed={(next) => {
+            afterDismiss.current = next;
+            setFocusTick((n) => n + 1);
+          }}
         />
         <section
           aria-labelledby="sso-rules-title"
@@ -313,7 +383,8 @@ export function PlatformSsoRules({
             <div>
               <h2
                 id="sso-rules-title"
-                className="text-base font-semibold text-fg-strong"
+                tabIndex={-1}
+                className="text-base font-semibold text-fg-strong outline-none"
               >
                 Rules
               </h2>
@@ -327,7 +398,7 @@ export function PlatformSsoRules({
               <Button
                 variant="primary"
                 iconStart={<Plus className="size-4" aria-hidden="true" />}
-                onClick={() => setEditing("new")}
+                onClick={() => openEditor("new")}
               >
                 Add rule
               </Button>
@@ -357,7 +428,7 @@ export function PlatformSsoRules({
                           size="sm"
                           variant="ghost"
                           disabled={editing !== null}
-                          onClick={() => setEditing(rule)}
+                          onClick={() => openEditor(rule)}
                         >
                           Edit
                         </Button>
@@ -399,7 +470,7 @@ export function PlatformSsoRules({
             }
             {...(editingOffer
               ? {
-                  title: `Accept offer for ${editingOffer.name}`,
+                  title: `Map ${editingOffer.group} to ${editingOffer.name} admin`,
                   lockMatch: true,
                   saveLabel: "Add rule…",
                 }
@@ -410,7 +481,7 @@ export function PlatformSsoRules({
         ) : null}
       </div>
       <RootRule group={group} people={rootPeople} loading={!roster} />
-      {dialog}
+      {view ? dialog : null}
     </div>
   );
 }

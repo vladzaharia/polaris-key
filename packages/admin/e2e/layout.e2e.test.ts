@@ -618,12 +618,15 @@ function cases(): Case[] {
         await page.getByTestId("rule-matches").waitFor();
       },
     },
-    // ST-32.8: an offer accepted into the editor, prefilled with its group.
+    // ST-32.8: a mapped admin group in the editor, prefilled with its group.
     {
       name: "global:platform-members?tab=sso&accept",
       hash: "#/platform/members?tab=sso",
       act: async (page) => {
-        await page.getByRole("button", { name: "Accept…" }).first().click();
+        await page
+          .getByRole("button", { name: /^Map to .* admin…/ })
+          .first()
+          .click();
         await page.getByTestId("rule-matches").waitFor();
       },
     },

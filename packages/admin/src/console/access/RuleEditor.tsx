@@ -250,6 +250,12 @@ export function RuleEditor({
     });
 
   const noDomains = domains.length === 0;
+  // Opening the editor brings it into view and puts focus on its heading.
+  const heading = React.useRef<HTMLHeadingElement>(null);
+  React.useEffect(() => {
+    heading.current?.scrollIntoView?.({ block: "start" });
+    heading.current?.focus({ preventScroll: true });
+  }, []);
   return (
     <section
       className="rounded-lg border border-border bg-surface-raised"
@@ -259,7 +265,9 @@ export function RuleEditor({
       <div className="border-b border-border px-4 py-3 sm:px-6">
         <h2
           id="rule-editor-title"
-          className="text-base font-semibold text-fg-strong"
+          ref={heading}
+          tabIndex={-1}
+          className="text-base font-semibold text-fg-strong outline-none"
         >
           {title ?? (initial ? "Edit rule" : "New rule")}
         </h2>
@@ -344,7 +352,7 @@ export function RuleEditor({
               </div>
             </Field>
           )}
-          {noDomains && conn ? (
+          {noDomains && conn && !lockMatch ? (
             <p className="text-xs text-fg-muted">
               A domain needs to be verified and enforced on {conn.label}.
             </p>
