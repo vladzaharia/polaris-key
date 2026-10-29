@@ -48,10 +48,11 @@ import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { mutate } from "../../../data/mutations.js";
-import { OutletKindLine } from "../components/OutletKindLine.js";
-import { channelForOutlet } from "@polaris-key/manifest";
-import { Link, navigate, useSearchParam } from "../../../router.js";
-import { r } from "../../../routes.js";
+import {
+  OutletKindLine,
+  outletRowActions,
+} from "../components/OutletKindLine.js";
+import { Link, useSearchParam } from "../../../router.js";
 import { Panel } from "../../../templates/Dashboard.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import {
@@ -297,24 +298,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
         getRowId={(o) => o.outletId}
         rowHref={(o) => hrefWithQuery({ outlet: o.outletId })}
         linkComponent={Link}
-        rowActions={(o) => {
-          const channel = channelForOutlet(o.kind);
-          return [
-            {
-              label: "Open",
-              onSelect: () =>
-                patchQuery({ outlet: o.outletId }, { push: true }),
-            },
-            ...(channel
-              ? [
-                  {
-                    label: `Open ${channel.label} channel`,
-                    onSelect: () => navigate(r.channel(slug, channel.id)),
-                  },
-                ]
-              : []),
-          ];
-        }}
+        rowActions={(o) => outletRowActions(slug, o)}
         state={state}
         onStateChange={setState}
         search={{ placeholder: "Search channels", columns: ["outlet", "kind"] }}
