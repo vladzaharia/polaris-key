@@ -37,6 +37,12 @@ export interface SubjectStoreContext {
   now: number;
 }
 
+/** What a store's `merge` may report back: counts only (no names), for the merge's audit row. */
+export interface SubjectMergeReport {
+  /** Items the store left out of the join (Cloud Sync: a sealed row against a legacy plaintext one). */
+  skipped?: number;
+}
+
 /**
  * A store keyed by pairwise subject (managed config overrides, Cloud Sync data, later the layer 2
  * app profile). Every such store is contributed once by its service's descriptor, under a stable
@@ -50,7 +56,7 @@ export interface SubjectStore {
   merge(
     ctx: SubjectStoreContext,
     args: { product: string; from: string; to: string },
-  ): Promise<void>;
+  ): Promise<void | SubjectMergeReport>;
   /** Delete the subject's data for one product (per-product removal, account deletion). Called
    *  BEFORE the subject row goes, so the store can still resolve what it holds. */
   delete(
@@ -121,15 +127,21 @@ export function subjectStoreNames(): string[] {
   return [...allStores().keys()].sort();
 }
 
-/** Run every store's `merge` for one product, in name order. */
+/**
+ * Run every store's `merge` for one product, in name order. The result sums what the stores
+ * reported: a count of items left out, never their names.
+ */
 export async function runSubjectMerge(
   ctx: SubjectStoreContext,
   args: { product: string; from: string; to: string },
-): Promise<void> {
+): Promise<{ skipped: number }> {
   const all = allStores();
+  let skipped = 0;
   for (const name of subjectStoreNames()) {
-    await all.get(name)!.merge(ctx, args);
+    const report = await all.get(name)!.merge(ctx, args);
+    if (report) skipped += report.skipped ?? 0;
   }
+  return { skipped };
 }
 
 /** Run every store's `delete` for one product, in name order. */

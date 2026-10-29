@@ -582,9 +582,9 @@ describe("absorb: idempotence and retry-safety", () => {
     await setOne(env, "from", "b", 2, at(2), C2, "d2");
     const doc = (await exportCloudSync(env, { product: P, subject: "from" }))!;
     const to = { product: P, subject: "to" };
-    expect(await absorbCloudSync(env, to, doc)).toBeGreaterThan(0);
+    expect((await absorbCloudSync(env, to, doc)).changed).toBeGreaterThan(0);
     const seq = (await callCloudSync<"usage">(env, to, { op: "usage" })).seq;
-    expect(await absorbCloudSync(env, to, doc)).toBe(0);
+    expect((await absorbCloudSync(env, to, doc)).changed).toBe(0);
     expect((await callCloudSync<"usage">(env, to, { op: "usage" })).seq).toBe(
       seq,
     );

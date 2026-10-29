@@ -81,6 +81,18 @@ const rec = (
   ...extra,
 });
 
+/** A live plaintext setting, for a survivor that already holds sealed rows. */
+const plainSetting = (): [SyncMutation, Classification] => [
+  {
+    mutationId: nextId++,
+    target: { setting: "plain.key", scope: "user" },
+    op: "set",
+    editedHlc: at(4),
+    value: 1,
+  },
+  { verdict: "accept", scope: "user", policy: "lastWrite" },
+];
+
 async function push(
   env: Cs,
   subject: string,
@@ -195,9 +207,9 @@ describe("a merge moves records", () => {
     await seed(env);
     const doc = (await ex(env, "from"))!;
     const to = { product: P, subject: "to" };
-    expect(await absorbCloudSync(env, to, doc)).toBeGreaterThan(0);
+    expect((await absorbCloudSync(env, to, doc)).changed).toBeGreaterThan(0);
     const after = await ex(env, "to");
-    expect(await absorbCloudSync(env, to, doc)).toBe(0);
+    expect((await absorbCloudSync(env, to, doc)).changed).toBe(0);
     expect(await ex(env, "to")).toEqual(after);
   });
 
@@ -337,16 +349,7 @@ describe("a merge keeps sealed and plaintext rows apart (U-09.R B3)", () => {
       "from",
       [
         [rec("notes", "n", "setField", 3, { field: "x", value: 1 }), MERGE_REC],
-        [
-          {
-            mutationId: nextId++,
-            target: { setting: "plain.key", scope: "user" },
-            op: "set",
-            editedHlc: at(4),
-            value: 1,
-          },
-          { verdict: "accept", scope: "user", policy: "lastWrite" },
-        ],
+        plainSetting(),
       ],
       C1,
       "d1",
@@ -364,6 +367,21 @@ describe("a merge keeps sealed and plaintext rows apart (U-09.R B3)", () => {
     expect(after.parked).toEqual([
       expect.objectContaining({ collection: "notes", id: "n" }),
     ]);
+  });
+
+  it("the merge hook reports how many rows the join left out, as a count", async () => {
+    const { env } = world();
+    await sealedPush(env, "to", 2);
+    await push(env, "from", [plainSetting()]);
+    const ctx = { db: makeTestDb(), env: env as never, now: 1 };
+    // One plaintext setting against a sealed survivor: left out, and counted.
+    expect(
+      await runSubjectMerge(ctx, { product: P, from: "from", to: "to" }),
+    ).toEqual({ skipped: 1 });
+    // A merge with nothing left out reports none.
+    expect(
+      await runSubjectMerge(ctx, { product: P, from: "gone", to: "to" }),
+    ).toEqual({ skipped: 0 });
   });
 
   it("the object refuses a malformed encryptionSince before any write", async () => {

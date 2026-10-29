@@ -95,14 +95,13 @@ export async function absorbCloudSync(
   pin: DoPin,
   document: ExportDocument,
   policies?: [string, SettingPolicy][],
-): Promise<number> {
-  return (
-    await callCloudSync<"absorb">(env, pin, {
-      op: "absorb",
-      document,
-      ...(policies ? { policies } : {}),
-    })
-  ).changed;
+): Promise<{ changed: number; skipped: number }> {
+  const out = await callCloudSync<"absorb">(env, pin, {
+    op: "absorb",
+    document,
+    ...(policies ? { policies } : {}),
+  });
+  return { changed: out.changed, skipped: out.skipped ?? 0 };
 }
 
 /**

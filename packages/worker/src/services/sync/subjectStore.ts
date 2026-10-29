@@ -54,11 +54,15 @@ async function absorbObject(
   product: string,
   from: string,
   to: string,
-): Promise<void> {
+): Promise<number> {
   for (let round = 0; round < ABSORB_ROUNDS; round++) {
     const doc = await exportCloudSync(env, { product, subject: from });
-    if (!doc) return;
-    await absorbCloudSync(env, { product, subject: to }, doc);
+    if (!doc) return 0;
+    const { skipped } = await absorbCloudSync(
+      env,
+      { product, subject: to },
+      doc,
+    );
     if (
       await deleteCloudSyncIfUnchanged(
         env,
@@ -67,7 +71,7 @@ async function absorbObject(
         to,
       )
     )
-      return;
+      return skipped;
   }
   throw new Error("cloud sync: the absorbed object kept changing; retry");
 }
@@ -95,13 +99,16 @@ export const cloudSyncStore: SubjectStore = {
 
   async merge({ db, env, now }, { product, from, to }) {
     if (from === to) return;
-    await absorbObject(env, product, from, to);
+    // The rows the join left out (a sealed row against a legacy plaintext one): a count, for the
+    // merge's audit row.
+    const skipped = await absorbObject(env, product, from, to);
+    const report = skipped > 0 ? { skipped } : undefined;
     const absorbed = await db.first<DirectoryRow>(
       "SELECT * FROM sync_directory WHERE product = ? AND subject = ?",
       product,
       from,
     );
-    if (!absorbed) return;
+    if (!absorbed) return report;
     const survivor = await db.first<DirectoryRow>(
       "SELECT * FROM sync_directory WHERE product = ? AND subject = ?",
       product,
@@ -147,6 +154,7 @@ export const cloudSyncStore: SubjectStore = {
         params: [product, from],
       },
     ]);
+    return report;
   },
 
   async delete({ db, env }, { product, subject }) {
