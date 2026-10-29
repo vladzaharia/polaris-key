@@ -26,6 +26,7 @@ import type {
   WireMutation,
 } from "../cloud-sync.js";
 import { PolarisError } from "../errors.js";
+import { hasOwn } from "../own.js";
 import { isBlindedName, type BlindKind } from "./blind.js";
 import type { OpenedValue, SyncJson } from "./envelope.js";
 
@@ -415,7 +416,7 @@ async function openCopy(
     if (hasNul(member)) return invalidRow(e);
     if ((await codec.blind("member", name, member)) !== m.member)
       return invalidRow(e);
-    if (Object.hasOwn(value, member)) return invalidRow(e);
+    if (hasOwn(value, member)) return invalidRow(e);
     Object.defineProperty(value, member, {
       value: r.value as Json,
       enumerable: true,
