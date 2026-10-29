@@ -1,11 +1,10 @@
 /**
- * An outlet drawer's subtitle: its kind, and (A-22.4, until A-22.7's entry points land) a link to
+ * An outlet drawer's subtitle: its kind, and (A-22.7) a link to
  * the channel page that outlet serves, when it serves one.
  */
 
 import * as React from "react";
 import { channelForOutlet } from "@polaris-key/manifest";
-import type { OutletDto } from "../../../../api.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { outletKindLabel } from "../model/format.js";
@@ -15,7 +14,7 @@ export function OutletKindLine({
   outlet,
 }: {
   slug: string;
-  outlet: OutletDto;
+  outlet: { kind: string };
 }): React.ReactElement {
   const channel = channelForOutlet(outlet.kind);
   return (

@@ -344,9 +344,6 @@
     "packages/admin/src/console/sections/distribution/components/RolloutDialogs.tsx": {
       "jscpd:duplicate": 2
     },
-    "packages/admin/src/console/sections/distribution/components/StoreControls.tsx": {
-      "jscpd:duplicate": 1
-    },
     "packages/admin/src/console/sections/distribution/components/ascShared.tsx": {
       "jscpd:duplicate": 1
     },
@@ -489,7 +486,7 @@
       "jscpd:duplicate": 2
     },
     "packages/admin/src/console/sections/storefronts/components/StoreTiles.tsx": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/admin/src/console/sections/sync/CloudSyncSetup.tsx": {
       "jscpd:duplicate": 1

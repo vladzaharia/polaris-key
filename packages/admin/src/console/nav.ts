@@ -283,11 +283,6 @@ export interface NavPage {
    * page (a table, a record, a form), which has the orientation chip only.
    */
   tile?: "product" | "service";
-  /**
-   * A shortcut row for one record of this page (A-22.4, until A-22.7's entry points): the sidebar
-   * and the palette link to it, the page itself stays the route's.
-   */
-  entry?: { id: string; tab?: string };
 }
 
 export interface NavSection {
@@ -1214,31 +1209,8 @@ export function navItems(
   section: NavSection,
   features: NavFeatures = null,
 ): NavPage[] {
-  return [...section.items, ...(NAV_ENTRIES[section.key] ?? [])].filter(
-    (i) => i.inNav && meetsRequirement(i, features),
-  );
+  return section.items.filter((i) => i.inNav && meetsRequirement(i, features));
 }
-
-/**
- * Shortcut rows: a link to one record of a page (`NavPage.entry`), listed in the sidebar and the
- * palette but not pages of their own (the route is the page's). A-22.4, until A-22.7's entry
- * points land.
- */
-const NAV_ENTRIES: Partial<Record<SectionKey, NavPage[]>> = {
-  distribution: [
-    {
-      page: "channel",
-      accent: "distribution",
-      label: "App Store",
-      path: "distribution/channels",
-      icon: Send,
-      docs: "/docs/features/ship-builds/channels/app-store/",
-      inNav: true,
-      requires: "channel:app-store",
-      entry: { id: "app-store", tab: "releases" },
-    },
-  ],
-};
 
 /** The global pages the sidebar lists at the top level: Home (the products live on it, ST-44). */
 export function platformLinks(): NavPage[] {

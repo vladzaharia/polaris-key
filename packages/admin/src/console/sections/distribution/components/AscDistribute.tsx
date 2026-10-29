@@ -19,7 +19,7 @@
  */
 
 import { channelLabel } from "@polaris-key/manifest";
-import { docsUrl } from "../../../../lib/docsLinks.js";
+import { channelDocs } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type {
@@ -157,14 +157,17 @@ export function AscDistribute({
           headingLevel={3}
           title="App Store Connect can't be used for this product yet"
           description={blocked ?? "The connector names no app."}
+          // No connector at all is a missing `.pkey/distribution` declaration: Setup can't fix it.
           primaryAction={
-            <Button variant="outline" asChild>
-              <Link to={r.channel(slug, "app-store", "setup")}>
-                Open {name} setup
-              </Link>
-            </Button>
+            asc ? (
+              <Button variant="outline" asChild>
+                <Link to={r.channel(slug, "app-store", "setup")}>
+                  Open {name} setup
+                </Link>
+              </Button>
+            ) : undefined
           }
-          docs={docsUrl("appStorePage")}
+          docs={channelDocs("app-store")}
         />
       ) : (
         <DistributeFlow slug={slug} asc={asc} appleId={appleId} />
@@ -272,10 +275,10 @@ function DistributeFlow({ slug, asc, appleId }: FlowProps): React.ReactElement {
 
   // Focus has nowhere to go when the control that held it leaves (Continue into Submit, a closed
   // confirm whose button is gone): the step's title takes it, never the page (A-22.4 UX).
-  const refocus = React.useCallback(() => {
+  const refocus = React.useCallback((force = false) => {
     window.setTimeout(() => {
       const a = document.activeElement;
-      if (!a || a === document.body)
+      if (force || !a || a === document.body)
         document
           .getElementById("wizard-step-title")
           ?.focus({ preventScroll: true });
@@ -286,6 +289,13 @@ function DistributeFlow({ slug, asc, appleId }: FlowProps): React.ReactElement {
     if (mounted.current) refocus();
     mounted.current = true;
   }, [step, refocus]);
+  // Choosing a version changes `?version=`, which sends the route's focus to the page heading.
+  const choseVersion = React.useRef(versionId);
+  React.useEffect(() => {
+    if (choseVersion.current === versionId) return;
+    choseVersion.current = versionId;
+    if (versionId) refocus(true);
+  }, [versionId, refocus]);
 
   const open = (i: AscIntent, body?: React.ReactNode) => {
     setDialog(body ?? null);

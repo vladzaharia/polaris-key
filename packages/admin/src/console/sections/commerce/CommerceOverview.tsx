@@ -204,7 +204,12 @@ export function CommerceOverviewPage({
                             data-store-row={s.id}
                             className="font-medium"
                           >
-                            {s.label}
+                            <Link
+                              to={r.channel(slug, s.channel, "sales")}
+                              className="py-1 hover:underline"
+                            >
+                              {s.label}
+                            </Link>
                           </span>
                           <StatusPill
                             domain="storefront"
@@ -260,7 +265,12 @@ export function CommerceOverviewPage({
                               data-store-row={s.id}
                               className="py-2 text-start pe-4 font-medium"
                             >
-                              {s.label}
+                              <Link
+                                to={r.channel(slug, s.channel, "sales")}
+                                className="py-1 hover:underline"
+                              >
+                                {s.label}
+                              </Link>
                             </th>
                             <td className="py-2 pe-4">
                               <StoreIdentityCell

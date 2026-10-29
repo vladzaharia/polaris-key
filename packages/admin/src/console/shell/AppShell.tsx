@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useLargeTextFlag } from "../../lib/useLargeTextFlag.js";
-import { docsUrl } from "../../lib/docsLinks.js";
+import { channelDocs, docsUrl } from "../../lib/docsLinks.js";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import { type Me } from "../../api.js";
@@ -459,7 +459,13 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 me={me}
                 section={accent}
                 navOpen={navOpen}
-                docsHref={page ? docsFor(page) : docsUrl("consoleDocsHome")}
+                docsHref={
+                  page === "channel"
+                    ? channelDocs("id" in route ? route.id : undefined)
+                    : page
+                      ? docsFor(page)
+                      : docsUrl("consoleDocsHome")
+                }
                 onOpenPalette={() => openPalette()}
                 onOpenNav={() => setNavOpen(true)}
                 onShortcuts={() => setSheetOpen(true)}

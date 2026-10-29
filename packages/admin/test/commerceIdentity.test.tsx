@@ -121,7 +121,10 @@ describe("store identity on the Commerce overview", () => {
     });
     const steam = await row("Steam");
     expect(steam.getByText("No app assigned")).toBeTruthy();
-    expect(steam.queryByRole("link")).toBeNull();
+    // Only the store's own channel page (A-22.7); no link to assign the app.
+    expect(
+      steam.getAllByRole("link").map((a) => a.getAttribute("href")),
+    ).toEqual(["#/p/djdl/distribution/channels/steam/sales"]);
     expect(steam.getByText("A platform admin assigns it.")).toBeTruthy();
   });
 

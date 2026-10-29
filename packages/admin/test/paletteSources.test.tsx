@@ -323,6 +323,13 @@ describe("recents", () => {
     });
     // A product the session no longer has drops out.
     expect(recordItem(id, [])).toBeNull();
+    // A channel record reads by its label, never its id (A-22.7).
+    const channel = recordRecentId(
+      parseLocation("#/p/djdl/distribution/channels/app-store/releases").route,
+    )!;
+    expect(
+      recordItem(channel, [{ slug: "djdl", name: "DJDL", schemaVersion: 1 }]),
+    ).toMatchObject({ label: "App Store" });
   });
 });
 

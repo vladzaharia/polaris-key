@@ -123,10 +123,12 @@ describe("nav requirements (A-20.7)", () => {
       ALL_ON,
       navFeaturesOf({ channels: IOS, platforms: PLATFORMS } as never),
     ).map((i) => i.href);
-    expect(on).toContain("#/p/djdl/distribution/channels/app-store/releases");
-    expect(hrefs).not.toContain(
-      "#/p/djdl/distribution/channels/app-store/releases",
-    );
+    // A channel is opened from the Channel setup rows, the storefront tiles and the Commerce
+    // overview (A-22.7): the nav keeps no shortcut for one.
+    for (const list of [hrefs, on])
+      expect(list).not.toContain(
+        "#/p/djdl/distribution/channels/app-store/releases",
+      );
   });
 });
 

@@ -38,10 +38,10 @@ import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { EntityLink } from "../../../components/EntityLink.js";
 import { CdnFallbackNote } from "./CdnFallbackNote.js";
+import { OutletKindLine } from "./OutletKindLine.js";
 import { mutate } from "../../../data/mutations.js";
 import { useConnectors } from "../data.js";
 import {
-  outletKindLabel,
   READINESS_LABEL,
   rolloutSummary,
   sourceLabel,
@@ -116,9 +116,12 @@ export function CellDrawer({
       size="lg"
       title={title}
       description={
-        outlet
-          ? `${outletKindLabel(outlet.kind)} · ${release?.channel ?? "no channel"}`
-          : undefined
+        outlet ? (
+          <>
+            <OutletKindLine slug={slug} outlet={outlet} />
+            {` · ${release?.channel ?? "no channel"}`}
+          </>
+        ) : undefined
       }
     >
       <DrawerBody className="space-y-5">

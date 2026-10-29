@@ -16,7 +16,7 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Section } from "../../../../ui/Section.js";
-import { docsUrl } from "../../../../lib/docsLinks.js";
+import { channelDocs } from "../../../../lib/docsLinks.js";
 import { useConnectors, useCredentials } from "../data.js";
 import { useReleaseStore } from "../../release/data.js";
 import { channelLabel } from "@polaris-key/manifest";
@@ -76,7 +76,7 @@ function ChannelCredentials({
   return (
     <Section
       title="Credentials"
-      description={`The keys Polaris Key uses to reach ${channel.label}.${
+      description={`The keys Polaris Key uses to reach ${/ Store$/.test(channel.label) ? "the " : ""}${channel.label}.${
         shared.length ? ` Also used by ${shared.join(" and ")}.` : ""
       } Values are sent once and never shown again.`}
     >
@@ -114,7 +114,7 @@ function ChannelCredentials({
                 Set credential…
               </Button>
             }
-            docs={docsUrl("credentialsPage")}
+            docs={channelDocs(channel.id)}
           />
         }
       />
@@ -133,12 +133,18 @@ export function ChannelStoreControls({
   const store = useReleaseStore(slug);
   if (connectors.isError && !connectors.data)
     return (
-      <ErrorState
-        error={connectors.error}
-        onRetry={() => void connectors.refetch()}
-        thing="Store controls"
-        context={{ area: "distribution", thing: "Store controls", read: true }}
-      />
+      <Section title="Store controls">
+        <ErrorState
+          error={connectors.error}
+          onRetry={() => void connectors.refetch()}
+          thing="Store controls"
+          context={{
+            area: "distribution",
+            thing: "Store controls",
+            read: true,
+          }}
+        />
+      </Section>
     );
   if (!connectors.data) return <Skeleton className="h-32 w-full" />;
   if (connectorsFor(connectors.data.connectors, channel.id).length === 0)
