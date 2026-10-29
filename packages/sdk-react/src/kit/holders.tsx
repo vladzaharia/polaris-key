@@ -29,6 +29,7 @@ import {
   activateDoneView,
   addToAccountView,
   contextOf,
+  leadParts,
   reasonsOf,
   type ComponentName,
   type HolderScreenName,
@@ -214,17 +215,16 @@ function lead(node: ReactNode): ReactNode {
       ? Children.toArray(node.props.children)
       : [node];
   const out: ReactNode[] = [];
-  let bold = false;
   let n = 0;
   for (const it of items) {
     if (typeof it !== "string") {
       out.push(it);
       continue;
     }
-    it.split("**").forEach((seg, i) => {
-      if (i > 0) bold = !bold;
-      if (seg) out.push(bold ? <strong key={`s${n++}`}>{seg}</strong> : seg);
-    });
+    for (const part of leadParts(it))
+      out.push(
+        part.strong ? <strong key={`s${n++}`}>{part.text}</strong> : part.text,
+      );
   }
   return <>{out}</>;
 }

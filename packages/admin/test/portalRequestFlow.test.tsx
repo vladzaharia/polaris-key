@@ -806,21 +806,23 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
       level: 1,
       name: "Keep Diceroll in an account",
     });
+    // The lead phrase is bold, and no marker reaches the DOM.
+    const reasons = document.querySelector("[data-reasons]")!;
+    expect(reasons.textContent).not.toContain("**");
     expect(
-      screen.getByText(
-        "Cloud Sync keeps your settings and saves on every device",
-      ),
-    ).toBeTruthy();
+      [...reasons.querySelectorAll("strong")].map((e) => e.textContent),
+    ).toEqual([
+      "Cloud Sync",
+      "Get your license back",
+      "Move it to a new device",
+    ]);
     expect(
-      screen.getByText(
-        "Get your license back if you lose the key or this device",
-      ),
-    ).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Move it to a new device yourself, without asking Example Games",
-      ),
-    ).toBeTruthy();
+      [...reasons.querySelectorAll("li")].map((e) => e.textContent),
+    ).toEqual([
+      "Cloud Sync keeps your settings and saves on every device",
+      "Get your license back if you lose the key or this device",
+      "Move it to a new device yourself, without asking Example Games",
+    ]);
   });
 
   it("leaves the Cloud Sync reason out when the app has no Cloud Sync, and on the standalone on-ramp", async () => {

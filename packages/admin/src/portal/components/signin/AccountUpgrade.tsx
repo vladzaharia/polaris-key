@@ -7,7 +7,7 @@ import {
   RefreshCw,
   type LucideIcon,
 } from "lucide-react";
-import { recommendReasons } from "@polaris-key/ui-core";
+import { leadParts, recommendReasons } from "@polaris-key/ui-core";
 import type { KeyPreview } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
 import { AuthTitle, QuietLink, QuietLinks } from "../../../ui/auth/index.js";
@@ -110,9 +110,13 @@ export function AccountUpgrade({
             <li key={key} className="flex items-start gap-2">
               <Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
               <span className="text-pretty">
-                {t(key as Parameters<typeof t>[0], {
-                  developer: preview.product.developerName ?? name,
-                })}
+                {leadParts(
+                  t(key as Parameters<typeof t>[0], {
+                    developer: preview.product.developerName ?? name,
+                  }),
+                ).map((p, i) =>
+                  p.strong ? <strong key={i}>{p.text}</strong> : p.text,
+                )}
               </span>
             </li>
           );

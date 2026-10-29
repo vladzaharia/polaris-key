@@ -9,6 +9,7 @@ import { ifDefined } from "lit/directives/if-defined.js";
 import { html as staticHtml, unsafeStatic } from "lit/static-html.js";
 import { ref } from "lit/directives/ref.js";
 import {
+  leadParts,
   countdown,
   renewTarget,
   type Copy,
@@ -286,11 +287,9 @@ function isolate(s: string): TemplateResult {
 export function lead(c: RenderCtx, key: string): TemplateResult {
   const s = marked(c, key, {});
   if (s === null) return html``;
-  return html`${s
-    .split("**")
-    .map((seg, i) =>
-      i % 2 === 1 ? html`<strong>${isolate(seg)}</strong>` : isolate(seg),
-    )}`;
+  return html`${leadParts(s).map((p) =>
+    p.strong ? html`<strong>${isolate(p.text)}</strong>` : isolate(p.text),
+  )}`;
 }
 
 /** A plain string, for an attribute (an aria-label). */
