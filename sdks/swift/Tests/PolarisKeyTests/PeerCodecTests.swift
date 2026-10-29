@@ -204,7 +204,7 @@ final class PeerCodecTests: XCTestCase {
 
     // ── LAN addresses (§15.4.1) ──────────────────────────────────────────────────────
 
-    /// Every `lanAddresses` row: the verdict, the per-address key and the per-/64 key. The
+    /// Every `lanAddresses` row: the verdict, the per-address key and the per-group key. The
     /// `candidates` rows under it (§15.6, CANDIDATES) are not run: the Swift peer session reads no
     /// CANDIDATES entry, so it dials only what the Bonjour browse returns.
     func testLanAddressRows() {
@@ -236,7 +236,11 @@ final class PeerCodecTests: XCTestCase {
         XCTAssertFalse(lanVerdict("2001:db8:1:2::5", local: nil, allowLoopback: false).dial)
         XCTAssertTrue(lanVerdict("2001:db8:1:2::5", local: "2001:db8:1:2::9", allowLoopback: false).dial)
         XCTAssertNil(lanGroupKey(nil))
-        XCTAssertNil(lanGroupKey("10.0.0.1"))
-        XCTAssertEqual(lanGroupKey("fe80::1%en0"), "fe80::/64%en0")
+        XCTAssertEqual(lanGroupKey("10.0.0.1"), "10.0.0.0/24")
+        XCTAssertEqual(lanGroupKey("fe80::1%en0"), "fe80::/10%en0")
+        XCTAssertEqual(lanGroupKey("fe80:0:0:5::1%en0"), "fe80::/10%en0", "another /64 of the same link")
+        XCTAssertEqual(lanGroupKey("fe80::1"), "fe80::/10")
+        XCTAssertEqual(lanGroupKey("fd00:1:2:3::9"), "fd00:1:2:3::/64")
+        XCTAssertEqual(lanGroupKey("2001:db8:1:2::5"), "2001:db8:1:2::/64")
     }
 }

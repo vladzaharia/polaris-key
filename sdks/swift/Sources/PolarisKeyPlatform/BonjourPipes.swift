@@ -6,16 +6,27 @@
 //   - Listener: an `NWListener` for TCP on a random port. With an advert it registers
 //     `service` (instance + TXT). If the OS registers the service under any other name the
 //     registration is withdrawn (`service = nil`), never kept under that name.
-//   - Dial: an `NWConnection` to a browse endpoint (or a host and port). The address rule is
-//     `lanVerdict` (§15.4.1): RFC 1918 IPv4, fe80::/10, fc00::/7 and an on-link global IPv6 address
-//     (G6, D-10), plus loopback only when the caller opts in. A host and port is judged as text
-//     before a socket exists (a name is refused), and the connected path's remote and local
-//     endpoints are judged again before the first byte; a refusal cancels the connection unused. A
-//     name, a public address, 169.254/16 and 100.64/10 are refused.
+//   - Dial: an `NWConnection` to a host and port. The address rule is `lanVerdict` (§15.4.1): RFC 1918
+//     IPv4, fe80::/10, fc00::/7 and an on-link global IPv6 address (G6, D-10), plus loopback only
+//     when the caller opts in. A host and port is judged as text before a socket exists (a name is
+//     refused), and the connected path's remote and local endpoints are judged again before the
+//     first byte; a refusal cancels the connection unused. A name, a public address, 169.254/16 and
+//     100.64/10 are refused.
+//   - A Bonjour browse hit (a service endpoint) is never handed to `NWConnection`, because the OS
+//     resolver would pick the address and the connect would already have happened. `resolve` runs
+//     DNS-SD (`BonjourResolve.swift`) on the interface the browse reported, judges every address it
+//     answers by `lanVerdict` and by the connected subnets of the interface it came back on
+//     (`LanResolve`), checks the SRV port (1024 to 65535), and the caller dials those addresses
+//     one by one with `dial`, pinned to that interface. After a failed handshake the caller tries the
+//     next address (§15.4.1, Dialling); `wrong_peer` ends the dial. What remains: the address is
+//     resolver-returned, not source-equal to a packet the device saw, so an on-link host can publish
+//     an address of the connected subnet for a name it does not own. The device then makes one
+//     connect and sends Noise message 1 to it, and the handshake refuses it.
 //   - The pipe: reads are pull-based (one `receive` per `read()`), so a reader that stops reading
 //     stops the TCP window; writes complete when the OS has taken the bytes.
-//   - G7: the listener admits at most 32 unauthenticated sockets in all, 16 per /64 and 4 per
-//     address (a link-local key carries its zone). A slot is held from accept until
+//   - G7: the listener admits at most 32 unauthenticated sockets in all, 16 per group and 4 per
+//     address (a link-local key carries its zone). The group is `lanGroupKey`'s: the link for
+//     fe80::/10, the /24 for IPv4, the /64 for ULA and global IPv6. A slot is held from accept until
 //     `markAuthenticated()` or the socket's end. A source that fails the address rule is closed with
 //     no read and no slot, at accept and again on the connected path. Time (30 s) and frame size
 //     (16 KiB) before admission are `PeerLink`'s.
@@ -61,8 +72,9 @@ public struct BonjourDialPolicy: Sendable, Equatable {
 
 // MARK: - G7 limiter
 
-/// At most `total` unauthenticated sockets, `perGroup` from one /64 and `perAddress` from one address.
-/// Keys are `lanVerdict`'s: a link-local address counts with its zone.
+/// At most `total` unauthenticated sockets, `perGroup` from one group (`lanGroupKey`: a link, an IPv4
+/// /24 or an IPv6 /64) and `perAddress` from one address. Keys are `lanVerdict`'s: a link-local address
+/// counts with its zone.
 public final class UnauthenticatedLimiter: @unchecked Sendable {
     public static let defaultTotal = 32
     public static let defaultPerAddress = 4
@@ -311,13 +323,22 @@ public enum BonjourRegistration {
     // MARK: - Dial
 
     public enum BonjourPipes {
-        /// Dial a browse hit.
+        /// Dial a browse hit: `resolve` it, then dial the resolved addresses in order until one connects.
+        /// A caller that runs a handshake itself uses `resolve` and `dial(_ endpoint: NWEndpoint)`, so it
+        /// can fall through to the next address after a failed handshake (§15.4.1).
         public static func dial(_ endpoint: BonjourEndpoint, options: BonjourDialOptions = BonjourDialOptions())
             async throws
             -> NWPipe
         {
-            guard let network = endpoint.network else { throw BonjourPipeError.unresolvable }
-            return try await dial(network, options: options)
+            var last: Error = BonjourPipeError.unresolvable
+            for target in try await resolve(endpoint, options: options) {
+                guard let network = target.network else { continue }
+                do { return try await dial(network, options: options) } catch let e as BonjourPipeError {
+                    if case .browse = e { throw e }
+                    last = e
+                }
+            }
+            throw last
         }
 
         /// The text of a host and port endpoint's address, or nil for a name, a service and anything
@@ -339,27 +360,77 @@ public enum BonjourRegistration {
             }
         }
 
-        /// This device's own IPv6 addresses on up interfaces, as text (the zone is not needed).
-        static func ownIPv6Addresses() -> [String] {
-            var head: UnsafeMutablePointer<ifaddrs>?
-            guard getifaddrs(&head) == 0, let first = head else { return [] }
-            defer { freeifaddrs(head) }
-            var out: [String] = []
-            var next: UnsafeMutablePointer<ifaddrs>? = first
-            while let cur = next {
-                defer { next = cur.pointee.ifa_next }
-                guard cur.pointee.ifa_flags & UInt32(IFF_UP) != 0, let sa = cur.pointee.ifa_addr,
-                    sa.pointee.sa_family == sa_family_t(AF_INET6)
-                else { continue }
-                let bytes = sa.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) { s in
-                    withUnsafeBytes(of: s.pointee.sin6_addr) { Array($0) }
-                }
-                if let t = lanAddressText(bytes: bytes) { out.append(t) }
+        /// The interface a host endpoint carries (the one a socket was received on), when it names one.
+        static func interfaceName(_ e: NWEndpoint?) -> String? {
+            guard case .hostPort(let host, _)? = e else { return nil }
+            switch host {
+            case .ipv4(let a): return a.interface?.name
+            case .ipv6(let a): return a.interface?.name
+            default: return nil
             }
-            return out
         }
 
-        /// Dial an endpoint. A host and port is judged as text before a socket exists (a name is
+        /// Resolve a browse hit into the addresses that may be dialled, before any connect (§15.4,
+        /// §15.4.1): see the file header. A hit that already is a host and port is returned as it is
+        /// (the dial judges it); a hit with no network endpoint, or an unknown arrival interface, is
+        /// `.unresolvable`; when every address is refused it is `.addressRefused`. Each returned
+        /// endpoint is a host and port on one interface, in first-seen order, at most 4.
+        public static func resolve(_ endpoint: BonjourEndpoint, options: BonjourDialOptions = BonjourDialOptions())
+            async throws -> [BonjourEndpoint]
+        {
+            guard let network = endpoint.network else { throw BonjourPipeError.unresolvable }
+            switch network {
+            case .hostPort: return [endpoint]
+            case .service(let name, let type, let domain, let one):
+                let ifaces = endpoint.interfaces.isEmpty ? (one.map { [$0] } ?? []) : endpoint.interfaces
+                guard !ifaces.isEmpty else { throw BonjourPipeError.unresolvable }
+                var found: [LanResolvedAddress] = []
+                var ports: [Int: Int] = [:]
+                var last: Error = BonjourPipeError.unresolvable
+                for i in ifaces.prefix(8) {
+                    do {
+                        let r = try await BonjourResolver.resolve(
+                            name: name, type: type, domain: domain, interfaceIndex: i.index, timeout: options.timeout)
+                        guard LanResolve.portAllowed(r.port) else {
+                            last = BonjourPipeError.addressRefused
+                            continue
+                        }
+                        ports[i.index] = r.port
+                        found += r.addresses.filter { $0.interfaceIndex == i.index }
+                    } catch let e as BonjourPipeError {
+                        if case .browse = e { throw e }
+                        last = e
+                    }
+                }
+                guard !found.isEmpty else { throw last }
+                let targets = LanResolve.dialable(
+                    found, interfaces: BonjourResolver.localInterfaces(), allowLoopback: options.policy.allowLoopback)
+                var out: [BonjourEndpoint] = []
+                for t in targets {
+                    guard let nw = ifaces.first(where: { $0.index == t.interfaceIndex }),
+                        let port = ports[t.interfaceIndex].flatMap({ NWEndpoint.Port(rawValue: UInt16($0)) })
+                    else { continue }
+                    let host: NWEndpoint.Host
+                    if t.bytes.count == 4, let a = IPv4Address(Data(t.bytes), nw) {
+                        host = .ipv4(a)
+                    } else if t.bytes.count == 16, let a = IPv6Address(Data(t.bytes), nw) {
+                        host = .ipv6(a)
+                    } else {
+                        continue
+                    }
+                    out.append(
+                        BonjourEndpoint(
+                            name: endpoint.name, type: endpoint.type, domain: endpoint.domain,
+                            network: .hostPort(host: host, port: port), interfaces: [nw]))
+                }
+                guard !out.isEmpty else { throw BonjourPipeError.addressRefused }
+                return out
+            default:
+                throw BonjourPipeError.addressRefused
+            }
+        }
+
+        /// Dial a host and port. It is judged as text before a socket exists (a name and a service are
         /// refused); the pipe is handed back only after the connected path's remote and local
         /// endpoints passed `lanVerdict`. A refused or failed dial has sent nothing.
         public static func dial(_ endpoint: NWEndpoint, options: BonjourDialOptions = BonjourDialOptions()) async throws
@@ -372,13 +443,20 @@ public enum BonjourRegistration {
                 guard let text = addressText(endpoint), options.policy.verdict(remote: text, local: text).dial else {
                     throw BonjourPipeError.addressRefused
                 }
-            case .service:
-                break  // the OS resolves a browse hit; only the connected path can be judged
             default:
+                // A service endpoint is never handed to the OS to resolve and connect: `resolve` it first.
                 throw BonjourPipeError.addressRefused
             }
             let params = NWParameters.tcp
             params.includePeerToPeer = options.peerToPeer
+            // A resolved address is dialled on the interface it was answered on.
+            if case .hostPort(let host, _) = endpoint {
+                switch host {
+                case .ipv4(let a): params.requiredInterface = a.interface
+                case .ipv6(let a): params.requiredInterface = a.interface
+                default: break
+                }
+            }
             let conn = NWConnection(to: endpoint, using: params)
             let queue = DispatchQueue(label: "im.plrs.key.bonjour-dial")
             return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<NWPipe, Error>) in
@@ -448,25 +526,31 @@ public enum BonjourRegistration {
 
         /// The limiter key of a source the policy allows, else nil: `lanVerdict`'s key (an IPv4-mapped
         /// IPv6 source and its IPv4 form share one; a link-local key keeps its zone). `local` is the
-        /// socket's own endpoint when known. At accept it is not, so a global IPv6 source passes only
-        /// when it shares a /64 with one of this device's own IPv6 addresses (`own`); the connected
-        /// path is judged again, with its real local address, before the host sees the pipe.
+        /// socket's own endpoint when known. At accept it is not, so an IPv6 source that is neither
+        /// link-local nor loopback (a ULA or global address, which is on-link only by its /64) passes
+        /// only when an own address shares its /64. That own address is looked up on the receiving
+        /// interface when the endpoint names it (`own` takes its name), else on all of them. The
+        /// connected path is judged again, with its real local address, before the host sees the pipe.
         static func allowedSource(
             _ e: NWEndpoint, local: NWEndpoint? = nil, policy: BonjourDialPolicy,
-            own: () -> [String] = BonjourPipes.ownIPv6Addresses
+            own: (String?) -> [String] = { BonjourResolver.ownIPv6Addresses(interface: $0) }
         ) -> String? {
             guard let text = BonjourPipes.addressText(e) else { return nil }
             if let l = local.flatMap(BonjourPipes.addressText) {
                 let v = policy.verdict(remote: text, local: l)
                 return v.dial ? v.key : nil
             }
-            let first = policy.verdict(remote: text, local: nil)
-            if first.dial { return first.key }
-            for l in own() {
-                let v = policy.verdict(remote: text, local: l)
-                if v.dial { return v.key }
+            if let p = LanAddr.parse(text), case .v6(let g) = p.addr,
+                (g[0] & 0xFFC0) != 0xFE80, !(g[0..<7].allSatisfy { $0 == 0 } && g[7] == 1)
+            {
+                for l in own(BonjourPipes.interfaceName(e)) {
+                    let v = policy.verdict(remote: text, local: l)
+                    if v.dial { return v.key }
+                }
+                return nil
             }
-            return nil
+            let v = policy.verdict(remote: text, local: nil)
+            return v.dial ? v.key : nil
         }
 
         /// Policy first, then a slot: a refused source never takes one.
