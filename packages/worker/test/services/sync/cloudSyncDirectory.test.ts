@@ -675,10 +675,13 @@ describe("alarm robustness (U-05.9 N-items)", () => {
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     const raw = w.ns.instance(NAME(A)).storage.sql.db;
     raw.exec("ALTER TABLE clients DROP COLUMN last_seen");
+    // A v1 object has neither the v3 `kid` columns nor the record tables (those are made fresh).
+    for (const table of ["settings", "tombstones", "setting_members"])
+      raw.exec(`ALTER TABLE ${table} DROP COLUMN kid`);
     raw.exec("UPDATE meta SET value = '1' WHERE key = 'schema_version'");
     w.ns.instance(NAME(A)).obj["store"].reset();
     await w.ns.fireAlarm(NAME(A));
-    expect(metaOf(w, NAME(A), "schema_version")).toBe("2");
+    expect(metaOf(w, NAME(A), "schema_version")).toBe("3");
     expect(await dirRow(w, A)).not.toBeNull();
   });
 });

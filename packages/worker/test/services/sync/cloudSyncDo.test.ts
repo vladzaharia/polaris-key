@@ -152,6 +152,10 @@ describe("CloudSyncDO: lazy schema", () => {
     expect(tables(ns, nameOf(P, ALICE))).toEqual([
       "clients",
       "meta",
+      "parked_records",
+      "record_fields",
+      "records",
+      "set_elements",
       "setting_members",
       "settings",
       "tombstones",

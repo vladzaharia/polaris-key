@@ -1,5 +1,8 @@
 import { settingId } from "../src/services/sync/engine/store.js";
-import type { StoredSetting } from "../src/services/sync/engine/types.js";
+import type {
+  StoredRecord,
+  StoredSetting,
+} from "../src/services/sync/engine/types.js";
 import { SqlStore } from "../src/services/sync/do/sqlStore.js";
 import { freshSqlStore } from "./cloudSyncDoMock.js";
 
@@ -26,7 +29,12 @@ export class SqlTestStore extends SqlStore {
     return this.settingsAfter(0);
   }
 
+  recordRows(): StoredRecord[] {
+    return this.recordsPageAfter(0, Number.MAX_SAFE_INTEGER);
+  }
+
   snapshot(): unknown {
+    const records = this.recordRows();
     return {
       seq: this.currentSeq(),
       usage: this.getUsage(),
@@ -39,6 +47,21 @@ export class SqlTestStore extends SqlStore {
           k,
           { ...r, members: r.members ? [...r.members] : undefined },
         ]),
+      ...(records.length > 0
+        ? {
+            records: records
+              .map((r) => [`${r.collection}\u0000${r.id}`, r] as const)
+              .sort(([a], [b]) => (a < b ? -1 : 1))
+              .map(([k, r]) => [
+                k,
+                {
+                  ...r,
+                  fields: r.fields ? [...r.fields] : undefined,
+                  elements: r.elements ? [...r.elements] : undefined,
+                },
+              ]),
+          }
+        : {}),
     };
   }
 }

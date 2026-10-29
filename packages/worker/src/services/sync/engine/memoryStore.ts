@@ -7,6 +7,7 @@ import type { SyncScope } from "@polaris-key/protocol/sync";
 import { settingId } from "./store.js";
 import type {
   ClientRecord,
+  StoredRecord,
   StoredSetting,
   StoreUsage,
   SyncStore,
@@ -29,11 +30,48 @@ const cloneRow = (row: StoredSetting): StoredSetting => ({
     : {}),
 });
 
+const cloneRecord = (row: StoredRecord): StoredRecord => ({
+  ...row,
+  stamp: { ...row.stamp },
+  value: structuredClone(row.value),
+  ...(row.floor ? { floor: { ...row.floor } } : {}),
+  ...(row.fields
+    ? {
+        fields: new Map(
+          [...row.fields].map(([k, c]) => [
+            k,
+            { ...c, value: structuredClone(c.value), stamp: { ...c.stamp } },
+          ]),
+        ),
+      }
+    : {}),
+  ...(row.elements
+    ? {
+        elements: new Map(
+          [...row.elements].map(([k, e]) => [
+            k,
+            { ...e, element: structuredClone(e.element), tags: [...e.tags] },
+          ]),
+        ),
+      }
+    : {}),
+});
+
+const recordId = (collection: string, id: string): string =>
+  `${collection}\u0000${id}`;
+
 export class MemoryStore implements SyncStore {
   private seq = 0;
   private clients = new Map<string, ClientRecord>();
   private settings = new Map<string, StoredSetting>();
-  private usage: StoreUsage = { settings: 0, settingsBytes: 0, bytes: 0 };
+  private records = new Map<string, StoredRecord>();
+  private usage: StoreUsage = {
+    settings: 0,
+    settingsBytes: 0,
+    records: 0,
+    recordBytes: 0,
+    bytes: 0,
+  };
   private watermark = 0;
   private since: number | undefined;
   private held = false;
@@ -54,6 +92,9 @@ export class MemoryStore implements SyncStore {
     const settings = new Map(
       [...this.settings].map(([k, v]) => [k, cloneRow(v)] as const),
     );
+    const records = new Map(
+      [...this.records].map(([k, v]) => [k, cloneRecord(v)] as const),
+    );
     try {
       return fn();
     } catch (e) {
@@ -65,6 +106,7 @@ export class MemoryStore implements SyncStore {
       this.seen = seen;
       this.clients = clients;
       this.settings = settings;
+      this.records = records;
       throw e;
     }
   }
@@ -148,8 +190,50 @@ export class MemoryStore implements SyncStore {
       .slice(0, limit);
   }
 
+  getRecord(collection: string, id: string): StoredRecord | undefined {
+    const row = this.records.get(recordId(collection, id));
+    return row ? cloneRecord(row) : undefined;
+  }
+
+  putRecord(row: StoredRecord): void {
+    if (!row.deleted) this.held = true;
+    this.records.set(recordId(row.collection, row.id), cloneRecord(row));
+  }
+
+  deleteRecordRow(collection: string, id: string): void {
+    this.records.delete(recordId(collection, id));
+  }
+
+  private recordsAfter(seq: number): StoredRecord[] {
+    return [...this.records.values()]
+      .filter((r) => r.version > seq)
+      .sort((a, b) => a.version - b.version);
+  }
+
+  recordsPageAfter(seq: number, limit: number): StoredRecord[] {
+    return this.recordsAfter(seq).slice(0, limit).map(cloneRecord);
+  }
+
+  recordsPageThrough(
+    after: number,
+    through: number,
+    limit: number,
+  ): StoredRecord[] {
+    return this.recordsAfter(after)
+      .filter((r) => r.version <= through)
+      .slice(0, limit)
+      .map(cloneRecord);
+  }
+
+  liveRecordCount(collection: string): number {
+    let n = 0;
+    for (const r of this.records.values())
+      if (r.collection === collection && !r.deleted) n++;
+    return n;
+  }
+
   isEmpty(): boolean {
-    return this.settings.size === 0;
+    return this.settings.size === 0 && this.records.size === 0;
   }
 
   heldData(): boolean {
@@ -190,6 +274,11 @@ export class MemoryStore implements SyncStore {
     return [...this.settings.values()].map(cloneRow);
   }
 
+  /** Every stored record, for tests. */
+  recordRows(): StoredRecord[] {
+    return [...this.records.values()].map(cloneRecord);
+  }
+
   /** A comparable dump of the whole store, for the idempotence test. */
   snapshot(): unknown {
     return {
@@ -203,6 +292,20 @@ export class MemoryStore implements SyncStore {
           k,
           { ...r, members: r.members ? [...r.members] : undefined },
         ]),
+      ...(this.records.size > 0
+        ? {
+            records: [...this.records]
+              .sort(([a], [b]) => (a < b ? -1 : 1))
+              .map(([k, r]) => [
+                k,
+                {
+                  ...r,
+                  fields: r.fields ? [...r.fields] : undefined,
+                  elements: r.elements ? [...r.elements] : undefined,
+                },
+              ]),
+          }
+        : {}),
     };
   }
 }

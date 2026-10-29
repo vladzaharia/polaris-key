@@ -88,6 +88,7 @@ export function account(
   const u = store.getUsage();
   const move = (n: number, d: number) => Math.max(0, n + d);
   const out: StoreUsage = {
+    ...u,
     settings: move(u.settings, after.settings - before.settings),
     settingsBytes: move(u.settingsBytes, after.budget - before.budget),
     bytes: move(u.bytes, after.bytes - before.bytes),

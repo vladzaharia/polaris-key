@@ -61,6 +61,60 @@ export interface StoredSetting {
   sealed?: boolean;
 }
 
+/** What a stored record holds: one value, `merge` field cells, or a `union` set's tagged elements. */
+export type RecordKind = "value" | "fields" | "set";
+
+/**
+ * One field of a `merge` record. `removed` is a cell tombstone and keeps its stamp. In end-to-end
+ * mode the name is blinded and `value` is the sealed `ct` (the same rule as a `MemberCell`).
+ */
+export interface FieldCell {
+  value: SyncJson;
+  removed: boolean;
+  stamp: Stamp;
+  /** The envelope's key id (hex of bytes 1 to 16) of a sealed write; absent for plaintext. */
+  kid?: string;
+}
+
+/**
+ * One element of a `union` record: the element as given (the value in server mode, the sealed
+ * `ct` in E2E mode) and the store sequences of the adds that are still alive (its tags). An
+ * element with no tag left is gone, so the map never holds one.
+ */
+export interface SetElement {
+  element: SyncJson;
+  tags: number[];
+  kid?: string;
+}
+
+/**
+ * One (collection, id) of a person's store (U-09). Tombstones (`deleted`) stay in the same
+ * table with the clock of the delete, so an older write cannot resurrect the record.
+ *
+ * A record is a single value (`kind: "value"`: `revision`, `lastWrite`, `max`, `min`), field cells
+ * (`"fields"`: `merge`, with `floor` the stamp of the delete) or tagged elements (`"set"`:
+ * `union`). `collection` is the concrete name: a `prefix.*` declaration governs many of them.
+ */
+export interface StoredRecord {
+  collection: string;
+  id: string;
+  /** The store sequence of the last accepted write; the pull's `version`. */
+  version: number;
+  /** The newest accepted write's stamp (`editedHlc` and the pushing clientId). */
+  stamp: Stamp;
+  deleted: boolean;
+  kind: RecordKind;
+  /** `kind: "value"`: the value (server mode) or the sealed `ct` string (E2E mode). */
+  value: SyncJson;
+  fields?: Map<string, FieldCell>;
+  floor?: Stamp;
+  elements?: Map<string, SetElement>;
+  /** The envelope's key id of a sealed value record; absent for plaintext. */
+  kid?: string;
+  /** Derived, never stored: the row holds sealed values (`version` at or above `encryptionSince`). */
+  sealed?: boolean;
+}
+
 /** A clientId's binding (rule 4): the first device that pushed with it, and its last processed id. */
 export interface ClientRecord {
   clientId: string;
@@ -112,9 +166,27 @@ export interface SyncStore {
     through: number,
     limit: number,
   ): StoredSetting[];
-  /** No row at all, tombstones included. */
+  /** `undefined` when the store holds no row of the record, tombstone or not. */
+  getRecord(collection: string, id: string): StoredRecord | undefined;
+  putRecord(row: StoredRecord): void;
+  /** Removes a record outright, its cells and elements with it (tombstone collection only). */
+  deleteRecordRow(collection: string, id: string): void;
+  /**
+   * One page of the records (tombstones included) above `seq`, in ascending `version`, at most
+   * `limit`. Records belong to the person, not a platform family, so every device sees them all.
+   */
+  recordsPageAfter(seq: number, limit: number): StoredRecord[];
+  /** One page of every record with `after < version <= through`, ascending, at most `limit`. */
+  recordsPageThrough(
+    after: number,
+    through: number,
+    limit: number,
+  ): StoredRecord[];
+  /** How many live (not deleted) records the concrete `collection` holds. */
+  liveRecordCount(collection: string): number;
+  /** No row at all, tombstones and records included. */
   isEmpty(): boolean;
-  /** The object has held a live setting at some point (a tombstone alone does not count). */
+  /** The object has held a live setting or record at some point (a tombstone alone does not count). */
   heldData(): boolean;
   /** How many client bindings the object keeps. */
   clientCount(): number;
@@ -142,12 +214,15 @@ export interface SyncStore {
 
 /**
  * What the person's store holds, kept as running counters. `bytes` is every kind together (the
- * quota's measure; records and files add to it in U-09 and U-10), `settings` and `settingsBytes`
- * are the settings budget's (256 keys, 64 KiB). Tombstones cost nothing.
+ * quota's measure; files add to it in U-10), `settings` and `settingsBytes` are the settings
+ * budget's (256 keys, 64 KiB), `records` and `recordBytes` the live records' count and stored
+ * bytes (inside `bytes`). Tombstones cost nothing.
  */
 export interface StoreUsage {
   settings: number;
   settingsBytes: number;
+  records: number;
+  recordBytes: number;
   bytes: number;
 }
 
