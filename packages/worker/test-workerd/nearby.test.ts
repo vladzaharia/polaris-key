@@ -191,6 +191,11 @@ interface Answer {
   body: Record<string, any>;
 }
 
+async function answerOf(res: Response): Promise<Answer> {
+  const body = (await res.json().catch(() => ({}))) as Record<string, any>;
+  return { status: res.status, body };
+}
+
 async function decide(
   w: World,
   r: Req,
@@ -225,8 +230,7 @@ async function decide(
     w.product,
     now,
   );
-  const body = (await res.json().catch(() => ({}))) as Record<string, any>;
-  return { status: res.status, body };
+  return answerOf(res);
 }
 
 async function poll(
@@ -255,8 +259,14 @@ async function poll(
     w.product,
     now,
   );
-  const body = (await res.json().catch(() => ({}))) as Record<string, any>;
-  return { status: res.status, body };
+  return answerOf(res);
+}
+
+/** M claims the request and then stalls. */
+async function claimedByM(w: World, r: Req) {
+  const ref = await refOf(w, r);
+  expect((await claimNearby(workerEnv, ref, w.m.id, NOW)).ok).toBe(true);
+  return ref;
 }
 
 const deviceRow = (w: World, id: string) =>
@@ -405,8 +415,7 @@ describe("nearby approval on workerd", () => {
   it("a stale claim is retaken once, by one of many, and the first claimer loses", async () => {
     const w = await world();
     const r = await started(w);
-    const ref = await refOf(w, r);
-    expect((await claimNearby(workerEnv, ref, w.m.id, NOW)).ok).toBe(true);
+    const ref = await claimedByM(w, r);
     // Fresh: nobody else gets in.
     expect((await claimNearby(workerEnv, ref, w.m2.id, NOW + 29)).ok).toBe(
       false,
@@ -427,9 +436,8 @@ describe("nearby approval on workerd", () => {
   it("an approval that retakes a stale claim binds D and is the only decision", async () => {
     const w = await world();
     const r = await started(w);
-    const ref = await refOf(w, r);
     // M claims and stalls; M2 comes back after 30 s and decides.
-    expect((await claimNearby(workerEnv, ref, w.m.id, NOW)).ok).toBe(true);
+    const ref = await claimedByM(w, r);
     const a = await decide(w, r, w.m2, "approve", NOW + 31);
     expect([a.status, a.body.status]).toEqual([200, "approved"]);
     // The stalled M can neither decide nor re-approve.
@@ -444,9 +452,7 @@ describe("nearby approval on workerd", () => {
   it("racing approvals across a stale claim bind D once", async () => {
     const w = await world();
     const r = await started(w);
-    expect(
-      (await claimNearby(workerEnv, await refOf(w, r), w.m.id, NOW)).ok,
-    ).toBe(true);
+    await claimedByM(w, r);
     const answers = await Promise.all([
       decide(w, r, w.m2, "approve", NOW + 31),
       decide(w, r, w.m2, "approve", NOW + 31),
