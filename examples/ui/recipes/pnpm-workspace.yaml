@@ -4,6 +4,15 @@
 packages:
   - "*"
 minimumReleaseAge: 20160
+# Owner waiver 2026-10-29 for GHSA-f86p-h4j2-7qgj; remove after 2026-11-01. The patched seroval
+# 1.6.11 (published 2026-10-18) is younger than 14 days, so exactly these two packages are exempt
+# from the age rule; nothing else is. solid-js@1.9.17 pulls seroval 1.6.9, so it is overridden.
+minimumReleaseAgeExclude:
+  - seroval
+  - seroval-plugins
+overrides:
+  seroval: 1.6.11
+  seroval-plugins: 1.6.11
 # `pnpm audit` reads the lockfile's importer id `angular` (the recipe's directory) as the npm
 # package "angular" (AngularJS 1.x), and reports its advisory against version 1.0.0. The recipe
 # uses @angular/*, not AngularJS; this is the only high finding, and it is this false match.
