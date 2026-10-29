@@ -30,8 +30,9 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
 
 from ..core.peer_advert import ADVERT_EPOCH_SECONDS, BrowseHit, account_instance, advert_epoch, browse_table, parse_txt
+from ..core.peer_lan_address import lan_verdict, split_zone
 from ..core.peer_link import SocketLink
-from ..core.peer_mdns import MdnsAdapter, MdnsAdvert, MdnsFound, MdnsHandle, MulticastDnsAdapter, is_lan_address
+from ..core.peer_mdns import MdnsAdapter, MdnsAdvert, MdnsFound, MdnsHandle, MulticastDnsAdapter
 from .channel import ConnectNotice, PeerDocs, PeerDocsSource, channel_base
 from .client import ConnectClient, PeerSource
 from .errors import LanError
@@ -303,7 +304,9 @@ class LanService:
     # -- dial -------------------------------------------------------------------------------------
 
     def _dialable(self, host: str) -> bool:
-        return is_lan_address(host, self._o.allow_loopback)
+        # The address text is judged before a socket exists (§15.4.1); an address in the same /64 as
+        # "some local address" stands in for the real one until the connected socket is judged.
+        return lan_verdict(host, split_zone(host)[0], self._o.allow_loopback).dial
 
     async def connect(self, target: Any) -> ConnectSession:
         """Dial a discovered device (a device id, or a :class:`LanPeer`) and run the handshake. Raises
@@ -585,7 +588,9 @@ class LanService:
         return self._tab[1]
 
     async def _found(self, f: MdnsFound) -> None:
-        if self._stopped or not self._dialable(f.host):
+        # Keep the addresses that could be dialled; the connected socket is judged again.
+        hosts = [h for h in (f.hosts or (f.host,)) if self._dialable(h)]
+        if self._stopped or not hosts:
             return
         txt = parse_txt(f.txt)
         if not txt["ok"] or txt["mode"] != "a":
@@ -601,7 +606,7 @@ class LanService:
                 del self._miss[next(iter(self._miss))]
             self._miss[f.instance] = self._src.now()
             return
-        peer = LanPeer(hit.device_id, f.host, f.port, tuple(f.hosts))
+        peer = LanPeer(hit.device_id, hosts[0], f.port, tuple(hosts[1:]))
         self._peers[hit.device_id] = (peer, f.instance)
         for fn in list(self._on_peer):
             try:
