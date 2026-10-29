@@ -30,7 +30,7 @@
           {
             "request": {
               "method": "GET",
-              "path": "/djdl/identity/authorize?response_type=code&client_id=djdl&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&state=tidewater-state-0123456789&code_challenge=-583Jx3Gn4AKAj7xr5NSDQ3V6snyKHhZUDKua28Tp10&code_challenge_method=S256&key_return=allow",
+              "path": "/djdl/identity/authorize?response_type=code&client_id=djdl&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&state=tidewater-state-0123456789&code_challenge=-583Jx3Gn4AKAj7xr5NSDQ3V6snyKHhZUDKua28Tp10&code_challenge_method=S256&scope=profile+email&key_return=allow",
               "headers": {},
               "requiredHeaders": [],
               "body": null

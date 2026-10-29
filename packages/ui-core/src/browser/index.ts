@@ -16,7 +16,12 @@ export {
   type GateSnapshot,
   type UpdateOffer,
 } from "./driver.js";
-export { gateInput, type ErrorLike, type GateStep } from "./input.js";
+export {
+  gateInput,
+  keyReturnRefusal,
+  type ErrorLike,
+  type GateStep,
+} from "./input.js";
 export { openLink, safeLink } from "./links.js";
 export {
   BrowserAdapter,

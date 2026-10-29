@@ -33,7 +33,12 @@ import type {
   SignInSessionHandle,
   SignInWait,
 } from "../signInModel.js";
-import { gateInput, isHolderStep, type GateStep } from "./input.js";
+import {
+  gateInput,
+  isHolderStep,
+  keyReturnRefusal,
+  type GateStep,
+} from "./input.js";
 import { openLink, safeLink } from "./links.js";
 
 /** What `<pk-gate config>` takes: the product, and the few transport choices a page makes. */
@@ -230,6 +235,9 @@ export function handleOf(flow: DeviceCodeSignInSession): SignInSessionHandle {
             outcome: "signedIn",
             ...(r.identity?.email ? { email: r.identity.email } : {}),
           };
+        case "activated":
+          // Only a redirect that opted in to a key return answers this, never a device code.
+          return { outcome: "signedIn" };
         case "cancelled":
           return { outcome: "cancelled" };
         case "expired":
@@ -435,6 +443,14 @@ export class GateDriver {
         this.pushed = false;
         this.setTimer(undefined);
       }
+    } else if (
+      this.step === "home" &&
+      !this.activating &&
+      keyReturnRefusal(state, this.dismissed)
+    ) {
+      // A key return the Worker refused at `token` (device limit, key entries, owned): the key
+      // step draws it, with the manage link and the counts the refusal carried.
+      this.enter("activate", "signin.key.differentKey");
     } else if (state.error.identity && this.handle) {
       this.handle = null;
       this.step = "home";

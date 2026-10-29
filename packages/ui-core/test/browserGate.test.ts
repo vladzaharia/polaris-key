@@ -209,20 +209,25 @@ function gate(o: FakeOptions = {}) {
   return { ...f, d };
 }
 
+/** The page globals a GateDriver listens on; `opened` collects what `window.open` was given. */
+function stubBrowser(opened: string[]): void {
+  vi.stubGlobal("window", {
+    open: (u: string) => opened.push(u),
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  });
+  vi.stubGlobal("document", {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    visibilityState: "visible",
+  });
+}
+
 describe("GateDriver: a key with no account", () => {
   const opened: string[] = [];
   beforeEach(() => {
     opened.length = 0;
-    vi.stubGlobal("window", {
-      open: (u: string) => opened.push(u),
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    });
-    vi.stubGlobal("document", {
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      visibilityState: "visible",
-    });
+    stubBrowser(opened);
   });
   afterEach(() => vi.unstubAllGlobals());
 
@@ -445,5 +450,101 @@ describe("GateDriver: a key with no account", () => {
     expect(g.calls).toContainEqual(["preview", { confirm: false }]);
     expect(g.calls.some(([n]) => n === "attach")).toBe(false);
     g.d.detach();
+  });
+});
+
+// ── the key return (LK-SKIP.6b): a redirect that continued without an account ───────────────
+
+describe("GateDriver: a key return", () => {
+  beforeEach(() => {
+    stubBrowser([]);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("starts the app at once: no ActivateDone, and the floating holder drives Not in an account", () => {
+    const g = gate();
+    // `signIn.complete` answered `activated`: the device holds the license by key, no account.
+    g.set({
+      status: "ok",
+      profile: { email: "", name: "", firstName: "", activatedAt: 1 },
+    });
+    const snap = g.d.snapshot();
+    expect(snap.step).toBe("home");
+    expect(snap.input.activateDone).toBeUndefined();
+    expect(snap.input.licenseHolder).toEqual({ email: "" });
+    g.d.detach();
+  });
+
+  it("a refusal at token (device limit) opens the key step with the details, once", () => {
+    const g = gate();
+    const refusal = {
+      code: "device_limit",
+      wireCode: "device_limit",
+      manageUrl: "https://key.plrs.im/activate?product=acme",
+      activation: {
+        kind: "deviceLimit",
+        code: "device_limit",
+        limit: 1,
+        deviceCount: 1,
+        manageUrl: "https://key.plrs.im/activate?product=acme",
+      },
+    };
+    g.set({ error: { license: refusal, identity: null } });
+    const snap = g.d.snapshot();
+    expect(snap.step).toBe("activate");
+    expect(snap.input.activation).toMatchObject({
+      result: "device-limit",
+      limit: 1,
+      deviceCount: 1,
+      manageUrl: "https://key.plrs.im/activate?product=acme",
+    });
+    // Leaving the step dismisses the refusal: it does not reopen.
+    g.d.act("common.back");
+    expect(g.d.snapshot().step).toBe("home");
+    g.set({ busy: { license: false, identity: false } });
+    expect(g.d.snapshot().step).toBe("home");
+    g.d.detach();
+  });
+
+  it("a refusal that is not a key return's kind does not open the key step", () => {
+    const g = gate();
+    g.set({
+      error: {
+        license: {
+          code: "sign-in-failed",
+          activation: { kind: "refused", code: "x" },
+        },
+        identity: null,
+      },
+    });
+    expect(g.d.snapshot().step).toBe("home");
+    g.d.detach();
+  });
+
+  it("license_owned at token (CORE-SEAT-GUARD) opens the owned step; Sign in starts the in-page sign-in, with Identity off it opens signInUrl", async () => {
+    const signInUrl = "https://key.plrs.im/signin?product=acme";
+    const owned = {
+      code: "license_owned",
+      wireCode: "license_owned",
+      activation: { kind: "licenseOwned", code: "license_owned", signInUrl },
+    };
+    const on = gate();
+    on.set({ error: { license: owned, identity: null } });
+    expect(on.d.snapshot().step).toBe("activate");
+    expect(on.d.snapshot().input.activation).toMatchObject({
+      result: "refused",
+      code: "license_owned",
+      signInUrl,
+    });
+    on.d.act("signin.key.ownedSignIn");
+    await until(() => on.calls.some(([n]) => n === "signIn.start"));
+    on.d.detach();
+
+    const off = gate({ identity: false });
+    off.set({ error: { license: owned, identity: null } });
+    expect(off.d.snapshot().step).toBe("activate");
+    off.d.act("signin.key.ownedSignIn");
+    expect(off.calls.some(([n]) => n === "signIn.start")).toBe(false);
+    off.d.detach();
   });
 });

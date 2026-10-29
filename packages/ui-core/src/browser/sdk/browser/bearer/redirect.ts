@@ -6,6 +6,7 @@
 import {
   TOKEN_CONTENT_TYPE,
   checkCallback,
+  isManageUrl,
   parseTokenAnswer,
   startRedirect,
   tokenForm,
@@ -13,6 +14,7 @@ import {
   type TokenAnswer,
 } from "@polaris-key/client-core";
 import { ERROR_CODE_VALUES, ErrorCode } from "../../constants.generated.js";
+import { classifyActivation } from "../../core/activation.js";
 import { PolarisError, type PolarisErrorCode } from "../../core/types.js";
 import type {
   RedirectEndpoints,
@@ -48,6 +50,7 @@ export async function beginRedirect(
     ...(opts.licenseChoice !== undefined
       ? { licenseChoice: opts.licenseChoice }
       : {}),
+    ...(opts.keyReturn === true ? { keyReturn: true } : {}),
     ...(entropy.state !== undefined ? { state: entropy.state } : {}),
     ...(entropy.codeVerifier !== undefined
       ? { codeVerifier: entropy.codeVerifier }
@@ -63,6 +66,13 @@ export async function beginRedirect(
     );
   });
 }
+
+/** The refusals `token` gives a key return that `license/activate` would give the same key. */
+const KEY_RETURN_REFUSALS: ReadonlySet<string> = new Set([
+  ErrorCode.deviceLimit,
+  ErrorCode.keyEntryLimit,
+  ErrorCode.licenseOwned,
+]);
 
 export interface RedeemInput {
   pending: RedirectPending;
@@ -85,7 +95,11 @@ export interface RedeemInput {
  */
 export async function redeemCallback(
   input: RedeemInput,
-): Promise<SignInOutcome | Extract<TokenAnswer, { kind: "token" }>> {
+): Promise<
+  | SignInOutcome
+  | Extract<TokenAnswer, { kind: "token" }>
+  | Extract<TokenAnswer, { kind: "activated" }>
+> {
   const { pending } = input;
   const checked = checkCallback(pending, input.callbackUrl);
   if (checked.kind === "cancelled") return { kind: "cancelled" };
@@ -116,7 +130,9 @@ export async function redeemCallback(
     .text()
     .then((t) => JSON.parse(t) as unknown)
     .catch(() => null);
-  const answer = parseTokenAnswer(res.status, body);
+  const answer = parseTokenAnswer(res.status, body, {
+    keyReturn: pending.keyReturn === true,
+  });
   switch (answer.kind) {
     case "malformed":
       throw new PolarisError(
@@ -145,6 +161,25 @@ export async function redeemCallback(
         {
           status: answer.status,
           ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
+          // A key return is redeemed as `license/activate` would bind it, so its refusals are
+          // the activation refusals: `device_limit` (limit, deviceCount, manageUrl),
+          // `key_entry_limit` (keyEntries, manageUrl) and `license_owned` (signInUrl) reach the
+          // gate's refusal steps as a typed `activation`, as a key typed into the gate does.
+          ...(pending.keyReturn === true &&
+          !server &&
+          KEY_RETURN_REFUSALS.has(answer.error)
+            ? {
+                activation: classifyActivation(
+                  answer.status,
+                  { error: answer.error, ...answer.details },
+                  res.headers.get("retry-after"),
+                ),
+              }
+            : {}),
+          ...(answer.details?.manageUrl !== undefined &&
+          isManageUrl(answer.details.manageUrl)
+            ? { manageUrl: answer.details.manageUrl }
+            : {}),
         },
       );
     }
@@ -156,6 +191,7 @@ export async function redeemCallback(
         choices: answer.choices,
       };
     case "token":
+    case "activated":
       return answer;
   }
 }

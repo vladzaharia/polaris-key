@@ -2290,7 +2290,7 @@ export class BearerSession {
    * `sign-in-failed`, nothing sent), then POSTs the form body to the token endpoint.
    * `error=access_denied` is `cancelled`; any other callback error is `sign-in-failed`; the
    * Worker's refusal is thrown under its own code (`invalid_grant`, `rate_limited` with
-   * `retryAfterSeconds`, …) and changes nothing. Only `signedIn` stores a token (and syncs).
+   * `retryAfterSeconds`, …) and changes nothing. Only `signedIn` and `activated` store a token (and sync).
    */
   async redeemRedirect(
     pending: RedirectPending,
@@ -2309,14 +2309,30 @@ export class BearerSession {
       now: this.now(),
       held: { token: this.token, baseUrl: this.opts.baseUrl },
     });
-    if (answer.kind !== "token") return answer;
-    await this.setToken(answer.accessToken, "signin");
-    await this.syncAfterSignIn();
-    this.subjectValue = answer.subject;
+    // The cancelled and choose outcomes carry no token; the token answers do.
+    if (!("accessToken" in answer)) return answer;
     const licenseId =
       answer.license && typeof answer.license.id === "string"
         ? answer.license.id
         : null;
+    if (answer.kind === "activated") {
+      // A key return (LK-SKIP, §12.5 rule 3): the device is bound on the key's license with no
+      // account, as `activate(key)` leaves it. The token is a key activation (provenance "key",
+      // re-acquired by `license/token`), never a sign-in, and the account the device held, if
+      // any, is gone (U-02).
+      await this.setToken(answer.accessToken, "activate");
+      await this.syncAfterSignIn();
+      this.subjectValue = null;
+      return {
+        kind: "activated",
+        subject: null,
+        activation: { licenseId },
+        keyEntries: answer.keyEntries,
+      };
+    }
+    await this.setToken(answer.accessToken, "signin");
+    await this.syncAfterSignIn();
+    this.subjectValue = answer.subject;
     return {
       kind: "signedIn",
       subject: answer.subject,
