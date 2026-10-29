@@ -556,6 +556,33 @@ final class SyncKeyringTests: XCTestCase {
         XCTAssertFalse(server.requestLog().contains { $0.hasPrefix("GET /recovery") }, "no recovery code was needed")
     }
 
+    func testABackupUnlockDepositsTheDevicesOwnWrapAndTheNextStartNeedsNoBackup() async throws {
+        let icloud = FakeICloud()
+        let server = RingServer()
+        let a = try await device("a", server: server, backup: .custom(icloud), subject: subjectA)
+        let made = try await a.keyring.create()
+        let b = try await device("b", server: server, backup: .custom(icloud), subject: subjectA)
+        let got = try await b.keyring.unlock()
+        XCTAssertEqual(got, .unlocked(ringId: made.ringId, epoch: 1))
+        XCTAssertTrue(server.requestLog().contains("PUT /wraps/dev_b"), "b stored its own wrap")
+        // With the backup gone and the local root dropped, b's own wrap still opens the ring.
+        try await b.keyring.forget()
+        try icloud.remove(subject: subjectA, ringId: made.ringId)
+        let again = try await b.keyring.unlock()
+        XCTAssertEqual(again, .unlocked(ringId: made.ringId, epoch: 1))
+    }
+
+    func testABackupUnlockWhereTheWrapStandsDepositsNothing() async throws {
+        let icloud = FakeICloud()
+        let server = RingServer()
+        let a = try await device("a", server: server, backup: .custom(icloud), subject: subjectA)
+        let made = try await a.keyring.create()
+        try await a.keyring.forget()
+        let got = try await a.keyring.unlock()
+        XCTAssertEqual(got, .unlocked(ringId: made.ringId, epoch: 1))
+        XCTAssertFalse(server.requestLog().contains("PUT /wraps/dev_a"), "the wrap from create() stands")
+    }
+
     func testABackupThatIsNotTheServedRingsRootIsIgnored() async throws {
         let icloud = FakeICloud()
         let server = RingServer()

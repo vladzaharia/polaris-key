@@ -21,7 +21,8 @@
 //  - iCloud Keychain backup (U-39.5, R-11): the same root also goes into `PlatformBackupStore`
 //    (synchronizable; service `pkey-sync:<product>`, account `<subject>:<ringId>`), written when the
 //    ring is created, reset, recovered or unlocked. A new device with no local root reads it, once
-//    it matches the served ring's `kid`, as a silent rung before the recovery code is asked for.
+//    it matches the served ring's `kid`, as a silent rung before the recovery code is asked for, and
+//    then deposits its own server wrap like `recover()` does (best effort).
 //    Sign-out (`forget()`) keeps the item, because deleting a synchronizable item deletes it on
 //    every device of the Apple ID. Only `reset()` (which removes the old ring's item), `deleteBackup()`
 //    (account deletion) and the person's own Keychain remove it. A backup that cannot be read or
@@ -579,6 +580,11 @@ public actor SyncKeyring: CustomReflectable {
         // code is asked for. It must match the served ring's `kid`, like any other root.
         if let backed = backedUpRoot(matching: served) {
             try await hold(backed, store: true, gen: gen)
+            // Like `recover()`: the device now holds the root, so it stores its own wrap and the next
+            // start no longer depends on the backup. Best effort; a device whose current wrap
+            // already stands has nothing to deposit.
+            let current = state.wrap.map { $0.kid == ring.rootKid && $0.epoch == ring.epoch } ?? false
+            if !current { _ = await depositOwnWrap() }
             return .unlocked(ringId: ring.ringId, epoch: ring.epoch)
         }
         guard let wrap = state.wrap else { return .locked(reason: .noWrap) }
@@ -844,7 +850,8 @@ public actor SyncKeyring: CustomReflectable {
         return SyncCreatedRing(ringId: ringId, epoch: epoch, rootKid: hexOf(kid), recoveryCode: shown)
     }
 
-    /// After a recovery: stores this device's own wrap. Never throws; false when it could not.
+    /// After a recovery or a backup unlock: stores this device's own wrap. Never throws; false when
+    /// it could not.
     private func depositOwnWrap() async -> Bool {
         do {
             try await wrapTo(deviceId: await core.deviceId, agreeKey: try await agreeKey())
