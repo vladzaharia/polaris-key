@@ -20,6 +20,8 @@ export interface StepCtx {
   build: AscBuildDto | null;
   version: AscVersionDto | null;
   open: (i: AscIntent, body?: React.ReactNode) => void;
+  /** Why every write is off for this reader (the Ship write gate), when it is. */
+  gate?: string;
 }
 
 export function StepTitle({
@@ -36,7 +38,8 @@ export function StepTitle({
       <div className="min-w-0 flex-1 basis-56 space-y-1">
         <h2
           id="wizard-step-title"
-          className="text-lg font-semibold text-fg-strong [overflow-wrap:anywhere]"
+          tabIndex={-1}
+          className="text-lg font-semibold text-fg-strong outline-hidden [overflow-wrap:anywhere]"
         >
           {children}
         </h2>

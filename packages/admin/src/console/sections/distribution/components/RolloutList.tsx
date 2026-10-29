@@ -63,6 +63,7 @@ export function RolloutList({
   loading = false,
   onlyOutlets,
   emptyAction,
+  quietStart,
 }: {
   slug: string;
   rollouts: UseQueryResult<RolloutsResponse>;
@@ -82,6 +83,8 @@ export function RolloutList({
   onlyOutlets?: ReadonlySet<string>;
   /** The empty state's one action, when it is not "Start rollout…" (null for none). */
   emptyAction?: React.ReactNode;
+  /** The empty state's Start rollout is an outline button, not the page's primary. */
+  quietStart?: boolean;
 }): React.ReactElement {
   const gate = useWriteGate("ship", slug);
   const store = useReleaseStore(slug);
@@ -343,6 +346,7 @@ export function RolloutList({
                 emptyAction
               ) : (
                 <Button
+                  variant={quietStart ? "outline" : undefined}
                   disabledReason={gate.disabledReason}
                   onClick={() => onStartingChange(true)}
                 >

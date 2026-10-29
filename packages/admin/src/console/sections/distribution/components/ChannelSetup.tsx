@@ -13,6 +13,8 @@ import * as React from "react";
 import { Plus } from "lucide-react";
 import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
+import { ErrorState } from "../../../../ui/ErrorState.js";
+import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Section } from "../../../../ui/Section.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { useConnectors, useCredentials } from "../data.js";
@@ -74,7 +76,7 @@ function ChannelCredentials({
   return (
     <Section
       title="Credentials"
-      description={`The keys Polaris Key signs in to ${channel.label} with.${
+      description={`The keys Polaris Key uses to reach ${channel.label}.${
         shared.length ? ` Also used by ${shared.join(" and ")}.` : ""
       } Values are sent once and never shown again.`}
     >
@@ -129,7 +131,16 @@ export function ChannelStoreControls({
 }: ChannelTabProps): React.ReactElement | null {
   const connectors = useConnectors(slug);
   const store = useReleaseStore(slug);
-  if (!connectors.data) return null;
+  if (connectors.isError && !connectors.data)
+    return (
+      <ErrorState
+        error={connectors.error}
+        onRetry={() => void connectors.refetch()}
+        thing="Store controls"
+        context={{ area: "distribution", thing: "Store controls", read: true }}
+      />
+    );
+  if (!connectors.data) return <Skeleton className="h-32 w-full" />;
   if (connectorsFor(connectors.data.connectors, channel.id).length === 0)
     return null;
   return (

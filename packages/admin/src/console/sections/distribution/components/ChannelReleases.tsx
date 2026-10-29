@@ -114,6 +114,7 @@ export function ChannelReleases({
         onStartingChange={setStarting}
         startInitial={{ deliverable: "app", outlet: first }}
         onlyOutlets={ids}
+        quietStart={channel.id === "app-store"}
         emptyDescription={
           noOutlet
             ? `${channel.label} has no channel set up yet.`

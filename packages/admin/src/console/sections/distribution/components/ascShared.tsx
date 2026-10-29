@@ -44,7 +44,7 @@ export function ascBlocked(c: ConnectorStatusDto | null): string | null {
     return "This product has no App Store Connect connector. Declare an App Store channel in .pkey/distribution.";
   if (c.inert) return c.inert.message.replace(/^\w/, (x) => x.toUpperCase());
   if (!c.configured)
-    return "App Store Connect isn't configured for this product. Set its key in Channel credentials.";
+    return "App Store Connect isn't configured for this product. Its key is set on the channel's Setup tab.";
   return null;
 }
 

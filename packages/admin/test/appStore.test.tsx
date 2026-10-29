@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import { resetConsole } from "./consoleHarness.js";
 import { channel, channels } from "./channelFixture.js";
+import { VIEW_ONLY } from "./credentialsKit.js";
 import {
   ASC_BUILDS,
   ASC_IAP_PRODUCTS,
@@ -66,6 +67,18 @@ async function confirmIn(dialog: HTMLElement, name: string): Promise<void> {
 }
 
 describe("Distribution → App Store: the Distribute flow", () => {
+  it("is read-only without Ship edit: every write is off with its reason", async () => {
+    bootApp(`${APP}?build=b-52&step=compliance`, {
+      "/manage/api/me": VIEW_ONLY,
+    });
+    for (const name of ["Save answer…", "Cancel submission…"])
+      expect(
+        (await screen.findByRole("button", { name })).getAttribute(
+          "aria-disabled",
+        ),
+      ).toBe("true");
+  });
+
   it("lists builds newest first; a processing build can't be chosen", async () => {
     bootApp(APP);
     const group = await screen.findByRole("radiogroup", { name: "Builds" });

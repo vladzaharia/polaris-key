@@ -113,7 +113,7 @@ export function CredentialsPage({
         <PageHeader
           title="Credentials"
           titleAside={
-            creds.data ? (
+            creds.data && rows.length ? (
               <span className="text-sm tabular-nums text-fg-muted">
                 {rows.length}
               </span>
@@ -197,7 +197,7 @@ export function CredentialsPage({
 
       <p className="text-sm text-fg-muted">
         Store controls are on each channel's Setup tab, under{" "}
-        <Link to={r.channels(slug)}>Channels</Link>.{" "}
+        <Link to={r.outlets(slug)}>Channel setup</Link>.{" "}
         <a
           className="py-1 text-accent-fg underline underline-offset-4"
           href={docsUrl("storeConnections")}

@@ -231,7 +231,9 @@ export function ComplianceStep({
           />
           <div className="flex justify-end">
             <Button
-              disabledReason={answer ? undefined : "Choose an answer first."}
+              disabledReason={
+                ctx.gate ?? (answer ? undefined : "Choose an answer first.")
+              }
               onClick={() =>
                 ctx.open({
                   action: "connector.exportCompliance",
@@ -345,7 +347,7 @@ export function NotesStep({
           Add locale
         </Button>
         <Button
-          disabledReason={error ?? undefined}
+          disabledReason={ctx.gate ?? error ?? undefined}
           onClick={() =>
             ctx.open({
               action: "connector.betaNotes",
@@ -466,6 +468,7 @@ export function TestFlightStep({
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-4">
         {external ? (
           <Button
+            disabledReason={ctx.gate}
             variant="outline"
             onClick={() =>
               ctx.open({
@@ -487,7 +490,8 @@ export function TestFlightStep({
         ) : null}
         <Button
           disabledReason={
-            chosen.length ? undefined : "Tick at least one group first."
+            ctx.gate ??
+            (chosen.length ? undefined : "Tick at least one group first.")
           }
           onClick={() =>
             ctx.open({

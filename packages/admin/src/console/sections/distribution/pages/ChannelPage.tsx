@@ -92,10 +92,18 @@ export function ChannelPage({
           }
         />
         <LiveRegion message="Loading channel…" />
-        <div className="flex flex-wrap items-start gap-6" aria-hidden>
-          <Skeleton className="h-40 min-w-0 grow-[999] basis-[32rem]" />
-          <Skeleton className="h-28 grow basis-80" />
-        </div>
+        {/* The selected tab's panel exists while loading, so its aria-controls resolves. */}
+        <TabPanel
+          value={current.value}
+          current={current.value}
+          idPrefix={TAB_PREFIX}
+          className="pt-0"
+        >
+          <div className="flex flex-wrap items-start gap-6" aria-hidden>
+            <Skeleton className="h-40 min-w-0 grow-[999] basis-[32rem]" />
+            <Skeleton className="h-28 grow basis-80" />
+          </div>
+        </TabPanel>
       </div>
     );
   if (channels.error && !channels.data)

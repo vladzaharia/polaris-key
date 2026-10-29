@@ -276,11 +276,12 @@ export function SubmitStep({
         <Button
           variant="danger"
           disabledReason={
-            sent
+            ctx.gate ??
+            (sent
               ? "This version is already with App Review."
               : !version.buildId
                 ? "Attach a build in Version first."
-                : undefined
+                : undefined)
           }
           onClick={() =>
             ctx.open({

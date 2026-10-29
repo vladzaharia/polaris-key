@@ -54,6 +54,7 @@ import {
   TestFlightStep,
 } from "./AscBuildSteps.js";
 import type { StepCtx } from "./AscStepShared.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { patchQuery, useConnectorRead, useConnectors } from "../data.js";
 
 // ── Steps ─────────────────────────────────────────────────────────────────────────────────────
@@ -182,6 +183,7 @@ function DistributeFlow({ slug, asc, appleId }: FlowProps): React.ReactElement {
   const [stepRaw, setStep] = useSearchParam("step", stepCodec);
   const [buildId] = useSearchParam("build", idCodec);
   const [versionId] = useSearchParam("version", idCodec);
+  const gate = useWriteGate("ship", slug);
   const [intent, setIntent] = React.useState<AscIntent | null>(null);
   const [dialog, setDialog] = React.useState<React.ReactNode>(null);
 
@@ -268,11 +270,35 @@ function DistributeFlow({ slug, asc, appleId }: FlowProps): React.ReactElement {
     if (main) main.scrollTop = 0;
   }, [step]);
 
+  // Focus has nowhere to go when the control that held it leaves (Continue into Submit, a closed
+  // confirm whose button is gone): the step's title takes it, never the page (A-22.4 UX).
+  const refocus = React.useCallback(() => {
+    window.setTimeout(() => {
+      const a = document.activeElement;
+      if (!a || a === document.body)
+        document
+          .getElementById("wizard-step-title")
+          ?.focus({ preventScroll: true });
+    }, 120);
+  }, []);
+  const mounted = React.useRef(false);
+  React.useEffect(() => {
+    if (mounted.current) refocus();
+    mounted.current = true;
+  }, [step, refocus]);
+
   const open = (i: AscIntent, body?: React.ReactNode) => {
     setDialog(body ?? null);
     setIntent(i);
   };
-  const ctx: StepCtx = { slug, appleId, build, version, open };
+  const ctx: StepCtx = {
+    slug,
+    appleId,
+    build,
+    version,
+    open,
+    gate: gate.disabledReason,
+  };
 
   const index = DISTRIBUTE_STEPS.indexOf(step);
   const next = DISTRIBUTE_STEPS[index + 1];
@@ -288,86 +314,91 @@ function DistributeFlow({ slug, asc, appleId }: FlowProps): React.ReactElement {
         done={[...done]}
         onStep={(id) => setStep(id as DistributeStep)}
       />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="min-w-0 space-y-6 lg:col-span-2">
-          <section
-            aria-labelledby="wizard-step-title"
-            className="rounded-lg border border-border bg-surface-raised"
-          >
-            {step === "build" ? (
-              <BuildStep
-                ctx={ctx}
-                q={buildsQ}
-                builds={builds}
-                onPick={(id) =>
-                  patchQuery({ build: id, version: null, step: null })
-                }
-              />
-            ) : step === "compliance" && build ? (
-              <ComplianceStep ctx={ctx} build={build} />
-            ) : step === "notes" && build ? (
-              <NotesStep
-                ctx={ctx}
-                build={build}
-                notes={notes}
-                setNotes={setNotes}
-              />
-            ) : step === "testflight" && build ? (
-              <TestFlightStep
-                ctx={ctx}
-                build={build}
-                groups={groupsQ.data?.betaGroups}
-                groupsQ={groupsQ}
-              />
-            ) : step === "version" && build ? (
-              <VersionStep
-                ctx={ctx}
-                build={build}
-                versions={versions}
-                notes={notes}
-                onChoose={(id) => patchQuery({ version: id })}
-              />
-            ) : step === "preflight" && version ? (
-              <PreflightStep ctx={ctx} version={version} />
-            ) : step === "submit" && version ? (
-              <SubmitStep ctx={ctx} version={version} sent={sentForReview} />
-            ) : (
-              <div className="p-5">
-                <Skeleton className="h-40 w-full" />
-              </div>
-            )}
-          </section>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-            {prev ? (
-              <Button
-                variant="outline"
-                iconStart={<ArrowLeft aria-hidden />}
-                onClick={() => setStep(prev)}
-              >
-                Back
-              </Button>
-            ) : null}
-            {next ? (
-              <Button
-                iconEnd={<ArrowRight aria-hidden />}
-                disabledReason={nextBlocked ? CONTINUE_REASON[step] : undefined}
-                onClick={() => setStep(next)}
-              >
-                Continue
-              </Button>
-            ) : null}
+      <div className="@container">
+        <div className="grid grid-cols-1 gap-6 @3xl:grid-cols-3">
+          <div className="min-w-0 space-y-6 @3xl:col-span-2">
+            <section
+              aria-labelledby="wizard-step-title"
+              className="rounded-lg border border-border bg-surface-raised"
+            >
+              {step === "build" ? (
+                <BuildStep
+                  ctx={ctx}
+                  q={buildsQ}
+                  builds={builds}
+                  onPick={(id) =>
+                    patchQuery({ build: id, version: null, step: null })
+                  }
+                />
+              ) : step === "compliance" && build ? (
+                <ComplianceStep ctx={ctx} build={build} />
+              ) : step === "notes" && build ? (
+                <NotesStep
+                  ctx={ctx}
+                  build={build}
+                  notes={notes}
+                  setNotes={setNotes}
+                />
+              ) : step === "testflight" && build ? (
+                <TestFlightStep
+                  ctx={ctx}
+                  build={build}
+                  groups={groupsQ.data?.betaGroups}
+                  groupsQ={groupsQ}
+                />
+              ) : step === "version" && build ? (
+                <VersionStep
+                  ctx={ctx}
+                  build={build}
+                  versions={versions}
+                  notes={notes}
+                  onChoose={(id) => patchQuery({ version: id })}
+                />
+              ) : step === "preflight" && version ? (
+                <PreflightStep ctx={ctx} version={version} />
+              ) : step === "submit" && version ? (
+                <SubmitStep ctx={ctx} version={version} sent={sentForReview} />
+              ) : (
+                <div className="p-5">
+                  <Skeleton className="h-40 w-full" />
+                </div>
+              )}
+            </section>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+              {prev ? (
+                <Button
+                  variant="outline"
+                  iconStart={<ArrowLeft aria-hidden />}
+                  onClick={() => setStep(prev)}
+                >
+                  Back
+                </Button>
+              ) : null}
+              {next ? (
+                <Button
+                  iconEnd={<ArrowRight aria-hidden />}
+                  disabledReason={
+                    nextBlocked ? CONTINUE_REASON[step] : undefined
+                  }
+                  onClick={() => setStep(next)}
+                >
+                  Continue
+                </Button>
+              ) : null}
+            </div>
           </div>
+          <StoreState
+            slug={slug}
+            appleId={appleId}
+            asc={asc}
+            versions={versions}
+            submissions={submissions}
+            builds={builds}
+            versionsQ={versionsQ}
+            open={open}
+            gate={gate.disabledReason}
+          />
         </div>
-        <StoreState
-          slug={slug}
-          appleId={appleId}
-          asc={asc}
-          versions={versions}
-          submissions={submissions}
-          builds={builds}
-          versionsQ={versionsQ}
-          open={open}
-        />
       </div>
       <AscActionDialog
         slug={slug}
@@ -375,6 +406,7 @@ function DistributeFlow({ slug, asc, appleId }: FlowProps): React.ReactElement {
         onClose={() => {
           setIntent(null);
           setDialog(null);
+          refocus();
         }}
       >
         {dialog}

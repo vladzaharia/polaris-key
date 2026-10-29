@@ -123,7 +123,10 @@ describe("nav requirements (A-20.7)", () => {
       ALL_ON,
       navFeaturesOf({ channels: IOS, platforms: PLATFORMS } as never),
     ).map((i) => i.href);
-    expect(on).not.toContain("#/p/djdl/distribution/app-store");
+    expect(on).toContain("#/p/djdl/distribution/channels/app-store/releases");
+    expect(hrefs).not.toContain(
+      "#/p/djdl/distribution/channels/app-store/releases",
+    );
   });
 });
 
@@ -252,7 +255,7 @@ describe("Direct links, the add flow and the credentials page (A-20.7)", () => {
   it("the old App Store address opens the App Store channel's Releases (A-22.4)", async () => {
     bootWith("#/p/djdl/distribution/app-store?step=notes", PRODUCT(WINDOWS));
     await screen.findByRole("heading", { level: 2, name: /moved to/ });
-    const go = screen.getByRole("link", { name: /Open channel app-store/ });
+    const go = screen.getByRole("link", { name: /Open App Store releases/ });
     expect(go.getAttribute("href")).toBe(
       "#/p/djdl/distribution/channels/app-store/releases?step=notes",
     );

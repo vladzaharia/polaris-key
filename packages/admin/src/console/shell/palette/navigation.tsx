@@ -15,7 +15,7 @@ import {
   type ServiceState,
 } from "../../nav.js";
 import { landingPage } from "../../access/can.js";
-import { globalPage, productPage } from "../../routes.js";
+import { globalPage, navHref, productPage } from "../../routes.js";
 import type { ProductLike } from "../bits.js";
 import { filterItems } from "./rank.js";
 import type { LinkPaletteItem, PaletteSource } from "./types.js";
@@ -54,7 +54,7 @@ export function productPageRows(
       keywords: `${words} ${slug}${across ? ` ${name}` : ""}${hub ? " settings" : ""}${p.paletteLabel ? ` ${p.label}` : ""}${p.keywords ? ` ${p.keywords}` : ""}`,
       icon: <Icon aria-hidden className="size-4" />,
       shortcut: !across && p.shortcut ? `g ${p.shortcut}` : undefined,
-      href: productPage(slug, p.page as ProductPageId),
+      href: navHref(slug, p),
       // A settings tab is found by typing it, not listed untyped.
       ...(hub || across ? { matchOnly: true } : {}),
     };

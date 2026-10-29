@@ -231,7 +231,11 @@ describe("Distribution → Channel credentials", () => {
     expect(
       screen.queryByRole("region", { name: "App Store Connect" }),
     ).toBeNull();
-    expect(screen.getByRole("link", { name: "Channels" })).toBeTruthy();
+    expect(
+      within(screen.getByRole("main")).getByRole("link", {
+        name: "Channel setup",
+      }),
+    ).toBeTruthy();
   });
 
   it("explains credentials when there are none, and shows errors with Retry", async () => {

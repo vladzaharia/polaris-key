@@ -212,6 +212,23 @@ describe("Distribution → a channel: the tablist", () => {
   });
 });
 
+describe("Distribution → a channel: loading", () => {
+  it("the selected tab's panel exists while the channels load", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    bootWith(`${H}/google-play/releases`, {
+      [P("/distribution/channels")]: async () => {
+        await gate;
+        return view(row({ id: "google-play", label: "Google Play" }));
+      },
+    });
+    const tab = await screen.findByRole("tab", { selected: true });
+    const id = tab.getAttribute("aria-controls")!;
+    expect(document.getElementById(id)).not.toBeNull();
+    release();
+  });
+});
+
 describe("Distribution → a channel: unknown and out of scope", () => {
   it("an id the catalogue does not know is not found, and never reads the channels", async () => {
     const { calls } = boot(`${H}/no-such-store`, [row()]);

@@ -54,7 +54,9 @@ export function ConnectorGrid({
       </p>
     );
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div
+      className={shown.length > 1 ? "grid gap-4 lg:grid-cols-2" : "grid gap-4"}
+    >
       {shown.map((c) => (
         <ConnectorCard
           key={c.kind}

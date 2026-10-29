@@ -37,7 +37,9 @@ import { Select } from "../../../../ui/Select.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Switch } from "../../../../ui/Switch.js";
 import { toast } from "../../../../ui/toast.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { mutate } from "../../../data/mutations.js";
+import { useCredentials } from "../data.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 
@@ -446,35 +448,32 @@ export function ConnectorCard({
     playSettingsOf(connector),
   );
   const blocked = connectorBlocked(connector);
+  const ship = useWriteGate("ship", slug);
+  const creds = useCredentials(slug);
   const has = (c: string) => connector.controls.includes(c);
-  const tone = blocked ? (connector.inert ? "warning" : "neutral") : "success";
+  // A held key whose last use failed is not "Connected" (A-22.3b UX).
+  const keyId =
+    connector.setup?.apiKeyCredential ?? connector.setup?.credential;
+  const failing =
+    !blocked &&
+    creds.data?.credentials.some((c) => c.id === keyId && c.lastError);
+  const tone = blocked
+    ? connector.inert
+      ? "warning"
+      : "neutral"
+    : failing
+      ? "warning"
+      : "success";
   const state = connector.inert
     ? `Not running: ${inertWords(connector.inert.reason)}`
-    : connector.configured
-      ? "Connected"
-      : "Not configured";
+    : failing
+      ? "Key check failed"
+      : connector.configured
+        ? "Connected"
+        : "Not configured";
 
   const actions: { label: string; open: () => void }[] = [];
   if (connector.kind === "asc") {
-    if (has("release"))
-      actions.push({
-        label: "Release this version…",
-        open: () => {
-          setAppName("");
-          setPending({
-            action: "connector.releaseVersion",
-            control: "release",
-            title: "Release a held version on the App Store?",
-            consequences: [
-              "The version waiting for developer release goes live on the App Store.",
-              "App Store Connect cannot take a release back.",
-            ],
-            confirmLabel: "Release version",
-            body: {},
-            done: "Released the version on the App Store",
-          });
-        },
-      });
     if (has("testflight/public-link"))
       actions.push({
         label: "TestFlight public link…",
@@ -625,7 +624,7 @@ export function ConnectorCard({
               key={a.label}
               size="sm"
               variant="outline"
-              disabledReason={blocked ?? undefined}
+              disabledReason={blocked ?? ship.disabledReason}
               onClick={a.open}
             >
               {a.label}

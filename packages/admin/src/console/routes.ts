@@ -349,6 +349,13 @@ function productHref(
   return `${path}${recordSuffix(p, opts)}${suffix}`;
 }
 
+/** A nav row's address: its record shortcut (`NavPage.entry`) when it has one, else the page. */
+export function navHref(slug: string, p: NavPage): string {
+  return p.entry
+    ? productPage(slug, p.page as ProductPageId, p.entry)
+    : productPage(slug, p.page as ProductPageId);
+}
+
 /** The canonical hash for a route. `parseLocation(hrefFor(r))` round-trips every built route. */
 export function hrefFor(route: Route): string {
   const suffix = queryString(route.query);
