@@ -355,6 +355,9 @@ enum SwiftReplay {
                     if let id = $0.googleServerClientId {
                         o["google"] = .object(["serverClientId": .string(id)])
                     }
+                    if let id = $0.pgsServerClientId {
+                        o["pgs"] = .object(["serverClientId": .string(id)])
+                    }
                     return .object(o)
                 } ?? .null
             out["nonceEndpoint"] = .bool(!(identity?.nonce ?? "").isEmpty)
