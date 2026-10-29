@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature connect.identity
+# @pkey-feature connect.identity connect.noise
 # The Cloud Connect suite (CC-14, D-10): one runner for tests/connect/*.gd. Each file is a group with
 # `func run(t: PKeyTestContext) -> void` (it may await). Later slices add files only, so the runner
 # line in tests/runner.gd never changes again. An extra argument names the groups to run
