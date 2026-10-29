@@ -2,8 +2,9 @@
 // [lanVerdict] (CC-IPV6.5b). Mirrors sdk-node's `connect/lanJudge.ts`:
 //  - the address TEXT is judged before a socket is opened, and the connected socket again (its remote
 //    and its own local address) before its first byte, on a dial and on an accept;
-//  - the pre-handshake limiter counts per address (4), per /64 (16) and in total (32); a link-local key
-//    carries its zone, because the same fe80 address on two links is two hosts.
+//  - the pre-handshake limiter counts per address (4), per group (16) and in total (32); the group is
+//    the link for a link-local address (`fe80::/10%zone`: the same fe80 address on two links is two
+//    hosts), the /24 for IPv4 and the /64 for any other IPv6 address (section 15.4.1).
 
 package im.plrs.key.core.peer.lan
 
@@ -13,7 +14,7 @@ public const val LAN_MAX_PENDING: Int = 32
 /** Unauthenticated sockets per source address (G7). */
 public const val LAN_MAX_PENDING_PER_ADDRESS: Int = 4
 
-/** Unauthenticated sockets per source /64 (section 15.4.1). */
+/** Unauthenticated sockets per source group: a link, an IPv4 /24 or an IPv6 /64 (section 15.4.1). */
 public const val LAN_MAX_PENDING_PER_GROUP: Int = 16
 
 private val REFUSED = LanVerdict(false, null)

@@ -67,10 +67,16 @@ class LanAddressTest {
     fun theKeysCarryTheZoneOnlyForLinkLocalAddresses() {
         assertEquals("fe80::1%en0", dial("FE80:0:0:0:0:0:0:1%en0").key)
         assertEquals("fd12::7", dial("fd12::7%en0").key)
-        assertEquals("fe80::/64%en0", lanGroupKey("fe80::1%en0"))
-        assertEquals("fe80::/64%en1", lanGroupKey("fe80::1%en1"))
+        // The group of a link-local address is its link; every /64 of fe80::/10 on a link is one group.
+        assertEquals("fe80::/10%en0", lanGroupKey("fe80::1%en0"))
+        assertEquals("fe80::/10%en0", lanGroupKey("fe80:0:0:1::9%en0"))
+        assertEquals("fe80::/10%en1", lanGroupKey("fe80::1%en1"))
+        assertEquals("fe80::/10", lanGroupKey("fe80::1"))
         assertEquals("2001:db8:1:2::/64", lanGroupKey("2001:db8:1:2::9"))
-        assertNull(lanGroupKey("10.0.0.1"))
+        assertEquals("fd12:0:0:5::/64", lanGroupKey("fd12:0:0:5::9"))
+        assertEquals("10.0.0.0/24", lanGroupKey("10.0.0.1"))
+        assertEquals("192.168.1.0/24", lanGroupKey("192.168.1.250"))
+        assertEquals("10.0.1.0/24", lanGroupKey("10.0.1.1"))
         assertNull(lanGroupKey(null))
     }
 
