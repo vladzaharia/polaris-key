@@ -1,17 +1,50 @@
 {
   "_": "States where the React and elements baselines differ today. Each is a finding, not a pass: pnpm ui:report fails on any other drift and on an entry that no longer differs, so this list only shrinks.",
   "states": {
-    "PolarisKeyGate.booting": {
-      "reason": "The looping shimmer is caught at a different frame: one 390 dark render differs by 0.11 %.",
-      "maxRatio": 0.005
+    "ActivateDone.ready": {
+      "reason": "UK-42 finding, not yet reconciled: the React and elements kits draw this holder state differently. Measured by ui:report: 5 to 10 % of pixels at both sizes."
+    },
+    "AddToAccount.added": {
+      "reason": "UK-42 finding, not yet reconciled: the React and elements kits draw this holder state differently. Measured by ui:report: up to 31 % of pixels. On .form at 1440 React draws two panes and elements a centred card; at 390 the helper text under Email is a different size."
+    },
+    "AddToAccount.busy": {
+      "reason": "UK-42 finding, not yet reconciled: the React and elements kits draw this holder state differently. Measured by ui:report: up to 31 % of pixels. On .form at 1440 React draws two panes and elements a centred card; at 390 the helper text under Email is a different size."
+    },
+    "AddToAccount.email-bound": {
+      "reason": "UK-42 finding, not yet reconciled: the React and elements kits draw this holder state differently. Measured by ui:report: up to 31 % of pixels. On .form at 1440 React draws two panes and elements a centred card; at 390 the helper text under Email is a different size."
+    },
+    "AddToAccount.failed": {
+      "reason": "UK-42 finding, not yet reconciled: the React and elements kits draw this holder state differently. Measured by ui:report: up to 31 % of pixels. On .form at 1440 React draws two panes and elements a centred card; at 390 the helper text under Email is a different size."
+    },
+    "AddToAccount.form": {
+      "reason": "UK-42 finding, not yet reconciled: the React and elements kits draw this holder state differently. Measured by ui:report: up to 31 % of pixels. On .form at 1440 React draws two panes and elements a centred card; at 390 the helper text under Email is a different size."
+    },
+    "AddToAccount.invalid": {
+      "reason": "UK-42 finding, not yet reconciled: the React and elements kits draw this holder state differently. Measured by ui:report: up to 31 % of pixels. On .form at 1440 React draws two panes and elements a centred card; at 390 the helper text under Email is a different size."
+    },
+    "AddToAccount.owned": {
+      "reason": "UK-42 finding, not yet reconciled: the React and elements kits draw this holder state differently. Measured by ui:report: up to 31 % of pixels. On .form at 1440 React draws two panes and elements a centred card; at 390 the helper text under Email is a different size."
     },
     "Paywall.purchasing": {
       "reason": "The busy spinner is caught at a different frame: one 390 render differs by 0.102 %.",
       "maxRatio": 0.0015
     },
+    "PolarisKeyGate.booting": {
+      "reason": "The looping shimmer is caught at a different frame: one 390 dark render differs by 0.11 %.",
+      "maxRatio": 0.005
+    },
+    "SignIn.added": {
+      "reason": "UK-42 finding, not yet reconciled: the React and elements kits draw this holder state differently. Measured by ui:report: under 0.4 % of pixels."
+    },
+    "SignIn.attach": {
+      "reason": "UK-42 finding, not yet reconciled: the React and elements kits draw this holder state differently. Measured by ui:report: about 2.5 to 3 % of pixels."
+    },
     "SignIn.code": {
       "reason": "The waiting indicator is caught at a different frame: the narrow Windows and GNOME renders (390, 480x640) differ by 0.11 to 0.14 %.",
       "maxRatio": 0.002
+    },
+    "SignIn.key-done": {
+      "reason": "UK-42 finding, not yet reconciled: the React and elements kits draw this holder state differently. Measured by ui:report: about 10 % of pixels at 390, up to 33 % at 1440."
     }
   }
 }
