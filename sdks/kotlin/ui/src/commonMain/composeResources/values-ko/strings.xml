@@ -2716,6 +2716,50 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_nearby_permission_denied_message">이 앱이 로컬 네트워크의 기기에 접근할 수 없습니다. 시스템 설정에서 허용해 주세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_unsupported_title">근처 기기 로그인을 사용할 수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_unsupported_message">이 기기에서는 근처 기기를 찾을 수 없습니다.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_handshake_failed_title">보안 연결에 실패함</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_handshake_failed_message">근처 기기와 보안 연결을 설정할 수 없습니다. 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_closed_title">연결이 종료됨</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_closed_message">근처 기기와의 연결이 종료되었습니다. 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_revoked_title">더 이상 신뢰할 수 없는 기기</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_revoked_message">상대 기기가 계정에서 제거되었습니다. 공유된 내용은 없습니다.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_expired_title">기기 인증서 만료</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_expired_message">상대 기기의 인증서가 만료되었습니다. 새로 고치고 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bad_frame_title">연결 오류</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bad_frame_message">근처 기기가 예상치 못한 데이터를 보냈습니다. 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_unknown_critical_title">지원하지 않는 요청</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_unknown_critical_message">근처 기기가 이 앱에서 지원하지 않는 것을 요청했습니다. 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_not_allowed_title">여기서는 허용되지 않음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_not_allowed_message">근처 기기가 이 단계에서 허용되지 않는 것을 요청했습니다. 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_busy_title">근처 기기가 사용 중</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_busy_message">열려 있는 연결이 너무 많습니다. 잠시 후 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_timeout_title">연결 시간 초과</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_timeout_message">근처 기기가 제때 응답하지 않았습니다. 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bye_title">연결이 닫힘</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bye_message">근처 기기가 연결을 종료했습니다.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">플랫폼 문제</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_message">플랫폼에서 오류를 보고했어요. 다시 시도하세요.</string>

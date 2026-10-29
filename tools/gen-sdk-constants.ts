@@ -94,8 +94,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** `wire`: in a Worker response body. `client`: raised only by an SDK. `backend`: answered by an
  *  SDK's server core to an app's request to its own backend (WIRE-CONTRACT-V4 §14, SP-53); the
- *  Worker scan neither requires one nor allows the Worker to emit one. */
-export type ErrorKind = "wire" | "client" | "backend";
+ *  Worker scan neither requires one nor allows the Worker to emit one. `peer`: a close code of a
+ *  device-to-device session (WIRE-CONTRACT-V5 §15.6), carried in a peer close frame and never in
+ *  an HTTP body; the Worker scan neither requires one nor allows the Worker to emit one. */
+export type ErrorKind = "wire" | "client" | "backend" | "peer";
 
 export interface ErrorEntry {
   code: string;
@@ -453,7 +455,7 @@ export function scanWorkerSource(src: WorkerSource): ScannedCodes {
 }
 
 /** errors.json against the scan: wire codes it lacks, `wire` entries nothing emits, and any
- *  `client` or `backend` code the Worker emits. A `backend` entry is never required to be
+ *  `client`, `backend` or `peer` code the Worker emits. A `backend` entry is never required to be
  *  emitted: SDK server cores answer it, never the Worker (WIRE-CONTRACT-V4 §14). */
 export function checkCoverage(
   errors: readonly ErrorEntry[],
@@ -474,6 +476,10 @@ export function checkCoverage(
     } else if (entry.kind === "backend") {
       problems.push(
         `"${code}" is emitted by the Worker (${where[0]}) but errors.json marks it kind "backend" — a backend code is answered only by an SDK's server core (WIRE-CONTRACT-V4 §14); give the Worker its own code`,
+      );
+    } else if (entry.kind === "peer") {
+      problems.push(
+        `"${code}" is emitted by the Worker (${where[0]}) but errors.json marks it kind "peer" — a peer code is a device-to-device close code (WIRE-CONTRACT-V5 §15.6); the Worker never emits one, so give it its own code`,
       );
     } else if (entry.kind !== "wire") {
       problems.push(
@@ -1381,7 +1387,7 @@ export const ${valuesName(g)}: readonly ${g.name}[] = [${g.members.map((m) => q(
 `);
     if (g.name === "ErrorCode") {
       out.push(`/** \`wire\`: appears in a Worker response body. \`client\`: raised only by an SDK. \`backend\`: answered by an SDK's server core to an app's request to its own backend (WIRE-CONTRACT-V4 §14). */
-export type ErrorCodeKind = "wire" | "client" | "backend";
+export type ErrorCodeKind = "wire" | "client" | "backend" | "peer";
 
 /** The registry: every error code and its kind. */
 export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {

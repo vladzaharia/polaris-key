@@ -601,6 +601,50 @@
       "title": "Lokales Netzwerk gesperrt",
       "message": "Diese App kann keine Geräte in Ihrem lokalen Netzwerk erreichen. Erlauben Sie es in den Systemeinstellungen."
     },
+    "nearby-unsupported": {
+      "title": "Anmeldung in der Nähe nicht verfügbar",
+      "message": "Dieses Gerät kann hier nicht nach Geräten in der Nähe suchen."
+    },
+    "peer-handshake-failed": {
+      "title": "Sichere Verbindung fehlgeschlagen",
+      "message": "Eine sichere Verbindung zum Gerät in der Nähe konnte nicht hergestellt werden. Versuchen Sie es erneut."
+    },
+    "peer-closed": {
+      "title": "Verbindung beendet",
+      "message": "Die Verbindung zum Gerät in der Nähe wurde beendet. Versuchen Sie es erneut."
+    },
+    "peer_revoked": {
+      "title": "Gerät nicht mehr vertrauenswürdig",
+      "message": "Das andere Gerät wurde aus dem Konto entfernt. Es wurde nichts geteilt."
+    },
+    "peer_expired": {
+      "title": "Gerätezertifikat abgelaufen",
+      "message": "Das Zertifikat des anderen Geräts ist abgelaufen. Aktualisieren Sie und versuchen Sie es erneut."
+    },
+    "peer_bad_frame": {
+      "title": "Verbindungsfehler",
+      "message": "Das Gerät in der Nähe hat etwas Unerwartetes gesendet. Versuchen Sie es erneut."
+    },
+    "peer_unknown_critical": {
+      "title": "Nicht unterstützte Anfrage",
+      "message": "Das Gerät in der Nähe hat etwas angefordert, das diese App nicht unterstützt. Versuchen Sie es erneut."
+    },
+    "peer_not_allowed": {
+      "title": "Hier nicht erlaubt",
+      "message": "Das Gerät in der Nähe hat etwas angefordert, das in diesem Schritt nicht erlaubt ist. Versuchen Sie es erneut."
+    },
+    "peer_busy": {
+      "title": "Gerät in der Nähe ausgelastet",
+      "message": "Zu viele Verbindungen sind offen. Versuchen Sie es gleich noch einmal."
+    },
+    "peer_timeout": {
+      "title": "Zeitüberschreitung",
+      "message": "Das Gerät in der Nähe hat nicht rechtzeitig geantwortet. Versuchen Sie es erneut."
+    },
+    "peer_bye": {
+      "title": "Verbindung geschlossen",
+      "message": "Das Gerät in der Nähe hat die Verbindung beendet."
+    },
     "platform-error": {
       "title": "Plattformproblem",
       "message": "Die Plattform hat einen Fehler gemeldet. Versuchen Sie es erneut."

@@ -601,6 +601,50 @@
       "title": "Rete locale bloccata",
       "message": "Questa app non può raggiungere i dispositivi sulla tua rete locale. Consentilo nelle impostazioni di sistema."
     },
+    "nearby-unsupported": {
+      "title": "Accesso nelle vicinanze non disponibile",
+      "message": "Questo dispositivo non può cercare dispositivi nelle vicinanze qui."
+    },
+    "peer-handshake-failed": {
+      "title": "Connessione sicura non riuscita",
+      "message": "Impossibile stabilire una connessione sicura con il dispositivo nelle vicinanze. Riprova."
+    },
+    "peer-closed": {
+      "title": "Connessione terminata",
+      "message": "La connessione con il dispositivo nelle vicinanze è terminata. Riprova."
+    },
+    "peer_revoked": {
+      "title": "Dispositivo non più attendibile",
+      "message": "L'altro dispositivo è stato rimosso dall'account. Non è stato condiviso nulla."
+    },
+    "peer_expired": {
+      "title": "Certificato del dispositivo scaduto",
+      "message": "Il certificato dell'altro dispositivo è scaduto. Aggiorna e riprova."
+    },
+    "peer_bad_frame": {
+      "title": "Errore di connessione",
+      "message": "Il dispositivo nelle vicinanze ha inviato qualcosa di inatteso. Riprova."
+    },
+    "peer_unknown_critical": {
+      "title": "Richiesta non supportata",
+      "message": "Il dispositivo nelle vicinanze ha chiesto qualcosa che questa app non supporta. Riprova."
+    },
+    "peer_not_allowed": {
+      "title": "Non consentito qui",
+      "message": "Il dispositivo nelle vicinanze ha chiesto qualcosa che non è consentito in questo passaggio. Riprova."
+    },
+    "peer_busy": {
+      "title": "Dispositivo nelle vicinanze occupato",
+      "message": "Ci sono troppe connessioni aperte. Riprova tra un momento."
+    },
+    "peer_timeout": {
+      "title": "Connessione scaduta",
+      "message": "Il dispositivo nelle vicinanze non ha risposto in tempo. Riprova."
+    },
+    "peer_bye": {
+      "title": "Connessione chiusa",
+      "message": "Il dispositivo nelle vicinanze ha terminato la connessione."
+    },
     "platform-error": {
       "title": "Problema della piattaforma",
       "message": "La piattaforma ha segnalato un errore. Riprova."

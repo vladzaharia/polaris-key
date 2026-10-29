@@ -7148,6 +7148,116 @@ msgstr "ローカルネットワークがブロックされています"
 msgid "core.codes.nearby-permission-denied.message"
 msgstr "このアプリはローカルネットワーク上のデバイスにアクセスできません。システム設定で許可してください。"
 
+#. Nearby sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-unsupported.title"
+msgstr "近くのデバイスでのサインインは利用できません"
+
+#. This device can't look for nearby devices here.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-unsupported.message"
+msgstr "このデバイスでは、ここで近くのデバイスを探せません。"
+
+#. Couldn't connect securely
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-handshake-failed.title"
+msgstr "安全に接続できませんでした"
+
+#. A secure connection to the nearby device couldn't be set up. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-handshake-failed.message"
+msgstr "近くのデバイスとの安全な接続を確立できませんでした。もう一度お試しください。"
+
+#. Connection ended
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-closed.title"
+msgstr "接続が終了しました"
+
+#. The connection to the nearby device ended. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-closed.message"
+msgstr "近くのデバイスとの接続が終了しました。もう一度お試しください。"
+
+#. Device no longer trusted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_revoked.title"
+msgstr "デバイスは信頼されなくなりました"
+
+#. The other device was removed from the account. Nothing was shared.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_revoked.message"
+msgstr "相手のデバイスはアカウントから削除されました。何も共有されていません。"
+
+#. Device certificate expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_expired.title"
+msgstr "デバイス証明書の有効期限切れ"
+
+#. The other device's certificate has expired. Refresh and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_expired.message"
+msgstr "相手のデバイスの証明書の有効期限が切れています。更新してもう一度お試しください。"
+
+#. Connection error
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bad_frame.title"
+msgstr "接続エラー"
+
+#. The nearby device sent something unexpected. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bad_frame.message"
+msgstr "近くのデバイスが予期しないデータを送信しました。もう一度お試しください。"
+
+#. Unsupported request
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_unknown_critical.title"
+msgstr "サポートされていないリクエスト"
+
+#. The nearby device asked for something this app doesn't support. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_unknown_critical.message"
+msgstr "近くのデバイスが、このアプリが対応していない要求をしました。もう一度お試しください。"
+
+#. Not allowed here
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_not_allowed.title"
+msgstr "ここでは許可されていません"
+
+#. The nearby device asked for something that isn't allowed in this step. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_not_allowed.message"
+msgstr "近くのデバイスが、この手順では許可されていない要求をしました。もう一度お試しください。"
+
+#. Nearby device busy
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_busy.title"
+msgstr "近くのデバイスがビジー状態です"
+
+#. Too many connections are open. Try again in a moment.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_busy.message"
+msgstr "開いている接続が多すぎます。しばらくしてからもう一度お試しください。"
+
+#. Connection timed out
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_timeout.title"
+msgstr "接続がタイムアウトしました"
+
+#. The nearby device didn't respond in time. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_timeout.message"
+msgstr "近くのデバイスが時間内に応答しませんでした。もう一度お試しください。"
+
+#. Connection closed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bye.title"
+msgstr "接続が閉じられました"
+
+#. The nearby device ended the connection.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bye.message"
+msgstr "近くのデバイスが接続を終了しました。"
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"

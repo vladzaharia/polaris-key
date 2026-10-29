@@ -159,6 +159,17 @@ public enum ErrorCode {
     public static let connectUnavailable = "connect-unavailable"
     public static let peerCertInvalid = "peer-cert-invalid"
     public static let nearbyPermissionDenied = "nearby-permission-denied"
+    public static let nearbyUnsupported = "nearby-unsupported"
+    public static let peerHandshakeFailed = "peer-handshake-failed"
+    public static let peerClosed = "peer-closed"
+    public static let peerRevoked = "peer_revoked"
+    public static let peerExpired = "peer_expired"
+    public static let peerBadFrame = "peer_bad_frame"
+    public static let peerUnknownCritical = "peer_unknown_critical"
+    public static let peerNotAllowed = "peer_not_allowed"
+    public static let peerBusy = "peer_busy"
+    public static let peerTimeout = "peer_timeout"
+    public static let peerBye = "peer_bye"
     public static let platformError = "platform-error"
     public static let noToken = "no-token"
     public static let mintUnavailable = "mint-unavailable"
@@ -370,6 +381,17 @@ public let ERROR_CODE_VALUES: [String] = [
     "connect-unavailable",
     "peer-cert-invalid",
     "nearby-permission-denied",
+    "nearby-unsupported",
+    "peer-handshake-failed",
+    "peer-closed",
+    "peer_revoked",
+    "peer_expired",
+    "peer_bad_frame",
+    "peer_unknown_critical",
+    "peer_not_allowed",
+    "peer_busy",
+    "peer_timeout",
+    "peer_bye",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -581,6 +603,17 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "connect-unavailable": "client",
     "peer-cert-invalid": "client",
     "nearby-permission-denied": "client",
+    "nearby-unsupported": "client",
+    "peer-handshake-failed": "client",
+    "peer-closed": "client",
+    "peer_revoked": "peer",
+    "peer_expired": "peer",
+    "peer_bad_frame": "peer",
+    "peer_unknown_critical": "peer",
+    "peer_not_allowed": "peer",
+    "peer_busy": "peer",
+    "peer_timeout": "peer",
+    "peer_bye": "peer",
     "platform-error": "client",
     "no-token": "client",
     "mint-unavailable": "client",

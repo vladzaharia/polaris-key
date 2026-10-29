@@ -155,6 +155,17 @@ export const ErrorCode = {
   connectUnavailable: "connect-unavailable",
   peerCertInvalid: "peer-cert-invalid",
   nearbyPermissionDenied: "nearby-permission-denied",
+  nearbyUnsupported: "nearby-unsupported",
+  peerHandshakeFailed: "peer-handshake-failed",
+  peerClosed: "peer-closed",
+  peerRevoked: "peer_revoked",
+  peerExpired: "peer_expired",
+  peerBadFrame: "peer_bad_frame",
+  peerUnknownCritical: "peer_unknown_critical",
+  peerNotAllowed: "peer_not_allowed",
+  peerBusy: "peer_busy",
+  peerTimeout: "peer_timeout",
+  peerBye: "peer_bye",
   platformError: "platform-error",
   noToken: "no-token",
   mintUnavailable: "mint-unavailable",
@@ -367,6 +378,17 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "connect-unavailable",
   "peer-cert-invalid",
   "nearby-permission-denied",
+  "nearby-unsupported",
+  "peer-handshake-failed",
+  "peer-closed",
+  "peer_revoked",
+  "peer_expired",
+  "peer_bad_frame",
+  "peer_unknown_critical",
+  "peer_not_allowed",
+  "peer_busy",
+  "peer_timeout",
+  "peer_bye",
   "platform-error",
   "no-token",
   "mint-unavailable",
@@ -429,7 +451,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
 ];
 
 /** `wire`: appears in a Worker response body. `client`: raised only by an SDK. `backend`: answered by an SDK's server core to an app's request to its own backend (WIRE-CONTRACT-V4 §14). */
-export type ErrorCodeKind = "wire" | "client" | "backend";
+export type ErrorCodeKind = "wire" | "client" | "backend" | "peer";
 
 /** The registry: every error code and its kind. */
 export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
@@ -581,6 +603,17 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "connect-unavailable": "client",
   "peer-cert-invalid": "client",
   "nearby-permission-denied": "client",
+  "nearby-unsupported": "client",
+  "peer-handshake-failed": "client",
+  "peer-closed": "client",
+  peer_revoked: "peer",
+  peer_expired: "peer",
+  peer_bad_frame: "peer",
+  peer_unknown_critical: "peer",
+  peer_not_allowed: "peer",
+  peer_busy: "peer",
+  peer_timeout: "peer",
+  peer_bye: "peer",
   "platform-error": "client",
   "no-token": "client",
   "mint-unavailable": "client",
