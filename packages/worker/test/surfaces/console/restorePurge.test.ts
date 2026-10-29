@@ -37,10 +37,20 @@ async function setup() {
     [SLUG, DEV_2],
     [OTHER, DEV_3],
   ] as const) {
+    await w.db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen, subject)
+       VALUES (?, ?, '', 'authorized', ?, ?, ?)`,
+      product,
+      device,
+      NOW,
+      NOW,
+      SUBJECT,
+    );
     await mintRestoreKey(w.env, w.db, {
       product,
       deviceId: device,
       subject: SUBJECT,
+      boundSubject: SUBJECT,
       now: NOW,
     });
     await markRestoreOrigin(w.db, {

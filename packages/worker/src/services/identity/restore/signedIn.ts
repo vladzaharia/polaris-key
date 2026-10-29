@@ -4,9 +4,10 @@
  * `confirm` or `choose` the restore grant left open) both send it, so they cannot differ. (The origin mark, `markRestoreOrigin`, is written by
  * each caller right after its bind.)
  *
- *   - the account's primary address gets the `appDeviceApprovedNotice` email with `via: "restore"`
- *     and its "Remove this device" link. It is detection for a shared Apple ID or Google account;
- *     a mail that cannot be sent never fails the sign-in.
+ *   - every verified address of the account (and its primary address) gets the security notice
+ *     `appDeviceApprovedNotice` with `via: "restore"` and its "Sign out everywhere" link. It is
+ *     detection for a shared Apple ID or Google account; a mail that cannot be sent never fails the
+ *     sign-in (the grant refused earlier unless a notice could be delivered).
  */
 
 import type { Db } from "../../../db/types.js";
@@ -14,7 +15,7 @@ import type { Env } from "../../../platform/env.js";
 import type { Product } from "../../../core/products.js";
 import { customerOrigin } from "../../../core/hosts.js";
 import { appDeviceApprovedNotice } from "../../../core/notify/templates.js";
-import { sendNotice } from "../../../core/notify/send.js";
+import { sendSecurityNotice } from "../../../core/notify/send.js";
 import { resolveSubject } from "../../../core/accounts/accountSubjects.js";
 import { getDevice } from "../../../core/devices/store.js";
 import { NO_LICENSE_ID } from "../../../core/devices.js";
@@ -49,14 +50,19 @@ export async function deviceBelongsElsewhere(
 /** Send the restore notice. Total: a failure to send is swallowed. */
 export async function sendRestoreNotice(
   cx: { req: Request; env: Env; db: Db; product: Product; now: number },
-  to: { email: string | null; deviceLabel: string | null },
+  to: {
+    accountId: string;
+    email: string | null;
+    deviceLabel: string | null;
+  },
 ): Promise<void> {
   const { req, env, db, product, now } = cx;
   try {
     const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
-    await sendNotice(
+    await sendSecurityNotice(
       env,
       db,
+      to.accountId,
       to.email,
       appDeviceApprovedNotice({
         deviceLabel: to.deviceLabel,

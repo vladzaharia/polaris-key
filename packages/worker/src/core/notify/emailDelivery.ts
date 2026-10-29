@@ -266,6 +266,28 @@ export async function productEmailCapOk(
   );
 }
 
+/**
+ * Would a platform message to `to` get past steps 1 to 4 of `deliverEmail` (a binding and a
+ * sender, a bare address, the relay rule, not suppressed)? Sends nothing and counts nothing. A
+ * suppression store that cannot be read answers false, as the send would refuse.
+ */
+export async function wouldDeliver(
+  env: Env,
+  db: Db,
+  to: string,
+  now: number,
+): Promise<boolean> {
+  if (!env.EMAIL) return false;
+  if (strictEmail(to) === null) return false;
+  if (isApplePrivateRelay(to) && !applePrivateRelayRegistered(env))
+    return false;
+  try {
+    return !(await emailSuppressed(env, db, to, now));
+  } catch {
+    return false;
+  }
+}
+
 /** Send one message through every I-18 control; see the header comment for the order. */
 export async function deliverEmail(
   env: Env,

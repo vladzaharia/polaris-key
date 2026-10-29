@@ -504,6 +504,7 @@ export async function bindAndAnswer(
   });
   if (p.via === "restore")
     await sendRestoreNotice(cx, {
+      accountId: account.id,
       email: account.primary_email,
       deviceLabel: bound.device.label,
     });

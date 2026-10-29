@@ -113,3 +113,32 @@ export async function world(): Promise<World> {
 export function setRestoreGate(w: Pick<World, "env">, v: string | undefined) {
   (w.env as unknown as Record<string, unknown>).LAUNCH_IDENTITY_RESTORE = v;
 }
+
+/**
+ * I-49.5: a device row that is authorized and signed in as `subject`, written directly, when it
+ * does not exist yet. A restore key is minted only for such a device. Returns the subject the row
+ * is bound to (an existing row keeps its own).
+ */
+export async function ensureBoundDevice(
+  db: Db,
+  product: string,
+  deviceId: string,
+  subject: string,
+): Promise<string> {
+  await db.run(
+    `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen, subject)
+     VALUES (?, ?, '', 'authorized', ?, ?, ?)
+     ON CONFLICT (product, device_id) DO NOTHING`,
+    product,
+    deviceId,
+    NOW,
+    NOW,
+    subject,
+  );
+  const row = await db.first<{ subject: string | null }>(
+    "SELECT subject FROM devices WHERE product = ? AND device_id = ?",
+    product,
+    deviceId,
+  );
+  return row?.subject ?? subject;
+}

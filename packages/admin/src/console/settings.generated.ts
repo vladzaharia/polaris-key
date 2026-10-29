@@ -206,7 +206,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "platform",
     label: "Launch gate: silent restore",
     description:
-      "Serves silent restore: the restore enrol route, the restore grant on the identity token route and the discovery members that name them. Off answers not_found and unsupported_grant_type. Keys already stored stay inert, and signing out, removing a device or an app and the nightly sweep still delete them.",
+      "Serves silent restore: the restore enrol route, the restore grant on the identity token route and the discovery members that name them. Off answers not_found and unsupported_grant_type. Keys already stored stay inert, and signing out, removing a device or an app and the nightly sweep still delete them. Register the Apple relay sender (EMAIL_APPLE_RELAY) first, or people who hide their email from Apple are not restored.",
     keywords: ["launch", "restore", "silent sign-in", "backup", "rollout"],
     docs: "/docs/operate/platform/settings/",
     ownership: "operator",

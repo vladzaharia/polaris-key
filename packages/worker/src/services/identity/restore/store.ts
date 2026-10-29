@@ -50,6 +50,13 @@ export const RESTORE_CURRENT_SECONDS = 90 * 86_400;
 /** A row nobody checked for this long is dead: redeeming refuses it and the sweep deletes it (D-9). */
 export const RESTORE_IDLE_SECONDS = 180 * 86_400;
 
+/**
+ * An origin mark lives as long as a key copied before the restore can: a current row (90 days)
+ * that then idles (180 days) is 270 days. The origins sweep uses this, not the idle time alone.
+ */
+export const RESTORE_ORIGIN_SECONDS =
+  RESTORE_CURRENT_SECONDS + RESTORE_IDLE_SECONDS;
+
 /** Domain separation, so a restore hash is never a hash of another credential. */
 const HASH_DOMAIN = "restore:";
 
@@ -77,17 +84,27 @@ export function hashRestoreSecret(env: Env, secret: string): Promise<string> {
  * Mint this device's restore key, replacing its previous row. Returns the id and the secret, which
  * the caller hands to the device once. Rows over the cap for the subject are dropped, oldest
  * `checked_at` first, in the same batch.
+ *
+ * `boundSubject` is the account subject the device row is signed in as right now: the insert runs
+ * only while that device is still `authorized` and bound to it, in the same statement, so a device
+ * unbound between the caller's check and the insert mints nothing and the answer is `null`.
  */
 export async function mintRestoreKey(
   env: Env,
   db: Db,
-  args: { product: string; deviceId: string; subject: string; now: number },
-): Promise<{ restoreId: string; secret: string }> {
+  args: {
+    product: string;
+    deviceId: string;
+    subject: string;
+    boundSubject: string;
+    now: number;
+  },
+): Promise<{ restoreId: string; secret: string } | null> {
   const restoreId = `rk_${randomToken(16)}`;
   const secret = `rs_${randomToken(32)}`;
   const secretHash = await hashRestoreSecret(env, secret);
-  const { product, deviceId, subject, now } = args;
-  await db.batch([
+  const { product, deviceId, subject, boundSubject, now } = args;
+  const changed = await runCounted(db, [
     {
       sql: "DELETE FROM identity_restore_keys WHERE product = ? AND device_id = ?",
       params: [product, deviceId],
@@ -95,8 +112,22 @@ export async function mintRestoreKey(
     {
       sql: `INSERT INTO identity_restore_keys
               (id, product, device_id, subject, secret_hash, created_at, checked_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      params: [restoreId, product, deviceId, subject, secretHash, now, now],
+            SELECT ?, ?, ?, ?, ?, ?, ?
+             WHERE EXISTS (
+               SELECT 1 FROM devices
+                WHERE product = ? AND device_id = ? AND status = 'authorized' AND subject = ?)`,
+      params: [
+        restoreId,
+        product,
+        deviceId,
+        subject,
+        secretHash,
+        now,
+        now,
+        product,
+        deviceId,
+        boundSubject,
+      ],
     },
     // The newest rows stay; the new row has the greatest rowid, so it wins every tie.
     {
@@ -109,7 +140,7 @@ export async function mintRestoreKey(
       params: [product, subject, product, subject, RESTORE_KEY_CAP],
     },
   ]);
-  return { restoreId, secret };
+  return changed[1] === 1 ? { restoreId, secret } : null;
 }
 
 /**
@@ -340,6 +371,7 @@ export async function sweepRestoreKeys(
   limit = 500,
 ): Promise<number> {
   const cutoff = now - RESTORE_IDLE_SECONDS;
+  const originCutoff = now - RESTORE_ORIGIN_SECONDS;
   const keys = await db.runChanges(
     `DELETE FROM identity_restore_keys
       WHERE rowid IN (
@@ -355,7 +387,7 @@ export async function sweepRestoreKeys(
         SELECT rowid FROM identity_restore_origins
          WHERE product = ? AND created_at < ? LIMIT ?)`,
     product,
-    cutoff,
+    originCutoff,
     limit,
   );
   return keys + origins;

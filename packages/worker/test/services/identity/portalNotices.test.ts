@@ -459,7 +459,7 @@ describe("notice templates: rules", () => {
     expect(bare.text).toContain("remove it from your devices");
   });
 
-  it("restore variant (I-49.7): names the backup, offers Remove this device, escapes", () => {
+  it("restore variant (I-49.7): names the backup, points at Sign out everywhere, is a security notice, escapes", () => {
     const m = appDeviceApprovedNotice({
       deviceLabel: "Living room TV",
       productName: "Diceroll",
@@ -468,12 +468,19 @@ describe("notice templates: rules", () => {
       via: "restore",
     });
     expect(m.subject).toBe(
-      "Diceroll signed in on Living room TV from your backup",
+      "Diceroll signed in on \u201cLiving room TV\u201d from your backup",
     );
     expect(m.text).toContain("It used a key saved in your device backup.");
     expect(m.text).toContain(
-      `Remove this device: ${ORIGIN}/#/p/diceroll/devices`,
+      "If this wasn't you, sign out everywhere in Polaris Locker.",
     );
+    expect(m.text).toContain(
+      `Sign out everywhere: ${ORIGIN}/#/account/sessions`,
+    );
+    expect(m.text).toContain(
+      "We sent it to every verified email on the account.",
+    );
+    expect(m.text).not.toContain("Remove this device");
     expect(m.text).not.toContain("You approved it");
     const hostile = appDeviceApprovedNotice({
       deviceLabel: "TV <b>x</b>\nBcc: v@example.com",
@@ -482,12 +489,41 @@ describe("notice templates: rules", () => {
       origin: ORIGIN,
       via: "restore",
     });
-    expect(hostile.subject).not.toMatch(/[\n\u202e]/);
+    expect(hostile.subject).not.toMatch(/[\r\n\u202e]/);
     expect(hostile.html).toContain("&lt;b&gt;x&lt;/b&gt;");
     // The approval variant keeps its copy.
     expect(TEMPLATES.appDeviceApproved!().text).toContain(
       "You approved it from another device.",
     );
+  });
+
+  it("restore variant: a label that looks like a link is replaced; a plain one is quoted", () => {
+    const base = {
+      productName: "Diceroll",
+      productSlug: "diceroll",
+      origin: ORIGIN,
+      via: "restore" as const,
+    };
+    for (const label of [
+      "evil.example://x",
+      "see www.evil.example",
+      "http://a.b",
+    ]) {
+      const m = appDeviceApprovedNotice({ ...base, deviceLabel: label });
+      expect(m.subject).toBe(
+        "Diceroll signed in on a new device from your backup",
+      );
+      expect(m.text).not.toContain("evil.example");
+    }
+    const none = appDeviceApprovedNotice({ ...base, deviceLabel: null });
+    expect(none.subject).toBe(
+      "Diceroll signed in on a new device from your backup",
+    );
+    const plain = appDeviceApprovedNotice({
+      ...base,
+      deviceLabel: "Living room TV",
+    });
+    expect(plain.subject).toContain("\u201cLiving room TV\u201d");
   });
 
   it("displayValue: controls out, length bounded, fallback when empty", () => {

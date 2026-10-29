@@ -7,8 +7,9 @@
  *
  * ── THE ORDER (§12.11.8, steps 1 to 10) ──────────────────────────────────────────────────────
  *
- *   1  the gate: the caller (`token.ts`) answers `unsupported_grant_type` with the launch gate, the
- *      product setting or Identity off, before this file runs, so nothing is read or consumed;
+ *   1  the gate: the caller (`token.ts`) answers `unsupported_grant_type` with the launch gate or the
+ *      product setting off (with Identity off the route answers 404, as every identity route does),
+ *      before this file runs, so nothing is read or consumed;
  *   2  the shape of the parameters, then the limits (10 a minute per client network, 5 per device);
  *   3  the proof (purpose `restore`, value `<restore_id>.<device_key>`, line 6 the SHA-256 of the
  *      secret): it needs no state, so a caller without the device key reaches no row;
@@ -17,6 +18,8 @@
  *      in constant time (computed for a missing row too), then one compare-and-set delete on id,
  *      product and hash. A wrong secret, or another product's key, consumes nothing;
  *   7  the subject resolves to an active account through merge aliases, not on the erasure ledger;
+ *      the enrolling device is still authorized and signed in as that account; a security notice can
+ *      reach the account; the account's 5 a day (429) is counted last;
  *   8  an `agree_key` another device of the product holds is refused;
  *   9  the product's terms are accepted, then the person's consent for the product stands;
  *   10 `bindAndAnswer` (the silent single path), the device's keys registered `via: "restore"`.
@@ -48,6 +51,9 @@ import {
 } from "../../../core/devices/keys.js";
 import { verifyDeviceProof } from "../../../core/devices/proof.js";
 import { loadProductPublic } from "../../../core/products.js";
+import { getDevice } from "../../../core/devices/store.js";
+import { resolveSubject } from "../../../core/accounts/accountSubjects.js";
+import { securityNoticeDeliverable } from "../../../core/notify/send.js";
 import { randomId } from "../../../platform/crypto.js";
 import { deviceHolder } from "../attach.js";
 import { getAccountRow } from "../accounts/repo.js";
@@ -80,6 +86,13 @@ export const RESTORE_DEVICE_RATE = {
   bucket: "identityRestoreDevice",
   limit: 5,
   windowSec: 60,
+};
+
+/** The account's cap: 5 a day, counted once the key's account is known; fails closed. */
+export const RESTORE_ACCOUNT_RATE = {
+  bucket: "identityRestoreAccount",
+  limit: 5,
+  windowSec: 86_400,
 };
 
 /** The one refusal from the shape to the agree-key check. */
@@ -179,6 +192,45 @@ export async function handleRestoreGrant(
   const account = holder ? await getAccountRow(db, holder.accountId) : null;
   if (!holder || !account) return refused();
   const { subject } = holder;
+
+  // The device that enrolled the key is still signed in as this account. A purge or a removal that
+  // missed this key (a deletion the revocation list does not name) leaves a key that does not work.
+  const enrolled = await getDevice(db, product.slug, used.deviceId);
+  if (
+    !enrolled ||
+    enrolled.status !== "authorized" ||
+    !enrolled.subject ||
+    (await resolveSubject(db, product.slug, enrolled.subject)) !== subject
+  )
+    return refused();
+
+  // A notice must be deliverable before anything is bound: no address, no restore.
+  let deliverable: boolean;
+  try {
+    deliverable = await securityNoticeDeliverable(
+      env,
+      db,
+      account.id,
+      account.primary_email,
+      now,
+    );
+  } catch {
+    return oauth(503, "unavailable");
+  }
+  if (!deliverable) return refused();
+
+  // The account's own cap, counted once the key's account is known.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { ...RESTORE_ACCOUNT_RATE, id: account.id },
+      now,
+    ))
+  )
+    return oauth(429, "rate_limited", undefined, {
+      retryAfter: RESTORE_ACCOUNT_RATE.windowSec,
+    });
 
   // ── 8: an agreement key another device holds ─────────────────────────────────────────────────
   if (await agreeKeyHeldElsewhere(db, product.slug, agreeKey, deviceId))

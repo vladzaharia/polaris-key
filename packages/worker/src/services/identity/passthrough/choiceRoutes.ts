@@ -472,6 +472,7 @@ export async function handleChoice(
   });
   if (taken.via === "restore")
     await sendRestoreNotice(bcx, {
+      accountId: account.id,
       email: account.primary_email,
       deviceLabel: bound.device.label,
     });

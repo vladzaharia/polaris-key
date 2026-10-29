@@ -166,8 +166,11 @@ export async function handleRestoreKey(
     product: product.slug,
     deviceId,
     subject: holder.subject,
+    boundSubject: valid.device.subject!,
     now,
   });
+  // The device was unbound or deauthorized between the check above and the insert: no key.
+  if (!minted) return noStore(wireError(403, ErrorCode.AccountRequired));
   return noStore(json(minted satisfies RestoreKeyIssued, { status: 201 }));
 }
 

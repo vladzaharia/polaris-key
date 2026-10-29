@@ -24,6 +24,7 @@ import {
   RESTORE_CURRENT_SECONDS,
   RESTORE_IDLE_SECONDS,
   RESTORE_KEY_CAP,
+  RESTORE_ORIGIN_SECONDS,
   checkRestoreKey,
   consumeRestoreKey,
   markRestoreOrigin,
@@ -33,7 +34,7 @@ import {
   revokeSubjectRestore,
   sweepRestoreKeys,
 } from "../../../src/services/identity/restore/store.js";
-import { NOW } from "../../seed.js";
+import { NOW, seedProduct } from "../../seed.js";
 import {
   A,
   B,
@@ -41,6 +42,7 @@ import {
   C,
   SLUG,
   enable,
+  ensureBoundDevice,
   world,
   type World,
 } from "../connect/connectFixture.js";
@@ -61,14 +63,26 @@ const count = async (table = "identity_restore_keys", where = "1 = 1") =>
 
 async function mint(
   device: string,
-  opts: { subject?: string; now?: number; product?: string } = {},
+  opts: {
+    subject?: string;
+    boundSubject?: string;
+    now?: number;
+    product?: string;
+  } = {},
 ) {
-  return mintRestoreKey(w.env, w.db, {
-    product: opts.product ?? SLUG,
+  const product = opts.product ?? SLUG;
+  const subject = opts.subject ?? w.subject;
+  if (!(await w.db.first("SELECT 1 FROM products WHERE slug = ?", product)))
+    await seedProduct(w.db, product);
+  // The device is signed in as the key's subject unless a test says otherwise.
+  const bound = await ensureBoundDevice(w.db, product, device, subject);
+  return (await mintRestoreKey(w.env, w.db, {
+    product,
     deviceId: device,
-    subject: opts.subject ?? w.subject,
+    subject,
+    boundSubject: opts.boundSubject ?? bound,
     now: opts.now ?? NOW,
-  });
+  }))!;
 }
 
 const redeem = (
@@ -107,6 +121,44 @@ describe("mint", () => {
     });
     expect(JSON.stringify(row)).not.toContain(secret);
     expect(row!.secret_hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("mints nothing for a device that is unbound, deauthorized, bound to another subject or unknown", async () => {
+    const attempt = (device: string, boundSubject: string) =>
+      mintRestoreKey(w.env, w.db, {
+        product: SLUG,
+        deviceId: device,
+        subject: w.subject,
+        boundSubject,
+        now: NOW,
+      });
+    // Control: the device as it is signed in.
+    expect(await attempt(A, w.subject)).not.toBeNull();
+    expect(await count()).toBe(1);
+
+    // Another subject than the one the device row holds.
+    expect(await attempt(A, SUBJECT_X)).toBeNull();
+    // The binding cleared by raw SQL, bypassing the listener.
+    await w.db.run(
+      "UPDATE devices SET subject = NULL WHERE product = ? AND device_id = ?",
+      SLUG,
+      B,
+    );
+    expect(await attempt(B, w.subject)).toBeNull();
+    // Deauthorized by raw SQL.
+    await ensureBoundDevice(w.db, SLUG, C, w.subject);
+    await w.db.run(
+      "UPDATE devices SET status = 'deauthorized' WHERE product = ? AND device_id = ?",
+      SLUG,
+      C,
+    );
+    expect(await attempt(C, w.subject)).toBeNull();
+    // No row at all.
+    expect(
+      await attempt("NOROW00000000000000000000000000Z", w.subject),
+    ).toBeNull();
+    // The refusals left no row of their own (and A's row went with the refused re-mint).
+    expect(await count("identity_restore_keys", `device_id <> '${A}'`)).toBe(0);
   });
 
   it("replaces this device's row, so one device holds one key", async () => {
@@ -478,7 +530,7 @@ describe("operator purge and the sweep", () => {
     expect(text).not.toContain(m.secret);
   });
 
-  it("the 180-day sweep removes idle rows and old marks, not checked ones", async () => {
+  it("the 180-day sweep removes idle rows, not checked ones; an origin mark outlives it", async () => {
     await mint(A, { now: NOW });
     await mint(B, { now: NOW + 100 * 86_400 });
     await markRestoreOrigin(w.db, {
@@ -488,14 +540,39 @@ describe("operator purge and the sweep", () => {
       now: NOW,
     });
     const later = NOW + RESTORE_IDLE_SECONDS + 10;
-    expect(await sweepRestoreKeys(w.db, SLUG, later)).toBe(2);
+    expect(await sweepRestoreKeys(w.db, SLUG, later)).toBe(1);
     expect(await count()).toBe(1);
     expect(
       (await w.db.first<{ d: string }>(
         "SELECT device_id AS d FROM identity_restore_keys",
       ))!.d,
     ).toBe(B);
+    // The mark stays: a key copied before the restore can still be redeemed for 270 days.
+    expect(await count("identity_restore_origins")).toBe(1);
     expect(await sweepRestoreKeys(w.db, SLUG, later)).toBe(0);
+  });
+
+  it("an origin mark lives 270 days: a 200-day mark survives the sweep, a 271-day mark goes", async () => {
+    expect(RESTORE_ORIGIN_SECONDS).toBe(
+      RESTORE_CURRENT_SECONDS + RESTORE_IDLE_SECONDS,
+    );
+    const mark = (deviceId: string, ageDays: number) =>
+      markRestoreOrigin(w.db, {
+        product: SLUG,
+        deviceId,
+        subject: w.subject,
+        now: NOW - ageDays * 86_400,
+      });
+    await mark(A, 200);
+    await mark(B, 271);
+    expect(await sweepRestoreKeys(w.db, SLUG, NOW)).toBe(1);
+    expect(
+      (
+        await w.db.all<{ d: string }>(
+          "SELECT device_id AS d FROM identity_restore_origins",
+        )
+      ).map((r) => r.d),
+    ).toEqual([A]);
   });
 
   it("revokeSubjectRestore removes rows and marks of the subject", async () => {

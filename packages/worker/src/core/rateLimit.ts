@@ -110,6 +110,7 @@ const FAIL_MODE: Record<string, FailMode> = {
   identityRestoreKeyNet: "closed",
   identityRestore: "closed",
   identityRestoreDevice: "closed",
+  identityRestoreAccount: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
   // ST-30c.5: the console's passkey sign-in (challenge and assertion, per client network). The

@@ -31,15 +31,18 @@ import {
   upsertDeviceKeys,
 } from "../../../src/core/devices/keys.js";
 import { askedScopeHash } from "../../../src/services/identity/passthrough/routes.js";
+import { suppressEmail } from "../../../src/core/notify/emailDelivery.js";
 import { mintRestoreKey } from "../../../src/services/identity/restore/store.js";
 import { RESTORE_GRANT_TYPE } from "@polaris-key/protocol/identity";
 import {
   A,
   B,
   BASE,
+  C,
   SLUG,
   bindTo,
   enable,
+  ensureBoundDevice,
   setRestoreGate,
   world,
   type World,
@@ -104,12 +107,13 @@ interface Keys {
 async function enrol(
   device = A,
 ): Promise<{ restoreId: string; secret: string }> {
-  return mintRestoreKey(w.env, w.db, {
+  return (await mintRestoreKey(w.env, w.db, {
     product: SLUG,
     deviceId: device,
     subject: w.subject,
+    boundSubject: w.subject,
     now: NOW,
-  });
+  }))!;
 }
 
 async function sign(
@@ -304,7 +308,7 @@ describe("a successful restore", () => {
     expect(await keyRows()).toBe(1);
   });
 
-  it("tells the primary address, with a Remove this device link", async () => {
+  it("sends the security notice to the primary address, pointing at Sign out everywhere", async () => {
     await seedConsent();
     const r = await redeem(await enrol());
     expect(r.res.status).toBe(200);
@@ -312,8 +316,11 @@ describe("a successful restore", () => {
     expect(mail[0]!.to).toBe("ada@example.com");
     expect(mail[0]!.subject).toContain("signed in on");
     expect(mail[0]!.subject).toContain("from your backup");
-    expect(mail[0]!.text).toContain("Remove this device");
-    expect(mail[0]!.text).toContain(`${BASE}/#/p/${SLUG}/devices`);
+    expect(mail[0]!.text).toContain(
+      `Sign out everywhere: ${BASE}/#/account/sessions`,
+    );
+    expect(mail[0]!.text).toContain("every verified email on the account");
+    expect(mail[0]!.text).not.toContain("Remove this device");
     expect(mail[0]!.text).not.toMatch(/rs_|rk_/);
   });
 
@@ -432,12 +439,14 @@ describe("the key is bound to its product", () => {
       SLUG,
       OTHER_SLUG,
     );
-    return mintRestoreKey(w.env, w.db, {
+    await ensureBoundDevice(w.db, OTHER_SLUG, A, w.subject);
+    return (await mintRestoreKey(w.env, w.db, {
       product: OTHER_SLUG,
       deviceId: A,
       subject: w.subject,
+      boundSubject: w.subject,
       now: NOW,
-    });
+    }))!;
   }
 
   it("refuses another product's id and secret under this product's client_id, and does not consume it", async () => {
@@ -486,6 +495,202 @@ describe("the gate is checked first", () => {
     await enable(w.db, ["license"]);
     expect((await redeem(key)).res.status).toBe(404);
     expect(await keyRows()).toBe(1);
+  });
+});
+
+/** The one refusal of §12.11.8, byte for byte. */
+const REFUSED = JSON.stringify({ error: "invalid_grant" });
+
+/** A redeem that is refused with the one body and leaves nothing bound and no mail. */
+async function expectRefusedNothingBound(key: {
+  restoreId: string;
+  secret: string;
+}) {
+  const r = await redeem(key);
+  expect(r.res.status).toBe(400);
+  expect(r.text).toBe(REFUSED);
+  expect(await getDevice(w.db, SLUG, NEW)).toBeNull();
+  expect(await getDeviceKeys(w.db, SLUG, NEW)).toBeNull();
+  expect(mail).toHaveLength(0);
+}
+
+describe("the enrolling device must still be signed in as the account", () => {
+  it("redeems while the enrolling device is signed in (control)", async () => {
+    await seedConsent();
+    expect((await redeem(await enrol())).res.status).toBe(200);
+  });
+
+  it("refuses when the enrolling device's binding was cleared by raw SQL", async () => {
+    await seedConsent();
+    const key = await enrol();
+    await w.db.run(
+      "UPDATE devices SET subject = NULL WHERE product = ? AND device_id = ?",
+      SLUG,
+      A,
+    );
+    await expectRefusedNothingBound(key);
+  });
+
+  it("refuses when the enrolling device was deauthorized by raw SQL", async () => {
+    await seedConsent();
+    const key = await enrol();
+    await w.db.run(
+      "UPDATE devices SET status = 'deauthorized' WHERE product = ? AND device_id = ?",
+      SLUG,
+      A,
+    );
+    await expectRefusedNothingBound(key);
+  });
+
+  it("refuses when the enrolling device is now bound to another subject", async () => {
+    await seedConsent();
+    const key = await enrol();
+    await w.db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen)
+       VALUES (?, ?, '', 'authorized', ?, ?)`,
+      SLUG,
+      C,
+      NOW,
+      NOW,
+    );
+    const bob = await bindTo(w, C, "bob@example.com");
+    await w.db.run(
+      "UPDATE devices SET subject = ? WHERE product = ? AND device_id = ?",
+      bob,
+      SLUG,
+      A,
+    );
+    await expectRefusedNothingBound(key);
+  });
+
+  it("refuses when the enrolling device row is gone", async () => {
+    await seedConsent();
+    const key = await enrol();
+    await w.db.run(
+      "DELETE FROM devices WHERE product = ? AND device_id = ?",
+      SLUG,
+      A,
+    );
+    await expectRefusedNothingBound(key);
+  });
+});
+
+describe("a restore needs an address a security notice can reach", () => {
+  const RELAY = "abc123@privaterelay.appleid.com";
+
+  /** The account's addresses, exactly these (verified): no link address, a primary one at most. */
+  async function onlyAddresses(primary: string | null) {
+    const id = await accountId();
+    await w.db.run(
+      "UPDATE account_links SET email = NULL, email_verified = 0 WHERE account_id = ?",
+      id,
+    );
+    await w.db.run(
+      "UPDATE accounts SET primary_email = ?, primary_email_verified_at = ? WHERE id = ?",
+      primary,
+      primary ? NOW : null,
+      id,
+    );
+  }
+
+  /** A second verified address, on the account's first email link. */
+  async function addWorkAddress() {
+    const id = await accountId();
+    await w.db.run(
+      `UPDATE account_links SET email = 'ada.work@example.com', email_verified = 1
+        WHERE account_id = ? AND rowid = (SELECT MIN(rowid) FROM account_links WHERE account_id = ?)`,
+      id,
+      id,
+    );
+  }
+
+  it("refuses an account whose only address is a private-relay one, while the relay sender is not registered", async () => {
+    await seedConsent();
+    await onlyAddresses(RELAY);
+    await expectRefusedNothingBound(await enrol());
+  });
+
+  it("restores that account once the relay sender is registered, and the relay address gets the notice", async () => {
+    await seedConsent();
+    await onlyAddresses(RELAY);
+    (w.env as unknown as Record<string, unknown>).EMAIL_APPLE_RELAY =
+      "registered";
+    const r = await redeem(await enrol());
+    expect(r.res.status, r.text).toBe(200);
+    expect(mail.map((m) => m.to)).toEqual([RELAY]);
+  });
+
+  it("refuses an account with no address", async () => {
+    await seedConsent();
+    await onlyAddresses(null);
+    await expectRefusedNothingBound(await enrol());
+  });
+
+  it("refuses an account whose only address is suppressed", async () => {
+    await seedConsent();
+    await onlyAddresses("ada@example.com");
+    await suppressEmail(w.env, w.db, "ada@example.com", "complaint", NOW);
+    await expectRefusedNothingBound(await enrol());
+  });
+
+  it("sends the notice to every verified address of the account", async () => {
+    await seedConsent();
+    await onlyAddresses("ada@example.com");
+    await addWorkAddress();
+    const r = await redeem(await enrol());
+    expect(r.res.status, r.text).toBe(200);
+    expect(mail.map((m) => m.to).sort()).toEqual([
+      "ada.work@example.com",
+      "ada@example.com",
+    ]);
+  });
+
+  it("a suppressed address does not block a restore while another address can be reached", async () => {
+    await seedConsent();
+    await onlyAddresses("ada@example.com");
+    await addWorkAddress();
+    await suppressEmail(w.env, w.db, "ada@example.com", "complaint", NOW);
+    const r = await redeem(await enrol());
+    expect(r.res.status, r.text).toBe(200);
+    expect(mail.map((m) => m.to)).toEqual(["ada.work@example.com"]);
+  });
+
+  it("is checked before terms and consent, so a confirm path binds nothing either", async () => {
+    // No consent seeded: this restore would answer `confirm`. With no reachable address it refuses.
+    await onlyAddresses(null);
+    await expectRefusedNothingBound(await enrol());
+  });
+});
+
+describe("a day's restores are capped per account", () => {
+  it("answers the 6th restore of one account in a day with 429 rate_limited", async () => {
+    await seedConsent();
+    const devices = Array.from({ length: 6 }, (_, i) =>
+      `ACCT${i}`.padEnd(32, "0"),
+    );
+    for (const [i, d] of devices.entries()) {
+      await ensureBoundDevice(
+        w.db,
+        SLUG,
+        `ENROL${i}`.padEnd(32, "0"),
+        w.subject,
+      );
+      const key = await mintRestoreKey(w.env, w.db, {
+        product: SLUG,
+        deviceId: `ENROL${i}`.padEnd(32, "0"),
+        subject: w.subject,
+        boundSubject: w.subject,
+        now: NOW,
+      });
+      // A fresh minute each time, so the network and device limits never speak.
+      const r = await redeem(key!, { device: d, now: NOW + 120 * (i + 1) });
+      if (i < 5) expect(r.res.status, `restore ${i + 1}: ${r.text}`).toBe(200);
+      else {
+        expect(r.res.status).toBe(429);
+        expect(r.body.error).toBe("rate_limited");
+        expect(await getDevice(w.db, SLUG, d)).toBeNull();
+      }
+    }
   });
 });
 
