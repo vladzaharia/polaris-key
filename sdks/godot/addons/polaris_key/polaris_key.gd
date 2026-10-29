@@ -75,6 +75,9 @@ signal in_play_changed(playing: bool)
 const BOOT_SCENE := "res://addons/polaris_key/ui/boot/pkey_boot.tscn"
 
 var core: PKeyCore = null
+## The Cloud Connect client (services/connect/client.gd): `identity()`, `list_devices()`, `current()`,
+## `discovery_keys()` and `leave()`, with the LAN and relay halves following. Null until configure().
+var connect: PKeyConnectClient = null
 var _ring_hook_added := false
 ## The device principal's surface (services/devices.gd); null until configure().
 var devices: PKeyDevices = null
@@ -196,7 +199,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	distribution.attach(core)
 	backend.attach(core, func(force: bool) -> PKeySyncResult: return await sync(force), opts.backend_origins)
 	identity.bind(core, self)
-	_build_keyring(opts)
+	_build_connect(opts, _build_keyring(opts))
 	_build_cloud_sync(opts)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	identity.on_change = _on_identity_change
@@ -207,7 +210,8 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 
 ## The key ring over this Core: the options' device keys and vault, else the product's own under
 ## `store_root`. Sign-out forgets the root and the pin (one hook, registered once, reads the current ring).
-func _build_keyring(opts: PKeyOptions) -> void:
+## Answers the device keys, which Cloud Connect shares.
+func _build_keyring(opts: PKeyOptions) -> Object:
 	# The ring's files stay out of OS backups: Android's no-backup directory when the plugin is present.
 	var sensitive_root := PKeyBackupExclusion.root(opts.store_root)
 	var keys: Object = opts.device_keys if opts.device_keys != null else PKeyDeviceKeyStore.new(core.product, sensitive_root)
@@ -216,6 +220,18 @@ func _build_keyring(opts: PKeyOptions) -> void:
 	if not _ring_hook_added:
 		_ring_hook_added = true
 		identity.add_before_sign_out(_forget_ring)
+	return keys
+
+
+## Cloud Connect over this Core: the same device keys as the key ring, and the state record under
+## the sensitive root (or the options' own).
+func _build_connect(opts: PKeyOptions, keys: Object) -> void:
+	var state := opts.connect_state
+	if state == null:
+		state = PKeyConnectState.new(core.product, PKeyBackupExclusion.root(opts.store_root))
+	connect = PKeyConnectClient.new(core, state, keys)
+	connect.devices = devices
+	connect.allow_ephemeral_keys = opts.allow_ephemeral_keys
 
 
 ## The sign-out chain (A-3): Cloud Sync flushes, signs the machine out, forgets the ring, purges, in

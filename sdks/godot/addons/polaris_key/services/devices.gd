@@ -179,6 +179,7 @@ func register_keys(port: Object, allow_ephemeral := false) -> PKeyResult:
 		"product": core.product,
 		"device_id": core.device_id,
 		"allow_ephemeral": allow_ephemeral,
+		"issued_at": int(core.clock.now()),
 	})
 	if not built.ok:
 		return built

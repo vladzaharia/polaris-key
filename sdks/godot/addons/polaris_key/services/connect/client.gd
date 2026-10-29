@@ -1,10 +1,17 @@
 @tool
 class_name PKeyConnectClient
 extends RefCounted
-## The Cloud Connect client side (CC-14.4; WIRE-CONTRACT-V5 sections 15.3, 15.4 and 15.7), ported
-## from sdk-node `connect/client.ts` and Kotlin's `Connect.kt`: what the LAN and relay halves read
-## of the held identity, the relay ticket, and the roster a peer pushes.
+## The Cloud Connect client (CC-14.1b and CC-14.4; WIRE-CONTRACT-V5 sections 15.2 to 15.4 and 15.7),
+## ported from sdk-node `connect/client.ts` and Kotlin's `Connect.kt`: the identity fetch, what the
+## LAN and relay halves read of the held identity, the relay ticket, and the roster a peer pushes.
 ##
+##   identity(refresh) the held identity, fetched first when none is held, it is near its end, this
+##                    device's keys changed or `refresh` is set. Makes and registers the device keys
+##                    on first need (`PUT /devices/keys`), then `GET /<p>/connect/identity`: the
+##                    roster, this device's certificate and K_disc, both documents verified against
+##                    the effective product set before anything is stored. ok with the identity
+##                    Dictionary `current()` returns. A coroutine
+##   list_devices()   `GET /<p>/connect/devices`: the person's devices, display data only. A coroutine
 ##   held()           the state record (a PKeyConnectState.Record), ok with null for none
 ##   current()        the held identity as a Dictionary, verified again now; null when none is held,
 ##                    it does not verify any more or its roster expired. Sends nothing, makes no keys
@@ -16,14 +23,18 @@ extends RefCounted
 ##   keys_stale()     a pushed roster removed a device, so K_disc was replaced at the Worker and the
 ##                    copy held is not used until a fetch brings the new one (G12)
 ##   relay_ticket()   `POST /<p>/connect/relay/ticket`: a single-use `pkeyrt_` ticket (G13)
-##   hold(record)     store a record as the identity fetch (CC-14.1b) does; a record it writes has
-##                    no `keys_stale`, which is how a successful refresh clears it
+##   hold(record)     store a record as the identity fetch does; a record it writes has no
+##                    `keys_stale`, which is how a successful refresh clears it
 ##   leave()          forget the record (sign-out); the device keys are untouched
 ##
-## Every call here is synchronous except `relay_ticket`, and the state is touched by the main thread
-## only, so no queue is needed (Node serialises its async file store). Results are PKeyResults;
-## nothing here puts a ticket, K_disc, certificate or key in a result message, `str()` or log (G13,
-## G19). `keys` is a key port with `public_keys()` and `dh(peer_public)` (PKeyDeviceKeyStore).
+## Every call here is synchronous except `identity`, `list_devices` and `relay_ticket`, and the state
+## is touched by the main thread only. Node serialises its async file store; here the two calls that
+## wait for the Worker take a lock of their own, and the identity fetch judges its answer against
+## the record held when the answer arrives, in one step with the write, so a roster a peer pushed
+## meanwhile (`adopt_ring`) is never overwritten with an older one. Results are PKeyResults; nothing
+## here puts a ticket, K_disc, certificate or key in a result message, `str()` or log (G13, G19).
+## `keys` is a key port with `ensure()`, `public_keys()`, `sign()` and `dh(peer_public)`
+## (PKeyDeviceKeyStore).
 
 const RELAY_PROTOCOL := "pkey-relay.1"
 ## The Worker keeps the previous K_disc for 24 hours after a bump (section 15.4).
@@ -34,7 +45,14 @@ static var _ticket_re: RegEx
 ## TEST ONLY: the origin a relay URL is checked against, when the Worker is a loopback fake whose
 ## replies name the recorded host. Empty: the SDK's own base URL.
 var home_url := ""
+## Allow a memory-only key store (G18). Off: its keys die with the process, so every restart would
+## register a new pair and the Worker allows four a day; `identity` and `list_devices` refuse
+## (`invalid-options`).
+var allow_ephemeral_keys := false
+## The device surface that registers the keys; null makes one over the same Core.
+var devices: PKeyDevices = null
 
+var _locked := false
 var _core_ref: WeakRef
 var _state: PKeyConnectState
 var _keys: Object
@@ -160,8 +178,8 @@ func _agree_public() -> Variant:
 	return agree if agree is PackedByteArray and (agree as PackedByteArray).size() == 32 else null
 
 
-## Store a record in place of the held one. The identity fetch (CC-14.1b) writes through this; a
-## record without `keys_stale` is what ends a stale period.
+## Store a record in place of the held one. The identity fetch writes through this; a record without
+## `keys_stale` is what ends a stale period.
 func hold(rec: PKeyConnectState.Record) -> PKeyResult:
 	return _state.write(rec)
 
@@ -171,6 +189,360 @@ func hold(rec: PKeyConnectState.Record) -> PKeyResult:
 ## record that cannot be deleted is a failure, so a sign-out stops.
 func leave() -> PKeyResult:
 	return _state.clear()
+
+
+# ── The identity fetch (CC-14.1b) ────────────────────────────────────────────────────────
+
+## The held identity, fetching it first when none is held, when it is nearing its end (the
+## certificate has less than PKeyPeerCert.PEER_CERT_RENEW_SECONDS left, or the roster expired), when
+## this device's keys changed, or when `refresh` is set. Makes and registers the device keys on
+## first need. ok with the identity {sub, device_id, epoch, devices, certificate,
+## certificate_expires_at, ring, ring_expires_at} (see `current`). Failures: `connect-unavailable`
+## (Connect is off here), `invalid-options` (a memory-only key store the host did not allow),
+## `no-token`, the key store's own codes, the Worker's refusals as the core reports them
+## (`account_required`, `device_keys_required`, `ring_too_large`, `not_found`, ...),
+## `invalid-response` for an answer that is not in the contract shape and `peer-cert-invalid`
+## for a roster or certificate that does not verify (nothing is stored then). A coroutine.
+func identity(refresh := false) -> PKeyResult:
+	await _lock()
+	var r := await _identity(refresh)
+	_locked = false
+	return r
+
+
+## `GET /<p>/connect/devices`: the person's devices, display data only. ok with an Array of
+## {device_id, label, platform, last_seen, self}; label, platform and last_seen are null when the
+## Worker does not know them. Registers the device keys first when they are not yet registered.
+## Same failures as `identity`. A coroutine.
+func list_devices() -> PKeyResult:
+	await _lock()
+	var r := await _list_devices()
+	_locked = false
+	return r
+
+
+func _lock() -> void:
+	while _locked:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+	_locked = true
+
+
+## The first steps of a call that talks to the Worker: the gate, the device keys and the held record.
+## ok with {port, mine, rec} (rec null for none), or the first refusal.
+func _prepare() -> PKeyResult:
+	var gate := _gate()
+	if not gate.ok:
+		return gate
+	var made := _ensure_keys(gate.detail)
+	if not made.ok:
+		return made
+	var h := held()
+	if not h.ok:
+		return h
+	return PKeyResult.success({"port": gate.detail, "mine": made.detail, "rec": h.detail})
+
+
+func _identity(refresh: bool) -> PKeyResult:
+	var prep := _prepare()
+	if not prep.ok:
+		return prep
+	var port: Object = prep.detail["port"]
+	var mine: Dictionary = prep.detail["mine"]
+	var rec: PKeyConnectState.Record = prep.detail["rec"]
+	var verified := _verify_held(rec) if rec != null else {"ring": null, "cert": null}
+	if not refresh and rec != null and verified["ring"] != null and verified["cert"] != null \
+			and _fresh(rec, verified, mine, _now()):
+		return PKeyResult.success(_view(rec, verified["ring"], verified["cert"]))
+	var res := await _fetch_identity(port, rec, mine)
+	if not res.ok:
+		return res
+	var answer := _parse_answer(res.detail["body"])
+	if not answer.ok:
+		return answer
+	# The record may have moved while the answer was on its way (a roster a peer pushed): judge the
+	# answer against what is held now, and write in the same step.
+	return _store_answer(answer.detail, mine, rec, verified)
+
+
+## Register the keys when they are not yet registered, then `GET connect/identity`; after one
+## `device_keys_required` (the Worker forgot the keys: a purge) register once more and ask again.
+func _fetch_identity(port: Object, rec: PKeyConnectState.Record, mine: Dictionary) -> PKeyResult:
+	var reg := await _register_if_needed(port, rec, mine)
+	if not reg.ok:
+		return reg
+	var res := await _fetch("connect/identity")
+	if res.ok or String(res.code) != PKeyConstants.ErrorCode.DEVICE_KEYS_REQUIRED or reg.detail:
+		return res
+	var again := await _register(port)
+	if not again.ok:
+		return again
+	return await _fetch("connect/identity")
+
+
+## Judge the answer against the record held now (`before` is the record the call started with and
+## `verified` its two halves, reused while the record is unchanged), and store it.
+func _store_answer(answer: Dictionary, mine: Dictionary, before: PKeyConnectState.Record, verified: Dictionary) -> PKeyResult:
+	var now := _now()
+	var h := held()
+	if not h.ok:
+		return h
+	var rec: PKeyConnectState.Record = h.detail
+	if rec == null:
+		verified = {"ring": null, "cert": null}
+	elif before == null or rec.ring != before.ring or rec.certificate != before.certificate:
+		verified = _verify_held(rec)
+	var accepted := _accept(answer, mine, rec, verified, now)
+	if not accepted.ok:
+		return accepted
+	var stored := hold(accepted.detail["rec"])
+	if not stored.ok:
+		return stored
+	return PKeyResult.success(accepted.detail["view"])
+
+
+func _list_devices() -> PKeyResult:
+	var prep := _prepare()
+	if not prep.ok:
+		return prep
+	var reg := await _register_if_needed(prep.detail["port"], prep.detail["rec"], prep.detail["mine"])
+	if not reg.ok:
+		return reg
+	var res := await _fetch("connect/devices")
+	if not res.ok:
+		return res
+	var parsed := PKeyJson.parse_bytes(res.detail["body"])
+	var list: Variant = (parsed["value"] as Dictionary).get("devices") \
+			if parsed["ok"] and parsed["value"] is Dictionary else null
+	if not list is Array or (list as Array).size() > PKeyPeerCert.MAX_RING_DEVICES:
+		return _refuse("the device list is not in the contract shape", false)
+	var out: Array = []
+	for d in list:
+		var entry: Variant = _device_entry(d)
+		if entry == null:
+			return _refuse("a device entry is not in the contract shape", false)
+		out.append(entry)
+	return PKeyResult.success(out)
+
+
+## One entry of the device list, display data only; null for one that is not in the contract shape.
+static func _device_entry(d: Variant) -> Variant:
+	if not d is Dictionary or not (d as Dictionary).get("deviceId") is String \
+			or not (d as Dictionary).get("self") is bool:
+		return null
+	var e: Dictionary = d
+	return {
+		"device_id": e["deviceId"],
+		"label": e["label"] if e.get("label") is String else null,
+		"platform": e["platform"] if e.get("platform") is String else null,
+		"last_seen": int(e["lastSeen"]) if _safe_integer(e.get("lastSeen")) else null,
+		"self": e["self"],
+	}
+
+
+## Connect must be on for this product, per discovery when it is known; a token must be held and
+## the device keys durable (or the host allowed ephemeral ones). ok with the key port as detail.
+func _gate() -> PKeyResult:
+	var core := _core()
+	if core == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "The SDK is gone.")
+	var off := _unavailable(core)
+	if off != "":
+		return PKeyResult.failure(PKeyConstants.ErrorCode.CONNECT_UNAVAILABLE, off, {
+			"feature": PKeyConstants.Feature.CONNECT_IDENTITY,
+			"reason": PKeyConstants.UnsupportedReason.PRODUCT,
+			"detail": off,
+		})
+	if not core.tokens.has_token():
+		return PKeyResult.failure(PKeyErrors.NO_TOKEN, "Register or sign in before using Cloud Connect.")
+	if _keys == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Cloud Connect has no device keys.")
+	if _keys.has_method("persistence") and _keys.persistence() == "memory" and not allow_ephemeral_keys:
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "The device keys are held in memory only, so every restart would register a new pair. Use a durable key store or set allow_ephemeral_keys.")
+	return PKeyResult.success(_keys)
+
+
+## Why Cloud Connect is off for this product, from the last discovery ("" when it is on, or when
+## there has been no discovery to say otherwise).
+static func _unavailable_text(manifest: Variant) -> String:
+	if manifest == null:
+		return ""
+	var services: Variant = (manifest as Dictionary).get("services") if manifest is Dictionary else null
+	var f: Variant = (services as Dictionary).get("connect") if services is Dictionary else null
+	if not f is Dictionary or not PKeyClaims.is_true((f as Dictionary).get("enabled")):
+		return "this product has Cloud Connect off"
+	var endpoints: Variant = (f as Dictionary).get("endpoints")
+	if endpoints is Dictionary and (endpoints as Dictionary).has("identity") and (endpoints as Dictionary)["identity"] == null:
+		return "this product's discovery names no connect identity endpoint"
+	return ""
+
+
+func _unavailable(core: PKeyCore) -> String:
+	return _unavailable_text(core.discovery_manifest)
+
+
+func _ensure_keys(port: Object) -> PKeyResult:
+	var r: PKeyResult = port.ensure()
+	if r.ok and not (r.detail is Dictionary and (r.detail as Dictionary).get("sign_key") is String \
+			and (r.detail as Dictionary).get("agree_key") is String):
+		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The device keys could not be used.")
+	return r
+
+
+## Register the port's keys unless the held record says this pair was already registered. ok with
+## detail true when a registration was sent.
+func _register_if_needed(port: Object, rec: PKeyConnectState.Record, mine: Dictionary) -> PKeyResult:
+	if rec != null and rec.registered_sign == mine["sign_key"] and rec.registered_agree == mine["agree_key"]:
+		return PKeyResult.success(false)
+	var r := await _register(port)
+	if not r.ok:
+		return r
+	return PKeyResult.success(true)
+
+
+func _register(port: Object) -> PKeyResult:
+	var d := devices
+	if d == null:
+		d = PKeyDevices.new(_core())
+	return await d.register_keys(port, allow_ephemeral_keys)
+
+
+func _fetch(path: String) -> PKeyResult:
+	var core := _core()
+	if core == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "The SDK is gone.")
+	return await core.request("GET", path, null, true)
+
+
+## A refusal of the identity answer: `peer-cert-invalid` when a certificate or roster failed
+## verification, `invalid-response` when the answer is not in the contract shape.
+static func _refuse(reason: String, cert := true) -> PKeyResult:
+	var code: StringName = PKeyConstants.ErrorCode.PEER_CERT_INVALID if cert else PKeyErrors.INVALID_RESPONSE
+	return PKeyResult.failure(code, "The Cloud Connect identity was refused: %s." % reason)
+
+
+## The identity answer's shape: two strings and one or two different canonical discovery keys.
+## ok with {ring, certificate, disc_keys}.
+static func _parse_answer(body: PackedByteArray) -> PKeyResult:
+	var parsed := PKeyJson.parse_bytes(body)
+	var bad := _refuse("the answer is not in the contract shape", false)
+	if not parsed["ok"] or not parsed["value"] is Dictionary:
+		return bad
+	var o: Dictionary = parsed["value"]
+	var keys: Variant = o.get("discKeys")
+	if not o.get("ring") is String or not o.get("certificate") is String \
+			or not keys is Array or (keys as Array).size() < 1 or (keys as Array).size() > 2:
+		return bad
+	var out: Array[String] = []
+	for k in keys:
+		if not _valid_disc_key(k):
+			return bad
+		out.append(k)
+	if out.size() == 2 and out[0] == out[1]:
+		return bad
+	return PKeyResult.success({"ring": o["ring"], "certificate": o["certificate"], "disc_keys": out})
+
+
+static func _valid_disc_key(v: Variant) -> bool:
+	if not v is String or not PKeyClaims.matches_whole_re(PKeyConnectState._key_re, v):
+		return false
+	var b: Variant = PKeyB64Url.decode_strict(v)
+	return b is PackedByteArray and (b as PackedByteArray).size() == 32
+
+
+## Verify the answer and decide what to store: ok with {rec, view}, or a refusal. Nothing is written
+## here. `held_rec` is the record held now (or null), `verified` its two halves (see `_verify_held`).
+func _accept(answer: Dictionary, mine: Dictionary, held_rec: PKeyConnectState.Record, verified: Dictionary, now: int) -> PKeyResult:
+	var core := _core()
+	var trust := core.trust.effective()
+	var r := PKeyPeerCert.verify_ring(answer["ring"], trust, core.product)
+	if not r["ok"]:
+		return _refuse("the roster does not verify (%s)" % r["reason"])
+	var c := PKeyPeerCert.verify_peer_cert(answer["certificate"], trust, core.product, now)
+	if not c["ok"]:
+		return _refuse("the certificate does not verify (%s)" % c["reason"])
+	var ring: Dictionary = r["ring"]
+	var cert: Dictionary = c["cert"]
+	var flaw := _binding_flaw(core, ring, cert, mine, now)
+	# The held roster is replaced only by a newer one of the same subject (section 15.3). An expired
+	# held roster counts as none. The same epoch may be refreshed, never changed.
+	var prior: Variant = verified["ring"]
+	if prior != null and PKeyPeerCert.ring_expired(prior, now):
+		prior = null
+	if flaw == "" and prior != null:
+		flaw = _replacement_flaw(prior, ring)
+	if flaw != "":
+		return _refuse(flaw)
+	# K_disc is stored exactly as the latest answer delivered it, never merged with older answers;
+	# a previous key goes when the roster lost a device or changed a device's keys.
+	var keys: Array[String] = answer["disc_keys"]
+	if prior != null and int(ring["epoch"]) > int(prior["epoch"]):
+		keys = keys_after_ring(keys, prior, ring)
+	var same_epoch_prev := held_rec != null and prior != null and int(prior["epoch"]) == int(ring["epoch"]) \
+			and held_rec.disc_keys.size() == 2 and keys.size() == 2 and held_rec.disc_keys[1] == keys[1]
+	var prev_until := -1
+	if keys.size() == 2:
+		prev_until = held_rec.prev_until if same_epoch_prev and held_rec.prev_until >= 0 else now + PREV_DISC_KEY_SECONDS
+	var rec := PKeyConnectState.Record.new()
+	rec.product = core.product
+	rec.device_id = core.device_id
+	rec.ring = answer["ring"]
+	rec.certificate = answer["certificate"]
+	rec.disc_keys = keys
+	rec.prev_until = prev_until
+	rec.epoch = int(ring["epoch"])
+	rec.registered_sign = mine["sign_key"]
+	rec.registered_agree = mine["agree_key"]
+	rec.stored_at = now
+	return PKeyResult.success({"rec": rec, "view": _view(rec, ring, cert)})
+
+
+## The first thing wrong with how the certificate and roster fit this device ("" for none).
+func _binding_flaw(core: PKeyCore, ring: Dictionary, cert: Dictionary, mine: Dictionary, now: int) -> String:
+	var checks := [
+		[PKeyPeerCert.ring_expired(ring, now), "the roster is expired"],
+		[cert["sub"] != ring["sub"], "the certificate and roster name different subjects"],
+		[cert["device_id"] != core.device_id, "the certificate is for another device"],
+		[cert["sign_key"] != mine["sign_key"] or cert["agree_key"] != mine["agree_key"], "the certificate certifies other keys than this device's"],
+		[int(cert["ring_epoch"]) != int(ring["epoch"]), "the certificate and roster are at different epochs"],
+		[not _lists(ring, cert), "this device is not in the roster"],
+	]
+	for check in checks:
+		if check[0]:
+			return check[1]
+	return ""
+
+
+## Why `ring` may not replace the live held roster `prior` ("" when it may).
+static func _replacement_flaw(prior: Dictionary, ring: Dictionary) -> String:
+	var checks := [
+		[prior["sub"] != ring["sub"], "the roster is for another subject"],
+		[int(ring["epoch"]) < int(prior["epoch"]), "the roster is stale"],
+		[int(ring["epoch"]) == int(prior["epoch"]) and not _same_devices(ring["devices"], prior["devices"]), "the roster differs at the held epoch"],
+	]
+	for check in checks:
+		if check[0]:
+			return check[1]
+	return ""
+
+
+## Whether the held identity can be used as it is.
+func _fresh(rec: PKeyConnectState.Record, ok: Dictionary, mine: Dictionary, now: int) -> bool:
+	var ring: Dictionary = ok["ring"]
+	var cert: Dictionary = ok["cert"]
+	return rec.registered_sign == mine["sign_key"] and rec.registered_agree == mine["agree_key"] \
+			and cert["sign_key"] == mine["sign_key"] and cert["agree_key"] == mine["agree_key"] \
+			and not PKeyPeerCert.ring_expired(ring, now) \
+			and int(cert["expires_at"]) - now > PKeyPeerCert.PEER_CERT_RENEW_SECONDS \
+			and int(cert["ring_epoch"]) == int(ring["epoch"])
+
+
+static func _same_devices(a: Array, b: Array) -> bool:
+	if a.size() != b.size():
+		return false
+	for i in a.size():
+		if not _same_device(a[i], b[i]):
+			return false
+	return true
 
 
 # ── A roster a peer pushed ────────────────────────────────────────────────────────────────

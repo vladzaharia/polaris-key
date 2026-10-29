@@ -705,8 +705,8 @@
       "wp": "U-21"
     },
     "connect.identity": {
-      "status": "planned",
-      "wp": "CC-14"
+      "status": "implemented",
+      "note": "PolarisKey.connect (PKeyConnectClient, services/connect/client.gd; state in state.gd, D-7): identity(refresh) makes and registers the device keys on first need (devices.register_keys, once more after one device_keys_required), fetches GET connect/identity, verifies the roster and this device's certificate against the effective set (PKeyPeerCert) and stores them as one record, user://pkey/<product>/connect.v1, sealed by the platform key where a lane exists (context pkey-connect/1 state), else the engine-encrypted file (obfuscation, not protection); a memory-only key store refuses unless allow_ephemeral_keys. A roster that is expired, stale, foreign or for other keys than this device's is never stored. K_disc is stored as delivered; the previous key is dropped when the roster lost a device and kept 24 hours otherwise. list_devices, current, discovery_keys, leave and adopt_ring (a roster a peer pushed; keys_stale) follow. tests/connect/cert.gd (peerCertCases, ringCases, peerAdmissionCases), tests/connect/identity.gd and the connect-identity* transcripts in suite_transcripts. No Godot web test lane: web runs the same code, untested."
     },
     "connect.noise": {
       "status": "planned",

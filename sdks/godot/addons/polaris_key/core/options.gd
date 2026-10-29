@@ -100,6 +100,13 @@ var device_keys: Object = null
 ## sealer (Linux), in an engine-encrypted file that is obfuscation, NOT protection: any code running as
 ## the same user can derive its key. A vault made with `encrypted = false` is refused (`invalid-options`).
 var ring_vault: PKeySyncRingVault = null
+## Where Cloud Connect keeps its roster, certificate and K_disc (`PKeyConnectState`, D-7). Null: the
+## product's own record under `store_root`, sealed by the platform key where a native lane exists.
+## Not an export: tests pass a scratch or memory one.
+var connect_state: PKeyConnectState = null
+## Cloud Connect with a memory-only device key store (G18). Off: `connect.identity()` refuses, because
+## every restart would register a new key pair and the Worker allows four a day.
+var allow_ephemeral_keys := false
 
 ## Send a hashed hardware fingerprint when registering (PolarisKey.devices). Off: the server
 ## records the device `unverified` (a `strict` tier refuses it). Raw values never leave the device.
