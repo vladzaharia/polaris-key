@@ -52,7 +52,7 @@ async function world(o: Opts = {}): Promise<W> {
 }
 async function approve(
   w: W,
-  s: { handle: string; keys: Keys },
+  s: { handle: string; keys: Keys; deviceId: string },
   o: { by?: Dev; extra?: Record<string, unknown>; now?: number } = {},
 ) {
   const me = o.by ?? w.m;
@@ -68,6 +68,7 @@ async function approve(
         request: s.handle,
         signKey: s.keys.signKey,
         agreeKey: s.keys.agreeKey,
+        deviceId: s.deviceId,
         decision: "approve",
         proof: await sign(me.keys.priv, me.id, s.handle),
         ...(o.extra ?? {}),
@@ -84,7 +85,7 @@ async function approve(
 const APPROVED_BODY = { status: "approved", deviceLabel: "Kitchen TV" };
 
 /** M picks the licence whose only seat is taken. */
-const pickFull = (w: W, s: { handle: string; keys: Keys }) =>
+const pickFull = (w: W, s: { handle: string; keys: Keys; deviceId: string }) =>
   approve(w, s, {
     extra: { choice: { kind: "license", licenseId: "lic_full" } },
   });

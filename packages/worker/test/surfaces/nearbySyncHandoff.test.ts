@@ -123,6 +123,7 @@ const approve = async (f: Flow, extra: Record<string, unknown> = {}) =>
     bearer: f.w.m.token,
     body: {
       request: f.handle,
+      deviceId: D,
       signKey: f.keys.signKey,
       agreeKey: f.keys.agreeKey,
       decision: "approve",

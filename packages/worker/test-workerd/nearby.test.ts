@@ -151,6 +151,7 @@ async function world(): Promise<World> {
 interface Req {
   handle: string;
   keys: Keys;
+  deviceId: string;
 }
 
 const handleOf = () =>
@@ -183,7 +184,7 @@ async function started(w: World, deviceId = D): Promise<Req> {
       },
     ),
   ).toBe(true);
-  return { handle, keys };
+  return { handle, keys, deviceId };
 }
 
 interface Answer {
@@ -213,6 +214,7 @@ async function decide(
       },
       body: JSON.stringify({
         request: r.handle,
+        deviceId: r.deviceId,
         signKey: r.keys.signKey,
         agreeKey: r.keys.agreeKey,
         decision,

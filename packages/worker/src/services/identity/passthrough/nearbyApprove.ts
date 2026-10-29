@@ -58,7 +58,7 @@ import {
 } from "../../../core/devices/keys.js";
 import { registerDeviceKeys } from "../../../core/devices/registerKeys.js";
 import { getDevice } from "../../../core/devices/store.js";
-import { NO_LICENSE_ID } from "../../../core/devices.js";
+import { NO_LICENSE_ID, isValidClientDeviceId } from "../../../core/devices.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { sendNotice } from "../../../core/notify/send.js";
 import { appDeviceApprovedNotice } from "../../../core/notify/templates.js";
@@ -107,12 +107,14 @@ const notFoundNested = (): Response => wireError(404, ErrorCode.NotFound);
 
 /** The body, or null when it is not exactly the documented shape. */
 function parseBody(r: Record<string, unknown>): NearbyApproveRequest | null {
-  const { request, signKey, agreeKey, decision, choice, proof } = r;
+  const { request, deviceId, signKey, agreeKey, decision, choice, proof } = r;
   const text = (v: unknown): v is string =>
     typeof v === "string" && v.length <= FIELD_MAX;
   if (
     !text(request) ||
     !HANDLE.test(request) ||
+    !text(deviceId) ||
+    !isValidClientDeviceId(deviceId) ||
     !text(signKey) ||
     !text(agreeKey) ||
     !text(proof) ||
@@ -137,6 +139,7 @@ function parseBody(r: Record<string, unknown>): NearbyApproveRequest | null {
   }
   return {
     request,
+    deviceId,
     signKey,
     agreeKey,
     decision,
@@ -252,8 +255,13 @@ async function decideApproval(
   if ((await nearbyNetHash(env, req)) !== rec.netHash)
     return wireError(403, "not_nearby");
 
-  // The keys M sends are the ones D started with (learned from D's authenticated VOUCH_REQ).
-  if (body.signKey !== rec.signKey || body.agreeKey !== rec.agreeKey) {
+  // The device id and keys M sends are the ones D started with (learned from D's authenticated
+  // VOUCH_REQ); any difference counts against the request (§12.11.5 rule 3).
+  if (
+    body.signKey !== rec.signKey ||
+    body.agreeKey !== rec.agreeKey ||
+    body.deviceId !== rec.deviceId
+  ) {
     await mismatchNearby(env, ref);
     return notFoundNested();
   }

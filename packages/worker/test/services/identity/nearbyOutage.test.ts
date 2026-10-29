@@ -77,6 +77,7 @@ async function approve(
   const body = {
     decision: o.decision ?? "approve",
     request: s.handle,
+    deviceId: D,
     proof: await sign(me.keys.priv, me.id, s.handle),
     agreeKey: keys.agreeKey,
     signKey: keys.signKey,

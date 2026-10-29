@@ -110,6 +110,7 @@
               "body": {
                 "json": {
                   "request": "nr_Ny7Ph5GFYA8Hwt9FRdFcmQ",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001",
                   "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
                   "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
                   "decision": "deny",
@@ -217,6 +218,7 @@
               "body": {
                 "json": {
                   "request": "nr_Ny7Ph5GFYA8Hwt9FRdFcmQ",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001",
                   "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
                   "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
                   "decision": "approve",

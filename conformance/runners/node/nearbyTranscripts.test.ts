@@ -154,6 +154,7 @@ async function runNearby(
       },
       {
         request: handle,
+        deviceId: t.initial.deviceId,
         signKey: d.signKey,
         agreeKey: agree,
         decision: a.decision,

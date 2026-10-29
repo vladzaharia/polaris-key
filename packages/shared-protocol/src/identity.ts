@@ -758,6 +758,8 @@ export type NearbyChoiceInput =
 /** §12.11.5: `POST /<p>/identity/nearby/approve`, from the signed-in device M. */
 export interface NearbyApproveRequest {
   request: string;
+  /** D's device id from `start` (its authenticated VOUCH_REQ); a difference is `404 not_found`. */
+  deviceId: string;
   signKey: string;
   agreeKey: string;
   decision: "approve" | "deny";

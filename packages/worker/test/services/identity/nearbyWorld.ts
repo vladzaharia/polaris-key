@@ -195,7 +195,7 @@ export async function startRequest(w: W, o: { proven?: boolean } = {}) {
       proven: o.proven ?? false,
     }),
   ).toBe(true);
-  return { handle: HANDLE, ref, keys };
+  return { handle: HANDLE, ref, keys, deviceId: D };
 }
 
 export async function sign(

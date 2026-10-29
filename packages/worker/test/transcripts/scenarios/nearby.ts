@@ -298,6 +298,7 @@ async function approveStep(
   const d = fixtureDeviceKeys(D_LABEL);
   const body = {
     request: o.request,
+    deviceId: r.bindings.deviceId!,
     signKey: d.signKey,
     agreeKey: fixtureDeviceKeys(o.agreeLabel ?? D_LABEL).agreeKey,
     decision: o.decision ?? "approve",

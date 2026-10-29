@@ -169,7 +169,7 @@ async function startRequest(
     proven: false,
   });
   expect(written).toBe(true);
-  return { handle, ref, keys };
+  return { handle, ref, keys, deviceId: o.device ?? D };
 }
 
 interface Call {
@@ -179,6 +179,8 @@ interface Call {
   ip?: string;
   decision?: "approve" | "deny";
   keys?: { signKey: string; agreeKey: string };
+  /** The device id M names as D's (default: D's from `start`). */
+  dId?: string;
   handle?: string;
   extra?: Record<string, unknown>;
   raw?: string;
@@ -187,7 +189,7 @@ interface Call {
 
 async function approve(
   w: W,
-  start: { handle: string; keys: Keys },
+  start: { handle: string; keys: Keys; deviceId: string },
   o: Call = {},
 ): Promise<{ status: number; headers: Headers; body: Record<string, any> }> {
   const who = o.as ?? "m";
@@ -198,6 +200,7 @@ async function approve(
     o.raw ??
     JSON.stringify({
       request: handle,
+      deviceId: o.dId ?? start.deviceId,
       signKey: (o.keys ?? start.keys).signKey,
       agreeKey: (o.keys ?? start.keys).agreeKey,
       decision: o.decision ?? "approve",
@@ -319,6 +322,7 @@ describe("POST /<p>/identity/nearby/approve", () => {
         ].map((choice) =>
           JSON.stringify({
             request: s.handle,
+            deviceId: s.deviceId,
             signKey: s.keys.signKey,
             agreeKey: s.keys.agreeKey,
             decision: "approve",
@@ -328,6 +332,7 @@ describe("POST /<p>/identity/nearby/approve", () => {
         ),
         JSON.stringify({
           request: s.handle,
+          deviceId: s.deviceId,
           signKey: s.keys.signKey,
           agreeKey: s.keys.agreeKey,
           decision: "maybe",
@@ -373,6 +378,40 @@ describe("POST /<p>/identity/nearby/approve", () => {
         keys: { signKey: s.keys.signKey, agreeKey: wrong.agreeKey },
       });
       expect((await approve(w, s)).status).toBe(200);
+    });
+  });
+
+  describe("device id (§12.11.5 rule 3)", () => {
+    const OTHER = "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE";
+
+    it("another device id is 404, counted like a key mismatch; the third ends the request", async () => {
+      const w = await world();
+      const s = await startRequest(w);
+      const answers = [await approve(w, s, { dId: M })];
+      expect((await readNearby(w.env, s.ref))!.state).toBe("pending");
+      for (let i = 0; i < 2; i++)
+        answers.push(await approve(w, s, { dId: OTHER }));
+      expect(answers.map((r) => [r.status, code(r)])).toEqual(
+        Array(3).fill([404, "not_found"]),
+      );
+      expect(await readNearby(w.env, s.ref)).toBeNull();
+    });
+
+    it("a missing or malformed device id is 400 bad_request", async () => {
+      const w = await world();
+      const s = await startRequest(w);
+      for (const dId of [undefined, "", "bad id!", "x".repeat(129), 7]) {
+        const raw = JSON.stringify({
+          request: s.handle,
+          ...(dId === undefined ? {} : { deviceId: dId }),
+          signKey: s.keys.signKey,
+          agreeKey: s.keys.agreeKey,
+          decision: "approve",
+          proof: "A".repeat(86),
+        });
+        const r = await approve(w, s, { raw });
+        expect([r.status, code(r)]).toEqual([400, "bad_request"]);
+      }
     });
   });
 
@@ -622,6 +661,7 @@ describe("POST /<p>/identity/nearby/approve", () => {
         },
         body: JSON.stringify({
           request: s.handle,
+          deviceId: s.deviceId,
           signKey: s.keys.signKey,
           agreeKey: s.keys.agreeKey,
           decision: "approve",

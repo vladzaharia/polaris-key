@@ -35,7 +35,7 @@ const VERB = "https://key.plrs.im/djdl/identity/nearby/poll";
 /** D polls: the proof is made with the key it started with, for the handle. */
 async function poll(
   w: W,
-  s: { handle: string; keys: Keys },
+  s: { handle: string; keys: Keys; deviceId: string },
   o: {
     now?: number;
     device?: string | null;
@@ -74,7 +74,7 @@ async function poll(
 
 async function decide(
   w: W,
-  s: { handle: string; keys: Keys },
+  s: { handle: string; keys: Keys; deviceId: string },
   decision: "approve" | "deny",
 ) {
   const res = await handleNearbyApprove(
@@ -89,6 +89,7 @@ async function decide(
         request: s.handle,
         signKey: s.keys.signKey,
         agreeKey: s.keys.agreeKey,
+        deviceId: s.deviceId,
         decision,
         proof: await sign(w.m.keys.priv, w.m.id, s.handle),
       }),

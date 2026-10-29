@@ -316,7 +316,8 @@
 //   nearbyApprove args: `approverDeviceId`, `approverToken` (M's id and device token, bound to
 //                 `{approverDeviceId}` and `Bearer {approverToken}` in the request's headers: M is not
 //                 the transcript's device), `approverKeyLabel` (M's keys), `keyLabel` (D's keys, the
-//                 body's `signKey` and `agreeKey`), `decision` ("approve" | "deny"), `choice`? (the
+//                 body's `signKey` and `agreeKey`; the body's `deviceId` is the transcript's own
+//                 device, `initial.deviceId`), `decision` ("approve" | "deny"), `choice`? (the
 //                 body's), `request`? (the handle to approve, else the one `nearbyStart` answered),
 //                 `proofKeyLabel`? and `proofValue`? (a proof by other keys, or over another value),
 //                 `agreeKeyLabel`? (send another label's agreement key). expect: result "approved"
