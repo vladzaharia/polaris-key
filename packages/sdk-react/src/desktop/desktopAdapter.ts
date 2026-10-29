@@ -139,6 +139,7 @@ import {
   type BridgeHost,
   type KitView,
   type BridgeOidcBegin,
+  type BridgeSignInBegin,
   type BridgeState,
   type PolarisBridge,
 } from "./bridge.js";
@@ -926,8 +927,8 @@ export class DesktopAdapter implements PolarisAdapter {
       ),
   };
 
-  /** `identity.choice.*`: the desktop renderer never holds a grant (its sign-in cannot ask for
-   *  `licenseChoice: "app"`, and the bridge has no verb that spends one), so each call is the typed
+  /** `identity.choice.*`: the desktop renderer never holds a grant (the bridge's device-code
+   *  sign-in never answers `choose`, and the bridge has no verb that spends one), so each call is the typed
    *  unsupported. */
   readonly choice: ChoiceNamespace = {
     licenses: () => this.noChoice(),
@@ -1003,17 +1004,10 @@ export class DesktopAdapter implements PolarisAdapter {
           `unknown sign-in channel: ${String((opts as { channel?: unknown }).channel)}`,
         ),
       );
-    // `beginSignIn` carries only the device name: a hint the host never sees would be a quiet
-    // no-op, so it is refused.
-    if (
-      opts.loginHint !== undefined ||
-      opts.nameHint !== undefined ||
-      opts.purpose !== undefined ||
-      opts.scope !== undefined ||
-      // `card` is what `beginSignIn` does already; a hint for the app's own choice is not.
-      (opts.licenseChoice !== undefined &&
-        (opts.licenseChoice as string) !== "card")
-    )
+    // The scope is the one thing `beginSignIn` still does not carry: refuse it, typed, rather
+    // than drop it. The hints, `purpose` and `licenseChoice` ride the bag (UK-42.17); the host
+    // validates them again.
+    if (opts.scope !== undefined)
       throw this.fail(
         "identity",
         new UnsupportedError(
@@ -1022,16 +1016,31 @@ export class DesktopAdapter implements PolarisAdapter {
             feature: Feature.identitySigninHints,
             reason: "runtime",
             detail:
-              "The bridge's beginSignIn carries only deviceName; the host starts a sign-in that needs hints, a scope or a licence choice.",
+              "The bridge's beginSignIn carries the hints, the purpose and the licence choice, not a scope; the host starts a sign-in that needs one.",
           },
           "unsupported",
         ),
       );
+    const bad = badHint(opts);
+    if (bad)
+      throw this.fail(
+        "identity",
+        new PolarisError(ErrorCode.invalidArgument, bad),
+      );
+    const bag: BridgeSignInBegin = {
+      ...(opts.deviceName ? { deviceName: opts.deviceName } : {}),
+      ...(opts.loginHint ? { loginHint: opts.loginHint } : {}),
+      ...(opts.nameHint ? { nameHint: opts.nameHint } : {}),
+      ...(opts.purpose === "attach" ? { purpose: "attach" as const } : {}),
+      ...(opts.licenseChoice === "app"
+        ? { licenseChoice: "app" as const }
+        : {}),
+    };
     this.setBusy("identity", true);
     let begin: BridgeOidcBegin;
     try {
       begin = await this.bridge.beginSignIn(
-        opts.deviceName ? { deviceName: opts.deviceName } : undefined,
+        Object.keys(bag).length > 0 ? bag : undefined,
       );
     } catch (e) {
       throw this.fail(
@@ -1597,4 +1606,25 @@ function updateError(e: unknown): PolarisError {
   if (code === "network-error" || code === "network")
     return new PolarisError("network", message, code);
   return new PolarisError("unknown", message, code);
+}
+
+/** The renderer-side check of `beginSignIn`'s hints (UK-42.17), mirroring the host's: a message,
+ *  or null when they are fine. A wrong hint is an error, never a quiet drop. */
+function badHint(o: SignInOptions): string | null {
+  const text = (v: unknown, max: number): boolean =>
+    v === undefined ||
+    (typeof v === "string" &&
+      v.length <= max &&
+      !/[\u0000-\u001f\u007f]/.test(v));
+  if (!text(o.loginHint, 254)) return "loginHint is too long or not text.";
+  if (!text(o.nameHint, 200)) return "nameHint is too long or not text.";
+  if (o.purpose !== undefined && (o.purpose as string) !== "attach")
+    return 'purpose must be "attach" on the desktop bridge.';
+  if (
+    o.licenseChoice !== undefined &&
+    (o.licenseChoice as string) !== "app" &&
+    (o.licenseChoice as string) !== "card"
+  )
+    return 'licenseChoice must be "app" or "card".';
+  return null;
 }
