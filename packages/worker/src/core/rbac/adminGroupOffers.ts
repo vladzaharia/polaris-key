@@ -68,7 +68,7 @@ export function offerOutcomeStatements(
   now: number,
   slug: string,
   outcome: OfferOutcome,
-  detail: { ruleId?: string } = {},
+  detail: { ruleId?: string; group?: string } = {},
 ): DbStatement[] {
   const summary =
     outcome === "accepted"
@@ -101,6 +101,7 @@ export function offerOutcomeStatements(
         before_json: null,
         after_json: JSON.stringify({
           outcome,
+          ...(detail.group ? { group: detail.group } : {}),
           ...(detail.ruleId ? { ruleId: detail.ruleId } : {}),
         }),
         setting_key: `admin_group_offer:${slug}`,

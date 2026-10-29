@@ -353,6 +353,7 @@ describe("offers", () => {
     });
     expect(JSON.parse(platform[0]!.after_json as string)).toEqual({
       outcome: "dismissed",
+      group: "alpha-admins",
     });
     expect(
       await rows(
@@ -416,6 +417,7 @@ describe("offers", () => {
 
   const accept = {
     action: "accept",
+    group: "alpha-admins",
     connection: "ops",
     areas: ["ship"],
     reason: "map the group",
@@ -463,7 +465,8 @@ describe("offers", () => {
       ...accept,
       group: "everyone",
     });
-    expect(forged.status).toBe(422);
+    expect(forged.status).toBe(409);
+    expect(forged.b.reason).toBe("offer_changed");
     const r = await send(stepped, "POST", "/api/access/offers/alpha", accept);
     expect(r.status).toBe(200);
     expect(r.b.outcome).toBe("accepted");
@@ -486,6 +489,7 @@ describe("offers", () => {
     expect(outcome).toHaveLength(1);
     expect(JSON.parse(outcome[0]!.after_json as string)).toEqual({
       outcome: "accepted",
+      group: "alpha-admins",
       ruleId: r.b.ruleId,
     });
     expect(
@@ -508,5 +512,100 @@ describe("offers", () => {
       accept,
     );
     expect(again.status).toBe(404);
+  });
+
+  const ruleCount = async () =>
+    (
+      (
+        await resolvePlatformSetting(
+          { env, db, registry: SETTINGS },
+          "console.access",
+          { fresh: true },
+        )
+      ).value as { rules: unknown[] }
+    ).rules.length;
+
+  it("refuses an accept when the group changed after the Superadmin saw it", async () => {
+    const root = await person("root", { root: true, stepUp: true });
+    await setGroup("alpha", "alpha-admins");
+    await setGroup("alpha", "all-staff");
+    const r = await send(root, "POST", "/api/access/offers/alpha", accept);
+    expect(r.status).toBe(409);
+    expect(r.b.reason).toBe("offer_changed");
+    expect(await ruleCount()).toBe(0);
+    const noGroup = await send(root, "POST", "/api/access/offers/alpha", {
+      ...accept,
+      group: undefined,
+    });
+    expect(noGroup.status).toBe(422);
+  });
+
+  it("does not append a rule twice when an accept is retried", async () => {
+    const root = await person("root", { root: true, stepUp: true });
+    await setGroup("alpha", "alpha-admins");
+    const first = await send(root, "POST", "/api/access/offers/alpha", accept);
+    // The outcome write is lost: the offer reads open again.
+    await db.run(
+      "DELETE FROM platform_audit WHERE action = 'rbac.admin_group_offer'",
+    );
+    mail = [];
+    const again = await send(root, "POST", "/api/access/offers/alpha", accept);
+    expect(again.status).toBe(200);
+    expect(again.b.ruleId).toBe(first.b.ruleId);
+    expect(await ruleCount()).toBe(1);
+    expect(mail).toEqual([]);
+    expect(
+      await rows(
+        "SELECT 1 FROM platform_audit WHERE action = 'rbac.admin_group_offer'",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("leaves Members out of the default areas", async () => {
+    const root = await person("root", { root: true, stepUp: true });
+    await setGroup("alpha", "alpha-admins");
+    await send(root, "POST", "/api/access/offers/alpha", {
+      ...accept,
+      areas: undefined,
+    });
+    const doc = (
+      await resolvePlatformSetting(
+        { env, db, registry: SETTINGS },
+        "console.access",
+        { fresh: true },
+      )
+    ).value as { rules: Array<{ grant: { areas: string[] } }> };
+    expect(doc.rules[0]!.grant.areas).not.toContain("members");
+    expect(doc.rules[0]!.grant.areas).toContain("ship");
+  });
+});
+
+describe("preview hardening", () => {
+  it("returns the scan size to a Superadmin only", async () => {
+    const root = await person("root", { root: true });
+    const pa = await person("pa");
+    await bind(pa.accountId, "platform_admin", "platform");
+    const carol = await plainAccount("acc_carol");
+    await link(carol);
+    const su = await send(root, "POST", "/api/access/rules/preview", draft());
+    expect(su.b.scanned).toBe(1);
+    expect(su.b.truncated).toBe(false);
+    const other = await send(pa, "POST", "/api/access/rules/preview", draft());
+    expect(other.b.scanned).toBeNull();
+    expect(other.b.truncated).toBeNull();
+  });
+
+  it("skips a link row that cannot be read instead of failing", async () => {
+    const root = await person("root", { root: true });
+    const bob = await person("bob");
+    await bind(bob.accountId, "console_access", "platform");
+    await link(bob.accountId);
+    await db.run(
+      "UPDATE account_links SET groups_json = '{' WHERE account_id = ?",
+      bob.accountId,
+    );
+    const r = await send(root, "POST", "/api/access/rules/preview", draft());
+    expect(r.status).toBe(200);
+    expect(r.b.members).toEqual([]);
   });
 });

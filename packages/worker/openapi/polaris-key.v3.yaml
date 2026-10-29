@@ -20472,8 +20472,8 @@ paths:
                               items: { type: string }
                   matchedMembers: { type: integer }
                   otherLinks: { type: [integer, "null"] }
-                  scanned: { type: integer }
-                  truncated: { type: boolean }
+                  scanned: { type: [integer, "null"] }
+                  truncated: { type: [boolean, "null"] }
                   incomplete: { type: boolean }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
@@ -20563,10 +20563,9 @@ paths:
       tags: [admin]
       summary: Accept or dismiss one admin group offer
       description: >
-        ST-32.5. Body `{action: "dismiss"}`, or `{action: "accept", connection, areas?, label?,
-        reason, confirm}`. Accept appends one rule to `console.access`: the product's stored group
-        on the named operator connection gets Product admin on the product, for `areas` (all product
-        areas by default). The group and the rule id are the server's. It is the `console.access`
+        ST-32.5. Body `{action: "dismiss"}`, or `{action: "accept", group, connection, areas?,
+        label?, reason, confirm}`. Accept appends one rule to `console.access`: the product's stored group
+        on the named operator connection gets Product admin on the product, for `areas` (every product area but `members` by default; an accept whose rule is already stored appends nothing). The group and the rule id are the server's. It is the `console.access`
         write: a Superadmin, a console step-up (`403 step_up_required`), the typed confirmation
         `console.access` and a reason; every Superadmin is emailed afterwards. Either outcome writes
         one `rbac.admin_group_offer` row per trail. A product with no open offer is a `404`
@@ -20589,6 +20588,9 @@ paths:
               additionalProperties: false
               properties:
                 action: { type: string, enum: [accept, dismiss] }
+                group:
+                  type: string
+                  description: The group the offer showed; `409 offer_changed` if it is not the stored one.
                 connection: { type: string }
                 areas:
                   type: array

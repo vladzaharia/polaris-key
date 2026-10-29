@@ -124,8 +124,11 @@ export async function handleRulePreview(c: AdminCtx): Promise<Response> {
   const matched: Array<{ accountId: string; grant: AccessRule["grant"] }> = [];
   let others = 0;
   for (const accountId of accountIds) {
+    // A malformed link row skips that account, as sign-in's `ruleGrantsFor` does.
     const hit = (
-      await ruleMatchesFor(c.env, c.db, accountId, [rule], c.now)
+      await ruleMatchesFor(c.env, c.db, accountId, [rule], c.now).catch(
+        () => [],
+      )
     )[0];
     if (!hit) continue;
     if (members.has(accountId))
@@ -169,8 +172,11 @@ export async function handleRulePreview(c: AdminCtx): Promise<Response> {
     matchedMembers: matched.length,
     // Links of people who hold no role yet: a count, to a Superadmin only (never a name).
     otherLinks: isSuperadmin(c.session.principal) ? others : null,
-    scanned: accountIds.length,
-    truncated: truncated || matched.length > PREVIEW_MEMBERS,
+    // The size of the connection's link set is a Superadmin's, like `otherLinks`.
+    scanned: isSuperadmin(c.session.principal) ? accountIds.length : null,
+    truncated: isSuperadmin(c.session.principal)
+      ? truncated || matched.length > PREVIEW_MEMBERS
+      : null,
     incomplete,
   });
 }
@@ -199,7 +205,9 @@ export async function handleOffersList(c: AdminCtx): Promise<Response> {
 
 async function dismiss(c: AdminCtx, offers: Offer[]): Promise<void> {
   const statements = offers.flatMap((o) =>
-    offerOutcomeStatements(c.session, c.now, o.product, "dismissed"),
+    offerOutcomeStatements(c.session, c.now, o.product, "dismissed", {
+      group: o.group,
+    }),
   );
   for (let i = 0; i < statements.length; i += BATCH)
     await c.db.batch(statements.slice(i, i + BATCH));
@@ -232,7 +240,15 @@ export async function handleOfferDecide(c: AdminCtx): Promise<Response> {
     body,
     action === "dismiss"
       ? ["action"]
-      : ["action", "connection", "areas", "label", "reason", "confirm"],
+      : [
+          "action",
+          "group",
+          "connection",
+          "areas",
+          "label",
+          "reason",
+          "confirm",
+        ],
   );
   if (extra.length > 0) return invalid(extra);
   const slug = c.params.slug ?? "";
@@ -258,10 +274,23 @@ async function accept(
   // Checked first so the refusal names the step-up, not a write the registry would also refuse.
   const stepUp = requireStepUp(c.session, c.now);
   if (stepUp) return stepUp;
+  // The group the Superadmin saw. A product can change its own group meanwhile (S1).
+  if (typeof body.group !== "string") return invalid(["group"]);
+  if (body.group !== offer.group)
+    return err(
+      409,
+      ErrorCode.BadRequest,
+      "the product's admin group changed; review the offer again",
+      { reason: "offer_changed" },
+    );
   const connection = body.connection;
   if (typeof connection !== "string" || connection === "")
     return invalid(["connection"]);
-  const areas = body.areas === undefined ? [...PRODUCT_AREAS] : body.areas;
+  // By default every product area but `members`: granting Members is asked for by name (N3).
+  const areas =
+    body.areas === undefined
+      ? PRODUCT_AREAS.filter((a) => a !== "members")
+      : body.areas;
   const ctx = { env: c.env, db: c.db, registry: SETTINGS };
   const stored = await resolvePlatformSetting(ctx, KEY, { fresh: true });
   const doc = stored.value as { rules?: unknown[] } | null | undefined;
@@ -279,45 +308,58 @@ async function accept(
       areas,
     },
   };
-  const res = await writeConsoleAccess(
-    ctx,
-    c.session,
-    {
-      value: { rules: [...existing, rule] },
-      expectedVersion: stored.version,
-      reason: body.reason,
-      ...(typeof body.confirm === "string" ? { confirm: body.confirm } : {}),
-    },
-    c.now,
-  );
-  if (!res.ok) return settingRefused(res, ["connection", "areas"]);
-  const after = await resolvePlatformSetting(ctx, KEY, { fresh: true });
-  const rules = (after.value as { rules?: Array<{ id?: unknown }> } | null)
-    ?.rules;
-  const last = rules?.[rules.length - 1];
-  const ruleId = typeof last?.id === "string" ? last.id : undefined;
-  await c.db.batch(
-    offerOutcomeStatements(
+  // A retry after a failed outcome write must not append the same rule twice (N1).
+  const same = (r: unknown) =>
+    JSON.stringify([
+      (r as { when?: unknown }).when,
+      (r as { grant?: unknown }).grant,
+    ]) === JSON.stringify([rule.when, rule.grant]);
+  const twin = existing.find(same) as { id?: unknown } | undefined;
+  let rules: Array<{ id?: unknown }> | undefined;
+  let ruleId: string | undefined;
+  if (twin) {
+    ruleId = typeof twin.id === "string" ? twin.id : undefined;
+    rules = existing as Array<{ id?: unknown }>;
+  } else {
+    const res = await writeConsoleAccess(
+      ctx,
       c.session,
+      {
+        value: { rules: [...existing, rule] },
+        expectedVersion: stored.version,
+        reason: body.reason,
+        ...(typeof body.confirm === "string" ? { confirm: body.confirm } : {}),
+      },
       c.now,
-      offer.product,
-      "accepted",
-      ruleId ? { ruleId } : {},
-    ),
-  );
-  const notified = await notifySuperadmins(
-    c.env,
-    c.db,
-    c.now,
-    accessRulesNotice({
-      actor: c.session.name || c.session.email,
-      change: "added",
-      ruleCount: rules?.length ?? existing.length + 1,
-      origin: c.env.CONSOLE_ORIGIN,
+    );
+    if (!res.ok) return settingRefused(res, ["connection", "areas"]);
+    const after = await resolvePlatformSetting(ctx, KEY, { fresh: true });
+    rules = (after.value as { rules?: Array<{ id?: unknown }> } | null)?.rules;
+    const last = rules?.[rules.length - 1];
+    ruleId = typeof last?.id === "string" ? last.id : undefined;
+  }
+  await c.db.batch(
+    offerOutcomeStatements(c.session, c.now, offer.product, "accepted", {
+      group: offer.group,
+      ...(ruleId ? { ruleId } : {}),
     }),
-    { left: NOTICE_CAP },
-    true,
   );
+  // A twin rule changed nothing, so nobody is told.
+  const notified = twin
+    ? { sent: 0, of: 0 }
+    : await notifySuperadmins(
+        c.env,
+        c.db,
+        c.now,
+        accessRulesNotice({
+          actor: c.session.name || c.session.email,
+          change: "added",
+          ruleCount: rules?.length ?? existing.length + 1,
+          origin: c.env.CONSOLE_ORIGIN,
+        }),
+        { left: NOTICE_CAP },
+        true,
+      );
   return adminJson({
     ok: true,
     product: offer.product,
