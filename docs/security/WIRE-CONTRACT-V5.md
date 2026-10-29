@@ -1986,7 +1986,7 @@ A signed-in device offers to add a platform identity to the person's account, so
 
 #### 12.11.5 Nearby approval
 
-A device with no way to sign in (D) is approved by a signed-in device nearby (M). It is the server half of the mode `v` handshake (§15.5, §15.6), and it replaces the device code for this case because a code a person can type is the proof a victim can be talked into reading out.
+A device with no way to sign in (D) is approved by a signed-in device nearby (M). It is the server half of the mode `v` handshake (§15.5, §15.6.1), and it replaces the device code for this case because a code a person can type is the proof a victim can be talked into reading out.
 
 | Route                   | Caller            | Body                                                                       | Answer                                                                                                                                                                                                                                                                                                              |
 | ----------------------- | ----------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1998,10 +1998,10 @@ All three live under `/<p>/identity`. The request handle is `nr_` and 22 base64u
 
 1. **Proofs.** Each route carries a `pkey-proof/1` proof (§12.11.1) and a failed proof is `400 invalid_grant` with one body on every route, whatever the cause. The `nearby-start` value is `<signKey>.<agreeKey>` (the body's two keys), checked with the body's `signKey`. The `nearby-poll` value is `<request>`, checked with the `signKey` D sent on `start`; line 4 must be D's device id from `start`. The `nearby-approve` value is `<request>`, checked with M's registered signing key. The `approve` proof does not bind the decision, the choice or the keys: those are protected by TLS and M's bearer.
 2. **Keys on `start`.** The key rules of §15.8 apply: both keys are well formed, and a device row that already has a registered signing key must present that key. An `agreeKey` held by another device of the product is refused. Each refusal is `400 device_keys_invalid`. A device id that already holds a credential must prove the device, by its own bearer or by its registered signing key; otherwise `400 device_keys_invalid`. Its credential is replaced at the poll.
-3. **Keys on `approve`.** The `signKey` and `agreeKey` M sends must equal D's start keys, which M learned from D's authenticated `VOUCH_REQ` (§15.6). Keys that differ are `404 not_found`, the same answer as an unknown request; the mismatch counts against the request, and the third ends it. Approval registers D's keys through Core's device-key operation (§15.8).
+3. **Keys on `approve`.** The `signKey` and `agreeKey` M sends must equal D's start keys, which M learned from D's authenticated `VOUCH_REQ` (§15.6.1). Keys that differ are `404 not_found`, the same answer as an unknown request; the mismatch counts against the request, and the third ends it. Approval registers D's keys through Core's device-key operation (§15.8).
 4. **Proximity.** The client network of `approve` must equal that of `start` (IPv4 exact, IPv6 /64), or the answer is `403 not_nearby`. Nothing is written and the request stays open. The device code is the fallback for a person who is not nearby.
 5. **Approver.** M must be signed in on the product and sign with its registered signing key (purpose `nearby-approve`). A device with no sign-in is `403 account_required`. A device with no registered signing key is `409 device_keys_required`: it registers its keys with `PUT /<p>/devices/keys` (§15.8) and retries. M cannot approve its own request.
-6. **One decision.** An approval or a denial is final for its request. A request that is unknown, expired, already decided, or from another product is `404 not_found`. `choice`, when sent, is `{kind:"license", licenseId}` or `{kind:"create"}` and nothing else; any other kind or member is `400 bad_request`, and there is no Replace in this version. `create` follows §12.4.1. A full licence is `403 device_limit` on M. `choose`, `device_limit`, `license_choice_required` and `rate_limited` leave the request open.
+6. **One decision.** An approval or a denial is final for its request. A request that is unknown, expired, already decided, or from another product is `404 not_found`. `choice`, when sent, is `{kind:"license", licenseId}` or `{kind:"create"}` and nothing else; any other kind or member is `400 bad_request`, and there is no Replace in this version. `create` follows §12.4.1. A full licence is `403 device_limit` on M. `choose`, `device_limit`, `license_choice_required` and `rate_limited` leave the request open. M never calls `start`, so a bare `404` does not say which of these it is; §15.6.1 rule 6 says how M reads it.
 7. **No `choice`.** When no choice is due, or exactly one candidate licence has a free seat, `approve` binds it with no further tap. Otherwise it answers `choose` and writes nothing. `create` happens only when it is sent.
 8. **`deviceLabel`** is D's stored label, or `null` when D sent none.
 9. **D never holds a grant** (§12.5.1 rule 5). Approval binds the seat, writes D's device row with its keys and leaves D a device that holds a credential, so M can `PUT /<p>/devices/keyring/wraps/{deviceId}` (§13.11) as soon as `approve` answers `approved`. The tap on M is D's consent: D's token carries the claims of the account's standing consent for the product, and with none it carries the scope asked, the consent row being written in the same press and audited `signin.consent.granted` with `via: nearby`. The credential minted at approval is stored as a hash only. D's first valid poll replaces it with a new one and answers that token, once. After that, or when D was removed or rebound after the approval, the poll answers `timeout`. A denial is sticky and the poll answers it as §12.10 rule 2 does.
@@ -2687,7 +2687,7 @@ reveal rows.
 | 0x0003                       | TRUST                                   | a     | `{"trust":"<pkey-trust+jws>"}`. The receiver verifies it against its usable pins (§1); it heals a peer that missed a key rotation                                  |
 | 0x0004 / 0x0005              | PING / PONG                             | all   | 8 bytes                                                                                                                                                            |
 | 0x0006                       | CANDIDATES                              | a     | `{"addrs":["ip:port","[addr]:port"…≤8]}`, sent over the relay, for a direct upgrade (§15.4.1)                                                                      |
-| 0x8010                       | VOUCH_REQ (requester to approver)       | v     | `{v: 1, request, signKey, agreeKey, label, platform, sig}`. `sig` is `pkey-proof/1` purpose `vouch`, value `<b64url h>.<request>` (§15.8). No `userCode`, no `pop` |
+| 0x8010                       | VOUCH_REQ (requester to approver)       | v     | `{v: 1, request, deviceId, signKey, agreeKey, label?, platform, sig}`; `sig` is a `vouch` proof over `<b64url h>.<request>` (§15.6.1). No `userCode` and no `pop`. |
 | 0x8011                       | VOUCH_RESULT                            | v     | `{"status":"approved"\|"denied"\|"expired"\|"not_nearby"\|"device_limit"}`. For display only; the server is the authority                                          |
 | 0x8014                       | SAS_COMMIT                              | v, p  | `{c}`                                                                                                                                                              |
 | 0x8015                       | SAS_NONCE                               | v, p  | `{nM}`                                                                                                                                                             |
@@ -2700,6 +2700,83 @@ reveal rows.
 | 0x0100–0x7FFF, 0x8100–0xFFFD | APP                                     | a, c  | the developer's opaque bytes (`app/1`)                                                                                                                             |
 | 0x80FE                       | REKEY                                   | all   | empty. The sender rekeys after sending, the receiver after reading. Sent every 2^20 messages or 3600 s                                                             |
 | 0x80FF                       | CLOSE                                   | all   | `{"code":"peer_*"}`                                                                                                                                                |
+
+#### 15.6.1 Mode v: the vouch
+
+Written by CC-15.0b (`plans/CC-15.md`). It adds no route, no signed document and no record type: `PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2 and `corpusVersion` 2. It says how the `v` rows of §15.4 to §15.6 combine with the server half (§12.11.5). **D** is the device with no sign-in: the initiator, which connects out and needs no listener. **M** is a signed-in device nearby: the responder, which advertises. The session calls no route. D's `nearby/start` and `nearby/poll` and M's `nearby/approve` belong to the host and the Identity service; the session only carries the vouch between them. Mode `v` never crosses the relay (§15.7).
+
+**One vouch, in order.**
+
+- M advertises (rule 2). D calls `nearby/start` and holds the request handle, then browses and dials (rule 3).
+- After the handshake and `HELLO`, D's person picks one approver. The SAS (§15.5) runs on that session only (rule 3).
+- M shows three codes and D shows one; M's person picks the code D shows (rule 4).
+- D sends `VOUCH_REQ`. M verifies it, calls `nearby/approve` and sends `VOUCH_RESULT` (rules 5 and 6).
+- After `approved`, M may send Sync records (rule 8). D receives its credential only from its own `poll` (§12.11.5 rule 9).
+
+1. **`vouch/1` is mandatory.** Both mode-`v` handshake payloads list `vouch/1` in `caps` (§15.5). If the intersection lacks it, M closes `peer_not_allowed` after `HELLO` and before any `SAS_*` record, and D does not offer that approver or send `SAS_COMMIT`. A later `vouch/2` therefore cannot be misread as `vouch/1`.
+
+2. **The approver advert (M).**
+   - **Instance.** `p1-` + the base32 lower-case alphabet (§15.4) of 10 bytes from a CSPRNG, which is 16 characters. TXT is `v=1`, `m=v` and `h=` the product tag (§15.4) of the current 15-minute epoch.
+   - **Its own listener.** The mode-`v` advert has a listener of its own, never shared with mode `a`. The instance and the port are both fresh at every listen and again every 300 seconds while the advert stands. A session already past the transport stays open when its advert is renewed.
+   - **When.** M advertises only while all of these hold: the device is signed in on the product; discovery names `nearby` and `nearbyApprove` (§12.11.6); and the Local Network permission was already granted (the host's `prompt: false`), or the person opened "Approve a nearby device" (`prompt: true`).
+   - **When it stops.** At once on the host's pause, on sign-out (after `cloudConnect.stop()` and before the device leaves Connect), and when discovery loses `nearby`. Live approver sessions close `peer_bye`.
+   - **Addresses.** Accept and dial use the same address rule as mode `a`: an address that fails it is dropped before the handshake. A later widening of that rule (CC-IPV6) applies to mode `v` with no change here.
+   - **Limits.** An advert admits at most 5 handshakes a minute and 4 sessions waiting on a code (§15.6). A renewed advert has a new instance and so a new limiter; the rate stays at most 5 a minute either way.
+
+3. **Choosing an approver (D).**
+   - **Request first.** D calls `nearby/start` and holds the request handle and its `expiresIn` (300 seconds) before it dials. Every deadline in rule 9 counts from that answer.
+   - **Browse and dial.** D browses `_pkeypeer._tcp` for `m=v` with an `h` of the current or previous epoch, and connects out. It dials at most 4 approvers at once, each with a one-time X25519 static key (§15.5). A session that ends before the choice is replaced by a new dial while the request lives.
+   - **The SAS is held.** In mode `v` D does not send `SAS_COMMIT` when `HELLO` arrives. Each session stops after `HELLO` until D's host starts the SAS, so no approver prompts its person before D's person has chosen. The 30 s and 120 s deadlines of §15.6 still run from the first byte, so a session that waits too long closes `peer_timeout` and is dialled again.
+   - **The list.** D lists the approvers by the `label` and `platform` of their `HELLO` (display data, §15.6). A host may choose a lone approver by itself; the reference kits do so after 3 seconds.
+   - **The choice.** Choosing one approver starts the SAS on that session only. Every other session closes `peer_bye` before any `SAS_*` record is sent on it.
+
+4. **The code and number matching.**
+   - **D.** At the `sas` event D shows the code, calls the engine's confirmation and then sends `VOUCH_REQ`. Showing the code is D's confirmation.
+   - **M.** M shows three codes in the §15.5 format: the session's `sas` and two decoys. The decoys come from a CSPRNG by rejection sampling, so they are uniform in [0, 10^6); the three are distinct; and the position of the real code among the three is uniform. M's person picks the code D shows. The pick is M's confirmation, and only then is the held `VOUCH_REQ` delivered.
+   - **No route on a wrong pick.** A pick of a decoy, "Not now" and the host's stop each close `peer_bye`; the 120 s deadline closes `peer_timeout`. In every case `VOUCH_REQ` is never delivered and no route is called. A session that never reached the code is not a verified channel, so nothing is denied on the server for it. A server `deny` (`decision:"deny"`) is sent only after the right code was picked, for example when the person cancels the licence choice.
+   - **Why.** A man in the middle holds two sessions with two different handshake hashes, so the code on M is not the code on D except with probability about 3 · 10^-6. A person who picks without looking is still right one time in three, which is why a wrong pick ends the session and a new attempt needs a new handshake, inside the limits of rule 2.
+
+5. **`VOUCH_REQ` (D to M) [C].**
+   - **Body.** `{"v":1,"request","deviceId","signKey","agreeKey","label"?,"platform","sig"}`. `request` is D's handle from `start`. `deviceId` is the `X-PKey-Device` value D sent on `start`. `signKey` and `agreeKey` are the keys D sent on `start` (§12.11.5). `sig` is a `pkey-proof/1` proof (§12.11.1) with purpose `vouch`, made by D's device `signKey`: line 3 is the product slug, line 4 `deviceId`, line 5 `<h>.<request>` where `h` is this session's Noise handshake hash as 43 canonical base64url characters, and line 6 is `-`. The proof binds one session: `VOUCH_REQ` cannot be replayed into another.
+   - **M verifies**, in a body of at most 4096 bytes (strict JSON, §1.2): `v` is 1; `request` matches `^nr_[A-Za-z0-9_-]{22}$`; `deviceId` is 32 base64url characters (§6); `signKey` and `agreeKey` are canonical base64url of 32 bytes and pass §15.2 step 4, and, because the Worker registers them (§15.8), `agreeKey` is also in the canonical X25519 spelling; `label`, when present, is a string and is cleaned as `HELLO`'s is (§15.6); `platform` is a string as in `HELLO`; and `sig` verifies under `signKey` over this session's `h`. Unknown members are ignored. Any failure closes `peer_bad_frame` and no route is called.
+   - **The result.** A verified request gives M `{request, deviceId, signKey, agreeKey, label, platform}`. M sends exactly this `request`, `signKey` and `agreeKey` to `nearby/approve`. The Worker compares the keys with D's `start` keys (§12.11.5 rule 3); `deviceId` is not sent, because the Worker holds D's from `start`.
+
+6. **`VOUCH_RESULT` (M to D), and the answer M reads [C].**
+   - **Body.** `{"status":"approved"|"denied"|"expired"|"not_nearby"|"device_limit"}`. It is for display only: the server is the authority and D's `poll` is what signs D in. D reads an unknown status as `denied`, ignores unknown members, and closes `peer_bad_frame` on a body that is not an object with a string `status`.
+   - **When.** After a verified `VOUCH_REQ` M calls `nearby/approve` (`decision:"approve"`, or `"deny"`) and maps the answer to at most one `VOUCH_RESULT`:
+
+     | `approve` answer                                                                                                                 | M sends                                                |
+     | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+     | `200 approved`                                                                                                                   | `approved`                                             |
+     | `204`                                                                                                                            | `denied`                                               |
+     | `403 not_nearby`                                                                                                                 | `not_nearby`                                           |
+     | `403 device_limit`                                                                                                               | `device_limit`                                         |
+     | `404`, and M's fresh read of discovery still names `nearby` and `nearbyApprove`                                                  | `expired`                                              |
+     | `200 choose`                                                                                                                     | nothing yet: M shows the choice and calls again        |
+     | `409 device_keys_required` on the first call                                                                                     | nothing yet: M registers its keys (§15.8), calls again |
+     | anything else: a `404` after discovery lost `nearby`, `400`, `403 account_required`, any other `409`, `429`, `503`, or no answer | nothing: M closes `peer_bye`                           |
+
+   - **The 404 is ambiguous.** M never calls `start`. A `404` from `approve` is the same answer for an unknown, expired, decided or other-product request, for D's keys not matching (§12.11.5 rule 3) and for the nearby routes being off (§12.11.5 rule 13). M therefore reads discovery afresh: a `404` is `expired` only while discovery still names `nearby` and `nearbyApprove`, and it stops the advert (rule 2) when it does not.
+   - **After the result.** `VOUCH_RESULT` is sent once. After any status but `approved`, M closes `peer_bye`. A session that ends with no result leaves D on its `poll`.
+
+7. **Direction and order [C].** The receiver of a record checks it and closes:
+
+   | Record               | Sent by | Legal only                                                                             | Otherwise                                                                             |
+   | -------------------- | ------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+   | `VOUCH_REQ`          | D       | once, after D showed the code; M is handed it only after the right pick (rule 4)       | wrong direction: `peer_not_allowed`; a repeat or a bad body: `peer_bad_frame`         |
+   | `VOUCH_RESULT`       | M       | at most once, after M received `VOUCH_REQ`; D accepts it only after D sent `VOUCH_REQ` | wrong direction or before `VOUCH_REQ`: `peer_not_allowed`; a repeat: `peer_bad_frame` |
+   | `0x0030` to `0x003F` | M       | only after a `VOUCH_RESULT` of `approved` (rule 8)                                     | from D, before the result or after another status: `peer_not_allowed`                 |
+
+8. **Records after approval.** `KEYRING_WRAP` (`0x0030`) and the Cloud Sync records `0x0031` to `0x003F` (§13) go from M to D only after `VOUCH_RESULT` `approved`, and their bodies belong to Sync (§13.11). The session is only their carrier: M keeps it open until D or M closes `peer_bye`, and in any case closes it 300 seconds after the person's pick.
+
+9. **Deadlines.** The 30 s and 120 s of §15.6 apply. D ends its browse and its wait for `VOUCH_RESULT` at the request's `expiresIn` (300 s) and closes every session `peer_bye`; its `poll` then answers the outcome.
+
+10. **Client rules.**
+    - **Secrets.** The request handle, `sig`, `h`, the SAS nonces and the one-time static keys never appear in a log, a repr or an error. The static keys are wiped when the handshake ends.
+    - **No silent approval.** An SDK offers no way to call `nearby/approve` for a session unless the person picked the matching code on that session and `VOUCH_REQ` verified. A host that calls it anyway is refused by the SDK.
+    - **Runtimes.** A runtime that cannot advertise, browse or listen (a browser, a desktop-bridge page, or a platform whose adapter is not shipped) answers the client-only `nearby-unsupported` (§15.9) and never calls a route for it.
+
+11. **What the LAN sees.** The advert carries no label (§15.4). `HELLO` is the first record each way, before the code, and its `label`, `platform` and `app` are display data from a peer that is not yet verified (§15.6): any device on the LAN that completes a mode-`v` handshake with an advert of the right product learns M's label, platform and app, and M learns D's the same way. The label is optional, so a host can omit it (§5.4). The limits of rule 2 bound how fast this can be asked. `docs/PRIVACY.md` and `docs/security/THREAT-MODEL.md` carry the residual.
 
 ### 15.7 Relay
 
@@ -2770,7 +2847,7 @@ device-bound nonce (§12.11). They are not generated at launch.
 
 ### 15.9 Conformance and the rest of the wire
 
-**Corpus.** `cases.json` gains the sections `peerCertCases`, `ringCases` and `peerAdmissionCases` (§15.2, §15.3). Two new files sit beside it: `noise-vectors.json` (X25519 and AES-256-GCM known answers, the low-order points, the three handshake modes with fixed ephemerals, rekey, and external `Noise_XX_25519_AESGCM_SHA256` anchors) and `peer-matrix.json` (adverts, prologue, PSK, SAS with commit and reveal rows, TCP frames, records, relay envelopes and handshake payloads). `noiseVectorsVersion` and `peerMatrixVersion` are 1. The device proof (§15.8) is `device-proof.json`. These are generated by CC-03.4, CC-04.3 and CC-05; `corpusVersion` stays 2, and a runner that does not name a section ignores it.
+**Corpus.** `cases.json` gains the sections `peerCertCases`, `ringCases` and `peerAdmissionCases` (§15.2, §15.3). Two new files sit beside it: `noise-vectors.json` (X25519 and AES-256-GCM known answers, the low-order points, the three handshake modes with fixed ephemerals, rekey, and external `Noise_XX_25519_AESGCM_SHA256` anchors) and `peer-matrix.json` (adverts, prologue, PSK, SAS with commit and reveal rows, TCP frames, records, relay envelopes and handshake payloads). `noiseVectorsVersion` and `peerMatrixVersion` are 1. The device proof (§15.8) is `device-proof.json`. CC-15.0c adds a `vouch` section to `peer-matrix.json` (§15.6.1: `requests`, `results`, `flows` and `finish` rows; append-only). These are generated by CC-03.4, CC-04.3 and CC-05; `corpusVersion` stays 2, and a runner that does not name a section ignores it.
 
 **LAN addresses.** `peer-matrix.json` gains the section `lanAddresses` (§15.4.1): `rows` of `{id, remote, local?, allowLoopback, dial, key}` that every runner applies to `lanVerdict`. `peerMatrixVersion` stays 1, because the file is append-only and a runner ignores a section it does not name. The generator's reference is `tools/corpus/reference/lanAddress.ts`.
 
@@ -2782,4 +2859,4 @@ device-bound nonce (§12.11). They are not generated at launch.
 
 **Routes.** `PUT /<p>/devices/keys` (Core), `GET /<p>/connect/identity`, `GET /<p>/connect/devices`, `POST /<p>/connect/relay/ticket` and `GET /<p>/connect/relay` (101 Upgrade). Their request and response shapes are in `openapi/polaris-key.v3.yaml`; the signed shapes are this section.
 
-**Privacy.** An advert carries no label, id, model or subject (§15.4). The product tag lets anyone who knows a product's slug recognise its adverts; `docs/PRIVACY.md` says so. The LAN is never metered; the relay is.
+**Privacy.** An advert carries no label, id, model or subject (§15.4). A mode-`v` handshake shows the approver's `HELLO` label to any LAN device that completes it (§15.6.1 rule 11). The product tag lets anyone who knows a product's slug recognise its adverts; `docs/PRIVACY.md` says so. The LAN is never metered; the relay is.
