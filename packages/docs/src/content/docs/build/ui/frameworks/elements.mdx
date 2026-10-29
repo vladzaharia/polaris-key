@@ -80,6 +80,8 @@ are not covered.
 A page with a Content-Security-Policy allows the path, not the whole host:
 `script-src https://key.plrs.im/elements/` and `font-src https://key.plrs.im/elements/`.
 The route sends `access-control-allow-origin: *`, no cookie and no credentials.
+Automatic sign-in also needs `connect-src https://accounts.google.com`, and in an iframe
+`allow="identity-credentials-get"`.
 
 The gate builds the browser client from `config`, and never shows sign-in while a cached session is
 checked. It renders your app in its default slot once the license holds, under the grace banner

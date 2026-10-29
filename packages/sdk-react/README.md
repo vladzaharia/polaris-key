@@ -39,7 +39,7 @@ For the kit components, theming, server-rendered hosts, headless models and fixt
 
 `PolarisKeyGate` signs a person in by itself when it can, once, as the app starts. In a browser
 that offers Google through FedCM, the gate asks for the account the person is already signed in
-with and signs the device in without a form. The person sees one confirm, or the licence choice,
+with and signs the device in without a form. The person sees one confirm, or the license choice,
 only when the sign-in needs one. When nothing is offered, or the product has no platform sign-in,
 the gate shows its normal sign-in. A page that cannot do it (a cookie page, the desktop renderer,
 `localAdapter`) behaves as before.
@@ -47,6 +47,10 @@ the gate shows its normal sign-in. A page that cannot do it (a cookie page, the 
 After an explicit sign-out the gate stays signed out on this device until the person signs in
 again. It needs the product's platform sign-in: the identity service on, with Google set up for
 the product.
+
+With a Content-Security-Policy, automatic sign-in needs `connect-src https://accounts.google.com`
+(the browser fetches its FedCM configuration from there); inside an iframe the frame needs
+`allow="identity-credentials-get"`.
 
 Turn it off on the provider:
 

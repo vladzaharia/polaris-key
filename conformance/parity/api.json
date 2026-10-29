@@ -3502,8 +3502,8 @@
       "feature": "identity.link",
       "sdks": {
         "react": {
-          "planned": "I-46",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "usePolarisAuth().link.offer",
+          "shape": "hook"
         },
         "swift": {
           "planned": "I-44",
@@ -3527,8 +3527,8 @@
       "feature": "identity.link",
       "sdks": {
         "react": {
-          "planned": "I-46",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "usePolarisAuth().link.accept",
+          "shape": "hook"
         },
         "swift": {
           "planned": "I-44",
@@ -3558,8 +3558,8 @@
       "feature": "identity.link",
       "sdks": {
         "react": {
-          "planned": "I-46",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "usePolarisAuth().link.decline",
+          "shape": "hook"
         },
         "swift": {
           "planned": "I-44",

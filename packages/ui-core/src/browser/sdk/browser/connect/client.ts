@@ -646,6 +646,13 @@ export class ConnectEngine {
         "Register or sign in before using Cloud Connect.",
       );
     const port = await this.#env.keys();
+    await this.#requireDurable(port);
+    return port;
+  }
+
+  /** A store that fell back to memory registers a new pair on every reload: refused unless the
+   *  host allows it. The fallback happens inside `ensure()`, so this runs again after it. */
+  async #requireDurable(port: DeviceKeyPort): Promise<void> {
     if (
       (await port.persistence?.()) === "memory" &&
       !this.#env.allowEphemeralKeys
@@ -654,15 +661,17 @@ export class ConnectEngine {
         ErrorCode.invalidOptions,
         "The device keys are held in memory only, so every reload would register a new pair. Use a durable key store or set allowEphemeralKeys.",
       );
-    return port;
   }
 
   async #ensureKeys(port: DeviceKeyPort): Promise<DevicePublicKeys> {
+    let keys: DevicePublicKeys;
     try {
-      return await port.ensure();
+      keys = await port.ensure();
     } catch (e) {
       throw this.#keysError(e);
     }
+    await this.#requireDurable(port);
+    return keys;
   }
 
   /** Register the port's keys unless the held record says this pair was already registered.

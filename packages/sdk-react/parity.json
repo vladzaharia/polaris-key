@@ -255,7 +255,7 @@
     },
     "identity.autosignin": {
       "status": "implemented",
-      "note": "I-46: usePolarisAuth().autoSignIn() runs the ladder (a stored token, the provider silently through FedCM, its chooser only with prompt optional); a result, never a throw. The gate runs it once at boot and Provider autoSignIn={false} turns it off. The desktop bridge and a local adapter hold no platform sign-in and answer unavailable (runtime); the gate shows the sign-in form. test/autoSignIn.test.ts runs it against a scripted Worker."
+      "note": "I-46: usePolarisAuth().autoSignIn() runs the ladder (a stored token, the provider silently through FedCM, its chooser only with prompt optional); a result, never a throw. The gate runs it once at boot and Provider autoSignIn={false} turns it off. The desktop bridge and a local adapter hold no platform sign-in and answer unavailable (runtime); the gate stays on Welcome. test/autoSignIn.test.ts runs it against a scripted Worker."
     },
     "identity.link": {
       "status": "implemented",

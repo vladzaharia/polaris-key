@@ -10,7 +10,7 @@ import type {
   SignInSessionHandle,
 } from "../../signInModel.js";
 import { ErrorCode } from "./constants.generated.js";
-import { outcomeOf } from "./autoSignIn.js";
+import { outcomeWithTier } from "./autoSignIn.js";
 import { isLicenseChoiceView, type ChoiceRefusal } from "./core/choice.js";
 import type { PolarisAdapter } from "./core/index.js";
 
@@ -127,7 +127,7 @@ export function primitivesOf(
         explicit: true,
       });
       if (r.kind === "signedIn") return { kind: "signedIn", issuedNow: false };
-      return outcomeOf(r);
+      return outcomeWithTier(adapter, r);
     },
   };
 }

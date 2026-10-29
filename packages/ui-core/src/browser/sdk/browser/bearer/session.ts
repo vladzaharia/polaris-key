@@ -100,6 +100,7 @@ import {
 } from "../../core/activation.js";
 import {
   PolarisError,
+  isSecureTransportUrl,
   type AttachResult,
   type PolarisErrorCode,
 } from "../../core/types.js";
@@ -1112,6 +1113,17 @@ export class BearerSession {
     );
   }
 
+  private ownOrigin(url: string): boolean {
+    try {
+      return (
+        isSecureTransportUrl(url) &&
+        new URL(url).origin === new URL(this.opts.baseUrl).origin
+      );
+    } catch {
+      return false;
+    }
+  }
+
   /** POST a JSON body to the named choice endpoint, no device bearer except for `keep` (the grant is the
    *  credential). A 5xx or a network failure throws; any other answer is returned. */
   private async choicePost(
@@ -1141,11 +1153,23 @@ export class BearerSession {
         },
         ErrorCode.serviceUnavailable,
       );
+    // Discovery is data the network supplied: a choice request (the device bearer rides on
+    // `keep`) goes only to the product's own origin, over https (or loopback).
+    if (!this.ownOrigin(url))
+      throw new UnsupportedError(
+        {
+          supported: false,
+          feature: Feature.identityChoice,
+          reason: "product",
+          detail: `this product's ${name} endpoint is not on its own origin`,
+        },
+        ErrorCode.serviceUnavailable,
+      );
     let res: Response;
     try {
-      res = await this.opts.fetchImpl(url, {
+      res = await this.sendTo(url, {
         method: "POST",
-        credentials: "omit",
+        redirect: "error",
         headers: this.headers({
           "content-type": "application/json",
           ...(bearer ? { authorization: `Bearer ${bearer}` } : {}),
