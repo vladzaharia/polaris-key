@@ -1171,7 +1171,6 @@
       "detekt:exceptions.SwallowedException": 1,
       "detekt:exceptions.TooGenericExceptionCaught": 2,
       "detekt:style.MagicNumber": 7,
-      "detekt:style.MaxLineLength": 2,
       "detekt:style.ThrowsCount": 1
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityClient.kt": {
