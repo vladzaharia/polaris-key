@@ -93,6 +93,9 @@ const IMPORT_ALLOW_FILES = [
   // P0-27.3 (reviewed): the requirements evaluator calls `listOutletCredentials` only, which
   // never selects `enc_value_json`; it imports no opener and no token helper.
   "src/core/stores/requirements.ts",
+  // I-14.4 (reviewed): the Play Games redeemer opens `pgs-server-client` only, to send its secret
+  // to oauth2.googleapis.com; it writes nothing and imports no token helper.
+  "src/core/stores/playGames/serverAuth.ts",
 ];
 const TABLE_ALLOW_FILES = [
   "src/db/owners.ts", // the table ownership map (P0-18) names every table
