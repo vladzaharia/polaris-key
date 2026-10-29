@@ -226,6 +226,9 @@ export async function handleRulesPut(c: AdminCtx): Promise<Response> {
 // ── POST /access/rules/preview ───────────────────────────────────────────────────────────────
 
 export async function handleRulePreview(c: AdminCtx): Promise<Response> {
+  // Charged first, so a malformed or refused draft costs the same as a good one.
+  const limited = await overBudget(c, "preview");
+  if (limited) return limited;
   const body = await readBody(c.req);
   const extra = unknownFields(body, ["rule"]);
   if (extra.length > 0) return invalid(extra);
@@ -244,8 +247,6 @@ export async function handleRulePreview(c: AdminCtx): Promise<Response> {
   // The same checks the write makes, so a draft the write would refuse is not previewed.
   const refusal = await accessRulesRefusal(c.env, c.db, parsed.doc);
   if (refusal) return invalid(["rule"], refusal.reason, refusal.message);
-  const limited = await overBudget(c, "preview");
-  if (limited) return limited;
 
   const { accountIds, truncated } = await candidateAccountsFor(
     c.db,

@@ -55,6 +55,8 @@ interface Pending {
   intent?: "caution" | "danger";
   /** Set when the save accepts a conversion offer: the one rule, written by the offers route. */
   offer?: AccessOffer;
+  /** The stored version the list was built from; sent as `expectedVersion`, also after a step-up. */
+  baseVersion?: number;
 }
 
 function describeSave(e: unknown) {
@@ -170,7 +172,7 @@ export function PlatformSsoRules({
   const editingOffer = offerOf(editing);
   const store = (rules: AccessRuleBody[], p: Omit<Pending, "rules">): void => {
     setReason("");
-    setPending({ rules, ...p });
+    setPending({ rules, baseVersion: view?.version, ...p });
   };
   const saveRule = (rule: AccessRuleBody): void => {
     const offer = offerOf(editing);
@@ -213,6 +215,7 @@ export function PlatformSsoRules({
         else if (!pending && view)
           setPending({
             rules: view.rules,
+            baseVersion: view.version,
             title: "Save sign-in rules?",
             confirmLabel: "Save rules",
             lead: "",
@@ -225,6 +228,7 @@ export function PlatformSsoRules({
         reason,
         rules: JSON.stringify(pending?.rules ?? []),
         offer: JSON.stringify(pending?.offer ?? null),
+        baseVersion: String(pending?.baseVersion ?? ""),
         title: pending?.title ?? "",
         confirmLabel: pending?.confirmLabel ?? "",
         lead: pending?.lead ?? "",
@@ -241,6 +245,9 @@ export function PlatformSsoRules({
             lead: s.lead ?? "",
             intent: s.intent === "danger" ? "danger" : "caution",
             rules,
+            ...(Number.isInteger(Number(s.baseVersion)) && s.baseVersion
+              ? { baseVersion: Number(s.baseVersion) }
+              : {}),
             ...(offer ? { offer } : {}),
           });
         } catch {
@@ -307,7 +314,7 @@ export function PlatformSsoRules({
         }
         const r = await mutate("replaceAccessRules", {
           rules: pending.rules,
-          expectedVersion: view.version,
+          expectedVersion: pending.baseVersion ?? view.version,
           reason: reason.trim(),
           confirm: "console.access",
         });

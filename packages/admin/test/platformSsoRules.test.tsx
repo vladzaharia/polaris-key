@@ -378,6 +378,49 @@ describe("Saving a rule", () => {
     setStepUpRedirectForTests();
   });
 
+  it("after a step-up, sends the version the list was built from and shows the conflict", async () => {
+    window.location.hash = "#/platform/members?tab=sso";
+    // The list was staged at version 2; the rules read now answers 3 (another Superadmin saved).
+    stashStepUp("SSO rules", "console.access", {
+      reason: "release team",
+      rules: JSON.stringify([
+        {
+          when: { connection: "console-idp", group: "ops" },
+          grant: { role: "console_access" },
+        },
+      ]),
+      offer: "null",
+      baseVersion: "2",
+      title: "Add this rule?",
+      confirmLabel: "Add rule",
+      lead: "",
+      intent: "caution",
+    });
+    putAnswer = json(
+      {
+        error: {
+          code: "bad_request",
+          message: "x",
+          reason: "version_conflict",
+        },
+      },
+      409,
+    );
+    const user = userEvent.setup();
+    const log = open();
+    const dialog = await screen.findByRole("alertdialog");
+    const btn = within(dialog).getByRole("button", { name: "Add rule" });
+    await waitFor(() =>
+      expect(btn.getAttribute("aria-disabled")).not.toBe("true"),
+    );
+    await user.click(btn);
+    await waitFor(() => expect(writes(log)).toHaveLength(1));
+    expect(
+      (writes(log)[0]!.json as { expectedVersion: number }).expectedVersion,
+    ).toBe(2);
+    await within(dialog).findByText("The rules changed");
+  });
+
   it("names a version conflict", async () => {
     putAnswer = json(
       {
