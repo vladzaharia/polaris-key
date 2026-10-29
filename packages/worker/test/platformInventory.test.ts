@@ -12,6 +12,7 @@ import {
   GENERATED_PATH,
   inventoryErrors,
   parseEnvInventory,
+  PENDING_BINDINGS,
   readInputs,
   renderInventory,
   ROOT,
@@ -209,6 +210,20 @@ describe("the platform inventory (ST-02)", () => {
     expect(errors).toEqual([
       "packages/worker/wrangler.deltas.toml: [vars] MYSTERY_KNOB is not an Env member",
       "packages/worker/wrangler.deltas.toml: binding MYSTERY_KV is not an Env member",
+    ]);
+  });
+
+  it("lets a pending binding stay unbound, and fails once it is bound (U-10.1)", () => {
+    expect(PENDING_BINDINGS.SYNC_FILES).toBe("U-10.W");
+    expect(wranglerNames(inputs.wrangler).bindings.has("SYNC_FILES")).toBe(
+      false,
+    );
+    const { errors } = inventoryErrors({
+      ...inputs,
+      wrangler: `${inputs.wrangler}\n[[env.dev.r2_buckets]]\nbinding = "SYNC_FILES"\nbucket_name = "polaris-key-sync-files-dev"\n`,
+    });
+    expect(errors).toEqual([
+      "SYNC_FILES: packages/worker/wrangler.toml binds it now; remove its PENDING_BINDINGS row (U-10.W)",
     ]);
   });
 
