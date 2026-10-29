@@ -132,6 +132,74 @@ def test_at_most_sixteen_records_are_held() -> None:
     assert m.of(Closed) == [Closed("peer_busy", False)]
 
 
+def test_at_most_16_kib_of_bodies_are_held_then_peer_busy() -> None:
+    d, m = Side("v", "initiator"), Side("v", "responder")
+    d.s.start()
+    pump(d, m)
+    d.s.confirm_sas()
+    d.s.send_record(RECORD["VOUCH_REQ"], bytes(8 * 1024))
+    pump(d, m)
+    assert not m.s.closed
+    d.s.send_record(RECORD["VOUCH_REQ"], bytes(8 * 1024 + 1))
+    pump(d, m)
+    assert m.of(Closed) == [Closed("peer_busy", False)]
+    # Exactly 16 KiB is held, and delivered after the person confirms.
+    d, m = Side("v", "initiator"), Side("v", "responder")
+    d.s.start()
+    pump(d, m)
+    d.s.confirm_sas()
+    d.s.send_record(RECORD["VOUCH_REQ"], bytes(8 * 1024))
+    d.s.send_record(RECORD["VOUCH_REQ"], bytes(8 * 1024))
+    pump(d, m)
+    assert not m.s.closed
+    m.s.confirm_sas()
+    assert types(m) == [RECORD["VOUCH_REQ"]] * 2
+
+
+def hello_pair(mode: str = "v", **hello: Any) -> Any:
+    d = Side(mode, "initiator", hello={"platform": "t", "app": "a", **hello})
+    m = Side(mode, "responder")
+    d.s.start()
+    pump(d, m)
+    return d, m
+
+
+@pytest.mark.parametrize(
+    "platform,app,want_platform,want_app",
+    [
+        ("macos", "Demo", "macos", "Demo"),
+        ("Android 14.1_x+y-z", "a", "Android 14.1_x+y-z", "a"),
+        ("x" * 32, "a", "x" * 32, "a"),
+        ("x" * 33, "a", "Unknown", "a"),
+        ("<b>ok</b>", "a", "Unknown", "a"),
+        ("mac\u202eos", "a", "Unknown", "a"),
+        ("macos\n", "a", "Unknown", "a"),  # a trailing newline is not a platform
+        ("mac\u00f3s", "a", "Unknown", "a"),
+        ("", "a", "Unknown", "a"),
+        ("linux", "  Pay\u202e\u0000ment  ", "linux", "Payment"),
+        ("linux", "\u202e\u0000", "linux", "Unknown"),
+        ("linux", "   ", "linux", "Unknown"),
+        ("linux", "a" * 100, "linux", "a" * 64),
+        ("linux", "Cafe\u0301", "linux", "Caf\u00e9"),
+    ],
+)
+@pytest.mark.parametrize("mode", ["v", "p"])
+def test_only_a_known_shaped_platform_and_a_cleaned_app_are_shown(
+    mode: str, platform: str, app: str, want_platform: str, want_app: str
+) -> None:
+    _d, m = hello_pair(mode, platform=platform, app=app)
+    est = m.of(Established)[0]
+    assert (est.hello.platform, est.hello.app) == (want_platform, want_app)
+
+
+@pytest.mark.parametrize("mode", ["v", "p"])
+def test_a_hello_over_4_kib_is_refused_in_modes_v_and_p(mode: str) -> None:
+    _d, m = hello_pair(mode, label="x" * 4100)
+    assert m.of(Established) == [] and m.of(Closed) == [Closed("peer_bad_frame", False)]
+    _d, m = hello_pair(mode, label="x" * 4000)  # under the cap: cleaned to 64 code points
+    assert len(m.of(Established)[0].hello.label) == 64
+
+
 def test_confirm_before_a_code_closes_and_a_second_confirm_is_a_noop_close() -> None:
     d = Side("v", "initiator")
     d.s.start()
