@@ -26,7 +26,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
-import org.junit.Ignore
 import org.junit.Test
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
@@ -257,23 +256,21 @@ class ConnectRelaySessionTest {
         until(15_000) { sb.status.state == RelayState.backoff }
     }
 
-    // Disabled 2026-10-28 under the load rule: timing-dependent on the CI runners (one of four Connect tests
-    // failing per main run) and passes locally. KT-CONNECT-FLAKE makes them deterministic and re-enables them
-    // (_lead/flaky-disabled.md).
-    @Ignore("2026-10-28: timing-dependent on CI runners; see _lead/flaky-disabled.md")
     @Test
     fun goneForADeviceEndsOnlyItsSessions() = runBlocking {
         val n = Net()
         val (sa, _, s) = pair(n)
         val (out, inn) = s
         n.room.push(n.world.idA, RelayMessage.Gone(Base64Url.decodeStrict(n.world.idC)!!)) // another device
-        Thread.sleep(150)
+        // A round trip on the same socket: the service has handled the Gone above before this returns.
+        sa.refreshMembers(3000)
         assertNull(inn.closed)
         n.room.push(n.world.idA, RelayMessage.Gone(Base64Url.decodeStrict(n.world.idB)!!))
         until { inn.closed != null }
         assertEquals("connection_lost", inn.closed!!.code)
         assertNotNull(out)
-        assertEquals(0, sa.sessionCount)
+        // The session is closed to the host before the service drops it from its table: wait for that.
+        until { sa.sessionCount == 0 }
     }
 
     @Test
