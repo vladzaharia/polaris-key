@@ -94,6 +94,9 @@ const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 ## from. Not an export: a game passes a store it already made, and tests pass a scratch one.
 var device_keys: Object = null
 ## Where the key ring keeps its pin and root (`PKeySyncRingVault`). Null: the product's vault under `store_root`.
+## The root rests sealed by the platform key (Keychain, Keystore, DPAPI: protection) or, with no native
+## sealer (Linux), in an engine-encrypted file that is obfuscation, NOT protection: any code running as
+## the same user can derive its key. A vault made with `encrypted = false` is refused (`invalid-options`).
 var ring_vault: PKeySyncRingVault = null
 
 ## Send a hashed hardware fingerprint when registering (PolarisKey.devices). Off: the server

@@ -112,7 +112,7 @@ func _dir(tag: String) -> String:
 ## A device: its key store, a vault (memory unless `root` is given) and a ring over `worker`.
 func _device(worker: FakeWorker, id: String, root := "") -> Dictionary:
 	var keys := PKeyDeviceKeyStore.new(PRODUCT, root if root != "" else _dir("keys"), false, false)
-	var vault := PKeySyncRingVault.new(PRODUCT, root if root != "" else _dir("vault"), root == "", false)
+	var vault := PKeySyncRingVault.for_tests(PRODUCT, root if root != "" else _dir("vault"), root == "")
 	return {"id": id, "keys": keys, "vault": vault, "ring": PKeySyncRing.new(PRODUCT, id, worker.client(id), keys, vault), "worker": worker, "root": root}
 
 
@@ -477,8 +477,35 @@ func _vault_files(t: PKeyTestContext) -> void:
 	t.check("vault: a lost platform key is unreadable, not empty", not gone.ok and gone.code == PKeyDeviceKeyStore.KEYS_UNREADABLE)
 	sealer.fault_seal = true
 	t.check("vault: a sealer fault is a store fault", sv.write_root("rg_" + "A".repeat(22), 3, kid, secret).code == PKeyDeviceKeyStore.STORE_FAULT)
+	_vault_plain_refused(t, kid, secret)
 	t.check("vault: a root outside user:// is kept in memory", PKeySyncRingVault.new(PRODUCT, "/tmp/x", false, false).persistence() == "memory")
 	t.check("vault: clear leaves the platform key (the device keys share it)", not sealer.calls.has("destroy") and sv.clear().ok and not sealer.calls.has("destroy"))
+
+
+## The root is never written as a plain file: a vault made with `encrypted = false` refuses it with a
+## typed error, and only `for_tests` keeps one.
+func _vault_plain_refused(t: PKeyTestContext, kid: PackedByteArray, secret: PackedByteArray) -> void:
+	var plain_dir := _dir("plain")
+	var plain_file := plain_dir.path_join(PRODUCT).path_join("sync-root")
+	var refused := PKeySyncRingVault.new(PRODUCT, plain_dir, false, false)
+	var w := refused.write_root("rg_" + "A".repeat(22), 1, kid, secret)
+	t.check("vault: encrypted = false is refused for the root with invalid-options", not w.ok and w.code == PKeyConstants.ErrorCode.INVALID_OPTIONS, str(w))
+	t.check("vault: the refusal wrote nothing", not FileAccess.file_exists(plain_file))
+	var r := refused.read_root()
+	t.check("vault: and it refuses a read too", not r.ok and r.code == PKeyConstants.ErrorCode.INVALID_OPTIONS)
+	t.check("vault: it reports refused", refused.protection() == "refused" and str(refused) == "PKeySyncRingVault(refused)")
+	t.check("vault: the message carries no root", not w.message.contains(secret.hex_encode()) and not str(w).contains(secret.hex_encode()))
+	var pin := {"ring_id": "rg_" + "A".repeat(22), "epoch": 1, "root_kid": kid.hex_encode()}
+	t.check("vault: the pin holds no secret and is still kept", refused.write_pin(pin).ok and refused.read_pin().detail["epoch"] == 1)
+	# A memory vault never touches a file, so the flag does not matter there.
+	var mem := PKeySyncRingVault.new(PRODUCT, "user://pkey", true, false)
+	var mem_ok := mem.write_root("rg_" + "A".repeat(22), 1, kid, secret).ok
+	t.check("vault: a memory vault with encrypted = false keeps the root in memory", mem_ok and mem.protection() == "memory" and mem.read_root().detail["root"] == secret)
+	# The test constructor is the one way to a plain file, and the file shows why it is test only.
+	var tv := PKeySyncRingVault.for_tests(PRODUCT, plain_dir)
+	var tv_ok := tv.write_root("rg_" + "A".repeat(22), 1, kid, secret).ok
+	t.check("vault: for_tests keeps a plain file", tv_ok and tv.protection() == "file" and tv.read_root().detail["root"] == secret and _file_has(plain_file, secret))
+	t.check("vault: a refused vault still clears a plain file a test vault left", refused.clear().ok and not FileAccess.file_exists(plain_file))
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────────────────

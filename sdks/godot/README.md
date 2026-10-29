@@ -918,8 +918,11 @@ host does the same, and the state file's folder is excluded on every write (Andr
 no-backup directory, iOS through the flag, both with the plugin; nowhere else).
 
 `PolarisKey.keyring.status()` reports `root_persistence`, and the vault's `protection()` names
-the store in use (`keychain-sealed`, `keystore-sealed`, `dpapi-sealed`, `encrypted-file`, `file`,
-`memory`). The device's agreement key never leaves its store: a wrap is opened through the
+the store in use (`keychain-sealed`, `keystore-sealed`, `dpapi-sealed`, `encrypted-file`, `memory`).
+Only the three sealed stores protect the root. `encrypted-file` (Linux, which has no native sealer)
+is obfuscation, not protection: its key comes from the device id, the product and a salt beside
+the file, so code running as the same user can read the root. A vault made with `encrypted = false`
+is refused (`invalid-options`, `protection()` is `refused`): the root is never written as a plain file. The device's agreement key never leaves its store: a wrap is opened through the
 store's `dh`. The root, the code and every key print as redacted.
 
 - **Crypto in GDScript.** The engine has no AES-GCM, so values seal with AES-256-GCM over the
