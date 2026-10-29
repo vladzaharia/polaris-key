@@ -8808,6 +8808,16 @@ paths:
             description: "Who shows the licence choice (I-08b).",
             schema: { type: string, enum: [card, app] },
           }
+        - {
+            name: key_return,
+            in: query,
+            required: false,
+            description: >
+              LK-SKIP (§12.4.2): `allow` offers the card's "Continue without an account". Any other
+              value is `invalid_request`. Kept only for `purpose=signin` on a product that runs
+              License with the launch gate `launch.identityKeyReturn` on; otherwise dropped silently.
+            schema: { type: string, enum: [allow] },
+          }
       responses:
         "303":
           description: >
@@ -25960,6 +25970,12 @@ components:
           enum: [signin, attach]
           description: On a request that came through `authorize` (§12.4).
         licenseChoice: { type: string, enum: [card, app] }
+        keyReturn:
+          type: boolean
+          const: true
+          description: >
+            LK-SKIP (§12.7.2): present, and `true`, only on a request that recorded `key_return=allow`
+            (§12.4.2). Absent otherwise.
         scope:
           type: array
           items: { type: string, enum: [profile, email, cloudSync] }

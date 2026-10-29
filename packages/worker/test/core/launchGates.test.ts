@@ -21,6 +21,7 @@ import type { Env } from "../../src/platform/env.js";
 const P = "djdl";
 type Gate =
   | "LAUNCH_IDENTITY_EXCHANGE"
+  | "LAUNCH_IDENTITY_RETURNKEY"
   | "LAUNCH_CONNECT"
   | "LAUNCH_SYNC_E2E"
   | "LAUNCH_RELAY";
@@ -207,6 +208,7 @@ describe("launch.syncE2e", () => {
 describe("launch gates, as settings", () => {
   const gates = [
     ["launch.identityExchange", "LAUNCH_IDENTITY_EXCHANGE"],
+    ["launch.identityKeyReturn", "LAUNCH_IDENTITY_RETURNKEY"],
     ["launch.connect", "LAUNCH_CONNECT"],
     ["launch.syncE2e", "LAUNCH_SYNC_E2E"],
     ["launch.relay", "LAUNCH_RELAY"],

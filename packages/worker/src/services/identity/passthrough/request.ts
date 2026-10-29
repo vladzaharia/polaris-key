@@ -67,6 +67,8 @@ export interface AuthzRecord {
   nonce: string | null;
   licenseChoice: "card" | "app";
   purpose: "signin" | "attach";
+  /** LK-SKIP (§12.4.2): the app sent `key_return=allow` and every condition held at `authorize`. */
+  keyReturn?: true;
   loginHint: string | null;
   nameHint: string | null;
 }

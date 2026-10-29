@@ -45,6 +45,7 @@ export interface PlatformValues {
   "cloudConnect.relayPaused": "on" | "off";
   "cloudConnect.quota.defaultRelayBytes": number;
   "launch.identityExchange": "on" | "off";
+  "launch.identityKeyReturn": "on" | "off";
   "launch.connect": "on" | "off";
   "launch.syncE2e": "on" | "off";
   "launch.relay": "on" | "off";

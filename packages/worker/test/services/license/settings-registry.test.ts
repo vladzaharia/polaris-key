@@ -198,6 +198,7 @@ describe("the settings registry (ST-03)", () => {
       ["BLOB_GC_GRACE_DAYS", "blobs.gc.graceDays"],
       // LG-1: the launch gates.
       ["LAUNCH_IDENTITY_EXCHANGE", "launch.identityExchange"],
+      ["LAUNCH_IDENTITY_RETURNKEY", "launch.identityKeyReturn"],
       ["LAUNCH_CONNECT", "launch.connect"],
       ["LAUNCH_SYNC_E2E", "launch.syncE2e"],
       ["LAUNCH_RELAY", "launch.relay"],

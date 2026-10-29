@@ -136,7 +136,7 @@ redirect.
 **Launch gate `launch.identityKeyReturn`.** It follows the LG-1 pattern: default off, fail closed.
 
 - Files: `core/settings/launchGates.ts`, `platformRead.ts`, `platform/env.ts`
-  (`LAUNCH_IDENTITY_KEY_RETURN`, `@editable`), the `wrangler.toml` envs, `dev/world.ts` and
+  (`LAUNCH_IDENTITY_RETURNKEY`, `@editable`), the `wrangler.toml` envs, `dev/world.ts` and
   `test/seed.ts`. Regenerate with `pnpm gen settings platform-inventory`.
 - With the gate off, `authorize` drops the parameter, the route answers `404`, and `token` answers
   `invalid_grant` for a key code.

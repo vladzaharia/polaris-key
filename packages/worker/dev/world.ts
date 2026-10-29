@@ -139,6 +139,7 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
     KEYENTRY_REFUSALS: "on",
     // LG-1: the local world runs every launch gate on.
     LAUNCH_IDENTITY_EXCHANGE: "on",
+    LAUNCH_IDENTITY_RETURNKEY: "on",
     LAUNCH_CONNECT: "on",
     LAUNCH_SYNC_E2E: "on",
     LAUNCH_RELAY: "on",

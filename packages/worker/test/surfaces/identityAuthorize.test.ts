@@ -401,6 +401,8 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
     ["only unknown scopes", { scope: "admin" }, "invalid_scope"],
     ["a bad purpose", { purpose: "x" }, "invalid_request"],
     ["a bad license_choice", { license_choice: "x" }, "invalid_request"],
+    ["a bad key_return", { key_return: "deny" }, "invalid_request"],
+    ["an empty key_return", { key_return: "" }, "invalid_request"],
     ["a long nonce", { nonce: "n".repeat(256) }, "invalid_request"],
     ["a request_uri", { request_uri: "urn:x" }, "invalid_request"],
   ] as const)("302s %s back to the app with iss", async (_n, over, error) => {
@@ -458,6 +460,89 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
       nameHint: "Ada",
     });
     expect((body.client as { kind: string }).kind).toBe("web");
+  });
+
+  describe("key_return (LK-SKIP, §12.4.2)", () => {
+    /** The request view for a fresh `authorize`, as the binding browser reads it. */
+    async function viewOf(over: Record<string, string | null>) {
+      const { handle, binder } = await begin(over);
+      const res = await handlePortalApi(
+        new Request(`${BASE}/api/signin/requests/${handle}`, {
+          headers: { cookie: binder },
+        }),
+        env,
+        db,
+        `/api/signin/requests/${handle}`,
+        NOW,
+      );
+      expect(res.status).toBe(200);
+      return (await res.json()) as Record<string, unknown>;
+    }
+    const gate = (v: string | undefined) =>
+      ((env as unknown as Record<string, string | undefined>)[
+        "LAUNCH_IDENTITY_RETURNKEY"
+      ] = v);
+
+    it("allow on a sign-in: the view answers keyReturn: true", async () => {
+      expect((await viewOf({ key_return: "allow" })).keyReturn).toBe(true);
+      expect(
+        (await viewOf({ key_return: "allow", purpose: "signin" })).keyReturn,
+      ).toBe(true);
+    });
+
+    it("is absent, not false, without the parameter", async () => {
+      const body = await viewOf({});
+      expect("keyReturn" in body).toBe(false);
+    });
+
+    it.each([["attach", { purpose: "attach" }]] as const)(
+      "is dropped silently for purpose=%s",
+      async (_n, over) => {
+        const body = await viewOf({ key_return: "allow", ...over });
+        expect("keyReturn" in body).toBe(false);
+      },
+    );
+
+    it("is dropped silently while License is off", async () => {
+      await services({ license: false });
+      const body = await viewOf({ key_return: "allow" });
+      expect("keyReturn" in body).toBe(false);
+    });
+
+    it.each([["off"], ["runtime"], [undefined]] as const)(
+      "is dropped silently with the launch gate %s (fail closed)",
+      async (v) => {
+        gate(v);
+        const body = await viewOf({ key_return: "allow" });
+        expect("keyReturn" in body).toBe(false);
+      },
+    );
+
+    it("a request recorded while the gate was on stops offering the skip once it is off", async () => {
+      const { handle, binder } = await begin({ key_return: "allow" });
+      gate("off");
+      const res = await handlePortalApi(
+        new Request(`${BASE}/api/signin/requests/${handle}`, {
+          headers: { cookie: binder },
+        }),
+        env,
+        db,
+        `/api/signin/requests/${handle}`,
+        NOW,
+      );
+      expect("keyReturn" in ((await res.json()) as object)).toBe(false);
+    });
+
+    it("refuses a repeated key_return", async () => {
+      const res = await route(
+        "GET",
+        `${authorizeUrl({ key_return: "allow" })}&key_return=allow`,
+      );
+      expect(res.status).toBe(302);
+      expect(
+        new URL(res.headers.get("location")!).searchParams.get("error"),
+      ).toBe("invalid_request");
+    });
   });
 
   it("drops a hint that does not normalise instead of failing", async () => {

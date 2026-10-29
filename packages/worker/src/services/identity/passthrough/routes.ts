@@ -24,6 +24,7 @@ import type {
   SignInRequestView,
 } from "@polaris-key/protocol/identity";
 import { hashKey } from "../../../platform/crypto.js";
+import { launchGateOn } from "../../../core/settings/platformRead.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import {
@@ -84,6 +85,13 @@ export async function signInRequestView(
           scope: record.authz.scope,
           loginHint: record.authz.loginHint,
           nameHint: record.authz.nameHint,
+          // LK-SKIP (§12.7.2): present only on an opted-in request, so every earlier answer is
+          // byte for byte what it was. The gate is read again, so the card never offers a skip
+          // the route would refuse.
+          ...(record.authz.keyReturn &&
+          (await launchGateOn(env, db, "launch.identityKeyReturn"))
+            ? { keyReturn: true as const }
+            : {}),
         }
       : {}),
   };
