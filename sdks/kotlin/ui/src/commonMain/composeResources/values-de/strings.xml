@@ -1185,6 +1185,10 @@
     <string name="signin_auto_confirm_as">als %1$s</string>
     <!-- Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private). -->
     <string name="signin_auto_confirm_asApple">mit Ihrem Apple Account</string>
+    <!-- Automatic sign-in: the confirm step when the provider shared no email (Game Center). "Game Center" is Apple's product name (never translated). -->
+    <string name="signin_auto_confirm_asGameCenter">mit Game Center</string>
+    <!-- Automatic sign-in: the confirm step when the provider shared no email (Google Play Games). "Google Play Games" is Google's product name (never translated). -->
+    <string name="signin_auto_confirm_asPlayGames">mit Google Play Games</string>
     <!-- Automatic sign-in: the confirm step's main button. -->
     <string name="signin_auto_confirm_primary">Weiter</string>
     <!-- Automatic sign-in: the confirm step's secondary button; opens the regular sign-in. -->

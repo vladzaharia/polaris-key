@@ -3200,6 +3200,16 @@ msgstr "{email} 계정으로"
 msgid "signin.auto.confirm.asApple"
 msgstr "Apple 계정으로"
 
+#. with Game Center
+#. Automatic sign-in: the confirm step when the provider shared no email (Game Center). "Game Center" is Apple's product name (never translated).
+msgid "signin.auto.confirm.asGameCenter"
+msgstr "Game Center로"
+
+#. with Google Play Games
+#. Automatic sign-in: the confirm step when the provider shared no email (Google Play Games). "Google Play Games" is Google's product name (never translated).
+msgid "signin.auto.confirm.asPlayGames"
+msgstr "Google Play Games로"
+
 #. Continue
 #. Automatic sign-in: the confirm step's main button.
 msgid "signin.auto.confirm.primary"

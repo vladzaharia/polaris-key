@@ -519,6 +519,8 @@
     "signin.auto.confirm.title": "{app} に進む",
     "signin.auto.confirm.as": "{email} で",
     "signin.auto.confirm.asApple": "Apple アカウントで",
+    "signin.auto.confirm.asGameCenter": "Game Center で",
+    "signin.auto.confirm.asPlayGames": "Google Play Games で",
     "signin.auto.confirm.primary": "続ける",
     "signin.auto.confirm.other": "別のアカウントを使う",
     "signin.linkOffer.title": "次回から {provider} でサインインしますか？",
