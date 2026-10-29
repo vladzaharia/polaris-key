@@ -288,10 +288,32 @@ describe("Game Center: refusals", () => {
       "https://static.gc.apple.com/other/gc-prod-12.cer",
       "https://static.gc.apple.com/public-key/gc-prod-12.cer?x=1",
       "https://static.gc.apple.com/public-key/gc-prod-12.der",
+      "https://static.gc.apple.com/public-key/anything.cer",
+      "https://static.gc.apple.com/public-key/gc-prod-.cer",
+      "https://static.gc.apple.com/public-key/gc-prod-12345.cer",
+      "https://static.gc.apple.com/public-key/gc-prod-1a.cer",
+      "https://static.gc.apple.com/public-key/%2e%2e/gc-prod-12.cer",
     ]) {
       const r = rig();
       const { token } = await mint({ url });
       expect(await kind(run(r, token)), url).toBe("refused");
+      expect(r.calls).toHaveLength(0);
+    }
+  });
+
+  it("a team player id outside Apple's shape is refused before any fetch", async () => {
+    for (const player of [
+      "G:1234",
+      "t:abc",
+      "T:",
+      "T:has space",
+      "T:" + "a".repeat(129),
+      "plain-id",
+      "T:a.b",
+    ]) {
+      const r = rig();
+      const { token } = await mint({ player });
+      expect(await kind(run(r, token)), player).toBe("refused");
       expect(r.calls).toHaveLength(0);
     }
   });

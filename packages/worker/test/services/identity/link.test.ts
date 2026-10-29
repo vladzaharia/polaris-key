@@ -847,6 +847,59 @@ describe("the game kinds on the link offer (I-14.8)", () => {
     });
   });
 
+  const pgsRows = () =>
+    h.db.all<{ subject: string; account_id: string }>(
+      "SELECT subject, account_id FROM account_links WHERE kind = 'pgs' ORDER BY subject",
+    );
+  const seedPgs = (subject: string, accountId: string) =>
+    h.db.run(
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind,
+         email_verified, created_at, last_used_at)
+       VALUES (?, ?, 'pgs', ?, ?, 'pgs', 0, ?, ?)`,
+      `lnk_${subject}`,
+      accountId,
+      `pgs-app:${PGS_APP}`,
+      subject,
+      NOW,
+      NOW,
+    );
+
+  it("moves this account's link from the alternate id to the player id, with no second link", async () => {
+    await seedPgs("alt-1", ada.accountId);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    playGamesIs(PGS_APP, PLAYER, "alt-1");
+    const res = await gameTokenForm(ada, PGS_SUBJECT_TOKEN_TYPE, "code");
+    expect(res.status).toBe(200);
+    expect(await pgsRows()).toEqual([
+      { subject: PLAYER, account_id: ada.accountId },
+    ]);
+  });
+
+  it("is a link_conflict when another account holds the alternate id", async () => {
+    const other = await signIn(
+      h.db,
+      {
+        issuerKey: "email",
+        subject: "other@example.com",
+        kind: "email",
+        email: "other@example.com",
+        emailVerified: true,
+      },
+      NOW,
+      { unfenced: true, product: { slug: SLUG } },
+    );
+    if (other.status !== "signed_in") throw new Error("seed failed");
+    await seedPgs("alt-1", other.account.id);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    playGamesIs(PGS_APP, PLAYER, "alt-1");
+    const res = await gameTokenForm(ada, PGS_SUBJECT_TOKEN_TYPE, "code");
+    expect(res.status).toBe(409);
+    expect(await body(res)).toEqual({ error: { code: "link_conflict" } });
+    expect(await pgsRows()).toEqual([
+      { subject: "alt-1", account_id: other.account.id },
+    ]);
+  });
+
   it("links a game handle the exchange issued", async () => {
     await markFresh(h.env, SLUG, DEVICE, ada.subject);
     await handleFor({

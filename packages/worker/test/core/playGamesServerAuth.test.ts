@@ -13,6 +13,7 @@ import type { Env } from "../../src/platform/env.js";
 import { listAudit } from "../../src/core/audit.js";
 import { putOutletCredential } from "../../src/core/outletCredentials.js";
 import {
+  PGS_REDEEM_LIMIT,
   PGS_SECRET_CACHE_SECONDS,
   pgsServerCredentialReady,
   redeemAndVerify,
@@ -236,6 +237,44 @@ describe("redeemAndVerify", () => {
       ok: false,
       reason: "invalid_grant",
       detail: "no_credential",
+    });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("stops calling Google once the product's redemption budget is spent", async () => {
+    await putCred();
+    const { fetchImpl, calls } = fake({
+      [TOKEN_URL]: GOOD_TOKEN,
+      [VERIFY_URL]: GOOD_VERIFY,
+    });
+    for (let i = 0; i < PGS_REDEEM_LIMIT.limit; i++)
+      expect((await run(fetchImpl)).ok).toBe(true);
+    const before = calls.length;
+    expect(await run(fetchImpl)).toEqual({
+      ok: false,
+      reason: "invalid_grant",
+      detail: "rate_limited",
+    });
+    expect(calls).toHaveLength(before);
+  });
+
+  it("fails closed when the limiter is unavailable", async () => {
+    await putCred();
+    const { fetchImpl, calls } = fake({
+      [TOKEN_URL]: GOOD_TOKEN,
+      [VERIFY_URL]: GOOD_VERIFY,
+    });
+    env.RL = {
+      idFromName: (n: string) => ({ name: n }),
+      get: () => ({
+        fetch: async () => {
+          throw new Error("limiter down");
+        },
+      }),
+    } as unknown as Env["RL"];
+    expect(await run(fetchImpl)).toMatchObject({
+      ok: false,
+      detail: "rate_limited",
     });
     expect(calls).toHaveLength(0);
   });

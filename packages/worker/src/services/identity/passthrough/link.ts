@@ -74,7 +74,7 @@ import { verifiedAccountEmails } from "../../../core/accounts/verifiedEmails.js"
 import { consumeArtefact, getArtefact } from "../../../core/singleUse.js";
 import { deviceHolder, deviceOf } from "../attach.js";
 import { linkIdentity, type LinkResult } from "../accounts/links.js";
-import { listLinks } from "../accounts/repo.js";
+import { findLink, listLinks, rekeyLinkSubject } from "../accounts/repo.js";
 import {
   readPlatformSignIn,
   type PlatformSignInAudiences,
@@ -331,6 +331,8 @@ async function link(
   if (!(await freshLive(env, product.slug, deviceId, bound))) return stepUp();
 
   let source: LinkSource;
+  // Play Games' alternate player id, known only on the token branch.
+  let alternate: string | null = null;
   if (body.linkHandle !== undefined) {
     const ref = await exchangeLinkRef(env, product.slug, body.linkHandle);
     const raw = await getArtefact(env, ref);
@@ -393,6 +395,7 @@ async function link(
     }
     if (!(await spendFresh(env, product.slug, deviceId, bound)))
       return stepUp();
+    alternate = id.alternateSubject ?? null;
     source = {
       kind: id.kind,
       issuerKey: id.issuerKey,
@@ -415,6 +418,36 @@ async function link(
   const tenantScope = globalOk ? "" : scoped;
   if (tenantScope === undefined) return refused();
   const reach: LinkReach = tenantScope === "" ? "global" : "developer";
+
+  // A Play Games link may still sit under the alternate id. This account's own is moved to the
+  // player id rather than adding a second link; another account's is a conflict.
+  if (
+    source.kind === "pgs" &&
+    alternate !== null &&
+    alternate !== source.subject
+  ) {
+    const old = await findLink(db, {
+      issuerKey: source.issuerKey,
+      tenantScope,
+      subject: alternate,
+    });
+    if (old && old.account_id !== holder.accountId)
+      return noStore(wireError(409, "link_conflict"));
+    if (old && (await rekeyLinkSubject(db, old.id, alternate, source.subject)))
+      await appendAudit(db, {
+        product: product.slug,
+        id: randomId("aud"),
+        at: now,
+        actor_sub: holder.subject,
+        actor_name: null,
+        actor_email: null,
+        action: "identity.link.rekeyed",
+        target_kind: "link",
+        target_id: old.id,
+        parent_id: null,
+        summary: "Moved a pgs sign-in to the player's current id",
+      });
+  }
 
   const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
   const result: LinkResult = await linkIdentity(

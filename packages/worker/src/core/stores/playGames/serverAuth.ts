@@ -33,6 +33,7 @@
 import { GOOGLE_CLIENT_ID_RE } from "@polaris-key/manifest";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
+import { rateLimitOk } from "../../rateLimit.js";
 import { gatedFetch, type OidcFetch } from "../../oidc/client.js";
 import {
   listOutletCredentials,
@@ -54,6 +55,12 @@ const GAMES_API = "https://games.googleapis.com/games/v1";
 export const PGS_SECRET_CACHE_SECONDS = 600;
 /** The most secrets held at once; the oldest goes first. */
 const CACHE_MAX = 64;
+/** The product's budget of redemptions (each one is an outbound call to Google), per window. */
+export const PGS_REDEEM_LIMIT = {
+  bucket: "pgsRedeem",
+  limit: 300,
+  windowSec: 60,
+} as const;
 /** The `use` its audit rows carry. */
 const USE = "pgs:redeem";
 
@@ -64,6 +71,7 @@ const PLAYER_ID_RE = /^[\x21-\x7e]{1,128}$/;
 export type PgsRefusal =
   | "no_credential"
   | "bad_request"
+  | "rate_limited"
   | "redeem_refused"
   | "redeem_malformed"
   | "verify_refused"
@@ -230,6 +238,18 @@ export async function redeemAndVerify(
 
   const credentialId = await findCredentialId(db, product, serverClientId);
   if (credentialId === null) return refused("no_credential");
+  // The per-product budget comes before the secret is opened or Google is called. Over the budget,
+  // or with the limiter unavailable, the answer is the same refusal as any other (the bucket fails
+  // closed).
+  if (
+    !(await rateLimitOk(
+      env,
+      product,
+      { ...PGS_REDEEM_LIMIT, id: "redeem" },
+      now,
+    ))
+  )
+    return refused("rate_limited");
   const secret = await clientSecret(env, db, product, credentialId, now);
   if (secret === null) return refused("no_credential");
 

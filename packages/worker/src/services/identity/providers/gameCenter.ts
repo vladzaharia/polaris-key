@@ -11,7 +11,8 @@
  *   1. The product has Game Center on, a team id and a bundle id among its Apple bundle ids.
  *   2. The token has the exact shape and sizes.
  *   3. The timestamp (Apple's, in milliseconds) is at most 120 s old and 30 s ahead.
- *   4. The key URL is an exact `static.gc.apple.com` `.cer` address.
+ *   4. The key URL is an exact `static.gc.apple.com/public-key/gc-prod-<n>.cer` address (Apple's
+ *      key-file names only, so a token cannot choose which path the Worker requests).
  *   5. The certificate is fetched through a door of its own (https, no redirects, 16 KiB, 5 s),
  *      kept as DER for as long as Apple's `max-age` allows, and verified again on every use.
  *   6. The chain reaches a pinned root through a pinned intermediate; the leaf is RSA, issued to
@@ -69,8 +70,10 @@ export const GAME_CENTER_CERT_MAX_TTL_SECONDS = 24 * 60 * 60;
 export const GAME_CENTER_CERT_GRACE_SECONDS = 60 * 60;
 
 const KEY_URL =
-  /^https:\/\/static\.gc\.apple\.com\/public-key\/[A-Za-z0-9._-]{1,64}\.cer$/;
+  /^https:\/\/static\.gc\.apple\.com\/public-key\/gc-prod-[0-9]{1,4}\.cer$/;
 const TIMESTAMP = /^[1-9][0-9]{0,15}$/;
+/** Apple's team-scoped player id: `T:` then a short run of letters, digits, `_` and `-`. */
+const TEAM_PLAYER_ID = /^T:[A-Za-z0-9_-]{1,128}$/;
 const BUNDLE_ID = /^[A-Za-z0-9.-]{1,155}$/;
 
 export interface GameCenterIdentity {
@@ -160,8 +163,7 @@ function parseToken(token: string): ParsedToken {
   const timestamp = Number(ts);
   if (!Number.isSafeInteger(timestamp)) refuse();
   const teamPlayerID = text(player);
-  // Printable ASCII, 1 to 256 bytes.
-  if (!/^[\x20-\x7e]{1,256}$/.test(teamPlayerID)) refuse();
+  if (!TEAM_PLAYER_ID.test(teamPlayerID)) refuse();
   const bundleId = text(bundle);
   if (!BUNDLE_ID.test(bundleId)) refuse();
   return {
@@ -268,7 +270,11 @@ async function fetchCertificate(
   url: string,
   fetchImpl: NonNullable<GameCenterVerifyOpts["fetch"]>,
 ): Promise<Fetched> {
-  if (providerUrlProblem(url, NATIVE_HOSTS.gamecenter) !== null) refuse();
+  if (
+    !KEY_URL.test(url) ||
+    providerUrlProblem(url, NATIVE_HOSTS.gamecenter) !== null
+  )
+    refuse();
   let res: Response;
   try {
     res = await fetchImpl(url, {
