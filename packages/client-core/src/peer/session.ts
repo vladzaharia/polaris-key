@@ -9,7 +9,7 @@
 // transport exists nothing is sent, after it a CLOSE record names the code.
 
 import { base64UrlEncodeBytes, type TrustSet } from "@polaris-key/jws";
-import { normalizeDeviceLabel } from "../deviceLabel.js";
+import { cleanApp, cleanLabel, cleanPlatform } from "./display.js";
 import { admitPeer, replaceRing, ringExpired, verifyRing } from "./cert.js";
 import {
   NoiseError,
@@ -31,6 +31,7 @@ import {
 } from "./payload.js";
 import {
   MAX_PEER_MESSAGE_BYTES,
+  PEER_CLOSE_CODES,
   RECORD,
   RecordAssembler,
   encodeRecord,
@@ -47,20 +48,13 @@ import {
   sasValue,
   encodeSasValue,
 } from "./sas.js";
+import { VOUCH_CAP, VouchFlow } from "./vouch.js";
 
 const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
 const NONE = new Uint8Array(0);
 
 /** §15.6: a HELLO in mode v or p is at most this many bytes. */
 const MAX_UNVERIFIED_HELLO = 4096;
-/** §15.6: `platform` shown as sent only when it is up to 32 of these characters; else "Unknown". */
-const PLATFORM_DISPLAY = /^[A-Za-z0-9 ._+-]{1,32}$/;
-const UNKNOWN_DISPLAY = "Unknown";
-
-/** NFC, then the device-label cleaning (§12.7.1): `null` when nothing is left. */
-const cleanDisplay = (raw: string): string | null =>
-  normalizeDeviceLabel(raw.normalize("NFC"));
-
 export type ClosedReason = PeerCloseCode | "handshake_failed";
 
 export interface PeerHello {
@@ -113,6 +107,11 @@ export interface PeerSessionOptions {
    * handshake and caps the sessions waiting on a code. The constructor refuses without it.
    */
   admission?: HandshakeLimiter;
+  /**
+   * Mode v, initiator only: stop after HELLO and send no SAS record until the host calls
+   * `startSas()`. The host dials several approvers and starts the one the person chose (N9).
+   */
+  holdSas?: boolean;
   /** Rekey after this many sent messages (default 2^20) or seconds (default 3600). */
   rekeyMessages?: number;
   rekeySeconds?: number;
@@ -154,16 +153,7 @@ export const SAS_DEADLINE_SECONDS = 120;
 const MAX_QUEUED = 16;
 /** §15.6: bytes of held records before the person's confirmation, modes v and p. */
 const MAX_QUEUED_BYTES = 16 * 1024;
-const KNOWN_CLOSE = new Set<string>([
-  "peer_revoked",
-  "peer_expired",
-  "peer_bad_frame",
-  "peer_unknown_critical",
-  "peer_not_allowed",
-  "peer_busy",
-  "peer_bye",
-  "peer_timeout",
-]);
+const KNOWN_CLOSE = new Set<string>(PEER_CLOSE_CODES);
 
 class SessionFail extends Error {
   constructor(readonly code: ClosedReason) {
@@ -204,10 +194,14 @@ export class PeerSession {
   private queued: { type: number; body: Uint8Array }[] = [];
   private peerCertJws = "";
   private peerRemote: Uint8Array | null = null;
+  private flow: VouchFlow | null = null;
+  private hash: Uint8Array | null = null;
 
   constructor(private readonly o: PeerSessionOptions) {
     if ((o.mode === "a") !== (o.account !== undefined))
       throw new RangeError("account context");
+    if (o.holdSas === true && (o.mode !== "v" || o.role !== "initiator"))
+      throw new RangeError("holdSas is for the mode v initiator");
     if (o.mode !== "a" && o.role === "responder" && o.admission === undefined)
       throw new RangeError("an approver needs an admission limiter");
     this.ports = o.ports ?? webCryptoNoisePorts;
@@ -222,11 +216,53 @@ export class PeerSession {
       });
     this.asm = new RecordAssembler(o.mode);
     this.caps = [...(o.caps ?? [])];
+    // Both mode-v payloads list `vouch/1` (§15.6.1 rule 1); the host cannot leave it out.
+    if (o.mode === "v") {
+      if (!this.caps.includes(VOUCH_CAP)) this.caps.push(VOUCH_CAP);
+      this.flow = new VouchFlow(
+        o.role === "initiator" ? "requester" : "approver",
+      );
+    }
     this.keyedAt = this.mono();
   }
 
   get isOpen(): boolean {
     return this.phase === "open";
+  }
+
+  /**
+   * Mode v: this session's order guard (§15.6.1), negotiated when the session is `established`.
+   * `null` in the other modes.
+   */
+  get vouch(): VouchFlow | null {
+    return this.flow;
+  }
+
+  /**
+   * The Noise handshake hash `h`, a copy, once the session is `established` (§15.6.1 binds the
+   * vouch to it). Throws before that. It is a public value; the one-time keys never leave the
+   * handshake.
+   */
+  handshakeHash(): Uint8Array {
+    if (this.hash === null) throw new Error("session not established");
+    return this.hash.slice();
+  }
+
+  /**
+   * Mode v, `holdSas` initiator: the person chose this approver; send `SAS_COMMIT` now. Only
+   * once, only after `established`; any other call closes the session `peer_not_allowed`.
+   */
+  startSas(): Promise<void> {
+    return this.run(async () => {
+      if (
+        this.o.holdSas !== true ||
+        this.phase !== "sas" ||
+        this.sasStep !== 0 ||
+        this.nD !== null
+      )
+        throw new SessionFail("peer_not_allowed");
+      await this.commitSas();
+    });
   }
 
   /**
@@ -535,10 +571,16 @@ export class PeerSession {
       if (hello === null) throw new SessionFail("peer_bad_frame");
       this.peerHello = hello;
       this.maxSend = Math.min(MAX_PEER_MESSAGE_BYTES, hello.maxMessage);
+      if (this.flow !== null) {
+        // Rule 1 (N7): without `vouch/1` on both sides, close before any SAS record.
+        const v = this.flow.negotiate(this.caps, this.peerCaps);
+        if (!v.ok) throw new SessionFail(v.close);
+      }
       const caps = capsIntersection(this.caps, this.peerCaps);
       this.caps = caps;
       const p = this.pending!;
       this.pending = null;
+      this.hash = this.hs!.handshakeHash.slice();
       this.phase = this.o.mode === "a" ? "open" : "sas";
       this.o.onEvent({
         type: "established",
@@ -549,14 +591,9 @@ export class PeerSession {
         peerDeviceId: p.peerDeviceId,
       });
       if (this.o.mode === "a") await this.pushRing();
-      else if (this.o.role === "initiator") {
-        // D commits first.
-        this.nD = this.ports.random(32);
-        await this.emitRecords(
-          RECORD.SAS_COMMIT,
-          sasBody("c", await sasCommit(this.nD)),
-        );
-        this.sasStep = 1;
+      else if (this.o.role === "initiator" && this.o.holdSas !== true) {
+        // D commits first, unless the host holds the code back until it picks this approver.
+        await this.commitSas();
       }
       return;
     }
@@ -627,11 +664,9 @@ export class PeerSession {
       return null;
     if (o.label !== undefined && typeof o.label !== "string") return null;
     // Display data from an unauthenticated peer: NFC, controls and bidi stripped, 64 code points.
-    const label = o.label === undefined ? null : cleanDisplay(o.label);
-    const app = cleanDisplay(o.app) ?? UNKNOWN_DISPLAY;
-    const platform = PLATFORM_DISPLAY.test(o.platform)
-      ? o.platform
-      : UNKNOWN_DISPLAY;
+    const label = o.label === undefined ? null : cleanLabel(o.label);
+    const app = cleanApp(o.app);
+    const platform = cleanPlatform(o.platform);
     if (
       typeof o.maxMessage !== "number" ||
       !Number.isSafeInteger(o.maxMessage) ||
@@ -644,6 +679,15 @@ export class PeerSession {
       app,
       maxMessage: o.maxMessage,
     };
+  }
+
+  private async commitSas(): Promise<void> {
+    this.nD = this.ports.random(32);
+    await this.emitRecords(
+      RECORD.SAS_COMMIT,
+      sasBody("c", await sasCommit(this.nD)),
+    );
+    this.sasStep = 1;
   }
 
   private async onSas(type: number, body: Uint8Array): Promise<void> {

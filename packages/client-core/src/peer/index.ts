@@ -69,6 +69,7 @@ export {
 } from "./frame.js";
 export {
   MAX_PEER_MESSAGE_BYTES,
+  PEER_CLOSE_CODES,
   MAX_RECORD_BODY,
   RECORD,
   RECORD_TYPES,
@@ -97,6 +98,12 @@ export {
   stopWithin,
   type RelayOutboxOptions,
 } from "./pacer.js";
+export {
+  UNKNOWN_DISPLAY,
+  cleanApp,
+  cleanLabel,
+  cleanPlatform,
+} from "./display.js";
 export {
   MAX_CAPS,
   MAX_HANDSHAKE_PAYLOAD,

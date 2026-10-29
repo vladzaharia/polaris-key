@@ -16,11 +16,11 @@ import {
   isCanonicalB64url,
   isX25519LowOrder,
 } from "@polaris-key/jws";
-import { normalizeDeviceLabel } from "../deviceLabel.js";
 import { verifyDeviceProof } from "../deviceProof.js";
 import { signDeviceProof, type DeviceKeyPort } from "../deviceKeys.js";
 import type { RandomBytes } from "../identityRedirect.js";
 import { base32Lower } from "./advert.js";
+import { cleanLabel, cleanPlatform } from "./display.js";
 import { capsIntersection, parseStrictObject } from "./payload.js";
 import { RECORD, type PeerCloseCode } from "./record.js";
 
@@ -37,18 +37,10 @@ export const APPROVER_RENEW_SECONDS = 300;
 export const VOUCH_FAILURE_LIMIT = 2;
 export const VOUCH_FAILURE_WINDOW_SECONDS = 600;
 
-const PLATFORM_DISPLAY = /^[A-Za-z0-9 ._+-]{1,32}$/;
 const REQUEST_RE = /^nr_[A-Za-z0-9_-]{22}$/;
 const DEVICE_RE = /^[A-Za-z0-9_-]{32}$/;
 const P25519 = (1n << 255n) - 19n;
 const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
-
-/** NFC, then the device-label cleaning (§12.7.1): `null` when nothing is left. */
-const cleanLabel = (raw: string): string | null =>
-  normalizeDeviceLabel(raw.normalize("NFC"));
-/** §15.6: `platform` as sent when it is up to 32 plain characters, else "Unknown". */
-const cleanPlatform = (raw: string): string =>
-  PLATFORM_DISPLAY.test(raw) ? raw : "Unknown";
 
 /** A canonical base64url of 32 bytes, decoded, or null. */
 function key32(v: unknown): Uint8Array | null {
