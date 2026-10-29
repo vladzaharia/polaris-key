@@ -3,7 +3,8 @@
 // `peerMatrixVersion` 1.
 //
 // `adverts`, `prologue`, `psk`, `sas`, `frames`, `records`, `relayEnvelopes`,
-// `handshakePayloads` and `lanAddresses` (CC-IPV6.1; the rule is reference/lanAddress.ts). The
+// `handshakePayloads`, `lanAddresses` (CC-IPV6.1; the rule is reference/lanAddress.ts) and
+// `mdnsAnswers` (CC-IPV6.2; the DNS encoder and the learning rule are reference/mdns.ts). The
 // device proof is not here: it lives in `device-proof.json`. Every row is
 // recomputed through `reference/peerMatrix.ts` (`node:crypto` only; nothing from client-core);
 // the generator throws when a hand-written known answer disagrees, and the HKDF and base32 steps
@@ -50,6 +51,12 @@ import {
 } from "./reference/peerMatrix.js";
 import { sha256 } from "./reference/noise.js";
 import { refLanVerdict } from "./reference/lanAddress.js";
+import {
+  type RefDnsRecord,
+  type RefLearned,
+  refDnsEncode,
+  refMdnsLearn,
+} from "./reference/mdns.js";
 
 const hex = bytesHex;
 const b64u = (b: Uint8Array): string => Buffer.from(b).toString("base64url");
@@ -1335,11 +1342,303 @@ function buildLanAddresses(): unknown {
   };
 }
 
+// ── mdnsAnswers (§15.4 "Addresses") ──────────────────────────────────────────
+
+function buildMdnsAnswers(): unknown {
+  const I1 = "p1-aaaaaaaaaaaaaaaa";
+  const I2 = "p1-bbbbbbbbbbbbbbbb";
+  const H1 = `${I1}.local`;
+  const H2 = `${I2}.local`;
+  const SVC = "_pkeypeer._tcp.local";
+  const LL = "fe80::1c2:3ff:fe4:5a6";
+  const LL_TEXT = LL;
+  const a = (name: string, address: string, ttl = 120): RefDnsRecord => ({
+    name,
+    type: "A",
+    ttl,
+    address,
+  });
+  const aaaa = (name: string, address: string, ttl = 120): RefDnsRecord => ({
+    name,
+    type: "AAAA",
+    ttl,
+    address,
+  });
+  const ptr = (ttl: number): RefDnsRecord => ({
+    name: SVC,
+    type: "PTR",
+    ttl,
+    target: `${I1}.${SVC}`,
+  });
+  const srv: RefDnsRecord = {
+    name: `${I1}.${SVC}`,
+    type: "SRV",
+    ttl: 120,
+    port: 40123,
+    target: H1,
+  };
+  const txt: RefDnsRecord = {
+    name: `${I1}.${SVC}`,
+    type: "TXT",
+    ttl: 4500,
+    txt: ["v=1", "m=a"],
+  };
+  const ll = (name: string, address: string): RefLearned => ({ name, address });
+
+  // A known answer for the encoder, written by hand from RFC 1035 (a compressed PTR, then an A).
+  const knownCompressed = refDnsEncode({
+    answers: [
+      { name: SVC, type: "PTR", ttl: 4500, target: `i.${SVC}` },
+      { name: "h.local", type: "A", ttl: 120, address: "192.168.1.20" },
+    ],
+    compress: true,
+  });
+  // h.local: "h" then a pointer to "local" at offset 27; the A record follows.
+  const wantHex =
+    "000084000000000200000000" +
+    "095f706b657970656572045f746370056c6f63616c00" +
+    "000c0001000011940004" +
+    "0169c00c" +
+    "0168c01b" + // h + pointer to "local" (offset 27)
+    "00018001" +
+    "00000078" +
+    "0004" +
+    "c0a80114";
+  check("mdnsAnswers known compressed encoding", hex(knownCompressed), wantHex);
+
+  type Row = {
+    id: string;
+    records: RefDnsRecord[];
+    additionals?: RefDnsRecord[];
+    compress?: boolean;
+    source: string;
+    zone: string | null;
+    prior?: RefLearned[];
+    /** The known answer: the table for the name(s) after the packet. */
+    learned: RefLearned[];
+  };
+  const rows: Row[] = [
+    {
+      id: "a-equals-source",
+      records: [a(H1, "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "a-not-source",
+      records: [a(H1, "192.168.1.99")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [],
+    },
+    {
+      id: "a-equals-source-and-another-a-dropped",
+      records: [a(H1, "192.168.1.99"), a(H1, "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "a-in-additional-section",
+      records: [ptr(4500), srv, txt],
+      additionals: [a(H1, "10.0.0.7")],
+      source: "10.0.0.7",
+      zone: null,
+      learned: [ll(H1, "10.0.0.7")],
+    },
+    {
+      id: "aaaa-link-local-equals-source-takes-zone",
+      records: [aaaa(H1, LL)],
+      source: LL,
+      zone: "en0",
+      learned: [ll(H1, `${LL_TEXT}%en0`)],
+    },
+    {
+      id: "aaaa-link-local-kept-global-dropped",
+      records: [aaaa(H1, "2001:db8:1:2::5"), aaaa(H1, LL)],
+      source: LL,
+      zone: "wlan0",
+      learned: [ll(H1, `${LL_TEXT}%wlan0`)],
+    },
+    {
+      id: "aaaa-global-alone-dropped",
+      records: [aaaa(H1, "2001:db8:1:2::5")],
+      source: LL,
+      zone: "en0",
+      learned: [],
+    },
+    {
+      id: "aaaa-ula-equals-source-has-no-zone",
+      records: [aaaa(H1, "fd12:0:0:0:0:0:0:5")],
+      source: "fd12::5",
+      zone: "en0",
+      learned: [ll(H1, "fd12::5")],
+    },
+    {
+      id: "a-in-ipv6-packet-dropped",
+      records: [a(H1, "192.168.1.20"), aaaa(H1, LL)],
+      source: LL,
+      zone: "en0",
+      learned: [ll(H1, `${LL_TEXT}%en0`)],
+    },
+    {
+      id: "a-alone-in-ipv6-packet-dropped",
+      records: [a(H1, "192.168.1.20")],
+      source: LL,
+      zone: "en0",
+      learned: [],
+    },
+    {
+      id: "aaaa-in-ipv4-packet-dropped",
+      records: [aaaa(H1, LL), a(H1, "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "two-names-same-source",
+      records: [a(H1, "172.20.0.9"), a(H2, "172.20.0.9")],
+      source: "172.20.0.9",
+      zone: null,
+      learned: [ll(H1, "172.20.0.9"), ll(H2, "172.20.0.9")],
+    },
+    {
+      id: "repeat-is-not-a-second-address",
+      records: [a(H1, "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "new-address-follows-in-first-seen-order",
+      records: [aaaa(H1, "fd12:0:0:0:0:0:0:7")],
+      source: "fd12::7",
+      zone: "en0",
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [ll(H1, "192.168.1.20"), ll(H1, "fd12::7")],
+    },
+    {
+      id: "fourth-address-is-kept",
+      records: [a(H1, "192.168.1.9")],
+      source: "192.168.1.9",
+      zone: null,
+      prior: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, `${LL_TEXT}%en0`),
+      ],
+      learned: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, `${LL_TEXT}%en0`),
+        ll(H1, "192.168.1.9"),
+      ],
+    },
+    {
+      id: "fifth-address-is-dropped",
+      records: [a(H1, "192.168.1.9")],
+      source: "192.168.1.9",
+      zone: null,
+      prior: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, `${LL_TEXT}%en0`),
+        ll(H1, "fd12::5"),
+      ],
+      learned: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, `${LL_TEXT}%en0`),
+        ll(H1, "fd12::5"),
+      ],
+    },
+    {
+      id: "cap-is-per-name",
+      records: [a(H2, "192.168.1.9")],
+      source: "192.168.1.9",
+      zone: null,
+      prior: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+        ll(H1, "192.168.1.5"),
+      ],
+      learned: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+        ll(H1, "192.168.1.5"),
+        ll(H2, "192.168.1.9"),
+      ],
+    },
+    {
+      id: "compressed-names",
+      records: [ptr(4500), srv, txt, a(H1, "192.168.1.20"), aaaa(H1, LL)],
+      compress: true,
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "compressed-names-link-local",
+      records: [ptr(4500), srv, txt],
+      additionals: [a(H1, "192.168.1.20"), aaaa(H1, LL)],
+      compress: true,
+      source: LL,
+      zone: "en0",
+      learned: [ll(H1, `${LL_TEXT}%en0`)],
+    },
+    {
+      id: "goodbye-teaches-nothing",
+      records: [ptr(0)],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [],
+    },
+    {
+      id: "goodbye-beside-a-live-address",
+      records: [ptr(0)],
+      additionals: [a(H1, "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+  ];
+  const out = rows.map((r) => {
+    const packet = refDnsEncode({
+      answers: r.records,
+      ...(r.additionals !== undefined ? { additionals: r.additionals } : {}),
+      ...(r.compress === true ? { compress: true } : {}),
+    });
+    const got = refMdnsLearn(packet, r.source, r.zone, r.prior ?? []);
+    check(`mdnsAnswers ${r.id}`, got, r.learned);
+    return {
+      id: r.id,
+      packet: hex(packet),
+      source: r.source,
+      zone: r.zone,
+      ...(r.prior !== undefined ? { prior: r.prior } : {}),
+      learned: got,
+    };
+  });
+  // A compressed packet is shorter than the same message without compression, or the row proves nothing.
+  const sample = rows.find((r) => r.id === "compressed-names")!;
+  const flat = refDnsEncode({ answers: sample.records });
+  const packed = refDnsEncode({ answers: sample.records, compress: true });
+  check("mdnsAnswers compression shrinks", packed.length < flat.length, true);
+  return {
+    note: "mDNS address learning (15.4 Addresses). `packet` is one mDNS response as lower-case hex (header, then the answer and additional sections; names may be compressed, RFC 1035 4.1.4). `source` is the packet's source address as text and `zone` the interface it arrived on (null: none). A browser believes an A or AAAA record only when its address equals `source` (so an A record is never believed in an IPv6 packet, nor an AAAA in an IPv4 packet); the section a record sits in does not matter. A link-local (fe80::/10) address is learned as `<RFC 5952 text>%<zone>`; any other address has no zone. A name keeps at most 4 addresses, of any family, in first-seen order, and a repeat is not a second address. Only address records teach addresses: a PTR goodbye (TTL 0) teaches none and does not remove any, and no row pins the TTL of an address record. `prior` (absent: nothing held) is the table the browser held before the packet, in first-seen order; `learned` is the table after it: the `{name, address}` entries in first-seen order. Names are lower case. Rows need an own DNS codec: Node, Python, Kotlin JVM and Godot GDScript run them; Swift and Android leave address learning to the OS resolver.",
+    rows: out,
+  };
+}
+
 export function buildPeerMatrix(): unknown {
   return {
     peerMatrixVersion: 1,
     description:
-      "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`; `lanAddresses` (which peer addresses a device dials or accepts, and the per-address count key). A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+      "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`; `lanAddresses` (which peer addresses a device dials or accepts, and the per-address count key); `mdnsAnswers` (which A and AAAA records a browser believes). A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
     adverts: buildAdverts(),
     prologue: buildPrologue(),
     psk: buildPsk(),
@@ -1349,5 +1648,6 @@ export function buildPeerMatrix(): unknown {
     relayEnvelopes: buildRelay(),
     handshakePayloads: buildPayloads(),
     lanAddresses: buildLanAddresses(),
+    mdnsAnswers: buildMdnsAnswers(),
   };
 }

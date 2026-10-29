@@ -737,6 +737,9 @@
     "tools/corpus/reference/lanAddress.ts": {
       "knip:files": 1
     },
+    "tools/corpus/reference/mdns.ts": {
+      "knip:files": 1
+    },
     "tools/corpus/reference/noise.ts": {
       "knip:files": 1
     },
