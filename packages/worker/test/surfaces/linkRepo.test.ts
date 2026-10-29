@@ -191,7 +191,6 @@ const PRODUCT_JSON = JSON.stringify({
   compatMax: "9.0.0",
   defaultMaxOfflineDays: 14,
   defaultDeviceLimit: 3,
-  adminGroup: "acme-admins",
   oidc: {
     provider: "custom",
     issuer: "https://id.example",
@@ -240,7 +239,6 @@ compatMin: 1.0.0
 compatMax: 9.0.0
 defaultMaxOfflineDays: 7
 defaultDeviceLimit: 2
-adminGroup: yaml-admins
 tiers:
   - id: basic
     label: Basic

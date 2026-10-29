@@ -233,8 +233,7 @@ state:
   the new key. The feed fails closed in between.
 - **Applied unless claimed in the console** (see below): the product name, the default max
   offline days and device limit, the web origins, and the config catalog (only when its content
-  actually changed, which publishes a new schema version). The admin group is manifest-only and
-  always follows the manifest.
+  actually changed, which publishes a new schema version).
 - **Applied per row**: tiers and profiles the manifest declares are written while the row is
   still manifest-owned. A tier or profile created or edited in the console is left alone, and
   one the manifest drops is removed only when nothing references it; otherwise the whole resync

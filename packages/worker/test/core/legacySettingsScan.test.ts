@@ -50,24 +50,23 @@ export const KNOWN: Record<string, Record<string, string>> = {
     "packages/worker/src/console/lib/shape.ts": "ST-25.6",
     "packages/worker/src/console/systemProduct.ts": "ST-25.6",
     "packages/worker/src/core/ingest/core.ts": "ST-25.6",
-    "packages/worker/src/core/ingest/plan.ts": "ST-25.6",
     "packages/worker/src/core/ops/settingsBackfill.ts": "ST-25.6",
     "packages/worker/src/core/products.ts": "ST-25.6",
     "packages/worker/src/core/products/store.ts": "ST-25.6",
     "packages/worker/src/core/repo.ts": "ST-25.6",
     "packages/worker/src/core/settings/columns.ts": "ST-25.6",
     "packages/worker/src/core/settings/core.ts": "ST-25.6",
+    "packages/admin/src/console/settings.generated.ts": "ST-25.6",
     "packages/worker/scripts/registry-clients/seed.mjs": "ST-25b",
+    "packages/shared-manifest/src/index.test.ts":
+      "PERMANENT: the refusal's test names the retired field's code",
+    "packages/worker/scripts/settings-coverage.ts":
+      "PERMANENT: the NOT_A_SETTING row for the retired manifest field names its code",
     "packages/shared-manifest/src/index.ts":
       "PERMANENT: ST-32's refusal names the retired field and its replacement",
   },
   adminGroup: {
-    "packages/worker/src/console/handlers/products.ts": "ST-25.6",
     "packages/worker/src/console/lib/shape.ts": "ST-25.6",
-    "packages/worker/src/core/ingest/core.ts": "ST-25.6",
-    "packages/worker/src/core/ingest/fromDocuments.ts": "ST-25.6",
-    "packages/worker/src/core/ingest/plan.ts": "ST-25.6",
-    "packages/worker/src/core/ops/settingsBackfill.ts": "ST-25.6",
     "packages/worker/src/core/products.ts": "ST-25.6",
     "packages/worker/src/core/settings/columns.ts": "ST-25.6",
     "packages/worker/src/core/settings/core.ts": "ST-25.6",
@@ -78,14 +77,12 @@ export const KNOWN: Record<string, Record<string, string>> = {
     "packages/admin/src/console/sections/core/pages/Settings.tsx": "ST-25.6",
     "packages/admin/src/console/settings.generated.ts": "ST-25.6",
     "packages/admin/src/kit/stories/forms.tsx": "ST-25.6",
-    "packages/cli/src/index.ts": "ST-25.6",
-    "packages/cli/src/manifest.ts": "ST-25.6",
     "packages/shared-manifest/src/index.test.ts":
       "PERMANENT: ST-32's refusal names the retired field and its replacement",
     "packages/shared-manifest/src/index.ts":
       "PERMANENT: ST-32's refusal names the retired field and its replacement",
-    "packages/shared-manifest/src/spellings.ts":
-      "PERMANENT: ST-32's refusal names the retired field and its replacement",
+    "packages/worker/scripts/settings-coverage.ts":
+      "PERMANENT: the NOT_A_SETTING row for the retired manifest field names it",
   },
   artifacts_access: {
     "packages/worker/src/services/release/descriptor.ts":

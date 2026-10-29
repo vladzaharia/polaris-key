@@ -8,7 +8,6 @@
   "compatMax": "99.0.0",
   "defaultMaxOfflineDays": 30,
   "defaultDeviceLimit": 5,
-  "adminGroup": "admins",
   "modules": {
     "license": {
       "enabled": true

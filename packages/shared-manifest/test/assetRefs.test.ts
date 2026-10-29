@@ -319,7 +319,6 @@ describe("listing art", () => {
 const DJDL_PRODUCT_SPELLINGS = [
   "/slug",
   "/name",
-  "/adminGroup",
   "/compatMin",
   "/compatMax",
   "/defaultDeviceLimit",

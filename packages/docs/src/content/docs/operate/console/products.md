@@ -182,17 +182,11 @@ out of the product switcher and the Products list. It is always
 [manifest-authoritative](/docs/operate/console/product-actions/#manifest-authoritative-mode): its only manifest writer is the deploy hook,
 which every production deploy runs with the root `.pkey/` at the deployed commit.
 
-### The `adminGroup` field is metadata, not a grant
+### The `adminGroup` field was removed
 
-Settings has no input for it: a product that has one shows it read-only, marked
-**Not enforced** (New product does not ask for it either). It's recorded on the
-product row and shown back to you, and it authorizes **nothing**: there is no
-per-product admin tier. The console authorizes every request on the platform-wide
-`PLATFORM_ADMIN_GROUP` alone (a platform admin sets it).
-The field exists because a product's own OIDC configuration (`.pkey/product`'s `oidc.groupRoleMap`)
-often names a group with a similar-looking purpose for a _different_ system — that product's own
-customer-facing sign-in — and the two are hard to tell apart. If you're setting this to grant
-someone console access, it does not: add them to the platform OIDC provider's admin group instead.
+`product.adminGroup` granted nothing, so `.pkey/product` no longer takes it, at either spelling:
+a manifest that has it is refused with `invalid_admin_group`. Map an identity-provider group to
+a role in Platform → Members instead (`console.access`). Delete the field from your manifest.
 
 A product's **Settings** page holds its registry fields and the **Danger zone**, where **Delete product…** lives. Everything else it edits has its own page.
 

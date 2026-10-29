@@ -43,7 +43,7 @@ var _grid: GridContainer
 var _groups: Array = []
 var _copy: Button
 var _copied: Label
-var _check: CheckBox
+var _check: CheckBox  # ui-lint: allow godot-checkbox "I've saved my recovery code" is an acknowledgement, not a switch
 var _actions: BoxContainer
 var _done: Button
 var _did_copy := false
@@ -78,7 +78,7 @@ func _build() -> void:
 	_copy.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_copied = label(left, "Copied", "PKeyMuted")
 	_no_ask = label(right, "NoAsk", "PKeyMuted")
-	_check = CheckBox.new()
+	_check = CheckBox.new()  # ui-lint: allow godot-checkbox the saved-code acknowledgement is a check box
 	_check.name = "Saved"
 	_check.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_check.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -164,7 +164,7 @@ func _fill_groups() -> void:
 		# A group is data, not copy: drawn as given, never translated or mirrored, never wrapped.
 		var l := label(_grid, "Group%d" % _groups.size(), "PKeyMono", true)
 		l.autowrap_mode = TextServer.AUTOWRAP_OFF
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT  # ui-lint: allow godot-rtl a code group is data and never mirrors
 		_groups.append(l)
 
 	for i in groups.size():

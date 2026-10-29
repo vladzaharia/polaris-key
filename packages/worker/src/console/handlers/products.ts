@@ -366,16 +366,6 @@ export async function handleProducts(
         "the system product cannot be renamed",
         { fields: ["name"], reason: "system_product" },
       );
-    // Owner decision 1 (S-18 D2): the admin group is manifest-only on a repo-linked product (and
-    // on the system product, whose manifest the deploy hook applies). It is never claimed, so a
-    // console value would vanish at the next apply; refusing it says so.
-    if (body.adminGroup !== undefined && (claimsApply(row) || row.system === 1))
-      return err(
-        409,
-        ErrorCode.BadRequest,
-        "the admin group is set by the product's .pkey/product (adminGroup)",
-        { fields: ["adminGroup"], reason: "manifest_only" },
-      );
     // ST-20 (S-18 §4.5 item 7, D14): manifest-authoritative mode, an operator setting. Locked on
     // for the system product by the registry (the system-lock rule); only a repo-linked product
     // has a manifest to make authoritative.
@@ -431,18 +421,6 @@ export async function handleProducts(
         fields: ["name"],
       });
     }
-    if (
-      body.adminGroup !== undefined &&
-      body.adminGroup !== null &&
-      typeof body.adminGroup !== "string"
-    ) {
-      return err(
-        422,
-        ErrorCode.BadRequest,
-        "adminGroup must be a string or null",
-        { fields: ["adminGroup"] },
-      );
-    }
     // ST-08: the web-origins editor. Each entry must be an origin exactly as a browser sends it
     // (the manifest's own rule); the list is bounded and a duplicate is refused, not dropped.
     let webOrigins: string[] | undefined;
@@ -481,7 +459,6 @@ export async function handleProducts(
       "core.name": "name",
       "license.defaults.maxOfflineDays": "defaultMaxOfflineDays",
       "license.defaults.deviceLimit": "defaultDeviceLimit",
-      "core.adminGroup": "adminGroup",
       "core.web.origins": "webOrigins",
       [MANIFEST_AUTHORITATIVE_KEY]: "manifestAuthoritative",
     };
@@ -519,9 +496,6 @@ export async function handleProducts(
       add("license.defaults.maxOfflineDays", body.defaultMaxOfflineDays);
     if (typeof body.defaultDeviceLimit === "number")
       add("license.defaults.deviceLimit", body.defaultDeviceLimit);
-    if (body.adminGroup === null) add("core.adminGroup", null);
-    else if (typeof body.adminGroup === "string")
-      add("core.adminGroup", body.adminGroup.trim() || null);
     if (webOrigins !== undefined) add("core.web.origins", webOrigins);
     // The mode itself: an operator setting, never written for the system product (locked).
     if (typeof body.manifestAuthoritative === "boolean" && row.system !== 1)
@@ -554,9 +528,7 @@ export async function handleProducts(
               .map((w) => FIELD_OF[w.key])
               .filter(
                 (f): f is string =>
-                  f !== undefined &&
-                  f !== "adminGroup" &&
-                  f !== "manifestAuthoritative",
+                  f !== undefined && f !== "manifestAuthoritative",
               )
           : written.details?.fields
             ? (written.details.fields as string[])
@@ -727,9 +699,6 @@ async function manualCreate(
       ? {}
       : { defaultMaxOfflineDays: Number(body.defaultMaxOfflineDays) }),
     defaultDeviceLimit: deviceLimit,
-    ...(typeof body.adminGroup === "string"
-      ? { adminGroup: body.adminGroup }
-      : {}),
     ...(kid ? { kid } : {}),
     choices,
     author: session.sub,

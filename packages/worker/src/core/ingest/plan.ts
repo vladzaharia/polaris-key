@@ -164,11 +164,6 @@ export async function planManifest(
     `device limit ${m.defaultDeviceLimit}`,
     "device limit",
   );
-  // The admin group is manifest-only (never claimable).
-  if ((product.admin_group ?? null) !== (m.adminGroup ?? null))
-    fields.push(
-      m.adminGroup ? `admin group ${m.adminGroup}` : "no admin group",
-    );
   field(
     "core.web.origins",
     !sameJson(

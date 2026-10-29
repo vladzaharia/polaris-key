@@ -225,13 +225,15 @@ export type BridgeActivation =
  *
  * ── WHAT v4 ADDS (UK-06) ─────────────────────────────────────────────────────────────────────
  *
- * Three OPTIONAL members, so an older v4 host never sends them and an adapter that finds them
+ * Four OPTIONAL members, so an older v4 host never sends them and an adapter that finds them
  * absent behaves as before. `BRIDGE_VERSION` stays 4. Declared by UK-06.1; the host
  * (`@polaris-key/node/electron`) and the renderer use them in later UK-06 slices.
  *
  *   * `BridgeState.host` (`BridgeHost`): the OS facts the kit picks its desktop chrome from.
  *   * `onUpdateProgress(cb)`: pushed progress while `("update","install")` runs.
  *   * `onOpen(cb)`: the host asks the renderer to open a `KitView` (a native menu item).
+ *   * `openExternal(url)` (UK-06.16): open an https link in the system browser; the host's
+ *     `shell.openExternal` runs only behind its https check and its `allowSender` rule.
  *
  * Reserved, not yet used by this package: pack verbs (`("packs", …)`), telemetry extras and the
  * `onPackProgress` push below are declared for a later revision; nothing here calls or
@@ -327,6 +329,10 @@ export interface PolarisBridge {
    * which the adapter reports as `bundle-import-unsupported`.
    */
   importBundle?(jws: string): Promise<BridgeImportBundle>;
+  /** v4 (UK-06.16): open an https link in the system browser, in the privileged process (the
+   *  host refuses any other scheme). Optional: the kit's links use it when it is present, and
+   *  `window.open` otherwise. */
+  openExternal?(url: string): Promise<boolean>;
   /** Subscribe to pushed state changes; returns an unsubscribe. */
   on(event: "stateChanged", cb: (state: BridgeState) => void): () => void;
   /** v4 (UK-06): pushed update-install progress; returns an unsubscribe. Absent on a host that

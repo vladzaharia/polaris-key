@@ -268,7 +268,6 @@ export interface ManifestProduct {
   compatMax: string;
   defaultMaxOfflineDays: number;
   defaultDeviceLimit: number;
-  adminGroup: string;
 }
 
 /** `.pkey/product` `presentation`, normalised (HA-04). */
@@ -857,10 +856,14 @@ const SUMMARY_MARKER_RE = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/;
 /** `sparkleEd25519Pub` — a base64/base64url public key (or an operator placeholder). */
 const SPARKLE_PUB_RE = /^[A-Za-z0-9+/=_-]{1,512}$/;
 
+/** The refusal text for the retired `adminGroup` field, at either spelling. */
+const REMOVED_ADMIN_GROUP =
+  "product.adminGroup was removed in 0.9. It granted nothing: map the IdP group in Platform → Members (`console.access`).";
+
 // The same "reject, never coerce" rule applied to the rest of the manifest surface (R9-01).
 // `binaryName` was the one that bit us (R6-01), but it was not the only manifest string that
 // reaches a URL, an identifier, or a JOSE header.
-/** `adminGroup` and `groupRoleMap` keys — IdP group names, compared against token claims. */
+/** `groupRoleMap` keys — IdP group names, compared against token claims. */
 const GROUP_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$/;
 /** `provisioning[].claim` — used as a property lookup on the decoded ID-token claims. */
 const CLAIM_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
@@ -1780,17 +1783,15 @@ function validateDocuments(
     MAX_LABEL_LENGTH,
     "product.name",
   );
-  // `adminGroup` is matched against an ID-token group claim to decide who administers the
-  // product, so it is an identifier, not prose.
-  constrained(
-    errors,
-    "product",
-    productNode.adminGroup ?? productRoot.adminGroup,
-    "/product/adminGroup",
-    "invalid_admin_group",
-    GROUP_NAME_RE,
-    "product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$).",
-  );
+  // `adminGroup` was removed (ST-32.6): console SSO rules replace it. Both spellings are
+  // refused, never coerced or ignored.
+  for (const [value, path] of [
+    [productNode.adminGroup, "/product/adminGroup"],
+    [productRoot.adminGroup, "/adminGroup"],
+  ] as const) {
+    if (value !== undefined)
+      add(errors, "product", path, "invalid_admin_group", REMOVED_ADMIN_GROUP);
+  }
   for (const [key, path] of [
     [productNode.compatMin ?? productRoot.compatMin, "/compatMin"],
     [productNode.compatMax ?? productRoot.compatMax, "/compatMax"],
@@ -4803,7 +4804,6 @@ export function parseManifest(
           licensing.defaultDeviceLimit ??
           5,
       ),
-      adminGroup: String(prod.adminGroup ?? productRoot.adminGroup ?? "admin"),
     },
     catalog,
     profiles: rawProfiles.map(normalizeProfile).filter(notNull),

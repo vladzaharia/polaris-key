@@ -2007,13 +2007,13 @@
       "jscpd:duplicate": 3
     },
     "packages/sdk-react/test/kitDrive.test.tsx": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 8
     },
     "packages/sdk-react/test/kitFinal2.test.tsx": {
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/kitGate.test.tsx": {
-      "jscpd:duplicate": 12
+      "jscpd:duplicate": 11
     },
     "packages/sdk-react/test/kitH2.test.tsx": {
       "jscpd:duplicate": 1
@@ -3735,7 +3735,7 @@
       "jscpd:duplicate": 21
     },
     "packages/worker/test/services/release/manifestIngestGates.test.ts": {
-      "jscpd:duplicate": 13
+      "jscpd:duplicate": 11
     },
     "packages/worker/test/services/release/packProvides.test.ts": {
       "jscpd:duplicate": 43

@@ -2,7 +2,7 @@
  * The Core admin additions the redesigned console reads (docs/design/ADMIN.md §7.3, chunk 5):
  *
  *   A-2  `GET …/activity` filters (action prefix, actor, target, date range)
- *   A-3  `PATCH …` accepts `adminGroup: null` to clear it, and refuses a blank name
+ *   A-3  `PATCH …` refuses a blank name (the admin group is no longer written, ST-32.6)
  *   A-4  `GET …/keys` lists signing keys with their lifecycle state, public material only;
  *        UX-29 adds `refresh`, the active devices back since the last rotation
  *   A-5  `GET …/secrets` lists secrets' metadata and what requires each, never a value
@@ -171,31 +171,15 @@ describe("A-2: activity filters", () => {
   });
 });
 
-describe("A-3: product PATCH clears the admin group and refuses a blank name", () => {
-  it("null clears the admin group, and the write is audited", async () => {
+describe("A-3: product PATCH refuses a blank name and no longer writes the admin group", () => {
+  it("ignores adminGroup: the column is never written (ST-32.6)", async () => {
     const w = await world();
-    let res = await w.call("PATCH", "", { adminGroup: "djdl-admins" });
-    expect(res.status).toBe(200);
-    expect((await getProduct(w.db, SLUG))?.admin_group).toBe("djdl-admins");
-    res = await w.call("PATCH", "", { adminGroup: null });
+    const res = await w.call("PATCH", "", {
+      adminGroup: "djdl-admins",
+      defaultDeviceLimit: 4,
+    });
     expect(res.status).toBe(200);
     expect((await getProduct(w.db, SLUG))?.admin_group).toBeNull();
-    const audit = await listAudit(w.db, SLUG, { action: "product.update" });
-    expect(audit.length).toBe(2);
-  });
-
-  it("a blank admin group clears it too", async () => {
-    const w = await world();
-    await w.call("PATCH", "", { adminGroup: "x" });
-    await w.call("PATCH", "", { adminGroup: "   " });
-    expect((await getProduct(w.db, SLUG))?.admin_group).toBeNull();
-  });
-
-  it("omitting the admin group leaves it alone", async () => {
-    const w = await world();
-    await w.call("PATCH", "", { adminGroup: "keep-me" });
-    await w.call("PATCH", "", { defaultDeviceLimit: 4 });
-    expect((await getProduct(w.db, SLUG))?.admin_group).toBe("keep-me");
   });
 
   it("a blank display name is refused, not silently ignored", async () => {
@@ -205,12 +189,6 @@ describe("A-3: product PATCH clears the admin group and refuses a blank name", (
     const body = (await res.json()) as { error: { fields: string[] } };
     expect(body.error.fields).toEqual(["name"]);
     expect((await getProduct(w.db, SLUG))?.name).toBe(SLUG);
-  });
-
-  it("a non-string admin group is refused", async () => {
-    const w = await world();
-    const res = await w.call("PATCH", "", { adminGroup: 7 });
-    expect(res.status).toBe(422);
   });
 });
 

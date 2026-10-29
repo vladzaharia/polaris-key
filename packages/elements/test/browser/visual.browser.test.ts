@@ -43,6 +43,7 @@ const FAMILIES = [
   "update",
   "settings",
   "paywall",
+  "cloudSync",
 ] as const;
 const ROWS = FAMILIES.flatMap((f) => m[f] as MatrixComponentRow[]);
 const FIXTURES: readonly ComponentStateFixture[] = [

@@ -496,6 +496,7 @@ export function SignInPage({
       ) : step.kind === "finish" ? (
         <FinishStep
           onTitle={setFinishTitle}
+          nameHint={request.data?.nameHint}
           onLeave={() => {
             window.history.replaceState(null, "", "/");
             go({ kind: "methods" }, "back");
@@ -510,6 +511,7 @@ export function SignInPage({
       ) : step.kind === "upgrade" ? (
         <AccountUpgrade
           preview={step.preview}
+          cloudSync={request.data?.client.services.cloudSync === true}
           onCreate={() => {
             setParams({ activate: step.key });
             go({ kind: "methods" });
@@ -532,7 +534,7 @@ export function SignInPage({
         <MethodsStep
           caps={caps.data}
           context={ctx ?? null}
-          initialEmail={step.email}
+          initialEmail={step.email ?? request.data?.loginHint ?? undefined}
           focusEmail={step.focusEmail}
           notice={
             step.notice ??

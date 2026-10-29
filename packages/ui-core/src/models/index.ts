@@ -4,13 +4,18 @@
 
 import { contextOf, type UiInput } from "../input.js";
 import type { View } from "../view.js";
-import type { ComponentName } from "../vocabulary.js";
+import type {
+  ComponentName,
+  HolderScreenName,
+  ScreenName,
+} from "../vocabulary.js";
 import {
   activateView,
   offlineActivationView,
   welcomeView,
 } from "./activate.js";
 import { cloudSyncStatusView, SYNC_MODELS } from "./cloudSync.js";
+import { HOLDER_MODELS } from "./holders.js";
 import { deviceLimitView, devicesView } from "./devices.js";
 import {
   bootView,
@@ -66,8 +71,20 @@ export const MODELS: Readonly<Record<ComponentName, Model>> = {
 };
 
 /** The view of `component` for `input`. */
-export function viewOf(component: ComponentName, input: UiInput): View {
-  return MODELS[component](contextOf(input));
+export function viewOf(component: ComponentName, input: UiInput): View;
+export function viewOf(
+  component: HolderScreenName,
+  input: UiInput,
+): View<HolderScreenName>;
+export function viewOf(component: ScreenName, input: UiInput): View<ScreenName>;
+export function viewOf(
+  component: ComponentName | HolderScreenName,
+  input: UiInput,
+): View<ScreenName> {
+  const ctx = contextOf(input);
+  return component in MODELS
+    ? MODELS[component as ComponentName](ctx)
+    : HOLDER_MODELS[component as HolderScreenName](ctx);
 }
 
 export * from "./activate.js";
@@ -76,6 +93,7 @@ export * from "./devices.js";
 export * from "./keyRefusal.js";
 export * from "./nearby.js";
 export * from "./gate.js";
+export * from "./holders.js";
 export * from "./settings.js";
 export * from "./signIn.js";
 export * from "./update.js";

@@ -36,7 +36,10 @@ param(
   [string]$Work = "",
   [string]$Deps = "",
   [int]$Port = 8711,
-  [int]$DeadlineMinutes = 24
+  [int]$DeadlineMinutes = 24,
+  # The CI job runs one stage per step, so a step that ends leaves its logs uploaded before the
+  # next one starts and a runner that is lost names the stage it was in. all = every stage here.
+  [ValidateSet("all", "prepare", "facades", "velopack", "winsparkle")] [string]$Stage = "all"
 )
 $ErrorActionPreference = "Stop"
 $e2e = Split-Path $PSScriptRoot -Parent
@@ -45,7 +48,7 @@ $sdk = Split-Path $native -Parent
 $repo = Split-Path (Split-Path $sdk -Parent) -Parent
 if (-not $Work) { $Work = Join-Path ([IO.Path]::GetTempPath()) "pkey-e2e-windows" }
 if (-not $Deps) { $Deps = Join-Path $native ".deps" }
-if (Test-Path $Work) { Remove-Item -Recurse -Force $Work }
+if (($Stage -in "all", "prepare") -and (Test-Path $Work)) { Remove-Item -Recurse -Force $Work }
 New-Item -ItemType Directory -Force "$Work\keys", "$Work\out", "$Work\serve\velopack", "$Work\serve\ws", "$Work\run", "$Work\logs" | Out-Null
 $Work = (Resolve-Path $Work).Path
 $fwd = { param($p) $p.Replace("\", "/") }
@@ -96,6 +99,7 @@ function JCheck([string]$name, [string]$case, [string]$event, [string]$expr) {
 }
 
 # 1. Build and key.
+if ($Stage -in "all", "prepare") {
 Phase "build" 600
 & pwsh -NoProfile -File "$native\windows\build.ps1" -Deps $Deps -Out "$Work\ext" *> "$Work\logs\build.log"
 if ($LASTEXITCODE -ne 0) { Get-Content "$Work\logs\build.log" -Tail 60; throw "build failed" }
@@ -209,6 +213,11 @@ Check "the Velopack feed's FileNames are bare file names" (($vfeed.Assets | Wher
 $appcast = Get-Content "$Work\serve\ws\appcast.xml" -Raw
 Check "the WinSparkle appcast carries the verified signature and the silent installer arguments" ($appcast -match "sparkle:edSignature" -and $appcast -match "/SILENT")
 
+}
+$pub = (Get-Content "$Work\keys\pub.b64" -Raw).Trim()
+$rel = "$Work\out\releases"
+
+if ($Stage -ne "prepare") {
 $script:server = Start-Process python -ArgumentList "`"$e2e\server.py`"", $Port, "`"$Work\serve`"", "`"$Work\logs\srv.log`"" -PassThru -WindowStyle Hidden -RedirectStandardOutput "$Work\logs\server.out" -RedirectStandardError "$Work\logs\server.err"
 Start-Sleep 2
 
@@ -245,6 +254,7 @@ function StopGames() { StopStrays }
 function HttpSince() { if (Test-Path "$Work\logs\srv.log") { Get-Content "$Work\logs\srv.log" | Select-Object -Skip $script:mark } else { @() } }
 
 # 4a. The facades in a plain export.
+if ($Stage -in "all", "facades") {
 RunCase facades "$Work\out\ws-1.0.0\pkeye2e.exe" facades "" 30
 JCheck "facades: WinSparkle available; Velopack runtime (not a Velopack install); StoreContext runtime (no identity); Sparkle runtime" facades facades 'd["availability"]["winsparkle"]["ok"] and d["availability"]["velopack"]["detail"]["reason"] == "runtime" and d["availability"]["storecontext"]["detail"]["reason"] == "runtime" and d["availability"]["sparkle"]["detail"]["reason"] == "runtime" and d["classes"]["PKeyVelopackNative"] and d["classes"]["PKeyWinSparkleNative"] and d["classes"]["PKeyStoreContextNative"]'
 
@@ -260,7 +270,10 @@ RunCase store "$Work\out\ws-1.0.0\pkeye2e.exe" store_unpackaged "" 60
 JCheck "store: no package identity (15700)" store package_identity 'd["rc"] == 15700 and not d["packaged"]'
 JCheck "store: the native query on its MTA thread answers 0x803F6101, read as runtime (not a Store install)" store store_result 'd["event"] == "store_result" and d["detail"]["hresult"].upper() == "0X803F6101" and d["interpreted"]["detail"]["reason"] == "runtime"'
 
+}
+
 # 4d. Velopack.
+if ($Stage -in "all", "velopack") {
 @{ case = "idle"; log = (& $fwd "$Work\logs\case-vp-install.jsonl"); quit_after_s = 10 } | ConvertTo-Json | Set-Content "$Work\run\config.json"
 Install "$rel\PKeyE2E-1.0.0-Setup.exe" @("--silent")
 Start-Sleep 4
@@ -273,7 +286,10 @@ JCheck "velopack: direct native apply cannot bypass verification" velopack direc
 $http = HttpSince
 Check "velopack: blocked installation performs no feed or package requests" (($http | Where-Object { $_ -match '/velopack/' }).Count -eq 0) ($http -join "`n")
 
+}
+
 # 4e. WinSparkle.
+if ($Stage -in "all", "winsparkle") {
 @{ case = "idle"; log = (& $fwd "$Work\logs\case-ws-install.jsonl"); quit_after_s = 10 } | ConvertTo-Json | Set-Content "$Work\run\config.json"
 Install "$Work\out\installers\PKeyE2EWS-1.0.0-setup.exe" @("/VERYSILENT", "/SUPPRESSMSGBOXES")
 Start-Sleep 4
@@ -286,6 +302,8 @@ $http = HttpSince
 Check "winsparkle: the appcast and the installer carried the bearer" (($http | Where-Object { $_ -match '/ws/appcast.xml' -and $_ -match 'Bearer e2e-token' }).Count -ge 1 -and ($http | Where-Object { $_ -match '/ws/PKeyE2EWS-1.0.1-setup.exe' -and $_ -match 'Bearer e2e-token' }).Count -ge 1) ($http -join "`n")
 $dv = (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -ErrorAction SilentlyContinue | Where-Object DisplayName -eq "PKeyE2EWS" | Select-Object -First 1).DisplayVersion
 Check "winsparkle: the uninstall entry says 1.0.1" ($dv -eq "1.0.1") "DisplayVersion=$dv"
+}
+}
 
 Phase ""
 Stop-Run

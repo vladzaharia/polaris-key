@@ -96,7 +96,6 @@ interface Decl {
   name?: string;
   offline?: number;
   devices?: number;
-  adminGroup?: string;
   origins?: string[];
   tiers?: { id: string; label?: string; profileId?: string }[];
   profiles?: string[];
@@ -111,7 +110,6 @@ const BASE = {
   name: "Acme",
   offline: 14,
   devices: 3,
-  adminGroup: "acme-admins",
   origins: ["https://app.acme.example"] as string[] | undefined,
   tiers: [{ id: "standard", label: "Standard", profileId: "standard" }],
   profiles: ["standard"],
@@ -129,7 +127,6 @@ function files(d: Decl = {}): Record<string, string> {
       compatMax: "9.0.0",
       defaultMaxOfflineDays: m.offline,
       defaultDeviceLimit: m.devices,
-      adminGroup: m.adminGroup,
       ...(m.origins ? { web: { origins: m.origins } } : {}),
       profiles: m.profiles.map((id) => ({
         id,
@@ -632,7 +629,6 @@ describe("the apply", () => {
       },
     ]);
     const next = {
-      adminGroup: "acme-ops",
       schema: schemaJson("run.name", "run.added"),
     };
     const report = await okRun(ctx, { github: { head: next } });
@@ -644,7 +640,6 @@ describe("the apply", () => {
       name: "Acme",
       default_max_offline_days: 14,
       default_device_limit: 3,
-      admin_group: "acme-ops",
     });
     expect(JSON.parse(p.web_origins_json!)).toEqual([
       "https://app.acme.example",
@@ -1324,7 +1319,7 @@ describe("row-backed claimable settings (the value is the product_settings row)"
     compat_max: "99.0.0",
     default_max_offline_days: 14,
     default_device_limit: 3,
-    admin_group: "acme-admins",
+    admin_group: null,
     release_source: "github",
     web_origins_json: null,
     services_json: null,
@@ -1338,7 +1333,6 @@ describe("row-backed claimable settings (the value is the product_settings row)"
       name: "Acme",
       defaultMaxOfflineDays: 14,
       defaultDeviceLimit: 3,
-      adminGroup: "acme-admins",
     },
     catalog: { schemaVersion: 1, entries: [] },
     tiers: [],
@@ -1568,12 +1562,8 @@ describe("the system product (its manifest is the deploy hook's snapshot)", () =
     expect(item(report, "setting", "core.name").class).toBe("equal");
     // The bootstrap's empty catalog and the root schema differ only in the document header.
     expect(item(report, "setting", "config.catalog").class).toBe("equal");
-    // The bootstrap wrote no admin group; the root .pkey/ declares the parser's default.
-    expect(item(report, "setting", "core.adminGroup")).toMatchObject({
-      class: "differs",
-      before: null,
-      action: "revert",
-    });
+    // The manifest has no admin group any more: the backfill no longer reports one.
+    expect(report.items.some((i) => i.key === "core.adminGroup")).toBe(false);
     const snap = await ctx.db.first<{ origin: string }>(
       "SELECT origin FROM product_manifest_snapshot WHERE product = ?",
       SYSTEM_PRODUCT_SLUG,
@@ -1610,9 +1600,6 @@ describe("the system product (its manifest is the deploy hook's snapshot)", () =
     expect(
       (await productRow(ctx.db, SYSTEM_PRODUCT_SLUG)).services_source,
     ).toBe("manifest");
-    expect((await productRow(ctx.db, SYSTEM_PRODUCT_SLUG)).admin_group).toBe(
-      "admin",
-    );
   });
 
   it("a scrubbed snapshot's redaction marker never replaces a sealed profile secret", async () => {

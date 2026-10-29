@@ -65,7 +65,6 @@ export interface InitOptions {
   name: string;
   /** Services to enable, in either vocabulary; the scaffold writes canonical service slugs. */
   modules: readonly ProductModule[];
-  adminGroup?: string;
   releaseOwner?: string;
   releaseRepo?: string;
   /** `free` (the default) writes the console wizard's Free tier when License is on. */
@@ -321,7 +320,7 @@ apiVersion: pkey.dev/v1
 product:
   slug: ${quoteYaml(opts.slug)}
   name: ${quoteYaml(opts.name)}
-${opts.adminGroup ? `  adminGroup: ${quoteYaml(opts.adminGroup)}\n` : ""}modules:
+modules:
 ${moduleLines.join("\n")}
 
 profiles:

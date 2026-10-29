@@ -124,6 +124,10 @@ export interface ExposePolarisBridgeOptions {
   /** Renderers that get `stateChanged` pushes without subscribing (the preload subscribes on
    *  its own, so this is only for a custom preload). */
   webContents?: WebContentsLike | WebContentsLike[];
+  /** Electron's `shell`, for the `openExternal` bridge call (links the kit opens: replace a
+   *  device, release notes, the sign-in page). Only an `https:` URL without credentials is
+   *  opened; anything else is refused. Without it the call answers `not-configured`. */
+  shell?: { openExternal(url: string): Promise<void> | void };
   /** The IPC channel prefix. Default `polaris-key`; the preload must use the same. */
   channel?: string;
   /** Refuse a sender: answer `false` and every call from it resolves `sender-refused`.
@@ -1146,6 +1150,30 @@ export function exposePolarisBridge(
       const r = await client.importBundle(str(jws, "jws"));
       pushState();
       return r;
+    },
+    openExternal: async (_e, url) => {
+      const raw = str(url, "url");
+      let u: URL;
+      try {
+        u = new URL(raw);
+      } catch {
+        throw new BridgeRefusal(
+          "invalid-argument",
+          "url must be an https URL.",
+        );
+      }
+      if (u.protocol !== "https:" || u.username || u.password)
+        throw new BridgeRefusal(
+          "invalid-argument",
+          "url must be an https URL.",
+        );
+      if (!opts.shell)
+        throw new BridgeRefusal(
+          "not-configured",
+          "This desktop host has no shell to open links with.",
+        );
+      await opts.shell.openExternal(u.href);
+      return true;
     },
     subscribe: async (event) => {
       const wc = event.sender;

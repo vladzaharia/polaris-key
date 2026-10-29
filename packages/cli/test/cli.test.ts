@@ -187,7 +187,6 @@ describe("@polaris-key/cli", () => {
         name: "DJDL",
         compatMin: "0.0.0",
         defaultDeviceLimit: 5,
-        adminGroup: "admins",
         licensing: { profiles: [{ id: "default", name: "Default" }] },
         tiers: [{ id: "standard", profileId: "default" }],
       }),
@@ -204,7 +203,6 @@ describe("@polaris-key/cli", () => {
       "/name",
       "/compatMin",
       "/defaultDeviceLimit",
-      "/adminGroup",
       "/licensing/profiles",
       "/tiers",
     ])

@@ -225,6 +225,25 @@ export const REQUEST_STATES: ShippedState[] = [
   },
   {
     section: "3.1",
+    id: "app-signin-hint",
+    title:
+      "App card, signed out: the email prefilled from loginHint, purpose attach",
+    scenario: "signedOut",
+    path: PATH,
+    routes: signedOutRoutes({
+      ...VIEW,
+      purpose: "attach",
+      loginHint: "mara@fennick.studio",
+    }),
+    ready: async (p) => {
+      await h1(p, "Sign in");
+      await p.getByText("to your account", { exact: false }).waitFor();
+      const v = await p.getByRole("textbox", { name: "Email" }).inputValue();
+      if (v !== "mara@fennick.studio") throw new Error(`prefill: ${v}`);
+    },
+  },
+  {
+    section: "3.1",
     id: "app-signin-web",
     title: "App card, signed out, web app (origin)",
     scenario: "signedOut",
@@ -357,6 +376,19 @@ export const REQUEST_STATES: ShippedState[] = [
     path: PATH,
     routes: { ...signedOutRoutes(VIEW), "POST /api/key/preview": preview({}) },
     ready: (p) => keyStep(p, "Keep Diceroll in an account"),
+  },
+  {
+    section: "3.9",
+    id: "app-key-reasons",
+    title:
+      "Key on-ramp: the reasons to keep the licence in an account (frame 48)",
+    scenario: "signedOut",
+    path: PATH,
+    routes: { ...signedOutRoutes(VIEW), "POST /api/key/preview": preview({}) },
+    ready: async (p) => {
+      await keyStep(p, "Keep Diceroll in an account");
+      await p.getByText("Cloud Sync keeps your settings").waitFor();
+    },
   },
   {
     section: "3.9",

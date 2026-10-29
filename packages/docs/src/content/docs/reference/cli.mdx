@@ -90,7 +90,7 @@ Revokes the stored token on the server, then removes it from the credential stor
 Scaffold .pkey/ in this directory.
 
 ```text
-pkey init [--product slug] [--name name] [--modules slugs] [--admin-group group] [--release-owner owner] [--release-repo repo] [--starter-tier free|none] [--force]
+pkey init [--product slug] [--name name] [--modules slugs] [--release-owner owner] [--release-repo repo] [--starter-tier free|none] [--force]
 ```
 
 Writes product.yaml and schema.yaml, and release.yaml when Release is on. It stops when product.yaml or schema.yaml exists, unless you pass --force, which overwrites them. On a terminal it asks what the product is for and whether to start with a Free tier; --modules and --starter-tier answer instead.

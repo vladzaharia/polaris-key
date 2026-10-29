@@ -14,8 +14,7 @@
  *   - Revert drops the claim and re-applies the manifest snapshot (ST-01a) at once, or says
  *     "applies at the next resync" when there is no snapshot;
  *   - a console claim on the system product without a break-glass reason is refused (its
- *     break-glass claims are ST-20's, `manifestAuthoritative.test.ts`), and the admin group is
- *     manifest-only on a repo-linked product.
+ *     break-glass claims are ST-20's, `manifestAuthoritative.test.ts`).
  *
  * Every case drives the real path: `linkRepo` registers the product from a stubbed GitHub, the
  * console API (`handleAdmin`) edits it, and `resyncRepo` re-reads a changed `.pkey/`.
@@ -65,7 +64,6 @@ interface Decl {
   name?: string;
   offline?: number;
   devices?: number;
-  adminGroup?: string;
   origins?: string[];
   tiers?: { id: string; label?: string; profileId?: string }[];
   profiles?: string[];
@@ -76,7 +74,6 @@ const BASE: Required<Omit<Decl, "origins">> & { origins?: string[] } = {
   name: "Acme",
   offline: 14,
   devices: 3,
-  adminGroup: "acme-admins",
   origins: ["https://app.acme.example"],
   tiers: [{ id: "standard", label: "Standard", profileId: "standard" }],
   profiles: ["standard"],
@@ -94,7 +91,6 @@ function files(d: Decl = {}): Record<string, string> {
       compatMax: "9.0.0",
       defaultMaxOfflineDays: m.offline,
       defaultDeviceLimit: m.devices,
-      adminGroup: m.adminGroup,
       ...(m.origins ? { web: { origins: m.origins } } : {}),
       profiles: m.profiles.map((id) => ({ id, name: id })),
       tiers: m.tiers.map((t) => ({ label: t.id, ...t })),
@@ -313,14 +309,12 @@ describe("a console edit to a claimable field survives a following resync (ST-01
     await okResync(ctx, {
       name: "Acme Two",
       devices: 7,
-      adminGroup: "acme-ops",
       schema: schemaJson("run.other"),
     });
     const p = await productRow(ctx);
     expect(p).toMatchObject({
       name: "Acme Console",
       default_device_limit: 7,
-      admin_group: "acme-ops",
     });
     expect(await activeCatalog(ctx)).toEqual(["run.other"]);
     const rowsByKey = (await audits(ctx, "setting.resync")).map(
@@ -329,7 +323,6 @@ describe("a console edit to a claimable field survives a following resync (ST-01
     expect(rowsByKey).toEqual(
       expect.arrayContaining([
         "license.defaults.deviceLimit",
-        "core.adminGroup",
         "config.catalog",
       ]),
     );
@@ -585,7 +578,6 @@ describe("a refused resync leaves every row unchanged (ST-01b)", () => {
       name: "Acme Two",
       offline: 30,
       devices: 8,
-      adminGroup: "acme-ops",
       origins: ["https://other.example"],
       schema: schemaJson("run.other"),
     });
@@ -774,16 +766,6 @@ describe("claims that are refused (ST-01b)", () => {
     });
     expect(await claimRows(ctx)).toEqual([]);
     expect((await productRow(ctx)).default_device_limit).toBe(3);
-  });
-
-  it("the admin group is manifest-only on a repo-linked product", async () => {
-    const ctx = await linked();
-    const res = await call(ctx, "PATCH", "", { adminGroup: "console-group" });
-    expect(res).toMatchObject({
-      status: 409,
-      json: { reason: "manifest_only" },
-    });
-    expect((await productRow(ctx)).admin_group).toBe("acme-admins");
   });
 
   it("a profile edit that only sets a managed secret does not claim the row", async () => {

@@ -1079,12 +1079,15 @@ describe("manifest identifier character classes (R9-01 audit)", () => {
       schema: catalogWithSecretDelivery(),
     });
 
-  it("bounds slug, name, and adminGroup", () => {
+  it("bounds slug and name, and refuses adminGroup (ST-32.6)", () => {
     expect(product({ slug: "a".repeat(65) }).ok).toBe(false);
     expect(product({ name: "a".repeat(201) }).ok).toBe(false);
     expect(product({ name: "Acme\nX-Injected: 1" }).ok).toBe(false);
-    expect(product({ adminGroup: "admins; drop" }).ok).toBe(false);
-    expect(product({ adminGroup: "corp/admins" }).ok).toBe(true);
+    for (const adminGroup of ["admins", "corp/admins"]) {
+      const r = product({ adminGroup });
+      expect(r.ok).toBe(false);
+      expect(JSON.stringify(r)).toContain("invalid_admin_group");
+    }
   });
 
   it("constrains provisioning claim / entitlementKey / secretUrlTemplate / allowedHosts", () => {

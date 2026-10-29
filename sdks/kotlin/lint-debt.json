@@ -1973,8 +1973,8 @@
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/ConnectErrors.kt": {
       "detekt:complexity.LongParameterList": 1,
-      "detekt:naming.EnumNaming": 30,
-      "ktlint:standard:enum-entry-name-case": 30
+      "detekt:naming.EnumNaming": 29,
+      "ktlint:standard:enum-entry-name-case": 29
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/ConnectLan.kt": {
       "detekt:complexity.ComplexCondition": 2,
