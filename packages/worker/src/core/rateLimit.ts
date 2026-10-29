@@ -102,6 +102,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   // single-use store operation; an outage refuses rather than lets a flood through.
   connectRelayTicket: "closed",
   connectRelayUpgrade: "closed",
+  // I-40.4: nearby approval `start` writes one single-use record per call (per client network).
+  identityNearbyStart: "closed",
   identityLink: "closed",
   identityLinkDevice: "closed",
   adminLogin: "closed",

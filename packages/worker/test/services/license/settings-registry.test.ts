@@ -201,6 +201,7 @@ describe("the settings registry (ST-03)", () => {
       ["LAUNCH_CONNECT", "launch.connect"],
       ["LAUNCH_SYNC_E2E", "launch.syncE2e"],
       ["LAUNCH_RELAY", "launch.relay"],
+      ["LAUNCH_IDENTITY_NEARBY", "launch.identityNearby"],
       ["LICENSING_RESERVED_NAMES", "licensing.reservedNames"],
       // PX-W13: the reserved display-name severity, an ordered enum like LX-05's.
       ["IDENTITY_RESERVED_DISPLAY_NAMES", "identity.reservedDisplayNames"],

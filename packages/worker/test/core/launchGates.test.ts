@@ -23,7 +23,8 @@ type Gate =
   | "LAUNCH_IDENTITY_EXCHANGE"
   | "LAUNCH_CONNECT"
   | "LAUNCH_SYNC_E2E"
-  | "LAUNCH_RELAY";
+  | "LAUNCH_RELAY"
+  | "LAUNCH_IDENTITY_NEARBY";
 
 interface W {
   db: Db;
@@ -210,6 +211,7 @@ describe("launch gates, as settings", () => {
     ["launch.connect", "LAUNCH_CONNECT"],
     ["launch.syncE2e", "LAUNCH_SYNC_E2E"],
     ["launch.relay", "LAUNCH_RELAY"],
+    ["launch.identityNearby", "LAUNCH_IDENTITY_NEARBY"],
   ] as const;
 
   it("default off with no deploy value, on with one, off under a hard-off deploy value", async () => {

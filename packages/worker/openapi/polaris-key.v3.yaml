@@ -9038,6 +9038,88 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/nearby/start:
+    post:
+      operationId: identityNearbyStart
+      tags: [identity]
+      summary: A signed-out device asks a nearby signed-in device to approve its sign-in (I-40.4)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.5. The new device D sends its two public keys and a `nearby-start`
+        `pkey-proof/1` proof over `<signKey>.<agreeKey>`, checked with the body's `signKey`. The
+        answer is a request handle (`nr_` and 22 base64url characters) held for 300 seconds.
+        The handle is stored only as a peppered hash, and the client network only as a peppered
+        hash. Every refusal about the keys is one `400 device_keys_invalid`: a malformed key, a
+        device that already has a registered signing key and sent another, an agreement key held
+        by another device, and a device id that already holds a credential and proves it by neither
+        its bearer nor its registered signing key. Every refusal of the proof is one
+        `400 invalid_grant`. 10 calls a minute per client network, fail-closed. NESTED errors.
+        With Identity off, `identity.nearby` off or the operator gate `launch.identityNearby` off,
+        the route does not exist (`404 not_found`).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NearbyStartRequest" }
+      responses:
+        "201":
+          description: "The request handle. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NearbyStartResponse" }
+              examples:
+                started:
+                  value:
+                    request: nr_Zk8LqR8nT0sYp2vcEgHj6B
+                    expiresIn: 300
+                    interval: 3
+        "400":
+          description: >
+            A malformed body or device id (`bad_request`), a refused key set
+            (`device_keys_invalid`) or a refused proof (`invalid_grant`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                invalid:
+                  value: { error: { code: invalid_grant } }
+        "404":
+          description: Nearby approval is off for this product or deployment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: Over the network limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+        "503":
+          description: The request could not be recorded; no handle was handed out.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityNearbyStart
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/identity/link:
     get:
       operationId: identityLinkOffer
@@ -28549,6 +28631,27 @@ components:
       properties:
         nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
         expiresIn: { type: integer, enum: [300] }
+    NearbyStartRequest:
+      type: object
+      description: >
+        The keys of the new device and the proof (§12.11.5). `deviceName` is display data,
+        normalised as §12.7.1 on receipt.
+      required: [signKey, agreeKey, proof]
+      properties:
+        signKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        agreeKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        deviceName: { type: string }
+        proof:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{86}$"
+          description: A `pkey-proof/1` signature, purpose `nearby-start`.
+    NearbyStartResponse:
+      type: object
+      required: [request, expiresIn, interval]
+      properties:
+        request: { type: string, pattern: "^nr_[A-Za-z0-9_-]{22}$" }
+        expiresIn: { type: integer, enum: [300] }
+        interval: { type: integer, enum: [3] }
     LinkOfferResponse:
       type: object
       required: [offer]
