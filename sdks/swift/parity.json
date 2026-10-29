@@ -520,7 +520,7 @@
     },
     "connect.protocol": {
       "status": "implemented",
-      "note": "PolarisKeyCore peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter), PeerLink, and the trust manager's accept-peer; PeerBytesTests, PeerCodecTests, PeerSessionTests, PeerSessionSASTests, ConnectSessionTests and TrustAcceptPeerTests replay peer-matrix.json."
+      "note": "PolarisKeyCore peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter; HELLO display data cleaned: platform in [A-Za-z0-9 ._+-] up to 32 characters else Unknown, app cleaned like label, a HELLO in modes v and p up to 4 KiB, held host records up to 16 and 16 KiB), PeerLink, and the trust manager's accept-peer; PeerBytesTests, PeerCodecTests, PeerSessionTests, PeerSessionSASTests, ConnectSessionTests and TrustAcceptPeerTests replay peer-matrix.json."
     },
     "connect.lan": {
       "status": "implemented",
