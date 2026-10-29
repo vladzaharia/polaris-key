@@ -16,6 +16,9 @@
  *                 keeps its device and the higher last mutation id, so a device that re-keyed onto
  *                 the survivor does not replay mutations the absorbed store already processed.
  *
+ * Records (U-09.8) join in `absorbRecords.ts`: the same rules by stamps, cells and tags, with a
+ * colliding `revision` record parked, not overwritten (D3).
+ *
  * The join is commutative, associative and idempotent on stamps, which is what makes the merge
  * retry-safe: absorbing the same export again (a retry after a crash), or a fresher export of the
  * same source, converges on the same rows and writes nothing for a row that does not change (no
@@ -26,14 +29,17 @@
 
 import type { SyncJson } from "@polaris-key/protocol/sync";
 import { compareStamps } from "./hlc.js";
+import { absorbRecords, type RecordJoin } from "./absorbRecords.js";
 import { asMerged, newer, pruneRemoved } from "./settings.js";
 import { liveMembers } from "./store.js";
 import { account } from "./usage.js";
 import type {
   ClientRecord,
   MemberCell,
+  ParkedRecord,
   SettingPolicy,
   Stamp,
+  StoredRecord,
   StoredSetting,
   SyncStore,
 } from "./types.js";
@@ -44,6 +50,16 @@ export interface AbsorbInput {
   clients: readonly ClientRecord[];
   /** A catalog policy per key, where the caller knows it. Absent keys join as `lastWrite`. */
   policies?: ReadonlyMap<string, SettingPolicy>;
+  /** The absorbed person's records (live and tombstones). Their `version`s are ignored. */
+  records?: readonly StoredRecord[];
+  /** Copies an earlier merge parked on the absorbed side; they travel to the survivor. */
+  parked?: readonly ParkedRecord[];
+  /** The absorbed subject: the owner of a record copy this absorb parks. */
+  fromSubject?: string;
+  /** The declaration of a concrete record collection, where the caller knows it. */
+  recordPolicies?: ReadonlyMap<string, RecordJoin>;
+  /** Epoch seconds, stamped on a copy this absorb parks. Default: now. */
+  now?: number;
 }
 
 export interface AbsorbOutcome {
@@ -51,12 +67,15 @@ export interface AbsorbOutcome {
   rows: number;
   /** Client bindings adopted or advanced. */
   clients: number;
+  /** Record copies parked or carried over (counted in `rows`). */
+  parked: number;
 }
 
 const copyCell = (c: MemberCell): MemberCell => ({
   value: structuredClone(c.value) as SyncJson,
   removed: c.removed,
   stamp: { ...c.stamp },
+  ...(c.kid !== undefined ? { kid: c.kid } : {}),
 });
 
 const copyRow = (r: StoredSetting): StoredSetting => ({
@@ -78,6 +97,7 @@ const stampsEqual = (a: Stamp | undefined, b: Stamp | undefined): boolean =>
 
 const cellsEqual = (a: MemberCell, b: MemberCell): boolean =>
   a.removed === b.removed &&
+  a.kid === b.kid &&
   stampsEqual(a.stamp, b.stamp) &&
   JSON.stringify(a.value) === JSON.stringify(b.value);
 
@@ -85,6 +105,7 @@ const cellsEqual = (a: MemberCell, b: MemberCell): boolean =>
 function sameRow(a: StoredSetting, b: StoredSetting): boolean {
   if (
     a.deleted !== b.deleted ||
+    a.kid !== b.kid ||
     !stampsEqual(a.stamp, b.stamp) ||
     !stampsEqual(a.floor, b.floor) ||
     JSON.stringify(a.value) !== JSON.stringify(b.value) ||
@@ -102,6 +123,8 @@ function sameRow(a: StoredSetting, b: StoredSetting): boolean {
 
 function joinMerged(a: StoredSetting, b: StoredSetting): StoredSetting {
   const left = copyRow(a);
+  // A merged row has no key id of its own: its members carry theirs.
+  delete left.kid;
   const members = left.members as Map<string, MemberCell>;
   for (const [name, cell] of b.members ?? new Map<string, MemberCell>()) {
     const have = members.get(name);
@@ -183,5 +206,13 @@ export function absorbSettings(
       clients++;
     }
   }
-  return { rows, clients };
+  const recs = absorbRecords(store, {
+    records: input.records ?? [],
+    parked: input.parked ?? [],
+    fromSubject: input.fromSubject ?? "",
+    now: input.now ?? Math.floor(Date.now() / 1000),
+    ...(input.recordPolicies ? { recordPolicies: input.recordPolicies } : {}),
+  });
+  rows += recs.rows;
+  return { rows, clients, parked: recs.parked };
 }

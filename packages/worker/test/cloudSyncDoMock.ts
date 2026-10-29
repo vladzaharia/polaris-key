@@ -264,12 +264,21 @@ export function erasureLeftovers(
     meta: (
       db.prepare("SELECT key FROM meta ORDER BY key").all() as { key: string }[]
     ).map((r) => r.key),
-    rows: ["settings", "tombstones", "setting_members", "clients"].map(count),
+    rows: [
+      "settings",
+      "tombstones",
+      "setting_members",
+      "clients",
+      "records",
+      "record_fields",
+      "set_elements",
+      "parked_records",
+    ].map(count),
   };
 }
 
 /** The leftovers of a freshly erased object. */
 export const ERASED_LEFTOVERS = {
   meta: ["erased_at", "product", "schema_version", "subject"],
-  rows: [0, 0, 0, 0],
+  rows: [0, 0, 0, 0, 0, 0, 0, 0],
 };

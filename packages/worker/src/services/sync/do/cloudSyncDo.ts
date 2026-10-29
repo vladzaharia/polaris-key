@@ -16,9 +16,14 @@ import type {
   CloudSyncOp,
   CloudSyncReply,
   ExportDocument,
+  ExportedRecord,
   WireMigrations,
 } from "./protocol.js";
-import { parseExportDocument, parsePolicies } from "./exportDoc.js";
+import {
+  parseExportDocument,
+  parsePolicies,
+  parseRecordPolicies,
+} from "./exportDoc.js";
 import {
   IDLE_RETENTION_SECONDS,
   ageMarks,
@@ -49,6 +54,9 @@ import { knownPlatform } from "../../../core/devices/platformFamily.js";
 // 15 minutes. The same alarm expires idle client bindings and collects old tombstones. The alarm
 // runs under `blockConcurrencyWhile`, so a `deleteAll` cannot interleave with its D1 await; and
 // it returns at once for an object without a pin (nothing recreates a row after `deleteAll`).
+
+/** Records read per query by an export. */
+const EXPORT_PAGE = 500;
 
 const reply = (body: CloudSyncReply | CloudSyncError, status = 200): Response =>
   new Response(JSON.stringify(body), {
@@ -479,16 +487,23 @@ export class CloudSyncDO implements DurableObject {
     const doc = op.document;
     const parsed = parseExportDocument(doc);
     const policies = parsePolicies(op.policies);
+    const recordPolicies = parseRecordPolicies(op.recordPolicies);
     // The same product, and another person: an absorb of oneself would delete one's own data.
     if (
       !parsed ||
       policies === null ||
+      recordPolicies === null ||
       doc.product !== op.product ||
       doc.subject === op.subject ||
       !isName(doc.subject)
     )
       return reply({ error: "bad_request" }, 400);
-    if (parsed.settings.length === 0 && parsed.clients.length === 0)
+    if (
+      parsed.settings.length === 0 &&
+      parsed.records.length === 0 &&
+      parsed.parked.length === 0 &&
+      parsed.clients.length === 0
+    )
       return reply({
         op: "absorb",
         changed: 0,
@@ -506,7 +521,12 @@ export class CloudSyncDO implements DurableObject {
           absorbSettings(this.store as SyncStore, {
             settings: parsed.settings,
             clients: parsed.clients,
+            records: parsed.records,
+            parked: parsed.parked,
+            fromSubject: doc.subject,
+            now: Math.floor(this.now() / 1000),
             ...(policies ? { policies } : {}),
+            ...(recordPolicies ? { recordPolicies } : {}),
           }),
         );
         changed = out.rows + out.clients;
@@ -558,7 +578,35 @@ export class CloudSyncDO implements DurableObject {
         ...row,
         ...(members ? { members: [...members] } : {}),
       })),
+      ...this.exportRecords(),
       clients: this.store.clients(),
+    };
+  }
+
+  /** The records and parked copies, as JSON, read a page at a time. Absent keys when there are none. */
+  private exportRecords(): Pick<ExportDocument, "records" | "parked"> {
+    const records: ExportedRecord[] = [];
+    for (let after = 0; ; ) {
+      const page = this.store.recordsPageAfter(after, EXPORT_PAGE);
+      for (const { fields, elements, ...row } of page)
+        records.push({
+          ...row,
+          ...(fields ? { fields: [...fields] } : {}),
+          ...(elements ? { elements: [...elements] } : {}),
+        });
+      if (page.length < EXPORT_PAGE) break;
+      after = page[page.length - 1]?.version ?? Number.MAX_SAFE_INTEGER;
+    }
+    const parked = this.store
+      .parkedRecords()
+      .map(({ fields, elements, ...row }) => ({
+        ...row,
+        ...(fields ? { fields: [...fields] } : {}),
+        ...(elements ? { elements: [...elements] } : {}),
+      }));
+    return {
+      ...(records.length > 0 ? { records } : {}),
+      ...(parked.length > 0 ? { parked } : {}),
     };
   }
 }

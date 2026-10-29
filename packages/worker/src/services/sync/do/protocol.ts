@@ -7,14 +7,19 @@
  * it from the authenticated principal).
  */
 
+import type { RecordJoin } from "../engine/absorbRecords.js";
 import type { PushRequest } from "@polaris-key/protocol/sync";
 import type { PullOutcome } from "../engine/pull.js";
 import type {
   Classification,
+  FieldCell,
   MemberCell,
+  ParkedRecord,
   PushLimits,
   PushOutcome,
+  SetElement,
   SettingPolicy,
+  StoredRecord,
   StoredSetting,
   StoreUsage,
 } from "../engine/types.js";
@@ -69,6 +74,8 @@ export type CloudSyncOp =
       op: "absorb";
       document: ExportDocument;
       policies?: [string, SettingPolicy][];
+      /** The declaration per concrete record collection, where the caller knows it (U-09.8). */
+      recordPolicies?: [string, RecordJoin][];
     })
   /**
    * `ifSeq` and `ifWrites`: delete only while the store is still at that sequence and write count
@@ -88,6 +95,18 @@ export type ExportedSetting = Omit<StoredSetting, "members"> & {
   members?: [string, MemberCell][];
 };
 
+/** A stored record as JSON: cells and elements become `[name, value]` pairs, in the engine's order. */
+export type ExportedRecord = Omit<StoredRecord, "fields" | "elements"> & {
+  fields?: [string, FieldCell][];
+  elements?: [string, SetElement][];
+};
+
+/** A parked copy as JSON, in the same form. */
+export type ExportedParked = Omit<ParkedRecord, "fields" | "elements"> & {
+  fields?: [string, FieldCell][];
+  elements?: [string, SetElement][];
+};
+
 export interface ExportDocument {
   product: string;
   subject: string;
@@ -98,6 +117,10 @@ export interface ExportDocument {
   usage: StoreUsage;
   /** Live rows and tombstones, in version order. */
   settings: ExportedSetting[];
+  /** Live records and tombstones, in version order. Absent from an export made before U-09.8. */
+  records?: ExportedRecord[];
+  /** Copies earlier account merges parked (D3). Absent when there are none. */
+  parked?: ExportedParked[];
   clients: { clientId: string; deviceId: string; lastMutationId: number }[];
 }
 

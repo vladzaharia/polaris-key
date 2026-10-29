@@ -35,6 +35,7 @@ export class SqlTestStore extends SqlStore {
 
   snapshot(): unknown {
     const records = this.recordRows();
+    const parked = this.parkedRecords();
     return {
       seq: this.currentSeq(),
       usage: this.getUsage(),
@@ -48,6 +49,7 @@ export class SqlTestStore extends SqlStore {
           { ...r, members: r.members ? [...r.members] : undefined },
         ]),
       ...(records.length > 0 ? { records: recordsDump(records) } : {}),
+      ...(parked.length > 0 ? { parked } : {}),
     };
   }
 }

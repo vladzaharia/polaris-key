@@ -7,6 +7,7 @@ import type { SyncScope } from "@polaris-key/protocol/sync";
 import { compareRemoved, recordsDump, settingId } from "./store.js";
 import type {
   ClientRecord,
+  ParkedRecord,
   RemovedField,
   StoredRecord,
   StoredSetting,
@@ -61,11 +62,20 @@ const cloneRecord = (row: StoredRecord): StoredRecord => ({
 const recordId = (collection: string, id: string): string =>
   `${collection}\u0000${id}`;
 
+const cloneParked = (row: ParkedRecord): ParkedRecord => ({
+  ...row,
+  stamp: { ...row.stamp },
+  value: structuredClone(row.value),
+  ...(row.fields ? { fields: structuredClone(row.fields) } : {}),
+  ...(row.elements ? { elements: structuredClone(row.elements) } : {}),
+});
+
 export class MemoryStore implements SyncStore {
   private seq = 0;
   private clients = new Map<string, ClientRecord>();
   private settings = new Map<string, StoredSetting>();
   private records = new Map<string, StoredRecord>();
+  private parked = new Map<string, ParkedRecord>();
   private usage: StoreUsage = {
     settings: 0,
     settingsBytes: 0,
@@ -96,6 +106,9 @@ export class MemoryStore implements SyncStore {
     const records = new Map(
       [...this.records].map(([k, v]) => [k, cloneRecord(v)] as const),
     );
+    const parked = new Map(
+      [...this.parked].map(([k, v]) => [k, cloneParked(v)] as const),
+    );
     try {
       return fn();
     } catch (e) {
@@ -108,6 +121,7 @@ export class MemoryStore implements SyncStore {
       this.clients = clients;
       this.settings = settings;
       this.records = records;
+      this.parked = parked;
       throw e;
     }
   }
@@ -288,8 +302,44 @@ export class MemoryStore implements SyncStore {
     return this.removedCells(collection).sort(compareRemoved).slice(0, limit);
   }
 
+  getParkedRecord(
+    collection: string,
+    id: string,
+    fromSubject: string,
+  ): ParkedRecord | undefined {
+    const row = this.parked.get(
+      `${recordId(collection, id)}\u0000${fromSubject}`,
+    );
+    return row ? cloneParked(row) : undefined;
+  }
+
+  putParkedRecord(row: ParkedRecord): void {
+    this.held = true;
+    this.parked.set(
+      `${recordId(row.collection, row.id)}\u0000${row.fromSubject}`,
+      cloneParked(row),
+    );
+  }
+
+  parkedRecords(): ParkedRecord[] {
+    const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+    return [...this.parked.values()]
+      .sort(
+        (a, b) =>
+          a.parkedAt - b.parkedAt ||
+          cmp(a.collection, b.collection) ||
+          cmp(a.id, b.id) ||
+          cmp(a.fromSubject, b.fromSubject),
+      )
+      .map(cloneParked);
+  }
+
   isEmpty(): boolean {
-    return this.settings.size === 0 && this.records.size === 0;
+    return (
+      this.settings.size === 0 &&
+      this.records.size === 0 &&
+      this.parked.size === 0
+    );
   }
 
   heldData(): boolean {
@@ -350,6 +400,9 @@ export class MemoryStore implements SyncStore {
         ]),
       ...(this.records.size > 0
         ? { records: recordsDump([...this.records.values()]) }
+        : {}),
+      ...(this.parked.size > 0
+        ? { parked: [...this.parked].sort(([a], [b]) => (a < b ? -1 : 1)) }
         : {}),
     };
   }

@@ -34,6 +34,7 @@ import {
 import type {
   ClientRecord,
   MemberCell,
+  ParkedRecord,
   RemovedField,
   StoredRecord,
   StoredSetting,
@@ -604,7 +605,7 @@ export class SqlStore implements SyncStore {
     return (
       this.all(
         `SELECT 1 AS x FROM settings UNION ALL SELECT 1 FROM tombstones
-         UNION ALL SELECT 1 FROM records LIMIT 1`,
+         UNION ALL SELECT 1 FROM records UNION ALL SELECT 1 FROM parked_records LIMIT 1`,
       ).length === 0
     );
   }
@@ -646,6 +647,28 @@ export class SqlStore implements SyncStore {
   ): StoredRecord[] {
     if (!this.hasSchema()) return [];
     return this.recordTables.page(after, through, limit);
+  }
+
+  getParkedRecord(
+    collection: string,
+    id: string,
+    fromSubject: string,
+  ): ParkedRecord | undefined {
+    if (!this.hasSchema()) return undefined;
+    return this.recordTables.readParked(collection, id, fromSubject);
+  }
+
+  putParkedRecord(row: ParkedRecord): void {
+    this.requireWritable();
+    if (this.getMeta("held_data") !== "1") this.setMeta("held_data", "1");
+    // A parked copy does not move `seq`: the write count is what tells an export it changed.
+    this.setMeta("writes", String(this.num("writes") + 1));
+    this.recordTables.writeParked(row);
+  }
+
+  parkedRecords(): ParkedRecord[] {
+    if (!this.hasSchema()) return [];
+    return this.recordTables.allParked();
   }
 
   liveRecordCount(collection: string): number {

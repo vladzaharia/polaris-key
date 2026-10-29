@@ -131,6 +131,30 @@ export interface StoredRecord {
   sealed?: boolean;
 }
 
+/**
+ * A record an account merge parked (D3): the absorbed copy of a record both people held, kept
+ * beside the survivor's instead of overwriting it. It holds the absorbed record's content as it
+ * was, and has no wire yet (U-08 plans one); it travels with the object (export, a later merge)
+ * and goes with it (erasure). `kind` is the content's shape: `value` fills `value`, `fields` the
+ * cells, `set` the elements (their tags are the absorbed store's and carry no meaning here).
+ */
+export interface ParkedRecord {
+  collection: string;
+  id: string;
+  /** The subject whose copy this is. A fresher export of the same source replaces its parked copy. */
+  fromSubject: string;
+  kind: RecordKind;
+  /** The absorbed record's clock. */
+  stamp: Stamp;
+  value: SyncJson;
+  fields?: Map<string, FieldCell>;
+  elements?: Map<string, SetElement>;
+  /** The envelope's key id of a sealed value record; absent for plaintext. */
+  kid?: string;
+  /** When the copy was parked, epoch seconds. */
+  parkedAt: number;
+}
+
 /** A removed `merge` field cell, named by where it lives and the clock of its removal. */
 export interface RemovedField {
   collection: string;
@@ -222,7 +246,17 @@ export interface SyncStore {
    * `collection` or across all of them. The forgetting bounds read this way (§13.3).
    */
   oldestRemovedFields(limit: number, collection?: string): RemovedField[];
-  /** No row at all, tombstones and records included. */
+  /** The parked copy of the record from `fromSubject`, if an account merge parked one. */
+  getParkedRecord(
+    collection: string,
+    id: string,
+    fromSubject: string,
+  ): ParkedRecord | undefined;
+  /** Parks (or replaces) a copy. Written only by the absorb. */
+  putParkedRecord(row: ParkedRecord): void;
+  /** Every parked copy, in the order they were parked. */
+  parkedRecords(): ParkedRecord[];
+  /** No row at all, tombstones, records and parked copies included. */
   isEmpty(): boolean;
   /** The object has held a live setting or record at some point (a tombstone alone does not count). */
   heldData(): boolean;

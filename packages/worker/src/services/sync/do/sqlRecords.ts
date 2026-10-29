@@ -8,6 +8,7 @@
 import type { SyncJson } from "@polaris-key/protocol/sync";
 import type {
   FieldCell,
+  ParkedRecord,
   RecordKind,
   RemovedField,
   SetElement,
@@ -36,6 +37,20 @@ interface RecordRow extends Row {
   floor_hlc: string | null;
   floor_client: string | null;
   kid: string | null;
+}
+
+interface ParkedRow extends Row {
+  collection: string;
+  id: string;
+  from_subject: string;
+  kind: string;
+  value_json: string | null;
+  fields_json: string | null;
+  elements_json: string | null;
+  hlc: string;
+  client_id: string;
+  kid: string | null;
+  parked_at: number;
 }
 
 interface FieldRow extends Row {
@@ -326,6 +341,50 @@ export class RecordTables {
     }));
   }
 
+  // ---- parked copies (D3; plans/U-09-slices.md §2.1) ----------------------------------------
+
+  readParked(
+    collection: string,
+    id: string,
+    fromSubject: string,
+  ): ParkedRecord | undefined {
+    const r = this.q.all<ParkedRow>(
+      `SELECT * FROM parked_records WHERE collection = ? AND id = ? AND from_subject = ?`,
+      collection,
+      id,
+      fromSubject,
+    )[0];
+    return r ? parkedOf(r) : undefined;
+  }
+
+  allParked(): ParkedRecord[] {
+    return this.q
+      .all<ParkedRow>(
+        `SELECT * FROM parked_records ORDER BY parked_at, collection, id, from_subject`,
+      )
+      .map(parkedOf);
+  }
+
+  writeParked(row: ParkedRecord): void {
+    this.q.run(
+      `INSERT OR REPLACE INTO parked_records
+         (collection, id, from_subject, kind, value_json, fields_json, elements_json,
+          hlc, client_id, kid, parked_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      row.collection,
+      row.id,
+      row.fromSubject,
+      row.kind,
+      row.kind === "value" ? JSON.stringify(row.value) : null,
+      row.fields ? JSON.stringify([...row.fields]) : null,
+      row.elements ? JSON.stringify([...row.elements]) : null,
+      row.stamp.hlc,
+      row.stamp.clientId,
+      row.kid ?? null,
+      row.parkedAt,
+    );
+  }
+
   private hydrate(r: RecordRow): StoredRecord {
     const out: StoredRecord = {
       collection: r.collection,
@@ -374,4 +433,25 @@ export class RecordTables {
     }
     return out;
   }
+}
+
+function parkedOf(r: ParkedRow): ParkedRecord {
+  const out: ParkedRecord = {
+    collection: r.collection,
+    id: r.id,
+    fromSubject: r.from_subject,
+    kind: r.kind as RecordKind,
+    stamp: { hlc: r.hlc, clientId: r.client_id },
+    value:
+      r.value_json === null ? null : (JSON.parse(r.value_json) as SyncJson),
+    parkedAt: r.parked_at,
+  };
+  if (r.kid !== null) out.kid = r.kid;
+  if (r.fields_json !== null)
+    out.fields = new Map(JSON.parse(r.fields_json) as [string, FieldCell][]);
+  if (r.elements_json !== null)
+    out.elements = new Map(
+      JSON.parse(r.elements_json) as [string, SetElement][],
+    );
+  return out;
 }
