@@ -747,6 +747,13 @@ export interface NearbyStartResponse {
 export const NEARBY_REQUEST_PATTERN = "^nr_[A-Za-z0-9_-]{22}$";
 /** Lifetime of a nearby request, seconds (§12.11.5). */
 export const NEARBY_REQUEST_TTL_SECONDS = 300;
+/** The poll interval `start` answers and `poll` enforces, seconds (§12.11.5). */
+export const NEARBY_POLL_INTERVAL_SECONDS = 3;
+
+/** §12.11.5 rule 4: what M may choose on `approve`; no Replace, no `keep`, no `key`. */
+export type NearbyChoiceInput =
+  | { kind: "license"; licenseId: string }
+  | { kind: "create" };
 
 /** §12.11.5: `POST /<p>/identity/nearby/approve`, from the signed-in device M. */
 export interface NearbyApproveRequest {
@@ -754,15 +761,15 @@ export interface NearbyApproveRequest {
   signKey: string;
   agreeKey: string;
   decision: "approve" | "deny";
-  /** `license` or `create` only; no Replace in this version. */
-  choice?: LicenseChoiceInput;
+  /** `license` or `create` only; any other kind or member is `400 bad_request`. */
+  choice?: NearbyChoiceInput;
   /** Purpose `nearby-approve`. */
   proof: string;
 }
 
 /** §12.11.5: the `200` of `approve`; a deny is `204` with no body. */
 export type NearbyApproveResponse =
-  | { status: "approved"; deviceLabel: string }
+  | { status: "approved"; deviceLabel: string | null }
   | { status: "choose"; choices: LicenseChoiceView };
 
 /** §12.11.5: `POST /<p>/identity/nearby/poll`, from D. */
@@ -772,10 +779,15 @@ export interface NearbyPollRequest {
   proof: string;
 }
 
-/** §12.11.5: the poll's answers; the token itself is a {@link TokenResponse}. */
+/**
+ * §12.11.5: the poll's answers; the token itself is a {@link TokenResponse} and is answered once.
+ * `DevicePollSlowDown` is the `429`; `DevicePollUnavailable` is the `503` (with `Retry-After`), and the
+ * request is kept.
+ */
 export type NearbyPollResponse =
   | { status: "pending" }
   | { status: "timeout" }
   | { status: "error"; reason: typeof DEVICE_POLL_DENIED }
   | TokenResponse
-  | DevicePollSlowDown;
+  | DevicePollSlowDown
+  | DevicePollUnavailable;

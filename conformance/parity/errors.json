@@ -102,8 +102,8 @@
     {
       "code": "device_keys_required",
       "kind": "wire",
-      "service": "connect",
-      "description": "409: a Cloud Connect route was called by a device that has registered no keys, or whose keys are not in its roster. Register them with `PUT /<p>/devices/keys`, then retry."
+      "service": "core",
+      "description": "409: a Cloud Connect route, or `POST /<p>/identity/nearby/approve` (WIRE-CONTRACT-V5 §12.11.5), was called by a device that has registered no keys, or (Cloud Connect) whose keys are not in its roster. Register them with `PUT /<p>/devices/keys`, then retry."
     },
     {
       "code": "ring_too_large",
