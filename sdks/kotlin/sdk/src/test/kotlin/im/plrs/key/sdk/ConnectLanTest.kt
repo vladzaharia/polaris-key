@@ -14,6 +14,8 @@ import im.plrs.key.core.jsonInt
 import im.plrs.key.core.peer.ADVERT_EPOCH_SECONDS
 import im.plrs.key.core.peer.accountInstance
 import im.plrs.key.core.peer.advertEpoch
+import im.plrs.key.core.peer.lan.LAN_MAX_PENDING
+import im.plrs.key.core.peer.lan.LAN_MAX_PENDING_PER_ADDRESS
 import im.plrs.key.core.peer.lan.MdnsAdapter
 import im.plrs.key.core.peer.lan.MdnsAdvert
 import im.plrs.key.core.peer.lan.MdnsFound
@@ -70,12 +72,12 @@ class ConnectLanTest {
 
     // -- a fake LAN: every advert and browser on one network, all at 127.0.0.1 ----------------------
 
-    private class Network : MdnsAdapter {
+    private class Network(val at: String = "127.0.0.1") : MdnsAdapter {
         val adverts = LinkedHashMap<String, MdnsAdvert>()
         val browsers = CopyOnWriteArrayList<Pair<(MdnsFound) -> Unit, (String) -> Unit>>()
         val log = CopyOnWriteArrayList<String>()
 
-        private fun found(a: MdnsAdvert) = MdnsFound(a.instance, "127.0.0.1", a.port, a.txt)
+        private fun found(a: MdnsAdvert) = MdnsFound(a.instance, at, a.port, a.txt)
 
         override suspend fun advertise(advert: MdnsAdvert): MdnsHandle {
             synchronized(adverts) { adverts[advert.instance] = advert }
@@ -137,12 +139,11 @@ class ConnectLanTest {
         ),
     )
 
-    private inner class World {
+    private inner class World(val net: Network = Network()) {
         val a = device(idA)
         val b = device(idB)
         val k = rnd()
         val ring = ring(listOf(a, b), 1)
-        val net = Network()
 
         @Volatile
         var now = now0
@@ -188,9 +189,10 @@ class ConnectLanTest {
             rekeyMessages: Int? = null,
             timer: ((Double, () -> Unit) -> (() -> Unit))? = null,
             lanPermission: suspend () -> Boolean = { true },
+            host: String? = "127.0.0.1",
         ): LanService = runBlocking {
             val o = LanOptions(
-                mdns = mdns, host = "127.0.0.1", allowLoopback = allowLoopback, advertise = advertise, browse = browse,
+                mdns = mdns, host = host, allowLoopback = allowLoopback, advertise = advertise, browse = browse,
                 maxPending = maxPending, maxPendingPerAddress = maxPendingPerAddress,
                 handshakeSeconds = handshakeSeconds, dialSeconds = dialSeconds,
                 rekeyMessages = rekeyMessages, timer = timer, lanPermission = lanPermission,
@@ -609,8 +611,8 @@ class ConnectLanTest {
 
     // -- the listener's bounds ------------------------------------------------------------------
 
-    private class Raw(port: Int) {
-        val sock = Socket("127.0.0.1", port)
+    private class Raw(port: Int, host: String = "127.0.0.1") {
+        val sock = Socket(host, port)
 
         @Volatile var received = 0
         val closed = CountDownLatch(1)
@@ -722,6 +724,68 @@ class ConnectLanTest {
         val s = Raw(svc.port)
         assertTrue(s.closed.await(5, TimeUnit.SECONDS))
         assertEquals(0, svc.pendingCount)
+    }
+
+    // -- IPv6 -----------------------------------------------------------------------------------
+
+    private fun ipv6Loopback(): Boolean =
+        runCatching { java.net.ServerSocket(0, 1, java.net.InetAddress.getByAddress(ByteArray(15) + 1)).use { true } }.getOrDefault(false)
+
+    @Test
+    fun twoServicesTalkOverIpv6Loopback() = runBlocking {
+        org.junit.Assume.assumeTrue("no IPv6 loopback here", ipv6Loopback())
+        val w = World(Network("::1"))
+        val la = w.start(w.a, host = "::1")
+        val lb = w.start(w.b, host = "::1")
+        until { la.peers().size == 1 && lb.peers().size == 1 }
+        assertEquals(LanPeer(idA, "::1", la.port), lb.peers()[0])
+        val (out, inn) = pair(la, lb)
+        out.send("over ipv6".toByteArray())
+        assertEquals("over ipv6", String(inn.receive(5000).body))
+        inn.send("and back".toByteArray())
+        assertEquals("and back", String(out.receive(5000).body))
+    }
+
+    @Test
+    fun theDefaultListenerServesBothFamiliesOnOnePort() = runBlocking {
+        org.junit.Assume.assumeTrue("no IPv6 loopback here", ipv6Loopback())
+        val w = World()
+        val la = w.start(w.a, host = null, advertise = false, browse = false)
+        val v4 = Raw(la.port, "127.0.0.1")
+        val v6 = Raw(la.port, "::1")
+        until { la.pendingCount == 2 }
+        assertEquals(setOf("127.0.0.1", "::1"), la.pendingAddresses.keys)
+        assertFalse(v4.isClosed || v6.isClosed)
+    }
+
+    @Test
+    fun aSourceOffTheLanOnIpv6IsClosedWithNoRead() = runBlocking {
+        org.junit.Assume.assumeTrue("no IPv6 loopback here", ipv6Loopback())
+        val w = World()
+        // ::1 is not a LAN address unless loopback is allowed.
+        val svc = w.start(w.a, host = "::1", allowLoopback = false, advertise = false, browse = false)
+        val s = Raw(svc.port, "::1")
+        assertTrue(s.closed.await(5, TimeUnit.SECONDS))
+        assertEquals(0, s.received)
+        assertEquals(0, svc.pendingCount)
+    }
+
+    @Test
+    fun theLimitsIncludeASlash64Cap() {
+        assertEquals(16, im.plrs.key.core.peer.lan.LAN_MAX_PENDING_PER_GROUP)
+        assertEquals(16, LanOptions().maxPendingPerGroup)
+    }
+
+    @Test
+    fun aHostThatIsNotAnAddressIsNeverResolved() = runBlocking {
+        val w = World()
+        val la = w.start(w.a, advertise = false, browse = false)
+        try {
+            la.connect(LanPeer(idB, "localhost", 9))
+            fail("a name is not an address")
+        } catch (e: LanException) {
+            assertEquals(LanErrorReason.unknown_peer, e.reason)
+        }
     }
 
     @Test

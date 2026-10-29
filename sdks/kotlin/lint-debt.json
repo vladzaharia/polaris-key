@@ -1973,13 +1973,11 @@
       "ktlint:standard:enum-entry-name-case": 29
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/ConnectLan.kt": {
-      "detekt:complexity.ComplexCondition": 2,
-      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.ComplexCondition": 1,
       "detekt:complexity.LongParameterList": 2,
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 8,
       "detekt:exceptions.TooGenericExceptionCaught": 5,
-      "detekt:style.LoopWithTooManyJumpStatements": 1,
       "detekt:style.MaxLineLength": 1,
       "detekt:style.ReturnCount": 2,
       "detekt:style.ThrowsCount": 2
