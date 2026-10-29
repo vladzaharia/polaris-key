@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Lock, Plus } from "lucide-react";
 import {
   HttpError,
+  type AccessOffer,
   type AccessRuleBody,
   type AccessRulesView,
   type Me,
@@ -33,9 +34,13 @@ import {
   whenWords,
 } from "../../../access/RuleEditor.js";
 import { RoleTag, RoleTags } from "../../../access/RoleTag.js";
-import { describeMembersError } from "../../../access/membersModel.js";
+import {
+  describeMembersError,
+  PRODUCT_AREAS,
+} from "../../../access/membersModel.js";
 import { mutate } from "../../../data/mutations.js";
 import { platformReads } from "../data.js";
+import { OffersCard } from "./platformSsoOffers.js";
 
 const CONFIRM_KEY = "SSO rules";
 
@@ -45,6 +50,8 @@ interface Pending {
   title: string;
   confirmLabel: string;
   lead: string;
+  /** Set when the save accepts a conversion offer: the one rule, written by the offers route. */
+  offer?: AccessOffer;
 }
 
 function describeSave(e: unknown) {
@@ -52,6 +59,17 @@ function describeSave(e: unknown) {
     return {
       title: "The rules changed",
       description: "Someone saved first. Reload the page and try again.",
+    };
+  if (e instanceof HttpError && e.reason === "offer_changed")
+    return {
+      title: "The group changed",
+      description:
+        "The product has a different admin group now. The offer is updated: review it again.",
+    };
+  if (e instanceof HttpError && e.reason === "no_such_offer")
+    return {
+      title: "That offer is gone",
+      description: "Someone else accepted or dismissed it.",
     };
   if (e instanceof HttpError && e.reason === "superadmin_only")
     return {
@@ -76,8 +94,12 @@ export function PlatformSsoRules({
 }): React.ReactElement {
   const q = useQuery(platformReads.accessRules());
   const view = q.data;
-  const [editing, setEditing] = React.useState<AccessRuleBody | "new" | null>(
-    null,
+  const offersQ = useQuery({ ...platformReads.accessOffers(), retry: false });
+  const [editing, setEditing] = React.useState<
+    AccessRuleBody | "new" | { offer: AccessOffer } | null
+  >(null);
+  const [accepted, setAccepted] = React.useState<ReadonlySet<string>>(
+    new Set(),
   );
   const [pending, setPending] = React.useState<Pending | null>(null);
   const [reason, setReason] = React.useState("");
@@ -93,11 +115,22 @@ export function PlatformSsoRules({
   const connectionLabel = (id: string): string =>
     view?.connections.find((c) => c.id === id)?.label ?? id;
 
+  const editingOffer = offerOf(editing);
   const store = (rules: AccessRuleBody[], p: Omit<Pending, "rules">): void => {
     setReason("");
     setPending({ rules, ...p });
   };
   const saveRule = (rule: AccessRuleBody): void => {
+    const offer = offerOf(editing);
+    if (offer) {
+      store([rule], {
+        title: "Accept this offer?",
+        confirmLabel: "Add rule",
+        lead: `Adds a rule for the admin group of ${offer.name}. Its people get access at their next sign-in.`,
+        offer,
+      });
+      return;
+    }
     const list = view?.rules ?? [];
     const next = rule.id
       ? list.map((r) => (r.id === rule.id ? rule : r))
@@ -135,16 +168,26 @@ export function PlatformSsoRules({
       intent="danger"
       title={pending?.title ?? "Save sign-in rules?"}
       stepUpKey={CONFIRM_KEY}
-      stepUpState={{ reason, rules: JSON.stringify(pending?.rules ?? []) }}
+      stepUpState={{
+        reason,
+        rules: JSON.stringify(pending?.rules ?? []),
+        offer: JSON.stringify(pending?.offer ?? null),
+      }}
       onRestore={(s) => {
         setReason(s.reason ?? "");
         try {
           const rules = JSON.parse(s.rules ?? "[]") as AccessRuleBody[];
+          const offer = JSON.parse(s.offer ?? "null") as AccessOffer | null;
           setPending((p) => ({
-            title: p?.title ?? "Save sign-in rules?",
-            confirmLabel: p?.confirmLabel ?? "Save rules",
+            title: offer
+              ? "Accept this offer?"
+              : (p?.title ?? "Save sign-in rules?"),
+            confirmLabel: offer
+              ? "Add rule"
+              : (p?.confirmLabel ?? "Save rules"),
             lead: p?.lead ?? "",
             rules,
+            ...(offer ? { offer } : {}),
           }));
         } catch {
           setPending(null);
@@ -167,6 +210,42 @@ export function PlatformSsoRules({
       describeError={describeSave}
       onConfirm={async () => {
         if (!pending || !view) return;
+        if (pending.offer) {
+          const offer = pending.offer;
+          const rule = pending.rules[0];
+          if (!rule) return;
+          try {
+            const r = await mutate("decideAccessOffer", offer.product, {
+              action: "accept",
+              group: offer.group,
+              connection: rule.when.connection,
+              areas: rule.grant.areas ?? [],
+              ...(rule.label ? { label: rule.label } : {}),
+              reason: reason.trim(),
+              confirm: "console.access",
+            });
+            setEditing(null);
+            setReason("");
+            setAccepted((a) => new Set(a).add(offer.product));
+            toast.success("Rule added", {
+              description:
+                r.notified && r.notified.of > 0
+                  ? `${r.notified.sent} of ${r.notified.of} Superadmins emailed.`
+                  : undefined,
+            });
+          } catch (e) {
+            // The group moved or the offer went: re-read, so the card says what is true now.
+            if (
+              e instanceof HttpError &&
+              (e.reason === "offer_changed" || e.reason === "no_such_offer")
+            ) {
+              setEditing(null);
+              void offersQ.refetch();
+            }
+            throw e;
+          }
+          return;
+        }
         const r = await mutate("replaceAccessRules", {
           rules: pending.rules,
           expectedVersion: view.version,
@@ -219,6 +298,13 @@ export function PlatformSsoRules({
             No rule is applied until a Superadmin fixes the setting.
           </Callout>
         ) : null}
+        <OffersCard
+          offers={offersQ.data?.offers ?? []}
+          canDecide={canEdit}
+          editing={editing !== null}
+          accepted={accepted}
+          onAccept={(offer) => setEditing({ offer })}
+        />
         <section
           aria-labelledby="sso-rules-title"
           className="rounded-lg border border-border bg-surface-raised"
@@ -294,11 +380,30 @@ export function PlatformSsoRules({
         {canEdit && view && editing !== null ? (
           <RuleEditor
             // A new editor per rule: its draft starts from that rule.
-            key={editing === "new" ? "new" : editing.id}
+            key={
+              editing === "new"
+                ? "new"
+                : editingOffer
+                  ? `offer:${editingOffer.product}`
+                  : (editing as AccessRuleBody).id
+            }
             connections={view.connections}
             products={products}
             me={me}
-            initial={editing === "new" ? null : editing}
+            initial={
+              editing === "new"
+                ? null
+                : editingOffer
+                  ? offerRule(editingOffer, view.connections[0]?.id ?? "")
+                  : (editing as AccessRuleBody)
+            }
+            {...(editingOffer
+              ? {
+                  title: `Accept offer for ${editingOffer.name}`,
+                  lockMatch: true,
+                  saveLabel: "Add rule…",
+                }
+              : {})}
             onCancel={() => setEditing(null)}
             onSave={saveRule}
           />
@@ -308,6 +413,25 @@ export function PlatformSsoRules({
       {dialog}
     </div>
   );
+}
+
+/** The offer being accepted, when the editor is open for one. */
+function offerOf(e: unknown): AccessOffer | null {
+  return e !== null && typeof e === "object" && "offer" in e
+    ? (e as { offer: AccessOffer }).offer
+    : null;
+}
+
+/** The rule an offer starts the editor from: its group, every area but Members. */
+function offerRule(offer: AccessOffer, connection: string): AccessRuleBody {
+  return {
+    when: { connection, group: offer.group },
+    grant: {
+      role: "product_admin",
+      scope: `product:${offer.product}`,
+      areas: PRODUCT_AREAS.filter((a) => a !== "members"),
+    },
+  };
 }
 
 function askLine(superadmins: string[]): string {

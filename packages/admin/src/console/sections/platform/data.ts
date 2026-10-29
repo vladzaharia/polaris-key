@@ -146,4 +146,9 @@ export const platformReads = {
       queryKey: qk.accessRules(),
       queryFn: () => api.accessRules(),
     }),
+  accessOffers: () =>
+    queryOptions({
+      queryKey: qk.accessOffers(),
+      queryFn: () => api.accessOffers(),
+    }),
 };

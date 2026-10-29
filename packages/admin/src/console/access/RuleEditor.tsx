@@ -200,6 +200,10 @@ export interface RuleEditorProps {
   /** Overrides the default preview call (the product Access page asks its own scope). */
   preview?: (rule: AccessRuleBody) => Promise<RulePreview>;
   saveLabel?: string;
+  /** The heading; "Edit rule" or "New rule" by default. */
+  title?: string;
+  /** The match and the product are fixed (a conversion offer): only the connection and areas change. */
+  lockMatch?: boolean;
 }
 
 export function RuleEditor({
@@ -211,6 +215,8 @@ export function RuleEditor({
   onSave,
   preview,
   saveLabel = "Save rule…",
+  title,
+  lockMatch = false,
 }: RuleEditorProps): React.ReactElement {
   const [d, setD] = React.useState<Draft>(() =>
     draftOf(initial, connections, products),
@@ -255,7 +261,7 @@ export function RuleEditor({
           id="rule-editor-title"
           className="text-base font-semibold text-fg-strong"
         >
-          {initial ? "Edit rule" : "New rule"}
+          {title ?? (initial ? "Edit rule" : "New rule")}
         </h2>
       </div>
       <div className="grid gap-x-10 gap-y-6 px-4 py-5 sm:px-6 min-[1000px]:grid-cols-2">
@@ -286,7 +292,7 @@ export function RuleEditor({
               onChange={pickKind}
               options={KIND_OPTIONS.map((o) => ({
                 ...o,
-                disabled: o.value === "domain" && noDomains,
+                disabled: lockMatch || (o.value === "domain" && noDomains),
               }))}
             />
           </Field>
@@ -296,6 +302,7 @@ export function RuleEditor({
                 id="rule-group"
                 mono
                 value={d.group}
+                disabled={lockMatch}
                 maxLength={256}
                 placeholder="release-managers"
                 onValueChange={(v) => set({ group: v })}
@@ -351,6 +358,7 @@ export function RuleEditor({
             <Select
               id="rule-role"
               value={d.role}
+              disabled={lockMatch}
               onChange={(v) => v && set({ role: v as Role })}
               options={ROLE_OPTIONS}
             />
@@ -361,6 +369,7 @@ export function RuleEditor({
                 <Select
                   id="rule-product"
                   value={d.product}
+                  disabled={lockMatch}
                   onChange={(v) =>
                     v && set({ product: v, areas: [...DEFAULT_AREAS] })
                   }

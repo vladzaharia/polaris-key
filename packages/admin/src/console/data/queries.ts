@@ -92,6 +92,8 @@ export const qk = {
   members: (): QueryKey => ["platform", "members"],
   /** Platform → Members → SSO rules: the stored rules and the connections (ST-32.7). */
   accessRules: (): QueryKey => ["platform", "access-rules"],
+  /** Platform → Members → SSO rules: the open `admin_group` conversion offers (ST-32.8). */
+  accessOffers: (): QueryKey => ["platform", "access-offers"],
   /** Product → Settings → Members (ST-31.14): one product's admins, invites and platform roles. */
   productMembers: (slug: string) => product(slug, "members"),
   myPersonalTokens: (): QueryKey => ["me", "personal-tokens"],

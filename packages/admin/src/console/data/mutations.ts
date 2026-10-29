@@ -76,6 +76,8 @@ export type WriteMethod =
   | "signOutMember"
   | "previewAccessRule"
   | "replaceAccessRules"
+  | "decideAccessOffer"
+  | "dismissAccessOffers"
   | "revokeMyPersonalToken"
   | "createPlatformConnection"
   | "updatePlatformConnection"
@@ -485,6 +487,23 @@ export const MUTATIONS: MutationTable = {
     invalidates: () => [
       prefix(qk.accessRules()),
       prefix(qk.members()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  // ST-32.8: an accepted offer adds a rule (rules, roster, trail); a dismissal only the offers and trail.
+  decideAccessOffer: {
+    label: "admin group offer",
+    invalidates: () => [
+      prefix(qk.accessOffers()),
+      prefix(qk.accessRules()),
+      prefix(qk.members()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  dismissAccessOffers: {
+    label: "admin group offers dismissal",
+    invalidates: () => [
+      prefix(qk.accessOffers()),
       prefix(qk.platformActivity()),
     ],
   },

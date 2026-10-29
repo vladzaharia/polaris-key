@@ -2315,6 +2315,18 @@ export const DATA_ROUTES: Record<string, unknown> = {
       },
     ],
   },
+  // ST-32.8: two products whose old admin group is still offered as a rule (one long name and group).
+  "/manage/api/access/offers": {
+    offers: [
+      { product: "djdl", name: "DJDL", group: "djdl-release-managers" },
+      {
+        product: "tuner",
+        name: "Tuner Studio Professional Edition",
+        group:
+          "studio-example-com/engineering/tuner-professional-administrators",
+      },
+    ],
+  },
   "/manage/api/access/rules/preview": {
     members: [
       {

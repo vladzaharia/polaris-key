@@ -618,6 +618,15 @@ function cases(): Case[] {
         await page.getByTestId("rule-matches").waitFor();
       },
     },
+    // ST-32.8: an offer accepted into the editor, prefilled with its group.
+    {
+      name: "global:platform-members?tab=sso&accept",
+      hash: "#/platform/members?tab=sso",
+      act: async (page) => {
+        await page.getByRole("button", { name: "Accept…" }).first().click();
+        await page.getByTestId("rule-matches").waitFor();
+      },
+    },
     {
       name: "global:platform-members?edit-roles",
       hash: "#/platform/members",
@@ -863,6 +872,7 @@ const TEXT200_CASES = [
   "global:platform-members?tab=roles",
   // ST-32.7: the rule rows and the editor at 200 % text.
   "global:platform-members?tab=sso&add",
+  "global:platform-members?tab=sso&accept",
   // ST-30c.4: the rows' name column kept its width at 200 % text.
   "global:sign-in-methods",
   ...NO_ACCESS_CASES,

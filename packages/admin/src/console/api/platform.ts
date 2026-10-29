@@ -250,6 +250,38 @@ export interface AccessRulesSaved {
   notified: { sent: number; of: number };
 }
 
+/** `GET /manage/api/access/offers`: a product's `admin_group` the rules tab can turn into a rule. */
+export interface AccessOffer {
+  product: string;
+  name: string;
+  group: string;
+}
+
+export interface AccessOffersView {
+  offers: AccessOffer[];
+}
+
+/** `POST /manage/api/access/offers/<slug>`. Accept names the group the Superadmin saw. */
+export type AccessOfferDecision =
+  | { action: "dismiss" }
+  | {
+      action: "accept";
+      group: string;
+      connection: string;
+      areas: AreaId[];
+      label?: string;
+      reason: string;
+      confirm: "console.access";
+    };
+
+export interface AccessOfferDecided {
+  ok: true;
+  product: string;
+  outcome: "accepted" | "dismissed";
+  ruleId?: string;
+  notified?: { sent: number; of: number };
+}
+
 export interface MembersView {
   rootRule: { group: string | null };
   /** A cap cut the roster: say so. */
@@ -1379,6 +1411,20 @@ export const platformApi = {
     call<AccessRulesSaved>("/manage/api/access/rules", {
       method: "PUT",
       body: JSON.stringify(body),
+    }),
+  /** The open conversion offers: products whose old `admin_group` is not yet a rule. */
+  accessOffers: () => call<AccessOffersView>("/manage/api/access/offers"),
+  /** Accept (a Superadmin, a recent sign-in, a reason, the typed key) or dismiss one offer. */
+  decideAccessOffer: (slug: string, body: AccessOfferDecision) =>
+    call<AccessOfferDecided>(`/manage/api/access/offers/${enc(slug)}`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** Dismiss every open offer; each is audited under its own product. */
+  dismissAccessOffers: () =>
+    call<{ ok: true; dismissed: string[] }>("/manage/api/access/offers", {
+      method: "POST",
+      body: JSON.stringify({ action: "dismiss_all" }),
     }),
   /** Invite addresses (`emails`) to a role. */
   inviteMembers: (body: GrantBody & { emails: string[] }) =>
