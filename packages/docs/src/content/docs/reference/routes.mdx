@@ -197,6 +197,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/identity/link` | identity | What the app may offer to link (I-43.2) |
 | POST | `/{product}/identity/link` | identity | Add a Google or Apple identity to the signed-in account (I-43.2) |
 | POST | `/{product}/identity/nearby/approve` | identity | The signed-in device approves or denies a nearby sign-in (I-40.5) |
+| POST | `/{product}/identity/nearby/poll` | identity | The new device collects the outcome of its nearby request (I-40.7) |
 | POST | `/{product}/identity/nearby/start` | identity | A signed-out device asks a nearby signed-in device to approve its sign-in (I-40.4) |
 | POST | `/{product}/identity/nonce` | identity | A nonce for a native platform sign-in (I-13.2) |
 | POST | `/{product}/identity/session/license` | identity | Mint a browser session from a license key |

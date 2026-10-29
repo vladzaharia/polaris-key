@@ -137,6 +137,35 @@ export async function gatedBody<T>(
   return body ?? wireError(400, ErrorCode.BadRequest);
 }
 
+/**
+ * The first steps of `start` and `poll`: the gates, the shape, the per-network budget (failing
+ * closed), then the `X-PKey-Device` header. Returns the body and the device id, or the response
+ * to answer.
+ */
+export async function gatedDeviceBody<T>(
+  cx: { req: Request; env: Env; db: Db; product: Product; now: number },
+  max: number,
+  parse: (o: Record<string, unknown>) => T | null,
+  rate: { bucket: string; limit: number; windowSec: number },
+): Promise<{ body: T; deviceId: string } | Response> {
+  const { req, env, db, product, now } = cx;
+  const body = await gatedBody(req, env, db, product, max, parse);
+  if (body instanceof Response) return body;
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { ...rate, id: clientNetwork(req) },
+      now,
+    ))
+  )
+    return wireError(429, "rate_limited");
+  const deviceId = req.headers.get(HEADER_DEVICE);
+  if (!isValidClientDeviceId(deviceId))
+    return wireError(400, ErrorCode.BadRequest);
+  return { body, deviceId };
+}
+
 /** The body, or null when it is not exactly the documented shape. */
 function parseBody(r: Record<string, unknown>): StartBody | null {
   const { signKey, agreeKey, deviceName, proof } = r;
@@ -178,26 +207,16 @@ export async function handleNearbyStart(
   product: Product,
   now: number,
 ): Promise<Response> {
-  // 1. The gates, then the shape (§12.11.5 rule 13: an off route is 404 even for a bad body).
-  const body = await gatedBody(req, env, db, product, MAX_BODY, parseBody);
-  if (body instanceof Response) return body;
-  const asked = body;
-
-  // 2. The network budget.
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { ...NEARBY_START_RATE, id: clientNetwork(req) },
-      now,
-    ))
-  )
-    return wireError(429, "rate_limited");
-
-  // 3. X-PKey-Device.
-  const deviceId = req.headers.get(HEADER_DEVICE);
-  if (!isValidClientDeviceId(deviceId))
-    return wireError(400, ErrorCode.BadRequest);
+  // 1. The gates, then the shape (§12.11.5 rule 13: an off route is 404 even for a bad body);
+  // 2. the network budget; 3. X-PKey-Device.
+  const got = await gatedDeviceBody(
+    { req, env, db, product, now },
+    MAX_BODY,
+    parseBody,
+    NEARBY_START_RATE,
+  );
+  if (got instanceof Response) return got;
+  const { body: asked, deviceId } = got;
 
   // 4. The keys: well formed, the held-key rule, an agreement key no other device holds.
   const { signKey, agreeKey } = asked;

@@ -9224,6 +9224,102 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/nearby/poll:
+    post:
+      operationId: identityNearbyPoll
+      tags: [identity]
+      summary: The new device collects the outcome of its nearby request (I-40.7)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.5 rule 10. D sends the handle and a `nearby-poll` `pkey-proof/1`
+        proof over it, made with the signing key D sent on `start`, with the `X-PKey-Device` of
+        `start`. A wrong proof and a wrong device are one `400 invalid_grant`. An unknown, expired or
+        collected request, and a device that was removed or rebound after the approval, answer
+        `{status: "timeout"}`. A poll inside the 3 second interval is `429` with the state
+        `slow_down`; a storage failure is `503 unavailable` with `Retry-After` and keeps the
+        request. A denial is `{status: "error", reason: "access_denied"}`. An approval is answered
+        once with a `TokenResponse`: D's credential is replaced by a new one at that poll and only
+        its hash is stored. A coarse 60 calls a minute per client network, fail-closed. With
+        Identity off, `identity.nearby` off or the operator gate `launch.identityNearby` off, the
+        route does not exist (`404 not_found`).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NearbyPollRequest" }
+      responses:
+        "200":
+          description: "A state, a denial or the token (once). `cache-control: no-store`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/NearbyPollState" }
+                  - { $ref: "#/components/schemas/TokenResponse" }
+              examples:
+                pending: { value: { status: pending } }
+                timeout: { value: { status: timeout } }
+                denied: { value: { status: error, reason: access_denied } }
+        "400":
+          description: >
+            A malformed body or device id (`bad_request`), or a wrong proof or device
+            (`invalid_grant`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                invalid:
+                  value: { error: { code: invalid_grant } }
+        "404":
+          description: Nearby approval is off for this product or deployment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "413":
+          description: The body is over 2 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: >
+            `slow_down` (a poll inside the interval; a state, not an error body), or `rate_limited`
+            over the network ceiling.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/SlowDown" }
+                  - { $ref: "#/components/schemas/WireError" }
+              examples:
+                slowDown: { value: { status: slow_down, interval: 3 } }
+        "503":
+          description: >
+            A storage failure. `Retry-After` is the poll interval; the request is kept.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [unavailable] }
+                  message: { type: string }
+    options:
+      operationId: preflightIdentityNearbyPoll
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/identity/link:
     get:
       operationId: identityLinkOffer
@@ -28794,6 +28890,27 @@ components:
         status: { type: string, enum: [choose, approved] }
         choices: { $ref: "#/components/schemas/LicenseChoiceView" }
         deviceLabel: { type: [string, "null"] }
+    NearbyPollRequest:
+      type: object
+      required: [request, proof]
+      properties:
+        request: { type: string, pattern: "^nr_[A-Za-z0-9_-]{22}$" }
+        proof:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{86}$"
+          description: A `pkey-proof/1` signature, purpose `nearby-poll`, by the signing key D sent on `start`.
+    NearbyPollState:
+      description: The poll's states (§12.11.5 rule 10); the token is a `TokenResponse`.
+      oneOf:
+        - type: object
+          required: [status]
+          properties:
+            status: { type: string, enum: [pending, timeout] }
+        - type: object
+          required: [status, reason]
+          properties:
+            status: { type: string, enum: [error] }
+            reason: { type: string, enum: [access_denied] }
     LinkOfferResponse:
       type: object
       required: [offer]

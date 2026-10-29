@@ -5,7 +5,6 @@
 // states. The bind is in nearbyApproveBind.test.ts.
 
 import { describe, expect, it } from "vitest";
-import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import { newKeys } from "../../deviceKeyFixtures.js";
 import { makeTestDb } from "../../helpers.js";
 import { KvMock } from "../../kvMock.js";
@@ -38,6 +37,7 @@ import {
 } from "../../../src/services/identity/passthrough/nearbyStore.js";
 import type { Db } from "../../../src/db/types.js";
 import type { Env } from "../../../src/platform/env.js";
+import { sign } from "./nearbyWorld.js";
 
 const SLUG = "djdl";
 const M = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM";
@@ -170,20 +170,6 @@ async function startRequest(
   });
   expect(written).toBe(true);
   return { handle, ref, keys };
-}
-
-async function sign(
-  priv: CryptoKey,
-  device: string,
-  value: string,
-  purpose = "nearby-approve",
-) {
-  const msg = ["pkey-proof/1", purpose, SLUG, device, value, "-"].join("\n");
-  return base64UrlEncodeBytes(
-    new Uint8Array(
-      await crypto.subtle.sign("Ed25519", priv, new TextEncoder().encode(msg)),
-    ),
-  );
 }
 
 interface Call {

@@ -107,6 +107,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   // I-40.5: `approve` is per approving device; the subject budget is charged on decisions only.
   identityNearbyApprove: "closed",
   identityNearbyApproveSubject: "closed",
+  // I-40.7: the coarse per-network ceiling on `poll`, beside the per-request interval.
+  identityNearbyPoll: "closed",
   identityLink: "closed",
   identityLinkDevice: "closed",
   adminLogin: "closed",
