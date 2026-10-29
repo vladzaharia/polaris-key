@@ -2821,6 +2821,8 @@ from the client.
 
 **Close codes:** 4001 bad ticket · 4003 not a member · 4008 limit · 4009 replaced.
 
+**Roster moves.** When a person's ring epoch rises (§15.3), the Worker tells that person's room at once. The call is best effort: it has a 3 s limit, a failure never fails the write that caused it, and a room that does not exist is not created. The room takes the epoch from the call and nothing else. It re-derives the members by the admission rule from a fresh read, never from the call. Each device that is no longer a member loses its sockets with close 4003, and when that was its last socket the remaining sockets hear `GONE` for it. Every remaining socket then hears `RING` with the new epoch. A room with no member left is deleted. When the read fails nothing is closed and `RING` is still sent; the room's 60 s alarm repeats the same re-derivation and is the backstop for a call that was lost. `RING` is a hint: a client fetches the roster and verifies it (§15.3), and never trusts the epoch in `RING` alone.
+
 **Limits:**
 
 - 2 sockets per device; a third replaces the oldest.

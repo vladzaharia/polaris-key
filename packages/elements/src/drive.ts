@@ -17,6 +17,7 @@ import {
 } from "@polaris-key/ui-core/browser";
 import type {
   AutoOutcome,
+  AddIn,
   ScreenName,
   SignInPrimitives,
   UiInput,
@@ -90,6 +91,8 @@ export function gateScreen(view: View, step: GateStep): ScreenName | null {
 /** Test and embedding seams: a client built elsewhere, or the fetch / navigation it uses. */
 export interface GateSeams extends BrowserClientSeams {
   client?: PolarisAdapter;
+  /** Where Add your name and email goes; absent, the web switch (`WEB_ADD_IN`: the portal). */
+  addIn?: AddIn;
 }
 
 /** The invalid-config failure the element reports as `pk-error`. */
@@ -165,6 +168,7 @@ export class GateBinding {
       ...(parsed.baseUrl ? { baseUrl: parsed.baseUrl } : {}),
       // A page is a browser: the lines that name this device say so.
       deviceKind: "browser",
+      ...(seams?.addIn ? { addIn: seams.addIn } : {}),
       ...(locale ? { locale } : {}),
     });
     this.unsub = this.driver.subscribe(this.onChange);

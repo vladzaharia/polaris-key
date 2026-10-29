@@ -11,7 +11,8 @@
 // Each call dials the endpoint discovery names, never one it builds, and throws the typed
 // `service-unavailable` N/A (`Feature.identityChoice`, reason `product`) before any request when
 // discovery has none (the session then ran in card mode and never issued a grant). The grant is the
-// credential: no device bearer is sent (but for `keep`, which the device proves with its own token), and the grant is never printed or put in an error message.
+// credential: no device bearer is sent (but for `keep`, which the device proves with its own token), and the
+// grant is never printed or put in an error message.
 //
 // A refusal the Worker answers (`invalid_grant`, `license_choice_required`, `not_found`, `device_limit`,
 // `rate_limited`, `license_owned`, `key_entry_limit`, ...) is a RESULT, `ChoiceResult.Refused`, like
@@ -86,7 +87,10 @@ public sealed interface LicenseChoice {
     }
 }
 
-/** The app consent a `complete` records (V5 section 12.11.3 rule 2): the claims the person agreed to share, a subset of what the consent view listed. */
+/**
+ * The app consent a `complete` records (V5 section 12.11.3 rule 2): the claims the person agreed to share,
+ * a subset of what the consent view listed.
+ */
 public data class ConsentInput(val claims: List<String>) {
     /** The request's `consent` member. */
     public fun toJson(): JsonObject = JsonObject(mapOf("claims" to kotlinx.serialization.json.JsonArray(claims.map { JsonPrimitive(it) })))
@@ -142,7 +146,10 @@ public sealed interface ChoiceResult<out T> {
 
     /** The Worker said no. Only the members its answer carried are set. */
     public data class Refused(
-        /** The wire code: `invalid_grant`, `license_choice_required`, `not_found`, `device_limit`, `rate_limited`, `license_owned`, `key_entry_limit`, ... */
+        /**
+         * The wire code: `invalid_grant`, `license_choice_required`, `not_found`, `device_limit`, `rate_limited`,
+         * `license_owned`, `key_entry_limit`, ...
+         */
         val code: String,
         val httpStatus: Int,
         /** `rate_limited`: seconds to wait. */
@@ -265,7 +272,11 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
         return url
     }
 
-    private suspend fun post(name: ChoiceEndpoint, body: Map<String, kotlinx.serialization.json.JsonElement>, bearer: String? = null): PolarisResponse {
+    private suspend fun post(
+        name: ChoiceEndpoint,
+        body: Map<String, kotlinx.serialization.json.JsonElement>,
+        bearer: String? = null,
+    ): PolarisResponse {
         val url = endpoint(name)
         return try {
             // No authorization header but for `keep`: the grant in the body is the credential.

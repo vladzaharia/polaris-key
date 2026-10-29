@@ -199,9 +199,11 @@ async function until(cond: () => boolean): Promise<void> {
   expect(cond()).toBe(true);
 }
 
-function gate(o: FakeOptions = {}) {
+// The in-app Add runs only when switched on (`addIn: "app"`); the web default is the portal.
+function gate(o: FakeOptions & { addIn?: "app" | "portal" } = {}) {
   const f = fakeClient(o);
   const d = new GateDriver(f.client, {
+    addIn: o.addIn ?? "app",
     product: "acme",
     returnUrl: "https://app.example/",
   });
@@ -323,6 +325,30 @@ describe("GateDriver: a key with no account", () => {
     g.d.act("common.cancel");
     expect(g.d.snapshot().step).toBe("done");
     g.d.detach();
+  });
+
+  it("by default (the web switch) Add and Sign in to that account open the portal with the key as a fragment", async () => {
+    const g = gate({ addIn: undefined });
+    const d = new GateDriver(g.client, { product: "acme" });
+    d.attach();
+    d.act("welcome.useKey");
+    d.edit("key", KEY);
+    d.act("activate.submit");
+    await until(() => d.snapshot().step === "done");
+    d.act("activate.recommend.action");
+    await until(() => opened.length === 1);
+    expect(opened[0]!).toContain("#key=" + KEY);
+    expect(d.snapshot().step).toBe("done");
+    d.detach();
+    const h = new GateDriver(g.client, { product: "acme" });
+    h.attach();
+    h.act("welcome.useKey");
+    h.edit("key", KEY);
+    h.act("signin.key.ownedSignIn");
+    await until(() => opened.length === 2);
+    expect(opened[1]!).toContain("#key=" + KEY);
+    expect(g.calls.some(([n]) => n === "signIn.start")).toBe(false);
+    h.detach();
   });
 
   it("with Identity off opens the portal with the key as a fragment, and never adds an account", async () => {
