@@ -16,8 +16,51 @@ private const val ZONE_MAX = 15
 private fun allInterfaces(): List<NetworkInterface> =
     runCatching { NetworkInterface.getNetworkInterfaces()?.toList().orEmpty() }.getOrDefault(emptyList())
 
-internal fun usable(ni: NetworkInterface, allowLoopback: Boolean): Boolean =
-    runCatching { ni.isUp && ni.supportsMulticast() && (allowLoopback || !ni.isLoopback) }.getOrDefault(false)
+/** Interface names that are tunnels whatever their flags say (VPNs, `utun`, PPP, WireGuard, IPsec, GIF, 6to4). */
+private val TUNNEL_NAMES = Regex("^(utun|tun|ppp|wg|ipsec|gif|stf)[0-9]*$", RegexOption.IGNORE_CASE)
+
+private fun onAndroid(): Boolean = System.getProperty("java.vendor").orEmpty().contains("Android", ignoreCase = true) ||
+    System.getProperty("java.vm.name").orEmpty().contains("Dalvik", ignoreCase = true)
+
+/**
+ * What the platform says of one interface. [hasHardware] is a hardware address that is not all zeros;
+ * [hardwareKnown] is false where the platform hides hardware addresses from apps (Android 11 and later),
+ * and the test is then the flags and the name only.
+ */
+internal data class IfaceFacts(
+    val up: Boolean,
+    val multicast: Boolean,
+    val loopback: Boolean,
+    val pointToPoint: Boolean,
+    val name: String,
+    val hasHardware: Boolean,
+    val hardwareKnown: Boolean,
+)
+
+private fun IfaceFacts.isTunnel(): Boolean = pointToPoint ||
+    TUNNEL_NAMES.matches(name) ||
+    (hardwareKnown && !hasHardware)
+
+/**
+ * Whether an interface counts for the mDNS source test, the join and the unions of subnets (section 15.4):
+ * up, multicast-capable, loopback only when allowed, and not a tunnel, point-to-point or pseudo-interface
+ * (a VPN, `utun`, `ppp`, WireGuard). Where the platform has no flag for a tunnel, an interface with no
+ * hardware address (or an all-zero one) is taken as one.
+ */
+internal fun countsAsLan(f: IfaceFacts, allowLoopback: Boolean): Boolean = f.up && f.multicast && if (f.loopback) allowLoopback else !f.isTunnel()
+
+internal fun usable(ni: NetworkInterface, allowLoopback: Boolean): Boolean = runCatching {
+    val facts = IfaceFacts(
+        up = ni.isUp,
+        multicast = ni.supportsMulticast(),
+        loopback = ni.isLoopback,
+        pointToPoint = ni.isPointToPoint,
+        name = ni.name,
+        hasHardware = runCatching { ni.hardwareAddress }.getOrNull()?.any { it.toInt() != 0 } == true,
+        hardwareKnown = !onAndroid(),
+    )
+    countsAsLan(facts, allowLoopback)
+}.getOrDefault(false)
 
 /** The IPv4 addresses of the interfaces mDNS would use: up, multicast-capable, private (not loopback unless allowed). */
 public fun lanInterfaces(allowLoopback: Boolean = false): List<Pair<NetworkInterface, String>> = allInterfaces()
@@ -54,12 +97,12 @@ private fun link6(ni: NetworkInterface): Mdns6Interface? {
 }
 
 /**
- * The IPv6 links mDNS uses: up, multicast-capable, not a point-to-point tunnel, with an fe80 address; at
+ * The IPv6 links mDNS uses: [usable] (so no tunnel or point-to-point interface), with an fe80 address; at
  * most [MDNS_MAX_INTERFACES], in name order. Loopback has no link-local address, so [allowLoopback] adds
  * nothing here.
  */
 public fun lanInterfaces6(allowLoopback: Boolean = false): List<Mdns6Interface> = allInterfaces()
-    .filter { usable(it, allowLoopback) && !runCatching { it.isPointToPoint }.getOrDefault(true) }
+    .filter { usable(it, allowLoopback) }
     .mapNotNull(::link6)
     .sortedBy { it.name }
     .take(MDNS_MAX_INTERFACES)

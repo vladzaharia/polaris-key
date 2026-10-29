@@ -1,5 +1,5 @@
 // WIRE-CONTRACT-V5 section 15.4.1: which peer address a device may dial or accept on the local network,
-// and the keys of the per-address and per-/64 connection counts (CC-IPV6.5a). Pure: text in, a verdict
+// and the keys of the per-address and per-group connection counts (CC-IPV6.5a). Pure: text in, a verdict
 // out, so the JVM adapters and Android reuse it. It mirrors client-core `peer/lanAddress.ts`
 // (`lanVerdict`, `lanGroupKey`), which the `lanAddresses` rows of peer-matrix.json pin.
 //   - IPv4: 10/8, 172.16/12 and 192.168/16; 127/8 only with `allowLoopback`;
@@ -92,14 +92,21 @@ public fun lanVerdict(remote: String, local: String?, allowLoopback: Boolean): L
 }
 
 /**
- * The key of the per-/64 count for a verdict [key]: the /64 of an IPv6 address (`2001:db8:1:2::/64`;
- * a link-local /64 keeps the zone, `fe80::/64%en0`), null for IPv4 and for no key.
+ * The key of the per-group count (section 15.4.1) for a verdict [key]: `fe80::/10%zone` for a link-local
+ * address (`fe80::/10` when the key has no zone), `a.b.c.0/24` for IPv4, and the /64 (`2001:db8:1:2::/64`)
+ * for any other IPv6 address; null for no key. One neighbour cannot rotate out of its link, its /24 or its
+ * /64 by changing source address.
  */
 public fun lanGroupKey(key: String?): String? {
-    val p = key?.takeIf { it.contains(':') }?.let { parseLanAddress(it) }
-    val g = p?.v6 ?: return null
-    val text = "${text6(IntArray(GROUPS) { if (it < PREFIX_GROUPS) g[it] else 0 })}/64"
-    return if (p.zone == null) text else "$text%${p.zone}"
+    val p = key?.let { parseLanAddress(it) } ?: return null
+    val o = p.v4
+    val g = p.v6
+    return when {
+        o != null -> "${o[0]}.${o[1]}.${o[2]}.0/24"
+        g == null -> null
+        isLinkLocal(g) -> if (p.zone == null) "fe80::/10" else "fe80::/10%${p.zone}"
+        else -> "${text6(IntArray(GROUPS) { if (it < PREFIX_GROUPS) g[it] else 0 })}/64"
+    }
 }
 
 /** The first [prefix] bits of [x] and [y] agree; each element is [width] bits. */

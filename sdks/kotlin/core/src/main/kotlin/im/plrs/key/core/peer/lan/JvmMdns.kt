@@ -9,10 +9,21 @@
 // - a response is ignored, before it is parsed, unless its source is inside a connected subnet of the
 //   interfaces in use (RFC 6762 section 11; a link-local IPv6 source is on-link by definition). The
 //   JVM does not say which interface an IPv4 or global IPv6 datagram arrived on, so the subnets of all
-//   the interfaces in use count; a link-local source carries its interface as the zone;
-// - a name's SRV, TXT and PTR records are believed only from the first source that announced it, and
-//   that source's address is dialled first;
-// - only an instance the service accepts (a name its roster can announce) enters the tables;
+//   the interfaces in use count (tunnel and point-to-point interfaces do not): a source on another
+//   connected subnet passes, which costs at most one blind connect, never a trusted address. A
+//   link-local source carries its arrival interface as the zone (the kernel reports it with the
+//   source, and the JVM turns it into the scoped address); one with no zone, or a zone that is not a
+//   link in use, is dropped and teaches nothing;
+// - no source owns a name: the PTR, SRV, TXT and address records of a held name from another source are
+//   judged by the rules here, and the addresses are dialled in first-seen order;
+// - only an instance the service accepts (a name its roster can announce) enters the tables, for the
+//   PTR, SRV, TXT and address records alike. Names compare by ASCII fold and are held in lower case;
+// - an SRV record is believed only with a port from 1024 to 65535 and the instance's own `.local` as
+//   its target;
+// - a response sent to a unicast address (not to the multicast group) cannot be told apart here:
+//   `DatagramPacket` does not report the destination of a datagram, and the socket is not bound to
+//   the group because it serves both families (so it is not portable to Windows). Such a response is
+//   judged like any other; the residual is a unicast response that passes every test above;
 // - an A or AAAA record is believed only when its address is the packet's own UDP source (an
 //   IPv4-mapped source counts as its IPv4 address), so a neighbour cannot point another device's name
 //   at an address of its choosing; there is no address filter when it is learned, the dial-time
@@ -21,9 +32,9 @@
 // - the tables of instances and addresses hold at most 256 entries each, an entry expires five
 //   minutes after it was last refreshed, and when a table is full the least recently refreshed entry
 //   is evicted, so a flood cannot stop discovery;
-// - one source may create at most [MDNS_NEW_PER_MINUTE] new instance entries a minute, so a neighbour
-//   cannot churn the table (its own entries, or the least recently refreshed real ones) by naming
-//   instances faster than that;
+// - one source may add at most [MDNS_NEW_PER_MINUTE] new names a minute (instances and host names alike), so
+//   a neighbour cannot churn the tables (its own entries, or the least recently refreshed real ones) by
+//   naming faster than that;
 // - query replies go out at most once a second; the packet parser's own limits live in the codec.
 //
 // One `MulticastSocket` on 5353 serves both families. It is bound with address reuse and joins
@@ -56,8 +67,8 @@ public const val MDNS_MAX_INSTANCES: Int = 256
 /** Addresses kept per host name. */
 public const val MDNS_MAX_ADDRS: Int = 4
 
-/** New instance entries one source may create per minute. */
-public const val MDNS_NEW_PER_MINUTE: Int = 32
+/** New names one source may add per minute. */
+public const val MDNS_NEW_PER_MINUTE: Int = 16
 
 private const val BIRTH_WINDOW_SECONDS = 60.0
 
@@ -73,7 +84,7 @@ private const val AGAIN_MILLIS = 1000L
 private const val ASK_EVERY_MILLIS = 30_000L
 private val INSTANCE_FQDN = Regex("(p1-[a-z2-7]{16})\\._pkeypeer\\._tcp\\.local")
 
-private class Entry(var at: Double, val src: String) {
+private class Entry(var at: Double) {
     var port: Int? = null
     var target: String? = null
     var txt: List<String>? = null
@@ -208,7 +219,7 @@ public class JvmMdns(
             } catch (e: MdnsPacketError) {
                 null
             }
-            if (p != null && !p.isResponse && p.questions.any { it.name in names }) {
+            if (p != null && !p.isResponse && p.questions.any { foldName(it.name) in names }) {
                 val t = env.clock()
                 val reply = synchronized(lock) {
                     if (closed || t - lastReply < REPLY_GAP_SECONDS) {
@@ -279,11 +290,18 @@ public class JvmMdns(
         }
     }
 
-    /** RFC 6762 section 11: the source is on a connected subnet of an interface in use, or is link-local (on-link by definition). */
+    /**
+     * RFC 6762 section 11: the source is on a connected subnet of an interface in use, or is link-local
+     * (on-link by definition) with the zone of a link in use. The zone is the arrival interface: the
+     * kernel reports it with a link-local source, so a source with none, or with an interface we did
+     * not join, is not ours.
+     */
     private fun onLink(b: Browse, src: LanAddr): Boolean {
         val g = src.v6
-        if (g != null && isLinkLocal(g)) return true
-        val text = src.text()
+        return if (g != null && isLinkLocal(g)) src.zone != null && b.links.any { it.zone == src.zone } else inConnectedSubnet(b, src.text())
+    }
+
+    private fun inConnectedSubnet(b: Browse, text: String): Boolean {
         val now = env.clock()
         val nets = synchronized(b.lock) {
             if (now - b.netsAt > NETS_REFRESH_SECONDS) {
@@ -353,10 +371,11 @@ public class JvmMdns(
     }
 
     /** An address record of an accepted instance's host name goes to the address book, which keeps only an address equal to [src]. */
-    private fun learnAddress(b: Browse, r: MdnsRecord, src: LanAddr, now: Double) {
-        val inst = r.name.removeSuffix(".local")
-        if (!r.name.endsWith(".local") || !isInstanceName(inst) || !b.accept(inst)) return
-        b.book.learn(r, src.text(), src.zone, now)
+    private fun learnAddress(b: Browse, r: MdnsRecord, src: LanAddr, from: String, now: Double) {
+        val host = foldName(r.name)
+        val inst = host.removeSuffix(".local")
+        if (!host.endsWith(".local") || !isInstanceName(inst) || !b.accept(inst)) return
+        b.book.learn(r, src.text(), src.zone, now) { allowBirth(b, from, now) }
     }
 
     private fun learn(b: Browse, records: List<MdnsRecord>, source: LanAddr, ups: MutableList<MdnsFound>, downs: MutableList<String>) {
@@ -369,35 +388,34 @@ public class JvmMdns(
         }
         for (r in records) {
             if (r.type == MdnsType.A || r.type == MdnsType.AAAA) {
-                learnAddress(b, r, source, now)
+                learnAddress(b, r, source, src, now)
                 continue
             }
             val ptr = r.data as? MdnsData.Ptr
             val name = if (r.type == MdnsType.PTR) ptr?.name else r.name
-            val inst = name?.let { INSTANCE_FQDN.matchEntire(it)?.groupValues?.get(1) } ?: continue
-            if (r.type == MdnsType.PTR && r.name != PEER_SERVICE) continue
+            val inst = name?.let { INSTANCE_FQDN.matchEntire(foldName(it))?.groupValues?.get(1) } ?: continue
+            if (r.type == MdnsType.PTR && foldName(r.name) != PEER_SERVICE) continue
             if (!b.accept(inst)) continue
-            // A name belongs to the first source that announced it.
-            val known = b.seen[inst]
-            if (known != null && known.src != src) continue
+            // An SRV record is believed only with a port a random listen can have drawn and the
+            // instance's own host name as its target.
+            if (r.type == MdnsType.SRV && !srvBelieved(r.data as? MdnsData.Srv, inst)) continue
             if (r.type == MdnsType.PTR && r.ttl == 0L) {
                 if (b.seen.remove(inst) != null) downs += inst
                 continue
             }
             var e = b.seen.remove(inst)
             if (e == null) {
+                // No source owns a name; each may add MDNS_NEW_PER_MINUTE new ones a minute.
                 if (!allowBirth(b, src, now)) continue
                 if (b.seen.size >= MDNS_MAX_INSTANCES) trimSeen(b, now, downs)
-                e = Entry(now, src)
+                e = Entry(now)
             }
             e.at = now
             b.seen[inst] = e
             when (val d = r.data) {
                 is MdnsData.Srv -> {
-                    if (d.port !in 1..MAX_PORT) continue
                     e.port = d.port
-                    // Only our own host name shape: the target is the instance's `.local` name.
-                    if (d.target == hostOf(inst)) e.target = d.target
+                    e.target = hostOf(inst)
                 }
 
                 is MdnsData.Txt -> e.txt = d.entries.toList()
@@ -407,6 +425,10 @@ public class JvmMdns(
         }
         for ((inst, e) in b.seen) report(b, inst, e, ups, downs)
     }
+
+    /** An SRV record is believed with a port from 1024 to 65535 and the instance's own host name as its target. */
+    private fun srvBelieved(srv: MdnsData.Srv?, inst: String): Boolean =
+        srv != null && srv.port in MIN_PORT..MAX_PORT && foldName(srv.target) == hostOf(inst)
 
     /** Report an instance whose port, TXT and host name are known: up with its addresses, or down when every address was withdrawn. */
     private fun report(b: Browse, inst: String, e: Entry, ups: MutableList<MdnsFound>, downs: MutableList<String>) {
@@ -420,8 +442,8 @@ public class JvmMdns(
             e.up = null
             return
         }
-        // The announcing source's own address first, then the others in the order they were learned.
-        val hosts = if (e.src in ips) listOf(e.src) + ips.filter { it != e.src } else ips
+        // First-seen order: no source owns the name, so none is dialled first.
+        val hosts = ips
         val sig = "${hosts.joinToString(",")}|$port|${txt.joinToString("\n")}"
         if (e.up != sig) {
             e.up = sig
@@ -468,6 +490,7 @@ public class JvmMdns(
     }
 
     private companion object {
+        const val MIN_PORT = 1024
         const val MAX_PORT = 65535
     }
 }

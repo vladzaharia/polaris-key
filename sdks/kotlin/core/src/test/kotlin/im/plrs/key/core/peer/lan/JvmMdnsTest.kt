@@ -14,11 +14,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
-import org.junit.Assume.assumeTrue
 import org.junit.Test
-import java.io.IOException
 
 class JvmMdnsTest {
     private val inst = "p1-abcdefghijklmnop"
@@ -46,6 +43,7 @@ class JvmMdnsTest {
     private val lan4 = listOf("192.168.1.0/24", "10.0.0.0/8", "172.20.0.0/16")
 
     private val en0 = Mdns6Interface("en0", "en0", listOf("fe80::1"), listOf("fe80::1/64", "fd12::5/64"))
+    private val wlan0 = Mdns6Interface("wlan0", "wlan0", listOf("fe80::2"), listOf("fe80::2/64"))
 
     private class Rig(
         val addresses: (() -> List<String>)? = null,
@@ -179,10 +177,24 @@ class JvmMdnsTest {
     @Test
     fun aLinkLocalSourceNeedsNoSubnet() {
         // fe80::/10 is on-link by definition (RFC 6762 section 11): no subnet list is consulted for it.
-        val r = Rig(subnets = emptyList())
+        val r = Rig(subnets = emptyList(), v6 = listOf(en0))
         r.browse()
         r.push(listOf(ptr(), srv(), txt(), aaaa(ip = "fe80::7")), src = "fe80::7%en0")
         assertEquals(listOf("fe80::7%en0"), r.up.single().hosts)
+        r.close()
+    }
+
+    @Test
+    fun aLinkLocalSourceWithNoArrivalZoneOrAZoneWeDidNotJoinTeachesNothing() {
+        val r = Rig(v6 = listOf(en0))
+        r.browse()
+        val ll = "fe80::1c2:3ff:fe4:5a6"
+        r.push(full(ip = ll), src = ll) // no zone: the same fe80 text on another link is another host
+        r.push(full(ip = ll), src = "$ll%wlan0") // a link that is not in use
+        r.push(full(ip = ll), src = "$ll%99") // not a link either
+        assertTrue(r.up.isEmpty())
+        r.push(full(ip = ll), src = "$ll%en0")
+        assertEquals(listOf("$ll%en0"), r.up.single().hosts)
         r.close()
     }
 
@@ -330,7 +342,7 @@ class JvmMdnsTest {
         // A neighbour at .66 claims the instance lives at .20.
         r.push(full(ip = "192.168.1.20"), src = "192.168.1.66")
         assertTrue(r.up.isEmpty())
-        // The name's SRV and TXT belong to the first source that announced it; .20 can say where it is.
+        // .20 can say where it is.
         r.push(listOf(a(ip = "192.168.1.20")), src = "192.168.1.20")
         assertEquals(listOf(listOf("192.168.1.20")), r.up.map { it.hosts })
         r.close()
@@ -338,7 +350,7 @@ class JvmMdnsTest {
 
     @Test
     fun anAaaaRecordIsBelievedOnlyFromItsOwnSourceAndALinkLocalOneTakesTheArrivalZone() {
-        val r = Rig()
+        val r = Rig(v6 = listOf(en0, wlan0))
         r.browse()
         val ll = "fe80::1c2:3ff:fe4:5a6"
         r.push(listOf(ptr(), srv(), txt(), aaaa(ip = "fe80::9")), src = "$ll%en0") // not the source: nothing learned
@@ -366,14 +378,14 @@ class JvmMdnsTest {
     }
 
     @Test
-    fun aDualStackHostIsDialledAtItsAnnouncingSourceFirstThenItsOtherFamily() {
-        val r = Rig()
+    fun aDualStackHostIsDialledInFirstSeenOrder() {
+        val r = Rig(v6 = listOf(en0))
         r.browse()
         r.push(full(ip = "192.168.1.20"), src = "192.168.1.20")
         r.push(listOf(aaaa(ip = "fe80::1")), src = "fe80::1%en0")
         assertEquals(listOf("192.168.1.20", "fe80::1%en0"), r.up.last().hosts)
-        // An IPv6-first host lists its own source first too.
-        val r2 = Rig()
+        // An IPv6-first host lists its IPv6 address first.
+        val r2 = Rig(v6 = listOf(en0))
         r2.browse()
         r2.push(listOf(ptr(), srv(), txt(), aaaa(ip = "fe80::1")), src = "fe80::1%en0")
         r2.push(listOf(a()), src = "192.168.1.20")
@@ -384,7 +396,7 @@ class JvmMdnsTest {
 
     @Test
     fun anAddressRecordWithTtlZeroWithdrawsItsAddressAndTheLastOneTakesTheAdvertDown() {
-        val r = Rig()
+        val r = Rig(v6 = listOf(en0, wlan0))
         r.browse()
         r.push(full(ip = "192.168.1.20"), src = "192.168.1.20")
         r.push(listOf(aaaa(ip = "fe80::1")), src = "fe80::1%en0")
@@ -439,29 +451,23 @@ class JvmMdnsTest {
     }
 
     @Test
-    fun aNamesSrvAndTxtBelongToTheSourceThatAnnouncedItAndAnotherSourceCannotChangeThePort() {
+    fun noSourceOwnsANameAndTheAddressesAreDialledInFirstSeenOrder() {
         val r = Rig()
         r.browse()
         r.push(listOf(ptr(), srv(), txt()), "192.168.1.30")
         r.push(listOf(a(ip = "192.168.1.30")), "192.168.1.30")
         assertEquals(listOf("192.168.1.30"), r.up.map { it.host })
-        r.push(listOf(srv(port = 5000)), "192.168.1.31") // another source cannot change the port
-        assertEquals(1, r.up.size)
-        assertEquals(4242, r.up[0].port)
-        r.push(listOf(srv(port = 5000)), "192.168.1.30") // the owner can
-        assertEquals("192.168.1.30", r.up.last().host)
+        // another source's SRV is judged by the same rules as the first's: no ownership
+        r.push(listOf(srv(port = 5000)), "192.168.1.31")
         assertEquals(5000, r.up.last().port)
+        // an address announced first by a stranger keeps its place: the order is first-seen
+        val r2 = Rig()
+        r2.browse()
+        r2.push(listOf(a(ip = "192.168.1.66")), "192.168.1.66")
+        r2.push(full(ip = "192.168.1.20"), "192.168.1.20")
+        assertEquals(listOf("192.168.1.66", "192.168.1.20"), r2.up.last().hosts)
         r.close()
-    }
-
-    @Test
-    fun anAddressAnnouncedFirstByAStrangerKeepsItsPlaceButTheNamesOwnSourceIsDialledFirst() {
-        val r = Rig()
-        r.browse()
-        r.push(listOf(a(ip = "192.168.1.66")), "192.168.1.66") // the stranger is first with an A
-        r.push(full(ip = "192.168.1.20"), "192.168.1.20")
-        assertEquals(listOf("192.168.1.20", "192.168.1.66"), r.up.last().hosts)
-        r.close()
+        r2.close()
     }
 
     @Test
@@ -480,12 +486,16 @@ class JvmMdnsTest {
     }
 
     @Test
-    fun aGoodbyeFromAnotherSourceDoesNotRemoveARealPeer() {
+    fun aGoodbyeFromAnotherSourceOnTheLinkTakesTheNameDownUntilItAnnouncesAgain() {
+        // No source owns a name (V5 15.4): a goodbye is judged like any record, and the peer's next
+        // announce (or the 30 s ask) brings it back. A goodbye never removes an address.
         val r = Rig()
         r.browse()
         r.push(full())
         r.push(listOf(ptr(ttl = 0)), "192.168.1.99")
-        assertTrue(r.down.isEmpty())
+        assertEquals(listOf(inst), r.down)
+        r.push(full())
+        assertEquals(2, r.up.size)
         r.close()
     }
 
@@ -518,11 +528,50 @@ class JvmMdnsTest {
         val r = Rig()
         r.browse()
         for (i in listOf("p1-short", "x1-abcdefghijklmnop", "p1-abcdefghijklmn89")) r.push(full(i))
-        r.push(listOf(ptr(), srv(port = 0), txt(), a()))
+        for (port in listOf(0, 1, 1023, 80)) r.push(listOf(ptr(), srv(port = port), txt(), a()))
         assertTrue(r.up.isEmpty())
         // A PTR that is not the service's own name is not an advert.
         r.push(listOf(MdnsRecord("_other._tcp.local", MdnsType.PTR, 0, MdnsData.Ptr(fq))))
         assertTrue(r.down.isEmpty())
+        r.close()
+    }
+
+    @Test
+    fun anSrvPortIsBelievedFrom1024To65535() {
+        for ((port, ok) in listOf(1023 to false, 1024 to true, 65535 to true)) {
+            val r = Rig()
+            r.browse()
+            r.push(listOf(ptr(), srv(port = port), txt(), a()))
+            assertEquals("port $port", if (ok) listOf(port) else emptyList<Int>(), r.up.map { it.port })
+            r.close()
+        }
+    }
+
+    @Test
+    fun namesCompareByAsciiFoldAndAreHeldInLowerCase() {
+        val r = Rig()
+        r.browse()
+        val up = inst.uppercase()
+        val fqUp = "$up.${PEER_SERVICE.uppercase()}"
+        r.push(
+            listOf(
+                MdnsRecord(PEER_SERVICE.uppercase(), MdnsType.PTR, 120, MdnsData.Ptr(fqUp)),
+                MdnsRecord(fqUp, MdnsType.SRV, 120, MdnsData.Srv(4242, "$up.LOCAL")),
+                MdnsRecord(fqUp, MdnsType.TXT, 4500, MdnsData.Txt(listOf("v=1", "m=a"))),
+                MdnsRecord("$up.LOCAL", MdnsType.A, 120, MdnsData.Address("192.168.1.20")),
+            ),
+        )
+        assertEquals(listOf(inst), r.up.map { it.instance })
+        assertEquals(listOf("192.168.1.20"), r.up.single().hosts)
+        r.close()
+    }
+
+    @Test
+    fun theResponderAnswersAQuestionInAnyCase() {
+        val r = Rig(addresses = { listOf("10.0.0.2") })
+        advertise(r)
+        r.t += 5
+        assertEquals(1, query(r, PEER_SERVICE.uppercase()))
         r.close()
     }
 
@@ -534,17 +583,21 @@ class JvmMdnsTest {
     private fun sourceOf(i: Int) = "10.0.${i / 100}.${i % 100 + 1}"
 
     @Test
-    fun aSourceMayCreateOnlyAFewNewEntriesAMinute() {
+    fun aSourceMayAddOnlyAFewNewNamesAMinute() {
+        assertEquals(16, MDNS_NEW_PER_MINUTE)
         val r = Rig()
         r.browse()
         val ip = "192.168.1.20"
+        // each advert adds two names to the tables (the instance, then its host name): both count
         val names = (0 until MDNS_NEW_PER_MINUTE + 5).map { name(it, 'd') }
         for (n in names) r.push(listOf(ptr(n), srv(n), txt(n), a(n, ip)), ip)
-        assertEquals(MDNS_NEW_PER_MINUTE, r.up.size)
+        assertEquals(MDNS_NEW_PER_MINUTE / 2, r.up.size)
         // a name already held is still refreshed, and a minute later the source may add more
         r.t += 61
-        for (n in names.takeLast(5)) r.push(listOf(ptr(n), srv(n), txt(n), a(n, ip)), ip)
-        assertEquals(MDNS_NEW_PER_MINUTE + 5, r.up.size)
+        for (n in names.take(2)) r.push(listOf(ptr(n), srv(n), txt(n), a(n, ip, ttl = 121)), ip)
+        assertEquals(MDNS_NEW_PER_MINUTE / 2, r.up.size)
+        for (n in names.drop(MDNS_NEW_PER_MINUTE / 2)) r.push(listOf(ptr(n), srv(n), txt(n), a(n, ip)), ip)
+        assertEquals(MDNS_NEW_PER_MINUTE, r.up.size)
         // another source is not held back by the first one's use
         val other = name(200, 'e')
         r.push(listOf(ptr(other), srv(other), txt(other), a(other, "192.168.1.21")), "192.168.1.21")
@@ -615,88 +668,5 @@ class JvmMdnsTest {
         r.push(full())
         assertTrue(r.up.isEmpty())
         r.close()
-    }
-
-    // -- live (opt in) ---------------------------------------------------------------------------
-
-    @Test
-    fun liveTwoAdaptersOnThisHostFindEachOther() = runBlocking {
-        assumeTrue("live multicast: PKEY_LIVE_MDNS=1", System.getenv("PKEY_LIVE_MDNS") == "1")
-        val scope = CoroutineScope(Dispatchers.Default + Job())
-        val got = java.util.concurrent.LinkedBlockingQueue<MdnsFound>()
-        val adapter = JvmMdns(scope, allowLoopback = true, interfaces = listOf("127.0.0.1"))
-        val bh = try {
-            adapter.browse({ got.add(it) })
-        } catch (e: MdnsUnavailableException) {
-            assumeTrue("no multicast socket here", false)
-            return@runBlocking
-        }
-        val ah = adapter.advertise(MdnsAdvert(inst, 4242, listOf("v=1", "m=a")))
-        try {
-            val f = got.poll(8, java.util.concurrent.TimeUnit.SECONDS)
-            assertNotNull(f)
-            assertEquals(inst, f.instance)
-            assertEquals(4242, f.port)
-        } finally {
-            ah.stop()
-            bh.stop()
-            scope.cancel()
-        }
-    }
-
-    @Test
-    fun liveTwoAdaptersFindEachOtherOverTheRealInterfacesOnBothFamilies() = runBlocking {
-        assumeTrue("live multicast: PKEY_LIVE_MDNS=1", System.getenv("PKEY_LIVE_MDNS") == "1")
-        val v4 = lanInterfaces().map { it.second }
-        val v6 = lanInterfaces6()
-        assumeTrue("no LAN interface on this host", v4.isNotEmpty() || v6.isNotEmpty())
-        val scope = CoroutineScope(Dispatchers.Default + Job())
-        val got = java.util.concurrent.LinkedBlockingQueue<MdnsFound>()
-        val adapter = JvmMdns(scope)
-        val bh = runCatching { adapter.browse({ got.add(it) }) }.getOrElse {
-            assumeTrue("no multicast socket here", false)
-            return@runBlocking
-        }
-        val ah = adapter.advertise(MdnsAdvert(inst, 4242, listOf("v=1", "m=a")))
-        try {
-            var f = got.poll(8, java.util.concurrent.TimeUnit.SECONDS)
-            assertNotNull(f)
-            assertEquals(inst, f.instance)
-            // The report is repeated as each address arrives: collect for a moment.
-            while (true) f = got.poll(3, java.util.concurrent.TimeUnit.SECONDS) ?: break
-            println("[live] hosts=${f.hosts} v4=$v4 v6=${v6.map { it.zone to it.addresses }}")
-            // every family this host announces on is heard, link-local with its zone
-            if (v4.isNotEmpty()) assertTrue(f.hosts.toString(), f.hosts.any { '.' in it })
-            if (v6.isNotEmpty()) assertTrue(f.hosts.toString(), f.hosts.any { it.startsWith("fe80:") && '%' in it })
-        } finally {
-            ah.stop()
-            bh.stop()
-            scope.cancel()
-        }
-    }
-
-    @Test
-    fun tcpPipeMovesBytesBothWaysOnLoopback() = runBlocking {
-        val server = java.net.ServerSocket(0, 1, java.net.InetAddress.getByName("127.0.0.1"))
-        try {
-            val dialled = TcpPipe.connect("127.0.0.1", server.localPort, 2000)
-            val accepted = TcpPipe(server.accept())
-            dialled.write("ping".toByteArray())
-            assertEquals("ping", String(accepted.read()!!))
-            accepted.write("pong".toByteArray())
-            assertEquals("pong", String(dialled.read()!!))
-            assertEquals("127.0.0.1", dialled.remoteAddress)
-            dialled.close()
-            assertEquals(null, accepted.read())
-            accepted.close()
-            try {
-                TcpPipe.connect("127.0.0.1", 1, 500)
-                throw AssertionError("refused")
-            } catch (e: IOException) {
-                // nothing listens there
-            }
-        } finally {
-            server.close()
-        }
     }
 }

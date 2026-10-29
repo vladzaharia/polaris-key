@@ -33,6 +33,8 @@ public class LanDialOptions(
     public val allowLoopback: Boolean = false,
     public val timeoutMillis: Int,
     public val staggerMillis: Long = LAN_DIAL_STAGGER_MILLIS,
+    /** A test hook: runs once a connection has won, before the race returns it. */
+    internal val afterWin: () -> Unit = {},
     public val connector: (Socket, InetSocketAddress, Int) -> Unit = { s, a, t -> s.connect(a, t) },
 ) {
     override fun toString(): String = "LanDialOptions"
@@ -42,7 +44,7 @@ public class LanDialOptions(
 private class Race(val hosts: List<String>, val port: Int, val o: LanDialOptions) {
     val lock = Any()
     val live = ArrayList<Socket>()
-    val result = CompletableDeferred<Socket>()
+    val result = CompletableDeferred<Pair<Socket, String>>()
     var next = 0
     var inFlight = 0
 
@@ -69,14 +71,14 @@ private class Race(val hosts: List<String>, val port: Int, val o: LanDialOptions
         !over
     }.also { if (!it) closeQuietly(s) }
 
-    fun win(s: Socket) {
+    fun win(s: Socket, host: String) {
         val others = synchronized(lock) {
             if (over) {
                 listOf(s)
             } else {
                 over = true
                 live.remove(s)
-                result.complete(s)
+                result.complete(s to host)
                 live.toList().also { live.clear() }
             }
         }
@@ -97,6 +99,12 @@ private class Race(val hosts: List<String>, val port: Int, val o: LanDialOptions
             }
             !over && next < hosts.size
         }
+    }
+
+    /** The race is not returning its winner (a timeout or a cancel came first): close it, so no socket is left open. */
+    fun discardWinner() {
+        end()
+        if (result.isCompleted && !result.isCancelled) closeQuietly(result.getCompleted().first)
     }
 
     fun end() {
@@ -125,7 +133,7 @@ private fun CoroutineScope.launchAttempt(r: Race, host: String) {
         val s = Socket()
         val failure = runCatching { connectJudged(r, s, host) }.exceptionOrNull()
         if (failure == null) {
-            r.win(s)
+            r.win(s, host)
         } else if (r.lose(s, failure as? Exception ?: IOException(failure))) {
             r.take()?.let { launchAttempt(r, it) }
         }
@@ -136,12 +144,20 @@ private fun CoroutineScope.launchAttempt(r: Race, host: String) {
  * Race [hosts] on [port]; resolves with the winning connected socket. Throws [IOException] when no
  * address connects (the last failure), when none is a LAN address, or after [LanDialOptions.timeoutMillis].
  */
-public suspend fun lanDialRace(hosts: List<String>, port: Int, o: LanDialOptions): Socket {
+public suspend fun lanDialRace(hosts: List<String>, port: Int, o: LanDialOptions): Socket = lanDialRaceTo(hosts, port, o).first
+
+/**
+ * As [lanDialRace], with the address that won, so a failed handshake can leave it out of the next race
+ * (section 15.4.1, Dialling). A connection that won is closed if the timeout or a cancel comes before the
+ * race returns it.
+ */
+public suspend fun lanDialRaceTo(hosts: List<String>, port: Int, o: LanDialOptions): Pair<Socket, String> {
     val tried = hosts.filter { textVerdict(it, o.allowLoopback) }
     if (tried.isEmpty()) throw IOException("address refused")
     val r = Race(tried, port, o)
-    return try {
-        withTimeout(o.timeoutMillis.toLong()) {
+    var handedOver = false
+    try {
+        val won = withTimeout(o.timeoutMillis.toLong()) {
             coroutineScope {
                 r.take()?.let { launchAttempt(r, it) }
                 val ticker = launch {
@@ -151,14 +167,18 @@ public suspend fun lanDialRace(hosts: List<String>, port: Int, o: LanDialOptions
                     }
                 }
                 try {
-                    r.result.await()
+                    r.result.await().also { o.afterWin() }
                 } finally {
                     ticker.cancel()
                     r.end() // every socket but the winner closes before a byte is sent on it
                 }
             }
         }
+        handedOver = true
+        return won
     } catch (e: TimeoutCancellationException) {
         throw IOException("timeout", e)
+    } finally {
+        if (!handedOver) r.discardWinner()
     }
 }

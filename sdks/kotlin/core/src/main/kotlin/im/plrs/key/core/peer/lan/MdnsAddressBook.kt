@@ -5,7 +5,8 @@
 //     IPv4-mapped source counts as its IPv4 address), whatever the address is: there is no filter on
 //     the address itself, the dial-time `lanVerdict` decides what may be dialled;
 //   - a link-local address is held with the zone of the interface the packet arrived on
-//     (`fe80::1%en0`); any other address has no zone;
+//     (`fe80::1%en0`), and one with no known arrival zone is dropped and teaches nothing; any other
+//     address has no zone;
 //   - an address record with TTL 0 removes that address, and only when it passes the same equality
 //     test; it learns nothing;
 //   - names fold by ASCII (`A` to `Z` only) and are held in lower case;
@@ -29,12 +30,13 @@ public class MdnsAddressBook(private val maxNames: Int = MDNS_MAX_INSTANCES) {
 
     /**
      * Apply one A or AAAA record ([record]) from a packet sent by [source] and received on [zone]
-     * (null: none) at [now] (monotonic seconds). Other record types are ignored.
+     * (null: none) at [now] (monotonic seconds). Other record types are ignored. [admit] is asked before a
+     * new name takes a place (the per-source limit on new names).
      */
-    public fun learn(record: MdnsRecord, source: String, zone: String?, now: Double) {
+    public fun learn(record: MdnsRecord, source: String, zone: String?, now: Double, admit: () -> Boolean = { true }) {
         val address = believed(record, source, zone) ?: return
         val name = foldName(record.name)
-        if (record.ttl == 0L) withdraw(name, address) else add(name, address, now)
+        if (record.ttl == 0L) withdraw(name, address) else add(name, address, now, admit)
     }
 
     /** The text the record's address is held under when it equals the source, else null. */
@@ -43,10 +45,11 @@ public class MdnsAddressBook(private val maxNames: Int = MDNS_MAX_INSTANCES) {
         val rec = got?.let { parseLanAddress(it, foldMapped = false) }
         // The source as the equality sees it: no zone, a mapped address as its IPv4.
         val src = parseLanAddress(source.substringBefore('%'))
+        // fe80 text alone does not name a host: a link-local address with no arrival zone is dropped.
         return when {
             rec == null || src == null -> null
             rec.zone != null || src.text() != rec.text() -> null
-            rec.v6 != null && isLinkLocal(rec.v6) && zone != null -> "${rec.text()}%$zone"
+            rec.v6 != null && isLinkLocal(rec.v6) -> zone?.let { "${rec.text()}%$it" }
             else -> rec.text()
         }
     }
@@ -57,8 +60,9 @@ public class MdnsAddressBook(private val maxNames: Int = MDNS_MAX_INSTANCES) {
         if (e.ips.isEmpty()) names.remove(name)
     }
 
-    private fun add(name: String, address: String, now: Double) {
+    private fun add(name: String, address: String, now: Double, admit: () -> Boolean) {
         val held = names.remove(name)
+        if (held == null && !admit()) return
         if (held == null && names.size >= maxNames) trim(now)
         val e = held ?: Names(now)
         if (address !in e.ips && e.ips.size < MDNS_MAX_ADDRS) e.ips += address

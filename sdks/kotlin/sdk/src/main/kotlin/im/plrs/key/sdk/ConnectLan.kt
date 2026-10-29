@@ -12,14 +12,20 @@
 //   (XXpsk0) and admission (certificate, roster, expiry, revocation) run in the channel; a failed tag
 //   closes the socket without a word (G2);
 // - sockets that have not been admitted are bounded: at most 32 in total, 4 per source address and 16 per
-//   source /64, each living at most 30 seconds, handshake frames at most 16 KiB (G7);
+//   source group (a link, an IPv4 /24 or an IPv6 /64), each living at most 30 seconds (the deadline closes
+//   the socket, frees the slot and cancels the coroutine, so a hung identity read cannot hold it),
+//   handshake frames at most 16 KiB (G7);
 // - one port serves both families: a dual-stack `::` listener, falling back to 0.0.0.0 where IPv6 is
-//   unavailable. A socket is judged on its own addresses (`lanVerdict`, V5 15.4.1) before it takes a slot
-//   and before a byte is read: a source off the LAN is closed at once, with nothing read or written;
+//   unavailable. A `::` socket can be reached from beyond the LAN, so the listener is not bound to LAN
+//   addresses (a JVM `ServerSocket` binds one address); a socket is judged on its own addresses
+//   (`lanVerdict`, V5 15.4.1) before it takes a slot and before a byte is read, and a source off the LAN is
+//   closed at once, with nothing read or written (the TCP handshake itself is done by the OS by then);
 // - the device dials only addresses `lanVerdict` allows (loopback only when the caller opts in, for tests):
 //   the text of each address before a socket exists, and the connected socket again before its first byte
-//   (G6). Several addresses race (RFC 8305): 250 ms apart, at most two in flight, the first to pass wins. The
-//   certificate's device must be the one dialled, or the session closes `wrong_peer` (G8);
+//   (G6). Several addresses race (RFC 8305): 250 ms apart, at most two in flight, the first to pass wins. When
+//   the handshake with the winner fails, the race runs again over the addresses that are left; a handshake
+//   that completes with another device ends the dial. The certificate's device must be the one dialled, or
+//   the session closes `wrong_peer` (G8);
 // - a refused local-network permission is `permission_denied` (D-8), and nothing is opened;
 // - the device's X25519 private key never leaves the key port (G1).
 
@@ -47,7 +53,7 @@ import im.plrs.key.core.peer.lan.MdnsUnavailableException
 import im.plrs.key.core.peer.lan.PendingLimiter
 import im.plrs.key.core.peer.lan.TcpPipe
 import im.plrs.key.core.peer.lan.inetAddressOfLiteral
-import im.plrs.key.core.peer.lan.lanDialRace
+import im.plrs.key.core.peer.lan.lanDialRaceTo
 import im.plrs.key.core.peer.lan.literalOfInetAddress
 import im.plrs.key.core.peer.lan.socketVerdict
 import im.plrs.key.core.peer.lan.textVerdict
@@ -59,6 +65,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -315,19 +322,23 @@ internal class LanService private constructor(
             throw LanException(LanErrorReason.unknown_peer, "That device was not found on this network.")
         }
         val ident = identity(false)
-        val pipe = dial(hosts, peer.port)
-        val link = link(pipe, ident, NoiseRole.initiator)
-        val run = scope.launch { link.run() }
-        link.start()
-        val session = try {
-            waitOpened(link.opened, ((o.handshakeSeconds + OPEN_GRACE_SECONDS) * MILLIS).toLong())
-        } catch (e: LanException) {
-            throw e
-        } catch (e: TimeoutCancellationException) {
-            run.cancel()
-            pipe.close()
-            throw LanException(LanErrorReason.handshake_failed, "The handshake failed.", e)
+        // A neighbour can answer first with its own address: when the winner of the race fails the handshake,
+        // the race runs again over the addresses that are left (section 15.4.1, Dialling). A handshake that
+        // completes with another device ends the dial below as `wrong_peer`.
+        var left = hosts
+        var failure: LanException? = null
+        var opened: ConnectSession? = null
+        while (left.isNotEmpty() && opened == null) {
+            val (pipe, host) = dial(left, peer.port)
+            try {
+                opened = openOnce(pipe, ident)
+            } catch (e: LanException) {
+                if (e.reason != LanErrorReason.handshake_failed && e.reason != LanErrorReason.connect_failed) throw e
+                failure = e
+                left = left.filter { it != host }
+            }
         }
+        val session = opened ?: throw (failure ?: LanException(LanErrorReason.handshake_failed, "The handshake failed."))
         if (session.peerDeviceId != want) {
             session.close()
             throw LanException(LanErrorReason.wrong_peer, "The device that answered is not the one that advertised.")
@@ -335,14 +346,32 @@ internal class LanService private constructor(
         return session
     }
 
+    /** The handshake over one connected pipe: the session, or a [LanException] after the pipe is closed. */
+    private suspend fun openOnce(pipe: TcpPipe, ident: PeerSource): ConnectSession {
+        val link = link(pipe, ident, NoiseRole.initiator)
+        val run = scope.launch { link.run() }
+        link.start()
+        try {
+            return waitOpened(link.opened, ((o.handshakeSeconds + OPEN_GRACE_SECONDS) * MILLIS).toLong())
+        } catch (e: TimeoutCancellationException) {
+            run.cancel()
+            pipe.close()
+            throw LanException(LanErrorReason.handshake_failed, "The handshake failed.", e)
+        } catch (e: LanException) {
+            run.cancel()
+            pipe.close()
+            throw e
+        }
+    }
+
     /** The race of RFC 8305 over every announced address: the first connection that passes the verdict on its own addresses wins (G6). */
-    private suspend fun dial(hosts: List<String>, port: Int): TcpPipe {
-        val socket = try {
-            lanDialRace(hosts, port, LanDialOptions(o.allowLoopback, (o.dialSeconds * MILLIS).toInt()))
+    private suspend fun dial(hosts: List<String>, port: Int): Pair<TcpPipe, String> {
+        val (socket, host) = try {
+            lanDialRaceTo(hosts, port, LanDialOptions(o.allowLoopback, (o.dialSeconds * MILLIS).toInt()))
         } catch (e: IOException) {
             throw LanException(LanErrorReason.connect_failed, "The device did not answer.", e)
         }
-        return TcpPipe(socket)
+        return TcpPipe(socket) to host
     }
 
     // -- identity --------------------------------------------------------------------------------
@@ -441,10 +470,15 @@ internal class LanService private constructor(
             abort(sock)
             return
         }
-        // An unauthenticated socket lives for the handshake window and no longer.
+        // An unauthenticated socket lives for the handshake window and no longer: at the deadline the socket
+        // closes, the slot is released and this coroutine is cancelled, so an identity read that hangs
+        // (a refresh over the network) cannot hold the slot.
+        val self = currentCoroutineContext()[Job]
         val deadline = scope.launch {
             delay((o.handshakeSeconds * MILLIS).toLong())
             abort(sock)
+            synchronized(lock) { if (pending.remove(sock)) release() }
+            self?.cancel()
         }
 
         fun done() {

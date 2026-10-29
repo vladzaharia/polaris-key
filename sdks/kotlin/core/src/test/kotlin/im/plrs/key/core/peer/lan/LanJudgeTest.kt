@@ -70,17 +70,40 @@ class LanJudgeTest {
     }
 
     @Test
-    fun theDefaultLimitsAre4PerAddress16PerSlash64And32InTotal() {
+    fun theDefaultLimitsAre4PerAddress16PerGroupAnd32InTotal() {
         val l = PendingLimiter()
         repeat(LAN_MAX_PENDING_PER_ADDRESS) { assertNotNull(l.take("10.0.0.1")) }
         assertNull(l.take("10.0.0.1"))
-        // sixteen neighbours of one /64 fill it; the seventeenth is refused
+        // sixteen neighbours of one group fill it; the seventeenth is refused
         repeat(LAN_MAX_PENDING_PER_GROUP) { assertNotNull(l.take("fd12::${it + 1}")) }
         assertNull(l.take("fd12::ff"))
         assertEquals(LAN_MAX_PENDING_PER_ADDRESS + LAN_MAX_PENDING_PER_GROUP, l.size)
         // 10 further IPv4 hosts reach the total of 32
         repeat(LAN_MAX_PENDING - l.size) { assertNotNull(l.take("10.0.1.$it")) }
         assertNull(l.take("10.0.9.9"))
+    }
+
+    @Test
+    fun oneNeighbourCannotRotateOutOfItsLinkItsSlash24OrItsSlash64() {
+        // Link-local: every /64 of fe80::/10 on one link is one group; another link is another.
+        val l = PendingLimiter(max = 100, perAddress = 1, perGroup = 3)
+        assertNotNull(l.take("fe80::1%en0"))
+        assertNotNull(l.take("fe80:0:0:1::2%en0"))
+        assertNotNull(l.take("fe80:0:0:2::3%en0"))
+        assertNull(l.take("fe80:0:0:3::4%en0")) // the link is full
+        assertNotNull(l.take("fe80::1%en1"))
+        // IPv4: one /24 is one group (a mapped source is its IPv4 address)
+        assertNotNull(l.take("192.168.1.1"))
+        assertNotNull(l.take("192.168.1.2"))
+        assertNotNull(l.take("192.168.1.3"))
+        assertNull(l.take("192.168.1.4"))
+        assertNotNull(l.take("192.168.2.1"))
+        // ULA and global stay /64
+        assertNotNull(l.take("fd12:0:0:5::1"))
+        assertNotNull(l.take("fd12:0:0:5::2"))
+        assertNotNull(l.take("fd12:0:0:5::3"))
+        assertNull(l.take("fd12:0:0:5::4"))
+        assertNotNull(l.take("fd12:0:0:6::1"))
     }
 
     // -- the dial race ----------------------------------------------------------------------------
@@ -169,6 +192,39 @@ class LanJudgeTest {
             srv.accept().use { accepted ->
                 assertEquals(-1, accepted.getInputStream().read()) // closed, nothing written
             }
+        }
+    }
+
+    @Test
+    fun theRaceNamesTheAddressThatWon() {
+        server().use { srv ->
+            val o = LanDialOptions(true, 5000, 30) { s, a, _ ->
+                if (a.address.hostAddress == "10.0.0.1") throw IOException("refused")
+                s.connect(InetSocketAddress("127.0.0.1", srv.localPort))
+            }
+            val (s, host) = runBlocking { lanDialRaceTo(listOf("10.0.0.1", "10.0.0.2"), srv.localPort, o) }
+            assertEquals("10.0.0.2", host)
+            s.close()
+        }
+    }
+
+    @Test
+    fun aConnectionThatWinsJustBeforeTheTimeoutIsClosed() {
+        server().use { srv ->
+            val sockets = CopyOnWriteArrayList<Socket>()
+            // The timeout fires after the connection won and before the race returns it.
+            val o = LanDialOptions(true, 300, 20, { Thread.sleep(600) }) { s, _, _ ->
+                sockets += s
+                s.connect(InetSocketAddress("127.0.0.1", srv.localPort))
+            }
+            try {
+                runBlocking { lanDialRace(listOf("10.0.0.1"), srv.localPort, o) }
+                fail("timeout")
+            } catch (e: IOException) {
+                assertEquals("timeout", e.message)
+            }
+            assertEquals(1, sockets.size)
+            assertTrue("the winner was closed, not leaked", sockets.single().isClosed)
         }
     }
 

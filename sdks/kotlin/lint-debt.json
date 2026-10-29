@@ -1128,8 +1128,11 @@
       "detekt:complexity.LongParameterList": 1,
       "detekt:exceptions.SwallowedException": 1
     },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/lan/JvmMdnsLiveTest.kt": {
+      "detekt:exceptions.SwallowedException": 2
+    },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/lan/JvmMdnsTest.kt": {
-      "detekt:exceptions.SwallowedException": 3
+      "detekt:exceptions.SwallowedException": 1
     },
     "sdks/kotlin/core/src/testFixtures/kotlin/im/plrs/key/core/testing/Fixtures.kt": {
       "detekt:complexity.LongParameterList": 2,
@@ -2065,9 +2068,12 @@
       "ktlint:standard:max-line-length": 5,
       "ktlint:standard:multiline-if-else": 2
     },
-    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/ConnectLanTest.kt": {
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/ConnectLanBase.kt": {
       "detekt:complexity.LongParameterList": 2,
-      "detekt:exceptions.SwallowedException": 2
+      "detekt:exceptions.SwallowedException": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/ConnectLanTest.kt": {
+      "detekt:exceptions.SwallowedException": 1
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/ConnectRelaySessionTest.kt": {
       "detekt:complexity.LongParameterList": 1

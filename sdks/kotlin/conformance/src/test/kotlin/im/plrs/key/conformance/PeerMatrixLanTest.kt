@@ -71,7 +71,7 @@ class PeerMatrixLanTest : ConformanceSuite() {
     @Test
     fun mdnsAnswerRows() {
         val rows = rows(m["mdnsAnswers"]!!.obj["rows"])
-        assertEquals(36, rows.size)
+        assertEquals(37, rows.size)
         assertEquals(rows.size, rows.map { it.s("id") }.toSet().size)
         val f = Failures("peer-matrix mdnsAnswers")
         for (r in rows) {
