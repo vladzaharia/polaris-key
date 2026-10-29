@@ -519,6 +519,8 @@
     "signin.auto.confirm.title": "继续前往 {app}",
     "signin.auto.confirm.as": "以 {email} 身份",
     "signin.auto.confirm.asApple": "使用你的 Apple 账户",
+    "signin.auto.confirm.asGameCenter": "使用 Game Center",
+    "signin.auto.confirm.asPlayGames": "使用 Google Play 游戏",
     "signin.auto.confirm.primary": "继续",
     "signin.auto.confirm.other": "使用其他账户",
     "signin.linkOffer.title": "下次使用 {provider} 登录？",

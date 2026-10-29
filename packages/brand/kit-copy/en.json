@@ -2608,6 +2608,16 @@
       "role": "body",
       "note": "Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private)."
     },
+    "signin.auto.confirm.asGameCenter": {
+      "value": "with Game Center",
+      "role": "body",
+      "note": "Automatic sign-in: the confirm step. After a Game Center sign-in (it shares no email). \"Game Center\" is Apple's product name (never translated)."
+    },
+    "signin.auto.confirm.asPlayGames": {
+      "value": "with Google Play Games",
+      "role": "body",
+      "note": "Automatic sign-in: the confirm step. After a Google Play Games sign-in (it shares no email). \"Google Play Games\" is Google's product name; use Google's localized name (glossary)."
+    },
     "signin.auto.confirm.primary": {
       "value": "Continue",
       "role": "button",

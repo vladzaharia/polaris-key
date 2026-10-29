@@ -3200,6 +3200,16 @@ msgstr "以 {email} 身份"
 msgid "signin.auto.confirm.asApple"
 msgstr "使用你的 Apple 账户"
 
+#. with Game Center
+#. Automatic sign-in: the confirm step. After a Game Center sign-in (it shares no email). "Game Center" is Apple's product name (never translated).
+msgid "signin.auto.confirm.asGameCenter"
+msgstr "使用 Game Center"
+
+#. with Google Play Games
+#. Automatic sign-in: the confirm step. After a Google Play Games sign-in (it shares no email). "Google Play Games" is Google's product name; use Google's localized name (glossary).
+msgid "signin.auto.confirm.asPlayGames"
+msgstr "使用 Google Play 游戏"
+
 #. Continue
 #. Automatic sign-in: the confirm step's main button.
 msgid "signin.auto.confirm.primary"

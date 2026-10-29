@@ -526,6 +526,8 @@ export type KitCopyKey =
   | "signin.auto.confirm.title"
   | "signin.auto.confirm.as"
   | "signin.auto.confirm.asApple"
+  | "signin.auto.confirm.asGameCenter"
+  | "signin.auto.confirm.asPlayGames"
   | "signin.auto.confirm.primary"
   | "signin.auto.confirm.other"
   | "signin.linkOffer.title"
