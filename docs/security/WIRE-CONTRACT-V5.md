@@ -2108,7 +2108,12 @@ Every answer is `no-store` except the pull's ETag revalidation. Deleting a file 
 Body: `{"clientId":"c_…","cursor":N,"atomic":false,"mutations":[{"mutationId":41,"target":{"setting":"audio.music.volume","scope":"user"},"op":"set","value":0.6,"editedHlc":"0190f3a2c1b4:0003"}]}`. More than 100 mutations is `400 bad_request`; more than 256 KiB is `413 body_too_large`.
 
 - **Setting targets** are `{setting, scope}`, `scope` `user` or `platform` (the server derives the platform family from the device row). The server classifies the key against the active catalog with `syncedSettings`. A declared key that is not a `config` key, or a `local` key, is `rejected` with `setting_not_synced`; this is a backstop, because the client never sends one. A synced key pushed with another scope than its route's is refused the same way, and so is an open setting pushed with `platform`. A declared key is validated against its entry (`value_invalid`). An undeclared key is an open setting: `lastWrite`, schema-less, at most 8 KiB (`value_invalid` beyond). The server never refuses a key for a lock, because locks differ per device.
-- **Record targets** are `{record: [collection, id]}`. An undeclared collection is `collection_unknown`; a collection whose `requires` the anchor licence does not grant is `entitlement_required`.
+- **Record targets** are `{record: [collection, id]}` (U-09). The name is matched against the catalog's declarations by the rule of §13.7, and the server answers the first check that fails, in this order:
+  1. no declaration matches: `collection_unknown`;
+  2. the declaration's `requires` is not granted by the anchor licence: `entitlement_required`. A `delete` passes this check, so a lapsed entitlement never traps a person's data (a quota likewise never refuses a delete);
+  3. in E2E mode, a record id, field or element that is not blinded, `value` where `ct` is expected, or `ct` where `value` is expected: `encryption_mismatch`;
+  4. in server mode, a value that fails the declaration's schema (a `setField` value against `schema.properties[field]`), or a record over its budget: `value_invalid`;
+  5. an operation the policy does not allow, or a `max`/`min` record whose `conflictField` is missing or not a number: `op_invalid_for_policy`.
 
 | Target policy                  | Operations (any other is `rejected` with `op_invalid_for_policy`)                                                         |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
@@ -2116,16 +2121,25 @@ Body: `{"clientId":"c_…","cursor":N,"atomic":false,"mutations":[{"mutationId":
 | Setting `max`, `min`           | `set` (the server keeps the larger or smaller), `clear` (a reset at its clock; older `set`s are ignored)                  |
 | Setting `merge`                | `setMember {member, value}`, `removeMember {member}`, `clear`, each with `editedHlc`                                      |
 | Record `revision`, `lastWrite` | `set`, `delete` with `baseVersion` (a number is compare-and-swap, `"*"` create-only, absent unconditional) or `editedHlc` |
-| Record `max`, `min`            | `set`, `delete`, each with `editedHlc`; the server compares the record's `conflictField`                                  |
+| Record `max`, `min`            | `set`, `delete`, each with `editedHlc`; the server compares the record's `conflictField` (E2E mode: the register below)   |
 | Record `merge`                 | `setField`, `removeField`, `delete`, each with `editedHlc`                                                                |
 | Record `union`                 | `add {element}`, `remove {element, observedSeq}`, `delete`                                                                |
 
 A `setMember` or `removeMember` whose `member` is longer than 1 KiB of UTF-8 (`SYNC_MAX_UNION_ELEMENT_BYTES`) is `rejected` with `value_invalid`, whatever the quota: a removal is never refused for quota, so the name is what bounds it.
 
+**Record semantics (U-09).**
+
+- **`merge`.** Each field is a last-write-wins cell, ordered by `editedHlc` with `clientId` breaking ties. A `removeField` is a cell tombstone that a later `setField` beats. `delete` removes the record and every cell.
+- **`union`.** `add` stamps the element with the mutation's store sequence (its tag). `remove` drops that element's tags at or below `observedSeq`, the pull cursor the client held when it saw the element, so a concurrent `add` survives. A `remove` without `observedSeq` is `value_invalid`. An element is at most 1 KiB (`SYNC_MAX_UNION_ELEMENT_BYTES`; `value_invalid` beyond).
+- **Server mode value.** The pull and a conflict copy carry a `merge` record as its live object and a `union` record as an array in the order of each element's first surviving add tag.
+- **Budget.** A record is at most 64 KiB (`SYNC_MAX_RECORD_BYTES`; `value_invalid` beyond): its canonical JSON in server mode, and in E2E mode the sum of `envelopeBytes − 113` over its value, fields or elements.
+- **Collection quota.** `quota_exceeded` with `scope: "collection"` means the collection's `maxRecords` (16 slots for `saves`) is reached. Only a create (a record id the person does not yet hold) can hit it: an update or a `delete` never does.
+- **A policy change** reads the policy at push time (§13.6). The server converts a stored object to field cells and back, and an array to elements and back, when it next writes the record; a read converts nothing.
+
 The `200` body is `{subject, serverNow, results, lastMutationId, …the pull members of §13.4}`. Each result is `{mutationId, status}`:
 
 - `ok` with `version` (and `renamedTo`, or `dropped: true`, when a catalog migration applied);
-- `conflict` with `server {value, version, editedHlc, members?}`: a compare-and-swap mismatch, a `lastWrite` write older than the stored clock, or a `max`/`min` write the stored value beats. The client takes the server copy (§11.5);
+- `conflict` with `server {value, version, editedHlc, members?}`: a compare-and-swap mismatch, a `lastWrite` write older than the stored clock, or a `max`/`min` write the stored value beats. The client takes the server copy (§11.5). For a record, `value` is the live record (a `merge` record's object), and a `union` record never conflicts;
 - `rejected` with `code`: `value_invalid`, `setting_not_synced`, `op_invalid_for_policy`, `collection_unknown`, `entitlement_required`, or `quota_exceeded` with `scope` (`user`, `collection` or `product`);
 - `duplicate` (at or below the client's last processed `mutationId`), or `aborted` (the rest of a failed atomic batch).
 
@@ -2139,11 +2153,11 @@ The `200` body is `{subject, serverNow, results, lastMutationId, …the pull mem
 
 - `ct` is a `pkey-sync-value/1` envelope in canonical base64url (§13.10.4). A `value` on an E2E product, or a `ct` on a server-mode product, is `rejected` with `encryption_mismatch`. So is an undeclared setting key that is not blinded, and a record id, member, field or element that is not blinded, because it would leak a name.
 - The server checks only the envelope's shape: canonical base64url, byte 0 equal to 1, and `(length − 49) mod 64 = 0`, under the caps. It stores the `kid`. A malformed envelope is `value_invalid`.
-- Member, field and element operations carry blinded names: `setMember {member: "x:…", ct}`, `setField {field: "x:…", ct}` and `add {element: "x:…", ct}`. `removeMember`, `removeField` and `remove` take the blinded name alone.
-- `max` and `min` settings are a compare-and-swap register in E2E mode: `set` carries `baseVersion`, and the client decides the better value (§11.5, §13.10.5).
-- **The register (U-09.1).** A `max` or `min` `set` in E2E mode is decided by `baseVersion` alone, never by value. A number must equal the row's current `version` (a missing row, or any other version, is a `conflict`); `"*"` is create-only (a `conflict` while the key is live); absent falls back to the `editedHlc` order of `lastWrite`. A cleared key keeps its `version`, so a client re-pushes on the `version` a `conflict` carries. A `baseVersion` that is neither `"*"` nor a non-negative integer is `value_invalid`. `clear` is unchanged.
-- **Conflict copy.** A `conflict` on a sealed row carries `server {ct, version, editedHlc}` in place of `value`; a sealed `merge` row carries `server {members: [{member, ct, editedHlc}], version, editedHlc}`. A row below `encryptionSince` (legacy plaintext) still carries `value`.
-- **Charges.** The quota charges the stored bytes (the `ct` string, quoted, plus the key); the budgets (256 keys, 64 KiB) charge `envelopeBytes − 113` per value. An open setting is at most 8 KiB on that count (`value_invalid` beyond); a blinded name is a fixed 45 characters.
+- Member, field and element operations carry blinded names: `setMember {member: "x:…", ct}`, `setField {field: "x:…", ct}` and `add {element: "x:…", ct}`. `removeMember`, `removeField` and `remove` take the blinded name alone. A `remove` also carries `observedSeq`.
+- `max` and `min` settings and records are a compare-and-swap register in E2E mode: `set` carries `baseVersion`, and the client decides the better value (§11.5, §13.10.5). The server never reads a `conflictField` it cannot see.
+- **The register (U-09.1, records U-09).** A `max` or `min` `set` in E2E mode is decided by `baseVersion` alone, never by value. A number must equal the row's current `version` (a missing row, or any other version, is a `conflict`); `"*"` is create-only (a `conflict` while the key is live); absent falls back to the `editedHlc` order of `lastWrite`. A cleared key keeps its `version`, so a client re-pushes on the `version` a `conflict` carries. A `baseVersion` that is neither `"*"` nor a non-negative integer is `value_invalid`. `clear` is unchanged.
+- **Conflict copy.** A `conflict` on a sealed row carries `server {ct, version, editedHlc}` in place of `value`; a sealed `merge` setting carries `server {members: [{member, ct, editedHlc}], version, editedHlc}` and a sealed `merge` record `server {fields: [{field, ct, editedHlc}], version, editedHlc}`. A row below `encryptionSince` (legacy plaintext) still carries `value`.
+- **Charges.** The quota charges the stored bytes (the `ct` string, quoted, plus the key); the budgets (256 keys, 64 KiB) charge `envelopeBytes − 113` per value. An open setting is at most 8 KiB on that count (`value_invalid` beyond); a blinded name is a fixed 45 characters. A record's 64 KiB budget is charged the same way, over all its envelopes.
 
 Push and journal rules 1–8 are normative as S-17 §5.4 states them. Rule 1: the last processed `mutationId` advances past every processed mutation, and only a request-level failure leaves it (transport error, `5xx`, `400`, `401`, `403`, `409 client_mismatch`, `413`, `429`, `503 writes_paused`). Rule 4: `clientId` matches §8's pattern, one per (install, partition), stored with the next `mutationId` (an integer from 1 to 2^53−1, strictly increasing) in one atomic journal write. The HLC orders writes, with `clientId` as the final tie-break. The server clamps an `editedHlc` later than `serverNow + 300 000 ms` to `serverNow` and accepts every earlier stamp, the import floor `000000000000:0000` included.
 
@@ -2153,17 +2167,18 @@ Push and journal rules 1–8 are normative as S-17 §5.4 states them. Rule 1: th
 
 - `quota` is the requesting device's resolved quota (§13.1). `usage` is the person's totals across their devices: bytes, settings, records and files.
 - `empty: true` appears only on a cursor-0 answer for a principal with no settings, records, files or tombstones; otherwise the member is absent. With it, a client uploads its first-sign-in data without asking.
-- A change is `{setting, scope, value, version, editedHlc, updatedBy, members?}` or `{record: [collection, id], value, version, editedHlc?}`; a tombstone is `{setting}` or `{record: [collection, id]}` with its `editedHlc`. Pages hold at most 500 changes, with `more: true` while more remain.
+- A change is `{setting, scope, value, version, editedHlc, updatedBy, members?}` or `{record: [collection, id], value, version, editedHlc?}`; a tombstone is `{setting}` or `{record: [collection, id]}` with its `editedHlc`. In server mode a `merge` record's `value` is its live object and a `union` record's an array in the order of each element's first surviving add tag (U-09). Pages hold at most 500 changes, with `more: true` while more remain.
 - A cursor older than the 90-day tombstone horizon is `410 cursor_expired`.
 - A `subject` other than the client's partition key, like `403 account_required`, is a principal change, handled exactly like sign-out (§11.5).
 - **End-to-end pull.** A change carries `ct` in place of `value`, and a merge setting's members are `[{member, ct, editedHlc}]` with blinded `member`. The pull gains `encryption` (`"e2e"` or `"server"`) and `encryptionSince`, the store sequence from which every row is sealed (§11.5, §13.10.7). The server never decodes a `ct`.
   - **No separate `seq`.** A change's `version` is its row's store sequence, so an E2E client reads legacy data as `version < encryptionSince`. `SyncChange` carries no other sequence member, and a client host derives the `seq` it reports to its machine (§11.5) from `version`, in its own open result; a host that reports none reads every plaintext row as `invalid`.
   - **Merge settings.** A sealed `merge` change carries `members` and no `ct`; its `value` is absent.
+  - **Records (U-09).** A sealed `revision`, `lastWrite`, `max` or `min` record change is `{record, ct, version, editedHlc?}`. A sealed `merge` record carries `fields: [{field, ct, editedHlc}]` with blinded `field`, and `version` and `editedHlc` (the newest of its cells), and no `ct`. A sealed `union` record carries `elements: [{element, ct}]` with blinded `element`, in the order of each element's first surviving add tag, and `version`, and no `ct`. `value` is absent from all of them. A record tombstone is unchanged.
   - **`encryption`** is present only while the operator's launch gate `launch.syncE2e` is on, and `encryptionSince` only in `e2e` mode. With the gate off the Worker serves server mode and says nothing of E2E (§13.5).
 
 ### 13.5 Discovery (U-05)
 
-`services.sync` is `{"enabled":false}` when Cloud Sync is off, and otherwise `{"enabled":true,"settings":…,"collections":…,"saves":…,"endpoints":{"pull":…,"push":…,"files":…}}`. Each capability turns true, and its endpoint stops being `null`, only from the release that serves it: `settings`, `pull` and `push` with U-05, `collections` with U-09, `saves` and `files` with U-10. There is no `limits` member: the quota depends on the requesting device's licence, so the pull carries it, and the platform numbers are generated constants. Collection labels are not in discovery. An SDK uses an endpoint only when discovery names it.
+`services.sync` is `{"enabled":false}` when Cloud Sync is off, and otherwise `{"enabled":true,"settings":…,"collections":…,"saves":…,"endpoints":{"pull":…,"push":…,"files":…}}`. Each capability turns true, and its endpoint stops being `null`, only from the release that serves it: `settings`, `pull` and `push` with U-05, `collections` with U-09 (and then true only when the active catalog declares at least one collection), `saves` and `files` with U-10. There is no `limits` member: the quota depends on the requesting device's licence, so the pull carries it, and the platform numbers are generated constants. Collection labels are not in discovery. An SDK uses an endpoint only when discovery names it.
 
 **Encryption (U-09.1).** `services.sync.encryption` is `"e2e"` or `"server"`, the product's mode from its catalog (`cloudSync.encryption`, `"e2e"` when absent), and `endpoints.keyring` is `<base>/devices/keyring` for an `e2e` product. Both appear only while the operator's launch gate `launch.syncE2e` is on. With the gate off the members are absent, `ct` is `encryption_mismatch`, and an app that requires E2E stays local with `unsupported` (§11.5).
 
@@ -2201,6 +2216,8 @@ A catalog declares collections in `cloudSync.collections`: `name` (the key chars
 | --------- | --------- | ----------- | ------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `saves`   | "Saves"   | `revision`  | 16      | 32 MiB, 5 older versions | `playtime` (a number ≥ 0), `progress` (0–1), `chapter` (text, ≤ 128), `formatVersion` (an integer), `thumbnail` (base64, ≤ 43,692 characters) |
 | `session` | "Session" | `lastWrite` | 16      | 8 MiB, 1 older version   | none                                                                                                                                          |
+
+**Matching (U-09).** A record's collection name is matched against the declarations: an exact name beats a pattern, and among patterns the longest `prefix.*` prefix wins. The matched declaration governs that concrete collection alone: `maxRecords` counts the records of the concrete name, not of the pattern, and the E2E keys of §13.10.2 use the concrete name.
 
 A record, its metadata included, is at most 64 KiB; a thumbnail (about 32 KiB decoded) is a field, not a second file, so a pull of 16 slots is at most about 1 MiB. At the first sign-in a client pushes its local records as ordinary create-only mutations (`baseVersion: "*"`); there is no attach prompt.
 
@@ -2248,11 +2265,11 @@ Each code is registered in `conformance/parity/errors.json` by the package that 
 | `client_mismatch`                        | wire 409                      | U-05       | the `clientId` belongs to another device                                                   |
 | `value_invalid`, `op_invalid_for_policy` | wire result                   | U-05       |                                                                                            |
 | `setting_not_synced`                     | wire result                   | U-05       | a declared non-`config` or `local` key, or the wrong scope                                 |
-| `quota_exceeded`                         | wire result, or 403 for files | U-05       | `scope` is `user`, `collection` or `product`                                               |
+| `quota_exceeded`                         | wire result, or 403 for files | U-05       | `scope` is `user`, `collection` (`maxRecords`, a create only, U-09) or `product`           |
 | `writes_paused`                          | wire 503                      | U-05       | `cloudSync.writesPaused` is on; `Retry-After` gives the seconds to wait (300 when absent)  |
 | `attestation_required`                   | wire 403                      | U-05       | the existing Core code, now also for a Cloud Sync write                                    |
 | `collection_unknown`                     | wire result                   | U-09       |                                                                                            |
-| `entitlement_required`                   | wire result, or 403 for files | U-09, U-10 | a collection's `requires`, or files under a quota with `files: false`                      |
+| `entitlement_required`                   | wire result, or 403 for files | U-09, U-10 | a collection's `requires` (not for `delete`), or files under a quota with `files: false`   |
 | `revision_conflict`                      | wire 409                      | U-10       |                                                                                            |
 | `upload_mismatch`                        | wire 400                      | U-10       |                                                                                            |
 | `encryption_mismatch`                    | wire result, or 400 on begin  | U-09, U-10 | `ct` on a server product, `value` or an unblinded name on an E2E product, or a wrong `enc` |
@@ -2313,7 +2330,17 @@ Every symmetric key seals one plaintext, so the nonce is a constant (12 zero byt
 0x01 ‖ kid(16) ‖ salt(16) ‖ AES-256-GCM(K_msg, nonce 0¹², aad = the first 33 bytes, P)
 ```
 
-`P` is the UTF-8 canonical JSON `{"k": name, "v": value}` padded with `0x80 0x00…` to a multiple of 64 bytes. The reader checks that `k` equals the expected name or one of its `aliases` sources; otherwise the value is `invalid`. A merge member's `k` is `setting ‖ U+0000 ‖ member` (the names, not the blinded forms), so the server cannot swap members between settings that share a member name, and an open key's `k` is the key. The envelope is `33 + len(P) + 16` bytes, which is why the server's shape check is `(length − 49) mod 64 = 0`. `SYNC_E2E_OVERHEAD_BYTES` is 113 (49 of envelope and at most 64 of padding): budgets (256 keys, 64 KiB, 8 KiB, §13.1) are charged on `envelopeBytes − 113`, so they keep their meaning, while the quota charges the stored bytes.
+`P` is the UTF-8 canonical JSON `{"k": name, "v": value}` padded with `0x80 0x00…` to a multiple of 64 bytes. The reader checks that `k` equals the expected name or one of its `aliases` sources; otherwise the value is `invalid`. A merge member's `k` is `setting ‖ U+0000 ‖ member` (the names, not the blinded forms), so the server cannot swap members between settings that share a member name, and an open key's `k` is the key.
+
+**Record names (U-09).** All records of a collection share `K_coll(c)`, so `k` carries the name that places a value, and the server cannot swap sealed values between records, fields or elements:
+
+| Sealed value      | `k`                              | Wire name it must match                                   |
+| ----------------- | -------------------------------- | --------------------------------------------------------- |
+| A record's value  | `id`                             | `blind("record", c, id)`                                  |
+| A `merge` field   | `id ‖ U+0000 ‖ field`            | the record id and `blind("field", c, field)`              |
+| A `union` element | `id ‖ U+0000 ‖ canonicalJson(e)` | the record id and `blind("element", c, canonicalJson(e))` |
+
+`id`, `field` and `canonicalJson(e)` are the plaintext names, not the blinded forms; a record id is in the key charset (§8), so it holds no U+0000 and `k` splits unambiguously at the first one. A sealed element's `v` is the element `e`. The reader opens the envelope, splits `k`, recomputes the blinded forms with `blind` (§13.10.3) and compares them with the names on the wire; a difference makes the value `invalid`. A client that holds only the blinded id learns the plaintext `id` from `k`. The envelope is `33 + len(P) + 16` bytes, which is why the server's shape check is `(length − 49) mod 64 = 0`. `SYNC_E2E_OVERHEAD_BYTES` is 113 (49 of envelope and at most 64 of padding): budgets (256 keys, 64 KiB, 8 KiB, §13.1) are charged on `envelopeBytes − 113`, so they keep their meaning, while the quota charges the stored bytes.
 
 **`pkey-sync-file/1`** seals a file as a stream of segments:
 
@@ -2347,7 +2374,7 @@ The pull's `encryptionSince` is the store sequence from which every row is seale
 
 #### 13.10.8 Corpus
 
-`sync-vectors.json` (`syncVectorsVersion` 1) is a client table written by `tools/corpus/syncVectors.ts` with an independent reference implementation, and mirrored for Godot. Its sections: `hkdfCases` (every label above), `envelopeCases` (seal, open, tamper, wrong `k`, alias, padding), `blindCases`, `wrapCases`, `recoveryCodeCases`, `adoptCases`, `cdcCases`, `chunkCases` (ids, objects and a pair of codecs sealed under one id), `fileStreamCases`, `manifestCases`, `canonicalJsonCases` and `transferPlanCases` (mode, `partBytes` and part count from size and collection). The scenario machine's fake transport speaks plaintext, so `sync-vectors.json` is the only table that pins sealing. A runner reads named sections only, so the table is inert to an SDK that has not implemented `sync.e2e`.
+`sync-vectors.json` (`syncVectorsVersion` 1) is a client table written by `tools/corpus/syncVectors.ts` with an independent reference implementation, and mirrored for Godot. Its sections: `hkdfCases` (every label above), `envelopeCases` (seal, open, tamper, wrong `k`, alias, padding, and the record names of §13.10.4 with a swapped `id` and a swapped field, appended by U-09.2b; the version stays 1), `blindCases`, `wrapCases`, `recoveryCodeCases`, `adoptCases`, `cdcCases`, `chunkCases` (ids, objects and a pair of codecs sealed under one id), `fileStreamCases`, `manifestCases`, `canonicalJsonCases` and `transferPlanCases` (mode, `partBytes` and part count from size and collection). The scenario machine's fake transport speaks plaintext, so `sync-vectors.json` is the only table that pins sealing. A runner reads named sections only, so the table is inert to an SDK that has not implemented `sync.e2e`.
 
 ### 13.11 The key ring
 
