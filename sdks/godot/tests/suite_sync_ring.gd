@@ -111,7 +111,7 @@ func _dir(tag: String) -> String:
 
 ## A device: its key store, a vault (memory unless `root` is given) and a ring over `worker`.
 func _device(worker: FakeWorker, id: String, root := "") -> Dictionary:
-	var keys := PKeyDeviceKeyStore.new(PRODUCT, root if root != "" else _dir("keys"), false, false)
+	var keys := PKeyDeviceKeyStore.for_tests(PRODUCT, root if root != "" else _dir("keys"))
 	var vault := PKeySyncRingVault.for_tests(PRODUCT, root if root != "" else _dir("vault"), root == "")
 	return {"id": id, "keys": keys, "vault": vault, "ring": PKeySyncRing.new(PRODUCT, id, worker.client(id), keys, vault), "worker": worker, "root": root}
 
@@ -545,7 +545,7 @@ func _facade(t: PKeyTestContext) -> void:
 	t.check("facade: keyring is null before configure", sdk.keyring == null)
 	var store := PKeyMemoryStore.new("TRANSCRIPTDEVICE0000000000000001", "pkeyt_L7Z_jTR0YsyzhMxHLBdEwKZ4yW2Uu4m6CANM1oHQiUA")
 	var opts := PKeyTestFixtures.options("http://127.0.0.1:1", store, [1700000000], PRODUCT, {}, "1.0.0")
-	opts.device_keys = PKeyDeviceKeyStore.new(PRODUCT, _dir("facade-keys"), false, false)
+	opts.device_keys = PKeyDeviceKeyStore.for_tests(PRODUCT, _dir("facade-keys"))
 	opts.ring_vault = PKeySyncRingVault.new(PRODUCT, "user://pkey", true)
 	t.check("facade: configure is ok", sdk.configure(opts).ok)
 	var ring: PKeySyncRing = sdk.keyring

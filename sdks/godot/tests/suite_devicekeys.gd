@@ -51,6 +51,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_unreadable(t)
 	_faults(t)
 	_files(t)
+	_refused(t)
 	_races(t)
 	_reclaim(t)
 	_weak_id_and_orphans(t)
@@ -65,7 +66,8 @@ static func _dir(tag: String) -> String:
 
 
 static func _file_store(root: String, encrypted := true) -> PKeyDeviceKeyStore:
-	return PKeyDeviceKeyStore.new("djdl", root, false, encrypted)
+	# A plain-file store exists for the suites alone (`new(..., false)` is refused, see _refused).
+	return PKeyDeviceKeyStore.new("djdl", root, false, true) if encrypted else PKeyDeviceKeyStore.for_tests("djdl", root)
 
 
 static func _secret_free(t: PKeyTestContext, name: String, texts: Array, secrets: Array) -> void:
@@ -371,6 +373,30 @@ func _files(t: PKeyTestContext) -> void:
 	t.check("files: an encrypted store treats a plain record as unreadable", not _file_store(plain_root).ensure().ok)
 	PKeyTestFixtures.remove_tree(root)
 	PKeyTestFixtures.remove_tree(plain_root)
+
+
+## `encrypted = false` outside `for_tests` is refused: the private keys are never written as a plain file.
+func _refused(t: PKeyTestContext) -> void:
+	var root := _dir("refused")
+	var s := PKeyDeviceKeyStore.new("djdl", root, false, false)
+	var peer := PKeyCurve25519.x25519_public(PackedByteArray([9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]))
+	var results := {
+		"ensure": s.ensure(), "public_keys": s.public_keys(), "sign": s.sign("x".to_utf8_buffer()),
+		"dh": s.dh(peer), "rotate": s.rotate(), "wipe": s.wipe(),
+	}
+	for name in results:
+		var r: PKeyResult = results[name]
+		t.check("refused: %s answers invalid-options" % name, not r.ok and r.code == PKeyErrors.INVALID_OPTIONS, str(r))
+	t.check("refused: protection says so", s.protection() == "refused" and str(s) == "PKeyDeviceKeyStore(refused)")
+	t.check("refused: nothing is written, not even the directory or the lock", not DirAccess.dir_exists_absolute(root.path_join("djdl")))
+	# The refusal is not a way round the check on an existing plain record: it is never read either.
+	var plain := PKeyDeviceKeyStore.for_tests("djdl", root)
+	t.check("refused: for_tests keeps a plain file", plain.ensure().ok and plain.protection() == "file" and FileAccess.file_exists(root.path_join("djdl").path_join(PKeyDeviceKeyStore.RECORD_FILE)))
+	t.check("refused: a refused store does not read it back", s.public_keys().code == PKeyErrors.INVALID_OPTIONS and s.sign("x".to_utf8_buffer()).code == PKeyErrors.INVALID_OPTIONS)
+	t.check("refused: a memory store ignores the flag (nothing is written)", PKeyDeviceKeyStore.new("djdl", root, true, false).ensure().ok)
+	t.check("refused: the default store is not refused", _file_store(_dir("refused-default")).protection() in ["encrypted-file", "file"])
+	PKeyTestFixtures.remove_tree(root)
+	PKeyTestFixtures.remove_tree(_dir("refused-default"))
 
 
 func _races(t: PKeyTestContext) -> void:

@@ -112,7 +112,8 @@ func _selection(t: PKeyTestContext) -> void:
 	var mem := PKeyDeviceKeyStore.new(PRODUCT, "user://pkey", true, true, fake)
 	t.check("selection: a memory store never uses a sealer", mem.sealer == null and mem.protection() == "memory")
 	var plain := PKeyDeviceKeyStore.new(PRODUCT, _dir("sel4"), false, false, fake)
-	t.check("selection: a plain-file store never uses a sealer", plain.sealer == null and plain.protection() == "file")
+	t.check("selection: a plain-file store never uses a sealer, and is refused", plain.sealer == null and plain.protection() == "refused" and plain.ensure().code == PKeyErrors.INVALID_OPTIONS)
+	t.check("selection: a test-only plain-file store has no sealer", PKeyDeviceKeyStore.for_tests(PRODUCT, _dir("sel4t")).sealer == null)
 	var outside := PKeyDeviceKeyStore.new(PRODUCT, "/tmp/x", false, true, fake)
 	t.check("selection: a root outside user:// gets no sealer (and still refuses to write)", outside.sealer == null and not outside.ensure().ok)
 	# No native lane in this run: the platform's choice is the fallback, unchanged.

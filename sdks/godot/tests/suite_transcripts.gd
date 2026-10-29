@@ -127,7 +127,7 @@ static func replay(tr: Dictionary) -> Array:
 		opts.store_root = PKeyTestFixtures.scratch_dir("transcript-journal")
 	if tr["steps"].any(func(st): return String(st["action"]).begins_with("keyring")):
 		# The key ring's own device keys and vault: scratch files and memory, nothing in the keychain.
-		opts.device_keys = PKeyDeviceKeyStore.new(tr["product"], PKeyTestFixtures.scratch_dir("transcript-ring-keys"), false, false)
+		opts.device_keys = PKeyDeviceKeyStore.for_tests(tr["product"], PKeyTestFixtures.scratch_dir("transcript-ring-keys"))
 		opts.ring_vault = PKeySyncRingVault.new(tr["product"], "user://pkey", true)
 	var sdk := PKeyTestFixtures.new_sdk()
 	if tr["id"] == "cloudsync-e2e-settings":
@@ -874,7 +874,7 @@ const SYNC_HLC := "018bcfe56418:0000"
 
 ## The host codec over a ring made for this replay (a root of its own).
 static func _fixture_codec(tr: Dictionary) -> PKeySyncHostCodec:
-	var keys := PKeyDeviceKeyStore.new(tr["product"], PKeyTestFixtures.scratch_dir("transcript-sync-keys"), false, false)
+	var keys := PKeyDeviceKeyStore.for_tests(tr["product"], PKeyTestFixtures.scratch_dir("transcript-sync-keys"))
 	var vault := PKeySyncRingVault.new(tr["product"], "user://pkey", true)
 	var ring := PKeySyncRing.new(tr["product"], "dev_replay", func(_m: String, _p: String, _b: Variant) -> PKeyResult: return PKeyResult.success({"status": 201, "body": PackedByteArray()}), keys, vault)
 	await ring.create(false)
@@ -1075,7 +1075,7 @@ static func _keyring(sdk: Node, step: Dictionary, out: Dictionary) -> void:
 				out["ringId"] = step["expect"].get("ringId", r.detail["ring_id"]) if well else r.detail["ring_id"]
 				out["epoch"] = r.detail["epoch"]
 		"keyringWrap":
-			var fresh := PKeyDeviceKeyStore.new("djdl", PKeyTestFixtures.scratch_dir("transcript-ring-peer"), false, false).ensure()
+			var fresh := PKeyDeviceKeyStore.for_tests("djdl", PKeyTestFixtures.scratch_dir("transcript-ring-peer")).ensure()
 			r = await k.wrap_to(String(args.get("deviceId", "")), fresh.detail["agree_key"])
 		"keyringUnwrap":
 			r = await k.remove_wrap(String(args.get("deviceId", "")))

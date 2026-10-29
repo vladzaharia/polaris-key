@@ -330,7 +330,7 @@ func _hc4_pull(t: PKeyTestContext) -> void:
 
 func _hc_misc(t: PKeyTestContext) -> void:
 	# The port surface over a real ring: locked until a root, then it seals and opens.
-	var ring := PKeySyncRing.new(PRODUCT, "dev_a", func(_m: String, _p: String, _b: Variant) -> PKeyResult: return PKeyResult.success({"status": 201, "body": PackedByteArray()}), PKeyDeviceKeyStore.new(PRODUCT, PKeyTestFixtures.scratch_dir("host-codec-keys"), false, false), PKeySyncRingVault.new(PRODUCT, "user://pkey", true))
+	var ring := PKeySyncRing.new(PRODUCT, "dev_a", func(_m: String, _p: String, _b: Variant) -> PKeyResult: return PKeyResult.success({"status": 201, "body": PackedByteArray()}), PKeyDeviceKeyStore.for_tests(PRODUCT, PKeyTestFixtures.scratch_dir("host-codec-keys")), PKeySyncRingVault.new(PRODUCT, "user://pkey", true))
 	var port := Codec.new(ring)
 	var seen: Array = []
 	var detach := port.attach(func(present: bool) -> void: seen.append(present))
@@ -342,7 +342,7 @@ func _hc_misc(t: PKeyTestContext) -> void:
 # ── openPull into the machine, through the host ───────────────────────────────────────────────
 
 func _into_the_machine(t: PKeyTestContext) -> void:
-	var ring := PKeySyncRing.new(PRODUCT, "dev_a", func(_m: String, _p: String, _b: Variant) -> PKeyResult: return PKeyResult.success({"status": 201, "body": PackedByteArray()}), PKeyDeviceKeyStore.new(PRODUCT, PKeyTestFixtures.scratch_dir("host-codec-keys2"), false, false), PKeySyncRingVault.new(PRODUCT, "user://pkey", true))
+	var ring := PKeySyncRing.new(PRODUCT, "dev_a", func(_m: String, _p: String, _b: Variant) -> PKeyResult: return PKeyResult.success({"status": 201, "body": PackedByteArray()}), PKeyDeviceKeyStore.for_tests(PRODUCT, PKeyTestFixtures.scratch_dir("host-codec-keys2")), PKeySyncRingVault.new(PRODUCT, "user://pkey", true))
 	var made := await ring.create(false)
 	if not t.check("machine: the ring is created", made.ok, str(made)):
 		return

@@ -929,7 +929,11 @@ store's `dh`. The root, the code and every key print as redacted.
   engine's AES block cipher and a constant-time GHASH: about 7 ms for 8 KiB in the editor, at most
   64 KiB per call (a setting is at most 8 KiB). Files stay native-only.
 - **Device keys.** The ring opens its wrap with the product's own device key store under
-  `store_root`, or the one you give as `PKeyOptions.device_keys`.
+  `store_root`, or the one you give as `PKeyOptions.device_keys`. The store follows the same rule as
+  the vault: sealed where a native lane exists, an `encrypted-file` (obfuscation, not protection)
+  where not, and `PKeyDeviceKeyStore.new(..., false)` is refused (`invalid-options`, `protection()`
+  is `refused`); the private keys are never written as a plain file. `PKeyDeviceKeyStore.for_tests`
+  keeps a plain file for test suites.
 
 ## Cloud Sync settings (`PolarisKey.cloud_sync`)
 

@@ -92,6 +92,8 @@ const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 ## The device key store the key ring opens its own wrap with (a `PKeyDeviceKeyStore`, or any object with
 ## `ensure()` and `dh()`). Null: the product's own store under `store_root`, the one the app registers keys
 ## from. Not an export: a game passes a store it already made, and tests pass a scratch one.
+## The default store is sealed by the platform where a native lane exists, else engine-encrypted
+## (obfuscation, not protection); one made with `encrypted = false` is refused (`invalid-options`).
 var device_keys: Object = null
 ## Where the key ring keeps its pin and root (`PKeySyncRingVault`). Null: the product's vault under `store_root`.
 ## The root rests sealed by the platform key (Keychain, Keystore, DPAPI: protection) or, with no native
