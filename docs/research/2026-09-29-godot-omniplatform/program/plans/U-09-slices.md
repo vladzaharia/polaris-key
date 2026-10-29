@@ -91,13 +91,17 @@ ALTER TABLE settings | tombstones | setting_members ADD COLUMN kid TEXT
   - `merge`: per-field LWW cells with a floor.
   - `union`: `add` adds tag `seq`; `remove` drops the tags at or below `observedSeq` (no
     `observedSeq` is `value_invalid`).
-  - `delete`: a record tombstone with an HLC.
+  - `delete`: a record tombstone with an HLC. A `delete` of a record the store holds no row for
+    answers `ok` and writes nothing (no tombstone). Record tombstones and removed field cells are
+    each kept to 2 × `maxRecords` per concrete collection and 20,000 per person (the oldest by clock
+    are forgotten), as V5 §13.3 states.
 - **Policy change.** The server reads the policy at push time and converts at write: an object
   becomes field cells and back, and an array becomes elements and back. Nothing is converted on a
   read.
 - **Budgets and quota:**
-  - A record is at most 64 KiB: canonical JSON in server mode; in E2E, the sum of
-    `envelopeBytes − 113` over its value, fields or elements. Over is `value_invalid`.
+  - A record is at most 64 KiB: canonical JSON in server mode; in E2E, each entry is charged
+    `max(envelopeBytes − 113, 0)`, plus 45 for a field's or an element's blinded name. Over is
+    `value_invalid`.
   - An element is at most 1 KiB.
   - The quota charges stored bytes.
   - `StoreUsage` gains `records` and `recordBytes`. Both are inside `bytes`.
@@ -244,3 +248,15 @@ slice is Sonnet 5.5, has a 60-minute time box, and branches `wp/U-09.N-<slug>` f
 3. Number the migration at merge (`00XX_sync_directory_record_bytes.sql` and its `.down.sql`).
 4. Lane holds: the corpus lane for .11 and .2b, the transcripts lane for .10.
 5. Dispatch R (Sonnet security) after .10. One fix round only.
+
+## 9. Deferred to U-09.R (from the U-09.2 security review)
+
+- **N1, threat model.** Add records to T24/T26: the Worker can replay an old sealed field, element
+  or value, roll back a save, resurrect a deleted record or a removed element (a withheld `remove`
+  is undetectable), compose a record from old cells of different times (a forged conflict copy),
+  and forge `version`/`editedHlc` (not in the AAD); an element cell can be replayed as a field of
+  the same name part within one record (§13.10.4); a `delete` under a lapsed `requires` is
+  unconditional. None gives plaintext or cross-record content. Say so plainly.
+- **N3, policy change in E2E.** V5 §13.6 and §13.3 say the server converts a stored object to field
+  cells on a policy change. In E2E nothing can be converted (the cells are sealed): state that a
+  change converts nothing and that an op for a different stored shape is `op_invalid_for_policy`.

@@ -29536,9 +29536,10 @@ components:
           type: integer
           minimum: 0
           description: >
-            `remove` on a `union` record (U-09): the pull cursor the client held when it saw the
-            element. The server drops the element's add tags at or below it, so a concurrent `add`
-            survives. A `remove` without it is `value_invalid`.
+            `remove` on a `union` record (U-09): the highest sequence the client has seen for the
+            element (a pull `version`, or its own acknowledged `add`). The server drops the element's add tags at or below it, so a concurrent `add`
+            survives. A `remove` without it, or with one above the store sequence, is
+            `value_invalid`.
         ct:
           type: string
           description: >

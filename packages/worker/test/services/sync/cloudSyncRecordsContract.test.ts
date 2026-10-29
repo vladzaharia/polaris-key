@@ -137,6 +137,77 @@ describe("records in the OpenAPI schemas", () => {
       );
   });
 
+  it("refuses a mutation or change the schema can see is malformed", () => {
+    // The test validator checks types, enums, patterns, required members and oneOf; it does not
+    // check `minimum` or `minItems`, so those bounds are not asserted here.
+    const badMutations = [
+      // An operation outside the vocabulary.
+      { mutationId: 1, target: { record: ["tags", ID] }, op: "append" },
+      // observedSeq is an integer.
+      {
+        mutationId: 2,
+        target: { record: ["tags", ID] },
+        op: "remove",
+        element: NAME,
+        observedSeq: "12",
+      },
+      // baseVersion is a non-negative integer or "*".
+      {
+        mutationId: 3,
+        target: { record: ["saves", ID] },
+        op: "delete",
+        baseVersion: "latest",
+      },
+    ];
+    for (const m of badMutations)
+      expect(validateAgainst("SyncMutation", m), JSON.stringify(m)).not.toEqual(
+        [],
+      );
+    const badChanges = [
+      // A sealed field without its clock.
+      {
+        record: ["profile", ID],
+        fields: [{ field: NAME, ct: CT }],
+        version: 3,
+        editedHlc: HLC,
+      },
+      // A sealed merge record without the newest clock.
+      {
+        record: ["profile", ID],
+        fields: [{ field: NAME, ct: CT, editedHlc: HLC }],
+        version: 3,
+      },
+      // A member outside the shape.
+      {
+        record: ["tags", ID],
+        elements: [{ element: NAME, ct: CT, editedHlc: HLC }],
+        version: 4,
+      },
+    ];
+    for (const c of badChanges)
+      expect(validateAgainst("SyncChange", c), JSON.stringify(c)).not.toEqual(
+        [],
+      );
+  });
+
+  it("does not make the schema the blinding gate", () => {
+    // The server, not the schema, answers `encryption_mismatch` for a sealed entry whose name is
+    // not blinded (§13.3 check 3): both of these are schema-valid and must stay so.
+    const plainName = {
+      record: ["profile", ID],
+      fields: [{ field: "name", ct: CT, editedHlc: HLC }],
+      version: 3,
+      editedHlc: HLC,
+    };
+    expect(validateAgainst("SyncChange", plainName)).toEqual([]);
+    const plainElement = {
+      record: ["tags", ID],
+      elements: [{ element: "red", ct: CT }],
+      version: 4,
+    };
+    expect(validateAgainst("SyncChange", plainElement)).toEqual([]);
+  });
+
   it("carries a sealed merge record's conflict copy as fields", () => {
     const result: MutationResult = {
       mutationId: 3,

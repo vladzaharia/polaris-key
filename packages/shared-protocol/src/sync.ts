@@ -201,7 +201,7 @@ export interface SyncMutation {
   element?: SyncJson;
   /** §13.3, §13.10: the sealed value, a `pkey-sync-value/1` envelope in canonical base64url. Replaces `value` in E2E mode. */
   ct?: string;
-  /** `remove` on a `union` record: the pull cursor the client held when it saw the element; a `remove` without it is `value_invalid` (§13.3). */
+  /** `remove` on a `union` record: the highest sequence the client has seen for the element (a pull `version`, or its own acknowledged `add`); without it, or above the store sequence, `value_invalid` (§13.3). */
   observedSeq?: number;
   /** A number is compare-and-swap, `"*"` create-only, absent unconditional. */
   baseVersion?: number | "*";
