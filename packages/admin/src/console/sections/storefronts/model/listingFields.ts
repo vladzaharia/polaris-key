@@ -18,6 +18,16 @@ const LABELS: Readonly<Record<string, string>> = {
   category: "Category",
   contactEmail: "Contact email",
   copyright: "Copyright",
+  fullDescription: "Full description",
+  whatsNew: "What's new",
+  supportUrl: "Support URL",
+  marketingUrl: "Marketing URL",
+  privacyUrl: "Privacy URL",
+  privacyPolicyUrl: "Privacy policy URL",
+  eulaUrl: "EULA URL",
+  website: "Website",
+  contactWebsite: "Contact website",
+  homepage: "Homepage",
 };
 
 export function fieldLabel(id: string): string {

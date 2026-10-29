@@ -501,7 +501,14 @@ const ROUTES: Record<string, unknown> = {
         modifiedBy: "ada@example.com",
       },
     ],
-    overrides: [],
+    overrides: [
+      {
+        store: "play",
+        locale: null,
+        field: "shortDescription",
+        value: "Mix on Android",
+      },
+    ],
     limits: { name: 30, subtitle: 30, shortDescription: 80 },
     stores: [
       { store: "google-play", label: "Google Play" },
@@ -513,7 +520,61 @@ const ROUTES: Record<string, unknown> = {
   [`${P}/distribution/listing/fit`]: {
     exists: true,
     release: null,
-    stores: [],
+    // A-22.5: Google Play takes a title, two texts and a category it is told in the store.
+    stores: [
+      {
+        store: "play",
+        label: "Google Play",
+        status: "amber",
+        issues: [
+          {
+            store: "play",
+            field: "shortDescription",
+            from: "shortDescription",
+            locale: null,
+            issue: "too_long",
+            severity: "warn",
+            limit: 10,
+            actual: 13,
+            unit: "chars",
+          },
+        ],
+        cells: [
+          {
+            field: "title",
+            from: "name",
+            locale: null,
+            plane: "api",
+            status: "green",
+            present: true,
+          },
+          {
+            field: "shortDescription",
+            from: "shortDescription",
+            locale: null,
+            plane: "api",
+            status: "amber",
+            present: true,
+          },
+          {
+            field: "fullDescription",
+            from: "description",
+            locale: null,
+            plane: "copy",
+            status: "green",
+            present: true,
+          },
+          {
+            field: "category",
+            from: "category",
+            locale: null,
+            plane: "manual",
+            status: "green",
+            present: false,
+          },
+        ],
+      },
+    ],
     issues: [],
   },
   // The platform's alert destinations and reserved-name rules (Settings → Platform).

@@ -168,6 +168,7 @@ describe("Distribution → a channel: the tablist", () => {
     expect(tabs.map((t) => t.textContent)).toEqual([
       "Status",
       "Releases",
+      "Listing",
       "Setup",
     ]);
     expect(tabs[0]!.getAttribute("aria-selected")).toBe("true");
