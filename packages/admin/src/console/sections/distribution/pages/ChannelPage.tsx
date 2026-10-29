@@ -7,6 +7,7 @@
 
 import * as React from "react";
 import { CHANNEL_IDS, channelLabel } from "@polaris-key/manifest";
+import type { ChannelRow } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
@@ -40,10 +41,15 @@ export function ChannelPage({
   const channels = useChannels(slug, known);
   const row = channels.data?.channels.find((c) => c.id === id);
   // An out-of-scope channel can hold nothing: Status only.
-  // Until the row arrives only the always-on tabs show, plus the one in the address (a deep link
+  // Until the row arrives only the tabs the id alone decides show, plus the one in the address (a deep link
   // keeps its tab); then each tab's `applies` decides.
   const tabs = !row
-    ? CHANNEL_TABS.filter((t) => !t.applies || t.value === tab)
+    ? CHANNEL_TABS.filter(
+        (t) =>
+          !t.applies ||
+          t.value === tab ||
+          (t.byId && id !== undefined && t.applies({ id } as ChannelRow)),
+      )
     : row.inScope
       ? CHANNEL_TABS.filter((t) => t.applies?.(row) ?? true)
       : CHANNEL_TABS.slice(0, 1);

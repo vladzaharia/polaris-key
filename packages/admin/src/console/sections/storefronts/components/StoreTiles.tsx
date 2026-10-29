@@ -10,6 +10,7 @@ import { useWriteGate } from "../../../access/useCan.js";
 import { CHANNEL_IDS } from "@polaris-key/manifest";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
+import { ChannelNameLink } from "./ChannelNameLink.js";
 import { ConnectionIssue, progress } from "./FlowPanels.js";
 
 /** The Storefronts page's tiles (A-18j): one per registered store, rendered from its declaration. */
@@ -157,11 +158,8 @@ function StoreName({
 }): React.ReactElement {
   if (!CHANNEL_IDS.some((c) => c === store.id)) return <>{store.label}</>;
   return (
-    <Link
-      to={r.channel(slug, store.id, "sales")}
-      className="inline-flex min-h-6 items-center hover:underline"
-    >
+    <ChannelNameLink slug={slug} id={store.id}>
       {store.label}
-    </Link>
+    </ChannelNameLink>
   );
 }

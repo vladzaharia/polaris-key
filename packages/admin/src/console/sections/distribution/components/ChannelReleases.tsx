@@ -12,6 +12,7 @@ import { channelForOutlet } from "@polaris-key/manifest";
 import type { Rollout } from "../../../../api.js";
 import type { OutletDto } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
+import { subkindOf } from "../model/subkind.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { Link } from "../../../router.js";
@@ -21,17 +22,6 @@ import { cellKey } from "../pages/MatrixPage.js";
 import { AscDistribute } from "./AscDistribute.js";
 import { RolloutList } from "./RolloutList.js";
 import type { ChannelTabProps } from "./channelTabs.js";
-
-/** The package-manager subkind of a `direct` outlet, as the Worker reads it. */
-function subkindOf(o: OutletDto): string | null {
-  if (o.kind !== "direct") return null;
-  const id = o.identity;
-  if (typeof id.subkind === "string") return id.subkind;
-  return typeof id.homebrewCask === "string" ||
-    typeof id.homebrewFormula === "string"
-    ? "homebrew"
-    : null;
-}
 
 /** The ids of the live outlets that serve this channel. */
 export function outletIdsOf(

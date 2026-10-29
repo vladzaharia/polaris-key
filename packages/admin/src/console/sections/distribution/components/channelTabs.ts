@@ -28,6 +28,8 @@ export interface ChannelTab {
   Panel: React.ComponentType<ChannelTabProps>;
   /** The tab shows only for a channel it applies to; omitted, it shows for every channel. */
   applies?: (channel: ChannelRow) => boolean;
+  /** `applies` reads only the channel's id, so it can be asked before the row loads. */
+  byId?: boolean;
 }
 
 export const CHANNEL_TABS: readonly ChannelTab[] = [
@@ -37,6 +39,7 @@ export const CHANNEL_TABS: readonly ChannelTab[] = [
     value: "listing",
     label: "Listing",
     applies: hasListing,
+    byId: true,
     Panel: ChannelListing,
   },
   { value: "sales", label: "Sales", applies: hasSales, Panel: ChannelSales },
@@ -45,5 +48,6 @@ export const CHANNEL_TABS: readonly ChannelTab[] = [
     label: "Setup",
     Panel: ChannelSetup,
     applies: (c) => hasCredentials(c.id),
+    byId: true,
   },
 ];

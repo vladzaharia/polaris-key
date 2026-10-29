@@ -1,27 +1,31 @@
 /**
- * An outlet drawer's subtitle: its kind, and (A-22.7) a link to
- * the channel page that outlet serves, when it serves one.
+ * An outlet drawer's subtitle: its kind, the release track when given, and a link to the channel
+ * page that outlet serves, when it serves one (A-22.7).
  */
 
 import * as React from "react";
-import { channelForOutlet } from "@polaris-key/manifest";
 import type { RowActionItem } from "../../../../ui/data-table/types.js";
 import { Link, navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { patchQuery } from "../data.js";
 import { outletKindLabel } from "../model/format.js";
+import { channelOfOutlet, type OutletLike } from "../model/subkind.js";
 
 export function OutletKindLine({
   slug,
   outlet,
+  track,
 }: {
   slug: string;
-  outlet: { kind: string };
+  outlet: OutletLike;
+  /** The release track, shown before the channel link so it never reads as the channel's. */
+  track?: string;
 }): React.ReactElement {
-  const channel = channelForOutlet(outlet.kind);
+  const channel = channelOfOutlet(outlet);
   return (
     <>
       {outletKindLabel(outlet.kind)}
+      {track ? ` · ${track}` : null}
       {channel ? (
         <>
           {" · "}
@@ -40,12 +44,12 @@ export function OutletKindLine({
 /** An Outlets row's menu: open the drawer, and the channel page when the outlet serves one. */
 export function outletRowActions(
   slug: string,
-  outlet: { outletId: string; kind: string },
+  outlet: { outletId: string; kind: string; identity: Record<string, unknown> },
 ): RowActionItem[] {
-  const channel = channelForOutlet(outlet.kind);
+  const channel = channelOfOutlet(outlet);
   return [
     {
-      label: "Open",
+      label: "Open details",
       onSelect: () => patchQuery({ outlet: outlet.outletId }, { push: true }),
     },
     ...(channel

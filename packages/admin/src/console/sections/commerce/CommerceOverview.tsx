@@ -29,6 +29,7 @@ import {
 } from "../../nav.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
+import { ChannelNameLink } from "../storefronts/components/ChannelNameLink.js";
 import { SettingsSection } from "../../templates/Settings.js";
 import {
   IdentityAttention,
@@ -204,12 +205,9 @@ export function CommerceOverviewPage({
                             data-store-row={s.id}
                             className="font-medium"
                           >
-                            <Link
-                              to={r.channel(slug, s.channel, "sales")}
-                              className="py-1 hover:underline"
-                            >
+                            <ChannelNameLink slug={slug} id={s.channel} sales>
                               {s.label}
-                            </Link>
+                            </ChannelNameLink>
                           </span>
                           <StatusPill
                             domain="storefront"
@@ -265,12 +263,9 @@ export function CommerceOverviewPage({
                               data-store-row={s.id}
                               className="py-2 text-start pe-4 font-medium"
                             >
-                              <Link
-                                to={r.channel(slug, s.channel, "sales")}
-                                className="py-1 hover:underline"
-                              >
+                              <ChannelNameLink slug={slug} id={s.channel} sales>
                                 {s.label}
-                              </Link>
+                              </ChannelNameLink>
                             </th>
                             <td className="py-2 pe-4">
                               <StoreIdentityCell
