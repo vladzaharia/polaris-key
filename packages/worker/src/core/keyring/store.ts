@@ -222,6 +222,37 @@ export async function getWrap(
   return r ? toWrap(r) : null;
 }
 
+/** A device that holds a wrap of the current ring root: its label (or none) and when it got it. */
+export interface RingDevice {
+  label: string | null;
+  createdAt: number;
+}
+
+/**
+ * The devices that hold a wrap of the subject's current ring root, oldest first, with each
+ * device's label (Core owns `devices`, so the join is here). Nothing of the wrap itself, and no
+ * device id, leaves: the console shows which devices can open the data, not how.
+ */
+export async function listWraps(
+  db: Db,
+  product: string,
+  subject: string,
+): Promise<RingDevice[]> {
+  const rows = await db.all<{ label: string | null; created_at: number }>(
+    `SELECT d.label AS label, w.created_at AS created_at
+       FROM keyring_wraps w
+       LEFT JOIN devices d ON d.product = w.product AND d.device_id = w.device_id
+      WHERE w.product = ? AND w.subject = ?
+        AND (w.ring_id, w.epoch) = (SELECT ring_id, epoch FROM keyrings WHERE product = ? AND subject = ?)
+      ORDER BY w.created_at, w.device_id`,
+    product,
+    subject,
+    product,
+    subject,
+  );
+  return rows.map((r) => ({ label: r.label, createdAt: r.created_at }));
+}
+
 /** The sealed recovery blob of the current ring, with the ring's epoch and kid, or null. */
 export async function getRecovery(
   db: Db,

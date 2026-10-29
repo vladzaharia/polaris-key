@@ -6,6 +6,8 @@ import { absorbSettings } from "../engine/absorb.js";
 import { applyPull, collectTombstones } from "../engine/pull.js";
 import { applyPush } from "../engine/push.js";
 import { validatePush } from "../engine/validate.js";
+import { parseHlc } from "../engine/hlc.js";
+import { rowCost } from "../engine/usage.js";
 import type {
   CatalogMigrations,
   PushLimits,
@@ -286,6 +288,8 @@ export class CloudSyncDO implements DurableObject {
           empty: this.store.isEmpty(),
         });
       }
+      case "inspect":
+        return this.inspect();
       case "exportAll":
         return reply({
           op: "exportAll",
@@ -539,6 +543,42 @@ export class CloudSyncDO implements DurableObject {
       ...(op.encryption === "e2e" ? { e2e: true } : {}),
     });
     return reply({ op: "pull", outcome, meter: this.store.takeMeter() });
+  }
+
+  /**
+   * The console's read-only summary (U-11a.1): every live setting by name, size and age, the
+   * collections' counters and the open uploads. A value never leaves through it. Like the other
+   * reads it creates nothing; an absorbed or erased object answers empty.
+   */
+  private inspect(): Response {
+    const gone =
+      this.store.getMeta("absorbed_into") !== undefined ||
+      this.store.getMeta("erased_at") !== undefined;
+    this.migrateIfBehind();
+    const tables = gone
+      ? { collections: [], uploadsOpen: 0 }
+      : this.store.inspectTables();
+    return reply({
+      op: "inspect",
+      seq: this.store.currentSeq(),
+      empty: this.store.isEmpty(),
+      usage: this.store.getUsage(),
+      encryptionSince: gone ? null : (this.store.getEncryptionSince() ?? null),
+      settings: gone
+        ? []
+        : this.store
+            .settingsAfter(0)
+            .filter((r) => !r.deleted)
+            .map((r) => ({
+              key: r.key,
+              scope: r.scope,
+              ...(r.family !== undefined ? { family: r.family } : {}),
+              bytes: rowCost(r).bytes,
+              updatedAt: parseHlc(r.stamp.hlc)?.ms ?? 0,
+            })),
+      collections: tables.collections,
+      uploadsOpen: tables.uploadsOpen,
+    });
   }
 
   private exportAll(op: {
