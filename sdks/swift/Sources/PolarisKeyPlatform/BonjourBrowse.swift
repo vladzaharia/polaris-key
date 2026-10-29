@@ -35,14 +35,19 @@ public struct BonjourEndpoint: Sendable, Hashable {
     #if canImport(Network)
         /// The endpoint to hand to `NWConnection`. Nil only in tests.
         public let network: NWEndpoint?
+        /// The interfaces the browse reported the hit on. A service hit is resolved on these, and an
+        /// address is dialled only when it came back on one of them (§15.4).
+        public let interfaces: [NWInterface]
 
         public init(
-            name: String, type: String = bonjourPeerServiceType, domain: String = "local.", network: NWEndpoint? = nil
+            name: String, type: String = bonjourPeerServiceType, domain: String = "local.", network: NWEndpoint? = nil,
+            interfaces: [NWInterface] = []
         ) {
             self.name = name
             self.type = type
             self.domain = domain
             self.network = network
+            self.interfaces = interfaces
         }
     #else
         public init(name: String, type: String = bonjourPeerServiceType, domain: String = "local.") {
@@ -422,7 +427,8 @@ public final class BonjourBrowse: Sendable {
             }
             return BonjourFound(
                 instance: name, txt: txt,
-                endpoint: BonjourEndpoint(name: name, type: type, domain: domain, network: r.endpoint))
+                endpoint: BonjourEndpoint(
+                    name: name, type: type, domain: domain, network: r.endpoint, interfaces: r.interfaces))
         }
     }
 #endif

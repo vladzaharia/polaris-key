@@ -9,6 +9,7 @@
 //   - A zone is `%` and 1 to 15 characters of U+0021 to U+007E other than `%`. Any other zone, a
 //     second `%`, a zone on IPv4 and a zone on an IPv4-mapped address are malformed. The verdict
 //     ignores a zone; the key of a link-local address keeps it.
+//   - Group keys: `fe80::/10%zone` for link-local, `a.b.c.0/24` for IPv4, `<address>/64` for ULA and global.
 //   - An IPv4-mapped address (::ffff:0:0/96) is judged as its IPv4 address.
 //   - IPv4: 10/8, 172.16/12, 192.168/16; 127/8 only with `allowLoopback`.
 //   - IPv6: fe80::/10; fc00::/7 (when `local` is known it must be IPv6 in the same /64); ::1 only
@@ -65,14 +66,18 @@ public func lanVerdict(_ remote: String, local: String?, allowLoopback: Bool) ->
     }
 }
 
-/// The per-/64 count key (§15.4.1) for a verdict `key`: the /64 of an IPv6 address
-/// (`2001:db8:1:2::/64`; a link-local /64 keeps the zone, `fe80::/64%en0`); nil for IPv4 and for no key.
+/// The per-group count key (§15.4.1) for a verdict `key`. A link-local key groups by its link
+/// (`fe80::/10%en0`; `fe80::/10` when the key has no zone), because `fe80::/10` holds 2^54 /64s; an
+/// IPv4 key by its /24 (`192.168.1.0/24`); any other IPv6 key (ULA, global) by its /64
+/// (`2001:db8:1:2::/64`). Nil for no key.
 public func lanGroupKey(_ key: String?) -> String? {
-    guard let key, key.utf8.contains(UInt8(ascii: ":")), let p = LanAddr.parse(key), case .v6(let g) = p.addr else {
-        return nil
+    guard let key, let p = LanAddr.parse(key) else { return nil }
+    switch p.addr {
+    case .v4(let o): return "\(o[0]).\(o[1]).\(o[2]).0/24"
+    case .v6(let g):
+        if (g[0] & 0xFFC0) == 0xFE80 { return "fe80::/10" + (p.zone.map { "%" + $0 } ?? "") }
+        return LanAddr.text6(Array(g[0..<4]) + [0, 0, 0, 0]) + "/64"
     }
-    let head = LanAddr.text6(Array(g[0..<4]) + [0, 0, 0, 0]) + "/64"
-    return p.zone.map { head + "%" + $0 } ?? head
 }
 
 /// The text of a socket's address as the platform reports it in bytes: 4 (IPv4) or 16 (IPv6), network
