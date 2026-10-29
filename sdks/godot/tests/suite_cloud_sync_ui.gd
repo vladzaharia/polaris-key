@@ -148,7 +148,10 @@ func _controller_pure(t: PKeyTestContext) -> void:
 	t.check("unlock_step: any other failure is a failure", PKeyCloudSyncController.unlock_step(_fail("network-error")) == "failed")
 	var groups := PKeyCloudSyncController.groups_of(CODE)
 	t.check("groups_of: 8 groups of 4", groups.size() == 8 and groups[0] == "AB3D" and groups[7] == "1C2E", str(groups))
-	t.check("groups_of: spaces, hyphens and one long run all regroup the same", PKeyCloudSyncController.groups_of("ab3d 9fgh-JK4M NP5QRS6TVW7XYZ801C2E") == PackedStringArray(["ab3d", "9fgh", "JK4M", "NP5Q", "RS6T", "VW7X", "YZ80", "1C2E"]))
+	t.check(
+		"groups_of: spaces, hyphens and one long run all regroup the same",
+		PKeyCloudSyncController.groups_of("ab3d 9fgh-JK4M NP5QRS6TVW7XYZ801C2E") == PackedStringArray(["ab3d", "9fgh", "JK4M", "NP5Q", "RS6T", "VW7X", "YZ80", "1C2E"]),
+	)
 	t.check("hyphenated: the form that is copied", PKeyCloudSyncController.hyphenated("AB3D9FGHJK4MNP5QRS6TVW7XYZ801C2E") == CODE)
 	t.check("groups_of: an empty code has no groups", PKeyCloudSyncController.groups_of("").is_empty())
 
@@ -170,7 +173,11 @@ func _controller_calls(t: PKeyTestContext) -> void:
 	ring.queue("unlock", PKeyResult.success({"kind": "locked", "reason": "no-ring"}))
 	ring.queue("create", PKeyResult.success({"recovery_code": CODE}))
 	var made := await PKeyCloudSyncController.begin(sdk)
-	t.check("controller: locked with no ring is the create path and shows the new code", made["screen"] == "recovery_code" and made["code"] == CODE and ring.calls[ring.calls.size() - 1][0] == "create", str(made.keys()))
+	t.check(
+		"controller: locked with no ring is the create path and shows the new code",
+		made["screen"] == "recovery_code" and made["code"] == CODE and ring.calls[ring.calls.size() - 1][0] == "create",
+		str(made.keys()),
+	)
 	ring.queue("unlock", PKeyResult.success({"kind": "locked", "reason": "no-wrap"}))
 	t.check("controller: locked with a ring but no wrap asks for the recovery code", (await PKeyCloudSyncController.begin(sdk))["screen"] == "unlock_sync")
 	ring.queue("unlock", PKeyResult.success({"kind": "ring-changed", "served": RING, "by": "Maya"}))
@@ -223,7 +230,10 @@ func _unlock(t: PKeyTestContext) -> void:
 	await _frames()
 	t.check("unlock: Start over opens the warning", v.step == "start-over")
 	var sb := _buttons(v)
-	t.check("unlock: the warning lists Start over first and Cancel last", sb.has("ConfirmStartOver") and sb.has("Cancel") and not sb.has("Primary") and v._actions.get_child(0) == sb["ConfirmStartOver"] and _last_visible(v._actions) == sb["Cancel"])
+	t.check(
+		"unlock: the warning lists Start over first and Cancel last",
+		sb.has("ConfirmStartOver") and sb.has("Cancel") and not sb.has("Primary") and v._actions.get_child(0) == sb["ConfirmStartOver"] and _last_visible(v._actions) == sb["Cancel"],
+	)
 	t.check("unlock: the first focus is Cancel, never the destructive control", v._initial_focus() == sb["Cancel"])
 	# A double tap inside the arming window does nothing.
 	ring.queue("reset", PKeyResult.success({"recovery_code": CODE}))
@@ -276,7 +286,11 @@ func _unlock(t: PKeyTestContext) -> void:
 	var rb0 := ring.calls.size()
 	(_buttons(sof)["ConfirmStartOver"] as Button).pressed.emit()
 	await _frames(4)
-	t.check("unlock: a failed start over is its own step with its own line", sof.step == "start-over-failed" and (sof.find_child("Warning", true, false) as Label).text.begins_with("Couldn't start over"), sof.step)
+	t.check(
+		"unlock: a failed start over is its own step with its own line",
+		sof.step == "start-over-failed" and (sof.find_child("Warning", true, false) as Label).text.begins_with("Couldn't start over"),
+		sof.step,
+	)
 	(_buttons(sof)["Primary"] as Button).pressed.emit()
 	await _frames(4)
 	t.check("unlock: Try again repeats the start over, with no second warning", started == [CODE] and ring.calls.size() == rb0 + 2 and ring.calls[rb0 + 1][0] == "reset")
@@ -381,7 +395,10 @@ func _ring_change(t: PKeyTestContext) -> void:
 	v.sdk = sdk
 	await _frames()
 	var b := _buttons(v)
-	t.check("ring: Use recovery code, That was me, Cancel, in that order", b.has("UseCode") and b.has("Accept") and b.has("Cancel") and v._actions.get_child(0) == b["UseCode"] and _last_visible(v._actions) == b["Cancel"])
+	t.check(
+		"ring: Use recovery code, That was me, Cancel, in that order",
+		b.has("UseCode") and b.has("Accept") and b.has("Cancel") and v._actions.get_child(0) == b["UseCode"] and _last_visible(v._actions) == b["Cancel"],
+	)
 	t.check("ring: the primary is the recovery code and takes the first focus", v._initial_focus() == b["UseCode"])
 	t.check("ring: the device is named", (v.find_child("BodyText", true, false) as Label).text.contains("Maya"), (v.find_child("BodyText", true, false) as Label).text)
 	# Accept hands exactly the served ring over.
@@ -396,7 +413,10 @@ func _ring_change(t: PKeyTestContext) -> void:
 	ring.queue("accept_ring_change", PKeyResult.success({"kind": "ring-changed", "served": moved, "by": "Desk", "pinned": RING}))
 	(_buttons(v)["Accept"] as Button).pressed.emit()
 	await _frames(4)
-	t.check("ring: a ring that moved again shows the new ring and its device, with no failure", v.served == moved and v.by == "Desk" and not v.failed and (v.find_child("BodyText", true, false) as Label).text.contains("Desk") and not (v.find_child("Error", true, false) as Label).visible)
+	t.check(
+		"ring: a ring that moved again shows the new ring and its device, with no failure",
+		v.served == moved and v.by == "Desk" and not v.failed and (v.find_child("BodyText", true, false) as Label).text.contains("Desk") and not (v.find_child("Error", true, false) as Label).visible,
+	)
 	ring.queue("accept_ring_change", PKeyResult.success({"kind": "unlocked"}))
 	(_buttons(v)["Accept"] as Button).pressed.emit()
 	await _frames(4)
@@ -406,7 +426,10 @@ func _ring_change(t: PKeyTestContext) -> void:
 	(_buttons(v)["Accept"] as Button).pressed.emit()
 	await _frames(4)
 	t.check("ring: a failed accept says so and keeps Accept", v.failed and (v.find_child("Error", true, false) as Label).visible and _buttons(v).has("Accept"))
-	t.check("ring: the failure carries a glyph, and the device line is still there", (v.find_child("ErrorGlyph", true, false) as Control).visible and (v.find_child("BodyText", true, false) as Label).text.contains("Desk"))
+	t.check(
+		"ring: the failure carries a glyph, and the device line is still there",
+		(v.find_child("ErrorGlyph", true, false) as Control).visible and (v.find_child("BodyText", true, false) as Label).text.contains("Desk"),
+	)
 	_free(v)
 	var none: PKeyRingChange = _sc.ring_change("nothing served")
 	await _frames()
@@ -414,7 +437,10 @@ func _ring_change(t: PKeyTestContext) -> void:
 	_free(none)
 	var anon: PKeyRingChange = _sc.ring_change("no device named")
 	await _frames()
-	t.check("ring: no device named reads neutrally", not (anon.find_child("BodyText", true, false) as Label).text.contains("Maya") and (anon.find_child("BodyText", true, false) as Label).text.begins_with("A device"))
+	t.check(
+		"ring: no device named reads neutrally",
+		not (anon.find_child("BodyText", true, false) as Label).text.contains("Maya") and (anon.find_child("BodyText", true, false) as Label).text.begins_with("A device"),
+	)
 	_free(anon)
 	var cancelled := []
 	var c: PKeyRingChange = _sc.ring_change("confirm")
@@ -559,7 +585,11 @@ func _kit_strip(t: PKeyTestContext) -> void:
 	u.set_typed_code("ab3d 9fgh")
 	await u._on_unlock()
 	await _frames(6)
-	t.check("strip: the code unlocks, the screen goes, the queue flushes and the row redraws", _find(PKeyUnlockSync) == null and strip.host.screen == "" and sdk.cloud_sync.flushes == 1 and strip.state == "synced", "%s %s %s %s" % [_find(PKeyUnlockSync), strip.host.screen, sdk.cloud_sync.flushes, strip.state])
+	t.check(
+		"strip: the code unlocks, the screen goes, the queue flushes and the row redraws",
+		_find(PKeyUnlockSync) == null and strip.host.screen == "" and sdk.cloud_sync.flushes == 1 and strip.state == "synced",
+		"%s %s %s %s" % [_find(PKeyUnlockSync), strip.host.screen, sdk.cloud_sync.flushes, strip.state],
+	)
 	_free_strip(strip)
 	_free_node(sdk)
 	# Ring changed -> Review -> Accept (only the served ring) -> the screen goes.
@@ -579,7 +609,11 @@ func _kit_strip(t: PKeyTestContext) -> void:
 	ring.queue("accept_ring_change", PKeyResult.success({"kind": "unlocked"}))
 	await rc._on_accept()
 	await _frames(6)
-	t.check("strip: accepting hands over exactly that ring and closes the screen", ring.calls.any(func(c: Array) -> bool: return c[0] == "accept_ring_change" and c[1][0] == RING) and _find(PKeyRingChange) == null and strip.state == "synced", "%s %s %s" % [_find(PKeyRingChange), strip.state, ring.calls])
+	t.check(
+		"strip: accepting hands over exactly that ring and closes the screen",
+		ring.calls.any(func(c: Array) -> bool: return c[0] == "accept_ring_change" and c[1][0] == RING) and _find(PKeyRingChange) == null and strip.state == "synced",
+		"%s %s %s" % [_find(PKeyRingChange), strip.state, ring.calls],
+	)
 	# "Use recovery code" from RingChange goes to UnlockSync.
 	strip.host.served = RING
 	strip.host.open_review()
@@ -716,7 +750,19 @@ func _ux_round(t: PKeyTestContext) -> void:
 		await _frames()
 		var danger := d._confirm.get_theme_stylebox("normal") as StyleBoxFlat
 		var prim := d._primary.get_theme_stylebox("normal") as StyleBoxFlat
-		t.check("danger: Start over keeps the primary's shape and padding (%s)" % look, d._confirm.theme_type_variation == &"PKeyDanger" and not d._confirm.has_theme_stylebox_override("normal") and danger != null and prim != null and danger.get_corner_radius(CORNER_TOP_LEFT) == prim.get_corner_radius(CORNER_TOP_LEFT) and danger.content_margin_left == prim.content_margin_left and danger.content_margin_top == prim.content_margin_top, "%s %s" % [danger.content_margin_left if danger else -1, prim.content_margin_left if prim else -1])
+		t.check(
+			"danger: Start over keeps the primary's shape and padding (%s)" % look,
+			(
+				d._confirm.theme_type_variation == &"PKeyDanger"
+				and not d._confirm.has_theme_stylebox_override("normal")
+				and danger != null
+				and prim != null
+				and danger.get_corner_radius(CORNER_TOP_LEFT) == prim.get_corner_radius(CORNER_TOP_LEFT)
+				and danger.content_margin_left == prim.content_margin_left
+				and danger.content_margin_top == prim.content_margin_top
+			),
+			"%s %s" % [danger.content_margin_left if danger else -1, prim.content_margin_left if prim else -1],
+		)
 		_free(d)
 	PKeyUiTheme.reset()
 	PKeyUiTheme.reduce_motion_mode = "on"
