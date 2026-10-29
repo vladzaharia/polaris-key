@@ -811,6 +811,10 @@ html[data-shell="console"] label:not(.sr-only) {
 @container (max-width: 18rem) {
   [data-pk-dialog-inner] {
     overflow-y: auto;
+    /* An sr-only span (a disabled button's reason) is absolute: without this its containing block
+       is the dialog, so it escapes the scroller and adds the scrolled content's height to the
+       dialog's own scroll extent. */
+    position: relative;
   }
   [data-pk-dialog-inner] > *,
   [data-pk-dialog-inner] > form > * {

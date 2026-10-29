@@ -234,6 +234,15 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
     "app-sign-in",
     "Platform sign-in",
   ),
+  "identity.platformSignIn.gameCenter": at("app-sign-in", "Platform sign-in"),
+  "identity.platformSignIn.playGames.applicationId": at(
+    "app-sign-in",
+    "Platform sign-in",
+  ),
+  "identity.platformSignIn.playGames.serverClientId": at(
+    "app-sign-in",
+    "Platform sign-in",
+  ),
   "identity.nearby": at("app-sign-in", "Platform sign-in"),
   "identity.oidc": manifest("product"),
   "identity.provisioning": manifest("product"),

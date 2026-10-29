@@ -35,6 +35,8 @@ const AUD: PlatformSignInAudiences = {
     bundleIds: [BUNDLE, OUTLET_BUNDLE],
     outletBundleIds: [OUTLET_BUNDLE],
   },
+  gameCenter: false,
+  playGames: { applicationId: null, serverClientId: null },
   nearby: false,
 };
 

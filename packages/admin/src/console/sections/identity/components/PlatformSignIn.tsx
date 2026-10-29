@@ -11,6 +11,10 @@ import { useQuery } from "@tanstack/react-query";
 import type { ProductSetting } from "../../../../api.js";
 import { reads } from "../../../data/reads.js";
 import { ProductSettingsSection } from "../../../components/ProductSettingsSection.js";
+import { Link } from "../../../router.js";
+import { r } from "../../../routes.js";
+import { credentialsQuery } from "../../distribution/data.js";
+import { linkClass } from "./SignInSections.js";
 
 export const PLATFORM_SIGN_IN_AREA = "identity.platformSignIn";
 const OUTLETS_AREA = "distribution.outlets";
@@ -20,6 +24,9 @@ const K = {
   apps: "identity.platformSignIn.google.clientIds",
   team: "identity.platformSignIn.apple.teamId",
   bundles: "identity.platformSignIn.apple.bundleIds",
+  gameCenter: "identity.platformSignIn.gameCenter",
+  playApp: "identity.platformSignIn.playGames.applicationId",
+  playServer: "identity.platformSignIn.playGames.serverClientId",
   nearby: "identity.nearby",
 } as const;
 export const PLATFORM_SIGN_IN_KEYS: readonly string[] = [
@@ -27,8 +34,14 @@ export const PLATFORM_SIGN_IN_KEYS: readonly string[] = [
   K.apps,
   K.team,
   K.bundles,
+  K.gameCenter,
+  K.playApp,
+  K.playServer,
   K.nearby,
 ];
+
+/** The outlet-credential kind of the Play Games game server credential (I-14.4). */
+export const PGS_CREDENTIAL_KIND = "pgs-server-client";
 
 /** The bundle ids of the App Store and TestFlight channels, from the channels row's value. */
 export function outletBundleIds(value: unknown): string[] {
@@ -58,24 +71,45 @@ export function outletBundleIds(value: unknown): string[] {
 const listOf = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
+/** Whether the Play Games server credential is stored; `unknown` while it cannot be read. */
+export type CredentialState = "set" | "missing" | "unknown";
+
 /** One status line each: what the values in force make work. */
 export function platformSignInStatus(
   value: (key: string) => unknown,
   outlet: readonly string[],
-): { google: string; apple: string } {
+  credential: CredentialState = "unknown",
+): { google: string; apple: string; gameCenter: string; playGames: string } {
   const web = typeof value(K.google) === "string";
   const apps = listOf(value(K.apps)).length > 0;
-  const team = typeof value(K.team) === "string";
-  const bundles = listOf(value(K.bundles)).length + outlet.length > 0;
+  const team = value(K.team);
+  const bundleCount = unionCount(listOf(value(K.bundles)), outlet);
+  const play =
+    typeof value(K.playApp) === "string" &&
+    typeof value(K.playServer) === "string";
   return {
     google: !web
       ? "Not set up"
       : apps
         ? "Ready on the web and in your apps"
         : "Ready on the web",
-    apple: team && bundles ? "Ready" : "Not set up",
+    apple: typeof team === "string" && bundleCount > 0 ? "Ready" : "Not set up",
+    gameCenter:
+      value(K.gameCenter) !== true
+        ? "Off"
+        : typeof team !== "string"
+          ? "Needs the Apple team id"
+          : `Uses team ${team} and ${bundleCount} bundle ${bundleCount === 1 ? "id" : "ids"}`,
+    playGames: !play
+      ? "Not set up"
+      : credential === "missing"
+        ? "Needs the server credential"
+        : "Ready",
   };
 }
+
+const unionCount = (a: readonly string[], b: readonly string[]): number =>
+  new Set([...a, ...b]).size;
 
 /** Whether the area has the rows (Identity on, the view allowed to read them). */
 export function usePlatformSignInVisible(slug: string): boolean {
@@ -102,7 +136,13 @@ export function PlatformSignInSection({
   const outlet = outletBundleIds(
     outlets.data?.settings.find((s) => s.key === OUTLETS_KEY)?.value,
   );
-  const status = platformSignInStatus(value, outlet);
+  const creds = useQuery({ ...credentialsQuery(slug), retry: false });
+  const credential: CredentialState = creds.data
+    ? creds.data.credentials.some((c) => c.kind === PGS_CREDENTIAL_KIND)
+      ? "set"
+      : "missing"
+    : "unknown";
+  const status = platformSignInStatus(value, outlet, credential);
   const note = own.data ? (
     <ul className="space-y-0.5 pb-3 text-sm text-fg-muted">
       <li>
@@ -114,6 +154,24 @@ export function PlatformSignInSection({
           ? `. Also from your channels: ${outlet.join(", ")}`
           : ""}
       </li>
+      <li>
+        <span className="font-medium text-fg">Game Center</span>:{" "}
+        {status.gameCenter}
+      </li>
+      <li>
+        <span className="font-medium text-fg">Play Games</span>:{" "}
+        {status.playGames}
+        {credential === "unknown" ? null : (
+          <>
+            {". Server credential: "}
+            {credential === "set" ? "Set" : "Missing"}
+            {" in "}
+            <Link to={r.keys(slug)} className={linkClass}>
+              Keys and secrets
+            </Link>
+          </>
+        )}
+      </li>
     </ul>
   ) : undefined;
   return (
@@ -123,7 +181,7 @@ export function PlatformSignInSection({
       keys={PLATFORM_SIGN_IN_KEYS}
       id="platform-sign-in"
       title="Platform sign-in"
-      description="What Google and Apple tokens from your app are checked against."
+      description="What Google, Apple, Game Center and Play Games tokens from your app are checked against."
       note={note}
     />
   );
