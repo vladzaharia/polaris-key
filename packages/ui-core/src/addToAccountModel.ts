@@ -3,13 +3,14 @@
 // (they live only here, never in the views' input), the browser confirms the email, and the license
 // is attached:
 //
-//   form → busy → added | owned | email-bound | failed          (invalid: a field is wrong)
+//   form → busy → added | owned | email-bound | other-account | failed   (invalid: a field is wrong)
 //
 // The model runs over `AddToAccountDriver`, three calls both gates implement over their SDK
 // primitives (`driverOf`): sign in with the hints, keep this device's license, attach. A sign-in
 // that ends `signedIn` with no choice goes straight to attach. The hints only prefill the page:
 // nothing here sends a code. `attach()` carries no address; the kit masks `profile.email` itself.
 
+import { maskEmail } from "./format.js";
 import { contextOf, type UiInput } from "./input.js";
 import { addToAccountView } from "./models/holders.js";
 import type {
@@ -64,12 +65,16 @@ export type AddToAccountModelStep =
   | "added"
   | "owned"
   | "email-bound"
+  | "other-account"
   | "failed";
 
 export interface AddToAccountSnapshot {
   step: AddToAccountModelStep;
   /** `invalid`: the field to fix. */
   field?: "name" | "email" | "both";
+  /** `other-account`: both emails, masked (never the full address). */
+  typedEmail?: string;
+  signedEmail?: string;
   name: string;
   email: string;
 }
@@ -116,12 +121,14 @@ export class AddToAccountModel {
 
   /** The views' input: the base with the step on top. Name and email are not in it. */
   input(): UiInput {
-    const { step, field } = this.store.get();
+    const { step, field, typedEmail, signedEmail } = this.store.get();
     return {
       ...this.base,
       addToAccount: {
         step,
         ...(field ? { field } : {}),
+        ...(step === "other-account" && typedEmail ? { typedEmail } : {}),
+        ...(step === "other-account" && signedEmail ? { signedEmail } : {}),
         ...(this.deviceKind ? { deviceKind: this.deviceKind } : {}),
       },
     };
@@ -145,6 +152,14 @@ export class AddToAccountModel {
     );
   }
 
+  /** True when Continue (or Try again) would start the browser sign-in right now: the fields are
+   *  valid and no sign-in has finished. A gate arms its tab inside the press only then. */
+  get willOpenBrowser(): boolean {
+    const { step, name, email } = this.store.get();
+    if (step === "busy" || step === "other-account") return false;
+    return name.trim() !== "" && EMAIL.test(email.trim()) && !this.signedIn;
+  }
+
   /** Continue: check the fields, then sign in and attach. */
   async submit(): Promise<void> {
     const s = this.store.get();
@@ -166,7 +181,10 @@ export class AddToAccountModel {
 
   /** Try again after `failed`: the same attempt, kept fields included. */
   async tryAgain(): Promise<void> {
-    if (this.store.get().step !== "failed") return;
+    const step = this.store.get().step;
+    // A different account signed in: back to the form, the fields kept, to sign in again.
+    if (step === "other-account") return this.cancel();
+    if (step !== "failed") return;
     await this.submit();
   }
 
@@ -176,7 +194,13 @@ export class AddToAccountModel {
     this.end();
     this.signedIn = false;
     this.signedEmail = undefined;
-    this.store.set((s) => ({ ...s, step: "form", field: undefined }));
+    this.store.set((s) => ({
+      ...s,
+      step: "form",
+      field: undefined,
+      typedEmail: undefined,
+      signedEmail: undefined,
+    }));
     if (h) await Promise.resolve(h.cancel()).catch(() => {});
   }
 
@@ -215,9 +239,17 @@ export class AddToAccountModel {
         this.signedEmail !== undefined &&
         this.signedEmail.trim().toLowerCase() !== email.toLowerCase()
       ) {
-        // A different account signed in: the license is not added; Verify goes back to the form.
+        // A different account signed in than the email typed: the license is added nowhere, and
+        // Try again goes back to the form. Both emails are shown masked, never in full.
         this.signedIn = false;
-        this.set("email-bound", epoch);
+        if (epoch === this.epoch)
+          this.store.set((s) => ({
+            ...s,
+            step: "other-account",
+            field: undefined,
+            typedEmail: maskEmail(email),
+            signedEmail: maskEmail(this.signedEmail),
+          }));
         return;
       }
       const r = await d.attach(true);

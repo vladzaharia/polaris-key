@@ -34,7 +34,7 @@ import type {
   SignInWait,
 } from "../signInModel.js";
 import { gateInput, isHolderStep, type GateStep } from "./input.js";
-import { openLink, safeLink } from "./links.js";
+import { armTab, disarmTab, openArmed, openLink, safeLink } from "./links.js";
 
 /** What `<pk-gate config>` takes: the product, and the few transport choices a page makes. */
 export interface GateConfig {
@@ -340,7 +340,12 @@ export class GateDriver {
       dismissed: this.dismissed,
       deviceKind: this.options.deviceKind ?? "device",
       ...(this.addModel
-        ? { addToAccount: this.addModel.input().addToAccount }
+        ? {
+            addToAccount: {
+              ...this.addModel.input().addToAccount!,
+              ...(this.addFrom !== "done" ? { fromSettings: true } : {}),
+            },
+          }
         : {}),
       ...(this.options.locale !== undefined
         ? { locale: this.options.locale }
@@ -653,6 +658,7 @@ export class GateDriver {
 
   /** Leave AddToAccount: its sign-in is cancelled, so approving it later attaches nothing. */
   private dropAdd(): void {
+    disarmTab();
     this.addUnsub?.();
     this.addUnsub = null;
     const m = this.addModel;
@@ -696,8 +702,14 @@ export class GateDriver {
           ...(o.hints?.loginHint ? { loginHint: o.hints.loginHint } : {}),
           ...(o.hints?.nameHint ? { nameHint: o.hints.nameHint } : {}),
           ...(o.hints?.purpose ? { purpose: o.hints.purpose } : {}),
+        }).catch((e: unknown) => {
+          disarmTab();
+          throw e;
         });
-        void flow.reopen();
+        // The tab armed inside the press (or a new one) goes to the sign-in page.
+        const url = flow.verificationUriComplete ?? flow.verificationUri;
+        if (url) void openArmed(url);
+        else void flow.reopen();
         const h = handleOf(flow);
         this.addSession = h;
         return h;
@@ -777,6 +789,12 @@ export class GateDriver {
       case "signin.again":
       case "signin.handoff.again":
       case "signInHandoff.newCode":
+        // AddToAccount while busy: bring the browser tab back (inside the press, so a popup
+        // blocker lets it through); the sign-in keeps running.
+        if (this.step === "add" && key === "signin.handoff.again") {
+          void Promise.resolve(this.addSession?.reopen()).catch(() => {});
+          return;
+        }
         this.handle?.cancel?.();
         this.signIn();
         return;
@@ -839,6 +857,7 @@ export class GateDriver {
         return;
       case "activate.recommend.skip":
       case "signin.done.start":
+      case "common.done":
         this.finish();
         return;
       case "activate.waitingSignIn":
@@ -846,7 +865,11 @@ export class GateDriver {
         this.signIn();
         return;
       case "common.continue":
-        if (this.step === "add") void this.addModel?.submit();
+        if (this.step === "add") {
+          // Open the tab inside the press; the sign-in navigates it once it has an address.
+          if (this.addModel?.willOpenBrowser) armTab();
+          void this.addModel?.submit();
+        }
         return;
       case "activate.otherEmail.verify":
       case "signin.auto.confirm.other":
@@ -893,6 +916,7 @@ export class GateDriver {
         return;
       case "common.tryAgain":
         if (this.step === "add") {
+          if (this.addModel?.willOpenBrowser) armTab();
           void this.addModel?.tryAgain();
           return;
         }

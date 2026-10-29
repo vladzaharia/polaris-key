@@ -89,7 +89,7 @@
       "cloudSync": "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed, signedIn?, canReview?, lastSynced?}. `ring-changed` always offers Review: the kit owns the confirmation.",
       "licenseHolder": "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
       "activateDone": "The Done step after a key activates: {tier?, term?, deviceKind?, position?, limit?}, the strings and numbers the license line shows. Absent: ActivateDone is hidden. The state is `waiting` with a `licenseHolder` email, else `ready`; the reasons follow the services (Cloud Sync only with sync, Get your license back and Move it with Identity, else the portal line).",
-      "addToAccount": "Add your name and email: {step: form | invalid | busy | added | owned | email-bound | failed, field?: name | email | both, deviceKind?}. `invalid` names the field to fix (absent: both). owned: someone attached the license meanwhile; email-bound: the license was sent to another email (with `licenseHolder`); failed: sign-in or attach did not finish. `added` names Cloud Sync only with sync on. Absent: AddToAccount is hidden.",
+      "addToAccount": "Add your name and email: {step: form | invalid | busy | added | owned | email-bound | other-account | failed, field?: name | email | both, deviceKind?, typedEmail?, signedEmail?, fromSettings?}. `invalid` names the field to fix (absent: both). owned: someone attached the license meanwhile; email-bound: the license was sent to another email (with `licenseHolder`); other-account: a different account signed in than the email typed (`typedEmail` and `signedEmail`, both masked); `fromSettings` closes `added` with Done; failed: sign-in or attach did not finish. `added` names Cloud Sync only with sync on. Absent: AddToAccount is hidden.",
       "unlockSync": "UnlockSync's step: {step: code | invalid | working | failed | start-over-failed | no-code | start-over, nearby?}. `no-code`: the account has no recovery code, so only Start over helps. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
       "recoveryCode": "RecoveryCode: {saved?}. The code itself is never an input of the view: the kit draws it from the host, once, and keeps nothing.",
       "ringChange": "RingChange: {by?, served?: {ringId, epoch, rootKid}, failed?}. `failed`: accepting the ring did not open a root; the screen says so and Accept stays available. `by` is the name of the device that wrapped (`changed.by`); `served` is the ring the person was shown (`changed.served`), the one value `acceptRingChange` takes. No `served`: nothing to accept, only the recovery code."
@@ -120,7 +120,7 @@
       "Settings": "loading, error, saving (pending save or saved), dirty, locked (a locked row), list.",
       "Devices": "loading, error, browser-mode, renaming or confirming (edit), empty, list.",
       "ActivateDone": "hidden (License off), waiting (a licenseHolder email), ready (the reasons follow the services).",
-      "AddToAccount": "hidden (Identity off), then the step: form, invalid, busy, added, owned, email-bound, failed.",
+      "AddToAccount": "hidden (Identity off), then the step: form, invalid, busy, added, owned, email-bound, other-account, failed.",
       "SignIn (holders)": "`signIn.step` key-done (the ActivateDone body), attach (AddToAccount's, at its `addToAccount.step`) or added wins over every step except error and an automatic sign-in step.",
       "AccountAndLicense (holders)": "key-only with a `licenseHolder` that has no email (floating) draws Not in an account and Add your name and email instead of the key-only line; Identity off keeps it, Add opening the portal.",
       "Paywall": "loading, purchasing (pending purchase), restore (pending restore), purchased, not-available, offers."
@@ -12742,16 +12742,17 @@
         "component": "ActivateDone",
         "state": "ready",
         "copy": [
+          "a11y.externalLink",
           "activate.done.device",
           "activate.done.title",
-          "activate.recommend.action",
           "activate.recommend.badge",
           "activate.recommend.portal",
           "activate.recommend.skip",
           "activate.recommend.title",
-          "signin.done.start"
+          "signin.done.start",
+          "signin.key.addInLocker"
         ],
-        "actions": ["start-sign-in"]
+        "actions": ["open-manage-url"]
       }
     },
     {
@@ -12811,11 +12812,11 @@
         "copy": [
           "activate.attach.fine",
           "activate.attach.lede",
+          "activate.attach.name",
           "activate.recommend.action",
           "common.cancel",
           "common.continue",
-          "signin.email.label",
-          "signin.gate.name"
+          "signin.email.label"
         ],
         "actions": ["cancel", "start-sign-in"]
       }
@@ -12835,12 +12836,12 @@
         "copy": [
           "activate.attach.fine",
           "activate.attach.lede",
+          "activate.attach.name",
+          "activate.attach.nameRequired",
           "activate.recommend.action",
           "common.cancel",
           "common.continue",
-          "signin.email.label",
-          "signin.gate.name",
-          "signin.gate.nameRequired"
+          "signin.email.label"
         ],
         "actions": ["cancel", "start-sign-in"]
       }
@@ -12860,12 +12861,12 @@
         "copy": [
           "activate.attach.fine",
           "activate.attach.lede",
+          "activate.attach.name",
           "activate.recommend.action",
           "common.cancel",
           "common.continue",
           "signin.email.invalid",
-          "signin.email.label",
-          "signin.gate.name"
+          "signin.email.label"
         ],
         "actions": ["cancel", "start-sign-in"]
       }
@@ -12885,13 +12886,13 @@
         "copy": [
           "activate.attach.fine",
           "activate.attach.lede",
+          "activate.attach.name",
+          "activate.attach.nameRequired",
           "activate.recommend.action",
           "common.cancel",
           "common.continue",
           "signin.email.invalid",
-          "signin.email.label",
-          "signin.gate.name",
-          "signin.gate.nameRequired"
+          "signin.email.label"
         ],
         "actions": ["cancel", "start-sign-in"]
       }
@@ -12902,8 +12903,18 @@
       "expect": {
         "component": "AddToAccount",
         "state": "busy",
-        "copy": ["activate.recommend.action", "common.working"],
-        "actions": ["start-sign-in"]
+        "copy": [
+          "activate.attach.fine",
+          "activate.attach.lede",
+          "activate.attach.name",
+          "activate.recommend.action",
+          "common.cancel",
+          "common.continue",
+          "common.working",
+          "signin.email.label",
+          "signin.handoff.again"
+        ],
+        "actions": ["cancel", "open-browser", "start-sign-in"]
       }
     },
     {
@@ -12943,6 +12954,25 @@
       }
     },
     {
+      "name": "AddToAccount/added: from Settings it closes with Done",
+      "input": {
+        "addToAccount": {
+          "step": "added",
+          "deviceKind": "computer",
+          "fromSettings": true
+        }
+      },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "added",
+        "copy": [
+          "activate.attach.done",
+          "activate.attach.syncOn",
+          "common.done"
+        ]
+      }
+    },
+    {
       "name": "AddToAccount/owned: someone attached it meanwhile",
       "input": {
         "addToAccount": { "step": "owned", "deviceKind": "computer" }
@@ -12976,6 +13006,28 @@
           "signin.done.start"
         ],
         "actions": ["open-manage-url"]
+      }
+    },
+    {
+      "name": "AddToAccount/other-account: signed in as another account than the email typed",
+      "input": {
+        "addToAccount": {
+          "step": "other-account",
+          "deviceKind": "computer",
+          "typedEmail": "m\u2022\u2022\u2022@example.com",
+          "signedEmail": "j\u2022\u2022\u2022@example.com"
+        }
+      },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "other-account",
+        "copy": [
+          "activate.otherAccount.body",
+          "activate.otherAccount.title",
+          "common.tryAgain",
+          "signin.done.start"
+        ],
+        "actions": ["retry"]
       }
     },
     {
@@ -13091,6 +13143,48 @@
       }
     },
     {
+      "name": "SignIn/key-done: Identity off, the action opens polaris.locker",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "step": "key-done"
+        },
+        "activateDone": {
+          "tier": "Pro",
+          "term": "Lifetime",
+          "deviceKind": "computer",
+          "position": 1,
+          "limit": 3
+        },
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
+        "capabilities": { "signIn": false }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "key-done",
+        "copy": [
+          "a11y.externalLink",
+          "activate.done.device",
+          "activate.done.title",
+          "activate.recommend.badge",
+          "activate.recommend.skip",
+          "activate.recommend.title",
+          "signin.done.start",
+          "signin.key.addInLocker"
+        ],
+        "actions": ["open-manage-url"]
+      }
+    },
+    {
       "name": "SignIn/key-done: waiting for the email's account",
       "input": {
         "signIn": {
@@ -13138,11 +13232,11 @@
         "copy": [
           "activate.attach.fine",
           "activate.attach.lede",
+          "activate.attach.name",
           "activate.recommend.action",
           "common.cancel",
           "common.continue",
-          "signin.email.label",
-          "signin.gate.name"
+          "signin.email.label"
         ],
         "actions": ["cancel", "start-sign-in"]
       }
@@ -13168,13 +13262,13 @@
         "copy": [
           "activate.attach.fine",
           "activate.attach.lede",
+          "activate.attach.name",
+          "activate.attach.nameRequired",
           "activate.recommend.action",
           "common.cancel",
           "common.continue",
           "signin.email.invalid",
-          "signin.email.label",
-          "signin.gate.name",
-          "signin.gate.nameRequired"
+          "signin.email.label"
         ],
         "actions": ["cancel", "start-sign-in"]
       }
@@ -13197,6 +13291,31 @@
           "activate.attach.done",
           "activate.attach.syncOn",
           "signin.done.start"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/added: from Settings it closes with Done",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "step": "added"
+        },
+        "addToAccount": {
+          "step": "added",
+          "deviceKind": "computer",
+          "fromSettings": true
+        }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "added",
+        "copy": [
+          "activate.attach.done",
+          "activate.attach.syncOn",
+          "common.done"
         ]
       }
     },
@@ -13238,11 +13357,11 @@
         "state": "key-only",
         "copy": [
           "account.notInAccount",
+          "account.removeKey",
           "account.tier",
           "account.title",
           "account.updates",
-          "activate.recommend.action",
-          "common.signOut"
+          "activate.recommend.action"
         ],
         "actions": ["start-sign-in"]
       }
@@ -13266,14 +13385,15 @@
         "component": "AccountAndLicense",
         "state": "key-only",
         "copy": [
+          "a11y.externalLink",
           "account.notInAccount",
+          "account.removeKey",
           "account.tier",
           "account.title",
           "account.updates",
-          "activate.recommend.action",
-          "common.signOut"
+          "signin.key.addInLocker"
         ],
-        "actions": ["start-sign-in"]
+        "actions": ["open-manage-url"]
       }
     },
     {
@@ -13287,10 +13407,10 @@
         "state": "key-only",
         "copy": [
           "account.keyOnly",
+          "account.removeKey",
           "account.tier",
           "account.title",
-          "account.updates",
-          "common.signOut"
+          "account.updates"
         ]
       }
     }

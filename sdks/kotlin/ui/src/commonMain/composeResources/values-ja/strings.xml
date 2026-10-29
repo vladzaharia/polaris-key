@@ -324,7 +324,7 @@
     <string name="activate_recommend_skip">またはアカウントなしで続ける。%1$sは同じように使えます。</string>
     <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
     <string name="activate_recommend_portal">ライセンスを Polaris Locker で安全に保管</string>
-    <!-- AddToAccount: under the name and email fields. -->
+    <!-- AddToAccount: under the title, above the fields. -->
     <string name="activate_attach_lede">ライセンスとそのデバイスはそのままです。メールアドレスはブラウザーでコードを入力して確認します。</string>
     <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_fine">ブラウザーでこのメールアドレスにコードを送ります。%1$sにはコードは見えません。</string>
@@ -334,6 +334,14 @@
     <string name="activate_attach_syncOn">この%1$sでクラウド同期がオンになりました。ほかのデバイスでもサインインすると同期されます。</string>
     <!-- AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form. -->
     <string name="activate_attach_failed">このライセンスを追加できませんでした。しばらくしてからもう一度お試しください。</string>
+    <!-- AddToAccount: the name field. The title is Add your name and email, so the label is one word. -->
+    <string name="activate_attach_name">名前</string>
+    <!-- AddToAccount: shown under the name field when it is empty. -->
+    <string name="activate_attach_nameRequired">名前を入力してください。</string>
+    <!-- AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere. -->
+    <string name="activate_otherAccount_title">別のアカウントでサインインしました</string>
+    <!-- AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated). Arguments: 1=email, 2=maskedEmail. -->
+    <string name="activate_otherAccount_body">%1$sでサインインしましたが、入力したのは%2$sです。何も追加されていません。%2$sでもう一度お試しください。</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
     <string name="activate_waiting">このライセンスは%1$sに送られました。そのメールアドレスでサインインすると、アカウントに保存できます。</string>
     <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->
@@ -352,6 +360,9 @@
     <string name="activate_otherEmail_verify__macos">そのメールアドレスを確認</string>
     <!-- AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email. -->
     <string name="account_notInAccount">アカウントにありません</string>
+    <!-- AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device. -->
+    <string name="account_removeKey">このデバイスからライセンスを削除</string>
+    <string name="account_removeKey__macos">このデバイスからライセンスを削除</string>
     <!-- The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="signin_attach_header">%1$sをアカウントに追加</string>
     <!-- License key step: under Continue without an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->

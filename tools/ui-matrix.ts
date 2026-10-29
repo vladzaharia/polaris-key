@@ -717,7 +717,7 @@ const INPUTS: Record<string, string> = {
   activateDone:
     "The Done step after a key activates: {tier?, term?, deviceKind?, position?, limit?}, the strings and numbers the license line shows. Absent: ActivateDone is hidden. The state is `waiting` with a `licenseHolder` email, else `ready`; the reasons follow the services (Cloud Sync only with sync, Get your license back and Move it with Identity, else the portal line).",
   addToAccount:
-    "Add your name and email: {step: form | invalid | busy | added | owned | email-bound | failed, field?: name | email | both, deviceKind?}. `invalid` names the field to fix (absent: both). owned: someone attached the license meanwhile; email-bound: the license was sent to another email (with `licenseHolder`); failed: sign-in or attach did not finish. `added` names Cloud Sync only with sync on. Absent: AddToAccount is hidden.",
+    "Add your name and email: {step: form | invalid | busy | added | owned | email-bound | other-account | failed, field?: name | email | both, deviceKind?, typedEmail?, signedEmail?, fromSettings?}. `invalid` names the field to fix (absent: both). owned: someone attached the license meanwhile; email-bound: the license was sent to another email (with `licenseHolder`); other-account: a different account signed in than the email typed (`typedEmail` and `signedEmail`, both masked); `fromSettings` closes `added` with Done; failed: sign-in or attach did not finish. `added` names Cloud Sync only with sync on. Absent: AddToAccount is hidden.",
   unlockSync:
     "UnlockSync's step: {step: code | invalid | working | failed | start-over-failed | no-code | start-over, nearby?}. `no-code`: the account has no recovery code, so only Start over helps. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
   recoveryCode:
@@ -740,7 +740,7 @@ const PRECEDENCE: Record<string, string> = {
   ActivateDone:
     "hidden (License off), waiting (a licenseHolder email), ready (the reasons follow the services).",
   AddToAccount:
-    "hidden (Identity off), then the step: form, invalid, busy, added, owned, email-bound, failed.",
+    "hidden (Identity off), then the step: form, invalid, busy, added, owned, email-bound, other-account, failed.",
   "SignIn (holders)":
     "`signIn.step` key-done (the ActivateDone body), attach (AddToAccount's, at its `addToAccount.step`) or added wins over every step except error and an automatic sign-in step.",
   "AccountAndLicense (holders)":
@@ -3311,7 +3311,13 @@ function updateFamily(a: A): Draft[] {
 // ── settings: AccountAndLicense, Settings ───────────────────────────────────────────────────
 
 /** AccountAndLicense's floating-license lines (UK-42.2): only the holders family's rows show them. */
-const FLOATING_KEYS = ["account.notInAccount", "activate.recommend.action"];
+const FLOATING_KEYS = [
+  "account.notInAccount",
+  "activate.recommend.action",
+  "signin.key.addInLocker",
+  "a11y.externalLink",
+  "account.removeKey",
+];
 
 function settingsFamily(a: A): Draft[] {
   const { row, but, hidden, off } = a;
@@ -3802,6 +3808,8 @@ function holdersFamily(a: A): Draft[] {
   const PORTAL = "activate.recommend.portal";
   const SYNC = "activate.recommend.sync";
   const OTHERS = ["activate.recommend.recover", "activate.recommend.devices"];
+  // With Identity off the action opens polaris.locker: its own label and the external-link glyph.
+  const LOCKER = ["signin.key.addInLocker", "a11y.externalLink"];
   const hidden = (name: string, input: Obj, component: string): Draft =>
     row(name, input, component, "hidden", []);
   const add = (step: string, extra: Obj = {}): Obj => ({
@@ -3825,21 +3833,21 @@ function holdersFamily(a: A): Draft[] {
       { activateDone: DONE },
       AD,
       "ready",
-      but(AD, "ready", PORTAL),
+      but(AD, "ready", PORTAL, ...LOCKER),
     ),
     row(
       `${AD}/ready: no Cloud Sync line without Cloud Sync`,
       { activateDone: DONE, services: NO_SYNC },
       AD,
       "ready",
-      but(AD, "ready", SYNC, PORTAL),
+      but(AD, "ready", SYNC, PORTAL, ...LOCKER),
     ),
     row(
       `${AD}/ready: Identity off, one reason that opens the portal`,
       { activateDone: DONE, ...NO_IDENTITY },
       AD,
       "ready",
-      but(AD, "ready", SYNC, ...OTHERS),
+      but(AD, "ready", SYNC, ...OTHERS, "activate.recommend.action"),
     ),
     row(
       `${AD}/waiting: the license was sent to an email`,
@@ -3866,18 +3874,31 @@ function holdersFamily(a: A): Draft[] {
           AT,
           "invalid",
           ...(field === "name" ? ["signin.email.invalid"] : []),
-          ...(field === "email" ? ["signin.gate.nameRequired"] : []),
+          ...(field === "email" ? ["activate.attach.nameRequired"] : []),
         ),
       ),
     ),
     row(`${AT}/busy`, add("busy"), AT, "busy", "all"),
-    row(`${AT}/added: Cloud Sync is on`, add("added"), AT, "added", "all"),
+    row(
+      `${AT}/added: Cloud Sync is on`,
+      add("added"),
+      AT,
+      "added",
+      but(AT, "added", "common.done"),
+    ),
     row(
       `${AT}/added: no Cloud Sync line without Cloud Sync`,
       { ...add("added"), services: NO_SYNC },
       AT,
       "added",
-      but(AT, "added", "activate.attach.syncOn"),
+      but(AT, "added", "activate.attach.syncOn", "common.done"),
+    ),
+    row(
+      `${AT}/added: from Settings it closes with Done`,
+      add("added", { fromSettings: true }),
+      AT,
+      "added",
+      but(AT, "added", "signin.done.start"),
     ),
     row(
       `${AT}/owned: someone attached it meanwhile`,
@@ -3893,6 +3914,18 @@ function holdersFamily(a: A): Draft[] {
       "email-bound",
       "all",
     ),
+    row(
+      `${AT}/other-account: signed in as another account than the email typed`,
+      {
+        ...add("other-account", {
+          typedEmail: "m•••@example.com",
+          signedEmail: "j•••@example.com",
+        }),
+      },
+      AT,
+      "other-account",
+      "all",
+    ),
     row(`${AT}/failed: Try again`, add("failed"), AT, "failed", "all"),
     hidden(
       `${AT}/hidden: Identity off`,
@@ -3906,14 +3939,42 @@ function holdersFamily(a: A): Draft[] {
       IN("key-done", { activateDone: DONE }),
       SI,
       "key-done",
-      but(SI, "key-done", "activate.waiting", "activate.waitingSignIn"),
+      but(
+        SI,
+        "key-done",
+        "activate.waiting",
+        "activate.waitingSignIn",
+        ...LOCKER,
+      ),
     ),
     row(
       `${SI}/key-done: no Cloud Sync line without Cloud Sync`,
       IN("key-done", { activateDone: DONE, services: NO_SYNC }),
       SI,
       "key-done",
-      but(SI, "key-done", SYNC, "activate.waiting", "activate.waitingSignIn"),
+      but(
+        SI,
+        "key-done",
+        SYNC,
+        "activate.waiting",
+        "activate.waitingSignIn",
+        ...LOCKER,
+      ),
+    ),
+    row(
+      `${SI}/key-done: Identity off, the action opens polaris.locker`,
+      IN("key-done", { activateDone: DONE, ...NO_IDENTITY }),
+      SI,
+      "key-done",
+      but(
+        SI,
+        "key-done",
+        SYNC,
+        ...OTHERS,
+        "activate.recommend.action",
+        "activate.waiting",
+        "activate.waitingSignIn",
+      ),
     ),
     row(
       `${SI}/key-done: waiting for the email's account`,
@@ -3927,7 +3988,7 @@ function holdersFamily(a: A): Draft[] {
       IN("attach", add("form")),
       SI,
       "attach",
-      but(SI, "attach", "signin.gate.nameRequired", "signin.email.invalid"),
+      but(SI, "attach", "activate.attach.nameRequired", "signin.email.invalid"),
     ),
     row(
       `${SI}/attach: both fields need fixing`,
@@ -3941,14 +4002,21 @@ function holdersFamily(a: A): Draft[] {
       IN("added", add("added")),
       SI,
       "added",
-      "all",
+      but(SI, "added", "common.done"),
+    ),
+    row(
+      `${SI}/added: from Settings it closes with Done`,
+      IN("added", add("added", { fromSettings: true })),
+      SI,
+      "added",
+      but(SI, "added", "signin.done.start"),
     ),
     row(
       `${SI}/added: no Cloud Sync line without Cloud Sync`,
       IN("added", { ...add("added"), services: NO_SYNC }),
       SI,
       "added",
-      but(SI, "added", "activate.attach.syncOn"),
+      but(SI, "added", "activate.attach.syncOn", "common.done"),
     ),
 
     // AccountAndLicense: a license held by a key only says so and offers to add it.
@@ -3957,21 +4025,39 @@ function holdersFamily(a: A): Draft[] {
       { licenseHolder: FLOATING, account: { signedIn: false } },
       AL,
       "key-only",
-      but(AL, "key-only", "account.keyOnly"),
+      but(
+        AL,
+        "key-only",
+        "account.keyOnly",
+        "signin.key.addInLocker",
+        "a11y.externalLink",
+        "common.signOut",
+      ),
     ),
     row(
       `${AL}/key-only: floating with Identity off, Add opens the portal`,
       { licenseHolder: FLOATING, account: { signedIn: false }, ...NO_IDENTITY },
       AL,
       "key-only",
-      but(AL, "key-only", "account.keyOnly"),
+      but(
+        AL,
+        "key-only",
+        "account.keyOnly",
+        "activate.recommend.action",
+        "common.signOut",
+      ),
     ),
     row(
       `${AL}/key-only: waiting for the email's account keeps the key line`,
       { licenseHolder: WAITING, account: { signedIn: false } },
       AL,
       "key-only",
-      but(AL, "key-only", ...FLOATING_KEYS),
+      but(
+        AL,
+        "key-only",
+        ...FLOATING_KEYS.filter((k) => k !== "account.removeKey"),
+        "common.signOut",
+      ),
     ),
   ];
 }
@@ -5789,6 +5875,7 @@ const HOLDERS_STATES: Record<string, readonly string[]> = {
     "added",
     "owned",
     "email-bound",
+    "other-account",
     "failed",
   ],
   SignIn: ["key-done", "attach", "added"],

@@ -683,9 +683,9 @@
       "note": "ActivateDone: the single reason line when Identity is off; the action opens the portal."
     },
     "activate.attach.lede": {
-      "value": "Your license and its devices stay as they are. You'll confirm the email with a code in your browser.",
+      "value": "Your license and its devices stay as they are.",
       "role": "body",
-      "note": "AddToAccount: under the name and email fields."
+      "note": "AddToAccount: under the title, above the fields."
     },
     "activate.attach.fine": {
       "value": "We send a code to this email in your browser. {product} never sees it.",
@@ -706,6 +706,26 @@
       "value": "Couldn't add this license. Try again in a moment.",
       "role": "hint",
       "note": "AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form."
+    },
+    "activate.attach.name": {
+      "value": "Name",
+      "role": "label",
+      "note": "AddToAccount: the name field. The title is Add your name and email, so the label is one word."
+    },
+    "activate.attach.nameRequired": {
+      "value": "Enter your name.",
+      "role": "body",
+      "note": "AddToAccount: shown under the name field when it is empty."
+    },
+    "activate.otherAccount.title": {
+      "value": "You signed in with a different account",
+      "role": "title",
+      "note": "AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere."
+    },
+    "activate.otherAccount.body": {
+      "value": "You signed in as {email}, not {maskedEmail}. Nothing was added. Try again with {maskedEmail}.",
+      "role": "body",
+      "note": "AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated)."
     },
     "activate.waiting": {
       "value": "This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.",
@@ -746,6 +766,11 @@
       "value": "Not in an account",
       "role": "body",
       "note": "AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email."
+    },
+    "account.removeKey": {
+      "value": "Remove license from this device",
+      "role": "button",
+      "note": "AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device."
     },
     "signin.attach.header": {
       "value": "Add {product} to your account",
