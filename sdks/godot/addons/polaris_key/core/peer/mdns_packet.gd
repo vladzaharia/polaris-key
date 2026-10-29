@@ -460,8 +460,8 @@ static func _source_bytes(source: String) -> PackedByteArray:
 
 ## WIRE-CONTRACT-V5 section 15.4 "Addresses". A browser believes an A or AAAA record only when its
 ## address equals the packet's source (so never an A record in an IPv6 packet, nor an AAAA record in
-## an IPv4 one); the section does not matter. A link-local address is learned as `<text>%<zone>`
-## when the arrival interface `zone` is known. A name keeps at most MAX_ADDRESSES addresses of any
+## an IPv4 one); the section does not matter. A link-local address is learned as `<text>%<zone>`,
+## and one whose arrival interface `zone` is not known (null or empty) is dropped. A name keeps at most MAX_ADDRESSES addresses of any
 ## family in first-seen order and a repeat is not a second one. A record with TTL 0 removes that
 ## address when it passes the same equality test and learns nothing. Names compare ASCII-folded and
 ## are held in lower case. `prior` is the table held before (`[{name, address}]`, first-seen order).
@@ -484,7 +484,10 @@ static func learn(packet: PackedByteArray, source: String, zone: Variant, prior:
 		if raw != src:
 			continue
 		var address := String(r["data"])
-		if _is_link_local(raw) and zone is String and zone != "":
+		if _is_link_local(raw):
+			# No arrival interface names the host, so `fe80` text alone teaches or removes nothing.
+			if not (zone is String) or zone == "":
+				continue
 			address = "%s%%%s" % [address, zone]
 		var name: String = r["name"]
 		var at := -1

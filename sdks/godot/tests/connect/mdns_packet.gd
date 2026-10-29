@@ -3,10 +3,8 @@ extends RefCounted
 # The mDNS packet codec (PKeyMdnsPacket; WIRE-CONTRACT-V5 section 15.4, G5 bounds): round trips for
 # PTR, SRV, TXT, A and AAAA, the bounds (9,000 bytes, 64 records, 16 backward jumps, 8 TXT entries,
 # name and label lengths), the malformed packets (pointer loop, forward pointer, truncation), the
-# address text codec and the learning rule. When the mirrored peer-matrix.json carries `mdnsAnswers`
-# (CC-IPV6.2), every row runs too; until then only the cases written here do.
+# address text codec and the learning rule. The `mdnsAnswers` corpus rows run in lan_address.gd.
 
-const MATRIX := "res://tests/corpus/v2/peer-matrix.json"
 const INST := "p1-abcdefghijklmnop"
 const FQDN := INST + "." + PKeyMdnsPacket.PEER_SERVICE
 const HOST := INST + ".local"
@@ -24,7 +22,6 @@ func run(t: PKeyTestContext) -> void:
 	_builders(t)
 	_addresses(t)
 	_learn(t)
-	_corpus(t)
 
 
 # raw packet helpers
@@ -337,26 +334,11 @@ func _learn(t: PKeyTestContext) -> void:
 	t.check("a PTR goodbye teaches and removes nothing", r["ok"] and r["learned"] == held)
 	r = PKeyMdnsPacket.learn(_filled(0, 3), "192.168.1.20", null, held)
 	t.check("a malformed packet leaves the table as it was", not r["ok"] and r["learned"] == held)
+	r = PKeyMdnsPacket.learn(_packet([_aaaa(h1, "fe80::1c2:3ff:fe4:5a6")]), "fe80::1c2:3ff:fe4:5a6", null)
+	t.check("a link-local source with no arrival zone learns nothing", r["ok"] and (r["learned"] as Array).is_empty())
+	r = PKeyMdnsPacket.learn(_packet([_aaaa(h1, "fe80::1c2:3ff:fe4:5a6")]), "fe80::1c2:3ff:fe4:5a6", "")
+	t.check("an empty arrival zone is no zone", r["ok"] and (r["learned"] as Array).is_empty())
+	r = PKeyMdnsPacket.learn(_packet([_aaaa(h1, "fe80::1c2:3ff:fe4:5a6", 0)]), "fe80::1c2:3ff:fe4:5a6", null, [{"name": h1, "address": "fe80::1c2:3ff:fe4:5a6%en0"}])
+	t.check("a goodbye with no arrival zone removes nothing", r["ok"] and r["learned"] == [{"name": h1, "address": "fe80::1c2:3ff:fe4:5a6%en0"}])
 	r = PKeyMdnsPacket.learn(_packet([_a(h1, "192.168.1.20")]), "not an address", null)
 	t.check("a source that is not an address is refused", not r["ok"] and r["error"] == &"bad_source")
-
-
-## Every `mdnsAnswers` row of the corpus, when the mirror holds the section.
-func _corpus(t: PKeyTestContext) -> void:
-	var j := JSON.new()
-	if j.parse(FileAccess.get_file_as_string(MATRIX)) != OK or not j.data is Dictionary:
-		t.check("peer-matrix.json parses", false)
-		return
-	var section = (j.data as Dictionary).get("mdnsAnswers")
-	if not section is Dictionary:
-		t.info("peer-matrix.json has no mdnsAnswers yet (CC-IPV6.2); only the cases above ran")
-		return
-	var rows: Array = section["rows"]
-	var good := 0
-	for row in rows:
-		var packet := (row["packet"] as String).hex_decode()
-		var prior: Array = row.get("prior", [])
-		var r := PKeyMdnsPacket.learn(packet, row["source"], row["zone"], prior)
-		if t.check("mdnsAnswers %s" % row["id"], r["ok"] and r["learned"] == row["learned"], str(r.get("learned"))):
-			good += 1
-	t.check("mdnsAnswers coverage", good == rows.size() and rows.size() >= 36, "%d/%d" % [good, rows.size()])
