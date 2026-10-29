@@ -325,8 +325,10 @@ func _recovery(t: PKeyTestContext) -> void:
 	t.check("code: Copy code is offered", b.has("Copy") and (b["Copy"] as Button).text == "Copy code")
 	var grid := v.find_child("Code", true, false) as GridContainer
 	t.check("code: four groups to a row where they fit", grid.columns == 4, str(grid.columns))
-	var spoken := String(grid.get("accessibility_name"))
-	t.check("code: a spoken label spells the groups out with pauses", spoken.begins_with("Recovery code AB3D, 9FGH, ") and spoken.ends_with("1C2E"), spoken)
+	# accessibility_name exists from Godot 4.5; the 4.4 floor has no spoken label to check.
+	if "accessibility_name" in grid:
+		var spoken := str(grid.get("accessibility_name"))
+		t.check("code: a spoken label spells the groups out with pauses", spoken.begins_with("Recovery code AB3D, 9FGH, ") and spoken.ends_with("1C2E"), spoken)
 	(b["Copy"] as Button).pressed.emit()
 	await _frames()
 	t.check("code: Copy puts the hyphenated code on the clipboard", PKeyCloudSyncController.clipboard_get() == CODE)

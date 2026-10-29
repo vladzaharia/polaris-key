@@ -129,6 +129,11 @@ const TIGHT_CASES := [
 	["unlock_sync", "native28", "640x360"],
 	["unlock_sync", "native36", "1170x2532@3"],
 	["unlock_sync", "native36", "640x360"],
+	# The failed and no-code lines are longer (COPY-SYNC-1); at 36 px on a 360 px canvas they scroll too (2026-10-28).
+	["unlock_sync.failed", "native36", "640x360"],
+	["unlock_sync.no_code", "native36", "1170x2532@3"],
+	["unlock_sync.no_code", "native36", "640x360"],
+	["unlock_sync.start_over_failed", "native36", "640x360"],
 	["unlock_sync.invalid", "custom", "2532x1170@3"],
 	["unlock_sync.invalid", "custom", "640x360"],
 	["unlock_sync.invalid", "custom", "pixel-art canvas_items 640x360 keep"],
