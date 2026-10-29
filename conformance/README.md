@@ -29,6 +29,7 @@ conformance/
   runners/
     node/               @polaris-key/conformance-node: corpusV2, transcripts, sync scenarios and the matrix tests
       suites.ts         the case driver both JS runners share
+      peerMatrixSuites.ts  the peer-matrix suites both JS runners share
       transcriptReplay.ts  the fake server a replay runs against
     browser/            @polaris-key/conformance-browser: Vitest browser mode (Playwright)
 ```

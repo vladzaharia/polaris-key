@@ -12,6 +12,7 @@ import {
   encodeRecord,
   webCryptoNoisePorts,
   webCryptoX25519,
+  type PeerHello,
   type PeerMode,
   type SessionEvent,
 } from "../src/peer/index.js";
@@ -165,6 +166,66 @@ describe("PeerSession modes v and p", () => {
     const est = of(m, "established")[0] as any;
     expect(est.helloAuthenticated).toBe(false);
     expect(est.hello.label).toBe("Caf\u00e9 TV");
+  });
+
+  /** A mode-v pair after the HELLO exchange, `hello` being the requester's. */
+  async function helloPair(hello?: Partial<PeerHello>) {
+    const d = side("v", "initiator", rnd(), {
+      hello: { platform: "t", app: "a", ...hello },
+    });
+    const m = side("v", "responder", rnd());
+    await d.s.start();
+    await pump(d, m);
+    return { d, m, est: of(m, "established")[0] as any };
+  }
+
+  it("holds at most 16 KiB before the confirmation, then closes peer_busy", async () => {
+    const { d, m } = await helloPair();
+    await d.s.confirmSas();
+    await d.s.sendRecord(RECORD.VOUCH_REQ, new Uint8Array(8 * 1024));
+    await pump(d, m);
+    expect(m.s.closed).toBe(false);
+    await d.s.sendRecord(RECORD.VOUCH_REQ, new Uint8Array(8 * 1024 + 1));
+    await pump(d, m);
+    expect(of(m, "closed")).toEqual([
+      { type: "closed", code: "peer_busy", byPeer: false },
+    ]);
+  });
+
+  it("shows only a known-shaped platform and a cleaned app in modes v and p", async () => {
+    for (const [platform, app, wantPlatform, wantApp] of [
+      ["macos", "Demo", "macos", "Demo"],
+      ["Android 14.1_x+y-z", "a", "Android 14.1_x+y-z", "a"],
+      ["x".repeat(33), "a", "Unknown", "a"],
+      ["<b>ok</b>", "a", "Unknown", "a"],
+      ["mac\u202eos", "a", "Unknown", "a"],
+      ["", "a", "Unknown", "a"],
+      ["linux", "  Pay\u202e\u0000ment  ", "linux", "Payment"],
+      ["linux", "\u202e\u0000", "linux", "Unknown"],
+      ["linux", "a".repeat(100), "linux", "a".repeat(64)],
+    ] as const) {
+      const { est } = await helloPair({ platform, app });
+      expect([est.hello.platform, est.hello.app]).toEqual([
+        wantPlatform,
+        wantApp,
+      ]);
+    }
+  });
+
+  it("refuses a HELLO over 4 KiB in modes v and p, not in mode a", async () => {
+    for (const mode of ["v", "p"] as const) {
+      const d = side(mode, "initiator", rnd(), {
+        hello: { platform: "t", app: "a", label: "x".repeat(4100) },
+      });
+      const m = side(mode, "responder", rnd());
+      await d.s.start();
+      await pump(d, m);
+      expect(of(m, "established")).toHaveLength(0);
+      expect(of(m, "closed")).toEqual([
+        { type: "closed", code: "peer_bad_frame", byPeer: false },
+      ]);
+    }
+    expect((await helloPair({ label: "x".repeat(4000) })).est).toBeDefined();
   });
 
   it("an approver needs an admission limiter", () => {

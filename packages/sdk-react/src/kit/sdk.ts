@@ -26,6 +26,7 @@ import {
   type GateStep,
 } from "@polaris-key/ui-core/browser";
 
+import { WEB_ADD_IN, type AddIn } from "@polaris-key/ui-core";
 import { PolarisContext } from "../react/context.js";
 import { useAdapterState } from "../react/hooks.js";
 import type {
@@ -75,7 +76,7 @@ export interface GateToast {
 
 /** The SDK-driven gate, or `null` outside `<PolarisKeyProvider>` (the gate then takes `input`). */
 export function useSdkGate(
-  opts: { returnUrl?: string; locale?: string } = {},
+  opts: { returnUrl?: string; locale?: string; addIn?: AddIn } = {},
 ): SdkGate | null {
   const ctx = useContext(PolarisContext);
   // The hooks run whether or not a provider exists; with none they hold an inert state.
@@ -381,12 +382,10 @@ export function useSdkGate(
     setOpener(null);
   }, [leave]);
 
-  /** Add your name and email: with Identity on, AddToAccount; with it off, the portal. The holder
-   *  flows load now, not with the gate. */
-  const addToAccount = useCallback(() => {
-    if (!adapter) return;
-    if (!adapter.snapshot().capabilities.identity.enabled) {
-      const held = heldKey.current ?? undefined;
+  /** The product's page in Polaris Locker, with the key as `#key=` for a trusted origin only. */
+  const openPortal = useCallback(
+    (held?: string) => {
+      if (!adapter) return;
       void import("./holderGate.js")
         .then((m) =>
           m.portalTarget(adapter, {
@@ -401,6 +400,20 @@ export function useSdkGate(
             openManage(t.url, opts.returnUrl, t.withKey ? held : undefined);
         })
         .catch(() => undefined);
+    },
+    [adapter, ctx, opts.returnUrl],
+  );
+
+  /** Add your name and email: the portal (WEB_ADD_IN, or Identity off); otherwise AddToAccount.
+   *  The holder flows load now, not with the gate. */
+  const addIn = opts.addIn ?? WEB_ADD_IN;
+  const addToAccount = useCallback(() => {
+    if (!adapter) return;
+    if (
+      addIn === "portal" ||
+      !adapter.snapshot().capabilities.identity.enabled
+    ) {
+      openPortal(heldKey.current ?? undefined);
       return;
     }
     if (stepRef.current === "add") return;
@@ -415,15 +428,20 @@ export function useSdkGate(
       holding.current = true;
       enter("add", "activate.recommend.action");
     });
-  }, [adapter, ctx, opts.returnUrl, dropAdd, enter]);
+  }, [adapter, addIn, openPortal, dropAdd, enter]);
 
   /** "Sign in to that account" on a license-owned refusal: sign in in this page and complete with
    *  the key just entered (D17). One sign-in at a time: a second press while one is live does
    *  nothing. Where the page cannot run it, the gate's own sign-in runs as before. */
   const ownedSignIn = useCallback(() => {
     if (!adapter || owning.current || session.current) return;
-    owning.current = true;
     const k = key.trim();
+    if (addIn === "portal") {
+      // The portal signs in to that account and adds the key.
+      openPortal(k || undefined);
+      return;
+    }
+    owning.current = true;
     void import("./holderGate.js")
       .then((m) => m.ownedSignIn(adapter, session, k))
       .catch(() => "fallback" as const)
@@ -433,7 +451,7 @@ export function useSdkGate(
         if (r === "fallback") signIn();
         else if (r === "signedIn") finish();
       });
-  }, [adapter, key, signIn, finish]);
+  }, [adapter, key, signIn, finish, openPortal, addIn]);
 
   const act = useCallback(
     (k: string) => {

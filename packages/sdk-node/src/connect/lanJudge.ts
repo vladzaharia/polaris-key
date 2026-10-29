@@ -2,28 +2,25 @@
 // client-core's `lanVerdict`:
 //  - the address TEXT is judged before a socket is opened, and the connected socket again (remote
 //    and its own local address) before its first byte, on a dial and on an accept;
-//  - a mapped address (::ffff:a.b.c.d) with a zone is refused;
-//  - the pre-handshake limiter counts per address (4) and per /64 (16), inside a total (32); a
+//  - the pre-handshake limiter counts per address (4), per /64 (16) and in total (32); a
 //    link-local key carries its zone, because the same fe80 address on two links is two hosts.
 
-import { lanVerdict, type LanVerdict } from "@polaris-key/client-core/peer";
-import { canonIp, isLinkLocal, isMapped, prefix64, splitZone } from "./ip.js";
+import {
+  lanGroupKey,
+  lanVerdict,
+  type LanVerdict,
+} from "@polaris-key/client-core/peer";
+import { splitZone } from "./ip.js";
 
 const REFUSED: LanVerdict = { dial: false, key: null };
 
-const isMappedText = (addr: string): boolean => {
-  const c = canonIp(addr);
-  return c !== null && isMapped(c);
-};
-
 /**
- * Judge an address before opening a socket. A global IPv6 address passes here when it could be
- * on-link; the connected socket decides with its own local address.
+ * Judge an address before opening a socket. A global IPv6 address (or a ULA one) passes here when
+ * it could be on-link; the connected socket decides with its own local address.
  */
 export function textVerdict(host: string, allowLoopback: boolean): boolean {
-  const { addr, zone } = splitZone(host);
-  if (zone !== null && isMappedText(addr)) return false;
-  return lanVerdict(host, addr, allowLoopback).dial;
+  // The address itself stands in for "some local address in the same /64".
+  return lanVerdict(host, splitZone(host).addr, allowLoopback).dial;
 }
 
 /** Judge a connected socket's addresses: after `connect`, and at `accept`, before any byte. */
@@ -33,26 +30,21 @@ export function socketVerdict(
   allowLoopback: boolean,
 ): LanVerdict {
   if (remote === undefined || remote === "") return REFUSED;
-  const { addr, zone } = splitZone(remote);
-  if (zone !== null && isMappedText(addr)) return REFUSED;
   return lanVerdict(remote, local ?? null, allowLoopback);
 }
 
 export interface LimiterKeys {
-  /** The per-address key: the verdict's key, plus the zone for a link-local address. */
+  /** The per-address key: the verdict's key (a link-local one keeps its zone). */
   address: string;
-  /** The /64 the address sits in (with the zone for a link-local one); null for IPv4. */
+  /** The /64 the address sits in (a link-local one with its zone); null for IPv4. */
   net64: string | null;
 }
 
 /** The keys the limiter counts under, for an address `lanVerdict` allowed (`key`). */
-export function limiterKeys(remote: string, key: string): LimiterKeys {
-  const net = key.includes(":") ? prefix64(key) : null;
-  if (net === null) return { address: key, net64: null };
-  const { zone } = splitZone(remote);
-  const z = isLinkLocal(key) && zone !== null ? `%${zone}` : "";
-  return { address: `${key}${z}`, net64: `${net}/64${z}` };
-}
+export const limiterKeys = (key: string): LimiterKeys => ({
+  address: key,
+  net64: lanGroupKey(key),
+});
 
 /** Counts of sockets that have not finished the handshake. */
 export class PendingLimiter {

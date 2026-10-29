@@ -50,7 +50,12 @@ import {
   utf8,
 } from "./reference/peerMatrix.js";
 import { sha256 } from "./reference/noise.js";
-import { refLanVerdict } from "./reference/lanAddress.js";
+import {
+  type RefInterface,
+  refCandidateTarget,
+  refGroupKey,
+  refLanVerdict,
+} from "./reference/lanAddress.js";
 import {
   type RefDnsRecord,
   type RefLearned,
@@ -1226,7 +1231,7 @@ function buildLanAddresses(): unknown {
     ["nat64", "64:ff9b::c0a8:102", null, false, null],
     ["nat64-dotted", "64:ff9b::192.168.1.2", null, false, null],
     // IPv6 link-local, ULA and the rest.
-    ["v6-link-local-zone", "fe80::1%en0", null, false, "fe80::1"],
+    ["v6-link-local-zone", "fe80::1%en0", null, false, "fe80::1%en0"],
     ["v6-link-local-upper", "FE80::0001", null, false, "fe80::1"],
     ["v6-link-local-top", "febf::1", null, false, "febf::1"],
     ["v6-below-link-local", "fe7f::1", null, false, null],
@@ -1323,10 +1328,108 @@ function buildLanAddresses(): unknown {
       "2001:db8::1",
     ],
     ["link-local-ignores-local", "fe80::1", own, false, "fe80::1"],
+    // The key of a link-local address keeps its zone; every other key drops it.
+    ["key-link-local-zone-case", "FE80::1%EN0", null, false, "fe80::1%EN0"],
+    ["key-link-local-zone-number", "fe80::1%12", null, false, "fe80::1%12"],
+    ["key-link-local-no-zone", "fe80::1", null, false, "fe80::1"],
+    [
+      "zone-15-characters",
+      "fe80::1%abcdefghijklmno",
+      null,
+      false,
+      "fe80::1%abcdefghijklmno",
+    ],
+    ["zone-16-characters", "fe80::1%abcdefghijklmnop", null, false, null],
+    ["zone-with-space", "fe80::1%en 0", null, false, null],
+    ["zone-with-tab", "fe80::1%en\t0", null, false, null],
+    ["zone-with-control", "fe80::1%en\u0001", null, false, null],
+    ["zone-with-delete", "fe80::1%en\u007f", null, false, null],
+    ["zone-non-ascii", "fe80::1%\u00e9n0", null, false, null],
+    ["zone-trailing-newline", "fe80::1%en0\n", null, false, null],
+    ["zone-double", "fe80::1%en0%en1", null, false, null],
+    ["zone-only-percent", "fe80::1%%", null, false, null],
+    ["zone-no-address", "%en0", null, false, null],
+    ["zone-on-ula-dropped", "fd00::5%en0", null, false, "fd00::5"],
+    // A mapped address with a zone is ambiguous, so it is refused.
+    ["mapped-zone", "::ffff:10.0.0.1%en0", null, false, null],
+    ["mapped-hex-zone", "::ffff:a00:1%en0", null, false, null],
+    // A ULA address is routed. With a known local address it must share its /64.
+    [
+      "ula-local-same-64",
+      "fd00:1:2:3::5",
+      "fd00:1:2:3::9",
+      false,
+      "fd00:1:2:3::5",
+    ],
+    ["ula-local-other-64", "fd00:1:2:3::5", "fd00:1:2:4::9", false, null],
+    ["ula-local-other-ula", "fd00:1:2:3::5", "fd01:1:2:3::9", false, null],
+    ["ula-local-global", "fd00:1:2:3::5", "2001:db8:1:2::9", false, null],
+    ["ula-local-link-local", "fd00:1:2:3::5", "fe80::9", false, null],
+    ["ula-local-ipv4", "fd00:1:2:3::5", "192.168.1.9", false, null],
+    ["ula-local-not-an-address", "fd00:1:2:3::5", "en0", false, null],
+    [
+      "ula-local-same-64-zone",
+      "fd00:1:2:3::5",
+      "fd00:1:2:3::9%en0",
+      false,
+      "fd00:1:2:3::5",
+    ],
+    ["ula-fc-local-same-64", "fc00::1", "fc00::2", false, "fc00::1"],
+    ["ula-fc-local-other-64", "fc00::1", "fc00:0:0:1::2", false, null],
+    // Where parsers differ: each of these is refused, and in every language.
+    ["diff-v4-trailing-newline", "10.0.0.1\n", null, false, null],
+    ["diff-v6-trailing-newline", "fe80::1\n", null, false, null],
+    ["diff-v4-nul", "10.0.0.1\u0000", null, false, null],
+    ["diff-v6-nul", "fe80::1\u0000", null, false, null],
+    ["diff-v4-leading-space", " 10.0.0.1", null, false, null],
+    ["diff-v4-trailing-space", "10.0.0.1 ", null, false, null],
+    ["diff-v6-trailing-space", "fe80::1 ", null, false, null],
+    ["diff-v4-tab", "10.0.0.1\t", null, false, null],
+    ["diff-v4-unicode-digits", "\uff11\uff10.0.0.1", null, false, null],
+    ["diff-v4-arabic-digits", "10.0.0.\u0661", null, false, null],
+    ["diff-v6-unicode-digits", "fd\u0660\u0660::1", null, false, null],
+    ["diff-v4-port", "10.0.0.1:80", null, false, null],
+    ["diff-v6-bracket-port", "[fe80::1]:80", null, false, null],
+    ["diff-v6-port-unbracketed", "fd00::1:80", null, false, "fd00::1:80"],
+    ["diff-v4-hex-octet", "0x0a.0.0.1", null, false, null],
+    ["diff-v4-hex-whole", "0xa000001", null, false, null],
+    ["diff-v4-decimal-whole", "167772161", null, false, null],
+    ["diff-v4-short", "10.1", null, false, null],
+    ["diff-v4-five-octets", "10.0.0.1.1", null, false, null],
+    ["diff-v4-prefix-length", "10.0.0.1/8", null, false, null],
+    ["diff-v4-trailing-dot", "10.0.0.1.", null, false, null],
+    ["diff-v6-trailing-dot", "fd00::1.", null, false, null],
+    ["diff-v6-dotted-leading-zero", "::ffff:010.0.0.1", null, false, null],
+    ["diff-v6-dotted-mid", "::10.0.0.1:1", null, false, null],
+    ["diff-v6-three-colons", "fd00:::1", null, false, null],
+    ["diff-v6-prefix-length", "fd00::1/64", null, false, null],
+    ["diff-v6-sign", "+fd00::1", null, false, null],
+    ["diff-v6-isatap", "fe80::5efe:10.0.0.1", null, false, "fe80::5efe:a00:1"],
+    [
+      "diff-v6-isatap-global",
+      "2001:db8:1:2:0:5efe:10.0.0.1",
+      own,
+      false,
+      "2001:db8:1:2:0:5efe:a00:1",
+    ],
+    ["diff-percent-only", "%", null, false, null],
   ];
+  // Hand-written /64 keys for a few rows; the rest come from the reference.
+  const groups = new Map<string, string | null>([
+    ["global-same-64", "2001:db8:1:2::/64"],
+    ["ula-local-same-64", "fd00:1:2:3::/64"],
+    ["v6-link-local-zone", "fe80::/64%en0"],
+    ["key-link-local-no-zone", "fe80::/64"],
+    ["v4-10-low", null],
+    ["mapped-lan", null],
+    ["diff-v6-isatap", "fe80::/64"],
+  ]);
   const out = rows.map(([id, remote, local, allowLoopback, key]) => {
     const got = refLanVerdict(remote, local, allowLoopback);
     check(`lanAddresses ${id}`, got, { dial: key !== null, key });
+    const group = refGroupKey(got.key);
+    if (groups.has(id))
+      check(`lanAddresses group ${id}`, group, groups.get(id));
     return {
       id,
       remote,
@@ -1334,10 +1437,129 @@ function buildLanAddresses(): unknown {
       allowLoopback,
       dial: got.dial,
       key: got.key,
+      group,
     };
   });
   return {
-    note: "LAN addresses (15.4.1): lanVerdict(remote, local, allowLoopback) -> {dial, key}, applied to a dialled socket before its first byte and to an accepted socket before it takes a slot. `remote` is the connected socket's peer address as text and `local` its own address (absent: unknown). A zone (text after %) is ignored and an empty zone is malformed. IPv4-mapped (::ffff:0:0/96) is judged as its IPv4 address. IPv4: 10/8, 172.16/12, 192.168/16, and 127/8 only with allowLoopback; octets are decimal with no leading zero. IPv6: fe80::/10 and fc00::/7; ::1 only with allowLoopback; an address in 2000::/3, outside 2001::/32 (Teredo) and 2002::/16 (6to4), only when `local` is IPv6 (not mapped) in the same /64. Anything else, and text that is not an address, is refused. `key` is the per-address connection count key: dotted IPv4, or RFC 5952 lower-case IPv6 text without its zone (not the /64); null when `dial` is false.",
+    note: "LAN addresses (15.4.1): lanVerdict(remote, local, allowLoopback) -> {dial, key}, applied to an accepted socket before it takes a slot or is read, to a dialled address's text before connect and again to the connected socket before its first byte. `remote` is the socket's peer address as text and `local` its own address (absent: unknown). Spelling: a zone is `%` and 1 to 15 characters of U+0021 to U+007E other than `%`; an empty or longer zone, a second `%`, a control, a space or a non-ASCII character, a zone on IPv4 and a zone on an IPv4-mapped address are malformed and refused; the grammar is strict (RFC 3986 IPv4address and IPv6address): no whitespace, NUL, port, prefix length, trailing dot, brackets, non-ASCII digits or leading-zero octet. IPv4-mapped (::ffff:0:0/96) is judged as its IPv4 address. IPv4: 10/8, 172.16/12, 192.168/16, and 127/8 only with allowLoopback. IPv6: fe80::/10; fc00::/7, which with a known `local` must be IPv6 (not mapped) in the same /64; ::1 only with allowLoopback; an address in 2000::/3, outside 2001::/32 (Teredo) and 2002::/16 (6to4), only when `local` is IPv6 (not mapped) in the same /64. Anything else, and text that is not an address, is refused. `key` is the per-address connection count key: dotted IPv4, or RFC 5952 lower-case IPv6 text without its zone, except that a link-local (fe80::/10) key keeps its zone; null when `dial` is false. `group` is the per-/64 count key of an IPv6 key (`<masked address>/64`, with `%zone` appended for link-local), null for IPv4 and for no key. `candidates` holds the rule for a CANDIDATES entry (15.6).",
+    rows: out,
+    candidates: buildCandidates(),
+  };
+}
+
+function buildCandidates(): unknown {
+  const nic = (
+    address: string,
+    prefix: number,
+    up = true,
+    tunnel = false,
+  ): RefInterface => ({ address, prefix, up, tunnel });
+  const sets: Record<string, RefInterface[]> = {
+    // Wi-Fi with IPv4 only.
+    v4: [nic("192.168.1.9", 24)],
+    // A dual-stack LAN: IPv4, ULA, a global prefix and the link-local address.
+    dual: [
+      nic("192.168.1.9", 24),
+      nic("fd00:1:2:3::9", 64),
+      nic("2001:db8:1:2::9", 64),
+      nic("fe80::9", 64),
+    ],
+    // The same Wi-Fi beside a VPN (a tunnel with a RFC 1918 subnet of its own).
+    vpn: [nic("192.168.1.9", 24), nic("10.8.0.2", 24, true, true)],
+    // The interface is down.
+    down: [nic("192.168.1.9", 24, false)],
+    // A subnet that is not RFC 1918, and a Teredo prefix.
+    public: [nic("8.8.8.9", 24), nic("2001:0:4136:e378::9", 64)],
+    // A ULA prefix with a zero group in it.
+    zero: [nic("fd00:1:0:1::9", 64)],
+    none: [],
+  };
+  // [id, entry, interface set, dialled]
+  const rows: [string, string, string, boolean][] = [
+    ["v4-in-subnet", "192.168.1.20:5000", "v4", true],
+    ["v4-port-1024", "192.168.1.20:1024", "v4", true],
+    ["v4-port-65535", "192.168.1.20:65535", "v4", true],
+    ["v4-other-subnet", "192.168.2.20:5000", "v4", false],
+    ["v4-rfc1918-elsewhere", "10.0.0.1:5000", "v4", false],
+    ["v4-rfc1918-elsewhere-ssh-port", "10.0.0.1:22", "v4", false],
+    ["v4-own-address", "192.168.1.9:5000", "v4", false],
+    ["v4-no-interfaces", "192.168.1.20:5000", "none", false],
+    ["v4-interface-down", "192.168.1.20:5000", "down", false],
+    ["v4-tunnel-subnet", "10.8.0.5:5000", "vpn", false],
+    ["v4-lan-beside-tunnel", "192.168.1.20:5000", "vpn", true],
+    ["v4-public-subnet", "8.8.8.8:5000", "public", false],
+    ["v6-ula-in-subnet", "[fd00:1:2:3::5]:5000", "dual", true],
+    ["v6-ula-other-64", "[fd00:1:2:4::5]:5000", "dual", false],
+    ["v6-global-in-subnet", "[2001:db8:1:2::5]:5000", "dual", true],
+    ["v6-global-other-64", "[2001:db8:1:3::5]:5000", "dual", false],
+    ["v6-own-address", "[fd00:1:2:3::9]:5000", "dual", false],
+    ["v6-own-global-address", "[2001:db8:1:2::9]:5000", "dual", false],
+    ["v6-ipv4-only-interface", "[fd00:1:2:3::5]:5000", "v4", false],
+    ["v6-teredo-in-subnet", "[2001:0:4136:e378::5]:5000", "public", false],
+    ["v6-single-zero-group", "[fd00:1:0:1:1:1:1:1]:5000", "zero", true],
+    ["v6-link-local", "[fe80::5]:5000", "dual", false],
+    ["v6-link-local-isatap", "[fe80::5efe:c0a8:114]:5000", "dual", false],
+    ["v6-loopback", "[::1]:5000", "dual", false],
+    // Spelling of the port: plain decimal, 1024 to 65535.
+    ["port-0", "192.168.1.20:0", "v4", false],
+    ["port-22", "192.168.1.20:22", "v4", false],
+    ["port-80", "192.168.1.20:80", "v4", false],
+    ["port-1023", "192.168.1.20:1023", "v4", false],
+    ["port-65536", "192.168.1.20:65536", "v4", false],
+    ["port-99999", "192.168.1.20:99999", "v4", false],
+    ["port-100000", "192.168.1.20:100000", "v4", false],
+    ["port-leading-zero", "192.168.1.20:05000", "v4", false],
+    ["port-plus", "192.168.1.20:+5000", "v4", false],
+    ["port-minus", "192.168.1.20:-5000", "v4", false],
+    ["port-space", "192.168.1.20: 5000", "v4", false],
+    ["port-trailing-space", "192.168.1.20:5000 ", "v4", false],
+    ["port-trailing-newline", "192.168.1.20:5000\n", "v4", false],
+    ["port-nul", "192.168.1.20:5000\u0000", "v4", false],
+    ["port-hex", "192.168.1.20:0x1388", "v4", false],
+    ["port-exponent", "192.168.1.20:5e3", "v4", false],
+    ["port-fraction", "192.168.1.20:5000.0", "v4", false],
+    ["port-fullwidth", "192.168.1.20:\uff15\uff10\uff10\uff10", "v4", false],
+    ["port-missing", "192.168.1.20", "v4", false],
+    ["port-empty", "192.168.1.20:", "v4", false],
+    ["port-twice", "192.168.1.20:5000:5000", "v4", false],
+    ["port-v6-missing", "[fd00:1:2:3::5]", "dual", false],
+    ["port-v6-empty", "[fd00:1:2:3::5]:", "dual", false],
+    ["port-v6-trailing-junk", "[fd00:1:2:3::5]:5000x", "dual", false],
+    // Spelling of the address.
+    ["v4-brackets", "[192.168.1.20]:5000", "v4", false],
+    ["v4-leading-zero", "192.168.01.20:5000", "v4", false],
+    ["v4-trailing-dot", "192.168.1.20.:5000", "v4", false],
+    ["v4-leading-space", " 192.168.1.20:5000", "v4", false],
+    ["v4-hostname", "printer.local:5000", "v4", false],
+    ["v4-empty-host", ":5000", "v4", false],
+    ["v4-zone", "192.168.1.20%en0:5000", "v4", false],
+    ["v6-no-brackets", "fd00:1:2:3::5:5000", "dual", false],
+    ["v6-double-brackets", "[[fd00:1:2:3::5]]:5000", "dual", false],
+    ["v6-empty-brackets", "[]:5000", "dual", false],
+    ["v6-zone", "[fd00:1:2:3::5%en0]:5000", "dual", false],
+    ["v6-empty-zone", "[fd00:1:2:3::5%]:5000", "dual", false],
+    ["v6-upper-case", "[FD00:1:2:3::5]:5000", "dual", false],
+    ["v6-long-form", "[fd00:1:2:3:0:0:0:5]:5000", "dual", false],
+    ["v6-leading-zeros", "[fd00:0001:2:3::5]:5000", "dual", false],
+    ["v6-extra-zero-group", "[fd00:1:2:3::0:5]:5000", "dual", false],
+    ["v6-dotted-tail", "[fd00:1:2:3::0.0.0.5]:5000", "dual", false],
+    ["v6-single-zero-compressed", "[fd00:1::1:1:1:1:1]:5000", "zero", false],
+    ["v6-shorter-run-compressed", "[2001:db8:0:0:1:0:0:1]:5000", "dual", false],
+    ["v6-mapped", "[::ffff:192.168.1.20]:5000", "dual", false],
+    ["v6-mapped-hex", "[::ffff:c0a8:114]:5000", "dual", false],
+    ["v6-trailing-newline", "[fd00:1:2:3::5]:5000\n", "dual", false],
+    ["v6-nul", "[fd00:1:2:3::5\u0000]:5000", "dual", false],
+    ["entry-empty", "", "dual", false],
+    ["entry-colon", ":", "dual", false],
+  ];
+  const out = rows.map(([id, entry, set, dialled]) => {
+    const interfaces = sets[set]!;
+    const got = refCandidateTarget(entry, interfaces);
+    check(`lanAddresses candidates ${id}`, got !== null, dialled);
+    return { id, entry, interfaces, target: got };
+  });
+  return {
+    note: "CANDIDATES entries (15.6, 15.4.1): candidateTarget(entry, interfaces) -> {host, port} or null. `interfaces` lists the device's own addresses, one per entry: `{address, prefix, up, tunnel}`, `tunnel` meaning a VPN, tunnel, point-to-point or pseudo-interface. An entry is dialled only when all hold: it is `a.b.c.d:port` or `[addr]:port` (brackets only around IPv6) with a plain decimal port from 1024 to 65535 (no sign, no leading zero, no space, no other character); an IPv6 address is in RFC 5952 text, has no zone, is not IPv4-mapped and is not in fe80::/10; the address is not one of the device's own; it lies inside the subnet (address and prefix) of an up, non-tunnel interface address; and lanVerdict(address, that interface address, false) allows it. `target.host` is the address as dialled.",
     rows: out,
   };
 }

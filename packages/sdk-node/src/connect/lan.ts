@@ -401,7 +401,7 @@ export class LanService {
     const release =
       this.#sessions.size >= (this.#o.maxSessions ?? 64)
         ? null
-        : this.#limit.take(socket, limiterKeys(remote, v.key));
+        : this.#limit.take(socket, limiterKeys(v.key));
     if (release === null) {
       socket.destroy();
       return;

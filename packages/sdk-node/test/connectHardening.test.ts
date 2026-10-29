@@ -286,7 +286,7 @@ describe("addresses off the LAN (WIRE-CONTRACT-V5 15.4.1)", () => {
     const key = (remote: string) => {
       const v = socketVerdict(remote, undefined, true);
       if (v.key === null) throw new Error(`refused: ${remote}`);
-      return limiterKeys(remote, v.key);
+      return limiterKeys(v.key);
     };
     // The same fe80 address on two links is two hosts; a /64 keeps its own count per link.
     expect(key(`${LL}%en0`)).toEqual({
@@ -417,6 +417,15 @@ describe("dialling several addresses (RFC 8305)", () => {
     const { made, result } = race(["2001:db8:1:2::5"], () => "2001:db8:1:2::9");
     made[0]!.emit("connect");
     await expect(result).resolves.toBe(made[0]);
+  });
+
+  it("judges a unique-local address on its /64 once the socket's own address is known", async () => {
+    const off = race(["fd12:0:0:1::5"], () => "fd99:0:0:1::9");
+    off.made[0]!.emit("connect");
+    await expect(off.result).rejects.toThrow("address refused");
+    const on = race(["fd12:0:0:1::5"], () => "fd12:0:0:1::9");
+    on.made[0]!.emit("connect");
+    await expect(on.result).resolves.toBe(on.made[0]);
   });
 
   it("rejects when every address is refused or fails, and opens no socket for a refused text", async () => {

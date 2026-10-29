@@ -30,9 +30,6 @@ export function canonIp(text: string): string | null {
 
 const MAPPED = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/;
 
-/** Is canonical text an IPv4-mapped address (::ffff:a.b.c.d)? */
-export const isMapped = (canon: string): boolean => MAPPED.test(canon);
-
 /** An IPv4-mapped address (canonical text) as dotted IPv4; anything else unchanged. */
 export function foldMapped(canon: string): string {
   const m = MAPPED.exec(canon);
@@ -44,16 +41,6 @@ export function foldMapped(canon: string): string {
 /** Is canonical text an IPv6 link-local address (fe80::/10)? */
 export const isLinkLocal = (canon: string): boolean =>
   /^fe[89ab][0-9a-f]:/.test(canon);
-
-/** The /64 an IPv6 address (canonical text) sits in, as canonical text of its first four groups. */
-export function prefix64(canon: string): string | null {
-  const [head, tail] = canon.split("::");
-  const front = head === "" ? [] : head!.split(":");
-  const back = tail === undefined || tail === "" ? [] : tail.split(":");
-  const gap = tail === undefined ? 0 : 8 - front.length - back.length;
-  const groups = [...front, ...Array<string>(gap).fill("0"), ...back];
-  return canonIp(`${groups.slice(0, 4).join(":")}::`);
-}
 
 /** Is `addr` (text; a zone is ignored; a mapped address counts as its IPv4) inside the CIDR block `cidr` (`10.0.0.5/8`, `fe80::1/64`)? */
 export function inCidr(addr: string, cidr: string): boolean {

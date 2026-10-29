@@ -51,6 +51,16 @@ import {
 const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
 const NONE = new Uint8Array(0);
 
+/** §15.6: a HELLO in mode v or p is at most this many bytes. */
+const MAX_UNVERIFIED_HELLO = 4096;
+/** §15.6: `platform` shown as sent only when it is up to 32 of these characters; else "Unknown". */
+const PLATFORM_DISPLAY = /^[A-Za-z0-9 ._+-]{1,32}$/;
+const UNKNOWN_DISPLAY = "Unknown";
+
+/** NFC, then the device-label cleaning (§12.7.1): `null` when nothing is left. */
+const cleanDisplay = (raw: string): string | null =>
+  normalizeDeviceLabel(raw.normalize("NFC"));
+
 export type ClosedReason = PeerCloseCode | "handshake_failed";
 
 export interface PeerHello {
@@ -142,6 +152,8 @@ type Phase = "hs" | "hello" | "sas" | "sas-shown" | "open" | "closed";
 export const TRANSPORT_DEADLINE_SECONDS = 30;
 export const SAS_DEADLINE_SECONDS = 120;
 const MAX_QUEUED = 16;
+/** §15.6: bytes of held records before the person's confirmation, modes v and p. */
+const MAX_QUEUED_BYTES = 16 * 1024;
 const KNOWN_CLOSE = new Set<string>([
   "peer_revoked",
   "peer_expired",
@@ -593,7 +605,12 @@ export class PeerSession {
     // Everything else belongs to the host, and only once the code is settled.
     if (this.phase === "sas-shown") {
       // The peer may confirm first: hold the record (bounded) until this side's person does.
-      if (this.queued.length >= MAX_QUEUED) throw new SessionFail("peer_busy");
+      const held = this.queued.reduce((n, q) => n + q.body.length, 0);
+      if (
+        this.queued.length >= MAX_QUEUED ||
+        held + body.length > MAX_QUEUED_BYTES
+      )
+        throw new SessionFail("peer_busy");
       this.queued.push({ type, body });
       return;
     }
@@ -602,16 +619,19 @@ export class PeerSession {
   }
 
   private parseHello(body: Uint8Array): PeerHello | null {
+    // Modes v and p take a HELLO from a peer that is not yet verified: 4 KiB at most (§15.6).
+    if (this.o.mode !== "a" && body.length > MAX_UNVERIFIED_HELLO) return null;
     const o = parseStrictObject(body);
     if (o === null) return null;
     if (typeof o.platform !== "string" || typeof o.app !== "string")
       return null;
     if (o.label !== undefined && typeof o.label !== "string") return null;
     // Display data from an unauthenticated peer: NFC, controls and bidi stripped, 64 code points.
-    const label =
-      o.label === undefined
-        ? null
-        : normalizeDeviceLabel(o.label.normalize("NFC"));
+    const label = o.label === undefined ? null : cleanDisplay(o.label);
+    const app = cleanDisplay(o.app) ?? UNKNOWN_DISPLAY;
+    const platform = PLATFORM_DISPLAY.test(o.platform)
+      ? o.platform
+      : UNKNOWN_DISPLAY;
     if (
       typeof o.maxMessage !== "number" ||
       !Number.isSafeInteger(o.maxMessage) ||
@@ -620,8 +640,8 @@ export class PeerSession {
       return null;
     return {
       ...(label !== null ? { label } : {}),
-      platform: o.platform,
-      app: o.app,
+      platform,
+      app,
       maxMessage: o.maxMessage,
     };
   }
