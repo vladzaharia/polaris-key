@@ -190,6 +190,8 @@ export const KIT_COPY: Readonly<
     "activate.attach.done": "{product} is in your account",
     "activate.attach.syncOn":
       "Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.",
+    "activate.attach.failed":
+      "Couldn't add this license. Try again in a moment.",
     "activate.waiting":
       "This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.",
     "activate.waitingSignIn": "Sign in as {maskedEmail}",
@@ -1992,6 +1994,8 @@ export const KIT_COPY: Readonly<
     "activate.attach.done": "{product} ist in Ihrem Konto",
     "activate.attach.syncOn":
       "Die Cloud-Synchronisierung ist für dieses {deviceKind} aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren.",
+    "activate.attach.failed":
+      "Die Lizenz konnte nicht hinzugefügt werden. Versuchen Sie es gleich noch einmal.",
     "activate.waiting":
       "Diese Lizenz wurde an {maskedEmail} gesendet. Melden Sie sich mit dieser E-Mail an, um sie in Ihrem Konto zu behalten.",
     "activate.waitingSignIn": "Als {maskedEmail} anmelden",
@@ -3907,6 +3911,8 @@ export const KIT_COPY: Readonly<
     "activate.attach.done": "{product} est dans votre compte",
     "activate.attach.syncOn":
       "La synchronisation cloud est activée sur cet {deviceKind}. Connectez-vous sur vos autres appareils pour les synchroniser aussi.",
+    "activate.attach.failed":
+      "Impossible d’ajouter cette licence. Réessayez dans un instant.",
     "activate.waiting":
       "Cette licence a été envoyée à {maskedEmail}. Connectez-vous avec cet e-mail pour la garder dans votre compte.",
     "activate.waitingSignIn": "Se connecter en tant que {maskedEmail}",
@@ -5804,6 +5810,8 @@ export const KIT_COPY: Readonly<
     "activate.attach.done": "{product} está en tu cuenta",
     "activate.attach.syncOn":
       "La sincronización en la nube está activada en este {deviceKind}. Inicia sesión en tus otros dispositivos para sincronizarlos también.",
+    "activate.attach.failed":
+      "No se pudo añadir esta licencia. Inténtalo de nuevo en un momento.",
     "activate.waiting":
       "Esta licencia se envió a {maskedEmail}. Inicia sesión con ese correo para conservarla en tu cuenta.",
     "activate.waitingSignIn": "Iniciar sesión como {maskedEmail}",
@@ -7694,6 +7702,8 @@ export const KIT_COPY: Readonly<
     "activate.attach.done": "{product} está na sua conta",
     "activate.attach.syncOn":
       "A sincronização na nuvem está ativada neste {deviceKind}. Entre nos seus outros dispositivos para sincronizá-los também.",
+    "activate.attach.failed":
+      "Não foi possível adicionar esta licença. Tente novamente em instantes.",
     "activate.waiting":
       "Esta licença foi enviada para {maskedEmail}. Entre com esse e-mail para guardá-la na sua conta.",
     "activate.waitingSignIn": "Entrar como {maskedEmail}",
@@ -9545,6 +9555,8 @@ export const KIT_COPY: Readonly<
     "activate.attach.done": "{product} è nel tuo account",
     "activate.attach.syncOn":
       "La sincronizzazione cloud è attiva su questo {deviceKind}. Accedi sugli altri dispositivi per sincronizzare anche quelli.",
+    "activate.attach.failed":
+      "Impossibile aggiungere questa licenza. Riprova tra un momento.",
     "activate.waiting":
       "Questa licenza è stata inviata a {maskedEmail}. Accedi con quell’e-mail per tenerla nel tuo account.",
     "activate.waitingSignIn": "Accedi come {maskedEmail}",
@@ -11417,6 +11429,8 @@ export const KIT_COPY: Readonly<
     "activate.attach.done": "{product}がアカウントに入りました",
     "activate.attach.syncOn":
       "この{deviceKind}でクラウド同期がオンになりました。ほかのデバイスでもサインインすると同期されます。",
+    "activate.attach.failed":
+      "このライセンスを追加できませんでした。しばらくしてからもう一度お試しください。",
     "activate.waiting":
       "このライセンスは{maskedEmail}に送られました。そのメールアドレスでサインインすると、アカウントに保存できます。",
     "activate.waitingSignIn": "{maskedEmail}でサインイン",
@@ -13308,6 +13322,8 @@ export const KIT_COPY: Readonly<
     "activate.attach.done": "{product}이(가) 계정에 있습니다",
     "activate.attach.syncOn":
       "이 {deviceKind}에서 클라우드 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다.",
+    "activate.attach.failed":
+      "이 라이선스를 추가하지 못했어요. 잠시 후 다시 시도하세요.",
     "activate.waiting":
       "이 라이선스는 {maskedEmail}(으)로 전송되었습니다. 그 이메일로 로그인하면 계정에 보관할 수 있습니다.",
     "activate.waitingSignIn": "{maskedEmail}(으)로 로그인",
@@ -15106,6 +15122,7 @@ export const KIT_COPY: Readonly<
     "activate.attach.done": "{product}已在你的账户中",
     "activate.attach.syncOn":
       "这台{deviceKind}已开启云同步。在其他设备上登录即可一并同步。",
+    "activate.attach.failed": "无法添加此许可证。请稍后重试。",
     "activate.waiting":
       "这个许可证已发送到 {maskedEmail}。用该电子邮件登录，即可保存到你的账户。",
     "activate.waitingSignIn": "以 {maskedEmail} 登录",

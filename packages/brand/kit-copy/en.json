@@ -702,6 +702,11 @@
       "role": "body",
       "note": "AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone)."
     },
+    "activate.attach.failed": {
+      "value": "Couldn't add this license. Try again in a moment.",
+      "role": "hint",
+      "note": "AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form."
+    },
     "activate.waiting": {
       "value": "This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.",
       "role": "body",

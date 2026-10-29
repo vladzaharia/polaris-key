@@ -152,6 +152,7 @@ export type KitCopyKey =
   | "activate.attach.fine"
   | "activate.attach.done"
   | "activate.attach.syncOn"
+  | "activate.attach.failed"
   | "activate.waiting"
   | "activate.waitingSignIn"
   | "activate.owned.title"

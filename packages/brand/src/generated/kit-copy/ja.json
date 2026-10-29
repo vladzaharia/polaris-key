@@ -138,6 +138,7 @@
   "activate.attach.fine": "ブラウザーでこのメールアドレスにコードを送ります。{product}にはコードは見えません。",
   "activate.attach.done": "{product}がアカウントに入りました",
   "activate.attach.syncOn": "この{deviceKind}でクラウド同期がオンになりました。ほかのデバイスでもサインインすると同期されます。",
+  "activate.attach.failed": "このライセンスを追加できませんでした。しばらくしてからもう一度お試しください。",
   "activate.waiting": "このライセンスは{maskedEmail}に送られました。そのメールアドレスでサインインすると、アカウントに保存できます。",
   "activate.waitingSignIn": "{maskedEmail}でサインイン",
   "activate.owned.title": "このライセンスは Polaris Locker のアカウントにあります",

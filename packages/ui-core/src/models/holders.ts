@@ -226,7 +226,7 @@ export function addToAccountView(
         state: "failed",
         copy: [
           "activate.recommend.action",
-          "locker.activate.addFailed",
+          "activate.attach.failed",
           "common.tryAgain",
           "common.cancel",
         ],

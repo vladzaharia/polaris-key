@@ -47,16 +47,7 @@ export function familyRows(
   matrix: Record<string, unknown>,
   family: (typeof COMPONENT_FAMILIES)[number],
 ): Row[] {
-  const rows = matrix[family] as Row[];
-  return family === "holders"
-    ? rows.filter(
-        (r) =>
-          // BLOCKED (reported, UK-42.7): the failed state's `locker.activate.addFailed` is in the
-          // portal's copy table only (PORTAL_NAMESPACES), so no kit table can draw it. Re-enable
-          // when the key moves into the kit catalog.
-          r.name !== "AddToAccount/failed: Try again",
-      )
-    : rows;
+  return matrix[family] as Row[];
 }
 
 export function readMatrix(): Obj & { vocabulary: Obj & { defaults: Obj } } {

@@ -17,7 +17,6 @@
 
 import {
   useEffect,
-  useState,
   useInsertionEffect,
   useLayoutEffect,
   useRef,
@@ -99,7 +98,7 @@ const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
       "common.cancel",
       "common.working",
       "common.tryAgain",
-      "locker.activate.addFailed",
+      "activate.attach.failed",
       "signin.done.start",
       "signin.key.ownedSignIn",
       "activate.otherEmail.verify",
@@ -338,50 +337,6 @@ function mark(): ReactNode {
   );
 }
 
-// ── The failure line ─────────────────────────────────────────────────────────────────────────
-
-const FAILED_KEY = "locker.activate.addFailed";
-
-interface PortalLine {
-  /** The locale the kit asked for. */
-  locale: string;
-  /** English, and the locale's own line when its pack has one. */
-  en: string;
-  own?: string;
-}
-
-/** The failure line from the portal's table: English, and `locale`'s pack when it has one. */
-async function loadPortalLine(locale: string): Promise<PortalLine> {
-  const brand = await import("@polaris-key/brand/kit-copy/portal");
-  const en = brand.PORTAL_COPY_EN[FAILED_KEY];
-  type Locale = Parameters<typeof brand.loadPortalCopy>[0];
-  let own: string | undefined;
-  for (const tag of [locale, locale.split("-")[0]!]) {
-    try {
-      own = (await brand.loadPortalCopy(tag as Locale))?.[FAILED_KEY];
-    } catch {
-      // A locale with no pack: the next, then English.
-    }
-    if (own !== undefined) break;
-  }
-  return { locale, en, ...(own !== undefined ? { own } : {}) };
-}
-
-/** `theme` with the failure line as a copy override: English, then the locale's own. */
-function withPortalLine(
-  theme: KitProps["theme"],
-  line: PortalLine | null,
-): KitProps["theme"] {
-  if (!line) return theme;
-  const copy = { ...theme?.copy };
-  for (const [tag, value] of [
-    ["en", line.en],
-    ...(line.own !== undefined ? [[line.locale, line.own]] : []),
-  ] as [string, string][])
-    copy[tag] = { [FAILED_KEY]: value, ...copy[tag] };
-  return { ...theme, copy };
-}
-
 // ── One screen ───────────────────────────────────────────────────────────────────────────────
 
 type Name = HolderScreenName;
@@ -403,14 +358,12 @@ function Screen(
 ): ReactNode {
   const { name, body, markStates, route, detail } = props;
   const model = name === "ActivateDone" ? activateDoneView : addToAccountView;
-  const [portal, setPortal] = useState<PortalLine | null>(null);
   const kit = useKit(
     name as unknown as ComponentName,
     (ctx) => model(ctx) as unknown as View,
     {
       ...props,
       input: props.input,
-      theme: withPortalLine(props.theme, portal),
       onAction: (a) => {
         props.onAction?.(a);
         route?.(a);
@@ -422,19 +375,6 @@ function Screen(
   useInsertionEffect(() => {
     if (typeof document !== "undefined") adoptHolderStyles(document);
   }, []);
-  // The failure line is a portal string (no SDK table carries the portal's namespaces): fetched
-  // the first time a failure is drawn, for the locale the kit speaks.
-  const locale = kit.resolved.locale;
-  const failed = kit.view.copy.includes(FAILED_KEY);
-  useEffect(() => {
-    if (!failed || portal?.locale === locale) return;
-    let live = true;
-    void loadPortalLine(locale).then((line) => live && setPortal(line));
-    return () => {
-      live = false;
-    };
-  }, [failed, locale, portal?.locale]);
-
   // The card morphs between states; the first draw (and a new check) introduces itself.
   const last = useRef<{ key: string; height: number } | null>(null);
   const inside = useRef(false);
@@ -750,7 +690,9 @@ function AddBody(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
             {text(c, "activate.attach.lede")}
           </p>
         ) : null}
-        {failed && c.copy.has(FAILED_KEY) ? callout(c, [FAILED_KEY]) : null}
+        {failed && c.copy.has("activate.attach.failed")
+          ? callout(c, ["activate.attach.failed"])
+          : null}
       </form>
       <div className="actions" data-part="actions" data-layout="stack">
         {button(c, failed ? "common.tryAgain" : "common.continue", "primary", {

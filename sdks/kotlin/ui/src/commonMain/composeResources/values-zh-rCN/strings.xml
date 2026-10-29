@@ -332,6 +332,8 @@
     <string name="activate_attach_done">%1$s已在你的账户中</string>
     <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
     <string name="activate_attach_syncOn">这台%1$s已开启云同步。在其他设备上登录即可一并同步。</string>
+    <!-- AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form. -->
+    <string name="activate_attach_failed">无法添加此许可证。请稍后重试。</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
     <string name="activate_waiting">这个许可证已发送到 %1$s。用该电子邮件登录，即可保存到你的账户。</string>
     <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->

@@ -145,6 +145,7 @@
     "activate.attach.fine": "我们会在浏览器中向这个电子邮件发送验证码。{product}看不到它。",
     "activate.attach.done": "{product}已在你的账户中",
     "activate.attach.syncOn": "这台{deviceKind}已开启云同步。在其他设备上登录即可一并同步。",
+    "activate.attach.failed": "无法添加此许可证。请稍后重试。",
     "activate.waiting": "这个许可证已发送到 {maskedEmail}。用该电子邮件登录，即可保存到你的账户。",
     "activate.waitingSignIn": "以 {maskedEmail} 登录",
     "activate.owned.title": "这个许可证在一个 Polaris Locker 账户中",
