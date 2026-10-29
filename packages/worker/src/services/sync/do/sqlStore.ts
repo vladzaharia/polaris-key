@@ -25,10 +25,16 @@
  */
 
 import type { SyncJson, SyncScope } from "@polaris-key/protocol/sync";
-import { floorOf, RecordTables, settle, type Row } from "./sqlRecords.js";
+import {
+  readFloorAndKid,
+  RecordTables,
+  settle,
+  type Row,
+} from "./sqlRecords.js";
 import type {
   ClientRecord,
   MemberCell,
+  RemovedField,
   StoredRecord,
   StoredSetting,
   StoreUsage,
@@ -99,6 +105,7 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        value_json TEXT NOT NULL, removed INTEGER NOT NULL, hlc TEXT NOT NULL, client_id TEXT NOT NULL,
        kid TEXT,
        UNIQUE (collection, id, field))`,
+    `CREATE INDEX IF NOT EXISTS record_fields_dead ON record_fields (removed, collection, hlc, client_id)`,
     `CREATE TABLE IF NOT EXISTS set_elements (
        collection TEXT NOT NULL, id TEXT NOT NULL, element_key TEXT NOT NULL,
        element_json TEXT NOT NULL, add_tag INTEGER NOT NULL, kid TEXT,
@@ -128,6 +135,7 @@ interface SettingRow extends Row {
   is_merge: number;
   floor_hlc: string | null;
   floor_client: string | null;
+  kid: string | null;
 }
 
 interface MemberRow extends Row {
@@ -136,6 +144,7 @@ interface MemberRow extends Row {
   removed: number;
   hlc: string;
   client_id: string;
+  kid: string | null;
 }
 
 export class SqlStore implements SyncStore {
@@ -449,12 +458,13 @@ export class SqlStore implements SyncStore {
     );
     this.run(
       `INSERT INTO ${table}
-         (scope, family, key, version, hlc, client_id, value_json, is_merge, floor_hlc, floor_client)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         (scope, family, key, version, hlc, client_id, value_json, is_merge, floor_hlc, floor_client, kid)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (scope, family, key) DO UPDATE SET
          version = excluded.version, hlc = excluded.hlc, client_id = excluded.client_id,
          value_json = excluded.value_json, is_merge = excluded.is_merge,
-         floor_hlc = excluded.floor_hlc, floor_client = excluded.floor_client`,
+         floor_hlc = excluded.floor_hlc, floor_client = excluded.floor_client,
+         kid = excluded.kid`,
       row.scope,
       fam,
       row.key,
@@ -465,10 +475,11 @@ export class SqlStore implements SyncStore {
       row.members ? 1 : 0,
       row.floor?.hlc ?? null,
       row.floor?.clientId ?? null,
+      row.kid ?? null,
     );
     const have = new Map<string, MemberRow>();
     for (const m of this.all<MemberRow>(
-      `SELECT member, value_json, removed, hlc, client_id FROM setting_members
+      `SELECT member, value_json, removed, hlc, client_id, kid FROM setting_members
          WHERE scope = ? AND family = ? AND key = ?`,
       row.scope,
       fam,
@@ -481,11 +492,11 @@ export class SqlStore implements SyncStore {
       if (settle(have, name, json, cell)) continue;
       this.run(
         `INSERT INTO setting_members
-           (scope, family, key, member, value_json, removed, hlc, client_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           (scope, family, key, member, value_json, removed, hlc, client_id, kid)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (scope, family, key, member) DO UPDATE SET
            value_json = excluded.value_json, removed = excluded.removed,
-           hlc = excluded.hlc, client_id = excluded.client_id`,
+           hlc = excluded.hlc, client_id = excluded.client_id, kid = excluded.kid`,
         row.scope,
         fam,
         row.key,
@@ -494,6 +505,7 @@ export class SqlStore implements SyncStore {
         cell.removed ? 1 : 0,
         cell.stamp.hlc,
         cell.stamp.clientId,
+        cell.kid ?? null,
       );
     }
     // What is left in `have` was pruned, cleared or collected.
@@ -651,6 +663,16 @@ export class SqlStore implements SyncStore {
     return this.recordTables.oldestTombstones(limit, collection);
   }
 
+  removedFieldCount(collection?: string): number {
+    if (!this.hasSchema()) return 0;
+    return this.recordTables.removedCount(collection);
+  }
+
+  oldestRemovedFields(limit: number, collection?: string): RemovedField[] {
+    if (!this.hasSchema()) return [];
+    return this.recordTables.oldestRemoved(limit, collection);
+  }
+
   private hydrate(r: SettingRow, deleted: boolean): StoredSetting {
     const out: StoredSetting = {
       key: r.key,
@@ -661,12 +683,11 @@ export class SqlStore implements SyncStore {
       deleted,
       value: JSON.parse(r.value_json) as SyncJson,
     };
-    const floor = floorOf(r);
-    if (floor) out.floor = floor;
+    readFloorAndKid(out, r);
     if (r.is_merge) {
       const members = new Map<string, MemberCell>();
       for (const m of this.all<MemberRow>(
-        `SELECT member, value_json, removed, hlc, client_id FROM setting_members
+        `SELECT member, value_json, removed, hlc, client_id, kid FROM setting_members
            WHERE scope = ? AND family = ? AND key = ? ORDER BY ord`,
         r.scope,
         r.family,
@@ -676,6 +697,7 @@ export class SqlStore implements SyncStore {
           value: JSON.parse(m.value_json) as SyncJson,
           removed: m.removed === 1,
           stamp: { hlc: m.hlc, clientId: m.client_id },
+          ...(m.kid !== null ? { kid: m.kid } : {}),
         });
       out.members = members;
     }

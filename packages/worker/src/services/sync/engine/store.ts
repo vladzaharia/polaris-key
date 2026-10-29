@@ -5,7 +5,7 @@
  */
 
 import type { SyncJson } from "@polaris-key/protocol/sync";
-import type { StoredRecord, StoredSetting } from "./types.js";
+import type { RemovedField, StoredRecord, StoredSetting } from "./types.js";
 
 export type { SyncStore } from "./types.js";
 
@@ -57,3 +57,13 @@ export function recordsDump(rows: readonly StoredRecord[]): unknown {
       },
     ]);
 }
+
+const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+/** The order the forgetting bounds take removed field cells in: oldest clock first, then by name. */
+export const compareRemoved = (a: RemovedField, b: RemovedField): number =>
+  cmp(a.stamp.hlc, b.stamp.hlc) ||
+  cmp(a.stamp.clientId, b.stamp.clientId) ||
+  cmp(a.collection, b.collection) ||
+  cmp(a.id, b.id) ||
+  cmp(a.field, b.field);

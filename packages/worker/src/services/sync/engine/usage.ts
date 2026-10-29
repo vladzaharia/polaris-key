@@ -111,7 +111,8 @@ export interface RecordCost {
 /**
  * What a record costs: the collection and id (a `prefix.*` collection's suffix is person-chosen,
  * so it is charged too) plus its content as stored: the value's canonical JSON (the quoted `ct` in
- * E2E mode), each live field's name and value, each element once however many tags it has. A
+ * E2E mode), each live field's name and value, each element once however many tags it has (plus its
+ * blinded name in E2E mode). A
  * tombstone or no row costs nothing.
  */
 export function recordCost(row: StoredRecord | undefined): RecordCost {
@@ -121,8 +122,10 @@ export function recordCost(row: StoredRecord | undefined): RecordCost {
     for (const [name, cell] of row.fields ?? [])
       if (!cell.removed) bytes += utf8Length(name) + valueBytes(cell.value);
   } else if (row.kind === "set") {
-    for (const el of row.elements?.values() ?? [])
-      bytes += valueBytes(el.element);
+    // An E2E element is stored under its blinded name, which is charged as a field's name is.
+    for (const [key, el] of row.elements ?? [])
+      bytes +=
+        valueBytes(el.element) + (el.kid !== undefined ? utf8Length(key) : 0);
   } else bytes += valueBytes(row.value);
   return { records: 1, bytes };
 }

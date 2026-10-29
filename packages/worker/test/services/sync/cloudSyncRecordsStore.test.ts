@@ -147,6 +147,50 @@ describe.each(stores)("record methods: %s store", (_name, make) => {
     expect(s.liveRecordCount("none")).toBe(0);
   });
 
+  it("counts removed field cells and lists the oldest first, per collection or in all", () => {
+    const s = make();
+    const gone = (n: number): FieldCell => ({
+      value: null,
+      removed: true,
+      stamp: stamp(n),
+    });
+    const live: FieldCell = { value: 1, removed: false, stamp: stamp(0) };
+    const record = (
+      collection: string,
+      id: string,
+      version: number,
+      cells: [string, FieldCell][],
+    ): StoredRecord => ({
+      ...valueRecord(collection, id, version, null),
+      kind: "fields",
+      fields: new Map(cells),
+    });
+    s.putRecord(
+      record("a", "1", 1, [
+        ["x", gone(5)],
+        ["y", live],
+        ["z", gone(2)],
+      ]),
+    );
+    s.putRecord(record("a", "2", 2, [["x", gone(9)]]));
+    s.putRecord(record("b", "1", 3, [["x", gone(4)]]));
+    expect(s.removedFieldCount()).toBe(4);
+    expect(s.removedFieldCount("a")).toBe(3);
+    expect(s.removedFieldCount("none")).toBe(0);
+    expect(s.oldestRemovedFields(2, "a").map((c) => [c.id, c.field])).toEqual([
+      ["1", "z"],
+      ["1", "x"],
+    ]);
+    expect(
+      s.oldestRemovedFields(3).map((c) => [c.collection, c.id, c.field]),
+    ).toEqual([
+      ["a", "1", "z"],
+      ["b", "1", "x"],
+      ["a", "1", "x"],
+    ]);
+    expect(s.oldestRemovedFields(1)[0]?.stamp).toEqual(stamp(2));
+  });
+
   it("counts records in isEmpty and heldData, a tombstone alone in neither heldData", () => {
     const s = make();
     expect(s.isEmpty()).toBe(true);

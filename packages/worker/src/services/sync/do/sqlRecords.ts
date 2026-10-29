@@ -9,6 +9,7 @@ import type { SyncJson } from "@polaris-key/protocol/sync";
 import type {
   FieldCell,
   RecordKind,
+  RemovedField,
   SetElement,
   Stamp,
   StoredRecord,
@@ -44,6 +45,14 @@ interface FieldRow extends Row {
   hlc: string;
   client_id: string;
   kid: string | null;
+}
+
+interface RemovedRow extends Row {
+  collection: string;
+  id: string;
+  field: string;
+  hlc: string;
+  client_id: string;
 }
 
 interface ElementRow extends Row {
@@ -83,14 +92,18 @@ export function settle(
   );
 }
 
-/** The `floor` columns of a settings or records row, when set. */
-export function floorOf(r: {
-  floor_hlc: string | null;
-  floor_client: string | null;
-}): Stamp | undefined {
-  return r.floor_hlc !== null && r.floor_client !== null
-    ? { hlc: r.floor_hlc, clientId: r.floor_client }
-    : undefined;
+/** Sets the `floor` and `kid` of a settings or records row on `out`, when the columns hold them. */
+export function readFloorAndKid(
+  out: { floor?: Stamp; kid?: string },
+  r: {
+    floor_hlc: string | null;
+    floor_client: string | null;
+    kid: string | null;
+  },
+): void {
+  if (r.floor_hlc !== null && r.floor_client !== null)
+    out.floor = { hlc: r.floor_hlc, clientId: r.floor_client };
+  if (r.kid !== null) out.kid = r.kid;
 }
 
 export class RecordTables {
@@ -278,6 +291,41 @@ export class RecordTables {
     return rows.map((r) => this.hydrate(r));
   }
 
+  removedCount(collection?: string): number {
+    const n =
+      collection === undefined
+        ? this.q.all<{ n: number }>(
+            `SELECT COUNT(*) AS n FROM record_fields WHERE removed = 1`,
+          )[0]?.n
+        : this.q.all<{ n: number }>(
+            `SELECT COUNT(*) AS n FROM record_fields WHERE removed = 1 AND collection = ?`,
+            collection,
+          )[0]?.n;
+    return Number(n ?? 0);
+  }
+
+  oldestRemoved(limit: number, collection?: string): RemovedField[] {
+    const cols = `collection, id, field, hlc, client_id`;
+    const order = `ORDER BY hlc, client_id, collection, id, field LIMIT ?`;
+    const rows =
+      collection === undefined
+        ? this.q.all<RemovedRow>(
+            `SELECT ${cols} FROM record_fields WHERE removed = 1 ${order}`,
+            limit,
+          )
+        : this.q.all<RemovedRow>(
+            `SELECT ${cols} FROM record_fields WHERE removed = 1 AND collection = ? ${order}`,
+            collection,
+            limit,
+          );
+    return rows.map((r) => ({
+      collection: r.collection,
+      id: r.id,
+      field: r.field,
+      stamp: { hlc: r.hlc, clientId: r.client_id },
+    }));
+  }
+
   private hydrate(r: RecordRow): StoredRecord {
     const out: StoredRecord = {
       collection: r.collection,
@@ -288,9 +336,7 @@ export class RecordTables {
       kind: r.kind as RecordKind,
       value: JSON.parse(r.value_json) as SyncJson,
     };
-    const floor = floorOf(r);
-    if (floor) out.floor = floor;
-    if (r.kid !== null) out.kid = r.kid;
+    readFloorAndKid(out, r);
     if (r.kind === "fields") {
       const fields = new Map<string, FieldCell>();
       for (const f of this.q.all<FieldRow>(

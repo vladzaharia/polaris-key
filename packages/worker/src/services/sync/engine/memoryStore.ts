@@ -4,9 +4,10 @@
  */
 
 import type { SyncScope } from "@polaris-key/protocol/sync";
-import { recordsDump, settingId } from "./store.js";
+import { compareRemoved, recordsDump, settingId } from "./store.js";
 import type {
   ClientRecord,
+  RemovedField,
   StoredRecord,
   StoredSetting,
   StoreUsage,
@@ -261,6 +262,30 @@ export class MemoryStore implements SyncStore {
       )
       .slice(0, limit)
       .map(cloneRecord);
+  }
+
+  private removedCells(collection?: string): RemovedField[] {
+    const out: RemovedField[] = [];
+    for (const r of this.records.values()) {
+      if (collection !== undefined && r.collection !== collection) continue;
+      for (const [field, cell] of r.fields ?? [])
+        if (cell.removed)
+          out.push({
+            collection: r.collection,
+            id: r.id,
+            field,
+            stamp: { ...cell.stamp },
+          });
+    }
+    return out;
+  }
+
+  removedFieldCount(collection?: string): number {
+    return this.removedCells(collection).length;
+  }
+
+  oldestRemovedFields(limit: number, collection?: string): RemovedField[] {
+    return this.removedCells(collection).sort(compareRemoved).slice(0, limit);
   }
 
   isEmpty(): boolean {

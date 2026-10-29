@@ -31,6 +31,7 @@ import {
 } from "@polaris-key/protocol/sync";
 import { admission } from "./budget.js";
 import { compareStamps } from "./hlc.js";
+import { envelopeKid } from "./sealed.js";
 import { liveMembers } from "./store.js";
 import { account } from "./usage.js";
 import type {
@@ -130,6 +131,7 @@ function commit(
 ): MutationResult {
   const shrinking = m.op === "clear" || m.op === "removeMember";
   next.sealed = ctx.sealed === true;
+  stampKid(next, ctx.sealed === true);
   const refused = admission(
     store.getUsage(),
     prev,
@@ -149,6 +151,21 @@ function commit(
   store.putSetting(next);
   account(store, prev, next);
   return { mutationId: m.mutationId, status: "ok", version: next.version };
+}
+
+/**
+ * Records the key id of the sealed value a row holds (U-09.5; C14). A merged row has none of its
+ * own (its members carry theirs), a plaintext row has none, and a tombstone keeps the id of the
+ * value it replaced.
+ */
+function stampKid(row: StoredSetting, sealed: boolean): void {
+  if (row.members) delete row.kid;
+  else if (row.deleted) return;
+  else if (sealed && typeof row.value === "string") {
+    const kid = envelopeKid(row.value);
+    if (kid !== undefined) row.kid = kid;
+    else delete row.kid;
+  } else delete row.kid;
 }
 
 const conflict = (m: SyncMutation, row: StoredSetting): MutationResult => ({
@@ -343,6 +360,10 @@ function applyMerge(
           code: "value_invalid",
         };
     }
+    const kid =
+      ctx.sealed && m.op === "setMember"
+        ? envelopeKid(m.ct as string)
+        : undefined;
     members.set(
       name,
       m.op === "setMember"
@@ -350,6 +371,7 @@ function applyMerge(
             value: (ctx.sealed ? m.ct : m.value) as SyncJson,
             removed: false,
             stamp,
+            ...(kid !== undefined ? { kid } : {}),
           }
         : { value: null, removed: true, stamp },
     );

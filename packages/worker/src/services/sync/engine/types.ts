@@ -35,6 +35,8 @@ export interface MemberCell {
   value: SyncJson;
   removed: boolean;
   stamp: Stamp;
+  /** The envelope's key id (hex of bytes 1 to 16) of a sealed write; absent for plaintext. */
+  kid?: string;
 }
 
 /**
@@ -63,6 +65,11 @@ export interface StoredSetting {
   value: SyncJson;
   members?: Map<string, MemberCell>;
   floor?: Stamp;
+  /**
+   * The envelope's key id of the sealed value the row holds (a scalar row; a merged row's members
+   * carry their own). A row written before U-09.5 has none, and is not backfilled (D6).
+   */
+  kid?: string;
   /**
    * Derived, never stored: the row holds sealed values (its `version` is at or above the store's
    * `encryptionSince`). Sealed rows are charged by `envelopeBytes - 113` against the budgets.
@@ -122,6 +129,14 @@ export interface StoredRecord {
   kid?: string;
   /** Derived, never stored: the row holds sealed values (`version` at or above `encryptionSince`). */
   sealed?: boolean;
+}
+
+/** A removed `merge` field cell, named by where it lives and the clock of its removal. */
+export interface RemovedField {
+  collection: string;
+  id: string;
+  field: string;
+  stamp: Stamp;
 }
 
 /** A clientId's binding (rule 4): the first device that pushed with it, and its last processed id. */
@@ -200,6 +215,13 @@ export interface SyncStore {
    * `collection` or across all of them. The forgetting bounds read this way (§13.3).
    */
   oldestRecordTombstones(limit: number, collection?: string): StoredRecord[];
+  /** How many removed field cells the store keeps: in the concrete `collection`, or all of them. */
+  removedFieldCount(collection?: string): number;
+  /**
+   * The `limit` oldest removed field cells by clock (HLC, then clientId, then name), in the concrete
+   * `collection` or across all of them. The forgetting bounds read this way (§13.3).
+   */
+  oldestRemovedFields(limit: number, collection?: string): RemovedField[];
   /** No row at all, tombstones and records included. */
   isEmpty(): boolean;
   /** The object has held a live setting or record at some point (a tombstone alone does not count). */
