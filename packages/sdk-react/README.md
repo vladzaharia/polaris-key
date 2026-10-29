@@ -35,6 +35,31 @@ export function App() {
 For the kit components, theming, server-rendered hosts, headless models and fixture samples, see
 [React UI kit](https://key.plrs.im/docs/build/ui/frameworks/react/).
 
+## Automatic sign-in
+
+`PolarisKeyGate` signs a person in by itself when it can, once, as the app starts. In a browser
+that offers Google through FedCM, the gate asks for the account the person is already signed in
+with and signs the device in without a form. The person sees one confirm, or the licence choice,
+only when the sign-in needs one. When nothing is offered, or the product has no platform sign-in,
+the gate shows its normal sign-in. A page that cannot do it (a cookie page, the desktop renderer,
+`localAdapter`) behaves as before.
+
+After an explicit sign-out the gate stays signed out on this device until the person signs in
+again. It needs the product's platform sign-in: the identity service on, with Google set up for
+the product.
+
+Turn it off on the provider:
+
+```tsx
+<PolarisKeyProvider config={polarisKey} autoSignIn={false}>
+  <PolarisKeyGate>
+    <YourApp />
+  </PolarisKeyGate>
+</PolarisKeyProvider>
+```
+
+The gate never shows the browser's account chooser by itself.
+
 ## Installing an update and the boot guard (`update.driver`, `update.bootguard`)
 
 `adapter.installUpdate(decision, { signal?, reload? })` hands a decision to the transport's
