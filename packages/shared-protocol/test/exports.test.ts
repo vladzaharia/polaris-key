@@ -631,4 +631,47 @@ describe("@polaris-key/protocol/identity: silent restore (WIRE-CONTRACT-V5 §12.
     const off: identity.RestoreDiscovery = { restore: false, endpoints: {} };
     expect(off.restore).toBe(false);
   });
+
+  it("types the restore results: confirm without a provider or address, terms only", () => {
+    const consent: identity.RestoreConsentView = {
+      client: {
+        appName: "Djdl",
+        developerName: null,
+        iconUrl: null,
+        nameVerified: false,
+      },
+      as: { provider: null, email: null },
+      items: [],
+      scopeHash: "0".repeat(64),
+      firstTime: true,
+      changed: false,
+    };
+    const confirm: identity.RestoreTokenResult = {
+      status: "confirm",
+      grant: `sg_${"A".repeat(43)}`,
+      expiresIn: 300,
+      consent,
+    };
+    const terms: identity.RestoreTokenResult = {
+      error: "interstitial_required",
+      reason: "terms",
+      url: "https://key.plrs.im/signin?product=djdl",
+    };
+    expect("consent" in confirm && confirm.consent.as.email).toBeNull();
+    expect("reason" in terms && terms.reason).toBe("terms");
+    const asOf = (v: identity.RestoreConsentView["as"]) => v;
+    // @ts-expect-error a restore view never names a provider.
+    asOf({ provider: "google", email: null });
+    // @ts-expect-error a restore view never carries an address.
+    asOf({ provider: null, email: "a@b.c" });
+    const terms2 = (b: identity.RestoreInterstitialRequiredBody) => b;
+    // @ts-expect-error a restore cannot be `no_link`: it has no link handle.
+    terms2({ error: "interstitial_required", reason: "no_link", url: "u" });
+    // The exchange's own view keeps a real provider.
+    const exchange: identity.ExchangeConsentView["as"] = {
+      provider: "apple",
+      email: null,
+    };
+    expect(exchange.provider).toBe("apple");
+  });
 });
