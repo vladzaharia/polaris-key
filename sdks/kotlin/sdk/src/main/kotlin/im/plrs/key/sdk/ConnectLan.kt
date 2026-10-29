@@ -208,6 +208,9 @@ internal class LanService private constructor(
     /** Sockets that have not been admitted yet (a test hook for the G7 caps). */
     val pendingCount: Int get() = synchronized(lock) { pending.size }
 
+    /** True while the TCP listener is open (a test hook). */
+    internal val listening: Boolean get() = server?.isClosed == false
+
     /** Source addresses with unadmitted sockets (a test hook). */
     val pendingAddresses: Map<String, Int> get() = synchronized(lock) { HashMap(perAddress) }
 

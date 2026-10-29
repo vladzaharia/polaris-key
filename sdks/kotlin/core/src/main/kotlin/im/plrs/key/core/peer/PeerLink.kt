@@ -44,6 +44,7 @@ private const val MILLIS = 1000.0
 
 /** How long an ended link gives the writer to flush its CLOSE record before the pipe is closed. */
 private const val CLOSE_GRACE_MILLIS = 3000L
+private const val BUSY_FLUSH_MILLIS = 250L
 
 /** The least a deadline timer waits, so a deadline that is due now cannot spin. */
 private const val MIN_WAKE_SECONDS = 0.05
@@ -290,16 +291,13 @@ public class PeerLink<H>(
 
     /**
      * A link that ends closes its socket (G10): a writer blocked on a peer that never reads, and a reader
-     * blocked in a read, are released when the pipe closes. `peer_busy` closes at once (the peer is not
-     * reading, so there is nothing to flush); any other end waits [CLOSE_GRACE_MILLIS] for the CLOSE record.
+     * blocked in a read, are released when the pipe closes. `peer_busy` does not linger (the peer is not
+     * reading, so it waits only [BUSY_FLUSH_MILLIS], long enough for a writer that is not blocked to put the CLOSE
+     * record on the pipe first); any other end waits [CLOSE_GRACE_MILLIS] for the CLOSE record.
      */
     private fun closePipeSoon(now: Boolean) {
-        if (now) {
-            pipe.close()
-            return
-        }
         val job = scope.launch {
-            delay(CLOSE_GRACE_MILLIS)
+            delay(if (now) BUSY_FLUSH_MILLIS else CLOSE_GRACE_MILLIS)
             pipe.close()
         }
         // A scope that is cancelled before the grace runs out still closes the pipe.
