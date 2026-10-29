@@ -30,6 +30,11 @@
 import { randomToken } from "../../../platform/random.js";
 import { hashKey } from "../../../platform/crypto.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
+import {
+  actorColumns,
+  appendAudit,
+  type AuditActor,
+} from "../../../core/audit.js";
 import type { Db, DbStatement } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 
@@ -252,12 +257,15 @@ export async function revokeSubjectRestore(
 }
 
 /**
- * The operator's incident action: every restore row and origin mark of one product. Idempotent.
- * Returns the number of key rows removed; nothing else about the product changes.
+ * The operator's incident action, on the launch gate: every restore row and origin mark of one
+ * product. Idempotent. Returns the number of key rows removed; nothing else about the product
+ * changes. With `audit` it writes one row (`identity.restore.purge`) that names the actor and the
+ * count and no id or secret.
  */
 export async function purgeProductRestore(
   db: Db,
   product: string,
+  audit?: { actor: AuditActor; now: number },
 ): Promise<number> {
   const [keys] = (await runCounted(db, [
     {
@@ -269,6 +277,16 @@ export async function purgeProductRestore(
       params: [product],
     },
   ])) as [number, number];
+  if (audit)
+    await appendAudit(db, {
+      product,
+      at: audit.now,
+      ...actorColumns(audit.actor),
+      action: "identity.restore.purge",
+      target_kind: "product",
+      target_id: product,
+      summary: `Purged ${keys} restore key(s).`,
+    });
   return keys;
 }
 

@@ -458,6 +458,26 @@ describe("operator purge and the sweep", () => {
     expect(await purgeProductRestore(w.db, SLUG)).toBe(0);
   });
 
+  it("the purge writes one audit row that names the actor and the count, no id or secret", async () => {
+    const m = await mint(A);
+    await purgeProductRestore(w.db, SLUG, {
+      actor: { sub: "op", name: "Operator", email: null },
+      now: NOW,
+    });
+    const rows = await w.db.all<Record<string, unknown>>(
+      "SELECT * FROM audit WHERE product = ? AND action = 'identity.restore.purge'",
+      SLUG,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      actor_sub: "op",
+      summary: "Purged 1 restore key(s).",
+    });
+    const text = JSON.stringify(rows[0]);
+    expect(text).not.toContain(m.restoreId);
+    expect(text).not.toContain(m.secret);
+  });
+
   it("the 180-day sweep removes idle rows and old marks, not checked ones", async () => {
     await mint(A, { now: NOW });
     await mint(B, { now: NOW + 100 * 86_400 });
