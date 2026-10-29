@@ -209,7 +209,7 @@ export function openManage(
 
 /** The session handle a device-code sign-in runs as, in this page's memory: the form's `wait()`
  *  answers, one poll at a time (the SDK's own interval between them). */
-function handleOf(flow: DeviceCodeSignInSession): SignInSessionHandle {
+export function handleOf(flow: DeviceCodeSignInSession): SignInSessionHandle {
   return {
     browserOpened: true,
     wait: async (): Promise<SignInWait> => {

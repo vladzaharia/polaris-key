@@ -114,6 +114,11 @@ describe("the gate starts itself inside the provider", () => {
     await waitFor(() =>
       expect(bridge.submitKey).toHaveBeenCalledWith("pkey_acme_KEY"),
     );
+    // ActivateDone first (UK-42); Start using lets the app in.
+    await waitFor(() =>
+      expect(control(container, "signin.done.start")).not.toBeNull(),
+    );
+    fireEvent.click(control(container, "signin.done.start")!);
     await waitFor(() =>
       expect(container.querySelector('[data-testid="app"]')).not.toBeNull(),
     );

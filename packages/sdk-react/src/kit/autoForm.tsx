@@ -4,10 +4,11 @@
 // demand by the gate (component.tsx), so a page that signs in silently never fetches it. The SDK's
 // calls are mapped to ui-core's `SignInPrimitives` here; the model decides every step.
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AutoOutcome } from "@polaris-key/ui-core";
 import { primitivesOf } from "@polaris-key/ui-core/browser/sdk/autoPrimitives.js";
 
+import type { SessionSlot } from "./holderGate.js";
 import type { PolarisAdapter } from "../core/index.js";
 import { SignIn } from "./signin.js";
 import type { KitProps } from "./component.js";
@@ -32,8 +33,28 @@ export default function AutoForm(props: AutoFormProps): ReactNode {
   const { adapter, seed, onBack } = props;
   const newLicense = () =>
     seed?.kind === "confirm" && seed.input.license === "new";
+  const slot = useRef<SessionSlot>({ current: null });
   const primitives = useMemo(
-    () => primitivesOf(adapter, () => props.onFallback?.(), newLicense),
+    () => {
+      const base = primitivesOf(
+        adapter,
+        () => props.onFallback?.(),
+        newLicense,
+      );
+      return {
+        ...base,
+        // Add your name and email signs in inside this page (UK-42): leaving for the gate's own
+        // sign-in would lose the form and the hints.
+        start: async (o: Parameters<typeof base.start>[0]) =>
+          o.hints?.purpose === "attach"
+            ? (await import("./holderGate.js")).startInPage(
+                adapter,
+                slot.current,
+                o,
+              )
+            : base.start(o),
+      };
+    },
     // The seed is read when Continue is pressed, so a new seed needs no new primitives.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [adapter],

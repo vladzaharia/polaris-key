@@ -10,6 +10,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   type ReactNode,
@@ -24,8 +25,12 @@ import { useAdapterState } from "../react/hooks.js";
 import type { KitAction, KitProps } from "./component.js";
 import { kitComponent } from "./kitComponent.js";
 import { openLink, safeLink } from "./links.js";
+import { openManage } from "@polaris-key/ui-core/browser";
 import { installProgressInput } from "./adapt.js";
 import type { SettingsRow } from "./views.js";
+import { holderScreen } from "./holdersLazy.js";
+import type { AddToAccountProps } from "./holders.js";
+import type { AddFlow, SessionSlot } from "./holderGate.js";
 
 type Props = KitProps;
 
@@ -34,6 +39,7 @@ const Settings_ = kitComponent("Settings");
 const UpdatePrompt_ = kitComponent("UpdatePrompt");
 const About_ = kitComponent("About");
 const AccountAndLicense_ = kitComponent("AccountAndLicense");
+const AddToAccount_ = holderScreen<AddToAccountProps>("AddToAccount");
 
 /** The adapter and what the provider knows, or `null` outside `<PolarisKeyProvider>`. */
 function useSdk() {
@@ -254,6 +260,70 @@ function parseSetting(row: SettingsRow, raw: string): JSONValue | undefined {
   return raw;
 }
 
+/** AddToAccount from the account pane's "Not in an account" row (UK-42): in place of the pane, over
+ *  the SDK; Cancel and Start using go back to it. Leaving it cancels the model and its sign-in. */
+function AddInAccount(props: {
+  adapter: PolarisAdapter;
+  services: string[];
+  theme?: KitProps["theme"];
+  onClose: () => void;
+}): ReactNode {
+  const { adapter } = props;
+  const slot = useRef<SessionSlot>({ current: null });
+  const flow = useRef<AddFlow | null>(null);
+  const [, redraw] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    let live = true;
+    void import("./holderGate.js").then((m) => {
+      if (!live) return;
+      flow.current = m.createAddFlow(adapter, slot.current, "device", redraw);
+      redraw();
+    });
+    return () => {
+      live = false;
+      flow.current?.drop();
+      flow.current = null;
+    };
+  }, [adapter]);
+  const f = flow.current;
+  if (!f) return null;
+  const m = f.model;
+  const input: UiInput = {
+    ...m.input(),
+    services: props.services as NonNullable<UiInput["services"]>,
+  };
+  return (
+    <AddToAccount_
+      bare
+      {...(props.theme ? { theme: props.theme } : {})}
+      input={input}
+      onAction={(a: KitAction) => {
+        switch (a.key) {
+          case "common.continue":
+            if (typeof a.name === "string") m.setField("name", a.name);
+            if (typeof a.email === "string") m.setField("email", a.email);
+            void m.submit();
+            return;
+          case "common.tryAgain":
+            void m.tryAgain();
+            return;
+          case "common.cancel":
+          case "signin.done.start":
+            props.onClose();
+            return;
+          case "signin.key.ownedSignIn":
+            void adapter.signInWithOidc().catch(() => undefined);
+            return;
+          case "activate.otherEmail.verify":
+          case "signin.auto.confirm.other":
+            void m.cancel();
+            return;
+        }
+      }}
+    />
+  );
+}
+
 /** The account pane a host-opened Settings carries (the menu's "Manage License…"): the license,
  *  its devices, the version, the update controls and Sign Out, from what the SDK knows. */
 function OpenedAccount(props: {
@@ -264,8 +334,10 @@ function OpenedAccount(props: {
   onSignedOut: () => void;
 }): ReactNode {
   const { adapter } = props;
+  const sdk = useSdk();
   const state = useAdapterState(adapter);
   const [used, setUsed] = useState<number | null>(null);
+  const [adding, setAdding] = useState(false);
   const licenseOn = state.capabilities.license.enabled;
   useEffect(() => {
     if (!licenseOn) return;
@@ -284,13 +356,32 @@ function OpenedAccount(props: {
   // "Manage" opens the page a refusal handed over (the device-limit `manageUrl`); the SDK has
   // no other account page, so without one the button is left out.
   const manageUrl = safeLink(state.error?.license?.manageUrl);
+  const services = (Object.keys(caps) as (keyof typeof caps)[]).filter(
+    (s) => caps[s].enabled,
+  );
+  // The license's holder, from the signed document's profile (UK-42): no email is floating, and
+  // an account signed in on this device is never called floating.
+  const profile = state.profile;
+  const holder =
+    profile && !profile.user
+      ? { email: typeof profile.email === "string" ? profile.email : "" }
+      : undefined;
+  if (adding)
+    return (
+      <AddInAccount
+        adapter={adapter}
+        services={services}
+        {...(props.theme ? { theme: props.theme } : {})}
+        onClose={() => setAdding(false)}
+      />
+    );
   const input: UiInput = {
-    services: (Object.keys(caps) as (keyof typeof caps)[]).filter(
-      (s) => caps[s].enabled,
-    ),
+    services,
+    ...(holder ? { licenseHolder: holder } : {}),
     gate: { status: state.status },
     account: {
-      signedIn: caps.identity.enabled && name !== undefined,
+      // A floating license has no name or email: nobody is signed in (UK-42).
+      signedIn: caps.identity.enabled && !!name?.trim(),
       ...(name !== undefined ? { holder: name } : {}),
       ...(typeof tier === "string" ? { tier } : {}),
       canManage: manageUrl !== null,
@@ -310,6 +401,27 @@ function OpenedAccount(props: {
           void adapter.signOut().then(props.onSignedOut, props.onSignedOut);
         else if (a.key === "update.checkNow") props.onCheckUpdates?.();
         else if (a.key === "common.manage" && manageUrl) openLink(manageUrl);
+        else if (a.key === "activate.recommend.action") {
+          // Add your name and email: AddToAccount here, or the product's page where Identity is
+          // off (no key is held in this pane, so none is sent).
+          if (caps.identity.enabled) setAdding(true);
+          else
+            void import("./holderGate.js")
+              .then((m) =>
+                m.portalTarget(adapter, {
+                  ...(sdk?.baseUrl !== undefined
+                    ? { baseUrl: sdk.baseUrl }
+                    : {}),
+                  ...(sdk?.productSlug !== undefined
+                    ? { product: sdk.productSlug }
+                    : {}),
+                }),
+              )
+              .then((t) => {
+                if (t) openManage(t.url);
+              })
+              .catch(() => undefined);
+        }
       }}
     />
   );

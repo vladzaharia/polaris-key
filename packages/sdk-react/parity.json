@@ -447,9 +447,8 @@
       "note": "I-10a.12: License in another account is one focused step on the gate's Activate and the sign-in form's key step (the product header, the product-named title and sentence, then Sign in as the primary, which starts the kit's own sign-in with signInUrl only as the fallback, and Use a different key); the signed-in toast names who signed in and the tier (Signed in as <name> · <Tier> license). SignInModel maps the SDK's activation outcomes into the views' vocabulary (activationFromOutcome, UK-02b D3) and differentKey() clears a refusal (test/kitRefusal.test.tsx; test/browser/kit.browser.test.tsx renders each state in Chromium at every size, both schemes)."
     },
     "ui.kit.holders": {
-      "status": "planned",
-      "wp": "UK-42",
-      "note": "UK-42.9 built <ActivateDone>, <AddToAccount>, useActivateDone and useAddToAccount over ui-core's holders models, lazy-loaded (test/kitHolders.test.tsx; Chromium scenes in test/browser/holders.browser.test.tsx). UK-42.10 flips this row: wiring the gate's Done step, Add your name and email and the floating License row."
+      "status": "implemented",
+      "note": "UK-42.9 built <ActivateDone>, <AddToAccount>, useActivateDone and useAddToAccount over ui-core's holders models, lazy-loaded; UK-42.10 wires them. <PolarisKeyGate> mirrors ui-core's GateDriver (sdk.ts, with the lazy holderGate.ts): a key leaves the gate on ActivateDone with the key held in memory only, Add your name and email runs AddToAccountModel over a device-code sign-in in the page (hints, keep, a confirm:false preview, then attach; Cancel ends the model and the sign-in), the license-owned key sign-in completes with the key, and with Identity off the portal opens with the key as a #key= fragment for the configured origin only. <SignIn> draws key-done, attach and added through the holders' screens, and the account pane shows the Not in an account row with its Add action (test/kitGateHolders.test.tsx, test/kitSignIn.test.tsx, test/kitDrive.test.tsx, test/kitHolders.test.tsx; Chromium scenes in test/browser/kit.browser.test.tsx and holders.browser.test.tsx)."
     },
     "ui.kit.keyentry": {
       "status": "implemented",

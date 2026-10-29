@@ -25,6 +25,8 @@ import {
   type ReactNode,
 } from "react";
 import {
+  AddToAccountModel,
+  driverOf,
   SignInModel,
   signInView,
   type AutoOutcome,
@@ -40,7 +42,7 @@ import {
   adaptReplace,
   HANDOFF_WAITING,
 } from "./adapt.js";
-import { KitRoot, useKit, type KitProps } from "./component.js";
+import { KitRoot, useKit, type KitAction, type KitProps } from "./component.js";
 import {
   FORM_ORDER,
   formStep,
@@ -55,8 +57,20 @@ import { refusalOf } from "./refusal.js";
 import { currentPageUrl, openLink, safeLink } from "./links.js";
 import { JOIN_ACCOUNTS_URL } from "@polaris-key/ui-core/browser/sdk/linkOffer.js";
 import { openManage } from "@polaris-key/ui-core/browser";
+import { holderScreen } from "./holdersLazy.js";
+import type { ActivateDoneProps, AddToAccountProps } from "./holders.js";
 
 export type { FormInput, FormStep } from "./contractForm.js";
+
+const DoneScreen = holderScreen<ActivateDoneProps>("ActivateDone");
+const AddScreen = holderScreen<AddToAccountProps>("AddToAccount");
+
+/** The form's steps after a key with no account (UK-42): drawn by the holders' own screens. */
+const HOLDER_STEPS: ReadonlySet<string> = new Set([
+  "key-done",
+  "attach",
+  "added",
+]);
 
 const useIsoLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -280,6 +294,20 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     ...(props.seed ? { seed: props.seed } : {}),
   });
   const model = form.model;
+  // AddToAccount's model, while the form is on the attach step (UK-42). Name and email live there
+  // and in the screen's fields only: never in the form's snapshot, a view's input or a URL.
+  const add = useRef<AddToAccountModel | null>(null);
+  const stopAdd = useRef<(() => void) | null>(null);
+  const [, redrawAdd] = useReducer((n: number) => n + 1, 0);
+  const dropAdd = () => {
+    stopAdd.current?.();
+    stopAdd.current = null;
+    const m = add.current;
+    add.current = null;
+    // Cancelling the model also cancels its sign-in: nothing attaches after Cancel or a drop.
+    if (m) void m.cancel().catch(() => {});
+  };
+  useEffect(() => dropAdd, [model]);
   // The device picked in the Replace step (kit-side, as in the elements).
   const [replacePick, setReplacePick] = useState<string | undefined>();
   const picked: FormInput =
@@ -297,7 +325,22 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
           },
         }
       : picked;
-  const input = useCountdown(named);
+  const holderStep = named.signIn?.step;
+  const input = useCountdown(
+    holderStep && HOLDER_STEPS.has(holderStep)
+      ? {
+          ...named,
+          activateDone: named.activateDone ?? { deviceKind: "device" },
+          addToAccount:
+            holderStep === "added"
+              ? { step: "added", deviceKind: "device" }
+              : (add.current?.input().addToAccount ?? {
+                  step: "form",
+                  deviceKind: "device",
+                }),
+        }
+      : named,
+  );
   const sheet = (props.presentation ?? input.signIn?.presentation) === "sheet";
 
   const close = () => {
@@ -339,6 +382,58 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     key: string,
     detail: Record<string, unknown>,
   ): Promise<void> => {
+    const at = model?.snapshot.session.step;
+    if (model && at && HOLDER_STEPS.has(at)) {
+      switch (key) {
+        case "signin.done.start":
+        case "activate.recommend.skip":
+          // Start using the app: the key is dropped and the form ends as a key activation does.
+          dropAdd();
+          model.done();
+          finish();
+          if (sheet) props.onClose?.();
+          return;
+        case "activate.recommend.action": {
+          // Add your name and email. The host hears the press too (`onAction`): with Identity off
+          // there is no form to add in, and the host opens the product's page.
+          if (at !== "key-done" || !props.primitives) return;
+          dropAdd();
+          const m = new AddToAccountModel({
+            driver: driverOf(props.primitives),
+            deviceKind: "device",
+          });
+          add.current = m;
+          const stop = m.store.subscribe(() => {
+            redrawAdd();
+            if (m.snapshot.step === "added") model.attached();
+          });
+          stopAdd.current = stop;
+          model.openAttach();
+          return;
+        }
+        case "common.continue": {
+          const m = add.current;
+          if (!m) return;
+          if (typeof detail.name === "string") m.setField("name", detail.name);
+          if (typeof detail.email === "string")
+            m.setField("email", detail.email);
+          return m.submit();
+        }
+        case "common.tryAgain":
+          return add.current?.tryAgain();
+        case "common.cancel":
+          // Back to ActivateDone, the key still held; the sign-in is cancelled.
+          dropAdd();
+          model.closeAttach();
+          return;
+        case "activate.otherEmail.verify":
+        case "signin.auto.confirm.other":
+          // A different email: back to the form with the fields kept.
+          return add.current?.cancel();
+        case "activate.waitingSignIn":
+          return model.start({ channel: "browser" });
+      }
+    }
     if (key === "signin.done.start") {
       finish();
       if (sheet) props.onClose?.();
@@ -696,6 +791,23 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   });
 
   if (kit.view.state === "hidden") return null;
+  // After a key with no account the holders' own screens draw the step (UK-42).
+  if (HOLDER_STEPS.has(kit.view.state) && !props.steps) {
+    const Screen = kit.view.state === "key-done" ? DoneScreen : AddScreen;
+    return (
+      <Screen
+        {...(props.theme ? { theme: props.theme } : {})}
+        {...(props.className ? { className: props.className } : {})}
+        {...(props.bare ? { bare: props.bare } : {})}
+        {...(props.fill ? { fill: props.fill } : {})}
+        input={kit.input}
+        onAction={(a: KitAction) => {
+          props.onAction?.(a);
+          void drive(a.key, a);
+        }}
+      />
+    );
+  }
   if (props.steps && !props.steps.includes(kit.view.state)) return null;
 
   const waiting =

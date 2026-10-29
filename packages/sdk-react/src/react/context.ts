@@ -11,6 +11,9 @@ export interface PolarisContextValue {
   backend?: BackendOptions;
   /** The host app's version (`config.version`): the kit's About and update prompt name it. */
   version?: string;
+  /** The control-plane origin (`config.baseUrl`): the only API origin the kit hands a held license
+   *  key to (UK-42). Absent: the default origin. */
+  baseUrl?: string;
   /** The product slug (`config.productSlug`): the kit's diagnostics name it. */
   productSlug?: string;
   /** False when the Provider's `autoSignIn={false}`: the gate does not try automatic sign-in. */
