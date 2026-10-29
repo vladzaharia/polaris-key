@@ -47,8 +47,8 @@ class AutoSignInTest {
         var silentToken: String? = "id-token-silent",
         var sheetToken: String? = "id-token-sheet",
         var revoked: Boolean = false,
+        override val kind: ExchangeKind = ExchangeKind.google,
     ) : PlatformIdentityProvider {
-        override val kind = ExchangeKind.google
         var silentCalls = 0
         var sheetCalls = 0
         var cleanups = 0
@@ -97,6 +97,7 @@ class AutoSignInTest {
         nonceStatus: Int = 200,
         withLicense: Boolean = false,
         store: Store = InMemoryStore("djdl", deviceId),
+        exchangeMember: String = """"exchange":{"kinds":["google"],"google":{"serverClientId":"1234-web.apps.googleusercontent.com"}},""",
         signOutBody: String = """{"released":true}""",
         revokedSignOutStatus: Int = 200,
         provenance: TokenProvenance? = if (withLicense) TokenProvenance.signin else null,
@@ -115,7 +116,7 @@ class AutoSignInTest {
                 "/djdl/.well-known/polaris.json" -> respond(
                     200,
                     """{"product":"djdl","services":{"identity":{"enabled":true,"configured":true,"account":true,""" +
-                        """"exchange":{"kinds":["google"],"google":{"serverClientId":"1234-web.apps.googleusercontent.com"}},""" +
+                        exchangeMember +
                         """"endpoints":{"nonce":"$base/nonce","token":"$base/token","signout":"$base/signout","subject":"$base/subject"}}}}""",
                 )
 
@@ -181,6 +182,29 @@ class AutoSignInTest {
         assertEquals("1234-web.apps.googleusercontent.com", p.audience)
         assertEquals("pkeyt_auto", w.store.getToken())
         assertEquals(listOf("/djdl/identity/nonce", "/djdl/identity/token"), w.paths().filter { it.startsWith("/djdl/identity") })
+    }
+
+    @Test
+    fun aPlayGamesCodeIsExchangedAsAPgsSubjectTokenForThePgsClientId() = runBlocking {
+        val member = """"exchange":{"kinds":["pgs"],"pgs":{"serverClientId":"5678-pgs.apps.googleusercontent.com"}},"""
+        val w = world(exchangeMember = member)
+        val p = FakeProvider(silentToken = "4/pgs-code", kind = ExchangeKind.pgs)
+        val r = w.client.autoSignIn(AutoSignInOptions(provider = p)) as AutoSignInResult.SignedIn
+        assertEquals("ps_QQMMVm-ciTWvmWEIfhAVgQ", r.subject)
+        assertEquals("5678-pgs.apps.googleusercontent.com", p.audience)
+        val body = String(w.transport.requests().first { it.path == "/djdl/identity/token" }.body!!)
+        assertTrue(body.contains("subject_token_type=urn%3Apolaris-key%3Atoken-type%3Apgs-server-auth-code"))
+        assertTrue(body.contains("subject_token=4%2Fpgs-code"))
+    }
+
+    @Test
+    fun aPgsProviderWhereDiscoveryListsOnlyGoogleEndsUnavailableWithoutAskingForACode() = runBlocking {
+        val w = world()
+        val p = FakeProvider(kind = ExchangeKind.pgs)
+        val r = w.client.autoSignIn(AutoSignInOptions(provider = p)) as AutoSignInResult.Unavailable
+        assertEquals(ErrorCode.platformIdentityUnavailable, r.code)
+        assertEquals(ExchangeUnavailableReason.kindNotDeclared, r.reason)
+        assertEquals(0, p.silentCalls)
     }
 
     @Test

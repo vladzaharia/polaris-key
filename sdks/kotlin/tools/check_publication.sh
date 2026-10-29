@@ -158,6 +158,37 @@ PY
   done
 fi
 
+# The opt-in Play Games sign-in (I-45.5): polaris-key-games carries the AAR, POM, sources jar and module
+# metadata; its only SDK dependency is polaris-key-identity (and polaris-key-core through it), never
+# polaris-key-sdk or a platform artifact; it names play-services-games-v2 at the catalog's pin; and no
+# other published POM names a Play Games artifact (an app that does not sign in through Play Games links none).
+if [ -d "$REPO/polaris-key-games" ]; then
+  echo "── games"
+  a="polaris-key-games"
+  dir="$REPO/$a/$VERSION"
+  for f in "$a-$VERSION.aar" "$a-$VERSION.pom" "$a-$VERSION.module" "$a-$VERSION-sources.jar"; do
+    [ -s "$dir/$f" ] && ok "$f" || fail "$f missing"
+  done
+  pom="$dir/$a-$VERSION.pom"
+  deps="$(sed '/<dependencies>/,$!d' "$pom" | tr -d ' \n')"
+  sdk_deps="$(grep -o '<groupId>im.plrs.key</groupId><artifactId>[^<]*</artifactId><version>[^<]*</version>' <<<"$deps" |
+    sed 's|<groupId>im.plrs.key</groupId><artifactId>\([^<]*\)</artifactId><version>\([^<]*\)</version>|\1:\2|' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+  [ "$sdk_deps" = "polaris-key-identity:$VERSION" ] && ok "$a's POM depends on polaris-key-identity:$VERSION only" ||
+    fail "$a's POM SDK dependencies are '$sdk_deps', expected 'polaris-key-identity:$VERSION'"
+  games_version="$(sed -n 's/^playGames = "\(.*\)"/\1/p' "$ROOT/gradle/libs.versions.toml")"
+  if grep -q "<artifactId>play-services-games-v2</artifactId><version>$games_version</version>" <<<"$deps"; then
+    ok "$a's POM names play-services-games-v2 $games_version"
+  else
+    fail "$a's POM does not name play-services-games-v2 $games_version"
+  fi
+  for other in "$REPO"/polaris-key-*; do
+    [ "$(basename "$other")" = "$a" ] && continue
+    if grep -qs 'play-services-games' "$other/$VERSION/$(basename "$other")-$VERSION.pom"; then fail "$(basename "$other") names Play Games (the module is opt-in)"; fi
+  done
+  ok "no other POM names Play Games"
+  if ls "$dir" | grep -qE '\.(asc|sig)$'; then fail "$a is signed (no signing in this program)"; else ok "$a carries no signature"; fi
+fi
+
 echo "── build scripts"
 if grep -rlE --include='*.gradle.kts' --include='*.properties' -i 'id\("signing"\)|`signing`|sonatype|nexus-publish|central\.sonatype|vanniktech' "$ROOT" --exclude-dir=build --exclude-dir=.gradle >/dev/null 2>&1; then
   fail "a build script configures signing or a Central publication"

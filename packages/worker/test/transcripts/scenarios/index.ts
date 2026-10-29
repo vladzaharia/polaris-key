@@ -75,6 +75,7 @@ import { EXCHANGE_SCENARIOS } from "./exchange.js";
 import { HOLDERS_SCENARIOS } from "./holders.js";
 import { LINK_SCENARIOS } from "./link.js";
 import { RESTORE_SCENARIOS } from "./restore.js";
+import { GAME_SCENARIOS } from "./gameExchange.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -126,6 +127,7 @@ export const SCENARIOS: Scenario[] = [
   ...LOCKER_SCENARIOS,
   ...EXCHANGE_SCENARIOS,
   ...LINK_SCENARIOS,
+  ...GAME_SCENARIOS,
   ...CLOUD_SYNC_SCENARIOS,
   ...KEYRING_SCENARIOS,
   ...CONNECT_SCENARIOS,

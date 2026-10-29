@@ -24,7 +24,8 @@ type Gate =
   | "LAUNCH_CONNECT"
   | "LAUNCH_SYNC_E2E"
   | "LAUNCH_RELAY"
-  | "LAUNCH_IDENTITY_RESTORE";
+  | "LAUNCH_IDENTITY_RESTORE"
+  | "LAUNCH_GAME_SIGN_IN";
 
 interface W {
   db: Db;
@@ -212,6 +213,7 @@ describe("launch gates, as settings", () => {
     ["launch.syncE2e", "LAUNCH_SYNC_E2E"],
     ["launch.relay", "LAUNCH_RELAY"],
     ["launch.identityRestore", "LAUNCH_IDENTITY_RESTORE"],
+    ["launch.gameSignIn", "LAUNCH_GAME_SIGN_IN"],
   ] as const;
 
   it("default off with no deploy value, on with one, off under a hard-off deploy value", async () => {

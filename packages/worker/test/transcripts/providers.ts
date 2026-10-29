@@ -138,7 +138,10 @@ export function appleToken(
 
 /** Serve the providers' discovery documents and key set while `body` runs; any other outbound
  *  request is a scenario bug. */
-export async function withProviders<T>(body: () => Promise<T>): Promise<T> {
+export async function withProviders<T>(
+  body: () => Promise<T>,
+  extra: Record<string, () => Response> = {},
+): Promise<T> {
   resetOidcClientCaches();
   const json = (text: string) =>
     new Response(text, {
@@ -154,6 +157,7 @@ export async function withProviders<T>(body: () => Promise<T>): Promise<T> {
       json(fixture("apple-openid-configuration.json")),
     "https://appleid.apple.com/auth/keys": () =>
       json(JSON.stringify(providerJwks())),
+    ...extra,
   };
   const spy = vi
     .spyOn(globalThis, "fetch")

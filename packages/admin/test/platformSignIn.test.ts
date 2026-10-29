@@ -40,6 +40,8 @@ describe("platformSignInStatus", () => {
     expect(platformSignInStatus(at({}), [])).toEqual({
       google: "Not set up",
       apple: "Not set up",
+      gameCenter: "Off",
+      playGames: "Not set up",
     });
     expect(
       platformSignInStatus(
@@ -49,6 +51,37 @@ describe("platformSignInStatus", () => {
         }),
         ["com.x"],
       ),
-    ).toEqual({ google: "Ready on the web", apple: "Ready" });
+    ).toEqual({
+      google: "Ready on the web",
+      apple: "Ready",
+      gameCenter: "Off",
+      playGames: "Not set up",
+    });
+  });
+
+  it("reports Game Center and Play Games", () => {
+    const base = {
+      "identity.platformSignIn.apple.teamId": "ABCDE12345",
+      "identity.platformSignIn.apple.bundleIds": ["com.x", "com.y"],
+      "identity.platformSignIn.gameCenter": true,
+    };
+    expect(platformSignInStatus(at(base), ["com.x", "com.z"]).gameCenter).toBe(
+      "Uses team ABCDE12345 and 3 bundle ids",
+    );
+    expect(
+      platformSignInStatus(
+        at({ "identity.platformSignIn.gameCenter": true }),
+        [],
+      ).gameCenter,
+    ).toBe("Needs the Apple team id");
+    const play = {
+      "identity.platformSignIn.playGames.applicationId": "123456789012",
+      "identity.platformSignIn.playGames.serverClientId": WEB,
+    };
+    expect(platformSignInStatus(at(play), [], "missing").playGames).toBe(
+      "Needs the server credential",
+    );
+    expect(platformSignInStatus(at(play), [], "set").playGames).toBe("Ready");
+    expect(platformSignInStatus(at(play), []).playGames).toBe("Ready");
   });
 });

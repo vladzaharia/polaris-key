@@ -126,6 +126,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: "LAUNCH_IDENTITY_EXCHANGE",
   },
   {
+    name: "LAUNCH_GAME_SIGN_IN",
+    kind: "var",
+    area: "jobs",
+    optional: true,
+    editable: "LAUNCH_GAME_SIGN_IN",
+  },
+  {
     name: "LAUNCH_CONNECT",
     kind: "var",
     area: "jobs",

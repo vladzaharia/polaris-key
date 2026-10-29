@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "discovery-identity-exchange",
-  "description": "Discovery of a product that declares Google and Apple platform sign-in (I-13, WIRE-CONTRACT-V5 §12.11.6). The identity fragment carries exchange {kinds, google.serverClientId} and the nonce endpoint beside the regular sign-in ones; the Apple bundle ids and team id are never published. An SDK uses the exchange rung only when both are present. A product that declares no kind keeps the fragment of discovery-identity.json, and one whose launch gate is off names neither (exchange-gate-off.json; a client with an older discovery: exchange-gate-off-stale.json).",
+  "description": "Discovery of a product that declares Google, Apple, Game Center and Play Games platform sign-in (I-13, I-14, WIRE-CONTRACT-V5 §12.11.6, §12.11.7). The identity fragment carries exchange {kinds, google.serverClientId, pgs.serverClientId} and the nonce endpoint beside the regular sign-in ones; a client ignores a kind it does not know. The Apple bundle ids and team id are never published, and neither is the Play Games application id. An SDK uses the exchange rung only when both are present. A product that declares no kind keeps the fragment of discovery-identity.json, and one whose launch gate is off names neither (exchange-gate-off.json; a client with an older discovery: exchange-gate-off-stale.json).",
   "features": ["core.discover", "identity.exchange"],
   "requires": ["core.store"],
   "product": "djdl",
@@ -104,9 +104,12 @@
                     "keyEntryLimit": 10,
                     "restore": true,
                     "exchange": {
-                      "kinds": ["google", "apple"],
+                      "kinds": ["google", "apple", "gamecenter", "pgs"],
                       "google": {
                         "serverClientId": "1234-web.apps.googleusercontent.com"
+                      },
+                      "pgs": {
+                        "serverClientId": "123456789012-transcriptpgs.apps.googleusercontent.com"
                       }
                     },
                     "endpoints": {
@@ -157,8 +160,11 @@
           "connect": false
         },
         "exchange": {
-          "kinds": ["google", "apple"],
-          "google": { "serverClientId": "1234-web.apps.googleusercontent.com" }
+          "kinds": ["google", "apple", "gamecenter", "pgs"],
+          "google": { "serverClientId": "1234-web.apps.googleusercontent.com" },
+          "pgs": {
+            "serverClientId": "123456789012-transcriptpgs.apps.googleusercontent.com"
+          }
         },
         "nonceEndpoint": true
       }

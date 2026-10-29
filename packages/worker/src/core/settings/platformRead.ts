@@ -49,6 +49,7 @@ export interface PlatformValues {
   "launch.syncE2e": "on" | "off";
   "launch.relay": "on" | "off";
   "launch.identityRestore": "on" | "off";
+  "launch.gameSignIn": "on" | "off";
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;

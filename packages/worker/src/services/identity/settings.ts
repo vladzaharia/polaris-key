@@ -35,6 +35,7 @@ import {
   MAX_GOOGLE_CLIENT_IDS,
   MAX_IDENTITY_REDIRECT_PATH_LENGTH,
   MAX_IDENTITY_REDIRECT_PATHS,
+  PLAY_GAMES_APPLICATION_ID_RE,
   OIDC_SYNC_TIER_ON_SIGN_IN_VALUES,
   type OidcSyncTierOnSignIn,
   type ParsedManifest,
@@ -301,6 +302,7 @@ function audienceSetting(
   value: SettingDef["value"],
   defaultValue: unknown,
   uniqueAcrossProducts = false,
+  since = "I-42.2",
 ): SettingDef {
   return setting({
     key,
@@ -327,7 +329,7 @@ function audienceSetting(
     visibleWhen: VISIBLE,
     storage: { kind: "scalar" },
     readers: ["services/identity/platformSignIn.ts"],
-    since: "I-42.2",
+    since,
   });
 }
 
@@ -378,6 +380,57 @@ const PS_APPLE_BUNDLES = audienceSetting(
     max: MAX_APPLE_SIGN_IN_BUNDLE_IDS,
   },
   [],
+);
+/** I-14.3: Game Center sign-in on or off; it uses the Apple team id and bundle ids above. */
+const PS_GAME_CENTER: SettingDef = setting({
+  key: "identity.platformSignIn.gameCenter",
+  rbacArea: "keys",
+  scope: "product",
+  service: "identity",
+  area: PS_AREA,
+  label: "Game Center",
+  description:
+    "Whether players can sign in with Game Center. Uses the Apple team id and bundle ids.",
+  keywords: ["game center", "apple", "gamekit", "player"],
+  docs: PLATFORM_SIGN_IN_DOCS,
+  value: { kind: "boolean" },
+  defaultValue: false,
+  merge: "cascade",
+  ownership: "claimable",
+  manifest: { path: "product:identity.platformSignIn.gameCenter" },
+  securityWidening: true,
+  widensWhen: "on",
+  critical: true,
+  confirm: { on: "L1", off: "L0" },
+  reservedFrom: PLATFORM_CLIENT_VARS,
+  visibleWhen: VISIBLE,
+  storage: { kind: "scalar" },
+  readers: ["services/identity/platformSignIn.ts"],
+  since: "I-14.3",
+});
+const PS_PLAY_APP = audienceSetting(
+  "identity.platformSignIn.playGames.applicationId",
+  "Play Games application id",
+  "The application id from Play Console, under Play Games Services.",
+  ["play games", "pgs", "google", "application id"],
+  {
+    kind: "string",
+    pattern: PLAY_GAMES_APPLICATION_ID_RE.source,
+    maxLength: 20,
+  },
+  null,
+  true,
+  "I-14.3",
+);
+const PS_PLAY_SERVER = audienceSetting(
+  "identity.platformSignIn.playGames.serverClientId",
+  "Play Games web client id",
+  "The web client of the Play Games game server credential. Its client secret is set under Keys & secrets.",
+  ["play games", "pgs", "google", "oauth", "server client"],
+  GOOGLE_ID_SPEC,
+  null,
+  true,
+  "I-14.3",
 );
 /** `identity.nearby`: on unless a developer switches it off; widens nothing by itself. */
 const NEARBY: SettingDef = setting({
@@ -449,6 +502,9 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
     PS_GOOGLE_CLIENTS,
     PS_APPLE_TEAM,
     PS_APPLE_BUNDLES,
+    PS_GAME_CENTER,
+    PS_PLAY_APP,
+    PS_PLAY_SERVER,
     NEARBY,
     IDENTITY_RESTORE,
     setting({
@@ -575,6 +631,9 @@ export const IDENTITY_ROW_SETTINGS: readonly SettingDef[] = [
   PS_GOOGLE_CLIENTS,
   PS_APPLE_TEAM,
   PS_APPLE_BUNDLES,
+  PS_GAME_CENTER,
+  PS_PLAY_APP,
+  PS_PLAY_SERVER,
   NEARBY,
   IDENTITY_RESTORE,
 ];
@@ -585,6 +644,9 @@ export const PLATFORM_SIGN_IN_SETTINGS: readonly SettingDef[] = [
   PS_GOOGLE_CLIENTS,
   PS_APPLE_TEAM,
   PS_APPLE_BUNDLES,
+  PS_GAME_CENTER,
+  PS_PLAY_APP,
+  PS_PLAY_SERVER,
   NEARBY,
   IDENTITY_RESTORE,
 ];

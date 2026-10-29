@@ -226,6 +226,7 @@ describe("PLATFORM_SETTINGS", () => {
       "IDENTITY_RESERVED_DISPLAY_NAMES",
       "KEYENTRY_REFUSALS",
       "LAUNCH_CONNECT",
+      "LAUNCH_GAME_SIGN_IN",
       "LAUNCH_IDENTITY_EXCHANGE",
       "LAUNCH_IDENTITY_RESTORE",
       "LAUNCH_RELAY",
@@ -251,6 +252,7 @@ describe("PLATFORM_SETTINGS", () => {
       KEYENTRY_REFUSALS: "runtime",
       // LG-1: the launch gates are kill switches that fail closed.
       LAUNCH_CONNECT: "ceiling",
+      LAUNCH_GAME_SIGN_IN: "ceiling",
       LAUNCH_IDENTITY_EXCHANGE: "ceiling",
       LAUNCH_IDENTITY_RESTORE: "ceiling",
       LAUNCH_RELAY: "ceiling",

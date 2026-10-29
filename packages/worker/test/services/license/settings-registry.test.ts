@@ -202,6 +202,7 @@ describe("the settings registry (ST-03)", () => {
       ["LAUNCH_SYNC_E2E", "launch.syncE2e"],
       ["LAUNCH_RELAY", "launch.relay"],
       ["LAUNCH_IDENTITY_RESTORE", "launch.identityRestore"],
+      ["LAUNCH_GAME_SIGN_IN", "launch.gameSignIn"],
       ["LICENSING_RESERVED_NAMES", "licensing.reservedNames"],
       // PX-W13: the reserved display-name severity, an ordered enum like LX-05's.
       ["IDENTITY_RESERVED_DISPLAY_NAMES", "identity.reservedDisplayNames"],
@@ -850,6 +851,9 @@ describe("rule 7: every entry's rbacArea", () => {
       "identity.platformSignIn.google.clientIds": "keys",
       "identity.platformSignIn.apple.teamId": "keys",
       "identity.platformSignIn.apple.bundleIds": "keys",
+      "identity.platformSignIn.gameCenter": "keys",
+      "identity.platformSignIn.playGames.applicationId": "keys",
+      "identity.platformSignIn.playGames.serverClientId": "keys",
       "release.keys": "keys",
       "release.sparkleEd25519Pub": "keys",
       "release.publishing.trustedPublisher": "keys",
