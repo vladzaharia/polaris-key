@@ -2084,13 +2084,13 @@ A client enrols after any completed sign-in, from any rung, and checks at most o
 
 The checks run in this order. Every failure after step 1 is the one `400 invalid_grant`, with no oracle:
 
-1. the gate: with the launch gate or the product setting off, or Identity off, the answer is `400 unsupported_grant_type` and nothing is read or consumed;
+1. the gate: with the launch gate or the product setting off, the answer is `400 unsupported_grant_type`; with Identity off the route answers `404`, as every identity route does. Either way nothing is read or consumed;
 2. the shape of the parameters, and the rate limit;
 3. the proof, which is stateless;
 4. the device's held signing key equals `device_key` (a device with none registers it in step 10);
 5. the key is found by id **and** belongs to the product `client_id` names, and its peppered HMAC equals the secret's, in constant time. The HMAC is computed for a missing row too, against a fixed value, so the time says nothing. A wrong secret, or a key of another product, does not consume the key;
 6. the key is consumed by one compare-and-set delete on its id, its product and its hash, so a replay finds nothing;
-7. the subject resolves to an active account through merge aliases;
+7. the subject resolves to an active account through merge aliases; the device that enrolled the key is still authorized and signed in as that account; the account has an address a security notice can reach (a verified address that is not suppressed; an Apple private-relay address only once the platform's relay sender is registered); and the account has redeemed fewer than 5 restore keys for the product today, else `429 rate_limited`;
 8. an `agree_key` held by another device of the product is refused;
 9. the product's terms are accepted, then consent for this product stands (§12.11.3 rule 1);
 10. the device is bound and the answer built as §12.11.3's silent single path, and the device's keys are registered through Core's operation (§15.8) with `via: "restore"`.
@@ -2100,7 +2100,7 @@ The answers are §12.11.3's, less `interstitial_required` with `no_link`: a `200
 - **`confirm`.** Its `consent.as` is `{provider: null, email: null}`: a restore proves a key, not a provider token, so the view names no provider and carries no address. Everything else in the view is §12.11.3 rule 1's.
 - **After the key is consumed.** Steps 7 to 10 may still refuse (`terms`, `not_entitled`, `device_limit`, a pending `confirm` or `choose` the person abandons). The key is gone and the next enrolment replaces it. `choice/complete` on a restore grant does not check the restore gate again, so a person who started before the gate went off can finish.
 - A restore never writes a `signin-fresh` mark, so it offers no link (§12.11.4). Audit `signin.restore` names the device and never the secret.
-- **The notice.** A sign-in by restore sends the primary address the `appDeviceApprovedNotice` email with `via: "restore"`. It is sent when the sign-in completes: on the `200` of the grant, or on `choice/complete` after a `confirm` or `choose`, for which the grant carries `via: "restore"`. The email carries a "remove this device" link, and the account's Connected devices list shows the device as "signed in from backup".
+- **The notice.** A sign-in by restore sends the security notice `appDeviceApprovedNotice` with `via: "restore"` to every verified address on the account. It is sent when the sign-in completes: on the `200` of the grant, or on `choice/complete` after a `confirm` or `choose`, for which the grant carries `via: "restore"`. Its action is "Sign out everywhere" in Polaris Locker, which unbinds every device of the account and so ends every restore key (step 7 refuses a key whose enrolling device is no longer signed in).
 
 **Revocation.** A key is deleted:
 
@@ -2112,11 +2112,13 @@ The answers are §12.11.3's, less `interstitial_required` with `no_link`: a `200
 - by maintenance, 180 days after its last check;
 - by `DELETE`, above.
 
+A deletion this list misses leaves no working key: step 7 refuses a key whose enrolling device is no longer authorized and signed in as the key's account.
+
 Every deletion and `DELETE` runs whatever the state of Identity, the product setting or the launch gate, and so does the 180-day maintenance. Only `POST` and the grant are gated. The operator has a "purge all restore keys" action on the launch gate, which deletes every row and is audited.
 
 The account export lists `{createdAt, checkedAt}` per key and never the hash.
 
-**Limits** (all fail closed, `429 rate_limited`): the grant, 10 a minute per client network and 5 a minute per device; enrolment, 10 a day per device and 20 a minute per client network.
+**Limits** (all fail closed, `429 rate_limited`): the grant, 10 a minute per client network, 5 a minute per device and 5 a day per account (counted once the key's account is known, so a refused grant has used its key); enrolment, 10 a day per device and 20 a minute per client network.
 
 **Gates.** The platform launch gate `launch.identityRestore` is off by default. The product setting `identity.restore` (manifest member `identity.restore`) is on unless the developer switches it off. Discovery's identity fragment carries `restore: true` and the endpoint `restore` only while Identity, the setting and the gate all allow it. Keys stay inert while the feature is off, and are still revoked (above).
 
