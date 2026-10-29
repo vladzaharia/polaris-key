@@ -44,7 +44,7 @@ import {
 } from "@polaris-key/protocol";
 
 /** Every method a covered route answers. `OPTIONS` itself never needs listing. */
-export const CORS_ALLOW_METHODS = "GET, POST, PATCH, DELETE";
+export const CORS_ALLOW_METHODS = "GET, POST, PATCH, PUT, DELETE";
 
 /**
  * The request headers a listed page may send. Named explicitly rather than `*`: the wildcard
@@ -58,6 +58,8 @@ export const CORS_ALLOW_HEADERS = [
   "Range",
   "If-None-Match",
   "If-Range",
+  // U-10.2: the digest a Cloud Sync file `PUT` carries (RFC 9530), set by a page that uploads.
+  "Content-Digest",
   HEADER_DEVICE,
   HEADER_VERSION,
   HEADER_CHANNEL,

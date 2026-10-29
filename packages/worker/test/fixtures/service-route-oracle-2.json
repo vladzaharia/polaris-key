@@ -3947,7 +3947,7 @@
     "headers": {
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+      "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE"
     },
     "cookies": [],
     "body": "0:e3b0c44298fc1c14"
@@ -3992,7 +3992,7 @@
     "headers": {
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+      "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE"
     },
     "cookies": [],
     "body": "0:e3b0c44298fc1c14"
@@ -4035,7 +4035,7 @@
     "headers": {
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+      "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE"
     },
     "cookies": [],
     "body": "0:e3b0c44298fc1c14"
@@ -4079,7 +4079,7 @@
     "headers": {
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+      "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE"
     },
     "cookies": [],
     "body": "0:e3b0c44298fc1c14"
@@ -4123,7 +4123,7 @@
     "headers": {
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+      "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE"
     },
     "cookies": [],
     "body": "0:e3b0c44298fc1c14"
@@ -4167,7 +4167,7 @@
     "headers": {
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+      "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE"
     },
     "cookies": [],
     "body": "0:e3b0c44298fc1c14"
@@ -4211,7 +4211,7 @@
     "headers": {
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+      "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE"
     },
     "cookies": [],
     "body": "0:e3b0c44298fc1c14"
@@ -4257,7 +4257,7 @@
     "headers": {
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+      "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE"
     },
     "cookies": [],
     "body": "0:e3b0c44298fc1c14"
