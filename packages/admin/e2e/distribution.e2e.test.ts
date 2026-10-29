@@ -350,7 +350,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
     await violations(page);
     await page.getByRole("combobox", { name: /Kind/ }).click();
     await page
-      .getByRole("option", { name: /App Store Connect API key/ })
+      .getByRole("option", { name: /Sentry internal integration/ })
       .click();
     await page.waitForTimeout(250);
     expect(await violations(page)).toEqual([]);

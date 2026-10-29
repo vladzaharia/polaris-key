@@ -474,6 +474,58 @@ function cases(): Case[] {
       name: "djdl:channel/releases",
       hash: "#/p/djdl/distribution/channels/google-play/releases",
     },
+    // A-22.3a: the Setup tab's credential table (a failed key's long error, a pin, the actions).
+    {
+      name: "djdl:channel/setup",
+      hash: "#/p/djdl/distribution/channels/google-play/setup",
+      override: {
+        "/manage/api/products/djdl/outlet-credentials": {
+          ok: true,
+          kinds: ["google-service-account"],
+          pins: {
+            "google-service-account": {
+              field: "packageName",
+              label: "Google Play package name",
+            },
+          },
+          credentials: [
+            {
+              id: "play-release-service-account",
+              kind: "google-service-account",
+              outletId: null,
+              meta: {
+                clientEmail:
+                  "polaris-key-release@acme-games-production.iam.gserviceaccount.com",
+                packageName: "com.example.djdl.with.a.very.long.package.name",
+              },
+              status: "active",
+              createdAt: 1_790_000_000,
+              createdBy: "u1",
+              rotatedAt: null,
+              expiresAt: null,
+              lastUsedAt: 1_790_100_000,
+              lastOkAt: null,
+              lastError:
+                "403 from Google Play: the service account has no access to com.example.djdl.with.a.very.long.package.name",
+            },
+            {
+              id: "play-staging",
+              kind: "google-service-account",
+              outletId: null,
+              meta: { clientEmail: "staging@acme.iam.gserviceaccount.com" },
+              status: "active",
+              createdAt: 1_790_000_000,
+              createdBy: "u1",
+              rotatedAt: null,
+              expiresAt: null,
+              lastUsedAt: null,
+              lastOkAt: null,
+              lastError: null,
+            },
+          ],
+        },
+      },
+    },
     // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
     {
       name: "waiting:package-feeds",
@@ -851,6 +903,7 @@ const TEXT200_CASES = [
   "djdl:releases/record/builds",
   "djdl:outlets",
   "djdl:credentials",
+  "djdl:channel/setup",
   "djdl:storefronts",
   "djdl:storefronts?flow=prerequisites",
   "djdl:storefronts?flow=listing",

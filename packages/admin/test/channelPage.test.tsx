@@ -98,9 +98,12 @@ describe("Distribution → a channel: Status", () => {
     const items = within(list).getAllByRole("listitem");
     expect(items).toHaveLength(3);
     expect(items[0]!.textContent).toContain("Credential expiring");
+    // The fix is on the channel's own Setup tab, not the old Credentials page.
     expect(
-      within(items[0]!).getByRole("link", { name: "Credentials" }),
-    ).toBeTruthy();
+      within(items[0]!)
+        .getByRole("link", { name: "Credentials" })
+        .getAttribute("href"),
+    ).toBe(`${H}/app-store/setup`);
     expect(items[1]!.textContent).toContain(
       "the file format or the architecture",
     );
@@ -162,7 +165,11 @@ describe("Distribution → a channel: the tablist", () => {
     boot(`${H}/app-store`, [row()]);
     const list = await screen.findByRole("tablist", { name: "App Store tabs" });
     const tabs = within(list).getAllByRole("tab");
-    expect(tabs.map((t) => t.textContent)).toEqual(["Status", "Releases"]);
+    expect(tabs.map((t) => t.textContent)).toEqual([
+      "Status",
+      "Releases",
+      "Setup",
+    ]);
     expect(tabs[0]!.getAttribute("aria-selected")).toBe("true");
     expect(tabs[0]!.tabIndex).toBe(0);
     expect(await screen.findByRole("tabpanel")).toBeTruthy();
@@ -188,7 +195,19 @@ describe("Distribution → a channel: the tablist", () => {
     expect(document.activeElement).toBe(status);
     await userEvent.keyboard("{End}{Enter}");
     await waitFor(() =>
-      expect(window.location.hash).toBe(`${H}/app-store/releases`),
+      expect(window.location.hash).toBe(`${H}/app-store/setup`),
+    );
+  });
+
+  it("Setup shows only for a channel with store keys", async () => {
+    boot(`${H}/itch`, [row({ id: "itch", label: "itch.io" })]);
+    await screen.findByRole("heading", { level: 1, name: "itch.io" });
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("tablist"))
+          .getAllByRole("tab")
+          .map((t) => t.textContent),
+      ).toEqual(["Status", "Releases"]),
     );
   });
 });

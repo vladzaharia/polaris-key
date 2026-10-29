@@ -98,7 +98,7 @@ const stripClass = (edges: string) =>
 // control or a boxed tray. The hover tint and the ring take the same accent.
 const tabClass = (active: boolean) =>
   cn(
-    "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-[3px] px-1.5 text-sm",
+    "relative inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-[3px] px-1.5 text-sm",
     "focus-visible:outline-2 focus-visible:outline-focus",
     active
       ? "border-transparent font-medium text-fg-strong"

@@ -40,7 +40,11 @@ export function ChannelPage({
   const channels = useChannels(slug, known);
   const row = channels.data?.channels.find((c) => c.id === id);
   // An out-of-scope channel can hold nothing: Status only.
-  const tabs = row && !row.inScope ? CHANNEL_TABS.slice(0, 1) : CHANNEL_TABS;
+  const tabs = !row
+    ? CHANNEL_TABS
+    : row.inScope
+      ? CHANNEL_TABS.filter((t) => t.applies?.(row) ?? true)
+      : CHANNEL_TABS.slice(0, 1);
   const current = tabs.find((t) => t.value === tab) ?? tabs[0]!;
   // A tab that is in the address but not built yet opens Status, and the address says so.
   const unbuilt = tab !== undefined && current.value !== tab;

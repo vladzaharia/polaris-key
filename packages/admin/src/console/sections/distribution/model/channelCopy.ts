@@ -80,13 +80,13 @@ export function attentionLine(
       return {
         title: "Credential expiring",
         detail: "Replace it before it lapses.",
-        action: { label: "Credentials", to: r.credentials(slug) },
+        action: { label: "Credentials", to: credentialsHome(slug, channelId) },
       };
     case "credential_missing":
       return {
         title: "Credential missing",
         detail: "Add one so Polaris Key can reach the store.",
-        action: { label: "Credentials", to: r.credentials(slug) },
+        action: { label: "Credentials", to: credentialsHome(slug, channelId) },
       };
     case "identity_mismatch":
       return {
@@ -96,6 +96,10 @@ export function attentionLine(
       };
   }
 }
+
+/** Where a credential is fixed: the channel's Setup tab, or the Credentials page for no channel. */
+const credentialsHome = (slug: string, channelId?: string): string =>
+  channelId ? r.channel(slug, channelId, "setup") : r.credentials(slug);
 
 /** `bundleId` to "Bundle id". */
 export function humanField(field: string): string {

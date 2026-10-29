@@ -21,16 +21,6 @@ export function useScopeLoading(slug: string): boolean {
   return product.isPending || product.isPlaceholderData;
 }
 
-/** The kinds the drawer offers: none until the scope is known, so none appears and then vanishes. */
-export function useScopedKinds<K extends { value: string }>(
-  slug: string,
-  kinds: readonly K[],
-  held: readonly { kind: string }[],
-): K[] {
-  const scope = useScope(slug);
-  return useScopeLoading(slug) ? [] : scopedKinds(scope, kinds, held);
-}
-
 /** The channels a credential kind signs in for. A kind that names none (Sentry) is never hidden. */
 const KIND_CHANNELS: Readonly<Record<string, readonly string[]>> = {
   "asc-api-key": ["app-store", "testflight"],
@@ -40,6 +30,21 @@ const KIND_CHANNELS: Readonly<Record<string, readonly string[]>> = {
   "ms-partner-center": ["microsoft-store"],
   "steam-publisher-key": ["steam"],
 };
+
+/** The channels a credential kind belongs to; none for a kind that serves no channel (Sentry). */
+export const channelsOfKind = (kind: string): readonly string[] =>
+  KIND_CHANNELS[kind] ?? [];
+
+/** The credential kinds a channel's Setup tab edits. */
+export const kindsOfChannel = (channelId: string): string[] =>
+  Object.entries(KIND_CHANNELS)
+    .filter(([, ids]) => ids.includes(channelId))
+    .map(([kind]) => kind);
+
+/** Every channel that has credentials to set, in a stable order. */
+export const CREDENTIAL_CHANNELS: readonly string[] = [
+  ...new Set(Object.values(KIND_CHANNELS).flat()),
+];
 
 /** A credential kind is in scope when one of its channels is, or when it names no channel. */
 export function kindInScope(features: NavFeatures, kind: string): boolean {
@@ -62,17 +67,5 @@ export function scopedConnectors<
 >(features: NavFeatures, connectors: readonly C[]): C[] {
   return connectors.filter(
     (c) => c.configured || connectorInScope(features, c.outletKinds),
-  );
-}
-
-/** The kinds the drawer offers: those in scope, and any the product already holds. */
-export function scopedKinds<K extends { value: string }>(
-  features: NavFeatures,
-  kinds: readonly K[],
-  held: readonly { kind: string }[],
-): K[] {
-  return kinds.filter(
-    (k) =>
-      kindInScope(features, k.value) || held.some((c) => c.kind === k.value),
   );
 }

@@ -335,6 +335,9 @@
     "packages/admin/src/console/sections/core/pages/UserRelink.tsx": {
       "jscpd:duplicate": 2
     },
+    "packages/admin/src/console/sections/distribution/components/CredentialForms.tsx": {
+      "jscpd:duplicate": 4
+    },
     "packages/admin/src/console/sections/distribution/components/RolloutDialogs.tsx": {
       "jscpd:duplicate": 2
     },
@@ -353,11 +356,8 @@
     "packages/admin/src/console/sections/distribution/pages/CommercePage.tsx": {
       "jscpd:duplicate": 3
     },
-    "packages/admin/src/console/sections/distribution/pages/CredentialsPage.tsx": {
-      "jscpd:duplicate": 5
-    },
     "packages/admin/src/console/sections/distribution/pages/OutletsPage.tsx": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 2
     },
     "packages/admin/src/console/sections/feeds/model/sourceLine.tsx": {
       "jscpd:duplicate": 1
@@ -638,6 +638,12 @@
     "packages/admin/test/catalogStates.test.tsx": {
       "jscpd:duplicate": 3
     },
+    "packages/admin/test/channelReleases.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/channelSetup.test.tsx": {
+      "jscpd:duplicate": 21
+    },
     "packages/admin/test/commerceIdentity.test.tsx": {
       "jscpd:duplicate": 4
     },
@@ -663,13 +669,13 @@
       "jscpd:duplicate": 6
     },
     "packages/admin/test/distributionAccess.test.tsx": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 6
     },
     "packages/admin/test/distributionData.ts": {
       "jscpd:duplicate": 1
     },
     "packages/admin/test/distributionHealth.test.tsx": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 6
     },
     "packages/admin/test/distributionMatrix.test.tsx": {
       "jscpd:duplicate": 9
@@ -678,7 +684,7 @@
       "jscpd:duplicate": 4
     },
     "packages/admin/test/distributionRollouts.test.tsx": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "packages/admin/test/feeds.test.tsx": {
       "jscpd:duplicate": 38
