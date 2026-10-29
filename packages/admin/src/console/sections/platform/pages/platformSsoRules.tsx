@@ -72,12 +72,12 @@ function describeSave(e: unknown) {
     return {
       title: "The group changed",
       description:
-        "The product has a different admin group now. The offer is updated: review it again.",
+        "The product has a different admin group now. Review it below.",
     };
   if (e instanceof HttpError && e.reason === "no_such_offer")
     return {
-      title: "That offer is gone",
-      description: "Someone else accepted or dismissed it.",
+      title: "That admin group is gone",
+      description: "It was already mapped or dismissed.",
     };
   if (e instanceof HttpError && e.reason === "superadmin_only")
     return {

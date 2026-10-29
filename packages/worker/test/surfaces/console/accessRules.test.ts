@@ -17,6 +17,7 @@ import { makeEnv, NOW, seedProduct } from "../../seed.js";
 import { insertConnection } from "../../connectionFixtures.js";
 import type { Env } from "../../../src/platform/env.js";
 import { handleAdmin } from "../../../src/console/index.js";
+import { ruleChangeKind } from "../../../src/console/handlers/accessRules.js";
 import { resetConsoleSessionCache } from "../../../src/console/consoleSession.js";
 import {
   ADMIN_COOKIE,
@@ -749,5 +750,23 @@ describe("GET / PUT /access/rules (ST-32.7)", () => {
     expect(r.b.rules).toEqual([]);
     expect(mail[0]!.text).toContain("removed every sign-in rule");
     expect(await audit()).toHaveLength(2);
+  });
+});
+
+describe("ruleChangeKind (the notice's wording)", () => {
+  const ids = (...x: string[]) => x.map((id) => ({ id }));
+  it("says added only when one rule is appended to an unchanged list", () => {
+    expect(ruleChangeKind(ids("a", "b"), ids("a", "b", "c"))).toBe("added");
+    expect(ruleChangeKind([], ids("a"))).toBe("added");
+  });
+  it("says changed when an add comes with an edit, a reorder or a swap", () => {
+    expect(ruleChangeKind(ids("a", "b"), ids("b", "a", "c"))).toBe("changed");
+    expect(ruleChangeKind(ids("a", "b"), ids("a", "c", "d"))).toBe("changed");
+    expect(ruleChangeKind(ids("a", "b"), ids("a", "b"))).toBe("changed");
+    expect(ruleChangeKind(ids("a", "b"), ids("a"))).toBe("changed");
+  });
+  it("says cleared when the list empties", () => {
+    expect(ruleChangeKind(ids("a"), [])).toBe("cleared");
+    expect(ruleChangeKind([], [])).toBe("changed");
   });
 });

@@ -648,18 +648,20 @@ describe("Offers", () => {
     );
   });
 
-  it("switches Map off with the reason when there is no operator connection", async () => {
+  it("switches Map off and says why once when there is no operator connection", async () => {
     rules = stored({ connections: [] });
     openOffers();
     const list = await screen.findByTestId("sso-offers");
-    const btn = within(list).getAllByRole("button", { name: MAP })[0]!;
-    expect(btn.getAttribute("aria-disabled")).toBe("true");
+    for (const btn of within(list).getAllByRole("button", { name: MAP }))
+      expect((btn as HTMLButtonElement).disabled).toBe(true);
     expect(
-      within(list).getAllByText(/Add an operator connection first/).length,
-    ).toBeGreaterThan(0);
+      within(list.closest("[data-sso-offers]") as HTMLElement).getAllByText(
+        /Add an operator connection first/,
+      ),
+    ).toHaveLength(1);
     expect(
-      within(list)
-        .getAllByRole("link", { name: "Connections" })[0]!
+      within(list.closest("[data-sso-offers]") as HTMLElement)
+        .getByRole("link", { name: "Connections" })
         .getAttribute("href"),
     ).toBe("#/platform/connections");
   });

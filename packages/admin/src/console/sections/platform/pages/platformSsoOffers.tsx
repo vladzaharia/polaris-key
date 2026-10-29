@@ -14,6 +14,8 @@ import { toast } from "../../../../ui/toast.js";
 import { type AccessOffer } from "../../../../api.js";
 import { describeMembersError } from "../../../access/membersModel.js";
 import { mutate } from "../../../data/mutations.js";
+import { Link } from "../../../router.js";
+import { r } from "../../../routes.js";
 
 export function OffersCard({
   offers,
@@ -73,6 +75,12 @@ export function OffersCard({
             ? "A manifest no longer grants access. Map each group to a rule, or dismiss it."
             : readOnlyNote}
         </p>
+        {canDecide && noConnection ? (
+          <p className="text-xs text-fg-muted">
+            Add an operator connection first.{" "}
+            <Link to={r.platformConnections()}>Connections</Link>
+          </p>
+        ) : null}
         <ul className="divide-y divide-border" data-testid="sso-offers">
           {offers.map((o) => (
             <li
@@ -99,12 +107,7 @@ export function OffersCard({
                       size="sm"
                       variant="outline"
                       data-offer-accept=""
-                      disabled={editing}
-                      disabledReason={
-                        noConnection
-                          ? "Add an operator connection first"
-                          : undefined
-                      }
+                      disabled={editing || noConnection}
                       onClick={() => onAccept(o)}
                     >
                       Map to {o.name} admin…
@@ -119,12 +122,6 @@ export function OffersCard({
                     </Button>
                   </div>
                 )
-              ) : null}
-              {canDecide && noConnection && !accepted.has(o.product) ? (
-                <p className="basis-full text-xs text-fg-muted">
-                  Add an operator connection first.{" "}
-                  <a href="#/platform/connections">Connections</a>
-                </p>
               ) : null}
             </li>
           ))}

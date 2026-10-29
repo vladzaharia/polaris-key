@@ -152,6 +152,23 @@ export async function handleRulesGet(c: AdminCtx): Promise<Response> {
   });
 }
 
+/**
+ * What the notice calls a write: "added" only when the old list is an exact id-prefix of the new
+ * one with a single rule appended (an add combined with an edit is "changed").
+ */
+export function ruleChangeKind(
+  before: readonly { id: string }[],
+  after: readonly { id: string }[],
+): "cleared" | "added" | "changed" {
+  if (after.length === 0 && before.length > 0) return "cleared";
+  if (
+    after.length === before.length + 1 &&
+    before.every((r, i) => after[i]?.id === r.id)
+  )
+    return "added";
+  return "changed";
+}
+
 /** `PUT /access/rules`: replace the list. Ids the caller names must already be stored. */
 export async function handleRulesPut(c: AdminCtx): Promise<Response> {
   if (!isSuperadmin(c.session.principal)) return superadminOnly();
@@ -184,12 +201,7 @@ export async function handleRulesPut(c: AdminCtx): Promise<Response> {
   );
   if (!res.ok) return settingRefused(res, ["rules"]);
   const after = await storedRules(c);
-  const change =
-    after.rules.length === 0 && before.rules.length > 0
-      ? "cleared"
-      : after.rules.length === before.rules.length + 1
-        ? "added"
-        : "changed";
+  const change = ruleChangeKind(before.rules, after.rules);
   const notified = await notifySuperadmins(
     c.env,
     c.db,
