@@ -50,6 +50,30 @@ const STEAM: StorefrontDto = {
   confirmationLabel: "Steam",
 };
 
+const VIEW = {
+  licenseEnabled: true,
+  identity: {
+    "app-store": { value: null, source: null, assigned: null, mismatch: false },
+    play: { value: null, source: null, assigned: null, mismatch: false },
+    steam: { value: "999", source: "typed", assigned: "480", mismatch: true },
+  },
+  setup: {},
+  products: [
+    { store: "steam", productId: "480", deliverable: "app", flag: "pro" },
+  ],
+  purchases: [
+    {
+      store: "steam",
+      purchase: "p1",
+      storeProductId: "480",
+      state: "active",
+      environment: "Production",
+      lastVerified: 1,
+    },
+  ],
+  events: [],
+};
+
 const boot = (id: string, c: ChannelRow, extra: Record<string, unknown> = {}) =>
   bootWith(`${H}/${id}/sales`, {
     [P("/distribution/channels")]: channels(c),
@@ -91,12 +115,30 @@ describe("Distribution → a channel: Sales", () => {
     expect(await within(t).findByText("gg.acme.djdl.pro")).toBeTruthy();
   });
 
-  it("ready, a store with no section of its own: points at Commerce", async () => {
-    boot("steam", row({ id: "steam", label: "Steam" }));
-    expect(await screen.findByText("Steam can sell")).toBeTruthy();
+  it("ready, a store with no section of its own: its Commerce facts", async () => {
+    boot("steam", row({ id: "steam", label: "Steam" }), {
+      [P("/commerce")]: VIEW,
+    });
+    expect(await screen.findByText("Products on sale")).toBeTruthy();
+    expect(screen.getByText("Purchases").nextSibling?.textContent).toBe("1");
+    expect(screen.getByText("999")).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "Open Commerce" }).getAttribute("href"),
+      screen.getByRole("link", { name: "See purchases" }).getAttribute("href"),
     ).toBe("#/p/djdl/commerce");
+  });
+
+  it("an App Store with no connector says what is missing and links to Setup", async () => {
+    boot("app-store", row(), {
+      [P("/distribution/connectors")]: { connectors: [] },
+    });
+    expect(
+      await screen.findByText(
+        "App Store Connect isn't connected for this product.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open Setup" }).getAttribute("href"),
+    ).toBe("#/p/djdl/distribution/channels/app-store/setup");
   });
 
   it("attention: names the app mismatch", async () => {
@@ -111,8 +153,15 @@ describe("Distribution → a channel: Sales", () => {
           attention: [{ code: "identity_mismatch" }],
         },
       }),
+      { [P("/commerce")]: VIEW },
     );
     expect(await screen.findByText("Steam app mismatch")).toBeTruthy();
+    expect(
+      await screen.findByText(/checked against 999, not DJDL's app 480/),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByRole("link", { name: "Fix on Commerce" }),
+    ).toHaveLength(1);
   });
 
   it("not set up: the storefront's steps inline, and the full setup one link away", async () => {
@@ -130,9 +179,14 @@ describe("Distribution → a channel: Sales", () => {
       { [P("/distribution/storefronts")]: { stores: [STEAM], listing: null } },
     );
     expect(
-      await screen.findByRole("heading", { level: 2, name: "Set up Steam" }),
+      await screen.findByRole("heading", { level: 2, name: "Set up" }),
     ).toBeTruthy();
     expect(await screen.findByText("Publisher key")).toBeTruthy();
+    // Not started is neutral, never "Not met"; the first step carries the action.
+    expect(screen.getByText("0 of 1 done")).toBeTruthy();
+    expect(screen.queryByText(/Not met/)).toBeNull();
+    expect(screen.queryByText(/Store connections/)).toBeNull();
+    expect(screen.getByRole("link", { name: "Open Connections" })).toBeTruthy();
     expect(
       screen
         .getByRole("link", { name: "Open full setup" })
@@ -140,7 +194,7 @@ describe("Distribution → a channel: Sales", () => {
     ).toContain("flow=add&stores=steam");
   });
 
-  it("commerce off: says so and links to Services", async () => {
+  it("commerce off: says so and links to Features", async () => {
     boot(
       "app-store",
       row({
@@ -152,10 +206,13 @@ describe("Distribution → a channel: Sales", () => {
       }),
     );
     expect(
-      await screen.findByRole("heading", { level: 2, name: "Commerce is off" }),
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Commerce is off for this product",
+      }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "Open Services" }).getAttribute("href"),
+      screen.getByRole("link", { name: "Open Features" }).getAttribute("href"),
     ).toBe("#/p/djdl/settings/features");
   });
 });

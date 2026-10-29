@@ -48,6 +48,7 @@ import { toast } from "../../../../ui/toast.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { confirmFor } from "../../../../lib/actions.js";
+import { PolarisKeyActions } from "./PolarisKeyActions.js";
 import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { mutate } from "../../../data/mutations.js";
@@ -79,40 +80,28 @@ import {
   whoLines,
 } from "../model/polarisKeyCopy.js";
 
-/** The store id this page serves (the adapter's, PS-01). */
-export const POLARIS_KEY = "polaris-key";
-
 export function PolarisKeyPanel({
   slug,
   embedded = false,
 }: {
   slug: string;
-  embedded?: boolean; // A-22.6: the channel's Sales tab, actions only
+  embedded?: boolean; // A-22.6: the Sales tab; no title, no edit link
 }): React.ReactElement {
   const q = usePolarisKey(slug);
   const origin = useMe().data?.customerOrigin;
   const lockerPage =
     q.data && visibleOnLocker(q.data) ? lockerUrl(origin, slug) : null;
   const actions = (
-    <div className="flex flex-col gap-2 sm:flex-row">
-      {lockerPage ? (
-        <Button variant="outline" asChild>
-          <a href={lockerPage} target="_blank" rel="noreferrer">
-            Open in Polaris Locker
-            <ExternalLink aria-hidden />
-            <span className="sr-only"> (opens a new tab)</span>
-          </a>
-        </Button>
-      ) : null}
-      <Button variant="outline" asChild>
-        <Link to={r.listing(slug, { tab: "fit", store: POLARIS_KEY })}>
-          Edit the listing
-        </Link>
-      </Button>
-    </div>
+    <PolarisKeyActions
+      slug={slug}
+      lockerPage={lockerPage}
+      embedded={embedded}
+    />
   );
   const header = embedded ? (
-    actions
+    lockerPage ? (
+      actions
+    ) : null
   ) : (
     <PageHeader
       eyebrow={

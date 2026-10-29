@@ -35,6 +35,7 @@ import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
+import { Panel } from "../../../templates/Dashboard.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
@@ -89,9 +90,12 @@ export function CommercePage({ slug }: { slug: string }): React.ReactElement {
 export function AppStoreProductsBody({
   slug,
   state,
+  inChannel = false,
 }: {
   slug: string;
   state: ReturnType<typeof useAppStoreProducts>;
+  /** On the channel's Sales tab: what's missing is fixed in its Setup tab. */
+  inChannel?: boolean;
 }): React.ReactElement {
   const { connectors, blocked, appleId, ready, products } = state;
   return connectors.isPending ? (
@@ -107,10 +111,19 @@ export function AppStoreProductsBody({
       kind="first-run"
       headingLevel={2}
       title="App Store Connect can't be used for this product yet"
-      description={blocked ?? "The connector names no app."}
+      description={
+        inChannel &&
+        !state.connectors.data?.connectors.some((c) => c.kind === "asc")
+          ? "App Store Connect isn't connected for this product."
+          : (blocked ?? "The connector names no app.")
+      }
       primaryAction={
         <Button variant="outline" asChild>
-          <Link to={r.credentials(slug)}>Open Channel credentials</Link>
+          {inChannel ? (
+            <Link to={r.channel(slug, "app-store", "setup")}>Open Setup</Link>
+          ) : (
+            <Link to={r.credentials(slug)}>Open Channel credentials</Link>
+          )}
         </Button>
       }
       docs="/docs/features/commerce/"
@@ -216,74 +229,70 @@ function AppStoreProducts({
   };
 
   return (
-    <section aria-labelledby="app-store-products" className="space-y-4">
-      <h2
-        id="app-store-products"
-        className="text-base font-semibold text-fg-strong"
-      >
-        App Store products
-      </h2>
-      {q.data?.firstInAppPurchase ? (
-        <Callout
-          tone="info"
-          title="The first In-App Purchase goes through App Store Connect"
-        >
-          <p>
-            {q.data.firstInAppPurchaseNote}{" "}
-            <AscLink href={ASC_LINKS.inAppPurchases(appleId)}>
-              In-App Purchases
-            </AscLink>
-          </p>
-        </Callout>
-      ) : null}
-      <DataTable<AscIapProductDto>
-        id="app-store-products"
-        caption="App Store products"
-        data={list}
-        columns={columns}
-        getRowId={(p) => p.storeProductId}
-        rowActions={rowActions}
-        state={state}
-        onStateChange={setState}
-        search={{
-          placeholder: "Search product ids",
-          columns: ["product", "flag"],
-        }}
-        loading={q.isPending}
-        error={q.isError && !q.data ? q.error : undefined}
-        onRetry={() => void q.refetch()}
-        exportCsv={false}
-        mobile="cards"
-        empty={
-          <EmptyState
-            kind="first-run"
-            title="No App Store products are mapped"
-            description="Commerce maps an App Store product id to the license flag a purchase unlocks. Once one is mapped, its In-App Purchase can be created here."
-            docs="/docs/features/commerce/"
-          />
-        }
-      />
-      <p className="text-sm text-fg-muted">
-        Ready purchases go to App Review with the next version from the{" "}
-        <Link
-          to={r.appStore(slug)}
-          className="py-1 text-accent-fg underline underline-offset-4"
-        >
-          App Store
-        </Link>{" "}
-        page. The review screenshot is added in{" "}
-        <AscLink href={ASC_LINKS.inAppPurchases(appleId)}>
-          App Store Connect
-        </AscLink>
-        .
-      </p>
-      <IapDialogs
-        slug={slug}
-        pending={pending}
-        warning={q.data?.priceChangeWarning ?? ""}
-        onClose={() => setPending(null)}
-      />
-    </section>
+    <Panel title="App Store products" headingLevel={2}>
+      <div className="space-y-4">
+        {q.data?.firstInAppPurchase ? (
+          <Callout
+            tone="info"
+            title="The first In-App Purchase goes through App Store Connect"
+          >
+            <p>
+              {q.data.firstInAppPurchaseNote}{" "}
+              <AscLink href={ASC_LINKS.inAppPurchases(appleId)}>
+                In-App Purchases
+              </AscLink>
+            </p>
+          </Callout>
+        ) : null}
+        <DataTable<AscIapProductDto>
+          id="app-store-products"
+          caption="App Store products"
+          data={list}
+          columns={columns}
+          getRowId={(p) => p.storeProductId}
+          rowActions={rowActions}
+          state={state}
+          onStateChange={setState}
+          search={{
+            placeholder: "Search product ids",
+            columns: ["product", "flag"],
+          }}
+          loading={q.isPending}
+          error={q.isError && !q.data ? q.error : undefined}
+          onRetry={() => void q.refetch()}
+          exportCsv={false}
+          mobile="cards"
+          empty={
+            <EmptyState
+              kind="first-run"
+              title="No App Store products are mapped"
+              description="Commerce maps an App Store product id to the license flag a purchase unlocks. Once one is mapped, its In-App Purchase can be created here."
+              docs="/docs/features/commerce/"
+            />
+          }
+        />
+        <p className="text-sm text-fg-muted">
+          Ready purchases go to App Review with the next version from the{" "}
+          <Link
+            to={r.channel(slug, "app-store", "releases")}
+            className="py-1 text-accent-fg underline underline-offset-4"
+          >
+            App Store
+          </Link>{" "}
+          page. The review screenshot is added in{" "}
+          <AscLink href={ASC_LINKS.inAppPurchases(appleId)}>
+            App Store Connect
+          </AscLink>
+          .
+        </p>
+        <IapDialogs
+          slug={slug}
+          pending={pending}
+          warning={q.data?.priceChangeWarning ?? ""}
+          onClose={() => setPending(null)}
+        />
+      </div>
+    </Panel>
   );
 }
 
