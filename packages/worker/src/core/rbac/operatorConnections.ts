@@ -13,8 +13,11 @@ import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import {
   audienceCovers,
+  emailDomain,
   enforcedDomains,
   resolveConnection,
+  routeForDomain,
+  type DomainRoute,
 } from "../oidc/connections.js";
 import { operatorIssuerAllowed } from "./operatorIssuer.js";
 
@@ -49,4 +52,24 @@ export async function enforcedDomainsOf(
   if (connection === CONSOLE_IDP_CONNECTION) return new Set();
   if (!(await isOperatorConnection(env, db, connection))) return new Set();
   return new Set(await enforcedDomains(db, connection));
+}
+
+/**
+ * Where an operator's console email routes (ST-32.4): the active platform connection that holds a
+ * verified proof of exactly the address's domain, whose audience covers operators and whose issuer
+ * may sign operators in. `null` otherwise. Depends on the domain only, never on any account, so
+ * the answer is the same for a known and an unknown address. The customer card never calls this:
+ * it routes the `customers` surface, so an operators-only connection is invisible to it.
+ */
+export async function operatorRouteForEmail(
+  env: Env,
+  db: Db,
+  email: string,
+): Promise<DomainRoute | null> {
+  const domain = emailDomain(email);
+  if (!domain) return null;
+  const route = await routeForDomain(db, domain, ["platform"], "operators");
+  if (!route || !operatorIssuerAllowed(env, route.connection.issuer))
+    return null;
+  return route;
 }
