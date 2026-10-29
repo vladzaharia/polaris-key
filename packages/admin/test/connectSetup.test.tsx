@@ -109,11 +109,14 @@ const view = (...s: unknown[]) =>
     deployTime: [],
     secrets: [],
   }) as unknown as PlatformSettingsView;
-const detail = (connect = true): ProductDetail =>
+const detail = (connect = true, license = true): ProductDetail =>
   ({
     slug: "djdl",
     name: "DJDL",
-    services: { connect: { enabled: connect } },
+    services: {
+      connect: { enabled: connect },
+      license: { enabled: license },
+    },
   }) as ProductDetail;
 
 function renderPage() {
@@ -259,11 +262,23 @@ describe("Cloud Connect → Setup", () => {
     ).toBeTruthy();
   });
 
-  it("shows the platform's default per-person quota read-only to a platform admin", async () => {
+  it("points the per-person quota at the tier editor, with the platform default for a platform admin", async () => {
     platformSettings.mockResolvedValue(view(quota));
     renderPage();
-    expect(await screen.findByText("2 GiB a day")).toBeTruthy();
-    expect(screen.getByText("Default relay quota")).toBeTruthy();
+    expect(await screen.findByText("2 GiB a day by default")).toBeTruthy();
+    expect(screen.getByText("Relay quota per person")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Edit tiers" }).getAttribute("href"),
+    ).toContain("/license/tiers");
+  });
+
+  it("leaves the tier quota row out while Licensing is off, as there are no tiers to edit", async () => {
+    product.mockResolvedValue({ product: detail(true, false) });
+    products.mockResolvedValue({ products: [detail(true, false)] });
+    platformSettings.mockResolvedValue(view(quota));
+    renderPage();
+    await screen.findByText("Monthly relay ceiling");
+    expect(screen.queryByText("Relay quota per person")).toBeNull();
   });
 
   it("draws no platform rows or notices for a member who cannot read the platform list", async () => {
@@ -272,6 +287,8 @@ describe("Cloud Connect → Setup", () => {
     await screen.findByText("Monthly relay ceiling");
     expect(platformSettings).not.toHaveBeenCalled();
     expect(screen.queryByText(/not live yet|is paused/)).toBeNull();
-    expect(screen.queryByText("Default relay quota")).toBeNull();
+    expect(screen.queryByText(/a day by default/)).toBeNull();
+    // The row and its link stay: the quota is set per tier, whoever may read the platform list.
+    expect(screen.getByRole("link", { name: "Edit tiers" })).toBeTruthy();
   });
 });

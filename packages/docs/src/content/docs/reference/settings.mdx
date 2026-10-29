@@ -187,7 +187,7 @@ One value per product. A service's settings are product settings whose key start
 | Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `cloudConnect.relay.enabled` | [Relay](/docs/features/cloud-connect/): Whether the relay carries this product's device traffic when the local network cannot. Turn it off and devices connect only on the same network. | true or false | `true` | cascade | claimable | `product:connect.relay` | L0 on, L1 off | — |
-| `cloudConnect.interAccount` | [Connect across accounts](/docs/features/cloud-connect/): Whether devices signed in to different accounts may connect. Off, a device connects only to those of its own account. | true or false | `false` | cascade | claimable | `product:connect.interAccount` | L1 on, L0 off | registered ahead of CC-18; reason required |
+| `cloudConnect.interAccount` | [Connect across accounts](/docs/features/cloud-connect/): Whether devices signed in to different accounts may connect. Off, a device connects only to those of its own account. | true or false | `false` | cascade | claimable | `product:connect.interAccount` | L1 on, L0 off | registered ahead of CC-19; reason required |
 | `cloudConnect.ceiling.relayBytes` | [Monthly relay ceiling](/docs/features/cloud-connect/): The most relay data all people on the product may use together in a UTC month. Past it, the relay refuses new connections until the month turns; the local network is never metered. | integer 0–1125899906842624 bytes | `536870912000` | cascade | operator | — | L2 up, L1 down | reason required |
 
 ## Entity

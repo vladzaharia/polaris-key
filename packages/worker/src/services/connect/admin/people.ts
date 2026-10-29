@@ -1,20 +1,20 @@
 /**
- * `GET /manage/api/products/<slug>/connect/people?cursor=` (CC-16.W): the people who have linked
- * a device, paged by pairwise subject, each with their devices and the roster epoch.
+ * `GET /manage/api/products/<slug>/connect/people?cursor=&subject=` (CC-16.W): the people who have
+ * linked a device, paged by pairwise subject, each with their devices and the roster epoch.
+ * `subject` is an exact filter: that one person, or an empty page when they have no ring.
  *
  *   { enabled: true,
  *     people: [{ subject, label, ringEpoch,
- *                devices: [{ deviceId, label, platform, keysSince, certExpiresAt, lastRelayAt, lastSeen }] }],
+ *                devices: [{ deviceId, label, platform, keysSince, lastSeen }] }],
  *     nextCursor: string | null }
  *
  * A person is a row of `connect_rings` (created when a device first reads its identity); the
  * devices are Core's roster rule (`accountDeviceListing`). A person's `label` is their shared contact
  * email (Core's `contactEmailsFor`, the rule Users uses: the buyer's licence email, else the
  * account email only with the person's consent while Identity is on), `null` without one.
- * `certExpiresAt` / `lastRelayAt` are not stored (a certificate is signed per read, the relay
- * meters per product and day), so both are `null`. No key, certificate or hardware value is read
- * or returned. A product with Connect off answers
- * `{ enabled: false }`.
+ * A certificate is signed per read and the relay meters per product and day, so neither a
+ * certificate expiry nor a last relay use exists to return (CC-16.4, D-15). No key, certificate or
+ * hardware value is read or returned. A product with Connect off answers `{ enabled: false }`.
  */
 
 import { contactEmailsFor } from "../../../core/accounts/contactEmail.js";
@@ -30,14 +30,22 @@ export async function handlePeople(
 ): Promise<Response> {
   const { db, product, now, req } = ctx;
   if (!product.services.connect.enabled) return adminJson({ enabled: false });
-  const cursor = new URL(req.url).searchParams.get("cursor") ?? "";
-  const rows = await db.all<{ subject: string; epoch: number }>(
-    `SELECT subject, epoch FROM connect_rings
-      WHERE product = ? AND subject > ? ORDER BY subject LIMIT ?`,
-    product.slug,
-    cursor,
-    PEOPLE_PAGE + 1,
-  );
+  const params = new URL(req.url).searchParams;
+  const cursor = params.get("cursor") ?? "";
+  const subject = params.get("subject");
+  const rows = subject
+    ? await db.all<{ subject: string; epoch: number }>(
+        `SELECT subject, epoch FROM connect_rings WHERE product = ? AND subject = ?`,
+        product.slug,
+        subject,
+      )
+    : await db.all<{ subject: string; epoch: number }>(
+        `SELECT subject, epoch FROM connect_rings
+          WHERE product = ? AND subject > ? ORDER BY subject LIMIT ?`,
+        product.slug,
+        cursor,
+        PEOPLE_PAGE + 1,
+      );
   const page = rows.slice(0, PEOPLE_PAGE);
   const seatsHeld = product.services.license.enabled;
   const emails = await contactEmailsFor(
@@ -61,8 +69,6 @@ export async function handlePeople(
         label: d.label,
         platform: knownPlatform(d.platform),
         keysSince: d.keysSince,
-        certExpiresAt: null,
-        lastRelayAt: null,
         lastSeen: d.lastSeen,
       })),
     });

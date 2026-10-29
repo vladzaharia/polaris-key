@@ -6,10 +6,9 @@
  *
  * A person is labelled by their shared contact email when the product may see one (the Worker
  * decides; Users shows the same email); the subject then sits under it. Without one the subject
- * stands in, in full. Certificate expiry and last
- * relay use are drawn only when some device on the page has one: the Worker answers `null` until
- * it stores them, and an always-empty column is noise (D1). The columns share one width plan, so
- * they line up from card to card.
+ * stands in, in full. The columns share one width plan, so they line up from card to card.
+ *
+ * `?subject=` (the Users record links here) narrows the page to that one person, an exact match.
  */
 
 import * as React from "react";
@@ -28,12 +27,14 @@ import { Button } from "../../../ui/Button.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
-import { Link } from "../../router.js";
-import { r } from "../../routes.js";
+import { Link, useSearchParam } from "../../router.js";
+import { codecs, r } from "../../routes.js";
 import { Panel } from "../../templates/Dashboard.js";
 import { LABEL } from "../sync/pages/usageParts.js";
 import { ConnectHeader } from "./ConnectHeader.js";
 import { connectPeopleQuery } from "./data.js";
+
+const subjectCodec = codecs.string("");
 
 const th =
   "px-4 py-2 text-start text-xs font-semibold text-fg-strong max-sm:sr-only";
@@ -81,7 +82,8 @@ export function ConnectDevicesPage({
 }: {
   slug: string;
 }): React.ReactElement {
-  const list = useInfiniteQuery(connectPeopleQuery(slug));
+  const [subject] = useSearchParam("subject", subjectCodec);
+  const list = useInfiniteQuery(connectPeopleQuery(slug, subject || null));
   const people: ConnectPerson[] = (list.data?.pages ?? []).flatMap((p) =>
     p.enabled ? p.people : [],
   );
@@ -93,6 +95,11 @@ export function ConnectDevicesPage({
       .find((p) => !seen.has(p.subject));
     focusPerson(next?.subject);
   };
+  const showEveryone = (
+    <Link to={r.connectDevices(slug)} className={LINK}>
+      Show everyone
+    </Link>
+  );
   let body: React.ReactNode;
   if (list.isPending) {
     body = <PeopleSkeleton />;
@@ -111,30 +118,34 @@ export function ConnectDevicesPage({
         kind="first-run"
         headingLevel={2}
         docs={DOCS_LINKS.connect}
-        title="No linked devices yet"
-        description="A person appears here once they link a device from your app."
+        title={
+          subject ? "No linked devices for this user" : "No linked devices yet"
+        }
+        description={
+          subject
+            ? "This user has not linked a device from your app."
+            : "A person appears here once they link a device from your app."
+        }
+        primaryAction={subject ? showEveryone : undefined}
       />
     );
   } else {
-    const all = people.flatMap((p) => p.devices);
-    const cert = all.some((d) => d.certExpiresAt !== null);
-    const relay = all.some((d) => d.lastRelayAt !== null);
     body = (
       <>
         <p aria-live="polite" className="text-sm text-fg-muted">
-          {formatCount(people.length)}{" "}
-          {people.length === 1 ? "person" : "people"}
-          {list.hasNextPage ? " so far" : ""}.
+          {subject ? (
+            <>Showing one person. {showEveryone}</>
+          ) : (
+            <>
+              {formatCount(people.length)}{" "}
+              {people.length === 1 ? "person" : "people"}
+              {list.hasNextPage ? " so far" : ""}.
+            </>
+          )}
         </p>
         <div className="space-y-4">
           {people.map((p) => (
-            <PersonCard
-              key={p.subject}
-              slug={slug}
-              person={p}
-              cert={cert}
-              relay={relay}
-            />
+            <PersonCard key={p.subject} slug={slug} person={p} />
           ))}
         </div>
         {list.isError ? (
@@ -176,17 +187,13 @@ export function ConnectDevicesPage({
 function PersonCard({
   slug,
   person,
-  cert,
-  relay,
 }: {
   slug: string;
   person: ConnectPerson;
-  cert: boolean;
-  relay: boolean;
 }): React.ReactElement {
   const n = person.devices.length;
   // One width plan for every card: the device column, then the rest in equal shares.
-  const rest = 2 + Number(cert) + Number(relay) + 1;
+  const rest = 3;
   const share = `${(70 / rest).toFixed(2)}%`;
   const name = person.label ?? person.subject;
   const devices = [...person.devices].sort((a, b) => b.lastSeen - a.lastSeen);
@@ -239,16 +246,6 @@ function PersonCard({
               <th scope="col" className={thEnd}>
                 Keys issued
               </th>
-              {cert ? (
-                <th scope="col" className={thEnd}>
-                  Certificate expires
-                </th>
-              ) : null}
-              {relay ? (
-                <th scope="col" className={thEnd}>
-                  Last relay
-                </th>
-              ) : null}
               <th scope="col" className={thEnd}>
                 Last seen
               </th>
@@ -256,13 +253,7 @@ function PersonCard({
           </thead>
           <tbody className="max-sm:block">
             {devices.map((d) => (
-              <DeviceRow
-                key={d.deviceId}
-                slug={slug}
-                d={d}
-                cert={cert}
-                relay={relay}
-              />
+              <DeviceRow key={d.deviceId} slug={slug} d={d} />
             ))}
           </tbody>
         </table>
@@ -274,13 +265,9 @@ function PersonCard({
 function DeviceRow({
   slug,
   d,
-  cert,
-  relay,
 }: {
   slug: string;
   d: ConnectDevice;
-  cert: boolean;
-  relay: boolean;
 }): React.ReactElement {
   const muted = "tabular-nums text-fg-muted max-sm:ms-auto";
   return (
@@ -305,20 +292,6 @@ function DeviceRow({
       <td data-label="Keys issued" className={tdEnd}>
         <span className={muted}>{ago(d.keysSince)}</span>
       </td>
-      {cert ? (
-        <td data-label="Certificate expires" className={tdEnd}>
-          <span className={muted}>
-            {d.certExpiresAt === null ? "None" : ago(d.certExpiresAt)}
-          </span>
-        </td>
-      ) : null}
-      {relay ? (
-        <td data-label="Last relay" className={tdEnd}>
-          <span className={muted}>
-            {d.lastRelayAt === null ? "Never" : ago(d.lastRelayAt)}
-          </span>
-        </td>
-      ) : null}
       <td data-label="Last seen" className={tdEnd}>
         <span className={muted}>{ago(d.lastSeen)}</span>
       </td>

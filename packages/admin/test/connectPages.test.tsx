@@ -17,7 +17,10 @@ import type { ConnectPeoplePage, ConnectUsageResponse } from "../src/api.js";
 import { HttpError } from "../src/api.js";
 import { KitProviders } from "../src/kit/KitProviders.js";
 
-const people = vi.fn<(c?: string | null) => Promise<ConnectPeoplePage>>();
+const people =
+  vi.fn<
+    (c?: string | null, subject?: string | null) => Promise<ConnectPeoplePage>
+  >();
 const usage = vi.fn<() => Promise<ConnectUsageResponse>>();
 const productSettings = vi.fn();
 
@@ -27,7 +30,8 @@ vi.mock("../src/api.js", async () => {
   return {
     ...actual,
     api: {
-      connectPeople: (_s: string, c?: string | null) => people(c),
+      connectPeople: (_s: string, c?: string | null, subject?: string | null) =>
+        people(c, subject),
       connectUsage: () => usage(),
       productSettings: () => productSettings(),
     },
@@ -50,8 +54,6 @@ const device = (n: number, extra = {}) => ({
   label: n === 2 ? null : `Laptop ${n}`,
   platform: "macos",
   keysSince: NOW - 86_400,
-  certExpiresAt: null,
-  lastRelayAt: null,
   lastSeen: NOW - 120,
   ...extra,
 });
@@ -126,21 +128,31 @@ describe("Linked devices", () => {
     expect((await axe(container)).violations).toEqual([]);
   });
 
-  it("draws certificate and relay columns only when a device has them", async () => {
+  it("narrows to one person with ?subject=, and Show everyone clears it", async () => {
+    const one = person(2);
+    window.location.hash = `#/p/acme/connect/devices?subject=${one.subject}`;
     people.mockResolvedValue({
       enabled: true,
-      people: [
-        person(1, [
-          device(1, { certExpiresAt: NOW + 3600, lastRelayAt: NOW - 60 }),
-          device(3),
-        ]),
-      ],
+      people: [one],
       nextCursor: null,
     });
     view(<ConnectDevicesPage slug="acme" />);
-    const heads = await headers();
-    expect(heads).toContain("Certificate expires");
-    expect(heads).toContain("Last relay");
+    expect(await screen.findByText(/Showing one person/)).toBeTruthy();
+    expect(people).toHaveBeenLastCalledWith(null, one.subject);
+    const all = screen.getByRole("link", { name: "Show everyone" });
+    expect(all.getAttribute("href")).not.toContain("subject");
+    window.location.hash = "";
+  });
+
+  it("says so when the filtered person has linked nothing", async () => {
+    window.location.hash = "#/p/acme/connect/devices?subject=ps_none";
+    people.mockResolvedValue({ enabled: true, people: [], nextCursor: null });
+    view(<ConnectDevicesPage slug="acme" />);
+    expect(
+      await screen.findByText("No linked devices for this user"),
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Show everyone" })).toBeTruthy();
+    window.location.hash = "";
   });
 
   it("is empty when no one has linked a device", async () => {
@@ -159,7 +171,7 @@ describe("Linked devices", () => {
     expect(await screen.findByText(/1 person so far/)).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Load more" }));
     expect(await screen.findByText(/2 people\./)).toBeTruthy();
-    expect(people).toHaveBeenLastCalledWith("ps_01");
+    expect(people).toHaveBeenLastCalledWith("ps_01", null);
     // Focus lands on the first new person's link, not <body>.
     await waitFor(() =>
       expect(document.activeElement?.getAttribute("data-person-link")).toBe(

@@ -75,7 +75,7 @@ function meWith(authAt: number | null): Me {
   } as unknown as Me;
 }
 
-function productWith(identity: boolean): ProductDetail {
+function productWith(identity: boolean, connect = false): ProductDetail {
   return {
     slug: "djdl",
     name: "DJDL",
@@ -86,6 +86,7 @@ function productWith(identity: boolean): ProductDetail {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: identity },
+      connect: { enabled: connect },
     },
   } as unknown as ProductDetail;
 }
@@ -267,6 +268,38 @@ describe("User record", () => {
         .map((l) => l.textContent?.replace(/\d+$/, "")),
     ).toEqual(["Overview", "Licenses", "Devices", "Activity"]);
     expect(screen.queryByRole("heading", { name: "Sign-ins" })).toBeNull();
+  });
+
+  const withDevice = () =>
+    detail({
+      devices: [
+        {
+          deviceId: "dev_1_aaaaaaaaaaaaaaaaaaaa",
+          label: "Laptop",
+          platform: "macos",
+          appVersion: "1.0.0",
+          status: "authorized",
+          signedIn: false,
+          lastSeen: NOW - 60,
+        },
+      ] as ProductUserDetail["devices"],
+    });
+
+  it("links Devices to the person's linked devices while Cloud Connect is on", async () => {
+    productUser.mockResolvedValue({ user: withDevice() });
+    product.mockResolvedValue({ product: productWith(false, true) });
+    mount(`#/p/djdl/users/${SUBJECT}/devices`);
+    const link = await screen.findByRole("link", { name: "Linked devices" });
+    expect(link.getAttribute("href")).toContain(
+      `connect/devices?subject=${SUBJECT}`,
+    );
+  });
+
+  it("offers no linked-devices link while Cloud Connect is off", async () => {
+    productUser.mockResolvedValue({ user: withDevice() });
+    mount(`#/p/djdl/users/${SUBJECT}/devices`);
+    await screen.findByRole("heading", { name: "Devices" });
+    expect(screen.queryByRole("link", { name: "Linked devices" })).toBeNull();
   });
 
   it("shows the support code in the header with Copy, when the person has one (I-41)", async () => {
