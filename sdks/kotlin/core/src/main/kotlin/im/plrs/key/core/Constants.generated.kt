@@ -1539,7 +1539,7 @@ public const val OUTLET_MATRIX_VERSION: Int = 1
 public const val PLAN_MATRIX_VERSION: Int = 2
 
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
-public const val SYNC_SCENARIOS_VERSION: Int = 3
+public const val SYNC_SCENARIOS_VERSION: Int = 4
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 public const val DEVICE_LABEL_VERSION: Int = 1
