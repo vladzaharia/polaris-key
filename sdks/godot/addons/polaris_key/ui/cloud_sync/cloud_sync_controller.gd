@@ -14,6 +14,10 @@ extends RefCounted
 ##
 ## The recovery code is returned to the caller once and kept nowhere here. Nothing is logged.
 
+## Tests only: keep the clipboard in memory (a headless display server has none).
+static var memory_clipboard := false
+static var _memory := ""
+
 ## The step UnlockSync shows after `recover()`: "" for an unlocked device, "invalid" for a code that
 ## failed its check or does not open the ring, "no-code" when the account holds none (only Start over
 ## helps), else "failed" (a network or server failure).
@@ -91,11 +95,6 @@ static func begin(sdk: Object) -> Dictionary:
 				return {"screen": "recovery_code", "code": String(made.detail.get("recovery_code", ""))}
 			return {"screen": "unlock_sync"}
 	return {"screen": "failed"}
-
-
-## Tests only: keep the clipboard in memory (a headless display server has none).
-static var memory_clipboard := false
-static var _memory := ""
 
 
 static func clipboard_get() -> String:

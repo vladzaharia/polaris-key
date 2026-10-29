@@ -15,11 +15,6 @@ signal done()
 ## Copy code was chosen.
 signal code_copied()
 
-## The code as `keyring` made it ("XXXX-XXXX-…"). Set it once; it is wiped on Done.
-var code := "":
-	set(value):
-		code = value
-		refresh_view()
 ## "I've saved my recovery code" is checked.
 @export var saved := false:
 	set(value):
@@ -29,6 +24,11 @@ var code := "":
 @export var sync_on := true:
 	set(value):
 		sync_on = value
+		refresh_view()
+## The code as `keyring` made it ("XXXX-XXXX-…"). Set it once; it is wiped on Done.
+var code := "":
+	set(value):
+		code = value
 		refresh_view()
 
 var model: Dictionary = {}

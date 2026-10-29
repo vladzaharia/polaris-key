@@ -222,7 +222,10 @@ func _render() -> void:
 	fx_error("unlockSync.invalid" if state == "invalid" else (warn_key if state == "failed" or state == "start-over-failed" else ""))
 	cat_text(_no_ask, "recoveryCode.noAsk" if in_code else "", args)
 	cat_text(_confirm, "unlockSync.startOverConfirm" if state == "start-over" else "", args)
-	var primary_key := {"code": "unlockSync.unlock", "invalid": "unlockSync.unlock", "failed": "common.tryAgain", "start-over-failed": "common.tryAgain", "no-code": "unlockSync.startOver"}.get(state, "") as String
+	var primary_key := {
+		"code": "unlockSync.unlock", "invalid": "unlockSync.unlock", "failed": "common.tryAgain",
+		"start-over-failed": "common.tryAgain", "no-code": "unlockSync.startOver",
+	}.get(state, "") as String
 	cat_text(_primary, primary_key, args)
 	cat_text(_start_over, "unlockSync.startOver" if in_code else "", args)
 	cat_text(_cancel_button, "common.cancel" if state != "working" and state != "hidden" else "", args)

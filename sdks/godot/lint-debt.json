@@ -310,21 +310,6 @@
       "gdlint:max-returns": 1,
       "gdlint:signal-name": 1
     },
-    "sdks/godot/addons/polaris_key/ui/cloud_sync/cloud_sync_controller.gd": {
-      "gdlint:class-definitions-order": 2
-    },
-    "sdks/godot/addons/polaris_key/ui/cloud_sync/pkey_cloud_sync_status.gd": {
-      "gdlint:max-line-length": 1
-    },
-    "sdks/godot/addons/polaris_key/ui/cloud_sync/pkey_recovery_code.gd": {
-      "gdlint:class-definitions-order": 2
-    },
-    "sdks/godot/addons/polaris_key/ui/cloud_sync/pkey_ring_change.gd": {
-      "gdlint:class-definitions-order": 4
-    },
-    "sdks/godot/addons/polaris_key/ui/cloud_sync/pkey_unlock_sync.gd": {
-      "gdlint:max-line-length": 1
-    },
     "sdks/godot/addons/polaris_key/ui/copy/pkey_ui_copy.gd": {
       "gdlint:class-definitions-order": 2,
       "gdlint:max-returns": 1
@@ -381,8 +366,7 @@
       "gdlint:class-definitions-order": 3
     },
     "sdks/godot/addons/polaris_key/ui/settings/pkey_account_tab.gd": {
-      "gdlint:function-argument-name": 1,
-      "gdlint:max-line-length": 2
+      "gdlint:function-argument-name": 1
     },
     "sdks/godot/addons/polaris_key/ui/settings/pkey_settings_panel.gd": {
       "gdlint:class-definitions-order": 39,
@@ -667,9 +651,6 @@
       "gdlint:function-variable-name": 1,
       "gdlint:max-line-length": 4
     },
-    "sdks/godot/tests/suite_cloud_sync_ui.gd": {
-      "gdlint:max-line-length": 11
-    },
     "sdks/godot/tests/suite_conformance.gd": {
       "gdlint:class-definitions-order": 4,
       "gdlint:max-file-lines": 1,
@@ -788,9 +769,9 @@
       "gdlint:max-file-lines": 1
     },
     "sdks/godot/tests/ui/scenarios.gd": {
-      "gdlint:class-definitions-order": 4,
+      "gdlint:class-definitions-order": 2,
       "gdlint:max-file-lines": 1,
-      "gdlint:max-line-length": 30,
+      "gdlint:max-line-length": 29,
       "gdlint:max-public-methods": 1
     },
     "sdks/godot/tests/update/support.gd": {
