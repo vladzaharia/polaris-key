@@ -142,11 +142,16 @@ describe("AddToAccount", () => {
     const v = add({ step: "email-bound" });
     expect(v.copy).toContain("activate.otherEmail.title");
     expect(v.copy).not.toContain("activate.otherEmail.body");
+    // No "Verify that email" without an email to name: Use another account leads.
+    expect(v.copy).not.toContain("activate.otherEmail.verify");
+    expect(v.decisions.primary).toBe("signin.auto.confirm.other");
     const named = add(
       { step: "email-bound" },
       { licenseHolder: { email: "alex@example.com" } },
     );
     expect(named.copy).toContain("activate.otherEmail.body");
+    expect(named.copy).toContain("activate.otherEmail.verify");
+    expect(named.decisions.primary).toBe("activate.otherEmail.verify");
   });
   it("other-account names both emails masked, and never an empty one", () => {
     const v = add({

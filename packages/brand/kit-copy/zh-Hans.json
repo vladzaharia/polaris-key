@@ -149,7 +149,7 @@
     "activate.attach.name": "姓名",
     "activate.attach.nameRequired": "请输入你的姓名。",
     "activate.otherAccount.title": "你登录的是另一个账户",
-    "activate.otherAccount.body": "你登录的是 {email}，而不是 {maskedEmail}。没有添加任何内容。请用 {maskedEmail} 重试。",
+    "activate.otherAccount.body": "你登录的是 {email}，而不是 {maskedEmail}。没有添加任何内容。",
     "activate.waiting": "这个许可证已发送到 {maskedEmail}。用该电子邮件登录，即可保存到你的账户。",
     "activate.waitingSignIn": "以 {maskedEmail} 登录",
     "activate.owned.title": "这个许可证在一个 Polaris Locker 账户中",

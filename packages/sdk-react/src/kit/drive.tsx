@@ -16,6 +16,7 @@ import {
   type ReactNode,
 } from "react";
 import type { UiInput } from "@polaris-key/ui-core";
+import { focusClear } from "@polaris-key/ui-core/browser/reveal";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { ProductCatalog } from "@polaris-key/catalog";
 
@@ -298,7 +299,7 @@ function AddInAccount(props: {
       const target =
         root?.querySelector<HTMLElement>('[data-field="name"]') ??
         (frames > 8 ? root?.querySelector<HTMLElement>("#pk-title") : null);
-      if (target) target.focus({ preventScroll: true });
+      if (target) focusClear(target);
       else if (frames++ < 30) raf = requestAnimationFrame(look);
     };
     raf = requestAnimationFrame(look);
@@ -313,7 +314,7 @@ function AddInAccount(props: {
     services: props.services as NonNullable<UiInput["services"]>,
   };
   return (
-    <div ref={box} style={{ display: "contents" }}>
+    <div ref={box} data-adding="" style={{ display: "contents" }}>
       <AddToAccount_
         bare
         {...(props.theme ? { theme: props.theme } : {})}

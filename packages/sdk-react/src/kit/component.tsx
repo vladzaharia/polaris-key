@@ -38,6 +38,7 @@ import {
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
+import { focusClear } from "@polaris-key/ui-core/browser/reveal";
 import {
   platformVariant,
   resolveProductIdentity,
@@ -655,7 +656,7 @@ export function useKit(
     });
     if (where === "none") return;
     const el = where === "heading" ? heading() : (field ?? heading());
-    el?.focus({ preventScroll: true });
+    focusClear(el);
   });
 
   return {

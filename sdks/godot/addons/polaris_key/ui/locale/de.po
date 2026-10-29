@@ -928,10 +928,10 @@ msgstr "Geben Sie Ihren Namen ein."
 msgid "activate.otherAccount.title"
 msgstr "Sie haben sich mit einem anderen Konto angemeldet"
 
-#. You signed in as {email}, not {maskedEmail}. Nothing was added. Try again with {maskedEmail}.
+#. You signed in as {email}, not {maskedEmail}. Nothing was added.
 #. AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated).
 msgid "activate.otherAccount.body"
-msgstr "Sie haben sich als {email} angemeldet, nicht als {maskedEmail}. Es wurde nichts hinzugefügt. Versuchen Sie es erneut mit {maskedEmail}."
+msgstr "Sie haben sich als {email} angemeldet, nicht als {maskedEmail}. Es wurde nichts hinzugefügt."
 
 #. This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.
 #. ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated).

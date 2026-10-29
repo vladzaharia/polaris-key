@@ -142,7 +142,7 @@
   "activate.attach.name": "Name",
   "activate.attach.nameRequired": "Enter your name.",
   "activate.otherAccount.title": "You signed in with a different account",
-  "activate.otherAccount.body": "You signed in as {email}, not {maskedEmail}. Nothing was added. Try again with {maskedEmail}.",
+  "activate.otherAccount.body": "You signed in as {email}, not {maskedEmail}. Nothing was added.",
   "activate.waiting": "This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.",
   "activate.waitingSignIn": "Sign in as {maskedEmail}",
   "activate.owned.title": "This license is in a Polaris Locker account",

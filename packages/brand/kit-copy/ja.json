@@ -149,7 +149,7 @@
     "activate.attach.name": "名前",
     "activate.attach.nameRequired": "名前を入力してください。",
     "activate.otherAccount.title": "別のアカウントでサインインしました",
-    "activate.otherAccount.body": "{email}でサインインしましたが、入力したのは{maskedEmail}です。何も追加されていません。{maskedEmail}でもう一度お試しください。",
+    "activate.otherAccount.body": "{email}でサインインしましたが、入力したのは{maskedEmail}です。何も追加されていません。",
     "activate.waiting": "このライセンスは{maskedEmail}に送られました。そのメールアドレスでサインインすると、アカウントに保存できます。",
     "activate.waitingSignIn": "{maskedEmail}でサインイン",
     "activate.owned.title": "このライセンスは Polaris Locker のアカウントにあります",

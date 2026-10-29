@@ -1,6 +1,7 @@
 // Every UI-KITS.md §4.1 component as a `pk-*` element (layer b), the `<pk-gate>` drop-in (layer a)
 // and `<pk-provider>`, the theme for a subtree (§3.2).
 
+import { focusClear } from "@polaris-key/ui-core/browser/reveal";
 import { html, LitElement, nothing, type PropertyValues } from "lit";
 import {
   viewOf,
@@ -501,9 +502,7 @@ export class PkGate extends PkElement {
       ? viewOf(screen, this.modelInput()).decisions.focus
       : null;
     if (target === null) return;
-    (target === "heading" ? heading() : (byKey(target) ?? heading()))?.focus({
-      preventScroll: true,
-    });
+    focusClear(target === "heading" ? heading() : (byKey(target) ?? heading()));
   }
 }
 

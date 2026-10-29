@@ -17,6 +17,7 @@ import {
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
+import { focusClear } from "@polaris-key/ui-core/browser/reveal";
 import type { ResolvedIdentity } from "@polaris-key/ui-core/theme";
 import {
   platformVariant,
@@ -511,6 +512,23 @@ export abstract class PkElement extends LitElement {
         if (key === "ringChange.accept" && this.input.ringChange?.served)
           detail.served = this.input.ringChange.served;
         if (this.localAction(key, detail, view)) return;
+        // A second Continue while the form is still invalid: the state does not change, so the
+        // focus rule does not fire; move focus to the first wrong field here (as React does).
+        if (
+          key === "common.continue" &&
+          this.renderRoot.querySelector('input[aria-invalid="true"]')
+        )
+          setTimeout(
+            () =>
+              void this.updateComplete.then(() =>
+                focusClear(
+                  this.renderRoot.querySelector<HTMLElement>(
+                    'input[aria-invalid="true"]',
+                  ),
+                ),
+              ),
+            0,
+          );
         this.dispatchEvent(
           new CustomEvent<PkActionDetail>("pk-action", {
             detail,
@@ -905,8 +923,6 @@ export abstract class PkElement extends LitElement {
       checked.focus({ preventScroll: true });
       return;
     }
-    (where === "heading" ? heading() : (field ?? heading()))?.focus({
-      preventScroll: true,
-    });
+    focusClear(where === "heading" ? heading() : (field ?? heading()));
   }
 }

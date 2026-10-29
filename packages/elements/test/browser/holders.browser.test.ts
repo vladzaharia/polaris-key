@@ -182,7 +182,8 @@ describe("<pk-gate config>: focus after the UX review (UK-42.15)", () => {
   const focused = (root: ShadowRoot) =>
     root.activeElement?.getAttribute("data-key") ?? root.activeElement?.id;
 
-  it("an empty Continue moves focus to Name; Cancel returns it to Add your name and email", async () => {
+  /** Done, then Add, then an empty Continue: the form is invalid and Name has focus. */
+  const toInvalid = async () => {
     const { gate, root } = await toDone();
     button(root, "activate.recommend.action")!.click();
     await settle(gate, () => button(root, "common.continue") !== null);
@@ -193,6 +194,11 @@ describe("<pk-gate config>: focus after the UX review (UK-42.15)", () => {
       () => key(root, "activate.attach.nameRequired") !== null,
     );
     expect(focused(root)).toBe("activate.attach.name");
+    return { gate, root };
+  };
+
+  it("an empty Continue moves focus to Name; Cancel returns it to Add your name and email", async () => {
+    const { gate, root } = await toInvalid();
     key(root, "common.cancel")!.click();
     await settle(gate, () => button(root, "signin.done.start") !== null);
     expect(focused(root)).toBe("activate.recommend.action");
@@ -210,5 +216,47 @@ describe("<pk-gate config>: focus after the UX review (UK-42.15)", () => {
     );
     await settle(gate, () => root.querySelector("slot") !== null);
     expect(gate.querySelector('[data-testid="app"]')).not.toBeNull();
+  });
+
+  // UK-42.16 N4: a second Continue while the form is still invalid moves focus to the first
+  // wrong field again (the state does not change, so only the press can do it).
+  it("a second Continue while invalid focuses the first wrong field", async () => {
+    const { gate, root } = await toInvalid();
+    button(root, "common.continue")!.focus();
+    expect(focused(root)).toBe("common.continue");
+    button(root, "common.continue")!.click();
+    await settle(gate, () => focused(root) === "activate.attach.name");
+    expect(focused(root)).toBe("activate.attach.name");
+  });
+});
+
+describe("<pk-gate config>: the focused field is clear of the docked bar (UK-42.16 N1)", () => {
+  // The 400 % zoom row: 320x256 CSS px.
+  it("Name is not under Continue at 320x256", async () => {
+    await page.viewport(320, 256);
+    const { gate, root } = await gateToDone("dark");
+    button(root, "activate.recommend.action")!.click();
+    await settle(gate, () => button(root, "common.continue") !== null);
+    await settle(
+      gate,
+      () =>
+        root.activeElement?.getAttribute("data-key") === "activate.attach.name",
+    );
+    const name = key(root, "activate.attach.name")!;
+    expect(root.activeElement).toBe(name);
+    const dock = button(root, "common.continue")!.closest<HTMLElement>(
+      ".actions",
+    )!;
+    const n = name.getBoundingClientRect();
+    const d = dock.getBoundingClientRect();
+    expect(n.top, "Name is above the top edge").toBeGreaterThanOrEqual(-0.5);
+    expect(
+      n.bottom,
+      `Name (${n.top}-${n.bottom}) sits under the dock (${d.top})`,
+    ).toBeLessThanOrEqual(d.top + 0.5);
+    if (__PKEY_KIT_SHOTS__)
+      await commands.kitShot(
+        `${__PKEY_KIT_SHOTS__}/elements.flow.gate-add/320x256-focus.png`,
+      );
   });
 });

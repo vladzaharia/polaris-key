@@ -195,7 +195,7 @@ export const KIT_COPY: Readonly<
     "activate.attach.nameRequired": "Enter your name.",
     "activate.otherAccount.title": "You signed in with a different account",
     "activate.otherAccount.body":
-      "You signed in as {email}, not {maskedEmail}. Nothing was added. Try again with {maskedEmail}.",
+      "You signed in as {email}, not {maskedEmail}. Nothing was added.",
     "activate.waiting":
       "This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.",
     "activate.waitingSignIn": "Sign in as {maskedEmail}",
@@ -2005,7 +2005,7 @@ export const KIT_COPY: Readonly<
     "activate.otherAccount.title":
       "Sie haben sich mit einem anderen Konto angemeldet",
     "activate.otherAccount.body":
-      "Sie haben sich als {email} angemeldet, nicht als {maskedEmail}. Es wurde nichts hinzugefügt. Versuchen Sie es erneut mit {maskedEmail}.",
+      "Sie haben sich als {email} angemeldet, nicht als {maskedEmail}. Es wurde nichts hinzugefügt.",
     "activate.waiting":
       "Diese Lizenz wurde an {maskedEmail} gesendet. Melden Sie sich mit dieser E-Mail an, um sie in Ihrem Konto zu behalten.",
     "activate.waitingSignIn": "Als {maskedEmail} anmelden",
@@ -3929,7 +3929,7 @@ export const KIT_COPY: Readonly<
     "activate.otherAccount.title":
       "Vous vous êtes connecté avec un autre compte",
     "activate.otherAccount.body":
-      "Vous vous êtes connecté en tant que {email}, pas {maskedEmail}. Rien n’a été ajouté. Réessayez avec {maskedEmail}.",
+      "Vous vous êtes connecté en tant que {email}, pas {maskedEmail}. Rien n’a été ajouté.",
     "activate.waiting":
       "Cette licence a été envoyée à {maskedEmail}. Connectez-vous avec cet e-mail pour la garder dans votre compte.",
     "activate.waitingSignIn": "Se connecter en tant que {maskedEmail}",
@@ -5834,7 +5834,7 @@ export const KIT_COPY: Readonly<
     "activate.attach.nameRequired": "Escribe tu nombre.",
     "activate.otherAccount.title": "Iniciaste sesión con otra cuenta",
     "activate.otherAccount.body":
-      "Iniciaste sesión como {email}, no como {maskedEmail}. No se añadió nada. Inténtalo de nuevo con {maskedEmail}.",
+      "Iniciaste sesión como {email}, no como {maskedEmail}. No se añadió nada.",
     "activate.waiting":
       "Esta licencia se envió a {maskedEmail}. Inicia sesión con ese correo para conservarla en tu cuenta.",
     "activate.waitingSignIn": "Iniciar sesión como {maskedEmail}",
@@ -7732,7 +7732,7 @@ export const KIT_COPY: Readonly<
     "activate.attach.nameRequired": "Digite seu nome.",
     "activate.otherAccount.title": "Você entrou com outra conta",
     "activate.otherAccount.body":
-      "Você entrou como {email}, não como {maskedEmail}. Nada foi adicionado. Tente de novo com {maskedEmail}.",
+      "Você entrou como {email}, não como {maskedEmail}. Nada foi adicionado.",
     "activate.waiting":
       "Esta licença foi enviada para {maskedEmail}. Entre com esse e-mail para guardá-la na sua conta.",
     "activate.waitingSignIn": "Entrar como {maskedEmail}",
@@ -9592,7 +9592,7 @@ export const KIT_COPY: Readonly<
     "activate.otherAccount.title":
       "Hai effettuato l’accesso con un altro account",
     "activate.otherAccount.body":
-      "Hai effettuato l’accesso come {email}, non come {maskedEmail}. Non è stato aggiunto nulla. Riprova con {maskedEmail}.",
+      "Hai effettuato l’accesso come {email}, non come {maskedEmail}. Non è stato aggiunto nulla.",
     "activate.waiting":
       "Questa licenza è stata inviata a {maskedEmail}. Accedi con quell’e-mail per tenerla nel tuo account.",
     "activate.waitingSignIn": "Accedi come {maskedEmail}",
@@ -11472,7 +11472,7 @@ export const KIT_COPY: Readonly<
     "activate.attach.nameRequired": "名前を入力してください。",
     "activate.otherAccount.title": "別のアカウントでサインインしました",
     "activate.otherAccount.body":
-      "{email}でサインインしましたが、入力したのは{maskedEmail}です。何も追加されていません。{maskedEmail}でもう一度お試しください。",
+      "{email}でサインインしましたが、入力したのは{maskedEmail}です。何も追加されていません。",
     "activate.waiting":
       "このライセンスは{maskedEmail}に送られました。そのメールアドレスでサインインすると、アカウントに保存できます。",
     "activate.waitingSignIn": "{maskedEmail}でサインイン",
@@ -13370,7 +13370,7 @@ export const KIT_COPY: Readonly<
     "activate.attach.nameRequired": "이름을 입력하세요.",
     "activate.otherAccount.title": "다른 계정으로 로그인했습니다",
     "activate.otherAccount.body":
-      "{email}(으)로 로그인했지만 입력한 이메일은 {maskedEmail}입니다. 아무것도 추가되지 않았습니다. {maskedEmail}(으)로 다시 시도하세요.",
+      "{email}(으)로 로그인했지만 입력한 이메일은 {maskedEmail}입니다. 아무것도 추가되지 않았습니다.",
     "activate.waiting":
       "이 라이선스는 {maskedEmail}(으)로 전송되었습니다. 그 이메일로 로그인하면 계정에 보관할 수 있습니다.",
     "activate.waitingSignIn": "{maskedEmail}(으)로 로그인",
@@ -15175,7 +15175,7 @@ export const KIT_COPY: Readonly<
     "activate.attach.nameRequired": "请输入你的姓名。",
     "activate.otherAccount.title": "你登录的是另一个账户",
     "activate.otherAccount.body":
-      "你登录的是 {email}，而不是 {maskedEmail}。没有添加任何内容。请用 {maskedEmail} 重试。",
+      "你登录的是 {email}，而不是 {maskedEmail}。没有添加任何内容。",
     "activate.waiting":
       "这个许可证已发送到 {maskedEmail}。用该电子邮件登录，即可保存到你的账户。",
     "activate.waitingSignIn": "以 {maskedEmail} 登录",

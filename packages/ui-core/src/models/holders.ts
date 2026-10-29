@@ -234,14 +234,17 @@ export function addToAccountView(
         state: "email-bound",
         copy: [
           "activate.otherEmail.title",
-          // The sentence names the email; with none known it is left out, never half-written.
+          // The sentence and "Verify that email" name the email; with none known both are left
+          // out, never half-written, and Use another account leads (SIGN-IN §3.9).
           args.maskedEmail && "activate.otherEmail.body",
-          "activate.otherEmail.verify",
+          args.maskedEmail && "activate.otherEmail.verify",
           "signin.auto.confirm.other",
           "signin.done.start",
         ],
         args,
-        primary: "activate.otherEmail.verify",
+        primary: args.maskedEmail
+          ? "activate.otherEmail.verify"
+          : "signin.auto.confirm.other",
         tone: "neutral",
       });
     case "other-account":

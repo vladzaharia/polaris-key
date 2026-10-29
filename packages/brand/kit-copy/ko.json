@@ -149,7 +149,7 @@
     "activate.attach.name": "이름",
     "activate.attach.nameRequired": "이름을 입력하세요.",
     "activate.otherAccount.title": "다른 계정으로 로그인했습니다",
-    "activate.otherAccount.body": "{email}(으)로 로그인했지만 입력한 이메일은 {maskedEmail}입니다. 아무것도 추가되지 않았습니다. {maskedEmail}(으)로 다시 시도하세요.",
+    "activate.otherAccount.body": "{email}(으)로 로그인했지만 입력한 이메일은 {maskedEmail}입니다. 아무것도 추가되지 않았습니다.",
     "activate.waiting": "이 라이선스는 {maskedEmail}(으)로 전송되었습니다. 그 이메일로 로그인하면 계정에 보관할 수 있습니다.",
     "activate.waitingSignIn": "{maskedEmail}(으)로 로그인",
     "activate.owned.title": "이 라이선스는 Polaris Locker 계정에 있습니다",

@@ -142,7 +142,7 @@
   "activate.attach.name": "Nombre",
   "activate.attach.nameRequired": "Escribe tu nombre.",
   "activate.otherAccount.title": "Iniciaste sesión con otra cuenta",
-  "activate.otherAccount.body": "Iniciaste sesión como {email}, no como {maskedEmail}. No se añadió nada. Inténtalo de nuevo con {maskedEmail}.",
+  "activate.otherAccount.body": "Iniciaste sesión como {email}, no como {maskedEmail}. No se añadió nada.",
   "activate.waiting": "Esta licencia se envió a {maskedEmail}. Inicia sesión con ese correo para conservarla en tu cuenta.",
   "activate.waitingSignIn": "Iniciar sesión como {maskedEmail}",
   "activate.owned.title": "Esta licencia está en una cuenta de Polaris Locker",

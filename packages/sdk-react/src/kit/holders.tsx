@@ -36,6 +36,7 @@ import {
   type View,
 } from "@polaris-key/ui-core";
 
+import { focusClear } from "@polaris-key/ui-core/browser/reveal";
 import { KitRoot, useKit, type KitAction, type KitProps } from "./component.js";
 import type { Layout } from "./contract.js";
 import {
@@ -183,6 +184,33 @@ const HOLDERS_CSS = `@layer polaris-key {
 }
 .pk-root .holder-form .field input[readonly] {
   color: var(--pk-text-muted);
+}
+/* Add your name and email opened from Settings is that pane's own content (one Done): no inner
+   card frame, a bar that scrolls with the content, and the pane's own Done out of the way. */
+[data-adding] .stage[data-kind="screen"] {
+  padding: 0;
+  min-block-size: 0;
+}
+[data-adding] .stage[data-kind="screen"] .card {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  min-block-size: 0;
+  inline-size: 100%;
+  max-inline-size: none;
+}
+[data-adding] .stage[data-kind="screen"] .card > .actions {
+  position: static;
+  margin-inline: 0;
+  padding-inline: 0;
+  background: transparent;
+}
+[data-adding] .stage[data-kind="screen"] .card > .actions::before {
+  content: none;
+}
+.pane:has([data-adding]) > .actions {
+  display: none;
 }
 .success[data-waapi] svg,
 .pk-root .success[data-waapi] path {
@@ -435,9 +463,7 @@ function Screen(
               `[data-key="${target.replace(/["\\]/g, "")}"]`,
             )
           : null;
-      (el ?? root.querySelector<HTMLElement>("#pk-title"))?.focus({
-        preventScroll: true,
-      });
+      focusClear(el ?? root.querySelector<HTMLElement>("#pk-title"));
     }
     if (typeof card.animate !== "function" || reducedMotion(motion)) return;
     if (prev) morphCard(card, prev.height);
@@ -703,10 +729,12 @@ function AddBody(props: {
   if (s === "email-bound")
     return (
       <>
-        {actions(c, [
-          "activate.otherEmail.verify",
-          "signin.auto.confirm.other",
-        ])}
+        {actions(
+          c,
+          ["activate.otherEmail.verify", "signin.auto.confirm.other"].filter(
+            (k) => c.view.copy.includes(k),
+          ),
+        )}
         {links(c, ["signin.done.start"])}
       </>
     );
@@ -839,7 +867,7 @@ export function AddToAccount(props: AddToAccountProps): ReactNode {
 
 /** Focus the first wrong field again, when the state stays `invalid` and so does not refocus. */
 function focusField(field: "name" | "email"): void {
-  document
-    .querySelector<HTMLElement>(`.pk-root [data-field="${field}"]`)
-    ?.focus({ preventScroll: true });
+  focusClear(
+    document.querySelector<HTMLElement>(`.pk-root [data-field="${field}"]`),
+  );
 }

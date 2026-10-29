@@ -345,7 +345,7 @@
     <!-- AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere. -->
     <string name="activate_otherAccount_title">Iniciaste sesión con otra cuenta</string>
     <!-- AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated). Arguments: 1=email, 2=maskedEmail. -->
-    <string name="activate_otherAccount_body">Iniciaste sesión como %1$s, no como %2$s. No se añadió nada. Inténtalo de nuevo con %2$s.</string>
+    <string name="activate_otherAccount_body">Iniciaste sesión como %1$s, no como %2$s. No se añadió nada.</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
     <string name="activate_waiting">Esta licencia se envió a %1$s. Inicia sesión con ese correo para conservarla en tu cuenta.</string>
     <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->

@@ -341,7 +341,7 @@
     <!-- AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere. -->
     <string name="activate_otherAccount_title">別のアカウントでサインインしました</string>
     <!-- AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated). Arguments: 1=email, 2=maskedEmail. -->
-    <string name="activate_otherAccount_body">%1$sでサインインしましたが、入力したのは%2$sです。何も追加されていません。%2$sでもう一度お試しください。</string>
+    <string name="activate_otherAccount_body">%1$sでサインインしましたが、入力したのは%2$sです。何も追加されていません。</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
     <string name="activate_waiting">このライセンスは%1$sに送られました。そのメールアドレスでサインインすると、アカウントに保存できます。</string>
     <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->

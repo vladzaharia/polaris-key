@@ -343,7 +343,7 @@
     <!-- AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere. -->
     <string name="activate_otherAccount_title">Sie haben sich mit einem anderen Konto angemeldet</string>
     <!-- AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated). Arguments: 1=email, 2=maskedEmail. -->
-    <string name="activate_otherAccount_body">Sie haben sich als %1$s angemeldet, nicht als %2$s. Es wurde nichts hinzugefügt. Versuchen Sie es erneut mit %2$s.</string>
+    <string name="activate_otherAccount_body">Sie haben sich als %1$s angemeldet, nicht als %2$s. Es wurde nichts hinzugefügt.</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
     <string name="activate_waiting">Diese Lizenz wurde an %1$s gesendet. Melden Sie sich mit dieser E-Mail an, um sie in Ihrem Konto zu behalten.</string>
     <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->

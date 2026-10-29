@@ -142,7 +142,7 @@
   "activate.attach.name": "Name",
   "activate.attach.nameRequired": "Geben Sie Ihren Namen ein.",
   "activate.otherAccount.title": "Sie haben sich mit einem anderen Konto angemeldet",
-  "activate.otherAccount.body": "Sie haben sich als {email} angemeldet, nicht als {maskedEmail}. Es wurde nichts hinzugefügt. Versuchen Sie es erneut mit {maskedEmail}.",
+  "activate.otherAccount.body": "Sie haben sich als {email} angemeldet, nicht als {maskedEmail}. Es wurde nichts hinzugefügt.",
   "activate.waiting": "Diese Lizenz wurde an {maskedEmail} gesendet. Melden Sie sich mit dieser E-Mail an, um sie in Ihrem Konto zu behalten.",
   "activate.waitingSignIn": "Als {maskedEmail} anmelden",
   "activate.owned.title": "Diese Lizenz ist in einem Polaris Locker-Konto",

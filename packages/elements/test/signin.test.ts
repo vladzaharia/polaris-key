@@ -416,8 +416,12 @@ describe("live: a key with no account, then Add your name and email (UK-42.8)", 
     type(el2, "signin.email.label", EMAIL);
     await press(el2, "common.continue");
     expect(g.attaches).toEqual([false]);
+    // No email is known here: no "Verify that email", Use another account leads (UK-42.16 N5).
     expect(
       el2.shadowRoot!.querySelector('[data-key="activate.otherEmail.verify"]'),
+    ).toBeNull();
+    expect(
+      el2.shadowRoot!.querySelector('[data-key="signin.auto.confirm.other"]'),
     ).not.toBeNull();
   });
 

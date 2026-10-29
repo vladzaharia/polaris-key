@@ -723,7 +723,7 @@
       "note": "AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere."
     },
     "activate.otherAccount.body": {
-      "value": "You signed in as {email}, not {maskedEmail}. Nothing was added. Try again with {maskedEmail}.",
+      "value": "You signed in as {email}, not {maskedEmail}. Nothing was added.",
       "role": "body",
       "note": "AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated)."
     },

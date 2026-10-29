@@ -927,7 +927,7 @@ msgstr ""
 msgid "activate.otherAccount.title"
 msgstr ""
 
-#. You signed in as {email}, not {maskedEmail}. Nothing was added. Try again with {maskedEmail}.
+#. You signed in as {email}, not {maskedEmail}. Nothing was added.
 #. AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated).
 msgid "activate.otherAccount.body"
 msgstr ""
