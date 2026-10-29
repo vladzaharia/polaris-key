@@ -97,13 +97,14 @@ PORTED = frozenset(
         "e2e-forged-plain-change-at-or-below-cursor",
         "e2e-forged-plain-needs-cursor-below-since",
         "e2e-forged-plain-sealed-key-latched",
+        "e2e-conflict-plaintext-copy-refused",
     )
 )
 _SKIP = "not on the PORTED allow-list"
 
 
 def test_corpus_constants() -> None:
-    assert _CORPUS["syncScenariosVersion"] == SYNC_SCENARIOS_VERSION == 3
+    assert _CORPUS["syncScenariosVersion"] == SYNC_SCENARIOS_VERSION == 4
     assert _CORPUS["constants"] == {
         "debounceMs": SYNC_DEBOUNCE_MS,
         "signOutFlushMs": SYNC_SIGNOUT_FLUSH_MS,
