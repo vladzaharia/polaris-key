@@ -51,6 +51,7 @@ import type {
 import { launchGateOn } from "../../core/settings/platformRead.js";
 import { getProduct } from "../../core/products/store.js";
 import { readPlatformSignIn } from "./platformSignIn.js";
+import { gameKindsOn } from "./passthrough/subjectToken.js";
 import { keyEntryLimit } from "../../core/licensing/keyEntries.js";
 import { accountPortalUrl } from "../../core/licensing/manageUrl.js";
 import { licenseHolderHooks } from "./accounts/holders.js";
@@ -154,6 +155,11 @@ export const identityService: ServiceDescriptor = {
     if (audiences?.google.serverClientId) kinds.push("google");
     if (audiences?.apple.teamId && audiences.apple.bundleIds.length > 0)
       kinds.push("apple");
+    // I-14 (§12.11.7): the game kinds, while `launch.gameSignIn` is on and the product sets them up.
+    const games = audiences
+      ? await gameKindsOn(env, db, product.slug, audiences)
+      : [];
+    kinds.push(...games);
     const fragment: IdentityDiscovery = {
       enabled: true,
       // I-08: the platform sign-in (`authorize`, `token`) needs no per-product IdP row, so a
@@ -173,6 +179,11 @@ export const identityService: ServiceDescriptor = {
               ...(audiences?.google.serverClientId
                 ? {
                     google: { serverClientId: audiences.google.serverClientId },
+                  }
+                : {}),
+              ...(games.includes("pgs") && audiences?.playGames.serverClientId
+                ? {
+                    pgs: { serverClientId: audiences.playGames.serverClientId },
                   }
                 : {}),
             },
