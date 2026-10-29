@@ -33,6 +33,8 @@
  *                                                 account (I-09; device bearer)
  *     /identity/subject                     GET   the pairwise subject signed in on the device
  *     /identity/signout                     POST  sign the device out of its account
+ *     /identity/restore                     POST  I-49.5, enrol or check a silent-restore key (gated)
+ *                                           DELETE  I-49.5, revoke this device's key (never gated)
  *
  * There are no aliases. The pre-namespace spellings (`/<p>/session`, `/<p>/auth/…`) are deleted
  * outright, unlike the four permanent aliases D-07 keeps for Release/Update: those exist because
@@ -82,6 +84,7 @@ import { handleExchangeNonce } from "./passthrough/nonce.js";
 import { handleLink } from "./passthrough/link.js";
 import { readCiJson } from "../../core/ciScope.js";
 import { handleChoice } from "./passthrough/choiceRoutes.js";
+import { handleRestoreKey } from "./restore/route.js";
 
 /** The grant routes' largest body: a grant, a licence id or a choice with a key. */
 const CHOICE_BODY_CAP = 4 * 1024;
@@ -207,6 +210,16 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     auth: { kind: "device" },
     handler: ({ req, env, db, product, now }) =>
       handleIdentitySignOut(req, env, db, product, now),
+  },
+  // I-49.5 (§12.11.8): enrol and revoke a silent-restore key. The handler gates POST (`restoreServed`)
+  // and never gates DELETE.
+  {
+    path: "restore",
+    cors: true,
+    methods: ["POST", "DELETE"],
+    auth: { kind: "device" },
+    handler: ({ req, env, db, product, now }) =>
+      handleRestoreKey(req, env, db, product, now),
   },
   {
     path: "auth/start",

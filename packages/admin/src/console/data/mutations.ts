@@ -159,6 +159,7 @@ export type WriteMethod =
   | "undoRelink"
   | "putProductUserOverrides"
   | "updateSignInSettings"
+  | "purgeRestoreKeys"
   | "resetProductDeviceFingerprint"
   | "mintBundle"
   | "updateFingerprintPolicy"
@@ -634,6 +635,11 @@ export const MUTATIONS: MutationTable = {
     label: "Polaris Locker preview",
     invalidates: () => [],
     why: "A dry run for a persona: the Worker evaluates it in memory and writes nothing.",
+  },
+  purgeRestoreKeys: {
+    label: "restore keys purge",
+    // The keys are not listed anywhere in the console; the audit row is the trail.
+    invalidates: (slug) => [prefix(qk.activity(slug))],
   },
   updateSignInSettings: {
     label: "sign-in settings",

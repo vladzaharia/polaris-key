@@ -62,6 +62,7 @@ import { identityIntegration } from "./integration.js";
 import { discoverVisibility } from "./portal/store/visibility.js";
 import { identityMaintenance } from "./maintenance.js";
 import { platformConnectionSeedJob } from "./connections/seed.js";
+import { restoreServed } from "./restore/gate.js";
 import {
   IDENTITY_RESTORE_LISTENER,
   restoreDeviceListener,
@@ -165,6 +166,8 @@ export const identityService: ServiceDescriptor = {
     if (audiences?.google.serverClientId) kinds.push("google");
     if (audiences?.apple.teamId && audiences.apple.bundleIds.length > 0)
       kinds.push("apple");
+    // I-49 (§12.11.8): the gate first, then the product setting; off reads nothing else.
+    const restoreOn = await restoreServed(env, db, product.slug);
     const fragment: IdentityDiscovery = {
       enabled: true,
       // I-08: the platform sign-in (`authorize`, `token`) needs no per-product IdP row, so a
@@ -177,6 +180,7 @@ export const identityService: ServiceDescriptor = {
         { env, db, ...(settings ? { registry: settings } : {}) },
         product.slug,
       ),
+      ...(restoreOn ? { restore: true as const } : {}),
       ...(kinds.length > 0
         ? {
             exchange: {
@@ -208,6 +212,7 @@ export const identityService: ServiceDescriptor = {
         attach: `${base}/identity/attach`,
         subject: `${base}/identity/subject`,
         signout: `${base}/identity/signout`,
+        ...(restoreOn ? { restore: `${base}/identity/restore` } : {}),
         ...(exchangeOn
           ? {
               nonce: `${base}/identity/nonce`,

@@ -28,7 +28,8 @@ import {
   readBody,
   settingRefused,
 } from "../../core/console/respond.js";
-import { audit, auditStatementFor } from "../../core/audit.js";
+import { actorOf, audit, auditStatementFor } from "../../core/audit.js";
+import { purgeProductRestore } from "./restore/store.js";
 import { writeSettings } from "../../core/settings/write.js";
 import {
   planSignInSettingsPatch,
@@ -80,10 +81,39 @@ export async function handleIdentityAdmin(
   ctx: ServiceContext & { session: AdminSession },
 ): Promise<Response | null> {
   const { rest } = ctx;
+  // I-49.5: the operator's "Purge restore keys" (step-up, typed confirmation; the route table).
+  if (rest.length === 2 && rest[0] === "restore" && rest[1] === "purge")
+    return handleRestorePurge(ctx);
   if (rest.length !== 1) return null;
   if (rest[0] === "portal") return handlePortalSettings(ctx);
   if (rest[0] === "sign-in-settings") return handleSignInSettings(ctx);
   return null;
+}
+
+/**
+ * `POST …/identity/restore/purge` (I-49.5; WIRE-CONTRACT-V5 §12.11.8, "Revocation"): delete every
+ * silent-restore key and origin mark of this product, the operator's response to a suspected leak.
+ * The console route table gives it a fresh step-up; the body must carry `confirmSlug`, the
+ * product's slug, typed. It runs whatever the launch gate, the `identity.restore` setting or the
+ * Identity toggle say, and it writes one audit row (`identity.restore.purge`) naming the operator
+ * and the count. Devices stay signed in; each client enrols again on its next check.
+ */
+async function handleRestorePurge(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response> {
+  const { req, db, product, session, now } = ctx;
+  if (req.method !== "POST")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const body = await readBody(req);
+  if (body.confirmSlug !== product.slug)
+    return err(422, ErrorCode.BadRequest, "confirmSlug must match product", {
+      fields: ["confirmSlug"],
+    });
+  const purged = await purgeProductRestore(db, product.slug, {
+    actor: actorOf(session),
+    now,
+  });
+  return adminJson({ ok: true, purged });
 }
 
 /** What the console says when a sign-in setting is refused. */

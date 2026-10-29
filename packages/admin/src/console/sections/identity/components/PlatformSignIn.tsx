@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ProductSetting } from "../../../../api.js";
 import { reads } from "../../../data/reads.js";
 import { ProductSettingsSection } from "../../../components/ProductSettingsSection.js";
+import { RestorePurge } from "./RestorePurge.js";
 
 export const PLATFORM_SIGN_IN_AREA = "identity.platformSignIn";
 const OUTLETS_AREA = "distribution.outlets";
@@ -118,6 +119,12 @@ export function PlatformSignInSection({
       </li>
     </ul>
   ) : undefined;
+  const withPurge = note ? (
+    <>
+      {note}
+      <RestorePurge slug={slug} />
+    </>
+  ) : undefined;
   return (
     <ProductSettingsSection
       slug={slug}
@@ -126,7 +133,7 @@ export function PlatformSignInSection({
       id="platform-sign-in"
       title="Platform sign-in"
       description="What Google and Apple tokens from your app are checked against, and how it signs people in again."
-      note={note}
+      note={withPurge}
     />
   );
 }
