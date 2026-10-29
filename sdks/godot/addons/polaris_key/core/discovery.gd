@@ -73,7 +73,8 @@ static func parse(value: Variant, expected_product: String) -> Dictionary:
 ## The Identity fragment's account members (WIRE-CONTRACT-V4 §12.6) from a parsed discovery
 ## manifest, or {} while the product's Identity service is off or the document has none:
 ## {account: bool, issuer, key_entry_limit (int, or -1 when absent), attach, subject, signout,
-## account_portal ("" when absent), endpoints: every string endpoint as served}. A client uses an
+## account_portal, nonce, link ("" when absent), exchange ({} or {kinds, google_server_client_id,
+## pgs_server_client_id}), endpoints: every string endpoint as served}. A client uses an
 ## endpoint only when it is here and never builds one.
 static func identity_from(manifest: Variant) -> Dictionary:
 	if not (manifest is Dictionary) or not (manifest.get("services") is Dictionary):
@@ -88,6 +89,9 @@ static func identity_from(manifest: Variant) -> Dictionary:
 				endpoints[k] = fragment["endpoints"][k]
 	var limit = fragment.get("keyEntryLimit")
 	return {
+		"exchange": _exchange_from(fragment.get("exchange")),
+		"nonce": endpoints.get("nonce", ""),
+		"link": endpoints.get("link", ""),
 		"account": PKeyClaims.is_true(fragment.get("account")),
 		"issuer": fragment["issuer"] if _nonempty(fragment.get("issuer")) else "",
 		"key_entry_limit": int(limit) if PKeyClaims.is_number(limit) else -1,
@@ -96,6 +100,28 @@ static func identity_from(manifest: Variant) -> Dictionary:
 		"signout": endpoints.get("signout", ""),
 		"account_portal": endpoints.get("accountPortal", ""),
 		"endpoints": endpoints,
+	}
+
+
+## The platform sign-in kinds a product accepts (WIRE-CONTRACT-V5 §12.11.6-.7): {kinds,
+## google_server_client_id, pgs_server_client_id}, or {} when the fragment publishes no usable
+## `exchange`. A kind this SDK does not know is dropped, never a decode failure.
+const EXCHANGE_KINDS := ["google", "apple", "gamecenter", "pgs"]
+
+
+static func _exchange_from(raw: Variant) -> Dictionary:
+	if not (raw is Dictionary) or not (raw.get("kinds") is Array):
+		return {}
+	var kinds: Array = []
+	for k in raw["kinds"]:
+		if k is String and k in EXCHANGE_KINDS and not (k in kinds):
+			kinds.append(k)
+	var google = raw.get("google")
+	var pgs = raw.get("pgs")
+	return {
+		"kinds": kinds,
+		"google_server_client_id": google["serverClientId"] if google is Dictionary and _nonempty(google.get("serverClientId")) else "",
+		"pgs_server_client_id": pgs["serverClientId"] if pgs is Dictionary and _nonempty(pgs.get("serverClientId")) else "",
 	}
 
 

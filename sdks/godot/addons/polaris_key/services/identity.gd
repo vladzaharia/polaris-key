@@ -12,6 +12,8 @@ extends RefCounted
 ##   choice.licenses(grant) / devices(grant, license_id) / complete(grant, choice) / cancel(grant)
 ##                                         the licence choice an app shows itself after a redirect
 ##                                         sign-in with license_choice = "app"; see PKeyIdentityChoice
+##   exchange.nonce(kind) / exchange.exchange(kind, token, nonce)
+##                                         the platform exchange primitive; see PKeyIdentityExchange
 ##   is_available()                        Identity is on for this product and set up
 ##   open_in_browser(session), copy_link(session)
 ##                                         for the dialog's two buttons
@@ -69,6 +71,11 @@ var sign_in: PKeySignInNamespace
 ## `choice.licenses / devices / complete / cancel`: the licence choice after a redirect sign-in
 ## that asked `license_choice = "app"` (PKeyIdentityChoice).
 var choice: PKeyIdentityChoice
+## `exchange.nonce / exchange`: the platform exchange primitive (PKeyIdentityExchange).
+var exchange: PKeyIdentityExchange
+## The device key port (PKeyDeviceKeyStore or the options' own) the exchange signs its proof with:
+## the autoload hands identity the one instance the key ring holds. Null until configure().
+var device_keys: Object = null
 
 ## Conformance replay only: the exact `state` and `code_verifier` of a recorded redirect
 ## conversation ({state, code_verifier}); empty draws fresh entropy.
@@ -90,6 +97,7 @@ var _starts := 0
 func _init() -> void:
 	sign_in = PKeySignInNamespace.new(self)
 	choice = PKeyIdentityChoice.new(self)
+	exchange = PKeyIdentityExchange.new(self)
 
 
 ## Bind to Core (PolarisKey.configure). A sign-in in progress is cancelled.

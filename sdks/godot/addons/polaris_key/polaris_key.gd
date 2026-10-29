@@ -210,7 +210,9 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 func _build_keyring(opts: PKeyOptions) -> void:
 	# The ring's files stay out of OS backups: Android's no-backup directory when the plugin is present.
 	var sensitive_root := PKeyBackupExclusion.root(opts.store_root)
+	# One device key store: the ring and the identity exchange sign with the same keys.
 	var keys: Object = opts.device_keys if opts.device_keys != null else PKeyDeviceKeyStore.new(core.product, sensitive_root)
+	identity.device_keys = keys
 	var vault: PKeySyncRingVault = opts.ring_vault if opts.ring_vault != null else PKeySyncRingVault.new(core.product, sensitive_root)
 	keyring = PKeySyncRing.for_core(core, keys, vault)
 	if not _ring_hook_added:
