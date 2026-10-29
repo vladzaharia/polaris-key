@@ -5,12 +5,20 @@
  * delete, and the out-of-scope flag (A-20 R6). Closes OUT-1 to OUT-7 for the channel's keys.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { configureAxe } from "vitest-axe";
 import type { ChannelRow, ChannelsView } from "../src/api.js";
 import { resetConsole } from "./consoleHarness.js";
+import { expectNoAxeViolations } from "./coreTestUtils.js";
+import {
+  expectGoogleKeyWrite,
+  fillGoogleKey,
+  openSetDrawer,
+  pick,
+  resetAround,
+  rowAction,
+} from "./credentialsKit.js";
 import {
   apiError,
   bootWith,
@@ -20,30 +28,27 @@ import {
   type Answer,
 } from "./distributionFixture.js";
 
-const axe = configureAxe({
-  rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
-});
 const H = "#/p/djdl/distribution/channels";
 const HASH_APP = `${H}/app-store/setup`;
 const HASH_PLAY = `${H}/google-play/setup`;
 
-beforeEach(() => resetConsole());
-afterEach(() => {
-  cleanup();
-  vi.unstubAllGlobals();
-});
+resetAround();
+
+const BASE = {
+  inScope: true,
+  declared: true,
+  oneClick: false,
+  notUsing: false,
+};
 
 const row = (
   id: string,
   label: string,
   over: Partial<ChannelRow> = {},
 ): ChannelRow => ({
+  ...BASE,
   id,
   label,
-  inScope: true,
-  declared: true,
-  oneClick: false,
-  notUsing: false,
   delivery: { state: "live", attention: [], platforms: [] },
   commerce: null,
   identity: null,
@@ -78,15 +83,6 @@ async function playTable(): Promise<HTMLElement> {
   });
   await within(t).findByText("play");
   return t;
-}
-
-async function pick(
-  container: HTMLElement,
-  name: RegExp,
-  option: RegExp,
-): Promise<void> {
-  await userEvent.click(within(container).getByRole("combobox", { name }));
-  await userEvent.click(await screen.findByRole("option", { name: option }));
 }
 
 describe("a channel's Setup tab: credentials", () => {
@@ -188,12 +184,7 @@ describe("a channel's Setup tab: credentials", () => {
   it("offers this channel's kinds only", async () => {
     boot(HASH_APP);
     await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
+    const drawer = await openSetDrawer();
     await userEvent.click(
       within(drawer).getByRole("combobox", { name: /Kind/ }),
     );
@@ -213,12 +204,7 @@ describe("a channel's Setup tab: credentials", () => {
       },
     });
     await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actions for asc-team-key" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Pin…" }),
-    );
+    await rowAction("asc-team-key", "Pin…");
     const dialog = await screen.findByRole("dialog", {
       name: /Pin “asc-team-key”/,
     });
@@ -252,12 +238,7 @@ describe("a channel's Setup tab: credentials", () => {
         ),
     });
     await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actions for asc-team-key" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Pin…" }),
-    );
+    await rowAction("asc-team-key", "Pin…");
     const dialog = await screen.findByRole("dialog", {
       name: /Pin “asc-team-key”/,
     });
@@ -273,12 +254,7 @@ describe("a channel's Setup tab: credentials", () => {
       [`PUT ${P("/outlet-credentials/asc-new")}`]: { ok: true, id: "asc-new" },
     });
     await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
+    const drawer = await openSetDrawer();
     // Kind comes first; nothing else until it is chosen.
     expect(within(drawer).queryByLabelText(/Credential ID/)).toBeNull();
     await pick(drawer, /Kind/, /App Store Connect API key/);
@@ -340,12 +316,7 @@ describe("a channel's Setup tab: credentials", () => {
       [`PUT ${P("/outlet-credentials/play-2")}`]: { ok: true, id: "play-2" },
     });
     await playTable();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
+    const drawer = await openSetDrawer();
     // The only kind this channel has: already chosen.
     expect(
       within(drawer).getByRole("combobox", { name: /Kind/ }).textContent,
@@ -354,25 +325,11 @@ describe("a channel's Setup tab: credentials", () => {
       within(drawer).getByLabelText(/Credential ID/),
       "play-2",
     );
-    await userEvent.type(within(drawer).getByLabelText(/JSON key file/), "{{}");
-    const pin = within(drawer).getByLabelText(/Google Play package name/);
-    expect(pin.getAttribute("inputmode")).toBe("text");
-    await userEvent.type(pin, "gg.acme.djdl");
+    await fillGoogleKey(drawer);
     await userEvent.click(
       within(drawer).getByRole("button", { name: "Set credential" }),
     );
-    await waitFor(() =>
-      expect(writes(calls)).toEqual([
-        expect.objectContaining({
-          body: {
-            kind: "google-service-account",
-            value: "{}",
-            pin: "gg.acme.djdl",
-            outletId: null,
-          },
-        }),
-      ]),
-    );
+    await expectGoogleKeyWrite(calls);
   });
 
   it("generates an App Store webhook secret without a value", async () => {
@@ -383,12 +340,7 @@ describe("a channel's Setup tab: credentials", () => {
       },
     });
     await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
+    const drawer = await openSetDrawer();
     await pick(drawer, /Kind/, /App Store webhook secret/);
     await userEvent.type(
       within(drawer).getByLabelText(/Credential ID/),
@@ -418,12 +370,7 @@ describe("a channel's Setup tab: credentials", () => {
     const before = calls.filter(
       (c) => c.path === P("/outlet-credentials"),
     ).length;
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actions for asc-team-key" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Delete…" }),
-    );
+    await rowAction("asc-team-key", "Delete…");
     const confirm = await screen.findByRole("alertdialog");
     await userEvent.click(
       within(confirm).getByRole("button", { name: "Delete asc-team-key" }),
@@ -457,12 +404,7 @@ describe("a channel's Setup tab: credentials", () => {
       [`PUT ${P("/outlet-credentials/play")}`]: { ok: true, id: "play" },
     });
     await playTable();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
+    const drawer = await openSetDrawer();
     await userEvent.type(
       within(drawer).getByLabelText(/Credential ID/),
       "play",
@@ -470,11 +412,7 @@ describe("a channel's Setup tab: credentials", () => {
     expect(
       await within(drawer).findByText("A credential with this id exists"),
     ).toBeTruthy();
-    await userEvent.type(within(drawer).getByLabelText(/JSON key file/), "{{}");
-    await userEvent.type(
-      within(drawer).getByLabelText(/Google Play package name/),
-      "gg.acme.djdl",
-    );
+    await fillGoogleKey(drawer);
     await userEvent.click(
       within(drawer).getByRole("button", { name: "Rotate credential…" }),
     );
@@ -483,18 +421,7 @@ describe("a channel's Setup tab: credentials", () => {
     await userEvent.click(
       within(confirm).getByRole("button", { name: "Rotate credential" }),
     );
-    await waitFor(() =>
-      expect(writes(calls)).toEqual([
-        expect.objectContaining({
-          body: {
-            kind: "google-service-account",
-            value: "{}",
-            pin: "gg.acme.djdl",
-            outletId: null,
-          },
-        }),
-      ]),
-    );
+    await expectGoogleKeyWrite(calls);
   });
 
   it("keeps a rotated key's channel binding without showing it", async () => {
@@ -505,12 +432,7 @@ describe("a channel's Setup tab: credentials", () => {
       },
     });
     await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actions for asc-team-key" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Rotate…" }),
-    );
+    await rowAction("asc-team-key", "Rotate…");
     const drawer = await screen.findByRole("dialog", {
       name: /Rotate “asc-team-key”/,
     });
@@ -570,11 +492,6 @@ describe("a channel's Setup tab: credentials", () => {
   it("passes axe", async () => {
     boot(HASH_APP);
     await table();
-    const results = await axe(document.body);
-    expect(
-      results.violations.map(
-        (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
-      ),
-    ).toEqual([]);
+    await expectNoAxeViolations(document.body);
   });
 });

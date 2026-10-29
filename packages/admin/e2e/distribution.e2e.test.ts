@@ -338,12 +338,15 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
     const { page, errors } = await open("#/p/djdl/distribution/credentials");
     await title(page, "Channel credentials");
     await overlay(page, "set credential", async () => {
-      await page.getByRole("button", { name: "Set credential…" }).click();
+      await page
+        .getByRole("button", { name: "Set credential…" })
+        .first()
+        .click();
       await page
         .getByRole("dialog", { name: "Set a channel credential" })
         .waitFor();
     });
-    await page.getByRole("button", { name: "Set credential…" }).click();
+    await page.getByRole("button", { name: "Set credential…" }).first().click();
     await page
       .getByRole("dialog", { name: "Set a channel credential" })
       .waitFor();

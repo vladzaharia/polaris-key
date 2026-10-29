@@ -5,11 +5,12 @@
  * (flagged, A-20 R6), links to each Setup, and the connector cards.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { configureAxe } from "vitest-axe";
 import { resetConsole } from "./consoleHarness.js";
+import { expectNoAxeViolations } from "./coreTestUtils.js";
+import { openSetDrawer, pick, resetAround } from "./credentialsKit.js";
 import {
   apiError,
   bootWith,
@@ -20,16 +21,9 @@ import {
   type Answer,
 } from "./distributionFixture.js";
 
-const axe = configureAxe({
-  rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
-});
 const HASH = "#/p/djdl/distribution/credentials";
 
-beforeEach(() => resetConsole());
-afterEach(() => {
-  cleanup();
-  vi.unstubAllGlobals();
-});
+resetAround();
 
 /** The fixture's keys plus Sentry's, the one credential that belongs to no channel. */
 const SENTRY = {
@@ -82,15 +76,6 @@ async function table(): Promise<HTMLElement> {
   const t = await screen.findByRole("table", { name: "Channel credentials" });
   await within(t).findByText("sentry-alerts");
   return t;
-}
-
-async function pick(
-  container: HTMLElement,
-  name: RegExp,
-  option: RegExp,
-): Promise<void> {
-  await userEvent.click(within(container).getByRole("combobox", { name }));
-  await userEvent.click(await screen.findByRole("option", { name: option }));
 }
 
 describe("Distribution → Channel credentials", () => {
@@ -157,12 +142,7 @@ describe("Distribution → Channel credentials", () => {
       },
     });
     await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
+    const drawer = await openSetDrawer();
     await userEvent.click(
       within(drawer).getByRole("combobox", { name: /Kind/ }),
     );
@@ -203,12 +183,7 @@ describe("Distribution → Channel credentials", () => {
       },
     });
     await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
+    const drawer = await openSetDrawer();
     await pick(drawer, /Kind/, /Sentry internal integration/);
     await userEvent.type(
       within(drawer).getByLabelText(/Credential ID/),
@@ -386,11 +361,6 @@ describe("Distribution → Channel credentials", () => {
     boot(HASH);
     await table();
     await screen.findByRole("region", { name: "App Store Connect" });
-    const results = await axe(document.body);
-    expect(
-      results.violations.map(
-        (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
-      ),
-    ).toEqual([]);
+    await expectNoAxeViolations(document.body);
   });
 });
