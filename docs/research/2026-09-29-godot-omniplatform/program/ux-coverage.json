@@ -14272,8 +14272,8 @@
       "platform": "Cross-kit (tokens, ui-core, QA, docs)",
       "platformDetail": "web",
       "owners": ["UK-42", "UK-03", "UK-05"],
-      "built": "mockup-only",
-      "evidence": "searched sdk-react/src/components for Add account / capability-aware Done step: none"
+      "built": "built",
+      "evidence": "packages/ui-core/src/models/holders.ts, addToAccountModel.ts; packages/elements pk-activate-done, pk-add-to-account; packages/sdk-react/src/kit/holders.tsx, holderHooks.ts, holderGate.ts (ActivateDone and AddToAccount in the gate, SignIn and the account pane); docs build/ui/components/activate-done, add-to-account"
     },
     {
       "id": "kit:UK-43",
@@ -16780,9 +16780,9 @@
       "area": "sdk",
       "surface": "kit",
       "owners": ["UK-03", "UK-05", "UK-06", "UK-42"],
-      "built": "partial",
+      "built": "built",
       "brandV2": "no",
-      "evidence": "packages/sdk-react/src/components/PolarisLogin.tsx (key form, neutral device-limit callout with 'Replace a device' per header comment); UK-42 Done step/capability recommend not present"
+      "evidence": "packages/sdk-react/src/kit/holders.tsx (ActivateDone: ready, waiting, reasons only the product has) and the key step in packages/sdk-react/src/kit/signin.tsx; PolarisLogin.tsx's neutral device-limit callout with 'Replace a device'"
     },
     {
       "id": "sdk.swiftui-sign-in",
