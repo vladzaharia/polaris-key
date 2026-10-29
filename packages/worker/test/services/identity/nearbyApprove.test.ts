@@ -2,7 +2,7 @@
 
 // `POST /<p>/identity/nearby/approve` without the bind (I-40.5; WIRE-CONTRACT-V5 §12.11.5): the
 // refusals, the network rule, a sticky denial, `choose` writing nothing, the budgets and the off
-// states. The bind is I-40.6's.
+// states. The bind is in nearbyApproveBind.test.ts.
 
 import { describe, expect, it } from "vitest";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
@@ -510,22 +510,27 @@ describe("POST /<p>/identity/nearby/approve", () => {
         expect((await approve(w, s)).status).toBe(200);
     });
 
-    it("exactly one free candidate, or none, is not a choice", async () => {
+    it("exactly one free candidate, or none, is not a choice: it binds", async () => {
       for (const owned of [0, 1]) {
         const w = await world(owned);
         const s = await startRequest(w);
         const r = await approve(w, s);
-        // The bind is I-40.6's: until then, an approval that is not a choice is held back.
-        expect([r.status, code(r)]).toEqual([503, "unavailable"]);
-        expect((await readNearby(w.env, s.ref))!.state).toBe("pending");
+        expect([r.status, r.body]).toEqual([
+          200,
+          { status: "approved", deviceLabel: "Kitchen TV" },
+        ]);
+        expect((await readNearby(w.env, s.ref))!.state).toBe("approved");
       }
     });
 
-    it("a sent choice is not asked for again", async () => {
+    it("a sent choice is not asked for again: it binds", async () => {
       const w = await world(2);
       const s = await startRequest(w);
-      const r = await approve(w, s, { extra: { choice: { kind: "create" } } });
-      expect(r.status).toBe(503);
+      const r = await approve(w, s, {
+        extra: { choice: { kind: "license", licenseId: "lic_own_0" } },
+      });
+      expect([r.status, r.body.status]).toEqual([200, "approved"]);
+      expect((await readNearby(w.env, s.ref))!.state).toBe("approved");
     });
   });
 

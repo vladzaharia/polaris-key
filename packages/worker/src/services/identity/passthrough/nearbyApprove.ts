@@ -2,12 +2,13 @@
 
 /**
  * `POST /<p>/identity/nearby/approve` (I-40.5; WIRE-CONTRACT-V5 §12.11.5): the signed-in device M
- * decides a request the new device D started. THIS FILE HOLDS THE CHECKS, THE DENIAL AND THE
- * `choose` ANSWER; THE BIND IS I-40.6 (the seam is marked below).
+ * decides a request the new device D started: the checks, a denial, the `choose` answer and
+ * (I-40.6) the bind.
  *
  *   ← {request, signKey, agreeKey, decision: "approve" | "deny", choice?, proof}, M's bearer
  *   → 204                                  a denial (sticky)
  *   → 200 {status: "choose", choices}      a choice is due; nothing is written
+ *   → 200 {status: "approved", deviceLabel} D is bound; its credential is stored as a hash
  *
  * ── THE ORDER OF CHECKS ─────────────────────────────────────────────────────────────────────
  *
@@ -49,7 +50,22 @@ import { appendAudit } from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
 import { ErrorCode, json, wireError } from "../../../core/errors.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
-import { deviceSignKey } from "../../../core/devices/keys.js";
+import {
+  agreeKeyHeldElsewhere,
+  DeviceKeysConflictError,
+  DeviceKeysInvalidError,
+  deviceSignKey,
+} from "../../../core/devices/keys.js";
+import { registerDeviceKeys } from "../../../core/devices/registerKeys.js";
+import { getDevice } from "../../../core/devices/store.js";
+import { NO_LICENSE_ID } from "../../../core/devices.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
+import { sendNotice } from "../../../core/notify/send.js";
+import { appDeviceApprovedNotice } from "../../../core/notify/templates.js";
+import { getAccountRow } from "../accounts/repo.js";
+import { askedScopeHash, CONSENT_PROFILE_CLAIMS } from "./routes.js";
+import { bindChoice, type BindRefusal, type BindResult } from "./bind.js";
+import { bindWithoutChoice } from "./token.js";
 import { verifyDeviceProof } from "../../../core/devices/proof.js";
 import { deviceHolder, deviceOf } from "../attach.js";
 import { gatedBody } from "./nearbyStart.js";
@@ -57,10 +73,12 @@ import { licenseChoiceView, offerFor } from "./choice.js";
 import {
   claimNearby,
   decideNearby,
+  dropNearby,
   mismatchNearby,
   nearbyNetHash,
   nearbyRef,
   readNearby,
+  releaseNearby,
   type NearbyRequestRecord,
 } from "./nearbyStore.js";
 
@@ -232,19 +250,15 @@ export async function handleNearbyApprove(
     if (!claimed.ok) return notFoundNested();
     const decided = await decideNearby(env, ref, approver, { deny: true }, now);
     if (!decided.ok) return notFoundNested();
-    await appendAudit(db, {
-      product: product.slug,
-      id: randomId("aud"),
-      at: now,
-      actor_sub: holder.subject,
-      actor_name: null,
-      actor_email: null,
-      action: "identity.nearby.denied",
-      target_kind: "device",
-      target_id: rec.deviceId,
-      parent_id: null,
-      summary: `A nearby sign-in was denied${rec.label ? ` for ${rec.label}` : ""} (via nearby)`,
-    });
+    await auditNearby(
+      db,
+      product.slug,
+      now,
+      holder.subject,
+      "denied",
+      rec,
+      null,
+    );
     return new Response(null, {
       status: 204,
       headers: { "cache-control": "no-store" },
@@ -267,10 +281,271 @@ export async function handleNearbyApprove(
     return json(out);
   }
 
-  // 10. I-40.6: the bind goes here. Claim the request (`claimNearby`), charge
-  // NEARBY_APPROVE_SUBJECT_RATE, bind (`license`, `create`, licence-less or the silent single),
-  // register D's keys, apply the consent rule, decide (`decideNearby`), audit, email, and answer
-  // `200 {status: "approved", deviceLabel}`. Until then an approval that is not a `choose` is
-  // refused with nothing written and the request left open.
-  return wireError(503, "unavailable");
+  // 10. The bind (§12.11.5 rules 6 to 9), in this order:
+  //   a. claim the request (pending to claimed by M; a claim 30 s old may be retaken) and charge
+  //      the subject's budget, now that M is attempting to bind;
+  //   b. D's held signing key and agreeKey, against the store as it is now;
+  //   c. bind: the sent `license` or `create`, else the one free candidate, else licence-less;
+  //   d. register D's keys through Core;
+  //   e. the consent rule;
+  //   f. decide (claimed by M to approved), keeping only the hash of D's credential;
+  //   g. audit and email.
+  // A refusal M can retry puts the request back to pending; one that can never succeed ends it.
+  const claimed = await claimNearby(env, ref, approver, now);
+  if (!claimed.ok) return notFoundNested();
+  const retry = async (res: Response): Promise<Response> => {
+    await releaseNearby(env, ref, approver);
+    return res;
+  };
+  const end = async (res: Response): Promise<Response> => {
+    await dropNearby(env, ref);
+    return res;
+  };
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { ...NEARBY_APPROVE_SUBJECT_RATE, id: holder.subject },
+      now,
+    ))
+  )
+    return retry(wireError(429, "rate_limited"));
+
+  const account = await getAccountRow(db, holder.accountId);
+  if (
+    !account ||
+    account.status !== "active" ||
+    (await erasureVerdict(env, now, account.id)) !== "clear"
+  )
+    return end(notFoundNested());
+
+  // b. The keys the request carries lived up to 300 s: re-run the held-key rule and the
+  // agreeKey check now.
+  const heldSignKey = await deviceSignKey(db, product.slug, rec.deviceId);
+  if (
+    (heldSignKey !== null && heldSignKey !== rec.signKey) ||
+    (await agreeKeyHeldElsewhere(db, product.slug, rec.agreeKey, rec.deviceId))
+  )
+    return end(wireError(400, ErrorCode.DeviceKeysInvalid));
+  // A credential that appeared on D's id after `start` was not proven there: never take it over.
+  const existing = await getDevice(db, product.slug, rec.deviceId);
+  if (existing?.token_hash && !rec.proven) return end(notFoundNested());
+
+  // c. Bind.
+  const bcx = { req, env, db, product, now };
+  const who = {
+    accountId: account.id,
+    subject: holder.subject,
+    email: account.primary_email,
+  };
+  const device = {
+    id: rec.deviceId,
+    metadata: {
+      userAgent: null,
+      platform: rec.meta.platform ?? null,
+      arch: rec.meta.arch ?? null,
+      appVersion: rec.meta.appVersion ?? null,
+      sdkName: rec.meta.sdkName ?? null,
+      sdkVersion: rec.meta.sdkVersion ?? null,
+    },
+    label: rec.label,
+    held: null,
+  };
+  let bound: BindResult;
+  try {
+    if (body.choice) {
+      bound = await bindChoice(bcx, who, device, body.choice);
+    } else {
+      const free = product.services.license.enabled
+        ? (await offerFor(bcx, account.id, rec.deviceId)).candidates.filter(
+            (c) => c.state === "free",
+          )
+        : [];
+      bound =
+        free.length === 1 && free[0]
+          ? await bindChoice(bcx, who, device, {
+              kind: "license",
+              licenseId: free[0].licenseId,
+            })
+          : await bindWithoutChoice(bcx, who, device, false, rec.proven);
+    }
+  } catch (e) {
+    await releaseNearby(env, ref, approver);
+    throw e;
+  }
+  if (!bound.ok) return retry(refusal(bound.refusal));
+
+  // d. D's keys.
+  try {
+    await registerDeviceKeys(
+      { db, env, now },
+      product.slug,
+      rec.deviceId,
+      { signKey: rec.signKey, agreeKey: rec.agreeKey },
+      undefined,
+      heldSignKey,
+    );
+  } catch (e) {
+    if (
+      e instanceof DeviceKeysInvalidError ||
+      e instanceof DeviceKeysConflictError
+    )
+      return end(wireError(400, ErrorCode.DeviceKeysInvalid));
+    throw e;
+  }
+
+  // e. The tap is D's consent: a standing consent stands, and with none the asked scope is
+  // granted now.
+  await grantConsent(db, product, account.id, holder.subject, now);
+
+  // f. Decide. The credential minted above is kept as its hash only.
+  const decided = await decideNearby(
+    env,
+    ref,
+    approver,
+    {
+      approve: {
+        approvedBy: approver,
+        subject: holder.subject,
+        licenseId: bound.licenseId === NO_LICENSE_ID ? null : bound.licenseId,
+        tokenHash: bound.device.token_hash ?? "",
+      },
+    },
+    now,
+  );
+  if (!decided.ok) return notFoundNested();
+
+  // g. Audit, then the notice to the primary address.
+  await auditNearby(
+    db,
+    product.slug,
+    now,
+    holder.subject,
+    "approved",
+    rec,
+    bound.licenseId === NO_LICENSE_ID ? null : bound.licenseId,
+  );
+  try {
+    await sendNotice(
+      env,
+      db,
+      account.primary_email,
+      appDeviceApprovedNotice({
+        deviceLabel: rec.label,
+        productName: product.name,
+        productSlug: product.slug,
+        origin: new URL(req.url).origin,
+      }),
+      now,
+    );
+  } catch {
+    // The device is bound; a notice that cannot go out never undoes it.
+  }
+  const out: NearbyApproveResponse = {
+    status: "approved",
+    deviceLabel: rec.label,
+  };
+  return json(out);
+}
+
+/** A bind refusal as this route answers it: nested, with the retry data beside the code. */
+function refusal(r: BindRefusal): Response {
+  switch (r.reason) {
+    case "device_limit":
+      return wireError(403, "device_limit", {
+        limit: r.limit,
+        deviceCount: r.deviceCount,
+        ...(r.manageUrl !== undefined ? { manageUrl: r.manageUrl } : {}),
+      });
+    case "rate_limited":
+      return wireError(429, "rate_limited", { retryAfter: r.retryAfter });
+    case "license_choice_required":
+      return wireError(409, ErrorCode.LicenseChoiceRequired);
+    case "not_found":
+      return wireError(404, ErrorCode.NotFound);
+    case "unavailable":
+      return wireError(503, "unavailable");
+    case "fingerprint_required":
+      return wireError(403, "fingerprint_required");
+    case "hardware_mismatch":
+      return wireError(409, "hardware_mismatch");
+    default:
+      // unauthorized, not_entitled, license_owned, key_entry_limit
+      return wireError(403, "not_entitled");
+  }
+}
+
+/**
+ * The consent row for D's token (Q5): none is written when one stands; otherwise the asked scope
+ * is recorded and audited with `via: nearby`.
+ */
+async function grantConsent(
+  db: Db,
+  product: Product,
+  accountId: string,
+  subject: string,
+  now: number,
+): Promise<void> {
+  const standing = await db.first<{ n: number }>(
+    "SELECT 1 AS n FROM account_product_grants WHERE account_id = ? AND product = ?",
+    accountId,
+    product.slug,
+  );
+  if (standing) return;
+  const granted = [...CONSENT_PROFILE_CLAIMS];
+  const scopeHash = await askedScopeHash(product);
+  await db.batch([
+    {
+      sql: `INSERT INTO account_product_grants
+              (account_id, product, claims_json, granted_at, modified_at, scope_hash)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT (account_id, product) DO NOTHING`,
+      params: [
+        accountId,
+        product.slug,
+        JSON.stringify(granted),
+        now,
+        now,
+        scopeHash,
+      ],
+    },
+  ]);
+  await appendAudit(db, {
+    product: product.slug,
+    id: randomId("aud"),
+    at: now,
+    actor_sub: subject,
+    actor_name: null,
+    actor_email: null,
+    action: "signin.consent.granted",
+    target_kind: "product",
+    target_id: product.slug,
+    parent_id: null,
+    summary: `Granted ${granted.join(", ")} to the app (scope ${scopeHash}) (via nearby)`,
+  });
+}
+
+/** The audit row of a decision: the device by id, the label only, never a handle, key or token. */
+function auditNearby(
+  db: Db,
+  product: string,
+  now: number,
+  subject: string,
+  outcome: "approved" | "denied",
+  rec: NearbyRequestRecord,
+  licenseId: string | null,
+): Promise<void> {
+  return appendAudit(db, {
+    product,
+    id: randomId("aud"),
+    at: now,
+    actor_sub: subject,
+    actor_name: null,
+    actor_email: null,
+    action: `identity.nearby.${outcome}`,
+    target_kind: "device",
+    target_id: rec.deviceId,
+    parent_id: licenseId,
+    summary: `A nearby sign-in was ${outcome}${rec.label ? ` for ${rec.label}` : ""} (via nearby)`,
+  });
 }

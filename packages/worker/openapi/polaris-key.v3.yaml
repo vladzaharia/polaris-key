@@ -9139,8 +9139,13 @@ paths:
         else. 10 calls a minute per approving device, and 5 an hour per subject charged on decisions
         only, both fail-closed. NESTED errors. With Identity off, `identity.nearby` off or the
         operator gate `launch.identityNearby` off, the route does not exist (`404 not_found`).
-        The approval itself is bound in a later release of this route (I-40.6); until then an
-        approval that is not a `choose` answers `503 unavailable` and leaves the request open.
+        An approval binds D: the licence M picked, `create`, the one free candidate, or no licence
+        when there is nothing to choose, and answers `{status: "approved", deviceLabel}`
+        (`deviceLabel` is D's stored label, or null). D's credential is stored as a hash only; D's
+        poll collects the token. A full licence is `403 device_limit` and a lost mint is
+        `409 license_choice_required`; those, `rate_limited` and `503 unavailable` leave the
+        request open. The tap is D's consent: a standing consent stands, and with none the asked
+        scope is recorded.
       security: [{ deviceToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -9152,7 +9157,9 @@ paths:
             schema: { $ref: "#/components/schemas/NearbyApproveRequest" }
       responses:
         "200":
-          description: "A choice is due; nothing is written. `cache-control: no-store`."
+          description: >
+            `approved` (D is bound) or `choose` (a choice is due; nothing is written).
+            `cache-control: no-store`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/NearbyApproveResponse" }
@@ -9171,8 +9178,9 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
           description: >
-            `not_nearby` (another client network than `start`'s) or `account_required` (M has no
-            sign-in on this product).
+            `not_nearby` (another client network than `start`'s), `account_required` (M has no
+            sign-in on this product) or `device_limit` (the licence has no free seat; the request
+            stays open).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -9181,7 +9189,9 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "409":
-          description: M has no registered signing key (`device_keys_required`).
+          description: >
+            M has no registered signing key (`device_keys_required`), or a licence was not minted
+            (`license_choice_required`, the request stays open).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -9198,7 +9208,7 @@ paths:
               examples:
                 limited: { value: { error: { code: rate_limited } } }
         "503":
-          description: The sign-in could not be read, or the approval is not served yet.
+          description: The sign-in or a store the bind needs could not be read; the request stays open.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -28777,8 +28787,8 @@ components:
     NearbyApproveResponse:
       type: object
       description: >
-        The `choose` answer: the account's licence view for D, nothing written. The `approved`
-        answer (`{status: "approved", deviceLabel}`) is served from I-40.6.
+        `{status: "approved", deviceLabel}` once D is bound, or the `choose` answer: the account's
+        licence view for D, with nothing written.
       required: [status]
       properties:
         status: { type: string, enum: [choose, approved] }
