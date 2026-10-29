@@ -187,6 +187,18 @@
       "reason": "runtime",
       "note": "No OS account to take a platform identity from (I-13). The Node conformance runner still replays the exchange transcripts with a reference client (exchangeTranscripts.test.ts)."
     },
+    "identity.gamecenter": {
+      "status": "na",
+      "runtime": ["node"],
+      "reason": "runtime",
+      "note": "Game Center exists only on Apple platforms. The Node conformance runner replays the transcripts with a reference client."
+    },
+    "identity.pgs": {
+      "status": "na",
+      "runtime": ["node"],
+      "reason": "runtime",
+      "note": "Play Games runs only on Android. The Node conformance runner replays the transcripts with a reference client."
+    },
     "identity.autosignin": {
       "status": "planned",
       "wp": "I-47",

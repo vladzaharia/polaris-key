@@ -146,7 +146,11 @@ function fake(o: FakeOptions = {}) {
   return { adapter: adapter as unknown as PolarisAdapter, calls, set };
 }
 
-function mount(o: FakeOptions = {}, baseUrl?: string) {
+function mount(
+  o: FakeOptions = {},
+  baseUrl?: string,
+  addIn: "app" | "portal" | "default" = "app",
+) {
   const f = fake(o);
   const opened: string[] = [];
   vi.spyOn(window, "open").mockImplementation((u) => {
@@ -163,6 +167,7 @@ function mount(o: FakeOptions = {}, baseUrl?: string) {
     >
       <PolarisKeyGate
         returnUrl="https://app.example/"
+        {...(addIn !== "default" ? { addIn } : {})}
         theme={{ product: { name: "Acme Studio" } }}
       >
         <div data-testid="app">APP</div>
@@ -179,7 +184,8 @@ function mount(o: FakeOptions = {}, baseUrl?: string) {
   const app = () => c.querySelector('[data-testid="app"]');
   const state = () => c.querySelector<HTMLElement>(".pk-root")?.dataset.state;
   /** Type the key and submit: ends on ActivateDone. */
-  const activate = async () => {
+  /** Open the key step and type the key (not yet submitted). */
+  const typeKey = async () => {
     await press("welcome.useKey");
     const field = await waitFor(() => {
       const f = c.querySelector<HTMLInputElement>("#pk-key");
@@ -187,6 +193,9 @@ function mount(o: FakeOptions = {}, baseUrl?: string) {
       return f!;
     });
     fireEvent.change(field, { target: { value: KEY } });
+  };
+  const activate = async () => {
+    await typeKey();
     await press("activate.submit");
     await waitFor(() => expect(btn("signin.done.start")).not.toBeNull());
   };
@@ -213,9 +222,13 @@ function mount(o: FakeOptions = {}, baseUrl?: string) {
   const portal = async () => {
     await activate();
     // Identity off: the action opens polaris.locker, so it says so and draws the external glyph.
-    expect(btn("activate.recommend.action")).toBeNull();
-    expect(btn("signin.key.addInLocker")?.querySelector("svg")).not.toBeNull();
-    await press("signin.key.addInLocker");
+    // With Identity on and the web switch at "portal" it is the same Add your name and email.
+    const locker = btn("signin.key.addInLocker");
+    if (locker) expect(locker.querySelector("svg")).not.toBeNull();
+    else expect(btn("activate.recommend.action")).not.toBeNull();
+    await press(
+      locker ? "signin.key.addInLocker" : "activate.recommend.action",
+    );
     await waitFor(() => expect(opened).toHaveLength(1));
   };
   return {
@@ -226,12 +239,16 @@ function mount(o: FakeOptions = {}, baseUrl?: string) {
     app,
     state,
     activate,
+    typeKey,
     fill,
     opened,
     addFilled,
     portal,
   };
 }
+
+const noDeviceCode = (m: { calls: Array<[string, unknown]> }) =>
+  !m.calls.some(([n]) => n === "signIn.start");
 
 const added = (c: HTMLElement) =>
   c.querySelector('[data-key="activate.attach.done"]');
@@ -322,6 +339,15 @@ describe("<PolarisKeyGate>: a key with no account", () => {
     await waitFor(() =>
       expect(document.activeElement).toBe(m.btn("activate.recommend.action")),
     );
+  });
+
+  it("by default (the web switch) Add opens the portal, never the device-code form", async () => {
+    const m = mount({}, undefined, "default");
+    await m.portal();
+    expect([m.opened[0]!.includes("#key=" + KEY), noDeviceCode(m)]).toEqual([
+      true,
+      true,
+    ]);
   });
 
   it("with Identity off opens the portal with the key as a fragment, and adds no account", async () => {
@@ -435,6 +461,20 @@ describe("<PolarisKeyGate>: Sign in to that account on a license-owned refusal",
     });
   };
 
+  const typeAndRefuse = async (m: ReturnType<typeof mount>) => {
+    await m.typeKey();
+    refuse(m);
+  };
+
+  it("by default (the web switch) Sign in to that account opens the portal with the key, no device-code sign-in", async () => {
+    const m = mount({}, undefined, "default");
+    await typeAndRefuse(m);
+    await m.press("signin.key.ownedSignIn");
+    await waitFor(() => expect(m.opened).toHaveLength(1));
+    expect(m.opened[0]!).toContain("#key=" + KEY);
+    expect(noDeviceCode(m)).toBe(true);
+  });
+
   it("completes the sign-in with the key and shows no list", async () => {
     const m = mount({
       waits: [
@@ -446,14 +486,7 @@ describe("<PolarisKeyGate>: Sign in to that account on a license-owned refusal",
         },
       ],
     });
-    await m.press("welcome.useKey");
-    const field = await waitFor(() => {
-      const f = m.container.querySelector<HTMLInputElement>("#pk-key");
-      expect(f).not.toBeNull();
-      return f!;
-    });
-    fireEvent.change(field, { target: { value: KEY } });
-    refuse(m);
+    await typeAndRefuse(m);
     await m.press("signin.key.ownedSignIn");
     await waitFor(() =>
       expect(m.calls.some(([n]) => n === "complete")).toBe(true),

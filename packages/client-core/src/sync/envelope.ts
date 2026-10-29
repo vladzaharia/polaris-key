@@ -49,8 +49,9 @@ export type OpenedValue =
 const NONCE = new Uint8Array(12);
 const utf8 = new TextEncoder();
 
+// No lookbehind (runtime floor): a low surrogate is lone unless a high one directly precedes it.
 const LONE_SURROGATE =
-  /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+  /[\ud800-\udbff](?![\udc00-\udfff])|(?:^|[^\ud800-\udbff])[\udc00-\udfff]/;
 
 /**
  * Canonical JSON (WIRE-CONTRACT-V5 §13.10.3): sorted keys at every level (UTF-16 code-unit

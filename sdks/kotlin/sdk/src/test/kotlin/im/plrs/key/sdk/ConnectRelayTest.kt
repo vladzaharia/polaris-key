@@ -24,7 +24,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
-import org.junit.Ignore
 import org.junit.Test
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -145,15 +144,13 @@ class ConnectRelayTest {
 
     // -- reconnect and the typed stops -----------------------------------------------------------
 
-    // Disabled 2026-10-28 under the load rule: timing-dependent on the CI runners (one of four Connect tests
-    // failing per main run) and passes locally. KT-CONNECT-FLAKE makes them deterministic and re-enables them
-    // (_lead/flaky-disabled.md).
-    @Ignore("2026-10-28: timing-dependent on CI runners; see _lead/flaky-disabled.md")
     @Test
     fun reconnectsWithAGrowingJitteredBackoffThatResetsOnlyAfterAStableOpen() {
         val r = Rig()
         val svc = r.ready()
         for (n in 2..4) {
+            // Drop a socket that is open: a drop before the new socket is attached would reach nobody.
+            until { svc.status.state == RelayState.open }
             r.room.dropAll(null)
             r.wake()
             until { r.room.offered.size == n }

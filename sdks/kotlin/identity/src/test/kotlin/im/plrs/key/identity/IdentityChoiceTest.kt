@@ -105,6 +105,14 @@ class IdentityChoiceTest {
     }
 
     @Test
+    fun keepSendsTheDevicesBearerAndNoOtherChoiceDoes() = runBlocking {
+        val w = world(body = tokenOk)
+        w.client.choice.complete(grant, LicenseChoice.Keep)
+        val kept = w.transport.requests().last { it.path.endsWith("/choice/complete") }
+        assertEquals("Bearer pkeyt_old", kept.headers.entries.first { it.key.equals("authorization", ignoreCase = true) }.value)
+    }
+
+    @Test
     fun deviceLimitIsAResultWithTheFreshViewAndTheManageLinkAndTheTokenStays() = runBlocking {
         val w = world(
             status = 403,

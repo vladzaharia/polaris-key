@@ -1284,6 +1284,8 @@ class TranscriptTest : ConformanceSuite() {
             "redirect-web-happy", "redirect-web-errors", "locker-redirect-web", "identity-request-hints",
             // I-10b.19: the licence choice.
             "choice-key-app", "choice-replace-app", "choice-grant-errors",
+            // UK-42.11: keep sends the device's bearer; a redirect sign-in, then attach.
+            "holders-add-to-account",
             // I-45.3: the platform-token exchange.
             "discovery-identity-exchange", "exchange-silent", "exchange-confirm", "exchange-choose", "exchange-no-link",
             "exchange-errors", "exchange-disabled", "exchange-gate-off", "exchange-gate-off-stale",

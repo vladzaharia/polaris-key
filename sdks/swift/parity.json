@@ -172,7 +172,7 @@
     },
     "identity.choice": {
       "status": "implemented",
-      "note": "SignInOptions(licenseChoice: .app) sends license_choice=app (only when discovery lists the four choice routes; else the card chooses) and session.complete(callbackUrl:) then settles .chooseLicense(PendingSignIn); identity.choice.licenses/devices/complete/cancel(grant:) take the grant, store the device token on complete like a sign-in, and throw a typed ChoiceError (invalid_grant, license_choice_required and device_limit with a fresh view, not_found, rate_limited with retryAfterSeconds); UnsupportedError(product) when a route is not published. LicenseChoiceModel (PolarisKeyUICore, @Observable) drives the LicenseChoice screen's KitInputs from the SDK."
+      "note": "SignInOptions(licenseChoice: .app) sends license_choice=app (only when discovery lists the four choice routes; else the card chooses) and session.complete(callbackUrl:) then settles .chooseLicense(PendingSignIn); identity.choice.licenses/devices/complete/cancel(grant:) take the grant (complete with keep also sends the device's own bearer, which the Worker reads as held; every other choice sends none), store the device token on complete like a sign-in, and throw a typed ChoiceError (invalid_grant, license_choice_required and device_limit with a fresh view, not_found, rate_limited with retryAfterSeconds); UnsupportedError(product) when a route is not published. LicenseChoiceModel (PolarisKeyUICore, @Observable) drives the LicenseChoice screen's KitInputs from the SDK."
     },
     "identity.signin.hints": {
       "status": "implemented"
@@ -180,6 +180,17 @@
     "identity.exchange": {
       "status": "implemented",
       "note": "identity.exchange(kind:subjectToken:nonce:) and exchangeNonce(kind:) (PolarisKeyIdentity): the nonce route registers the device keys, the token route takes the pkey-proof/1 exchange proof over nonce.key and the token hash; the outcome is signedIn, confirm (PendingConsent, completed through identity.choice.complete(grant:choice:consent:)), choose, needsSignIn or unavailable, and refusals are a typed ExchangeError. A 404 on either route, a discovery with no exchange member or a memory-only key port is unavailable with no request. Replayed against the exchange-* transcripts (TranscriptTests). Sign in with Apple itself is I-44.4."
+    },
+    "identity.gamecenter": {
+      "status": "planned",
+      "wp": "I-44",
+      "note": "PolarisKeyGameCenter (I-44.5)."
+    },
+    "identity.pgs": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime",
+      "note": "Play Games runs only on Android."
     },
     "identity.autosignin": {
       "status": "implemented",

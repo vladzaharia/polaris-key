@@ -120,7 +120,13 @@ async function gateToDone(scheme: "dark" | "light") {
   const gate = document.createElement("pk-gate") as PkGate;
   gate.colorScheme = scheme;
   gate.innerHTML = `<main data-testid="app"><p>The app</p></main>`;
-  gate.seams = { fetchImpl: fakeFetch(w), navigate: () => {}, now: () => NOW };
+  gate.seams = {
+    fetchImpl: fakeFetch(w),
+    navigate: () => {},
+    now: () => NOW,
+    // The in-page Add is off on the web by default; these paths drive the form.
+    addIn: "app",
+  };
   gate.config = { ...PAGE, version: "1.0.0" };
   document.body.style.background = scheme === "dark" ? "#060912" : "#f6f8ff";
   document.body.replaceChildren(gate);

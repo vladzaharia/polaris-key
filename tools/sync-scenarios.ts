@@ -28,10 +28,16 @@
 // plaintext: sealing is the host codec's job, pinned by `sync-vectors.json`. Every v2 scenario
 // runs in server mode, with its expectations unchanged.
 //
+// Version 4 (X-1.1) corrects two scripts and adds one scenario. `e2e-min-server-wins` now answers
+// a push whose base version is behind the server's (a matching base is accepted by the register,
+// §13.10.5); `server-mode-unchanged`'s conflict copy carries the `editedHlc` a real server always
+// sends; `e2e-conflict-plaintext-copy-refused` pins that a conflict's plaintext server copy is
+// judged against the cursor the push carried.
+//
 // Append-only: a scenario's expectations never change under the same `syncScenariosVersion`;
 // a vocabulary or expectation change bumps it.
 
-export const SYNC_SCENARIOS_VERSION = 3;
+export const SYNC_SCENARIOS_VERSION = 4;
 
 type J = null | boolean | number | string | J[] | { [k: string]: J };
 type Obj = { [k: string]: J };
@@ -3204,10 +3210,10 @@ function scenarios(): Scenario[] {
       respond(
         e2eBody({
           serverNow: T0 + 2000,
-          cursor: 2,
+          cursor: 3,
           lastMutationId: 1,
           results: [
-            conflict(1, { value: 80, version: 2, editedHlc: hlc(T0 - 1000) }),
+            conflict(1, { value: 80, version: 3, editedHlc: hlc(T0 - 500) }),
           ],
         }),
         200,
@@ -3216,7 +3222,7 @@ function scenarios(): Scenario[] {
       assert({
         values: { [LAP]: val(80, "cloud") },
         requests: [],
-        journal: { [ALICE]: partition(C1, 2, 2, []) },
+        journal: { [ALICE]: partition(C1, 2, 3, []) },
         status: st("idle", 0),
       }),
     ],
@@ -3552,7 +3558,9 @@ function scenarios(): Scenario[] {
           serverNow: T0 + 2000,
           cursor: 2,
           lastMutationId: 1,
-          results: [conflict(1, { value: 200, version: 3 })],
+          results: [
+            conflict(1, { value: 200, version: 3, editedHlc: hlc(T0 - 500) }),
+          ],
         }),
       ),
       assert({
@@ -3563,6 +3571,41 @@ function scenarios(): Scenario[] {
       }),
     ],
   });
+
+  forged(
+    "e2e-conflict-plaintext-copy-refused",
+    "A conflict's server copy is judged like a pulled row against the cursor the push carried: with that cursor already at or above encryptionSince, a plaintext copy is invalid even when the host reports a seq below the boundary, and the key never reads it as a cloud value.",
+    [
+      answer(9, [], []),
+      local("set", [QUAL, "high"], { ok: true }),
+      advance(2000),
+      assert({ requests: [pushReq(C1, 9, [set(1, QUAL, "high", hlc(T0))])] }),
+      respond(
+        e2eBody({
+          serverNow: T0 + 2000,
+          cursor: 9,
+          since: 5,
+          lastMutationId: 1,
+          results: [
+            conflict(1, {
+              value: "low",
+              version: 8,
+              editedHlc: hlc(T0 + 10_000),
+            }),
+          ],
+        }),
+        200,
+        { conflicts: { 1: { seq: 3 } } },
+      ),
+      assert({
+        values: QUAL_UNSET,
+        ...invalidity(QUAL, true),
+        journal: { [ALICE]: partition(C1, 2, 9, []) },
+        encryptionSince: 5,
+        status: st("idle", 0),
+      }),
+    ],
+  );
 
   return s;
 }

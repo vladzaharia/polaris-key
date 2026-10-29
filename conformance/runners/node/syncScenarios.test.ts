@@ -136,7 +136,7 @@ function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
 
 describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client state machine)`, () => {
   it(`runs on Node ${process.version}`, () => {
-    expect(corpus.syncScenariosVersion).toBe(3);
+    expect(corpus.syncScenariosVersion).toBe(4);
     expect(corpus.constants).toEqual({
       debounceMs: SYNC_DEBOUNCE_MS,
       signOutFlushMs: SYNC_SIGNOUT_FLUSH_MS,

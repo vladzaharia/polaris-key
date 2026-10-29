@@ -88,7 +88,7 @@ export async function holdLicense(
 }
 
 /** `POST /<p>/identity/attach {confirm}` with the device's token. */
-function attach(
+export function attach(
   s: StepRecorder,
   confirm: boolean,
   capture = false,

@@ -1,13 +1,13 @@
 {
   "_": "States where the React and elements baselines differ today. Each is a finding, not a pass: pnpm ui:report fails on any other drift and on an entry that no longer differs, so this list only shrinks.",
   "states": {
-    "PolarisKeyGate.booting": {
-      "reason": "The looping shimmer is caught at a different frame: one 390 dark render differs by 0.11 %.",
-      "maxRatio": 0.005
-    },
     "Paywall.purchasing": {
       "reason": "The busy spinner is caught at a different frame: one 390 render differs by 0.102 %.",
       "maxRatio": 0.0015
+    },
+    "PolarisKeyGate.booting": {
+      "reason": "The looping shimmer is caught at a different frame: one 390 dark render differs by 0.11 %.",
+      "maxRatio": 0.005
     },
     "SignIn.code": {
       "reason": "The waiting indicator is caught at a different frame: the narrow Windows and GNOME renders (390, 480x640) differ by 0.11 to 0.14 %.",

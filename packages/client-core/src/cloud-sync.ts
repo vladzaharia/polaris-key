@@ -1764,7 +1764,7 @@ export class CloudSyncMachine {
         continue;
       }
       p.pending.splice(at, 1);
-      this.result(p, op, r, overrides, opened);
+      this.result(p, op, r, overrides, opened, req.cursor);
     }
     // A parked edit that a later edit of the same value already replaces is dropped.
     for (const op of parkedNow)
@@ -1879,18 +1879,20 @@ export class CloudSyncMachine {
     return { plain: open.seq };
   }
 
-  /** A conflict's `server` copy as a held row. */
+  /** A conflict's `server` copy as a held row. `cursor` is the one the push request carried, so
+   *  guard (b) judges the copy exactly as it judges a pulled row. */
   private copyRow(
     p: Partition,
     latchKey: string,
     server: { [k: string]: Json },
     open: OpenedRow | undefined,
+    cursor: number,
   ): Versioned {
     const version = server.version as number;
     return {
       value: clone(server.value ?? null),
       version,
-      ...this.rowBad(p, latchKey, version, open),
+      ...this.rowBad(p, latchKey, version, open, cursor),
     };
   }
 
@@ -1948,6 +1950,7 @@ export class CloudSyncMachine {
     r: { [k: string]: Json },
     overrides: Map<string, ChangeOrigin>,
     opened: OpenedBody,
+    cursor: number,
   ): void {
     const status = r.status;
     if ("setting" in op.target) {
@@ -1981,6 +1984,7 @@ export class CloudSyncMachine {
             `s:${serverKey}`,
             server,
             opened.conflicts?.[op.mutationId],
+            cursor,
           ));
           // E2E `max`/`min`: keep the better value and re-push it on the server's version.
           if (
@@ -2028,6 +2032,7 @@ export class CloudSyncMachine {
           `r:${rk}`,
           server,
           opened.conflicts?.[op.mutationId],
+          cursor,
         ));
         // Rule 2: the resolution is a NEW mutation on the server's version; N is never resent.
         // Only `revision` resolves on the device; every other policy took the server's copy.

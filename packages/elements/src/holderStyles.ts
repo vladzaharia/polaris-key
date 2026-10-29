@@ -58,6 +58,9 @@ export const HOLDER_CSS = `
 }
 .holder-skip {
   margin: 0;
+  color: var(--pk-text-muted);
+  font-size: var(--pk-kit-type-meta-size);
+  line-height: var(--pk-kit-type-meta-line-height);
 }
 .holder-form {
   display: grid;

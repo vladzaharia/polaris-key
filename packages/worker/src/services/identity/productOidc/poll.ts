@@ -8,7 +8,8 @@ import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
 import { errorResponse, json, methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
-import { getLicense } from "../../../core/licensing/store.js";
+import { getLicense, getLicenseBySub } from "../../../core/licensing/store.js";
+import { getDevice } from "../../../core/devices/store.js";
 import { authorizeDevice } from "../../../core/licensing/authz.js";
 import { noticeOrigin } from "../accounts/libraryNotice.js";
 import { attachClaimedLicenses } from "../accounts/platformMigration.js";
@@ -130,6 +131,27 @@ export function shownIdentity(identity: OidcIdentity): {
   };
 }
 
+/** Does `deviceId` hold a live seat on a licence this identity's sign-in could not take over?
+ *  Mirrors `provesOwnership` for a device-code flow (no fingerprint): the seat's licence belongs
+ *  to the same subject or account, or is the machine's own anonymous enrolment. */
+async function seatBlocksIdentity(
+  db: Db,
+  product: string,
+  deviceId: string,
+  sub: string,
+): Promise<boolean> {
+  const seat = await getDevice(db, product, deviceId);
+  if (!seat || seat.status !== "authorized") return false;
+  const held = await getLicense(db, product, seat.license_id);
+  if (!held) return false;
+  if (held.sub === sub) return false;
+  if (held.origin === "enroll" && held.sub === null) return false;
+  const own = await getLicenseBySub(db, product, sub);
+  if (own && own.id === held.id) return false;
+  if (own?.account_id && held.account_id === own.account_id) return false;
+  return true;
+}
+
 export async function pollAuthFlow(
   env: Env,
   db: Db,
@@ -215,6 +237,13 @@ export async function pollAuthFlow(
             attachable: false,
           });
         }
+      }
+      // The device may already hold a seat on a licence that is not this identity's and that this
+      // flow cannot take over (the same rule `authorizeDevice` applies). Decided BEFORE the
+      // activation, so a refused sign-in leaves no licence behind. Same generic answer (D8).
+      if (await seatBlocksIdentity(db, product.slug, deviceId, identity.sub)) {
+        await deleteArtefact(env, stateKey);
+        return json({ status: "error" });
       }
       const result = await activateFromIdentity(db, product, identity, now, {
         env,

@@ -582,7 +582,11 @@ async function gateToast(
   root = createRoot(host);
   root.render(
     <PolarisKeyProvider config={{ productSlug: "tidewater", adapter }}>
-      <Kit.PolarisKeyGate theme={{ product: PRODUCT, colorScheme: scheme }}>
+      {/* The in-page sign-in path (the web default is the portal); its fallback is what this pins. */}
+      <Kit.PolarisKeyGate
+        addIn="app"
+        theme={{ product: PRODUCT, colorScheme: scheme }}
+      >
         <main data-host-content="">
           <p>The app</p>
         </main>
@@ -613,11 +617,12 @@ async function gateToast(
     field.dispatchEvent(new Event("input", { bubbles: true }));
     await frame();
     press("activate.submit");
-    // A key activated here lands on ActivateDone; Start using the app closes the steps and the
-    // gate's toast says the entries left.
     if (kind === "entries") {
+      // A key with no account lands on ActivateDone (UK-42); the entries toast shows over the
+      // app once the person starts using it.
       await until(
-        () => host!.querySelector('[data-key="signin.done.start"]') !== null,
+        () =>
+          host!.querySelector('button[data-key="signin.done.start"]') !== null,
       );
       press("signin.done.start");
     }

@@ -1306,10 +1306,10 @@ async function replay(t: Transcript): Promise<void> {
     t.initial.services ??
     (u
       ? ["release", "distribution", "update"]
-      : usesRedirect(t)
-        ? ["identity"]
-        : usesAccount(t)
-          ? ["license", "config", "identity"]
+      : usesAccount(t)
+        ? ["license", "config", "identity"]
+        : usesRedirect(t)
+          ? ["identity"]
           : undefined);
   const client = new PolarisKeyClient({
     productSlug: t.product,

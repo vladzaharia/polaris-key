@@ -713,6 +713,8 @@ export const Feature = {
   identityChoice: "identity.choice",
   identitySigninHints: "identity.signin.hints",
   identityExchange: "identity.exchange",
+  identityGamecenter: "identity.gamecenter",
+  identityPgs: "identity.pgs",
   identityAutosignin: "identity.autosignin",
   identityLink: "identity.link",
   releaseChangelog: "release.changelog",
@@ -853,6 +855,8 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.choice",
   "identity.signin.hints",
   "identity.exchange",
+  "identity.gamecenter",
+  "identity.pgs",
   "identity.autosignin",
   "identity.link",
   "release.changelog",
@@ -1595,7 +1599,7 @@ export const OUTLET_MATRIX_VERSION = 1;
 export const PLAN_MATRIX_VERSION = 2;
 
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
-export const SYNC_SCENARIOS_VERSION = 3;
+export const SYNC_SCENARIOS_VERSION = 4;
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 export const DEVICE_LABEL_VERSION = 1;
@@ -2110,6 +2114,16 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [{ runtime: "node", reason: "runtime" }],
   },
+  "identity.gamecenter": {
+    status: "na",
+    service: "identity",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
+  "identity.pgs": {
+    status: "na",
+    service: "identity",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
   "identity.autosignin": { status: "planned", service: "identity", na: [] },
   "identity.link": {
     status: "na",
@@ -2240,4 +2254,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "46ca5a915f8e17673b4ed5498e7618fab9af9826897423e3ab57a3fea0688b00";
+  "5276db4441392924f74c50e160f662fde33309faac438a122858f08a185b0590";

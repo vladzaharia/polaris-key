@@ -47,6 +47,8 @@ async function mount(
     config?: unknown;
     handles?: string;
     attrs?: Record<string, string>;
+    /** The in-page Add is on unless a test asks for the web default. */
+    addIn?: "app" | "default";
   } = {},
 ): Promise<Mounted> {
   const navigated: string[] = [];
@@ -60,6 +62,7 @@ async function mount(
     fetchImpl: fakeFetch(w),
     navigate: (u) => navigated.push(u),
     now: () => NOW,
+    ...(over.addIn === "default" ? {} : { addIn: "app" as const }),
   };
   if (over.handles) gate.handles = over.handles;
   gate.config = (
@@ -316,6 +319,17 @@ describe("<pk-gate config>: activation without an account (UK-42.8)", () => {
     control(gate, "signin.done.start")!.click();
     await settle(gate, () => gate.shadowRoot!.querySelector("slot") !== null);
     expect(gate.querySelector('[data-testid="app"]')).not.toBeNull();
+  });
+
+  it("by default (the web switch) Add opens the portal, never the in-page form", async () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const { gate } = await toDone(world(), { addIn: "default" });
+    control(gate, "activate.recommend.action")!.click();
+    await settle(gate, () => open.mock.calls.length > 0);
+    expect(String(open.mock.calls[0]![0])).toContain("#key=pkey_acme_KEY");
+    expect(control(gate, "common.continue")).toBeNull();
+    expect(control(gate, "signin.done.start")).not.toBeNull();
+    open.mockRestore();
   });
 
   it("sends name and email only in the Continue action, into the driver", async () => {

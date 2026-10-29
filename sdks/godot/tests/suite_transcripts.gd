@@ -618,14 +618,21 @@ static func _redirect_discovery(base: String, tr: Dictionary) -> Dictionary:
 			if m != null:
 				issuer = m.get_string(1).uri_decode()
 				break
-	return {
-		"product": tr["product"],
-		"services": {"identity": {"enabled": true, "configured": true, "issuer": issuer, "endpoints": {
-			"authorize": root + "/authorize", "token": root + "/token",
-			"choiceLicenses": root + "/choice/licenses", "choiceDevices": root + "/choice/devices",
-			"choiceComplete": root + "/choice/complete", "choiceCancel": root + "/choice/cancel",
-		}}},
+	var endpoints := {
+		"authorize": root + "/authorize", "token": root + "/token",
+		"choiceLicenses": root + "/choice/licenses", "choiceDevices": root + "/choice/devices",
+		"choiceComplete": root + "/choice/complete", "choiceCancel": root + "/choice/cancel",
 	}
+	var identity := {"enabled": true, "configured": true, "issuer": issuer, "endpoints": endpoints}
+	var services := {"identity": identity}
+	# A transcript that attaches after a redirect sign-in (holders-add-to-account) also runs
+	# Licence and Config, and names the account endpoints beside the redirect ones.
+	if tr["steps"].any(func(st): return st["action"] in ["subject", "signOut", "attach"]):
+		identity["account"] = true
+		endpoints.merge({"attach": root + "/attach", "subject": root + "/subject", "signout": root + "/signout", "accountPortal": "%s/#/p/%s" % [base, tr["product"]]})
+		services["license"] = {"enabled": true}
+		services["config"] = {"enabled": true}
+	return {"product": tr["product"], "services": services}
 
 
 ## `manifest` with its distribution and release blobs and builds templates moved from `from` (the

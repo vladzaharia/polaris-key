@@ -402,18 +402,51 @@ actor ReplayServer {
         else { return nil }
         discoveryLoaded = true
         let base = "\(transcript.baseUrl)/\(transcript.product)"
+        let usesRedirect = transcript.steps.contains(where: {
+            ["browser", "redirectComplete"].contains($0.action)
+        })
+        // The redirect transcripts (identity.redirect.web, identity.signin.hints) ride a product
+        // that runs Identity; the fragment names `authorize` and `token`, and the issuer the
+        // recorded callback carries (RFC 9207), else the Worker's own `<base>/identity`.
+        var issuer = "\(base)/identity"
+        for step in transcript.steps where step.action == "redirectComplete" {
+            if let raw = step.args["callbackUrl"]?.stringValue,
+                let iss = URLComponents(string: raw)?.queryItems?.first(where: { $0.name == "iss" })?.value
+            {
+                issuer = iss
+                break
+            }
+        }
+        var redirectEndpoints: [String: JSONValue] = [
+            "authorize": .string("\(base)/identity/authorize"),
+            "token": .string("\(base)/identity/token"),
+        ]
+        // A transcript that talks to the grant routes finds them published (§12.6), as the
+        // Worker publishes the four together; without them the SDK runs card mode.
+        let choices = transcript.steps.contains {
+            $0.exchanges.items.contains { $0.request.path.contains("/identity/choice/") }
+        }
+        if choices {
+            for name in ["Licenses", "Devices", "Complete", "Cancel"] {
+                redirectEndpoints["choice\(name)"] = .string("\(base)/identity/choice/\(name.lowercased())")
+            }
+        }
         // The account transcripts (identity.account, identity.attach) ride a product that runs
         // Licence, Config and Identity; the identity fragment names the account endpoints (§12.6).
         if transcript.steps.contains(where: { ["subject", "signOut", "attach"].contains($0.action) }) {
+            // A transcript that attaches after a redirect sign-in (holders-add-to-account) needs
+            // both endpoint sets, and Licence and Config on beside Identity.
+            var accountEndpoints: [String: JSONValue] = [
+                "subject": .string("\(base)/identity/subject"),
+                "signout": .string("\(base)/identity/signout"),
+                "attach": .string("\(base)/identity/attach"),
+                "accountPortal": .string("\(transcript.baseUrl)/#/p/\(transcript.product)"),
+            ]
+            if usesRedirect { accountEndpoints.merge(redirectEndpoints) { a, _ in a } }
             let identity: JSONValue = .object([
                 "enabled": .bool(true), "configured": .bool(true), "account": .bool(true),
-                "issuer": .string("\(base)/identity"),
-                "endpoints": .object([
-                    "subject": .string("\(base)/identity/subject"),
-                    "signout": .string("\(base)/identity/signout"),
-                    "attach": .string("\(base)/identity/attach"),
-                    "accountPortal": .string("\(transcript.baseUrl)/#/p/\(transcript.product)"),
-                ]),
+                "issuer": .string(usesRedirect ? issuer : "\(base)/identity"),
+                "endpoints": .object(accountEndpoints),
             ])
             return try? JSONEncoder().encode(
                 JSONValue.object([
@@ -425,40 +458,14 @@ actor ReplayServer {
                     ]),
                 ]))
         }
-        // The redirect transcripts (identity.redirect.web, identity.signin.hints) ride a product
-        // that runs Identity; the fragment names `authorize` and `token`, and the issuer the
-        // recorded callback carries (RFC 9207), else the Worker's own `<base>/identity`.
-        if transcript.steps.contains(where: { ["browser", "redirectComplete"].contains($0.action) }) {
-            var issuer = "\(base)/identity"
-            for step in transcript.steps where step.action == "redirectComplete" {
-                if let raw = step.args["callbackUrl"]?.stringValue,
-                    let iss = URLComponents(string: raw)?.queryItems?.first(where: { $0.name == "iss" })?.value
-                {
-                    issuer = iss
-                    break
-                }
-            }
-            var endpoints: [String: JSONValue] = [
-                "authorize": .string("\(base)/identity/authorize"),
-                "token": .string("\(base)/identity/token"),
-            ]
-            // A transcript that talks to the grant routes finds them published (§12.6), as the
-            // Worker publishes the four together; without them the SDK runs card mode.
-            let choices = transcript.steps.contains {
-                $0.exchanges.items.contains { $0.request.path.contains("/identity/choice/") }
-            }
-            if choices {
-                for name in ["Licenses", "Devices", "Complete", "Cancel"] {
-                    endpoints["choice\(name)"] = .string("\(base)/identity/choice/\(name.lowercased())")
-                }
-            }
+        if usesRedirect {
             return try? JSONEncoder().encode(
                 JSONValue.object([
                     "product": .string(transcript.product),
                     "services": .object([
                         "identity": .object([
                             "enabled": .bool(true), "configured": .bool(true),
-                            "issuer": .string(issuer), "endpoints": .object(endpoints),
+                            "issuer": .string(issuer), "endpoints": .object(redirectEndpoints),
                         ])
                     ]),
                 ]))

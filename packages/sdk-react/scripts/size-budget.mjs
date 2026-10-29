@@ -66,6 +66,10 @@ const KB = 1000;
  * and identity.choice (I-10a.11). It is the engine every provider ships, not kit chrome; the
  * gate entry carries only what its sign-in step reaches. To take back out: the redirect and
  * choice steps, on demand.
+ *
+ * polaris-key-gate 71.2 -> 76.0 KB and provider+use-license 89.5 -> 94.0 KB (owner, 2026-10-28:
+ * size matters, but not to the point of hard optimizations): measured about 70.7 and 89.5. The
+ * budgets still catch a large regression; ordinary feature growth no longer needs a lazy split.
  */
 export const BUDGETS = JSON.parse(
   readFileSync(join(here, "size-budget.json"), "utf8"),

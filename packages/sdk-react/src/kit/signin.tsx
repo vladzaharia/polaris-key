@@ -333,7 +333,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
           activateDone: named.activateDone ?? { deviceKind: "device" },
           addToAccount:
             holderStep === "added"
-              ? { step: "added", deviceKind: "device" }
+              ? { step: "added", deviceKind: "device", ...named.addToAccount }
               : (add.current?.input().addToAccount ?? {
                   step: "form",
                   deviceKind: "device",
@@ -808,6 +808,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         {...(props.bare ? { bare: props.bare } : {})}
         {...(props.fill ? { fill: props.fill } : {})}
         input={kit.input}
+        form
         onAction={(a: KitAction) => {
           props.onAction?.(a);
           void drive(a.key, a);

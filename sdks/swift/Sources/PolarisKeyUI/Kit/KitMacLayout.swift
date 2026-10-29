@@ -100,6 +100,7 @@
         @ViewBuilder let content: () -> Content
         @ViewBuilder let actions: () -> Actions
         @ViewBuilder let footer: () -> Footer
+        @Environment(\.dynamicTypeSize) private var typeSize
 
         var body: some View {
             kitStyle { style in
@@ -162,6 +163,10 @@
             // starts under it, so the system's 28 pt comes off the top.
             let top = arrangement.isStrip ? ins.top : max(ins.top - 28, 20) + safeTop
             let pinned = arrangement.isStrip
+            // At an accessibility text size the content outgrows the window: the actions stay
+            // pinned under it, so the primary is always in the first viewport and the content (the
+            // device list) is what scrolls. The text never shrinks.
+            let pinsActions = pinned || typeSize.isAccessibilitySize
             return ScrollView {
                 VStack(alignment: .leading, spacing: style.space(.lg)) {
                     if header && !hero && !pinned {
@@ -171,7 +176,7 @@
                         heading()
                         content()
                     }
-                    if !pinned {
+                    if !pinsActions {
                         VStack(alignment: .leading, spacing: style.space(.md)) {
                             actions()
                             footer()
@@ -185,17 +190,17 @@
                 .padding(.top, top)
                 .padding(.leading, ins.leading)
                 .padding(.trailing, ins.trailing)
-                .padding(.bottom, pinned ? style.space(.md) : ins.bottom)
+                .padding(.bottom, pinsActions ? style.space(.md) : ins.bottom)
                 .frame(
                     maxWidth: .infinity,
-                    minHeight: max(0, height - (pinned ? 0 : 28)),
+                    minHeight: max(0, height - (pinsActions ? 0 : 28)),
                     alignment: .topLeading)
             }
             .scrollBounceBehavior(.basedOnSize)
             // In the strip the actions are outside the scroll view, so they never fall below the
             // fold of a 480 x 520 window.
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if pinned {
+                if pinsActions {
                     VStack(alignment: .leading, spacing: style.space(.md)) {
                         actions()
                         footer()

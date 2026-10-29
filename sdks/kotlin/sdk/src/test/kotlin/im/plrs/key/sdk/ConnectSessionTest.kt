@@ -45,7 +45,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
-import org.junit.Ignore
 import org.junit.Test
 import java.util.concurrent.TimeoutException
 
@@ -466,10 +465,6 @@ class ConnectSessionTest {
         }
     }
 
-    // Disabled 2026-10-28 under the load rule: timing-dependent on the CI runners (one of four Connect tests
-    // failing per main run) and passes locally. KT-CONNECT-FLAKE makes them deterministic and re-enables them
-    // (_lead/flaky-disabled.md).
-    @Ignore("2026-10-28: timing-dependent on CI runners; see _lead/flaky-disabled.md")
     @Test
     fun aPeerThatOutrunsTheHostIsClosedPeerBusy() = bounded {
         val s = scope()

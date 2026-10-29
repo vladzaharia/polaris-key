@@ -292,6 +292,9 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
         // The redirect transcripts (identity.redirect.web, identity.signin.hints) ride a product that runs Identity;
         // the fragment names `authorize` and `token`, and the issuer the recorded callback carries (RFC 9207),
         // else the Worker's own `<base>/identity`.
+        // A transcript that attaches after a redirect sign-in (holders-add-to-account) also runs Licence and Config
+        // and names the account endpoints beside the redirect ones.
+        val account = "identity.account" in transcript.features || "identity.attach" in transcript.features
         if (transcript.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }) {
             val choice = transcript.steps.any { it["action"].stringValue?.startsWith("choice") == true }
             var issuer = "$base/identity"
@@ -310,10 +313,17 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
                     "enabled" to JsonPrimitive(true),
                     "configured" to JsonPrimitive(true),
                     "issuer" to JsonPrimitive(issuer),
+                    *(if (account) arrayOf("account" to JsonPrimitive(true)) else emptyArray()),
                     "endpoints" to JsonObject(
                         buildMap {
                             put("authorize", JsonPrimitive("$base/identity/authorize"))
                             put("token", JsonPrimitive("$base/identity/token"))
+                            if (account) {
+                                put("attach", JsonPrimitive("$base/identity/attach"))
+                                put("subject", JsonPrimitive("$base/identity/subject"))
+                                put("signout", JsonPrimitive("$base/identity/signout"))
+                                put("accountPortal", JsonPrimitive("${transcript.baseUrl}/#/p/${transcript.product}"))
+                            }
                             if (choice) {
                                 for (name in listOf("licenses", "devices", "complete", "cancel")) {
                                     put("choice" + name.replaceFirstChar { it.uppercase() }, JsonPrimitive("$base/identity/choice/$name"))
@@ -323,8 +333,17 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
                     ),
                 ),
             )
+            val redirectServices = if (account) {
+                mapOf(
+                    "license" to service(mapOf("activate" to "$base/license/activate", "document" to "$base/license/document")),
+                    "config" to service(mapOf("document" to "$base/config/document")),
+                    "identity" to identity,
+                )
+            } else {
+                mapOf("identity" to identity)
+            }
             return JsonObject(
-                mapOf("product" to JsonPrimitive(transcript.product), "services" to JsonObject(mapOf("identity" to identity))),
+                mapOf("product" to JsonPrimitive(transcript.product), "services" to JsonObject(redirectServices)),
             ).toString()
         }
         // identity.exchange (I-45.3): a transcript with an `exchange` step and no discover step rides a product whose

@@ -522,14 +522,12 @@ export const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
       "common.tryAgain",
       "signin.key.ownedSignIn",
       "activate.otherEmail.verify",
-      "signin.done.start",
+      "signin.auto.confirm.other",
       "common.done",
     ],
-    links: [
-      "signin.handoff.again",
-      "common.cancel",
-      "signin.auto.confirm.other",
-    ],
+    // Start using is a quiet line unless it is the view's primary (added): the license keeps
+    // working, so it never competes with the fix (frame 46).
+    links: ["signin.handoff.again", "common.cancel", "signin.done.start"],
     // The form's heading is the action it came from ("Add your name and email").
     titles: [
       "activate.recommend.action",

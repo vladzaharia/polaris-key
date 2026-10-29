@@ -46,7 +46,15 @@ declare module "electron" {
     loadFile(path: string): Promise<void>;
     isFocused(): boolean;
     show(): void;
+    webContents: {
+      setWindowOpenHandler(
+        handler: (details: { url: string }) => { action: "allow" | "deny" },
+      ): void;
+    };
   }
+  export const shell: {
+    openExternal(url: string): Promise<void>;
+  };
   export class Notification {
     constructor(options: { title: string; body: string });
     static isSupported(): boolean;

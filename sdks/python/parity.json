@@ -167,7 +167,7 @@
     },
     "identity.choice": {
       "status": "implemented",
-      "note": "I-10a.17: identity.choice.licenses/devices/complete/cancel over the endpoints discovery names (typed service-unavailable N/A otherwise), no bearer, the grant never in an error; a Worker refusal is a ChoiceRefused result (retry_after_seconds, manage_url, sign_in_url, key_entries, the fresh view); keep completes attachable; a redirect choose answer settles as the choice outcome only when the session asked for license_choice=\"app\". The three choice-* and two redirect-web-choose* transcripts are replayed."
+      "note": "I-10a.17: identity.choice.licenses/devices/complete/cancel over the endpoints discovery names (typed service-unavailable N/A otherwise), no bearer (but for keep, which sends the device token: holders-add-to-account), the grant never in an error; a Worker refusal is a ChoiceRefused result (retry_after_seconds, manage_url, sign_in_url, key_entries, the fresh view); keep completes attachable; a redirect choose answer settles as the choice outcome only when the session asked for license_choice=\"app\". The three choice-* and two redirect-web-choose* transcripts are replayed."
     },
     "identity.signin.hints": {
       "status": "implemented"
@@ -177,6 +177,18 @@
       "runtime": ["python"],
       "reason": "runtime",
       "note": "No OS account to take a platform identity from (I-13); Python signs in by loopback or device code."
+    },
+    "identity.gamecenter": {
+      "status": "na",
+      "runtime": ["python"],
+      "reason": "runtime",
+      "note": "Game Center exists only on Apple platforms."
+    },
+    "identity.pgs": {
+      "status": "na",
+      "runtime": ["python"],
+      "reason": "runtime",
+      "note": "Play Games runs only on Android."
     },
     "identity.autosignin": {
       "status": "planned",

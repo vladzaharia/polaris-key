@@ -1330,7 +1330,7 @@ class CloudSyncMachine:
                 parked_now.append(op)
                 continue
             del p["pending"][at]
-            self._result(p, op, r, overrides, opened)
+            self._result(p, op, r, overrides, opened, req["cursor"])
         # A parked edit that a later edit of the same value already replaces is dropped.
         for op in parked_now:
             if any(
@@ -1421,10 +1421,11 @@ class CloudSyncMachine:
             return {"bad": True}
         return {"plain": seq}
 
-    def _copy_row(self, p: Obj, latch_key: str, server: Obj, open_row: Optional[Obj]) -> Obj:
-        """A conflict's ``server`` copy as a held row."""
+    def _copy_row(self, p: Obj, latch_key: str, server: Obj, open_row: Optional[Obj], cursor: int) -> Obj:
+        """A conflict's ``server`` copy as a held row. ``cursor`` is the one the push request carried, so
+        guard (b) judges the copy exactly as it judges a pulled row."""
         version = server["version"]
-        bad = self._row_bad(p, latch_key, version, open_row)
+        bad = self._row_bad(p, latch_key, version, open_row, cursor)
         return {"value": _clone(server.get("value")), "version": version, **bad}
 
     def _lower_since(self, p: Obj, served: Any) -> None:
@@ -1469,7 +1470,9 @@ class CloudSyncMachine:
             )
         ]
 
-    def _result(self, p: Obj, op: Obj, r: Obj, overrides: Dict[str, str], opened: Obj) -> None:
+    def _result(
+        self, p: Obj, op: Obj, r: Obj, overrides: Dict[str, str], opened: Obj, cursor: int
+    ) -> None:
         status = r.get("status")
         conflicts = opened.get("conflicts") or {}
 
@@ -1500,7 +1503,7 @@ class CloudSyncMachine:
                 # A stale write loses to the server copy, and nothing is enqueued.
                 server = r["server"]
                 if _is_number(server.get("version")):
-                    sbad = self._copy_row(p, f"s:{server_key}", server, opened_conflict())
+                    sbad = self._copy_row(p, f"s:{server_key}", server, opened_conflict(), cursor)
                     p["settings"][server_key] = sbad
                     # E2E max/min: keep the better value and re-push it on the server's version.
                     if (
@@ -1539,7 +1542,7 @@ class CloudSyncMachine:
         elif status == "conflict" and _is_object(r.get("server")):
             server = r["server"]
             if _is_number(server.get("version")):
-                sbad = self._copy_row(p, f"r:{rk}", server, opened_conflict())
+                sbad = self._copy_row(p, f"r:{rk}", server, opened_conflict(), cursor)
                 p["records"][rk] = sbad
                 # The resolution is a NEW mutation on the server's version; N is never resent. Only
                 # ``revision`` resolves on the device; every other policy took the server's copy.

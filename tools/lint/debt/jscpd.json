@@ -3567,7 +3567,7 @@
       "jscpd:duplicate": 15
     },
     "packages/worker/test/services/identity/connectionCallback.test.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 7
     },
     "packages/worker/test/services/identity/connectionRouting.test.ts": {
       "jscpd:duplicate": 4
@@ -3607,6 +3607,9 @@
     },
     "packages/worker/test/services/identity/link.test.ts": {
       "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/identity/linkAssertionIssuer.test.ts": {
+      "jscpd:duplicate": 6
     },
     "packages/worker/test/services/identity/obtainPaths.test.ts": {
       "jscpd:duplicate": 10

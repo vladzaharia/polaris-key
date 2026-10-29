@@ -121,6 +121,19 @@ final class IdentityChoiceTests: XCTestCase {
         XCTAssertEqual(c.identity.account, "ps_abc")
     }
 
+    func testKeepSendsTheDevicesBearerAndNoOtherChoiceDoes() async throws {
+        await discovery(choice: true)
+        await server.reply("/djdl/identity/choice/complete", body: tokenOk)
+        let c = try await client(token: "pkeyt_old")
+        _ = try await c.identity.choice.complete(grant: grant, choice: .keep)
+        let c2 = try await client(token: "pkeyt_old")
+        _ = try await c2.identity.choice.complete(grant: grant, choice: .license(id: "lic_pro"))
+        let calls = await server.requests(forPath: "/djdl/identity/choice/complete")
+        XCTAssertEqual(calls.count, 2)
+        XCTAssertEqual(calls[0].headers["authorization"], "Bearer pkeyt_old")
+        XCTAssertNil(calls[1].headers["authorization"])
+    }
+
     func testARefusalIsTypedAndKeepsTheTokenAndTheGrant() async throws {
         await discovery(choice: true)
         await server.route("/djdl/identity/choice/complete") { _ in

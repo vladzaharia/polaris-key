@@ -69,7 +69,7 @@ function recommendation(c: RenderCtx): Out {
           : nothing}
     </section>
     ${shown(c, "activate.recommend.skip")
-      ? html`<p class="body holder-skip" data-key="activate.recommend.skip">
+      ? html`<p class="holder-skip" data-key="activate.recommend.skip">
           ${text(c, "activate.recommend.skip")}
         </p>`
       : nothing}`;

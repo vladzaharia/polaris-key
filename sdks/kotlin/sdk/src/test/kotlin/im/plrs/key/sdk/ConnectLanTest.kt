@@ -33,7 +33,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
-import org.junit.Ignore
 import org.junit.Test
 import java.net.Socket
 import java.security.SecureRandom
@@ -486,10 +485,6 @@ class ConnectLanTest {
         }
     }
 
-    // Disabled 2026-10-28 under the load rule: timing-dependent on the CI runners (one of four Connect tests
-    // failing per main run) and passes locally. KT-CONNECT-FLAKE makes them deterministic and re-enables them
-    // (_lead/flaky-disabled.md).
-    @Ignore("2026-10-28: timing-dependent on CI runners; see _lead/flaky-disabled.md")
     @Test
     fun stopClosesOpenSessionsAndTheListener() = runBlocking {
         val w = World()
@@ -508,9 +503,13 @@ class ConnectLanTest {
         } catch (e: LanException) {
             assertEquals(LanErrorReason.not_listening, e.reason)
         }
+        assertFalse(la.listening)
         try {
-            Socket("127.0.0.1", port).close()
-            fail("the listener is closed")
+            Socket("127.0.0.1", port).use {
+                // On Linux a connect to a free ephemeral port can pair with itself (the kernel picks the
+                // port as the source too): that is no listener. Anything else that answers is one.
+                if (it.localPort != port) fail("the listener is closed")
+            }
         } catch (e: java.io.IOException) {
             // refused
         }

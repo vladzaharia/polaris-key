@@ -9,8 +9,8 @@
 //
 // Each call dials the endpoint discovery names, never one it builds, and answers the typed
 // `service-unavailable` N/A when discovery has none (the session then ran in card mode and never
-// issued a grant). The grant is the credential: no device bearer is sent, and the grant is never
-// printed or put in an error message.
+// issued a grant). The grant is the credential: no device bearer is sent (but for `keep`, which the
+// device proves with its own token), and the grant is never printed or put in an error message.
 //
 // A refusal the Worker answers (`invalid_grant`, `license_choice_required`, `not_found`,
 // `device_limit`, `rate_limited`, `license_owned`, `key_entry_limit`, ...) is a RESULT, like
@@ -147,7 +147,10 @@ export class ChoiceClient {
     choice: LicenseChoice,
   ): Promise<ChoiceCompleteResult> {
     const { ctx, tokens } = this.deps;
-    const res = await this.post("choiceComplete", { grant, choice });
+    // `keep` is proven by the device's own token (the Worker reads it as `held`); every other
+    // choice is made on the grant alone.
+    const held = choice?.kind === "keep" ? tokens.current : null;
+    const res = await this.post("choiceComplete", { grant, choice }, held);
     if (res.status !== 200) return this.refusal(res, "choice complete");
     const body: unknown = await res
       .text()
@@ -232,6 +235,7 @@ export class ChoiceClient {
   private async post(
     name: ChoiceEndpoint,
     body: Record<string, unknown>,
+    bearer: string | null = null,
   ): Promise<Response> {
     const url = await this.endpoint(name);
     const { ctx } = this.deps;
@@ -239,7 +243,10 @@ export class ChoiceClient {
       url,
       {
         method: "POST",
-        headers: ctx.headers({ "content-type": "application/json" }),
+        headers: ctx.headers({
+          "content-type": "application/json",
+          ...(bearer ? { authorization: `Bearer ${bearer}` } : {}),
+        }),
         body: JSON.stringify(body),
       },
       name,

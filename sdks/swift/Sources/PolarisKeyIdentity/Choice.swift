@@ -232,7 +232,11 @@ public struct ChoiceNamespace: Sendable {
         var request: [String: JSONValue] = ["grant": .string(try Self.checked(grant))]
         if let choice { request["choice"] = choice.wire }
         if let consent { request["consent"] = consent.wire }
-        let response = try await client.choicePost(url, request)
+        // `keep` is proven by the device's own token (the Worker reads it as held); every other
+        // choice is made on the grant alone.
+        var held: String?
+        if choice == .keep { held = await client.core.token }
+        let response = try await client.choicePost(url, request, bearer: held)
         guard response.status == 200 else { throw client.choiceRefusal(response) }
         let body = client.choiceBody(response)
         guard
@@ -305,14 +309,16 @@ extension IdentityClient {
         return (url, raw)
     }
 
-    /// The grant routes carry no bearer: the grant is the credential, bound to this device.
-    fileprivate func choicePost(_ url: URL, _ body: [String: JSONValue]) async throws
-        -> PolarisResponse
+    /// The grant routes carry no bearer but for `keep`: the grant is the credential, bound to this device.
+    fileprivate func choicePost(_ url: URL, _ body: [String: JSONValue], bearer: String? = nil)
+        async throws -> PolarisResponse
     {
+        var headers = ["content-type": "application/json"]
+        if let bearer, !bearer.isEmpty { headers["authorization"] = "Bearer \(bearer)" }
         let data = try JSONEncoder().encode(JSONValue.object(body))
         do {
             return try await core.request(
-                url, method: "POST", headers: ["content-type": "application/json"], body: data)
+                url, method: "POST", headers: headers, body: data)
         } catch let error as PolarisError where error.code == PolarisError.localOnly {
             throw error
         } catch {

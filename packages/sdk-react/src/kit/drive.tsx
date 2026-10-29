@@ -15,7 +15,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { UiInput } from "@polaris-key/ui-core";
+import { WEB_ADD_IN, type AddIn, type UiInput } from "@polaris-key/ui-core";
 import { focusClear } from "@polaris-key/ui-core/browser/reveal";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { ProductCatalog } from "@polaris-key/catalog";
@@ -362,8 +362,10 @@ function OpenedAccount(props: {
   theme?: KitProps["theme"];
   onCheckUpdates?: () => void;
   onSignedOut: () => void;
+  addIn?: AddIn;
 }): ReactNode {
   const { adapter } = props;
+  const addIn = props.addIn ?? WEB_ADD_IN;
   const sdk = useSdk();
   const state = useAdapterState(adapter);
   const [used, setUsed] = useState<number | null>(null);
@@ -449,9 +451,9 @@ function OpenedAccount(props: {
           a.key === "activate.recommend.action" ||
           a.key === "signin.key.addInLocker"
         ) {
-          // Add your name and email: AddToAccount here, or the product's page where Identity is
-          // off (no key is held in this pane, so none is sent).
-          if (caps.identity.enabled) setAdding(true);
+          // Add your name and email: the product's page (WEB_ADD_IN), or AddToAccount here when
+          // switched to "app" (no key is held in this pane, so none is sent).
+          if (addIn === "app" && caps.identity.enabled) setAdding(true);
           else
             void import("./holderGate.js")
               .then((m) =>
@@ -479,9 +481,11 @@ export function DrivenSettings(
     adapter: PolarisAdapter;
     version?: string;
     onCheckUpdates?: () => void;
+    /** Where Add your name and email goes; defaults to the web switch (`WEB_ADD_IN`). */
+    addIn?: AddIn;
   },
 ): ReactNode {
-  const { adapter, version, onCheckUpdates, ...rest } = props;
+  const { adapter, version, onCheckUpdates, addIn, ...rest } = props;
   // Re-read whenever the SDK's state moves (a local write lands there).
   const state = useAdapterState(adapter);
   const [catalog, setCatalog] = useState<ProductCatalog | null>(null);
@@ -542,6 +546,7 @@ export function DrivenSettings(
                 {...(version !== undefined ? { version } : {})}
                 {...(props.theme ? { theme: props.theme } : {})}
                 {...(onCheckUpdates ? { onCheckUpdates } : {})}
+                {...(addIn ? { addIn } : {})}
                 onSignedOut={props.onDismiss}
               />
             ),

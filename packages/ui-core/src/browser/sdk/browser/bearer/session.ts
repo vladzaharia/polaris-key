@@ -1112,11 +1112,12 @@ export class BearerSession {
     );
   }
 
-  /** POST a JSON body to the named choice endpoint, no device bearer (the grant is the
+  /** POST a JSON body to the named choice endpoint, no device bearer except for `keep` (the grant is the
    *  credential). A 5xx or a network failure throws; any other answer is returned. */
   private async choicePost(
     name: ChoiceEndpointName,
     body: Record<string, unknown>,
+    bearer: string | null = null,
   ): Promise<{ res: Response; json: unknown }> {
     await this.init();
     if (!this.opts.enabled("identity"))
@@ -1145,7 +1146,10 @@ export class BearerSession {
       res = await this.opts.fetchImpl(url, {
         method: "POST",
         credentials: "omit",
-        headers: this.headers({ "content-type": "application/json" }),
+        headers: this.headers({
+          "content-type": "application/json",
+          ...(bearer ? { authorization: `Bearer ${bearer}` } : {}),
+        }),
         body: JSON.stringify(body),
       });
     } catch (e) {
@@ -1218,13 +1222,18 @@ export class BearerSession {
     choice?: LicenseChoice,
     opts: ChoiceCompleteOptions = {},
   ): Promise<ChoiceCompleteResult> {
-    const { res, json } = await this.choicePost("choiceComplete", {
-      grant,
-      ...(choice ? { choice } : {}),
-      ...(opts.consent
-        ? { consent: { claims: [...opts.consent.claims] } }
-        : {}),
-    });
+    // `keep` is proven by the device's own token; every other choice rides on the grant alone.
+    const { res, json } = await this.choicePost(
+      "choiceComplete",
+      {
+        grant,
+        ...(choice ? { choice } : {}),
+        ...(opts.consent
+          ? { consent: { claims: [...opts.consent.claims] } }
+          : {}),
+      },
+      choice?.kind === "keep" ? this.token : null,
+    );
     if (res.status !== 200) return this.refused(res, json);
     const answer = (await import("./redirect.js")).parseTokenAnswer(200, json);
     if (answer.kind !== "token")

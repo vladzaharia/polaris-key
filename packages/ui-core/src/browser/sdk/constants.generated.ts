@@ -713,6 +713,8 @@ export const Feature = {
   identityChoice: "identity.choice",
   identitySigninHints: "identity.signin.hints",
   identityExchange: "identity.exchange",
+  identityGamecenter: "identity.gamecenter",
+  identityPgs: "identity.pgs",
   identityAutosignin: "identity.autosignin",
   identityLink: "identity.link",
   releaseChangelog: "release.changelog",
@@ -853,6 +855,8 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.choice",
   "identity.signin.hints",
   "identity.exchange",
+  "identity.gamecenter",
+  "identity.pgs",
   "identity.autosignin",
   "identity.link",
   "release.changelog",
@@ -1595,7 +1599,7 @@ export const OUTLET_MATRIX_VERSION = 1;
 export const PLAN_MATRIX_VERSION = 2;
 
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
-export const SYNC_SCENARIOS_VERSION = 3;
+export const SYNC_SCENARIOS_VERSION = 4;
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 export const DEVICE_LABEL_VERSION = 1;
@@ -2163,6 +2167,22 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
+  "identity.gamecenter": {
+    status: "na",
+    service: "identity",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "identity.pgs": {
+    status: "na",
+    service: "identity",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
   "identity.autosignin": { status: "planned", service: "identity", na: [] },
   "identity.link": {
     status: "implemented",
@@ -2354,4 +2374,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "da64a110d1d1252b4bd5b60c1deeedc3f99bc74573633ab10454092bd5e19f39";
+  "4a6d39e15190dabc635a18dd1a799057a678bc0a0a1f3a47ef821ea3376b1b17";

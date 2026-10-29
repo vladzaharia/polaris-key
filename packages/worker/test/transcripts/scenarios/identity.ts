@@ -110,7 +110,7 @@ async function browser(
  * IdP, land on the callback. Asserts each hop, so a Worker change that breaks the page or the
  * callback fails the scenario rather than silently recording a flow that never completes.
  */
-async function playerSignsIn(
+export async function playerSignsIn(
   w: World,
   now: number,
   verificationUriComplete: string,
