@@ -474,6 +474,10 @@ function cases(): Case[] {
       name: "djdl:channel/releases",
       hash: "#/p/djdl/distribution/channels/google-play/releases",
     },
+    {
+      name: "djdl:channel/listing",
+      hash: "#/p/djdl/distribution/channels/google-play/listing",
+    },
     // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
     {
       name: "waiting:package-feeds",

@@ -162,7 +162,11 @@ describe("Distribution → a channel: the tablist", () => {
     boot(`${H}/app-store`, [row()]);
     const list = await screen.findByRole("tablist", { name: "App Store tabs" });
     const tabs = within(list).getAllByRole("tab");
-    expect(tabs.map((t) => t.textContent)).toEqual(["Status", "Releases"]);
+    expect(tabs.map((t) => t.textContent)).toEqual([
+      "Status",
+      "Releases",
+      "Listing",
+    ]);
     expect(tabs[0]!.getAttribute("aria-selected")).toBe("true");
     expect(tabs[0]!.tabIndex).toBe(0);
     expect(await screen.findByRole("tabpanel")).toBeTruthy();
@@ -188,7 +192,7 @@ describe("Distribution → a channel: the tablist", () => {
     expect(document.activeElement).toBe(status);
     await userEvent.keyboard("{End}{Enter}");
     await waitFor(() =>
-      expect(window.location.hash).toBe(`${H}/app-store/releases`),
+      expect(window.location.hash).toBe(`${H}/app-store/listing`),
     );
   });
 });
