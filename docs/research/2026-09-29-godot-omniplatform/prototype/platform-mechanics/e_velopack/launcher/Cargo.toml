@@ -6,7 +6,10 @@ publish = false
 description = "S-05 (e): tiny Velopack launcher shim in front of a Godot export (research code)"
 
 [dependencies]
-velopack = "=1.2.161"
+# Owner waiver 2026-10-29 for the Dependabot security update to zip (9.0.5): the 14-day package-age
+# rule is waived for this one patch only; velopack 1.3.39-g8d2844f is the release that allows it.
+# Remove this note after 2026-11-01.
+velopack = "=1.3.39-g8d2844f"
 
 [profile.release]
 opt-level = "z"
