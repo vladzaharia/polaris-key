@@ -258,7 +258,11 @@ jobs:
       fail-fast: false
       max-parallel: 3
       matrix:
-        package: [cli, elements]
+        # npm.elements publishes from release tags only until the system product's manifest
+        # declares it: the deploy hook applies .pkey/ only at a vX.Y.Z tag, and a main publish of
+        # an undeclared deliverable fails (unknown_deliverable). Drop the condition after the
+        # first tag that carries it (v0.10.0).
+        package: ${{ fromJSON(startsWith(github.ref, 'refs/tags/v') && '["cli","elements"]' || '["cli"]') }}
     permissions:
       contents: read
       id-token: write
@@ -294,7 +298,7 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: >-
           node tools/feed-closure.mjs --origin https://pkg.plrs.im --owner polaris-key
-          --ecosystem npm --version "$VERSION" --complete --timeout 600
+          --ecosystem npm --version "$VERSION" --complete --timeout 600 ${{ !startsWith(github.ref, 'refs/tags/v') && '--skip npm.elements' || '' }}
       - name: pnpm 11, its defaults
         run: |
           dir="$RUNNER_TEMP/pnpm-11"
@@ -793,7 +797,7 @@ jobs:
           CHANNEL: ${{ needs.version.outputs.channel }}
         run: >-
           node tools/feed-drift.mjs --origin https://pkg.plrs.im --owner polaris-key
-          --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600
+          --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600 ${{ !startsWith(github.ref, 'refs/tags/v') && '--skip npm.elements' || '' }}
       # P0-52: every @polaris-key pin of every package at this version is a version the feed
       # lists. Only this version's broken pins fail the run; a broken pin on an older version is
       # a warning here and an error in the daily feed-closure.yml. It runs after a red drift

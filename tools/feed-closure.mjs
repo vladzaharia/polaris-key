@@ -22,6 +22,7 @@
  *     --version <v>  only that version's broken pins are errors (the rest are warnings), and the
  *                    check retries while they last, up to --timeout seconds (the render queue);
  *     --complete     with --version: every npm package must also list <v> (the set is whole);
+ *     --skip <ids>   deliverable ids this build does not publish: left out of the set
  *     --assume       treat these versions as listed: what the feed would look like after a
  *                    repair publishes them (their own pins are not known, so not checked);
  *     --summary      append a Markdown report (GITHUB_STEP_SUMMARY).
@@ -433,10 +434,10 @@ async function absent(argv) {
 }
 
 /** The root `.pkey/release`'s package names per ecosystem (needs `yaml`: imported here only). */
-async function declaredPackages(root) {
+async function declaredPackages(root, skip = []) {
   const { packageDeliverables } = await import("./feed-drift.mjs");
   const byEcosystem = new Map();
-  for (const d of packageDeliverables(root))
+  for (const d of packageDeliverables(root).filter((d) => !skip.includes(d.id)))
     byEcosystem.set(d.ecosystem, [
       ...(byEcosystem.get(d.ecosystem) ?? []),
       d.name,
@@ -454,13 +455,14 @@ async function fullCheck(argv) {
     .split(",")
     .filter(Boolean);
   const assume = (arg(argv, "--assume") ?? "").split(",").filter(Boolean);
+  const skip = (arg(argv, "--skip") ?? "").split(",").filter(Boolean);
   const summary = arg(argv, "--summary");
   const root =
     arg(argv, "--root") ??
     join(fileURLToPath(new URL(".", import.meta.url)), "..");
   if (complete && version === undefined)
     throw new Error("--complete needs --version");
-  const declared = await declaredPackages(root);
+  const declared = await declaredPackages(root, skip);
   const errors = [];
   const warnings = [];
   const report = [];
