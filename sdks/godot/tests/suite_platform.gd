@@ -9,13 +9,17 @@ extends RefCounted
 
 const SLUG := "pkey-platform-check"
 
+## How many further CAPTURE_WAIT_MS budgets the suite waits for a capture that missed the first
+## one (a slow shared CI runner: a cold PowerShell and WMI on Windows). See `_land`.
+const LATE_BUDGETS := 4
+
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	var platform := PKeyHeaders.platform()
 	t.info("platform=%s os=%s" % [platform, OS.get_name()])
 	PKeyFingerprint.reset_memo()
 	var t0 := Time.get_ticks_msec()
-	var raw := await PKeyFingerprint.raw_components_async()
+	var raw := await _land(t, t0)
 	t.info("capture took %d ms off the main thread" % (Time.get_ticks_msec() - t0))
 	var names: Array = []
 	for c in PKeyFingerprint.COMPONENTS:
@@ -56,6 +60,24 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await PKeyDeviceId.prepare()
 	t.check("desktop: the derived device id is from_raw(slug, %s)" % _source_name(platform), PKeyDeviceId.derive(SLUG) == PKeyDeviceId.from_raw(SLUG, direct))
 	return true
+
+
+## The capture, waiting for the SAME in-flight task when it misses the first budget. The SDK's
+## contract (PKeyFingerprint.raw_components_async): a capture that has not landed within
+## CAPTURE_WAIT_MS yields {} this time, keeps running and is memoised when it lands. A slow runner
+## is therefore not a missing source, and checking the desktop components against that first {}
+## would blame the platform probe for the runner's speed (the Windows smoke leg did, and the
+## engine then quit with the task still running). Every assertion below still runs, on the landed
+## capture; a capture that never lands within LATE_BUDGETS more budgets fails the suite below.
+static func _land(t: PKeyTestContext, t0: int) -> Dictionary:
+	var raw := await PKeyFingerprint.raw_components_async()
+	var late := 0
+	while raw.is_empty() and PKeyFingerprint._task >= 0 and late < LATE_BUDGETS:
+		late += 1
+		t.info("capture still running after %d ms: waiting for the same task (%d of %d)" % [Time.get_ticks_msec() - t0, late, LATE_BUDGETS])
+		raw = await PKeyFingerprint.raw_components_async()
+	t.check("the capture landed (no task left running)", PKeyFingerprint._task < 0 or not raw.is_empty(), "%d ms" % (Time.get_ticks_msec() - t0))
+	return raw
 
 
 static func _source_name(platform: String) -> String:
