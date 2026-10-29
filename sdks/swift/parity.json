@@ -181,6 +181,17 @@
       "status": "implemented",
       "note": "identity.exchange(kind:subjectToken:nonce:) and exchangeNonce(kind:) (PolarisKeyIdentity): the nonce route registers the device keys, the token route takes the pkey-proof/1 exchange proof over nonce.key and the token hash; the outcome is signedIn, confirm (PendingConsent, completed through identity.choice.complete(grant:choice:consent:)), choose, needsSignIn or unavailable, and refusals are a typed ExchangeError. A 404 on either route, a discovery with no exchange member or a memory-only key port is unavailable with no request. Replayed against the exchange-* transcripts (TranscriptTests). Sign in with Apple itself is I-44.4."
     },
+    "identity.gamecenter": {
+      "status": "planned",
+      "wp": "I-44",
+      "note": "PolarisKeyGameCenter (I-44.5)."
+    },
+    "identity.pgs": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime",
+      "note": "Play Games runs only on Android."
+    },
     "identity.autosignin": {
       "status": "implemented",
       "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in §1, I-44): a stored sign-in, then the platform provider's silent mode where it has one (Apple has none; Game Center is I-44.5), then its one sheet under prompt: .optional; every refusal is a result."

@@ -241,6 +241,18 @@
       ],
       "note": "I-46.3, I-46.5: bearer mode: session.exchange(port, {kind, subjectToken}) posts the device's keys for a nonce, takes the provider's token for it and the RFC 8693 grant with the exchange proof; an answer is an outcome (signedIn, pendingConsent, pendingSignIn, needsSignIn, unavailable) and a refusal a typed PolarisError. All eight exchange-* and discovery-identity-exchange transcripts replay through it over a fixture key port."
     },
+    "identity.gamecenter": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "Game Center exists only on Apple platforms."
+    },
+    "identity.pgs": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "Play Games runs only on Android."
+    },
     "identity.autosignin": {
       "status": "planned",
       "wp": "I-46",

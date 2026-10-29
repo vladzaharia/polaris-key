@@ -2013,7 +2013,40 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
                   }
                 }
               }
+            },
+            "gameCenter": {
+              "description": "Sign in with Game Center on the Apple team and bundle ids (identity.platformSignIn.gameCenter). Needs apple.teamId.",
+              "type": "boolean"
+            },
+            "playGames": {
+              "type": "object",
+              "description": "Sign in with Google Play Games Services (identity.platformSignIn.playGames). The client secret is set in the console (Keys & secrets), never here.",
+              "additionalProperties": false,
+              "dependentRequired": {
+                "applicationId": ["serverClientId"],
+                "serverClientId": ["applicationId"]
+              },
+              "properties": {
+                "applicationId": {
+                  "description": "The Play Console application id (identity.platformSignIn.playGames.applicationId).",
+                  "type": "string",
+                  "pattern": "^[0-9]{6,20}$"
+                },
+                "serverClientId": {
+                  "description": "The Game server credential's web client id (identity.platformSignIn.playGames.serverClientId).",
+                  "type": "string",
+                  "pattern": "^[0-9]+-[a-z0-9]+\\\\.apps\\\\.googleusercontent\\\\.com$"
+                }
+              }
             }
+          },
+          "if": {
+            "required": ["gameCenter"],
+            "properties": { "gameCenter": { "const": true } }
+          },
+          "then": {
+            "required": ["apple"],
+            "properties": { "apple": { "required": ["teamId"] } }
           }
         },
         "nearby": {
@@ -20392,6 +20425,7 @@ var GOOGLE_CLIENT_ID_RE = /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
 var MAX_GOOGLE_CLIENT_IDS = 8;
 var APPLE_TEAM_ID_RE = /^[A-Z0-9]{10}$/;
 var MAX_APPLE_SIGN_IN_BUNDLE_IDS = 16;
+var PLAY_GAMES_APPLICATION_ID_RE = /^[0-9]{6,20}$/;
 var MODULES = Object.keys(MODULE_SERVICES);
 var DEFAULT_ENABLED = DEFAULT_ENABLED_SERVICES;
 var ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
@@ -24467,18 +24501,18 @@ function validatePlatformSignIn(psi, errors) {
       "product",
       "/identity/platformSignIn",
       "invalid_identity_platform_sign_in",
-      "identity.platformSignIn must be an object with google and apple."
+      "identity.platformSignIn must be an object with google, apple, gameCenter and playGames."
     );
     return;
   }
   for (const key of Object.keys(psi)) {
-    if (key !== "google" && key !== "apple") {
+    if (key !== "google" && key !== "apple" && key !== "gameCenter" && key !== "playGames") {
       add4(
         errors,
         "product",
         `/identity/platformSignIn/${key}`,
         "invalid_identity_platform_sign_in",
-        "identity.platformSignIn takes only google and apple."
+        "identity.platformSignIn takes only google, apple, gameCenter and playGames."
       );
     }
   }
@@ -24618,6 +24652,77 @@ function validatePlatformSignIn(psi, errors) {
       }
     }
   }
+  const gameCenter = psi.gameCenter;
+  if (gameCenter !== void 0) {
+    if (typeof gameCenter !== "boolean") {
+      add4(
+        errors,
+        "product",
+        "/identity/platformSignIn/gameCenter",
+        "invalid_identity_platform_sign_in",
+        "identity.platformSignIn.gameCenter must be true or false."
+      );
+    } else if (gameCenter && !(isRecord6(psi.apple) && psi.apple.teamId !== void 0)) {
+      add4(
+        errors,
+        "product",
+        "/identity/platformSignIn/gameCenter",
+        "game_center_without_team",
+        "identity.platformSignIn.gameCenter needs apple.teamId: Game Center names an app by team and bundle id."
+      );
+    }
+  }
+  const playGames = psi.playGames;
+  if (playGames !== void 0) {
+    if (!isRecord6(playGames)) {
+      add4(
+        errors,
+        "product",
+        "/identity/platformSignIn/playGames",
+        "invalid_identity_platform_sign_in",
+        "identity.platformSignIn.playGames must be an object with applicationId and serverClientId."
+      );
+    } else {
+      for (const key of Object.keys(playGames)) {
+        if (key !== "applicationId" && key !== "serverClientId") {
+          add4(
+            errors,
+            "product",
+            `/identity/platformSignIn/playGames/${key}`,
+            "invalid_identity_platform_sign_in",
+            "identity.platformSignIn.playGames takes only applicationId and serverClientId. Set the client secret in the console (Keys & secrets), not in the manifest."
+          );
+        }
+      }
+      if (playGames.applicationId !== void 0 && !(typeof playGames.applicationId === "string" && PLAY_GAMES_APPLICATION_ID_RE.test(playGames.applicationId))) {
+        add4(
+          errors,
+          "product",
+          "/identity/platformSignIn/playGames/applicationId",
+          "invalid_play_games_application_id",
+          "identity.platformSignIn.playGames.applicationId must be the Play Console application id: 6 to 20 digits."
+        );
+      }
+      if (playGames.serverClientId !== void 0 && !(typeof playGames.serverClientId === "string" && GOOGLE_CLIENT_ID_RE.test(playGames.serverClientId))) {
+        add4(
+          errors,
+          "product",
+          "/identity/platformSignIn/playGames/serverClientId",
+          "invalid_google_client_id",
+          "identity.platformSignIn.playGames.serverClientId must be a Google client id, such as 1234-abc.apps.googleusercontent.com."
+        );
+      }
+      if (playGames.applicationId === void 0 !== (playGames.serverClientId === void 0)) {
+        add4(
+          errors,
+          "product",
+          "/identity/platformSignIn/playGames",
+          "play_games_incomplete",
+          "identity.platformSignIn.playGames needs both applicationId and serverClientId."
+        );
+      }
+    }
+  }
 }
 var CONNECT_MEMBERS = ["relay", "interAccount"];
 function validateConnectBlock(productRoot, modules, errors, warnings) {
@@ -24725,6 +24830,15 @@ function normalizePlatformSignIn(raw) {
         (v) => isString(v) && v.length <= MAX_BUNDLE_ID_LENGTH && BUNDLE_ID_RE.test(v)
       );
     if (Object.keys(apple).length > 0) out.apple = apple;
+  }
+  if (typeof raw.gameCenter === "boolean") out.gameCenter = raw.gameCenter;
+  if (isRecord6(raw.playGames)) {
+    const playGames = {};
+    if (typeof raw.playGames.applicationId === "string" && PLAY_GAMES_APPLICATION_ID_RE.test(raw.playGames.applicationId))
+      playGames.applicationId = raw.playGames.applicationId;
+    if (typeof raw.playGames.serverClientId === "string" && GOOGLE_CLIENT_ID_RE.test(raw.playGames.serverClientId))
+      playGames.serverClientId = raw.playGames.serverClientId;
+    if (Object.keys(playGames).length > 0) out.playGames = playGames;
   }
   return Object.keys(out).length > 0 ? out : void 0;
 }

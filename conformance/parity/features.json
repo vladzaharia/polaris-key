@@ -1409,6 +1409,121 @@
       "note": "I-13 (WIRE-CONTRACT-V5 §12.11.2, §12.11.3): with discovery's exchange member and nonce endpoint, the SDK posts the device's signing and agreement keys to nonce, asks the platform (Credential Manager, Sign in with Apple, FedCM) for an ID token carrying that nonce, and trades it at token with the RFC 8693 grant and the pkey-proof/1 exchange proof. The answer is a device token, `confirm` (consent first), `choose` (a licence choice), 403 interstitial_required (no link) or the one invalid_grant. Pinned by discovery-identity-exchange.json and the exchange-* transcripts; the Node conformance runner replays them with a reference client (exchangeTranscripts.test.ts). I-44 (Swift), I-45 (Kotlin), I-46 (React) and I-48 (Godot) implement it."
     },
     {
+      "id": "identity.gamecenter",
+      "family": "devices",
+      "title": "Platform sign-in: a Game Center identity-verification token for a device token (the exchange)",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-14"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "Game Center exists only on Apple platforms (node has none)."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "Game Center exists only on Apple platforms (python has none)."
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "Game Center exists only on Apple platforms (web has none)."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "Game Center exists only on Apple platforms (desktop-bridge has none)."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Game Center exists only on Apple platforms (windows has none)."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Game Center exists only on Apple platforms (linux has none)."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "Game Center exists only on Apple platforms (android has none)."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "Game Center exists only on Apple platforms (jvm has none)."
+        }
+      ],
+      "note": "I-14 (WIRE-CONTRACT-V5 §12.11.7): the exchange of §12.11.3 with subject_token_type urn:polaris-key:token-type:gamecenter-signature. The SDK checks that the local player is authenticated (it never presents the sign-in view at launch), posts for a nonce, fetches the identity-verification signature, and sends the gc1. token (six base64url fields and a decimal timestamp, joined by dots) with the exchange proof. Discovery lists the gamecenter kind only while the product has Game Center on and the launch gate is open; a client ignores a kind it does not know. Pinned by the exchange-gamecenter-* transcripts; I-44.5 (Swift) and I-48 (Godot) implement it."
+    },
+    {
+      "id": "identity.pgs",
+      "family": "devices",
+      "title": "Platform sign-in: a Play Games server auth code for a device token (the exchange)",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-14"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "Google Play Games Services runs only on Android (node has none)."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "Google Play Games Services runs only on Android (python has none)."
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "Google Play Games Services runs only on Android (web has none)."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "Google Play Games Services runs only on Android (desktop-bridge has none)."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "Google Play Games Services runs only on Android (macos has none)."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "Google Play Games Services runs only on Android (ios has none)."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Google Play Games Services runs only on Android (windows has none)."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Google Play Games Services runs only on Android (linux has none)."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "Google Play Games Services runs only on Android (jvm has none)."
+        }
+      ],
+      "note": "I-14 (WIRE-CONTRACT-V5 §12.11.7): the exchange of §12.11.3 with subject_token_type urn:polaris-key:token-type:pgs-server-auth-code. The SDK checks that the player is authenticated (it never calls signIn at launch), posts for a nonce, asks requestServerSideAccess(discovery exchange.pgs.serverClientId, false) for a code with no extra scopes, and sends the code unchanged with the exchange proof. Discovery lists the pgs kind and exchange.pgs only while the product has Play Games set, its server credential present and the launch gate open. Pinned by the exchange-pgs-* transcripts; I-45.5 (Kotlin) and I-48 (Godot) implement it."
+    },
+    {
       "id": "identity.autosignin",
       "family": "devices",
       "title": "Automatic sign-in: the ladder that signs a device in without a click",

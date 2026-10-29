@@ -409,6 +409,51 @@ describe("the identity block (I-09, plans/I-27.md §3)", () => {
     ]);
   });
 
+  it("checks gameCenter and playGames (I-14.2)", () => {
+    const psi = {
+      apple: { teamId: "ABCDE12345" },
+      gameCenter: true,
+      playGames: {
+        applicationId: "123456789012",
+        serverClientId: "1234-gs.apps.googleusercontent.com",
+      },
+    };
+    const res = parseManifest({
+      product: JSON.stringify({
+        ...PRODUCT,
+        ...IDENTITY_ON,
+        identity: { platformSignIn: psi },
+      }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+    expect(res.ok && res.manifest.identity).toEqual({ platformSignIn: psi });
+    const bad = (platformSignIn: unknown) =>
+      codes(validate({ identity: { platformSignIn } })).errors;
+    expect(bad({ gameCenter: "yes" })).toEqual([
+      "invalid_identity_platform_sign_in",
+    ]);
+    expect(bad({ gameCenter: false })).toEqual([]);
+    expect(bad({ gameCenter: true })).toEqual(["game_center_without_team"]);
+    expect(bad({ playGames: "1" })).toEqual([
+      "invalid_identity_platform_sign_in",
+    ]);
+    expect(bad({ playGames: { ...psi.playGames, clientSecret: "x" } })).toEqual(
+      ["invalid_identity_platform_sign_in"],
+    );
+    expect(
+      bad({ playGames: { ...psi.playGames, applicationId: "12345" } }),
+    ).toEqual(["invalid_play_games_application_id"]);
+    expect(
+      bad({ playGames: { ...psi.playGames, serverClientId: "web" } }),
+    ).toEqual(["invalid_google_client_id"]);
+    expect(bad({ playGames: { applicationId: "123456789012" } })).toEqual([
+      "play_games_incomplete",
+    ]);
+    expect(
+      bad({ playGames: { serverClientId: psi.playGames.serverClientId } }),
+    ).toEqual(["play_games_incomplete"]);
+  });
+
   it("warns when redirect paths have no web origin to pair with", () => {
     const res = validateManifestDocuments({
       product: {

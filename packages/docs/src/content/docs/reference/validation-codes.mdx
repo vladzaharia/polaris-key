@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 278 distinct emit sites.
+codes with their JSON-pointer paths. 285 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -39,6 +39,7 @@ the offending value, or the allowed set.
 | `duplicate_profile_id` | error | product | `${profilesAt}/${i}/id` | Profile ids must be unique. |
 | `duplicate_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be unique. |
 | `edge_mint_recipe_duplicate` | error | schema | `${at}/mint` | $\{String(raw.key)\} has a \ |
+| `game_center_without_team` | error | product | `/identity/platformSignIn/gameCenter` | identity.platformSignIn.gameCenter needs apple.teamId: Game Center names an app by team and bundle id. |
 | `google_client_ids_without_server` | error | product | `/identity/platformSignIn/google/clientIds` | identity.platformSignIn.google.clientIds needs serverClientId: the web client is the token audience. |
 | `identity_block_without_service` | warning | product | `/identity` | identity is declared but the identity service is off, so none of it applies. |
 | `identity_redirect_paths_without_origins` | warning | product | `/identity/redirectPaths` | identity.redirectPaths needs at least one web.origins entry: a redirect URI is an origin from web.origins and one of these paths. |
@@ -109,16 +110,20 @@ the offending value, or the allowed set.
 | `invalid_google_client_id` | error | product | `/identity/platformSignIn/google/clientIds/${i}` | identity.platformSignIn.google.clientIds entries must be unique Google client ids, such as 1234-abc.apps.googleusercontent.com. |
 | `invalid_google_client_id` | error | product | `/identity/platformSignIn/google/clientIds` | identity.platformSignIn.google.clientIds must be an array of at most $\{MAX_GOOGLE_CLIENT_IDS\} Google client ids. |
 | `invalid_google_client_id` | error | product | `/identity/platformSignIn/google/serverClientId` | identity.platformSignIn.google.serverClientId must be a Google client id, such as 1234-abc.apps.googleusercontent.com. |
+| `invalid_google_client_id` | error | product | `/identity/platformSignIn/playGames/serverClientId` | identity.platformSignIn.playGames.serverClientId must be a Google client id, such as 1234-abc.apps.googleusercontent.com. |
 | `invalid_group_name` | error | product | `/oidc/groupRoleMap/${group}` | oidc.groupRoleMap keys must be plain group names (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
 | `invalid_identity_claim_by_key` | error | product | `/identity/keyEntry/claimByKey` | identity.keyEntry.claimByKey must be true or false. |
 | `invalid_identity_key_entry_limit` | error | product | `/identity/keyEntry/limit` | identity.keyEntry.limit must be an integer from 1 to 100. |
 | `invalid_identity_nearby` | error | product | `/identity/nearby` | identity.nearby must be true or false. |
-| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/${key}` | identity.platformSignIn takes only google and apple. |
+| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/${key}` | identity.platformSignIn takes only google, apple, gameCenter and playGames. |
 | `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/apple/${key}` | identity.platformSignIn.apple takes only teamId and bundleIds. |
 | `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/apple` | identity.platformSignIn.apple must be an object with teamId and bundleIds. |
+| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/gameCenter` | identity.platformSignIn.gameCenter must be true or false. |
 | `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/google/${key}` | identity.platformSignIn.google takes only serverClientId and clientIds. |
 | `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/google` | identity.platformSignIn.google must be an object with serverClientId and clientIds. |
-| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn` | identity.platformSignIn must be an object with google and apple. |
+| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/playGames/${key}` | identity.platformSignIn.playGames takes only applicationId and serverClientId. Set the client secret in the console (Keys & secrets), not in the manifest. |
+| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/playGames` | identity.platformSignIn.playGames must be an object with applicationId and serverClientId. |
+| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn` | identity.platformSignIn must be an object with google, apple, gameCenter and playGames. |
 | `invalid_identity_redirect_paths` | error | product | `/identity/redirectPaths/${i}` | identity.redirectPaths entries $\{problem\}. |
 | `invalid_identity_redirect_paths` | error | product | `/identity/redirectPaths` | identity.redirectPaths must be an array of at most $\{MAX_IDENTITY_REDIRECT_PATHS\} paths. |
 | `invalid_identity_terms` | error | product | `/identity/terms` | identity.terms must be \{version, url?\}: a version of 1 to 32 characters of A-Z, a-z, 0-9, ., _ and -, and an https URL when url is given. |
@@ -187,6 +192,7 @@ the offending value, or the allowed set.
 | `invalid_package_field` | error | release | `${at}/artifacts` | artifacts maps 1 to $\{MAX_PACKAGE_ARTIFACT_ENTRIES\} entry ids ($\{ARTIFACT_ENTRY_ID_PATTERN.source\}) to \{ match: a file-name glob of at most $\{MAX_ARTIFACT_MATCH_LENGTH\} characters \}. |
 | `invalid_package_name` | error | release | `${at}/name` | name must be a $\{ecosystem\} package name: $\{PACKAGE_NAME_RULES[ecosystem]\}. |
 | `invalid_payload` | error | product | `${profilesAt}/${i}/payload` | Profile payload must be an object. |
+| `invalid_play_games_application_id` | error | product | `/identity/platformSignIn/playGames/applicationId` | identity.platformSignIn.playGames.applicationId must be the Play Console application id: 6 to 20 digits. |
 | `invalid_presentation` | error | product | `/presentation/${field}` | presentation.$\{field\} must be a #rrggbb colour. |
 | `invalid_presentation` | error | product | `/presentation` | presentation must be an object \{ icon, accent, accentDark \}. |
 | `invalid_probe_id` | error | product | `/fingerprint/probes/${i}/id` | Probe ids must match ^[A-Za-z0-9._:-]\{1,64\}$. |
@@ -253,6 +259,7 @@ the offending value, or the allowed set.
 | `outlet_without_build` | warning | distribution | `/outlets/${id}` | outlet $\{id\} ($\{c.label\}) is declared but .pkey/release declares no $\{c.platforms.join(" or ")\} build in deliverables.app.artifacts, so nothing can ship to it. |
 | `pack_field_not_supported` | error | release | `${at}/${field}` | $\{field\} is never declared: it belongs to one release, so pass it to pkey release publish --$\{field\}. |
 | `package_name_collision` | error | release | `/release/deliverables/${id}/name` | $\{id\} and $\{other\} declare the same $\{def.ecosystem as string\} package name (names compare case-insensitively, and PyPI names after PEP 503 normalisation). |
+| `play_games_incomplete` | error | product | `/identity/platformSignIn/playGames` | identity.platformSignIn.playGames needs both applicationId and serverClientId. |
 | `release_key_reused` | error | release | `${at}/publicKey` | A release key must not be release.sparkleEd25519Pub: one key would sign both archive bytes and JWS signing inputs. |
 | `reserved_channel_name` | warning | release | `${at}/name` | This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V4 §5.1). |
 | `reserved_display_name` | error | distribution | `/listing/developerName` | listing.developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it. |
