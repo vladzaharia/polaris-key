@@ -6,8 +6,9 @@
  * console reads one row and never scans the directory. Bounded: five aggregate statements per
  * product, no per-person work. `users` counts people holding data (`bytes > 0`).
  *
- * The directory keeps counts for records and files but bytes only in total (U-09 and U-10 add
- * theirs), so until then every byte is a settings byte.
+ * The directory keeps record bytes (U-09.9) and a total; settings bytes are the total less the
+ * records'. It keeps a file count but no file bytes yet (U-10 adds them), so until then every byte
+ * that is not a record's is a settings byte.
  */
 
 import type { ScheduledServiceContext } from "../../core/registry.js";
@@ -49,9 +50,11 @@ export async function computeSyncUsage(
   const total = await db.first<{
     users: number;
     bytes: number;
+    records: number;
     revisions: number;
   }>(
     `SELECT COUNT(*) AS users, COALESCE(SUM(bytes), 0) AS bytes,
+            COALESCE(SUM(MIN(record_bytes, bytes)), 0) AS records,
             COALESCE(SUM(revision_bytes), 0) AS revisions
        FROM sync_directory WHERE product = ? AND bytes > 0`,
     product,
@@ -96,6 +99,7 @@ export async function computeSyncUsage(
       : 0;
   };
   const bytes = n(total?.bytes);
+  const recordBytes = n(total?.records);
   return {
     users: n(total?.users),
     bytes,
@@ -108,8 +112,8 @@ export async function computeSyncUsage(
         over80: n(t.over80),
       })),
       byKind: {
-        settings: bytes,
-        records: 0,
+        settings: bytes - recordBytes,
+        records: recordBytes,
         files: 0,
         revisions: n(total?.revisions),
       },
@@ -132,7 +136,7 @@ export async function syncScheduled(
     `INSERT INTO sync_product_usage
        (product, bytes, users, settings_bytes, record_bytes, file_bytes, revision_bytes,
         breakdown_json, computed_at)
-     VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
      ON CONFLICT (product) DO UPDATE SET
        bytes = excluded.bytes, users = excluded.users, settings_bytes = excluded.settings_bytes,
        record_bytes = excluded.record_bytes, file_bytes = excluded.file_bytes,
@@ -142,6 +146,7 @@ export async function syncScheduled(
     u.bytes,
     u.users,
     u.breakdown.byKind.settings,
+    u.breakdown.byKind.records,
     u.breakdown.byKind.revisions,
     JSON.stringify(u.breakdown),
     ctx.now,

@@ -158,7 +158,7 @@ const LIVE = `EXISTS (SELECT 1 FROM products WHERE slug = ? AND status <> 'delet
 
 /**
  * The D1 batch for a dirty object: the day's counters, then one directory upsert. The counters
- * are the object's own (`bytes`, `settings`); quota, tier, platform and activity are the last
+ * are the object's own (`bytes`, `settings`, `records`, `record_bytes`); quota, tier, platform and activity are the last
  * write's snapshot, and an object that was only absorbed into (no write of its own) keeps what
  * the directory already has for them.
  *
@@ -217,12 +217,13 @@ export function buildFlush(
   if (snap) {
     statements.push({
       sql: `INSERT INTO sync_directory
-              (product, subject, bytes, settings, records, files, revision_bytes, quota_bytes,
-               tier_id, platform, last_active_at, updated_at)
-            SELECT ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, ?, ?
+              (product, subject, bytes, settings, records, record_bytes, files, revision_bytes,
+               quota_bytes, tier_id, platform, last_active_at, updated_at)
+            SELECT ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?
             WHERE ${LIVE}
             ON CONFLICT (product, subject) DO UPDATE SET
               bytes = excluded.bytes, settings = excluded.settings,
+              records = excluded.records, record_bytes = excluded.record_bytes,
               quota_bytes = excluded.quota_bytes, tier_id = excluded.tier_id,
               platform = excluded.platform,
               last_active_at = MAX(sync_directory.last_active_at, excluded.last_active_at),
@@ -232,6 +233,8 @@ export function buildFlush(
         pin.subject,
         usage.bytes,
         usage.settings,
+        usage.records,
+        usage.recordBytes,
         snap.quotaBytes,
         snap.tierId,
         snap.platform,
@@ -243,18 +246,21 @@ export function buildFlush(
   } else {
     statements.push({
       sql: `INSERT INTO sync_directory
-              (product, subject, bytes, settings, records, files, revision_bytes, quota_bytes,
-               tier_id, platform, last_active_at, updated_at)
-            SELECT ?, ?, ?, ?, 0, 0, 0, 0, NULL, NULL, ?, ?
+              (product, subject, bytes, settings, records, record_bytes, files, revision_bytes,
+               quota_bytes, tier_id, platform, last_active_at, updated_at)
+            SELECT ?, ?, ?, ?, ?, ?, 0, 0, 0, NULL, NULL, ?, ?
             WHERE ${LIVE}
             ON CONFLICT (product, subject) DO UPDATE SET
               bytes = excluded.bytes, settings = excluded.settings,
+              records = excluded.records, record_bytes = excluded.record_bytes,
               updated_at = excluded.updated_at`,
       params: [
         pin.product,
         pin.subject,
         usage.bytes,
         usage.settings,
+        usage.records,
+        usage.recordBytes,
         t,
         t,
         pin.product,

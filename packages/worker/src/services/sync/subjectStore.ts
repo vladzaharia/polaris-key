@@ -79,6 +79,7 @@ interface DirectoryRow {
   bytes: number;
   settings: number;
   records: number;
+  record_bytes: number;
   files: number;
   revision_bytes: number;
   quota_bytes: number;
@@ -112,12 +113,12 @@ export const cloudSyncStore: SubjectStore = {
     await db.batch([
       {
         sql: `INSERT INTO sync_directory
-                (product, subject, bytes, settings, records, files, revision_bytes, quota_bytes,
-                 tier_id, platform, last_active_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (product, subject, bytes, settings, records, record_bytes, files, revision_bytes,
+                 quota_bytes, tier_id, platform, last_active_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT (product, subject) DO UPDATE SET
                 bytes = excluded.bytes, settings = excluded.settings, records = excluded.records,
-                files = excluded.files, revision_bytes = excluded.revision_bytes,
+                record_bytes = excluded.record_bytes, files = excluded.files, revision_bytes = excluded.revision_bytes,
                 quota_bytes = excluded.quota_bytes, tier_id = excluded.tier_id,
                 platform = excluded.platform, last_active_at = excluded.last_active_at,
                 updated_at = excluded.updated_at`,
@@ -127,6 +128,7 @@ export const cloudSyncStore: SubjectStore = {
           a.bytes + (s?.bytes ?? 0),
           a.settings + (s?.settings ?? 0),
           a.records + (s?.records ?? 0),
+          a.record_bytes + (s?.record_bytes ?? 0),
           a.files + (s?.files ?? 0),
           a.revision_bytes + (s?.revision_bytes ?? 0),
           Math.max(a.quota_bytes, s?.quota_bytes ?? 0),
@@ -171,6 +173,7 @@ export const cloudSyncStore: SubjectStore = {
             bytes: r.bytes,
             settings: r.settings,
             records: r.records,
+            recordBytes: r.record_bytes,
             files: r.files,
             revisionBytes: r.revision_bytes,
             quotaBytes: r.quota_bytes,

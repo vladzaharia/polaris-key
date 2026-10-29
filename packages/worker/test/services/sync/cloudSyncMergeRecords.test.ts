@@ -6,7 +6,10 @@
 import { describe, expect, it } from "vitest";
 import "../../../src/index.js";
 import type { SyncMutation } from "@polaris-key/protocol/sync";
-import { runSubjectMerge } from "../../../src/core/accounts/subjectHooks.js";
+import {
+  runSubjectExport,
+  runSubjectMerge,
+} from "../../../src/core/accounts/subjectHooks.js";
 import {
   absorbCloudSync,
   callCloudSync,
@@ -285,6 +288,36 @@ describe("a merge moves records", () => {
     // The absorbed copy was written later (a later `editedHlc`), so it wins; nothing is parked.
     expect(after.records?.find((r) => r.id === "a")?.value).toEqual({ hp: 9 });
     expect(after.parked).toBeUndefined();
+  });
+});
+
+describe("the directory half of a merge", () => {
+  it("adds the record bytes of the two people and exports them", async () => {
+    const { env } = world();
+    const db = makeTestDb();
+    const ctx = { db, env: env as never, now: 1 };
+    const row = (subject: string, bytes: number, recordBytes: number) =>
+      db.run(
+        `INSERT INTO sync_directory (product, subject, bytes, settings, records, record_bytes, files,
+           revision_bytes, quota_bytes, tier_id, platform, last_active_at, updated_at)
+         VALUES (?, ?, ?, 1, 2, ?, 0, 0, 1000, 'free', 'desktop', 5, 6)`,
+        P,
+        subject,
+        bytes,
+        recordBytes,
+      );
+    await row("from", 300, 200);
+    await row("to", 150, 100);
+    await runSubjectMerge(ctx, { product: P, from: "from", to: "to" });
+    expect(
+      await db.all(
+        "SELECT subject, bytes, records, record_bytes FROM sync_directory",
+      ),
+    ).toEqual([{ subject: "to", bytes: 450, records: 4, record_bytes: 300 }]);
+    const out = await runSubjectExport(ctx, { product: P, subject: "to" });
+    expect(out["sync.cloudSync"]).toMatchObject({
+      directory: { records: 4, recordBytes: 300 },
+    });
   });
 });
 

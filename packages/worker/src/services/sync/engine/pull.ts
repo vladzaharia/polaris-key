@@ -204,9 +204,10 @@ export function applyPull(store: SyncStore, input: PullInput): PullOutcome {
 }
 
 /**
- * Forgets tombstones last written at or before `throughSeq` (rows, and the removed-member cells
- * of merged rows), and raises the watermark to it, so an older cursor is `cursor_expired` instead
- * of silently missing a delete. Returns how many tombstone rows went. The watermark never falls.
+ * Forgets tombstones last written at or before `throughSeq` (setting and record rows, and the
+ * removed-member and removed-field cells of merged rows), and raises the watermark to it, so an
+ * older cursor is `cursor_expired` instead of silently missing a delete. Returns how many tombstone
+ * rows went. The watermark never falls. Neither costs quota, so usage does not move.
  */
 export function collectTombstones(
   store: SyncStore,
@@ -229,6 +230,26 @@ export function collectTombstones(
           );
           if (members.size !== row.members.size)
             store.putSetting({ ...row, members });
+        }
+      }
+      if (page.length < COLLECT_PAGE) break;
+      after = page[page.length - 1]?.version ?? throughSeq;
+    }
+    // Records likewise (U-09.9): a tombstone goes, a live `merge` record sheds its removed cells.
+    // A cell's own clock is client-supplied, so the record's `version` (a store sequence) is the age.
+    after = 0;
+    for (;;) {
+      const page = store.recordsPageThrough(after, throughSeq, COLLECT_PAGE);
+      for (const row of page) {
+        if (row.deleted) {
+          store.deleteRecordRow(row.collection, row.id);
+          removed++;
+        } else if (row.fields) {
+          const fields = new Map(
+            [...row.fields].filter(([, cell]) => !cell.removed),
+          );
+          if (fields.size !== row.fields.size)
+            store.putRecord({ ...row, fields });
         }
       }
       if (page.length < COLLECT_PAGE) break;
