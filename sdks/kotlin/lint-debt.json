@@ -958,7 +958,7 @@
       "detekt:exceptions.TooGenericExceptionCaught": 3,
       "detekt:style.LoopWithTooManyJumpStatements": 1,
       "detekt:style.MagicNumber": 4,
-      "detekt:style.ReturnCount": 2,
+      "detekt:style.ReturnCount": 1,
       "detekt:style.ThrowsCount": 6,
       "detekt:style.UseCheckOrError": 1
     },
