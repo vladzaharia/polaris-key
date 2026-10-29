@@ -392,20 +392,15 @@ export function useSdkGate(
   const addToAccount = useCallback(() => {
     if (!adapter) return;
     if (!adapter.snapshot().capabilities.identity.enabled) {
-      const held = heldKey.current ?? undefined;
       void import("./holderGate.js")
         .then((m) =>
-          m.portalTarget(adapter, {
-            ...(ctx?.baseUrl !== undefined ? { baseUrl: ctx.baseUrl } : {}),
-            ...(ctx?.productSlug !== undefined
-              ? { product: ctx.productSlug }
-              : {}),
-          }),
+          m.openPortal(
+            adapter,
+            { baseUrl: ctx?.baseUrl, product: ctx?.productSlug },
+            heldKey.current ?? undefined,
+            opts.returnUrl,
+          ),
         )
-        .then((t) => {
-          if (t)
-            openManage(t.url, opts.returnUrl, t.withKey ? held : undefined);
-        })
         .catch(() => undefined);
       return;
     }

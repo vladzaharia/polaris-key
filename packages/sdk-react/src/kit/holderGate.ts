@@ -18,7 +18,7 @@ import {
   type SignInPrimitives,
   type SignInSessionHandle,
 } from "@polaris-key/ui-core";
-import { startPageSignIn } from "@polaris-key/ui-core/browser";
+import { openManage, startPageSignIn } from "@polaris-key/ui-core/browser";
 import { primitivesOf } from "@polaris-key/ui-core/browser/sdk/autoPrimitives.js";
 
 import type { DeviceCodeSignInSession, PolarisAdapter } from "../core/index.js";
@@ -163,4 +163,18 @@ export async function portalTarget(
     withKey = false;
   }
   return { url, withKey };
+}
+
+/** The portal, opened with the held key when the link may carry it (`portalTarget`). */
+export async function openPortal(
+  adapter: PolarisAdapter,
+  o: { baseUrl?: string | undefined; product?: string | undefined },
+  held: string | undefined,
+  returnUrl: string | undefined,
+): Promise<void> {
+  const t = await portalTarget(adapter, {
+    ...(o.baseUrl !== undefined ? { baseUrl: o.baseUrl } : {}),
+    ...(o.product !== undefined ? { product: o.product } : {}),
+  });
+  if (t) openManage(t.url, returnUrl, t.withKey ? held : undefined);
 }

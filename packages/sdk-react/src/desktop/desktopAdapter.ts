@@ -99,12 +99,7 @@ import type {
 import type { BootState, StoreStatus } from "@polaris-key/client-core";
 import type { BootResult, BootRunOptions } from "../core/boot.js";
 import type { BootAttempt } from "../core/bootGuard.js";
-import {
-  isWireInstallOutcome,
-  notInstallable,
-  type InstallOptions,
-  type InstallOutcome,
-} from "../core/install.js";
+import { type InstallOptions, type InstallOutcome } from "../core/install.js";
 import type { CrashTags, CrashTagsOptions } from "../core/crash.js";
 import type {
   UpdateEventEntry,
@@ -139,7 +134,6 @@ import {
   type BridgeHost,
   type KitView,
   type BridgeOidcBegin,
-  type BridgeSignInBegin,
   type BridgeState,
   type PolarisBridge,
 } from "./bridge.js";
@@ -1021,27 +1015,20 @@ export class DesktopAdapter implements PolarisAdapter {
           "unsupported",
         ),
       );
-    const bad = badHint(opts);
-    if (bad)
+    // The hint check and the bag load on demand: a sign-in is rare, and every provider ships
+    // this adapter (SIZE-5).
+    const { signInBag } = await import("./signInBag.js");
+    const made = signInBag(opts);
+    if (typeof made === "string")
       throw this.fail(
         "identity",
-        new PolarisError(ErrorCode.invalidArgument, bad),
+        new PolarisError(ErrorCode.invalidArgument, made),
       );
-    const bag: BridgeSignInBegin = {
-      ...(opts.deviceName ? { deviceName: opts.deviceName } : {}),
-      ...(opts.loginHint ? { loginHint: opts.loginHint } : {}),
-      ...(opts.nameHint ? { nameHint: opts.nameHint } : {}),
-      ...(opts.purpose === "attach" ? { purpose: "attach" as const } : {}),
-      ...(opts.licenseChoice === "app"
-        ? { licenseChoice: "app" as const }
-        : {}),
-    };
+    const bag = made;
     this.setBusy("identity", true);
     let begin: BridgeOidcBegin;
     try {
-      begin = await this.bridge.beginSignIn(
-        Object.keys(bag).length > 0 ? bag : undefined,
-      );
+      begin = await this.bridge.beginSignIn(bag);
     } catch (e) {
       throw this.fail(
         "identity",
@@ -1327,8 +1314,9 @@ export class DesktopAdapter implements PolarisAdapter {
     decision: UpdateDecision,
     opts: InstallOptions = {},
   ): Promise<InstallOutcome> {
+    const lazy = import("./installUpdate.js");
     if (decision.action !== "binary" && decision.action !== "store")
-      return notInstallable(decision);
+      return (await lazy).notInstallable(decision);
     opts.signal?.throwIfAborted();
     if (!this.bridge.invoke || !this.speaksV4())
       return {
@@ -1352,19 +1340,9 @@ export class DesktopAdapter implements PolarisAdapter {
     } finally {
       off?.();
     }
-    if (!isWireInstallOutcome(r))
-      throw new PolarisError(
-        "unknown",
-        "The host answered update.install with something that is not an install outcome.",
-      );
-    if (r.kind !== "restartRequired") return r;
-    return {
-      kind: "restartRequired",
-      version: r.version,
-      restart: async () => {
-        await this.invoke<unknown>("update", "restart");
-      },
-    };
+    return (await lazy).installOutcome(r, async () => {
+      await this.invoke<unknown>("update", "restart");
+    });
   }
 
   /** `invoke("update", "markBootAttempt")`: the host's boot guard counts this launch
@@ -1606,25 +1584,4 @@ function updateError(e: unknown): PolarisError {
   if (code === "network-error" || code === "network")
     return new PolarisError("network", message, code);
   return new PolarisError("unknown", message, code);
-}
-
-/** The renderer-side check of `beginSignIn`'s hints (UK-42.17), mirroring the host's: a message,
- *  or null when they are fine. A wrong hint is an error, never a quiet drop. */
-function badHint(o: SignInOptions): string | null {
-  const text = (v: unknown, max: number): boolean =>
-    v === undefined ||
-    (typeof v === "string" &&
-      v.length <= max &&
-      !/[\u0000-\u001f\u007f]/.test(v));
-  if (!text(o.loginHint, 254)) return "loginHint is too long or not text.";
-  if (!text(o.nameHint, 200)) return "nameHint is too long or not text.";
-  if (o.purpose !== undefined && (o.purpose as string) !== "attach")
-    return 'purpose must be "attach" on the desktop bridge.';
-  if (
-    o.licenseChoice !== undefined &&
-    (o.licenseChoice as string) !== "app" &&
-    (o.licenseChoice as string) !== "card"
-  )
-    return 'licenseChoice must be "app" or "card".';
-  return null;
 }
