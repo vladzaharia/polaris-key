@@ -261,30 +261,30 @@ describe("the sheet is never a trap", () => {
   });
 });
 
-describe("live: the form drives the SDK primitives", () => {
-  const choices: LicenseChoiceView = {
-    state: "choose",
-    keep: false,
-    preselected: "lic_pro",
-    create: null,
-    getLicense: null,
-    choices: [
-      {
-        id: "lic_pro",
-        tierName: "Pro",
-        name: null,
-        origin: "store",
-        access: "seats",
-        seats: { used: 1, limit: 3 },
-        current: false,
-        expiresAt: null,
-        state: "free",
-        replace: null,
-        freeDeviceUrl: null,
-      },
-    ],
-  };
+const choices: LicenseChoiceView = {
+  state: "choose",
+  keep: false,
+  preselected: "lic_pro",
+  create: null,
+  getLicense: null,
+  choices: [
+    {
+      id: "lic_pro",
+      tierName: "Pro",
+      name: null,
+      origin: "store",
+      access: "seats",
+      seats: { used: 1, limit: 3 },
+      current: false,
+      expiresAt: null,
+      state: "free",
+      replace: null,
+      freeDeviceUrl: null,
+    },
+  ],
+};
 
+describe("live: the form drives the SDK primitives", () => {
   function primitivesOf(calls: string[]): SignInPrimitives {
     let answered = false;
     return {
@@ -518,5 +518,146 @@ describe("live: the form drives the SDK primitives", () => {
     expect(onDone).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
     expect(container.textContent).not.toMatch(/\{(name|tier)\}/);
+  });
+});
+
+describe("a key with no account ends at the holders' screens (UK-42.10)", () => {
+  const KEY = "PKEY-TEST-AAAA-BBBB";
+
+  const press = async (c: HTMLElement, key: string) => {
+    fireEvent.click(c.querySelector<HTMLElement>(`[data-key="${key}"]`)!);
+    await flush();
+  };
+  /** Types the key and submits it. */
+  const enterKey = async (c: HTMLElement) => {
+    fireEvent.change(c.querySelector<HTMLInputElement>("#pk-key")!, {
+      target: { value: KEY },
+    });
+    await press(c, "activate.submit");
+  };
+  /** Fills AddToAccount's fields and presses Continue. */
+  const addYourName = async (c: HTMLElement) => {
+    for (const [field, value] of [
+      ["name", "Ada"],
+      ["email", "ada@example.com"],
+    ] as const)
+      fireEvent.change(c.querySelector(`input[data-field="${field}"]`)!, {
+        target: { value },
+      });
+    await press(c, "common.continue");
+  };
+
+  /** The form at ActivateDone: methods, Continue in browser, the choice, a license key, its key. */
+  async function atDone(
+    p: SignInPrimitives,
+    props: { onDone?: () => void } = {},
+  ) {
+    const seed = input("SignIn/methods: web");
+    delete seed.signIn;
+    const { container } = render(
+      <SignIn input={seed} primitives={p} {...props} />,
+    );
+    await flush();
+    fireEvent.click(
+      container.querySelector<HTMLElement>('[data-variant="primary"]')!,
+    );
+    await flush();
+    await press(container, "signin.choice.keyInstead");
+    await enterKey(container);
+    await flush();
+    return container;
+  }
+
+  function primitivesOf(calls: string[], over: Partial<SignInPrimitives> = {}) {
+    const p: SignInPrimitives = {
+      async start(o) {
+        calls.push(`start:${o.channel}:${JSON.stringify(o.hints ?? null)}`);
+        let first = !calls.some((c) => c === "chose");
+        calls.push("chose");
+        return {
+          browserOpened: true,
+          async wait(): Promise<SignInWait> {
+            if (first) {
+              first = false;
+              return { outcome: "choose", grant: "g1", choices };
+            }
+            return { outcome: "signedIn" };
+          },
+          reopen: () => true,
+          cancel: () => {
+            calls.push("cancel");
+          },
+        };
+      },
+      activate: async () => ({ result: "ok" }) as never,
+      attach: async (confirm) => {
+        calls.push(`attach:${confirm}`);
+        return { kind: "ok" };
+      },
+      ...over,
+    };
+    return p;
+  }
+
+  const has = (c: HTMLElement, key: string) =>
+    c.querySelector(`[data-key="${key}"]`) !== null;
+
+  it("shows ActivateDone after a key and Start using ends the form; the key is in no markup", async () => {
+    const onDone = vi.fn();
+    const c = await atDone(primitivesOf([]), { onDone });
+    expect(has(c, "signin.done.start")).toBe(true);
+    expect(c.innerHTML).not.toContain(KEY);
+    await press(c, "signin.done.start");
+    expect(onDone).toHaveBeenCalledOnce();
+  });
+
+  it("Add your name and email: hints, preview, attach", async () => {
+    const calls: string[] = [];
+    const c = await atDone(primitivesOf(calls));
+    await press(c, "activate.recommend.action");
+    await addYourName(c);
+    await flush();
+    expect(calls).toContain(
+      'start:browser:{"loginHint":"ada@example.com","nameHint":"Ada","purpose":"attach"}',
+    );
+    expect(calls.indexOf("attach:false")).toBeGreaterThan(-1);
+    expect(calls.indexOf("attach:false")).toBeLessThan(
+      calls.indexOf("attach:true"),
+    );
+    expect(has(c, "activate.attach.done")).toBe(true);
+    expect(c.innerHTML).not.toContain(KEY);
+  });
+
+  it("Cancel from AddToAccount goes back to Done and cancels the sign-in", async () => {
+    const calls: string[] = [];
+    let release!: () => void;
+    const hold = new Promise<void>((r) => (release = r));
+    const first = primitivesOf(calls);
+    const p = primitivesOf(calls, {
+      async start(o) {
+        // The first start is the choice's; the sign-in AddToAccount runs holds until released.
+        if (!calls.includes("chose")) return first.start(o);
+        return {
+          browserOpened: true,
+          async wait(): Promise<SignInWait> {
+            await hold;
+            return { outcome: "signedIn" };
+          },
+          reopen: () => true,
+          cancel: () => {
+            calls.push("cancel");
+          },
+        };
+      },
+    });
+    const c = await atDone(p);
+    await press(c, "activate.recommend.action");
+    await addYourName(c);
+    await press(c, "common.cancel");
+    expect(calls).toContain("cancel");
+    release();
+    await flush();
+    expect(calls).not.toContain("attach:true");
+    expect(has(c, "activate.recommend.action")).toBe(true);
   });
 });

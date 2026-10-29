@@ -69,6 +69,8 @@ import { GLYPHS, text, type Chrome, type KitCtx } from "./parts.js";
 import type { AutoOutcome } from "@polaris-key/ui-core";
 import type { PolarisAdapter } from "../core/index.js";
 import { useSdkGate, type SdkStep } from "./sdk.js";
+import { holderScreen } from "./holdersLazy.js";
+import type { ActivateDoneProps, AddToAccountProps } from "./holders.js";
 import {
   adoptDesktopStyles,
   adoptKitStyles,
@@ -817,6 +819,9 @@ const GATE_SCREENS: Partial<Record<ComponentName, Model>> = {
 const viewOf = (component: ComponentName, input: UiInput): View =>
   GATE_SCREENS[component]!(contextOf(input));
 
+const DoneScreen = holderScreen<ActivateDoneProps>("ActivateDone");
+const AddScreen = holderScreen<AddToAccountProps>("AddToAccount");
+
 /** The component the gate draws for its state and the sign-in step it is on. */
 function gateScreen(view: View, step: SdkStep): ComponentName | null {
   switch (view.state) {
@@ -922,6 +927,29 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
       )
       ?.focus({ preventScroll: true });
   });
+  // Activation without an account (UK-42): ActivateDone, then AddToAccount, over the license that
+  // just activated. The app waits until the person starts using it.
+  if (driven && (step === "done" || step === "add")) {
+    card.current = null;
+    const Screen = step === "done" ? DoneScreen : AddScreen;
+    return (
+      <Screen
+        {...(props.theme ? { theme: props.theme } : {})}
+        {...(props.className ? { className: props.className } : {})}
+        fill
+        input={sdk.input}
+        onAction={(a: KitAction) => {
+          // The values leave in the press that submits them (S13); the model holds them from here.
+          if (a.key === "common.continue" && step === "add") {
+            if (typeof a.name === "string") sdk.edit("name", a.name);
+            if (typeof a.email === "string") sdk.edit("email", a.email);
+          }
+          sdk.act(a.key);
+          props.onAction?.(a);
+        }}
+      />
+    );
+  }
   const flash = driven ? sdk.toast : null;
   if (view.state === "hidden" || view.state === "licensed") {
     card.current = null;

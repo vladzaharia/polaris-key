@@ -11,10 +11,15 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
-import type { AutoOutcome, UiInput } from "@polaris-key/ui-core";
+import type {
+  AutoOutcome,
+  SignInSessionHandle,
+  UiInput,
+} from "@polaris-key/ui-core";
 import {
   gateInput,
   openManage,
@@ -29,12 +34,17 @@ import type {
   PolarisState,
 } from "../core/index.js";
 
+import type { AddFlow } from "./holderGate.js";
 import { openLink, safeLink } from "./links.js";
 
 export { gateInput, type GateStep };
 
 /** The gate's steps: the key and hand-off steps, and the in-app sign-in form (`signin`). */
 export type SdkStep = GateStep | "signin";
+
+/** ActivateDone and AddToAccount show over the license that just activated: only the person
+ *  leaves them (UK-42). */
+const isHolderStep = (s: SdkStep): boolean => s === "done" || s === "add";
 
 /** `Feature.identityAutosignin`; the generated table stays out of the gate's first load. */
 const AUTOSIGNIN = "identity.autosignin";
@@ -97,6 +107,26 @@ export function useSdkGate(
   const [toast, setToast] = useState<GateToast | null>(null);
   // A sign-in that could not start from a refusal step: its callout (never a silent nothing).
   const [signInFailed, setSignInFailed] = useState(false);
+  // Activation without an account (UK-42). The license key a gate activation took is held in
+  // memory only: for the portal hand-off while Identity is off and for the owned sign-in. It is
+  // never in a snapshot or a view's input, never logged, stored or put in a URL query, and is
+  // dropped when the person leaves ActivateDone, cancels or the gate unmounts.
+  const heldKey = useRef<string | null>(null);
+  // A key activation is in flight: the state it causes must not end the Done step.
+  const activating = useRef(false);
+  // The Done and Add steps are wanted: set the moment a key activates (the render that shows the
+  // step comes later, and a state change in between must not end it), cleared when they are left.
+  const holding = useRef(false);
+  const stepRef = useRef<SdkStep>("home");
+  stepRef.current = step;
+  const addFlow = useRef<AddFlow | null>(null);
+  const addToken = useRef(0);
+  const [addState, redrawAdd] = useReducer((n: number) => n + 1, 0);
+  // The sign-in a holder flow runs in this page: one at a time.
+  const session = useRef<SignInSessionHandle | null>(null);
+  const owning = useRef(false);
+  // Where AddToAccount opened from: ActivateDone, or a screen of the app (the settings row).
+  const addFrom = useRef<SdkStep>("home");
   // The toast lasts a few seconds.
   useEffect(() => {
     if (!toast) return;
@@ -107,7 +137,27 @@ export function useSdkGate(
   // The platform's Back steps back through the gate: each step past Welcome is one history entry.
   const pushed = useRef(false);
   const skipPop = useRef(false);
+  /** Leave AddToAccount: its model and its sign-in are both cancelled. */
+  const dropAdd = useCallback(() => {
+    addToken.current++;
+    const f = addFlow.current;
+    addFlow.current = null;
+    if (f) f.drop();
+    else {
+      const h = session.current;
+      session.current = null;
+      if (h) void Promise.resolve(h.cancel()).catch(() => {});
+    }
+    redrawAdd();
+  }, []);
+  /** Leave Done and AddToAccount: what they held is spent. */
+  const dropHolder = useCallback(() => {
+    heldKey.current = null;
+    holding.current = false;
+    dropAdd();
+  }, [dropAdd]);
   const toHome = useCallback(() => {
+    dropHolder();
     handleRef.current?.cancel?.();
     setHandle(null);
     setStep("home");
@@ -115,7 +165,7 @@ export function useSdkGate(
     setAuto((a) => ({ ...a, seed: a.seed ? { kind: "needsSignIn" } : null }));
     setDismissed(errorRef.current);
     setSubmitted(false);
-  }, []);
+  }, [dropHolder]);
   const enter = useCallback((next: SdkStep, from: string) => {
     setOpener(from);
     setStep(next);
@@ -172,7 +222,20 @@ export function useSdkGate(
   // A hand-off that goes away stops the sign-in it started.
   const handleRef = useRef(handle);
   handleRef.current = handle;
-  useEffect(() => () => handleRef.current?.cancel?.(), []);
+  useEffect(
+    () => () => {
+      handleRef.current?.cancel?.();
+      // Detaching ends the holder flows too (and drops the held key).
+      heldKey.current = null;
+      addToken.current++;
+      addFlow.current?.drop();
+      addFlow.current = null;
+      const h = session.current;
+      session.current = null;
+      if (h) void Promise.resolve(h.cancel()).catch(() => {});
+    },
+    [],
+  );
   // A sign-in that lands, or a license that holds, ends the flow's local steps.
   const nameRef = useRef<string | undefined>(undefined);
   nameRef.current = state.profile?.name ?? state.profile?.email;
@@ -192,8 +255,15 @@ export function useSdkGate(
         });
       handleRef.current?.cancel?.();
       setHandle(null);
-      setStep("home");
-      pushed.current = false;
+      // ActivateDone and AddToAccount stay over the license that just activated.
+      if (
+        !activating.current &&
+        !holding.current &&
+        !isHolderStep(stepRef.current)
+      ) {
+        setStep("home");
+        pushed.current = false;
+      }
     }
   }, [state.status, state.phase]);
   // Automatic sign-in: once at boot, when the page needs one and the product can sign in. What
@@ -290,11 +360,93 @@ export function useSdkGate(
       .catch(fallback);
   }, [adapter, enter]);
 
+  /** A key activated here: the gate shows ActivateDone with the key held in memory. */
+  const keyActivated = useCallback(
+    (v: string) => {
+      heldKey.current = v;
+      holding.current = true;
+      setKey("");
+      setSubmitted(false);
+      setDismissed(errorRef.current);
+      enter("done", "activate.submit");
+    },
+    [enter],
+  );
+
+  /** Start using the app (Done's primary, and "continue without an account"): the gate closes its
+   *  steps and the key is dropped. */
+  const finish = useCallback(() => {
+    leave();
+    setKey("");
+    setOpener(null);
+  }, [leave]);
+
+  /** Add your name and email: with Identity on, AddToAccount; with it off, the portal. The holder
+   *  flows load now, not with the gate. */
+  const addToAccount = useCallback(() => {
+    if (!adapter) return;
+    if (!adapter.snapshot().capabilities.identity.enabled) {
+      const held = heldKey.current ?? undefined;
+      void import("./holderGate.js")
+        .then((m) =>
+          m.portalTarget(adapter, {
+            ...(ctx?.baseUrl !== undefined ? { baseUrl: ctx.baseUrl } : {}),
+            ...(ctx?.productSlug !== undefined
+              ? { product: ctx.productSlug }
+              : {}),
+          }),
+        )
+        .then((t) => {
+          if (t)
+            openManage(t.url, opts.returnUrl, t.withKey ? held : undefined);
+        })
+        .catch(() => undefined);
+      return;
+    }
+    if (stepRef.current === "add") return;
+    dropAdd();
+    addFrom.current = stepRef.current;
+    const token = ++addToken.current;
+    void import("./holderGate.js").then((m) => {
+      if (token !== addToken.current || !alive.current) return;
+      addFlow.current = m.createAddFlow(adapter, session, "device", () =>
+        redrawAdd(),
+      );
+      holding.current = true;
+      enter("add", "activate.recommend.action");
+    });
+  }, [adapter, ctx, opts.returnUrl, dropAdd, enter]);
+
+  /** "Sign in to that account" on a license-owned refusal: sign in in this page and complete with
+   *  the key just entered (D17). One sign-in at a time: a second press while one is live does
+   *  nothing. Where the page cannot run it, the gate's own sign-in runs as before. */
+  const ownedSignIn = useCallback(() => {
+    if (!adapter || owning.current || session.current) return;
+    owning.current = true;
+    const k = key.trim();
+    void import("./holderGate.js")
+      .then((m) => m.ownedSignIn(adapter, session, k))
+      .catch(() => "fallback" as const)
+      .then((r) => {
+        owning.current = false;
+        if (!alive.current) return;
+        if (r === "fallback") signIn();
+        else if (r === "signedIn") finish();
+      });
+  }, [adapter, key, signIn, finish]);
+
   const act = useCallback(
     (k: string) => {
       if (!adapter) return;
       switch (k) {
         case "signin.key.ownedSignIn": {
+          // The license is in an account already (AddToAccount's owned state): the gate's own
+          // sign-in.
+          if (step === "add") {
+            handleRef.current?.cancel?.();
+            signIn();
+            return;
+          }
           // Where the build cannot sign in itself, the product's sign-in page is the link.
           if (!state.capabilities.identity.enabled) {
             const url = safeLink(
@@ -308,7 +460,7 @@ export function useSdkGate(
             return;
           }
           handleRef.current?.cancel?.();
-          signIn();
+          ownedSignIn();
           return;
         }
         case "welcome.signIn":
@@ -355,7 +507,8 @@ export function useSdkGate(
         case "activate.submit": {
           setSubmitted(true);
           const v = key.trim();
-          if (v)
+          if (v) {
+            activating.current = true;
             void adapter
               .activateWithKey(v)
               .then((r) => {
@@ -366,10 +519,37 @@ export function useSdkGate(
                     key: "signin.key.entriesLeftShort",
                     args: { left: Math.max(0, e.limit - e.used) },
                   });
+                // No account: the license is floating, held by the key alone. ActivateDone.
+                if (alive.current) keyActivated(v);
+                activating.current = false;
               })
-              .catch(() => undefined);
+              .catch(() => {
+                activating.current = false;
+              });
+          }
           return;
         }
+        case "activate.recommend.action":
+          // ActivateDone's card, and AccountAndLicense's "Not in an account" row.
+          addToAccount();
+          return;
+        case "activate.recommend.skip":
+        case "signin.done.start":
+          finish();
+          return;
+        case "activate.waitingSignIn":
+          // The license waits for its email's account: the gate's own sign-in.
+          handleRef.current?.cancel?.();
+          signIn();
+          return;
+        case "common.continue":
+          if (step === "add") void addFlow.current?.model.submit();
+          return;
+        case "activate.otherEmail.verify":
+        case "signin.auto.confirm.other":
+          // A different email: back to the form with the fields kept.
+          if (step === "add") void addFlow.current?.model.cancel();
+          return;
         case "signin.key.addInLocker": {
           // The refusal's manage link: where the key is added to the account.
           const url = state.error.license?.manageUrl;
@@ -404,9 +584,21 @@ export function useSdkGate(
         }
         case "common.cancel":
         case "common.back":
+          if (step === "add" && addFrom.current === "done") {
+            // AddToAccount's Cancel goes back to ActivateDone, the key still held.
+            dropAdd();
+            setStep("done");
+            return;
+          }
           leave();
           return;
         case "common.tryAgain":
+          if (step === "add") {
+            void addFlow.current?.model.tryAgain();
+            return;
+          }
+          void adapter.refresh({ force: true }).catch(() => undefined);
+          return;
         case "common.reconnect":
           void adapter.refresh({ force: true }).catch(() => undefined);
           return;
@@ -425,10 +617,20 @@ export function useSdkGate(
       enter,
       leave,
       auto.seed,
+      ownedSignIn,
+      addToAccount,
+      keyActivated,
+      finish,
+      dropAdd,
     ],
   );
 
   const edit = useCallback((field: string, value: string) => {
+    // AddToAccount's fields are held by its model.
+    if (field === "name" || field === "email") {
+      addFlow.current?.model.setField(field, value);
+      return;
+    }
     if (field !== "key") return;
     setKey(value);
     setSubmitted(false);
@@ -447,6 +649,10 @@ export function useSdkGate(
               handle,
               secondsLeft,
               dismissed,
+              deviceKind: "device",
+              ...(addFlow.current
+                ? { addToAccount: addFlow.current.model.input().addToAccount }
+                : {}),
               ...(opts.locale !== undefined ? { locale: opts.locale } : {}),
             }),
             signInFailed && (step === "activate" || step === "home"),
@@ -463,6 +669,7 @@ export function useSdkGate(
       dismissed,
       signInFailed,
       opts.locale,
+      addState,
     ],
   );
   if (!ctx || !input) return null;

@@ -287,9 +287,10 @@ export function PolarisKeyProvider(
       ...(origins.length > 0 ? { backend: { origins } } : {}),
       ...(version !== undefined ? { version } : {}),
       productSlug,
+      ...(baseUrl !== undefined ? { baseUrl } : {}),
       ...(props.autoSignIn === false ? { autoSignIn: false as const } : {}),
     };
-  }, [adapter, originsKey, version, productSlug, props.autoSignIn]);
+  }, [adapter, originsKey, version, productSlug, baseUrl, props.autoSignIn]);
   return (
     <PolarisContext.Provider value={value}>{children}</PolarisContext.Provider>
   );

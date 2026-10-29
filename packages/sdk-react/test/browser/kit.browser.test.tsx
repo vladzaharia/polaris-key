@@ -77,6 +77,7 @@ const FAMILIES = [
   "settings",
   "paywall",
   "cloudSync",
+  "holders",
 ] as const;
 
 const matrix = matrixJson as Obj & { vocabulary: Obj & { defaults: Obj } };
@@ -358,7 +359,8 @@ async function mount(
           ? "K7QF-2M9D-XR4T-8WHB-3JNC-6PEZ-V5GD-HT0S"
           : undefined
       }
-      fill={LAYOUTS[fixture.component].kind === "screen"}
+      // The holders' screens (UK-42) carry their own layouts: both own the window.
+      fill={(LAYOUTS[fixture.component]?.kind ?? "screen") === "screen"}
       theme={{
         product: PRODUCT,
         colorScheme: preset === "native" ? "system" : scheme,

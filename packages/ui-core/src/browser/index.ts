@@ -7,6 +7,7 @@
 export {
   GateDriver,
   createBrowserClient,
+  handleOf,
   openManage,
   parseGateConfig,
   type BrowserClientSeams,

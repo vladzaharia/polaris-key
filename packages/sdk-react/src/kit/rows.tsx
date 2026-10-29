@@ -829,6 +829,17 @@ export function accountRows(c: KitCtx): ReactNode {
   const pre: ReactNode[] = [];
   if (has("account.tier") && usable("account.tier"))
     pre.push(accountRow("account.tier", text(c, "account.tier")));
+  // A license held by a key alone (UK-42): the row says so and offers Add your name and email.
+  if (has("account.notInAccount") && usable("account.notInAccount"))
+    pre.push(
+      accountRow(
+        "account.notInAccount",
+        text(c, "account.notInAccount"),
+        has("activate.recommend.action")
+          ? button(c, "activate.recommend.action", "secondary")
+          : null,
+      ),
+    );
   if (has("account.devices")) {
     const d = input.account?.devices;
     pre.push(

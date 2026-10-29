@@ -24,6 +24,7 @@ import {
   UpdatePrompt,
 } from "@polaris-key/react/kit";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
+import { DrivenSettings } from "../src/kit/drive.js";
 import type { BridgeActivation, BridgeState } from "../src/desktop/bridge.js";
 import {
   NOW_SEC,
@@ -651,6 +652,12 @@ describe("what a finished activation or sign-in leaves over the app", () => {
     const field = await toActivate(m.container);
     fireEvent.change(field, { target: { value: KEY } });
     fireEvent.click(control(m.container, "activate.submit")!);
+    // ActivateDone first (UK-42): the toast shows over the app once Start using is pressed.
+    await vi.waitFor(() => {
+      if (!control(m.container, "signin.done.start"))
+        throw new Error("no Done");
+    });
+    fireEvent.click(control(m.container, "signin.done.start")!);
     const toast = await waitFor(() => {
       const t = m.container.querySelector('[data-part="toast"]');
       expect(t).not.toBeNull();
@@ -690,5 +697,56 @@ describe("what a finished activation or sign-in leaves over the app", () => {
     expect(toast.textContent).toContain("Signed in as Ada Lovelace");
     expect(toast.textContent).toContain("Pro license");
     m.adapter.dispose();
+  });
+});
+
+describe("the account pane's Not in an account row (UK-42.10)", () => {
+  const floating = () =>
+    okBridgeState({
+      doc: makeDoc({
+        profile: { name: "", firstName: "", email: "", activatedAt: 900 },
+      }),
+    });
+
+  /** The account pane a desktop host's menu opens, over a bridge in this state. */
+  const pane = (state: BridgeState) => {
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(state),
+      now: () => NOW_SEC,
+    });
+    return {
+      adapter,
+      ...render(<DrivenSettings adapter={adapter} onDismiss={() => {}} />),
+    };
+  };
+
+  it("shows the row for a floating license and opens AddToAccount in place; Cancel returns", async () => {
+    const { adapter, container } = pane(floating());
+    await waitFor(() =>
+      expect(control(container, "activate.recommend.action")).not.toBeNull(),
+    );
+    fireEvent.click(control(container, "activate.recommend.action")!);
+    await waitFor(() =>
+      expect(
+        container.querySelector('input[data-field="email"]'),
+      ).not.toBeNull(),
+    );
+    fireEvent.click(control(container, "common.cancel")!);
+    await waitFor(() =>
+      expect(control(container, "activate.recommend.action")).not.toBeNull(),
+    );
+    adapter.dispose();
+  });
+
+  it("an account signed in on this device is never called floating", async () => {
+    const { adapter, container } = pane(okBridgeState());
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-key="account.title"]'),
+      ).not.toBeNull(),
+    );
+    // A holder with an email is waiting for that account: no Add row.
+    expect(control(container, "activate.recommend.action")).toBeNull();
+    adapter.dispose();
   });
 });
