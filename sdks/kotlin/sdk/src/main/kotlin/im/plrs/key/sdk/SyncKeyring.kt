@@ -20,6 +20,10 @@
 //    its own Keystore alias (`androidSyncRootStorage`); on a JVM desktop it is the owner-only 0600
 //    file the device keys use (the JVM has no OS keyring); with no state directory it is memory
 //    only, and `status().rootPersistence` says so.
+//  - The platform backup (`KeyringOptions.backup`, U-39.10; Block Store on the Play flavour, see
+//    SyncKeyringBackup.kt): a root acquired by create, reset, recover or unlock is saved to it; a
+//    device with no wrap opens the ring from it before the recovery code is asked for. `forget()`
+//    keeps it (R-11); `removeBackup()` deletes it.
 
 package im.plrs.key.sdk
 
@@ -50,6 +54,7 @@ public class SyncKeyring internal constructor(private val core: CoreContext, opt
     private val gate = Mutex()
     private val memory = RingMemory()
     private val vault = RingVault(core, options)
+    private val backup = RingBackup(core, options)
     private val wire = RingWire(core)
     private var port: DeviceKeyPort? = options.keys
     private var ring: SyncKeyringRing? = null
@@ -99,12 +104,19 @@ public class SyncKeyring internal constructor(private val core: CoreContext, opt
     /**
      * Sign-out: forgets every root, in memory and in storage, and drops the pin, so the next person
      * on this device starts clean. A root that cannot be deleted throws, so the sign-out stops
-     * rather than leave it behind.
+     * rather than leave it behind. The platform backup stays (R-11): another device, or this one
+     * signed in again, opens the ring from it. [removeBackup] deletes it.
      */
     public suspend fun forget(): Unit = gate.withLock {
         lock()
         vault.clear()
     }
+
+    /**
+     * Deletes the platform backup of the root. Call it from "Start over" and account deletion, never
+     * from a sign-out (R-11); [reset] replaces the entry itself. False when the OS refused the delete.
+     */
+    public suspend fun removeBackup(): Boolean = gate.withLock { backup.remove() }
 
     /** The pinned ring, or null before this client first acquired a root. Only [forget] drops it. */
     public suspend fun pin(): SyncRingPin? = vault.pin()
@@ -166,12 +178,23 @@ public class SyncKeyring internal constructor(private val core: CoreContext, opt
         val stored = storedRoot(served)
         if (stored != null) {
             hold(stored, store = false)
+            backup.ensure(stored)
             decided(unlocked)
         }
-        val wrap = state.wrap ?: decided(SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap))
-        val root = openOwnWrap(ring, wrap, kid) ?: decided(UNUSABLE)
-        hold(HeldRoot(ring.ringId, ring.epoch, kid, root), store = true)
-        return unlocked
+        val wrap = state.wrap
+        val viaWrap = wrap?.let { openOwnWrap(ring, it, kid) }
+        if (viaWrap != null) {
+            hold(HeldRoot(ring.ringId, ring.epoch, kid, viaWrap), store = true)
+            return unlocked
+        }
+        // A new device has no wrap yet: the platform backup opens the ring silently, before the recovery code is asked for.
+        val viaBackup = backup.find(served, kid)
+        if (viaBackup != null) {
+            hold(HeldRoot(ring.ringId, ring.epoch, kid, viaBackup), store = true, backup = false)
+            depositOwnWrap()
+            return unlocked
+        }
+        decided(if (wrap == null) SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap) else UNUSABLE)
     }
 
     private suspend fun openOwnWrap(ring: SyncKeyringRing, wrap: SyncKeyringWrapInfo, kid: ByteArray): ByteArray? {
@@ -348,12 +371,14 @@ public class SyncKeyring internal constructor(private val core: CoreContext, opt
 
     /**
      * Takes a freshly acquired root: pinned first (no root is held without a pin), then kept in
-     * storage (a failure there leaves the root in memory only), then held.
+     * storage (a failure there leaves the root in memory only), saved to the platform backup when
+     * [backup] (a failure there is not an error), then held.
      */
-    private suspend fun hold(h: HeldRoot, store: Boolean) {
+    private suspend fun hold(h: HeldRoot, store: Boolean, backup: Boolean = store) {
         val pinned = SyncRingPin(h.ringId, h.epoch, hex(h.kid))
         if (vault.pin() != pinned) vault.writePin(pinned)
         if (store) vault.save(SyncRootRecord(h.ringId, h.epoch, hex(h.kid), Base64Url.encode(h.root)))
+        if (backup) this.backup.save(h)
         val old = memory.held
         val others = if (old != null && (old.ringId != h.ringId || old.epoch != h.epoch)) memory.others + old else memory.others
         memory.set(h, others)

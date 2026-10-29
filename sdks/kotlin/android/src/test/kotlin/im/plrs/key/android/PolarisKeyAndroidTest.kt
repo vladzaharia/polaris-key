@@ -16,6 +16,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -48,6 +49,19 @@ class PolarisKeyAndroidTest {
         // A store the host set is kept.
         val mine = InMemoryStore("diceroll")
         assertSame(mine, PolarisKeyAndroid.client(ctx, options(mine)).core.store)
+    }
+
+    @Test
+    fun theKeyRingBacksUpItsRootOnThePlayFlavourOnlyAndAHostChoiceWins() {
+        val ring = options().withAndroidKeyring(ctx, "diceroll").keyring
+        if (PolarisKeyAndroid.flavor == "play") {
+            assertTrue("Block Store on play", ring.backup is AndroidPlatformBackupStore)
+        } else {
+            assertNull("direct has no Block Store", ring.backup)
+        }
+        val mine = im.plrs.key.core.InMemoryPlatformBackupStore()
+        val chosen = options().copy(keyring = im.plrs.key.sdk.KeyringOptions(backup = mine)).withAndroidKeyring(ctx, "diceroll")
+        assertSame(mine, chosen.keyring.backup)
     }
 
     @Test
