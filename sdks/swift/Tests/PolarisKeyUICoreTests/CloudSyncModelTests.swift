@@ -83,7 +83,10 @@ final class CloudSyncModelTests: XCTestCase {
 
     func testStartOverRunsOnlyFromItsWarning() async {
         let calls = Calls()
-        let model = UnlockSyncModel(host: host(calls), armDelay: .milliseconds(5))
+        // The arm delay never elapses until the test advances it: no real sleep, no race.
+        let clock = ArmClock()
+        let model = UnlockSyncModel(
+            host: host(calls), armDelay: .milliseconds(500), sleep: { _ in await clock.wait() })
         await model.confirmStartOver()
         var resets = await calls.resets
         XCTAssertEqual(resets, 0, "no warning shown, nothing replaced")
@@ -95,7 +98,8 @@ final class CloudSyncModelTests: XCTestCase {
         await model.confirmStartOver()
         resets = await calls.resets
         XCTAssertEqual(resets, 0, "a tap right after the warning appears does not reset")
-        try? await Task.sleep(for: .milliseconds(30))
+        await clock.advance()
+        await waitArmed(model)
         var shown: String?
         model.onStartedOver = { shown = $0 }
         await model.confirmStartOver()
@@ -273,6 +277,24 @@ private actor Attempts {
     func next() -> Int {
         n += 1
         return n
+    }
+}
+
+/// The arm delay's clock, advanced by hand: `wait()` returns only after `advance()`.
+private actor ArmClock {
+    private var elapsed = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        if elapsed { return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func advance() {
+        elapsed = true
+        let all = waiters
+        waiters = []
+        for w in all { w.resume() }
     }
 }
 
