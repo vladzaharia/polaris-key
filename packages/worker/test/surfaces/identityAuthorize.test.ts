@@ -463,9 +463,8 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
   });
 
   describe("key_return (LK-SKIP, §12.4.2)", () => {
-    /** The request view for a fresh `authorize`, as the binding browser reads it. */
-    async function viewOf(over: Record<string, string | null>) {
-      const { handle, binder } = await begin(over);
+    /** The request view of a handle, as the binding browser reads it. */
+    async function viewAt(handle: string, binder: string) {
       const res = await handlePortalApi(
         new Request(`${BASE}/api/signin/requests/${handle}`, {
           headers: { cookie: binder },
@@ -477,6 +476,11 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
       );
       expect(res.status).toBe(200);
       return (await res.json()) as Record<string, unknown>;
+    }
+    /** The request view for a fresh `authorize`. */
+    async function viewOf(over: Record<string, string | null>) {
+      const { handle, binder } = await begin(over);
+      return viewAt(handle, binder);
     }
     const gate = (v: string | undefined) =>
       ((env as unknown as Record<string, string | undefined>)[
@@ -521,16 +525,7 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
     it("a request recorded while the gate was on stops offering the skip once it is off", async () => {
       const { handle, binder } = await begin({ key_return: "allow" });
       gate("off");
-      const res = await handlePortalApi(
-        new Request(`${BASE}/api/signin/requests/${handle}`, {
-          headers: { cookie: binder },
-        }),
-        env,
-        db,
-        `/api/signin/requests/${handle}`,
-        NOW,
-      );
-      expect("keyReturn" in ((await res.json()) as object)).toBe(false);
+      expect("keyReturn" in (await viewAt(handle, binder))).toBe(false);
     });
 
     it("refuses a repeated key_return", async () => {

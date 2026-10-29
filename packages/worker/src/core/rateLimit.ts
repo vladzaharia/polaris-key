@@ -103,6 +103,11 @@ const FAIL_MODE: Record<string, FailMode> = {
   connectRelayTicket: "closed",
   connectRelayUpgrade: "closed",
   identityLink: "closed",
+  // LK-SKIP: the card's key return looks a licence key up with no account behind the request
+  // (per client network, then per request handle), so with the limiter gone it must not become an
+  // unmetered lookup.
+  identityKeyReturn: "closed",
+  identityKeyReturnRequest: "closed",
   identityLinkDevice: "closed",
   adminLogin: "closed",
   adminCallback: "closed",

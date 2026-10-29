@@ -130,6 +130,7 @@ import {
   handleSignInCancel,
   handleSignInContinue,
 } from "../passthrough/continue.js";
+import { handleSignInKeyReturn } from "../passthrough/keyReturn.js";
 import {
   handleActivatePreview,
   handleClaimKey,
@@ -1970,6 +1971,21 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
     accept: (s) => s[1] !== "requests",
     handler: (c, m) =>
       handleCardApi(c.req, c.env, c.db, ["signin", ...m.rest], c.now),
+  },
+  // LK-SKIP (WIRE-CONTRACT-V5 §12.4.2): "Continue without an account". The binder cookie, not a
+  // session; the handler owns the method, origin, body and budget checks (`passthrough/keyReturn.ts`).
+  {
+    path: "signin/requests/:request/key",
+    auth: "none",
+    handler: (c, m) =>
+      handleSignInKeyReturn(
+        c.req,
+        c.env,
+        c.db,
+        m.params.request!,
+        c.now,
+        c.settings,
+      ),
   },
   // PX-W9 (WIRE-CONTRACT-V4 §12.2 rule 8): the login card's signed-out key preview. Read-only and
   // never counted; it charges its own per-network bucket (`selfService.ts`).

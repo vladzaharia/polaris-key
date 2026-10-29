@@ -70,6 +70,7 @@ export const LAUNCH_GATES: readonly SettingDef[] = [
     confirm: { on: "L1", off: "L0" },
     readers: [
       "services/identity/passthrough/authorize.ts",
+      "services/identity/passthrough/keyReturn.ts",
       "services/identity/passthrough/routes.ts",
     ],
     storage: { kind: "scalar", storedAs: "LAUNCH_IDENTITY_RETURNKEY" },
