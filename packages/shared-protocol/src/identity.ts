@@ -840,7 +840,9 @@ export interface RestoreTokenParams {
   grant_type: typeof RESTORE_GRANT_TYPE;
   /** The product slug. */
   client_id: string;
+  /** Matches {@link RESTORE_ID_PATTERN}. */
   restore_id: string;
+  /** Matches {@link RESTORE_SECRET_PATTERN}. */
   restore_secret: string;
   /** The device's signing key, raw 32 bytes in base64url. */
   device_key: string;
@@ -855,12 +857,51 @@ export interface RestoreTokenParams {
 /** §12.11.8: a silent restore's `200` is the exchange's (§12.11.3): a device token. */
 export type RestoreTokenResponse = ExchangeTokenResponse;
 
-/** §12.11.8: `POST /<p>/identity/restore`. `restoreId` is the id of the item the device holds. */
+/**
+ * §12.11.8: the consent a restore asks for. A restore proves a key, not a provider token, so `as`
+ * names no provider and carries no address. {@link ExchangeConsentView} is unchanged.
+ */
+export type RestoreConsentView = Omit<ExchangeConsentView, "as"> & {
+  as: { provider: null; email: null };
+};
+
+/** §12.11.8: a restore's `confirm`: {@link ConfirmSignIn} with a {@link RestoreConsentView}. */
+export interface RestoreConfirmSignIn extends Omit<ConfirmSignIn, "consent"> {
+  consent: RestoreConsentView;
+}
+
+/**
+ * §12.11.8: the flat `403` of a restore. Only `terms` is possible: there is no `no_link`, so no
+ * `linkHandle` and no `expiresIn`.
+ */
+export interface RestoreInterstitialRequiredBody {
+  error: "interstitial_required";
+  reason: "terms";
+  url: string;
+}
+
+/**
+ * §12.11.8: the bodies a restore grant answers with beyond the errors of §12.5. `200`: a device
+ * token, `confirm` or `choose`; `403`: `interstitial_required` with reason `terms`.
+ */
+export type RestoreTokenResult =
+  | RestoreTokenResponse
+  | RestoreConfirmSignIn
+  | PendingSignIn
+  | RestoreInterstitialRequiredBody;
+
+/**
+ * §12.11.8: `POST /<p>/identity/restore`. `restoreId` is the id of the item the device holds;
+ * when present it matches {@link RESTORE_ID_PATTERN}, and anything else is `400 bad_request`.
+ */
 export interface RestoreKeyRequest {
   restoreId?: string;
 }
 
-/** §12.11.8: `200`. The id is a live key of this product and subject; `checkedAt` moved. */
+/**
+ * §12.11.8: `200`. The id is a live key of this product and subject, held by the calling device
+ * and under 90 days old; `checkedAt` moved. Any other id gets the `201` instead.
+ */
 export interface RestoreKeyCurrent {
   status: "current";
 }
