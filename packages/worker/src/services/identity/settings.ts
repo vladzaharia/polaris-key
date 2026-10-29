@@ -424,8 +424,8 @@ const PS_PLAY_APP = audienceSetting(
 );
 const PS_PLAY_SERVER = audienceSetting(
   "identity.platformSignIn.playGames.serverClientId",
-  "Play Games web client id",
-  "The web client of the Play Games game server credential. Its client secret is set under Keys & secrets.",
+  "Play Games server client id",
+  "The Web client id of the game server credential. Set its secret in Credentials.",
   ["play games", "pgs", "google", "oauth", "server client"],
   GOOGLE_ID_SPEC,
   null,

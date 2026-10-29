@@ -24,6 +24,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { HttpError, type ProductSetting } from "../../api.js";
+import { errorCopy } from "../../lib/errorCopy.js";
 import { ErrorState } from "../../ui/ErrorState.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { SourceBadge, type Source } from "../../ui/SourceBadge.js";
@@ -76,6 +77,24 @@ const BADGE: Record<ProductSetting["source"], Source> = {
 /** A write refused because the setting changed since the row was read. */
 const isConflict = (e: unknown): boolean =>
   e instanceof HttpError && e.status === 409;
+
+/** The words of a refused id: one the platform reserves, or one another product already holds. */
+function describeWrite(e: unknown): { title: string; description?: string } {
+  if (e instanceof HttpError) {
+    const top = (e.body ?? {}) as { reserved?: unknown; error?: unknown };
+    const nested = (top.error ?? {}) as { reserved?: unknown };
+    if (
+      e.reason === "invalid_value" &&
+      (top.reserved === true || nested.reserved === true)
+    )
+      return {
+        title: "That id belongs to Polaris Key's own sign-in. Use your own.",
+      };
+    if (e.reason === "value_claimed")
+      return { title: "Another product already uses this id." };
+  }
+  return errorCopy(e, { thing: "Setting" });
+}
 
 /** `product:licensing.anchorPolicy` → `.pkey/product`'s `licensing.anchorPolicy`. */
 function manifestFile(path: string | null): string {
@@ -308,6 +327,7 @@ function ProductSettingRow({
         />
       }
       isConflict={isConflict}
+      describeError={describeWrite}
       reload={async () => onConflict()}
       consequences={(to) => [
         ...(copy?.consequences?.(to, who) ?? []),

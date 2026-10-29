@@ -35,6 +35,18 @@ export interface KindSpec {
   pin?: PinSpec;
   /** `asc-webhook-secret`: the Worker can generate the value. */
   generate?: boolean;
+  /** What a kind that serves no channel serves, in the table and the detail ("Sign-in"). */
+  serves?: string;
+  /** The ID a new credential of this kind starts with; it then follows the fields. */
+  defaultId?: string;
+  /** The title of the Set drawer when this kind is the only one offered. */
+  setTitle?: string;
+  /** The pin comes before the secret (the order Google Cloud shows them). */
+  pinFirst?: boolean;
+  /** The product setting the pin is prefilled from. */
+  pinFromSetting?: { area: string; key: string };
+  /** What deleting it stops, in the delete confirm. */
+  deleteConsequence?: string;
 }
 
 export const KINDS: KindSpec[] = [
@@ -107,6 +119,8 @@ export const KINDS: KindSpec[] = [
     label: "Sentry internal integration",
     description:
       "Verifies Sentry's alert webhooks, which open halt candidates.",
+    deleteConsequence:
+      "Sentry alerts stop opening halt candidates until another is set.",
     fields: [
       {
         key: "clientSecret",
@@ -159,10 +173,20 @@ export const KINDS: KindSpec[] = [
     value: "pgs-server-client",
     label: "Play Games server credential",
     description:
-      "Lets Polaris Key redeem Play Games sign-in codes for your game. Serves sign-in, not a store.",
+      "Lets Polaris Key redeem Play Games sign-in codes for your game.",
+    serves: "Sign-in",
+    defaultId: "play-games-server",
+    setTitle: "Set the Play Games server credential",
+    pinFirst: true,
+    pinFromSetting: {
+      area: "identity.platformSignIn",
+      key: "identity.platformSignIn.playGames.serverClientId",
+    },
+    deleteConsequence:
+      "Players can't sign in with Play Games until another is set.",
     pin: {
       label: "Play Games server client id",
-      help: "The Web client id this secret belongs to, such as 1234567890-abc.apps.googleusercontent.com. It must match the server client id in Platform sign-in.",
+      help: "The Web client id this secret belongs to. It must match the Play Games server client id in Platform sign-in.",
       inputMode: "text",
     },
     fields: [
@@ -170,7 +194,7 @@ export const KINDS: KindSpec[] = [
         key: "clientSecret",
         label: "Client secret",
         secret: true,
-        help: "The Web client's secret from Google Cloud. 8 to 512 characters, no spaces.",
+        help: "The Web client's secret from Google Cloud.",
       },
     ],
   },
@@ -220,4 +244,11 @@ export function sharedLine(
 ): string[] {
   const names = c ? (alsoUsedBy?.(c.kind) ?? []) : [];
   return names.length ? [`It is also used by ${names.join(" and ")}.`] : [];
+}
+
+/** "Enter the client secret.": plain words go lower case; names ("Key ID", "Play Games …") stay. */
+export function enterThe(label: string): string {
+  const [first = "", second = ""] = label.split(" ");
+  const plain = /^[A-Z][a-z]+$/.test(first) && !/^[A-Z]/.test(second);
+  return `Enter the ${plain ? `${label[0]!.toLowerCase()}${label.slice(1)}` : label}.`;
 }

@@ -4,12 +4,16 @@
  * it follows.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, within } from "@testing-library/react";
-import type { ProductSetting } from "../src/api.js";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { HttpError, type ProductSetting } from "../src/api.js";
 import { renderAt, resetCore, testQueryClient } from "./coreTestUtils.js";
 import { qk } from "../src/console/data/queries.js";
 
-const fns = vi.hoisted(() => ({ productSettings: vi.fn() }));
+const fns = vi.hoisted(() => ({
+  productSettings: vi.fn(),
+  updateProductSetting: vi.fn(),
+}));
 
 vi.mock("../src/api.js", async () => {
   const actual =
@@ -19,6 +23,7 @@ vi.mock("../src/api.js", async () => {
     api: {
       ...actual.api,
       productSettings: (...a: unknown[]) => fns.productSettings(...a),
+      updateProductSetting: (...a: unknown[]) => fns.updateProductSetting(...a),
     },
   };
 });
@@ -200,5 +205,76 @@ describe("ProductSettingsSection", () => {
     expect(
       (await within(open).findByRole("switch")).hasAttribute("disabled"),
     ).toBe(false);
+  });
+
+  describe("a string row", () => {
+    const id = setting("identity.platformSignIn.playGames.serverClientId", {
+      label: "Play Games server client id",
+      spec: {
+        kind: "string",
+        pattern: "^[0-9]+-[a-z0-9]+\\.apps\\.googleusercontent\\.com$",
+        maxLength: 100,
+      },
+      value: null,
+      defaultValue: null,
+      ownership: "claimable",
+    });
+    const mount = () => {
+      fns.productSettings.mockResolvedValue({ settings: [id] });
+      renderAt(
+        "#/p/djdl/app-sign-in",
+        <ProductSettingsSection
+          slug="djdl"
+          area="identity.platformSignIn"
+          id="s"
+          title="Platform sign-in"
+        />,
+      );
+    };
+
+    it("is a text field: no quotes or null, the format checked as typed, Save sends the text", async () => {
+      fns.updateProductSetting.mockResolvedValue({ setting: id });
+      mount();
+      const field = (await screen.findByRole("textbox", {
+        name: "Play Games server client id",
+      })) as HTMLInputElement;
+      expect(field.value).toBe("");
+      expect(document.body.textContent).not.toContain("null");
+      await userEvent.type(field, "not an id");
+      expect(
+        await screen.findByText("That isn't in the expected format."),
+      ).toBeTruthy();
+      expect(
+        (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(true);
+      await userEvent.clear(field);
+      await userEvent.type(field, "123-web.apps.googleusercontent.com");
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() =>
+        expect(fns.updateProductSetting).toHaveBeenCalledWith(
+          "djdl",
+          id.key,
+          expect.objectContaining({
+            value: "123-web.apps.googleusercontent.com",
+          }),
+        ),
+      );
+    });
+
+    it("says a claimed id is another product's, inline", async () => {
+      fns.updateProductSetting.mockRejectedValue(
+        new HttpError(422, { reason: "value_claimed", message: "claimed" }),
+      );
+      mount();
+      const field = await screen.findByRole("textbox", {
+        name: "Play Games server client id",
+      });
+      await userEvent.type(field, "123-web.apps.googleusercontent.com");
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(
+        await screen.findByText("Another product already uses this id."),
+      ).toBeTruthy();
+    });
   });
 });

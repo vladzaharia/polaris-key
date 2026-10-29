@@ -77,6 +77,18 @@ async function table(): Promise<HTMLElement> {
   return t;
 }
 
+const WITH_KIND = {
+  ...WITH_SENTRY,
+  kinds: [...WITH_SENTRY.kinds, "pgs-server-client"],
+  pins: {
+    ...(WITH_SENTRY as { pins?: object }).pins,
+    "pgs-server-client": {
+      field: "serverClientId",
+      label: "Play Games server client id",
+    },
+  },
+};
+
 /** Types the id, the client secret and any other labelled field, then presses Set credential. */
 async function fillAndSet(
   drawer: HTMLElement,
@@ -85,7 +97,7 @@ async function fillAndSet(
   more: Record<string, string> = {},
 ): Promise<void> {
   const d = within(drawer);
-  await userEvent.type(d.getByLabelText(/Credential ID/), id);
+  if (id) await userEvent.type(d.getByLabelText(/Credential ID/), id);
   await userEvent.type(d.getByLabelText(/Client secret/i), secret);
   for (const [label, value] of Object.entries(more))
     await userEvent.type(d.getByLabelText(new RegExp(label)), value);
@@ -174,7 +186,6 @@ describe("Distribution → Channel credentials", () => {
           body: {
             kind: "sentry-integration",
             value: { clientSecret: "s3cret" },
-            outletId: null,
           },
         }),
       ]),
@@ -183,22 +194,20 @@ describe("Distribution → Channel credentials", () => {
   });
 
   it("offers the Play Games server credential, with its pin, write-only", async () => {
-    const WITH_KIND = {
-      ...WITH_SENTRY,
-      kinds: [...WITH_SENTRY.kinds, "pgs-server-client"],
-      pins: {
-        ...(WITH_SENTRY as { pins?: object }).pins,
-        "pgs-server-client": {
-          field: "serverClientId",
-          label: "Play Games server client id",
-        },
-      },
-    };
     const { calls } = boot(HASH, {
       [P("/outlet-credentials")]: WITH_KIND,
-      [`PUT ${P("/outlet-credentials/pgs-server")}`]: {
+      // The Play Games server client id the product already names prefills the pin.
+      [P("/settings/effective")]: {
+        settings: [
+          {
+            key: "identity.platformSignIn.playGames.serverClientId",
+            value: "1234-web.apps.googleusercontent.com",
+          },
+        ],
+      },
+      [`PUT ${P("/outlet-credentials/play-games-server")}`]: {
         ok: true,
-        id: "pgs-server",
+        id: "play-games-server",
       },
     });
     await table();
@@ -211,9 +220,18 @@ describe("Distribution → Channel credentials", () => {
         name: /Play Games server credential/,
       }),
     );
-    await fillAndSet(drawer, "pgs-server", "pgs-s3cret-value", {
-      "Play Games server client id": "1234-web.apps.googleusercontent.com",
-    });
+    await waitFor(() =>
+      expect(
+        (
+          within(drawer).getByLabelText(
+            /Play Games server client id/,
+          ) as HTMLInputElement
+        ).value,
+      ).toBe("1234-web.apps.googleusercontent.com"),
+    );
+    // No Channel field for a kind that serves sign-in, not a store.
+    expect(within(drawer).queryByText("Channel")).toBeNull();
+    await fillAndSet(drawer, "", "pgs-s3cret-value");
     await waitFor(() =>
       expect(writes(calls)).toEqual([
         expect.objectContaining({
@@ -226,6 +244,54 @@ describe("Distribution → Channel credentials", () => {
       ]),
     );
     expect(document.body.textContent).not.toContain("pgs-s3cret-value");
+  });
+
+  it("opens the Set drawer on the Play Games kind from ?set=, with the usual id", async () => {
+    boot(`${HASH}?set=pgs-server-client`, {
+      [P("/outlet-credentials")]: WITH_KIND,
+    });
+    const drawer = await screen.findByRole("dialog", {
+      name: "Set the Play Games server credential",
+    });
+    expect(within(drawer).queryByRole("combobox", { name: /Kind/ })).toBeNull();
+    expect(
+      (within(drawer).getByLabelText(/Credential ID/) as HTMLInputElement)
+        .value,
+    ).toBe("play-games-server");
+    expect(within(drawer).queryByText("Channel")).toBeNull();
+  });
+
+  it("says deleting the Play Games server credential stops Play Games sign-in", async () => {
+    boot(HASH, {
+      [P("/outlet-credentials")]: {
+        ...WITH_KIND,
+        credentials: [
+          {
+            ...SENTRY,
+            id: "play-games-server",
+            kind: "pgs-server-client",
+            meta: { serverClientId: "1234-web.apps.googleusercontent.com" },
+          },
+        ],
+      },
+    });
+    await screen.findByText("play-games-server");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for play-games-server" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete…" }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    expect(
+      within(confirm).getByText("Delete the credential “play-games-server”?"),
+    ).toBeTruthy();
+    expect(
+      within(confirm).getByText(
+        "Players can't sign in with Play Games until another is set.",
+      ),
+    ).toBeTruthy();
+    expect(within(confirm).queryByText(/Connectors using it/)).toBeNull();
   });
 
   it("warns that reusing an id rotates it, and confirms first (OUT-2)", async () => {
@@ -262,7 +328,6 @@ describe("Distribution → Channel credentials", () => {
           body: {
             kind: "sentry-integration",
             value: { clientSecret: "s3cret" },
-            outletId: null,
           },
         }),
       ]),
