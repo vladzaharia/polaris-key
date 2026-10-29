@@ -93,6 +93,8 @@ func _calls(t: PKeyTestContext) -> void:
 	t.check("choice: complete() stored the token and the subject", bed.sdk.core.tokens.current() == TOKEN_NEW and bed.sdk.core.cache.subject == "ps_abc")
 	var keep := await choice.complete(GRANT, {"kind": "keep"})
 	t.check("choice: keep gives attachable", keep.ok and keep.attachable, str(keep))
+	t.check("choice: keep sends the device's bearer and the other choices send none", bed.choice_requests[3]["headers"].get("authorization", "") == "Bearer " + TOKEN_NEW, str(bed.choice_requests[3]["headers"]))
+	t.check("choice: a licence choice sent no bearer", not bed.choice_requests[2]["headers"].has("authorization"), str(bed.choice_requests[2]["headers"]))
 	var bad := await choice.complete(GRANT, {"kind": "license"})
 	t.check("choice: a license choice without an id is invalid-argument and sends nothing", bad.code == &"invalid-argument" and bed.choice_requests.size() == 4, str(bad))
 	var x := await choice.cancel(GRANT)

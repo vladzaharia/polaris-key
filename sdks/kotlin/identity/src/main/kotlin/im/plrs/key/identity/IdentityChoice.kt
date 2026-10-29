@@ -11,7 +11,7 @@
 // Each call dials the endpoint discovery names, never one it builds, and throws the typed
 // `service-unavailable` N/A (`Feature.identityChoice`, reason `product`) before any request when
 // discovery has none (the session then ran in card mode and never issued a grant). The grant is the
-// credential: no device bearer is sent, and the grant is never printed or put in an error message.
+// credential: no device bearer is sent (but for `keep`, which the device proves with its own token), and the grant is never printed or put in an error message.
 //
 // A refusal the Worker answers (`invalid_grant`, `license_choice_required`, `not_found`, `device_limit`,
 // `rate_limited`, `license_owned`, `key_entry_limit`, ...) is a RESULT, `ChoiceResult.Refused`, like
@@ -210,7 +210,9 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
         // A null choice is the conformance replay's, for the recorded completion that names none.
         choice?.let { body["choice"] = it }
         consent?.let { body["consent"] = it }
-        val res = post(ChoiceEndpoint.Complete, body)
+        // `keep` is proven by the device's own token (the Worker reads it as held); every other choice is made on the grant alone.
+        val held = if (choice?.get("kind").stringValue == "keep") core.token() else null
+        val res = post(ChoiceEndpoint.Complete, body, held)
         if (res.status != 200) return refusal(res, "choice complete")
         val json = JsonText.parseOrNull(res.text)
         val answer = IdentityRedirect.parseTokenAnswer(200, json)
@@ -263,14 +265,17 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
         return url
     }
 
-    private suspend fun post(name: ChoiceEndpoint, body: Map<String, kotlinx.serialization.json.JsonElement>): PolarisResponse {
+    private suspend fun post(name: ChoiceEndpoint, body: Map<String, kotlinx.serialization.json.JsonElement>, bearer: String? = null): PolarisResponse {
         val url = endpoint(name)
         return try {
-            // No authorization header: the grant in the body is the credential.
+            // No authorization header but for `keep`: the grant in the body is the credential.
             core.request(
                 url,
                 method = "POST",
-                headers = mapOf("content-type" to "application/json"),
+                headers = buildMap {
+                    put("content-type", "application/json")
+                    if (!bearer.isNullOrEmpty()) put("authorization", "Bearer $bearer")
+                },
                 body = JsonObject(body).toString().toByteArray(Charsets.UTF_8),
             )
         } catch (e: CancellationException) {

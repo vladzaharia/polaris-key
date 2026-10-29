@@ -90,7 +90,13 @@ func _complete(grant: String, choice: Variant) -> PKeyChoiceResult:
 	var body := {"grant": grant}
 	if choice is Dictionary:
 		body["choice"] = choice
-	var sent := await _post("choiceComplete", body, "choice complete")
+	# `keep` is proven by the device's own token (the Worker reads it as held); every other choice
+	# is made on the grant alone.
+	var held := ""
+	if choice is Dictionary and choice.get("kind") == "keep":
+		var core_now := _identity()._core() if _identity() != null else null
+		held = core_now.tokens.current() if core_now != null else ""
+	var sent := await _post("choiceComplete", body, "choice complete", held)
 	if sent is PKeyChoiceResult:
 		return sent
 	var answer := PKeyIdentityRedirect.parse_token_answer(200, sent["body"])
@@ -188,9 +194,10 @@ static func _choice_wire(choice: Variant) -> Variant:
 	return "choice.kind is license, keep, create or key."
 
 
-## POST `name`'s discovery endpoint with `body` (JSON, no bearer). A PKeyChoiceResult when the call
+## POST `name`'s discovery endpoint with `body` (JSON, no bearer but `bearer` when given: `keep`'s
+## device token). A PKeyChoiceResult when the call
 ## ended (unavailable, transport failure, 5xx, a refusal); else {status, body} of a 2xx.
-func _post(name: String, body: Dictionary, what: String) -> Variant:
+func _post(name: String, body: Dictionary, what: String, bearer: String = "") -> Variant:
 	var identity := _identity()
 	var core := identity._core() if identity != null else null
 	if core == null or not core.started:
@@ -206,7 +213,10 @@ func _post(name: String, body: Dictionary, what: String) -> Variant:
 			PKeyResult.product_detail(PKeyConstants.Feature.IDENTITY_CHOICE, "identity"))
 	if not identity._own(url):
 		return PKeyChoiceResult.failed(PKeyErrors.INVALID_RESPONSE, "The %s endpoint points outside this product." % name)
-	var h := core.headers({"Content-Type": "application/json"})
+	var extra := {"Content-Type": "application/json"}
+	if bearer != "":
+		extra["Authorization"] = "Bearer " + bearer
+	var h := core.headers(extra)
 	var r := await core.transport.request("POST", url, h, PKeyJson.stringify(body).to_utf8_buffer())
 	if not r.ok:
 		return PKeyChoiceResult.failed(r.code if r.code == PKeyErrors.LOCAL_ONLY else PKeyErrors.NETWORK, r.message)
