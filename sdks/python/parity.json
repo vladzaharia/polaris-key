@@ -189,6 +189,11 @@
       "reason": "runtime",
       "note": "No OS account to offer a link from (I-43)."
     },
+    "identity.nearby": {
+      "status": "planned",
+      "wp": "I-47",
+      "note": "Nearby approval (I-40.8 transcripts, I-47). The Node conformance runner replays the nearby-* transcripts with a reference client (I-40.9)."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10a: ActivationOk.key_entries, ActivationKeyEntryLimit(manage_url, key_entries) and ActivationLicenseOwned(sign_in_url); no wipe, no retry."

@@ -1,0 +1,527 @@
+{
+  "transcriptVersion": 1,
+  "id": "nearby-happy",
+  "description": "Nearby approval, the quiet case (WIRE-CONTRACT-V5 §12.11.5). D, a device with no way to sign in, posts its signing and agreement keys with a pkey-proof/1 nearby-start proof and gets a request handle (nr_…, 300 s) and the poll interval (3 s). Its first poll is pending; a second inside the interval is 429 slow_down. M, a signed-in device of the account on the same network, posts approve with the handle, D's two keys and a nearby-approve proof by its own registered key: the account has exactly one licence with a free seat, so it is bound with no further tap and the answer names D's label. D's next poll, after the interval, answers the device token once (D never held a grant). Poll proofs are by the key D sent on start.",
+  "features": ["identity.nearby"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": []
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "note": "Discovery names nearby approval.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 5,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "requires-license",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "deviceKeys": "https://key.plrs.im/djdl/devices/keys"
+                  },
+                  "portal": {
+                    "enabled": true,
+                    "activate": "https://key.plrs.im/activate?product=djdl"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": {
+                    "enabled": true,
+                    "endpoints": {
+                      "activate": "https://key.plrs.im/djdl/license/activate",
+                      "enroll": "https://key.plrs.im/djdl/license/enroll",
+                      "token": "https://key.plrs.im/djdl/license/token",
+                      "deauthorize": "https://key.plrs.im/djdl/license/deauthorize",
+                      "document": "https://key.plrs.im/djdl/license/document"
+                    }
+                  },
+                  "config": {
+                    "enabled": true,
+                    "schemaVersion": 1,
+                    "endpoints": {
+                      "document": "https://key.plrs.im/djdl/config/document",
+                      "schema": "https://key.plrs.im/djdl/config/schema"
+                    },
+                    "mint": { "available": false }
+                  },
+                  "release": { "enabled": false },
+                  "distribution": { "enabled": false },
+                  "update": { "enabled": false },
+                  "identity": {
+                    "enabled": true,
+                    "configured": true,
+                    "issuer": "https://key.plrs.im/djdl/identity",
+                    "account": true,
+                    "keyEntryLimit": 10,
+                    "nearby": true,
+                    "endpoints": {
+                      "session": "https://key.plrs.im/djdl/identity/session",
+                      "sessionLicense": "https://key.plrs.im/djdl/identity/session/license",
+                      "authStart": "https://key.plrs.im/djdl/identity/auth/start",
+                      "authCallback": "https://key.plrs.im/djdl/identity/auth/callback",
+                      "authLogout": "https://key.plrs.im/djdl/identity/auth/logout",
+                      "authDeviceStart": "https://key.plrs.im/djdl/identity/auth/device/start",
+                      "authDeviceEntry": "https://key.plrs.im/djdl/identity/auth/device",
+                      "authDeviceVerify": "https://key.plrs.im/djdl/identity/auth/device/verify",
+                      "authDevicePoll": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                      "authorize": "https://key.plrs.im/djdl/identity/authorize",
+                      "token": "https://key.plrs.im/djdl/identity/token",
+                      "choiceLicenses": "https://key.plrs.im/djdl/identity/choice/licenses",
+                      "choiceDevices": "https://key.plrs.im/djdl/identity/choice/devices",
+                      "choiceComplete": "https://key.plrs.im/djdl/identity/choice/complete",
+                      "choiceCancel": "https://key.plrs.im/djdl/identity/choice/cancel",
+                      "attach": "https://key.plrs.im/djdl/identity/attach",
+                      "subject": "https://key.plrs.im/djdl/identity/subject",
+                      "signout": "https://key.plrs.im/djdl/identity/signout",
+                      "nonce": "https://key.plrs.im/djdl/identity/nonce",
+                      "link": "https://key.plrs.im/djdl/identity/link",
+                      "nearbyStart": "https://key.plrs.im/djdl/identity/nearby/start",
+                      "nearbyApprove": "https://key.plrs.im/djdl/identity/nearby/approve",
+                      "nearbyPoll": "https://key.plrs.im/djdl/identity/nearby/poll",
+                      "accountPortal": "https://key.plrs.im/#/p/djdl"
+                    }
+                  },
+                  "sync": { "enabled": false },
+                  "commerce": { "enabled": false },
+                  "connect": { "enabled": false }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "services": {
+          "license": true,
+          "config": true,
+          "release": false,
+          "distribution": false,
+          "update": false,
+          "identity": true,
+          "sync": false,
+          "commerce": false,
+          "connect": false
+        },
+        "nearby": true,
+        "nearbyEndpoints": true
+      }
+    },
+    {
+      "action": "nearbyStart",
+      "note": "D asks to be approved.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "deviceName": "Living-room console"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/start",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "deviceName": "Living-room console",
+                  "proof": "zk_wvU5LmsL8rb_vu2sa7ew8TS-F4xYgdMPMiS05e69Na5kLjeBN0h2Nly6MeoMNSp1-yMthWfJRo7a5K4o6DQ"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 201,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "request": "nr_pA71hdu4pwET01lPlZ_Pow",
+                "expiresIn": 300,
+                "interval": 3
+              }
+            },
+            "clientIp": "198.51.100.7",
+            "capture": { "request": "$.request" }
+          }
+        ]
+      },
+      "expect": { "result": "ok", "expiresIn": 300, "interval": 3 }
+    },
+    {
+      "action": "nearbyPoll",
+      "note": "Nobody has decided yet.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "request": "nr_pA71hdu4pwET01lPlZ_Pow"
+      },
+      "now": 1700000001,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_pA71hdu4pwET01lPlZ_Pow",
+                  "proof": "iAu04asxRZCOMpTpEJRKwFc3nvK5cv3cNRWViEn8PTEcQE8ebHTsx0oZK3YCCWN7m3WoF1czz5h-qRPS3bsAAQ"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "pending" }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "pending" }
+    },
+    {
+      "action": "nearbyPoll",
+      "note": "Inside the interval.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "request": "nr_pA71hdu4pwET01lPlZ_Pow"
+      },
+      "now": 1700000002,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_pA71hdu4pwET01lPlZ_Pow",
+                  "proof": "iAu04asxRZCOMpTpEJRKwFc3nvK5cv3cNRWViEn8PTEcQE8ebHTsx0oZK3YCCWN7m3WoF1czz5h-qRPS3bsAAQ"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 429,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "slow_down", "interval": 3 }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "slow-down", "interval": 3 }
+    },
+    {
+      "action": "nearbyApprove",
+      "note": "M approves: the only free licence is bound.",
+      "args": {
+        "approverDeviceId": "TRANSCRIPTAPPROVER00000000000001",
+        "approverToken": "pkeyt_aOktnV-Wa1U4CXl9-s31IEuDNeZ0JshnFjNOf_dx9Hs",
+        "approverKeyLabel": "transcript-nearby-m-1",
+        "keyLabel": "transcript-nearby-d-1",
+        "decision": "approve",
+        "request": "nr_pA71hdu4pwET01lPlZ_Pow"
+      },
+      "now": 1700000005,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/approve",
+              "headers": {
+                "x-pkey-device": "{approverDeviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {approverToken}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_pA71hdu4pwET01lPlZ_Pow",
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "decision": "approve",
+                  "proof": "fcBCQxBCDPJ8-ck7zjRRZBChgHBFVW93NvS5q5ORsz5xZ340CtJhZx2jCnwBISzxJ8H15kZeKxjpHQObgxiQBg"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "status": "approved",
+                "deviceLabel": "Living-room console"
+              }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "approved", "deviceLabel": "Living-room console" }
+    },
+    {
+      "action": "nearbyPoll",
+      "note": "D collects its token.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "request": "nr_pA71hdu4pwET01lPlZ_Pow"
+      },
+      "now": 1700000008,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_pA71hdu4pwET01lPlZ_Pow",
+                  "proof": "iAu04asxRZCOMpTpEJRKwFc3nvK5cv3cNRWViEn8PTEcQE8ebHTsx0oZK3YCCWN7m3WoF1czz5h-qRPS3bsAAQ"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_zvutg7Qay8CTkUPAg_rV0Gd0D8ZmJ0G1RADRUBKKyhI",
+                "token_type": "Bearer",
+                "scope": "email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "lic_nearby_0",
+                  "label": "Living-room console",
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000005,
+                  "lastSeen": 1700000008,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": {
+                  "id": "lic_nearby_0",
+                  "status": "active",
+                  "name": "Ada Lovelace",
+                  "email": "ada@example.com",
+                  "tierId": null,
+                  "activatedAt": 1700000000,
+                  "expiresAt": null,
+                  "maxOfflineDays": null,
+                  "channels": [],
+                  "minVersion": null,
+                  "maxVersion": null
+                },
+                "subject": "ps_Wnnfb0uwgWH1iDEe7g0Fbg"
+              }
+            },
+            "clientIp": "198.51.100.7",
+            "capture": { "token": "$.access_token" }
+          }
+        ]
+      },
+      "expect": { "result": "ready", "tokenHeld": true, "scope": "email" }
+    },
+    {
+      "action": "nearbyPoll",
+      "note": "The token is handed over once.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "request": "nr_pA71hdu4pwET01lPlZ_Pow"
+      },
+      "now": 1700000012,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_pA71hdu4pwET01lPlZ_Pow",
+                  "proof": "iAu04asxRZCOMpTpEJRKwFc3nvK5cv3cNRWViEn8PTEcQE8ebHTsx0oZK3YCCWN7m3WoF1czz5h-qRPS3bsAAQ"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "timeout" }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "timeout" }
+    }
+  ]
+}

@@ -1467,6 +1467,31 @@
       "note": "I-43 (plan-auto-sign-in §2.3): after a fresh sign-in (signin-fresh) the SDK may offer to link a Google or Apple identity: offer reads the link state, accept posts the identity proof, decline records the refusal. Pinned by the link-* transcripts recorded in I-43.3. I-46 (React), I-44 (Swift), I-45 (Kotlin) and I-48 (Godot) implement it; Node and Python have no OS account to offer from."
     },
     {
+      "id": "identity.nearby",
+      "family": "devices",
+      "title": "Nearby approval: a signed-in device approves a device that cannot sign itself in",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-40"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser tab cannot show or take part in the mode v handshake that carries the request handle between two nearby devices, and holds no device key of its own."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer holds no device key; the host would play either device."
+        }
+      ],
+      "note": "I-40 (WIRE-CONTRACT-V5 §12.11.5, §12.11.6): with discovery's nearby member and the nearbyStart, nearbyApprove and nearbyPoll endpoints, a device with no way to sign in (D) posts its keys and a pkey-proof/1 nearby-start proof and gets a request handle; a signed-in device nearby (M), over the mode v handshake, posts approve with the handle, D's keys and its own proof, and D's poll collects the device token once. Pinned by the nearby-* transcripts (I-40.8); the Node conformance runner replays them with a reference client that plays both devices (I-40.9). I-44 (Swift), I-45 (Kotlin), I-47 (Node, Python) and I-48 (Godot) implement it; the web has no handshake to carry the request."
+    },
+    {
       "id": "release.changelog",
       "family": "release",
       "title": "Changelog",

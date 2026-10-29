@@ -73,6 +73,7 @@ import { KEYRING_SCENARIOS } from "./keyring.js";
 import { LOCKER_SCENARIOS } from "./locker.js";
 import { EXCHANGE_SCENARIOS } from "./exchange.js";
 import { LINK_SCENARIOS } from "./link.js";
+import { NEARBY_SCENARIOS } from "./nearby.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -127,4 +128,5 @@ export const SCENARIOS: Scenario[] = [
   ...CLOUD_SYNC_SCENARIOS,
   ...KEYRING_SCENARIOS,
   ...CONNECT_SCENARIOS,
+  ...NEARBY_SCENARIOS,
 ];

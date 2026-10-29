@@ -190,6 +190,11 @@
       "wp": "I-44",
       "note": "Link offer (I-43.3 transcripts, I-44)."
     },
+    "identity.nearby": {
+      "status": "planned",
+      "wp": "I-44",
+      "note": "Nearby approval (I-40.8 transcripts, I-44)."
+    },
     "identity.keyentry": {
       "status": "implemented"
     },

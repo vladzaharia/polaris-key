@@ -1,0 +1,411 @@
+{
+  "transcriptVersion": 1,
+  "id": "nearby-choose",
+  "description": "Nearby approval when a licence choice is due (WIRE-CONTRACT-V5 §12.11.5 rules 6 and 7). The account has two licences with a free seat, so the first approve answers 200 choose with the candidates and writes nothing: D's poll stays pending and the request stays open. M approves again with choice {kind:license, licenseId}, which binds that licence, and D's poll answers the token.",
+  "features": ["identity.nearby"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": []
+  },
+  "steps": [
+    {
+      "action": "nearbyStart",
+      "note": "D asks to be approved.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "deviceName": "Living-room console"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/start",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "deviceName": "Living-room console",
+                  "proof": "zk_wvU5LmsL8rb_vu2sa7ew8TS-F4xYgdMPMiS05e69Na5kLjeBN0h2Nly6MeoMNSp1-yMthWfJRo7a5K4o6DQ"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 201,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "request": "nr_Z06AiUZgvrNztoSJ9UB_5g",
+                "expiresIn": 300,
+                "interval": 3
+              }
+            },
+            "clientIp": "198.51.100.7",
+            "capture": { "request": "$.request" }
+          }
+        ]
+      },
+      "expect": { "result": "ok", "expiresIn": 300, "interval": 3 }
+    },
+    {
+      "action": "nearbyApprove",
+      "note": "Two licences have a free seat: M is asked to choose.",
+      "args": {
+        "approverDeviceId": "TRANSCRIPTAPPROVER00000000000001",
+        "approverToken": "pkeyt_glhQPlcPNAswIpKlZgCq51XLlXM1Gz71XvlhA9p_yW0",
+        "approverKeyLabel": "transcript-nearby-m-1",
+        "keyLabel": "transcript-nearby-d-1",
+        "decision": "approve",
+        "request": "nr_Z06AiUZgvrNztoSJ9UB_5g"
+      },
+      "now": 1700000001,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/approve",
+              "headers": {
+                "x-pkey-device": "{approverDeviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {approverToken}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_Z06AiUZgvrNztoSJ9UB_5g",
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "decision": "approve",
+                  "proof": "o4OpS3lxr3CeY0yEeEUr9iu3cCI7_xij0Qezd0_0QsGlB7njAOxd1hp1uQEbBaqL2Ee7pv-UP7-AtnYximIMAw"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "status": "choose",
+                "choices": {
+                  "state": "choose",
+                  "choices": [
+                    {
+                      "id": "lic_nearby_0",
+                      "tierName": "djdl",
+                      "name": null,
+                      "origin": "key",
+                      "access": "seats",
+                      "seats": { "used": 0, "limit": 5 },
+                      "current": false,
+                      "expiresAt": null,
+                      "state": "free",
+                      "replace": null,
+                      "freeDeviceUrl": null
+                    },
+                    {
+                      "id": "lic_nearby_1",
+                      "tierName": "djdl",
+                      "name": null,
+                      "origin": "key",
+                      "access": "seats",
+                      "seats": { "used": 0, "limit": 5 },
+                      "current": false,
+                      "expiresAt": null,
+                      "state": "free",
+                      "replace": null,
+                      "freeDeviceUrl": null
+                    }
+                  ],
+                  "keep": false,
+                  "preselected": "lic_nearby_0",
+                  "create": null,
+                  "getLicense": null
+                }
+              }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": {
+        "result": "choose",
+        "choices": {
+          "state": "choose",
+          "choices": [
+            {
+              "id": "lic_nearby_0",
+              "tierName": "djdl",
+              "name": null,
+              "origin": "key",
+              "access": "seats",
+              "seats": { "used": 0, "limit": 5 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            },
+            {
+              "id": "lic_nearby_1",
+              "tierName": "djdl",
+              "name": null,
+              "origin": "key",
+              "access": "seats",
+              "seats": { "used": 0, "limit": 5 },
+              "current": false,
+              "expiresAt": null,
+              "state": "free",
+              "replace": null,
+              "freeDeviceUrl": null
+            }
+          ],
+          "keep": false,
+          "preselected": "lic_nearby_0",
+          "create": null,
+          "getLicense": null
+        }
+      }
+    },
+    {
+      "action": "nearbyPoll",
+      "note": "Nothing was written.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "request": "nr_Z06AiUZgvrNztoSJ9UB_5g"
+      },
+      "now": 1700000002,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_Z06AiUZgvrNztoSJ9UB_5g",
+                  "proof": "EjgJpDTQJH201JzkxxHy2GpFG0ln7VNAru23rMSLoGUHcFtGjs6scUfwg9t-P7JGsHKtiFsY61-WXbekXYibDA"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "pending" }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "pending" }
+    },
+    {
+      "action": "nearbyApprove",
+      "note": "M picks a licence.",
+      "args": {
+        "approverDeviceId": "TRANSCRIPTAPPROVER00000000000001",
+        "approverToken": "pkeyt_glhQPlcPNAswIpKlZgCq51XLlXM1Gz71XvlhA9p_yW0",
+        "approverKeyLabel": "transcript-nearby-m-1",
+        "keyLabel": "transcript-nearby-d-1",
+        "decision": "approve",
+        "request": "nr_Z06AiUZgvrNztoSJ9UB_5g",
+        "choice": { "kind": "license", "licenseId": "lic_nearby_0" }
+      },
+      "now": 1700000003,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/approve",
+              "headers": {
+                "x-pkey-device": "{approverDeviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {approverToken}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_Z06AiUZgvrNztoSJ9UB_5g",
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "decision": "approve",
+                  "choice": { "kind": "license", "licenseId": "lic_nearby_0" },
+                  "proof": "o4OpS3lxr3CeY0yEeEUr9iu3cCI7_xij0Qezd0_0QsGlB7njAOxd1hp1uQEbBaqL2Ee7pv-UP7-AtnYximIMAw"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "status": "approved",
+                "deviceLabel": "Living-room console"
+              }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "approved", "deviceLabel": "Living-room console" }
+    },
+    {
+      "action": "nearbyPoll",
+      "note": "D collects its token.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "request": "nr_Z06AiUZgvrNztoSJ9UB_5g"
+      },
+      "now": 1700000006,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_Z06AiUZgvrNztoSJ9UB_5g",
+                  "proof": "EjgJpDTQJH201JzkxxHy2GpFG0ln7VNAru23rMSLoGUHcFtGjs6scUfwg9t-P7JGsHKtiFsY61-WXbekXYibDA"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_4GxGN49Z2CysYfiPiGZSPX88jxeopi3VmjRr0UggGhk",
+                "token_type": "Bearer",
+                "scope": "email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "lic_nearby_0",
+                  "label": "Living-room console",
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000003,
+                  "lastSeen": 1700000006,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": {
+                  "id": "lic_nearby_0",
+                  "status": "active",
+                  "name": "Ada Lovelace",
+                  "email": "ada@example.com",
+                  "tierId": null,
+                  "activatedAt": 1700000000,
+                  "expiresAt": null,
+                  "maxOfflineDays": null,
+                  "channels": [],
+                  "minVersion": null,
+                  "maxVersion": null
+                },
+                "subject": "ps_EURGxi1O2oRJkVhuuCXCEg"
+              }
+            },
+            "clientIp": "198.51.100.7",
+            "capture": { "token": "$.access_token" }
+          }
+        ]
+      },
+      "expect": { "result": "ready", "tokenHeld": true, "scope": "email" }
+    }
+  ]
+}

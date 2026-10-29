@@ -1,0 +1,644 @@
+{
+  "transcriptVersion": 1,
+  "id": "nearby-errors",
+  "description": "The refusals of the nearby routes (WIRE-CONTRACT-V5 §12.11.5). A start whose proof is by another key is 400 invalid_grant, the one body of every proof failure. On a live request: an approve from another client network is 403 not_nearby and leaves it open; a proof that does not cover the handle or is by another key is 400 invalid_grant; an agreement key that is not D's is 404 not_found, the unknown-request answer, and counts against the request; a choice of another kind is 400 bad_request; a handle nobody started is 404. D's poll with another key's proof is 400 invalid_grant, a poll for an unknown handle is {status:timeout}, and so is a poll after the 300 s the request is held.",
+  "features": ["identity.nearby"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": []
+  },
+  "steps": [
+    {
+      "action": "nearbyStart",
+      "note": "A proof by another key.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "deviceName": "Living-room console",
+        "proofKeyLabel": "transcript-nearby-other-1"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/start",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "deviceName": "Living-room console",
+                  "proof": "AE7-eGWTrtkUreuv3zwNokVjoK0Lhgqd5K3Cer54epxIHV8I9Myd4zudjKHaA7wga1UAnRprCHZ0jFJ8qvuiAw"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "invalid_grant" } }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 400, "code": "invalid_grant" }
+    },
+    {
+      "action": "nearbyStart",
+      "note": "D asks to be approved.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "deviceName": "Living-room console"
+      },
+      "now": 1700000001,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/start",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "deviceName": "Living-room console",
+                  "proof": "zk_wvU5LmsL8rb_vu2sa7ew8TS-F4xYgdMPMiS05e69Na5kLjeBN0h2Nly6MeoMNSp1-yMthWfJRo7a5K4o6DQ"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 201,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+                "expiresIn": 300,
+                "interval": 3
+              }
+            },
+            "clientIp": "198.51.100.7",
+            "capture": { "request": "$.request" }
+          }
+        ]
+      },
+      "expect": { "result": "ok", "expiresIn": 300, "interval": 3 }
+    },
+    {
+      "action": "nearbyApprove",
+      "note": "M is not on D's network.",
+      "args": {
+        "approverDeviceId": "TRANSCRIPTAPPROVER00000000000001",
+        "approverToken": "pkeyt_64YAM1TVUHHxysId5oG-KQFUckkrk148a8q45Vwb0tE",
+        "approverKeyLabel": "transcript-nearby-m-1",
+        "keyLabel": "transcript-nearby-d-1",
+        "decision": "approve",
+        "request": "nr_7xPXuwjbS-xAvZym9r0xKA"
+      },
+      "now": 1700000002,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/approve",
+              "headers": {
+                "x-pkey-device": "{approverDeviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {approverToken}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "decision": "approve",
+                  "proof": "jiCu2tGRj-eQSmVGTbSkr_iKCeiNvu4vVTEyHwPJgd3yvgDKo4FEhWA7VTQM1t9rfSrswmBRKzmeyraOiVOCAw"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 403,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "not_nearby" } }
+            },
+            "clientIp": "203.0.113.9"
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 403, "code": "not_nearby" }
+    },
+    {
+      "action": "nearbyApprove",
+      "note": "A proof by a key that is not M's.",
+      "args": {
+        "approverDeviceId": "TRANSCRIPTAPPROVER00000000000001",
+        "approverToken": "pkeyt_64YAM1TVUHHxysId5oG-KQFUckkrk148a8q45Vwb0tE",
+        "approverKeyLabel": "transcript-nearby-m-1",
+        "keyLabel": "transcript-nearby-d-1",
+        "decision": "approve",
+        "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+        "proofKeyLabel": "transcript-nearby-other-1"
+      },
+      "now": 1700000003,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/approve",
+              "headers": {
+                "x-pkey-device": "{approverDeviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {approverToken}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "decision": "approve",
+                  "proof": "goRR1ump0qFuBDpD0iqqAeMoVUAtGI5_VI7htDCGIG4Vij8ZSbjZFXaVcs8kTJ9M8AFggzASLQgU1-_OOkr9CQ"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "invalid_grant" } }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 400, "code": "invalid_grant" }
+    },
+    {
+      "action": "nearbyApprove",
+      "note": "A proof over another value.",
+      "args": {
+        "approverDeviceId": "TRANSCRIPTAPPROVER00000000000001",
+        "approverToken": "pkeyt_64YAM1TVUHHxysId5oG-KQFUckkrk148a8q45Vwb0tE",
+        "approverKeyLabel": "transcript-nearby-m-1",
+        "keyLabel": "transcript-nearby-d-1",
+        "decision": "approve",
+        "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+        "proofValue": "nr_BBBBBBBBBBBBBBBBBBBBBB"
+      },
+      "now": 1700000004,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/approve",
+              "headers": {
+                "x-pkey-device": "{approverDeviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {approverToken}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "decision": "approve",
+                  "proof": "ju5RpPRyLLd8D0vIJ4yOVRJ8TpDgT4LnhMaVFFlMiaWHgS3-Zwo2PG0A1smXyUcSdhier85H0fkUndtcTwafBQ"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "invalid_grant" } }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 400, "code": "invalid_grant" }
+    },
+    {
+      "action": "nearbyApprove",
+      "note": "Keys that are not the ones D started with.",
+      "args": {
+        "approverDeviceId": "TRANSCRIPTAPPROVER00000000000001",
+        "approverToken": "pkeyt_64YAM1TVUHHxysId5oG-KQFUckkrk148a8q45Vwb0tE",
+        "approverKeyLabel": "transcript-nearby-m-1",
+        "keyLabel": "transcript-nearby-d-1",
+        "decision": "approve",
+        "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+        "agreeKeyLabel": "transcript-nearby-other-1"
+      },
+      "now": 1700000005,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/approve",
+              "headers": {
+                "x-pkey-device": "{approverDeviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {approverToken}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "fBEZIlq-xZF8tcetzq7ADYPiT8YldxEaPB3JYMg93hg",
+                  "decision": "approve",
+                  "proof": "jiCu2tGRj-eQSmVGTbSkr_iKCeiNvu4vVTEyHwPJgd3yvgDKo4FEhWA7VTQM1t9rfSrswmBRKzmeyraOiVOCAw"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "not_found" } }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 404, "code": "not_found" }
+    },
+    {
+      "action": "nearbyApprove",
+      "note": "Replace is not offered.",
+      "args": {
+        "approverDeviceId": "TRANSCRIPTAPPROVER00000000000001",
+        "approverToken": "pkeyt_64YAM1TVUHHxysId5oG-KQFUckkrk148a8q45Vwb0tE",
+        "approverKeyLabel": "transcript-nearby-m-1",
+        "keyLabel": "transcript-nearby-d-1",
+        "decision": "approve",
+        "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+        "choice": { "kind": "replace" }
+      },
+      "now": 1700000006,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/approve",
+              "headers": {
+                "x-pkey-device": "{approverDeviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {approverToken}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "decision": "approve",
+                  "choice": { "kind": "replace" },
+                  "proof": "jiCu2tGRj-eQSmVGTbSkr_iKCeiNvu4vVTEyHwPJgd3yvgDKo4FEhWA7VTQM1t9rfSrswmBRKzmeyraOiVOCAw"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "bad_request" } }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 400, "code": "bad_request" }
+    },
+    {
+      "action": "nearbyApprove",
+      "note": "A handle nobody started.",
+      "args": {
+        "approverDeviceId": "TRANSCRIPTAPPROVER00000000000001",
+        "approverToken": "pkeyt_64YAM1TVUHHxysId5oG-KQFUckkrk148a8q45Vwb0tE",
+        "approverKeyLabel": "transcript-nearby-m-1",
+        "keyLabel": "transcript-nearby-d-1",
+        "decision": "approve",
+        "request": "nr_CCCCCCCCCCCCCCCCCCCCCC"
+      },
+      "now": 1700000007,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/approve",
+              "headers": {
+                "x-pkey-device": "{approverDeviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {approverToken}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_CCCCCCCCCCCCCCCCCCCCCC",
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "decision": "approve",
+                  "proof": "5gykRLKP73DapdkL15Gbq3u7zo8HJixt9YLuSg4LMx2IitgYam8ratiORhcziLEwrrMCOZgdgRoFYQEdDOg0BA"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "not_found" } }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 404, "code": "not_found" }
+    },
+    {
+      "action": "nearbyPoll",
+      "note": "A poll proof by another key.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+        "proofKeyLabel": "transcript-nearby-other-1"
+      },
+      "now": 1700000008,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+                  "proof": "lyDjeLkr1GJl81v2RK1hjy5qHU9fYgLk6ddq5Pw8dVu6MtIlvN-9snXxtBvoxw3xkyQci4StXdElyZ5kuFNrCQ"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "invalid_grant" } }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 400, "code": "invalid_grant" }
+    },
+    {
+      "action": "nearbyPoll",
+      "note": "A handle nobody started.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "request": "nr_CCCCCCCCCCCCCCCCCCCCCC"
+      },
+      "now": 1700000009,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_CCCCCCCCCCCCCCCCCCCCCC",
+                  "proof": "LJ0zqFwEuVIsP4QSW16VXZvmHVL4S3DufHImWlP8j-skzZY_oaTOGjNMG96L0v68NMAwjT0ur5_mfRaSUM3hBA"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "timeout" }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "timeout" }
+    },
+    {
+      "action": "nearbyPoll",
+      "note": "The request lapsed.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "request": "nr_7xPXuwjbS-xAvZym9r0xKA"
+      },
+      "now": 1700000305,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_7xPXuwjbS-xAvZym9r0xKA",
+                  "proof": "S1XSUBvj0_VitUP0PUhqLT5vpW8TZegyTunhHkIyJYX_NSPQmbOC9NNofyaP-wmWRVR6qhY30GX4FW_8kYEYBg"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "timeout" }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "timeout" }
+    }
+  ]
+}
