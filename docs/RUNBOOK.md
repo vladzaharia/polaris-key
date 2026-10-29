@@ -190,10 +190,12 @@ client that the customer portal and `provider: platform` products use.
 ### Who can use the console, and lockout recovery
 
 Every console route checks one rule, `can()`, against the member's roles (Superadmin, Platform
-admin, Product admin, Console access). Today the only source of a role is the **root rule**:
-membership of `PLATFORM_ADMIN_GROUP` at the console's identity provider makes the person a
-Superadmin. It is read from the session on every request and stored nowhere, so it cannot be
-revoked from the console or lost to a bad write.
+admin, Product admin, Console access). A role comes from a binding someone with the Members area
+gave, from an **SSO rule**, or from the **root rule**: membership of `PLATFORM_ADMIN_GROUP` at the
+console's identity provider makes the person a Superadmin. The root rule is read from the session on every request and stored nowhere, so it
+cannot be revoked from the console or lost to a bad write. SSO rules (**Platform → Members → SSO
+rules**, the `console.access` setting) are written by a Superadmin only, with a step-up, and grant
+at most Product admin or Console access, never Superadmin or Platform admin.
 
 - **The sign-in card.** `GET /manage/login` serves the Polaris Key Console card and starts no
   flow; the redirect to the IdP starts when the person presses Continue (`?go=1`), with the typed
@@ -202,6 +204,13 @@ revoked from the console or lost to a bad write.
 - **Locked out.** Add the person to `PLATFORM_ADMIN_GROUP` in Pocket ID (the console client's
   provider, above) and have them sign in again at `/manage`. Their next sign-in carries the group.
   Nothing in D1 needs to change.
+- **Locked out through an SSO rule.** A rule that admits the wrong people, or stops admitting the
+  right ones, is a Superadmin's edit in **Members → SSO rules** (a step-up, the typed
+  `console.access` and a reason). If no Superadmin can sign in, use the root rule above: it does not
+  depend on any rule. A rule's grant is checked on every request and ends at the person's next
+  sign-in, or after 8 hours, once the IdP drops the group or the connection is disabled. To end
+  every rule at once, a Superadmin clears the list. The rules sit in `platform_settings`
+  (`console.access`); no migration or manual SQL is needed.
 - **Removing someone.** Take them out of the group. Their console session keeps its role until it
   ends (8 hours at most) unless they sign out; `wrangler secret put ADMIN_SESSION_SECRET --env
 <env>` ends every console session at once.

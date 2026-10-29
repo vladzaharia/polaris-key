@@ -52,6 +52,7 @@ function table(first: string, rows: readonly MatrixRow[]): string {
  */
 const GENERAL_NOTES: readonly string[] = [
   "- Personal admin tokens: a token holds what its owner's roles allow, never a write that needs a step-up.",
+  "- SSO rules: a rule can give Product admin or Console access to people who sign in through an operator connection. It never gives Superadmin or Platform admin, and only a Superadmin writes rules.",
 ];
 
 export function renderDoc(): string {

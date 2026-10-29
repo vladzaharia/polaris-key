@@ -7525,6 +7525,26 @@ answers "may this member act" and not "may this member give that away".
   soundness cross-check against `can()`, the named cases above); reviewer probes over 1.4M granter
   and target combinations found no widening beyond `can()`.
 
+**Residual.**
+
+- The grant handlers (ST-31.6, below) call the engine.
+- A handler must combine the checks: `mayChange` for an edit, `mayRevoke` for a delete,
+  `mayGrant` for a create, plus the step-up from `isWidening` and `confirmLevel`. Calling one
+  alone is the gap.
+- The checks never see the grantee or the expiry. They cannot tell who receives a grant or how
+  long it lasts; the handler owns that.
+- **D-g: no self-grants.** A grant whose grantee is the granter is refused. The engine cannot see
+  the grantee, so the handlers enforce it (ST-31.6, below).
+
+### Console SSO rules (ST-32)
+
+A `console.access` rule turns a sign-in through an operator connection into a role (Product admin
+or Console access), and the retired `adminGroup` manifest field is replaced by offers that
+convert a product's old group into a rule. What can be made to satisfy a rule, who may write one,
+and what the console shows about the people it would match are what an attacker aims at. The
+section covers the matcher, the operator connections it trusts, the preview and offers, and the
+write route.
+
 **Rule hijack (ST-32.3).** `console.access` rules turn a sign-in through an operator connection
 into a grant, so what can be made to satisfy a rule is what an attacker aims at. The grant is
 computed on every request (`core/rbac/ruleGrants.ts`), never stored:
@@ -7549,10 +7569,35 @@ computed on every request (`core/rbac/ruleGrants.ts`), never stored:
   nothing at the next request. A deleted rule stops granting within the 30 s settings cache.
 - A document that cannot be read or parsed grants nothing.
 
-Residual: a group or claim the IdP asserts is trusted as asserted, so whoever administers an
-operator IdP can mint what its rules match. An attribute the IdP lets its users edit, mapped as a
-group or claim, is only as trustworthy as that IdP's admin settings. That is why making a connection an operator connection
-is a Superadmin write with a step-up. Tests: `test/core/ruleGrants.test.ts`.
+**Operator connections and audience (ST-32.4).** A rule trusts only a connection a Superadmin has
+made an operator connection, so who can create or widen one is part of the rule's defence.
+
+- A platform connection's audience is `customers`, `operators` or `both`. Only a Superadmin
+  creates a connection that covers operators, widens one to cover them, or changes the issuer,
+  client, JWKS, claim map, secret or audience of one that does (`403 audience_not_available`,
+  `403` for the other edits). A Platform admin keeps the narrowing edits on such a connection:
+  rename, disable, remove a domain, turn enforcement off and delete (a connection with no links).
+- Every route that writes `identity_connections` requires a step-up and excludes tokens. Each
+  change to an operator connection is one batch with an `rbac.operator_connection` audit row whose
+  shape holds whether a secret exists, never the secret.
+- A domain routes an operator's console email to the connection only when it is verified there,
+  the connection is active, its audience covers operators and its issuer is on the operator
+  allowlist. The route depends on the domain alone, so the answer is the same for a known and an
+  unknown address, and the customer card never sees an operators-only connection.
+- The operator allowlist is checked where the grant is evaluated, not at the write, so a
+  connection whose issuer is not on the allowlist grants nothing at the next request.
+
+Residual (ST-32.4):
+
+- A domain a Platform admin verified on a customers connection stays verified when a Superadmin
+  later widens that connection's audience, and the widening's audit row does not list it.
+  Review the connection's domains when you widen it.
+- Domain add, verify and enforce on an operator connection are audited as
+  `identity.connection.domain_*` rows, with no extra `rbac.operator_connection` row.
+- An update does not condition on the audience it read, so a Platform admin's concurrent edit can
+  write back the old, narrower audience over a Superadmin's widening. It only narrows.
+- A Platform admin can claim a domain on a customers connection first, so a Superadmin's
+  verification of it on an operator connection answers `taken`. This costs availability only.
 
 **Rule preview and offers (ST-32.5).** `POST /access/rules/preview` and the `admin_group` offers sit
 on the Members area. The preview hands the draft to `ruleMatchesFor`, the call sign-in makes, so it
@@ -7568,9 +7613,6 @@ appended twice, and the default areas leave out `members`; every Superadmin is m
 offer's outcome is an `rbac.admin_group_offer` row on both trails, written once. Tests:
 `test/surfaces/console/accessRules.test.ts`.
 
-Residual (ST-32.5): a Platform admin can probe, 60 drafts per 5 minutes, which roster members carry
-a given IdP group, claim or domain. The roster shows roles, not IdP facts.
-
 **The rule list's read and write (ST-32.7).** `GET /access/rules` is on the Members area, so a
 Platform admin reads the rules (a group, domain or claim and the grant, never a person or an
 account id) and the operator connections with their enforced domains. `PUT /access/rules` replaces
@@ -7583,16 +7625,28 @@ every Superadmin is mailed (`accessRulesNotice`), a removal or a clear included.
 editor offers only operator connections and enforced domains, but the Worker is what refuses.
 Tests: `test/surfaces/console/accessRules.test.ts`.
 
-**Residual.**
+**Residual (ST-32).**
 
-- The grant handlers (ST-31.6, below) call the engine.
-- A handler must combine the checks: `mayChange` for an edit, `mayRevoke` for a delete,
-  `mayGrant` for a create, plus the step-up from `isWidening` and `confirmLevel`. Calling one
-  alone is the gap.
-- The checks never see the grantee or the expiry. They cannot tell who receives a grant or how
-  long it lasts; the handler owns that.
-- **D-g: no self-grants.** A grant whose grantee is the granter is refused. The engine cannot see
-  the grantee, so the handlers enforce it (ST-31.6, below).
+- A group or claim the IdP asserts is trusted as asserted, so whoever administers an operator
+  IdP can mint what its rules match. An attribute the IdP lets its users edit, mapped as a group
+  or claim, is only as trustworthy as that IdP's admin settings. That is why making a connection
+  an operator connection is a Superadmin write with a step-up.
+- A Platform admin can probe, 60 drafts per 5 minutes, which roster members carry a given IdP
+  group, claim or domain. The roster shows roles, not IdP facts.
+- The notice's before and after reads sit outside the write. A concurrent Superadmin write
+  between them can skew the notice's change kind (added or changed) and rule count. The audit
+  row is exact.
+- The notice uses the priority path, which skips the per-recipient hourly mail budget. It is
+  bounded by the write route's rate limit (60 writes per 5 minutes) and the recipient cap, and
+  only a Superadmin with a step-up reaches it. An add combined with an edit is worded "changed".
+- Accepting an offer writes the rule and then the offer's outcome in two commits. If the second
+  fails the offer stays open, and a retry finds the stored rule and does not append it again. A
+  dismiss racing an accept can leave the offer reading dismissed beside the rule.
+- A preview that meets a malformed link row answers 500 for the preview only. Sign-in treats the
+  same row as no grant.
+
+Tests: `test/core/ruleGrants.test.ts`, `test/surfaces/console/accessRules.test.ts`,
+`test/surfaces/console/connectionsAdmin.test.ts`.
 
 ### Console role bindings: writes (ST-31.6)
 
@@ -10842,7 +10896,7 @@ plans/I-27.md §6: one row per threat, each written by the package that builds i
   audience is always `customers` (a table CHECK), and it never vouches for an address, so its
   identities always meet the email gate's code (`connectionVouchesForEmail`, tests). An operator
   audience (`operators`, `both`) is a platform connection's only, and a console write of either
-  is refused until ST-32's Superadmin gate; the env seed is exempt.
+  needs a Superadmin with a step-up (ST-32.4); the env seed is exempt.
 - **Domain takeover or lapse (I-30).** A domain counts only once a TXT record at
   `_pkey-challenge.<domain>` holds `pkey-domain-verification=<token>`, with one random token per
   connection and domain, so one connection's record proves nothing for another
@@ -11114,8 +11168,7 @@ operator session, a stolen session, and a hostile issuer an operator is talked i
   document whose endpoints point elsewhere is refused. A row is written only after discovery
   answered. Test: private, loopback, link-local, port, credential, query and non-https issuers
   make no request.
-- **Audience.** `operators` and `both` are refused (403 `audience_not_available`) until ST-32's
-  Superadmin gate exists. A seeded row keeps its audience; its issuer and client cannot move.
+- **Audience.** `operators` and `both` are a Superadmin's alone (403 `audience_not_available`, ST-32.4). A seeded row keeps its audience; its issuer and client cannot move.
 - **Audit.** Each change is one batch with its `platform_audit` row
   (`identity.connection.create|update|rotate_secret|enable|disable|delete|domain_*`), so a change
   cannot land unrecorded (a domain's add, release and enforce included; a verification that finds

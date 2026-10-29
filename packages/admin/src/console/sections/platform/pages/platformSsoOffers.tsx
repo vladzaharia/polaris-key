@@ -72,7 +72,7 @@ export function OffersCard({
       <div data-sso-offers="">
         <p>
           {canDecide
-            ? "A manifest no longer grants access. Map each group to a rule, or dismiss it."
+            ? "A manifest no longer gives access. Map each group to a rule, or dismiss it."
             : readOnlyNote}
         </p>
         {canDecide && noConnection ? (

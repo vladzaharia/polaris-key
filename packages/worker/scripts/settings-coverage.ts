@@ -465,7 +465,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
   {
     thing: "The retired product.adminGroup manifest field (ST-32.6)",
     reason:
-      "Removed in 0.9: it granted nothing, and the validator answers invalid_admin_group at either spelling. Console SSO rules map an IdP group to a role.",
+      "Removed in 0.9: it gave nothing, and the validator answers invalid_admin_group at either spelling. Console SSO rules map an IdP group to a role.",
     shows: "Platform → Members",
     covers: {
       ids: [
