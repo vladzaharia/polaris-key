@@ -1,4 +1,4 @@
-/** "On this page": the right rail from 1280 px, pills below it. A dot marks a section with changes. */
+/** "On this page": the right rail once the column holds 56rem, pills below it. A dot marks a section with changes. */
 
 import * as React from "react";
 import { cn } from "../../../../lib/cn.js";
@@ -21,7 +21,7 @@ export function SignInRail({
   className,
 }: {
   sections: RailSection[];
-  /** `pills` below 1280 px, `rail` from it. */
+  /** `pills` while the content column is under 56rem, `rail` from it (a container query, so it follows the text size). */
   variant: "pills" | "rail";
   className?: string;
 }): React.ReactElement {
@@ -59,7 +59,10 @@ export function SignInRail({
   );
   if (variant === "pills")
     return (
-      <nav aria-label="Jump to section" className={cn("xl:hidden", className)}>
+      <nav
+        aria-label="Jump to section"
+        className={cn("@min-[56rem]:hidden", className)}
+      >
         <ul className="flex flex-wrap gap-1.5">
           {sections.map((s) => (
             <li key={s.id}>{link(s, true)}</li>
@@ -71,7 +74,7 @@ export function SignInRail({
     <>
       <nav
         aria-label="On this page"
-        className={cn("hidden xl:block", className)}
+        className={cn("hidden @min-[56rem]:block", className)}
       >
         <p className="mb-2 text-xs font-medium text-fg-muted">On this page</p>
         <ul className="space-y-1 border-s border-border">

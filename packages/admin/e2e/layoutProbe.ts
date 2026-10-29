@@ -1135,6 +1135,8 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
     const canvas = mainEl.getBoundingClientRect();
     const ccs = cs(mainEl);
     const wide = W >= 1024;
+    // The canvas inset and the first-content budget are rem lengths: 200 % text doubles them.
+    const rootScale = px(cs(document.documentElement).fontSize || "16px") / 16;
     const radius = px(ccs.borderTopLeftRadius);
     if (px(ccs.borderTopWidth) !== 3)
       out.push({
@@ -1154,7 +1156,7 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       });
     if (
       wide
-        ? Math.abs(W - canvas.right - 16) > 1
+        ? Math.abs(W - canvas.right - 16 * rootScale) > 1
         : canvas.left > 0.5 || W - canvas.right > 0.5
     )
       out.push({
@@ -1269,7 +1271,7 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       if (wide && next) {
         const first = next.getBoundingClientRect().top - canvas.top;
         // A two-line title is the one case the 176 px masthead cap allows: 19 above, 24 below.
-        const allowed = 160 + tabsH + (twoLines ? 59 : 0) + extra;
+        const allowed = 160 * rootScale + tabsH + (twoLines ? 59 : 0) + extra;
         if (first > allowed + 0.5)
           out.push({
             rule: "masthead",

@@ -298,7 +298,7 @@ function PageBody({
   ];
 
   return (
-    <div className="space-y-6" data-template="settings">
+    <div className="@container space-y-6" data-template="settings">
       {header}
       {notice ? (
         <p role="note" className="text-sm text-fg-muted">
@@ -306,7 +306,7 @@ function PageBody({
         </p>
       ) : null}
       <SignInRail sections={sections} variant="pills" />
-      <div className="mx-auto grid w-full max-w-[84rem] grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22.5rem]">
+      <div className="mx-auto grid w-full max-w-[84rem] grid-cols-1 gap-6 @min-[56rem]:grid-cols-[minmax(0,1fr)_22.5rem]">
         <div className="min-w-0 space-y-6">
           <StatusSection slug={slug} name={name} enabled />
           <MethodsSection slug={slug} />
