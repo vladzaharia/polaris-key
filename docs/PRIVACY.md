@@ -313,11 +313,14 @@ find each other and talk over the local network or a relay.
   the same network, and anyone who knows a product's slug can tell that an app of that product is
   nearby.
 - **Nearby approval (mode `v`).** A signed-in device that is allowed to approve a nearby device
-  advertises for as long as the person has that screen open or already allowed it. The advert still
-  carries no label. Its first message after the encrypted channel opens does: the approver's device
-  label, platform and app are sent, before any code is checked, to any device on the same network
-  that connects to the advert. The requesting device's label travels the same way. The label is
-  optional, and an app can turn it off.
+  advertises only while the person has that screen open or has turned background approval on. The
+  advert still carries no label. Its first message after the encrypted channel opens does: the
+  approver's device label, platform and app are sent, before any code is checked, to any device on
+  the same network that connects to the advert. The requesting device sends its label, platform and
+  app the same way to every approver it dials. Its device id, signing key and request handle go to
+  the one approver its person chose, before that approver's person has confirmed anything. The label
+  is optional, and an app can turn it off. The requesting device shows the signed-in account (a
+  masked email or a name) and asks the person to confirm it before it accepts a Sync key.
 - **Kept for.** Device keys until the device is removed; the roster and discovery key until the
   product is removed or the account is deleted; relay counters 90 days.
 - **Admin view.** Rosters with labels and relay totals, never content.
