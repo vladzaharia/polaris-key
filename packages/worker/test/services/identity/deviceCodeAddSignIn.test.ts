@@ -87,13 +87,12 @@ describe("device-code Add to account over a floating key licence (UK-42.19)", ()
         async (s) => {
           const res = await s.send(pollSpec(started.deviceCode));
           const body = (await res.json()) as { status: string };
-          console.log("UK-42.19 poll", res.status, JSON.stringify(body));
           status = body.status;
         },
         {},
       );
-      // No grant, no `choose`, no token: the approval mints on the identity's OWN licence, and
-      // the device's seat is on the key's licence, so the mint is refused (a generic `error`).
+      // The device's seat is on the key's licence, which the sign-in cannot take over: the
+      // poll answers the generic `error` and creates nothing.
       expect(status).toBe("error");
 
       const licences = await w.db.all<{
@@ -104,9 +103,9 @@ describe("device-code Add to account over a floating key licence (UK-42.19)", ()
         "SELECT id, sub, account_id FROM licenses WHERE product = ? ORDER BY id",
         PRODUCT,
       );
-      // The poll's activation already created a second licence, for the identity.
-      expect(licences).toHaveLength(2);
-      expect(licences.find((l) => l.id !== licenseId)?.sub).toBe(PLAYER.sub);
+      // Exactly one licence: no stray licence was created for the identity.
+      expect(licences).toHaveLength(1);
+      expect(licences.some((l) => l.sub === PLAYER.sub)).toBe(false);
       // The key's licence stays floating: nothing attached it, nothing set a subject.
       const kept = licences.find((l) => l.id === licenseId)!;
       expect(kept.account_id ?? null).toBeNull();
