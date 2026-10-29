@@ -844,7 +844,40 @@
                   }
                 }
               }
+            },
+            "gameCenter": {
+              "description": "Sign in with Game Center on the Apple team and bundle ids (identity.platformSignIn.gameCenter). Needs apple.teamId.",
+              "type": "boolean"
+            },
+            "playGames": {
+              "type": "object",
+              "description": "Sign in with Google Play Games Services (identity.platformSignIn.playGames). The client secret is set in the console (Keys & secrets), never here.",
+              "additionalProperties": false,
+              "dependentRequired": {
+                "applicationId": ["serverClientId"],
+                "serverClientId": ["applicationId"]
+              },
+              "properties": {
+                "applicationId": {
+                  "description": "The Play Console application id (identity.platformSignIn.playGames.applicationId).",
+                  "type": "string",
+                  "pattern": "^[0-9]{6,20}$"
+                },
+                "serverClientId": {
+                  "description": "The Game server credential's web client id (identity.platformSignIn.playGames.serverClientId).",
+                  "type": "string",
+                  "pattern": "^[0-9]+-[a-z0-9]+\\.apps\\.googleusercontent\\.com$"
+                }
+              }
             }
+          },
+          "if": {
+            "required": ["gameCenter"],
+            "properties": { "gameCenter": { "const": true } }
+          },
+          "then": {
+            "required": ["apple"],
+            "properties": { "apple": { "required": ["teamId"] } }
           }
         },
         "nearby": {
