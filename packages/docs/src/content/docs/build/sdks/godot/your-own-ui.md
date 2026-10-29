@@ -114,8 +114,8 @@ Replace a device link only when its served `manage_url` is valid. Pass `true` as
 fragment.
 
 Two refusals have kinds of their own and are not auth failures. Nothing is wiped. `message_for()`
-does not map them yet (they read `activation_error`), so branch on `result.kind` and say it in your
-own words:
+maps them to the refusal lede copy (`refusal_limit_lede`, `refusal_owned_lede`), so the default
+message is already right; branch on `result.kind` for the link to offer:
 
 | `kind`                 | Meaning                      | Offer                                         |
 | ---------------------- | ---------------------------- | --------------------------------------------- |
@@ -181,7 +181,7 @@ func begin_redirect() -> PKeySignInSession:
 		license_choice = "app",
 	})
 	if session.ok:
-		OS.shell_open(session.authorize_url)  # then wait for the browser to return
+		session.reopen()  # opens authorize_url (https only); then wait for the browser to return
 	return session
 
 

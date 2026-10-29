@@ -259,7 +259,7 @@ public struct ChoiceNamespace: Sendable {
             ready: SignInReady(
                 identity: nil, attached: nil, subject: subject, scope: scope,
                 licenseId: license?["id"]?.stringValue),
-            keyEntries: KeyEntries.read(wire), attachable: object["attachable"]?.boolValue)
+            keyEntries: KeyEntries.read(wire), attachable: choice == .keep ? true : nil)
     }
 
     /// Abandon the grant: nothing is bound. A lapsed grant is the same `invalid_grant`.

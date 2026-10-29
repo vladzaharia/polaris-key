@@ -262,6 +262,10 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
                 unsupported = unsupported,
             )
         }
+        // The grant and the device's headers go to this product only.
+        if (!url.startsWith(core.endpoints.url(""))) {
+            throw PolarisException(ErrorCode.badResponse, "the identity ${name.key} endpoint points outside this product.")
+        }
         return url
     }
 
