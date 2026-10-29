@@ -2933,9 +2933,7 @@
       "feature": "config.sync",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useSetting().sync",
           "shape": "hook",
@@ -3704,9 +3702,7 @@
       "feature": "sync.settings",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useCloudSync().status",
           "shape": "hook",
@@ -3724,9 +3720,7 @@
       "feature": "sync.settings",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useCloudSync().flush",
           "shape": "hook",
@@ -3747,7 +3741,7 @@
           "path": "cloudSync.encryption"
         },
         "python": {
-          "planned": "U-06"
+          "path": "cloud_sync.encryption"
         },
         "react": {
           "planned": "U-20"
@@ -3774,9 +3768,7 @@
           "spelling": "events.on(\"cloudSync\")",
           "reason": "one event stream on the client emitter, kind cloudSync"
         },
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useCloudSync().status",
           "shape": "hook",
