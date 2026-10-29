@@ -27,6 +27,9 @@ playBilling = "9.1.0"
 # it declares a credentials beta, which the direct 1.6.0 pin above resolves up to.
 androidxCredentials = "1.6.0"
 googleid = "1.2.0"
+# Block Store for :platform's play flavour (I-49.1b), an exact pin: 16.4.0 is the latest (2024-07-25) and
+# credentials-play-services-auth 1.6.0 already brings it in, so pinning changes no resolution. minSdk 21.
+playBlockstore = "16.4.0"
 junit = "4.13.2"
 robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
@@ -81,6 +84,7 @@ play-integrity = { module = "com.google.android.play:integrity", version.ref = "
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "androidxCredentials" }
 androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidxCredentials" }
 googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
+play-blockstore = { module = "com.google.android.gms:play-services-auth-blockstore", version.ref = "playBlockstore" }
 play-billing = { module = "com.android.billingclient:billing", version.ref = "playBilling" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
