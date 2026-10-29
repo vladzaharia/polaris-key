@@ -46,8 +46,6 @@ import { hashKey, randomId } from "../../../platform/crypto.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
-import type { Product } from "../../../core/products.js";
-import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { ErrorCode, errorResponse } from "../../../core/errors.js";
 import { appendAudit } from "../../../core/audit.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
@@ -78,6 +76,11 @@ import {
   type ExchangeNonceRecord,
 } from "./nonce.js";
 import { bindAndAnswer, oauth, TOKEN_DEVICE_RATE } from "./token.js";
+import {
+  consentedScope,
+  consentView,
+  type NativeGrantContext,
+} from "./silent.js";
 import { issueGrant } from "./grant.js";
 import { clientRecordFor } from "./client.js";
 import { consentState } from "./routes.js";
@@ -120,15 +123,9 @@ const refused = (): Response => oauth(400, ErrorCode.InvalidGrant);
 
 const FIELD_MAX = 4096;
 
-export async function handleExchange(ctx: {
-  req: Request;
-  env: Env;
-  db: Db;
-  product: Product;
-  now: number;
-  form: Map<string, string>;
-  settings?: SettingsRegistry | undefined;
-}): Promise<Response> {
+export async function handleExchange(
+  ctx: NativeGrantContext,
+): Promise<Response> {
   const { req, env, db, product, now, form, settings } = ctx;
   if (form.get("client_id") !== product.slug)
     return oauth(401, ErrorCode.InvalidClient);
@@ -328,19 +325,10 @@ export async function handleExchange(ctx: {
       status: "confirm",
       grant,
       expiresIn: CHOICE_GRANT_TTL_SECONDS,
-      consent: {
-        client: {
-          appName: client.appName,
-          developerName: client.developerName,
-          iconUrl: client.iconUrl,
-          nameVerified: client.nameVerified,
-        },
-        as: { provider: id.kind, email: id.email },
-        items: consent.items,
-        scopeHash: consent.scopeHash,
-        firstTime: consent.firstTime,
-        changed: consent.changed,
-      },
+      consent: consentView(client, consent, {
+        provider: id.kind,
+        email: id.email,
+      }),
     };
     return noStore(json(body));
   }
@@ -352,10 +340,7 @@ export async function handleExchange(ctx: {
       subject: found.subject,
       email: found.email,
       deviceId,
-      // What the person consented to, never more: a narrowed consent stays narrowed.
-      scope: (resolveScope(undefined, product) ?? []).filter((c) =>
-        (consent.claims ?? []).includes(c),
-      ),
+      scope: consentedScope(product, consent),
       licenseChoice: choice,
       choice: null,
       deviceName: form.get("device_name") ?? undefined,
@@ -371,14 +356,14 @@ export async function handleExchange(ctx: {
   return answered.status === 200 ? withIssuedType(answered) : answered;
 }
 
-function noStore(res: Response): Response {
+export function noStore(res: Response): Response {
   res.headers.set("cache-control", "no-store");
   res.headers.set("pragma", "no-cache");
   return res;
 }
 
 /** A `TokenResponse` gains `issued_token_type`; a `choose` body (§12.5.1) is left as it is. */
-async function withIssuedType(res: Response): Promise<Response> {
+export async function withIssuedType(res: Response): Promise<Response> {
   const body = (await res.clone().json()) as Record<string, unknown>;
   if (body.status !== undefined) return res;
   const out = new Response(

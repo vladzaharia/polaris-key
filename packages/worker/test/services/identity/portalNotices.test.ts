@@ -459,6 +459,37 @@ describe("notice templates: rules", () => {
     expect(bare.text).toContain("remove it from your devices");
   });
 
+  it("restore variant (I-49.7): names the backup, offers Remove this device, escapes", () => {
+    const m = appDeviceApprovedNotice({
+      deviceLabel: "Living room TV",
+      productName: "Diceroll",
+      productSlug: "diceroll",
+      origin: ORIGIN,
+      via: "restore",
+    });
+    expect(m.subject).toBe(
+      "Diceroll signed in on Living room TV from your backup",
+    );
+    expect(m.text).toContain("It used a key saved in your device backup.");
+    expect(m.text).toContain(
+      `Remove this device: ${ORIGIN}/#/p/diceroll/devices`,
+    );
+    expect(m.text).not.toContain("You approved it");
+    const hostile = appDeviceApprovedNotice({
+      deviceLabel: "TV <b>x</b>\nBcc: v@example.com",
+      productName: "Evil\u202egnp",
+      productSlug: "evil",
+      origin: ORIGIN,
+      via: "restore",
+    });
+    expect(hostile.subject).not.toMatch(/[\n\u202e]/);
+    expect(hostile.html).toContain("&lt;b&gt;x&lt;/b&gt;");
+    // The approval variant keeps its copy.
+    expect(TEMPLATES.appDeviceApproved!().text).toContain(
+      "You approved it from another device.",
+    );
+  });
+
   it("displayValue: controls out, length bounded, fallback when empty", () => {
     expect(displayValue("  Studio\tPC   ", "x")).toBe("Studio PC");
     expect(displayValue("\u202e\u0007", "A device")).toBe("A device");
