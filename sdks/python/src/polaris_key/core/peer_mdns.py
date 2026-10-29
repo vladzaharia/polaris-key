@@ -10,15 +10,25 @@ Rules this module keeps:
 - a browse hit is dropped unless its instance name has the advert shape and it names exactly one SRV and
   one TXT;
 - a response is ignored unless its source is inside a connected subnet (address and prefix) of the
-  receiving interface (RFC 6762 section 11); on IPv6 there is one socket per interface, so the interface
-  is known, a link-local source is on-link by definition, and it takes the interface as its zone;
+  receiving interface (RFC 6762 section 11). On IPv6 there is one socket per interface, so the interface is
+  known: a link-local source is on-link by definition and takes the interface as its zone, and the zone the
+  source itself carries must be that interface (a link-local source with no zone, or another, is dropped).
+  On the one IPv4 socket the arrival interface is not known, so the test is the union of the connected
+  subnets of the interfaces that count (up, loopback only when allowed, not a tunnel or point-to-point
+  interface): a source on another connected subnet passes it, which costs at most one blind connect and
+  never a trusted address (§15.4, residual);
+- only a name a roster device can announce (``accept``) enters a table, for the PTR, SRV, TXT and address
+  records alike; no source owns a name, and one source adds at most 16 new names a minute. An SRV record is
+  believed only for a port from 1024 to 65535 and a target that is the instance's own ``.local`` name (names
+  fold by ASCII). A response that was not sent to the multicast group is ignored where the socket is bound to
+  the group (Linux; on macOS and Windows asyncio gives no packet information and a group-bound socket is
+  not usable, so a unicast reply that passes every other test is their residual, as §15.4 allows);
 - an A or AAAA record is believed only when its address equals the packet's own UDP source (an IPv4-mapped
   source counts as its IPv4 address), so a neighbour cannot point another device's name at an address of
   its choosing. There is no filter on the address when it is learned: the dial-time ``lan_verdict``
   (:mod:`polaris_key.core.peer_lan_address`) decides what is dialled. A record with TTL 0 removes its
   address. Names compare by ASCII fold. Each name keeps at most four addresses, in the order they were
-  first seen (the ``mdnsAnswers`` rows of ``peer-matrix.json``). The rate limit on new names is the
-  only filter on a source;
+  first seen (the ``mdnsAnswers`` rows of ``peer-matrix.json``);
 - IPv6 mDNS runs on ``ff02::fb`` on at most eight interfaces that are up, multicast-capable and have an
   fe80 address, one socket each (``IPV6_JOIN_GROUP``, ``IPV6_MULTICAST_IF``); the zone is the interface
   name. The AAAA record carries the fe80 address the kernel sends from;
@@ -98,8 +108,8 @@ MAX_INSTANCES = 256
 MAX_ADDRS = 4
 ENTRY_TTL_SECONDS = 5 * 60.0
 REPLY_GAP_SECONDS = 1.0
-#: New table entries one source address may add in ``NEW_WINDOW_SECONDS`` (S4): a flood from one host
-#: cannot evict the table. At most ``MAX_SOURCES`` sources are tracked.
+#: New names one source address may add in ``NEW_WINDOW_SECONDS`` (§15.4): a flood from one host cannot
+#: evict the table. At most ``MAX_SOURCES`` sources are tracked.
 MAX_NEW_PER_SOURCE = 16
 NEW_WINDOW_SECONDS = 60.0
 MAX_SOURCES = 256
@@ -108,6 +118,9 @@ _TXT_TTL = 4500
 _ASK_QUESTIONS = 32
 _SUBNET_MEMO_SECONDS = 5.0
 _INSTANCE_FQDN = re.compile(r"(p1-[a-z2-7]{16})\._pkeypeer\._tcp\.local\Z")
+_HOST_NAME = re.compile(r"(p1-[a-z2-7]{16})\.local\Z")
+#: An SRV port a random listen can have drawn (§15.4).
+_MIN_SRV_PORT = 1024
 
 
 class MdnsAdvert(NamedTuple):
@@ -152,7 +165,11 @@ class MdnsAdapter(Protocol):
         self,
         on_up: Callable[[MdnsFound], None],
         on_down: Optional[Callable[[str], None]] = None,
-    ) -> MdnsHandle: ...
+        accept: Optional[Callable[[str], bool]] = None,
+    ) -> MdnsHandle:
+        """``accept`` says whether an instance name may enter the tables (the service passes the names its
+        roster can announce); default: every well-formed name."""
+        ...
 
 
 class MdnsSocket(Protocol):
@@ -265,7 +282,9 @@ class AddressBook:
         got = canon_ip(r.data) if isinstance(r.data, str) else None
         if want is None or got is None or fold_mapped(want) != got:
             return
-        address = "%s%%%s" % (got, zone) if zone is not None and is_link_local(got) else got
+        if is_link_local(got) and zone is None:
+            return  # a link-local address with no known arrival zone names no host
+        address = "%s%%%s" % (got, zone) if is_link_local(got) else got
         name = fold_name(r.name)
         e = self._m.get(name)
         if r.ttl == 0:
@@ -366,22 +385,47 @@ class _UdpSocket6:
 
 
 class _Receiver(asyncio.DatagramProtocol):
-    def __init__(self, on_packet: Callable[[bytes, str], None], index: int = 0) -> None:
+    """``on_packet(data, source)``. On an IPv6 interface socket (``index`` set) a link-local source is passed
+    with the zone of the interface it arrived on (``fe80::1%en0``), and only when the datagram's own scope
+    is that interface: one with no scope, or another, is dropped here."""
+
+    def __init__(self, on_packet: Callable[[bytes, str], None], index: int = 0, zone: str = "") -> None:
         self._on_packet = on_packet
         self._index = index
+        self._zone = zone
 
     def datagram_received(self, data: bytes, addr: Any) -> None:
         try:
             src = split_zone(str(addr[0]))[0]
-            # A link-local source names its interface: one that arrived on another is not ours.
-            if self._index and len(addr) >= 4 and addr[3] not in (0, self._index) and is_link_local(src):
-                return
+            if self._index and is_link_local(src):
+                if len(addr) < 4 or addr[3] != self._index or not self._zone:
+                    return
+                src = "%s%%%s" % (src, self._zone)
             self._on_packet(data, src)
         except Exception:
             pass  # a bad packet or a host callback never stops the socket
 
     def error_received(self, exc: Exception) -> None:
         pass
+
+
+def _bind_group4(sock: Any) -> None:
+    """On Linux, bind to the multicast group, so only datagrams sent to it arrive: a unicast reply to port
+    5353 is never delivered (§15.4). Elsewhere the wildcard: Windows cannot bind a group address, and on
+    macOS a socket bound to the group does not get this host's own looped-back datagrams, which same-host
+    peers need; asyncio gives no packet information there, so a unicast reply that passes every other test
+    is that platform's residual, as §15.4 allows an SDK to say."""
+    if sys.platform.startswith("linux"):
+        try:
+            sock.setsockopt(socket.IPPROTO_IP, 49, 0)  # IP_MULTICAST_ALL: only the groups this socket joined
+        except OSError:
+            pass
+        try:
+            sock.bind((MDNS_GROUP, MDNS_PORT))
+            return
+        except OSError:
+            pass
+    sock.bind(("", MDNS_PORT))
 
 
 async def _open_udp(on_packet: Callable[[bytes, str], None], interfaces: Sequence[str]) -> MdnsSocket:
@@ -394,7 +438,7 @@ async def _open_udp(on_packet: Callable[[bytes, str], None], interfaces: Sequenc
                 sock.setsockopt(socket.SOL_SOCKET, reuse_port, 1)
             except OSError:
                 pass
-        sock.bind(("", MDNS_PORT))
+        _bind_group4(sock)
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
         group = socket.inet_aton(MDNS_GROUP)
@@ -437,12 +481,15 @@ async def _open_udp6(iface: MdnsInterface, on_packet: Callable[[bytes, str], Non
                 pass
         if sys.platform.startswith("linux"):
             try:
-                # Bound to the group and the interface, so only that traffic arrives.
+                # Bound to the group and the interface, so only group traffic arrives: a unicast reply is not
+                # delivered.
                 sock.bind((MDNS_GROUP6, MDNS_PORT, 0, iface.ifindex))
             except OSError:
                 sock.bind(("::", MDNS_PORT))
         else:
-            # The BSDs (macOS) deliver a group's traffic to the sockets that joined it on that interface.
+            # The BSDs (macOS) deliver a group's traffic to the sockets that joined it on that interface; a
+            # group-bound socket there misses this host's own datagrams, and Windows cannot bind a group
+            # address. A unicast reply to port 5353 is those platforms' residual.
             sock.bind(("::", MDNS_PORT))
         sock.setsockopt(
             socket.IPPROTO_IPV6,
@@ -454,7 +501,7 @@ async def _open_udp6(iface: MdnsInterface, on_packet: Callable[[bytes, str], Non
         sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_LOOP, 1)
         sock.setblocking(False)
         transport, _ = await asyncio.get_running_loop().create_datagram_endpoint(
-            lambda: _Receiver(on_packet, iface.ifindex), sock=sock
+            lambda: _Receiver(on_packet, iface.ifindex, iface.zone), sock=sock
         )
     except OSError as e:
         sock.close()
@@ -656,6 +703,7 @@ class MulticastDnsAdapter:
         self,
         on_up: Callable[[MdnsFound], None],
         on_down: Optional[Callable[[str], None]] = None,
+        accept: Optional[Callable[[str], bool]] = None,
     ) -> MdnsHandle:
         clock = self._clock
         seen: "OrderedDict[str, _Entry]" = OrderedDict()
@@ -693,24 +741,35 @@ class MulticastDnsAdapter:
                 fresh.popitem(last=False)
             return ok
 
-        def learn(records: Sequence[Record], src: str, zone: Optional[str]) -> None:
+        def learn(records: Sequence[Record], src: str, zone: Optional[str], who: str) -> None:
             now = clock()
             for r in records:
                 if r.type in ("A", "AAAA"):
-                    book.learn(r, src, zone, now, lambda: admit(src, now))
+                    # Only the host name of an accepted instance has a place in the book.
+                    h = _HOST_NAME.match(fold_name(r.name))
+                    if h is None or (accept is not None and not accept(h.group(1))):
+                        continue
+                    book.learn(r, src, zone, now, lambda: admit(who, now))
                     continue
                 name = r.data if r.type == "PTR" else r.name
                 m = _INSTANCE_FQDN.match(fold_name(name)) if isinstance(name, str) else None
                 if m is None or (r.type == "PTR" and fold_name(r.name) != PEER_SERVICE):
                     continue
                 inst = m.group(1)
+                if accept is not None and not accept(inst):
+                    continue
+                if r.type == "SRV":
+                    port = r.data.get("port") if isinstance(r.data, dict) else None
+                    if not isinstance(port, int) or isinstance(port, bool) or not _MIN_SRV_PORT <= port <= 65535:
+                        continue  # a port a random listen cannot have drawn
                 if r.type == "PTR" and r.ttl == 0:
                     if seen.pop(inst, None) is not None:
                         down(inst)
                     continue
                 e = seen.pop(inst, None)
                 if e is None:
-                    if not admit(src, now):
+                    # No source owns a name; each may add 16 new ones a minute.
+                    if not admit(who, now):
                         continue
                     if len(seen) >= MAX_INSTANCES:
                         trim_seen(now)
@@ -718,13 +777,11 @@ class MulticastDnsAdapter:
                 e.at = now
                 seen[inst] = e
                 if r.type == "SRV" and isinstance(r.data, dict):
-                    port = r.data.get("port")
-                    if not isinstance(port, int) or not 1 <= port <= 65535:
-                        continue
-                    e.port = port
+                    e.port = r.data["port"]
                     # Only our own host name shape: the target is the instance's ``.local`` name.
-                    if r.data.get("target") == _host_of(inst):
-                        e.target = r.data["target"]
+                    target = r.data.get("target")
+                    if isinstance(target, str) and fold_name(target) == _host_of(inst):
+                        e.target = _host_of(inst)
                 elif r.type == "TXT" and isinstance(r.data, list):
                     e.txt = list(r.data)
             for inst, e in list(seen.items()):
@@ -757,13 +814,18 @@ class MulticastDnsAdapter:
                 if not p.is_response:
                     return
                 # A response from outside the link's subnets teaches nothing (RFC 6762 section 11). On
-                # IPv6 a link-local source is on-link by definition and takes the interface as its zone.
-                if iface is None:
-                    if not source_in_subnets(src, self._nets4()):
+                # IPv6 a link-local source is on-link by definition and takes the interface as its zone,
+                # which the source must carry too: with none, or another, it is not ours.
+                addr, source_zone = split_zone(src)
+                if is_link_local(addr):
+                    if iface is None or source_zone is None or source_zone != iface.zone:
                         return
-                elif not (is_link_local(src) or source_in_subnets(src, iface.nets)):
+                elif iface is None:
+                    if not source_in_subnets(addr, self._nets4()):
+                        return
+                elif not source_in_subnets(addr, iface.nets):
                     return
-                learn(p.answers, src, None if iface is None else iface.zone)
+                learn(p.answers, addr, None if iface is None else iface.zone, src)
 
             return on_packet
 

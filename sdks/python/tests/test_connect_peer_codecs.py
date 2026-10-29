@@ -239,7 +239,7 @@ def test_lan_and_mdns_row_counts() -> None:
     # Exact: a row added or dropped is a deliberate corpus change.
     assert len(LAN_ROWS) == 133
     assert len(M["lanAddresses"]["candidates"]["rows"]) == 73
-    assert len(MDNS_ROWS) == 36
+    assert len(MDNS_ROWS) == 37
     for rows in (LAN_ROWS, M["lanAddresses"]["candidates"]["rows"], MDNS_ROWS):
         assert len({r["id"] for r in rows}) == len(rows)
 

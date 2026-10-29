@@ -42,9 +42,10 @@ class Adapter:
         iftype: int = 6,
         up: bool = True,
         no_multicast: bool = False,
+        hw: bytes = b"\x02\x00\x5e\x00\x00\x01",
     ) -> None:
         self.guid, self.ifindex, self.ipv6_index, self.addrs = guid, ifindex, ipv6_index, addrs
-        self.iftype, self.up, self.no_multicast = iftype, up, no_multicast
+        self.iftype, self.up, self.no_multicast, self.hw = iftype, up, no_multicast, hw
 
 
 def lay_out(buf: Any, adapters: Sequence[Adapter]) -> None:
@@ -77,6 +78,9 @@ def lay_out(buf: Any, adapters: Sequence[Adapter]) -> None:
         a.IfType = ad.iftype
         a.OperStatus = 1 if ad.up else 2  # IfOperStatusUp / IfOperStatusDown
         a.Flags = 0x10 if ad.no_multicast else 0  # IP_ADAPTER_NO_MULTICAST
+        a.PhysicalAddressLength = len(ad.hw)
+        for i, b in enumerate(ad.hw):
+            a.PhysicalAddress[i] = b
         prev_u: Any = None
         for text, prefix, dad in ad.addrs:
             raw = sockaddr(text, ad.ipv6_index)
@@ -154,6 +158,28 @@ def test_down_loopback_vpn_and_unusable_addresses() -> None:
     assert by[("{DDDD-LO}", "::1")].prefix == 128
     assert by[("{FFFF-VPN}", "172.16.0.2")].point_to_point
     assert not any(r.name == "{EEEE-TENT}" for r in rows)  # tentative and duplicate are not addresses yet
+
+
+@pytest.mark.parametrize(
+    "iftype,hw,tunnel,p2p",
+    [
+        (6, b"\x02\x00\x5e\x00\x00\x01", False, False),  # Ethernet with a hardware address
+        (53, b"\x02\x00\x5e\x00\x00\x01", False, True),  # proprietary virtual: WireGuard, Hyper-V
+        (28, b"\x02\x00\x5e\x00\x00\x01", False, True),  # SLIP
+        (131, b"\x02\x00\x5e\x00\x00\x01", False, True),  # tunnel
+        (6, b"", True, False),  # no hardware address
+        (6, b"\x00" * 6, True, False),  # an all-zero one
+    ],
+)
+def test_point_to_point_types_and_zero_hardware_addresses_are_not_a_lan(
+    iftype: int, hw: bytes, tunnel: bool, p2p: bool
+) -> None:
+    addrs = [("10.9.9.9", 24, PREFERRED), ("fe80::4", 64, PREFERRED)]
+    rows = parsed([Adapter("{T}", 4, 4, addrs, iftype=iftype, hw=hw)])
+    assert {(r.point_to_point, r.tunnel) for r in rows} == {(p2p, tunnel)}
+    counts = not (p2p or tunnel)
+    assert (v4_subnets(False, rows) == ["10.9.9.9/24"]) is counts
+    assert (len(v6_interfaces(False, rows, own=lambda i: None)) == 1) is counts
 
 
 def test_a_disabled_ip_version_and_a_bad_prefix_give_no_row() -> None:

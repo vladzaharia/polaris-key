@@ -10,6 +10,12 @@ The device's own link-local address on an interface is the one the kernel would 
 connected to ``ff02::fb%<index>`` sends nothing, and ``getsockname`` then names the source address. That
 is the address that must go in the AAAA record, because a browser believes an AAAA record only when it
 equals the packet's source.
+
+Which interfaces count (§15.4): up, loopback only when allowed, and neither point-to-point nor a tunnel
+or other pseudo-interface (a VPN, ``utun``, WireGuard, a Hyper-V adapter). Where the platform has a flag
+(``IFF_POINTOPOINT``, a Windows interface type) that is the test; an interface with no hardware address
+(an all-zero or empty link-layer address) is taken as a tunnel as well. A TAP adapter has a made-up
+hardware address and still counts as a LAN: that is a residual.
 """
 
 from __future__ import annotations
@@ -37,6 +43,8 @@ MAX_INTERFACES = 8
 _GROUP6 = "ff02::fb"
 _MDNS_PORT = 5353
 _IFF_UP, _IFF_LOOPBACK, _IFF_POINTOPOINT = 0x1, 0x8, 0x10
+#: ``sa_family`` of the link-layer rows ``getifaddrs`` also returns: ``AF_PACKET`` on Linux, ``AF_LINK`` on the BSDs.
+_AF_PACKET, _AF_LINK = 17, 18
 #: IFF_MULTICAST is 0x1000 on Linux and 0x8000 on the BSDs (macOS included).
 _BSD = sys.platform in ("darwin", "freebsd", "openbsd", "netbsd")
 _IFF_MULTICAST = 0x8000 if _BSD else 0x1000
@@ -58,6 +66,8 @@ class InterfaceAddress(NamedTuple):
     loopback: bool
     point_to_point: bool
     multicast: bool
+    #: A tunnel or pseudo-interface: no hardware address (VPN, ``utun``, WireGuard, a virtual adapter).
+    tunnel: bool = False
 
 
 class MdnsInterface(NamedTuple):
@@ -113,6 +123,29 @@ def _read_sockaddr(ptr: Any, fam: Optional[int] = None) -> Optional[Tuple[int, b
     return f, bytes(raw[at : at + n])
 
 
+def _link_has_hw(ptr: Any) -> Optional[bool]:
+    """For a link-layer row of ``getifaddrs`` (``sockaddr_ll`` on Linux, ``sockaddr_dl`` on the BSDs): does
+    the interface have a non-zero hardware address? ``None`` for any other row."""
+    if not ptr:
+        return None
+    head = ctypes.string_at(ptr, 2)
+    fam = head[1] if _BSD else int(struct.unpack("=H", head)[0])
+    if _BSD and fam == _AF_LINK:
+        # sockaddr_dl: len, family, index(2), type, nlen, alen, slen, data[nlen name bytes, alen address bytes]
+        raw = ctypes.string_at(ptr, 8)
+        nlen, alen = raw[5], raw[6]
+        if alen == 0:
+            return False
+        data = ctypes.string_at(ptr + 8, nlen + alen)
+        return any(data[nlen : nlen + alen])
+    if not _BSD and fam == _AF_PACKET:
+        # sockaddr_ll: family(2), protocol(2), ifindex(4), hatype(2), pkttype(1), halen(1), addr[8]
+        raw = ctypes.string_at(ptr, 20)
+        halen = min(raw[11], 8)
+        return any(raw[12 : 12 + halen])
+    return None
+
+
 def _prefix(mask: bytes) -> Optional[int]:
     """The prefix length of a netmask, or ``None`` when its ones are not a leading run."""
     bits = bin(int.from_bytes(mask, "big"))[2:].zfill(len(mask) * 8)
@@ -135,7 +168,8 @@ _WIN_NO_MULTICAST = 0x10
 _IF_OPER_STATUS_UP = 1
 _IF_TYPE_LOOPBACK = 24
 #: Serial, PPP and tunnel interfaces: point-to-point, as the POSIX ``IFF_POINTOPOINT`` is.
-_IF_TYPES_POINT_TO_POINT = (22, 23, 131)
+#: 22 serial, 23 PPP, 28 SLIP, 53 proprietary virtual (WireGuard, Hyper-V and other virtual adapters), 131 tunnel.
+_IF_TYPES_POINT_TO_POINT = (22, 23, 28, 53, 131)
 #: IpDadStateInvalid, Tentative and Duplicate: not usable (Deprecated 3 and Preferred 4 are).
 _DAD_UNUSABLE = (0, 1, 2)
 #: Bounds on the lists a corrupt buffer could make endless.
@@ -220,12 +254,14 @@ def _parse_adapters(head: int) -> List[InterfaceAddress]:
         adapter = a.Next
         name = (a.AdapterName or b"").decode("ascii", "replace")
         loopback = a.IfType == _IF_TYPE_LOOPBACK
+        hw = bytes(a.PhysicalAddress)[: min(int(a.PhysicalAddressLength), 8)]
         row = (
             name,
             a.OperStatus == _IF_OPER_STATUS_UP,
             loopback,
             a.IfType in _IF_TYPES_POINT_TO_POINT,
             not (a.Flags & _WIN_NO_MULTICAST),
+            not loopback and not any(hw),
         )
         unicast = a.FirstUnicastAddress
         for _ in range(_WIN_MAX_ADDRESSES):
@@ -244,7 +280,7 @@ def _parse_adapters(head: int) -> List[InterfaceAddress]:
             if not name or ifindex == 0 or prefix > (128 if v6 else 32):
                 continue
             text = socket.inet_ntop(socket.AF_INET6 if v6 else socket.AF_INET, raw)
-            out.append(InterfaceAddress(name, ifindex, text, prefix, v6, row[1], row[2], row[3], row[4]))
+            out.append(InterfaceAddress(name, ifindex, text, prefix, v6, row[1], row[2], row[3], row[4], row[5]))
     return out
 
 
@@ -318,12 +354,18 @@ def interface_addresses() -> Optional[List[InterfaceAddress]]:
     except OSError:
         pass
     out: List[InterfaceAddress] = []
+    #: Interface name -> has a non-zero hardware address, from the link-layer rows.
+    hw: Dict[str, bool] = {}
     try:
         cur = head
         while cur:
             ifa = cur.contents
             cur = ifa.ifa_next
             name = (ifa.ifa_name or b"").decode("ascii", "replace")
+            link = _link_has_hw(ifa.ifa_addr)
+            if link is not None:
+                hw[name] = hw.get(name, False) or link
+                continue
             a = _read_sockaddr(ifa.ifa_addr)
             if a is None or name not in index:
                 continue
@@ -354,7 +396,11 @@ def interface_addresses() -> Optional[List[InterfaceAddress]]:
             )
     finally:
         lib.freeifaddrs(head)
-    return out
+    # No link-layer row for an interface means the platform did not say: it is not taken as a tunnel.
+    return [
+        r._replace(tunnel=r.name in hw and not hw[r.name] and not r.loopback and not r.point_to_point)
+        for r in out
+    ]
 
 
 def _cidr(i: InterfaceAddress) -> str:
@@ -362,14 +408,14 @@ def _cidr(i: InterfaceAddress) -> str:
 
 
 def v4_subnets(allow_loopback: bool, addrs: Optional[Sequence[InterfaceAddress]]) -> Optional[List[str]]:
-    """The connected IPv4 subnets (CIDR) of the up, non-point-to-point interfaces; loopback only when
-    allowed. ``None`` when the interface list is unavailable."""
+    """The connected IPv4 subnets (CIDR) of the up interfaces that are neither point-to-point nor a tunnel;
+    loopback only when allowed. ``None`` when the interface list is unavailable."""
     if addrs is None:
         return None
     return [
         _cidr(i)
         for i in addrs
-        if not i.v6 and i.up and not i.point_to_point and (allow_loopback or not i.loopback)
+        if not i.v6 and i.up and not i.point_to_point and not i.tunnel and (allow_loopback or not i.loopback)
     ]
 
 
@@ -412,7 +458,7 @@ def v6_interfaces(
         mine = by[name]
         first = mine[0]
         ll = [i.address for i in mine if is_link_local(i.address)]
-        if not ll or not first.up or name.startswith(_NOT_A_LAN) or first.point_to_point:
+        if not ll or not first.up or name.startswith(_NOT_A_LAN) or first.point_to_point or first.tunnel:
             continue
         if first.loopback:
             if not allow_loopback:
