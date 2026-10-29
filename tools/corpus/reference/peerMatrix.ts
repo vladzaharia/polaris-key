@@ -6,9 +6,20 @@
 // from the specification over `node:crypto` alone (the hash, HMAC and HKDF helpers are the Noise
 // reference's), so it shares nothing with client-core.
 
-import { createHash } from "node:crypto";
+import {
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  sign as nodeSign,
+} from "node:crypto";
+import { refCanonicalB64url } from "./b64url.js";
 import { type Json, refParseStrict } from "./config.js";
+import { refDeviceLabel } from "./device-label.js";
+import { refProofMessage, refVerifyProof } from "./deviceProof.js";
+import { leToBig } from "./ed25519.js";
+import { refPointOk } from "./jws.js";
 import { bytesHex, hexBytes, hmac, refHkdf, sha256 } from "./noise.js";
+import { refX25519LowOrder } from "./peer.js";
 
 const enc = new TextEncoder();
 export const utf8 = (s: string): Uint8Array => enc.encode(s);
@@ -496,3 +507,358 @@ export function refHandshakePayload(
 /** The session's capabilities: those both sides list, once each, in byte order. */
 export const refCapsIntersection = (a: string[], b: string[]): string[] =>
   [...new Set(a.filter((c) => b.includes(c)))].sort();
+
+// ── Mode v: the vouch (§15.6.1) ──────────────────────────────────────────────
+
+/** The longest `VOUCH_REQ` body the approver reads. */
+export const REF_VOUCH_REQ_MAX = 4096;
+
+const PLATFORM_SHOWN = /^[A-Za-z0-9 ._+-]{1,32}$/;
+const P25519 = 2n ** 255n - 19n;
+const B64U_RE = /^[A-Za-z0-9_-]+$/;
+
+/** A `HELLO` or `VOUCH_REQ` label as shown (§15.6): NFC, then the device-label cleaning
+ *  (§12.7.1); null when nothing is left, which a `HELLO` shows as no label. */
+export const refVouchLabel = (raw: string): string | null =>
+  refDeviceLabel(raw.normalize("NFC"));
+
+/** A `platform` as shown: as sent when it is at most 32 of `A-Za-z0-9 ._+-`, else "Unknown". */
+export const refVouchPlatform = (raw: string): string =>
+  PLATFORM_SHOWN.test(raw) ? raw : "Unknown";
+
+/** An Ed25519 key from a 32-byte seed, over `node:crypto` alone. */
+export function refVouchSigner(seed: Uint8Array): {
+  signKey: string;
+  sign: (msg: Uint8Array) => string;
+} {
+  const priv = createPrivateKey({
+    key: Buffer.concat([
+      Buffer.from("302e020100300506032b657004220420", "hex"),
+      seed,
+    ]),
+    format: "der",
+    type: "pkcs8",
+  });
+  return {
+    signKey: createPublicKey(priv).export({ format: "jwk" }).x as string,
+    sign: (msg) => nodeSign(null, msg, priv).toString("base64url"),
+  };
+}
+
+/** What the `vouch` proof signs (§15.6.1 rule 5): purpose `vouch`, line 5 `<h>.<request>`,
+ *  line 6 `-`. Null when a field would break the line format. */
+export const refVouchMessage = (
+  slug: string,
+  deviceId: string,
+  hB64: string,
+  request: string,
+): Buffer | null =>
+  refProofMessage({
+    purpose: "vouch",
+    product: slug,
+    deviceId,
+    value: `${hB64}.${request}`,
+    tokenHash: "-",
+  });
+
+export interface RefVouchRequestRow {
+  slug: string;
+  /** The session's Noise handshake hash, hex. */
+  hHex: string;
+  /** What D's `HELLO` showed: the raw members, cleaned here. */
+  hello: { label?: string; platform: string };
+  body: Uint8Array;
+}
+
+export type RefVouchRequestVerdict =
+  | {
+      ok: true;
+      result: {
+        request: string;
+        deviceId: string;
+        signKey: string;
+        agreeKey: string;
+        label: string | null;
+        platform: string;
+      };
+    }
+  | { ok: false; reason: string };
+
+const raw32 = (s: unknown): Uint8Array | null => {
+  if (typeof s !== "string" || s.length !== 43) return null;
+  if (!B64U_RE.test(s) || !refCanonicalB64url(s)) return null;
+  return Uint8Array.from(Buffer.from(s, "base64url"));
+};
+
+/** The X25519 spelling the Worker registers (§15.8): u below p, which also clears bit 255. */
+const refAgreeSpelling = (k: Uint8Array): boolean => leToBig(k) < P25519;
+
+/** M's check of a `VOUCH_REQ` body (§15.6.1 rule 5). Every refusal closes `peer_bad_frame`. */
+export function refVouchRequest(r: RefVouchRequestRow): RefVouchRequestVerdict {
+  const no = (reason: string): RefVouchRequestVerdict => ({
+    ok: false,
+    reason,
+  });
+  if (r.body.length > REF_VOUCH_REQ_MAX) return no("size");
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+      r.body,
+    );
+  } catch {
+    return no("utf8");
+  }
+  if (text.startsWith("\ufeff")) return no("bom");
+  const parsed = refParseStrict(text);
+  if (!parsed.ok) return no("json");
+  const o = parsed.value;
+  if (o === null || typeof o !== "object" || Array.isArray(o))
+    return no("object");
+  if (o.v !== 1) return no("version");
+  const { request, deviceId, signKey, agreeKey, label, platform, sig } = o;
+  if (typeof request !== "string" || !/^nr_[A-Za-z0-9_-]{22}$/.test(request))
+    return no("request");
+  if (typeof deviceId !== "string" || !/^[A-Za-z0-9_-]{32}$/.test(deviceId))
+    return no("device-id");
+  const sk = raw32(signKey);
+  if (sk === null || !refPointOk(sk)) return no("sign-key");
+  const ak = raw32(agreeKey);
+  if (ak === null || refX25519LowOrder(ak)) return no("agree-key");
+  if (!refAgreeSpelling(ak)) return no("agree-key-spelling");
+  if (label !== undefined && typeof label !== "string") return no("label");
+  if (typeof platform !== "string") return no("platform");
+  if (typeof sig !== "string") return no("sig");
+  const hB64 = Buffer.from(hexBytes(r.hHex)).toString("base64url");
+  const proof = refVerifyProof({
+    purpose: "vouch",
+    product: r.slug,
+    deviceId,
+    value: `${hB64}.${request}`,
+    tokenHash: "-",
+    signKey: signKey as string,
+    sig,
+    now: 0,
+  });
+  if (proof !== "ok") return no(`sig:${proof}`);
+  const shown = label === undefined ? null : refVouchLabel(label);
+  const helloLabel =
+    r.hello.label === undefined ? null : refVouchLabel(r.hello.label);
+  if (shown !== helloLabel) return no("hello-label");
+  const shownPlatform = refVouchPlatform(platform);
+  if (shownPlatform !== refVouchPlatform(r.hello.platform))
+    return no("hello-platform");
+  return {
+    ok: true,
+    result: {
+      request,
+      deviceId,
+      signKey: signKey as string,
+      agreeKey: agreeKey as string,
+      label: shown,
+      platform: shownPlatform,
+    },
+  };
+}
+
+/** D's reading of a `VOUCH_RESULT` body (§15.6.1 rule 6): the status, or a refusal. */
+export function refVouchResult(
+  body: Uint8Array,
+):
+  | { status: "approved" | "denied" | "expired" }
+  | { refuse: "peer_bad_frame" } {
+  const bad = { refuse: "peer_bad_frame" } as const;
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+      body,
+    );
+  } catch {
+    return bad;
+  }
+  if (text.startsWith("\ufeff")) return bad;
+  const parsed = refParseStrict(text);
+  if (!parsed.ok) return bad;
+  const o = parsed.value;
+  if (o === null || typeof o !== "object" || Array.isArray(o)) return bad;
+  if (typeof o.status !== "string") return bad;
+  return o.status === "approved" ||
+    o.status === "denied" ||
+    o.status === "expired"
+    ? { status: o.status }
+    : { status: "denied" };
+}
+
+/** One step of a `vouch` flow: an event on one side, or a record in one direction. */
+export type RefFlowStep =
+  | { ev: "handshake"; capsD: string[]; capsM: string[] }
+  | {
+      ev:
+        | "shown"
+        | "picked"
+        | "wrong-pick"
+        | "none-match"
+        | "timeout"
+        | "confirmed";
+    }
+  | {
+      dir: "d2m" | "m2d";
+      /** The record type as four lower-case hex digits. */
+      type: string;
+      /** `VOUCH_RESULT` only. */
+      status?: "approved" | "denied" | "expired";
+      /** The body length, for the held-record limit. */
+      bytes?: number;
+    };
+
+export interface RefFlowWant {
+  /** The code the receiving side closes with, or null when the flow runs to its end. */
+  close: string | null;
+  /** The index of the step that closed, or null. */
+  at: number | null;
+  /** The indices of the record steps handed to the host, in the order they were handed over. */
+  delivered: number[];
+}
+
+const HELD_MAX_RECORDS = 16;
+const HELD_MAX_BYTES = 16384;
+const isSyncType = (t: string): boolean => /^003[0-9a-f]$/.test(t);
+
+/** The order, direction and gating rules of §15.6.1 rules 1, 4, 7, 8 and 12, one session. The
+ *  receiver of a record checks it; D is the initiator and M the responder. */
+export function refVouchFlow(steps: RefFlowStep[]): RefFlowWant {
+  const delivered: number[] = [];
+  let picked = false;
+  let reqSeen = false;
+  let reqHeld = -1;
+  let resultSeen = false;
+  let status: string | null = null;
+  let held: { at: number; bytes: number }[] = [];
+  let heldBytes = 0;
+  let confirmed = false;
+  const stop = (close: string, at: number): RefFlowWant => ({
+    close,
+    at,
+    delivered,
+  });
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i]!;
+    if ("ev" in s) {
+      switch (s.ev) {
+        case "handshake":
+          if (!refCapsIntersection(s.capsD, s.capsM).includes("vouch/1"))
+            return stop("peer_not_allowed", i);
+          break;
+        case "shown":
+          break;
+        case "picked":
+          picked = true;
+          if (reqHeld >= 0) {
+            delivered.push(reqHeld);
+            reqHeld = -1;
+          }
+          break;
+        case "wrong-pick":
+        case "none-match":
+          return stop("peer_bye", i);
+        case "timeout":
+          return stop("peer_timeout", i);
+        case "confirmed":
+          confirmed = true;
+          for (const h of held) delivered.push(h.at);
+          held = [];
+          heldBytes = 0;
+          break;
+      }
+      continue;
+    }
+    if (s.type === "8010") {
+      if (s.dir === "m2d") return stop("peer_not_allowed", i);
+      if (reqSeen) return stop("peer_bad_frame", i);
+      reqSeen = true;
+      if (picked) delivered.push(i);
+      else reqHeld = i;
+    } else if (s.type === "8011") {
+      if (s.dir === "d2m") return stop("peer_not_allowed", i);
+      if (!reqSeen) return stop("peer_not_allowed", i);
+      if (resultSeen) return stop("peer_bad_frame", i);
+      resultSeen = true;
+      status = s.status ?? null;
+      delivered.push(i);
+    } else if (isSyncType(s.type)) {
+      if (s.dir === "d2m") return stop("peer_not_allowed", i);
+      if (status !== "approved") return stop("peer_not_allowed", i);
+      if (confirmed) {
+        delivered.push(i);
+      } else {
+        const n = s.bytes ?? 0;
+        if (held.length >= HELD_MAX_RECORDS || heldBytes + n > HELD_MAX_BYTES)
+          return stop("peer_busy", i);
+        held.push({ at: i, bytes: n });
+        heldBytes += n;
+      }
+    } else {
+      throw new Error(`refVouchFlow: unknown record type ${s.type}`);
+    }
+  }
+  return { close: null, at: null, delivered };
+}
+
+export interface RefFinishRow {
+  /** True when M already registered its keys and called `approve` again once. */
+  keysRetried: boolean;
+  /** The HTTP status, or null when no answer came. */
+  http: number | null;
+  /** The body text, or null. A refusal is a problem body with a `code` member. */
+  body: string | null;
+  /** M's fresh read of discovery: it still names `nearby` and `nearbyApprove`. */
+  discoveryNearby: boolean;
+}
+
+export type RefFinishResult =
+  | { send: "approved" | "denied" | "expired" }
+  | { wait: "keys" | "choice" }
+  | { close: true; stopAdvert: boolean };
+
+/** What M does with the answer to `nearby/approve` (§15.6.1 rule 6). */
+export function refVouchFinish(r: RefFinishRow): RefFinishResult {
+  const close = (stopAdvert = false): RefFinishResult => ({
+    close: true,
+    stopAdvert,
+  });
+  if (r.http === null) return close();
+  let o: Record<string, Json> | null = null;
+  if (r.body !== null) {
+    const p = refParseStrict(r.body);
+    if (
+      p.ok &&
+      p.value !== null &&
+      typeof p.value === "object" &&
+      !Array.isArray(p.value)
+    )
+      o = p.value;
+  }
+  const code = o !== null && typeof o.code === "string" ? o.code : null;
+  switch (r.http) {
+    case 200: {
+      const st = o !== null ? o.status : undefined;
+      if (st === "approved") return { send: "approved" };
+      if (st === "choose") return { wait: "choice" };
+      return close();
+    }
+    case 204:
+      return { send: "denied" };
+    case 403:
+      return code === "not_nearby" || code === "device_limit"
+        ? { send: "denied" }
+        : close();
+    case 404:
+      return r.discoveryNearby ? { send: "expired" } : close(true);
+    case 409:
+      if (code === "device_keys_required")
+        return r.keysRetried ? close() : { wait: "keys" };
+      if (code === "license_choice_required") return { wait: "choice" };
+      return close();
+    default:
+      return close();
+  }
+}

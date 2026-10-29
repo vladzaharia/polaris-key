@@ -15,6 +15,13 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  base64UrlDecode,
+  base64UrlEncodeBytes,
+  isAcceptableEd25519Point,
+  isCanonicalB64url,
+  isX25519LowOrder,
+} from "@polaris-key/jws";
+import {
   RecordAssembler,
   accountInstance,
   advertEpoch,
@@ -29,9 +36,11 @@ import {
   isInstanceName,
   lanGroupKey,
   lanVerdict,
+  normalizeDeviceLabel,
   parseHandshakePayload,
   parseRecord,
   parseSasBody,
+  parseStrictObject,
   parseTxt,
   peerPrologue,
   peerPsk,
@@ -41,6 +50,7 @@ import {
   sasDisplay,
   sasRevealOk,
   sasValue,
+  verifyDeviceProof,
   type PeerMode,
   type RecordMode,
   type RelayMessage,
@@ -362,6 +372,286 @@ function mdnsAnswers(m: PeerMatrix): void {
   });
 }
 
+// ── vouch (WIRE-CONTRACT-V5 §15.6.1) ─────────────────────────────────────────
+//
+// Until CC-15.1 lands `peer/vouch.ts` in client-core, this file holds the one JS implementation
+// of the vouch rules the rows pin. It is built from client-core and jws primitives only (the
+// strict JSON reader, the label cleaning, the `vouch` device proof) and uses nothing outside
+// them, so it runs unchanged in Node and in a browser. When CC-15.1 merges, these four helpers
+// are replaced by its exports and the rows stay.
+
+const VOUCH_REQ_MAX = 4096;
+const VOUCH_HELD_RECORDS = 16;
+const VOUCH_HELD_BYTES = 16384;
+const PLATFORM_SHOWN = /^[A-Za-z0-9 ._+-]{1,32}$/;
+const P25519 = (1n << 255n) - 19n;
+const REQUEST_RE = /^nr_[A-Za-z0-9_-]{22}$/;
+const DEVICE_RE = /^[A-Za-z0-9_-]{32}$/;
+
+const cleanLabel = (raw: string): string | null =>
+  normalizeDeviceLabel(raw.normalize("NFC"));
+const cleanPlatform = (raw: string): string =>
+  PLATFORM_SHOWN.test(raw) ? raw : "Unknown";
+
+/** A canonical base64url of 32 bytes, decoded, or null. */
+function key32(v: unknown): Uint8Array | null {
+  if (typeof v !== "string" || v.length !== 43 || !isCanonicalB64url(v))
+    return null;
+  const b = base64UrlDecode(v);
+  return b.length === 32 ? b : null;
+}
+
+/** The one X25519 spelling the Worker registers: bit 255 clear and u below p (§15.8). */
+function agreeSpelling(k: Uint8Array): boolean {
+  if ((k[31]! & 0x80) !== 0) return false;
+  let u = 0n;
+  for (let i = 31; i >= 0; i--) u = (u << 8n) | BigInt(k[i]!);
+  return u < P25519;
+}
+
+interface VouchShown {
+  request: string;
+  deviceId: string;
+  signKey: string;
+  agreeKey: string;
+  label: string | null;
+  platform: string;
+}
+
+/** M's check of a `VOUCH_REQ` body against D's HELLO (§15.6.1 rule 5), or null to refuse. */
+async function checkVouchRequest(
+  slug: string,
+  h: Uint8Array,
+  hello: { label?: string; platform: string },
+  body: Uint8Array,
+): Promise<VouchShown | null> {
+  if (body.length > VOUCH_REQ_MAX) return null;
+  const o = parseStrictObject(body);
+  if (o === null || o.v !== 1) return null;
+  const { request, deviceId, signKey, agreeKey, label, platform, sig } = o;
+  if (typeof request !== "string" || !REQUEST_RE.test(request)) return null;
+  if (typeof deviceId !== "string" || !DEVICE_RE.test(deviceId)) return null;
+  const sk = key32(signKey);
+  if (sk === null || !isAcceptableEd25519Point(sk)) return null;
+  const ak = key32(agreeKey);
+  if (ak === null || isX25519LowOrder(ak) || !agreeSpelling(ak)) return null;
+  if (label !== undefined && typeof label !== "string") return null;
+  if (typeof platform !== "string" || typeof sig !== "string") return null;
+  const proven = await verifyDeviceProof({
+    purpose: "vouch",
+    product: slug,
+    deviceId,
+    value: `${base64UrlEncodeBytes(h)}.${request}`,
+    tokenHash: "-",
+    signKey: signKey as string,
+    sig,
+  });
+  if (!proven) return null;
+  const shown = label === undefined ? null : cleanLabel(label);
+  const helloLabel = hello.label === undefined ? null : cleanLabel(hello.label);
+  if (shown !== helloLabel) return null;
+  const shownPlatform = cleanPlatform(platform);
+  if (shownPlatform !== cleanPlatform(hello.platform)) return null;
+  return {
+    request,
+    deviceId,
+    signKey: signKey as string,
+    agreeKey: agreeKey as string,
+    label: shown,
+    platform: shownPlatform,
+  };
+}
+
+/** D's reading of a `VOUCH_RESULT` body (§15.6.1 rule 6). */
+function readVouchResult(
+  body: Uint8Array,
+): { status: string } | { refuse: "peer_bad_frame" } {
+  const o = parseStrictObject(body);
+  if (o === null || typeof o.status !== "string")
+    return { refuse: "peer_bad_frame" };
+  return {
+    status:
+      o.status === "approved" || o.status === "denied" || o.status === "expired"
+        ? o.status
+        : "denied",
+  };
+}
+
+interface FlowStep {
+  ev?: string;
+  capsD?: string[];
+  capsM?: string[];
+  dir?: "d2m" | "m2d";
+  type?: string;
+  status?: string;
+  bytes?: number;
+}
+
+/** One session's order, direction and gating rules (§15.6.1 rules 1, 4, 7, 8, 12). */
+function runVouchFlow(steps: FlowStep[]): {
+  close: string | null;
+  at: number | null;
+  delivered: number[];
+} {
+  const delivered: number[] = [];
+  const held: { at: number; bytes: number }[] = [];
+  let heldBytes = 0;
+  let picked = false;
+  let confirmed = false;
+  let requestAt = -1;
+  let requestPending = false;
+  let resultStatus: string | undefined;
+  let resultSeen = false;
+  const close = (code: string, at: number) => ({ close: code, at, delivered });
+  for (const [i, s] of steps.entries()) {
+    if (s.ev !== undefined) {
+      if (s.ev === "handshake") {
+        if (!capsIntersection(s.capsD!, s.capsM!).includes("vouch/1"))
+          return close("peer_not_allowed", i);
+      } else if (s.ev === "picked") {
+        picked = true;
+        if (requestPending) {
+          delivered.push(requestAt);
+          requestPending = false;
+        }
+      } else if (s.ev === "wrong-pick" || s.ev === "none-match") {
+        return close("peer_bye", i);
+      } else if (s.ev === "timeout") {
+        return close("peer_timeout", i);
+      } else if (s.ev === "confirmed") {
+        confirmed = true;
+        for (const h of held.splice(0)) delivered.push(h.at);
+        heldBytes = 0;
+      }
+      continue;
+    }
+    const sync = /^003[0-9a-f]$/.test(s.type!);
+    if (s.type === "8010") {
+      if (s.dir !== "d2m") return close("peer_not_allowed", i);
+      if (requestAt >= 0) return close("peer_bad_frame", i);
+      requestAt = i;
+      if (picked) delivered.push(i);
+      else requestPending = true;
+    } else if (s.type === "8011") {
+      if (s.dir !== "m2d" || requestAt < 0) return close("peer_not_allowed", i);
+      if (resultSeen) return close("peer_bad_frame", i);
+      resultSeen = true;
+      resultStatus = s.status;
+      delivered.push(i);
+    } else if (sync) {
+      if (s.dir !== "m2d" || resultStatus !== "approved")
+        return close("peer_not_allowed", i);
+      if (confirmed) {
+        delivered.push(i);
+      } else {
+        const n = s.bytes ?? 0;
+        if (
+          held.length >= VOUCH_HELD_RECORDS ||
+          heldBytes + n > VOUCH_HELD_BYTES
+        )
+          return close("peer_busy", i);
+        held.push({ at: i, bytes: n });
+        heldBytes += n;
+      }
+    } else {
+      throw new Error(`unknown record type ${s.type}`);
+    }
+  }
+  return { close: null, at: null, delivered };
+}
+
+/** What M does with the answer of `nearby/approve` (§15.6.1 rule 6). */
+function vouchFinish(r: {
+  keysRetried: boolean;
+  http: number | null;
+  body: string | null;
+  discoveryNearby: boolean;
+}): Record<string, unknown> {
+  const stop = (stopAdvert = false) => ({ close: true, stopAdvert });
+  if (r.http === null) return stop();
+  const o = r.body === null ? null : parseStrictObject(utf8(r.body));
+  const code = typeof o?.code === "string" ? o.code : null;
+  if (r.http === 200) {
+    if (o?.status === "approved") return { send: "approved" };
+    return o?.status === "choose" ? { wait: "choice" } : stop();
+  }
+  if (r.http === 204) return { send: "denied" };
+  if (r.http === 403)
+    return code === "not_nearby" || code === "device_limit"
+      ? { send: "denied" }
+      : stop();
+  if (r.http === 404)
+    return r.discoveryNearby ? { send: "expired" } : stop(true);
+  if (r.http === 409) {
+    if (code === "device_keys_required")
+      return r.keysRetried ? stop() : { wait: "keys" };
+    return code === "license_choice_required" ? { wait: "choice" } : stop();
+  }
+  return stop();
+}
+
+/** A request row's body bytes: text, hex, or a prefix, a filler and a suffix. */
+function vouchBody(r: any): Uint8Array {
+  // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (r.bodyHex !== undefined) return unhex(r.bodyHex);
+  if (r.bodyPad !== undefined)
+    return utf8(
+      r.bodyPad.prefix +
+        r.bodyPad.fill.repeat(r.bodyPad.count) +
+        r.bodyPad.suffix,
+    );
+  return utf8(r.body);
+}
+
+function vouch(m: PeerMatrix): void {
+  describe("peer-matrix vouch", () => {
+    const v = m.vouch;
+    const unique = (rows: { id: string }[]) =>
+      new Set(rows.map((r) => r.id)).size === rows.length;
+    // Exact: a row added or dropped is a deliberate corpus change, never a silent one.
+    it("has the rows", () => {
+      expect(v.requests.length).toBe(78);
+      expect(v.results.length).toBe(26);
+      expect(v.flows.length).toBe(30);
+      expect(v.finish.length).toBe(29);
+      for (const k of ["requests", "results", "flows", "finish"])
+        expect(unique(v[k]), k).toBe(true);
+    });
+    it("requests", async () => {
+      for (const r of v.requests) {
+        const body = vouchBody(r);
+        if (r.bodyPad !== undefined) expect(body.length, r.id).toBe(r.length);
+        const got = await checkVouchRequest(
+          r.slug,
+          unhex(r.hHex),
+          r.hello,
+          body,
+        );
+        if (r.verdict === "ok") expect(got, r.id).toEqual(r.result);
+        else {
+          expect(got, r.id).toBeNull();
+          expect(r.close, r.id).toBe("peer_bad_frame");
+        }
+      }
+    });
+    it("results", () => {
+      for (const r of v.results) {
+        const got = readVouchResult(vouchBody(r));
+        expect(got, r.id).toEqual(
+          r.refuse !== undefined ? { refuse: r.refuse } : { status: r.status },
+        );
+      }
+    });
+    it("flows", () => {
+      for (const r of v.flows)
+        expect(runVouchFlow(r.steps), r.id).toEqual(r.want);
+    });
+    it("finish", () => {
+      for (const r of v.finish) expect(vouchFinish(r), r.id).toEqual(r.result);
+    });
+  });
+}
+
 /** Keys of the matrix that are not sections. */
 const META = new Set(["peerMatrixVersion", "description"]);
 
@@ -379,6 +669,7 @@ const SUITES: {
   { sections: ["handshakePayloads"], run: handshakePayloads },
   { sections: ["lanAddresses"], run: lanAddresses },
   { sections: ["mdnsAnswers"], run: mdnsAnswers },
+  { sections: ["vouch"], run: vouch },
 ];
 
 /** Register every suite whose sections the matrix has, and fail on a section no suite covers. */
