@@ -10,7 +10,9 @@ import {
   MulticastDnsAdapter,
   PEER_SERVICE,
   isLanAddress,
+  NewNameLimiter,
   ownInterfaces,
+  ownSubnets,
   type MdnsFound,
   type MdnsInterface,
   type MdnsSocket,
@@ -326,8 +328,15 @@ describe("MulticastDnsAdapter", () => {
           data: `p1-${base32[i % 32]}${base32[(i >> 5) % 32]}${"b".repeat(14)}.${PEER_SERVICE}`,
         })),
       });
-      // Full of half-resolved names: the real device still resolves (the oldest is evicted).
-      s.emit("response", flood(400), SRC);
+      // Full of half-resolved names from many sources (one source adds 16 a minute at most): the
+      // real device still resolves (the oldest is evicted).
+      const names = flood(420).answers;
+      for (let k = 0; k < 30; k++)
+        s.emit(
+          "response",
+          { answers: names.slice(k * 14, (k + 1) * 14) },
+          { address: `192.168.2.${k + 1}` },
+        );
       s.emit("response", packet(), SRC);
       expect(up.map((f) => f.instance)).toEqual([INST]);
       // And much later, after the entries expired, a new device resolves as well.
@@ -609,7 +618,7 @@ describe("IPv6: one socket per interface", () => {
     v6.get("wlan0")!.emit(
       "response",
       { answers: [aaaa("fe80::1c2:3ff:fe4:5a6")] },
-      { address: LL },
+      { address: `${LL}%wlan0` },
     );
     expect(up.at(-1)!.hosts).toEqual([`${LL}%en0`, `${LL}%wlan0`]);
     v4.emit("response", { answers: [packet().answers[3]] }, SRC);
@@ -665,7 +674,7 @@ describe("IPv6: one socket per interface", () => {
     en0s.emit(
       "response",
       { answers: [ptr, srv, txt, aaaa(LL)] },
-      { address: LL },
+      { address: `${LL}%en0` },
     );
     en0s.emit(
       "response",
@@ -673,7 +682,7 @@ describe("IPv6: one socket per interface", () => {
       { address: "2001:db8:1:2::5" },
     );
     expect(up.at(-1)!.hosts).toEqual([`${LL}%en0`, "2001:db8:1:2::5"]);
-    en0s.emit("response", { answers: [aaaa(LL, 0)] }, { address: LL });
+    en0s.emit("response", { answers: [aaaa(LL, 0)] }, { address: `${LL}%en0` });
     expect(up.at(-1)!.hosts).toEqual(["2001:db8:1:2::5"]);
     expect(down).toEqual([]);
     en0s.emit(
@@ -695,5 +704,164 @@ describe("ownInterfaces", () => {
       expect(i.nets.length).toBeGreaterThan(0);
       expect(i.zone).toBe(process.platform === "win32" ? i.zone : i.name);
     }
+  });
+});
+
+describe("who may teach a browser (CC-IPV6 fix round)", () => {
+  const LL = "fe80::1c2:3ff:fe4:5a6";
+  const en0: MdnsInterface = {
+    name: "en0",
+    zone: "en0",
+    addresses: [LL],
+    nets: [`${LL}/64`, "2001:db8:1:2::9/64"],
+  };
+  const wlan0: MdnsInterface = {
+    name: "wlan0",
+    zone: "wlan0",
+    addresses: ["fe80::9"],
+    nets: ["fe80::9/64"],
+  };
+  const world = () => {
+    const v6 = new Map<string, FakeSocket>([
+      ["en0", new FakeSocket()],
+      ["wlan0", new FakeSocket()],
+    ]);
+    const a = new MulticastDnsAdapter({
+      create: () => new FakeSocket(),
+      subnets,
+      v6: { interfaces: () => [en0, wlan0], create: (i) => v6.get(i.name)! },
+    });
+    return { v6, a };
+  };
+  const aaaa = (data: string) => ({
+    name: HOST,
+    type: "AAAA",
+    ttl: 120,
+    data,
+  });
+
+  it("drops a link-local source whose zone is another link's, or missing (B1)", async () => {
+    const { v6, a } = world();
+    const { up } = await see(a);
+    const [ptr, srv, txt] = packet().answers;
+    const full = { answers: [ptr, srv, txt, aaaa("fe80::5")] };
+    const en0s = v6.get("en0")!;
+    // A packet from link wlan0 delivered on the en0 socket (the zone is in rinfo.address).
+    en0s.emit("response", full, { address: "fe80::5%wlan0" });
+    // No zone at all.
+    en0s.emit("response", full, { address: "fe80::5" });
+    expect(up).toEqual([]);
+    // The right zone is learned, with that zone.
+    en0s.emit("response", full, { address: "fe80::5%en0" });
+    expect(up.map((f) => f.hosts)).toEqual([["fe80::5%en0"]]);
+  });
+
+  it("ignores a link-local source on the IPv4 socket", async () => {
+    const s = new FakeSocket();
+    const { up } = await watch(s);
+    const [ptr, srv, txt] = packet().answers;
+    s.emit(
+      "response",
+      { answers: [ptr, srv, txt, aaaa("fe80::5")] },
+      { address: "fe80::5%en0" },
+    );
+    expect(up).toEqual([]);
+  });
+
+  it("keeps only the names accept allows, for every record type", async () => {
+    const s = new FakeSocket();
+    const a = new MulticastDnsAdapter({ create: () => s, subnets });
+    const up: MdnsFound[] = [];
+    await a.browse(
+      (f) => up.push(f),
+      undefined,
+      (i) => i === "p1-zzzzzzzzzzzzzzzz",
+    );
+    s.emit("response", packet(), SRC);
+    expect(up).toEqual([]);
+    const real = "p1-zzzzzzzzzzzzzzzz";
+    const fq = `${real}.${PEER_SERVICE}`;
+    const p = packet();
+    p.answers[0].data = fq;
+    p.answers[1].name = fq;
+    p.answers[1].data.target = `${real}.local`;
+    p.answers[2].name = fq;
+    p.answers[3].name = `${real}.local`;
+    s.emit("response", p, SRC);
+    expect(up.map((f) => f.instance)).toEqual([real]);
+  });
+
+  it("lets a source add 16 new names a minute, and a flood from it does not evict a real peer", async () => {
+    const lim = new NewNameLimiter();
+    for (let i = 0; i < 16; i++) expect(lim.admit("a", 1000 + i)).toBe(true);
+    expect(lim.admit("a", 2000)).toBe(false);
+    expect(lim.admit("b", 2000)).toBe(true);
+    expect(lim.admit("a", 1000 + 60_000)).toBe(true);
+
+    const s = new FakeSocket();
+    const { up } = await watch(s);
+    const base32 = "abcdefghijklmnopqrstuvwxyz234567";
+    // 256 forged names from one source: only 16 are taken.
+    const answers = Array.from({ length: 256 }, (_, i) => ({
+      name: PEER_SERVICE,
+      type: "PTR",
+      ttl: 120,
+      data: `p1-${base32[i % 32]}${base32[(i >> 5) % 32]}${"b".repeat(14)}.${PEER_SERVICE}`,
+    }));
+    s.emit("response", { answers }, { address: "192.168.1.66" });
+    s.emit("response", packet(), SRC);
+    expect(up.map((f) => f.instance)).toEqual([INST]);
+    // The same source cannot add another name for a minute.
+    const other = packet();
+    const inst2 = "p1-ccccccccccccccc2";
+    other.answers[0]!.data = `${inst2}.${PEER_SERVICE}`;
+    s.emit("response", other, { address: "192.168.1.66" });
+    s.emit("response", { answers: other.answers.slice(0, 1) }, SRC);
+    expect(up).toHaveLength(1);
+  });
+
+  it("ignores an SRV record with a port below 1024 or above 65535", async () => {
+    for (const port of [0, 1, 80, 1023, 65536]) {
+      const s = new FakeSocket();
+      const { up } = await watch(s);
+      const p = packet();
+      p.answers[1].data.port = port;
+      s.emit("response", p, SRC);
+      expect(up, String(port)).toEqual([]);
+    }
+    for (const port of [1024, 65535]) {
+      const s = new FakeSocket();
+      const { up } = await watch(s);
+      const p = packet();
+      p.answers[1].data.port = port;
+      s.emit("response", p, SRC);
+      expect(up.map((f) => f.port)).toEqual([port]);
+    }
+  });
+
+  it("leaves tunnel and point-to-point interfaces out of the IPv4 subnets", () => {
+    const entry = (
+      address: string,
+      cidr: string,
+      mac: string,
+      internal = false,
+    ) =>
+      ({
+        address,
+        cidr,
+        mac,
+        internal,
+        family: "IPv4",
+        netmask: "",
+        scopeid: 0,
+      }) as any;
+    const all = {
+      en0: [entry("192.168.1.5", "192.168.1.5/24", "aa:bb:cc:dd:ee:ff")],
+      utun3: [entry("10.8.0.2", "10.8.0.2/24", "00:00:00:00:00:00")],
+      lo0: [entry("127.0.0.1", "127.0.0.1/8", "00:00:00:00:00:00", true)],
+    };
+    expect(ownSubnets(false, all)).toEqual(["192.168.1.5/24"]);
+    // Loopback is counted only when allowed, and its zero MAC does not exclude it.
+    expect(ownSubnets(true, all)).toEqual(["192.168.1.5/24", "127.0.0.1/8"]);
   });
 });

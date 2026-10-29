@@ -5,15 +5,18 @@
 //  - the advert is `p1-` + HMAC(K_disc, epoch, deviceId) with `v=1`, `m=a` and nothing else; it
 //    is renewed at every 15-minute epoch boundary and only ever uses the newest K_disc;
 //  - a browse hit is kept only if it matches a roster device (never this one) under the current
-//    or previous epoch and either delivered key; everything else is dropped and not retried;
+//    or previous epoch and either delivered key; everything else is dropped and not retried. The
+//    mDNS adapter is given the same names up front (`accept`), so a name no roster device can
+//    announce never takes a place in its tables;
 //  - the listener starts a handshake only when this device holds a verified identity. The
 //    handshake (XXpsk0) and admission (certificate, ring, expiry, revocation) run in client-core;
 //    a failed tag closes the socket without a word;
-//  - unauthenticated sockets are bounded in number, per address, per /64 and in time; an accepted
+//  - unauthenticated sockets are bounded in number, per address, per group and in time; an accepted
 //    socket is judged (client-core's `lanVerdict` on its own addresses, lanJudge.ts) before it is
 //    read, and one that fails is closed at once;
 //  - one TCP port serves both families: a dual-stack `::` listener, falling back to 0.0.0.0;
-//    a device with several learned addresses dials them in a race (dial.ts);
+//    a device with several learned addresses dials them in a race (dial.ts), and when the
+//    handshake with the winner fails it races the addresses that are left;
 //  - the device's X25519 private key never leaves the `DeviceKeyPort`: Noise is given a handle
 //    whose static-key operations call `port.dh`.
 
@@ -40,7 +43,7 @@ import {
   type RingAdoption,
   type TrustApplication,
 } from "./channel.js";
-import { dialRace } from "./dial.js";
+import { dialRaceTo } from "./dial.js";
 import {
   PendingLimiter,
   limiterKeys,
@@ -104,7 +107,7 @@ export interface LanOptions {
   /** Unauthenticated sockets at once (default 32) and per source address (default 4). */
   maxPending?: number;
   maxPendingPerAddress?: number;
-  /** Unauthenticated sockets from one /64 (default 16). */
+  /** Unauthenticated sockets from one group: a link, an IPv4 /24 or an IPv6 /64 (default 16). */
   maxPendingPer64?: number;
   /** Open sessions at once (default 64). */
   maxSessions?: number;
@@ -137,6 +140,11 @@ export class LanService {
   #browse: MdnsHandle | null = null;
   #cancelEpoch: (() => void) | null = null;
   #id: { at: number; v: LanIdentity } | null = null;
+  /** The instance names the roster can announce now (both delivered keys, this and the last epoch). */
+  #names = new Set<string>();
+  #namesSig = "";
+  #namesEpoch = -1;
+  #namesBusy = false;
   #peers = new Map<string, LanPeer & { instance: string }>();
   #miss = new Map<string, number>();
   #pending = new Set<Socket>();
@@ -234,18 +242,44 @@ export class LanService {
         "That device was not found on this network.",
       );
     const id = await this.#identity(false);
-    const socket = await this.#dial(hosts, peer.port);
-    const link = this.#link(socket, id, "initiator");
-    void link.channel.start();
-    let session: ConnectSession;
-    try {
-      session = await link.opened;
-    } catch (e) {
-      if (e instanceof LanError) throw e;
-      throw new LanError("handshake_failed", "The handshake failed.", {
-        cause: e,
-      });
+    // A neighbour can answer first with its own address: when the winner of the race fails the
+    // handshake, the race runs again over the addresses that are left (§15.4.1, Dialling).
+    let left = [...hosts];
+    let failure: LanError | null = null;
+    let session: ConnectSession | null = null;
+    while (left.length > 0 && session === null) {
+      let socket: Socket;
+      let host: string;
+      try {
+        ({ socket, host } = await this.#dial(left, peer.port));
+      } catch (e) {
+        throw e;
+      }
+      const link = this.#link(socket, id, "initiator");
+      void link.channel.start();
+      try {
+        session = await link.opened;
+      } catch (e) {
+        socket.destroy();
+        const err =
+          e instanceof LanError
+            ? e
+            : new LanError("handshake_failed", "The handshake failed.", {
+                cause: e,
+              });
+        if (
+          err.reason !== "handshake_failed" &&
+          err.reason !== "connect_failed"
+        )
+          throw err;
+        failure = err;
+        left = left.filter((h) => h !== host);
+      }
     }
+    if (session === null)
+      throw (
+        failure ?? new LanError("handshake_failed", "The handshake failed.")
+      );
     if (session.peerDeviceId !== want) {
       await session.close();
       throw new LanError(
@@ -307,10 +341,52 @@ export class LanService {
     if (this.#id !== null && this.#id.v.ringEpoch !== v.ringEpoch)
       this.#miss.clear();
     this.#id = { at: now, v };
+    await this.#refreshNames(v);
     if (this.#docs.pushed !== null && this.#docs.pushed.epoch <= v.ringEpoch)
       this.#docs.pushed = null;
     return v;
   }
+
+  /** The names `accept` lets into the adapter's tables, worked out again when the epoch, keys or roster change. */
+  async #refreshNames(id: LanIdentity): Promise<void> {
+    const now = this.#src.now();
+    const epoch = advertEpoch(now);
+    const hex = (b: Uint8Array | null): string =>
+      b === null ? "-" : Buffer.from(b).toString("hex");
+    const sig = `${epoch}|${hex(id.keys.current)}|${hex(id.keys.previous)}|${id.roster.join(",")}`;
+    if (sig === this.#namesSig) return;
+    const names = new Set<string>();
+    const keys = [
+      id.keys.current,
+      ...(id.keys.previous ? [id.keys.previous] : []),
+    ];
+    for (const back of [0, 1])
+      for (const k of keys)
+        for (const d of id.roster.slice(0, 128))
+          if (d !== id.deviceId)
+            names.add(await accountInstance(k, epoch - back, d));
+    this.#names = names;
+    this.#namesSig = sig;
+    this.#namesEpoch = epoch;
+  }
+
+  /** The adapter's roster filter. When the epoch has moved it starts the recount; the next packet sees it. */
+  #accepts = (instance: string): boolean => {
+    const held = this.#id;
+    if (
+      held !== null &&
+      !this.#namesBusy &&
+      this.#namesEpoch !== advertEpoch(this.#src.now())
+    ) {
+      this.#namesBusy = true;
+      void this.#refreshNames(held.v)
+        .catch(() => undefined)
+        .finally(() => {
+          this.#namesBusy = false;
+        });
+    }
+    return this.#names.has(instance);
+  };
 
   #link(
     socket: Socket,
@@ -347,9 +423,12 @@ export class LanService {
     return textVerdict(host, this.#o.allowLoopback === true);
   }
 
-  async #dial(hosts: readonly string[], port: number): Promise<Socket> {
+  async #dial(
+    hosts: readonly string[],
+    port: number,
+  ): Promise<{ socket: Socket; host: string }> {
     try {
-      return await dialRace(hosts, port, {
+      return await dialRaceTo(hosts, port, {
         allowLoopback: this.#o.allowLoopback === true,
       });
     } catch (e) {
@@ -363,7 +442,10 @@ export class LanService {
     const port = this.#o.port ?? 0;
     const on = (host: string): Promise<Server> =>
       new Promise((resolve, reject) => {
-        const server = createServer({ noDelay: true }, (s) => this.#accept(s));
+        const server = createServer(
+          { noDelay: true, pauseOnConnect: true },
+          (s) => this.#accept(s),
+        );
         server.once("error", reject);
         // `ipv6Only: false` is the dual-stack `::`; it is ignored for an IPv4 address.
         server.listen({ port, host, ipv6Only: false }, () => {
@@ -472,6 +554,7 @@ export class LanService {
     this.#browse = await this.#mdns.browse(
       (f) => void this.#found(f).catch(() => undefined),
       (instance) => this.#gone(instance),
+      this.#accepts,
     );
   }
 

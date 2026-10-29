@@ -3,7 +3,7 @@
 // (at once when one fails). The first connection that passes the verdict on its own addresses
 // wins; every other socket closes before a byte is sent on it.
 
-import { connect as netConnect, type Socket } from "node:net";
+import { connect as netConnect, isIP, type Socket } from "node:net";
 import { socketVerdict, textVerdict } from "./lanJudge.js";
 
 export const DIAL_STAGGER_MS = 250;
@@ -18,13 +18,35 @@ export interface DialOptions {
   timeoutMs?: number;
 }
 
+/**
+ * The default connect: an IP literal only. A host that is not one is refused before a socket
+ * exists, and the lookup would fail in any case, so a name never reaches a resolver.
+ */
+export function connectLiteral(host: string, port: number): Socket {
+  if (isIP(host) === 0) throw new Error("not an IP literal");
+  return netConnect({
+    host,
+    port,
+    lookup: (_h, _o, cb) => cb(new Error("no resolver"), "", 0),
+  });
+}
+
 /** Resolves with the winning connected socket; rejects with the last failure when none connects. */
-export function dialRace(
+export async function dialRace(
   hosts: readonly string[],
   port: number,
   o: DialOptions,
 ): Promise<Socket> {
-  const open = o.connect ?? ((host, p) => netConnect({ host, port: p }));
+  return (await dialRaceTo(hosts, port, o)).socket;
+}
+
+/** As `dialRace`, with the address that won (so a failed handshake can leave it out of the next race). */
+export function dialRaceTo(
+  hosts: readonly string[],
+  port: number,
+  o: DialOptions,
+): Promise<{ socket: Socket; host: string }> {
+  const open = o.connect ?? connectLiteral;
   return new Promise((resolve, reject) => {
     const live = new Set<Socket>();
     let next = 0;
@@ -89,7 +111,7 @@ export function dialRace(
           for (const x of live) x.destroy();
           live.clear();
           s.removeAllListeners("error");
-          resolve(s);
+          resolve({ socket: s, host });
         });
         break; // one attempt per call; the timer or a failure starts the next
       }

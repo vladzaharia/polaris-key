@@ -9,7 +9,16 @@
 //    one SRV and one TXT;
 //  - a response is ignored unless its source is inside a connected subnet (address and prefix) of
 //    the receiving interface (RFC 6762 §11); on IPv6 there is one socket per interface, so the
-//    interface is known, and its link-local address takes it as its zone;
+//    interface is known, and a link-local source takes it as its zone: the zone the source itself
+//    carries (`rinfo.address`) must equal it, and a link-local source with no zone is dropped. On
+//    the one IPv4 socket the arrival interface is not known, so the test is the union of the
+//    connected subnets of the interfaces that count (up, not loopback unless allowed, not a tunnel
+//    or point-to-point): a source on another connected subnet passes it, which costs at most one
+//    blind connect, never a trusted address;
+//  - only a name a roster device can announce (`accept`) enters a table, no source owns a name,
+//    and one source adds at most 16 new names a minute; an SRV port below 1024 is ignored. `dgram`
+//    does not report a datagram's destination, so a unicast reply to port 5353 cannot be told
+//    from a multicast one here (§15.4 says so);
 //  - an A or AAAA record is believed only when its address equals the packet's own UDP source (an
 //    IPv4-mapped source counts as its IPv4 address), so a neighbour cannot point another device's
 //    name at an address of its choosing; there is no address filter when it is learned, the
@@ -63,9 +72,14 @@ export interface MdnsHandle {
 
 export interface MdnsAdapter {
   advertise(advert: MdnsAdvert): Promise<MdnsHandle>;
+  /**
+   * `accept` says whether an instance name may enter the tables (the service passes the names
+   * its roster can announce); default: every well-formed name.
+   */
   browse(
     onUp: (found: MdnsFound) => void,
     onDown?: (instance: string) => void,
+    accept?: (instance: string) => boolean,
   ): Promise<MdnsHandle>;
 }
 
@@ -126,8 +140,11 @@ const hostOf = (instance: string): string => `${instance}.local`;
 const INSTANCE_FQDN = /^(p1-[a-z2-7]{16})\._pkeypeer\._tcp\.local$/;
 
 /** This machine's IPv4 interface addresses (the loopback ones only when allowed). */
-function ipv4Entries(allowLoopback: boolean): NetworkInterfaceInfo[] {
-  return Object.values(networkInterfaces())
+function ipv4Entries(
+  allowLoopback: boolean,
+  all: NodeJS.Dict<NetworkInterfaceInfo[]> = networkInterfaces(),
+): NetworkInterfaceInfo[] {
+  return Object.values(all)
     .flatMap((list) => list ?? [])
     .filter((i) => i.family === "IPv4" && (!i.internal || allowLoopback));
 }
@@ -166,9 +183,18 @@ export function ownInterfaces(allowLoopback = false): MdnsInterface[] {
     .slice(0, MAX_INTERFACES);
 }
 
-/** This machine's connected IPv4 subnets. */
-const ownSubnets = (allowLoopback: boolean): string[] =>
-  ipv4Entries(allowLoopback).flatMap((i) => (i.cidr === null ? [] : [i.cidr]));
+/**
+ * This machine's connected IPv4 subnets, of the interfaces that count for the source test
+ * (§15.4): up, loopback only when allowed, and not a tunnel or point-to-point interface (a VPN,
+ * `utun`: no hardware address).
+ */
+export const ownSubnets = (
+  allowLoopback: boolean,
+  all?: NodeJS.Dict<NetworkInterfaceInfo[]>,
+): string[] =>
+  ipv4Entries(allowLoopback, all)
+    .filter((i) => i.internal || !ZERO_MAC.test(i.mac))
+    .flatMap((i) => (i.cidr === null ? [] : [i.cidr]));
 
 /** ASCII fold: `A-Z` to `a-z` and nothing else. */
 export const foldName = (name: string): string =>
@@ -200,17 +226,23 @@ export class AddressBook {
   readonly #m = new Map<string, { ips: string[]; at: number }>();
   constructor(private readonly maxNames = MAX_INSTANCES) {}
 
-  /** Apply one record from a packet sent by `source` and received on `zone` (null: none). */
+  /**
+   * Apply one record from a packet sent by `source` and received on `zone` (null: none).
+   * `admit` is asked before a new name takes a place (the per-source limit); a link-local
+   * address with no arrival zone is not learned.
+   */
   learn(
     r: AddressRecord,
     source: string,
     zone: string | null,
     now: number,
+    admit: () => boolean = () => true,
   ): void {
     const want = canonIp(splitZone(source).addr);
     const got = canonIp(r.data);
     if (want === null || got === null || foldMapped(want) !== got) return;
-    const address = isLinkLocal(got) && zone !== null ? `${got}%${zone}` : got;
+    if (isLinkLocal(got) && zone === null) return;
+    const address = isLinkLocal(got) ? `${got}%${zone}` : got;
     const name = foldName(r.name);
     let e = this.#m.get(name);
     if (r.ttl === 0) {
@@ -220,6 +252,7 @@ export class AddressBook {
       return;
     }
     if (e === undefined) {
+      if (!admit()) return;
       if (this.#m.size >= this.maxNames) this.trim(now);
       e = { ips: [], at: now };
     } else this.#m.delete(name);
@@ -260,6 +293,38 @@ export class AddressBook {
     }
   }
 }
+
+/** New names one source may add in a window, and how many sources are tracked (§15.4). */
+export const MAX_NEW_PER_SOURCE = 16;
+export const NEW_WINDOW_MS = 60_000;
+const MAX_SOURCES = 256;
+
+/**
+ * At most `MAX_NEW_PER_SOURCE` new names per source in `NEW_WINDOW_MS`, so one host cannot
+ * crowd the tables. The least recently seen source is forgotten when `MAX_SOURCES` are tracked.
+ */
+export class NewNameLimiter {
+  readonly #m = new Map<string, number[]>();
+
+  /** May `source` add one more new name now? Counts the name when it may. */
+  admit(source: string, now: number): boolean {
+    const held = (this.#m.get(source) ?? []).filter(
+      (t) => now - t < NEW_WINDOW_MS,
+    );
+    this.#m.delete(source);
+    const ok = held.length < MAX_NEW_PER_SOURCE;
+    if (ok) held.push(now);
+    this.#m.set(source, held);
+    while (this.#m.size > MAX_SOURCES) {
+      const k = this.#m.keys().next().value;
+      if (k === undefined) break;
+      this.#m.delete(k);
+    }
+    return ok;
+  }
+}
+
+const HOST_NAME = /^(p1-[a-z2-7]{16})\.local$/;
 
 /** Decide whether a response may teach anything: its source is inside one of the receiving interface's connected subnets (RFC 6762 §11). */
 export function sourceInSubnets(
@@ -429,6 +494,7 @@ export class MulticastDnsAdapter implements MdnsAdapter {
   async browse(
     onUp: (f: MdnsFound) => void,
     onDown?: (instance: string) => void,
+    accept: (instance: string) => boolean = () => true,
   ): Promise<MdnsHandle> {
     const faces = await this.faces();
     const loop = this.o.allowLoopback === true;
@@ -444,6 +510,7 @@ export class MulticastDnsAdapter implements MdnsAdapter {
     };
     const seen = new Map<string, Seen>();
     const book = new AddressBook();
+    const fresh = new NewNameLimiter();
     /** Drop expired entries; when `room` is wanted and the table is full, evict the oldest. */
     const trim = <V extends { at: number }>(
       m: Map<string, V>,
@@ -468,6 +535,7 @@ export class MulticastDnsAdapter implements MdnsAdapter {
       answers: Answer[],
       src: string,
       zone: string | null,
+      from: string,
     ): void => {
       const now = Date.now();
       for (const r of answers) {
@@ -475,11 +543,15 @@ export class MulticastDnsAdapter implements MdnsAdapter {
           (r.type === "A" || r.type === "AAAA") &&
           typeof r.data === "string"
         ) {
+          // Only the host name of an accepted instance has a place in the book.
+          const h = HOST_NAME.exec(foldName(r.name));
+          if (h === null || !accept(h[1]!)) continue;
           book.learn(
             { name: r.name, type: r.type, ttl: r.ttl, data: r.data },
             src,
             zone,
             now,
+            () => fresh.admit(from, now),
           );
           continue;
         }
@@ -492,12 +564,25 @@ export class MulticastDnsAdapter implements MdnsAdapter {
         )
           continue;
         const inst = m[1]!;
+        if (!accept(inst)) continue;
+        if (
+          r.type === "SRV" &&
+          !(
+            r.data &&
+            Number.isInteger(r.data.port) &&
+            r.data.port >= 1024 &&
+            r.data.port <= 65535
+          )
+        )
+          continue; // a port a random listen cannot have drawn
         if (r.type === "PTR" && r.ttl === 0) {
           if (seen.delete(inst)) onDown?.(inst);
           continue;
         }
         let e = seen.get(inst);
         if (e === undefined) {
+          // No source owns a name; each may add 16 new ones a minute.
+          if (!fresh.admit(from, now)) continue;
           if (seen.size >= MAX_INSTANCES) trim(seen, now, dropped);
           e = { at: now, exp: now + TTL * 1000 };
         } else seen.delete(inst);
@@ -507,8 +592,7 @@ export class MulticastDnsAdapter implements MdnsAdapter {
         if (r.type === "PTR")
           e.exp = now + Math.min(r.ttl ?? TTL, ENTRY_TTL_MS / 1000) * 1000;
         seen.set(inst, e);
-        if (r.type === "SRV" && r.data && Number.isInteger(r.data.port)) {
-          if (r.data.port < 1 || r.data.port > 65535) continue;
+        if (r.type === "SRV") {
           e.port = r.data.port;
           // Only our own host name shape: the target is the instance's `.local` name.
           if (
@@ -553,13 +637,23 @@ export class MulticastDnsAdapter implements MdnsAdapter {
           // A response with no source, or from outside the link's subnets, teaches nothing.
           const from = rinfo?.address;
           if (typeof from !== "string") return;
-          const src = splitZone(from).addr;
+          const { addr: src, zone: sourceZone } = splitZone(from);
           if (!sourceInSubnets(src, iface === null ? subnets4() : iface.nets))
+            return;
+          // A link-local source names its link: the zone it carries must be the interface this
+          // socket is on, and one with no zone, or another, is not ours.
+          const canon = canonIp(src);
+          if (
+            canon !== null &&
+            isLinkLocal(foldMapped(canon)) &&
+            (iface === null || sourceZone === null || sourceZone !== iface.zone)
+          )
             return;
           learn(
             [...(res.answers ?? []), ...(res.additionals ?? [])],
             src,
             iface === null ? null : iface.zone,
+            from,
           );
         },
       );

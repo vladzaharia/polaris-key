@@ -14,6 +14,7 @@ import {
 import {
   DIAL_MAX_IN_FLIGHT,
   DIAL_STAGGER_MS,
+  connectLiteral,
   dialRace,
 } from "../src/connect/dial.js";
 import type { LanSource } from "../src/connect/lan.js";
@@ -282,23 +283,27 @@ describe("addresses off the LAN (WIRE-CONTRACT-V5 15.4.1)", () => {
     expect(textVerdict(`${LL}%`, false)).toBe(false);
   });
 
-  it("counts per address, per /64 inside the total, and keeps link-local zones apart", () => {
+  it("counts per address, per group inside the total, and keeps link-local zones apart", () => {
     const key = (remote: string) => {
       const v = socketVerdict(remote, undefined, true);
       if (v.key === null) throw new Error(`refused: ${remote}`);
       return limiterKeys(v.key);
     };
-    // The same fe80 address on two links is two hosts; a /64 keeps its own count per link.
+    // The same fe80 address on two links is two hosts; the group of a link-local address is its
+    // link, whatever its /64, and an IPv4 address is grouped by /24.
     expect(key(`${LL}%en0`)).toEqual({
       address: `${LL}%en0`,
-      net64: "fe80::/64%en0",
+      group: "fe80::/10%en0",
     });
     expect(key(`${LL}%wlan0`).address).toBe(`${LL}%wlan0`);
-    expect(key("10.0.0.5")).toEqual({ address: "10.0.0.5", net64: null });
-    expect(key("fd12:0:0:1::7").net64).toBe("fd12:0:0:1::/64");
+    expect(key("10.0.0.5")).toEqual({
+      address: "10.0.0.5",
+      group: "10.0.0.0/24",
+    });
+    expect(key("fd12:0:0:1::7").group).toBe("fd12:0:0:1::/64");
     expect(key("::ffff:10.0.0.5")).toEqual({
       address: "10.0.0.5",
-      net64: null,
+      group: "10.0.0.0/24",
     });
 
     const lim = new PendingLimiter(32, 4, 16);
@@ -316,16 +321,32 @@ describe("addresses off the LAN (WIRE-CONTRACT-V5 15.4.1)", () => {
     for (let i = 1; i <= 20; i++)
       if (take(`fd12:0:0:1::${i.toString(16)}`)) n++;
     expect(n).toBe(16);
-    // Another /64 and another link are separate; the total of 32 is the last bound.
-    expect(take(`${LL}%en0`)).toBe(true);
-    expect(take(`${LL}%wlan0`)).toBe(true);
-    expect(lim.size).toBe(4 + 16 + 2);
-    for (let i = 1; i <= 10; i++) take(`fd12:0:0:${i + 1}::1`);
+    // Sixteen per link: fe80::/10 holds 2^54 /64s, so rotating the address does not escape it,
+    // and another link is separate.
+    n = 0;
+    for (let i = 1; i <= 20; i++)
+      if (take(`fe80:0:0:${i.toString(16)}::1%en0`)) n++;
+    expect(n).toBe(12); // 4 + 16 held, 32 in total
     expect(lim.size).toBe(32);
-    expect(take("10.0.0.99")).toBe(false);
+    for (const h of held.splice(0)) h();
+    n = 0;
+    for (let i = 1; i <= 20; i++)
+      if (take(`fe80:0:0:${i.toString(16)}::1%en0`)) n++;
+    expect(n).toBe(16);
+    expect(take(`${LL}%wlan0`)).toBe(true);
+    for (const h of held.splice(0)) h();
+    // Sixteen per IPv4 /24.
+    n = 0;
+    for (let i = 1; i <= 20; i++) if (take(`10.0.0.${i}`)) n++;
+    expect(n).toBe(16);
+    expect(take("10.0.1.1")).toBe(true);
+    // The total of 32 is the last bound.
+    for (let i = 2; i <= 40; i++) take(`10.0.${i}.1`);
+    expect(lim.size).toBe(32);
+    expect(take("10.9.9.9")).toBe(false);
     // A release frees the slot in all three counts.
     held.pop()!();
-    expect(take("10.0.0.99")).toBe(true);
+    expect(take("10.9.9.9")).toBe(true);
   });
 });
 
@@ -436,5 +457,12 @@ describe("dialling several addresses (RFC 8305)", () => {
     const none = race(["8.8.8.8"]);
     await expect(none.result).rejects.toThrow("address refused");
     expect(none.made).toEqual([]);
+  });
+});
+
+describe("the default connect takes an IP literal only", () => {
+  it("refuses a name before any socket or lookup exists", () => {
+    for (const host of ["localhost", "example.com", "1.2.3", "0x7f.1", ""])
+      expect(() => connectLiteral(host, 4242), host).toThrow();
   });
 });

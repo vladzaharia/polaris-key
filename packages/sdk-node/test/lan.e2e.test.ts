@@ -456,6 +456,89 @@ describe("LAN over IPv6 (one port for both families)", () => {
     expect(out.peerDeviceId).toBe(A);
   });
 
+  it("falls through to the next address when the handshake with the first fails", async (ctx) => {
+    if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
+    const { a, b, net } = await world();
+    net.hosts = ["::1", "127.0.0.1"];
+    const la = await lan(a, net, { host: "127.0.0.1" });
+    const lb = await lan(b, net);
+    // A neighbour answers first on ::1 at the same port, takes the connection and drops it.
+    const decoy = createServer((x) => x.destroy());
+    await new Promise<void>((done, fail) => {
+      decoy.once("error", fail);
+      decoy.listen({ port: la.port, host: "::1" }, () => done());
+    });
+    try {
+      let inn: ConnectSession | null = null;
+      la.onSession((x) => (inn = x));
+      await until(() => lb.peers().some((p) => p.deviceId === A));
+      const out = await lb.connect(A);
+      await until(() => inn !== null);
+      expect(out.peerDeviceId).toBe(A);
+    } finally {
+      decoy.close();
+    }
+  });
+
+  it("fails with the handshake error when every address fails its handshake", async (ctx) => {
+    if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
+    const { b, net } = await world();
+    const lb = await lan(b, net);
+    const decoys = [
+      createServer((x) => x.destroy()),
+      createServer((x) => x.destroy()),
+    ];
+    await new Promise<void>((done) =>
+      decoys[0]!.listen({ port: 0, host: "::1" }, () => done()),
+    );
+    const port = (decoys[0]!.address() as { port: number }).port;
+    await new Promise<void>((done) =>
+      decoys[1]!.listen({ port, host: "127.0.0.1" }, () => done()),
+    );
+    try {
+      const err = await lb
+        .connect({
+          deviceId: A,
+          host: "::1",
+          hosts: ["::1", "127.0.0.1"],
+          port,
+        })
+        .catch((e) => e);
+      expect(err).toBeInstanceOf(LanError);
+      expect(["handshake_failed", "connect_failed"]).toContain(err.reason);
+    } finally {
+      for (const d of decoys) d.close();
+    }
+  });
+
+  it("gives the adapter only the names the roster can announce", async () => {
+    const { a, b, net } = await world();
+    const accepts: ((i: string) => boolean)[] = [];
+    const inner = net.adapter();
+    const mdns = {
+      advertise: inner.advertise,
+      browse: async (
+        up: Parameters<typeof inner.browse>[0],
+        down?: Parameters<typeof inner.browse>[1],
+        accept?: (i: string) => boolean,
+      ) => {
+        if (accept !== undefined) accepts.push(accept);
+        return inner.browse(up, down);
+      },
+    };
+    const la = await lan(a, net);
+    const lb = await lan(b, net, { mdns });
+    expect(accepts).toHaveLength(1);
+    const names = [...net.adverts.keys()];
+    expect(names).toHaveLength(2);
+    // Each advert is one device's; the accept function knows the other device's, not its own.
+    const known = names.filter((n) => accepts[0]!(n));
+    expect(known).toHaveLength(1);
+    expect(accepts[0]!("p1-aaaaaaaaaaaaaaaa")).toBe(false);
+    expect(accepts[0]!("laptop")).toBe(false);
+    expect(la.port).not.toBe(lb.port);
+  });
+
   it("closes a source off the LAN at once, without reading, and spends no slot on it", async (ctx) => {
     if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
     const { a, net } = await world();
