@@ -513,6 +513,7 @@
     "signin.key.entries": "还剩{left}/{limit}次密钥输入机会 · 这将是第{n}次",
     "signin.key.entriesLeftShort": "{left, plural, other {还剩#次密钥输入机会}}",
     "signin.key.noEntries": "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。",
+    "locker.key.noEntriesLead": "没有账户无法继续：",
     "signin.key.skip": "不使用账户继续",
     "signin.key.ownedSignIn": "登录那个账户",
     "signin.key.signIn": "登录",

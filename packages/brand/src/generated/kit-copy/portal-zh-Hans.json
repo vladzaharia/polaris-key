@@ -1,4 +1,5 @@
 {
+  "locker.key.noEntriesLead": "没有账户无法继续：",
   "profile.title": "个人资料",
   "profile.subtitle": "你在 Polaris Locker 中的显示方式，同意后也会显示给应用。",
   "profile.edit": "编辑个人资料",

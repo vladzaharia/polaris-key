@@ -140,7 +140,13 @@ type Step =
   | { kind: "sso"; email: string; next: PortalSsoNext }
   | { kind: "key" }
   /** AccountUpgrade (§3.9, PX-12): what the previewed key leads to, before sign-in. */
-  | { kind: "upgrade"; key: string; preview: KeyPreview }
+  | {
+      kind: "upgrade";
+      key: string;
+      preview: KeyPreview;
+      /** The forced body came from **Continue without an account** (`key_entry_limit`). */
+      fromSkip?: true;
+    }
   /** The key return was refused `license_owned` (LK-SKIP.5): sign in to the account that has it. */
   | { kind: "owned"; product: string }
   /** Sign in with another device (§3.11): this browser asks, a signed-in device approves. */
@@ -235,7 +241,10 @@ export function SignInPage({
   const [direction, setDirection] = React.useState<"forward" | "back">(
     "forward",
   );
+  /** Counts the steps entered: an answer that arrives after the step changed is not acted on. */
+  const stepToken = React.useRef(0);
   const go = (next: Step, dir: "forward" | "back" = "forward"): void => {
+    stepToken.current += 1;
     setDirection(dir);
     setStep(next);
   };
@@ -322,6 +331,9 @@ export function SignInPage({
     key: string,
     preview: KeyPreview,
   ): Promise<Extract<SkipRefusal, { kind: "message" }> | null> => {
+    const token = stepToken.current;
+    // The person left the step meanwhile (Escape): a refusal is no longer theirs to read.
+    const current = (): boolean => stepToken.current === token;
     try {
       const out = await mutate("signinKeyReturn", handle, key);
       const to = safeRedirect(out.redirect);
@@ -333,8 +345,10 @@ export function SignInPage({
         err instanceof HttpError ? err : { status: 0 },
         portalErrorCopy(err).line,
       );
-      if (refusal.kind === "message") return refusal;
+      // A gone request is gone whichever step the person is on.
       if (refusal.kind === "gone") setKeyReturnGone(true);
+      else if (!current()) return null;
+      else if (refusal.kind === "message") return refusal;
       else if (refusal.kind === "owned")
         go({ kind: "owned", product: preview.product.name });
       else
@@ -342,6 +356,7 @@ export function SignInPage({
         go({
           kind: "upgrade",
           key,
+          fromSkip: true,
           preview: {
             ...preview,
             upgrade: "forced",
@@ -394,7 +409,11 @@ export function SignInPage({
           ? "loading"
           : caps.error || requestFailed
             ? "unreachable"
-            : (ssoKey ?? step.kind);
+            : (ssoKey ??
+              // The forced body is its own step: its heading takes focus and is announced.
+              (step.kind === "upgrade" && step.preview.upgrade === "forced"
+                ? "upgrade:forced"
+                : step.kind));
 
   const legalNav = <LegalNav />;
 
@@ -578,6 +597,7 @@ export function SignInPage({
         <AccountUpgrade
           preview={step.preview}
           cloudSync={request.data?.client.services.cloudSync === true}
+          fromSkip={step.fromSkip === true}
           skip={
             handle !== null &&
             request.data?.keyReturn === true &&

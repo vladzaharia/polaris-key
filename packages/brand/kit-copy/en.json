@@ -2578,6 +2578,11 @@
       "role": "body",
       "note": "License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
+    "locker.key.noEntriesLead": {
+      "value": "You can't continue without an account:",
+      "role": "body",
+      "note": "License key step (SIGN-IN.md §3.9), bold lead of the no-entries callout when Continue without an account was refused key_entry_limit (LK-SKIP.5)."
+    },
     "signin.key.skip": {
       "value": "Continue without an account",
       "role": "button",

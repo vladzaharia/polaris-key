@@ -996,6 +996,70 @@ describe("Continue without an account (LK-SKIP.5, §3.9)", () => {
     expect(keyPosts()).toHaveLength(1);
   });
 
+  it("429: the held button keeps its focus and the message is read once", async () => {
+    await enterSkip(preview(), OPTED, {
+      status: 429,
+      body: { error: "rate_limited", retryAfter: 30 },
+    });
+    skipButton().focus();
+    await userEvent.keyboard("{Enter}");
+    const alert = await screen.findByRole("alert");
+    const button = skipButton();
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    // The same node, still focused: a reason that appears must not remount the button.
+    expect(document.activeElement).toBe(button);
+    // One description: the message under the button, not a second sr-only copy of it.
+    expect(button.getAttribute("aria-describedby")).toBe(alert.id);
+    expect(
+      screen.getAllByText("Too many tries. Wait a moment, then try again."),
+    ).toHaveLength(1);
+  });
+
+  it("429: the refusal clears when the hold ends", async () => {
+    await enterSkip(preview(), OPTED, {
+      status: 429,
+      body: { error: "rate_limited", retryAfter: 1 },
+    });
+    await userEvent.click(skipButton());
+    await screen.findByRole("alert");
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull(), {
+      timeout: 3000,
+    });
+    expect(skipButton().getAttribute("aria-disabled")).toBeNull();
+    expect(skipButton().getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("while the key is going the other paths are inert, and Escape drops a late refusal", async () => {
+    let answer: (v: unknown) => void = () => {};
+    const late = new Promise((r) => (answer = r));
+    await enterSkip(preview(), OPTED, () => late);
+    await userEvent.click(skipButton());
+    const create = screen.getByRole("button", { name: "Create account" });
+    const signIn = screen.getByRole("button", { name: "Sign in instead" });
+    expect(create.getAttribute("aria-disabled")).toBe("true");
+    expect(signIn.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(create);
+    await userEvent.click(signIn);
+    expect(window.location.search).not.toContain("activate");
+    expect(
+      screen.getByRole("button", { name: "Continue without an account" }),
+    ).toBeTruthy();
+    // Escape backs out to the key field; the 429 that lands afterwards is not drawn anywhere.
+    await userEvent.keyboard("{Escape}");
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Have a license key?",
+      }),
+    ).toBeTruthy();
+    answer({ status: 429, body: { error: "rate_limited" } });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Have a license key?" }),
+    ).toBeTruthy();
+  });
+
   it("license_owned: the owned copy and the sign-in the card has, with the request kept", async () => {
     await enterSkip(preview(), OPTED, {
       status: 403,
@@ -1052,6 +1116,22 @@ describe("Continue without an account (LK-SKIP.5, §3.9)", () => {
     expect(
       screen.queryByRole("button", { name: "Continue without an account" }),
     ).toBeNull();
+    // It is a step of its own: the heading takes focus and the new title is announced.
+    const h1 = screen.getByRole("heading", {
+      level: 1,
+      name: "Create an account to keep Diceroll",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+    expect(document.querySelector("[data-step-announcer]")?.textContent).toBe(
+      "Create an account to keep Diceroll",
+    );
+    expect(document.title).toContain("Create an account to keep Diceroll");
+    // A key that has no entries "works" no more: no Key works card, and the callout says why.
+    expect(screen.queryByText("Key works")).toBeNull();
+    expect(
+      screen.getByText("You can't continue without an account:"),
+    ).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
   });
 
   it("404: the request is gone", async () => {

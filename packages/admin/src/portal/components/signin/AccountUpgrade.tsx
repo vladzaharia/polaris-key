@@ -54,6 +54,7 @@ export function AccountUpgrade({
   onCreate,
   onSignIn,
   skip,
+  fromSkip = false,
   onDifferentKey,
 }: {
   preview: KeyPreview;
@@ -68,6 +69,8 @@ export function AccountUpgrade({
    * and the refusal that stays here otherwise.
    */
   skip?: () => Promise<Extract<SkipRefusal, { kind: "message" }> | null>;
+  /** The forced body was reached from **Continue without an account**: the callout says so first. */
+  fromSkip?: boolean;
   /** Back to the key field, after a refusal that is the key's own. */
   onDifferentKey?: () => void;
 }): React.ReactElement {
@@ -85,7 +88,11 @@ export function AccountUpgrade({
   const messageId = React.useId();
   React.useEffect(() => {
     if (!hold) return;
-    const id = window.setTimeout(() => setHold(null), hold.seconds * 1000);
+    // The hold ends and the refusal with it: there is nothing left to wait for.
+    const id = window.setTimeout(() => {
+      setHold(null);
+      setRefusal(null);
+    }, hold.seconds * 1000);
     return () => window.clearTimeout(id);
   }, [hold]);
   const press = async (): Promise<void> => {
@@ -101,35 +108,37 @@ export function AccountUpgrade({
   };
   return (
     <>
-      <div
-        data-key-card
-        className="flex items-start gap-3 rounded-md border border-border-strong px-3 py-3"
-      >
-        <CircleCheck
-          aria-hidden
-          className="mt-0.5 size-5 shrink-0 text-fg-muted"
-        />
-        <div className="min-w-0 space-y-1">
-          <p className="font-medium text-fg-strong">
-            {t("signin.key.keyWorks")}
-          </p>
-          <p className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
-            <span className="[overflow-wrap:anywhere]">{name}</span>
-            {preview.license?.tierName ? (
-              <Pill>{preview.license.tierName}</Pill>
-            ) : null}
-            {preview.license ? (
-              <span>
-                {termText(
-                  preview.license.term === "perpetual"
-                    ? null
-                    : preview.license.term,
-                )}
-              </span>
-            ) : null}
-          </p>
+      {forced ? null : (
+        <div
+          data-key-card
+          className="flex items-start gap-3 rounded-md border border-border-strong px-3 py-3"
+        >
+          <CircleCheck
+            aria-hidden
+            className="mt-0.5 size-5 shrink-0 text-fg-muted"
+          />
+          <div className="min-w-0 space-y-1">
+            <p className="font-medium text-fg-strong">
+              {t("signin.key.keyWorks")}
+            </p>
+            <p className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+              <span className="[overflow-wrap:anywhere]">{name}</span>
+              {preview.license?.tierName ? (
+                <Pill>{preview.license.tierName}</Pill>
+              ) : null}
+              {preview.license ? (
+                <span>
+                  {termText(
+                    preview.license.term === "perpetual"
+                      ? null
+                      : preview.license.term,
+                  )}
+                </span>
+              ) : null}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
       <AuthTitle>
         {forced
           ? t("signin.key.noEntriesTitle", { product: name })
@@ -137,7 +146,15 @@ export function AccountUpgrade({
       </AuthTitle>
       {forced ? (
         <NeutralCallout icon={<Clock />}>
-          <p>{t("signin.key.noEntries", { product: name })}</p>
+          <p>
+            {fromSkip ? (
+              <strong className="font-semibold text-fg-strong">
+                {t("locker.key.noEntriesLead")}
+              </strong>
+            ) : null}
+            {fromSkip ? " " : null}
+            {t("signin.key.noEntries", { product: name })}
+          </p>
         </NeutralCallout>
       ) : null}
       <ul className="space-y-1.5 text-sm text-fg-muted" data-reasons>
@@ -181,7 +198,9 @@ export function AccountUpgrade({
         variant="neutral"
         size="lg"
         className={PRIMARY_CLASS}
-        onClick={onCreate}
+        // While the skip is in flight: focusable, inert, so a second path cannot start.
+        {...(busy ? { "aria-disabled": true } : {})}
+        onClick={busy ? undefined : onCreate}
       >
         {t("signin.key.createAccount")}
       </Button>
@@ -197,7 +216,9 @@ export function AccountUpgrade({
             size="lg"
             className={PRIMARY_CLASS}
             loading={busy}
-            disabledReason={hold ? refusal?.message : undefined}
+            // A 429 holds the control without a tooltip of its own: the message under it is the
+            // button's description (once), and the button keeps its focus.
+            {...(hold ? { "aria-disabled": true } : {})}
             aria-describedby={refusal ? messageId : undefined}
             onClick={() => void press()}
           >
@@ -218,7 +239,7 @@ export function AccountUpgrade({
         </div>
       ) : null}
       <QuietLinks>
-        <QuietLink onClick={onSignIn}>
+        <QuietLink onClick={onSignIn} disabled={busy}>
           {t("signin.key.signInInstead")}
         </QuietLink>
         {refusal?.differentKey && onDifferentKey ? (

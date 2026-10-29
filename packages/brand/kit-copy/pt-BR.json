@@ -513,6 +513,7 @@
     "signin.key.entries": "{left} de {limit} usos da chave restantes · Este será o uso {n}",
     "signin.key.entriesLeftShort": "{left, plural, one {# uso da chave restante} many {# de usos da chave restantes} other {# usos da chave restantes}}",
     "signin.key.noEntries": "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e entre em {product} com sua conta.",
+    "locker.key.noEntriesLead": "Você não pode continuar sem uma conta:",
     "signin.key.skip": "Continuar sem conta",
     "signin.key.ownedSignIn": "Entrar nessa conta",
     "signin.key.signIn": "Entrar",

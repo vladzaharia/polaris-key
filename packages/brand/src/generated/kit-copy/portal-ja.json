@@ -1,4 +1,5 @@
 {
+  "locker.key.noEntriesLead": "アカウントがないと続けられません。",
   "profile.title": "プロフィール",
   "profile.subtitle": "Polaris Lockerでの表示と、同意した場合にアプリへ表示される内容です。",
   "profile.edit": "プロフィールを編集",

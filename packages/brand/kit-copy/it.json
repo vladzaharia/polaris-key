@@ -513,6 +513,7 @@
     "signin.key.entries": "{left} di {limit} inserimenti della chiave rimasti · Questo sarà l'inserimento {n}",
     "signin.key.entriesLeftShort": "{left, plural, one {# inserimento della chiave rimasto} many {# di inserimenti della chiave rimasti} other {# inserimenti della chiave rimasti}}",
     "signin.key.noEntries": "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo.",
+    "locker.key.noEntriesLead": "Non puoi continuare senza un account:",
     "signin.key.skip": "Continua senza account",
     "signin.key.ownedSignIn": "Accedi a quell'account",
     "signin.key.signIn": "Accedi",

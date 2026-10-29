@@ -1,4 +1,5 @@
 {
+  "locker.key.noEntriesLead": "You can't continue without an account:",
   "profile.title": "Profile",
   "profile.subtitle": "How you appear in Polaris Locker, and to an app once you agree to share it.",
   "profile.edit": "Edit profile",
