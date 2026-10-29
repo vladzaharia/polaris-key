@@ -883,6 +883,10 @@
         "nearby": {
           "description": "Whether a signed-in device nearby may approve a sign-in here (identity.nearby). Default true; needs no Cloud Connect.",
           "type": "boolean"
+        },
+        "restore": {
+          "description": "Whether the app may sign a person in again on a new device from a restore key in their platform backup (identity.restore). Default true; set false to opt out.",
+          "type": "boolean"
         }
       }
     },

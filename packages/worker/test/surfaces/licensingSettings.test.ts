@@ -751,6 +751,7 @@ describe("the settings API refuses what the registry refuses", () => {
       "identity.platformSignIn.google.serverClientId",
       // I-08: `authorize` reads it.
       "identity.redirectPaths",
+      "identity.restore",
       "identity.terms",
       "licensing.anchorPolicy",
       "licensing.clampGraceToExpiry",

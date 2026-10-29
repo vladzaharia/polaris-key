@@ -235,6 +235,7 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
     "Platform sign-in",
   ),
   "identity.nearby": at("app-sign-in", "Platform sign-in"),
+  "identity.restore": at("app-sign-in", "Platform sign-in"),
   "identity.oidc": manifest("product"),
   "identity.provisioning": manifest("product"),
   "identity.oidc.syncTierOnSignIn": at("app-sign-in", "Tier sync"),

@@ -1,7 +1,7 @@
 /**
  * App sign-in → Platform sign-in (CC-01 auto sign-in, I-42.2): the Google and Apple audiences an
- * app's own token is checked against, and the nearby-device switch. The rows are settings-engine
- * rows (`identity.platformSignIn.*`, `identity.nearby`): the manifest's value shows with its
+ * app's own token is checked against, and the nearby-device and silent-restore switches. The rows
+ * are settings-engine rows (`identity.platformSignIn.*`, `identity.nearby`, `identity.restore`): the manifest's value shows with its
  * badge, and a console edit claims it as for every row-backed key. Bundle ids of the App Store
  * and TestFlight channels count too; they are read from the channels, never edited here.
  */
@@ -21,6 +21,7 @@ const K = {
   team: "identity.platformSignIn.apple.teamId",
   bundles: "identity.platformSignIn.apple.bundleIds",
   nearby: "identity.nearby",
+  restore: "identity.restore",
 } as const;
 export const PLATFORM_SIGN_IN_KEYS: readonly string[] = [
   K.google,
@@ -28,6 +29,7 @@ export const PLATFORM_SIGN_IN_KEYS: readonly string[] = [
   K.team,
   K.bundles,
   K.nearby,
+  K.restore,
 ];
 
 /** The bundle ids of the App Store and TestFlight channels, from the channels row's value. */
@@ -123,7 +125,7 @@ export function PlatformSignInSection({
       keys={PLATFORM_SIGN_IN_KEYS}
       id="platform-sign-in"
       title="Platform sign-in"
-      description="What Google and Apple tokens from your app are checked against."
+      description="What Google and Apple tokens from your app are checked against, and how it signs people in again."
       note={note}
     />
   );

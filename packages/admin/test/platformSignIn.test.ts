@@ -3,11 +3,21 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  PLATFORM_SIGN_IN_KEYS,
   outletBundleIds,
   platformSignInStatus,
 } from "../src/console/sections/identity/components/PlatformSignIn.js";
 
 const WEB = "1234-web.apps.googleusercontent.com";
+
+describe("the section's rows", () => {
+  it("lists the nearby and silent-restore switches after the audiences", () => {
+    expect(PLATFORM_SIGN_IN_KEYS.slice(-2)).toEqual([
+      "identity.nearby",
+      "identity.restore",
+    ]);
+  });
+});
 
 describe("outletBundleIds", () => {
   it("takes the App Store and TestFlight bundle ids from a list or a keyed object", () => {
