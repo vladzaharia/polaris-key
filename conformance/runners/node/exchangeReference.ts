@@ -184,6 +184,30 @@ export async function runExchange(
   return observe(res.status, await json(res));
 }
 
+/**
+ * One `choiceComplete` step: the SDK's input is the consent (or choice) the host gave, which the
+ * recording holds, plus the pending grant the step names.
+ */
+export async function runChoiceComplete(
+  server: ReplayServer,
+  t: Transcript,
+  step: Step,
+): Promise<Observed> {
+  const sent = step.exchanges.items[0]!.request.body!.json as Record<
+    string,
+    JsonValue
+  >;
+  const res = await server.fetch(
+    `${t.baseUrl}/${t.product}/identity/choice/complete`,
+    {
+      method: "POST",
+      headers: { ...deviceHeaders(t), "content-type": "application/json" },
+      body: JSON.stringify({ ...sent, grant: step.args.grant }),
+    },
+  );
+  return observe(res.status, await json(res));
+}
+
 /** The request headers of the device in `t`. */
 export function deviceHeaders(t: Transcript): Record<string, string> {
   return {

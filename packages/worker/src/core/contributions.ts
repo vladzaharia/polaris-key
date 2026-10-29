@@ -196,9 +196,9 @@ export type KeyringContributor = (ctx: {
 
 /**
  * What a write of a product's service enablement tells a listener: the set now stored (`after`)
- * and, when the writer saw it, the set the write replaced (`before`; `null` when it did not: a
- * manifest resync reads the stored set after its batch). Writers call it on EVERY write, so a
- * listener is idempotent and decides for itself whether the change concerns it.
+ * and, when the writer saw it, the set the write replaced (`before`; `null` when it did not).
+ * Writers call it on EVERY write, so a listener is idempotent and decides for itself whether the
+ * change concerns it.
  */
 export interface ServicesChange {
   product: string;

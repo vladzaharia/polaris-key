@@ -24,12 +24,6 @@
 // and the licence choice reuse `signOut` and `choiceComplete`.
 
 import { expect } from "vitest";
-import {
-  TranscriptRecorder,
-  type StepRecorder,
-  type World,
-} from "../recorder.js";
-import { DEVICE, discovery, T0, VERSION } from "../client.js";
 import type { JsonValue } from "../format.js";
 import {
   pinned,
@@ -38,9 +32,22 @@ import {
   registered,
   servicesOn,
 } from "../world.js";
+import { DEVICE, discovery, T0, VERSION } from "../client.js";
+import {
+  TranscriptRecorder,
+  type StepRecorder,
+  type World,
+} from "../recorder.js";
 import type { Scenario } from "../world.js";
 import { fixtureDeviceKeys } from "../providers.js";
 import { seedAccount } from "./account.js";
+import {
+  codeOf,
+  confirmed,
+  jsonOf,
+  keptBothClaims,
+  services,
+} from "./exchange.js";
 import { seedProduct } from "../../seed.js";
 import { setServices } from "../../../src/core/products/store.js";
 import { serializeServices } from "../../../src/core/services.js";
@@ -73,23 +80,6 @@ const OTHER = "other";
 /** Enrolled a day before the recording starts, so a key is current and live. */
 const ENROLLED = T0 - 86_400;
 const DAY = 86_400;
-
-const SERVICES = [
-  "license",
-  "config",
-  "release",
-  "distribution",
-  "update",
-  "identity",
-  "sync",
-  "commerce",
-  "connect",
-] as const;
-
-/** The `services` map a discover step expects: every slug, on or off. */
-function services(on: Partial<Record<(typeof SERVICES)[number], true>>): Json {
-  return Object.fromEntries(SERVICES.map((k) => [k, on[k] === true]));
-}
 
 interface Ada {
   id: string;
@@ -139,6 +129,15 @@ async function registeredDevice(w: World): Promise<string> {
     "manifest",
     T0,
   );
+  return token;
+}
+
+/** Setup: the client's device holds a token and is signed in as Ada. */
+async function signedInDevice(w: World, ada: Ada): Promise<string> {
+  const token = await registeredDevice(w);
+  expect(
+    await setDeviceSubject(w.env, w.db, PRODUCT, DEVICE, ada.subject),
+  ).toBe(true);
   return token;
 }
 
@@ -203,19 +202,6 @@ function recorder(
       ...(o.token ? { token: o.token } : {}),
     },
   });
-}
-
-async function jsonOf(res: Response): Promise<Record<string, unknown>> {
-  const text = await res.clone().text();
-  return text.startsWith("{") ? (JSON.parse(text) as never) : {};
-}
-
-/** The code of a refusal body: `{"error":"x"}` or `{"error":{"code":"x"}}`. */
-function codeOf(body: Record<string, unknown>): string {
-  const e = body.error;
-  return typeof e === "string"
-    ? e
-    : ((e as { code?: string } | undefined)?.code ?? "");
 }
 
 // ── the client's moves ────────────────────────────────────────────────────────────────────────
@@ -354,6 +340,23 @@ function enrol(
       await check(res, await jsonOf(res));
     },
     expectation,
+  );
+}
+
+/** `restoreEnroll` by a device that holds a token but is not signed in: 403 `account_required`. */
+function enrolRefused(
+  r: TranscriptRecorder,
+  now: number,
+  note: string,
+): Promise<void> {
+  return enrol(
+    r,
+    { now, note },
+    (res, json) => {
+      expect(res.status).toBe(403);
+      expect(codeOf(json)).toBe("account_required");
+    },
+    { result: "refused", status: 403, code: "account_required" },
   );
 }
 
@@ -518,46 +521,15 @@ export const restoreConfirm: Scenario = {
         { key },
         (a) => {
           expect(a.res.status).toBe(200);
-          expect(a.json.status).toBe("confirm");
-          expect(a.json.access_token).toBeUndefined();
-          pending = a.json.grant as string;
-          const consent = a.json.consent as Record<string, unknown>;
-          expect(consent.firstTime).toBe(true);
-          expect(consent.as).toEqual({ provider: null, email: null });
-          Object.assign(view, {
-            firstTime: consent.firstTime,
-            changed: consent.changed,
-            as: consent.as,
-          } as Json);
+          pending = confirmed(a.json, view);
+          expect((a.json.consent as { as: unknown }).as).toEqual({
+            provider: null,
+            email: null,
+          });
         },
         view,
       );
-      await r.step(
-        {
-          action: "choiceComplete",
-          note: "choice.complete(grant, {consent}): the person kept both claims.",
-          args: { grant: pending },
-        },
-        async (s) => {
-          const body = {
-            grant: pending,
-            consent: { claims: ["profile", "email"] },
-          };
-          const res = await s.send({
-            method: "POST",
-            path: `/${PRODUCT}/identity/choice/complete`,
-            body,
-            expectBody: { json: body, match: "exact" },
-          });
-          expect(res.status).toBe(200);
-        },
-        {
-          result: "ok",
-          tokenHeld: true,
-          scope: "profile email",
-          licenseId: null,
-        },
-      );
+      await keptBothClaims(r, pending);
       return r.transcript();
     }),
 };
@@ -669,17 +641,10 @@ export const restoreErrors: Scenario = {
         PRODUCT,
         DEVICE,
       );
-      await enrol(
+      await enrolRefused(
         r,
-        {
-          now: T0 + 8 * 120 + 60,
-          note: "The device holds a token but is not signed in: no account to enrol for.",
-        },
-        (res, json) => {
-          expect(res.status).toBe(403);
-          expect(codeOf(json)).toBe("account_required");
-        },
-        { result: "refused", status: 403, code: "account_required" },
+        T0 + 8 * 120 + 60,
+        "The device holds a token but is not signed in: no account to enrol for.",
       );
       // The person has now redeemed 2 keys today (the agreement-key refusal counted: the key was
       // proven and used up first). Three more fill the 5-a-day cap.
@@ -720,10 +685,7 @@ export const restoreSignout: Scenario = {
       const { w, ada } = await restoreWorld();
       // Another device of the person (B) holds a key under the same subject; the client is A.
       const b = await enrolledKey(w, ada, OLD);
-      const token = await registeredDevice(w);
-      expect(
-        await setDeviceSubject(w.env, w.db, PRODUCT, DEVICE, ada.subject),
-      ).toBe(true);
+      const token = await signedInDevice(w, ada);
       const r = recorder(
         w,
         pin,
@@ -791,17 +753,10 @@ export const restoreSignout: Scenario = {
         },
         refusedGrant("invalid_grant"),
       );
-      await enrol(
+      await enrolRefused(
         r,
-        {
-          now: T0 + 300,
-          note: "A is no longer signed in: nothing to enrol for.",
-        },
-        (res, json) => {
-          expect(res.status).toBe(403);
-          expect(codeOf(json)).toBe("account_required");
-        },
-        { result: "refused", status: 403, code: "account_required" },
+        T0 + 300,
+        "A is no longer signed in: nothing to enrol for.",
       );
       return r.transcript();
     }),
@@ -819,10 +774,7 @@ export const restoreGateOff: Scenario = {
     pinned("restore-gate-off", async (pin) => {
       const { w, ada } = await restoreWorld();
       const key = await enrolledKey(w, ada, OLD);
-      const token = await registeredDevice(w);
-      expect(
-        await setDeviceSubject(w.env, w.db, PRODUCT, DEVICE, ada.subject),
-      ).toBe(true);
+      const token = await signedInDevice(w, ada);
       const r = recorder(
         w,
         pin,

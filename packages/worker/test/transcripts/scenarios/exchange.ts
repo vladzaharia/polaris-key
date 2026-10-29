@@ -212,7 +212,7 @@ async function exchangeCall(
   return { nonce: nonceRes, grant, json: await jsonOf(grant), token };
 }
 
-async function jsonOf(res: Response): Promise<Record<string, unknown>> {
+export async function jsonOf(res: Response): Promise<Record<string, unknown>> {
   const text = await res.clone().text();
   return text.startsWith("{") ? (JSON.parse(text) as never) : {};
 }
@@ -232,7 +232,7 @@ export const apple =
     appleToken(nonce, APPLE_SUB, over);
 
 /** The code of a refusal body: `{"error":"x"}` or `{"error":{"code":"x"}}`. */
-function codeOf(body: Record<string, unknown>): string {
+export function codeOf(body: Record<string, unknown>): string {
   const e = body.error;
   return typeof e === "string"
     ? e
@@ -240,7 +240,7 @@ function codeOf(body: Record<string, unknown>): string {
 }
 
 /** `choice/complete` as the SDK sends it after `confirm` or `choose`. */
-function complete(s: StepRecorder, body: Json): Promise<Response> {
+export function complete(s: StepRecorder, body: Json): Promise<Response> {
   return s.send({
     method: "POST",
     path: `/${PRODUCT}/identity/choice/complete`,
@@ -253,6 +253,42 @@ function complete(s: StepRecorder, body: Json): Promise<Response> {
 
 type Recorder = ReturnType<typeof recorder>;
 type Pin = Parameters<Parameters<typeof pinned>[1]>[0];
+
+/**
+ * A `confirm` answer: asserts its shape, fills `view` with what the client reports of it (the
+ * consent's `firstTime`, `changed` and `as`) and returns the pending grant.
+ */
+export function confirmed(json: Record<string, unknown>, view: Json): string {
+  expect(json.status).toBe("confirm");
+  expect(json.access_token).toBeUndefined();
+  const consent = json.consent as Record<string, unknown>;
+  expect(consent.firstTime).toBe(true);
+  Object.assign(view, {
+    firstTime: consent.firstTime,
+    changed: consent.changed,
+    as: consent.as,
+  } as Json);
+  return json.grant as string;
+}
+
+/** `choice.complete(grant, {consent})` after a `confirm`: the person kept both claims. */
+export function keptBothClaims(r: Recorder, grant: string): Promise<void> {
+  return r.step(
+    {
+      action: "choiceComplete",
+      note: "choice.complete(grant, {consent}): the person kept both claims.",
+      args: { grant },
+    },
+    async (s) => {
+      const res = await complete(s, {
+        grant,
+        consent: { claims: ["profile", "email"] },
+      });
+      expect(res.status).toBe(200);
+    },
+    { result: "ok", tokenHeld: true, scope: "profile email", licenseId: null },
+  );
+}
 
 /** The identity fragment of discovery, read through a recorded discover step. */
 async function identityFragment(
@@ -355,7 +391,9 @@ const SERVICES = [
 ] as const;
 
 /** The `services` map a discover step expects: every slug, on or off. */
-function services(on: Partial<Record<(typeof SERVICES)[number], true>>): Json {
+export function services(
+  on: Partial<Record<(typeof SERVICES)[number], true>>,
+): Json {
   return Object.fromEntries(SERVICES.map((k) => [k, on[k] === true]));
 }
 
@@ -411,39 +449,11 @@ export const exchangeConfirm: Scenario = {
         {},
         (a) => {
           expect(a.grant!.status).toBe(200);
-          expect(a.json.status).toBe("confirm");
-          expect(a.json.access_token).toBeUndefined();
-          pending = a.json.grant as string;
-          const consent = a.json.consent as Record<string, unknown>;
-          expect(consent.firstTime).toBe(true);
-          Object.assign(view, {
-            firstTime: consent.firstTime,
-            changed: consent.changed,
-            as: consent.as,
-          } as Json);
+          pending = confirmed(a.json, view);
         },
         view,
       );
-      await r.step(
-        {
-          action: "choiceComplete",
-          note: "choice.complete(grant, {consent}): the person kept both claims.",
-          args: { grant: pending },
-        },
-        async (s) => {
-          const res = await complete(s, {
-            grant: pending,
-            consent: { claims: ["profile", "email"] },
-          });
-          expect(res.status).toBe(200);
-        },
-        {
-          result: "ok",
-          tokenHeld: true,
-          scope: "profile email",
-          licenseId: null,
-        },
-      );
+      await keptBothClaims(r, pending);
       return r.transcript();
     }),
 };

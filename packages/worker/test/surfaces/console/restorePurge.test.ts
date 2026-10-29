@@ -3,6 +3,9 @@
  * §12.11.8, "Revocation"). A step-up route with the product slug typed; it deletes every restore
  * key and origin mark of the one product, writes one audit row naming the operator and the count,
  * and runs whatever the launch gate, the product setting or the Identity toggle say.
+ *
+ * I-49.8: turning Identity back on ends the product's keys too (`DELETE restore` is 404 while
+ * Identity is off), through a services-write listener (`restore/servicesListener.ts`).
  */
 import { describe, expect, it } from "vitest";
 import { NOW, seedProduct } from "../../seed.js";
@@ -12,6 +15,10 @@ import {
   mintRestoreKey,
 } from "../../../src/services/identity/restore/store.js";
 import { listAudit } from "../../../src/core/audit.js";
+import { applyServiceTransitions } from "../../../src/core/servicesTransitions.js";
+import { setServices } from "../../../src/core/products/store.js";
+import { serializeServices } from "../../../src/core/services.js";
+import { servicesOn } from "../../transcripts/world.js";
 
 const SLUG = "djdl";
 const OTHER = "other";
@@ -158,5 +165,104 @@ describe("purge restore keys", () => {
     expect(res.status).toBe(403);
     const get = await w.call("GET", PATH, { as: fresh });
     expect(get.status).toBeGreaterThanOrEqual(400);
+  });
+});
+
+describe("Identity turned back on ends the restore keys of the product", () => {
+  const SERVICES = `/api/products/${SLUG}/services`;
+  type T = Awaited<ReturnType<typeof setup>>;
+  const reasons = async (t: T) =>
+    (await listAudit(t.w.db, SLUG))
+      .filter((a) => a.action === "identity.restore.purge")
+      .map((a) => a.summary);
+  /** The console's PATCH, which must be accepted. */
+  const identity = async (t: T, enabled: boolean): Promise<void> => {
+    const res = await t.w.call("PATCH", SERVICES, {
+      as: t.fresh,
+      body: { services: { identity: { enabled } } },
+    });
+    expect(res.status).toBe(200);
+  };
+  /** Identity on without the listener hearing of it: the keys the setup wrote stay. */
+  const identityOn = ({ w }: T) =>
+    setServices(
+      w.db,
+      SLUG,
+      serializeServices({ services: servicesOn("config", "identity") }),
+      "admin",
+      NOW,
+    );
+  /** The product's keys and origin marks are gone; another product's stay. */
+  const expectEnded = async (t: T): Promise<void> => {
+    expect(await t.count("identity_restore_keys", SLUG)).toBe(0);
+    expect(await t.count("identity_restore_origins", SLUG)).toBe(0);
+    expect(await t.count("identity_restore_keys", OTHER)).toBe(1);
+    expect(await t.count("identity_restore_origins", OTHER)).toBe(1);
+  };
+  /** The keys stay and the device rows behind them go, so no device event can have ended them. */
+  const orphan = ({ w }: T) => w.db.run("DELETE FROM devices");
+
+  it("enrol, Identity off, Identity on: the key and its origin mark are gone", async () => {
+    const t = await setup();
+    await identityOn(t);
+    expect(await t.count("identity_restore_keys", SLUG)).toBe(2);
+    await identity(t, false);
+    await identity(t, true);
+    await expectEnded(t);
+  });
+
+  it("a key no device event ended survives Identity off and goes when it is turned back on, with one row naming why and no id", async () => {
+    const t = await setup();
+    await identityOn(t);
+    await orphan(t);
+    await identity(t, false);
+    expect(await t.count("identity_restore_keys", SLUG)).toBe(2);
+    expect(await reasons(t)).toEqual([]);
+    await identity(t, true);
+    await expectEnded(t);
+    expect(await reasons(t)).toEqual([
+      "Purged 2 restore key(s): Identity was turned back on.",
+    ]);
+    const row = (await listAudit(t.w.db, SLUG)).find(
+      (a) => a.action === "identity.restore.purge",
+    );
+    expect(row).toMatchObject({ target_id: SLUG, actor_name: "Ada" });
+    expect(JSON.stringify(row)).not.toContain("rk_");
+  });
+
+  it("a manifest resync that turns Identity back on purges too, as the actor it ran as", async () => {
+    const t = await setup();
+    await identityOn(t);
+    await orphan(t);
+    const off = servicesOn("config");
+    const on = servicesOn("config", "identity");
+    const actor = { sub: "manifest", name: "Manifest resync", email: null };
+    // A resync that leaves Identity off, or on, is not a transition.
+    await applyServiceTransitions(t.w.env, t.w.db, SLUG, off, actor, NOW + 1, {
+      before: off,
+    });
+    await applyServiceTransitions(t.w.env, t.w.db, SLUG, on, actor, NOW + 2, {
+      before: on,
+    });
+    await applyServiceTransitions(t.w.env, t.w.db, SLUG, on, actor, NOW + 3);
+    expect(await t.count("identity_restore_keys", SLUG)).toBe(2);
+    await applyServiceTransitions(t.w.env, t.w.db, SLUG, on, actor, NOW + 4, {
+      before: off,
+    });
+    expect(await t.count("identity_restore_keys", SLUG)).toBe(0);
+    expect(await reasons(t)).toHaveLength(1);
+    // Nothing left: turning it on again adds no row.
+    await applyServiceTransitions(t.w.env, t.w.db, SLUG, on, actor, NOW + 5, {
+      before: off,
+    });
+    expect(await reasons(t)).toHaveLength(1);
+  });
+
+  it("a write that leaves Identity on purges nothing and writes no row", async () => {
+    const t = await setup();
+    await identityOn(t);
+    await identity(t, true);
+    expect(await t.count("identity_restore_keys", SLUG)).toBe(2);
+    expect(await reasons(t)).toEqual([]);
   });
 });

@@ -84,7 +84,7 @@ export async function applyServiceTransitions(
   /** `seedDefaultTier: false`: a manifest resync never touches the Default tier (LX-33.7). */
   opts: {
     seedDefaultTier?: boolean;
-    /** The set the write replaced, when the writer saw it (the console's PATCH). */
+    /** The set the write replaced, when the writer saw it (the console's PATCH, a resync). */
     before?: ServicesMap;
   } = {},
 ): Promise<ServiceTransitionResult> {

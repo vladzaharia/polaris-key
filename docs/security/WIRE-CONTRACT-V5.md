@@ -2109,7 +2109,7 @@ The answers are §12.11.3's, less `interstitial_required` with `no_link`: a `200
 - when the app is removed from Connected apps (the account's keys for that product);
 - on account deletion, and for the losing account of a merge;
 - on product deletion;
-- when the product's Identity is turned off or back on (all the product's keys, because `DELETE` answers `404` while Identity is off; one audit row names the reason);
+- when the product's Identity is turned back on (all the product's keys, because `DELETE` answers `404` while Identity is off; one audit row names the reason);
 - by maintenance, 180 days after its last check;
 - by `DELETE`, above.
 

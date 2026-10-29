@@ -30,6 +30,7 @@ import {
   observe,
   offered,
   replay,
+  runChoiceComplete,
   runExchange,
   type Observed,
 } from "./exchangeReference.js";
@@ -68,19 +69,8 @@ async function runStep(
       nonceEndpoint: typeof identity.endpoints?.nonce === "string",
     } as Observed;
   }
-  if (step.action === "choiceComplete") {
-    // The SDK's input is the consent and the choice the host gave; the recording holds them.
-    const sent = step.exchanges.items[0]!.request.body!.json as Record<
-      string,
-      JsonValue
-    >;
-    const res = await server.fetch(`${base}/identity/choice/complete`, {
-      method: "POST",
-      headers: { ...device, "content-type": "application/json" },
-      body: JSON.stringify({ ...sent, grant: step.args.grant }),
-    });
-    return observe(res.status, await json(res));
-  }
+  if (step.action === "choiceComplete")
+    return runChoiceComplete(server, t, step);
   expect(step.action).toBe("exchange");
   return runExchange(server, t, step);
 }

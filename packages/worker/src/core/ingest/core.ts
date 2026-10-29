@@ -238,7 +238,12 @@ async function afterCommit(ctx: IngestContext) {
         .services,
       MANIFEST_RESYNC_ACTOR,
       ctx.now,
-      { seedDefaultTier: false },
+      {
+        seedDefaultTier: false,
+        ...(ctx.before
+          ? { before: parseServices(ctx.before.services_json).services }
+          : {}),
+      },
     );
   }
   // HA-05 (notes/S-20 §6.4): the hosted-asset pulls this manifest owes, enqueued AFTER the batch

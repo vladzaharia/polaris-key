@@ -33,6 +33,7 @@ import {
   json,
   observe,
   replay,
+  runChoiceComplete,
   type Observed,
 } from "./exchangeReference.js";
 
@@ -124,19 +125,8 @@ async function runStep(
     return observeGrant(res.status, await json(res));
   }
 
-  if (step.action === "choiceComplete") {
-    // The SDK's input is the consent the host gave; the recording holds it.
-    const sent = step.exchanges.items[0]!.request.body!.json as Record<
-      string,
-      unknown
-    >;
-    const res = await server.fetch(`${base}/identity/choice/complete`, {
-      method: "POST",
-      headers: { ...device, "content-type": "application/json" },
-      body: JSON.stringify({ ...sent, grant: step.args.grant }),
-    });
-    return observe(res.status, await json(res));
-  }
+  if (step.action === "choiceComplete")
+    return runChoiceComplete(server, t, step);
 
   if (step.action === "restoreEnroll") {
     const held = step.args.restoreId;
@@ -198,30 +188,20 @@ describe("identity.restore transcripts, reference client", () => {
 
   const happy = RESTORE.find((t) => t.id === "restore-happy")!;
 
-  it("fails when the proof is not the recorded one", async () => {
-    const doctored = doctor(happy, 1, (items) => {
-      const copy = structuredClone(items);
-      const form = copy[0]!.request.body!.json as Record<string, string>;
-      const proof = form.proof!;
-      form.proof = proof.replace(/.$/, proof.endsWith("A") ? "B" : "A");
-      return copy;
+  // The redeem form is held byte for byte: a client that signs, or spends, anything else fails.
+  for (const field of ["proof", "restore_secret", "restore_id"] as const)
+    it(`fails when the form's ${field} is not the recorded one`, async () => {
+      const doctored = doctor(happy, 1, (items) => {
+        const copy = structuredClone(items);
+        const form = copy[0]!.request.body!.json as Record<string, string>;
+        form[field] =
+          `${form[field]!.slice(0, -1)}${form[field]!.endsWith("A") ? "B" : "A"}`;
+        return copy;
+      });
+      await expect(replay(doctored, runStep)).rejects.toThrow(
+        /does not match the recording/,
+      );
     });
-    await expect(replay(doctored, runStep)).rejects.toThrow(
-      /does not match the recording/,
-    );
-  });
-
-  it("fails when the secret is not the one the backup carried", async () => {
-    const doctored = doctor(happy, 1, (items) => {
-      const copy = structuredClone(items);
-      const form = copy[0]!.request.body!.json as Record<string, string>;
-      form.restore_secret = `rs_${"A".repeat(43)}`;
-      return copy;
-    });
-    await expect(replay(doctored, runStep)).rejects.toThrow(
-      /does not match the recording/,
-    );
-  });
 
   it("fails when the enrolment is not sent", async () => {
     const doctored = doctor(happy, 2, () => []);
