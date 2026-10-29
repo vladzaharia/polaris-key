@@ -27,6 +27,9 @@ export const FORM_ORDER: readonly string[] = [
   "choose",
   "key",
   "replace",
+  "key-done",
+  "attach",
+  "added",
   "done",
 ];
 
@@ -65,6 +68,11 @@ export function formStep(input: UiInput): FormStep {
         ]),
         announce,
       };
+    case "key-done":
+    case "attach":
+    case "added":
+      // After a key with no account (UK-42): the holders' screens, drawn by the form's own view.
+      return { form, body: form, announce: [] };
     case "error": {
       // A failed method keeps the others: the methods step, with the failure under the title.
       const methods = viewOf("SignIn", { ...input, error: undefined });
