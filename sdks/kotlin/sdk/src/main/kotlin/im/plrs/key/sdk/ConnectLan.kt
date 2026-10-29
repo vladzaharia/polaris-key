@@ -165,6 +165,7 @@ internal class LanService private constructor(
     private val ownsScope: Boolean,
 ) {
     private var server: ServerSocket? = null
+    private var acceptJob: Job? = null
     private var listenPort = 0
     private val mdns: MdnsAdapter = o.mdns ?: JvmMdns(scope, allowLoopback = o.allowLoopback, interfaces = o.interfaces)
     private var adv: MdnsHandle? = null
@@ -268,6 +269,10 @@ internal class LanService private constructor(
             } catch (e: IOException) {
                 // already closed
             }
+            // ServerSocket.close() returns while a thread is still blocked in accept(); the kernel keeps the socket
+            // listening (and queues a connect) until that thread has left it. Wait for the accept loop to end.
+            acceptJob?.join()
+            acceptJob = null
             adv = null
             browseHandle = null
             // The listener and the advert are down before any session is closed: a host callback that
@@ -395,7 +400,7 @@ internal class LanService private constructor(
         val s = ServerSocket(o.port, BACKLOG, InetAddress.getByName(o.host))
         server = s
         listenPort = s.localPort
-        scope.launch(Dispatchers.IO) {
+        acceptJob = scope.launch(Dispatchers.IO) {
             while (!stopped) {
                 val sock = try {
                     s.accept()
