@@ -1503,7 +1503,7 @@ public let OUTLET_MATRIX_VERSION = 1
 public let PLAN_MATRIX_VERSION = 2
 
 /// `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
-public let SYNC_SCENARIOS_VERSION = 3
+public let SYNC_SCENARIOS_VERSION = 4
 
 /// `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
 public let DEVICE_LABEL_VERSION = 1
