@@ -10976,6 +10976,45 @@ and `choice-*.json`.
 - **R1-07 for device code.** Device code's own boundary is I-37's explicit approval (see "The
   device-code user-code page" and "Remote phishing"); this section covers the web redirect only.
 
+### The key return on the card (LK-SKIP)
+
+plans/LK-SKIP.md §8, WIRE-CONTRACT-V5 §12.4.2. A person on the Polaris Locker card, sent there by an
+app that opted in with `key_return=allow`, presses Continue without an account and the app gets a
+device on the key's licence, with no account and no subject. The route is
+`POST /api/signin/requests/<handle>/key`; `token` redeems its code. Gated by the launch gate
+`launch.identityKeyReturn` (default off, fails closed), which is a review trigger under section 9.
+Tests are in `test/surfaces/keyReturn.test.ts` and the transcripts `redirect-web-key-return*.json`.
+
+- **Worth of a code.** Exactly the key, for one device id, for 60 seconds. It equals
+  `license/activate` with that key: one counted key entry and no account binding. Only a holder of
+  the key can mint one, and the app never learns the key.
+- **Replay.** The request is consumed atomically, so one press gives one code. The code is single
+  use, lives 60 seconds, and is bound to S256, `client_id` and `redirect_uri`. A wrong verifier ends it.
+- **CSRF and forwarded links.** The binder is HttpOnly, Secure and SameSite=Lax, backed by Fetch
+  Metadata and a JSON content type. A forwarded card URL is `404`. A forwarded `authorize` link
+  binds the victim's own browser, and its code lands at the registered URI, where the app's `state`
+  check refuses it. A leaked code yields one seat on the key's licence, which is less than the
+  account a leaked sign-in code yields.
+- **Opt-in at both ends.** A key code needs `key_return=allow` with `purpose=signin`, and a client
+  accepts `via: "key"` only when it opted in. `attach` never gets the skip, because it would bind
+  the device to a different licence.
+- **Device code is excluded** (R1-07). A person talked into confirming a TV's code and typing a
+  key would bind the attacker's TV to their licence. The native classes are same-device and
+  PKCE-bound, and they follow I-15's sign-in rule.
+- **Enumeration.** Keys are 128-bit and the signed-out preview already confirms a key, so the route
+  adds no oracle. The budgets are 10 a minute per client network, charged before any lookup and
+  failing closed, and 5 per request handle in 600 seconds. There is no Turnstile, because nothing is
+  emailed.
+- **Limits hold.** An owned licence never moves by key through the card (S-16 D24):
+  `license_owned` is answered whatever `identity.keyEntryRefusals` says. The entry is counted once,
+  at `token`. `device_limit`, `fingerprint_required` and `hardware_mismatch` come from
+  `authorizeDevice`, unchanged.
+- **The key stays in the body.** It is never in a URL, the redirect, the request or code record,
+  browser storage, a log or the audit. The code holds the peppered hash D1 already stores, which
+  cannot be presented as a key.
+- **Disclosure.** The answer carries the device, the licence, `keyEntries` and the device's own
+  binding. It never carries an email, an account or the key.
+
 ### Platform → Connections: the operator's side of connections (I-31)
 
 The console adds, changes, turns off and deletes platform connections, claims their email domains

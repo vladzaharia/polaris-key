@@ -172,6 +172,11 @@
     "identity.signin.hints": {
       "status": "implemented"
     },
+    "identity.keyreturn": {
+      "status": "planned",
+      "wp": "I-15b",
+      "note": "LK-SKIP.8: the opt-in, the via rule and the activated outcome, with the replayer."
+    },
     "identity.exchange": {
       "status": "na",
       "runtime": ["python"],

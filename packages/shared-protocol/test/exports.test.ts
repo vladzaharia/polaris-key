@@ -384,6 +384,34 @@ describe("@polaris-key/protocol layout", () => {
     expect("REQUEST_HANDLE_PATTERN" in barrel).toBe(false);
   });
 
+  it("the /identity subpath (plans/LK-SKIP.md §2, WIRE-CONTRACT-V5 §12.4.2, §12.5)", () => {
+    expect(identity.KEY_RETURN_ALLOW).toBe("allow");
+    const params: Pick<identity.AuthorizeParams, "key_return"> = {
+      key_return: identity.KEY_RETURN_ALLOW,
+    };
+    expect(params.key_return).toBe("allow");
+    // The key-return answer's subject is a string or null; the ordinary answer's stays a string.
+    const answer: Pick<
+      identity.KeyReturnTokenResponse,
+      "via" | "scope" | "subject"
+    > = {
+      via: "key",
+      scope: "",
+      subject: null,
+    };
+    expect(answer.subject).toBeNull();
+    const ordinary: Pick<identity.TokenResponse, "subject"> = {
+      subject: "ps_x",
+    };
+    expect(typeof ordinary.subject).toBe("string");
+    const view: Pick<identity.SignInRequestView, "keyReturn"> = {
+      keyReturn: true,
+    };
+    expect(view.keyReturn).toBe(true);
+    const body: identity.SignInKeyReturnRequest = { key: "pkey_x" };
+    expect(Object.keys(body)).toEqual(["key"]);
+  });
+
   it("the /identity subpath (plans/I-09.md §2, WIRE-CONTRACT-V4 §8, §12.2, §12.3)", () => {
     // 16 random bytes are 22 base64url characters; the subject is only ever matched whole.
     expect(identity.PAIRWISE_SUBJECT_PATTERN).toBe("^ps_[A-Za-z0-9_-]{22}$");

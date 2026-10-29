@@ -230,6 +230,11 @@
       "status": "implemented",
       "note": "I-10a.10: bearer mode: loginHint, nameHint and purpose go on the authorize URL (redirect) and the device start body (device code). The desktop bridge's beginSignIn carries only deviceName, so a hint there is a typed unsupported (runtime) rather than a silent drop."
     },
+    "identity.keyreturn": {
+      "status": "planned",
+      "wp": "UK-42",
+      "note": "LK-SKIP.6b: bearer mode with the browser and kit driver: RedirectSignInOptions.keyReturn, and the activated outcome (the app starts at once; no Done step)."
+    },
     "identity.exchange": {
       "status": "implemented",
       "except": [
