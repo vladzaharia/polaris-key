@@ -505,7 +505,14 @@ func _vault_plain_refused(t: PKeyTestContext, kid: PackedByteArray, secret: Pack
 	var tv := PKeySyncRingVault.for_tests(PRODUCT, plain_dir)
 	var tv_ok := tv.write_root("rg_" + "A".repeat(22), 1, kid, secret).ok
 	t.check("vault: for_tests keeps a plain file", tv_ok and tv.protection() == "file" and tv.read_root().detail["root"] == secret and _file_has(plain_file, secret))
+	# An older build's pin, root and a temporary sibling: a refused vault's clear() deletes them by name.
+	var vdir := plain_dir.path_join(PRODUCT)
+	var tmp_file := vdir.path_join("sync-root.tmp-abc123")
+	var tf := FileAccess.open(tmp_file, FileAccess.WRITE)
+	tf.store_string("x")
+	tf.close()
 	t.check("vault: a refused vault still clears a plain file a test vault left", refused.clear().ok and not FileAccess.file_exists(plain_file))
+	t.check("vault: and its pin and a temporary sibling", not FileAccess.file_exists(vdir.path_join("sync-ring-pin.json")) and not FileAccess.file_exists(tmp_file))
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────────────────

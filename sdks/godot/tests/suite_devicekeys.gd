@@ -382,17 +382,41 @@ func _refused(t: PKeyTestContext) -> void:
 	var peer := PKeyCurve25519.x25519_public(PackedByteArray([9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]))
 	var results := {
 		"ensure": s.ensure(), "public_keys": s.public_keys(), "sign": s.sign("x".to_utf8_buffer()),
-		"dh": s.dh(peer), "rotate": s.rotate(), "wipe": s.wipe(),
+		"dh": s.dh(peer), "rotate": s.rotate(),
 	}
 	for name in results:
 		var r: PKeyResult = results[name]
 		t.check("refused: %s answers invalid-options" % name, not r.ok and r.code == PKeyErrors.INVALID_OPTIONS, str(r))
+	var nothing := s.wipe()
+	t.check("refused: wipe with nothing on disk is ok and makes nothing", nothing.ok and not DirAccess.dir_exists_absolute(root.path_join("djdl")), str(nothing))
 	t.check("refused: protection says so", s.protection() == "refused" and str(s) == "PKeyDeviceKeyStore(refused)")
 	t.check("refused: nothing is written, not even the directory or the lock", not DirAccess.dir_exists_absolute(root.path_join("djdl")))
 	# The refusal is not a way round the check on an existing plain record: it is never read either.
 	var plain := PKeyDeviceKeyStore.for_tests("djdl", root)
 	t.check("refused: for_tests keeps a plain file", plain.ensure().ok and plain.protection() == "file" and FileAccess.file_exists(root.path_join("djdl").path_join(PKeyDeviceKeyStore.RECORD_FILE)))
 	t.check("refused: a refused store does not read it back", s.public_keys().code == PKeyErrors.INVALID_OPTIONS and s.sign("x".to_utf8_buffer()).code == PKeyErrors.INVALID_OPTIONS)
+	# An older build's plain file: wipe() on the refused store deletes it (the record, its salt and a
+	# temporary sibling), by name. Another product's files stay.
+	var dirp := root.path_join("djdl")
+	var other := root.path_join("other")
+	DirAccess.make_dir_recursive_absolute(other)
+	var left := FileAccess.open(other.path_join(PKeyDeviceKeyStore.RECORD_FILE), FileAccess.WRITE)
+	left.store_string("keep")
+	left.close()
+	for extra in [PKeyDeviceKeyStore.SALT_FILE, PKeyDeviceKeyStore.RECORD_FILE + ".tmp-abc123", "unrelated"]:
+		var ef := FileAccess.open(dirp.path_join(extra), FileAccess.WRITE)
+		ef.store_string("x")
+		ef.close()
+	var cleared := s.wipe()
+	var rec_path := dirp.path_join(PKeyDeviceKeyStore.RECORD_FILE)
+	var salt_path := dirp.path_join(PKeyDeviceKeyStore.SALT_FILE)
+	var tmp_path := dirp.path_join(PKeyDeviceKeyStore.RECORD_FILE + ".tmp-abc123")
+	var gone := not FileAccess.file_exists(rec_path) and not FileAccess.file_exists(salt_path) and not FileAccess.file_exists(tmp_path)
+	t.check("refused: wipe deletes the plain record, its salt and a temporary sibling", cleared.ok and gone, str(cleared))
+	var kept := FileAccess.file_exists(dirp.path_join("unrelated")) and FileAccess.file_exists(other.path_join(PKeyDeviceKeyStore.RECORD_FILE))
+	t.check("refused: wipe leaves other files and other products alone", kept)
+	var after := s.ensure()
+	t.check("refused: after the wipe the store still answers invalid-options", after.code == PKeyErrors.INVALID_OPTIONS and not FileAccess.file_exists(rec_path))
 	t.check("refused: a memory store ignores the flag (nothing is written)", PKeyDeviceKeyStore.new("djdl", root, true, false).ensure().ok)
 	t.check("refused: the default store is not refused", _file_store(_dir("refused-default")).protection() in ["encrypted-file", "file"])
 	PKeyTestFixtures.remove_tree(root)

@@ -64,7 +64,9 @@ extends RefCounted
 ##   "refused"         a store made with `encrypted = false` outside `for_tests`. The private keys
 ##                     are never written as a plain file: every member answers `invalid-options`
 ##                     (`public_keys()` and `sign()` included), and nothing is read, written or
-##                     locked.
+##                     locked. The one exception is `wipe()`: it deletes a plain `device-keys`
+##                     file an older build left in the directory (by name, never opened) and
+##                     answers ok.
 ##   "memory"          process memory only. A memory store refuses to register keys unless the
 ##                     caller passes `allow_ephemeral`. A web build whose `user://` is not
 ##                     persistent is also "memory".
@@ -290,7 +292,30 @@ func rotate() -> PKeyResult:
 ## Deletes both keys, whatever state the record is in. The next ensure() makes a new pair with
 ## `generation` starting again.
 func wipe() -> PKeyResult:
+	if _plain_refused():
+		return _delete_plain_leftovers()
 	return _locked(_wipe_locked)
+
+
+## A refused store reads, writes and locks nothing, but an older build may have left a plain
+## `device-keys` file (and its salt and temporary siblings) in this directory. `wipe()` deletes them:
+## by name, never opened or read. Nothing exists and nothing is made when there is nothing to remove.
+func _delete_plain_leftovers() -> PKeyResult:
+	if not _slug_ok:
+		return _bad_slug()
+	if not _root_ok:
+		return PKeyResult.failure(STORE_FAULT, "device keys: the store directory must be under user://")
+	if not DirAccess.dir_exists_absolute(dir):
+		return PKeyResult.success()
+	var doomed: Array[String] = []
+	for name in DirAccess.get_files_at(dir):
+		if name == RECORD_FILE or name == SALT_FILE or name.begins_with(RECORD_FILE + ".tmp-"):
+			doomed.append(name)
+	for name in doomed:
+		var err := DirAccess.remove_absolute(dir.path_join(name))
+		if err != OK:
+			return _fault("remove", err)
+	return PKeyResult.success()
 
 
 # ── Operations (the mutex, and the file lock where there is a file, are held) ────────────

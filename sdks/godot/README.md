@@ -933,7 +933,8 @@ store's `dh`. The root, the code and every key print as redacted.
   the vault: sealed where a native lane exists, an `encrypted-file` (obfuscation, not protection)
   where not, and `PKeyDeviceKeyStore.new(..., false)` is refused (`invalid-options`, `protection()`
   is `refused`); the private keys are never written as a plain file. `PKeyDeviceKeyStore.for_tests`
-  keeps a plain file for test suites.
+  keeps a plain file for test suites. `wipe()` on a refused store deletes a plain `device-keys` file
+  (and its salt and temporary siblings) an older build left behind, by name and without reading it.
 
 ## Cloud Sync settings (`PolarisKey.cloud_sync`)
 
