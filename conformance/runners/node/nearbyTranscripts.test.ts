@@ -51,13 +51,13 @@ function refused(status: number, body: Record<string, unknown>): Observed {
   return { result: "refused", status, code: errorCode(body) };
 }
 
-async function runStep(
+async function runNearby(
   server: ReplayServer,
   t: Transcript,
   step: Step,
 ): Promise<Observed> {
-  const base = `${t.baseUrl}/${t.product}`;
   const n = of(server);
+  const base = `${t.baseUrl}/${t.product}`;
   const a = step.args;
   if (step.action === "discover") {
     const res = await server.fetch(`${base}/.well-known/polaris.json`);
@@ -229,40 +229,28 @@ describe("identity.nearby transcripts, reference client (both devices)", () => {
 
   for (const t of NEARBY)
     it(`${t.id}: both devices reproduce every request`, async () => {
-      await replay(t, runStep);
+      await replay(t, runNearby);
     });
 
   const happy = NEARBY.find((t) => t.id === "nearby-happy")!;
 
-  it("fails when D's start proof is not the recorded one", async () => {
-    const doctored = doctor(happy, 1, (items) => {
-      const copy = structuredClone(items);
-      const body = copy[0]!.request.body!.json as Record<string, string>;
-      body.proof = body.proof!.replace(
-        /.$/,
-        body.proof!.endsWith("A") ? "B" : "A",
+  for (const [who, step] of [
+    ["D's start", 1],
+    ["M's approve", 4],
+    ["D's poll", 5],
+  ] as const)
+    it(`fails when ${who} proof is not the recorded one`, async () => {
+      const doctored = doctor(happy, step, (items) => {
+        const copy = structuredClone(items);
+        const body = copy[0]!.request.body!.json as Record<string, string>;
+        const last = body.proof!.endsWith("A") ? "B" : "A";
+        body.proof = body.proof!.replace(/.$/, last);
+        return copy;
+      });
+      await expect(replay(doctored, runNearby)).rejects.toThrow(
+        /does not match the recording/,
       );
-      return copy;
     });
-    await expect(replay(doctored, runStep)).rejects.toThrow(
-      /does not match the recording/,
-    );
-  });
-
-  it("fails when M's approve proof is not the recorded one", async () => {
-    const doctored = doctor(happy, 4, (items) => {
-      const copy = structuredClone(items);
-      const body = copy[0]!.request.body!.json as Record<string, string>;
-      body.proof = body.proof!.replace(
-        /.$/,
-        body.proof!.endsWith("A") ? "B" : "A",
-      );
-      return copy;
-    });
-    await expect(replay(doctored, runStep)).rejects.toThrow(
-      /does not match the recording/,
-    );
-  });
 
   it("fails when M's bearer is not the recorded token", async () => {
     const doctored = doctor(happy, 4, (items) => {
@@ -270,7 +258,7 @@ describe("identity.nearby transcripts, reference client (both devices)", () => {
       copy[0]!.request.headers.authorization = "Bearer pkeyt_other";
       return copy;
     });
-    await expect(replay(doctored, runStep)).rejects.toThrow(
+    await expect(replay(doctored, runNearby)).rejects.toThrow(
       /does not match the recording/,
     );
   });
