@@ -371,7 +371,11 @@ const ROUTES: Record<string, unknown> = {
         declared: true,
         oneClick: false,
         notUsing: false,
-        delivery: { state: "live", attention: [], platforms: [{ platform: "ios", arches: ["arm64"] }] },
+        delivery: {
+          state: "live",
+          attention: [],
+          platforms: [{ platform: "ios", arches: ["arm64"] }],
+        },
         commerce: { state: "ready", reason: null, attention: [] },
         identity: {
           fields: { bundleId: "com.example.djdl", appleId: "6478123905" },
