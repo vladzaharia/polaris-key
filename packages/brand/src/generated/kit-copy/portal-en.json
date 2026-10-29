@@ -494,6 +494,7 @@
   "locker.key.long": "This key is too long. After {prefix}_ come 22 characters, and this has {used}. Copy only the key.",
   "locker.key.badChars": "This key doesn't look right. After {prefix}_ come exactly 22 letters, digits, - or _. Copy the whole key again.",
   "locker.key.unknown": "We couldn't find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it.",
+  "locker.key.cantUse": "This key can't be used here.",
   "locker.key.emailMismatch": "{product} was bought with {email}. It joins only the account with that email verified.",
   "locker.key.emailMismatchAny": "another email",
   "locker.key.managedElsewhere": "{developer} manages this license elsewhere.",

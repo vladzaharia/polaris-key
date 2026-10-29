@@ -494,6 +494,7 @@
   "locker.key.long": "此密钥太长了。{prefix}_ 之后应有 22 个字符，而这里有 {used} 个。请只复制密钥。",
   "locker.key.badChars": "此密钥似乎不正确。{prefix}_ 之后应恰好是 22 个字母、数字、- 或 _。请重新复制完整的密钥。",
   "locker.key.unknown": "找不到该密钥。字母大小写有区别，l、1、O 和 0 容易混淆，请粘贴密钥而不要手动输入。",
+  "locker.key.cantUse": "此密钥无法在此处使用。",
   "locker.key.emailMismatch": "{product} 是用 {email} 购买的。它只会加入已验证该邮箱的账户。",
   "locker.key.emailMismatchAny": "另一个邮箱",
   "locker.key.managedElsewhere": "{developer} 在别处管理此许可证。",

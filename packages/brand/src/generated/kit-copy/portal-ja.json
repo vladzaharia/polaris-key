@@ -494,6 +494,7 @@
   "locker.key.long": "このキーは長すぎます。{prefix}_の後に22文字が続くはずですが、{used}文字あります。キーだけをコピーしてください。",
   "locker.key.badChars": "このキーは正しくないようです。{prefix}_の後には、英字・数字・-・_のいずれかがちょうど22文字続きます。キー全体をもう一度コピーしてください。",
   "locker.key.unknown": "そのキーは見つかりませんでした。大文字と小文字は区別され、l、1、O、0は間違えやすいため、入力せず貼り付けてください。",
+  "locker.key.cantUse": "このキーはここでは使えません。",
   "locker.key.emailMismatch": "{product}は{email}で購入されました。そのメールアドレスを確認済みのアカウントにのみ追加されます。",
   "locker.key.emailMismatchAny": "別のメールアドレス",
   "locker.key.managedElsewhere": "このライセンスは{developer}が別の場所で管理しています。",

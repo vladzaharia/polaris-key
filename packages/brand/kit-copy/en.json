@@ -7303,6 +7303,11 @@
       "role": "hint",
       "note": "License key checks in the Activate dialog (P0-36)."
     },
+    "locker.key.cantUse": {
+      "value": "This key can't be used here.",
+      "role": "hint",
+      "note": "The sign-in card's Continue without an account, when the key is refused (LK-SKIP.5): unknown, inactive, another product's, or a license that can't be used. Never 'not found'."
+    },
     "locker.key.emailMismatch": {
       "value": "{product} was bought with {email}. It joins only the account with that email verified.",
       "role": "hint",

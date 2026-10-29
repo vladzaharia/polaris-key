@@ -138,6 +138,11 @@ export const PORTAL_MUTATIONS = {
     invalidates: () => [],
     why: "The app card ends in a redirect to the app; a raced choice re-reads its own license list.",
   },
+  signinKeyReturn: {
+    label: "Return to an app on a license key, with no account",
+    invalidates: () => [],
+    why: "The card ends in a redirect to the app, as Continue does; the request is consumed there and nothing else in the portal reads it.",
+  },
   signinCancel: {
     label: "Cancel an app's sign-in",
     invalidates: () => [],

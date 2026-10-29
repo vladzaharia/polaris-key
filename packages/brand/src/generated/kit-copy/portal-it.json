@@ -494,6 +494,7 @@
   "locker.key.long": "Questa chiave è troppo lunga. Dopo {prefix}_ devono esserci 22 caratteri, ma questa ne ha {used}. Copia solo la chiave.",
   "locker.key.badChars": "Questa chiave non sembra corretta. Dopo {prefix}_ devono esserci esattamente 22 lettere, cifre, - o _. Copia di nuovo l'intera chiave.",
   "locker.key.unknown": "Non abbiamo trovato quella chiave. Le maiuscole contano e l, 1, O e 0 si confondono facilmente: incolla la chiave invece di digitarla.",
+  "locker.key.cantUse": "Questa chiave non può essere usata qui.",
   "locker.key.emailMismatch": "{product} è stato acquistato con {email}. Si aggiunge solo all'account con quell'email verificata.",
   "locker.key.emailMismatchAny": "un'altra email",
   "locker.key.managedElsewhere": "{developer} gestisce questa licenza altrove.",

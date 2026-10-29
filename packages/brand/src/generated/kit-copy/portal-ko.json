@@ -494,6 +494,7 @@
   "locker.key.long": "이 키는 너무 길어요. {prefix}_ 뒤에 22자가 와야 하는데 {used}자예요. 키만 복사하세요.",
   "locker.key.badChars": "이 키가 올바르지 않은 것 같아요. {prefix}_ 뒤에는 영문자, 숫자, -, _ 중 정확히 22자가 와요. 키 전체를 다시 복사하세요.",
   "locker.key.unknown": "그 키를 찾지 못했어요. 대소문자를 구분하고 l, 1, O, 0은 헷갈리기 쉬우니, 입력하지 말고 붙여 넣으세요.",
+  "locker.key.cantUse": "이 키는 여기서 사용할 수 없어요.",
   "locker.key.emailMismatch": "{product}은(는) {email}(으)로 구매됐어요. 그 이메일이 인증된 계정에만 추가돼요.",
   "locker.key.emailMismatchAny": "다른 이메일",
   "locker.key.managedElsewhere": "{developer}에서 이 라이선스를 다른 곳에서 관리해요.",
