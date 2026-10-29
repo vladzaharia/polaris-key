@@ -174,6 +174,9 @@ export interface ActivateDoneInput {
   /** This device's place among the license's devices, and the limit. */
   position?: number;
   limit?: number;
+  /** The person came back from AddToAccount (Cancel): focus returns to the control that opened it
+   *  (DL9), not to the primary. */
+  returned?: boolean;
 }
 
 /** AddToAccount's steps (SIGN-IN.md §3.9, frames 43 to 46). */

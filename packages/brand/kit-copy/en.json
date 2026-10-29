@@ -653,17 +653,17 @@
       "note": "ActivateDone: the badge on the recommendation card."
     },
     "activate.recommend.sync": {
-      "value": "Cloud Sync keeps your settings and saves on every device",
+      "value": "**Cloud Sync** keeps your settings and saves on every device",
       "role": "body",
       "note": "ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them."
     },
     "activate.recommend.recover": {
-      "value": "Get your license back if you lose the key or this device",
+      "value": "**Get your license back** if you lose the key or this device",
       "role": "body",
       "note": "ActivateDone: a reason line, shown when Identity is on. The first words (\"Get your license back\") are a lead-in; the kit may style them."
     },
     "activate.recommend.devices": {
-      "value": "Move it to a new device yourself, without asking {developer}",
+      "value": "**Move it to a new device** yourself, without asking {developer}",
       "role": "body",
       "note": "ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words (\"Move it to a new device\") are a lead-in; the kit may style them."
     },

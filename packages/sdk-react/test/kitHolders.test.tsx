@@ -202,8 +202,9 @@ describe("ActivateDone", () => {
     ]);
     for (const l of lines) {
       expect(l.querySelector("svg")).not.toBeNull();
-      // No bold lead-in: plain text.
-      expect(l.querySelector("strong,b")).toBeNull();
+      // The first words are bold, and no marker is left in the text.
+      expect(l.querySelector("strong")).not.toBeNull();
+      expect(l.textContent).not.toContain("**");
     }
     cleanup();
     const off = render(
@@ -298,7 +299,7 @@ describe("AddToAccount", () => {
       "Add your name and email",
     );
     expect(
-      root.querySelector('input[data-key="signin.gate.name"]'),
+      root.querySelector('input[data-key="activate.attach.name"]'),
     ).not.toBeNull();
     expect(root.querySelector('input[type="email"]')).not.toBeNull();
     expect(
@@ -315,7 +316,7 @@ describe("AddToAccount", () => {
     const root = container.querySelector<HTMLElement>(".pk-root")!;
     expect(root.dataset.state).toBe("invalid");
     expect(
-      root.querySelector('[data-key="signin.gate.nameRequired"]'),
+      root.querySelector('[data-key="activate.attach.nameRequired"]'),
     ).not.toBeNull();
     expect(
       root.querySelector('[data-key="signin.email.invalid"]'),

@@ -236,24 +236,38 @@ function fillFromInput(
   set("count", i.devices?.length);
 }
 
+/** The key's formatted string with its isolated arguments marked, or `null` when a fact it names
+ *  is missing (never paint braces: development warns). */
+function marked(
+  c: RenderCtx,
+  key: string,
+  extra: Record<string, string | number>,
+): string | null {
+  const lost = missingArgs(c, key, extra);
+  if (lost.length) {
+    warnMissing(key, lost);
+    return null;
+  }
+  const args = argsOf(c, key, extra);
+  const isolated = new Set(c.view.isolate);
+  const out: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(args))
+    out[k] =
+      isolated.has(k) && typeof v === "string" ? `${OPEN}${v}${CLOSE}` : v;
+  return formatKey(c, key, out);
+}
+
 export function text(
   c: RenderCtx,
   key: string,
   extra: Record<string, string | number> = {},
 ): TemplateResult {
-  const lost = missingArgs(c, key, extra);
-  // Never paint braces: a line whose fact is missing is not drawn (development warns).
-  if (lost.length) {
-    warnMissing(key, lost);
-    return html``;
-  }
-  const args = argsOf(c, key, extra);
-  const isolated = new Set(c.view.isolate);
-  const marked: Record<string, string | number> = {};
-  for (const [k, v] of Object.entries(args))
-    marked[k] =
-      isolated.has(k) && typeof v === "string" ? `${OPEN}${v}${CLOSE}` : v;
-  const s = formatKey(c, key, marked);
+  const s = marked(c, key, extra);
+  return s === null ? html`` : isolate(s);
+}
+
+/** A formatted string with each isolated argument wrapped in `<bdi>`. */
+function isolate(s: string): TemplateResult {
   if (!s.includes(OPEN)) return html`${s}`;
   const parts: (string | TemplateResult)[] = [];
   for (const chunk of s.split(OPEN)) {
@@ -265,6 +279,18 @@ export function text(
     }
   }
   return html`${parts}`;
+}
+
+/** Like `text`, for a line whose first words are marked `**like this**` in the catalog: those
+ *  words are bold, and the markers never show. */
+export function lead(c: RenderCtx, key: string): TemplateResult {
+  const s = marked(c, key, {});
+  if (s === null) return html``;
+  return html`${s
+    .split("**")
+    .map((seg, i) =>
+      i % 2 === 1 ? html`<strong>${isolate(seg)}</strong>` : isolate(seg),
+    )}`;
 }
 
 /** A plain string, for an attribute (an aria-label). */
@@ -911,7 +937,11 @@ export function actions(
   );
   // Pressed once: while the work runs the primary is busy and ignores further presses.
   const busy =
-    c.input.pending !== undefined || c.input.signIn?.redeeming === true;
+    c.input.pending !== undefined ||
+    c.input.signIn?.redeeming === true ||
+    ((c.view.component as string) === "AddToAccount" &&
+      c.view.state === "busy") ||
+    c.input.addToAccount?.step === "busy";
   return html`<div
     class="actions"
     part="actions"

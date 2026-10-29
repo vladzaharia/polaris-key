@@ -855,20 +855,20 @@ msgstr "Conserva {product} en tu cuenta"
 msgid "activate.recommend.badge"
 msgstr "Recomendado"
 
-#. Cloud Sync keeps your settings and saves on every device
+#. **Cloud Sync** keeps your settings and saves on every device
 #. ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "La sincronización en la nube mantiene tus ajustes y partidas en todos tus dispositivos"
+msgstr "**La sincronización en la nube** mantiene tus ajustes y partidas en todos tus dispositivos"
 
-#. Get your license back if you lose the key or this device
+#. **Get your license back** if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
 msgid "activate.recommend.recover"
-msgstr "Recupera tu licencia si pierdes la clave o este dispositivo"
+msgstr "**Recupera tu licencia** si pierdes la clave o este dispositivo"
 
-#. Move it to a new device yourself, without asking {developer}
+#. **Move it to a new device** yourself, without asking {developer}
 #. ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them.
 msgid "activate.recommend.devices"
-msgstr "Pásala a un dispositivo nuevo tú mismo, sin pedírselo a {developer}"
+msgstr "**Pásala a un dispositivo nuevo** tú mismo, sin pedírselo a {developer}"
 
 #. Add your name and email
 #. ActivateDone: the recommendation card's action; opens AddToAccount.

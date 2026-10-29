@@ -16,6 +16,9 @@
 // the `common.continue` action (a host that drives the step itself), and nowhere else.
 
 import {
+  Children,
+  Fragment,
+  isValidElement,
   useEffect,
   useInsertionEffect,
   useLayoutEffect,
@@ -69,6 +72,7 @@ const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
       "activate.recommend.devices",
       "activate.recommend.portal",
       "activate.recommend.action",
+      "signin.key.addInLocker",
       "activate.recommend.skip",
       "activate.waitingSignIn",
       "signin.done.start",
@@ -77,20 +81,23 @@ const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
   AddToAccount: {
     kind: "screen",
     header: "compact",
-    // A form like Activate: two panes in a landscape box, the controls in the docked bar.
-    split: true,
+    // The same centred card as Done and Added: the frame never jumps mid-task (M6).
     controls: [],
     // The form's title is the action that opened it ("Add your name and email").
     titles: [
       "activate.recommend.action",
       "activate.owned.title",
       "activate.otherEmail.title",
+      "activate.otherAccount.title",
       "activate.attach.done",
     ],
     content: [
-      "signin.gate.name",
+      "activate.attach.name",
       "signin.email.label",
-      "signin.gate.nameRequired",
+      "activate.attach.nameRequired",
+      "activate.otherAccount.body",
+      "signin.handoff.again",
+      "common.done",
       "signin.email.invalid",
       "activate.attach.lede",
       "activate.attach.fine",
@@ -120,8 +127,9 @@ const HOLDERS_CSS = `@layer polaris-key {
   text-align: start;
 }
 .pk-root .recommend-head {
-  display: grid;
-  justify-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--pk-space-2);
 }
 .pk-root .recommend .pill {
@@ -198,6 +206,28 @@ function adoptHolderStyles(doc: Document): void {
 }
 
 // ── Glyphs: one lucide icon per reason ───────────────────────────────────────────────────────
+
+/** The first words of a reason are marked `**like this**` in the catalog: bold them. */
+function lead(node: ReactNode): ReactNode {
+  const items =
+    isValidElement<{ children?: ReactNode }>(node) && node.type === Fragment
+      ? Children.toArray(node.props.children)
+      : [node];
+  const out: ReactNode[] = [];
+  let bold = false;
+  let n = 0;
+  for (const it of items) {
+    if (typeof it !== "string") {
+      out.push(it);
+      continue;
+    }
+    it.split("**").forEach((seg, i) => {
+      if (i > 0) bold = !bold;
+      if (seg) out.push(bold ? <strong key={`s${n++}`}>{seg}</strong> : seg);
+    });
+  }
+  return <>{out}</>;
+}
 
 function Icon(props: { children: ReactNode }): ReactNode {
   return (
@@ -432,7 +462,10 @@ function Screen(
       onEscape={
         kit.view.copy.includes("common.cancel")
           ? () => ctx.act("common.cancel")
-          : undefined
+          : // Done and Added are success screens: Escape is Start using (or Done).
+            name === "ActivateDone" || kit.view.state === "added"
+            ? () => ctx.act(kit.view.decisions.primary ?? "signin.done.start")
+            : undefined
       }
     >
       {renderView({ ...ctx, content })}
@@ -459,9 +492,6 @@ function Recommendation(props: { c: KitCtx }): ReactNode {
   return (
     <div className="recommend" data-part="recommend">
       <div className="recommend-head">
-        <span className="pill" data-key="activate.recommend.badge">
-          {text(c, "activate.recommend.badge")}
-        </span>
         <h2
           className="title"
           data-size="section"
@@ -470,17 +500,23 @@ function Recommendation(props: { c: KitCtx }): ReactNode {
         >
           {text(c, "activate.recommend.title")}
         </h2>
+        <span className="pill" data-key="activate.recommend.badge">
+          {text(c, "activate.recommend.badge")}
+        </span>
       </div>
       <ul className="reasons" data-part="reasons">
         {reasons.map((k) => (
           <li key={k} data-key={k}>
             {REASON_ICONS[k]?.()}
-            <span>{text(c, k)}</span>
+            <span>{lead(text(c, k))}</span>
           </li>
         ))}
       </ul>
       <div className="actions" data-part="actions" data-layout="stack">
-        {button(c, "activate.recommend.action", "secondary")}
+        {has("signin.key.addInLocker")
+          ? // Identity off: it opens polaris.locker, so the label and the glyph say so.
+            button(c, "signin.key.addInLocker", "secondary", { external: true })
+          : button(c, "activate.recommend.action", "secondary")}
       </div>
     </div>
   );
@@ -521,7 +557,11 @@ export function ActivateDone(props: ActivateDoneProps): ReactNode {
       body={(c) => <DoneBody c={c} />}
       route={(a) => {
         if (a.key === "signin.done.start") onStart?.();
-        else if (a.key === "activate.recommend.action") onAddToAccount?.();
+        else if (
+          a.key === "activate.recommend.action" ||
+          a.key === "signin.key.addInLocker"
+        )
+          onAddToAccount?.();
         else if (a.key === "activate.waitingSignIn") onSignIn?.();
       }}
     />
@@ -546,23 +586,26 @@ export interface AddToAccountProps extends KitProps {
   onSignIn?: () => void;
   /** Verify the license's email in the portal (email-bound). */
   onVerify?: () => void;
+  /** Bring the browser tab back while the sign-in runs (busy's "Open browser again"). Drawn only
+   *  when given, or when the host drives the step. */
+  onReopen?: () => void;
 }
 
 function Fields(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
   const { c, flow } = props;
   const keys = new Set(c.view.copy);
   const busy = c.view.state === "busy";
-  const badName = keys.has("signin.gate.nameRequired");
+  const badName = keys.has("activate.attach.nameRequired");
   const badEmail = keys.has("signin.email.invalid");
   return (
     <>
       <div className="field" data-part="field">
         <label className="label" htmlFor="pk-holder-name">
-          {text(c, "signin.gate.name")}
+          {text(c, "activate.attach.name")}
         </label>
         <input
           id="pk-holder-name"
-          data-key="signin.gate.name"
+          data-key="activate.attach.name"
           data-field="name"
           type="text"
           autoComplete="nickname"
@@ -582,9 +625,9 @@ function Fields(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
             className="field-error"
             id="pk-holder-name-error"
             role="alert"
-            data-key="signin.gate.nameRequired"
+            data-key="activate.attach.nameRequired"
           >
-            {text(c, "signin.gate.nameRequired")}
+            {text(c, "activate.attach.nameRequired")}
           </p>
         ) : null}
       </div>
@@ -640,10 +683,16 @@ function Fields(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
   );
 }
 
-function AddBody(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
-  const { c, flow } = props;
+function AddBody(props: {
+  c: KitCtx;
+  flow: UseAddToAccount;
+  /** The host can bring the browser tab back (busy's "Open browser again"). */
+  reopen: boolean;
+}): ReactNode {
+  const { c, flow, reopen } = props;
   const s = c.view.state;
-  if (s === "added") return actions(c, ["signin.done.start"]);
+  if (s === "added")
+    return actions(c, [c.view.decisions.primary ?? "signin.done.start"]);
   if (s === "owned")
     return (
       <>
@@ -658,6 +707,19 @@ function AddBody(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
           "activate.otherEmail.verify",
           "signin.auto.confirm.other",
         ])}
+        {links(c, ["signin.done.start"])}
+      </>
+    );
+  if (s === "other-account")
+    return (
+      <>
+        {c.view.copy.includes("activate.otherAccount.body") &&
+        usableKey(c, "activate.otherAccount.body") ? (
+          <p className="body" data-key="activate.otherAccount.body">
+            {text(c, "activate.otherAccount.body")}
+          </p>
+        ) : null}
+        {actions(c, ["common.tryAgain"])}
         {links(c, ["signin.done.start"])}
       </>
     );
@@ -684,12 +746,12 @@ function AddBody(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
           }
         }}
       >
-        <Fields c={c} flow={flow} />
         {usableKey(c, "activate.attach.lede") ? (
           <p className="body" data-key="activate.attach.lede">
             {text(c, "activate.attach.lede")}
           </p>
         ) : null}
+        <Fields c={c} flow={flow} />
         {failed && c.copy.has("activate.attach.failed")
           ? callout(c, ["activate.attach.failed"])
           : null}
@@ -708,14 +770,19 @@ function AddBody(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
           {plain(c, "common.working")}
         </span>
       ) : null}
-      {links(c, ["common.cancel"])}
+      {links(
+        c,
+        busy && reopen
+          ? ["signin.handoff.again", "common.cancel"]
+          : ["common.cancel"],
+      )}
     </>
   );
 }
 
 /** Add your name and email: the person types them here; the browser confirms the email. */
 export function AddToAccount(props: AddToAccountProps): ReactNode {
-  const { onCancel, onStart, onSignIn, onVerify } = props;
+  const { onCancel, onStart, onSignIn, onVerify, onReopen } = props;
   const hosted = props.input?.addToAccount !== undefined;
   const flow = useAddToAccount({
     ...(props.attach && !hosted ? { attach: props.attach } : {}),
@@ -728,7 +795,9 @@ export function AddToAccount(props: AddToAccountProps): ReactNode {
       name="AddToAccount"
       input={flow.input}
       markStates={["added"]}
-      body={(c) => <AddBody c={c} flow={flow} />}
+      body={(c) => (
+        <AddBody c={c} flow={flow} reopen={hosted || onReopen !== undefined} />
+      )}
       detail={(key) =>
         // A host that drives the step hears the values in the press that submits them (S13).
         hosted && key === "common.continue"
@@ -749,7 +818,11 @@ export function AddToAccount(props: AddToAccountProps): ReactNode {
             onCancel?.();
             return;
           case "signin.done.start":
+          case "common.done":
             onStart?.();
+            return;
+          case "signin.handoff.again":
+            onReopen?.();
             return;
           case "signin.key.ownedSignIn":
           case "signin.auto.confirm.other":

@@ -386,12 +386,16 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     if (model && at && HOLDER_STEPS.has(at)) {
       switch (key) {
         case "signin.done.start":
+        case "common.done":
         case "activate.recommend.skip":
           // Start using the app: the key is dropped and the form ends as a key activation does.
           dropAdd();
           model.done();
           finish();
           if (sheet) props.onClose?.();
+          return;
+        case "signin.key.addInLocker":
+          // Identity off: the host opens polaris.locker (it hears the press through `onAction`).
           return;
         case "activate.recommend.action": {
           // Add your name and email. The host hears the press too (`onAction`): with Identity off
@@ -421,6 +425,9 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         }
         case "common.tryAgain":
           return add.current?.tryAgain();
+        case "signin.handoff.again":
+          // Bring the browser tab back; the sign-in keeps running.
+          return add.current?.reopen();
         case "common.cancel":
           // Back to ActivateDone, the key still held; the sign-in is cancelled.
           dropAdd();

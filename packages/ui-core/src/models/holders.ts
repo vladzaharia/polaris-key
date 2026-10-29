@@ -97,13 +97,18 @@ export function activateDoneView(
       "activate.recommend.badge",
       ...reasonsOf(ctx),
       // With Identity off the action opens polaris.locker, so it says that (an external link).
-      ctx.on("identity") ? "activate.recommend.action" : "signin.key.addInLocker",
+      ctx.on("identity")
+        ? "activate.recommend.action"
+        : "signin.key.addInLocker",
       !ctx.on("identity") && "a11y.externalLink",
       "activate.recommend.skip",
       "signin.done.start",
     ],
     args,
     primary: "signin.done.start",
+    ...(done.returned && ctx.on("identity")
+      ? { focus: "activate.recommend.action" }
+      : {}),
   });
 }
 

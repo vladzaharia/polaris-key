@@ -837,7 +837,12 @@ export function accountRows(c: KitCtx): ReactNode {
         text(c, "account.notInAccount"),
         has("activate.recommend.action")
           ? button(c, "activate.recommend.action", "secondary")
-          : null,
+          : // Identity off: the same press opens polaris.locker, and the label says so.
+            has("signin.key.addInLocker")
+            ? button(c, "signin.key.addInLocker", "secondary", {
+                external: true,
+              })
+            : null,
       ),
     );
   if (has("account.devices")) {

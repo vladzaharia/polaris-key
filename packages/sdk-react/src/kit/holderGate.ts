@@ -18,7 +18,7 @@ import {
   type SignInPrimitives,
   type SignInSessionHandle,
 } from "@polaris-key/ui-core";
-import { handleOf } from "@polaris-key/ui-core/browser";
+import { startPageSignIn } from "@polaris-key/ui-core/browser";
 import { primitivesOf } from "@polaris-key/ui-core/browser/sdk/autoPrimitives.js";
 
 import type { DeviceCodeSignInSession, PolarisAdapter } from "../core/index.js";
@@ -40,16 +40,7 @@ function primitives(
       () => false,
     ),
     start: async (o) => {
-      const { hints, licenseChoice } = o;
-      const flow = await adapter.signIn.start({
-        channel: "device-code",
-        ...(licenseChoice === "app" && { licenseChoice }),
-        ...(hints?.loginHint && { loginHint: hints.loginHint }),
-        ...(hints?.nameHint && { nameHint: hints.nameHint }),
-        ...(hints?.purpose && { purpose: hints.purpose }),
-      });
-      void flow.reopen();
-      const h = handleOf(flow);
+      const h = await startPageSignIn(adapter, o);
       slot.current = h;
       return h;
     },

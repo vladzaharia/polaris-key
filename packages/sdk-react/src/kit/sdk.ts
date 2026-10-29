@@ -21,6 +21,8 @@ import type {
   UiInput,
 } from "@polaris-key/ui-core";
 import {
+  armTab,
+  disarmTab,
   gateInput,
   openManage,
   type GateStep,
@@ -127,6 +129,8 @@ export function useSdkGate(
   const owning = useRef(false);
   // Where AddToAccount opened from: ActivateDone, or a screen of the app (the settings row).
   const addFrom = useRef<SdkStep>("home");
+  // Done was reached by cancelling AddToAccount: focus returns to Add your name and email.
+  const returned = useRef(false);
   // The toast lasts a few seconds.
   useEffect(() => {
     if (!toast) return;
@@ -139,6 +143,7 @@ export function useSdkGate(
   const skipPop = useRef(false);
   /** Leave AddToAccount: its model and its sign-in are both cancelled. */
   const dropAdd = useCallback(() => {
+    disarmTab();
     addToken.current++;
     const f = addFlow.current;
     addFlow.current = null;
@@ -167,6 +172,7 @@ export function useSdkGate(
     setSubmitted(false);
   }, [dropHolder]);
   const enter = useCallback((next: SdkStep, from: string) => {
+    returned.current = false;
     setOpener(from);
     setStep(next);
     if (typeof history !== "undefined" && !pushed.current) {
@@ -477,6 +483,12 @@ export function useSdkGate(
         case "signin.again":
         case "signin.handoff.again":
         case "signInHandoff.newCode":
+          // AddToAccount while busy: bring the browser tab back, inside the press; the sign-in
+          // keeps running.
+          if (step === "add" && k === "signin.handoff.again") {
+            void Promise.resolve(session.current?.reopen()).catch(() => {});
+            return;
+          }
           handleRef.current?.cancel?.();
           signIn();
           return;
@@ -535,6 +547,7 @@ export function useSdkGate(
           return;
         case "activate.recommend.skip":
         case "signin.done.start":
+        case "common.done":
           finish();
           return;
         case "activate.waitingSignIn":
@@ -543,7 +556,11 @@ export function useSdkGate(
           signIn();
           return;
         case "common.continue":
-          if (step === "add") void addFlow.current?.model.submit();
+          if (step === "add") {
+            // Open the tab inside the press; the sign-in navigates it once it has an address.
+            if (addFlow.current?.model.willOpenBrowser) armTab();
+            void addFlow.current?.model.submit();
+          }
           return;
         case "activate.otherEmail.verify":
         case "signin.auto.confirm.other":
@@ -551,6 +568,11 @@ export function useSdkGate(
           if (step === "add") void addFlow.current?.model.cancel();
           return;
         case "signin.key.addInLocker": {
+          // ActivateDone with Identity off: the same press as Add your name and email.
+          if (step === "done") {
+            addToAccount();
+            return;
+          }
           // The refusal's manage link: where the key is added to the account.
           const url = state.error.license?.manageUrl;
           if (url) openManage(url, opts.returnUrl, key.trim() || undefined);
@@ -584,9 +606,18 @@ export function useSdkGate(
         }
         case "common.cancel":
         case "common.back":
+          // Done and Added are success screens: Escape and Back are Start using (or Done).
+          if (
+            step === "done" ||
+            (step === "add" && addFlow.current?.model.snapshot.step === "added")
+          ) {
+            finish();
+            return;
+          }
           if (step === "add" && addFrom.current === "done") {
             // AddToAccount's Cancel goes back to ActivateDone, the key still held.
             dropAdd();
+            returned.current = true;
             setStep("done");
             return;
           }
@@ -594,6 +625,7 @@ export function useSdkGate(
           return;
         case "common.tryAgain":
           if (step === "add") {
+            if (addFlow.current?.model.willOpenBrowser) armTab();
             void addFlow.current?.model.tryAgain();
             return;
           }
@@ -603,6 +635,7 @@ export function useSdkGate(
           void adapter.refresh({ force: true }).catch(() => undefined);
           return;
         case "common.signOut":
+        case "account.removeKey":
           void adapter.signOut().catch(() => undefined);
           return;
       }
@@ -650,8 +683,16 @@ export function useSdkGate(
               secondsLeft,
               dismissed,
               deviceKind: "device",
+              ...(returned.current ? { returned: true } : {}),
               ...(addFlow.current
-                ? { addToAccount: addFlow.current.model.input().addToAccount }
+                ? {
+                    addToAccount: {
+                      ...addFlow.current.model.input().addToAccount!,
+                      ...(addFrom.current !== "done"
+                        ? { fromSettings: true }
+                        : {}),
+                    },
+                  }
                 : {}),
               ...(opts.locale !== undefined ? { locale: opts.locale } : {}),
             }),

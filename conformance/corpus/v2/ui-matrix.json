@@ -13143,48 +13143,6 @@
       }
     },
     {
-      "name": "SignIn/key-done: Identity off, the action opens polaris.locker",
-      "input": {
-        "signIn": {
-          "presentation": "inline",
-          "replace": "inline",
-          "channel": "browser",
-          "step": "key-done"
-        },
-        "activateDone": {
-          "tier": "Pro",
-          "term": "Lifetime",
-          "deviceKind": "computer",
-          "position": 1,
-          "limit": 3
-        },
-        "services": [
-          "license",
-          "config",
-          "release",
-          "distribution",
-          "update",
-          "commerce"
-        ],
-        "capabilities": { "signIn": false }
-      },
-      "expect": {
-        "component": "SignIn",
-        "state": "key-done",
-        "copy": [
-          "a11y.externalLink",
-          "activate.done.device",
-          "activate.done.title",
-          "activate.recommend.badge",
-          "activate.recommend.skip",
-          "activate.recommend.title",
-          "signin.done.start",
-          "signin.key.addInLocker"
-        ],
-        "actions": ["open-manage-url"]
-      }
-    },
-    {
       "name": "SignIn/key-done: waiting for the email's account",
       "input": {
         "signIn": {

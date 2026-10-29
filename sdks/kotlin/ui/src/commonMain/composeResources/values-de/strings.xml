@@ -314,11 +314,11 @@
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">Empfohlen</string>
     <!-- ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">Die Cloud-Synchronisierung hält Ihre Einstellungen und Spielstände auf jedem Gerät aktuell</string>
+    <string name="activate_recommend_sync">**Die Cloud-Synchronisierung** hält Ihre Einstellungen und Spielstände auf jedem Gerät aktuell</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_recover">Ihre Lizenz zurückholen, wenn Sie den Schlüssel oder dieses Gerät verlieren</string>
+    <string name="activate_recommend_recover">**Ihre Lizenz zurückholen**, wenn Sie den Schlüssel oder dieses Gerät verlieren</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
-    <string name="activate_recommend_devices">Auf ein neues Gerät umziehen, selbst und ohne %1$s zu fragen</string>
+    <string name="activate_recommend_devices">**Auf ein neues Gerät umziehen**, selbst und ohne %1$s zu fragen</string>
     <!-- ActivateDone: the recommendation card's action; opens AddToAccount. -->
     <string name="activate_recommend_action">Namen und E-Mail hinzufügen</string>
     <string name="activate_recommend_action__macos">Namen und E-Mail hinzufügen</string>

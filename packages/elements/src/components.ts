@@ -163,6 +163,7 @@ export class PkGate extends PkElement {
   /** Whether focus sat inside the gate's own screens before this update (see `updated`). */
   private hadFocus = false;
   private lastState: string | null = null;
+  private lastHolderState: string | null = null;
 
   protected override willUpdate(changed: PropertyValues): void {
     this.hadFocus = this.matches(":focus-within");
@@ -447,6 +448,12 @@ export class PkGate extends PkElement {
     anchor.focus({ preventScroll: true });
   }
 
+  /** The holder screen the gate draws at `step`, for the focus rule. */
+  private holderView(step: GateStep): View | null {
+    const screen = gateScreen(this.view, step);
+    return screen ? (viewOf(screen, this.modelInput()) as View) : null;
+  }
+
   /** Focus follows the step (DL9): a new screen takes its own target; Back returns to the
    *  control that opened the step. */
   protected override updated(changed: PropertyValues): void {
@@ -455,14 +462,35 @@ export class PkGate extends PkElement {
     this.checkLink();
     this.focusApp();
     const step = this.driven ? this.step : "home";
-    if (step === this.lastStep) return;
-    this.lastStep = step;
     const root = this.renderRoot as ShadowRoot;
     const heading = () => root.querySelector<HTMLElement>("h1");
     const byKey = (k: string) =>
       root.querySelector<HTMLElement>(
         `[data-key="${k.replace(/["\\]/g, "")}"]`,
       );
+    if (step === this.lastStep) {
+      // Within AddToAccount a press changes the screen's state (an empty Continue says which field
+      // is wrong): focus goes where that state says, when it was inside before (DL9).
+      if (this.driven && this.holderStep) {
+        const v = this.holderView(step);
+        const held = v ? `${v.component}.${v.state}` : null;
+        if (held !== this.lastHolderState) {
+          this.lastHolderState = held;
+          const target = v?.decisions.focus;
+          if (this.hadFocus && target)
+            (target === "heading"
+              ? heading()
+              : (byKey(target) ?? heading())
+            )?.focus({ preventScroll: true });
+        }
+      }
+      return;
+    }
+    this.lastStep = step;
+    {
+      const v = this.driven && this.holderStep ? this.holderView(step) : null;
+      this.lastHolderState = v ? `${v.component}.${v.state}` : null;
+    }
     if (step === "home") {
       const opener = this.snapshot?.opener;
       (opener ? byKey(opener) : null)?.focus({ preventScroll: true });

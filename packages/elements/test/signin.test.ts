@@ -337,9 +337,9 @@ describe("live: a key with no account, then Add your name and email (UK-42.8)", 
     await press(el, "activate.recommend.action");
     expect(el.view.state).toBe("attach");
     expect(
-      el.shadowRoot!.querySelector('[data-key="signin.gate.name"]'),
+      el.shadowRoot!.querySelector('[data-key="activate.attach.name"]'),
     ).not.toBeNull();
-    type(el, "signin.gate.name", NAME);
+    type(el, "activate.attach.name", NAME);
     type(el, "signin.email.label", EMAIL);
     await press(el, "common.continue");
     // Previewed with confirm:false, then written; the form ends on Added.
@@ -365,19 +365,19 @@ describe("live: a key with no account, then Add your name and email (UK-42.8)", 
     const f = fakeHolders();
     const el = await atKeyDone(f);
     await press(el, "activate.recommend.action");
-    type(el, "signin.gate.name", NAME);
+    type(el, "activate.attach.name", NAME);
     await press(el, "common.cancel");
     expect(el.view.state).toBe("key-done");
     // A new Add starts from empty fields: the old model is gone.
     await press(el, "activate.recommend.action");
     expect(
       el.shadowRoot!.querySelector<HTMLInputElement>(
-        '[data-key="signin.gate.name"]',
+        '[data-key="activate.attach.name"]',
       )!.value,
     ).toBe("");
     // Owned, then Cancel: the same way back.
     f.attach.code = "license_owned";
-    type(el, "signin.gate.name", NAME);
+    type(el, "activate.attach.name", NAME);
     type(el, "signin.email.label", EMAIL);
     await press(el, "common.continue");
     await press(el, "common.cancel");
@@ -392,7 +392,7 @@ describe("live: a key with no account, then Add your name and email (UK-42.8)", 
     const el = await atKeyDone(f);
     await press(el, "activate.recommend.action");
     f.attach.code = "license_owned";
-    type(el, "signin.gate.name", NAME);
+    type(el, "activate.attach.name", NAME);
     type(el, "signin.email.label", EMAIL);
     await press(el, "common.continue");
     expect(
@@ -412,7 +412,7 @@ describe("live: a key with no account, then Add your name and email (UK-42.8)", 
     g.attach.code = "license_email_bound";
     const el2 = await atKeyDone(g);
     await press(el2, "activate.recommend.action");
-    type(el2, "signin.gate.name", NAME);
+    type(el2, "activate.attach.name", NAME);
     type(el2, "signin.email.label", EMAIL);
     await press(el2, "common.continue");
     expect(g.attaches).toEqual([false]);

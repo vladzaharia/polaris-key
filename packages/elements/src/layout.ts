@@ -405,7 +405,8 @@ export const KIT_LAYOUTS: Readonly<
   AccountAndLicense: {
     kind: "pane",
     header: "medium",
-    controls: ["common.manage", "common.signOut"],
+    // A key holder who never signed in is offered the key's removal, not a sign-out.
+    controls: ["common.manage", "account.removeKey", "common.signOut"],
     links: ["update.checkNow"],
     meta: ["common.loading", "part.poweredBy", "part.status.grace"],
     content: [
@@ -413,6 +414,7 @@ export const KIT_LAYOUTS: Readonly<
       // A floating license: the row and its Add action (UK-42).
       "account.notInAccount",
       "activate.recommend.action",
+      "signin.key.addInLocker",
       "account.devices",
       "account.cloudSync",
       "account.updates",
@@ -508,6 +510,7 @@ export const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
       "activate.recommend.devices",
       "activate.recommend.portal",
       "activate.recommend.action",
+      "signin.key.addInLocker",
       "activate.recommend.skip",
     ],
   },
@@ -520,18 +523,27 @@ export const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
       "signin.key.ownedSignIn",
       "activate.otherEmail.verify",
       "signin.done.start",
+      "common.done",
     ],
-    links: ["common.cancel", "signin.auto.confirm.other"],
+    links: [
+      "signin.handoff.again",
+      "common.cancel",
+      "signin.auto.confirm.other",
+    ],
     // The form's heading is the action it came from ("Add your name and email").
-    titles: ["activate.recommend.action", "activate.attach.done"],
+    titles: [
+      "activate.recommend.action",
+      "activate.attach.done",
+      "activate.otherAccount.title",
+    ],
     meta: ["common.working"],
     content: [
-      "signin.gate.name",
+      "activate.attach.lede",
+      "activate.attach.name",
       "signin.email.label",
-      "signin.gate.nameRequired",
+      "activate.attach.nameRequired",
       "signin.email.invalid",
       "activate.attach.fine",
-      "activate.attach.lede",
     ],
   },
 };

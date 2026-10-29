@@ -312,11 +312,11 @@
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">推荐</string>
     <!-- ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">云同步会在每台设备上保留你的设置和存档</string>
+    <string name="activate_recommend_sync">**云同步**会在每台设备上保留你的设置和存档</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_recover">丢失密钥或这台设备后，可找回你的许可证</string>
+    <string name="activate_recommend_recover">丢失密钥或这台设备后，可**找回你的许可证**</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
-    <string name="activate_recommend_devices">无需联系%1$s，自己就能迁移到新设备</string>
+    <string name="activate_recommend_devices">无需联系%1$s，自己就能**迁移到新设备**</string>
     <!-- ActivateDone: the recommendation card's action; opens AddToAccount. -->
     <string name="activate_recommend_action">添加姓名和电子邮件</string>
     <string name="activate_recommend_action__macos">添加姓名和电子邮件</string>

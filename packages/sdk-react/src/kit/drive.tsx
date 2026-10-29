@@ -25,7 +25,7 @@ import { useAdapterState } from "../react/hooks.js";
 import type { KitAction, KitProps } from "./component.js";
 import { kitComponent } from "./kitComponent.js";
 import { openLink, safeLink } from "./links.js";
-import { openManage } from "@polaris-key/ui-core/browser";
+import { armTab, openManage } from "@polaris-key/ui-core/browser";
 import { installProgressInput } from "./adapt.js";
 import type { SettingsRow } from "./views.js";
 import { holderScreen } from "./holdersLazy.js";
@@ -286,41 +286,70 @@ function AddInAccount(props: {
     };
   }, [adapter]);
   const f = flow.current;
+  // The mount takes focus, because the row that opened it is gone (DL9): Name, or the heading
+  // under a coarse pointer. The screen loads on demand, so look for it for a few frames.
+  const box = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!f) return;
+    let frames = 0;
+    let raf = 0;
+    const look = () => {
+      const root = box.current;
+      const target =
+        root?.querySelector<HTMLElement>('[data-field="name"]') ??
+        (frames > 8 ? root?.querySelector<HTMLElement>("#pk-title") : null);
+      if (target) target.focus({ preventScroll: true });
+      else if (frames++ < 30) raf = requestAnimationFrame(look);
+    };
+    raf = requestAnimationFrame(look);
+    return () => cancelAnimationFrame(raf);
+  }, [f]);
   if (!f) return null;
   const m = f.model;
   const input: UiInput = {
     ...m.input(),
+    // Opened from Settings: Added closes with Done, the app is already running.
+    addToAccount: { ...m.input().addToAccount!, fromSettings: true },
     services: props.services as NonNullable<UiInput["services"]>,
   };
   return (
-    <AddToAccount_
-      bare
-      {...(props.theme ? { theme: props.theme } : {})}
-      input={input}
-      onAction={(a: KitAction) => {
-        switch (a.key) {
-          case "common.continue":
-            if (typeof a.name === "string") m.setField("name", a.name);
-            if (typeof a.email === "string") m.setField("email", a.email);
-            void m.submit();
-            return;
-          case "common.tryAgain":
-            void m.tryAgain();
-            return;
-          case "common.cancel":
-          case "signin.done.start":
-            props.onClose();
-            return;
-          case "signin.key.ownedSignIn":
-            void adapter.signInWithOidc().catch(() => undefined);
-            return;
-          case "activate.otherEmail.verify":
-          case "signin.auto.confirm.other":
-            void m.cancel();
-            return;
-        }
-      }}
-    />
+    <div ref={box} style={{ display: "contents" }}>
+      <AddToAccount_
+        bare
+        {...(props.theme ? { theme: props.theme } : {})}
+        input={input}
+        onAction={(a: KitAction) => {
+          switch (a.key) {
+            case "common.continue":
+              if (typeof a.name === "string") m.setField("name", a.name);
+              if (typeof a.email === "string") m.setField("email", a.email);
+              // The tab opens inside the press, so a popup blocker lets it through.
+              if (m.willOpenBrowser) armTab();
+              void m.submit();
+              return;
+            case "common.tryAgain":
+              if (m.willOpenBrowser) armTab();
+              void m.tryAgain();
+              return;
+            case "signin.handoff.again":
+              void m.reopen();
+              return;
+            case "common.cancel":
+            case "signin.done.start":
+            case "common.done":
+              props.onClose();
+              return;
+            case "signin.key.ownedSignIn":
+              void adapter.signInWithOidc().catch(() => undefined);
+              return;
+            case "activate.otherEmail.verify":
+            case "signin.auto.confirm.other":
+              void m.cancel();
+              return;
+          }
+        }}
+      />
+    </div>
   );
 }
 
@@ -338,6 +367,17 @@ function OpenedAccount(props: {
   const state = useAdapterState(adapter);
   const [used, setUsed] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  // Leaving AddToAccount puts focus back on the row's action that opened it (DL9).
+  const restoreFocus = useRef(false);
+  useEffect(() => {
+    if (adding || !restoreFocus.current) return;
+    restoreFocus.current = false;
+    document
+      .querySelector<HTMLElement>(
+        '.pk-root [data-key="activate.recommend.action"], .pk-root [data-key="signin.key.addInLocker"]',
+      )
+      ?.focus({ preventScroll: true });
+  }, [adding]);
   const licenseOn = state.capabilities.license.enabled;
   useEffect(() => {
     if (!licenseOn) return;
@@ -372,7 +412,10 @@ function OpenedAccount(props: {
         adapter={adapter}
         services={services}
         {...(props.theme ? { theme: props.theme } : {})}
-        onClose={() => setAdding(false)}
+        onClose={() => {
+          setAdding(false);
+          restoreFocus.current = true;
+        }}
       />
     );
   const input: UiInput = {
@@ -397,11 +440,14 @@ function OpenedAccount(props: {
       {...(props.theme ? { theme: props.theme } : {})}
       input={input}
       onAction={(a: KitAction) => {
-        if (a.key === "common.signOut")
+        if (a.key === "common.signOut" || a.key === "account.removeKey")
           void adapter.signOut().then(props.onSignedOut, props.onSignedOut);
         else if (a.key === "update.checkNow") props.onCheckUpdates?.();
         else if (a.key === "common.manage" && manageUrl) openLink(manageUrl);
-        else if (a.key === "activate.recommend.action") {
+        else if (
+          a.key === "activate.recommend.action" ||
+          a.key === "signin.key.addInLocker"
+        ) {
           // Add your name and email: AddToAccount here, or the product's page where Identity is
           // off (no key is held in this pane, so none is sent).
           if (caps.identity.enabled) setAdding(true);

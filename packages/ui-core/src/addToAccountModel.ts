@@ -188,6 +188,11 @@ export class AddToAccountModel {
     await this.submit();
   }
 
+  /** Bring the browser tab back while the sign-in runs. Call it inside the press. */
+  async reopen(): Promise<void> {
+    await Promise.resolve(this.handle?.reopen()).catch(() => {});
+  }
+
   /** Cancel: back to the form with the fields kept, any sign-in in flight let go. */
   async cancel(): Promise<void> {
     const h = this.handle;
