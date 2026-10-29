@@ -96,6 +96,27 @@ The bridge answers the top frame of the app's own origin and nothing else, so an
 
 To decide per sender yourself, pass `allowSender`; it replaces the default. The window should also keep `contextIsolation` and `sandbox` on, and refuse popups and navigation away from the app.
 
+### Links out of the app
+
+The kit's links (replace a device, release notes, the sign-in page) leave the app through the bridge's `openExternal(url)`. The host runs it only for an `https:` URL without credentials, with `shell.openExternal`, and only for a sender `allowSender` admits; any other URL is refused. Pass Electron's `shell` to `exposePolarisBridge`; without it the call answers `not-configured` and nothing opens.
+
+```ts title="links.ts"
+import { BrowserWindow, ipcMain, shell } from "electron";
+import type { PolarisKeyClient } from "@polaris-key/node";
+import { exposePolarisBridge } from "@polaris-key/node/electron";
+
+export function linksOut(client: PolarisKeyClient, win: BrowserWindow) {
+  exposePolarisBridge(client, { ipcMain, appOrigin: "app://main", shell });
+
+  // A popup the page opens: https leaves for the system browser, everything else is dropped.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (URL.canParse(url) && new URL(url).protocol === "https:")
+      void shell.openExternal(url);
+    return { action: "deny" };
+  });
+}
+```
+
 ## Menu
 
 `exposePolarisBridge` returns a handle. `menuItems()` gives the two items for the app menu as plain objects that Electron's menu template accepts: **Check for updates** and **Manage license**. Their words come from the kit copy; on macOS they use title case with an ellipsis. A click calls `open(view)` on the handle, which asks the window to show Settings or the update check.

@@ -211,15 +211,12 @@ final class PkeyDevLiveTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(held, reached, name)
                 XCTAssertTrue(ManageLink.isValid(manageURL), "\(name): a manage link the client may show")
             default:
-                guard case .refused(let code, let status, let message) = result else {
+                guard case .keyEntryLimit = result else {
                     XCTFail("\(name): expected key_entry_limit, got \(result)")
                     continue
                 }
-                XCTAssertEqual(code, ErrorCode.keyEntryLimit, name)
                 XCTAssertEqual(result.code, ErrorCode.keyEntryLimit, name)
-                XCTAssertEqual(result.kind, "refused", name)
-                XCTAssertEqual(status, 403, name)
-                XCTAssertFalse(message?.isEmpty ?? true, "\(name): the server's own message")
+                XCTAssertEqual(result.kind, "key-entry-limit", name)
             }
             XCTAssertFalse(result.isOK, name)
             XCTAssertFalse(result.message?.isEmpty ?? true, "\(name): a sentence to show the person")

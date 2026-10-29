@@ -168,6 +168,9 @@ export const COMPONENTS = [
   "SignInHandoff",
   "NearbyApproval",
   "Activate",
+  // Activation without an account (UK-42.2): the ui-matrix `holders` family.
+  "ActivateDone",
+  "AddToAccount",
   "OfflineActivation",
   "DeviceLimit",
   "LicenseChoice",
@@ -237,6 +240,9 @@ export const STRING_ARGS = [
   "url",
   "identity",
   "tier",
+  // UK-42.1: an email with its middle hidden, and a device kind already worded ("computer").
+  "maskedEmail",
+  "deviceKind",
   "command",
   "idp",
   "host",
@@ -1107,6 +1113,17 @@ export const LAZY_EN_PREFIXES = [
   "cloudSync.locked",
   "cloudSync.unlock",
   "cloudSync.ringChanged",
+  // UK-42: the Done step and Add your name and email follow an activation answer; the sign-in
+  // card's attach header and the skip note follow a key step. A kit that draws one at first
+  // paint moves its key to LAZY_EN_KEEP.
+  "activate.done.",
+  "activate.recommend.",
+  "activate.attach.",
+  "activate.waiting",
+  "activate.owned.",
+  "activate.otherEmail.",
+  "signin.attach.",
+  "signin.key.skipNote",
   // Screens a person opens after first paint (the menu's Settings, the device list, the offline
   // steps, the update progress and notes, the channel picker, About, the account pane).
   "settings.",

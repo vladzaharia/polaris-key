@@ -221,6 +221,56 @@
       ],
       "note": "Sign in with Apple on iOS and macOS, Credential Manager on Android (I-48); desktop Linux and Windows have none."
     },
+    "identity.gamecenter": {
+      "status": "planned",
+      "wp": "I-48",
+      "except": [
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Game Center on iOS and macOS (I-48)."
+    },
+    "identity.pgs": {
+      "status": "planned",
+      "wp": "I-48",
+      "except": [
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Play Games on Android (I-48)."
+    },
     "identity.autosignin": {
       "status": "planned",
       "wp": "I-48",
@@ -515,6 +565,11 @@
     "ui.kit.account": {
       "status": "implemented",
       "note": "I-10b.7: the sign-in dialog drives identity.sign_in.start (a PKeySignInSession) and the account tab and gate sign out through identity.sign_out (I-10b.4, I-10b.3); the activation panel's License in another account step reads \"Sign in to that account\" (signin.key.ownedSignIn, UKV7-godot, KF-godot), and the gate toasts \"Signed in as {name} · {tier} license\" (signin.desktop.toast). PKeyLicenseChoiceController stays a view helper. The dialog's confirm step carries the attach toggle (session.accept) (suite_ui)."
+    },
+    "ui.kit.holders": {
+      "status": "planned",
+      "wp": "UK-43",
+      "note": "Native port of the UK-42 holders views and AddToAccountModel (the holders rows of ui-matrix.json are the fixtures)."
     },
     "ui.kit.keyentry": {
       "status": "implemented",

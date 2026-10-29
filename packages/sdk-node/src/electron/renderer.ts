@@ -70,6 +70,8 @@ export interface PreloadPolarisBridge {
   invoke(service: string, method: string, args?: unknown): Promise<unknown>;
   fetchSchema(): Promise<never>;
   importBundle(jws: string): Promise<never>;
+  /** v4 (UK-06.16): open an https link in the system browser (the host refuses anything else). */
+  openExternal(url: string): Promise<boolean>;
   on(event: "stateChanged", cb: (state: never) => void): () => void;
   /** v4 (UK-06.3): progress of an `update.install` this window started. */
   onUpdateProgress(cb: (p: PreloadUpdateProgress) => void): () => void;
@@ -176,6 +178,8 @@ export function createPreloadBridge(
       call("invoke", service, method, args),
     fetchSchema: () => call("fetchSchema") as Promise<never>,
     importBundle: (jws: string) => call("importBundle", jws) as Promise<never>,
+    openExternal: async (url: string) =>
+      (await call("openExternal", url)) === true,
     onUpdateProgress(cb: (p: PreloadUpdateProgress) => void): () => void {
       progressListeners.add(cb);
       if (progressListeners.size === 1)

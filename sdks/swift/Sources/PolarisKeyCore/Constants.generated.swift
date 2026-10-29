@@ -713,6 +713,8 @@ public enum Feature {
     public static let identityChoice = "identity.choice"
     public static let identitySigninHints = "identity.signin.hints"
     public static let identityExchange = "identity.exchange"
+    public static let identityGamecenter = "identity.gamecenter"
+    public static let identityPgs = "identity.pgs"
     public static let identityAutosignin = "identity.autosignin"
     public static let identityLink = "identity.link"
     public static let releaseChangelog = "release.changelog"
@@ -759,6 +761,7 @@ public enum Feature {
     public static let uiKitManage = "ui.kit.manage"
     public static let uiKitKeyentry = "ui.kit.keyentry"
     public static let uiKitAccount = "ui.kit.account"
+    public static let uiKitHolders = "ui.kit.holders"
     public static let uiCli = "ui.cli"
     public static let uiCliMount = "ui.cli.mount"
     public static let uiCliContract = "ui.cli.contract"
@@ -851,6 +854,8 @@ public let FEATURE_VALUES: [String] = [
     "identity.choice",
     "identity.signin.hints",
     "identity.exchange",
+    "identity.gamecenter",
+    "identity.pgs",
     "identity.autosignin",
     "identity.link",
     "release.changelog",
@@ -897,6 +902,7 @@ public let FEATURE_VALUES: [String] = [
     "ui.kit.manage",
     "ui.kit.keyentry",
     "ui.kit.account",
+    "ui.kit.holders",
     "ui.cli",
     "ui.cli.mount",
     "ui.cli.contract",
@@ -1989,6 +1995,8 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.exchange": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.gamecenter": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.pgs": CapabilityRow(status: "na", service: "identity", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "identity.autosignin": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.link": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -2035,6 +2043,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.kit.manage": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit.keyentry": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit.account": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.kit.holders": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.cli.mount": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.cli.contract": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
@@ -2057,4 +2066,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "f6edabe7c05405e1d5348cb99387edf4adffc30ba52e93cd4537a6c81227c759"
+public let CAPABILITY_DIGEST = "4df8b276c8f4b6f39f804ffa988c1509ae9f8b03332bf880b2bd411c155d46c0"

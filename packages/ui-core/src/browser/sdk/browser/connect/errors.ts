@@ -107,7 +107,6 @@ export type LanErrorReason =
   | "closed"
   | "too_large"
   | "bad_type"
-  | "queue_full"
   | "not_started";
 
 const LAN_CODE: Record<LanErrorReason, PolarisErrorCode> = {
@@ -120,7 +119,6 @@ const LAN_CODE: Record<LanErrorReason, PolarisErrorCode> = {
   closed: ErrorCode.networkError,
   too_large: ErrorCode.invalidArgument,
   bad_type: ErrorCode.invalidArgument,
-  queue_full: ErrorCode.rateLimited,
 };
 
 /** A session error. The name matches the Node SDK's: the browser has no LAN, but a session's

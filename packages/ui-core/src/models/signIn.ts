@@ -31,6 +31,7 @@ import {
 } from "@polaris-key/protocol/core";
 import { codeExpired, countdown, linkVerdict, validLink } from "../link.js";
 import { loadingVisible } from "../loading.js";
+import { activateDoneView, addToAccountView } from "./holders.js";
 import { keyRefusalOf, keyRefusalSpec } from "./keyRefusal.js";
 import {
   choosesInApp,
@@ -94,6 +95,7 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
       developer: id.developer ?? undefined,
       email: ctx.input.autoSignIn.email,
     });
+  if (s.step) return holderStepView(ctx, s.step);
   if (
     s.outcome === "expired" ||
     (dc && (dc.phase === "expired" || codeExpired(dc.secondsLeft)))
@@ -235,6 +237,21 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
     });
   // Cancel returns to step 1, with nothing else lost.
   return methodsView(ctx, args);
+}
+
+/** The form's steps after a key with no account (UK-42): the holders' screens in the form's body,
+ *  under the form's own state names. Their copy, actions and decisions are the screens' own. */
+function holderStepView(
+  ctx: Context,
+  step: "key-done" | "attach" | "added",
+): View<"SignIn", SignInState> {
+  const v =
+    step === "key-done"
+      ? activateDoneView(ctx)
+      : addToAccountView(ctx, step === "added" ? "added" : undefined);
+  // A screen that is hidden here (a service is off) leaves the form on its first step.
+  if (v.state === "hidden") return hiddenView(ctx, "SignIn");
+  return { ...v, component: "SignIn", state: step };
 }
 
 /** The provider's identity is per developer: Apple always, Google unless shared across apps. */

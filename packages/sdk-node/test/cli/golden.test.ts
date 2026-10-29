@@ -93,15 +93,21 @@ describe("the terminal kit's baselines", () => {
       // help and gate-* are the cli family's (mount, help, gate rows): a host CLI's screens, not a
       // component's states.
       if (s.name.startsWith("help") || s.name.startsWith("gate-")) continue;
-      const comp = Object.keys(COMPONENTS.components)
+      // Longest component name first, but a name can prefix another's (`activate-done` is Activate's
+      // done state, and also the ActivateDone component): the first split that leaves a state wins.
+      const candidates = Object.keys(COMPONENTS.components)
         .filter((c) => s.name === kebab(c) || s.name.startsWith(`${kebab(c)}-`))
-        .sort((a, b) => kebab(b).length - kebab(a).length)[0];
-      expect(comp, s.name).toBeDefined();
-      const rest = s.name.slice(kebab(comp!).length + 1);
-      const states = Object.keys(COMPONENTS.components[comp!]!.states);
+        .sort((a, b) => kebab(b).length - kebab(a).length);
+      expect(candidates[0], s.name).toBeDefined();
+      const stateOf = (comp: string): boolean => {
+        const rest = s.name.slice(kebab(comp).length + 1);
+        return Object.keys(COMPONENTS.components[comp]!.states).some(
+          (st) => rest === st || rest.startsWith(`${st}-`),
+        );
+      };
       expect(
-        states.some((st) => rest === st || rest.startsWith(`${st}-`)),
-        `${s.name}: "${rest}" starts with no state of ${comp}`,
+        candidates.some(stateOf),
+        `${s.name} starts with no state of ${candidates.join(" or ")}`,
       ).toBe(true);
     }
   });

@@ -222,7 +222,10 @@ func _render() -> void:
 	fx_error("unlockSync.invalid" if state == "invalid" else (warn_key if state == "failed" or state == "start-over-failed" else ""))
 	cat_text(_no_ask, "recoveryCode.noAsk" if in_code else "", args)
 	cat_text(_confirm, "unlockSync.startOverConfirm" if state == "start-over" else "", args)
-	var primary_key := {"code": "unlockSync.unlock", "invalid": "unlockSync.unlock", "failed": "common.tryAgain", "start-over-failed": "common.tryAgain", "no-code": "unlockSync.startOver"}.get(state, "") as String
+	var primary_key := {
+		"code": "unlockSync.unlock", "invalid": "unlockSync.unlock", "failed": "common.tryAgain",
+		"start-over-failed": "common.tryAgain", "no-code": "unlockSync.startOver",
+	}.get(state, "") as String
 	cat_text(_primary, primary_key, args)
 	cat_text(_start_over, "unlockSync.startOver" if in_code else "", args)
 	cat_text(_cancel_button, "common.cancel" if state != "working" and state != "hidden" else "", args)
@@ -405,7 +408,7 @@ func _style_destructive(b: Button) -> void:
 		on = PKeyBrand.Dark.DANGER_ON if dark else PKeyBrand.Light.DANGER_ON
 	else:
 		fill = get_theme_color(&"font_color", &"PKeyError")
-		var ink := Color("#060912")
+		var ink := PKeyBrand.Dark.SURFACE_PAGE
 		on = ink if _contrast(fill, ink) >= _contrast(fill, Color.WHITE) else Color.WHITE
 	var base := b.get_theme_stylebox(&"normal")
 	b.custom_minimum_size.y = role("control_height")

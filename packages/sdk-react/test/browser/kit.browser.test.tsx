@@ -209,13 +209,27 @@ const BASELINE_SCENES: readonly Scene[] = COMPONENT_STATE_FIXTURES.map(
   (fixture) => ({ id: fixture.id, fixture, baseline: true }),
 );
 
+/**
+ * Registered for activation without an account (UK-42.2), drawn by the React kit's UK-42.9 and
+ * UK-42.10, which have not merged yet (2026-10-28). Remove this list when they land.
+ */
+const NOT_YET_DRAWN = new Set([
+  "SignIn.key-done",
+  "SignIn.attach",
+  "SignIn.added",
+]);
+const NOT_YET_DRAWN_COMPONENTS = new Set(["ActivateDone", "AddToAccount"]);
+
 const REGISTERED_COMPONENT_STATE_IDS = Object.entries(
   componentRegistryJson.components,
-).flatMap(([component, definition]) =>
-  Object.keys(definition.states)
-    .filter((state) => state !== "hidden")
-    .map((state) => `${component}.${state}`),
-);
+)
+  .filter(([component]) => !NOT_YET_DRAWN_COMPONENTS.has(component))
+  .flatMap(([component, definition]) =>
+    Object.keys(definition.states)
+      .filter((state) => state !== "hidden")
+      .map((state) => `${component}.${state}`)
+      .filter((id) => !NOT_YET_DRAWN.has(id)),
+  );
 
 interface Size {
   label: string;

@@ -366,8 +366,7 @@
       "gdlint:class-definitions-order": 3
     },
     "sdks/godot/addons/polaris_key/ui/settings/pkey_account_tab.gd": {
-      "gdlint:function-argument-name": 1,
-      "gdlint:max-line-length": 1
+      "gdlint:function-argument-name": 1
     },
     "sdks/godot/addons/polaris_key/ui/settings/pkey_settings_panel.gd": {
       "gdlint:class-definitions-order": 39,
@@ -771,6 +770,7 @@
     },
     "sdks/godot/tests/ui/scenarios.gd": {
       "gdlint:class-definitions-order": 2,
+      "gdlint:max-file-lines": 1,
       "gdlint:max-line-length": 29,
       "gdlint:max-public-methods": 1
     },

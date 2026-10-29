@@ -751,7 +751,7 @@ public actor CloudSyncHost {
         #if canImport(UIKit)
             out.append((UIApplication.didEnterBackgroundNotification, false))
         #endif
-        #if canImport(AppKit)
+        #if canImport(AppKit) && !targetEnvironment(macCatalyst)
             out.append((NSApplication.willTerminateNotification, true))
         #endif
         return out

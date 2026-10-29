@@ -60,7 +60,7 @@ Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 2]
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Head/Title: Label "Unlock your synced data"
-Card/Scroll/Body/Columns/Left/Words/Lede: Label "This account has no recovery code. Start over to keep syncing."
+Card/Scroll/Body/Columns/Left/Words/Lede: Label "This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over."
 Card/Scroll/Body/Columns/Right/Actions/Primary: Button "Start over" [focus 1]
 Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 2]
 == start-over ==

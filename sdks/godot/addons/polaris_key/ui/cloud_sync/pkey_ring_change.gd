@@ -28,11 +28,6 @@ signal accept_requested(served: Dictionary)
 	set(value):
 		by = value
 		refresh_view()
-## The ring the person was shown: `{ring_id, epoch, root_kid}` (`changed.served`), or empty.
-var served: Dictionary = {}:
-	set(value):
-		served = value
-		refresh_view()
 ## Accepting did not open a root.
 @export var failed := false:
 	set(value):
@@ -48,6 +43,11 @@ var served: Dictionary = {}:
 		sync_on = value
 		refresh_view()
 @export var host_handles := false
+## The ring the person was shown: `{ring_id, epoch, root_kid}` (`changed.served`), or empty.
+var served: Dictionary = {}:
+	set(value):
+		served = value
+		refresh_view()
 
 var model: Dictionary = {}
 

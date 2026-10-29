@@ -16,6 +16,7 @@ import {
 import {
   button,
   days,
+  docksLoadFile,
   GLYPHS,
   openOnChecked,
   plain,
@@ -97,11 +98,13 @@ export function offlineSteps(c: KitCtx): ReactNode {
             </span>
           ) : null}
         </div>
-        {button(
-          c,
-          "offlineActivation.loadFile",
-          variant("offlineActivation.loadFile"),
-        )}
+        {docksLoadFile(c)
+          ? null
+          : button(
+              c,
+              "offlineActivation.loadFile",
+              variant("offlineActivation.loadFile"),
+            )}
       </li>
     </ol>
   );

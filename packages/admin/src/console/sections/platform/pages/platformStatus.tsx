@@ -31,9 +31,9 @@ import {
   HealthByArea,
   JobsCard,
   QueuesCard,
-  ServicesCard,
   StorageCard,
 } from "./platformStatusParts.js";
+import { ServicesCard } from "./platformStatusServices.js";
 import { ChecksTable, buildChecks } from "./platformStatusChecks.js";
 
 export function PlatformStatus(): React.ReactElement {

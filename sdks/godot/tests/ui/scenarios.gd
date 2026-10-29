@@ -39,6 +39,9 @@ const SETTINGS_DOC := {
 
 ## The ui-matrix.json rows the license-choice scenes are built from (a generator-owned mirror).
 const MATRIX_PATH := "res://tests/corpus/v2/ui-matrix.json"
+## Not a real code: fixture text in the code's own shape (8 groups of 4).
+const FIXTURE_CODE := "AB3D-9FGH-JK4M-NP5Q-RS6T-VW7X-YZ80-1C2E"
+const FIXTURE_RING := {"ring_id": "rg_AAAAAAAAAAAAAAAAAAAAAA", "epoch": 2, "root_kid": "00112233445566778899aabbccddeeff"}
 ## The devices every Devices state lists (ui-matrix.json `devices`; the apostrophe is the typographic one).
 const DEVICE_ROWS := [
 	{"name": "Work laptop", "platform": "windows", "formFactor": "computer", "lastSeenDays": 12, "current": false},
@@ -595,9 +598,6 @@ func cloud_sync(kind: String) -> Control:
 	return s
 
 
-## Not a real code: fixture text in the code's own shape (8 groups of 4).
-const FIXTURE_CODE := "AB3D-9FGH-JK4M-NP5Q-RS6T-VW7X-YZ80-1C2E"
-const FIXTURE_RING := {"ring_id": "rg_AAAAAAAAAAAAAAAAAAAAAA", "epoch": 2, "root_kid": "00112233445566778899aabbccddeeff"}
 
 
 func unlock_sync(kind: String) -> Control:
@@ -1001,7 +1001,10 @@ func badge(labels: Array) -> Control:
 
 
 func dev_facts(outlet: String) -> Dictionary:
-	return {"device": "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD", "outlet": outlet, "channel": "beta", "version": "1.2.0", "build": "42", "sdk": "0.1.0", "engine": "4.7.2", "platform": "windows", "gate": "ok", "last_sync": NOW}
+	return {
+		"device": "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD", "outlet": outlet, "channel": "beta", "version": "1.2.0",
+		"build": "42", "sdk": "0.1.0", "engine": "4.7.2", "platform": "windows", "gate": "ok", "last_sync": NOW,
+	}
 
 
 func dev_menu(outlet: String) -> Control:

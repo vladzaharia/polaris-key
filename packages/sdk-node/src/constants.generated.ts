@@ -713,6 +713,8 @@ export const Feature = {
   identityChoice: "identity.choice",
   identitySigninHints: "identity.signin.hints",
   identityExchange: "identity.exchange",
+  identityGamecenter: "identity.gamecenter",
+  identityPgs: "identity.pgs",
   identityAutosignin: "identity.autosignin",
   identityLink: "identity.link",
   releaseChangelog: "release.changelog",
@@ -759,6 +761,7 @@ export const Feature = {
   uiKitManage: "ui.kit.manage",
   uiKitKeyentry: "ui.kit.keyentry",
   uiKitAccount: "ui.kit.account",
+  uiKitHolders: "ui.kit.holders",
   uiCli: "ui.cli",
   uiCliMount: "ui.cli.mount",
   uiCliContract: "ui.cli.contract",
@@ -852,6 +855,8 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.choice",
   "identity.signin.hints",
   "identity.exchange",
+  "identity.gamecenter",
+  "identity.pgs",
   "identity.autosignin",
   "identity.link",
   "release.changelog",
@@ -898,6 +903,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.kit.manage",
   "ui.kit.keyentry",
   "ui.kit.account",
+  "ui.kit.holders",
   "ui.cli",
   "ui.cli.mount",
   "ui.cli.contract",
@@ -2108,6 +2114,16 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [{ runtime: "node", reason: "runtime" }],
   },
+  "identity.gamecenter": {
+    status: "na",
+    service: "identity",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
+  "identity.pgs": {
+    status: "na",
+    service: "identity",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
   "identity.autosignin": { status: "planned", service: "identity", na: [] },
   "identity.link": {
     status: "na",
@@ -2210,6 +2226,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "sdk",
     na: [{ runtime: "node", reason: "runtime" }],
   },
+  "ui.kit.holders": {
+    status: "na",
+    service: "sdk",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
   "ui.cli": { status: "implemented", service: "sdk", na: [] },
   "ui.cli.mount": { status: "implemented", service: "sdk", na: [] },
   "ui.cli.contract": { status: "implemented", service: "sdk", na: [] },
@@ -2233,4 +2254,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "1b1d4ae05a00fbf0d6adf2200fb312d219761131d0a425b44c3964dcd5371812";
+  "5276db4441392924f74c50e160f662fde33309faac438a122858f08a185b0590";

@@ -11,6 +11,8 @@
 //   createStore                snapshot + subscribe, with the UI-thread delivery hook
 //   Copy, formatMessage        the catalog lookup and ICU-subset formatter (tables injected)
 //   formatBytes                a byte count as the person reads it, in the kit's locale
+//   maskEmail                  an address as a screen shows another's: a•••@example.com
+//   recommendReasons           the Done step's reason lines, written once (the portal reuses it)
 //   linkVerdict, validLink     DL14's one validating opener
 //   LOADING_DELAY_MS           DL7's loading delay, as a model timer
 //

@@ -449,7 +449,7 @@ export function useSdkGate(
               dismissed,
               ...(opts.locale !== undefined ? { locale: opts.locale } : {}),
             }),
-            signInFailed && step === "activate",
+            signInFailed && (step === "activate" || step === "home"),
           )
         : null,
     [

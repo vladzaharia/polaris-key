@@ -23,7 +23,7 @@ import {
   type GateInput,
   type ResolveContext,
 } from "@polaris-key/client-core";
-import { ErrorCode } from "../constants.generated.js";
+import type { ErrorCode } from "../constants.generated.js";
 import type { PolarisError } from "./types.js";
 import {
   type DeviceInfo,
@@ -113,6 +113,15 @@ export interface ProjectFlags {
  * Project the documents + gate inputs into the immutable snapshot the store holds. `phase`
  * flips to `ready` here — this is only ever called after a first transport resolution.
  */
+// Literals typed against the generated union, not `ErrorCode.x`: a runtime import would carry
+// the whole code table into every kit's first paint.
+const SIGN_IN_REFUSALS: readonly ErrorCode[] = [
+  "sign-in-failed",
+  "sign-in-expired",
+  "sign-in-denied",
+  "key-entry-unsupported",
+];
+
 /**
  * A refusal of something the person did on the sign-in card: a key they typed (an activation
  * outcome, the device limit among them) or a sign-in they started. The card shows it under the
@@ -125,10 +134,8 @@ export function isSignInRefusal(error: {
 }): boolean {
   return (
     error.activation !== undefined ||
-    error.code === ErrorCode.signInFailed ||
-    error.code === ErrorCode.signInExpired ||
-    error.code === ErrorCode.signInDenied ||
-    error.code === ErrorCode.keyEntryUnsupported
+    (error.code !== undefined &&
+      (SIGN_IN_REFUSALS as readonly string[]).includes(error.code))
   );
 }
 

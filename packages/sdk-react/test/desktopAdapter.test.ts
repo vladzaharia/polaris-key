@@ -345,6 +345,51 @@ describe("DesktopAdapter — OIDC sign-in", () => {
   });
 });
 
+// @pkey-feature identity.devicecode
+describe("DesktopAdapter — signIn.start over the bridge (UK-06.16)", () => {
+  const begin = () => ({
+    flowId: "f1",
+    verificationUrl: "https://v",
+    userCode: "ABCD",
+  });
+  async function started(opts: Record<string, unknown>) {
+    const bridge = makeFakeBridge(emptyBridgeState());
+    bridge.beginSignIn = vi.fn(async () => begin());
+    bridge.pollSignIn = () => new Promise(() => {});
+    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(adapter);
+    return {
+      bridge,
+      adapter,
+      start: () => adapter.signIn.start(opts as never),
+    };
+  }
+
+  it("the kit's browser channel is the device-code session, licenseChoice card accepted", async () => {
+    const { bridge, adapter, start } = await started({
+      channel: "browser",
+      licenseChoice: "card",
+    });
+    await expect(start()).resolves.toMatchObject({ userCode: "ABCD" });
+    expect(bridge.beginSignIn).toHaveBeenCalledTimes(1);
+    adapter.dispose();
+  });
+
+  it("still refuses the app's own licence choice and the hints the bridge cannot carry", async () => {
+    for (const extra of [{ licenseChoice: "app" }, { loginHint: "a@b.c" }]) {
+      const { bridge, adapter, start } = await started({
+        channel: "device-code",
+        ...extra,
+      });
+      await expect(start()).rejects.toMatchObject({
+        name: "UnsupportedError",
+      });
+      expect(bridge.beginSignIn).not.toHaveBeenCalled();
+      adapter.dispose();
+    }
+  });
+});
+
 // @pkey-feature core.sync
 describe("DesktopAdapter — stateChanged push channel", () => {
   it("a pushed state updates the snapshot (hot reload)", async () => {

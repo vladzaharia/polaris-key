@@ -85,6 +85,22 @@ const limit = (): BridgeActivation => ({
   manageUrl: MANAGE,
 });
 
+/** The gate's Welcome over a fake bridge `setup` shapes. */
+async function welcome(setup: (b: ReturnType<typeof makeFakeBridge>) => void) {
+  const bridge = makeFakeBridge(emptyBridgeState());
+  setup(bridge);
+  const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+  const { container } = render(
+    <PolarisKeyProvider config={{ productSlug: "acme", adapter }}>
+      <PolarisKeyGate theme={{ product: { name: "Acme Studio" } }} />
+    </PolarisKeyProvider>,
+  );
+  await waitFor(() =>
+    expect(control(container, "welcome.signIn")).not.toBeNull(),
+  );
+  return { bridge, adapter, container };
+}
+
 describe("the gate's way back", () => {
   it("draws Back on the key step and returns to Welcome, focus on the opener", async () => {
     const { container, adapter } = mountGate(limit);
@@ -158,18 +174,30 @@ describe("the gate's way back", () => {
     adapter.dispose();
   });
 
-  it("draws Back on the sign-in code step", async () => {
-    const bridge = makeFakeBridge(emptyBridgeState());
-    bridge.pollSignIn = () => new Promise(() => {});
-    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
-    const { container } = render(
-      <PolarisKeyProvider config={{ productSlug: "acme", adapter }}>
-        <PolarisKeyGate theme={{ product: { name: "Acme Studio" } }} />
-      </PolarisKeyProvider>,
-    );
+  it("a sign-in that fails to start is said on the Welcome (UK-06.16)", async () => {
+    const { bridge, adapter, container } = await welcome((b) => {
+      b.beginSignIn = vi.fn(async () => {
+        throw new Error("no host");
+      });
+    });
+    fireEvent.click(control(container, "welcome.signIn")!);
+    await waitFor(() => expect(bridge.beginSignIn).toHaveBeenCalled());
     await waitFor(() =>
-      expect(control(container, "welcome.signIn")).not.toBeNull(),
+      expect(
+        container.querySelector(
+          '[data-key="core.codes.sign-in-failed.message"]',
+        ),
+      ).not.toBeNull(),
     );
+    // Still the Welcome: Sign in can be pressed again.
+    expect(control(container, "welcome.signIn")).not.toBeNull();
+    adapter.dispose();
+  });
+
+  it("draws Back on the sign-in code step", async () => {
+    const { adapter, container } = await welcome((b) => {
+      b.pollSignIn = () => new Promise(() => {});
+    });
     fireEvent.click(control(container, "welcome.signIn")!);
     await waitFor(() =>
       expect(container.querySelector('[data-key="a11y.code"]')).not.toBeNull(),

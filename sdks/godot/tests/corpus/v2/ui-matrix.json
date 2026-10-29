@@ -27,12 +27,18 @@
       "accept-ring-change": ["ringChange.accept"],
       "use-recovery-code": ["ringChange.useCode"],
       "copy-code": ["recoveryCode.copy"],
-      "start-sign-in": ["signin.key.signIn", "signin.key.ownedSignIn"],
+      "start-sign-in": [
+        "signin.key.signIn",
+        "signin.key.ownedSignIn",
+        "activate.waitingSignIn",
+        "activate.recommend.action"
+      ],
       "open-manage-url": [
         "deviceLimit.openBrowser",
         "devices.manage",
         "signin.key.addInLocker",
-        "signin.deviceLimit.replace"
+        "signin.deviceLimit.replace",
+        "activate.otherEmail.verify"
       ],
       "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
       "retry": [
@@ -81,6 +87,9 @@
       "toast": "{kind}: the toast being shown.",
       "error": "{code}: a core.codes code the step failed with.",
       "cloudSync": "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed, signedIn?, canReview?, lastSynced?}. `ring-changed` always offers Review: the kit owns the confirmation.",
+      "licenseHolder": "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
+      "activateDone": "The Done step after a key activates: {tier?, term?, deviceKind?, position?, limit?}, the strings and numbers the license line shows. Absent: ActivateDone is hidden. The state is `waiting` with a `licenseHolder` email, else `ready`; the reasons follow the services (Cloud Sync only with sync, Get your license back and Move it with Identity, else the portal line).",
+      "addToAccount": "Add your name and email: {step: form | invalid | busy | added | owned | email-bound | failed, field?: name | email | both, deviceKind?}. `invalid` names the field to fix (absent: both). owned: someone attached the license meanwhile; email-bound: the license was sent to another email (with `licenseHolder`); failed: sign-in or attach did not finish. `added` names Cloud Sync only with sync on. Absent: AddToAccount is hidden.",
       "unlockSync": "UnlockSync's step: {step: code | invalid | working | failed | start-over-failed | no-code | start-over, nearby?}. `no-code`: the account has no recovery code, so only Start over helps. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
       "recoveryCode": "RecoveryCode: {saved?}. The code itself is never an input of the view: the kit draws it from the host, once, and keeps nothing.",
       "ringChange": "RingChange: {by?, served?: {ringId, epoch, rootKid}, failed?}. `failed`: accepting the ring did not open a root; the screen says so and Accept stays available. `by` is the name of the device that wrapped (`changed.by`); `served` is the ring the person was shown (`changed.served`), the one value `acceptRingChange` takes. No `served`: nothing to accept, only the recovery code."
@@ -110,6 +119,10 @@
       "SignIn": "error, auto (autoSignIn), expired, done (signedIn), key-refused or key (have-key while choosing; the key-entry limit and an owned license are key-refused), replace (open-replace with replace inline), choose, finishing (redeeming, or device-code ok), code (device code, or use-code), handoff (pending), methods.",
       "Settings": "loading, error, saving (pending save or saved), dirty, locked (a locked row), list.",
       "Devices": "loading, error, browser-mode, renaming or confirming (edit), empty, list.",
+      "ActivateDone": "hidden (License off), waiting (a licenseHolder email), ready (the reasons follow the services).",
+      "AddToAccount": "hidden (Identity off), then the step: form, invalid, busy, added, owned, email-bound, failed.",
+      "SignIn (holders)": "`signIn.step` key-done (the ActivateDone body), attach (AddToAccount's, at its `addToAccount.step`) or added wins over every step except error and an automatic sign-in step.",
+      "AccountAndLicense (holders)": "key-only with a `licenseHolder` that has no email (floating) draws Not in an account and Add your name and email instead of the key-only line; Identity off keeps it, Add opening the portal.",
       "Paywall": "loading, purchasing (pending purchase), restore (pending restore), purchased, not-available, offers."
     },
     "services": [
@@ -12635,6 +12648,651 @@
         }
       },
       "expect": { "component": "RingChange", "state": "hidden", "copy": [] }
+    }
+  ],
+  "holders": [
+    {
+      "name": "ActivateDone/ready: Cloud Sync, get it back and move it",
+      "input": {
+        "activateDone": {
+          "tier": "Pro",
+          "term": "Lifetime",
+          "deviceKind": "computer",
+          "position": 1,
+          "limit": 3
+        }
+      },
+      "expect": {
+        "component": "ActivateDone",
+        "state": "ready",
+        "copy": [
+          "activate.done.device",
+          "activate.done.title",
+          "activate.recommend.action",
+          "activate.recommend.badge",
+          "activate.recommend.devices",
+          "activate.recommend.recover",
+          "activate.recommend.skip",
+          "activate.recommend.sync",
+          "activate.recommend.title",
+          "signin.done.start"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "ActivateDone/ready: no Cloud Sync line without Cloud Sync",
+      "input": {
+        "activateDone": {
+          "tier": "Pro",
+          "term": "Lifetime",
+          "deviceKind": "computer",
+          "position": 1,
+          "limit": 3
+        },
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "commerce",
+          "connect"
+        ]
+      },
+      "expect": {
+        "component": "ActivateDone",
+        "state": "ready",
+        "copy": [
+          "activate.done.device",
+          "activate.done.title",
+          "activate.recommend.action",
+          "activate.recommend.badge",
+          "activate.recommend.devices",
+          "activate.recommend.recover",
+          "activate.recommend.skip",
+          "activate.recommend.title",
+          "signin.done.start"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "ActivateDone/ready: Identity off, one reason that opens the portal",
+      "input": {
+        "activateDone": {
+          "tier": "Pro",
+          "term": "Lifetime",
+          "deviceKind": "computer",
+          "position": 1,
+          "limit": 3
+        },
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
+        "capabilities": { "signIn": false }
+      },
+      "expect": {
+        "component": "ActivateDone",
+        "state": "ready",
+        "copy": [
+          "activate.done.device",
+          "activate.done.title",
+          "activate.recommend.action",
+          "activate.recommend.badge",
+          "activate.recommend.portal",
+          "activate.recommend.skip",
+          "activate.recommend.title",
+          "signin.done.start"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "ActivateDone/waiting: the license was sent to an email",
+      "input": {
+        "activateDone": {
+          "tier": "Pro",
+          "term": "Lifetime",
+          "deviceKind": "computer",
+          "position": 1,
+          "limit": 3
+        },
+        "licenseHolder": { "email": "maya@example.com" }
+      },
+      "expect": {
+        "component": "ActivateDone",
+        "state": "waiting",
+        "copy": [
+          "activate.done.device",
+          "activate.done.title",
+          "activate.waiting",
+          "activate.waitingSignIn",
+          "signin.done.start"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "ActivateDone/hidden: License off",
+      "input": {
+        "activateDone": {
+          "tier": "Pro",
+          "term": "Lifetime",
+          "deviceKind": "computer",
+          "position": 1,
+          "limit": 3
+        },
+        "services": [
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "sync",
+          "connect"
+        ],
+        "registration": "open"
+      },
+      "expect": { "component": "ActivateDone", "state": "hidden", "copy": [] }
+    },
+    {
+      "name": "AddToAccount/form",
+      "input": { "addToAccount": { "step": "form", "deviceKind": "computer" } },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "form",
+        "copy": [
+          "activate.attach.fine",
+          "activate.attach.lede",
+          "activate.recommend.action",
+          "common.cancel",
+          "common.continue",
+          "signin.email.label",
+          "signin.gate.name"
+        ],
+        "actions": ["cancel", "start-sign-in"]
+      }
+    },
+    {
+      "name": "AddToAccount/invalid: name",
+      "input": {
+        "addToAccount": {
+          "step": "invalid",
+          "deviceKind": "computer",
+          "field": "name"
+        }
+      },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "invalid",
+        "copy": [
+          "activate.attach.fine",
+          "activate.attach.lede",
+          "activate.recommend.action",
+          "common.cancel",
+          "common.continue",
+          "signin.email.label",
+          "signin.gate.name",
+          "signin.gate.nameRequired"
+        ],
+        "actions": ["cancel", "start-sign-in"]
+      }
+    },
+    {
+      "name": "AddToAccount/invalid: email",
+      "input": {
+        "addToAccount": {
+          "step": "invalid",
+          "deviceKind": "computer",
+          "field": "email"
+        }
+      },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "invalid",
+        "copy": [
+          "activate.attach.fine",
+          "activate.attach.lede",
+          "activate.recommend.action",
+          "common.cancel",
+          "common.continue",
+          "signin.email.invalid",
+          "signin.email.label",
+          "signin.gate.name"
+        ],
+        "actions": ["cancel", "start-sign-in"]
+      }
+    },
+    {
+      "name": "AddToAccount/invalid: both",
+      "input": {
+        "addToAccount": {
+          "step": "invalid",
+          "deviceKind": "computer",
+          "field": "both"
+        }
+      },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "invalid",
+        "copy": [
+          "activate.attach.fine",
+          "activate.attach.lede",
+          "activate.recommend.action",
+          "common.cancel",
+          "common.continue",
+          "signin.email.invalid",
+          "signin.email.label",
+          "signin.gate.name",
+          "signin.gate.nameRequired"
+        ],
+        "actions": ["cancel", "start-sign-in"]
+      }
+    },
+    {
+      "name": "AddToAccount/busy",
+      "input": { "addToAccount": { "step": "busy", "deviceKind": "computer" } },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "busy",
+        "copy": ["activate.recommend.action", "common.working"],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "AddToAccount/added: Cloud Sync is on",
+      "input": {
+        "addToAccount": { "step": "added", "deviceKind": "computer" }
+      },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "added",
+        "copy": [
+          "activate.attach.done",
+          "activate.attach.syncOn",
+          "signin.done.start"
+        ]
+      }
+    },
+    {
+      "name": "AddToAccount/added: no Cloud Sync line without Cloud Sync",
+      "input": {
+        "addToAccount": { "step": "added", "deviceKind": "computer" },
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "commerce",
+          "connect"
+        ]
+      },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "added",
+        "copy": ["activate.attach.done", "signin.done.start"]
+      }
+    },
+    {
+      "name": "AddToAccount/owned: someone attached it meanwhile",
+      "input": {
+        "addToAccount": { "step": "owned", "deviceKind": "computer" }
+      },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "owned",
+        "copy": [
+          "activate.owned.lede",
+          "activate.owned.title",
+          "common.cancel",
+          "signin.key.ownedSignIn"
+        ],
+        "actions": ["cancel", "start-sign-in"]
+      }
+    },
+    {
+      "name": "AddToAccount/email-bound: the license was sent to another email",
+      "input": {
+        "addToAccount": { "step": "email-bound", "deviceKind": "computer" },
+        "licenseHolder": { "email": "maya@example.com" }
+      },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "email-bound",
+        "copy": [
+          "activate.otherEmail.body",
+          "activate.otherEmail.title",
+          "activate.otherEmail.verify",
+          "signin.auto.confirm.other",
+          "signin.done.start"
+        ],
+        "actions": ["open-manage-url"]
+      }
+    },
+    {
+      "name": "AddToAccount/failed: Try again",
+      "input": {
+        "addToAccount": { "step": "failed", "deviceKind": "computer" }
+      },
+      "expect": {
+        "component": "AddToAccount",
+        "state": "failed",
+        "copy": [
+          "activate.recommend.action",
+          "common.cancel",
+          "common.tryAgain",
+          "locker.activate.addFailed"
+        ],
+        "actions": ["cancel", "retry", "start-sign-in"]
+      }
+    },
+    {
+      "name": "AddToAccount/hidden: Identity off",
+      "input": {
+        "addToAccount": { "step": "form", "deviceKind": "computer" },
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
+        "capabilities": { "signIn": false }
+      },
+      "expect": { "component": "AddToAccount", "state": "hidden", "copy": [] }
+    },
+    {
+      "name": "SignIn/key-done: the recommendation",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "step": "key-done"
+        },
+        "activateDone": {
+          "tier": "Pro",
+          "term": "Lifetime",
+          "deviceKind": "computer",
+          "position": 1,
+          "limit": 3
+        }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "key-done",
+        "copy": [
+          "activate.done.device",
+          "activate.done.title",
+          "activate.recommend.action",
+          "activate.recommend.badge",
+          "activate.recommend.devices",
+          "activate.recommend.recover",
+          "activate.recommend.skip",
+          "activate.recommend.sync",
+          "activate.recommend.title",
+          "signin.done.start"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "SignIn/key-done: no Cloud Sync line without Cloud Sync",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "step": "key-done"
+        },
+        "activateDone": {
+          "tier": "Pro",
+          "term": "Lifetime",
+          "deviceKind": "computer",
+          "position": 1,
+          "limit": 3
+        },
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "commerce",
+          "connect"
+        ]
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "key-done",
+        "copy": [
+          "activate.done.device",
+          "activate.done.title",
+          "activate.recommend.action",
+          "activate.recommend.badge",
+          "activate.recommend.devices",
+          "activate.recommend.recover",
+          "activate.recommend.skip",
+          "activate.recommend.title",
+          "signin.done.start"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "SignIn/key-done: waiting for the email's account",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "step": "key-done"
+        },
+        "activateDone": {
+          "tier": "Pro",
+          "term": "Lifetime",
+          "deviceKind": "computer",
+          "position": 1,
+          "limit": 3
+        },
+        "licenseHolder": { "email": "maya@example.com" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "key-done",
+        "copy": [
+          "activate.done.device",
+          "activate.done.title",
+          "activate.waiting",
+          "activate.waitingSignIn",
+          "signin.done.start"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "SignIn/attach: name and email",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "step": "attach"
+        },
+        "addToAccount": { "step": "form", "deviceKind": "computer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "attach",
+        "copy": [
+          "activate.attach.fine",
+          "activate.attach.lede",
+          "activate.recommend.action",
+          "common.cancel",
+          "common.continue",
+          "signin.email.label",
+          "signin.gate.name"
+        ],
+        "actions": ["cancel", "start-sign-in"]
+      }
+    },
+    {
+      "name": "SignIn/attach: both fields need fixing",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "step": "attach"
+        },
+        "addToAccount": {
+          "step": "invalid",
+          "deviceKind": "computer",
+          "field": "both"
+        }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "attach",
+        "copy": [
+          "activate.attach.fine",
+          "activate.attach.lede",
+          "activate.recommend.action",
+          "common.cancel",
+          "common.continue",
+          "signin.email.invalid",
+          "signin.email.label",
+          "signin.gate.name",
+          "signin.gate.nameRequired"
+        ],
+        "actions": ["cancel", "start-sign-in"]
+      }
+    },
+    {
+      "name": "SignIn/added: Cloud Sync is on",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "step": "added"
+        },
+        "addToAccount": { "step": "added", "deviceKind": "computer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "added",
+        "copy": [
+          "activate.attach.done",
+          "activate.attach.syncOn",
+          "signin.done.start"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/added: no Cloud Sync line without Cloud Sync",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser",
+          "step": "added"
+        },
+        "addToAccount": { "step": "added", "deviceKind": "computer" },
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "commerce",
+          "connect"
+        ]
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "added",
+        "copy": ["activate.attach.done", "signin.done.start"]
+      }
+    },
+    {
+      "name": "AccountAndLicense/key-only: floating, Add your name and email",
+      "input": {
+        "licenseHolder": { "email": "" },
+        "account": { "signedIn": false }
+      },
+      "expect": {
+        "component": "AccountAndLicense",
+        "state": "key-only",
+        "copy": [
+          "account.notInAccount",
+          "account.tier",
+          "account.title",
+          "account.updates",
+          "activate.recommend.action",
+          "common.signOut"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "AccountAndLicense/key-only: floating with Identity off, Add opens the portal",
+      "input": {
+        "licenseHolder": { "email": "" },
+        "account": { "signedIn": false },
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
+        "capabilities": { "signIn": false }
+      },
+      "expect": {
+        "component": "AccountAndLicense",
+        "state": "key-only",
+        "copy": [
+          "account.notInAccount",
+          "account.tier",
+          "account.title",
+          "account.updates",
+          "activate.recommend.action",
+          "common.signOut"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "AccountAndLicense/key-only: waiting for the email's account keeps the key line",
+      "input": {
+        "licenseHolder": { "email": "maya@example.com" },
+        "account": { "signedIn": false }
+      },
+      "expect": {
+        "component": "AccountAndLicense",
+        "state": "key-only",
+        "copy": [
+          "account.keyOnly",
+          "account.tier",
+          "account.title",
+          "account.updates",
+          "common.signOut"
+        ]
+      }
     }
   ],
   "theme": [

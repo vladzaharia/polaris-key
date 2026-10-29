@@ -192,7 +192,10 @@ func _render() -> void:
 	cat_text(_text, key, args)
 	var primary = model.get("decisions", {}).get("primary")
 	cat_text(_action, "" if primary == null else String(primary), args)
-	_glyph.set_meta(&"pkey_glyph", {"synced": "success", "syncing": "info", "offline": "cloud_off", "conflict": "warning", "error": "warning", "locked": "lock", "ring-changed": "warning"}.get(st, "info"))
+	_glyph.set_meta(&"pkey_glyph", {
+		"synced": "success", "syncing": "info", "offline": "cloud_off", "conflict": "warning", "error": "warning",
+		"locked": "lock", "ring-changed": "warning",
+	}.get(st, "info"))
 
 
 func _arrange(m: Dictionary) -> void:

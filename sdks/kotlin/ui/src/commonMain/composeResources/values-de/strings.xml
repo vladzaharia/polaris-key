@@ -305,6 +305,57 @@
     <string name="common_activateLicense__macos">Eine Lizenz aktivieren</string>
     <!-- Activate: license key entry. -->
     <string name="activate_busy">Wird aktiviert…</string>
+    <!-- ActivateDone: the step after a license key activates. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="activate_done_title">%1$s ist bereit</string>
+    <!-- ActivateDone: the license line. Arguments: {tier} = the tier's name (never translated), {term} = the term (Lifetime, Renews 3 Mar), {deviceKind} = the device kind already worded (computer, phone), {n} and {limit} = integers. Arguments: 1=tier, 2=term, 3=deviceKind, 4=n, 5=limit. -->
+    <string name="activate_done_device">%1$s · %2$s · dieses %3$s ist Gerät %4$s von %5$s.</string>
+    <!-- ActivateDone: the quiet recommendation card. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="activate_recommend_title">%1$s in Ihrem Konto behalten</string>
+    <!-- ActivateDone: the badge on the recommendation card. -->
+    <string name="activate_recommend_badge">Empfohlen</string>
+    <!-- ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them. -->
+    <string name="activate_recommend_sync">Die Cloud-Synchronisierung hält Ihre Einstellungen und Spielstände auf jedem Gerät aktuell</string>
+    <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
+    <string name="activate_recommend_recover">Ihre Lizenz zurückholen, wenn Sie den Schlüssel oder dieses Gerät verlieren</string>
+    <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
+    <string name="activate_recommend_devices">Auf ein neues Gerät umziehen, selbst und ohne %1$s zu fragen</string>
+    <!-- ActivateDone: the recommendation card's action; opens AddToAccount. -->
+    <string name="activate_recommend_action">Namen und E-Mail hinzufügen</string>
+    <string name="activate_recommend_action__macos">Namen und E-Mail hinzufügen</string>
+    <!-- ActivateDone: under the recommendation card. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="activate_recommend_skip">Oder ohne Konto fortfahren. %1$s funktioniert genauso.</string>
+    <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
+    <string name="activate_recommend_portal">Ihre Lizenz sicher in Polaris Locker aufbewahren</string>
+    <!-- AddToAccount: under the name and email fields. -->
+    <string name="activate_attach_lede">Ihre Lizenz und ihre Geräte bleiben unverändert. Die E-Mail bestätigen Sie mit einem Code in Ihrem Browser.</string>
+    <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="activate_attach_fine">Wir senden einen Code an diese E-Mail in Ihrem Browser. %1$s sieht ihn nie.</string>
+    <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="activate_attach_done">%1$s ist in Ihrem Konto</string>
+    <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
+    <string name="activate_attach_syncOn">Die Cloud-Synchronisierung ist für dieses %1$s aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren.</string>
+    <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
+    <string name="activate_waiting">Diese Lizenz wurde an %1$s gesendet. Melden Sie sich mit dieser E-Mail an, um sie in Ihrem Konto zu behalten.</string>
+    <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->
+    <string name="activate_waitingSignIn">Als %1$s anmelden</string>
+    <string name="activate_waitingSignIn__macos">Als %1$s anmelden</string>
+    <!-- AddToAccount: someone attached the license while this screen was open. -->
+    <string name="activate_owned_title">Diese Lizenz ist in einem Polaris Locker-Konto</string>
+    <!-- AddToAccount: under the owned title. Arguments: {product} = the product's name (never translated), {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=product, 2=deviceKind. -->
+    <string name="activate_owned_lede">Melden Sie sich mit der E-Mail an, an die sie gesendet wurde. %1$s startet auf diesem %2$s, sobald Sie das tun.</string>
+    <!-- AddToAccount: the license's email does not match the account. -->
+    <string name="activate_otherEmail_title">Diese Lizenz wurde an eine andere E-Mail gesendet</string>
+    <!-- AddToAccount: under the otherEmail title. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->
+    <string name="activate_otherEmail_body">Sie wurde an %1$s gesendet. Melden Sie sich mit dieser E-Mail an oder fügen Sie sie diesem Konto hinzu und bestätigen Sie sie.</string>
+    <!-- AddToAccount: opens the portal's sign-in methods. -->
+    <string name="activate_otherEmail_verify">Diese E-Mail bestätigen</string>
+    <string name="activate_otherEmail_verify__macos">Diese E-Mail bestätigen</string>
+    <!-- AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email. -->
+    <string name="account_notInAccount">In keinem Konto</string>
+    <!-- The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="signin_attach_header">%1$s zu Ihrem Konto hinzufügen</string>
+    <!-- License key step: under Continue without an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="signin_key_skipNote">%1$s funktioniert genauso. Fügen Sie es jederzeit einem Konto hinzu.</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
     <string name="offlineActivation_title">Offline-Aktivierung</string>
     <!-- OfflineActivation: step 1; the kit's number marker carries the order. -->
@@ -1117,8 +1168,8 @@
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_noEntries">Für diesen Schlüssel sind in %1$s keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet %1$s Sie stattdessen an.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
-    <string name="signin_key_skip">Jetzt nicht</string>
-    <string name="signin_key_skip__macos">Jetzt nicht</string>
+    <string name="signin_key_skip">Ohne Konto fortfahren</string>
+    <string name="signin_key_skip__macos">Ohne Konto fortfahren</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_ownedSignIn">Bei diesem Konto anmelden</string>
     <string name="signin_key_ownedSignIn__macos">Bei diesem Konto anmelden</string>

@@ -54,6 +54,8 @@ export interface RenderCtx {
   /** The host actions this page answers (`handles`): a control that only a host can act on
    *  (Unlock sync, Review, Use recovery code) is drawn when it is named. */
   handles?: readonly string[];
+  /** Large text or a short window leaves little height: a step's primary docks in the action bar. */
+  tight?: boolean;
   /** A control was pressed: the element turns it into a `pk-action` event. */
   act(key: string, detail?: Record<string, unknown>): void;
   /** The person typed in a field, flipped a switch or chose an option. */

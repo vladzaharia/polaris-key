@@ -37,7 +37,7 @@ const PRESENTATION = {
 };
 const SERVICES = ["license", "config", "identity", "release", "update"];
 const MANAGE =
-  "https://key.plrs.im/activate?product=tidewater&next=free-device";
+  "https://polaris.locker/activate?product=tidewater&next=free-device";
 const DAY = 86_400;
 const nowSec = () => Math.floor(Date.now() / 1000);
 const wait = (ms: number, signal?: AbortSignal) =>
@@ -117,8 +117,8 @@ export function createFixtureClient(
 ): PolarisKeyClient {
   const events = new EventEmitter();
   const state = {
-    licensed:
-      Boolean(pinned) && !(pinned! in BLOCKS) && pinned !== "needs-activation",
+    // A block (version, channel) needs a licence to be blocked: the gate shows its screen.
+    licensed: Boolean(pinned) && pinned !== "needs-activation",
   };
   let signedIn = false;
   let local: Record<string, unknown> = {};
@@ -236,28 +236,37 @@ export function createFixtureClient(
       },
     },
     identity: {
-      async beginSignIn() {
-        return {
-          deviceCode: "fixture-device-code",
-          userCode: "TDWR-4821",
-          verificationUri: "https://polaris.locker/device",
-          verificationUriComplete:
-            "https://polaris.locker/device?user_code=TDWR-4821",
-          expiresIn: 600,
-          interval: 1,
-          expiresAt: nowSec() + 600,
-          startedAt: Date.now(),
-        };
-      },
-      async pollSignIn(prompt: { startedAt: number }) {
-        if (Date.now() - prompt.startedAt < 4_000) return { status: "pending" };
-        signedIn = true;
-        state.licensed = true;
-        changed();
-        return {
-          status: "ready",
-          identity: { name: "Mara Fennick", email: "mara@fennick.studio" },
-        };
+      // What the bridge's `beginSignIn` drives: a device-code session (`signIn.start`).
+      signIn: {
+        async start(_o: { channel: string; deviceName?: string }) {
+          const startedAt = Date.now();
+          return {
+            userCode: "TDWR-4821",
+            verificationUri: "https://polaris.locker/device",
+            verificationUriComplete:
+              "https://polaris.locker/device?user_code=TDWR-4821",
+            expiresIn: 600,
+            interval: 1,
+            expiresAt: nowSec() + 600,
+            // A person approving in the browser, about four seconds after the start.
+            async wait(_w?: { once?: boolean }) {
+              if (Date.now() - startedAt < 4_000)
+                return { kind: "pending", interval: 1 };
+              signedIn = true;
+              state.licensed = true;
+              changed();
+              return {
+                kind: "signedIn",
+                subject: null,
+                activation: { licenseId: null },
+                identity: {
+                  name: "Mara Fennick",
+                  email: "mara@fennick.studio",
+                },
+              };
+            },
+          };
+        },
       },
       async signOut() {
         signedIn = false;

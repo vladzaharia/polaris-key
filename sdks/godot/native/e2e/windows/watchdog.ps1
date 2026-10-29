@@ -54,7 +54,7 @@ while ($true) {
   }
   $os = Get-CimInstance Win32_OperatingSystem
   $top = Get-Process | Sort-Object CPU -Descending | Select-Object -First 3 | ForEach-Object { "{0}:{1:N0}s:{2:N0}MB" -f $_.ProcessName, $_.CPU, ($_.WorkingSet64 / 1MB) }
-  Add-Content "$logs\heartbeat.log" ("{0:HH:mm:ss} +{1}s phase={2} ({3}s of {4}s) free={5:N0}MB top={6}" -f (Get-Date), $elapsed, $phase, $phaseAge, $budget, ($os.FreePhysicalMemory / 1KB), ($top -join " "))
+  Add-Content "$logs\heartbeat.log" ("{0:HH:mm:ss} +{1}s phase={2} ({3}s of {4}s) free={5:N0}MB disk={7:N1}GB top={6}" -f (Get-Date), $elapsed, $phase, $phaseAge, $budget, ($os.FreePhysicalMemory / 1KB), ($top -join " "), ((Get-PSDrive C).Free / 1GB))
   if ($elapsed -ge $DeadlineMinutes * 60) { Trip "run.ps1 passed its $DeadlineMinutes minute deadline in phase '$phase'" }
   if ($budget -gt 0 -and $phaseAge -ge $budget) { Trip "phase '$phase' ran $phaseAge s, over its $budget s budget" }
 }

@@ -61,7 +61,7 @@ import pytest
 
 from polaris_key import (
     ActivationDeviceLimit,
-    ActivationRefused,
+    ActivationKeyEntryLimit,
     ActivationResult,
     Event,
     InMemoryStore,
@@ -95,9 +95,8 @@ OUTCOMES: Dict[str, Tuple[str, Optional[str]]] = {
     "disabled": ("unauthorized", "unauthorized"),
     "revoked": ("unauthorized", "unauthorized"),
     "device-limit-full": ("device-limit", "device_limit"),
-    # parity.json keeps identity.keyentry planned (PX-W9b): Python has no typed key-entry-limit
-    # result yet, so the 403 reaches the caller as the generic `refused`, its code intact.
-    "key-entry-limit": ("refused", "key_entry_limit"),
+    # identity.keyentry is implemented: the 403 is the typed ActivationKeyEntryLimit.
+    "key-entry-limit": ("key-entry-limit", "key_entry_limit"),
 }
 
 
@@ -418,8 +417,8 @@ def test_a_full_device_list_names_its_limits_and_a_manage_link(dev: Dev, harness
 
 def test_a_key_with_no_entries_left_is_refused_with_its_code(dev: Dev, harness: Harness) -> None:
     result = harness.client().client.license.activate_with_key(dev.keys["key-entry-limit"])
-    assert isinstance(result, ActivationRefused), result
-    assert (result.code, result.status) == ("key_entry_limit", 403)
+    assert isinstance(result, ActivationKeyEntryLimit), result
+    assert result.code == "key_entry_limit"
 
 
 # ── A config change ────────────────────────────────────────────────────────────────────

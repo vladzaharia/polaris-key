@@ -45,8 +45,16 @@ export type ComponentName = (typeof COMPONENTS)[number];
  */
 export type SyncScreenName = "UnlockSync" | "RecoveryCode" | "RingChange";
 
-/** Anything a view can be of (a Cloud Sync screen is a component). */
-export type ScreenName = ComponentName;
+/**
+ * The two screens activation without an account adds (ui-matrix.json `holders` family, UK-42): the
+ * Done step after a key, and Add your name and email. Like the Cloud Sync screens they are not in
+ * `COMPONENTS` yet, so no kit's per-component table has to grow before its own package does;
+ * `viewOf` answers them.
+ */
+export type HolderScreenName = "ActivateDone" | "AddToAccount";
+
+/** Anything a view can be of (a Cloud Sync or holder screen is a component). */
+export type ScreenName = ComponentName | HolderScreenName;
 
 /** The reserved state of a component its service turns off: the drop-in renders nothing and a
  *  styled part renders empty (plans/UK-02b.md §4.3). */
@@ -82,8 +90,14 @@ export const ACTION_KEYS: Readonly<Record<Action, readonly string[]>> = {
     "devices.manage",
     "signin.key.addInLocker",
     "signin.deviceLimit.replace",
+    "activate.otherEmail.verify",
   ],
-  "start-sign-in": ["signin.key.ownedSignIn", "signin.key.signIn"],
+  "start-sign-in": [
+    "signin.key.ownedSignIn",
+    "signin.key.signIn",
+    "activate.waitingSignIn",
+    "activate.recommend.action",
+  ],
   "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
   retry: [
     "common.tryAgain",

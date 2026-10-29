@@ -7,7 +7,7 @@
 package im.plrs.key.core
 
 import im.plrs.key.core.testing.TestSigner
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
@@ -22,6 +22,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class TrustAcceptPeerTest {
     private val now = 1_700_000_000L
@@ -131,12 +133,19 @@ class TrustAcceptPeerTest {
         c.start()
         val jws = manifest(now + 1)
         val barrier = CyclicBarrier(8)
-        val results = (1..8).map {
-            async(Dispatchers.Default) {
-                barrier.await()
-                c.acceptPeer(jws)
-            }
-        }.awaitAll()
+        // One thread per caller: the barrier blocks, and Dispatchers.Default has only as many threads
+        // as the host has cores (two on a hosted runner), so 8 waiters on it never all arrive.
+        val pool = Executors.newFixedThreadPool(8)
+        val results = try {
+            (1..8).map {
+                async(pool.asCoroutineDispatcher()) {
+                    barrier.await(30, TimeUnit.SECONDS)
+                    c.acceptPeer(jws)
+                }
+            }.awaitAll()
+        } finally {
+            pool.shutdown()
+        }
         assertEquals(1, results.count { it.applied })
         assertTrue(results.filter { !it.applied }.all { it.reason == "not_newer" })
     }

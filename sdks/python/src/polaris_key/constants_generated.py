@@ -926,6 +926,8 @@ class Feature:
     IDENTITY_CHOICE: Final = "identity.choice"
     IDENTITY_SIGNIN_HINTS: Final = "identity.signin.hints"
     IDENTITY_EXCHANGE: Final = "identity.exchange"
+    IDENTITY_GAMECENTER: Final = "identity.gamecenter"
+    IDENTITY_PGS: Final = "identity.pgs"
     IDENTITY_AUTOSIGNIN: Final = "identity.autosignin"
     IDENTITY_LINK: Final = "identity.link"
     RELEASE_CHANGELOG: Final = "release.changelog"
@@ -972,6 +974,7 @@ class Feature:
     UI_KIT_MANAGE: Final = "ui.kit.manage"
     UI_KIT_KEYENTRY: Final = "ui.kit.keyentry"
     UI_KIT_ACCOUNT: Final = "ui.kit.account"
+    UI_KIT_HOLDERS: Final = "ui.kit.holders"
     UI_CLI: Final = "ui.cli"
     UI_CLI_MOUNT: Final = "ui.cli.mount"
     UI_CLI_CONTRACT: Final = "ui.cli.contract"
@@ -1064,6 +1067,8 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.choice",
     "identity.signin.hints",
     "identity.exchange",
+    "identity.gamecenter",
+    "identity.pgs",
     "identity.autosignin",
     "identity.link",
     "release.changelog",
@@ -1110,6 +1115,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.kit.manage",
     "ui.kit.keyentry",
     "ui.kit.account",
+    "ui.kit.holders",
     "ui.cli",
     "ui.cli.mount",
     "ui.cli.contract",
@@ -2463,6 +2469,8 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.choice": CapabilityRow("implemented", "identity", ()),
         "identity.signin.hints": CapabilityRow("implemented", "identity", ()),
         "identity.exchange": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
+        "identity.gamecenter": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
+        "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.autosignin": CapabilityRow("planned", "identity", ()),
         "identity.link": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "release.changelog": CapabilityRow("implemented", "release", ()),
@@ -2509,6 +2517,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.kit.manage": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.kit.keyentry": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.kit.account": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
+        "ui.kit.holders": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
         "ui.cli.mount": CapabilityRow("implemented", "sdk", ()),
         "ui.cli.contract": CapabilityRow("implemented", "sdk", ()),
@@ -2532,4 +2541,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "98c82ddc923c89823e27b46ca64c223d6f1353e4667f3ff4b5623b477df119b9"
+CAPABILITY_DIGEST: Final[str] = "e159051d1cb45b0ecd03fea9d2e66d564602c5b55c322a9917b6fe38c41cf23f"

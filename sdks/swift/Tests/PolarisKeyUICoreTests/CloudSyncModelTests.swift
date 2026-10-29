@@ -214,7 +214,7 @@ final class CloudSyncModelTests: XCTestCase {
         var shown: String?
         model.onStartedOver = { shown = $0 }
         model.askStartOver()
-        try? await Task.sleep(for: .milliseconds(30))
+        await waitArmed(model)
         let running = Task { await model.confirmStartOver() }
         try? await Task.sleep(for: .milliseconds(30))
         XCTAssertTrue(model.minting)
@@ -260,7 +260,7 @@ final class CloudSyncModelTests: XCTestCase {
         var shown: String?
         model.onStartedOver = { shown = $0 }
         model.askStartOver()
-        try? await Task.sleep(for: .milliseconds(30))
+        await waitArmed(model)
         await model.confirmStartOver()
         XCTAssertEqual(model.screen.state, .startOverFailed)
         await model.retry()
@@ -273,5 +273,13 @@ private actor Attempts {
     func next() -> Int {
         n += 1
         return n
+    }
+}
+
+/// Waits for the start-over confirm to arm; a fixed sleep races a slow runner.
+@MainActor
+private func waitArmed(_ model: UnlockSyncModel) async {
+    for _ in 0..<300 where !model.startOverArmed {
+        try? await Task.sleep(for: .milliseconds(10))
     }
 }

@@ -275,7 +275,7 @@
   "signin.key.entries": "{left} of {limit} key entries left · This will be entry {n}",
   "signin.key.entriesLeftShort": "{left, plural, one {# key entry left} other {# key entries left}}",
   "signin.key.noEntries": "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
-  "signin.key.skip": "Skip for now",
+  "signin.key.skip": "Continue without an account",
   "signin.key.ownedSignIn": "Sign in to that account",
   "signin.key.signIn": "Sign in",
   "signin.key.differentKey": "Use a different key",

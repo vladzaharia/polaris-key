@@ -30,6 +30,7 @@ export const BRIDGE_METHODS = [
   "invoke",
   "fetchSchema",
   "importBundle",
+  "openExternal",
   "subscribe",
   "unsubscribe",
 ] as const;

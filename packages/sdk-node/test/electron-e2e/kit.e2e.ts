@@ -108,6 +108,37 @@ const clickMenu = (app: ElectronApplication, id: string) =>
     item.click();
   }, id);
 
+/** Replace the main process's `shell.openExternal` with a recorder: no test opens a real
+ *  browser. `openedLinks` reads (and clears) what it was asked to open. */
+const stubShell = (app: ElectronApplication) =>
+  app.evaluate(({ shell }) => {
+    const g = globalThis as unknown as { __opened?: string[] };
+    g.__opened = [];
+    shell.openExternal = async (url: string) => {
+      g.__opened!.push(url);
+    };
+  });
+const openedLinks = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    const g = globalThis as unknown as { __opened?: string[] };
+    const out = g.__opened ?? [];
+    g.__opened = [];
+    return out;
+  });
+
+/** A launch of the sample for a describe block, with the shell stubbed. */
+function launchedWithShell(state: string): () => Launched {
+  let l: Launched;
+  beforeAll(async () => {
+    l = await launch({ state });
+    await stubShell(l.app);
+  });
+  afterAll(async () => {
+    if (l) await close(l.app);
+  });
+  return () => l;
+}
+
 const MANAGE = "polaris-key.manageLicense";
 const CHECK = "polaris-key.checkForUpdates";
 
@@ -186,6 +217,27 @@ const SCENES: Scene[] = [
     text: /Offline grace/,
   },
   {
+    id: "version-too-old",
+    state: "version-too-old",
+    reach: async () => undefined,
+    component: "PolarisKeyGate",
+    text: /Update required/,
+  },
+  {
+    id: "version-too-new",
+    state: "version-too-new",
+    reach: async () => undefined,
+    component: "PolarisKeyGate",
+    text: /Not available on this license/,
+  },
+  {
+    id: "channel-not-entitled",
+    state: "channel-not-entitled",
+    reach: async () => undefined,
+    component: "PolarisKeyGate",
+    text: /Channel not included/,
+  },
+  {
     id: "settings",
     state: "ok",
     reach: async ({ app }) => clickMenu(app, MANAGE),
@@ -228,6 +280,12 @@ const SIZES: Size[] = (
   height,
   zoom: 1,
 }));
+// The default window and the short one: a sheet's Done must stay in view in both.
+for (const [width, height] of [
+  [900, 600],
+  [760, 420],
+] as const)
+  SIZES.push({ label: `${width}x${height}`, width, height, zoom: 1 });
 for (const [width, height] of [
   [390, 844],
   [844, 390],
@@ -328,6 +386,8 @@ interface LayoutFacts {
   theme: string | null;
   sideways: string | null;
   primary: string | null;
+  /** A sheet's Done button outside the window. */
+  done: string | null;
   small: string[];
   titleBar: string[];
 }
@@ -369,6 +429,17 @@ function measure(opts: { zoomed: boolean }): LayoutFacts {
     }
   }
 
+  // A sheet's Done (Settings) is in the window: the sheet is capped and scrolls its body.
+  let done: string | null = null;
+  const doneBtn = document.querySelector<HTMLElement>(
+    'dialog [data-key="common.done"]',
+  );
+  if (doneBtn && !opts.zoomed) {
+    const r = doneBtn.getBoundingClientRect();
+    if (r.top < -0.5 || r.bottom > innerHeight + 0.5)
+      done = `Done at ${Math.round(r.top)}..${Math.round(r.bottom)} in ${innerHeight}`;
+  }
+
   // Targets of 24 px under a fine pointer.
   const small: string[] = [];
   for (const el of document.querySelectorAll(
@@ -396,6 +467,7 @@ function measure(opts: { zoomed: boolean }): LayoutFacts {
     theme: kit?.getAttribute("data-theme") ?? null,
     sideways,
     primary,
+    done,
     small,
     titleBar,
   };
@@ -450,6 +522,7 @@ for (const chrome of CHROMES)
                   facts.primary,
                   "primary action in the first viewport",
                 ).toBeNull();
+              expect(facts.done, "a sheet's Done in the window").toBeNull();
               expect(facts.small.join("\n"), "targets under 24 px").toBe("");
               expect(facts.titleBar.join("\n"), "a drawn title bar").toBe("");
               // A resize must not change the screen.
@@ -478,6 +551,55 @@ type Bridge = {
     cb: (p: { done: number; total?: number | null }) => void,
   ): () => void;
 };
+
+describe("sign in and links out, wired", () => {
+  const launched = launchedWithShell("needs-activation");
+
+  it("Sign In shows TDWR-4821, Open Browser opens the page, and the app opens once approved", async () => {
+    const l = launched();
+    await l.page.getByRole("button", { name: "Sign In" }).click();
+    await l.page.waitForFunction(
+      () => /TDWR-4821/.test(document.body.innerText),
+      undefined,
+      { timeout: 10_000 },
+    );
+    await l.page.getByRole("button", { name: /Open browser/i }).click();
+    expect(await openedLinks(l.app)).toEqual([
+      "https://polaris.locker/device?user_code=TDWR-4821",
+    ]);
+    // The fixture approves about four seconds in; the gate then shows the app.
+    await l.page.waitForSelector(".studio", { timeout: 20_000 });
+    expect(
+      await l.page.evaluate(
+        () => document.querySelector(".studio")?.textContent,
+      ),
+    ).toMatch(/Welcome back/);
+  });
+});
+
+describe("replace a device leaves the app, wired", () => {
+  const launched = launchedWithShell("needs-activation");
+
+  it("Replace a device opens the manage page in the system browser", async () => {
+    const l = launched();
+    await l.page.getByRole("button", { name: "Use a license key" }).click();
+    await l.page
+      .getByRole("textbox")
+      .fill("pkey_tidewater_AAAAAAAAAAAAAAAAAAAAAA");
+    await l.page.keyboard.press("Enter");
+    await l.page.waitForFunction(
+      () => /Device limit reached/.test(document.body.innerText),
+      undefined,
+      { timeout: 20_000 },
+    );
+    await l.page.getByRole("button", { name: /Replace a device/i }).click();
+    const opened = await openedLinks(l.app);
+    expect(opened).toHaveLength(1);
+    expect(opened[0]).toMatch(
+      /^https:\/\/polaris\.locker\/activate\?product=tidewater/,
+    );
+  });
+});
 
 describe("the bridge and the shell, wired", () => {
   let l: Launched;
@@ -555,6 +677,7 @@ describe("the bridge and the shell, wired", () => {
         "invoke",
         "onOpen",
         "onUpdateProgress",
+        "openExternal",
         "submitKey",
         "version",
       ]),
@@ -589,17 +712,44 @@ describe("the bridge and the shell, wired", () => {
     expect(result.node).not.toBe("function");
   });
 
-  it("a popup is refused", async () => {
+  it("a popup is refused, and an https one leaves for the system browser", async () => {
     const windows = () =>
       l.app.evaluate(
         ({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
       );
+    await stubShell(l.app);
     const before = await windows();
     await l.page.evaluate(() => {
       window.open("https://example.com/", "_blank");
+      window.open("http://example.com/", "_blank");
+      window.open("javascript:alert(1)", "_blank");
     });
     await l.page.waitForTimeout(500);
     expect(await windows()).toBe(before);
+    // Only the https one reached the shell.
+    expect(await openedLinks(l.app)).toEqual(["https://example.com/"]);
+  });
+
+  it("the bridge's openExternal opens https only", async () => {
+    await stubShell(l.app);
+    const out = await l.page.evaluate(async () => {
+      const b = (
+        window as unknown as {
+          polarisKey: { openExternal(u: string): Promise<boolean> };
+        }
+      ).polarisKey;
+      const refused: string[] = [];
+      for (const u of ["http://polaris.locker/", "javascript:alert(1)", "x"])
+        await b.openExternal(u).catch(() => {
+          refused.push(u);
+        });
+      return { ok: await b.openExternal("https://polaris.locker/a"), refused };
+    });
+    expect(out).toEqual({
+      ok: true,
+      refused: ["http://polaris.locker/", "javascript:alert(1)", "x"],
+    });
+    expect(await openedLinks(l.app)).toEqual(["https://polaris.locker/a"]);
   });
 
   it("the menu items exist, with their labels, where the OS puts them", async () => {

@@ -715,6 +715,8 @@ public object Feature {
     public const val identityChoice: String = "identity.choice"
     public const val identitySigninHints: String = "identity.signin.hints"
     public const val identityExchange: String = "identity.exchange"
+    public const val identityGamecenter: String = "identity.gamecenter"
+    public const val identityPgs: String = "identity.pgs"
     public const val identityAutosignin: String = "identity.autosignin"
     public const val identityLink: String = "identity.link"
     public const val releaseChangelog: String = "release.changelog"
@@ -761,6 +763,7 @@ public object Feature {
     public const val uiKitManage: String = "ui.kit.manage"
     public const val uiKitKeyentry: String = "ui.kit.keyentry"
     public const val uiKitAccount: String = "ui.kit.account"
+    public const val uiKitHolders: String = "ui.kit.holders"
     public const val uiCli: String = "ui.cli"
     public const val uiCliMount: String = "ui.cli.mount"
     public const val uiCliContract: String = "ui.cli.contract"
@@ -853,6 +856,8 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.choice",
     "identity.signin.hints",
     "identity.exchange",
+    "identity.gamecenter",
+    "identity.pgs",
     "identity.autosignin",
     "identity.link",
     "release.changelog",
@@ -899,6 +904,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.kit.manage",
     "ui.kit.keyentry",
     "ui.kit.account",
+    "ui.kit.holders",
     "ui.cli",
     "ui.cli.mount",
     "ui.cli.contract",
@@ -2011,6 +2017,8 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.choice" to CapabilityRow("implemented", "identity", listOf()),
     "identity.signin.hints" to CapabilityRow("implemented", "identity", listOf()),
     "identity.exchange" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
+    "identity.gamecenter" to CapabilityRow("na", "identity", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
+    "identity.pgs" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.autosignin" to CapabilityRow("implemented", "identity", listOf()),
     "identity.link" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
@@ -2057,6 +2065,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.kit.manage" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit.keyentry" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit.account" to CapabilityRow("implemented", "sdk", listOf()),
+    "ui.kit.holders" to CapabilityRow("planned", "sdk", listOf()),
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.cli.mount" to CapabilityRow("planned", "sdk", listOf(CapabilityNa("android", "runtime"))),
     "ui.cli.contract" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
@@ -2079,4 +2088,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "ae30cee727c1ea4d504e6311ffd27e80ff56bb9f4528ff625a38d0ad2efcfd31"
+public const val CAPABILITY_DIGEST: String = "4fe2f5106c311417b3733e8aef030e26bf23c8888c9cb37ea276ddcc6b1ff758"

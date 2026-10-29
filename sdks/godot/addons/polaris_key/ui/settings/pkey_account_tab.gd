@@ -203,7 +203,11 @@ func _render() -> void:
 	show_text(_notice, t.text("account_offline") if state == "offline" else "")
 	_list.visible = state != "loading"
 	fx_error("sync_error" if cloud_sync == "error" else "")
-	var sig := JSON.stringify([state, tier, holder, signed_in, status, devices_used, devices_limit, auto_update, channel, channel_options, channel_locked_by, version, cloud_sync, cloud_sync_time, services, manage_url, _checking, checked_note, PKeyUiTheme.powered_by, mask_email, pad_only()])
+	var sig := JSON.stringify([
+		state, tier, holder, signed_in, status, devices_used, devices_limit, auto_update, channel, channel_options,
+		channel_locked_by, version, cloud_sync, cloud_sync_time, services, manage_url, _checking, checked_note,
+		PKeyUiTheme.powered_by, mask_email, pad_only(),
+	])
 	if sig != _signature and state != "loading":
 		_signature = sig
 		_rebuild(t, state)
@@ -326,7 +330,11 @@ func _rebuild(t: PKeyUiCopy, state: String) -> void:
 		any = true
 	if _on("sync") and cloud_sync != "":
 		var r5 := _row(first, "sync", t.text("account_cloud_sync"))
-		var sk := {"synced": "sync_synced", "syncing": "sync_syncing", "offline": "sync_offline", "conflict": "sync_conflict", "error": "sync_error", "signedOut": "sync_signed_out", "locked": "sync_locked", "ring-changed": "sync_ring_changed"}.get(cloud_sync, "")
+		var sk := {
+			"synced": "sync_synced", "syncing": "sync_syncing", "offline": "sync_offline", "conflict": "sync_conflict",
+			"error": "sync_error", "signedOut": "sync_signed_out", "locked": "sync_locked",
+			"ring-changed": "sync_ring_changed",
+		}.get(cloud_sync, "")
 		if sk != "":
 			var v := label(r5["control"], "Value", "PKeyMuted")
 			v.text = t.text(sk, cloud_sync_time) if t.template(sk).contains("%s") else t.text(sk)

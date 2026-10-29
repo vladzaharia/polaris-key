@@ -108,8 +108,11 @@ public class CloudSyncHost private constructor(private val core: CloudSyncHostCo
         core.scope.launch { touch() }
     }
 
-    /** Whether [start] has run and the host is not closed. */
-    public suspend fun isStarted(): Boolean = withContext(dispatcher) { st.live }
+    /**
+     * Whether [start] has built the machine and the host is not closed. [start] marks itself started before its
+     * journal load suspends, so a caller in that window must not reach [withMachine] yet.
+     */
+    public suspend fun isStarted(): Boolean = withContext(dispatcher) { st.live && st.machine != null }
 
     /**
      * A document that changed since the machine was built is routed through a rebuild first, so the locked

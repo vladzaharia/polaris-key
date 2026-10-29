@@ -40,18 +40,26 @@ export function accountView(
   const update = ctx.on("update");
   // A floating license shows no holder: it is never attached to an account behind the person's
   // back (Must not), and the holder is only ever the account signed in on this device (S-19).
-  if (!ctx.on("identity") || !account?.signedIn)
+  if (!ctx.on("identity") || !account?.signedIn) {
+    // A floating license (the holder is known and has no email, UK-42) says so, and offers Add your
+    // name and email: with Identity off that opens the portal. A license waiting for an email
+    // keeps the key-only line.
+    const holder = ctx.input.licenseHolder;
+    const floating = license && !!holder && !holder.email;
     return makeView(ctx, "AccountAndLicense", {
       state: "key-only",
       copy: [
         "account.title",
         license && "account.tier",
-        license && "account.keyOnly",
+        license && !floating && "account.keyOnly",
+        floating && "account.notInAccount",
+        floating && "activate.recommend.action",
         update && "account.updates",
         "common.signOut",
       ],
       args: { ...args, tier: account?.tier },
     });
+  }
   return makeView(ctx, "AccountAndLicense", {
     state: "signed-in",
     copy: [

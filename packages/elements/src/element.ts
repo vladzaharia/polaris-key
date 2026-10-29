@@ -416,6 +416,7 @@ export abstract class PkElement extends LitElement {
       dialog: this.isDialog(),
       shape: this.shape,
       wide: this.wide,
+      tight: this.tight,
       input: this.modelInput(),
       ...(this.code ? { code: this.code } : {}),
       copied: this.copied,

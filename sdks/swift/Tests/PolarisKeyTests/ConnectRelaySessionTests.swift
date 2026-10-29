@@ -312,6 +312,11 @@ final class ConnectRelaySessionTests: XCTestCase {
                 XCTAssertEqual(e.reason, .closed)  // only once the close has landed
                 break
             }
+            // The close lands on another task: once the queue is at its cap, give it time to land
+            // before the next send is counted as queued.
+            if sent >= 7 {
+                for _ in 0..<100 where s.closed == nil { try? await Task.sleep(nanoseconds: 10_000_000) }
+            }
             if s.closed != nil { break }
             sent += 1
         }

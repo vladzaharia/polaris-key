@@ -78,6 +78,8 @@ export interface KitCtx {
   shape?: "landscape" | "portrait" | "short";
   /** The window is wider than a docked sheet (35 rem). */
   wide?: boolean;
+  /** Large text or a short window leaves little height: a step's primary docks in the action bar. */
+  tight?: boolean;
   chrome?: Chrome;
   /** A component whose layout and content load on demand (the Cloud Sync screens) hands both. */
   layout?: Layout;
@@ -181,6 +183,19 @@ function formatKey(
   args: Record<string, string | number>,
 ): string {
   return withoutBraces(c.copy.format(drawnKey(c, key, args), args), key);
+}
+
+/** Step 2's primary (Load file, after a rejected signature) docks in the screen's action bar when
+ *  the window is short or the text large: the step starts near the fold there, the bar never does.
+ *  It follows the step's field in tab order and leads the bar. An embedded pane keeps it in step. */
+export function docksLoadFile(c: KitCtx): boolean {
+  return (
+    c.view.component === "OfflineActivation" &&
+    c.view.state !== "done" &&
+    c.embedded !== true &&
+    c.view.decisions.primary === "offlineActivation.loadFile" &&
+    (c.tight === true || c.shape === "short")
+  );
 }
 
 export function text(
@@ -997,8 +1012,14 @@ export function actions(
       : Number(b === primary) - Number(a === primary),
   );
   // Pressed once: while the work runs the primary is busy and ignores further presses.
+  // The update prompt's primary is busy for as long as the download runs (a second press would
+  // start a second install).
   const busy =
-    c.input.pending !== undefined || c.input.signIn?.redeeming === true;
+    c.input.pending !== undefined ||
+    c.input.signIn?.redeeming === true ||
+    (c.driven === true &&
+      c.view.component === "UpdatePrompt" &&
+      c.view.state === "downloading");
   return (
     <div
       className="actions"

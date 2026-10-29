@@ -241,7 +241,7 @@
       "code": "unavailable",
       "kind": "wire",
       "service": "identity",
-      "description": "Device-code sign-in could not allocate a free user code after several attempts; try again. Also the device-code poll could not finish an approved sign-in yet (503 with `Retry-After`): the flow is kept, poll again (I-37d). Also `POST /api/device-login` (409) for a `pkey` packages sign-in on a deployment with no package registry configured (F-37.1b): the CLI refuses before the browser opens."
+      "description": "Device-code sign-in could not allocate a free user code after several attempts; try again. Also the device-code poll could not finish an approved sign-in yet (503 with `Retry-After`): the flow is kept, poll again (I-37d). Also the exchange when Apple's Game Center key host or Google's token or Games host is unreachable or answers 5xx (WIRE-CONTRACT-V5 §12.11.7); retry. Also `POST /api/device-login` (409) for a `pkey` packages sign-in on a deployment with no package registry configured (F-37.1b): the CLI refuses before the browser opens."
     },
     {
       "code": "erasure_ledger_unavailable",
@@ -265,7 +265,7 @@
       "code": "invalid_request",
       "kind": "wire",
       "service": "identity",
-      "description": "400 from POST /<p>/identity/token (flat RFC 6749 body): the request is malformed, a parameter is missing or repeated, or the body is not form-encoded. On GET /<p>/identity/authorize it travels only in the redirect's `error` query once client_id and redirect_uri are valid (I-08)."
+      "description": "400 from POST /<p>/identity/token (flat RFC 6749 body): the request is malformed, a parameter is missing or repeated, or the body is not form-encoded. On the token-exchange grant also an unknown `subject_token_type`, or a Game Center or Play Games type while the launch gate `launch.gameSignIn` is off (WIRE-CONTRACT-V5 §12.11.7). On GET /<p>/identity/authorize it travels only in the redirect's `error` query once client_id and redirect_uri are valid (I-08)."
     },
     {
       "code": "invalid_client",
@@ -277,7 +277,7 @@
       "code": "invalid_grant",
       "kind": "wire",
       "service": "identity",
-      "description": "400 from POST /<p>/identity/token (flat): the authorization code is unknown, expired, already used, or does not match the PKCE verifier, client_id or redirect_uri. A mismatch consumes the code (I-08)."
+      "description": "400 from POST /<p>/identity/token (flat): the authorization code is unknown, expired, already used, or does not match the PKCE verifier, client_id or redirect_uri. A mismatch consumes the code (I-08). On the token-exchange grant, the one answer for a refused subject token, including a Game Center signature or a Play Games server auth code (WIRE-CONTRACT-V5 §12.11.7)."
     },
     {
       "code": "unsupported_grant_type",
@@ -779,7 +779,7 @@
       "code": "platform-identity-unavailable",
       "kind": "client",
       "service": "identity",
-      "description": "The platform sign-in rung cannot run: no Play services, no declared provider kind for the product, or the OS refused the request (WIRE-CONTRACT-V5 §12.11.6). The client falls to the next rung."
+      "description": "The platform sign-in rung cannot run: no Play services, no declared provider kind for the product, or the OS refused the request; for Game Center, the local player is not authenticated, and for Play Games, the player is not authenticated (WIRE-CONTRACT-V5 §12.11.6, §12.11.7). The client falls to the next rung."
     },
     {
       "code": "sync-locked",

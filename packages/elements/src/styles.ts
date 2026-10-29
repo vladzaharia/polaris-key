@@ -91,6 +91,8 @@ const KIT_CSS = String.raw`
   position: relative;
   isolation: isolate;
   display: grid;
+  /* One column that may shrink: at large text a long word wraps, the screen never outgrows the window. */
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   justify-items: center;
   min-block-size: 100%;
@@ -359,21 +361,13 @@ const KIT_CSS = String.raw`
 }
 /* The docked bar's opaque ground spans the whole window, so content scrolling under it is hidden
    edge to edge, never sliced at the bar's own width (the stage clips it to the window). */
-.pk-root[data-shape="short"]:not([data-tight]) .stage[data-kind="screen"] .card > .actions::before {
+.pk-root[data-shape="short"] .stage[data-kind="screen"] .card > .actions::before {
   content: "";
   position: absolute;
   inset-block: 0;
   inset-inline: -100vw;
   z-index: -1;
   background: var(--pk-surface-raised);
-}
-/* A window under 34rem tall (large text), or a short one under 18rem: the bar scrolls with the
-   content, never over it. After the short rule above, which it overrides. */
-.pk-root[data-tight] .stage[data-kind="screen"] .card > .actions,
-.pk-root[data-tight][data-shape="short"] .stage[data-kind="screen"] .card > .actions {
-  position: static;
-  margin-block: 0;
-  padding-block: 0;
 }
 /* A split's docked bar stays in the end column: its band never spans the window, which would cut
    through the identity panel beside it. The window-filling stage centres the card. */
@@ -507,6 +501,7 @@ p {
   line-height: var(--pk-kit-type-title-line-height);
   font-weight: var(--pk-kit-type-title-weight);
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 .title:focus,
 .pk-root[data-keyboard] .title:focus-visible {
@@ -938,6 +933,7 @@ bdi {
 /* ── Lists and rows (§1.5 rule 1: inset grouped lists) ───────────────────────────────────── */
 .list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1003,7 +999,9 @@ bdi {
   flex: 1 1 10rem;
 }
 .row[data-part="settings-row"] > .row-value {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   margin-inline-start: auto;
 }
 .row-text {
@@ -1024,6 +1022,7 @@ bdi {
 }
 .group {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--pk-space-2);
 }
 .group-label {
@@ -1240,6 +1239,7 @@ bdi {
 .pane {
   position: relative;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--pk-space-5);
   max-inline-size: 40rem;
   padding: var(--pk-space-6);
@@ -1276,6 +1276,26 @@ bdi {
 }
 .pane .actions .btn {
   inline-size: auto;
+}
+/* Large text: the pane's actions dock at the window's foot (a no-op while the pane fits) and a
+   step's primary stays in reach, so the main action is never below the fold (DL1, DL3). */
+.pane .actions {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  padding-block: var(--pk-space-3);
+  background: var(--pk-surface-raised);
+}
+:host([bare]) .pane .actions {
+  position: static;
+}
+:host([bare]) .pk-root[data-tight] .pane .actions {
+  position: sticky;
+}
+.step-item > .btn[data-part="primary"] {
+  position: sticky;
+  inset-block-end: var(--pk-space-3);
+  z-index: 1;
 }
 /* A pane starts at the host's start edge, its links too (DL2). */
 .pane .links {
@@ -1443,6 +1463,17 @@ dialog.sheet .card,
      lifts the card. */
   box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
 }
+/* Large text: the sheet scrolls and its actions dock at its foot, so the primary never sits below
+   the fold (DL1, DL3); at rest they follow the last line, so nothing is covered. */
+dialog.sheet .card > .actions {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  margin-inline: calc(-1 * var(--pk-kit-card-pad));
+  padding-inline: var(--pk-kit-card-pad);
+  padding-block: var(--pk-space-3);
+  background: var(--pk-surface-raised);
+}
 .pk-root[data-shape] dialog.sheet .stage[data-split] .passport {
   display: contents;
 }
@@ -1560,7 +1591,9 @@ dialog.sheet .card,
   text-align: start;
 }
 .step-item {
-  display: grid;
+  /* A flex column, not a grid: the primary docks (sticky) inside the whole step, not its own row. */
+  display: flex;
+  flex-direction: column;
   gap: var(--pk-space-2);
   counter-increment: pk-step;
   padding-inline-start: var(--pk-space-8, 2rem);
@@ -1598,16 +1631,19 @@ dialog.sheet .card,
 }
 .row-value .field input[type="text"],
 .row-value .field select {
-  inline-size: 12rem;
+  inline-size: min(12rem, 60cqi);
 }
 /* A bounded number: the slider, with its value read out beside it (§4.1). */
 .slider {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-inline-size: 100%;
   align-items: center;
   gap: var(--pk-space-3);
 }
 .slider input[type="range"] {
   inline-size: 9rem;
+  max-inline-size: 100%;
   min-block-size: 1.5rem;
   accent-color: var(--pk-primary);
 }

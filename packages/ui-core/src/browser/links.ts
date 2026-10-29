@@ -3,6 +3,7 @@
 // host rule is `isSecureTransportUrl`, the same one the browser adapter holds its `baseUrl` to.
 
 import { isSecureTransportUrl } from "./sdk/core/types.js";
+import { openUrl } from "./sdk/core/signIn.js";
 
 /** The link as a normalized string when it is safe to show and open, else `null`. */
 export function safeLink(value: string | null | undefined): string | null {
@@ -11,8 +12,8 @@ export function safeLink(value: string | null | undefined): string | null {
   return url.username || url.password ? null : url.href;
 }
 
-/** Open a validated link in a new tab. Only ever called from a click. */
+/** Open a validated link: through the desktop bridge's `openExternal` when the host has one,
+ *  else in a new tab. Only ever called from a click. */
 export function openLink(href: string): void {
-  if (typeof window !== "undefined" && typeof window.open === "function")
-    window.open(href, "_blank", "noopener,noreferrer");
+  void openUrl(href);
 }

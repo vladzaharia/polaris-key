@@ -564,7 +564,8 @@ export function DrivenUpdate(
           found &&
           (a.key === "update.install" || a.key === "update.restartWhenReady")
         ) {
-          void installNow(found.url);
+          // One install at a time: a press while it runs does nothing.
+          if (install?.kind !== "running") void installNow(found.url);
         } else if (found && a.key === "update.allChanges") {
           const url = safeLink(found.more ?? found.url);
           if (url) openLink(url);

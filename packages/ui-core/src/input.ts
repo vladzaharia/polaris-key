@@ -145,6 +145,53 @@ export interface SignInSession {
   raced?: boolean;
   /** True when the pending sign-in grant lapsed (300 s). */
   grantExpired?: boolean;
+  /**
+   * The form's step after a license key with no account (UK-42): `key-done` draws ActivateDone's
+   * body, `attach` AddToAccount's (its `addToAccount.step`), `added` its added state. It wins over
+   * every step except an error and an automatic sign-in step.
+   */
+  step?: HolderFormStep;
+}
+
+/** The sign-in form's steps that belong to activation without an account. */
+export type HolderFormStep = "key-done" | "attach" | "added";
+
+/** Who holds the license that just activated (`profile.email` of its document). */
+export interface LicenseHolderInput {
+  /** The address the license was sent to. Empty or absent: floating, held by the key alone; set:
+   *  waiting for that email to sign in. The models mask it themselves (`maskEmail`). */
+  email?: string;
+}
+
+/** ActivateDone's display facts (strings its supplier formatted, like `ActivationInput`). */
+export interface ActivateDoneInput {
+  /** The tier's name ("Pro"); absent, `activation.tier`. */
+  tier?: string;
+  /** The term as the person reads it ("Lifetime", "Renews 3 Mar"); absent, `activation.term`. */
+  term?: string;
+  /** The device kind already worded ("computer", "phone"). */
+  deviceKind?: string;
+  /** This device's place among the license's devices, and the limit. */
+  position?: number;
+  limit?: number;
+}
+
+/** AddToAccount's steps (SIGN-IN.md §3.9, frames 43 to 46). */
+export type AddToAccountStep =
+  | "form"
+  | "invalid"
+  | "busy"
+  | "added"
+  | "owned"
+  | "email-bound"
+  | "failed";
+
+export interface AddToAccountInput {
+  step: AddToAccountStep;
+  /** `invalid`: which field the person must fix. */
+  field?: "name" | "email" | "both";
+  /** The device kind already worded, for the lines that name this device. */
+  deviceKind?: string;
 }
 
 /** Automatic sign-in's own steps (plans/auto-sign-in.md §3), drawn in the sign-in form's body. */
@@ -369,6 +416,13 @@ export interface UiInput {
     response?: string;
   };
   signIn?: SignInSession;
+  /** The license's holder (UK-42): drives ActivateDone and the AccountAndLicense row. Absent: the
+   *  models do not know, and draw what they drew before. */
+  licenseHolder?: LicenseHolderInput;
+  /** ActivateDone's display facts; absent, ActivateDone is hidden. */
+  activateDone?: ActivateDoneInput;
+  /** AddToAccount's step; absent, AddToAccount is hidden. */
+  addToAccount?: AddToAccountInput;
   /** The sign-in provider the methods step's row names ("Apple", "Google", "Steam"), and the one a
    *  failed sign-in names. Absent: "Polaris Locker", the sign-in the generic row opens. */
   provider?: string;
