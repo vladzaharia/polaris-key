@@ -27,6 +27,16 @@ import {
   type SessionEvent,
 } from "@polaris-key/client-core/peer";
 
+/** The `HELLO` a mode-v end sends: the optional label, this platform and the product slug. */
+export const nearbyHello = (
+  slug: string,
+  label?: string,
+): PeerSessionOptions["hello"] => ({
+  ...(label !== undefined ? { label } : {}),
+  platform: process.platform,
+  app: slug,
+});
+
 export const HANDSHAKE_FRAME_MAX = 16_384;
 export const HANDSHAKE_MS = 30_000;
 /** The first APP record type; `send` defaults to it. */

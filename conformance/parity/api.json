@@ -2380,6 +2380,11 @@
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
+      "sdk": "node",
+      "path": "cloudConnect.nearby",
+      "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .onRequest); not a verb"
+    },
+    {
       "sdk": "kotlin",
       "path": "client.cloudSync",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
@@ -6427,6 +6432,58 @@
         }
       },
       "layer": "client"
+    },
+    {
+      "id": "cloudConnect.nearby.request",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "sdks": {
+        "node": {},
+        "python": {
+          "planned": "CC-15"
+        },
+        "swift": {
+          "planned": "CC-15"
+        },
+        "kotlin": {
+          "planned": "CC-15"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.nearby.onRequest",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "sdks": {
+        "node": {},
+        "python": {
+          "planned": "CC-15"
+        },
+        "swift": {
+          "planned": "CC-15"
+        },
+        "kotlin": {
+          "planned": "CC-15"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "handler",
+          "type": "listener"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
     }
   ],
   "removed": [

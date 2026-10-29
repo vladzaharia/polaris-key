@@ -160,31 +160,13 @@ describe("the choice", () => {
   });
 
   it("runs the whole vouch: the code matches, VOUCH_REQ is verified, approved reaches D", async () => {
-    const worker = new FakeNearbyWorker();
-    await worker.register(REQUEST, keys, D_ID);
-    worker.mHasKeys = true;
-    const m = await approver("Ana's laptop");
-    const r = await request();
-    await until(() => r.approvers.length === 1);
-    const results: string[] = [];
-    r.onResult((s) => results.push(s));
-    const { code } = await r.choose(r.approvers[0]!.id);
-    await until(() => m.approvals.length === 1);
-    const a = m.approvals[0]!;
-    const req = await a.pick(realCode(a, code));
+    const { r, req } = await vouched();
     expect(req).toMatchObject({
       request: REQUEST,
       deviceId: D_ID,
       label: "New phone",
     });
-    if (typeof req === "string") throw new Error("not a request");
-    const ans = worker.approve(req);
-    expect(ans.http).toBe(200);
-    expect(await a.finish({ ...ans, discoveryNearby: true })).toEqual({
-      sent: "approved",
-    });
     await until(() => r.result === "approved");
-    expect(results).toEqual(["approved"]);
   });
 
   it("a wrong pick ends the chosen session; the request goes on and the person may choose again", async () => {
@@ -206,23 +188,29 @@ describe("the choice", () => {
   });
 });
 
+/** The whole vouch up to `approved`: the person taps, the codes match, M approves. */
+async function vouched() {
+  const worker = new FakeNearbyWorker();
+  await worker.register(REQUEST, keys, D_ID);
+  worker.mHasKeys = true;
+  const m = await approver("Ana's laptop");
+  const r = await request();
+  await until(() => r.approvers.length === 1);
+  const { code } = await r.choose(r.approvers[0]!.id);
+  await until(() => m.approvals.length === 1);
+  const a = m.approvals[0]!;
+  const req = await a.pick(realCode(a, code));
+  if (typeof req === "string") throw new Error("not a request");
+  await a.finish({ ...worker.approve(req), discoveryNearby: true });
+  await until(() => r.result === "approved");
+  return { r, a, req };
+}
+
 describe("the account gate", () => {
   async function approved() {
-    const worker = new FakeNearbyWorker();
-    await worker.register(REQUEST, keys, D_ID);
-    worker.mHasKeys = true;
-    const m = await approver("Ana's laptop");
-    const r = await request();
-    await until(() => r.approvers.length === 1);
+    const { r, a } = await vouched();
     const got: number[] = [];
     r.onRecord((x) => got.push(x.type));
-    const { code } = await r.choose(r.approvers[0]!.id);
-    await until(() => m.approvals.length === 1);
-    const a = m.approvals[0]!;
-    const req = await a.pick(realCode(a, code));
-    if (typeof req === "string") throw new Error("not a request");
-    await a.finish({ ...worker.approve(req), discoveryNearby: true });
-    await until(() => r.result === "approved");
     return { r, a, got };
   }
 

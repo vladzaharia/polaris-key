@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import {
   ChoiceClient,
   CloudConnect,
+  CloudNearby,
   ConfigClient,
   DeviceCodeSession,
   EntitlementsClient,
@@ -193,6 +194,10 @@ it("cloudConnect.status", () =>
   expect("status" in CloudConnect.prototype).toBe(true));
 it("cloudConnect.onNotice", () =>
   expect("onNotice" in CloudConnect.prototype).toBe(true));
+it("cloudConnect.nearby.request", () =>
+  expect("request" in CloudNearby.prototype).toBe(true));
+it("cloudConnect.nearby.onRequest", () =>
+  expect("onRequest" in CloudNearby.prototype).toBe(true));
 it("removed: config.getConfig", () =>
   expect("getConfig" in ConfigClient.prototype).toBe(false));
 it("removed: PolarisKeyClient.getConfig", () =>

@@ -214,6 +214,16 @@ export class ConnectClient {
     return this.#serial(() => this.#identity(opts.refresh === true));
   }
 
+  /**
+   * D's device keys (made when none exist) and its `X-PKey-Device` value, for the vouch of nearby
+   * approval (CC-15). Needs no sign-in, no roster and no Connect. @internal
+   */
+  async nearbySigner(): Promise<{ port: DeviceKeyPort; deviceId: string }> {
+    const port = await this.#usePort();
+    await this.#ensureKeys(port);
+    return { port, deviceId: this.ctx.deviceId };
+  }
+
   /** The held identity as it stands, verified again now; null when none is held, it does not
    *  verify any more or its roster expired. Sends nothing and makes no keys. */
   current(): Promise<ConnectIdentity | null> {

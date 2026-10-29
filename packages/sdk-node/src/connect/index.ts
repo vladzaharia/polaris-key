@@ -16,6 +16,7 @@ export {
 } from "./session.js";
 export {
   CloudConnect,
+  CloudNearby,
   type CloudConnectOptions,
   type CloudConnectStatus,
   type CloudPeer,
@@ -37,3 +38,18 @@ export type {
   RingAdoption,
   TrustApplication,
 } from "./channel.js";
+export type {
+  ApprovalNotice,
+  ApproveAnswerInput,
+  FinishOutcome,
+  NearbyApproval,
+  NearbyApproverHandle,
+  NearbyApproverOptions,
+} from "./nearbyApprover.js";
+export type {
+  NearbyApproverInfo,
+  NearbyCloseCode,
+  NearbyRecord,
+  NearbyRequest,
+  NearbyRequestOptions,
+} from "./nearbyRequester.js";

@@ -42,7 +42,12 @@ import {
   type MdnsFound,
   type MdnsHandle,
 } from "./mdns.js";
-import { LanError, SocketLink, type SessionClosed } from "./session.js";
+import {
+  LanError,
+  SocketLink,
+  nearbyHello,
+  type SessionClosed,
+} from "./session.js";
 
 /** What the requester reads of the client. */
 export interface RequesterSource {
@@ -331,11 +336,7 @@ export class NearbyRequester implements NearbyRequest {
         slug: this.#src.slug,
         staticKey: key,
         holdSas: true,
-        hello: {
-          ...(this.#o.label !== undefined ? { label: this.#o.label } : {}),
-          platform: process.platform,
-          app: this.#src.slug,
-        },
+        hello: nearbyHello(this.#src.slug, this.#o.label),
         timer: this.#timer,
       },
       onEvent: (e) => {

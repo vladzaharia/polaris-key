@@ -55,7 +55,12 @@ import {
   type MdnsAdapter,
   type MdnsHandle,
 } from "./mdns.js";
-import { LanError, SocketLink, type SessionClosed } from "./session.js";
+import {
+  LanError,
+  SocketLink,
+  nearbyHello,
+  type SessionClosed,
+} from "./session.js";
 
 /** What the approver reads of the client, at start and at each renewal. */
 export interface ApproverSource {
@@ -458,11 +463,7 @@ export class NearbyApprover implements NearbyApproverHandle {
         slug: this.#src.slug,
         staticKey: key,
         admission: gen.limiter,
-        hello: {
-          ...(this.#o.label !== undefined ? { label: this.#o.label } : {}),
-          platform: process.platform,
-          app: this.#src.slug,
-        },
+        hello: nearbyHello(this.#src.slug, this.#o.label),
         timer: this.#timer,
       },
       onEvent: (e) => {
