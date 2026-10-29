@@ -255,6 +255,8 @@ struct PreviewHostApp: View {
                     }
                 }
                 .navigationTitle(style.identity.name)
+                // The stand-in host's list is named, as a real host's is.
+                .accessibilityLabel(style.identity.name)
             }
         }
     }
