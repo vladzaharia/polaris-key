@@ -195,7 +195,7 @@ function view(
  * id of each account that holds a binding or the root rule, and compare. A person who holds
  * neither is not a candidate, so this cannot be used to look anyone else up.
  */
-async function resolveMember(
+export async function resolveMember(
   c: AdminCtx,
   memberId: string,
 ): Promise<{ accountId: string; entry: ConsoleDirectoryEntry } | Response> {

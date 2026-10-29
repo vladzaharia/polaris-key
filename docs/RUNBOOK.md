@@ -205,6 +205,10 @@ revoked from the console or lost to a bad write.
 - **Removing someone.** Take them out of the group. Their console session keeps its role until it
   ends (8 hours at most) unless they sign out; `wrangler secret put ADMIN_SESSION_SECRET --env
 <env>` ends every console session at once.
+- **Revoking admin tokens.** A person may also hold `admin`-scope personal tokens (from `pkey login`).
+  Taking them out of the group does not end those tokens; their roles are re-read on each use, but
+  until then they work. Revoke the person's admin tokens: in the console, **Platform → Members**, the
+  row menu, **Sign out everywhere**, which ends them at once with the person's sessions.
 - **Checking.** `GET /manage/api/me` answers `permissions`: the roles and the areas the session
   holds. A session without the group is refused every route with
   `{"error":{"code":"forbidden","reason":"no_access","area":"console"}}`.

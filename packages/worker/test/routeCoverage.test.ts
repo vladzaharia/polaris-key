@@ -252,6 +252,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // ST-31.4: the Platform Members roster (platform scope, area `members`).
     ["/manage/api/members", ["get"]],
     ["/manage/api/members/{memberId}", ["get"]],
+    // ST-34.12: sign a member out everywhere (the GET is the dry run).
+    ["/manage/api/members/{memberId}/sign-out", ["get", "post"]],
     // ST-31.6: grant, edit and take back a console role (area `members`; Superadmin-only cases are
     // the handler's, through the grant rules).
     ["/manage/api/bindings", ["post"]],

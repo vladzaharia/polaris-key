@@ -761,6 +761,7 @@ public object Feature {
     public const val uiKitManage: String = "ui.kit.manage"
     public const val uiKitKeyentry: String = "ui.kit.keyentry"
     public const val uiKitAccount: String = "ui.kit.account"
+    public const val uiKitHolders: String = "ui.kit.holders"
     public const val uiCli: String = "ui.cli"
     public const val uiCliMount: String = "ui.cli.mount"
     public const val uiCliContract: String = "ui.cli.contract"
@@ -899,6 +900,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.kit.manage",
     "ui.kit.keyentry",
     "ui.kit.account",
+    "ui.kit.holders",
     "ui.cli",
     "ui.cli.mount",
     "ui.cli.contract",
@@ -2057,6 +2059,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.kit.manage" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit.keyentry" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit.account" to CapabilityRow("implemented", "sdk", listOf()),
+    "ui.kit.holders" to CapabilityRow("planned", "sdk", listOf()),
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.cli.mount" to CapabilityRow("planned", "sdk", listOf(CapabilityNa("android", "runtime"))),
     "ui.cli.contract" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
@@ -2079,4 +2082,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "ae30cee727c1ea4d504e6311ffd27e80ff56bb9f4528ff625a38d0ad2efcfd31"
+public const val CAPABILITY_DIGEST: String = "cf5d99f8bb5ba71055a6964661dcf2b2aee0cad3fe412995d552a751e3b89566"

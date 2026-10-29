@@ -641,6 +641,32 @@ function cases(): Case[] {
         }
       },
     },
+    // ST-34.12b: Sign out everywhere's confirm, with the token list, whatever the window.
+    {
+      name: "global:platform-members?sign-out",
+      hash: "#/platform/members",
+      act: async (page) => {
+        await page
+          .getByRole("button", { name: "Actions for Sam Okoye" })
+          .first()
+          .click();
+        await page
+          .getByRole("menuitem", { name: /Sign out everywhere/ })
+          .click();
+        const dialog = page.getByRole("alertdialog");
+        await dialog.getByText("deploy laptop").waitFor();
+        const out = await dialog
+          .getByRole("button")
+          .evaluateAll(
+            (bs) =>
+              bs
+                .map((b) => b.getBoundingClientRect())
+                .filter((r) => r.bottom > window.innerHeight + 0.5 || r.top < 0)
+                .length,
+          );
+        if (out > 0) throw new Error("a confirm button is out of view");
+      },
+    },
 
     {
       name: "djdl:rollouts?view=matrix&cell",

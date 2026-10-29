@@ -2272,6 +2272,23 @@ export const DATA_ROUTES: Record<string, unknown> = {
   // ST-31.11: Platform → Members. Nine people (a root holder, both admin kinds, a narrowed
   // Product admin, a long name and address) and three invites, one of them for a platform role.
   "/manage/api/members": membersView(),
+  // ST-34.12b: what signing Sam Okoye out would stop; one label long enough to wrap.
+  "/manage/api/members/mbr_4/sign-out": {
+    memberId: "mbr_4",
+    tokens: [
+      {
+        label: "deploy laptop",
+        lastUsedAt: 1_789_990_000,
+        expiresAt: 1_792_000_000,
+      },
+      {
+        label:
+          "release pipeline for the long-named customer integration, staging",
+        lastUsedAt: null,
+        expiresAt: 1_792_000_000,
+      },
+    ],
+  },
   // ST-31.14: Product → Settings → Members (DJDL): Kenji (you), Lucía (two areas), a long name
   // with a long address and four areas, an invite, and two roles that reach DJDL from above.
   [`${PROD}/members`]: productMembersView(),

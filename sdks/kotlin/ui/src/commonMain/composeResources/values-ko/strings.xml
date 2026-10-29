@@ -303,6 +303,57 @@
     <string name="common_activateLicense__macos">라이선스 활성화</string>
     <!-- Activate: license key entry. -->
     <string name="activate_busy">활성화하는 중…</string>
+    <!-- ActivateDone: the step after a license key activates. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="activate_done_title">%1$s 준비 완료</string>
+    <!-- ActivateDone: the license line. Arguments: {tier} = the tier's name (never translated), {term} = the term (Lifetime, Renews 3 Mar), {deviceKind} = the device kind already worded (computer, phone), {n} and {limit} = integers. Arguments: 1=tier, 2=term, 3=deviceKind, 4=n, 5=limit. -->
+    <string name="activate_done_device">%1$s · %2$s · 이 %3$s은(는) %5$s대 중 %4$s번째 기기입니다.</string>
+    <!-- ActivateDone: the quiet recommendation card. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="activate_recommend_title">%1$s을(를) 계정에 보관하세요</string>
+    <!-- ActivateDone: the badge on the recommendation card. -->
+    <string name="activate_recommend_badge">추천</string>
+    <!-- ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them. -->
+    <string name="activate_recommend_sync">클라우드 동기화로 설정과 저장 데이터를 모든 기기에서 유지하세요</string>
+    <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
+    <string name="activate_recommend_recover">키나 이 기기를 잃어도 라이선스를 되찾으세요</string>
+    <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
+    <string name="activate_recommend_devices">%1$s에게 묻지 않고 직접 새 기기로 옮기세요</string>
+    <!-- ActivateDone: the recommendation card's action; opens AddToAccount. -->
+    <string name="activate_recommend_action">이름과 이메일 추가</string>
+    <string name="activate_recommend_action__macos">이름과 이메일 추가</string>
+    <!-- ActivateDone: under the recommendation card. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="activate_recommend_skip">또는 계정 없이 계속하세요. %1$s은(는) 똑같이 작동합니다.</string>
+    <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
+    <string name="activate_recommend_portal">라이선스를 Polaris Locker에 안전하게 보관하세요</string>
+    <!-- AddToAccount: under the name and email fields. -->
+    <string name="activate_attach_lede">라이선스와 기기는 그대로입니다. 브라우저에서 코드로 이메일을 확인합니다.</string>
+    <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="activate_attach_fine">브라우저에서 이 이메일로 코드를 보냅니다. %1$s은(는) 코드를 보지 못합니다.</string>
+    <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="activate_attach_done">%1$s이(가) 계정에 있습니다</string>
+    <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
+    <string name="activate_attach_syncOn">이 %1$s에서 클라우드 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다.</string>
+    <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
+    <string name="activate_waiting">이 라이선스는 %1$s(으)로 전송되었습니다. 그 이메일로 로그인하면 계정에 보관할 수 있습니다.</string>
+    <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->
+    <string name="activate_waitingSignIn">%1$s(으)로 로그인</string>
+    <string name="activate_waitingSignIn__macos">%1$s(으)로 로그인</string>
+    <!-- AddToAccount: someone attached the license while this screen was open. -->
+    <string name="activate_owned_title">이 라이선스는 Polaris Locker 계정에 있습니다</string>
+    <!-- AddToAccount: under the owned title. Arguments: {product} = the product's name (never translated), {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=product, 2=deviceKind. -->
+    <string name="activate_owned_lede">전송된 이메일로 로그인하세요. 로그인하는 즉시 이 %2$s에서 %1$s이(가) 시작됩니다.</string>
+    <!-- AddToAccount: the license's email does not match the account. -->
+    <string name="activate_otherEmail_title">이 라이선스는 다른 이메일로 전송되었습니다</string>
+    <!-- AddToAccount: under the otherEmail title. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->
+    <string name="activate_otherEmail_body">%1$s(으)로 전송되었습니다. 그 이메일로 로그인하거나, 이 계정에 추가한 뒤 확인하세요.</string>
+    <!-- AddToAccount: opens the portal's sign-in methods. -->
+    <string name="activate_otherEmail_verify">해당 이메일 확인</string>
+    <string name="activate_otherEmail_verify__macos">해당 이메일 확인</string>
+    <!-- AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email. -->
+    <string name="account_notInAccount">계정에 없음</string>
+    <!-- The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="signin_attach_header">%1$s을(를) 계정에 추가</string>
+    <!-- License key step: under Continue without an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="signin_key_skipNote">%1$s은(는) 똑같이 작동합니다. 언제든 계정에 추가할 수 있습니다.</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
     <string name="offlineActivation_title">오프라인 활성화</string>
     <!-- OfflineActivation: step 1; the kit's number marker carries the order. -->
@@ -1108,8 +1159,8 @@
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_noEntries">이 키는 %1$s에서 남은 등록 횟수가 없어요. 계정에 추가하면 %1$s에서 로그인으로 사용할 수 있어요.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
-    <string name="signin_key_skip">지금은 건너뛰기</string>
-    <string name="signin_key_skip__macos">지금은 건너뛰기</string>
+    <string name="signin_key_skip">계정 없이 계속</string>
+    <string name="signin_key_skip__macos">계정 없이 계속</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_ownedSignIn">그 계정으로 로그인</string>
     <string name="signin_key_ownedSignIn__macos">그 계정으로 로그인</string>

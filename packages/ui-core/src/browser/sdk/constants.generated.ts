@@ -759,6 +759,7 @@ export const Feature = {
   uiKitManage: "ui.kit.manage",
   uiKitKeyentry: "ui.kit.keyentry",
   uiKitAccount: "ui.kit.account",
+  uiKitHolders: "ui.kit.holders",
   uiCli: "ui.cli",
   uiCliMount: "ui.cli.mount",
   uiCliContract: "ui.cli.contract",
@@ -898,6 +899,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.kit.manage",
   "ui.kit.keyentry",
   "ui.kit.account",
+  "ui.kit.holders",
   "ui.cli",
   "ui.cli.mount",
   "ui.cli.contract",
@@ -2272,6 +2274,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.kit.manage": { status: "implemented", service: "sdk", na: [] },
   "ui.kit.keyentry": { status: "implemented", service: "sdk", na: [] },
   "ui.kit.account": { status: "implemented", service: "sdk", na: [] },
+  "ui.kit.holders": { status: "planned", service: "sdk", na: [] },
   "ui.cli": {
     status: "na",
     service: "sdk",
@@ -2351,4 +2354,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "2edcc0caa111f97dd5065a9de308893db428b88a47437b07b7b3e1fd95d6881a";
+  "67accb24672921038b52961713bb1a9a3146509662f67df4e383f915fe08d1c1";

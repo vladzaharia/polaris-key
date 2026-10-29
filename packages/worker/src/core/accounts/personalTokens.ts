@@ -460,21 +460,27 @@ export async function revokeAccountTokenAsAdmin(
   return row ? adminViewOf(row, now) : null;
 }
 
-/** Revoke every live token of the account; answers how many. */
+/**
+ * Revoke every live token of the account; answers how many. With `scope`, only the tokens of that
+ * scope end (ST-34.12: sign-out ends the `admin` tokens and leaves the `packages` ones).
+ */
 export async function revokeAllAccountTokens(
   db: Db,
   accountId: string,
   by: string,
   reason: PersonalTokenRevokeReason,
   now: number,
+  scope?: PersonalTokenScope,
 ): Promise<number> {
   return db.runChanges(
     `UPDATE account_tokens SET revoked_at = ?, revoked_by = ?, revoke_reason = ?
-      WHERE account_id = ? AND revoked_at IS NULL`,
+      WHERE account_id = ? AND revoked_at IS NULL AND (? IS NULL OR scope = ?)`,
     now,
     by.slice(0, 320),
     reason,
     accountId,
+    scope ?? null,
+    scope ?? null,
   );
 }
 

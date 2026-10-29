@@ -2478,6 +2478,24 @@
       ]
     },
     {
+      "id": "ui.kit.holders",
+      "family": "ui",
+      "title": "Activation without an account: the Done step, the recommendation to keep the license in an account, Add your name and email (attach) and the floating License row",
+      "service": "sdk",
+      "proof": [
+        {
+          "kind": "snapshot"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "headless",
+          "reason": "runtime",
+          "why": "A headless SDK ships no UI toolkit; hosts call identity.signIn.start with the hints and purpose, then identity.attach, themselves (identity.attach, identity.signin.hints)."
+        }
+      ]
+    },
+    {
       "id": "ui.cli",
       "family": "ui",
       "title": "Terminal UI: status, activate, deactivate, sign-in and devices verbs",

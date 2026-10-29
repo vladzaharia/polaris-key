@@ -24,7 +24,13 @@ import type { AutoOutcome, SignInPrimitives } from "@polaris-key/ui-core";
 import { linkOfferOutcome, primitivesOf } from "./auto.js";
 import { PkElement, type PkActionDetail } from "./element.js";
 import { TAGS } from "./layout.js";
-import { actionOf, text, type RenderCtx } from "./render.js";
+import {
+  actionOf,
+  LAYOUTS,
+  placeKeys,
+  text,
+  type RenderCtx,
+} from "./render.js";
 import { PkSignIn, STEP_ELEMENTS } from "./signin.js";
 import type { ElementsTheme, ThemeHost } from "./theme.js";
 import { renderView } from "./views.js";
@@ -471,7 +477,10 @@ export class PkUpdatePrompt extends PkElement {
     const body = renderView(c);
     if (!this.asDialog) return body;
     if (this.dismissed === c.view.state) return nothing;
+    // Large text scrolls the sheet: with nothing to press, the dialog itself takes the keys.
+    const p = placeKeys(c.view, LAYOUTS.UpdatePrompt);
     return html`<dialog
+      tabindex=${p.controls.length + p.links.length ? nothing : "0"}
       class="sheet"
       part="sheet"
       data-part="sheet"

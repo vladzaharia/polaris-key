@@ -1457,14 +1457,17 @@
     "packages/elements/test/browser/chrome.gnome.browser.test.ts": {
       "jscpd:duplicate": 10
     },
+    "packages/elements/test/browser/largeType.browser.test.ts": {
+      "jscpd:duplicate": 9
+    },
     "packages/elements/test/browser/polish.browser.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "packages/elements/test/browser/poweredby.browser.test.ts": {
       "jscpd:duplicate": 3
     },
     "packages/elements/test/browser/render.browser.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 10
     },
     "packages/elements/test/browser/visual.browser.test.ts": {
       "jscpd:duplicate": 5
