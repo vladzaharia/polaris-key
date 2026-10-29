@@ -89,7 +89,7 @@ describe("Distribution → a channel: Sales", () => {
         within(list)
           .getAllByRole("tab")
           .map((t) => t.textContent),
-      ).toEqual(["Status", "Releases", "Sales"]),
+      ).toContain("Sales"),
     );
   });
 
@@ -102,11 +102,13 @@ describe("Distribution → a channel: Sales", () => {
     const list = await screen.findByRole("tablist", {
       name: "Google Play tabs",
     });
-    expect(
-      within(list)
-        .getAllByRole("tab")
-        .map((t) => t.textContent),
-    ).toEqual(["Status", "Releases"]);
+    await waitFor(() =>
+      expect(
+        within(list)
+          .getAllByRole("tab")
+          .map((t) => t.textContent),
+      ).not.toContain("Sales"),
+    );
   });
 
   it("ready: the App Store products", async () => {

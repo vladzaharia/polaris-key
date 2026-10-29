@@ -96,7 +96,7 @@ describe("a channel's Setup tab: credentials", () => {
     resetConsole();
     boot(`${H}/app-store`);
     await screen.findByRole("heading", { level: 1, name: "App Store" });
-    await userEvent.click(screen.getByRole("tab", { name: "Setup" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Setup" }));
     expect(window.location.hash).toBe(HASH_APP);
     await table();
   });

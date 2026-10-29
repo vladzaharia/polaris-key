@@ -164,6 +164,7 @@ describe("Distribution → a channel: the tablist", () => {
   it("shows only built tabs, as a tablist with the roving tab stop", async () => {
     boot(`${H}/app-store`, [row()]);
     const list = await screen.findByRole("tablist", { name: "App Store tabs" });
+    await within(list).findByRole("tab", { name: "Setup" });
     const tabs = within(list).getAllByRole("tab");
     expect(tabs.map((t) => t.textContent)).toEqual([
       "Status",
@@ -177,9 +178,9 @@ describe("Distribution → a channel: the tablist", () => {
   });
 
   it("an address on a tab that is not built opens Status and says so", async () => {
-    boot(`${H}/app-store/sales`, [row()]);
-    await screen.findByRole("tablist", { name: "App Store tabs" });
-    await waitFor(() => expect(window.location.hash).toBe(`${H}/app-store`));
+    boot(`${H}/itch/sales`, [row({ id: "itch", label: "itch.io" })]);
+    await screen.findByRole("tablist", { name: "itch.io tabs" });
+    await waitFor(() => expect(window.location.hash).toBe(`${H}/itch`));
     expect(
       screen.getByRole("tab", { name: "Status" }).getAttribute("aria-selected"),
     ).toBe("true");

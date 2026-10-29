@@ -40,8 +40,10 @@ export function ChannelPage({
   const channels = useChannels(slug, known);
   const row = channels.data?.channels.find((c) => c.id === id);
   // An out-of-scope channel can hold nothing: Status only.
+  // Until the row arrives only the always-on tabs show, plus the one in the address (a deep link
+  // keeps its tab); then each tab's `applies` decides.
   const tabs = !row
-    ? CHANNEL_TABS
+    ? CHANNEL_TABS.filter((t) => !t.applies || t.value === tab)
     : row.inScope
       ? CHANNEL_TABS.filter((t) => t.applies?.(row) ?? true)
       : CHANNEL_TABS.slice(0, 1);
