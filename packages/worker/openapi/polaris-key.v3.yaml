@@ -9120,6 +9120,100 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/nearby/approve:
+    post:
+      operationId: identityNearbyApprove
+      tags: [identity]
+      summary: The signed-in device approves or denies a nearby sign-in (I-40.5)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.5. The approving device M sends its bearer with its `X-PKey-Device`,
+        the request handle, the two keys D started with, the decision and a `nearby-approve`
+        `pkey-proof/1` proof over the handle, checked with M's registered signing key. A device with
+        no sign-in is `403 account_required`; one with no registered signing key is
+        `409 device_keys_required`. A request that is unknown, expired, decided or another
+        product's, M's own request, and keys that differ from D's start keys are one
+        `404 not_found`; a key mismatch counts an attempt and the third ends the request. A client
+        network other than the one `start` came from is `403 not_nearby` and the request stays open.
+        A denial is final (`204`). An approval with no `choice` while a choice is due answers `choose`
+        and writes nothing. `choice` is `{kind:"license", licenseId}` or `{kind:"create"}` and nothing
+        else. 10 calls a minute per approving device, and 5 an hour per subject charged on decisions
+        only, both fail-closed. NESTED errors. With Identity off, `identity.nearby` off or the
+        operator gate `launch.identityNearby` off, the route does not exist (`404 not_found`).
+        The approval itself is bound in a later release of this route (I-40.6); until then an
+        approval that is not a `choose` answers `503 unavailable` and leaves the request open.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NearbyApproveRequest" }
+      responses:
+        "200":
+          description: "A choice is due; nothing is written. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NearbyApproveResponse" }
+        "204":
+          description: The request was denied. The denial is final.
+        "400":
+          description: >
+            A malformed body, handle, `choice` or device id (`bad_request`), or a refused proof
+            (`invalid_grant`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                invalid:
+                  value: { error: { code: invalid_grant } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `not_nearby` (another client network than `start`'s) or `account_required` (M has no
+            sign-in on this product).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                notNearby: { value: { error: { code: not_nearby } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: M has no registered signing key (`device_keys_required`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: Over the device or subject limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+        "503":
+          description: The sign-in could not be read, or the approval is not served yet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityNearbyApprove
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/identity/link:
     get:
       operationId: identityLinkOffer
@@ -28652,6 +28746,44 @@ components:
         request: { type: string, pattern: "^nr_[A-Za-z0-9_-]{22}$" }
         expiresIn: { type: integer, enum: [300] }
         interval: { type: integer, enum: [3] }
+    NearbyApproveRequest:
+      type: object
+      description: >
+        M's decision (§12.11.5). The keys are D's, as M learned them from D's `VOUCH_REQ`. The proof
+        signs the handle only; the decision and the choice are protected by TLS and M's bearer.
+      required: [request, signKey, agreeKey, decision, proof]
+      properties:
+        request: { type: string, pattern: "^nr_[A-Za-z0-9_-]{22}$" }
+        signKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        agreeKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        decision: { type: string, enum: [approve, deny] }
+        choice:
+          oneOf:
+            - type: object
+              required: [kind, licenseId]
+              additionalProperties: false
+              properties:
+                kind: { type: string, enum: [license] }
+                licenseId: { type: string }
+            - type: object
+              required: [kind]
+              additionalProperties: false
+              properties:
+                kind: { type: string, enum: [create] }
+        proof:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{86}$"
+          description: A `pkey-proof/1` signature, purpose `nearby-approve`, by M's registered signing key.
+    NearbyApproveResponse:
+      type: object
+      description: >
+        The `choose` answer: the account's licence view for D, nothing written. The `approved`
+        answer (`{status: "approved", deviceLabel}`) is served from I-40.6.
+      required: [status]
+      properties:
+        status: { type: string, enum: [choose, approved] }
+        choices: { $ref: "#/components/schemas/LicenseChoiceView" }
+        deviceLabel: { type: [string, "null"] }
     LinkOfferResponse:
       type: object
       required: [offer]

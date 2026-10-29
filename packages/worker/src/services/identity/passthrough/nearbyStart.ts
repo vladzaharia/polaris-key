@@ -79,7 +79,6 @@ const MAX_BODY = 4 * 1024;
 /** A label is cut to 64 code points after normalisation; this bounds what is read for it. */
 const MAX_NAME = 1024;
 
-const notFoundNested = (): Response => wireError(404, ErrorCode.NotFound);
 const keysInvalid = (): Response => wireError(400, ErrorCode.DeviceKeysInvalid);
 
 interface StartBody {
@@ -89,16 +88,57 @@ interface StartBody {
   proof: string;
 }
 
-/** The body, or null when it is not exactly the documented shape. */
-async function readBody(req: Request): Promise<StartBody | "too_large" | null> {
+/** A JSON object body of at most `max` bytes, `"too_large"` over it, or null when it is anything else. */
+async function readJsonObject(
+  req: Request,
+  max: number,
+): Promise<Record<string, unknown> | "too_large" | null> {
   let o: unknown;
   try {
-    o = JSON.parse(await readBodyText(req, MAX_BODY));
+    o = JSON.parse(await readBodyText(req, max));
   } catch (e) {
     return e instanceof BodyTooLargeError ? "too_large" : null;
   }
   if (!o || typeof o !== "object" || Array.isArray(o)) return null;
-  const r = o as Record<string, unknown>;
+  return o as Record<string, unknown>;
+}
+
+/**
+ * Whether nearby approval is off for the product: the operator gate `launch.identityNearby`, the
+ * product row, or `identity.nearby`. Checked before any body is read, so an off route is
+ * indistinguishable from one that does not exist (§12.11.5 rule 13). Identity being on is the
+ * router's.
+ */
+async function nearbyOff(env: Env, db: Db, product: Product): Promise<boolean> {
+  if (!(await launchGateOn(env, db, "launch.identityNearby"))) return true;
+  const row = await getProduct(db, product.slug);
+  if (!row) return true;
+  return !(await readPlatformSignIn(db, row)).nearby;
+}
+
+/**
+ * The first steps of a nearby route that takes a body: the method, the gates, then the shape. Returns the
+ * parsed body, or the response to answer (`404` off, `413` too large, `400` malformed).
+ */
+export async function gatedBody<T>(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  max: number,
+  parse: (o: Record<string, unknown>) => T | null,
+): Promise<T | Response> {
+  if (req.method !== "POST") return methodNotAllowed();
+  if (await nearbyOff(env, db, product))
+    return wireError(404, ErrorCode.NotFound);
+  const o = await readJsonObject(req, max);
+  if (o === "too_large") return wireError(413, "body_too_large");
+  const body = o === null ? null : parse(o);
+  return body ?? wireError(400, ErrorCode.BadRequest);
+}
+
+/** The body, or null when it is not exactly the documented shape. */
+function parseBody(r: Record<string, unknown>): StartBody | null {
   const { signKey, agreeKey, deviceName, proof } = r;
   if (
     typeof signKey !== "string" ||
@@ -138,20 +178,10 @@ export async function handleNearbyStart(
   product: Product,
   now: number,
 ): Promise<Response> {
-  if (req.method !== "POST") return methodNotAllowed();
-
-  // 1. The gates, before the body is read: an off route is indistinguishable from one that does
-  // not exist (§12.11.5 rule 13). Identity being on is the router's.
-  if (!(await launchGateOn(env, db, "launch.identityNearby")))
-    return notFoundNested();
-  const row = await getProduct(db, product.slug);
-  if (!row) return notFoundNested();
-  if (!(await readPlatformSignIn(db, row)).nearby) return notFoundNested();
-
-  // Then the shape.
-  const body = await readBody(req);
-  if (body === "too_large") return wireError(413, "body_too_large");
-  if (!body) return wireError(400, ErrorCode.BadRequest);
+  // 1. The gates, then the shape (§12.11.5 rule 13: an off route is 404 even for a bad body).
+  const body = await gatedBody(req, env, db, product, MAX_BODY, parseBody);
+  if (body instanceof Response) return body;
+  const asked = body;
 
   // 2. The network budget.
   if (
@@ -170,7 +200,7 @@ export async function handleNearbyStart(
     return wireError(400, ErrorCode.BadRequest);
 
   // 4. The keys: well formed, the held-key rule, an agreement key no other device holds.
-  const { signKey, agreeKey } = body;
+  const { signKey, agreeKey } = asked;
   if (!validateDeviceKeys({ signKey, agreeKey })) return keysInvalid();
   const held = await deviceSignKey(db, product.slug, deviceId);
   if (held !== null && held !== signKey) return keysInvalid();
@@ -186,7 +216,7 @@ export async function handleNearbyStart(
       value: `${signKey}.${agreeKey}`,
       tokenHash: "-",
       signKey,
-      sig: body.proof,
+      sig: asked.proof,
     }))
   )
     return wireError(400, ErrorCode.InvalidGrant);
@@ -207,7 +237,7 @@ export async function handleNearbyStart(
   if (holdsCredential && !proven) return keysInvalid();
 
   // 7. The label, as §12.7.1.
-  const label = normalizeDeviceLabel(body.deviceName);
+  const label = normalizeDeviceLabel(asked.deviceName);
 
   // 8. Write the record, then answer. The handle is 128 random bits; a taken address is retried.
   const netHash = await nearbyNetHash(env, req);

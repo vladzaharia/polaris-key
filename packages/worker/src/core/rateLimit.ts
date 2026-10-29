@@ -104,6 +104,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   connectRelayUpgrade: "closed",
   // I-40.4: nearby approval `start` writes one single-use record per call (per client network).
   identityNearbyStart: "closed",
+  // I-40.5: `approve` is per approving device; the subject budget is charged on decisions only.
+  identityNearbyApprove: "closed",
+  identityNearbyApproveSubject: "closed",
   identityLink: "closed",
   identityLinkDevice: "closed",
   adminLogin: "closed",

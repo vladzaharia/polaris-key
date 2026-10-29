@@ -26,6 +26,7 @@
  *     /identity/link                        GET   I-43.2, the link offer (device bearer)
  *                                           POST  I-43.2, add a Google or Apple identity (device bearer)
  *     /identity/nearby/start                POST  I-40.4, a signed-out device asks a nearby one to approve
+ *     /identity/nearby/approve              POST  I-40.5, the signed-in device decides (device bearer)
  *     /identity/choice/licenses             POST  I-08b, the pending sign-in grant: the licence view
  *     /identity/choice/devices              POST  I-08b, a full licence's seat-holding devices
  *     /identity/choice/complete             POST  I-08b, the choice; answers the `token` response
@@ -81,6 +82,7 @@ import { handleAuthorize } from "./passthrough/authorize.js";
 import { handleToken } from "./passthrough/token.js";
 import { handleExchangeNonce } from "./passthrough/nonce.js";
 import { handleNearbyStart } from "./passthrough/nearbyStart.js";
+import { handleNearbyApprove } from "./passthrough/nearbyApprove.js";
 import { handleLink } from "./passthrough/link.js";
 import { readCiJson } from "../../core/ciScope.js";
 import { handleChoice } from "./passthrough/choiceRoutes.js";
@@ -189,6 +191,15 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     auth: { kind: "none" },
     handler: ({ req, env, db, product, now }) =>
       handleNearbyStart(req, env, db, product, now),
+  },
+  // I-40.5 (§12.11.5): the signed-in device approves or denies. Same gates as `start`.
+  {
+    path: "nearby/approve",
+    cors: true,
+    methods: ["POST"],
+    auth: { kind: "device" },
+    handler: ({ req, env, db, product, now }) =>
+      handleNearbyApprove(req, env, db, product, now),
   },
   // I-08b (§12.5.1): the pending sign-in grant's routes.
   choiceRow("licenses"),
