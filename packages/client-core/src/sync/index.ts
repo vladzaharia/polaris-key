@@ -13,3 +13,5 @@ export * from "./sha256.js";
 export * from "./fileStream.js";
 export * from "./transferPlan.js";
 export * from "./hostCodec.js";
+export * from "./transferJournal.js";
+export * from "./transfer.js";
