@@ -12987,10 +12987,10 @@
         "component": "AddToAccount",
         "state": "failed",
         "copy": [
+          "activate.attach.failed",
           "activate.recommend.action",
           "common.cancel",
-          "common.tryAgain",
-          "locker.activate.addFailed"
+          "common.tryAgain"
         ],
         "actions": ["cancel", "retry", "start-sign-in"]
       }

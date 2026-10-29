@@ -336,6 +336,8 @@
     <string name="activate_attach_done">%1$s est dans votre compte</string>
     <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
     <string name="activate_attach_syncOn">La synchronisation cloud est activée sur cet %1$s. Connectez-vous sur vos autres appareils pour les synchroniser aussi.</string>
+    <!-- AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form. -->
+    <string name="activate_attach_failed">Impossible d’ajouter cette licence. Réessayez dans un instant.</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
     <string name="activate_waiting">Cette licence a été envoyée à %1$s. Connectez-vous avec cet e-mail pour la garder dans votre compte.</string>
     <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->

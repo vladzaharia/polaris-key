@@ -21,7 +21,7 @@ import {
   type ComponentStateFixture,
   type MatrixComponentRow,
 } from "../../../sdk-react/test/kitFixtures.js";
-import { HOLDER_COPY, isHolderScreen } from "./support.js";
+import { isHolderScreen } from "./support.js";
 import { PolarisKey, TAGS, LAYOUTS, type PkElement } from "../../src/index.js";
 
 declare module "vitest/browser" {
@@ -100,7 +100,7 @@ const RECOVERY_CODE = "K7QF-2M9D-XR4T-8WHB-3JNC-6PEZ-V5GD-HT0S";
 
 beforeAll(() => {
   PolarisKey.fonts(__PKEY_FONTS__);
-  PolarisKey.theme({ product: PRODUCT, copy: HOLDER_COPY });
+  PolarisKey.theme({ product: PRODUCT });
   document.body.style.margin = "0";
 });
 

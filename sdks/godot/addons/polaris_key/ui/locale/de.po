@@ -908,6 +908,11 @@ msgstr "{product} ist in Ihrem Konto"
 msgid "activate.attach.syncOn"
 msgstr "Die Cloud-Synchronisierung ist für dieses {deviceKind} aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren."
 
+#. Couldn't add this license. Try again in a moment.
+#. AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form.
+msgid "activate.attach.failed"
+msgstr "Die Lizenz konnte nicht hinzugefügt werden. Versuchen Sie es gleich noch einmal."
+
 #. This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.
 #. ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated).
 msgid "activate.waiting"

@@ -138,6 +138,7 @@
   "activate.attach.fine": "브라우저에서 이 이메일로 코드를 보냅니다. {product}은(는) 코드를 보지 못합니다.",
   "activate.attach.done": "{product}이(가) 계정에 있습니다",
   "activate.attach.syncOn": "이 {deviceKind}에서 클라우드 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다.",
+  "activate.attach.failed": "이 라이선스를 추가하지 못했어요. 잠시 후 다시 시도하세요.",
   "activate.waiting": "이 라이선스는 {maskedEmail}(으)로 전송되었습니다. 그 이메일로 로그인하면 계정에 보관할 수 있습니다.",
   "activate.waitingSignIn": "{maskedEmail}(으)로 로그인",
   "activate.owned.title": "이 라이선스는 Polaris Locker 계정에 있습니다",

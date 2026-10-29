@@ -320,12 +320,6 @@ describe("<pk-gate config>: activation without an account (UK-42.8)", () => {
 
   it("sends name and email only in the Continue action, into the driver", async () => {
     const { gate } = await toDone(world());
-    // The failed line is in the portal's copy table only (reported, UK-42.7).
-    gate.theme = {
-      copy: {
-        en: { "locker.activate.addFailed": "Couldn't add this license." },
-      },
-    };
     control(gate, "activate.recommend.action")!.click();
     await settle(gate, () => control(gate, "common.continue") !== null);
     const seen: Array<Record<string, unknown>> = [];

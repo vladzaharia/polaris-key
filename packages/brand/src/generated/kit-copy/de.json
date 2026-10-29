@@ -138,6 +138,7 @@
   "activate.attach.fine": "Wir senden einen Code an diese E-Mail in Ihrem Browser. {product} sieht ihn nie.",
   "activate.attach.done": "{product} ist in Ihrem Konto",
   "activate.attach.syncOn": "Die Cloud-Synchronisierung ist für dieses {deviceKind} aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren.",
+  "activate.attach.failed": "Die Lizenz konnte nicht hinzugefügt werden. Versuchen Sie es gleich noch einmal.",
   "activate.waiting": "Diese Lizenz wurde an {maskedEmail} gesendet. Melden Sie sich mit dieser E-Mail an, um sie in Ihrem Konto zu behalten.",
   "activate.waitingSignIn": "Als {maskedEmail} anmelden",
   "activate.owned.title": "Diese Lizenz ist in einem Polaris Locker-Konto",

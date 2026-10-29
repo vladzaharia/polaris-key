@@ -61,16 +61,6 @@ export async function axeViolations(
 
 /** The page the suites draw on: the brand fonts and the fixture product (Tidewater Studio, teal,
  *  by Harbor Audio). */
-/** `locker.activate.addFailed` is in the portal's copy table only (reported, UK-42.7): the failed
- *  state's line is given here, as the catalog words it, so the state renders until the key moves
- *  into the kit catalog. */
-export const HOLDER_COPY = {
-  en: {
-    "locker.activate.addFailed":
-      "Couldn't add this license. Try again in a moment.",
-  },
-};
-
 /** The `holders` family's rows this kit draws: the two screens, the sign-in form's own steps and
  *  the settings row (UK-42.8). */
 export const isHolderScreen = (r: { expect: { component: string } }): boolean =>
@@ -81,7 +71,6 @@ export const isHolderScreen = (r: { expect: { component: string } }): boolean =>
 export function fixtureTheme(fonts: string): void {
   PolarisKey.fonts(fonts);
   PolarisKey.theme({
-    copy: HOLDER_COPY,
     product: {
       name: "Tidewater Studio",
       developer: "Harbor Audio",

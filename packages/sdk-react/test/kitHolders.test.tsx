@@ -96,13 +96,6 @@ describe("React kit × ui-matrix.json holders", () => {
     const Screen = SCREENS[row.expect.component];
     const { container } = render(<Screen input={input} />);
     const root = container.querySelector<HTMLElement>(".pk-root");
-    // The failure line is a portal string, fetched when a failure is first drawn.
-    if (view.copy.includes("locker.activate.addFailed"))
-      await waitFor(() =>
-        expect(
-          root!.querySelector('[data-key="locker.activate.addFailed"]'),
-        ).not.toBeNull(),
-      );
     if (view.state === "hidden") {
       expect(root).toBeNull();
       return;
