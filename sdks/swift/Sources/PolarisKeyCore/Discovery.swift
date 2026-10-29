@@ -219,14 +219,20 @@ public struct IdentityDiscovery: Sendable, Equatable {
 
 /// `identity.exchange` of the discovery document (§12.11): which providers the product accepts.
 public struct IdentityExchangeDiscovery: Sendable, Equatable {
-    /// `google`, `apple`: the kinds the product declares, as published.
+    /// `google`, `apple`, `gamecenter`, `pgs`: the kinds the product declares, as published; a kind
+    /// this SDK does not know is kept as a string and ignored by the callers.
     public let kinds: [String]
     /// The product's Google server client id, the audience a Google ID token is requested for.
     public let googleServerClientId: String?
+    /// The product's Play Games server client id (`pgs.serverClientId`, §12.11.7).
+    public let pgsServerClientId: String?
 
-    public init(kinds: [String], googleServerClientId: String? = nil) {
+    public init(
+        kinds: [String], googleServerClientId: String? = nil, pgsServerClientId: String? = nil
+    ) {
         self.kinds = kinds
         self.googleServerClientId = googleServerClientId
+        self.pgsServerClientId = pgsServerClientId
     }
 
     init?(_ value: JSONValue?) {
@@ -235,7 +241,8 @@ public struct IdentityExchangeDiscovery: Sendable, Equatable {
         }
         self.init(
             kinds: list.compactMap(\.stringValue),
-            googleServerClientId: object["google"]?.objectValue?["serverClientId"]?.stringValue)
+            googleServerClientId: object["google"]?.objectValue?["serverClientId"]?.stringValue,
+            pgsServerClientId: object["pgs"]?.objectValue?["serverClientId"]?.stringValue)
     }
 }
 
