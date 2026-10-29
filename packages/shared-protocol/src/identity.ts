@@ -346,6 +346,8 @@ export interface IdentityDiscovery {
   exchange?: {
     kinds: ExchangeKind[];
     google?: { serverClientId: string };
+    /** I-14 (§12.11.7): present while the `pgs` kind is listed. */
+    pgs?: { serverClientId: string };
   };
   /** I-40 (§12.11.5): nearby approval is served. */
   nearby?: true;
@@ -596,6 +598,23 @@ export const TOKEN_EXCHANGE_GRANT_TYPE =
 /** §12.11.3: the `subject_token_type`. */
 export const EXCHANGE_SUBJECT_TOKEN_TYPE =
   "urn:ietf:params:oauth:token-type:id_token";
+/** §12.11.7: the `subject_token_type` of a Game Center identity-verification token (`gc1.`). */
+export const GAME_CENTER_SUBJECT_TOKEN_TYPE =
+  "urn:polaris-key:token-type:gamecenter-signature";
+/** §12.11.7: the `subject_token_type` of a Play Games server auth code. */
+export const PGS_SUBJECT_TOKEN_TYPE =
+  "urn:polaris-key:token-type:pgs-server-auth-code";
+/** §12.11.3, §12.11.7: every `subject_token_type` the exchange accepts. */
+export type ExchangeSubjectTokenType =
+  | typeof EXCHANGE_SUBJECT_TOKEN_TYPE
+  | typeof GAME_CENTER_SUBJECT_TOKEN_TYPE
+  | typeof PGS_SUBJECT_TOKEN_TYPE;
+/** §12.11.7: the first field of a Game Center token. */
+export const GAME_CENTER_TOKEN_PREFIX = "gc1";
+/** §12.11.7: how old Apple's signature timestamp may be, seconds. */
+export const GAME_CENTER_MAX_AGE_SECONDS = 120;
+/** §12.11.7: how far ahead of the Worker's clock it may be, seconds. */
+export const GAME_CENTER_MAX_FUTURE_SECONDS = 30;
 /** §12.11.3: the `issued_token_type` of an exchange's `TokenResponse`. */
 export const EXCHANGE_ISSUED_TOKEN_TYPE = "urn:polaris-key:token-type:device";
 
@@ -615,7 +634,7 @@ export type DeviceProofPurpose =
 export const DEVICE_PROOF_VERSION = "pkey-proof/1";
 
 /** §12.11.3: the platform identity providers an exchange accepts. */
-export type ExchangeKind = "google" | "apple";
+export type ExchangeKind = "google" | "apple" | "gamecenter" | "pgs";
 
 /** §12.11.2: `POST /<p>/identity/nonce`. Raw 32-byte public keys, base64url. */
 export interface ExchangeNonceRequest {
@@ -640,7 +659,7 @@ export interface ExchangeTokenParams {
   /** The product slug. */
   client_id: string;
   subject_token: string;
-  subject_token_type: typeof EXCHANGE_SUBJECT_TOKEN_TYPE;
+  subject_token_type: ExchangeSubjectTokenType;
   nonce: string;
   /** The device's signing key, raw 32 bytes in base64url. */
   device_key: string;
@@ -716,6 +735,8 @@ export type LinkRequest =
   | { linkHandle: string; proof: string }
   | {
       subjectToken: string;
+      /** §12.11.7: defaults to `id_token`. */
+      subjectTokenType?: ExchangeSubjectTokenType;
       nonce: string;
       signKey: string;
       agreeKey: string;

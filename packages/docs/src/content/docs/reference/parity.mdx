@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 108 | 13 | 14 | 0 |
-| React | `web`, `desktop-bridge` | 102 | 22 | 11 | 0 |
-| Python | `python` | 94 | 13 | 28 | 0 |
-| Swift | `macos`, `ios` | 108 | 9 | 17 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 103 | 9 | 23 | 0 |
-| Kotlin | `android`, `jvm` | 109 | 8 | 17 | 1 |
+| Node | `node` | 108 | 15 | 14 | 0 |
+| React | `web`, `desktop-bridge` | 101 | 24 | 12 | 0 |
+| Python | `python` | 94 | 15 | 28 | 0 |
+| Swift | `macos`, `ios` | 108 | 10 | 18 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 103 | 9 | 25 | 0 |
+| Kotlin | `android`, `jvm` | 109 | 9 | 18 | 1 |
 
 ## Core
 
@@ -124,6 +124,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.choice` | Licence choice in the app: the choice.* primitives over a pending sign-in grant | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.exchange` | Platform sign-in: a Google or Apple ID token for a device token (the exchange) | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | ✓ | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
+| `identity.gamecenter` | Platform sign-in: a Game Center identity-verification token for a device token (the exchange) | transcripts (I-14) | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm: runtime |
+| `identity.pgs` | Platform sign-in: a Play Games server auth code for a device token (the exchange) | transcripts (I-14) | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime); N/A (macos: runtime); N/A (ios: runtime); N/A (web: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm: runtime |
 | `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | planned (I-47) | planned (I-46) | planned (I-47) | ✓ | planned (I-48) | ✓ | — |
 | `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 
@@ -185,7 +187,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `ui.kit.manage` | Device-limit screen: Replace a device (button, or a QR on TV and console) and Try again | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | ✓ | ✓ | ✓ | headless: runtime |
 | `ui.kit.keyentry` | Key entries: the entries-left line after a key activation, and the key-entry-limit screen (Add it in Polaris Key as a button, or a QR on TV and console) | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | ✓ | ✓ | ✓ | headless: runtime |
 | `ui.kit.account` | Account screens: License in another account with Sign in, Add to your Library (attach) and Sign out | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | ✓ | ✓ | ✓ | headless: runtime |
-| `ui.kit.holders` | Activation without an account: the Done step, the recommendation to keep the license in an account, Add your name and email (attach) and the floating License row | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (UK-43) | planned (UK-43) | planned (UK-43) | headless: runtime |
+| `ui.kit.holders` | Activation without an account: the Done step, the recommendation to keep the license in an account, Add your name and email (attach) and the floating License row | snapshot tests | N/A (headless: runtime) | planned (UK-42) | N/A (headless: runtime) | planned (UK-43) | planned (UK-43) | planned (UK-43) | headless: runtime |
 | `ui.cli` | Terminal UI: status, activate, deactivate, sign-in and devices verbs | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `ui.cli.mount` | Terminal drop-ins: the license verbs mounted into the host's CLI framework (namespace, collisions, exit 4) | `ui-matrix.json` `cli` + unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | planned (UK-54); N/A (android: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `ui.cli.contract` | Terminal kit contract: exit codes, refusal marks, piped stdin and the capability table | `ui-matrix.json` `cli` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |

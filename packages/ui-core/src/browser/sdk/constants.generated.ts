@@ -713,6 +713,8 @@ export const Feature = {
   identityChoice: "identity.choice",
   identitySigninHints: "identity.signin.hints",
   identityExchange: "identity.exchange",
+  identityGamecenter: "identity.gamecenter",
+  identityPgs: "identity.pgs",
   identityAutosignin: "identity.autosignin",
   identityLink: "identity.link",
   releaseChangelog: "release.changelog",
@@ -853,6 +855,8 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.choice",
   "identity.signin.hints",
   "identity.exchange",
+  "identity.gamecenter",
+  "identity.pgs",
   "identity.autosignin",
   "identity.link",
   "release.changelog",
@@ -2163,6 +2167,22 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
+  "identity.gamecenter": {
+    status: "na",
+    service: "identity",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "identity.pgs": {
+    status: "na",
+    service: "identity",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
   "identity.autosignin": { status: "planned", service: "identity", na: [] },
   "identity.link": {
     status: "implemented",
@@ -2274,7 +2294,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.kit.manage": { status: "implemented", service: "sdk", na: [] },
   "ui.kit.keyentry": { status: "implemented", service: "sdk", na: [] },
   "ui.kit.account": { status: "implemented", service: "sdk", na: [] },
-  "ui.kit.holders": { status: "implemented", service: "sdk", na: [] },
+  "ui.kit.holders": { status: "planned", service: "sdk", na: [] },
   "ui.cli": {
     status: "na",
     service: "sdk",
@@ -2354,4 +2374,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "da64a110d1d1252b4bd5b60c1deeedc3f99bc74573633ab10454092bd5e19f39";
+  "0213a2d020cb55eb88f4d9cd5c2328522c30df56ee4020f290a4728a5e23bb88";

@@ -15,6 +15,7 @@
 // A rejected or unreachable document leaves the caller on its configured expectation
 // (`expectedServices`), which is the other half of D-21.
 
+import type { ExchangeKind } from "@polaris-key/protocol/identity";
 import {
   noServices,
   type ServiceSlug,
@@ -117,7 +118,7 @@ export function parseDiscovery(
  *  kinds the product accepts, the Google server client id the provider must ask for, and the
  *  `nonce`, `token` and `link` endpoints. An endpoint is used only when discovery names it. */
 export interface ExchangeDiscovery {
-  kinds: readonly ("google" | "apple")[];
+  kinds: readonly ExchangeKind[];
   google?: { serverClientId: string };
   nonceEndpoint: string;
   tokenEndpoint: string;

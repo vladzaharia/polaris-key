@@ -221,6 +221,56 @@
       ],
       "note": "Sign in with Apple on iOS and macOS, Credential Manager on Android (I-48); desktop Linux and Windows have none."
     },
+    "identity.gamecenter": {
+      "status": "planned",
+      "wp": "I-48",
+      "except": [
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Game Center on iOS and macOS (I-48)."
+    },
+    "identity.pgs": {
+      "status": "planned",
+      "wp": "I-48",
+      "except": [
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Play Games on Android (I-48)."
+    },
     "identity.autosignin": {
       "status": "planned",
       "wp": "I-48",
