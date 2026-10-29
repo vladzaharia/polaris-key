@@ -136,6 +136,7 @@ static func replay(tr: Dictionary) -> Array:
 		sdk.set_meta("pkey_sync_codec", await _fixture_codec(tr))
 	sdk.set_meta("pkey_sync_mem", {"etag": "", "retry_after": null, "next_id": 1})
 	sdk.set_meta("pkey_platform", String(tr["initial"].get("platform", "")))
+	sdk.set_meta("pkey_transcript_base", String(tr["baseUrl"]))
 	var presentation_dir := PKeyTestFixtures.scratch_dir("transcript-presentation")
 	sdk.presentation_source.cache_dir = presentation_dir
 	var fails: Array = []
@@ -225,6 +226,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["tokenHeld"] = store.token != ""
 		"fetchSchema":
 			out["catalog"] = await sdk.config.fetch_schema()
+		"relayTicket":
+			await _relay_ticket(sdk, out)
 		"mintToken":
 			var r: PKeyMintResult = await sdk.config.mint_token(step["args"]["recipeId"])
 			out["result"] = "ok" if r.ok else String(r.code)
@@ -429,6 +432,32 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 
 ## `releaseFetch`: the step's target as a release record, fetched into a fresh directory (see the
 ## header). The whole payload a step fetched is kept on the SDK node for a later `partial` seed.
+## `connect.relay_ticket()` (CC-14.4, `connect.relay`). A refusal reads as `result: "refused"` with
+## the status, the code and, where the Worker answers them, `retryAfter` and `scope`. The relay URL
+## is checked against the recorded host, not the loopback server's.
+static func _relay_ticket(sdk: Node, out: Dictionary) -> void:
+	var state := PKeyConnectState.new(sdk.core.product, "user://pkey", true)
+	var client := PKeyConnectClient.new(sdk.core, state)
+	client.home_url = String(sdk.get_meta("pkey_transcript_base", ""))
+	var r: PKeyResult = await client.relay_ticket()
+	if r.ok:
+		var grant: PKeyConnectClient.Grant = r.detail
+		out["result"] = "ok"
+		out["protocol"] = grant.protocol
+		out["url"] = grant.url
+		out["expiresIn"] = grant.expires_at - int(sdk.core.clock.now())
+		return
+	out["result"] = "refused"
+	out["code"] = String(r.code)
+	if r.detail is Dictionary:
+		var d: Dictionary = r.detail
+		out["status"] = d.get("status")
+		if d.has("retry_after_seconds"):
+			out["retryAfter"] = d["retry_after_seconds"]
+		if d.has("scope"):
+			out["scope"] = d["scope"]
+
+
 static func _release_fetch(sdk: Node, a: Dictionary) -> Dictionary:
 	var record := {
 		"schemaVersion": 1, "aud": sdk.core.product, "deliverable": "app", "kind": "app",
