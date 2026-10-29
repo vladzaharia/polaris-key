@@ -4,7 +4,9 @@
  *
  * - Credentials (A-22.3a): the store keys this channel signs in with, moved from the Credentials
  *   page. Values are write-only: sent once, never read back, never rendered, never in a URL.
- * - Store controls (A-22.3b): the connector and its release controls. Not built yet.
+ * - Store controls (A-22.3b): the store connector card for this channel, moved off Outlet
+ *   credentials. Its configuration actions stay here; the rollout verbs stay in the Matrix cell
+ *   drawer. A channel with no store connector draws nothing.
  */
 
 import * as React from "react";
@@ -13,7 +15,8 @@ import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { Section } from "../../../../ui/Section.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
-import { useCredentials } from "../data.js";
+import { useConnectors, useCredentials } from "../data.js";
+import { useReleaseStore } from "../../release/data.js";
 import { channelLabel } from "@polaris-key/manifest";
 import { useWriteGate } from "../../../access/useCan.js";
 import { channelInScope } from "../../../nav.js";
@@ -23,6 +26,7 @@ import {
   useScope,
 } from "../model/channelScope.js";
 import { KIND } from "../model/credentialKinds.js";
+import { ConnectorGrid, connectorsFor } from "./ConnectorGrid.js";
 import { CredentialTable, useCredentialEditor } from "./CredentialEditors.js";
 import type { ChannelTabProps } from "./channelTabs.js";
 
@@ -34,7 +38,7 @@ export function ChannelSetup(props: ChannelTabProps): React.ReactElement {
   return (
     <div className="space-y-8">
       <ChannelCredentials {...props} />
-      {/* A-22.3b: the store controls section goes here, as its own component. */}
+      <ChannelStoreControls {...props} />
     </div>
   );
 }
@@ -113,6 +117,29 @@ function ChannelCredentials({
         }
       />
       {editor.dialogs}
+    </Section>
+  );
+}
+
+// --- Store controls (A-22.3b) ---------------------------------------------------------------
+
+export function ChannelStoreControls({
+  slug,
+  channel,
+}: ChannelTabProps): React.ReactElement | null {
+  const connectors = useConnectors(slug);
+  const store = useReleaseStore(slug);
+  if (!connectors.data) return null;
+  if (connectorsFor(connectors.data.connectors, channel.id).length === 0)
+    return null;
+  return (
+    <Section title="Store controls">
+      <ConnectorGrid
+        slug={slug}
+        connectors={connectors.data.connectors}
+        releases={store.data}
+        channelId={channel.id}
+      />
     </Section>
   );
 }

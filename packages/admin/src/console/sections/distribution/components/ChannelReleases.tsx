@@ -117,8 +117,10 @@ export function ChannelReleases({
         }
         emptyAction={
           noOutlet ? (
-            <Button asChild>
-              <Link to={r.outlets(slug)}>Set up {channel.label} first</Link>
+            <Button asChild variant="outline">
+              <Link to={r.channel(slug, channel.id, "setup")}>
+                Open {channel.label} setup
+              </Link>
             </Button>
           ) : undefined
         }

@@ -3,11 +3,10 @@
  * (Sentry's integration secret, whose alerts open halt candidates), and a held credential whose
  * channel is out of scope for the product, flagged (A-20 R6). A store's own keys moved to its
  * channel's Setup tab (A-22.3a); this page links to each. Values are write-only: the table shows
- * metadata and health, never a value. The editors live in `CredentialEditors`.
+ * metadata and health, never a value. The editors live in `CredentialEditors`. Store controls moved to each channel's Setup
+ * (A-22.3b).
  *
  * - **Set credential** is a drawer: kind first, then its fields (OUT-3, OUT-4, OUT-5).
- * - The connector cards: each store connector's status and configuration actions (A-22.3b moves
- *   them to the channel's Setup).
  */
 
 import * as React from "react";
@@ -25,12 +24,11 @@ import { channelInScope } from "../../../nav.js";
 import { Link, navigate, useSearchParam } from "../../../router.js";
 import { codecs, r } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
-import { ConnectorGrid } from "../components/ConnectorGrid.js";
 import {
   CredentialTable,
   useCredentialEditor,
 } from "../components/CredentialEditors.js";
-import { useConnectors, useCredentials } from "../data.js";
+import { useCredentials } from "../data.js";
 import { KINDS } from "../model/credentialKinds.js";
 import {
   CREDENTIAL_CHANNELS,
@@ -39,7 +37,6 @@ import {
   useScope,
   useScopeLoading,
 } from "../model/channelScope.js";
-import { useReleaseStore } from "../../release/data.js";
 
 export { KINDS };
 
@@ -51,8 +48,6 @@ export function CredentialsPage({
   slug: string;
 }): React.ReactElement {
   const creds = useCredentials(slug);
-  const connectors = useConnectors(slug);
-  const store = useReleaseStore(slug);
   const features = useScope(slug);
   const scopeLoading = useScopeLoading(slug);
   const [openId] = useSearchParam("credential", CREDENTIAL);
@@ -200,45 +195,18 @@ export function CredentialsPage({
         }
       />
 
-      <section aria-labelledby="connectors-title" className="space-y-3">
-        <div className="space-y-1">
-          <h2
-            id="connectors-title"
-            className="text-lg font-semibold text-fg-strong"
-          >
-            Store connectors
-          </h2>
-          <p className="text-sm text-fg-muted">
-            A connector uses this product's own key of its kind when there is
-            one; otherwise the platform's team key, for the one app assigned to
-            this product.{" "}
-            <a
-              className="py-1 text-accent-fg underline underline-offset-4"
-              href={docsUrl("storeConnections")}
-              target="_blank"
-              rel="noreferrer"
-            >
-              About store connections
-            </a>
-          </p>
-        </div>
-        {connectors.isPending ? (
-          <Skeleton className="h-32 w-full" />
-        ) : connectors.isError ? (
-          <ErrorState
-            compact
-            error={connectors.error}
-            onRetry={() => void connectors.refetch()}
-            context={{ area: "distribution" }}
-          />
-        ) : (
-          <ConnectorGrid
-            slug={slug}
-            connectors={connectors.data?.connectors ?? []}
-            releases={store.data}
-          />
-        )}
-      </section>
+      <p className="text-sm text-fg-muted">
+        Store controls are on each channel's Setup tab, under{" "}
+        <Link to={r.channels(slug)}>Channels</Link>.{" "}
+        <a
+          className="py-1 text-accent-fg underline underline-offset-4"
+          href={docsUrl("storeConnections")}
+          target="_blank"
+          rel="noreferrer"
+        >
+          About store connections
+        </a>
+      </p>
 
       {editor.dialogs}
     </CollectionTemplate>
