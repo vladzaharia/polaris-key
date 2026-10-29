@@ -55,10 +55,15 @@ class Clock:
         return self.t
 
 
+#: The connected IPv4 subnets of the fake LAN: every source the tests use sits in one of them.
+NETS = ["192.168.0.0/16", "10.0.0.0/8", "127.0.0.0/8"]
+
+
 class Rig:
     def __init__(self, **kw: Any) -> None:
         self.socks: List[FakeSocket] = []
         self.clock = Clock()
+        kw.setdefault("subnets", lambda: NETS)
         self.adapter = MulticastDnsAdapter(create=self._make, clock=self.clock, **kw)
 
     def _make(self, on_packet: Callable[[bytes, str], None]) -> FakeSocket:
@@ -144,6 +149,11 @@ def full(inst: str = INST, ip: str = "192.168.1.20") -> List[Record]:
 )
 def test_lan_addresses(ip: str, ok: bool) -> None:
     assert is_lan_address(ip) is ok
+
+
+def test_is_lan_address_is_ipv4_and_literal_only() -> None:
+    for bad in ("10.0.0.1\n", "10.0.0.1 ", "10.0.0.1:80", "0xa.0.0.1", "167772161", "fe80::1", "fd12::1"):
+        assert not is_lan_address(bad), bad
 
 
 def test_loopback_only_when_allowed() -> None:
@@ -343,16 +353,38 @@ def test_an_a_record_is_believed_only_from_its_own_source() -> None:
     assert b.up[0].host == "192.168.1.20"
 
 
-def test_an_address_outside_the_lan_is_never_dialled() -> None:
+def test_no_filter_on_the_address_at_learn_time_the_dial_time_verdict_decides() -> None:
+    # A source on a connected subnet is believed for its own address, whatever the address is.
     for ip in ("8.8.8.8", "169.254.9.9", "100.64.0.9", "127.0.0.1"):
+        rig = Rig(subnets=lambda: ["0.0.0.0/0"])
+        b = Browser(rig)
+        b.push(full(ip=ip), src=ip)
+        assert [f.host for f in b.up] == [ip], ip
+
+
+def test_a_response_from_outside_the_receiving_interfaces_subnets_teaches_nothing() -> None:
+    # RFC 6762 section 11: the source must be on a connected subnet.
+    for ip in ("8.8.8.8", "172.16.0.9", "100.64.0.9"):
         rig = Rig()
         b = Browser(rig)
         b.push(full(ip=ip), src=ip)
         assert b.up == [], ip
-    rig = Rig(allow_loopback=True)
+    rig = Rig(subnets=lambda: ["172.16.0.0/12"])
     b = Browser(rig)
-    b.push(full(ip="127.0.0.1"), src="127.0.0.1")
-    assert b.up[0].host == "127.0.0.1"
+    b.push(full(ip="172.16.0.9"), src="172.16.0.9")
+    assert [f.host for f in b.up] == ["172.16.0.9"]
+    b.push(full(ip="192.168.1.20"), src="192.168.1.20")  # now off the subnet
+    assert len(b.up) == 1
+
+
+def test_unreadable_interfaces_are_unavailable_not_guessed(monkeypatch: pytest.MonkeyPatch) -> None:
+    import polaris_key.core.peer_mdns as m
+
+    monkeypatch.setattr(m, "interface_addresses", lambda: None)
+    rig = Rig(subnets=None)
+    rig.adapter._subnets = None
+    with pytest.raises(MdnsUnavailableError):
+        run(rig.adapter.browse(lambda f: None))
 
 
 def test_the_first_address_seen_is_dialled_and_at_most_four_are_kept() -> None:
