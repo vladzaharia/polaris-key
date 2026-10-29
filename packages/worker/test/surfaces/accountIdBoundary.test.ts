@@ -183,6 +183,8 @@ describe("the account id never reaches a developer (PX-W17)", () => {
         `/api/access/admins?scope=product:${slug}&area=license`,
         // ST-32.5: the admin_group conversion offers.
         `/api/access/offers`,
+        // ST-32.7: the SSO rules and the operator connections.
+        `/api/access/rules`,
       ]) {
         const res = await handleAdmin(
           new Request(`${ORIGIN}/manage${path}`, {

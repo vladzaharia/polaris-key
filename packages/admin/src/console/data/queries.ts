@@ -90,6 +90,8 @@ export const qk = {
   myMethods: (): QueryKey => ["account", "methods"],
   /** Platform → Members: the roster, the root rule and the invites (ST-31.11). */
   members: (): QueryKey => ["platform", "members"],
+  /** Platform → Members → SSO rules: the stored rules and the connections (ST-32.7). */
+  accessRules: (): QueryKey => ["platform", "access-rules"],
   /** Product → Settings → Members (ST-31.14): one product's admins, invites and platform roles. */
   productMembers: (slug: string) => product(slug, "members"),
   myPersonalTokens: (): QueryKey => ["me", "personal-tokens"],

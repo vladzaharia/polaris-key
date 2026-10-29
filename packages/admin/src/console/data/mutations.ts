@@ -74,6 +74,8 @@ export type WriteMethod =
   | "editBindingAreas"
   | "revokeBinding"
   | "signOutMember"
+  | "previewAccessRule"
+  | "replaceAccessRules"
   | "revokeMyPersonalToken"
   | "createPlatformConnection"
   | "updatePlatformConnection"
@@ -470,6 +472,21 @@ export const MUTATIONS: MutationTable = {
   signOutMember: {
     label: "member sign-out",
     invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  // ST-32.7: a draft rule's preview reads the stored sign-ins and writes nothing.
+  previewAccessRule: {
+    label: "rule preview",
+    invalidates: () => [],
+    why: "A dry check: it reads stored sign-ins and writes nothing.",
+  },
+  // The list write moves the rules, the roster (a rule changes who has a role) and the trail.
+  replaceAccessRules: {
+    label: "SSO rules save",
+    invalidates: () => [
+      prefix(qk.accessRules()),
+      prefix(qk.members()),
+      prefix(qk.platformActivity()),
+    ],
   },
   // ST-31.14: the product twins also move the platform roster and the access lists NoAccess reads.
   inviteProductMembers: {

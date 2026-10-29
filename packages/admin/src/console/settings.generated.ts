@@ -597,7 +597,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "members",
     label: "Console access rules",
     description:
-      "Rules that give people who sign in through an operator connection access to the console, by group, domain or claim. A rule grants Product admin or Console access, never Platform admin or Superadmin.",
+      "Rules that give people who sign in through an operator connection access to the console, by group, domain or claim. A rule gives Product admin or Console access, never Platform admin or Superadmin.",
     keywords: ["sso", "rules", "members", "group", "domain", "claim"],
     docs: "/docs/operate/platform/settings/",
     ownership: "operator",

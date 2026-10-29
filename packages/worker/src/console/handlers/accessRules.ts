@@ -1,6 +1,8 @@
 /**
  * The SSO access rules' two helpers (ST-32.5; ST-28 plan §2.4, §5.1):
  *
+ *   GET  /access/rules                    the stored rules, their version and the operator connections
+ *   PUT  /access/rules           {rules, expectedVersion, reason, confirm}  replace the rule list
  *   POST /access/rules/preview   {rule}  who a draft rule would give access to, and what
  *   GET  /access/offers                   the open `admin_group` conversion offers
  *   POST /access/offers                   {action: "dismiss_all"}  dismiss every open offer
@@ -13,6 +15,10 @@
  * second matcher, so what it shows is what the next sign-in grants. It names a member only the way
  * the roster does (member id, display name, address) and only a member: a person who holds no
  * role is never read or named, and the count of such matches goes to a Superadmin alone.
+ *
+ * The list write (ST-32.7) is the same `writeConsoleAccess` as accept: a Superadmin, a step-up, the
+ * typed `console.access` confirmation, a reason and the stored version. Rule ids stay the server's.
+ * Every Superadmin is told afterwards (`accessRulesNotice`). The read is for anyone with Members.
  *
  * Accept is a rule write, `writeConsoleAccess`: a Superadmin, a step-up, the typed `console.access`
  * confirmation and a reason, with the rule built here from the product's stored group (the
@@ -46,6 +52,12 @@ import {
   ruleMatchesFor,
 } from "../../core/rbac/ruleGrants.js";
 import { accessRulesNotice } from "../../core/notify/templates.js";
+import { listConnections } from "../../core/oidc/connections.js";
+import {
+  CONSOLE_IDP_CONNECTION,
+  enforcedDomainsOf,
+  isOperatorConnection,
+} from "../../core/rbac/operatorConnections.js";
 import { accessRulesRefusal } from "../../core/settings/consoleAccessCheck.js";
 import { writeConsoleAccess } from "../../core/settings/consoleAccess.js";
 import { resolvePlatformSetting } from "../../core/settings/resolve.js";
@@ -89,6 +101,114 @@ async function overBudget(c: AdminCtx, kind: string): Promise<Response | null> {
   };
   if (await rateLimitOk(c.env, "_admin", bucket, c.now)) return null;
   return err(429, "rate_limited", "too many requests; try again later");
+}
+
+// ── GET / PUT /access/rules ──────────────────────────────────────────────────────────────────
+
+/** The stored rules and version, read fresh (a write must see the version it replaces). */
+async function storedRules(c: AdminCtx): Promise<{
+  rules: AccessRule[];
+  version: number;
+  unreadable: boolean;
+}> {
+  const ctx = { env: c.env, db: c.db, registry: SETTINGS };
+  const stored = await resolvePlatformSetting(ctx, KEY, { fresh: true });
+  const parsed = parseAccessRules(stored.value ?? { rules: [] });
+  return {
+    rules: parsed.ok ? parsed.doc.rules : [],
+    version: stored.version,
+    unreadable: !parsed.ok,
+  };
+}
+
+/** `GET /access/rules`: the rules and the connections a rule may name (operator ones only). */
+export async function handleRulesGet(c: AdminCtx): Promise<Response> {
+  const { rules, version, unreadable } = await storedRules(c);
+  const connections: Array<{
+    id: string;
+    label: string;
+    domains: string[];
+  }> = [
+    {
+      id: CONSOLE_IDP_CONNECTION,
+      label: "Console identity provider",
+      domains: [],
+    },
+  ];
+  for (const k of await listConnections(c.db, "platform")) {
+    if (!(await isOperatorConnection(c.env, c.db, k.id))) continue;
+    connections.push({
+      id: k.id,
+      label: k.label,
+      domains: [...(await enforcedDomainsOf(c.env, c.db, k.id))].sort(),
+    });
+  }
+  return adminJson({
+    rules,
+    version,
+    unreadable,
+    connections,
+    editable: isSuperadmin(c.session.principal),
+  });
+}
+
+/** `PUT /access/rules`: replace the list. Ids the caller names must already be stored. */
+export async function handleRulesPut(c: AdminCtx): Promise<Response> {
+  if (!isSuperadmin(c.session.principal)) return superadminOnly();
+  const body = await readBody(c.req);
+  const extra = unknownFields(body, [
+    "rules",
+    "expectedVersion",
+    "reason",
+    "confirm",
+  ]);
+  if (extra.length > 0) return invalid(extra);
+  if (!Array.isArray(body.rules)) return invalid(["rules"]);
+  if (typeof body.expectedVersion !== "number")
+    return invalid(["expectedVersion"]);
+  const stepUp = requireStepUp(c.session, c.now);
+  if (stepUp) return stepUp;
+  const limited = await overBudget(c, "rules");
+  if (limited) return limited;
+  const before = await storedRules(c);
+  const res = await writeConsoleAccess(
+    { env: c.env, db: c.db, registry: SETTINGS },
+    c.session,
+    {
+      value: { rules: body.rules },
+      expectedVersion: body.expectedVersion,
+      reason: body.reason,
+      ...(typeof body.confirm === "string" ? { confirm: body.confirm } : {}),
+    },
+    c.now,
+  );
+  if (!res.ok) return settingRefused(res, ["rules"]);
+  const after = await storedRules(c);
+  const change =
+    after.rules.length === 0 && before.rules.length > 0
+      ? "cleared"
+      : after.rules.length === before.rules.length + 1
+        ? "added"
+        : "changed";
+  const notified = await notifySuperadmins(
+    c.env,
+    c.db,
+    c.now,
+    accessRulesNotice({
+      actor: c.session.name || c.session.email,
+      change,
+      ruleCount: after.rules.length,
+      origin: c.env.CONSOLE_ORIGIN,
+    }),
+    { left: NOTICE_CAP },
+    true,
+  );
+  return adminJson({
+    ok: true,
+    rules: after.rules,
+    version: after.version,
+    notified,
+  });
 }
 
 // ── POST /access/rules/preview ───────────────────────────────────────────────────────────────

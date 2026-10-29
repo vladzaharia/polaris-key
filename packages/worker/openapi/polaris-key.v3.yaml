@@ -20406,6 +20406,105 @@ paths:
         "404": { description: "Not one of the caller's methods." }
         "409": { description: "Already strong (reason `already_strong`)." }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/access/rules:
+    get:
+      operationId: listAccessRulesAdmin
+      tags: [admin]
+      summary: List the SSO rules and the connections a rule may name
+      description: >
+        ST-32.7. The stored `console.access` rules with their version, and the operator connections a
+        rule may name (with the domains each has verified and enforced). `unreadable` is true when the
+        stored document does not parse: `rules` is then empty and the console offers no edit.
+        `editable` says whether the caller can write (a Superadmin). Names no person. Needs the
+        Members area at platform scope; admin session cookie.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The rules.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rules, version, unreadable, connections, editable]
+                properties:
+                  rules:
+                    type: array
+                    items: { type: object }
+                  version: { type: integer }
+                  unreadable: { type: boolean }
+                  editable: { type: boolean }
+                  connections:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, label, domains]
+                      properties:
+                        id: { type: string }
+                        label: { type: string }
+                        domains:
+                          type: array
+                          items: { type: string }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    put:
+      operationId: replaceAccessRulesAdmin
+      tags: [admin]
+      summary: Replace the SSO rule list
+      description: >
+        ST-32.7. Body `{rules, expectedVersion, reason, confirm}`. A rule that names an `id` must name
+        one already stored; a rule with no `id` gets a server-minted one. It is the `console.access`
+        write: a Superadmin only (`403 superadmin_only`), a console step-up (`403 step_up_required`),
+        the typed confirmation `console.access`, a reason, and the stored version (`409` when it
+        moved). Each rule is checked as the write checks it (an operator connection, an enforced
+        domain for a `domain` match). Writes one `rbac.access_rules` audit row, then every Superadmin
+        is emailed. Session only and CSRF-protected.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rules, expectedVersion, reason, confirm]
+              additionalProperties: false
+              properties:
+                rules:
+                  type: array
+                  items: { type: object }
+                expectedVersion: { type: integer }
+                reason: { type: string }
+                confirm: { type: string }
+      responses:
+        "200":
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, rules, version, notified]
+                properties:
+                  ok: { type: boolean }
+                  rules:
+                    type: array
+                    items: { type: object }
+                  version: { type: integer }
+                  notified:
+                    type: object
+                    required: [sent, of]
+                    properties:
+                      sent: { type: integer }
+                      of: { type: integer }
+        "400":
+          {
+            description: "Malformed body or a refused value (`invalid_request`, `invalid_value`, `reason_required`, `confirm_required`).",
+          }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409": { description: "The stored version moved (`version_conflict`)." }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
   /manage/api/access/rules/preview:
     post:
       operationId: previewAccessRuleAdmin

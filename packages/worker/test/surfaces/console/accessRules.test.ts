@@ -609,3 +609,145 @@ describe("preview hardening", () => {
     expect(r.b.members).toEqual([]);
   });
 });
+
+describe("GET / PUT /access/rules (ST-32.7)", () => {
+  const rule = (group = "release") => draft(group).rule;
+  const put = (over: Record<string, unknown> = {}) => ({
+    rules: [rule()],
+    expectedVersion: 0,
+    reason: "let the release team in",
+    confirm: "console.access",
+    ...over,
+  });
+  const audit = () =>
+    rows("SELECT * FROM platform_audit WHERE action = 'rbac.access_rules'");
+
+  it("reads the rules and the operator connections, for a Platform admin too", async () => {
+    const plain = await person("plain");
+    await bind(plain.accountId, "console_access", "platform");
+    const root = await person("root", { root: true });
+    const pa = await person("pa");
+    await bind(pa.accountId, "platform_admin", "platform");
+    const a = await send(pa, "GET", "/api/access/rules");
+    expect(a.status).toBe(200);
+    expect(a.b.rules).toEqual([]);
+    expect(a.b.editable).toBe(false);
+    expect(a.b.connections.map((c: { id: string }) => c.id)).toEqual([
+      "console-idp",
+      "ops",
+    ]);
+    expect((await send(root, "GET", "/api/access/rules")).b.editable).toBe(
+      true,
+    );
+    expect((await send(plain, "GET", "/api/access/rules")).status).toBe(403);
+  });
+
+  it("is a Superadmin's alone", async () => {
+    const pa = await person("pa", { stepUp: true });
+    await bind(pa.accountId, "platform_admin", "platform");
+    const r = await send(pa, "PUT", "/api/access/rules", put());
+    expect(r.status).toBe(403);
+    expect(r.b.reason).toBe("superadmin_only");
+    expect(await audit()).toEqual([]);
+  });
+
+  it("needs a step-up, the typed confirmation, a reason and the stored version", async () => {
+    const plain = await person("root", { root: true });
+    const noStep = await send(plain, "PUT", "/api/access/rules", put());
+    expect(noStep.status).toBe(403);
+    expect(noStep.b.code).toBe("step_up_required");
+    const root = await person("root", { root: true, stepUp: true });
+    expect(
+      (await send(root, "PUT", "/api/access/rules", put({ confirm: "x" })))
+        .status,
+    ).toBeGreaterThanOrEqual(400);
+    expect(
+      (await send(root, "PUT", "/api/access/rules", put({ reason: undefined })))
+        .status,
+    ).toBeGreaterThanOrEqual(400);
+    expect(
+      (
+        await send(
+          root,
+          "PUT",
+          "/api/access/rules",
+          put({ expectedVersion: undefined }),
+        )
+      ).status,
+    ).toBe(422);
+    expect(
+      (await send(root, "PUT", "/api/access/rules", put({ extra: 1 }))).status,
+    ).toBe(422);
+    const bad = await send(
+      root,
+      "PUT",
+      "/api/access/rules",
+      put({ rules: [{ ...rule(), when: { connection: "nope", group: "g" } }] }),
+    );
+    expect(bad.status).toBe(422);
+    expect(await audit()).toEqual([]);
+    expect(mail).toEqual([]);
+  });
+
+  it("stores the rules, mints the ids, audits and tells every Superadmin", async () => {
+    await person("root", { root: true });
+    const boss = await person("boss", { root: true, stepUp: true });
+    const r = await send(boss, "PUT", "/api/access/rules", put());
+    expect(r.status).toBe(200);
+    expect(r.b.rules).toHaveLength(1);
+    expect(r.b.rules[0].id).toMatch(/^r_[0-9a-f]{12}$/);
+    expect(r.b.version).toBeGreaterThan(0);
+    expect(await audit()).toHaveLength(1);
+    expect(mail.map((m) => m.to).sort()).toHaveLength(2);
+    expect(mail.every((m) => m.subject === "Sign-in rules changed")).toBe(true);
+    const got = await send(boss, "GET", "/api/access/rules");
+    expect(got.b.rules).toEqual(r.b.rules);
+    expect(got.b.version).toBe(r.b.version);
+  });
+
+  it("refuses an id the caller invented and a stale version", async () => {
+    const boss = await person("boss", { root: true, stepUp: true });
+    const first = await send(boss, "PUT", "/api/access/rules", put());
+    const forged = await send(
+      boss,
+      "PUT",
+      "/api/access/rules",
+      put({
+        expectedVersion: first.b.version,
+        rules: [{ ...rule(), id: "r_abcdef123456" }],
+      }),
+    );
+    expect(forged.status).toBe(422);
+    const stale = await send(boss, "PUT", "/api/access/rules", put());
+    expect(stale.status).toBe(409);
+    expect(stale.b.reason).toBe("version_conflict");
+    const kept = await send(
+      boss,
+      "PUT",
+      "/api/access/rules",
+      put({
+        expectedVersion: first.b.version,
+        rules: [first.b.rules[0], rule("ops-team")],
+      }),
+    );
+    expect(kept.status).toBe(200);
+    expect(kept.b.rules[0].id).toBe(first.b.rules[0].id);
+    expect(kept.b.rules).toHaveLength(2);
+  });
+
+  it("clearing the list is a write and a notice too", async () => {
+    const boss = await person("boss", { root: true, stepUp: true });
+    const first = await send(boss, "PUT", "/api/access/rules", put());
+    mail.length = 0;
+    const r = await send(
+      boss,
+      "PUT",
+      "/api/access/rules",
+      put({ rules: [], expectedVersion: first.b.version }),
+    );
+    expect(r.status).toBe(200);
+    expect(r.b.rules).toEqual([]);
+    expect(mail[0]!.text).toContain("removed every sign-in rule");
+    expect(await audit()).toHaveLength(2);
+  });
+});

@@ -7571,6 +7571,18 @@ offer's outcome is an `rbac.admin_group_offer` row on both trails, written once.
 Residual (ST-32.5): a Platform admin can probe, 60 drafts per 5 minutes, which roster members carry
 a given IdP group, claim or domain. The roster shows roles, not IdP facts.
 
+**The rule list's read and write (ST-32.7).** `GET /access/rules` is on the Members area, so a
+Platform admin reads the rules (a group, domain or claim and the grant, never a person or an
+account id) and the operator connections with their enforced domains. `PUT /access/rules` replaces
+the list and is a Superadmin's alone (`403 superadmin_only` before anything is read). It is the
+`writeConsoleAccess` path: a step-up, the typed `console.access` confirmation, a reason and the
+stored version (a stale one is `409 version_conflict`); the server mints every new rule id and
+refuses one the caller names that is not stored; each rule is checked as sign-in checks it (an
+operator connection, a verified and enforced domain). One `rbac.access_rules` row is written, then
+every Superadmin is mailed (`accessRulesNotice`), a removal or a clear included. The console's
+editor offers only operator connections and enforced domains, but the Worker is what refuses.
+Tests: `test/surfaces/console/accessRules.test.ts`.
+
 **Residual.**
 
 - The grant handlers (ST-31.6, below) call the engine.

@@ -221,6 +221,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // ST-29, ST-31.5: who can give the caller access to an area.
     ["/manage/api/access/admins", ["get"]],
     // ST-32.5: the SSO rules' preview and the admin_group conversion offers.
+    // ST-32.7: the rule list's read and replace.
+    ["/manage/api/access/rules", ["get", "put"]],
     ["/manage/api/access/rules/preview", ["post"]],
     ["/manage/api/access/offers", ["get", "post"]],
     ["/manage/api/access/offers/{slug}", ["post"]],

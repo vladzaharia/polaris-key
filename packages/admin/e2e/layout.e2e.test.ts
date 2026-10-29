@@ -601,6 +601,23 @@ function cases(): Case[] {
         if (await tile.isVisible()) await tile.click();
       },
     },
+    // ST-32.7: the SSO rules tab, and the same tab with the rule editor and its preview open.
+    {
+      name: "global:platform-members?tab=sso",
+      hash: "#/platform/members?tab=sso",
+      act: async (page) => {
+        await page.getByTestId("sso-rules").waitFor();
+      },
+    },
+    {
+      name: "global:platform-members?tab=sso&add",
+      hash: "#/platform/members?tab=sso",
+      act: async (page) => {
+        await page.getByRole("button", { name: "Add rule" }).click();
+        await page.getByLabel("Group", { exact: true }).fill("ops-oncall");
+        await page.getByTestId("rule-matches").waitFor();
+      },
+    },
     {
       name: "global:platform-members?edit-roles",
       hash: "#/platform/members",
@@ -844,6 +861,8 @@ const TEXT200_CASES = [
   "djdl:sync-usage",
   // ST-31.13: the Roles tab's tiles and one-column matrix.
   "global:platform-members?tab=roles",
+  // ST-32.7: the rule rows and the editor at 200 % text.
+  "global:platform-members?tab=sso&add",
   // ST-30c.4: the rows' name column kept its width at 200 % text.
   "global:sign-in-methods",
   ...NO_ACCESS_CASES,
@@ -1230,6 +1249,12 @@ async function open(
             },
           },
         });
+      // ST-32.7: a rule preview is a POST that answers like a read.
+      if (
+        route.request().method() === "POST" &&
+        url.pathname.endsWith("/access/rules/preview")
+      )
+        return route.fulfill({ json: resolve(url.pathname) });
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
       const body =

@@ -234,7 +234,6 @@ describe("Members: the roster", () => {
       "polaris-admins",
     );
     expect(screen.queryByText(/Open SSO rules/)).toBeNull();
-    expect(screen.queryByRole("tab", { name: /SSO rules/ })).toBeNull();
     // Roles are named by roleLabel; Console access hides beside another role.
     expect(within(t).getByText("Superadmin")).toBeTruthy();
     expect(within(t).getByText("Platform admin")).toBeTruthy();

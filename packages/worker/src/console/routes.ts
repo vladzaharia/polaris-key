@@ -94,6 +94,8 @@ import {
   handleOffersBulk,
   handleOffersList,
   handleRulePreview,
+  handleRulesGet,
+  handleRulesPut,
 } from "./handlers/accessRules.js";
 import {
   handleMemberSignOut,
@@ -448,6 +450,8 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // ST-32.5: the SSO rules' preview and the `admin_group` conversion offers
   // (`./handlers/accessRules.ts`). The table gates the area; the handlers ask for a Superadmin
   // (and, for an accept, the step-up) before they write.
+  ...rows(["GET"], "/access/rules", "members", handleRulesGet),
+  ...rows(["PUT"], "/access/rules", "members", handleRulesPut),
   ...rows(["POST"], "/access/rules/preview", "members", handleRulePreview),
   ...rows(["GET"], "/access/offers", "members", handleOffersList),
   ...rows(["POST"], "/access/offers", "members", handleOffersBulk),

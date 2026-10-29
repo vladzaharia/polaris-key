@@ -20,6 +20,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/manage/api/access/offers` | admin | List the open admin group conversion offers |
 | POST | `/manage/api/access/offers` | admin | Dismiss every open admin group offer |
 | POST | `/manage/api/access/rules/preview` | admin | Preview who a draft SSO rule would give access to |
+| GET | `/manage/api/access/rules` | admin | List the SSO rules and the connections a rule may name |
+| PUT | `/manage/api/access/rules` | admin | Replace the SSO rule list |
 | DELETE | `/manage/api/account-tokens/{tokenId}` | admin | Revoke a person's personal token |
 | GET | `/manage/api/account-tokens` | admin | List people's personal tokens |
 | GET | `/manage/api/attention` | admin | What needs the operator across every product the session can see |
