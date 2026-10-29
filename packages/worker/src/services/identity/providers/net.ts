@@ -45,6 +45,14 @@ export const PROVIDER_HOSTS: Readonly<
   steam: ["steamcommunity.com", "api.steampowered.com"],
 };
 
+/**
+ * The hosts a native platform token's key material may be fetched from (I-14.6). Exact host
+ * names, lower case; https only, no redirects (the Game Center verifier's own door).
+ */
+export const NATIVE_HOSTS = {
+  gamecenter: ["static.gc.apple.com"],
+} as const satisfies Readonly<Record<string, readonly string[]>>;
+
 /** The largest provider response this module reads (a discovery document or a JWKS is ~2 KB). */
 export const PROVIDER_MAX_BYTES = OIDC_MAX_BYTES;
 
