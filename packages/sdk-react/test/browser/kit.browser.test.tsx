@@ -613,6 +613,14 @@ async function gateToast(
     field.dispatchEvent(new Event("input", { bubbles: true }));
     await frame();
     press("activate.submit");
+    // A key activated here lands on ActivateDone; Start using the app closes the steps and the
+    // gate's toast says the entries left.
+    if (kind === "entries") {
+      await until(
+        () => host!.querySelector('[data-key="signin.done.start"]') !== null,
+      );
+      press("signin.done.start");
+    }
   } else {
     await until(
       () => host!.querySelector('[data-key="welcome.signIn"]') !== null,

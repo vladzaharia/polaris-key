@@ -1,18 +1,40 @@
 // Focus a control without leaving it under the docked action bar (WCAG 2.4.11). The kits focus
 // with `preventScroll` so a screen never jumps; at a short window (the 400 % zoom row) the
 // sticky bar then covers a field near the foot. The control gets a bottom scroll margin as tall
-// as the bar and scrolls into view only if it is not already (`nearest`), so a later Tab into it
-// clears the bar the same way.
+// as the bar (no more: at the shortest windows the heading must stay in view) and scrolls into
+// view only if it is not already (`nearest`), so a later Tab into it clears the bar the same way.
 
-/** Focus without a jump, then keep the control clear of the card's action bar. */
+/** Focus without a jump, then keep the control clear of the card's action bar. The bar settles
+ *  over the first frames (its buttons stack until the box is measured), and a scroll for the
+ *  taller bar would stay after it shrinks and push the heading out of view: the scroll waits
+ *  until the bar has held its size for two frames. */
 export function focusClear(el: HTMLElement | null | undefined): void {
   if (!el) return;
   el.focus({ preventScroll: true });
   const bar = el
     .closest(".card")
     ?.querySelector<HTMLElement>(":scope > .actions");
-  if (!bar) return;
-  el.style.scrollMarginBottom = `${bar.offsetHeight + 8}px`;
-  // jsdom has no scrollIntoView.
-  el.scrollIntoView?.({ block: "nearest" });
+  // A control inside the bar is always on screen: it needs no margin, and scrolling for it would
+  // push the heading out of the first viewport.
+  if (!bar || bar.contains(el)) return;
+  const clear = (): void => {
+    el.style.scrollMarginBottom = `${bar.offsetHeight}px`;
+    // jsdom has no scrollIntoView.
+    el.scrollIntoView?.({ block: "nearest" });
+  };
+  if (typeof ResizeObserver !== "function") return clear();
+  el.style.scrollMarginBottom = `${bar.offsetHeight}px`;
+  let frame = 0;
+  const settle = (): void => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        ro.disconnect();
+        clear();
+      });
+    });
+  };
+  // The observer's first call is the bar as it is now.
+  const ro = new ResizeObserver(settle);
+  ro.observe(bar);
 }
