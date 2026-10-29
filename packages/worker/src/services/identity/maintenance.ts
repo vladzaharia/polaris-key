@@ -26,6 +26,7 @@ import {
   sweepErasures,
 } from "./accounts/deletion.js";
 import { sweepAccountDeletions } from "./accounts/lifecycle.js";
+import { sweepRestoreKeys } from "./restore/store.js";
 import { customerOrigin } from "../../core/hosts.js";
 import type { Db } from "../../db/types.js";
 
@@ -136,6 +137,11 @@ export const identityMaintenance: MaintenanceContribution = {
     // nothing per person is kept past two days).
     await rec.drain(`storefrontSeen:${product}`, (limit) =>
       pruneStorefrontSeen(db, product, now, limit),
+    );
+    // I-49.4 (D-9): restore keys nobody checked for 180 days. Never gated: rows stay inert while
+    // the feature is off, and this removes them.
+    await rec.drain(`restoreKeys:${product}`, (limit) =>
+      sweepRestoreKeys(db, product, now, limit),
     );
   },
 

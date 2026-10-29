@@ -62,6 +62,14 @@ import { identityIntegration } from "./integration.js";
 import { discoverVisibility } from "./portal/store/visibility.js";
 import { identityMaintenance } from "./maintenance.js";
 import { platformConnectionSeedJob } from "./connections/seed.js";
+import {
+  IDENTITY_RESTORE_LISTENER,
+  restoreDeviceListener,
+} from "./restore/listener.js";
+import {
+  IDENTITY_RESTORE_STORE,
+  identityRestoreStore,
+} from "./restore/subjectStore.js";
 
 import { identityProductDeletion } from "./productDeletion.js";
 
@@ -81,6 +89,9 @@ export const identityService: ServiceDescriptor = {
       [STOREFRONT_ACTIVATIONS_LISTENER]: recordFirstActivation,
     },
     maintenance: identityMaintenance,
+    // I-49.4: the silent-restore keys, revoked with the account's data and with a device.
+    subjectStores: { [IDENTITY_RESTORE_STORE]: identityRestoreStore },
+    onDeviceChange: { [IDENTITY_RESTORE_LISTENER]: restoreDeviceListener },
     // P0-49: run by an operator through the migration runner, never by a tick.
     migrations: [platformConnectionSeedJob],
     integration: identityIntegration,

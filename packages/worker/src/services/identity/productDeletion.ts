@@ -21,6 +21,9 @@ const PRODUCT_KEYED = [
   // I-12 and LX-30: the relink history names accounts and subjects, and a holder move keeps the
   // licence's name and email before and after (`holder_json`); nothing is left to undo.
   "license_relinks",
+  // I-49.4: the silent-restore keys and the devices that signed in by restore.
+  "identity_restore_keys",
+  "identity_restore_origins",
 ] as const;
 
 export const identityProductDeletion: ProductDeletionContributor = (product) =>
