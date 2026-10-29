@@ -9,8 +9,8 @@
  *
  * ── THE ORDER OF CHECKS ─────────────────────────────────────────────────────────────────────
  *
- *   shape, then the three gates (Identity is on when the route is reached, `identity.nearby`,
- *   `launch.identityNearby`; each off state is `404 not_found`), the network budget, the device
+ *   the three gates (Identity is on when the route is reached, `identity.nearby`,
+ *   `launch.identityNearby`; each off state is `404 not_found`, even for a malformed body), the body's shape, the network budget, the device
  *   header, the keys (§15.8's rules, the held-key rule, an `agreeKey` held by another device), the
  *   `nearby-start` proof checked with the body's `signKey`, the existing-credential rule (Q8), the
  *   label (§12.7.1), THEN the record is written and the handle answered.
@@ -140,16 +140,18 @@ export async function handleNearbyStart(
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
 
-  // 1. Shape, then the gates. Identity being on is the router's: a product without it never
-  // reaches here.
-  const body = await readBody(req);
-  if (body === "too_large") return wireError(413, "body_too_large");
-  if (!body) return wireError(400, ErrorCode.BadRequest);
+  // 1. The gates, before the body is read: an off route is indistinguishable from one that does
+  // not exist (§12.11.5 rule 13). Identity being on is the router's.
   if (!(await launchGateOn(env, db, "launch.identityNearby")))
     return notFoundNested();
   const row = await getProduct(db, product.slug);
   if (!row) return notFoundNested();
   if (!(await readPlatformSignIn(db, row)).nearby) return notFoundNested();
+
+  // Then the shape.
+  const body = await readBody(req);
+  if (body === "too_large") return wireError(413, "body_too_large");
+  if (!body) return wireError(400, ErrorCode.BadRequest);
 
   // 2. The network budget.
   if (

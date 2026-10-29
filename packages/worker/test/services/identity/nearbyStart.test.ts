@@ -223,6 +223,19 @@ describe("POST /<p>/identity/nearby/start", () => {
       expect(res.status).toBe(404);
     });
 
+    it("a malformed body to an off route is 404, never 400", async () => {
+      for (const off of ["launch", "setting"] as const) {
+        const w = await world();
+        if (off === "launch") gate(w, undefined);
+        else await nearbySetting(w, false);
+        for (const bad of ["not json", [], {}])
+          expect(await post(w, bad)).toMatchObject({
+            status: 404,
+            body: { error: { code: "not_found" } },
+          });
+      }
+    });
+
     it("is served through the router with everything on", async () => {
       const w = await world();
       await services(w, "config", "license", "identity");
