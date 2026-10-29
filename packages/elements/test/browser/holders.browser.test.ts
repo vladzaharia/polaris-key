@@ -127,6 +127,8 @@ describe("<pk-gate config>: the whole path", () => {
           fetchImpl: fakeFetch(w),
           navigate: () => {},
           now: () => NOW,
+          // The in-page Add is off on the web by default; this path pins the form's layout.
+          addIn: "app",
         };
         gate.config = { ...PAGE, version: "1.0.0" };
         document.body.style.background =

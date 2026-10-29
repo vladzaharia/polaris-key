@@ -709,19 +709,25 @@ describe("the account pane's Not in an account row (UK-42.10)", () => {
     });
 
   /** The account pane a desktop host's menu opens, over a bridge in this state. */
-  const pane = (state: BridgeState) => {
+  const pane = (state: BridgeState, addIn?: "app" | "portal") => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge(state),
       now: () => NOW_SEC,
     });
     return {
       adapter,
-      ...render(<DrivenSettings adapter={adapter} onDismiss={() => {}} />),
+      ...render(
+        <DrivenSettings
+          adapter={adapter}
+          onDismiss={() => {}}
+          {...(addIn ? { addIn } : {})}
+        />,
+      ),
     };
   };
 
   it("shows the row for a floating license and opens AddToAccount in place; Cancel returns", async () => {
-    const { adapter, container } = pane(floating());
+    const { adapter, container } = pane(floating(), "app");
     await waitFor(() =>
       expect(control(container, "activate.recommend.action")).not.toBeNull(),
     );
@@ -735,6 +741,19 @@ describe("the account pane's Not in an account row (UK-42.10)", () => {
     await waitFor(() =>
       expect(control(container, "activate.recommend.action")).not.toBeNull(),
     );
+    adapter.dispose();
+  });
+
+  it("by default (the web switch) the row never opens the in-pane form", async () => {
+    const { adapter, container } = pane(floating());
+    await waitFor(() =>
+      expect(control(container, "activate.recommend.action")).not.toBeNull(),
+    );
+    fireEvent.click(control(container, "activate.recommend.action")!);
+    // The product's page is the destination; with no provider here there is no page to open.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(container.querySelector('input[data-field="email"]')).toBeNull();
+    expect(control(container, "activate.recommend.action")).not.toBeNull();
     adapter.dispose();
   });
 

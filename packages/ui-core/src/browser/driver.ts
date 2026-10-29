@@ -11,6 +11,7 @@ import { withManageKey, withManageReturn } from "@polaris-key/client-core";
 import { parsePortal, portalLink } from "@polaris-key/client-core/portal";
 import { CUSTOMER_ORIGIN_DEFAULT, ISSUER } from "@polaris-key/protocol/core";
 
+import { WEB_ADD_IN, type AddIn } from "../addIn.js";
 import type { ReleaseNoteInput, UiInput } from "../input.js";
 import { BrowserAdapter } from "./sdk/browser/browserAdapter.js";
 import {
@@ -191,6 +192,8 @@ export interface GateDriverOptions {
   /** The device kind already worded ("computer", "browser"): the lines of ActivateDone and
    *  AddToAccount that name this device. Defaults to "device". */
   deviceKind?: string;
+  /** Where Add your name and email, and "Sign in to that account", go. Defaults to `WEB_ADD_IN`. */
+  addIn?: AddIn;
 }
 
 /** Open the device-limit link (PX-W8): the app's return URL as `return=` and, on an `/activate`
@@ -602,7 +605,7 @@ export class GateDriver {
   /** The product page, with the key as the `#key=` fragment when one is held: the one place the
    *  key leaves memory. A fragment never reaches a server or a log, and only a link that passes
    *  `safeLink` opens. Used where Identity is off, so there is no account sign-in to run. */
-  private async openPortal(): Promise<void> {
+  private async openPortal(key?: string): Promise<void> {
     let core: unknown;
     try {
       core = (await this.adapter.discovery())?.core;
@@ -628,13 +631,16 @@ export class GateDriver {
     openManage(
       link,
       this.options.returnUrl,
-      trusted ? (this.heldKey ?? undefined) : undefined,
+      trusted ? (key ?? this.heldKey ?? undefined) : undefined,
     );
   }
 
   /** Add your name and email: with Identity on, AddToAccount; with it off, the portal. */
   private addToAccount(): void {
-    if (!this.adapter.snapshot().capabilities.identity.enabled) {
+    if (
+      (this.options.addIn ?? WEB_ADD_IN) === "portal" ||
+      !this.adapter.snapshot().capabilities.identity.enabled
+    ) {
       void this.openPortal();
       return;
     }
@@ -710,10 +716,15 @@ export class GateDriver {
    *  joins the account and no list is shown. The key is held in memory for this call only. Where the
    *  page cannot run the sign-in itself (a cookie page), the gate's own sign-in runs as before. */
   private ownedSignIn(): void {
+    const key = this.key.trim();
+    if ((this.options.addIn ?? WEB_ADD_IN) === "portal") {
+      // The portal signs in to that account and adds the key (the in-page device code cannot).
+      void this.openPortal(key || undefined);
+      return;
+    }
     // One sign-in at a time: a second press while one is live does nothing.
     if (this.owning || this.addSession) return;
     this.owning = true;
-    const key = this.key.trim();
     void (async () => {
       let p: SignInPrimitives;
       let h: SignInSessionHandle;
