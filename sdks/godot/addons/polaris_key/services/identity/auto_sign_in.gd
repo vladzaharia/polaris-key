@@ -76,7 +76,17 @@ func run(opts := {}) -> PKeyAutoSignInResult:
 	var installed := _installed(identity, opts)
 	await check_revoked(installed)
 	var generation := core.tokens.sign_out_generation
+	var early = await _quiet_result(core, installed)
+	if early != null:
+		return early
+	var plan := await _plan(core, installed, opts, generation)
+	if plan.has("result"):
+		return plan["result"]
+	return await _rungs_three_and_four(plan["candidates"], plan["ctx"])
 
+
+## Rungs 1 and 2, and the cases with no platform identity: the answer, or null to go on. A coroutine.
+func _quiet_result(core: PKeyCore, installed: Array) -> Variant:
 	# Rung 1: a token the device holds as a sign-in, with a licence.
 	if core.tokens.has_token() and core.tokens.origin() == PKeyTokenManager.ORIGIN_SIGN_IN and core.cache.license != null:
 		var doc = core.cache.license["doc"]
@@ -88,16 +98,24 @@ func run(opts := {}) -> PKeyAutoSignInResult:
 	# No platform identity here (Linux, Windows, or nothing installed): the regular form is next.
 	if installed.is_empty():
 		return PKeyAutoSignInResult.needs_sign_in(PKeyAutoSignInResult.REASON_NO_CREDENTIAL)
+	return null
+
+
+## Discovery and the candidate providers: {result} when the ladder ends here, else {ctx, candidates}.
+func _plan(core: PKeyCore, installed: Array, opts: Dictionary, generation: int) -> Dictionary:
 	if core.discovery_manifest == null:
 		await core.discover()
 	var fragment := PKeyDiscovery.identity_from(core.discovery_manifest)
 	if not core.enabled("identity") or fragment.is_empty() or fragment.get("exchange", {}).is_empty():
-		return PKeyAutoSignInResult.unavailable(PKeyConstants.ErrorCode.PLATFORM_IDENTITY_UNAVAILABLE, "This product publishes no platform sign-in.")
+		return {"result": PKeyAutoSignInResult.unavailable(PKeyConstants.ErrorCode.PLATFORM_IDENTITY_UNAVAILABLE, "This product publishes no platform sign-in.")}
 	var candidates := _candidates(installed, fragment["exchange"]["kinds"], opts.get("kinds"))
 	if candidates.is_empty():
-		return PKeyAutoSignInResult.unavailable(PKeyConstants.ErrorCode.PLATFORM_IDENTITY_UNAVAILABLE, "No installed provider matches the product's platform sign-in.")
+		return {"result": PKeyAutoSignInResult.unavailable(PKeyConstants.ErrorCode.PLATFORM_IDENTITY_UNAVAILABLE, "No installed provider matches the product's platform sign-in.")}
+	return {"candidates": candidates, "ctx": {"generation": generation, "fragment": fragment, "opts": opts, "failure": null}}
 
-	var ctx := {"generation": generation, "fragment": fragment, "opts": opts, "failure": null}
+
+func _rungs_three_and_four(candidates: Array, ctx: Dictionary) -> PKeyAutoSignInResult:
+	var opts: Dictionary = ctx["opts"]
 	# Rung 3: silent.
 	for p in candidates:
 		if not _flag(p, "has_silent"):

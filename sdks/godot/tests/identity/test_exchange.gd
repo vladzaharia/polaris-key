@@ -65,11 +65,16 @@ func _form(text: String) -> Dictionary:
 
 
 func _discovery(t: PKeyTestContext) -> void:
-	var m := {"services": {"identity": {"enabled": true, "exchange": {"kinds": ["google", "teleport", "gamecenter", 7, "google", "pgs", "apple"], "google": {"serverClientId": "g"}, "pgs": {"serverClientId": "p"}},
+	var m := {"services": {"identity": {"enabled": true, "exchange": {
+		"kinds": ["google", "teleport", "gamecenter", 7, "google", "pgs", "apple"],
+		"google": {"serverClientId": "g"}, "pgs": {"serverClientId": "p"}},
 		"endpoints": {"nonce": "https://k/n", "link": "https://k/l"}}}}
 	var f := PKeyDiscovery.identity_from(m)
 	t.check("exchange: kinds keep the known ones, once, in order", f["exchange"]["kinds"] == ["google", "gamecenter", "pgs", "apple"], str(f["exchange"]))
-	t.check("exchange: the client ids, nonce and link are decoded", f["exchange"]["google_server_client_id"] == "g" and f["exchange"]["pgs_server_client_id"] == "p" and f["nonce"] == "https://k/n" and f["link"] == "https://k/l", str(f))
+	t.check(
+		"exchange: the client ids, nonce and link are decoded",
+		f["exchange"]["google_server_client_id"] == "g" and f["exchange"]["pgs_server_client_id"] == "p" and f["nonce"] == "https://k/n" and f["link"] == "https://k/l",
+		str(f))
 	m["services"]["identity"]["exchange"] = {"kinds": ["teleport"]}
 	t.check("exchange: only unknown kinds is an empty list, not a failure", PKeyDiscovery.identity_from(m)["exchange"]["kinds"] == [], "")
 	m["services"]["identity"]["exchange"] = {"kinds": "google"}
@@ -86,7 +91,10 @@ func _nonce(t: PKeyTestContext) -> void:
 	var n: PKeyExchangeResult = await bed.sdk.identity.exchange.nonce("google")
 	t.check("exchange: nonce() is the Worker's value", n.ok and n.kind == PKeyExchangeResult.KIND_NONCE and n.nonce == NONCE and n.expires_in == 300, str(n))
 	var req: Dictionary = bed.nonce_requests[0]
-	t.check("exchange: nonce posts the device's two public keys, no bearer, with X-PKey-Device", req["body"] == {"signKey": keys["sign_key"], "agreeKey": keys["agree_key"]} and not req["headers"].has("authorization") and req["headers"].has("x-pkey-device"), str(req))
+	t.check(
+		"exchange: nonce posts the device's two public keys, no bearer, with X-PKey-Device",
+		req["body"] == {"signKey": keys["sign_key"], "agreeKey": keys["agree_key"]} and not req["headers"].has("authorization") and req["headers"].has("x-pkey-device"),
+		str(req))
 	t.check("exchange: the nonce is in no string", not (str(n) + n.message).contains(NONCE))
 	var bad: PKeyExchangeResult = await bed.sdk.identity.exchange.nonce("bogus")
 	t.check("exchange: an unknown kind argument is invalid-argument, nothing sent", bad.code == &"invalid-argument" and bed.nonce_requests.size() == 1, str(bad))
@@ -103,8 +111,13 @@ func _signed_in(t: PKeyTestContext) -> void:
 	var bed := await _bed()
 	bed.tokens = [B.json(200, TOKEN_OK)]
 	var r: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
-	t.check("exchange: a token answer is signed_in with subject, scope and licence", r.ok and r.kind == PKeyExchangeResult.KIND_SIGNED_IN and r.subject == "ps_abc" and r.scope == "profile email" and r.license_id == "lic_a", str(r))
-	t.check("exchange: the device token is stored with sign_in provenance and the subject kept", bed.sdk.core.tokens.current() == TOKEN_NEW and bed.sdk.core.tokens._source == PKeyTokenManager.SOURCE_SIGNIN and bed.sdk.core.cache.subject == "ps_abc")
+	t.check(
+		"exchange: a token answer is signed_in with subject, scope and licence",
+		r.ok and r.kind == PKeyExchangeResult.KIND_SIGNED_IN and r.subject == "ps_abc" and r.scope == "profile email" and r.license_id == "lic_a",
+		str(r))
+	t.check(
+		"exchange: the device token is stored with sign_in provenance and the subject kept",
+		bed.sdk.core.tokens.current() == TOKEN_NEW and bed.sdk.core.tokens._source == PKeyTokenManager.SOURCE_SIGNIN and bed.sdk.core.cache.subject == "ps_abc")
 	t.check("exchange: a supplied nonce is not fetched again", bed.nonce_requests.is_empty())
 	var req: Dictionary = bed.token_requests[0]
 	var f := _form(req["body"])
@@ -138,13 +151,22 @@ func _answers(t: PKeyTestContext) -> void:
 	var bed := await _bed()
 	bed.tokens = [B.json(200, {"status": "confirm", "grant": GRANT, "expiresIn": 300, "consent": CONSENT})]
 	var c: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
-	t.check("exchange: confirm is a pending consent and stores nothing", c.ok and c.kind == PKeyExchangeResult.KIND_CONFIRM and c.grant == GRANT and c.expires_in == 300 and c.consent["as"]["provider"] == "google" and bed.sdk.core.tokens.current() == "", str(c))
+	t.check(
+		"exchange: confirm is a pending consent and stores nothing",
+		c.ok and c.kind == PKeyExchangeResult.KIND_CONFIRM and c.grant == GRANT and c.expires_in == 300 and c.consent["as"]["provider"] == "google" and bed.sdk.core.tokens.current() == "",
+		str(c))
 	bed.tokens = [B.json(200, {"status": "choose", "grant": GRANT, "expiresIn": 300, "choices": VIEW})]
 	var ch: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
-	t.check("exchange: choose is a pending choice with the view", ch.ok and ch.kind == PKeyExchangeResult.KIND_CHOOSE and ch.grant == GRANT and ch.view.has("choices") and bed.sdk.core.tokens.current() == "", str(ch))
+	t.check(
+		"exchange: choose is a pending choice with the view",
+		ch.ok and ch.kind == PKeyExchangeResult.KIND_CHOOSE and ch.grant == GRANT and ch.view.has("choices") and bed.sdk.core.tokens.current() == "",
+		str(ch))
 	bed.tokens = [B.json(403, {"error": "interstitial_required", "reason": "no_link", "url": "https://key.plrs.im/card", "linkHandle": HANDLE, "expiresIn": 600})]
 	var n: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
-	t.check("exchange: interstitial_required no_link carries the handle and the card", n.ok and n.kind == PKeyExchangeResult.KIND_NEEDS_SIGN_IN and n.reason == "no_link" and n.link_handle == HANDLE and n.url.ends_with("/card") and n.expires_in == 600, str(n))
+	t.check(
+		"exchange: interstitial_required no_link carries the handle and the card",
+		n.ok and n.kind == PKeyExchangeResult.KIND_NEEDS_SIGN_IN and n.reason == "no_link" and n.link_handle == HANDLE and n.url.ends_with("/card") and n.expires_in == 600,
+		str(n))
 	bed.tokens = [B.json(403, {"error": "interstitial_required", "reason": "terms", "url": "https://key.plrs.im/card", "linkHandle": HANDLE, "expiresIn": 600})]
 	var terms: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
 	t.check("exchange: terms carries no handle", terms.kind == PKeyExchangeResult.KIND_NEEDS_SIGN_IN and terms.reason == "terms" and terms.link_handle == "", str(terms))
@@ -166,7 +188,10 @@ func _refusals(t: PKeyTestContext) -> void:
 	var bed := await _bed()
 	bed.tokens = [B.json(400, {"error": "invalid_grant"})]
 	var g: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
-	t.check("exchange: a flat invalid_grant is refused with its code and changes nothing", g.kind == PKeyExchangeResult.KIND_REFUSED and g.code == &"invalid_grant" and g.http_status == 400 and bed.sdk.core.tokens.current() == "", str(g))
+	t.check(
+		"exchange: a flat invalid_grant is refused with its code and changes nothing",
+		g.kind == PKeyExchangeResult.KIND_REFUSED and g.code == &"invalid_grant" and g.http_status == 400 and bed.sdk.core.tokens.current() == "",
+		str(g))
 	bed.tokens = [{"status": 429, "headers": {"Content-Type": "application/json", "Retry-After": "9"}, "body": "{\"error\":\"rate_limited\"}"}]
 	var rl: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
 	t.check("exchange: rate_limited carries retry_after_seconds", rl.code == &"rate_limited" and rl.retry_after_seconds == 9, str(rl))
@@ -184,14 +209,20 @@ func _refusals(t: PKeyTestContext) -> void:
 	t.check("exchange: a 404 is unavailable", nf.kind == PKeyExchangeResult.KIND_UNAVAILABLE and nf.code == &"not_found", str(nf))
 	var empty: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", "", NONCE)
 	var shape: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, "short")
-	t.check("exchange: an empty token or a malformed nonce is invalid-argument, unsent", empty.code == &"invalid-argument" and shape.code == &"invalid-argument" and bed.token_requests.size() == 6, str(bed.token_requests.size()))
+	t.check(
+		"exchange: an empty token or a malformed nonce is invalid-argument, unsent",
+		empty.code == &"invalid-argument" and shape.code == &"invalid-argument" and bed.token_requests.size() == 6,
+		str(bed.token_requests.size()))
 	bed.free_all()
 
 
 func _unavailable(t: PKeyTestContext) -> void:
 	var bed := await _bed(["apple"])
 	var r: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
-	t.check("exchange: a kind the product does not accept is unavailable and unsent", r.kind == PKeyExchangeResult.KIND_UNAVAILABLE and r.code == &"platform-identity-unavailable" and bed.token_requests.is_empty() and bed.nonce_requests.is_empty(), str(r))
+	t.check(
+		"exchange: a kind the product does not accept is unavailable and unsent",
+		r.kind == PKeyExchangeResult.KIND_UNAVAILABLE and r.code == &"platform-identity-unavailable" and bed.token_requests.is_empty() and bed.nonce_requests.is_empty(),
+		str(r))
 	bed.sdk.core.discovery_manifest["services"]["identity"].erase("exchange")
 	var none: PKeyExchangeResult = await bed.sdk.identity.exchange.nonce("apple")
 	t.check("exchange: no exchange member is unavailable", none.kind == PKeyExchangeResult.KIND_UNAVAILABLE, str(none))
@@ -220,13 +251,18 @@ func _consent(t: PKeyTestContext) -> void:
 	t.check("consent: complete sends {grant, consent} alone for a confirm grant", body == {"grant": GRANT, "consent": {"claims": ["email"]}}, str(body))
 	t.check("consent: the token is stored", done.ok and bed.sdk.core.tokens.current() == TOKEN_NEW and done.subject == "ps_abc", str(done))
 	await bed.sdk.identity.choice.complete(GRANT, {"kind": "keep"}, {"claims": []})
-	t.check("consent: a choice and a consent travel together", bed.choice_requests[1]["body"] == {"grant": GRANT, "choice": {"kind": "keep"}, "consent": {"claims": []}}, str(bed.choice_requests[1]["body"]))
+	t.check(
+		"consent: a choice and a consent travel together",
+		bed.choice_requests[1]["body"] == {"grant": GRANT, "choice": {"kind": "keep"}, "consent": {"claims": []}},
+		str(bed.choice_requests[1]["body"]))
 	await bed.sdk.identity.choice.complete(GRANT, {"kind": "create"})
 	t.check("consent: without a consent the body has none (a redirect grant)", bed.choice_requests[2]["body"] == {"grant": GRANT, "choice": {"kind": "create"}}, str(bed.choice_requests[2]["body"]))
 	var no_choice: PKeyChoiceResult = await bed.sdk.identity.choice.complete(GRANT, null)
 	var bad: PKeyChoiceResult = await bed.sdk.identity.choice.complete(GRANT, null, {"claims": "email"})
 	var bad_claim: PKeyChoiceResult = await bed.sdk.identity.choice.complete(GRANT, null, {"claims": [1]})
-	t.check("consent: a null choice without consent, or a malformed consent, is invalid-argument and unsent", no_choice.code == &"invalid-argument" and bad.code == &"invalid-argument" and bad_claim.code == &"invalid-argument" and bed.choice_requests.size() == 3)
+	t.check(
+		"consent: a null choice without consent, or a malformed consent, is invalid-argument and unsent",
+		no_choice.code == &"invalid-argument" and bad.code == &"invalid-argument" and bad_claim.code == &"invalid-argument" and bed.choice_requests.size() == 3)
 	bed.choice_answers = {"complete": B.json(400, {"error": {"code": "bad_request"}})}
 	var refused: PKeyChoiceResult = await bed.sdk.identity.choice.complete(GRANT, null, {"claims": ["email"]})
 	t.check("consent: the Worker's bad_request is a refusal", refused.kind == PKeyChoiceResult.KIND_REFUSED and refused.code == &"bad_request", str(refused))

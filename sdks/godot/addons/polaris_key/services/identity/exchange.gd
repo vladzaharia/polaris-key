@@ -74,10 +74,9 @@ func nonce(kind: String) -> PKeyExchangeResult:
 ## ("app" or "card"). A call here is a sign-in the person started: a stored token lowers the
 ## sign-out flag. (The ladder passes the private `ladder_generation`; it never does.) A coroutine answering a PKeyExchangeResult.
 func exchange(kind: String, subject_token: String, p_nonce := "", opts := {}) -> PKeyExchangeResult:
-	if subject_token == "":
-		return PKeyExchangeResult.failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "subject_token is empty.")
-	if p_nonce != "" and _nonce_re.search(p_nonce) == null:
-		return PKeyExchangeResult.failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "nonce is malformed.")
+	var invalid := _argument_error(subject_token, p_nonce)
+	if invalid != null:
+		return invalid
 	var ready = await _ready(kind)
 	if ready is PKeyExchangeResult:
 		return ready
@@ -88,8 +87,28 @@ func exchange(kind: String, subject_token: String, p_nonce := "", opts := {}) ->
 		if n.kind != PKeyExchangeResult.KIND_NONCE:
 			return n
 		value = n.nonce
-	var identity := _identity()
-	var core := identity._core()
+	var form = _token_form(kind, subject_token, value, ctx, opts)
+	if form is PKeyExchangeResult:
+		return form
+	var sent = await _send(ctx["token"], PKeyIdentityRedirect.TOKEN_CONTENT_TYPE, form)
+	if sent is PKeyExchangeResult:
+		return sent
+	return await _outcome(sent["status"], sent["body"], sent["response"], opts)
+
+
+## null when the arguments are usable, else the failure.
+func _argument_error(subject_token: String, p_nonce: String) -> PKeyExchangeResult:
+	if subject_token == "":
+		return PKeyExchangeResult.failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "subject_token is empty.")
+	if p_nonce != "" and _nonce_re.search(p_nonce) == null:
+		return PKeyExchangeResult.failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "nonce is malformed.")
+	return null
+
+
+## The form body that carries the token and the device's proof (a PackedByteArray), or the
+## PKeyExchangeResult that ends the attempt.
+func _token_form(kind: String, subject_token: String, value: String, ctx: Dictionary, opts: Dictionary) -> Variant:
+	var core := _identity()._core()
 	var keys: PKeyResult = ctx["port"].ensure()
 	if not keys.ok:
 		return PKeyExchangeResult.failed(PKeyConstants.ErrorCode.PLATFORM_IDENTITY_UNAVAILABLE, "The device keys could not be read.")
@@ -114,10 +133,7 @@ func exchange(kind: String, subject_token: String, p_nonce := "", opts := {}) ->
 	var parts := PackedStringArray()
 	for p in pairs:
 		parts.append("%s=%s" % [PKeyUri.form(p[0]), PKeyUri.form(p[1])])
-	var sent = await _send(ctx["token"], PKeyIdentityRedirect.TOKEN_CONTENT_TYPE, "&".join(parts).to_utf8_buffer())
-	if sent is PKeyExchangeResult:
-		return sent
-	return await _outcome(sent["status"], sent["body"], sent["response"], opts)
+	return "&".join(parts).to_utf8_buffer()
 
 
 # ── Routes and keys ──────────────────────────────────────────────────────────────────────
@@ -132,6 +148,11 @@ func _ready(kind: String) -> Variant:
 		return PKeyExchangeResult.failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "kind is google, apple, gamecenter or pgs.")
 	if core.discovery_manifest == null:
 		await core.discover()
+	return _routes(identity, core, kind)
+
+
+## {port, nonce, token} once discovery is in, or the PKeyExchangeResult that ends the attempt.
+func _routes(identity: PKeyIdentity, core: PKeyCore, kind: String) -> Variant:
 	var off := PKeyExchangeResult.unavailable(PKeyConstants.ErrorCode.PLATFORM_IDENTITY_UNAVAILABLE, "No %s exchange for %s." % [kind, core.product])
 	if not core.enabled("identity"):
 		return off
@@ -191,25 +212,13 @@ func _send(url: String, content_type: String, body: PackedByteArray, is_nonce :=
 
 func _outcome(status: int, body: Variant, _response: PKeyResult, opts := {}) -> PKeyExchangeResult:
 	var core := _identity()._core()
-	var identity := _identity()
 	var bad := PKeyExchangeResult.failed(PKeyErrors.INVALID_RESPONSE, "The token endpoint answered without a complete exchange.")
 	if not (body is Dictionary):
 		return bad
 	if status == 403:
 		return _needs_sign_in(body, bad)
 	if body.get("status") == "confirm":
-		var grant = body.get("grant")
-		var consent = body.get("consent")
-		if not (grant is String) or _grant_re.search(grant) == null or not PKeyClaims.is_number(body.get("expiresIn")) \
-				or not (consent is Dictionary) or not (consent.get("client") is Dictionary) or not (consent.get("as") is Dictionary) \
-				or not (consent.get("items") is Array) or not (consent.get("scopeHash") is String):
-			return bad
-		var c := PKeyExchangeResult.made(PKeyExchangeResult.KIND_CONFIRM)
-		c.grant = grant
-		c.expires_in = int(body["expiresIn"])
-		c.expires_at = core.clock.system_now() + c.expires_in
-		c.consent = consent
-		return c
+		return _confirm(body, bad)
 	var answer := PKeyIdentityRedirect.parse_token_answer(200, body)
 	match answer["kind"]:
 		"choose":
@@ -220,30 +229,53 @@ func _outcome(status: int, body: Variant, _response: PKeyResult, opts := {}) -> 
 			ch.view = answer["choices"]
 			return ch
 		"token":
-			var out := PKeyExchangeResult.made(PKeyExchangeResult.KIND_SIGNED_IN)
-			var ladder = opts.get("ladder_generation")
-			if ladder is int:
-				# The ladder's own exchange: stored only if no sign-out happened since it started, and
-				# it never lowers the sign-out flag.
-				var verdict = core.tokens.set_token_unless_signed_out(answer["access_token"], ladder)
-				if verdict == null:
-					return PKeyExchangeResult.signed_out()
-				out.stored = verdict
-			else:
-				out.stored = core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN, true)
-			out.subject = answer["subject"]
-			out.scope = answer["scope"]
-			var lic = answer["license"]
-			out.license_id = lic["id"] if lic is Dictionary and lic.get("id") is String else ""
-			if identity._account != null:
-				identity._account.note_signed_in(out.subject)
-			if identity.redirect_acquisition_sync and identity.on_acquired.is_valid():
-				var synced: PKeySyncResult = await identity.on_acquired.call()
-				var problem := PKeyLicense.unverified(core, synced, "the sign-in succeeded")
-				if not problem.is_empty():
-					return PKeyExchangeResult.failed(problem["code"], problem["message"])
-			return out
+			return await _signed_in(answer, opts)
 	return bad
+
+
+## `200 confirm`: the consent the person approves, or `bad` when the answer is incomplete.
+func _confirm(body: Dictionary, bad: PKeyExchangeResult) -> PKeyExchangeResult:
+	var grant = body.get("grant")
+	var consent = body.get("consent")
+	if not (grant is String) or _grant_re.search(grant) == null or not PKeyClaims.is_number(body.get("expiresIn")) \
+			or not (consent is Dictionary) or not (consent.get("client") is Dictionary) or not (consent.get("as") is Dictionary) \
+			or not (consent.get("items") is Array) or not (consent.get("scopeHash") is String):
+		return bad
+	var c := PKeyExchangeResult.made(PKeyExchangeResult.KIND_CONFIRM)
+	c.grant = grant
+	c.expires_in = int(body["expiresIn"])
+	c.expires_at = _identity()._core().clock.system_now() + c.expires_in
+	c.consent = consent
+	return c
+
+
+## A token answer: store it and report the sign-in. A coroutine.
+func _signed_in(answer: Dictionary, opts: Dictionary) -> PKeyExchangeResult:
+	var identity := _identity()
+	var core := identity._core()
+	var out := PKeyExchangeResult.made(PKeyExchangeResult.KIND_SIGNED_IN)
+	var ladder = opts.get("ladder_generation")
+	if ladder is int:
+		# The ladder's own exchange: stored only if no sign-out happened since it started, and
+		# it never lowers the sign-out flag.
+		var verdict = core.tokens.set_token_unless_signed_out(answer["access_token"], ladder)
+		if verdict == null:
+			return PKeyExchangeResult.signed_out()
+		out.stored = verdict
+	else:
+		out.stored = core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN, true)
+	out.subject = answer["subject"]
+	out.scope = answer["scope"]
+	var lic = answer["license"]
+	out.license_id = lic["id"] if lic is Dictionary and lic.get("id") is String else ""
+	if identity._account != null:
+		identity._account.note_signed_in(out.subject)
+	if identity.redirect_acquisition_sync and identity.on_acquired.is_valid():
+		var synced: PKeySyncResult = await identity.on_acquired.call()
+		var problem := PKeyLicense.unverified(core, synced, "the sign-in succeeded")
+		if not problem.is_empty():
+			return PKeyExchangeResult.failed(problem["code"], problem["message"])
+	return out
 
 
 ## `403 interstitial_required`. An unknown `reason` reads as `no_link` with no handle; a handle

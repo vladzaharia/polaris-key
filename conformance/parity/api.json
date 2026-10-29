@@ -1951,6 +1951,21 @@
     },
     {
       "sdk": "godot",
+      "path": "identity.install_platform_provider",
+      "reason": "wiring: installs, lists and clears the platform sign-in providers the ladder and sign_out() use (the platform adapters call it); apps sign in with auto_sign_in() or exchange.exchange()"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.platform_providers",
+      "reason": "wiring: installs, lists and clears the platform sign-in providers the ladder and sign_out() use (the platform adapters call it); apps sign in with auto_sign_in() or exchange.exchange()"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.clear_platform_providers",
+      "reason": "wiring: installs, lists and clears the platform sign-in providers the ladder and sign_out() use (the platform adapters call it); apps sign in with auto_sign_in() or exchange.exchange()"
+    },
+    {
+      "sdk": "godot",
       "path": "identity.add_before_sign_out",
       "reason": "the seam Cloud Sync's SDK package registers its flush on (D-4); not an app verb"
     },
@@ -2263,6 +2278,11 @@
       "sdk": "godot",
       "path": "store.failed",
       "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.cache_unreadable",
+      "reason": "the Store persistence port that app and backend code implement (true when a held cache record cannot be read, so PKeyCache fails the sign-out flag closed); not a client verb"
     },
     {
       "sdk": "godot",

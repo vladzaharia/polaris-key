@@ -12,6 +12,10 @@ extends RefCounted
 ## Never pin from `trust.pinnedKeys`: pins come only from PKeyOptions.pinned_keys.
 
 
+## The platform sign-in kinds this SDK knows (identity_from keeps only these).
+const EXCHANGE_KINDS := ["google", "apple", "gamecenter", "pgs"]
+
+
 ## A full map, every slug in canonical order: slug -> {"enabled": bool}.
 static func services_where(enabled: Callable) -> Dictionary:
 	var out := {}
@@ -103,12 +107,8 @@ static func identity_from(manifest: Variant) -> Dictionary:
 	}
 
 
-## The platform sign-in kinds a product accepts (WIRE-CONTRACT-V5 §12.11.6-.7): {kinds,
-## google_server_client_id, pgs_server_client_id}, or {} when the fragment publishes no usable
-## `exchange`. A kind this SDK does not know is dropped, never a decode failure.
-const EXCHANGE_KINDS := ["google", "apple", "gamecenter", "pgs"]
-
-
+## {kinds, google_server_client_id, pgs_server_client_id}, or {} when the fragment publishes no usable
+## `exchange` (WIRE-CONTRACT-V5 §12.11.6-.7). A kind this SDK does not know is dropped, never a decode failure.
 static func _exchange_from(raw: Variant) -> Dictionary:
 	if not (raw is Dictionary) or not (raw.get("kinds") is Array):
 		return {}

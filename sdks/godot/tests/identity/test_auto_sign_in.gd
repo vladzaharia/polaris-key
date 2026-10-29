@@ -108,7 +108,10 @@ func _rung_one(t: PKeyTestContext) -> void:
 	bed.sdk.identity.install_platform_provider(g)
 	bed.server.requests.clear()
 	var r = await bed.sdk.identity.auto_sign_in()
-	t.check("ladder: a sign_in token with a licence is rung 1, no network", r.ok and r.kind == PKeyAutoSignInResult.KIND_SIGNED_IN and r.via == "stored" and bed.server.requests.is_empty() and bed.nonce_requests.is_empty(), str(r))
+	t.check(
+		"ladder: a sign_in token with a licence is rung 1, no network",
+		r.ok and r.kind == PKeyAutoSignInResult.KIND_SIGNED_IN and r.via == "stored" and bed.server.requests.is_empty() and bed.nonce_requests.is_empty(),
+		str(r))
 	t.check("ladder: rung 1 names the subject-less session and asks no provider for a token", log == ["google.revoked?"], str(log))
 	t.check("ladder: the provenance is in the cache record", bed.sdk.core.cache.record()["tokenOrigin"] == "sign_in")
 	var again := PKeyCache.new(bed.sdk.core.store, bed.sdk.core.trust, bed.sdk.core.clock, bed.F["product"], bed.F["device_id"])
@@ -118,7 +121,10 @@ func _rung_one(t: PKeyTestContext) -> void:
 	for source in [PKeyTokenManager.SOURCE_ACTIVATE, PKeyTokenManager.SOURCE_ENROLL, PKeyTokenManager.SOURCE_REGISTER]:
 		bed = await _signed_in_bed(source)
 		var other = await bed.sdk.identity.auto_sign_in()
-		t.check("ladder: a %s token is not a sign-in (rung 1 skipped, no provider: needs_sign_in)" % source, other.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and other.reason == "no_credential", str(other))
+		t.check(
+			"ladder: a %s token is not a sign-in (rung 1 skipped, no provider: needs_sign_in)" % source,
+			other.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and other.reason == "no_credential",
+			str(other))
 		bed.free_all()
 	bed = await _signed_in_bed()
 	bed.sdk.core.tokens.set_token("pkeyt_REACQUIREDREACQUIREDREACQUIREDREAC", PKeyTokenManager.SOURCE_REACQUIRE)
@@ -149,12 +155,27 @@ func _order_and_nonce(t: PKeyTestContext) -> void:
 	bed.tokens = [B.json(200, X.TOKEN_OK)]
 	var r = await bed.sdk.identity.auto_sign_in()
 	var silent_calls := log.filter(func(e): return e.ends_with(".silent"))
-	t.check("ladder: rung 3 walks games first (gamecenter, pgs, google), then stops at the token; apple has no silent rung", silent_calls == ["gamecenter.silent", "pgs.silent", "google.silent"], str(log))
-	t.check("ladder: a fresh nonce for each attempt", bed.nonce_requests.size() == 3 and google.seen_nonce == "C".repeat(43) and gc.seen_nonce == "A".repeat(43) and pgs.seen_nonce == "B".repeat(43), str(bed.nonce_requests.size()))
-	t.check("ladder: the exchange carries the attempt's own nonce, the token and no bearer", _form(bed.token_requests[0]["body"])["nonce"] == "C".repeat(43) and _form(bed.token_requests[0]["body"])["subject_token"] == X.PLATFORM_TOKEN and not bed.token_requests[0]["headers"].has("authorization"))
+	t.check(
+		"ladder: rung 3 walks games first (gamecenter, pgs, google), then stops at the token; apple has no silent rung",
+		silent_calls == ["gamecenter.silent", "pgs.silent", "google.silent"],
+		str(log))
+	t.check(
+		"ladder: a fresh nonce for each attempt",
+		bed.nonce_requests.size() == 3 and google.seen_nonce == "C".repeat(43) and gc.seen_nonce == "A".repeat(43) and pgs.seen_nonce == "B".repeat(43),
+		str(bed.nonce_requests.size()))
+	t.check(
+		"ladder: the exchange carries the attempt's own nonce, the token and no bearer",
+		_form(bed.token_requests[0]["body"])["nonce"] == "C".repeat(43)
+		and _form(bed.token_requests[0]["body"])["subject_token"] == X.PLATFORM_TOKEN
+		and not bed.token_requests[0]["headers"].has("authorization"))
 	t.check("ladder: the audience is discovery's serverClientId for the kind", google.seen_audience == "g.apps" and pgs.seen_audience == "p.apps" and gc.seen_audience == "")
-	t.check("ladder: signed_in via platform with the provider, subject and licence", r.ok and r.kind == PKeyAutoSignInResult.KIND_SIGNED_IN and r.via == "platform" and r.provider == "google" and r.subject == "ps_abc" and r.license_id == "lic_a", str(r))
-	t.check("ladder: the token is stored as a sign_in, and the provider hears of the session", bed.sdk.core.tokens.current() == X.TOKEN_NEW and bed.sdk.core.tokens.origin() == "sign_in" and google.started == [{"user_id": "u1"}] and gc.started.is_empty())
+	t.check(
+		"ladder: signed_in via platform with the provider, subject and licence",
+		r.ok and r.kind == PKeyAutoSignInResult.KIND_SIGNED_IN and r.via == "platform" and r.provider == "google" and r.subject == "ps_abc" and r.license_id == "lic_a",
+		str(r))
+	t.check(
+		"ladder: the token is stored as a sign_in, and the provider hears of the session",
+		bed.sdk.core.tokens.current() == X.TOKEN_NEW and bed.sdk.core.tokens.origin() == "sign_in" and google.started == [{"user_id": "u1"}] and gc.started.is_empty())
 	t.check("ladder: the ladder's own exchange did not touch the flag", not bed.sdk.core.cache.explicit_sign_out)
 	t.check("ladder: no secret in the result's strings", not (str(r) + r.message).contains(X.PLATFORM_TOKEN) and not str(r).contains(X.TOKEN_NEW))
 	bed.free_all()
@@ -166,7 +187,10 @@ func _order_and_nonce(t: PKeyTestContext) -> void:
 	bed.sdk.identity.install_platform_provider(gc2)
 	bed.sdk.identity.install_platform_provider(g2)
 	var none = await bed.sdk.identity.auto_sign_in()
-	t.check("ladder: a kind discovery does not publish is not tried", log.filter(func(e): return e.ends_with(".silent")) == ["google.silent"] and none.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and none.reason == "no_credential", str(log))
+	t.check(
+		"ladder: a kind discovery does not publish is not tried",
+		log.filter(func(e): return e.ends_with(".silent")) == ["google.silent"] and none.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and none.reason == "no_credential",
+		str(log))
 	log.clear()
 	await bed.sdk.identity.auto_sign_in({"kinds": ["apple"]})
 	t.check("ladder: opts.kinds narrows the walk (apple is not installed: nothing asked)", log.filter(func(e): return e.ends_with(".silent")).is_empty())
@@ -193,7 +217,10 @@ func _prompt_and_cancel(t: PKeyTestContext) -> void:
 	bed.sdk.identity.install_platform_provider(apple)
 	bed.sdk.identity.install_platform_provider(google)
 	var r = await bed.sdk.identity.auto_sign_in()
-	t.check("prompt: the default never shows a sheet", not log.any(func(e): return e.ends_with(".sheet")) and r.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and r.reason == "no_credential", str(log))
+	t.check(
+		"prompt: the default never shows a sheet",
+		not log.any(func(e): return e.ends_with(".sheet")) and r.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and r.reason == "no_credential",
+		str(log))
 	log.clear()
 	var c = await bed.sdk.identity.auto_sign_in({"prompt": "optional"})
 	t.check("prompt: optional runs the sheet after rung 3; a dismissed sheet ends rung 4 (one sheet at most)", log.filter(func(e): return e.ends_with(".sheet")) == ["google.sheet"], str(log))
@@ -207,7 +234,10 @@ func _prompt_and_cancel(t: PKeyTestContext) -> void:
 	google.sheet_answer = {"token": X.PLATFORM_TOKEN}
 	bed.tokens = [B.json(200, X.TOKEN_OK)]
 	var ok = await bed.sdk.identity.auto_sign_in({"prompt": "optional"})
-	t.check("prompt: a sheet's token is exchanged and signs in, and apple's sheet never shows", ok.kind == PKeyAutoSignInResult.KIND_SIGNED_IN and log.filter(func(e): return e.ends_with(".sheet")) == ["google.sheet"], str(log))
+	t.check(
+		"prompt: a sheet's token is exchanged and signs in, and apple's sheet never shows",
+		ok.kind == PKeyAutoSignInResult.KIND_SIGNED_IN and log.filter(func(e): return e.ends_with(".sheet")) == ["google.sheet"],
+		str(log))
 	bed.free_all()
 	# Silent cancel: the next provider is still asked.
 	bed = await _bed(["gamecenter", "google"])
@@ -231,7 +261,10 @@ func _answers(t: PKeyTestContext) -> void:
 	bed.sdk.identity.install_platform_provider(g)
 	bed.tokens = [B.json(200, {"status": "confirm", "grant": X.GRANT, "expiresIn": 300, "consent": X.CONSENT})]
 	var c = await bed.sdk.identity.auto_sign_in()
-	t.check("answers: confirm carries the pending consent and stores nothing", c.ok and c.kind == PKeyAutoSignInResult.KIND_CONFIRM and c.pending["grant"] == X.GRANT and c.pending["consent"]["as"]["provider"] == "google" and not bed.sdk.core.tokens.has_token(), str(c))
+	t.check(
+		"answers: confirm carries the pending consent and stores nothing",
+		c.ok and c.kind == PKeyAutoSignInResult.KIND_CONFIRM and c.pending["grant"] == X.GRANT and c.pending["consent"]["as"]["provider"] == "google" and not bed.sdk.core.tokens.has_token(),
+		str(c))
 	t.check("answers: the provider has not heard of a session yet", g.started.is_empty())
 	bed.choice_answers = {"complete": B.json(200, X.TOKEN_OK)}
 	var done: PKeyChoiceResult = await bed.sdk.identity.choice.complete(c.pending["grant"], null, {"claims": ["email"]})
@@ -243,7 +276,10 @@ func _answers(t: PKeyTestContext) -> void:
 	t.check("answers: the grant is in no string", not (str(c) + c.message + str(c.detail) + str(ch)).contains(X.GRANT))
 	bed.tokens = [B.json(403, {"error": "interstitial_required", "reason": "no_link", "url": "https://key.plrs.im/card", "linkHandle": X.HANDLE, "expiresIn": 600})]
 	var n = await bed.sdk.identity.auto_sign_in()
-	t.check("answers: no_link carries the link handle, redacted from strings", n.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and n.reason == "no_link" and n.link_handle == X.HANDLE and not (str(n) + n.message).contains(X.HANDLE), str(n))
+	t.check(
+		"answers: no_link carries the link handle, redacted from strings",
+		n.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and n.reason == "no_link" and n.link_handle == X.HANDLE and not (str(n) + n.message).contains(X.HANDLE),
+		str(n))
 	bed.tokens = [B.json(403, {"error": "interstitial_required", "reason": "terms", "url": "https://key.plrs.im/card", "linkHandle": X.HANDLE, "expiresIn": 600})]
 	var terms = await bed.sdk.identity.auto_sign_in()
 	t.check("answers: terms", terms.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and terms.reason == "terms" and terms.link_handle == "", str(terms))
@@ -259,7 +295,10 @@ func _answers(t: PKeyTestContext) -> void:
 	bed.nonces = [B.json(404, {"error": "not_found"})]
 	log.clear()
 	var nonce_gone = await bed.sdk.identity.auto_sign_in()
-	t.check("answers: no nonce route is unavailable and the provider is not asked", nonce_gone.kind == PKeyAutoSignInResult.KIND_UNAVAILABLE and nonce_gone.code == &"not_found" and log.filter(func(e): return e.ends_with(".silent")).is_empty(), str(nonce_gone))
+	t.check(
+		"answers: no nonce route is unavailable and the provider is not asked",
+		nonce_gone.kind == PKeyAutoSignInResult.KIND_UNAVAILABLE and nonce_gone.code == &"not_found" and log.filter(func(e): return e.ends_with(".silent")).is_empty(),
+		str(nonce_gone))
 	bed.free_all()
 
 
@@ -275,18 +314,28 @@ func _sign_out_rules(t: PKeyTestContext) -> void:
 	var gen = bed.sdk.core.tokens.sign_out_generation
 	var so = await bed.sdk.identity.sign_out()
 	t.check("sign-out: the Worker accepted it", so.ok and so.detail["released"] and bed.signout_requests.size() == 1, str(so))
-	t.check("sign-out: the generation moved, the flag is set and persisted, the provider cleaned up", bed.sdk.core.tokens.sign_out_generation > gen and bed.sdk.core.cache.explicit_sign_out and bed.sdk.core.cache.record()["explicitSignOut"] == true and g.cleaned == 1)
+	t.check(
+		"sign-out: the generation moved, the flag is set and persisted, the provider cleaned up",
+		bed.sdk.core.tokens.sign_out_generation > gen and bed.sdk.core.cache.explicit_sign_out and bed.sdk.core.cache.record()["explicitSignOut"] == true and g.cleaned == 1)
 	t.check("sign-out: the token and its provenance went with the released seat", not bed.sdk.core.tokens.has_token() and bed.sdk.core.cache.token_origin == "")
 	t.check("sign-out: device keys survive", bed.device_keys.public_keys().detail == keys_before)
 	log.clear()
 	bed.nonce_requests.clear()
 	var quiet = await bed.sdk.identity.auto_sign_in({"prompt": "optional"})
-	t.check("flag: rungs 3 and 4 do not run (needs_sign_in signed_out, no nonce, no prompt)", quiet.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and quiet.reason == "signed_out" and bed.nonce_requests.is_empty() and not log.any(func(e): return e.ends_with(".silent") or e.ends_with(".sheet")), str(quiet) + str(log))
+	t.check(
+		"flag: rungs 3 and 4 do not run (needs_sign_in signed_out, no nonce, no prompt)",
+		quiet.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN
+		and quiet.reason == "signed_out"
+		and bed.nonce_requests.is_empty()
+		and not log.any(func(e): return e.ends_with(".silent") or e.ends_with(".sheet")),
+		str(quiet) + str(log))
 	var again := PKeyCache.new(bed.sdk.core.store, bed.sdk.core.trust, bed.sdk.core.clock, bed.F["product"], bed.F["device_id"])
 	await again.load_record()
 	t.check("flag: it survives a restart", again.explicit_sign_out)
 	# The atomic store.
-	t.check("flag: the ladder's store is refused while it is set", bed.sdk.core.tokens.set_token_unless_signed_out("pkeyt_LADDER", bed.sdk.core.tokens.sign_out_generation) == null and not bed.sdk.core.tokens.has_token())
+	t.check(
+		"flag: the ladder's store is refused while it is set",
+		bed.sdk.core.tokens.set_token_unless_signed_out("pkeyt_LADDER", bed.sdk.core.tokens.sign_out_generation) == null and not bed.sdk.core.tokens.has_token())
 	# Only a person-started sign-in lowers it.
 	bed.tokens = [B.json(200, X.TOKEN_OK)]
 	var person = await bed.sdk.identity.exchange.exchange("google", X.PLATFORM_TOKEN, X.NONCE)
@@ -308,7 +357,9 @@ func _sign_out_rules(t: PKeyTestContext) -> void:
 	bed.sdk.identity.install_platform_provider(g3)
 	bed.signouts = [B.json(200, {"released": false})]
 	var kept = await bed.sdk.identity.sign_out()
-	t.check("sign-out: released=false keeps the token as a key activation, flag set", kept.ok and not kept.detail["released"] and bed.sdk.core.tokens.has_token() and bed.sdk.core.tokens.origin() == "key" and bed.sdk.core.cache.explicit_sign_out and g3.cleaned == 1)
+	t.check(
+		"sign-out: released=false keeps the token as a key activation, flag set",
+		kept.ok and not kept.detail["released"] and bed.sdk.core.tokens.has_token() and bed.sdk.core.tokens.origin() == "key" and bed.sdk.core.cache.explicit_sign_out and g3.cleaned == 1)
 	var after = await bed.sdk.identity.auto_sign_in()
 	t.check("sign-out: rung 1 does not count the device an account sign-out left activated", after.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and after.reason == "signed_out", str(after))
 	bed.free_all()
@@ -329,7 +380,10 @@ func _generation_race(t: PKeyTestContext) -> void:
 	bed.sdk.identity.install_platform_provider(g)
 	bed.tokens = [B.json(200, X.TOKEN_OK)]
 	var r = await bed.sdk.identity.auto_sign_in()
-	t.check("race: a sign-out during the prompt wins: nothing exchanged or stored", r.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and r.reason == "signed_out" and bed.token_requests.is_empty() and not bed.sdk.core.tokens.has_token(), str(r))
+	t.check(
+		"race: a sign-out during the prompt wins: nothing exchanged or stored",
+		r.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and r.reason == "signed_out" and bed.token_requests.is_empty() and not bed.sdk.core.tokens.has_token(),
+		str(r))
 	bed.free_all()
 	# A sign-out while the exchange is in flight: the store is refused (check and store are one step).
 	bed = await _bed(["google"])
@@ -340,7 +394,10 @@ func _generation_race(t: PKeyTestContext) -> void:
 		bed.sdk.core.tokens.bump_sign_out_generation()
 		return B.json(200, X.TOKEN_OK)]
 	var r2 = await bed.sdk.identity.auto_sign_in()
-	t.check("race: a sign-out during the exchange stores nothing and answers signed_out", r2.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and r2.reason == "signed_out" and not bed.sdk.core.tokens.has_token() and bed.sdk.core.tokens.origin() == "", str(r2))
+	t.check(
+		"race: a sign-out during the exchange stores nothing and answers signed_out",
+		r2.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and r2.reason == "signed_out" and not bed.sdk.core.tokens.has_token() and bed.sdk.core.tokens.origin() == "",
+		str(r2))
 	t.check("race: the store is untouched too", (bed.sdk.core.store as PKeyMemoryStore).token == "")
 	# The same race with the flag instead of the generation.
 	bed.tokens = [func(_req) -> Dictionary:
@@ -368,7 +425,10 @@ func _revoked(t: PKeyTestContext) -> void:
 	bed.sdk.identity.install_platform_provider(apple)
 	bed.signouts = [B.json(200, {"released": true})]
 	var r = await bed.sdk.identity.auto_sign_in()
-	t.check("revoked: a revoked credential at launch runs sign_out()", bed.signout_requests.size() == 1 and bed.sdk.core.cache.explicit_sign_out and apple.cleaned == 1 and not bed.sdk.core.tokens.has_token(), str(log))
+	t.check(
+		"revoked: a revoked credential at launch runs sign_out()",
+		bed.signout_requests.size() == 1 and bed.sdk.core.cache.explicit_sign_out and apple.cleaned == 1 and not bed.sdk.core.tokens.has_token(),
+		str(log))
 	t.check("revoked: the ladder then answers signed_out", r.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and r.reason == "signed_out", str(r))
 	bed.free_all()
 	# Not revoked (any other state): nothing happens.
@@ -396,7 +456,10 @@ func _revoked(t: PKeyTestContext) -> void:
 	nobody.revoked = true
 	bed.sdk.identity.install_platform_provider(nobody)
 	var local = await bed.sdk.identity.auto_sign_in()
-	t.check("revoked: with no session it is a local sign-out, no request", bed.signout_requests.is_empty() and bed.sdk.core.cache.explicit_sign_out and nobody.cleaned == 1 and local.reason == "signed_out", str(local))
+	t.check(
+		"revoked: with no session it is a local sign-out, no request",
+		bed.signout_requests.is_empty() and bed.sdk.core.cache.explicit_sign_out and nobody.cleaned == 1 and local.reason == "signed_out",
+		str(local))
 	bed.free_all()
 
 
@@ -430,7 +493,10 @@ func _fail_closed(t: PKeyTestContext) -> void:
 	store.cache = {"v": 3, "explicitSignOut": true, "tokenOrigin": "key"}
 	await c.load_record()
 	c.clear()
-	t.check("record: clear() wipes the credential's provenance but keeps the sign-out flag", c.explicit_sign_out and c.token_origin == "" and store.cache == {"v": 3, "explicitSignOut": true}, str(store.cache))
+	t.check(
+		"record: clear() wipes the credential's provenance but keeps the sign-out flag",
+		c.explicit_sign_out and c.token_origin == "" and store.cache == {"v": 3, "explicitSignOut": true},
+		str(store.cache))
 	c.replace({"v": 3})
 	t.check("record: replace() carries the flag", c.explicit_sign_out and store.cache.get("explicitSignOut") == true)
 	c.set_explicit_sign_out(false)
@@ -445,7 +511,10 @@ func _linux(t: PKeyTestContext) -> void:
 	t.check("linux: with a session it is rung 1", r.kind == PKeyAutoSignInResult.KIND_SIGNED_IN and r.via == "stored" and bed.server.requests.is_empty(), str(r))
 	bed.sdk.core.tokens.clear()
 	var none = await bed.sdk.identity.auto_sign_in({"prompt": "optional"})
-	t.check("linux: without one it is needs_sign_in(no_credential), still no request", none.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and none.reason == "no_credential" and bed.server.requests.is_empty() and bed.nonce_requests.is_empty(), str(none))
+	t.check(
+		"linux: without one it is needs_sign_in(no_credential), still no request",
+		none.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and none.reason == "no_credential" and bed.server.requests.is_empty() and bed.nonce_requests.is_empty(),
+		str(none))
 	bed.free_all()
 	var cold := PKeyTestFixtures.new_sdk()
 	var early = await cold.identity.auto_sign_in()
