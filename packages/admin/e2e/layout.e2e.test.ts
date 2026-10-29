@@ -474,6 +474,11 @@ function cases(): Case[] {
       name: "djdl:channel/releases",
       hash: "#/p/djdl/distribution/channels/google-play/releases",
     },
+    // A-22.3b: Setup → Store controls (the Google Play connector card).
+    {
+      name: "djdl:channel/setup",
+      hash: "#/p/djdl/distribution/channels/google-play/setup",
+    },
     // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
     {
       name: "waiting:package-feeds",

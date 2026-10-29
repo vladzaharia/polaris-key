@@ -30,7 +30,6 @@ import {
 } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { useScopedKinds } from "../model/channelScope.js";
-import { ConnectorGrid } from "../components/ConnectorGrid.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
@@ -46,12 +45,10 @@ import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { Dialog, DialogBody, DialogFooter } from "../../../../ui/Dialog.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
-import { ErrorState } from "../../../../ui/ErrorState.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
 import { SecretInput } from "../../../../ui/SecretInput.js";
 import { Select } from "../../../../ui/Select.js";
-import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Textarea } from "../../../../ui/Textarea.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
@@ -59,17 +56,15 @@ import { toast } from "../../../../ui/toast.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { mutate } from "../../../data/mutations.js";
 import { Link, useSearchParam } from "../../../router.js";
-import { codecs } from "../../../routes.js";
+import { codecs, r } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import {
   hrefWithQuery,
   patchQuery,
-  useConnectors,
   useCredentials,
   useOutlets,
 } from "../data.js";
-import { useReleaseStore } from "../../release/data.js";
 
 // ── The kinds ──────────────────────────────────────────────────────────────────────────────────
 
@@ -291,8 +286,6 @@ export function CredentialsPage({
   slug: string;
 }): React.ReactElement {
   const creds = useCredentials(slug);
-  const connectors = useConnectors(slug);
-  const store = useReleaseStore(slug);
   const [openId] = useSearchParam("credential", CREDENTIAL);
   const [state, setState] = useTableUrlState("credentials", {
     facets: ["kind"],
@@ -480,45 +473,18 @@ export function CredentialsPage({
         }
       />
 
-      <section aria-labelledby="connectors-title" className="space-y-3">
-        <div className="space-y-1">
-          <h2
-            id="connectors-title"
-            className="text-lg font-semibold text-fg-strong"
-          >
-            Store connectors
-          </h2>
-          <p className="text-sm text-fg-muted">
-            A connector uses this product's own key of its kind when there is
-            one; otherwise the platform's team key, for the one app assigned to
-            this product.{" "}
-            <a
-              className="py-1 text-accent-fg underline underline-offset-4"
-              href={docsUrl("storeConnections")}
-              target="_blank"
-              rel="noreferrer"
-            >
-              About store connections
-            </a>
-          </p>
-        </div>
-        {connectors.isPending ? (
-          <Skeleton className="h-32 w-full" />
-        ) : connectors.isError ? (
-          <ErrorState
-            compact
-            error={connectors.error}
-            onRetry={() => void connectors.refetch()}
-            context={{ area: "distribution" }}
-          />
-        ) : (
-          <ConnectorGrid
-            slug={slug}
-            connectors={connectors.data?.connectors ?? []}
-            releases={store.data}
-          />
-        )}
-      </section>
+      <p className="text-sm text-fg-muted">
+        Store controls are on each channel's Setup tab, under{" "}
+        <Link to={r.channels(slug)}>Channels</Link>.{" "}
+        <a
+          className="py-1 text-accent-fg underline underline-offset-4"
+          href={docsUrl("storeConnections")}
+          target="_blank"
+          rel="noreferrer"
+        >
+          About store connections
+        </a>
+      </p>
 
       <CredentialDetail
         cred={open}

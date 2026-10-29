@@ -8,7 +8,8 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bootWith, P, ROLLOUTS } from "./distributionFixture.js";
 import { resetConsole } from "./consoleHarness.js";
-import type { ChannelRow, ChannelsView } from "../src/api.js";
+import type { ChannelRow } from "../src/api.js";
+import { channel, channels } from "./channelFixture.js";
 import { outletIdsOf } from "../src/console/sections/distribution/components/ChannelReleases.js";
 
 beforeEach(() => resetConsole());
@@ -18,27 +19,6 @@ afterEach(() => {
 });
 
 const H = "#/p/djdl/distribution/channels";
-
-const channel = (over: Partial<ChannelRow>): ChannelRow => ({
-  id: "polaris-key",
-  label: "Polaris Locker",
-  inScope: true,
-  declared: true,
-  oneClick: false,
-  notUsing: false,
-  delivery: { state: "live", attention: [], platforms: [] },
-  commerce: null,
-  identity: null,
-  ...over,
-});
-
-const channels = (c: ChannelRow): ChannelsView => ({
-  product: "djdl",
-  now: 1,
-  platforms: [],
-  kinds: [],
-  channels: [c],
-});
 
 const boot = (id: string, c: ChannelRow, extra: Record<string, unknown> = {}) =>
   bootWith(`${H}/${id}/releases`, {
@@ -136,7 +116,7 @@ describe("Distribution → a channel: Releases without an outlet", () => {
     boot("itch", channel({ id: "itch", label: "itch.io" }));
     expect(await screen.findByText("No rollouts yet")).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "Set up itch.io first" }),
+      screen.getByRole("link", { name: "Open itch.io setup" }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Start rollout…" })).toBeNull();
   });

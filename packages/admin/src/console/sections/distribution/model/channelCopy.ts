@@ -92,7 +92,9 @@ export function attentionLine(
       return {
         title: "App differs",
         detail: `The store's ${humanField(a.field).toLowerCase()} is not the one assigned.`,
-        action: { label: "Channel setup", to: r.outlets(slug) },
+        action: channelId
+          ? { label: "Open Setup", to: r.channel(slug, channelId, "setup") }
+          : { label: "Channel setup", to: r.outlets(slug) },
       };
   }
 }
