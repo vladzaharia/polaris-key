@@ -1568,7 +1568,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     const plannedHere: string[] = [];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
-    const naHere = ["ui.cli.portal"];
+    // identity.nearby is N/A (runtime) here: a browser tab has no mode v handshake and the
+    // renderer holds no device key (I-40.8); the Node runner replays the nearby-* transcripts.
+    const naHere = ["ui.cli.portal", "identity.nearby"];
     const expected = TRANSCRIPTS.filter(
       (t) =>
         !t.features.some((f) => plannedHere.includes(f) || naHere.includes(f)),
