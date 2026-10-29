@@ -269,6 +269,12 @@
       ],
       "note": "I-46.13: `link.offer()`, `accept()` (the held handle, else one provider prompt), `decline()` (sha256(issuer ‖ sub) in IndexedDB), lazy after a redirect sign-in; the kit's link-offer, link-done and link-conflict steps over the app. Replays I-43.3's link-* transcripts."
     },
+    "identity.nearby": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "No mode v handshake in a browser tab, and the renderer holds no device key (I-40)."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10a.9: activateWithKey resolves with keyEntries; key_entry_limit (manageUrl, keyEntries) and license_owned (signInUrl) are typed activation outcomes that keep the token, cache and store. Desktop through submitKey's BridgeActivation."

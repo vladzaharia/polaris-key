@@ -208,6 +208,66 @@ class PeerChannelSasTest {
         assertEquals("Café TV", est.hello.label)
     }
 
+    // -- HELLO from a peer that is not verified (section 15.6) ---------------------------------------
+
+    private fun helloOf(platform: String, app: String, extra: String = ""): String =
+        "{\"platform\":\"$platform\",\"app\":\"$app\",\"maxMessage\":1048576$extra}"
+
+    /** A hand-driven device sends [body] as its HELLO to an approver in [mode]; the approver's events. */
+    private fun approverSees(mode: PeerMode, body: String): Side {
+        val m = Side(mode, NoiseRole.responder)
+        val r = rawDevice(m)
+        runBlocking { r.tp.receive.decrypt(ByteArray(0), m.out.removeAt(0)) }
+        put(m, r, RecordType.HELLO, body.toByteArray())
+        return m
+    }
+
+    @Test
+    fun platformShowsAsSentOnlyInItsPlainSpellingAndAppIsCleanedLikeLabel() {
+        for (mode in listOf(PeerMode.v, PeerMode.p)) {
+            val plain = approverSees(mode, helloOf("iOS 17.2_beta+1-x", "Demo"))
+            assertEquals("iOS 17.2_beta+1-x", plain.of<SessionEvent.Established>().single().hello.platform)
+            for (bad in listOf("", "x".repeat(33), "Win\\u0000dows", "Caf\\u00e9", "a/b", "tab\\there", "\\u202eevil")) {
+                val h = approverSees(mode, helloOf(bad, "Demo")).of<SessionEvent.Established>().single().hello
+                assertEquals(bad, "Unknown", h.platform)
+            }
+            assertEquals("x".repeat(32), approverSees(mode, helloOf("x".repeat(32), "Demo")).of<SessionEvent.Established>().single().hello.platform)
+            val app = approverSees(mode, helloOf("t", "  Caf\\u00e9 \\u202eTV\\u0000  ")).of<SessionEvent.Established>().single().hello.app
+            assertEquals("Caf\u00e9 TV", app)
+            // nothing left after cleaning: "Unknown"
+            assertEquals("Unknown", approverSees(mode, helloOf("t", "\\u202e\\u0000 ")).of<SessionEvent.Established>().single().hello.app)
+            // at most 64 code points
+            assertEquals(64, approverSees(mode, helloOf("t", "a".repeat(100))).of<SessionEvent.Established>().single().hello.app.length)
+        }
+    }
+
+    @Test
+    fun aHelloOverFourKibIsRefusedInModesVAndPButNotInModeA() {
+        for (mode in listOf(PeerMode.v, PeerMode.p)) {
+            val fits = helloOf("t", "a", ",\"pad\":\"" + "x".repeat(4096 - helloOf("t", "a", ",\"pad\":\"\"").length) + "\"")
+            assertEquals(4096, fits.length)
+            assertEquals(1, approverSees(mode, fits).of<SessionEvent.Established>().size)
+            val over = approverSees(mode, fits.replace("\"pad\":\"", "\"pad\":\"y"))
+            assertTrue(over.of<SessionEvent.Established>().isEmpty())
+            assertEquals(listOf(SessionEvent.Closed("peer_bad_frame", false)), over.closed())
+        }
+    }
+
+    @Test
+    fun heldBytesBeforeConfirmationAreCappedAt16Kib() = runBlocking {
+        val (d, m) = pair(PeerMode.v)
+        d.s.start()
+        pump(d, m)
+        d.s.confirmSas()
+        d.s.sendRecord(RecordType.VOUCH_REQ, ByteArray(8000))
+        d.s.sendRecord(RecordType.VOUCH_REQ, ByteArray(8000))
+        pump(d, m)
+        assertFalse(m.s.closed) // 16000 held
+        d.s.sendRecord(RecordType.VOUCH_REQ, ByteArray(400))
+        pump(d, m)
+        assertEquals(listOf(SessionEvent.Closed("peer_busy", false)), m.closed())
+    }
+
     @Test
     fun modeConfigurationIsChecked() {
         val none: (ByteArray) -> Unit = {}

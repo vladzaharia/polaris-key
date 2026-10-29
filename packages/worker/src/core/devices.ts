@@ -913,6 +913,52 @@ export async function rotateDeviceToken(
 }
 
 /**
+ * Replace a device's credential, once. The device row must still hold `expectedHash` (the
+ * credential stored when the device was bound before its holder had received it), be authorized,
+ * and keep the binding the caller read; otherwise nothing changes and the answer is `null`. The
+ * new credential is returned once and only its hash is stored; the replaced hash stops
+ * validating at the same statement.
+ */
+export async function swapDeviceCredential(
+  env: Env,
+  db: Db,
+  product: Product,
+  device: DeviceRow,
+  expectedHash: string,
+  now: number,
+): Promise<{ token: string; tokenHash: string } | null> {
+  const token = mintDeviceToken();
+  const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
+  const swapped = await db.runChanges(
+    `UPDATE devices SET token_hash = ?, last_seen = ?
+      WHERE product = ? AND device_id = ? AND status = 'authorized'
+        AND license_id = ? AND subject IS ? AND token_hash = ?`,
+    tokenHash,
+    now,
+    product.slug,
+    device.device_id,
+    device.license_id,
+    device.subject ?? null,
+    expectedHash,
+  );
+  if (swapped === 0) return null;
+  // The hot-path cache is a convenience: the row decides, so a cache failure after the swap
+  // must not lose the credential.
+  try {
+    await deleteTokenRecord(env, product.slug, expectedHash);
+    await putTokenRecord(env, product.slug, tokenHash, {
+      product: product.slug,
+      deviceId: device.device_id,
+      licenseId: device.license_id,
+      ...(device.subject ? { subject: device.subject } : {}),
+    });
+  } catch {
+    /* the next validation fills it */
+  }
+  return { token, tokenHash };
+}
+
+/**
  * Fold the request's client metadata into the device row and stamp `last_seen`.
  *
  * Was inline in `/config`, which was the one hot path every SDK hit on a schedule. Wire v3

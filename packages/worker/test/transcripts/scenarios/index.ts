@@ -74,6 +74,7 @@ import { LOCKER_SCENARIOS } from "./locker.js";
 import { EXCHANGE_SCENARIOS } from "./exchange.js";
 import { HOLDERS_SCENARIOS } from "./holders.js";
 import { LINK_SCENARIOS } from "./link.js";
+import { NEARBY_SCENARIOS } from "./nearby.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -129,4 +130,5 @@ export const SCENARIOS: Scenario[] = [
   ...KEYRING_SCENARIOS,
   ...CONNECT_SCENARIOS,
   ...HOLDERS_SCENARIOS,
+  ...NEARBY_SCENARIOS,
 ];

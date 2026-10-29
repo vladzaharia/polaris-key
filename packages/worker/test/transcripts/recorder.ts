@@ -85,6 +85,19 @@ export interface ExchangeSpec {
   /** Headers SENT and asserted by PRESENCE only (added to `requiredHeaders`): a value the
    *  recorder must choose but no replaying SDK can reproduce, such as a stale `if-range`. */
   presentHeaders?: Record<string, string>;
+  /**
+   * The request is made by ANOTHER device than the transcript's own (Q13, nearby approval: M's
+   * approve beside D's start and poll). The recorder sends its id and bearer literally and
+   * records them as `{approverDeviceId}` and `Bearer {approverToken}`, which the step's `args`
+   * bind. Exclusive with `bearer`.
+   */
+  actor?: { deviceId: string; token: string };
+  /**
+   * The client network the request comes from (`cf-connecting-ip`). Recorded on the exchange as
+   * `clientIp` for a human and for a Worker-side check; a replayer neither sends nor matches it
+   * (Q13: the fake server cannot choose a client's network).
+   */
+  clientIp?: string;
   /** The JSON body actually sent. */
   body?: unknown;
   /**
@@ -142,6 +155,14 @@ export class StepRecorder {
       asserted["x-pkey-device"] = "{deviceId}";
       asserted["x-pkey-version"] = "{version}";
     }
+    if (spec.actor) {
+      if (spec.bearer) throw new Error(`${spec.path}: actor and bearer`);
+      sent["x-pkey-device"] = spec.actor.deviceId;
+      sent.authorization = `Bearer ${spec.actor.token}`;
+      asserted["x-pkey-device"] = "{approverDeviceId}";
+      asserted.authorization = "Bearer {approverToken}";
+    }
+    if (spec.clientIp !== undefined) sent["cf-connecting-ip"] = spec.clientIp;
     if (spec.bearer) {
       const value =
         spec.bearer === "key"
@@ -240,7 +261,11 @@ export class StepRecorder {
       headers,
       body: responseBody,
     };
-    const exchange: Exchange = { request, response };
+    const exchange: Exchange = {
+      request,
+      response,
+      ...(spec.clientIp !== undefined ? { clientIp: spec.clientIp } : {}),
+    };
     if (spec.capture) {
       exchange.capture = { ...spec.capture };
       for (const [name, path] of Object.entries(spec.capture)) {

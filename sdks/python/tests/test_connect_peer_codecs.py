@@ -1,6 +1,11 @@
-# @pkey-feature connect.protocol
-"""The ``adverts``, ``sas`` and ``handshakePayloads`` rows of ``peer-matrix.json`` (WIRE-CONTRACT-V5 §15.4,
-§15.5) through the Python codecs. Mirrors the Node runner ``peerMatrix.test.ts``."""
+# @pkey-feature connect.protocol connect.lan
+"""The ``adverts``, ``sas``, ``handshakePayloads``, ``lanAddresses`` and ``mdnsAnswers`` rows of
+``peer-matrix.json`` (WIRE-CONTRACT-V5 §15.4, §15.4.1, §15.5) through the Python codecs. Mirrors the Node
+runner ``peerMatrix.test.ts``.
+
+The ``lanAddresses.candidates`` rows (the CANDIDATES record, §15.6) are not run: this SDK neither sends nor
+reads that record (CC-08R), so it has no ``candidate_target``. Their count is still pinned, so a row added
+to the corpus is a deliberate change here too."""
 
 from __future__ import annotations
 
@@ -21,6 +26,9 @@ from polaris_key.core.peer_advert import (
     parse_txt,
     product_tag,
 )
+from polaris_key.core.peer_lan_address import lan_group_key, lan_verdict
+from polaris_key.core.peer_mdns import AddressBook
+from polaris_key.core.peer_mdns_packet import parse_packet
 from polaris_key.core.peer_payload import (
     MAX_HANDSHAKE_PAYLOAD,
     caps_intersection,
@@ -219,3 +227,44 @@ def test_the_builders_round_trip() -> None:
     with pytest.raises(ValueError):
         payload23("v", ["a/1"] * 2000)
     assert MAX_HANDSHAKE_PAYLOAD == 8192
+
+
+# -- lanAddresses and mdnsAnswers (WIRE-CONTRACT-V5 §15.4, §15.4.1) -------------------------------------
+
+LAN_ROWS = M["lanAddresses"]["rows"]
+MDNS_ROWS = M["mdnsAnswers"]["rows"]
+
+
+def test_lan_and_mdns_row_counts() -> None:
+    # Exact: a row added or dropped is a deliberate corpus change.
+    assert len(LAN_ROWS) == 133
+    assert len(M["lanAddresses"]["candidates"]["rows"]) == 73
+    assert len(MDNS_ROWS) == 36
+    for rows in (LAN_ROWS, M["lanAddresses"]["candidates"]["rows"], MDNS_ROWS):
+        assert len({r["id"] for r in rows}) == len(rows)
+
+
+@pytest.mark.parametrize("r", LAN_ROWS, ids=[r["id"] for r in LAN_ROWS])
+def test_lan_addresses_row(r: Dict[str, Any]) -> None:
+    v = lan_verdict(r["remote"], r.get("local"), r["allowLoopback"])
+    assert (v.dial, v.key) == (r["dial"], r["key"])
+    assert lan_group_key(r["key"]) == r["group"]
+
+
+def _grouped(pairs: Any) -> Dict[str, Any]:
+    """The table by name: the order across names carries no meaning, the order within one does."""
+    out: Dict[str, Any] = {}
+    for name, address in pairs:
+        out.setdefault(name, []).append(address)
+    return out
+
+
+@pytest.mark.parametrize("r", MDNS_ROWS, ids=[r["id"] for r in MDNS_ROWS])
+def test_mdns_answers_row(r: Dict[str, Any]) -> None:
+    book = AddressBook()
+    for p in r.get("prior", []):
+        book.hold(p["name"], p["address"])
+    for rec in parse_packet(bytes.fromhex(r["packet"])).answers:
+        if rec.type in ("A", "AAAA") and isinstance(rec.data, str):
+            book.learn(rec, r["source"], r["zone"], 0.0)
+    assert _grouped(book.table()) == _grouped((e["name"], e["address"]) for e in r["learned"])

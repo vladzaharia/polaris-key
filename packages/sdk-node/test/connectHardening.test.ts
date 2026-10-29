@@ -1,6 +1,8 @@
 // @pkey-feature connect.relay connect.lan connect.app
 // The R-6 fix round for the Node transport (CC-08.2 and CC-08.3): what a hostile or broken peer,
 // room or neighbour can cost. Each block pins one finding.
+import { EventEmitter } from "node:events";
+import type { Socket } from "node:net";
 import { inspect } from "node:util";
 import { describe, expect, it, vi } from "vitest";
 import { PeerDocs, type ConnectNotice } from "../src/connect/channel.js";
@@ -9,7 +11,19 @@ import {
   QUEUE_PAUSE_BYTES,
   ConnectSession,
 } from "../src/connect/index.js";
+import {
+  DIAL_MAX_IN_FLIGHT,
+  DIAL_STAGGER_MS,
+  connectLiteral,
+  dialRace,
+} from "../src/connect/dial.js";
 import type { LanSource } from "../src/connect/lan.js";
+import {
+  PendingLimiter,
+  limiterKeys,
+  socketVerdict,
+  textVerdict,
+} from "../src/connect/lanJudge.js";
 import {
   MemoryMdnsNetwork,
   T0,
@@ -219,5 +233,236 @@ describe("finding 7: floods from an authenticated peer", () => {
     for (let i = 0; i <= QUEUE_MAX_BYTES / chunk.length; i++)
       s.deliver({ type: 0x0100, body: chunk });
     expect(closes).toEqual(["peer_busy"]);
+  });
+});
+
+describe("addresses off the LAN (WIRE-CONTRACT-V5 15.4.1)", () => {
+  const LL = "fe80::1c2:3ff:fe4:5a6";
+  it("refuses a global IPv6 address unless the socket's own address is in the same /64", () => {
+    const refuse = { dial: false, key: null };
+    expect(socketVerdict("2001:db8:1:2::5", "fe80::9", false)).toEqual(refuse);
+    expect(socketVerdict("2001:db8:1:2::5", undefined, false)).toEqual(refuse);
+    expect(socketVerdict("2001:db8:1:2::5", "2001:db8:1:3::9", false)).toEqual(
+      refuse,
+    );
+    expect(socketVerdict("2001:db8:1:2::5", "::ffff:10.0.0.9", false)).toEqual(
+      refuse,
+    );
+    expect(socketVerdict("2001:db8:1:2::5", "2001:db8:1:2::9", false)).toEqual({
+      dial: true,
+      key: "2001:db8:1:2::5",
+    });
+    // Teredo and 6to4 share a /64 across the internet: never.
+    expect(socketVerdict("2001:0:1:2::5", "2001:0:1:2::9", false)).toEqual(
+      refuse,
+    );
+    expect(socketVerdict("2002:a00:1::5", "2002:a00:1::9", false)).toEqual(
+      refuse,
+    );
+    // IPv4: public, CGNAT and link-local refuse.
+    for (const a of ["8.8.8.8", "100.64.0.1", "169.254.1.1", "::ffff:8.8.8.8"])
+      expect(socketVerdict(a, "10.0.0.2", false)).toEqual(refuse);
+    expect(socketVerdict(undefined, "10.0.0.2", false)).toEqual(refuse);
+  });
+
+  it("judges the text before a socket exists, and refuses a mapped address with a zone", () => {
+    expect(textVerdict("8.8.8.8", false)).toBe(false);
+    expect(textVerdict("2001:0:1:2::5", false)).toBe(false); // Teredo
+    expect(textVerdict("::1", false)).toBe(false);
+    expect(textVerdict("::1", true)).toBe(true);
+    expect(textVerdict(`${LL}%en0`, false)).toBe(true);
+    expect(textVerdict("fd12::5", false)).toBe(true);
+    // A global address might be on-link: the connected socket decides.
+    expect(textVerdict("2001:db8:1:2::5", false)).toBe(true);
+    expect(textVerdict("::ffff:10.0.0.1", false)).toBe(true);
+    expect(textVerdict("::ffff:10.0.0.1%en0", false)).toBe(false);
+    expect(
+      socketVerdict("::ffff:10.0.0.1%en0", "::ffff:10.0.0.2", false).dial,
+    ).toBe(false);
+    expect(textVerdict("not an address", true)).toBe(false);
+    expect(textVerdict(`${LL}%`, false)).toBe(false);
+  });
+
+  it("counts per address, per group inside the total, and keeps link-local zones apart", () => {
+    const key = (remote: string) => {
+      const v = socketVerdict(remote, undefined, true);
+      if (v.key === null) throw new Error(`refused: ${remote}`);
+      return limiterKeys(v.key);
+    };
+    // The same fe80 address on two links is two hosts; the group of a link-local address is its
+    // link, whatever its /64, and an IPv4 address is grouped by /24.
+    expect(key(`${LL}%en0`)).toEqual({
+      address: `${LL}%en0`,
+      group: "fe80::/10%en0",
+    });
+    expect(key(`${LL}%wlan0`).address).toBe(`${LL}%wlan0`);
+    expect(key("10.0.0.5")).toEqual({
+      address: "10.0.0.5",
+      group: "10.0.0.0/24",
+    });
+    expect(key("fd12:0:0:1::7").group).toBe("fd12:0:0:1::/64");
+    expect(key("::ffff:10.0.0.5")).toEqual({
+      address: "10.0.0.5",
+      group: "10.0.0.0/24",
+    });
+
+    const lim = new PendingLimiter(32, 4, 16);
+    const held: (() => void)[] = [];
+    const take = (remote: string) => {
+      const r = lim.take(Symbol(remote), key(remote));
+      if (r !== null) held.push(r);
+      return r !== null;
+    };
+    // Four per address.
+    for (let i = 0; i < 4; i++) expect(take("10.0.0.5")).toBe(true);
+    expect(take("10.0.0.5")).toBe(false);
+    // Sixteen per /64: 16 addresses of one /64 (4 each would allow 64).
+    let n = 0;
+    for (let i = 1; i <= 20; i++)
+      if (take(`fd12:0:0:1::${i.toString(16)}`)) n++;
+    expect(n).toBe(16);
+    // Sixteen per link: fe80::/10 holds 2^54 /64s, so rotating the address does not escape it,
+    // and another link is separate.
+    n = 0;
+    for (let i = 1; i <= 20; i++)
+      if (take(`fe80:0:0:${i.toString(16)}::1%en0`)) n++;
+    expect(n).toBe(12); // 4 + 16 held, 32 in total
+    expect(lim.size).toBe(32);
+    for (const h of held.splice(0)) h();
+    n = 0;
+    for (let i = 1; i <= 20; i++)
+      if (take(`fe80:0:0:${i.toString(16)}::1%en0`)) n++;
+    expect(n).toBe(16);
+    expect(take(`${LL}%wlan0`)).toBe(true);
+    for (const h of held.splice(0)) h();
+    // Sixteen per IPv4 /24.
+    n = 0;
+    for (let i = 1; i <= 20; i++) if (take(`10.0.0.${i}`)) n++;
+    expect(n).toBe(16);
+    expect(take("10.0.1.1")).toBe(true);
+    // The total of 32 is the last bound.
+    for (let i = 2; i <= 40; i++) take(`10.0.${i}.1`);
+    expect(lim.size).toBe(32);
+    expect(take("10.9.9.9")).toBe(false);
+    // A release frees the slot in all three counts.
+    held.pop()!();
+    expect(take("10.9.9.9")).toBe(true);
+  });
+});
+
+/** A socket as the dial race sees it: addresses, destroy and the connect and error events. */
+class FakeSocket extends EventEmitter {
+  destroyed = false;
+  written = 0;
+  constructor(
+    readonly host: string,
+    readonly remoteAddress: string,
+    readonly localAddress: string,
+  ) {
+    super();
+  }
+  destroy(): this {
+    this.destroyed = true;
+    return this;
+  }
+  write(): boolean {
+    this.written++;
+    return true;
+  }
+}
+
+describe("dialling several addresses (RFC 8305)", () => {
+  const race = (
+    hosts: string[],
+    local: (host: string) => string = () => "10.0.0.2",
+    allowLoopback = false,
+  ) => {
+    const made: FakeSocket[] = [];
+    const result = dialRace(hosts, 4242, {
+      allowLoopback,
+      connect: (host) => {
+        const s = new FakeSocket(host, host, local(host));
+        made.push(s);
+        return s as unknown as Socket;
+      },
+    });
+    return { made, result };
+  };
+
+  it("starts one attempt, a second after 250 ms, and never a third while two are in flight", async () => {
+    vi.useFakeTimers();
+    try {
+      const { made, result } = race(["10.0.0.5", "10.0.0.6", "10.0.0.7"]);
+      expect(made.map((s) => s.host)).toEqual(["10.0.0.5"]);
+      await vi.advanceTimersByTimeAsync(DIAL_STAGGER_MS - 1);
+      expect(made).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(made.map((s) => s.host)).toEqual(["10.0.0.5", "10.0.0.6"]);
+      expect(DIAL_MAX_IN_FLIGHT).toBe(2);
+      await vi.advanceTimersByTimeAsync(5 * DIAL_STAGGER_MS);
+      expect(made).toHaveLength(2); // both still pending: no third
+      // The second connects first and wins; the first closes without a byte.
+      made[1]!.emit("connect");
+      const won = await result;
+      expect(won).toBe(made[1]);
+      expect(made[0]!.destroyed).toBe(true);
+      expect(made.flatMap((s) => (s.written ? [s] : []))).toEqual([]);
+      expect(made).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("starts the next address at once when one fails", async () => {
+    const { made, result } = race(["10.0.0.5", "10.0.0.6"]);
+    expect(made).toHaveLength(1);
+    made[0]!.emit("error", new Error("ECONNREFUSED"));
+    expect(made.map((s) => s.host)).toEqual(["10.0.0.5", "10.0.0.6"]);
+    made[1]!.emit("connect");
+    await expect(result).resolves.toBe(made[1]);
+  });
+
+  it("refuses a connected global address whose socket is not on its /64, and goes on", async () => {
+    const { made, result } = race(["2001:db8:1:2::5", "fe80::7%en0"], (h) =>
+      h.startsWith("2001") ? "fe80::9" : "fe80::9",
+    );
+    made[0]!.emit("connect"); // connected, but the verdict says no: closed before a byte
+    expect(made[0]!.destroyed).toBe(true);
+    expect(made.map((s) => s.host)).toEqual(["2001:db8:1:2::5", "fe80::7%en0"]);
+    made[1]!.emit("connect");
+    await expect(result).resolves.toBe(made[1]);
+    expect(made[0]!.written).toBe(0);
+  });
+
+  it("accepts a connected global address on its own /64", async () => {
+    const { made, result } = race(["2001:db8:1:2::5"], () => "2001:db8:1:2::9");
+    made[0]!.emit("connect");
+    await expect(result).resolves.toBe(made[0]);
+  });
+
+  it("judges a unique-local address on its /64 once the socket's own address is known", async () => {
+    const off = race(["fd12:0:0:1::5"], () => "fd99:0:0:1::9");
+    off.made[0]!.emit("connect");
+    await expect(off.result).rejects.toThrow("address refused");
+    const on = race(["fd12:0:0:1::5"], () => "fd12:0:0:1::9");
+    on.made[0]!.emit("connect");
+    await expect(on.result).resolves.toBe(on.made[0]);
+  });
+
+  it("rejects when every address is refused or fails, and opens no socket for a refused text", async () => {
+    const { made, result } = race(["8.8.8.8", "2001:0:1:2::5", "10.0.0.5"]);
+    expect(made.map((s) => s.host)).toEqual(["10.0.0.5"]); // the others were refused as text
+    made[0]!.emit("error", new Error("ECONNREFUSED"));
+    await expect(result).rejects.toThrow("ECONNREFUSED");
+    const none = race(["8.8.8.8"]);
+    await expect(none.result).rejects.toThrow("address refused");
+    expect(none.made).toEqual([]);
+  });
+});
+
+describe("the default connect takes an IP literal only", () => {
+  it("refuses a name before any socket or lookup exists", () => {
+    for (const host of ["localhost", "example.com", "1.2.3", "0x7f.1", ""])
+      expect(() => connectLiteral(host, 4242), host).toThrow();
   });
 });

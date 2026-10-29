@@ -275,6 +275,13 @@ function errorCodes() {
       mdxProse(entry.description),
       helpCell(helpMap, entry.code),
     ]);
+  const peerRows = registry
+    .filter((entry) => entry.kind === "peer")
+    .map((entry) => [
+      `\`${entry.code}\``,
+      `\`${entry.service}\``,
+      mdxProse(entry.description),
+    ]);
   // WIRE-CONTRACT-V4 §14.3 (SP-53): a product backend's problem `type` is this page with the code
   // as its fragment, so each code a backend answers with gets its own heading (its anchor).
   // `not_entitled` is the existing wire code, reused for a route's entitlement requirement.
@@ -323,6 +330,12 @@ from it. A new code needs an entry there first.`,
       "Raised by an SDK, never sent by the Worker. Hosts match on the exact string.",
       "",
       table(["Code", "Service", "Meaning", "Help"], clientRows),
+      "",
+      "## Peer codes (`conformance/parity/errors.json`)",
+      "",
+      "Close codes of a device-to-device session (WIRE-CONTRACT-V5 §15.6). They travel in a peer close frame, never in an HTTP body, and the Worker never emits one.",
+      "",
+      table(["Code", "Service", "Meaning"], peerRows),
       "",
       "## Backend codes (`conformance/parity/errors.json`)",
       "",

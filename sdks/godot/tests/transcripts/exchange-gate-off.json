@@ -102,6 +102,7 @@
                     "issuer": "https://key.plrs.im/djdl/identity",
                     "account": true,
                     "keyEntryLimit": 10,
+                    "nearby": true,
                     "endpoints": {
                       "session": "https://key.plrs.im/djdl/identity/session",
                       "sessionLicense": "https://key.plrs.im/djdl/identity/session/license",
@@ -121,6 +122,9 @@
                       "attach": "https://key.plrs.im/djdl/identity/attach",
                       "subject": "https://key.plrs.im/djdl/identity/subject",
                       "signout": "https://key.plrs.im/djdl/identity/signout",
+                      "nearbyStart": "https://key.plrs.im/djdl/identity/nearby/start",
+                      "nearbyApprove": "https://key.plrs.im/djdl/identity/nearby/approve",
+                      "nearbyPoll": "https://key.plrs.im/djdl/identity/nearby/poll",
                       "accountPortal": "https://key.plrs.im/#/p/djdl"
                     }
                   },

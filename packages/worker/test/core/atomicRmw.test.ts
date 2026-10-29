@@ -16,6 +16,7 @@ import type { Env } from "../../src/platform/env.js";
 import { loadProduct, type Product } from "../../src/core/products.js";
 import {
   rotateDeviceToken,
+  swapDeviceCredential,
   touchDeviceMetadata,
 } from "../../src/core/devices.js";
 import {
@@ -83,6 +84,52 @@ describe("atomic read-modify-write", () => {
     const row = await getDevice(db, "djdl", DEV);
     expect(row?.status).toBe("deauthorized");
     expect(row?.token_hash).toBe("h1");
+  });
+
+  it("a credential swap replaces the expected hash once and kills it", async () => {
+    const row = (await getDevice(db, "djdl", DEV))!;
+    const first = await swapDeviceCredential(
+      env,
+      db,
+      product,
+      row,
+      "h1",
+      NOW + 1,
+    );
+    expect(first).not.toBeNull();
+    expect(first!.token).toMatch(/^pkeyt_/);
+    expect((await getDevice(db, "djdl", DEV))?.token_hash).toBe(
+      first!.tokenHash,
+    );
+    // The replaced hash no longer matches, so a second swap on it changes nothing.
+    expect(
+      await swapDeviceCredential(env, db, product, row, "h1", NOW + 2),
+    ).toBeNull();
+    expect((await getDevice(db, "djdl", DEV))?.token_hash).toBe(
+      first!.tokenHash,
+    );
+  });
+
+  it("a credential swap on a deauthorized, rebound or other-hash device changes nothing", async () => {
+    const row = (await getDevice(db, "djdl", DEV))!;
+    expect(
+      await swapDeviceCredential(env, db, product, row, "other", NOW + 1),
+    ).toBeNull();
+    expect(
+      await swapDeviceCredential(
+        env,
+        db,
+        product,
+        { ...row, subject: "sub_x" },
+        "h1",
+        NOW + 1,
+      ),
+    ).toBeNull();
+    await setDeviceStatus(db, "djdl", DEV, "deauthorized");
+    expect(
+      await swapDeviceCredential(env, db, product, row, "h1", NOW + 1),
+    ).toBeNull();
+    expect((await getDevice(db, "djdl", DEV))?.token_hash).toBe("h1");
   });
 
   it("a dormant-released seat takes the old token with it", async () => {

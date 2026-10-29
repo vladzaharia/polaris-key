@@ -84,4 +84,4 @@ Channel codes travel in a `CLOSE` record and are never sent by the Worker: `peer
 
 ## Proving an implementation
 
-The corpus has the sections `peerCertCases`, `ringCases` and `peerAdmissionCases` in `cases.json`, plus `noise-vectors.json` (X25519 and AES-GCM known answers, the low-order points, the three handshakes with fixed ephemerals, rekey) and `peer-matrix.json` (adverts, prologue, PSK, SAS, records, relay envelopes). See [Conformance corpus v2](/docs/reference/protocol/corpus/). The reference code is `packages/client-core/src/peer/`.
+The corpus has the sections `peerCertCases`, `ringCases` and `peerAdmissionCases` in `cases.json`, plus `noise-vectors.json` (X25519 and AES-GCM known answers, the low-order points, the three handshakes with fixed ephemerals, rekey) and `peer-matrix.json` (adverts, prologue, PSK, SAS, records, relay envelopes, LAN addresses). See [Conformance corpus v2](/docs/reference/protocol/corpus/). The reference code is `packages/client-core/src/peer/`.

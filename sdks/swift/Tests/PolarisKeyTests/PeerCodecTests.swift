@@ -1,10 +1,12 @@
-// @pkey-feature connect.protocol
+// @pkey-feature connect.protocol connect.lan
 // CC-11.6: the codecs of `pkey-peer/1` (WIRE-CONTRACT-V5 §15.4, §15.5) against the `adverts`,
 // `sas` and `handshakePayloads` rows of `conformance/corpus/v2/peer-matrix.json`, read in place:
 // the advert epoch, instance names, product tags, TXT and browse; the SAS commit, reveal, code and
-// display; the handshake payloads and the capability intersection.
+// display; the handshake payloads and the capability intersection; and, for the LAN adapter
+// (CC-IPV6.6, §15.4.1), every `lanAddresses` row through `lanVerdict` and `lanGroupKey`.
 
 import Foundation
+import PolarisKeyPlatform
 import XCTest
 
 @testable import PolarisKeyCore
@@ -198,5 +200,43 @@ final class PeerCodecTests: XCTestCase {
         XCTAssertThrowsError(
             try PeerPayload.payload23(
                 mode: .v, caps: Array(repeating: String(repeating: "a", count: 40) + "/1", count: 300)))
+    }
+
+    // ── LAN addresses (§15.4.1) ──────────────────────────────────────────────────────
+
+    /// Every `lanAddresses` row: the verdict, the per-address key and the per-/64 key. The
+    /// `candidates` rows under it (§15.6, CANDIDATES) are not run: the Swift peer session reads no
+    /// CANDIDATES entry, so it dials only what the Bonjour browse returns.
+    func testLanAddressRows() {
+        let rows = rows("lanAddresses", "rows")
+        XCTAssertEqual(rows.count, 133, "a row added or dropped is a deliberate corpus change")
+        XCTAssertEqual(Set(rows.map { $0["id"]!.stringValue! }).count, rows.count)
+        for r in rows {
+            let id = r["id"]!.stringValue!
+            let key = r["key"]?.stringValue
+            let v = lanVerdict(
+                r["remote"]!.stringValue!, local: r["local"]?.stringValue,
+                allowLoopback: r["allowLoopback"]!.boolValue!)
+            XCTAssertEqual(v, LanVerdict(dial: r["dial"]!.boolValue!, key: key), id)
+            XCTAssertEqual(lanGroupKey(v.key), r["group"]?.stringValue, id)
+        }
+    }
+
+    /// `mdnsAnswers` is the mDNS answer-learning rule; the OS resolver owns it on Apple platforms
+    /// (Network.framework hands the app resolved endpoints), so Swift skips it by name.
+    func testMdnsAnswersIsSkippedByName() {
+        let skipped: Set<String> = ["mdnsAnswers"]
+        XCTAssertTrue(skipped.isSubset(of: Set(m.keys)))
+        XCTAssertNotNil(m["mdnsAnswers"]!.objectValue!["rows"], "the section still exists in the corpus")
+    }
+
+    func testLanVerdictEdgesBeyondTheCorpus() {
+        // A refusal carries no key, and an absent local address refuses a global one.
+        XCTAssertEqual(lanVerdict("8.8.8.8", local: nil, allowLoopback: true), LanVerdict(dial: false, key: nil))
+        XCTAssertFalse(lanVerdict("2001:db8:1:2::5", local: nil, allowLoopback: false).dial)
+        XCTAssertTrue(lanVerdict("2001:db8:1:2::5", local: "2001:db8:1:2::9", allowLoopback: false).dial)
+        XCTAssertNil(lanGroupKey(nil))
+        XCTAssertNil(lanGroupKey("10.0.0.1"))
+        XCTAssertEqual(lanGroupKey("fe80::1%en0"), "fe80::/64%en0")
     }
 }

@@ -302,6 +302,20 @@ def test_hello_display_data_is_cleaned() -> None:
     assert b.of(Established)[0].hello.label == "Café TV"
 
 
+def test_a_hello_over_4_kib_is_fine_in_mode_a() -> None:
+    A, B = Dev(ID_A), Dev(ID_B)
+    k = _rnd()
+    a = Side("initiator", A, [k])
+    a.s._hello["label"] = "x" * 4100
+    a.s._hello["platform"] = "<b>"
+    b = Side("responder", B, [k])
+    a.s.start()
+    pump(a, b)
+    est = b.of(Established)[0]
+    # The cap is for the modes whose peer is not verified; the display cleaning is not.
+    assert est.hello.platform == "Unknown" and est.hello.label is not None and len(est.hello.label) == 64
+
+
 def test_the_first_record_must_be_hello_and_the_refusal_is_said() -> None:
     B = Dev(ID_B)
     A = Dev(ID_A)

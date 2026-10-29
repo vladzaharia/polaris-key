@@ -30,6 +30,7 @@ import im.plrs.key.core.PeerAdmission
 import im.plrs.key.core.RingReplacement
 import im.plrs.key.core.RingResult
 import im.plrs.key.core.StrictJson
+import im.plrs.key.core.StrictParse
 import im.plrs.key.core.TrustSet
 import im.plrs.key.core.longValue
 import im.plrs.key.core.normalizeDeviceLabel
@@ -53,6 +54,21 @@ public const val SAS_DEADLINE_SECONDS: Int = 120
 public const val HANDSHAKE_FAILED: String = "handshake_failed"
 
 private const val MAX_QUEUED = 16
+
+/** Bytes of bodies held before this side's person confirms the code (modes v and p, section 15.6). */
+private const val MAX_QUEUED_BYTES = 16 * 1024
+
+/** The largest HELLO from a peer that is not yet verified (modes v and p, section 15.6). */
+private const val MAX_UNVERIFIED_HELLO = 4096
+
+/** What a HELLO field that fails cleaning is shown as. */
+private const val UNKNOWN_DISPLAY = "Unknown"
+
+/** Section 15.6: `platform` is shown as sent only when it is up to 32 of these characters. */
+private val PLATFORM_DISPLAY = Regex("[A-Za-z0-9 ._+-]{1,32}")
+
+/** NFC, then the device-label cleaning (section 12.7.1): null when nothing is left. */
+private fun cleanDisplay(raw: String): String? = normalizeDeviceLabel(Normalizer.normalize(raw, Normalizer.Form.NFC))
 private const val SAS_NONCE_BYTES = 32
 private const val RATE_WINDOW_SECONDS = 60.0
 private const val MAX_SAFE_INTEGER = 9_007_199_254_740_991L
@@ -503,18 +519,32 @@ public class PeerChannel(
     }
 
     private fun parseHello(body: ByteArray): PeerHello? {
-        val parsed = StrictJson.validate(body) ?: return null
+        // Modes v and p take a HELLO from a peer that is not yet verified: 4 KiB at most (section 15.6).
+        val tooBig = mode != PeerMode.a && body.size > MAX_UNVERIFIED_HELLO
+        return if (tooBig) null else StrictJson.validate(body)?.let(::helloOf)
+    }
+
+    private fun helloOf(parsed: StrictParse): PeerHello? {
         val o = parsed.value
         val platform = o["platform"].stringValue
         val app = o["app"].stringValue
-        if (platform == null || app == null) return null
         val rawLabel = o["label"]
-        if ("label" in o && rawLabel.stringValue == null) return null
+        val labelOk = "label" !in o || rawLabel.stringValue != null
         val mm = o["maxMessage"].longValue
-        if (!wireInteger(mm, "/maxMessage", 1, parsed.nonWireIntegers) || mm!! > MAX_SAFE_INTEGER) return null
-        // Display data from the peer: NFC, controls and bidi stripped, 64 code points.
-        val clean = rawLabel.stringValue?.let { normalizeDeviceLabel(Normalizer.normalize(it, Normalizer.Form.NFC)) }
-        return PeerHello(platform, app, mm, clean)
+        val mmOk = wireInteger(mm, "/maxMessage", 1, parsed.nonWireIntegers) && mm!! <= MAX_SAFE_INTEGER
+        val shapeOk = labelOk && mmOk
+        // Display data from an unauthenticated peer: NFC, controls and bidi stripped, 64 code points; a
+        // platform only in its plain spelling. What fails cleaning shows as "Unknown".
+        return if (platform == null || app == null || !shapeOk) {
+            null
+        } else {
+            PeerHello(
+                platform = if (PLATFORM_DISPLAY.matches(platform)) platform else UNKNOWN_DISPLAY,
+                app = cleanDisplay(app) ?: UNKNOWN_DISPLAY,
+                maxMessage = mm!!,
+                label = rawLabel.stringValue?.let(::cleanDisplay),
+            )
+        }
     }
 
     private suspend fun onMessage(type: Int, body: ByteArray) {
@@ -565,7 +595,8 @@ public class PeerChannel(
                 // Everything else belongs to the host, and only once the code is settled.
                 if (phase == "sas-shown") {
                     // The peer may confirm first: hold the record (bounded) until this side's person does.
-                    if (queued.size >= MAX_QUEUED) throw Fail(PeerCloseCode.peer_busy.name)
+                    val held = queued.sumOf { it.second.size }
+                    if (queued.size >= MAX_QUEUED || held + body.size > MAX_QUEUED_BYTES) throw Fail(PeerCloseCode.peer_busy.name)
                     queued += type to body
                 } else if (phase != "open") {
                     throw Fail(PeerCloseCode.peer_not_allowed.name)

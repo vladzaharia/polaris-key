@@ -195,6 +195,89 @@ final class PeerSessionSASTests: XCTestCase {
         XCTAssertEqual(est.hello.label, "Caf\u{E9} TV")
     }
 
+    /// §15.6: held host records are bounded by bytes (16 KiB) as well as by count.
+    func testHeldRecordsAreBoundedByBytes() async throws {
+        let d = Side(.v, .initiator)
+        let a = Side(.v, .responder)
+        await d.s.start()
+        await pump(d, a)
+        await d.s.confirmSas()
+        let big = Data(#"{"pad":""#.utf8) + Data(repeating: 0x61, count: 8000) + Data(#""}"#.utf8)
+        try await d.s.sendRecord(type: PeerRecordType.vouchReq, body: big)
+        await pump(d, a)
+        XCTAssertTrue(a.closed.isEmpty, "8 KB is held")
+        try await d.s.sendRecord(type: PeerRecordType.vouchReq, body: big)
+        await pump(d, a)
+        XCTAssertTrue(a.closed.isEmpty, "16 KB in two records is still within the bound")
+        let more = Data(#"{"pad":""#.utf8) + Data(repeating: 0x61, count: 400) + Data(#""}"#.utf8)
+        try await d.s.sendRecord(type: PeerRecordType.vouchReq, body: more)
+        await pump(d, a)
+        XCTAssertEqual(a.closed, [.closed(.peerBusy, byPeer: false)], "past 16 KiB held")
+        XCTAssertEqual(a.types, [])
+    }
+
+    private func helloEstablished(_ mode: PeerNoiseMode, _ hello: String) async throws -> (Side, PeerHello?) {
+        let a = Side(mode, .responder)
+        let tp = try await rawPeer(mode, to: a)
+        try await put(tp, a, PeerRecordType.hello, Data(hello.utf8))
+        return (a, a.established.first?.hello)
+    }
+
+    /// §15.6: `platform` is shown as sent only in [A-Za-z0-9 ._+-], 1 to 32 characters.
+    func testHelloPlatformIsShownOnlyInTheNarrowSet() async throws {
+        func platform(_ p: String) async throws -> String? {
+            let json = try String(
+                decoding: JSONSerialization.data(
+                    withJSONObject: ["platform": p, "app": "a", "maxMessage": 1_048_576]), as: UTF8.self)
+            return try await helloEstablished(.v, json).1?.platform
+        }
+        let ok = "Mac OS+X 14.5_a-b"
+        for good in [ok, "x", String(repeating: "a", count: 32)] {
+            let shown = try await platform(good)
+            XCTAssertEqual(shown, good)
+        }
+        for bad in [
+            "", String(repeating: "a", count: 33), "Mac<script>", "Caf\u{E9}", "a\nb", "a\u{202E}b", "a/b", "a%b",
+        ] {
+            let shown = try await platform(bad)
+            XCTAssertEqual(shown, "Unknown", bad)
+        }
+    }
+
+    /// §15.6: `app` is cleaned like `label` (NFC, controls and bidi stripped, 64 code points).
+    func testHelloAppIsCleanedLikeTheLabel() async throws {
+        func app(_ p: String) async throws -> String? {
+            let json = try String(
+                decoding: JSONSerialization.data(
+                    withJSONObject: ["platform": "t", "app": p, "maxMessage": 1_048_576]), as: UTF8.self)
+            return try await helloEstablished(.p, json).1?.app
+        }
+        let cleaned = try await app("  Cafe\u{301} \u{202E}Demo\u{0}  ")
+        XCTAssertEqual(cleaned, "Caf\u{E9} Demo")
+        let none = try await app("\u{202E}\u{0}  ")
+        XCTAssertEqual(none, "Unknown")
+        let long = try await app(String(repeating: "\u{1F600}", count: 100))
+        XCTAssertEqual(long?.unicodeScalars.count, 64)
+    }
+
+    /// §15.6: a HELLO in mode v or p is at most 4 KiB.
+    func testHelloOverFourKiBIsRefusedInModesVAndP() async throws {
+        func hello(padded to: Int) -> String {
+            let base = #"{"platform":"t","app":"a","maxMessage":1048576,"x":""#
+            return base + String(repeating: "a", count: to - base.utf8.count - 2) + #""}"#
+        }
+        for mode in [PeerNoiseMode.v, .p] {
+            let exact = hello(padded: 4096)
+            XCTAssertEqual(exact.utf8.count, 4096)
+            let (ok, helloOK) = try await helloEstablished(mode, exact)
+            XCTAssertNotNil(helloOK, "4096 bytes is within the bound")
+            XCTAssertTrue(ok.closed.isEmpty)
+            let (bad, none) = try await helloEstablished(mode, hello(padded: 4097))
+            XCTAssertNil(none)
+            XCTAssertEqual(bad.closed, [.closed(.peerBadFrame, byPeer: false)])
+        }
+    }
+
     func testTheLimiterCountsFiveAMinuteOnAMonotonicClock() {
         let t = Box<TimeInterval>(0)
         let lim = HandshakeLimiter(maxPerMinute: 5, maxPending: 99, mono: { t.value })

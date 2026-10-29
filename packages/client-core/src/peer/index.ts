@@ -69,6 +69,7 @@ export {
 } from "./frame.js";
 export {
   MAX_PEER_MESSAGE_BYTES,
+  PEER_CLOSE_CODES,
   MAX_RECORD_BODY,
   RECORD,
   RECORD_TYPES,
@@ -98,6 +99,12 @@ export {
   type RelayOutboxOptions,
 } from "./pacer.js";
 export {
+  UNKNOWN_DISPLAY,
+  cleanApp,
+  cleanLabel,
+  cleanPlatform,
+} from "./display.js";
+export {
   MAX_CAPS,
   MAX_HANDSHAKE_PAYLOAD,
   capsIntersection,
@@ -116,3 +123,43 @@ export {
   type PeerSessionOptions,
   type SessionEvent,
 } from "./session.js";
+export {
+  candidateTarget,
+  lanGroupKey,
+  lanVerdict,
+  type CandidateTarget,
+  type LanVerdict,
+  type LocalInterfaceAddress,
+} from "./lanAddress.js";
+export {
+  APPROVER_RENEW_SECONDS,
+  VOUCH_CAP,
+  VOUCH_FAILURE_LIMIT,
+  VOUCH_FAILURE_WINDOW_SECONDS,
+  VOUCH_HELD_BYTES,
+  VOUCH_HELD_RECORDS,
+  VOUCH_REQ_MAX,
+  VouchFailureBudget,
+  VouchFlow,
+  approverInstance,
+  buildVouchRequest,
+  buildVouchResult,
+  decoyCodes,
+  finishMap,
+  parseVouchRequest,
+  parseVouchResult,
+  verifyVouchRequest,
+  type AbandonReason,
+  type ApproveAnswer,
+  type BuildVouchRequestOptions,
+  type DecoyCodes,
+  type FinishAction,
+  type ParsedVouchRequest,
+  type VerifyVouchRequestOptions,
+  type VouchHello,
+  type VouchRecord,
+  type VouchRequest,
+  type VouchRole,
+  type VouchStatus,
+  type VouchVerdict,
+} from "./vouch.js";

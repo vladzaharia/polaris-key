@@ -1,6 +1,6 @@
 {
   "peerMatrixVersion": 1,
-  "description": "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`. A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+  "description": "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`; `lanAddresses` (which peer addresses a device dials or accepts, and the per-address count key); `mdnsAnswers` (which A and AAAA records a browser believes); `vouch` (the mode-v vouch of 15.6.1: `requests`, `results`, `flows`, `finish`). A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
   "adverts": {
     "epochSeconds": 900,
     "epochs": [
@@ -3057,6 +3057,4744 @@
         "local": ["b/1", "a/10", "a/2", "a/1"],
         "remote": ["a/1", "a/10", "a/2", "b/1"],
         "want": ["a/1", "a/10", "a/2", "b/1"]
+      }
+    ]
+  },
+  "lanAddresses": {
+    "note": "LAN addresses (15.4.1): lanVerdict(remote, local, allowLoopback) -> {dial, key}, applied to an accepted socket before it takes a slot or is read, to a dialled address's text before connect and again to the connected socket before its first byte. `remote` is the socket's peer address as text and `local` its own address (absent: unknown). Spelling: a zone is `%` and 1 to 15 characters of U+0021 to U+007E other than `%`; an empty or longer zone, a second `%`, a control, a space or a non-ASCII character, a zone on IPv4 and a zone on an IPv4-mapped address are malformed and refused; the grammar is strict (RFC 3986 IPv4address and IPv6address): no whitespace, NUL, port, prefix length, trailing dot, brackets, non-ASCII digits or leading-zero octet. IPv4-mapped (::ffff:0:0/96) is judged as its IPv4 address. IPv4: 10/8, 172.16/12, 192.168/16, and 127/8 only with allowLoopback. IPv6: fe80::/10; fc00::/7, which with a known `local` must be IPv6 (not mapped) in the same /64; ::1 only with allowLoopback; an address in 2000::/3, outside 2001::/32 (Teredo) and 2002::/16 (6to4), only when `local` is IPv6 (not mapped) in the same /64. Anything else, and text that is not an address, is refused. `key` is the per-address connection count key: dotted IPv4, or RFC 5952 lower-case IPv6 text without its zone, except that a link-local (fe80::/10) key keeps its zone; null when `dial` is false. `group` is the per-group count key of a key: `fe80::/10%zone` for a link-local key (`fe80::/10` with no zone), `a.b.c.0/24` for an IPv4 key, `<masked address>/64` for any other IPv6 key, and null for no key. `candidates` holds the rule for a CANDIDATES entry (15.6).",
+    "rows": [
+      {
+        "id": "v4-10-low",
+        "remote": "10.0.0.1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "10.0.0.1",
+        "group": "10.0.0.0/24"
+      },
+      {
+        "id": "v4-10-high",
+        "remote": "10.255.255.254",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "10.255.255.254",
+        "group": "10.255.255.0/24"
+      },
+      {
+        "id": "v4-172-16",
+        "remote": "172.16.0.1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "172.16.0.1",
+        "group": "172.16.0.0/24"
+      },
+      {
+        "id": "v4-172-31",
+        "remote": "172.31.255.254",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "172.31.255.254",
+        "group": "172.31.255.0/24"
+      },
+      {
+        "id": "v4-172-15",
+        "remote": "172.15.255.255",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-172-32",
+        "remote": "172.32.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-192-168",
+        "remote": "192.168.1.2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "192.168.1.2",
+        "group": "192.168.1.0/24"
+      },
+      {
+        "id": "v4-192-167",
+        "remote": "192.167.255.255",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-192-169",
+        "remote": "192.169.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-link-local",
+        "remote": "169.254.1.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-cgnat",
+        "remote": "100.64.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-public",
+        "remote": "8.8.8.8",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-this-network",
+        "remote": "0.0.0.0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-multicast",
+        "remote": "224.0.0.251",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-broadcast",
+        "remote": "255.255.255.255",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-loopback-off",
+        "remote": "127.0.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-loopback-on",
+        "remote": "127.0.0.1",
+        "allowLoopback": true,
+        "dial": true,
+        "key": "127.0.0.1",
+        "group": "127.0.0.0/24"
+      },
+      {
+        "id": "v4-loopback-high-on",
+        "remote": "127.255.255.254",
+        "allowLoopback": true,
+        "dial": true,
+        "key": "127.255.255.254",
+        "group": "127.255.255.0/24"
+      },
+      {
+        "id": "v4-public-loopback-flag",
+        "remote": "8.8.8.8",
+        "allowLoopback": true,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-leading-zero",
+        "remote": "192.168.01.2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-octet-256",
+        "remote": "192.168.1.256",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-three-octets",
+        "remote": "192.168.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v4-zone",
+        "remote": "192.168.1.2%en0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "text-empty",
+        "remote": "",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "text-name",
+        "remote": "printer.local",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "mapped-lan",
+        "remote": "::ffff:192.168.1.2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "192.168.1.2",
+        "group": "192.168.1.0/24"
+      },
+      {
+        "id": "mapped-hex",
+        "remote": "::ffff:c0a8:102",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "192.168.1.2",
+        "group": "192.168.1.0/24"
+      },
+      {
+        "id": "mapped-upper",
+        "remote": "::FFFF:192.168.1.2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "192.168.1.2",
+        "group": "192.168.1.0/24"
+      },
+      {
+        "id": "mapped-long",
+        "remote": "0:0:0:0:0:ffff:c0a8:102",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "192.168.1.2",
+        "group": "192.168.1.0/24"
+      },
+      {
+        "id": "mapped-public",
+        "remote": "::ffff:8.8.8.8",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "mapped-loopback-off",
+        "remote": "::ffff:127.0.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "mapped-loopback-on",
+        "remote": "::ffff:127.0.0.1",
+        "allowLoopback": true,
+        "dial": true,
+        "key": "127.0.0.1",
+        "group": "127.0.0.0/24"
+      },
+      {
+        "id": "compatible-not-mapped",
+        "remote": "::192.168.1.2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "nat64",
+        "remote": "64:ff9b::c0a8:102",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "nat64-dotted",
+        "remote": "64:ff9b::192.168.1.2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-link-local-zone",
+        "remote": "fe80::1%en0",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fe80::1%en0",
+        "group": "fe80::/10%en0"
+      },
+      {
+        "id": "v6-link-local-upper",
+        "remote": "FE80::0001",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fe80::1",
+        "group": "fe80::/10"
+      },
+      {
+        "id": "v6-link-local-top",
+        "remote": "febf::1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "febf::1",
+        "group": "fe80::/10"
+      },
+      {
+        "id": "v6-below-link-local",
+        "remote": "fe7f::1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-site-local",
+        "remote": "fec0::1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-ula",
+        "remote": "fd12::5",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd12::5",
+        "group": "fd12::/64"
+      },
+      {
+        "id": "v6-ula-fc",
+        "remote": "fc00::1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fc00::1",
+        "group": "fc00::/64"
+      },
+      {
+        "id": "v6-fe00",
+        "remote": "fe00::1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-loopback-off",
+        "remote": "::1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-loopback-on",
+        "remote": "::1",
+        "allowLoopback": true,
+        "dial": true,
+        "key": "::1",
+        "group": "::/64"
+      },
+      {
+        "id": "v6-unspecified-off",
+        "remote": "::",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-unspecified-on",
+        "remote": "::",
+        "allowLoopback": true,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-multicast",
+        "remote": "ff02::fb",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-zone-empty",
+        "remote": "fe80::1%",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-brackets",
+        "remote": "[fe80::1]",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-two-gaps",
+        "remote": "fe80::1::2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-nine-groups",
+        "remote": "1:2:3:4:5:6:7:8:9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-eight-groups-and-gap",
+        "remote": "1:2:3:4:5:6:7::8",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "v6-group-too-long",
+        "remote": "fd12::12345",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "key-first-longest-run",
+        "remote": "fd00:0:0:0:1:0:0:1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::1:0:0:1",
+        "group": "fd00::/64"
+      },
+      {
+        "id": "key-tie-first-run",
+        "remote": "fd00:0:0:1:1:0:0:1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::1:1:0:0:1",
+        "group": "fd00:0:0:1::/64"
+      },
+      {
+        "id": "key-single-zero-kept",
+        "remote": "fd00:0:1:1:1:1:1:1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00:0:1:1:1:1:1:1",
+        "group": "fd00:0:1:1::/64"
+      },
+      {
+        "id": "key-trailing-run",
+        "remote": "FD00:0000:0000:0000:0000:0000:0000:0000",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::",
+        "group": "fd00::/64"
+      },
+      {
+        "id": "key-dotted-tail",
+        "remote": "fd00::192.168.1.2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::c0a8:102",
+        "group": "fd00::/64"
+      },
+      {
+        "id": "key-zone-dropped",
+        "remote": "fd00::5%wlan0",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::5",
+        "group": "fd00::/64"
+      },
+      {
+        "id": "global-same-64",
+        "remote": "2001:db8:1:2::5",
+        "local": "2001:db8:1:2::9",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "2001:db8:1:2::5",
+        "group": "2001:db8:1:2::/64"
+      },
+      {
+        "id": "global-same-64-loopback-flag",
+        "remote": "2001:db8:1:2::5",
+        "local": "2001:db8:1:2::9",
+        "allowLoopback": true,
+        "dial": true,
+        "key": "2001:db8:1:2::5",
+        "group": "2001:db8:1:2::/64"
+      },
+      {
+        "id": "global-same-64-local-zone",
+        "remote": "2001:db8:1:2::5",
+        "local": "2001:db8:1:2::9%en0",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "2001:db8:1:2::5",
+        "group": "2001:db8:1:2::/64"
+      },
+      {
+        "id": "global-other-64",
+        "remote": "2001:db8:1:2::5",
+        "local": "2001:db8:1:3::9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "global-no-local",
+        "remote": "2001:db8:1:2::5",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "global-local-ipv4",
+        "remote": "2001:db8:1:2::5",
+        "local": "192.168.1.9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "global-local-mapped",
+        "remote": "2001:db8:1:2::5",
+        "local": "::ffff:192.168.1.9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "global-local-not-an-address",
+        "remote": "2001:db8:1:2::5",
+        "local": "en0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "global-local-link-local",
+        "remote": "2001:db8:1:2::5",
+        "local": "fe80::9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "global-3fff",
+        "remote": "3fff::1",
+        "local": "3fff::2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "3fff::1",
+        "group": "3fff::/64"
+      },
+      {
+        "id": "global-other-isp",
+        "remote": "2600:1700::1",
+        "local": "2600:1700::2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "2600:1700::1",
+        "group": "2600:1700::/64"
+      },
+      {
+        "id": "global-outside-2000-3",
+        "remote": "4000::1",
+        "local": "4000::2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "global-teredo-same-64",
+        "remote": "2001:0:4136:e378:8000:63bf:3fff:fdd2",
+        "local": "2001:0:4136:e378::9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "global-6to4-same-64",
+        "remote": "2002:c0a8:102::1",
+        "local": "2002:c0a8:102::2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "global-2001-0db8-is-not-teredo",
+        "remote": "2001:db8::1",
+        "local": "2001:db8::2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "2001:db8::1",
+        "group": "2001:db8::/64"
+      },
+      {
+        "id": "link-local-ignores-local",
+        "remote": "fe80::1",
+        "local": "2001:db8:1:2::9",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fe80::1",
+        "group": "fe80::/10"
+      },
+      {
+        "id": "key-link-local-zone-case",
+        "remote": "FE80::1%EN0",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fe80::1%EN0",
+        "group": "fe80::/10%EN0"
+      },
+      {
+        "id": "key-link-local-zone-number",
+        "remote": "fe80::1%12",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fe80::1%12",
+        "group": "fe80::/10%12"
+      },
+      {
+        "id": "key-link-local-no-zone",
+        "remote": "fe80::1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fe80::1",
+        "group": "fe80::/10"
+      },
+      {
+        "id": "zone-15-characters",
+        "remote": "fe80::1%abcdefghijklmno",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fe80::1%abcdefghijklmno",
+        "group": "fe80::/10%abcdefghijklmno"
+      },
+      {
+        "id": "zone-16-characters",
+        "remote": "fe80::1%abcdefghijklmnop",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "zone-with-space",
+        "remote": "fe80::1%en 0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "zone-with-tab",
+        "remote": "fe80::1%en\t0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "zone-with-control",
+        "remote": "fe80::1%en\u0001",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "zone-with-delete",
+        "remote": "fe80::1%en\u007f",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "zone-non-ascii",
+        "remote": "fe80::1%\u00e9n0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "zone-trailing-newline",
+        "remote": "fe80::1%en0\n",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "zone-double",
+        "remote": "fe80::1%en0%en1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "zone-only-percent",
+        "remote": "fe80::1%%",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "zone-no-address",
+        "remote": "%en0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "zone-on-ula-dropped",
+        "remote": "fd00::5%en0",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::5",
+        "group": "fd00::/64"
+      },
+      {
+        "id": "mapped-zone",
+        "remote": "::ffff:10.0.0.1%en0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "mapped-hex-zone",
+        "remote": "::ffff:a00:1%en0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "ula-local-same-64",
+        "remote": "fd00:1:2:3::5",
+        "local": "fd00:1:2:3::9",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00:1:2:3::5",
+        "group": "fd00:1:2:3::/64"
+      },
+      {
+        "id": "ula-local-other-64",
+        "remote": "fd00:1:2:3::5",
+        "local": "fd00:1:2:4::9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "ula-local-other-ula",
+        "remote": "fd00:1:2:3::5",
+        "local": "fd01:1:2:3::9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "ula-local-global",
+        "remote": "fd00:1:2:3::5",
+        "local": "2001:db8:1:2::9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "ula-local-link-local",
+        "remote": "fd00:1:2:3::5",
+        "local": "fe80::9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "ula-local-ipv4",
+        "remote": "fd00:1:2:3::5",
+        "local": "192.168.1.9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "ula-local-not-an-address",
+        "remote": "fd00:1:2:3::5",
+        "local": "en0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "ula-local-same-64-zone",
+        "remote": "fd00:1:2:3::5",
+        "local": "fd00:1:2:3::9%en0",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00:1:2:3::5",
+        "group": "fd00:1:2:3::/64"
+      },
+      {
+        "id": "ula-fc-local-same-64",
+        "remote": "fc00::1",
+        "local": "fc00::2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fc00::1",
+        "group": "fc00::/64"
+      },
+      {
+        "id": "ula-fc-local-other-64",
+        "remote": "fc00::1",
+        "local": "fc00:0:0:1::2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-trailing-newline",
+        "remote": "10.0.0.1\n",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-trailing-newline",
+        "remote": "fe80::1\n",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-nul",
+        "remote": "10.0.0.1\u0000",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-nul",
+        "remote": "fe80::1\u0000",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-leading-space",
+        "remote": " 10.0.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-trailing-space",
+        "remote": "10.0.0.1 ",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-trailing-space",
+        "remote": "fe80::1 ",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-tab",
+        "remote": "10.0.0.1\t",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-unicode-digits",
+        "remote": "\uff11\uff10.0.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-arabic-digits",
+        "remote": "10.0.0.\u0661",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-unicode-digits",
+        "remote": "fd\u0660\u0660::1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-port",
+        "remote": "10.0.0.1:80",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-bracket-port",
+        "remote": "[fe80::1]:80",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-port-unbracketed",
+        "remote": "fd00::1:80",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::1:80",
+        "group": "fd00::/64"
+      },
+      {
+        "id": "diff-v4-hex-octet",
+        "remote": "0x0a.0.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-hex-whole",
+        "remote": "0xa000001",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-decimal-whole",
+        "remote": "167772161",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-short",
+        "remote": "10.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-five-octets",
+        "remote": "10.0.0.1.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-prefix-length",
+        "remote": "10.0.0.1/8",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v4-trailing-dot",
+        "remote": "10.0.0.1.",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-trailing-dot",
+        "remote": "fd00::1.",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-dotted-leading-zero",
+        "remote": "::ffff:010.0.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-dotted-mid",
+        "remote": "::10.0.0.1:1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-three-colons",
+        "remote": "fd00:::1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-prefix-length",
+        "remote": "fd00::1/64",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-sign",
+        "remote": "+fd00::1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      },
+      {
+        "id": "diff-v6-isatap",
+        "remote": "fe80::5efe:10.0.0.1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fe80::5efe:a00:1",
+        "group": "fe80::/10"
+      },
+      {
+        "id": "diff-v6-isatap-global",
+        "remote": "2001:db8:1:2:0:5efe:10.0.0.1",
+        "local": "2001:db8:1:2::9",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "2001:db8:1:2:0:5efe:a00:1",
+        "group": "2001:db8:1:2::/64"
+      },
+      {
+        "id": "diff-percent-only",
+        "remote": "%",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null,
+        "group": null
+      }
+    ],
+    "candidates": {
+      "note": "CANDIDATES entries (15.6, 15.4.1): candidateTarget(entry, interfaces) -> {host, port} or null. `interfaces` lists the device's own addresses, one per entry: `{address, prefix, up, tunnel}`, `tunnel` meaning a VPN, tunnel, point-to-point or pseudo-interface. An entry is dialled only when all hold: it is `a.b.c.d:port` or `[addr]:port` (brackets only around IPv6) with a plain decimal port from 1024 to 65535 (no sign, no leading zero, no space, no other character); an IPv6 address is in RFC 5952 text, has no zone, is not IPv4-mapped and is not in fe80::/10; the address is not one of the device's own; it lies inside the subnet (address and prefix) of an up, non-tunnel interface address; and lanVerdict(address, that interface address, false) allows it. `target.host` is the address as dialled.",
+      "rows": [
+        {
+          "id": "v4-in-subnet",
+          "entry": "192.168.1.20:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": { "host": "192.168.1.20", "port": 5000 }
+        },
+        {
+          "id": "v4-port-1024",
+          "entry": "192.168.1.20:1024",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": { "host": "192.168.1.20", "port": 1024 }
+        },
+        {
+          "id": "v4-port-65535",
+          "entry": "192.168.1.20:65535",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": { "host": "192.168.1.20", "port": 65535 }
+        },
+        {
+          "id": "v4-other-subnet",
+          "entry": "192.168.2.20:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-rfc1918-elsewhere",
+          "entry": "10.0.0.1:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-rfc1918-elsewhere-ssh-port",
+          "entry": "10.0.0.1:22",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-own-address",
+          "entry": "192.168.1.9:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-no-interfaces",
+          "entry": "192.168.1.20:5000",
+          "interfaces": [],
+          "target": null
+        },
+        {
+          "id": "v4-interface-down",
+          "entry": "192.168.1.20:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": false,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-tunnel-subnet",
+          "entry": "10.8.0.5:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "10.8.0.2", "prefix": 24, "up": true, "tunnel": true }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-lan-beside-tunnel",
+          "entry": "192.168.1.20:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "10.8.0.2", "prefix": 24, "up": true, "tunnel": true }
+          ],
+          "target": { "host": "192.168.1.20", "port": 5000 }
+        },
+        {
+          "id": "v4-public-subnet",
+          "entry": "8.8.8.8:5000",
+          "interfaces": [
+            { "address": "8.8.8.9", "prefix": 24, "up": true, "tunnel": false },
+            {
+              "address": "2001:0:4136:e378::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-ula-in-subnet",
+          "entry": "[fd00:1:2:3::5]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": { "host": "fd00:1:2:3::5", "port": 5000 }
+        },
+        {
+          "id": "v6-ula-other-64",
+          "entry": "[fd00:1:2:4::5]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-global-in-subnet",
+          "entry": "[2001:db8:1:2::5]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": { "host": "2001:db8:1:2::5", "port": 5000 }
+        },
+        {
+          "id": "v6-global-other-64",
+          "entry": "[2001:db8:1:3::5]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-own-address",
+          "entry": "[fd00:1:2:3::9]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-own-global-address",
+          "entry": "[2001:db8:1:2::9]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-ipv4-only-interface",
+          "entry": "[fd00:1:2:3::5]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-teredo-in-subnet",
+          "entry": "[2001:0:4136:e378::5]:5000",
+          "interfaces": [
+            { "address": "8.8.8.9", "prefix": 24, "up": true, "tunnel": false },
+            {
+              "address": "2001:0:4136:e378::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-single-zero-group",
+          "entry": "[fd00:1:0:1:1:1:1:1]:5000",
+          "interfaces": [
+            {
+              "address": "fd00:1:0:1::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": { "host": "fd00:1:0:1:1:1:1:1", "port": 5000 }
+        },
+        {
+          "id": "v6-link-local",
+          "entry": "[fe80::5]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-link-local-isatap",
+          "entry": "[fe80::5efe:c0a8:114]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-loopback",
+          "entry": "[::1]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-0",
+          "entry": "192.168.1.20:0",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-22",
+          "entry": "192.168.1.20:22",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-80",
+          "entry": "192.168.1.20:80",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-1023",
+          "entry": "192.168.1.20:1023",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-65536",
+          "entry": "192.168.1.20:65536",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-99999",
+          "entry": "192.168.1.20:99999",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-100000",
+          "entry": "192.168.1.20:100000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-leading-zero",
+          "entry": "192.168.1.20:05000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-plus",
+          "entry": "192.168.1.20:+5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-minus",
+          "entry": "192.168.1.20:-5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-space",
+          "entry": "192.168.1.20: 5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-trailing-space",
+          "entry": "192.168.1.20:5000 ",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-trailing-newline",
+          "entry": "192.168.1.20:5000\n",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-nul",
+          "entry": "192.168.1.20:5000\u0000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-hex",
+          "entry": "192.168.1.20:0x1388",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-exponent",
+          "entry": "192.168.1.20:5e3",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-fraction",
+          "entry": "192.168.1.20:5000.0",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-fullwidth",
+          "entry": "192.168.1.20:\uff15\uff10\uff10\uff10",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-missing",
+          "entry": "192.168.1.20",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-empty",
+          "entry": "192.168.1.20:",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-twice",
+          "entry": "192.168.1.20:5000:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-v6-missing",
+          "entry": "[fd00:1:2:3::5]",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-v6-empty",
+          "entry": "[fd00:1:2:3::5]:",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "port-v6-trailing-junk",
+          "entry": "[fd00:1:2:3::5]:5000x",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-brackets",
+          "entry": "[192.168.1.20]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-leading-zero",
+          "entry": "192.168.01.20:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-trailing-dot",
+          "entry": "192.168.1.20.:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-leading-space",
+          "entry": " 192.168.1.20:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-hostname",
+          "entry": "printer.local:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-empty-host",
+          "entry": ":5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v4-zone",
+          "entry": "192.168.1.20%en0:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-no-brackets",
+          "entry": "fd00:1:2:3::5:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-double-brackets",
+          "entry": "[[fd00:1:2:3::5]]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-empty-brackets",
+          "entry": "[]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-zone",
+          "entry": "[fd00:1:2:3::5%en0]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-empty-zone",
+          "entry": "[fd00:1:2:3::5%]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-upper-case",
+          "entry": "[FD00:1:2:3::5]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-long-form",
+          "entry": "[fd00:1:2:3:0:0:0:5]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-leading-zeros",
+          "entry": "[fd00:0001:2:3::5]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-extra-zero-group",
+          "entry": "[fd00:1:2:3::0:5]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-dotted-tail",
+          "entry": "[fd00:1:2:3::0.0.0.5]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-single-zero-compressed",
+          "entry": "[fd00:1::1:1:1:1:1]:5000",
+          "interfaces": [
+            {
+              "address": "fd00:1:0:1::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-shorter-run-compressed",
+          "entry": "[2001:db8:0:0:1:0:0:1]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-mapped",
+          "entry": "[::ffff:192.168.1.20]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-mapped-hex",
+          "entry": "[::ffff:c0a8:114]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-trailing-newline",
+          "entry": "[fd00:1:2:3::5]:5000\n",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "v6-nul",
+          "entry": "[fd00:1:2:3::5\u0000]:5000",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "entry-empty",
+          "entry": "",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        },
+        {
+          "id": "entry-colon",
+          "entry": ":",
+          "interfaces": [
+            {
+              "address": "192.168.1.9",
+              "prefix": 24,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "fd00:1:2:3::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            {
+              "address": "2001:db8:1:2::9",
+              "prefix": 64,
+              "up": true,
+              "tunnel": false
+            },
+            { "address": "fe80::9", "prefix": 64, "up": true, "tunnel": false }
+          ],
+          "target": null
+        }
+      ]
+    }
+  },
+  "mdnsAnswers": {
+    "note": "mDNS address learning (15.4 Addresses). `packet` is one mDNS response as lower-case hex (header, then the answer and additional sections; names may be compressed, RFC 1035 4.1.4). `source` is the packet's source address as text and `zone` the interface it arrived on (null: none). A browser believes an A or AAAA record only when its address equals `source` (so an A record is never believed in an IPv6 packet, nor an AAAA in an IPv4 packet); the section a record sits in does not matter. A link-local (fe80::/10) address is learned as `<RFC 5952 text>%<zone>`; any other address has no zone. A name keeps at most 4 addresses, of any family, in first-seen order, and a repeat is not a second address. Learning is by that equality alone; there is no address filter at learn time, the dial-time check (15.4.1) decides what may be dialled. `source` may be an IPv4-mapped IPv6 address (`::ffff:a.b.c.d`, or the hex form), which is judged as its IPv4 address: an A record equal to it is learned, an AAAA record never is. An address record with TTL 0 removes that address (the same text, so a link-local address with the same zone) when it passes the same equality test, and learns nothing; records apply in packet order. A PTR goodbye (TTL 0) teaches none and removes none. `prior` (absent: nothing held) is the table the browser held before the packet, in first-seen order; `learned` is the table after it: the `{name, address}` entries in first-seen order. Names compare case-insensitively by ASCII fold (A-Z only) and are held, and shown in `learned`, in lower case. A link-local `source` with `zone` null learns nothing (no arrival interface names the host). The roster filter, the per-source limit on new names and the SRV port range need a roster, a clock and SRV records, which these rows do not model: each SDK tests them itself. Rows need an own DNS codec: Node, Python, Kotlin JVM and Godot GDScript run them; Swift and Android leave address learning to the OS resolver.",
+    "rows": [
+      {
+        "id": "a-equals-source",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80114",
+        "source": "192.168.1.20",
+        "zone": null,
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "a-not-source",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80163",
+        "source": "192.168.1.20",
+        "zone": null,
+        "learned": []
+      },
+      {
+        "id": "a-equals-source-and-another-a-dropped",
+        "packet": "0000840000000002000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a801631370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80114",
+        "source": "192.168.1.20",
+        "zone": null,
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "a-in-additional-section",
+        "packet": "000084000000000300000001095f706b657970656572045f746370056c6f63616c00000c000100001194002a1370312d61616161616161616161616161616161095f706b657970656572045f746370056c6f63616c001370312d61616161616161616161616161616161095f706b657970656572045f746370056c6f63616c0000218001000000780021000000009cbb1370312d61616161616161616161616161616161056c6f63616c001370312d61616161616161616161616161616161095f706b657970656572045f746370056c6f63616c000010800100001194000803763d31036d3d611370312d61616161616161616161616161616161056c6f63616c00000180010000007800040a000007",
+        "source": "10.0.0.7",
+        "zone": null,
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "10.0.0.7" }
+        ]
+      },
+      {
+        "id": "aaaa-link-local-equals-source-takes-zone",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c00001c8001000000780010fe8000000000000001c203ff0fe405a6",
+        "source": "fe80::1c2:3ff:fe4:5a6",
+        "zone": "en0",
+        "learned": [
+          {
+            "name": "p1-aaaaaaaaaaaaaaaa.local",
+            "address": "fe80::1c2:3ff:fe4:5a6%en0"
+          }
+        ]
+      },
+      {
+        "id": "aaaa-link-local-kept-global-dropped",
+        "packet": "0000840000000002000000001370312d61616161616161616161616161616161056c6f63616c00001c800100000078001020010db80001000200000000000000051370312d61616161616161616161616161616161056c6f63616c00001c8001000000780010fe8000000000000001c203ff0fe405a6",
+        "source": "fe80::1c2:3ff:fe4:5a6",
+        "zone": "wlan0",
+        "learned": [
+          {
+            "name": "p1-aaaaaaaaaaaaaaaa.local",
+            "address": "fe80::1c2:3ff:fe4:5a6%wlan0"
+          }
+        ]
+      },
+      {
+        "id": "aaaa-global-alone-dropped",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c00001c800100000078001020010db8000100020000000000000005",
+        "source": "fe80::1c2:3ff:fe4:5a6",
+        "zone": "en0",
+        "learned": []
+      },
+      {
+        "id": "aaaa-link-local-no-arrival-zone-dropped",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c00001c8001000000780010fe8000000000000001c203ff0fe405a6",
+        "source": "fe80::1c2:3ff:fe4:5a6",
+        "zone": null,
+        "learned": []
+      },
+      {
+        "id": "aaaa-ula-equals-source-has-no-zone",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c00001c8001000000780010fd120000000000000000000000000005",
+        "source": "fd12::5",
+        "zone": "en0",
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "fd12::5" }
+        ]
+      },
+      {
+        "id": "a-in-ipv6-packet-dropped",
+        "packet": "0000840000000002000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a801141370312d61616161616161616161616161616161056c6f63616c00001c8001000000780010fe8000000000000001c203ff0fe405a6",
+        "source": "fe80::1c2:3ff:fe4:5a6",
+        "zone": "en0",
+        "learned": [
+          {
+            "name": "p1-aaaaaaaaaaaaaaaa.local",
+            "address": "fe80::1c2:3ff:fe4:5a6%en0"
+          }
+        ]
+      },
+      {
+        "id": "a-alone-in-ipv6-packet-dropped",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80114",
+        "source": "fe80::1c2:3ff:fe4:5a6",
+        "zone": "en0",
+        "learned": []
+      },
+      {
+        "id": "aaaa-in-ipv4-packet-dropped",
+        "packet": "0000840000000002000000001370312d61616161616161616161616161616161056c6f63616c00001c8001000000780010fe8000000000000001c203ff0fe405a61370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80114",
+        "source": "192.168.1.20",
+        "zone": null,
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "two-names-same-source",
+        "packet": "0000840000000002000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004ac1400091370312d62626262626262626262626262626262056c6f63616c0000018001000000780004ac140009",
+        "source": "172.20.0.9",
+        "zone": null,
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "172.20.0.9" },
+          { "name": "p1-bbbbbbbbbbbbbbbb.local", "address": "172.20.0.9" }
+        ]
+      },
+      {
+        "id": "repeat-is-not-a-second-address",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80114",
+        "source": "192.168.1.20",
+        "zone": null,
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ],
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "new-address-follows-in-first-seen-order",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c00001c8001000000780010fd120000000000000000000000000007",
+        "source": "fd12::7",
+        "zone": "en0",
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ],
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "fd12::7" }
+        ]
+      },
+      {
+        "id": "fourth-address-is-kept",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80109",
+        "source": "192.168.1.9",
+        "zone": null,
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.3" },
+          {
+            "name": "p1-aaaaaaaaaaaaaaaa.local",
+            "address": "fe80::1c2:3ff:fe4:5a6%en0"
+          }
+        ],
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.3" },
+          {
+            "name": "p1-aaaaaaaaaaaaaaaa.local",
+            "address": "fe80::1c2:3ff:fe4:5a6%en0"
+          },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.9" }
+        ]
+      },
+      {
+        "id": "fifth-address-is-dropped",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80109",
+        "source": "192.168.1.9",
+        "zone": null,
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.3" },
+          {
+            "name": "p1-aaaaaaaaaaaaaaaa.local",
+            "address": "fe80::1c2:3ff:fe4:5a6%en0"
+          },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "fd12::5" }
+        ],
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.3" },
+          {
+            "name": "p1-aaaaaaaaaaaaaaaa.local",
+            "address": "fe80::1c2:3ff:fe4:5a6%en0"
+          },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "fd12::5" }
+        ]
+      },
+      {
+        "id": "cap-is-per-name",
+        "packet": "0000840000000001000000001370312d62626262626262626262626262626262056c6f63616c0000018001000000780004c0a80109",
+        "source": "192.168.1.9",
+        "zone": null,
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.3" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.4" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.5" }
+        ],
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.3" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.4" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.5" },
+          { "name": "p1-bbbbbbbbbbbbbbbb.local", "address": "192.168.1.9" }
+        ]
+      },
+      {
+        "id": "compressed-names",
+        "packet": "000084000000000500000000095f706b657970656572045f746370056c6f63616c00000c00010000119400161370312d61616161616161616161616161616161c00cc02c0021800100000078001c000000009cbb1370312d61616161616161616161616161616161c01bc02c0010800100001194000803763d31036d3d61c05400018001000000780004c0a80114c054001c8001000000780010fe8000000000000001c203ff0fe405a6",
+        "source": "192.168.1.20",
+        "zone": null,
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "compressed-names-link-local",
+        "packet": "000084000000000300000002095f706b657970656572045f746370056c6f63616c00000c00010000119400161370312d61616161616161616161616161616161c00cc02c0021800100000078001c000000009cbb1370312d61616161616161616161616161616161c01bc02c0010800100001194000803763d31036d3d61c05400018001000000780004c0a80114c054001c8001000000780010fe8000000000000001c203ff0fe405a6",
+        "source": "fe80::1c2:3ff:fe4:5a6",
+        "zone": "en0",
+        "learned": [
+          {
+            "name": "p1-aaaaaaaaaaaaaaaa.local",
+            "address": "fe80::1c2:3ff:fe4:5a6%en0"
+          }
+        ]
+      },
+      {
+        "id": "goodbye-teaches-nothing",
+        "packet": "000084000000000100000000095f706b657970656572045f746370056c6f63616c00000c000100000000002a1370312d61616161616161616161616161616161095f706b657970656572045f746370056c6f63616c00",
+        "source": "192.168.1.20",
+        "zone": null,
+        "learned": []
+      },
+      {
+        "id": "goodbye-beside-a-live-address",
+        "packet": "000084000000000100000001095f706b657970656572045f746370056c6f63616c00000c000100000000002a1370312d61616161616161616161616161616161095f706b657970656572045f746370056c6f63616c001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80114",
+        "source": "192.168.1.20",
+        "zone": null,
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "mapped-source-a-equals-ipv4",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80114",
+        "source": "::ffff:192.168.1.20",
+        "zone": "en0",
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "mapped-source-hex-form",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80114",
+        "source": "::ffff:c0a8:114",
+        "zone": null,
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "mapped-source-a-not-equal",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80163",
+        "source": "::ffff:192.168.1.20",
+        "zone": null,
+        "learned": []
+      },
+      {
+        "id": "mapped-source-aaaa-of-mapped-address-dropped",
+        "packet": "0000840000000002000000001370312d61616161616161616161616161616161056c6f63616c00001c800100000078001000000000000000000000ffffc0a801141370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80114",
+        "source": "::ffff:192.168.1.20",
+        "zone": null,
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "address-goodbye-removes",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000000004c0a80114",
+        "source": "192.168.1.20",
+        "zone": null,
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ],
+        "learned": []
+      },
+      {
+        "id": "address-goodbye-keeps-the-others-in-order",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000000004c0a80103",
+        "source": "192.168.1.3",
+        "zone": null,
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.3" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.4" }
+        ],
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.4" }
+        ]
+      },
+      {
+        "id": "address-goodbye-link-local-takes-zone",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c00001c8001000000000010fe8000000000000001c203ff0fe405a6",
+        "source": "fe80::1c2:3ff:fe4:5a6",
+        "zone": "en0",
+        "prior": [
+          {
+            "name": "p1-aaaaaaaaaaaaaaaa.local",
+            "address": "fe80::1c2:3ff:fe4:5a6%en0"
+          }
+        ],
+        "learned": []
+      },
+      {
+        "id": "address-goodbye-other-zone-removes-nothing",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c00001c8001000000000010fe8000000000000001c203ff0fe405a6",
+        "source": "fe80::1c2:3ff:fe4:5a6",
+        "zone": "wlan0",
+        "prior": [
+          {
+            "name": "p1-aaaaaaaaaaaaaaaa.local",
+            "address": "fe80::1c2:3ff:fe4:5a6%en0"
+          }
+        ],
+        "learned": [
+          {
+            "name": "p1-aaaaaaaaaaaaaaaa.local",
+            "address": "fe80::1c2:3ff:fe4:5a6%en0"
+          }
+        ]
+      },
+      {
+        "id": "address-goodbye-not-from-source-is-ignored",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000000004c0a80114",
+        "source": "192.168.1.99",
+        "zone": null,
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ],
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "address-goodbye-of-unheld-address-learns-nothing",
+        "packet": "0000840000000001000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000000004c0a80114",
+        "source": "192.168.1.20",
+        "zone": null,
+        "learned": []
+      },
+      {
+        "id": "address-goodbye-then-return-goes-last",
+        "packet": "0000840000000002000000001370312d61616161616161616161616161616161056c6f63616c0000018001000000000004c0a801021370312d61616161616161616161616161616161056c6f63616c0000018001000000780004c0a80102",
+        "source": "192.168.1.2",
+        "zone": null,
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.3" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.4" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.5" }
+        ],
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.3" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.4" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.5" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" }
+        ]
+      },
+      {
+        "id": "name-case-is-folded",
+        "packet": "0000840000000001000000001350312d41414141414141414141414141414141054c4f43414c0000018001000000780004c0a80114",
+        "source": "192.168.1.20",
+        "zone": null,
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "name-case-matches-the-held-name",
+        "packet": "0000840000000001000000001350312d41414141414141414141414141414141054c4f43414c0000018001000000780004c0a80114",
+        "source": "192.168.1.20",
+        "zone": null,
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ],
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ]
+      },
+      {
+        "id": "name-case-shares-the-cap",
+        "packet": "0000840000000001000000001350312d41414141414141414141414141414141054c4f43414c0000018001000000780004c0a80109",
+        "source": "192.168.1.9",
+        "zone": null,
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.3" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.4" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.5" }
+        ],
+        "learned": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.2" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.3" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.4" },
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.5" }
+        ]
+      },
+      {
+        "id": "name-case-goodbye-removes",
+        "packet": "0000840000000001000000001350312d41414141414141414141414141414141054c4f43414c0000018001000000000004c0a80114",
+        "source": "192.168.1.20",
+        "zone": null,
+        "prior": [
+          { "name": "p1-aaaaaaaaaaaaaaaa.local", "address": "192.168.1.20" }
+        ],
+        "learned": []
+      }
+    ]
+  },
+  "vouch": {
+    "note": "Mode v: the vouch (15.6.1). `requests`: M's check of a VOUCH_REQ body, `{id, slug, hHex, hello, body | bodyHex | bodyPad, verdict, close?, result?}`; `hHex` is the session's handshake hash (the mode-v handshake of noise-vectors.json), `hello` the members of D's HELLO, cleaned by 15.6 before they are compared. A refusal closes `peer_bad_frame` and calls no route. The proof is the `vouch` proof of 12.11.1 over `<b64url h>.<request>`. `results`: D's reading of a VOUCH_RESULT body, `{id, body | bodyHex, status | refuse}`. `flows`: the order, direction and gating of rule 7, 8 and 12 on one session, `{id, steps, want}`; a step is an event (`handshake` with both capability lists, `shown`, `picked`, `wrong-pick`, `none-match`, `timeout`, `confirmed`) or a record (`dir` d2m or m2d, `type` as four hex digits: 8010 VOUCH_REQ, 8011 VOUCH_RESULT with its `status`, 0030 to 003f the Sync records with their `bytes`); `want` is the close code the receiving side sends and the step index it closes at, and the indices of the records handed to the host in order. `finish`: what M does with the answer to nearby/approve, `{id, keysRetried, http, body, discoveryNearby, result}` with `result` one of `{send}`, `{wait}` or `{close, stopAdvert}`; a problem body names its refusal in `code`.",
+    "requests": [
+      {
+        "id": "valid",
+        "note": "The shape a conforming D sends.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "Ana's Switch",
+          "platform": "linux"
+        }
+      },
+      {
+        "id": "valid-no-label",
+        "note": "No label in the HELLO and none in the request.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": null,
+          "platform": "linux"
+        }
+      },
+      {
+        "id": "valid-label-cleaned-both",
+        "note": "A zero-width and a bidi character in both labels: both are cleaned and equal.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana\u200b's\u202e Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana\u200b's\u202e Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "Ana's Switch",
+          "platform": "linux"
+        }
+      },
+      {
+        "id": "valid-label-cleaned-differs-raw",
+        "note": "The raw labels differ (zero-width character, doubled spaces) and are equal after cleaning.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"  Ana\u200b's   Switch \",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "Ana's Switch",
+          "platform": "linux"
+        }
+      },
+      {
+        "id": "valid-label-nfc-nfd",
+        "note": "NFC in the HELLO, NFD in the request: equal after NFC.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Zo\u00eb's Mac", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Zoe\u0308's Mac\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "Zo\u00eb's Mac",
+          "platform": "linux"
+        }
+      },
+      {
+        "id": "valid-label-emptied",
+        "note": "A label with nothing left after cleaning is no label: the HELLO had none.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\",\"label\":\"\u200b\u202e\"}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": null,
+          "platform": "linux"
+        }
+      },
+      {
+        "id": "valid-label-cut-at-64",
+        "note": "Labels equal in their first 64 code points are equal: the cut comes after cleaning.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": {
+          "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab",
+          "platform": "linux"
+        },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaac\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "platform": "linux"
+        }
+      },
+      {
+        "id": "valid-platform-unknown-both",
+        "note": "A platform outside the allowed characters shows as Unknown in both, so they are equal.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "Win<10>" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"\\u0001other\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "Ana's Switch",
+          "platform": "Unknown"
+        }
+      },
+      {
+        "id": "valid-platform-known",
+        "note": "A known platform spelling.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "visionos" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"visionos\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "Ana's Switch",
+          "platform": "visionos"
+        }
+      },
+      {
+        "id": "valid-unknown-members-ignored",
+        "note": "Unknown members, including the retired userCode and pop, are ignored.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\",\"userCode\":\"ABCD-EFGH\",\"pop\":\"x\",\"extra\":{\"a\":[1,2,3]}}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "Ana's Switch",
+          "platform": "linux"
+        }
+      },
+      {
+        "id": "valid-member-order",
+        "note": "The member order does not matter.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\",\"platform\":\"linux\",\"label\":\"Ana's Switch\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"v\":1}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "Ana's Switch",
+          "platform": "linux"
+        }
+      },
+      {
+        "id": "valid-whitespace",
+        "note": "JSON whitespace between tokens is allowed.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\n  \"v\": 1,\n  \"request\": \"nr_0IvbE7YHMGPBP0VAfZDQhg\",\n  \"deviceId\": \"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\n  \"signKey\": \"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\n  \"agreeKey\": \"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\n  \"label\": \"Ana's Switch\",\n  \"platform\": \"linux\",\n  \"sig\": \"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"\n}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "Ana's Switch",
+          "platform": "linux"
+        }
+      },
+      {
+        "id": "valid-size-4096",
+        "note": "A body of exactly 4096 bytes is read.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "bodyPad": {
+          "prefix": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\",\"pad\":\"",
+          "fill": "a",
+          "count": 3746,
+          "suffix": "\"}"
+        },
+        "length": 4096,
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "Ana's Switch",
+          "platform": "linux"
+        }
+      },
+      {
+        "id": "size-4097",
+        "note": "4096 bytes and one more: refused before it is parsed.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "bodyPad": {
+          "prefix": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\",\"pad\":\"",
+          "fill": "a",
+          "count": 3747,
+          "suffix": "\"}"
+        },
+        "length": 4097,
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "size"
+      },
+      {
+        "id": "not-an-object-array",
+        "note": "A JSON array.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "[]",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "object"
+      },
+      {
+        "id": "not-an-object-null",
+        "note": "JSON null.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "null",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "object"
+      },
+      {
+        "id": "empty-body",
+        "note": "No bytes.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "json"
+      },
+      {
+        "id": "byte-order-mark",
+        "note": "A BOM before the object.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "\ufeff{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "bom"
+      },
+      {
+        "id": "invalid-utf8",
+        "note": "A 0xff byte inside a string.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "bodyHex": "7b2276223a312c2272657175657374223a226e725f30497662453759484d47504250305641665a44516867222c226465766963654964223a22794c4f546b596f6d6234784b6d4452706e6c6e76727642345f6b747858777253222c227369676e4b6579223a226c4f75743830697670684141344b676f6f3657577166506b486143383448526f4f5632465637305a496b49222c2261677265654b6579223a22304e7647397a48496d372d3957486d675274337a3467453853753751414f4649322d5a616470334e4d4667222c226c6162656c223a22ff6e61277320537769746368222c22706c6174666f726d223a226c696e7578222c22736967223a2275624d465f6644396338355a5469635349495a5231696f365a427a32375f7862532d6b576c584635566479427a635a792d3056646f4c6c497971514b62686d7672724d424c33416359586e536c312d654c4937584477227d",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "utf8"
+      },
+      {
+        "id": "duplicate-key",
+        "note": "The member request twice.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\",\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "json"
+      },
+      {
+        "id": "trailing-comma",
+        "note": "A trailing comma.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\",}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "json"
+      },
+      {
+        "id": "lone-surrogate-escape",
+        "note": "A lone surrogate escape in the label.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"\\ud800 Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "json"
+      },
+      {
+        "id": "version-2",
+        "note": "v is 2.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":2,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "version"
+      },
+      {
+        "id": "version-missing",
+        "note": "No v.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "version"
+      },
+      {
+        "id": "version-string",
+        "note": "v is the string \"1\".",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":\"1\",\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "version"
+      },
+      {
+        "id": "request-missing",
+        "note": "No request.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "request"
+      },
+      {
+        "id": "request-21-chars",
+        "note": "The handle is one character short.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQh\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"wpmOqlHyw8xXT8uNvaGTitgVM-y_x6fBtIRDYKy9SEGWU8Z-T06sWTqPkdXtmPaKoEtTbfP_-9lDFOEYuuVUAw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "request"
+      },
+      {
+        "id": "request-23-chars",
+        "note": "The handle is one character long.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhgA\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"qwSmKIppa_6bFj1nOexWsA1g-LDWdm4p6YKFeGH8yEt7l8hpGxgGuGutfsh8p1rstSYZTQu83Y7eVWBMEtTBBg\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "request"
+      },
+      {
+        "id": "request-wrong-prefix",
+        "note": "nx_ instead of nr_.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nx_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"xd7xY7Fz1F0Hng-Tm6mTfSId0nkQRjvGfZPXlZwsHMnrhPbl6pV8r9PKFtHhggywSVd0nvCTJZ_uKqcpqJOWAA\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "request"
+      },
+      {
+        "id": "request-bad-character",
+        "note": "A + in the handle.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQh+\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"8BrITgrVpSE-9hNmB_BsDiU3XgVMfY7H_JtakDZIE2bUfU_bcU_ychIZcCNS3OsDp1mq7ZxjLElRfVWI9jaWBw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "request"
+      },
+      {
+        "id": "request-padded",
+        "note": "A base64 padding character.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQh=\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"Zo4Cc8U5QD0iRcyhmMv6_ZidXoz0qNf72E0CsDV98EpP-HWsaqlpKxc5DaC11n75S9zi4nkmJ8pwguMqPkfKBA\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "request"
+      },
+      {
+        "id": "request-trailing-newline",
+        "note": "A newline after a valid handle.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\\n\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"PRVZrfFH8nwgohWBcdj09Zme7IE0NHhu6oiKPZbLqedfJaICsTNxDJjdJqUDNW6i07LUuMDvELP-8jXV6SYdDA\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "request"
+      },
+      {
+        "id": "request-non-ascii",
+        "note": "A non-ASCII letter in the handle.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQh\u00e9\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"jj-Os0dICQZ3iGHxDMVgH7IknEvW7BTbxEFVxousOHehOyfmLGavjWP7Vybnqx3KDzWQjpftYtd2zRB6XorbAw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "request"
+      },
+      {
+        "id": "request-number",
+        "note": "The handle is a number.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":7,\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "request"
+      },
+      {
+        "id": "device-id-missing",
+        "note": "No deviceId.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "device-id"
+      },
+      {
+        "id": "device-id-31-chars",
+        "note": "One character short.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwr\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"wRHmJTHeOPPnVrUoOZa858ZzswO0coeijViP1Ajc6BmLhQdb5g4pv4F-3Ev0I6O2xolTr3AxfZHBgQoiv838Dg\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "device-id"
+      },
+      {
+        "id": "device-id-33-chars",
+        "note": "One character long.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrSA\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"gxBdG_oTn3P34iqzokRUA933IBslSDWmlbzT5ubbqEl-X-zvk4e3i0HHMbHf4AaasL5wlrMvofKtOzu-9lfmAQ\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "device-id"
+      },
+      {
+        "id": "device-id-bad-character",
+        "note": "A + in the id.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwr+\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"IuWugem3CBjPtEp7d1042k2STtInFmGRHjlJSPVx4RmznYkdE25JX8NFS0Yykw56LHXEof-i2mqMiJGbxkkwAw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "device-id"
+      },
+      {
+        "id": "device-id-not-the-signed-one",
+        "note": "A well-formed deviceId that is not the one the proof covers: the proof fails.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"kCJFCIsoqg0jAEA61gAl5LK9tPBUyCXM\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig"
+      },
+      {
+        "id": "sign-key-missing",
+        "note": "No signKey.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sign-key"
+      },
+      {
+        "id": "sign-key-padded",
+        "note": "The key with a padding character.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI=\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sign-key"
+      },
+      {
+        "id": "sign-key-not-canonical",
+        "note": "The last character carries non-zero unused bits.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkJ\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sign-key"
+      },
+      {
+        "id": "sign-key-small-order",
+        "note": "The identity point as the key.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sign-key"
+      },
+      {
+        "id": "sign-key-other",
+        "note": "A valid key that did not sign.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"x5S_3zhBICoUiixHwcP7GF3FrjghyoDTtvXfhHGCpe4\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig"
+      },
+      {
+        "id": "agree-key-missing",
+        "note": "No agreeKey.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "agree-key"
+      },
+      {
+        "id": "agree-key-padded",
+        "note": "The key with a padding character.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg=\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "agree-key"
+      },
+      {
+        "id": "agree-key-not-canonical-base64",
+        "note": "The last character carries non-zero unused bits.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFh\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "agree-key"
+      },
+      {
+        "id": "agree-key-low-order-zero",
+        "note": "u = 0.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "agree-key"
+      },
+      {
+        "id": "agree-key-low-order-one",
+        "note": "u = 1.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "agree-key"
+      },
+      {
+        "id": "agree-key-low-order-high-bit",
+        "note": "u = 1 with bit 255 set: low-order whichever way bit 255 is read.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "agree-key"
+      },
+      {
+        "id": "agree-key-bit-255-set",
+        "note": "A good key with bit 255 set: the same point to a loose reader, a different spelling.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMNg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "agree-key-spelling"
+      },
+      {
+        "id": "agree-key-u-above-p",
+        "note": "u = p + 2, with bit 255 clear: not the canonical spelling of any point.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"7________________________________________38\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "agree-key-spelling"
+      },
+      {
+        "id": "agree-key-u-max",
+        "note": "u = 2^255 - 1.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"_________________________________________38\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "agree-key-spelling"
+      },
+      {
+        "id": "label-number",
+        "note": "The label is a number.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":5,\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "label"
+      },
+      {
+        "id": "label-null",
+        "note": "The label is null.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":null,\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "label"
+      },
+      {
+        "id": "label-differs-from-hello",
+        "note": "Another label than the HELLO showed.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Deck\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "hello-label"
+      },
+      {
+        "id": "label-case-differs-from-hello",
+        "note": "The same words in another case.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"ana's switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "hello-label"
+      },
+      {
+        "id": "label-added-after-hello",
+        "note": "The HELLO had no label and the request has one.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\",\"label\":\"Ana's Switch\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "hello-label"
+      },
+      {
+        "id": "label-dropped-after-hello",
+        "note": "The HELLO had a label and the request has none.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "hello-label"
+      },
+      {
+        "id": "platform-missing",
+        "note": "No platform.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "platform"
+      },
+      {
+        "id": "platform-number",
+        "note": "The platform is a number.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":1,\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "platform"
+      },
+      {
+        "id": "platform-differs-from-hello",
+        "note": "Another platform than the HELLO showed.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"windows\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "hello-platform"
+      },
+      {
+        "id": "platform-trailing-newline",
+        "note": "A newline after a valid platform is not the platform.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\\n\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "hello-platform"
+      },
+      {
+        "id": "platform-known-vs-unknown",
+        "note": "The HELLO's platform shows as Unknown and the request names a real one.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "Win<10>" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"windows\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "hello-platform"
+      },
+      {
+        "id": "platform-over-32",
+        "note": "33 allowed characters show as Unknown, so a request with the same text still equals the HELLO.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": {
+          "label": "Ana's Switch",
+          "platform": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "ok",
+        "result": {
+          "request": "nr_0IvbE7YHMGPBP0VAfZDQhg",
+          "deviceId": "yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS",
+          "signKey": "lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI",
+          "agreeKey": "0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg",
+          "label": "Ana's Switch",
+          "platform": "Unknown"
+        }
+      },
+      {
+        "id": "sig-missing",
+        "note": "No sig.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig"
+      },
+      {
+        "id": "sig-number",
+        "note": "The sig is a number.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":1}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig"
+      },
+      {
+        "id": "sig-padded",
+        "note": "A padding character after the signature.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw=\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig-encoding"
+      },
+      {
+        "id": "sig-scalar-not-reduced",
+        "note": "S + L: the same signature to a loose verifier, refused by a strict one.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdxuobzPFalv-I_lwUfpZ_jDrrMBL3AcYXnSl1-eLI7XHw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig-scalar"
+      },
+      {
+        "id": "sig-bit-flipped",
+        "note": "One signature character changed.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c8AZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig"
+      },
+      {
+        "id": "sig-over-another-h",
+        "note": "Signed over another session's handshake hash.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ChfXvXb1Wt93GIsEUYgwGZmbkdBbbXQ-cO08GgwTvcy-ReDpZbAVtjbkEalUJYFYAKdZfUvv789WdlOQikLzCg\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig"
+      },
+      {
+        "id": "replayed-into-another-session",
+        "note": "A body that was valid in one session, presented in a session with another handshake hash.",
+        "slug": "demo",
+        "hHex": "d5e49a7490a52c2540f48c339547eabc8c13df55d5cf5c100c6d80f892d5a343",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig"
+      },
+      {
+        "id": "sig-over-another-purpose",
+        "note": "A proof of purpose nearby-approve.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"bFbAB-lzudH2EJoBXVvRFypV7zKxaQAET6xKHo3DdOk4XFG9thOCJOXU-LbiAXE8HBqQ94VPAU4wBb5XpB2jCQ\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig"
+      },
+      {
+        "id": "sig-over-another-slug",
+        "note": "Signed for another product.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"Jcs3QxAfF_78qjqSOFRsJlkEbiUDA_9sabxXwMxgi2yOCbuWBEUnlKB0JJj9Nrzb_ay4e_sE3yFEEHaPIdqoDg\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig"
+      },
+      {
+        "id": "sig-checked-for-another-slug",
+        "note": "A valid proof for this product, checked in a session of another product.",
+        "slug": "djdl",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig"
+      },
+      {
+        "id": "sig-over-another-device",
+        "note": "Signed for another device id.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"JrCktap7PdCWHfn8ocQxKprkTvwPPUzqcaq3GvxI_wtjTYKKfrK5Obag00kNQGCvLUPK4-s0FUfI1oM0kC16Aw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig"
+      },
+      {
+        "id": "sig-over-another-request",
+        "note": "Signed for another request handle.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"srQq7WyAGpn5xUxgy4NdUoXSDrCPhAXHCuQPXjZ5tmY5NHMgAH6ZmRfuMKfz2PZhfv4cZfi3SgI3aGAzeVvZDQ\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig"
+      },
+      {
+        "id": "sig-by-another-key",
+        "note": "Signed by a key that is not the signKey.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"9XDB4SvQaw3BuUDslUClhsWP0AB58sb0WTs7H6psqzvKU1tt3Ql7omIgGULlfMIIoBY-Ubit1zizreHqgYAyCA\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "sig:sig"
+      }
+    ],
+    "results": [
+      {
+        "id": "approved",
+        "note": "The three statuses D shows.",
+        "body": "{\"status\":\"approved\"}",
+        "status": "approved"
+      },
+      {
+        "id": "denied",
+        "note": "As above.",
+        "body": "{\"status\":\"denied\"}",
+        "status": "denied"
+      },
+      {
+        "id": "expired",
+        "note": "As above.",
+        "body": "{\"status\":\"expired\"}",
+        "status": "expired"
+      },
+      {
+        "id": "unknown-status",
+        "note": "Any other string is read as denied.",
+        "body": "{\"status\":\"pending\"}",
+        "status": "denied"
+      },
+      {
+        "id": "unknown-status-case",
+        "note": "Status names are case-sensitive.",
+        "body": "{\"status\":\"Approved\"}",
+        "status": "denied"
+      },
+      {
+        "id": "unknown-status-padded",
+        "note": "A space after the name.",
+        "body": "{\"status\":\"approved \"}",
+        "status": "denied"
+      },
+      {
+        "id": "unknown-status-empty",
+        "note": "The empty string.",
+        "body": "{\"status\":\"\"}",
+        "status": "denied"
+      },
+      {
+        "id": "retired-status-not-nearby",
+        "note": "A sender no longer sends it; a receiver reads it as denied.",
+        "body": "{\"status\":\"not_nearby\"}",
+        "status": "denied"
+      },
+      {
+        "id": "retired-status-device-limit",
+        "note": "Same.",
+        "body": "{\"status\":\"device_limit\"}",
+        "status": "denied"
+      },
+      {
+        "id": "retired-status-choose",
+        "note": "Same.",
+        "body": "{\"status\":\"choose\"}",
+        "status": "denied"
+      },
+      {
+        "id": "extra-members-ignored",
+        "note": "Members other than status are ignored.",
+        "body": "{\"status\":\"approved\",\"deviceLabel\":\"x\",\"n\":[1]}",
+        "status": "approved"
+      },
+      {
+        "id": "whitespace",
+        "note": "JSON whitespace around the object.",
+        "body": " \n{\"status\" : \"denied\"}\t",
+        "status": "denied"
+      },
+      {
+        "id": "status-missing",
+        "note": "No status member.",
+        "body": "{}",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "status-number",
+        "note": "A number.",
+        "body": "{\"status\":1}",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "status-null",
+        "note": "null.",
+        "body": "{\"status\":null}",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "status-true",
+        "note": "true.",
+        "body": "{\"status\":true}",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "status-array",
+        "note": "An array holding a status.",
+        "body": "{\"status\":[\"approved\"]}",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "status-object",
+        "note": "An object.",
+        "body": "{\"status\":{\"v\":\"approved\"}}",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "body-array",
+        "note": "The body is an array.",
+        "body": "[{\"status\":\"approved\"}]",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "body-string",
+        "note": "The body is a string.",
+        "body": "\"approved\"",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "body-null",
+        "note": "The body is null.",
+        "body": "null",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "body-empty",
+        "note": "No bytes.",
+        "bodyHex": "",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "duplicate-status",
+        "note": "status twice.",
+        "body": "{\"status\":\"approved\",\"status\":\"denied\"}",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "trailing-garbage",
+        "note": "Text after the object.",
+        "body": "{\"status\":\"approved\"}x",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "byte-order-mark",
+        "note": "A BOM before the object.",
+        "body": "\ufeff{\"status\":\"approved\"}",
+        "refuse": "peer_bad_frame"
+      },
+      {
+        "id": "invalid-utf8",
+        "note": "A 0xff byte in an extra member.",
+        "bodyHex": "7b22737461747573223a22617070726f766564222c2278223a22ff227d",
+        "refuse": "peer_bad_frame"
+      }
+    ],
+    "flows": [
+      {
+        "id": "happy-path",
+        "note": "The order of rule 7: code shown, request, pick, result, wrap held until D confirms the account.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "approved" },
+          { "dir": "m2d", "type": "0030", "bytes": 200 },
+          { "ev": "confirmed" }
+        ],
+        "want": { "close": null, "at": null, "delivered": [2, 4, 5] }
+      },
+      {
+        "id": "happy-path-pick-first",
+        "note": "The pick comes before the request arrives: the request is delivered on arrival.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "ev": "picked" },
+          { "dir": "d2m", "type": "8010" },
+          { "dir": "m2d", "type": "8011", "status": "approved" }
+        ],
+        "want": { "close": null, "at": null, "delivered": [3, 4] }
+      },
+      {
+        "id": "happy-path-wrap-after-confirm",
+        "note": "A wrap that arrives after D confirmed is delivered at once.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "approved" },
+          { "ev": "confirmed" },
+          { "dir": "m2d", "type": "0030", "bytes": 200 }
+        ],
+        "want": { "close": null, "at": null, "delivered": [2, 4, 6] }
+      },
+      {
+        "id": "happy-path-sync-types",
+        "note": "0x0030 and every type up to 0x003f are carried.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "approved" },
+          { "ev": "confirmed" },
+          { "dir": "m2d", "type": "0031", "bytes": 200 },
+          { "dir": "m2d", "type": "003f", "bytes": 200 }
+        ],
+        "want": { "close": null, "at": null, "delivered": [2, 4, 6, 7] }
+      },
+      {
+        "id": "request-held-until-pick",
+        "note": "No pick: the request is never handed to the host.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" }
+        ],
+        "want": { "close": null, "at": null, "delivered": [] }
+      },
+      {
+        "id": "request-never-delivered-after-wrong-pick",
+        "note": "A pick of a decoy closes peer_bye; the held request is never delivered.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "wrong-pick" }
+        ],
+        "want": { "close": "peer_bye", "at": 3, "delivered": [] }
+      },
+      {
+        "id": "none-match-closes",
+        "note": "None of these match closes peer_bye.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "none-match" }
+        ],
+        "want": { "close": "peer_bye", "at": 3, "delivered": [] }
+      },
+      {
+        "id": "code-timeout",
+        "note": "No pick in 120 s closes peer_timeout.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "timeout" }
+        ],
+        "want": { "close": "peer_timeout", "at": 3, "delivered": [] }
+      },
+      {
+        "id": "request-from-m",
+        "note": "VOUCH_REQ sent by M: D refuses it.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "dir": "m2d", "type": "8010" }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 1, "delivered": [] }
+      },
+      {
+        "id": "request-twice",
+        "note": "A repeated VOUCH_REQ.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "dir": "d2m", "type": "8010" }
+        ],
+        "want": { "close": "peer_bad_frame", "at": 3, "delivered": [] }
+      },
+      {
+        "id": "request-twice-after-pick",
+        "note": "A repeated VOUCH_REQ after the pick.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "d2m", "type": "8010" }
+        ],
+        "want": { "close": "peer_bad_frame", "at": 4, "delivered": [2] }
+      },
+      {
+        "id": "result-from-d",
+        "note": "VOUCH_RESULT sent by D: M refuses it.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8011", "status": "approved" }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 2, "delivered": [] }
+      },
+      {
+        "id": "result-before-request",
+        "note": "VOUCH_RESULT before D sent its request.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "m2d", "type": "8011", "status": "approved" }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 2, "delivered": [] }
+      },
+      {
+        "id": "result-twice",
+        "note": "A second VOUCH_RESULT.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "denied" },
+          { "dir": "m2d", "type": "8011", "status": "denied" }
+        ],
+        "want": { "close": "peer_bad_frame", "at": 5, "delivered": [2, 4] }
+      },
+      {
+        "id": "result-denied-is-delivered",
+        "note": "A denied result is shown to D.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "denied" }
+        ],
+        "want": { "close": null, "at": null, "delivered": [2, 4] }
+      },
+      {
+        "id": "wrap-before-result",
+        "note": "A wrap before any result.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "0030", "bytes": 200 }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 4, "delivered": [2] }
+      },
+      {
+        "id": "wrap-before-request",
+        "note": "A wrap with no request at all.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "m2d", "type": "0030", "bytes": 200 }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 2, "delivered": [] }
+      },
+      {
+        "id": "wrap-after-denied",
+        "note": "A wrap after a denied result.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "denied" },
+          { "dir": "m2d", "type": "0030", "bytes": 200 }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 5, "delivered": [2, 4] }
+      },
+      {
+        "id": "wrap-after-expired",
+        "note": "A wrap after an expired result.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "expired" },
+          { "dir": "m2d", "type": "0035", "bytes": 200 }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 5, "delivered": [2, 4] }
+      },
+      {
+        "id": "wrap-from-d",
+        "note": "A wrap sent by D.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "approved" },
+          { "dir": "d2m", "type": "0030", "bytes": 10 }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 5, "delivered": [2, 4] }
+      },
+      {
+        "id": "wrap-held-without-confirm",
+        "note": "Records after approved are held, not delivered, until D's person confirms the account.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "approved" },
+          { "dir": "m2d", "type": "0030", "bytes": 200 },
+          { "dir": "m2d", "type": "0031", "bytes": 200 }
+        ],
+        "want": { "close": null, "at": null, "delivered": [2, 4] }
+      },
+      {
+        "id": "held-16-records",
+        "note": "Sixteen held records are kept.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "approved" },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "ev": "confirmed" }
+        ],
+        "want": {
+          "close": null,
+          "at": null,
+          "delivered": [
+            2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+          ]
+        }
+      },
+      {
+        "id": "held-17th-record",
+        "note": "The seventeenth held record closes peer_busy.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "approved" },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 },
+          { "dir": "m2d", "type": "0030", "bytes": 10 }
+        ],
+        "want": { "close": "peer_busy", "at": 21, "delivered": [2, 4] }
+      },
+      {
+        "id": "held-16-kib",
+        "note": "Held bodies of exactly 16 KiB are kept.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "approved" },
+          { "dir": "m2d", "type": "0030", "bytes": 8192 },
+          { "dir": "m2d", "type": "0031", "bytes": 8192 }
+        ],
+        "want": { "close": null, "at": null, "delivered": [2, 4] }
+      },
+      {
+        "id": "held-over-16-kib",
+        "note": "One byte more than 16 KiB held closes peer_busy.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" },
+          { "dir": "d2m", "type": "8010" },
+          { "ev": "picked" },
+          { "dir": "m2d", "type": "8011", "status": "approved" },
+          { "dir": "m2d", "type": "0030", "bytes": 8192 },
+          { "dir": "m2d", "type": "0031", "bytes": 8193 }
+        ],
+        "want": { "close": "peer_busy", "at": 6, "delivered": [2, 4] }
+      },
+      {
+        "id": "vouch-1-both",
+        "note": "vouch/1 among other capabilities on both sides.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1", "vouch/2"],
+            "capsM": ["vouch/1"]
+          },
+          { "ev": "shown" }
+        ],
+        "want": { "close": null, "at": null, "delivered": [] }
+      },
+      {
+        "id": "vouch-1-missing-on-d",
+        "note": "D lists no vouch/1: M closes peer_not_allowed before any SAS record.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1"],
+            "capsM": ["app/1", "vouch/1"]
+          },
+          { "ev": "shown" }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 0, "delivered": [] }
+      },
+      {
+        "id": "vouch-1-missing-on-m",
+        "note": "M lists no vouch/1.",
+        "steps": [
+          {
+            "ev": "handshake",
+            "capsD": ["app/1", "vouch/1"],
+            "capsM": ["app/1"]
+          },
+          { "ev": "shown" }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 0, "delivered": [] }
+      },
+      {
+        "id": "vouch-2-only",
+        "note": "A later vouch/2 is not read as vouch/1.",
+        "steps": [
+          { "ev": "handshake", "capsD": ["vouch/2"], "capsM": ["vouch/2"] },
+          { "ev": "shown" }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 0, "delivered": [] }
+      },
+      {
+        "id": "no-capabilities",
+        "note": "Neither side lists a capability.",
+        "steps": [
+          { "ev": "handshake", "capsD": [], "capsM": [] },
+          { "ev": "shown" }
+        ],
+        "want": { "close": "peer_not_allowed", "at": 0, "delivered": [] }
+      }
+    ],
+    "finish": [
+      {
+        "id": "approved",
+        "note": "200 approved: send approved.",
+        "keysRetried": false,
+        "http": 200,
+        "body": "{\"status\":\"approved\",\"deviceLabel\":null}",
+        "discoveryNearby": true,
+        "result": { "send": "approved" }
+      },
+      {
+        "id": "approved-after-keys-retry",
+        "note": "The retry after registering keys answers approved.",
+        "keysRetried": true,
+        "http": 200,
+        "body": "{\"status\":\"approved\",\"deviceLabel\":\"Ana\"}",
+        "discoveryNearby": true,
+        "result": { "send": "approved" }
+      },
+      {
+        "id": "deny-204",
+        "note": "204: send denied.",
+        "keysRetried": false,
+        "http": 204,
+        "body": null,
+        "discoveryNearby": true,
+        "result": { "send": "denied" }
+      },
+      {
+        "id": "not-nearby",
+        "note": "403 not_nearby: send denied (the code is not told to D).",
+        "keysRetried": false,
+        "http": 403,
+        "body": "{\"code\":\"not_nearby\"}",
+        "discoveryNearby": true,
+        "result": { "send": "denied" }
+      },
+      {
+        "id": "device-limit",
+        "note": "403 device_limit: send denied.",
+        "keysRetried": false,
+        "http": 403,
+        "body": "{\"code\":\"device_limit\"}",
+        "discoveryNearby": true,
+        "result": { "send": "denied" }
+      },
+      {
+        "id": "not-found-discovery-nearby",
+        "note": "404 while discovery still names nearby and nearbyApprove: send expired.",
+        "keysRetried": false,
+        "http": 404,
+        "body": "{\"code\":\"not_found\"}",
+        "discoveryNearby": true,
+        "result": { "send": "expired" }
+      },
+      {
+        "id": "not-found-device-mismatch",
+        "note": "404 for a deviceId, signKey or agreeKey that is not D's reads the same: send expired.",
+        "keysRetried": false,
+        "http": 404,
+        "body": "{\"code\":\"not_found\"}",
+        "discoveryNearby": true,
+        "result": { "send": "expired" }
+      },
+      {
+        "id": "not-found-discovery-lost",
+        "note": "404 after discovery lost nearby: close and stop the advert.",
+        "keysRetried": false,
+        "http": 404,
+        "body": "{\"code\":\"not_found\"}",
+        "discoveryNearby": false,
+        "result": { "close": true, "stopAdvert": true }
+      },
+      {
+        "id": "choose",
+        "note": "200 choose: nothing sent; M shows the choice and calls again.",
+        "keysRetried": false,
+        "http": 200,
+        "body": "{\"status\":\"choose\",\"choices\":[]}",
+        "discoveryNearby": true,
+        "result": { "wait": "choice" }
+      },
+      {
+        "id": "keys-required-first",
+        "note": "The first 409 device_keys_required: register keys and call again.",
+        "keysRetried": false,
+        "http": 409,
+        "body": "{\"code\":\"device_keys_required\"}",
+        "discoveryNearby": true,
+        "result": { "wait": "keys" }
+      },
+      {
+        "id": "keys-required-again",
+        "note": "A second 409 device_keys_required after the retry: close.",
+        "keysRetried": true,
+        "http": 409,
+        "body": "{\"code\":\"device_keys_required\"}",
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "license-choice-required",
+        "note": "409 license_choice_required (a lost mint): show the choice again and call again.",
+        "keysRetried": false,
+        "http": 409,
+        "body": "{\"code\":\"license_choice_required\"}",
+        "discoveryNearby": true,
+        "result": { "wait": "choice" }
+      },
+      {
+        "id": "license-choice-required-after-keys",
+        "note": "The same after a keys retry.",
+        "keysRetried": true,
+        "http": 409,
+        "body": "{\"code\":\"license_choice_required\"}",
+        "discoveryNearby": true,
+        "result": { "wait": "choice" }
+      },
+      {
+        "id": "conflict-other",
+        "note": "Any other 409 closes.",
+        "keysRetried": false,
+        "http": 409,
+        "body": "{\"code\":\"conflict\"}",
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "conflict-no-body",
+        "note": "A 409 with no body closes.",
+        "keysRetried": false,
+        "http": 409,
+        "body": null,
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "account-required",
+        "note": "403 account_required: close.",
+        "keysRetried": false,
+        "http": 403,
+        "body": "{\"code\":\"account_required\"}",
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "forbidden-other",
+        "note": "A 403 with another code: close.",
+        "keysRetried": false,
+        "http": 403,
+        "body": "{\"code\":\"forbidden\"}",
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "bad-request",
+        "note": "400 bad_request: close.",
+        "keysRetried": false,
+        "http": 400,
+        "body": "{\"code\":\"bad_request\"}",
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "invalid-grant",
+        "note": "400 invalid_grant: close.",
+        "keysRetried": false,
+        "http": 400,
+        "body": "{\"code\":\"invalid_grant\"}",
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "unauthorized",
+        "note": "401: close.",
+        "keysRetried": false,
+        "http": 401,
+        "body": null,
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "rate-limited",
+        "note": "429: close.",
+        "keysRetried": false,
+        "http": 429,
+        "body": "{\"code\":\"rate_limited\"}",
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "unavailable",
+        "note": "503: close.",
+        "keysRetried": false,
+        "http": 503,
+        "body": null,
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "server-error",
+        "note": "500: close.",
+        "keysRetried": false,
+        "http": 500,
+        "body": null,
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "no-answer",
+        "note": "No answer: close.",
+        "keysRetried": false,
+        "http": null,
+        "body": null,
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "ok-unknown-status",
+        "note": "A 200 with a status M does not know: close.",
+        "keysRetried": false,
+        "http": 200,
+        "body": "{\"status\":\"pending\"}",
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "ok-no-body",
+        "note": "A 200 with no body: close.",
+        "keysRetried": false,
+        "http": 200,
+        "body": null,
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "ok-not-json",
+        "note": "A 200 whose body is not JSON: close.",
+        "keysRetried": false,
+        "http": 200,
+        "body": "approved",
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
+      },
+      {
+        "id": "no-content-after-keys",
+        "note": "A 204 after the keys retry: send denied.",
+        "keysRetried": true,
+        "http": 204,
+        "body": null,
+        "discoveryNearby": true,
+        "result": { "send": "denied" }
+      },
+      {
+        "id": "created",
+        "note": "A status M does not map (201): close.",
+        "keysRetried": false,
+        "http": 201,
+        "body": "{\"status\":\"approved\"}",
+        "discoveryNearby": true,
+        "result": { "close": true, "stopAdvert": false }
       }
     ]
   }

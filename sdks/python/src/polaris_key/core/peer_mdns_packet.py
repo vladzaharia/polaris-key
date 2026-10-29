@@ -1,5 +1,5 @@
 """WIRE-CONTRACT-V5 §15.4: the mDNS packet codec for ``_pkeypeer._tcp.local``. Pure functions over
-bytes: no socket, no clock. It parses and builds PTR queries and PTR, SRV, TXT and A answers, and it
+bytes: no socket, no clock. It parses and builds PTR queries and PTR, SRV, TXT, A and AAAA answers, and it
 is the one place a neighbour's packet is decoded, so every limit is enforced here (G5):
 
 - a packet is at most 9,000 bytes and a section holds at most 64 records;
@@ -7,7 +7,8 @@ is the one place a neighbour's packet is decoded, so every limit is enforced her
 - a compression pointer must point strictly backwards, and a name follows at most 16 of them;
 - a record's data must lie inside the packet and fill exactly what its length says;
 - a TXT record keeps its first 8 entries; unknown record types and classes are skipped;
-- IPv4 only: AAAA is an unknown type and is skipped.
+- an AAAA record is 16 bytes and is kept as RFC 5952 lower-case text, without a zone; its address is
+  never trusted here (the adapter believes it only when it equals the packet's source).
 
 A packet that breaks a limit raises ``MdnsPacketError``; the caller drops the whole packet. Names are
 lower-cased on the way in (DNS names are case-insensitive). Whether an address is believed is the
@@ -18,6 +19,8 @@ from __future__ import annotations
 
 import struct
 from typing import Any, List, NamedTuple, Optional, Sequence, Tuple
+
+from .peer_lan_address import parse_address, text6
 
 __all__ = [
     "MAX_JUMPS",
@@ -43,8 +46,8 @@ MAX_LABEL = 63
 MAX_JUMPS = 16
 MAX_TXT = 8
 
-_A, _PTR, _TXT, _SRV = 1, 12, 16, 33
-_TYPE_NAMES = {_A: "A", _PTR: "PTR", _TXT: "TXT", _SRV: "SRV"}
+_A, _PTR, _TXT, _SRV, _AAAA = 1, 12, 16, 33, 28
+_TYPE_NAMES = {_A: "A", _PTR: "PTR", _TXT: "TXT", _SRV: "SRV", _AAAA: "AAAA"}
 _TYPE_CODES = {v: k for k, v in _TYPE_NAMES.items()}
 _IN = 1
 _CACHE_FLUSH = 0x8000
@@ -67,7 +70,7 @@ class Question(NamedTuple):
 
 class Record(NamedTuple):
     """``data`` by type: PTR a name; SRV ``{"port", "target", "priority", "weight"}``; TXT a list of
-    strings; A a dotted IPv4 string."""
+    strings; A a dotted IPv4 string; AAAA RFC 5952 IPv6 text."""
 
     name: str
     type: str
@@ -136,6 +139,10 @@ def _parse_rdata(buf: bytes, rtype: int, start: int, end: int) -> Any:
         if end - start != 4:
             raise MdnsPacketError("bad_rdata")
         return ".".join(str(b) for b in buf[start:end])
+    if rtype == _AAAA:
+        if end - start != 16:
+            raise MdnsPacketError("bad_rdata")
+        return text6([(buf[i] << 8) | buf[i + 1] for i in range(start, end, 2)])
     if rtype == _PTR:
         name, after = _read_name(buf, start)
         if after > end:
@@ -253,14 +260,18 @@ def _encode_rdata(rtype: int, data: Any) -> bytes:
             out.append(len(e))
             out += e
         return bytes(out) if out else b"\x00"
-    parts = str(data).split(".")
-    if len(parts) != 4 or not all(p.isdigit() and p == str(int(p)) and int(p) < 256 for p in parts):
+    p = parse_address(str(data))
+    if rtype == _AAAA:
+        if p is None or p[0] != "v6" or p[2] is not None:
+            raise ValueError("aaaa: not an IPv6 address")
+        return b"".join(struct.pack(">H", x) for x in p[1])
+    if p is None or p[0] != "v4":
         raise ValueError("a: not an IPv4 address")
-    return bytes(int(p) for p in parts)
+    return bytes(p[1])
 
 
 def build_query(questions: Sequence[Tuple[str, str]], packet_id: int = 0) -> bytes:
-    """A query packet (flags 0). ``questions`` are ``(name, type)`` pairs, type one of PTR/SRV/TXT/A."""
+    """A query packet (flags 0). ``questions`` are ``(name, type)`` pairs, type one of PTR/SRV/TXT/A/AAAA."""
     if len(questions) > MAX_RECORDS:
         raise ValueError("too many questions")
     out = bytearray(_HEADER.pack(packet_id & 0xFFFF, 0, len(questions), 0, 0, 0))
@@ -273,7 +284,7 @@ def build_query(questions: Sequence[Tuple[str, str]], packet_id: int = 0) -> byt
 
 def build_response(answers: Sequence[Record]) -> bytes:
     """An authoritative response packet (flags 0x8400) holding ``answers``. Class IN; the
-    cache-flush bit is set on SRV, TXT and A (unique records), never on the shared PTR."""
+    cache-flush bit is set on SRV, TXT, A and AAAA (unique records), never on the shared PTR."""
     if len(answers) > MAX_RECORDS:
         raise ValueError("too many records")
     out = bytearray(_HEADER.pack(0, _RESPONSE_FLAGS, 0, len(answers), 0, 0))

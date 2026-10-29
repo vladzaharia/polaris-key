@@ -313,8 +313,7 @@
       "code": "not_nearby",
       "kind": "wire",
       "service": "identity",
-      "description": "403, nested, from POST /<p>/identity/nearby/approve (WIRE-CONTRACT-V5 §12.11.5): the approving device is not on the requesting device's client network. Nothing is written and the request stays open; the device code is the fallback.",
-      "plannedBy": "I-40"
+      "description": "403, nested, from POST /<p>/identity/nearby/approve (WIRE-CONTRACT-V5 §12.11.5): the approving device is not on the requesting device's client network. Nothing is written and the request stays open; the device code is the fallback."
     },
     {
       "code": "auth_method_disabled",
@@ -894,6 +893,72 @@
       "kind": "client",
       "service": "connect",
       "description": "The OS refused this app access to devices on the local network (iOS and macOS Local Network permission; Android local-network access). The person can allow it in the system settings."
+    },
+    {
+      "code": "nearby-unsupported",
+      "kind": "client",
+      "service": "connect",
+      "description": "Nearby sign-in cannot run here: this SDK or platform has no local-network discovery (web, a desktop bridge, or a runtime that has not shipped it yet). A host hides its nearby surface and does not retry."
+    },
+    {
+      "code": "peer-handshake-failed",
+      "kind": "client",
+      "service": "connect",
+      "description": "The secure session with a nearby device could not be established: the handshake failed, or the other device could not be verified. Nothing is trusted; a host may start again."
+    },
+    {
+      "code": "peer-closed",
+      "kind": "client",
+      "service": "connect",
+      "description": "The session with a nearby device ended before the exchange finished. A host tells the person and may start again."
+    },
+    {
+      "code": "peer_revoked",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device was revoked, or its certificate chain no longer verifies against the account roster. The session closes at once and nothing it carried is trusted."
+    },
+    {
+      "code": "peer_expired",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device's certificate or the roster it relied on has expired. The session closes; a host refreshes its roster and may retry."
+    },
+    {
+      "code": "peer_bad_frame",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device sent a frame or record that breaks the peer framing rules (bad flags, size, order or body). The session closes and the record is dropped."
+    },
+    {
+      "code": "peer_unknown_critical",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device sent a record whose critical bit is set and whose type this device does not know. The session closes."
+    },
+    {
+      "code": "peer_not_allowed",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The record type is not allowed in this session's mode. The session closes."
+    },
+    {
+      "code": "peer_busy",
+      "kind": "peer",
+      "service": "connect",
+      "description": "This device has no room for another session or pending request (a limit on open sessions or held requests). The other device may retry later."
+    },
+    {
+      "code": "peer_timeout",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device did not complete the handshake, confirmation or a reply within its time limit. The session closes."
+    },
+    {
+      "code": "peer_bye",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device closed the session on purpose: a normal end, not a failure."
     },
     {
       "code": "platform-error",

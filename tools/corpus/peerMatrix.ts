@@ -2,8 +2,12 @@
 // (WIRE-CONTRACT-V5 §15.4 to §15.7, §15.9; plans/CC-01-cloud-connect.md §2.4, §2.6, §2.7, §2.9).
 // `peerMatrixVersion` 1.
 //
-// `adverts`, `prologue`, `psk`, `sas`, `frames`, `records`, `relayEnvelopes` and
-// `handshakePayloads`. The device proof is not here: it lives in `device-proof.json`. Every row is
+// `adverts`, `prologue`, `psk`, `sas`, `frames`, `records`, `relayEnvelopes`,
+// `handshakePayloads`, `lanAddresses` (CC-IPV6.1; the rule is reference/lanAddress.ts) and
+// `mdnsAnswers` (CC-IPV6.2; the DNS encoder and the learning rule are reference/mdns.ts) and
+// `vouch` (CC-15.0c; WIRE-CONTRACT-V5 section 15.6.1: the VOUCH_REQ and VOUCH_RESULT bodies, the
+// order of the records, and what the approver does with the answer of `nearby/approve`). The
+// device proof is not here: it lives in `device-proof.json`. Every row is
 // recomputed through `reference/peerMatrix.ts` (`node:crypto` only; nothing from client-core);
 // the generator throws when a hand-written known answer disagrees, and the HKDF and base32 steps
 // are also checked against `crypto.hkdfSync` and the RFC 4648 test vectors.
@@ -45,9 +49,31 @@ import {
   refSasNonce,
   refSasRevealOk,
   refSasValue,
+  refVouchFinish,
+  refVouchFlow,
+  refVouchRequest,
+  refVouchResult,
+  refVouchSigner,
+  type RefFinishResult,
+  type RefFinishRow,
+  type RefFlowStep,
+  type RefFlowWant,
   utf8,
 } from "./reference/peerMatrix.js";
-import { sha256 } from "./reference/noise.js";
+import { buildNoiseVectors } from "./noise.js";
+import { refX25519Public, sha256 } from "./reference/noise.js";
+import {
+  type RefInterface,
+  refCandidateTarget,
+  refGroupKey,
+  refLanVerdict,
+} from "./reference/lanAddress.js";
+import {
+  type RefDnsRecord,
+  type RefLearned,
+  refDnsEncode,
+  refMdnsLearn,
+} from "./reference/mdns.js";
 
 const hex = bytesHex;
 const b64u = (b: Uint8Array): string => Buffer.from(b).toString("base64url");
@@ -1170,11 +1196,2201 @@ function buildPayloads(): unknown {
   };
 }
 
+// ── lanAddresses (§15.4.1) ───────────────────────────────────────────────────
+
+function buildLanAddresses(): unknown {
+  // [id, remote, local (or null for none), allowLoopback, known answer: the key, or null to refuse].
+  // The answer is written by hand and the reference must agree with it.
+  type Row = [string, string, string | null, boolean, string | null];
+  const own = "2001:db8:1:2::9";
+  const rows: Row[] = [
+    // IPv4: RFC 1918 and its edges.
+    ["v4-10-low", "10.0.0.1", null, false, "10.0.0.1"],
+    ["v4-10-high", "10.255.255.254", null, false, "10.255.255.254"],
+    ["v4-172-16", "172.16.0.1", null, false, "172.16.0.1"],
+    ["v4-172-31", "172.31.255.254", null, false, "172.31.255.254"],
+    ["v4-172-15", "172.15.255.255", null, false, null],
+    ["v4-172-32", "172.32.0.1", null, false, null],
+    ["v4-192-168", "192.168.1.2", null, false, "192.168.1.2"],
+    ["v4-192-167", "192.167.255.255", null, false, null],
+    ["v4-192-169", "192.169.0.1", null, false, null],
+    ["v4-link-local", "169.254.1.1", null, false, null],
+    ["v4-cgnat", "100.64.0.1", null, false, null],
+    ["v4-public", "8.8.8.8", null, false, null],
+    ["v4-this-network", "0.0.0.0", null, false, null],
+    ["v4-multicast", "224.0.0.251", null, false, null],
+    ["v4-broadcast", "255.255.255.255", null, false, null],
+    ["v4-loopback-off", "127.0.0.1", null, false, null],
+    ["v4-loopback-on", "127.0.0.1", null, true, "127.0.0.1"],
+    ["v4-loopback-high-on", "127.255.255.254", null, true, "127.255.255.254"],
+    ["v4-public-loopback-flag", "8.8.8.8", null, true, null],
+    // IPv4 text that is not an address.
+    ["v4-leading-zero", "192.168.01.2", null, false, null],
+    ["v4-octet-256", "192.168.1.256", null, false, null],
+    ["v4-three-octets", "192.168.1", null, false, null],
+    ["v4-zone", "192.168.1.2%en0", null, false, null],
+    ["text-empty", "", null, false, null],
+    ["text-name", "printer.local", null, false, null],
+    // IPv4-mapped: judged as IPv4.
+    ["mapped-lan", "::ffff:192.168.1.2", null, false, "192.168.1.2"],
+    ["mapped-hex", "::ffff:c0a8:102", null, false, "192.168.1.2"],
+    ["mapped-upper", "::FFFF:192.168.1.2", null, false, "192.168.1.2"],
+    ["mapped-long", "0:0:0:0:0:ffff:c0a8:102", null, false, "192.168.1.2"],
+    ["mapped-public", "::ffff:8.8.8.8", null, false, null],
+    ["mapped-loopback-off", "::ffff:127.0.0.1", null, false, null],
+    ["mapped-loopback-on", "::ffff:127.0.0.1", null, true, "127.0.0.1"],
+    ["compatible-not-mapped", "::192.168.1.2", null, false, null],
+    ["nat64", "64:ff9b::c0a8:102", null, false, null],
+    ["nat64-dotted", "64:ff9b::192.168.1.2", null, false, null],
+    // IPv6 link-local, ULA and the rest.
+    ["v6-link-local-zone", "fe80::1%en0", null, false, "fe80::1%en0"],
+    ["v6-link-local-upper", "FE80::0001", null, false, "fe80::1"],
+    ["v6-link-local-top", "febf::1", null, false, "febf::1"],
+    ["v6-below-link-local", "fe7f::1", null, false, null],
+    ["v6-site-local", "fec0::1", null, false, null],
+    ["v6-ula", "fd12::5", null, false, "fd12::5"],
+    ["v6-ula-fc", "fc00::1", null, false, "fc00::1"],
+    ["v6-fe00", "fe00::1", null, false, null],
+    ["v6-loopback-off", "::1", null, false, null],
+    ["v6-loopback-on", "::1", null, true, "::1"],
+    ["v6-unspecified-off", "::", null, false, null],
+    ["v6-unspecified-on", "::", null, true, null],
+    ["v6-multicast", "ff02::fb", null, false, null],
+    ["v6-zone-empty", "fe80::1%", null, false, null],
+    ["v6-brackets", "[fe80::1]", null, false, null],
+    ["v6-two-gaps", "fe80::1::2", null, false, null],
+    ["v6-nine-groups", "1:2:3:4:5:6:7:8:9", null, false, null],
+    ["v6-eight-groups-and-gap", "1:2:3:4:5:6:7::8", null, false, null],
+    ["v6-group-too-long", "fd12::12345", null, false, null],
+    // The key is RFC 5952 text.
+    [
+      "key-first-longest-run",
+      "fd00:0:0:0:1:0:0:1",
+      null,
+      false,
+      "fd00::1:0:0:1",
+    ],
+    ["key-tie-first-run", "fd00:0:0:1:1:0:0:1", null, false, "fd00::1:1:0:0:1"],
+    [
+      "key-single-zero-kept",
+      "fd00:0:1:1:1:1:1:1",
+      null,
+      false,
+      "fd00:0:1:1:1:1:1:1",
+    ],
+    [
+      "key-trailing-run",
+      "FD00:0000:0000:0000:0000:0000:0000:0000",
+      null,
+      false,
+      "fd00::",
+    ],
+    ["key-dotted-tail", "fd00::192.168.1.2", null, false, "fd00::c0a8:102"],
+    ["key-zone-dropped", "fd00::5%wlan0", null, false, "fd00::5"],
+    // A global address dials only on the same /64 as the socket's own address.
+    ["global-same-64", "2001:db8:1:2::5", own, false, "2001:db8:1:2::5"],
+    [
+      "global-same-64-loopback-flag",
+      "2001:db8:1:2::5",
+      own,
+      true,
+      "2001:db8:1:2::5",
+    ],
+    [
+      "global-same-64-local-zone",
+      "2001:db8:1:2::5",
+      `${own}%en0`,
+      false,
+      "2001:db8:1:2::5",
+    ],
+    ["global-other-64", "2001:db8:1:2::5", "2001:db8:1:3::9", false, null],
+    ["global-no-local", "2001:db8:1:2::5", null, false, null],
+    ["global-local-ipv4", "2001:db8:1:2::5", "192.168.1.9", false, null],
+    [
+      "global-local-mapped",
+      "2001:db8:1:2::5",
+      "::ffff:192.168.1.9",
+      false,
+      null,
+    ],
+    ["global-local-not-an-address", "2001:db8:1:2::5", "en0", false, null],
+    ["global-local-link-local", "2001:db8:1:2::5", "fe80::9", false, null],
+    ["global-3fff", "3fff::1", "3fff::2", false, "3fff::1"],
+    ["global-other-isp", "2600:1700::1", "2600:1700::2", false, "2600:1700::1"],
+    ["global-outside-2000-3", "4000::1", "4000::2", false, null],
+    [
+      "global-teredo-same-64",
+      "2001:0:4136:e378:8000:63bf:3fff:fdd2",
+      "2001:0:4136:e378::9",
+      false,
+      null,
+    ],
+    [
+      "global-6to4-same-64",
+      "2002:c0a8:102::1",
+      "2002:c0a8:102::2",
+      false,
+      null,
+    ],
+    [
+      "global-2001-0db8-is-not-teredo",
+      "2001:db8::1",
+      "2001:db8::2",
+      false,
+      "2001:db8::1",
+    ],
+    ["link-local-ignores-local", "fe80::1", own, false, "fe80::1"],
+    // The key of a link-local address keeps its zone; every other key drops it.
+    ["key-link-local-zone-case", "FE80::1%EN0", null, false, "fe80::1%EN0"],
+    ["key-link-local-zone-number", "fe80::1%12", null, false, "fe80::1%12"],
+    ["key-link-local-no-zone", "fe80::1", null, false, "fe80::1"],
+    [
+      "zone-15-characters",
+      "fe80::1%abcdefghijklmno",
+      null,
+      false,
+      "fe80::1%abcdefghijklmno",
+    ],
+    ["zone-16-characters", "fe80::1%abcdefghijklmnop", null, false, null],
+    ["zone-with-space", "fe80::1%en 0", null, false, null],
+    ["zone-with-tab", "fe80::1%en\t0", null, false, null],
+    ["zone-with-control", "fe80::1%en\u0001", null, false, null],
+    ["zone-with-delete", "fe80::1%en\u007f", null, false, null],
+    ["zone-non-ascii", "fe80::1%\u00e9n0", null, false, null],
+    ["zone-trailing-newline", "fe80::1%en0\n", null, false, null],
+    ["zone-double", "fe80::1%en0%en1", null, false, null],
+    ["zone-only-percent", "fe80::1%%", null, false, null],
+    ["zone-no-address", "%en0", null, false, null],
+    ["zone-on-ula-dropped", "fd00::5%en0", null, false, "fd00::5"],
+    // A mapped address with a zone is ambiguous, so it is refused.
+    ["mapped-zone", "::ffff:10.0.0.1%en0", null, false, null],
+    ["mapped-hex-zone", "::ffff:a00:1%en0", null, false, null],
+    // A ULA address is routed. With a known local address it must share its /64.
+    [
+      "ula-local-same-64",
+      "fd00:1:2:3::5",
+      "fd00:1:2:3::9",
+      false,
+      "fd00:1:2:3::5",
+    ],
+    ["ula-local-other-64", "fd00:1:2:3::5", "fd00:1:2:4::9", false, null],
+    ["ula-local-other-ula", "fd00:1:2:3::5", "fd01:1:2:3::9", false, null],
+    ["ula-local-global", "fd00:1:2:3::5", "2001:db8:1:2::9", false, null],
+    ["ula-local-link-local", "fd00:1:2:3::5", "fe80::9", false, null],
+    ["ula-local-ipv4", "fd00:1:2:3::5", "192.168.1.9", false, null],
+    ["ula-local-not-an-address", "fd00:1:2:3::5", "en0", false, null],
+    [
+      "ula-local-same-64-zone",
+      "fd00:1:2:3::5",
+      "fd00:1:2:3::9%en0",
+      false,
+      "fd00:1:2:3::5",
+    ],
+    ["ula-fc-local-same-64", "fc00::1", "fc00::2", false, "fc00::1"],
+    ["ula-fc-local-other-64", "fc00::1", "fc00:0:0:1::2", false, null],
+    // Where parsers differ: each of these is refused, and in every language.
+    ["diff-v4-trailing-newline", "10.0.0.1\n", null, false, null],
+    ["diff-v6-trailing-newline", "fe80::1\n", null, false, null],
+    ["diff-v4-nul", "10.0.0.1\u0000", null, false, null],
+    ["diff-v6-nul", "fe80::1\u0000", null, false, null],
+    ["diff-v4-leading-space", " 10.0.0.1", null, false, null],
+    ["diff-v4-trailing-space", "10.0.0.1 ", null, false, null],
+    ["diff-v6-trailing-space", "fe80::1 ", null, false, null],
+    ["diff-v4-tab", "10.0.0.1\t", null, false, null],
+    ["diff-v4-unicode-digits", "\uff11\uff10.0.0.1", null, false, null],
+    ["diff-v4-arabic-digits", "10.0.0.\u0661", null, false, null],
+    ["diff-v6-unicode-digits", "fd\u0660\u0660::1", null, false, null],
+    ["diff-v4-port", "10.0.0.1:80", null, false, null],
+    ["diff-v6-bracket-port", "[fe80::1]:80", null, false, null],
+    ["diff-v6-port-unbracketed", "fd00::1:80", null, false, "fd00::1:80"],
+    ["diff-v4-hex-octet", "0x0a.0.0.1", null, false, null],
+    ["diff-v4-hex-whole", "0xa000001", null, false, null],
+    ["diff-v4-decimal-whole", "167772161", null, false, null],
+    ["diff-v4-short", "10.1", null, false, null],
+    ["diff-v4-five-octets", "10.0.0.1.1", null, false, null],
+    ["diff-v4-prefix-length", "10.0.0.1/8", null, false, null],
+    ["diff-v4-trailing-dot", "10.0.0.1.", null, false, null],
+    ["diff-v6-trailing-dot", "fd00::1.", null, false, null],
+    ["diff-v6-dotted-leading-zero", "::ffff:010.0.0.1", null, false, null],
+    ["diff-v6-dotted-mid", "::10.0.0.1:1", null, false, null],
+    ["diff-v6-three-colons", "fd00:::1", null, false, null],
+    ["diff-v6-prefix-length", "fd00::1/64", null, false, null],
+    ["diff-v6-sign", "+fd00::1", null, false, null],
+    ["diff-v6-isatap", "fe80::5efe:10.0.0.1", null, false, "fe80::5efe:a00:1"],
+    [
+      "diff-v6-isatap-global",
+      "2001:db8:1:2:0:5efe:10.0.0.1",
+      own,
+      false,
+      "2001:db8:1:2:0:5efe:a00:1",
+    ],
+    ["diff-percent-only", "%", null, false, null],
+  ];
+  // Hand-written /64 keys for a few rows; the rest come from the reference.
+  const groups = new Map<string, string | null>([
+    ["global-same-64", "2001:db8:1:2::/64"],
+    ["ula-local-same-64", "fd00:1:2:3::/64"],
+    ["v6-link-local-zone", "fe80::/10%en0"],
+    ["key-link-local-no-zone", "fe80::/10"],
+    ["v4-10-low", "10.0.0.0/24"],
+    ["mapped-lan", "192.168.1.0/24"],
+    ["diff-v6-isatap", "fe80::/10"],
+  ]);
+  const out = rows.map(([id, remote, local, allowLoopback, key]) => {
+    const got = refLanVerdict(remote, local, allowLoopback);
+    check(`lanAddresses ${id}`, got, { dial: key !== null, key });
+    const group = refGroupKey(got.key);
+    if (groups.has(id))
+      check(`lanAddresses group ${id}`, group, groups.get(id));
+    return {
+      id,
+      remote,
+      ...(local !== null ? { local } : {}),
+      allowLoopback,
+      dial: got.dial,
+      key: got.key,
+      group,
+    };
+  });
+  return {
+    note: "LAN addresses (15.4.1): lanVerdict(remote, local, allowLoopback) -> {dial, key}, applied to an accepted socket before it takes a slot or is read, to a dialled address's text before connect and again to the connected socket before its first byte. `remote` is the socket's peer address as text and `local` its own address (absent: unknown). Spelling: a zone is `%` and 1 to 15 characters of U+0021 to U+007E other than `%`; an empty or longer zone, a second `%`, a control, a space or a non-ASCII character, a zone on IPv4 and a zone on an IPv4-mapped address are malformed and refused; the grammar is strict (RFC 3986 IPv4address and IPv6address): no whitespace, NUL, port, prefix length, trailing dot, brackets, non-ASCII digits or leading-zero octet. IPv4-mapped (::ffff:0:0/96) is judged as its IPv4 address. IPv4: 10/8, 172.16/12, 192.168/16, and 127/8 only with allowLoopback. IPv6: fe80::/10; fc00::/7, which with a known `local` must be IPv6 (not mapped) in the same /64; ::1 only with allowLoopback; an address in 2000::/3, outside 2001::/32 (Teredo) and 2002::/16 (6to4), only when `local` is IPv6 (not mapped) in the same /64. Anything else, and text that is not an address, is refused. `key` is the per-address connection count key: dotted IPv4, or RFC 5952 lower-case IPv6 text without its zone, except that a link-local (fe80::/10) key keeps its zone; null when `dial` is false. `group` is the per-group count key of a key: `fe80::/10%zone` for a link-local key (`fe80::/10` with no zone), `a.b.c.0/24` for an IPv4 key, `<masked address>/64` for any other IPv6 key, and null for no key. `candidates` holds the rule for a CANDIDATES entry (15.6).",
+    rows: out,
+    candidates: buildCandidates(),
+  };
+}
+
+function buildCandidates(): unknown {
+  const nic = (
+    address: string,
+    prefix: number,
+    up = true,
+    tunnel = false,
+  ): RefInterface => ({ address, prefix, up, tunnel });
+  const sets: Record<string, RefInterface[]> = {
+    // Wi-Fi with IPv4 only.
+    v4: [nic("192.168.1.9", 24)],
+    // A dual-stack LAN: IPv4, ULA, a global prefix and the link-local address.
+    dual: [
+      nic("192.168.1.9", 24),
+      nic("fd00:1:2:3::9", 64),
+      nic("2001:db8:1:2::9", 64),
+      nic("fe80::9", 64),
+    ],
+    // The same Wi-Fi beside a VPN (a tunnel with a RFC 1918 subnet of its own).
+    vpn: [nic("192.168.1.9", 24), nic("10.8.0.2", 24, true, true)],
+    // The interface is down.
+    down: [nic("192.168.1.9", 24, false)],
+    // A subnet that is not RFC 1918, and a Teredo prefix.
+    public: [nic("8.8.8.9", 24), nic("2001:0:4136:e378::9", 64)],
+    // A ULA prefix with a zero group in it.
+    zero: [nic("fd00:1:0:1::9", 64)],
+    none: [],
+  };
+  // [id, entry, interface set, dialled]
+  const rows: [string, string, string, boolean][] = [
+    ["v4-in-subnet", "192.168.1.20:5000", "v4", true],
+    ["v4-port-1024", "192.168.1.20:1024", "v4", true],
+    ["v4-port-65535", "192.168.1.20:65535", "v4", true],
+    ["v4-other-subnet", "192.168.2.20:5000", "v4", false],
+    ["v4-rfc1918-elsewhere", "10.0.0.1:5000", "v4", false],
+    ["v4-rfc1918-elsewhere-ssh-port", "10.0.0.1:22", "v4", false],
+    ["v4-own-address", "192.168.1.9:5000", "v4", false],
+    ["v4-no-interfaces", "192.168.1.20:5000", "none", false],
+    ["v4-interface-down", "192.168.1.20:5000", "down", false],
+    ["v4-tunnel-subnet", "10.8.0.5:5000", "vpn", false],
+    ["v4-lan-beside-tunnel", "192.168.1.20:5000", "vpn", true],
+    ["v4-public-subnet", "8.8.8.8:5000", "public", false],
+    ["v6-ula-in-subnet", "[fd00:1:2:3::5]:5000", "dual", true],
+    ["v6-ula-other-64", "[fd00:1:2:4::5]:5000", "dual", false],
+    ["v6-global-in-subnet", "[2001:db8:1:2::5]:5000", "dual", true],
+    ["v6-global-other-64", "[2001:db8:1:3::5]:5000", "dual", false],
+    ["v6-own-address", "[fd00:1:2:3::9]:5000", "dual", false],
+    ["v6-own-global-address", "[2001:db8:1:2::9]:5000", "dual", false],
+    ["v6-ipv4-only-interface", "[fd00:1:2:3::5]:5000", "v4", false],
+    ["v6-teredo-in-subnet", "[2001:0:4136:e378::5]:5000", "public", false],
+    ["v6-single-zero-group", "[fd00:1:0:1:1:1:1:1]:5000", "zero", true],
+    ["v6-link-local", "[fe80::5]:5000", "dual", false],
+    ["v6-link-local-isatap", "[fe80::5efe:c0a8:114]:5000", "dual", false],
+    ["v6-loopback", "[::1]:5000", "dual", false],
+    // Spelling of the port: plain decimal, 1024 to 65535.
+    ["port-0", "192.168.1.20:0", "v4", false],
+    ["port-22", "192.168.1.20:22", "v4", false],
+    ["port-80", "192.168.1.20:80", "v4", false],
+    ["port-1023", "192.168.1.20:1023", "v4", false],
+    ["port-65536", "192.168.1.20:65536", "v4", false],
+    ["port-99999", "192.168.1.20:99999", "v4", false],
+    ["port-100000", "192.168.1.20:100000", "v4", false],
+    ["port-leading-zero", "192.168.1.20:05000", "v4", false],
+    ["port-plus", "192.168.1.20:+5000", "v4", false],
+    ["port-minus", "192.168.1.20:-5000", "v4", false],
+    ["port-space", "192.168.1.20: 5000", "v4", false],
+    ["port-trailing-space", "192.168.1.20:5000 ", "v4", false],
+    ["port-trailing-newline", "192.168.1.20:5000\n", "v4", false],
+    ["port-nul", "192.168.1.20:5000\u0000", "v4", false],
+    ["port-hex", "192.168.1.20:0x1388", "v4", false],
+    ["port-exponent", "192.168.1.20:5e3", "v4", false],
+    ["port-fraction", "192.168.1.20:5000.0", "v4", false],
+    ["port-fullwidth", "192.168.1.20:\uff15\uff10\uff10\uff10", "v4", false],
+    ["port-missing", "192.168.1.20", "v4", false],
+    ["port-empty", "192.168.1.20:", "v4", false],
+    ["port-twice", "192.168.1.20:5000:5000", "v4", false],
+    ["port-v6-missing", "[fd00:1:2:3::5]", "dual", false],
+    ["port-v6-empty", "[fd00:1:2:3::5]:", "dual", false],
+    ["port-v6-trailing-junk", "[fd00:1:2:3::5]:5000x", "dual", false],
+    // Spelling of the address.
+    ["v4-brackets", "[192.168.1.20]:5000", "v4", false],
+    ["v4-leading-zero", "192.168.01.20:5000", "v4", false],
+    ["v4-trailing-dot", "192.168.1.20.:5000", "v4", false],
+    ["v4-leading-space", " 192.168.1.20:5000", "v4", false],
+    ["v4-hostname", "printer.local:5000", "v4", false],
+    ["v4-empty-host", ":5000", "v4", false],
+    ["v4-zone", "192.168.1.20%en0:5000", "v4", false],
+    ["v6-no-brackets", "fd00:1:2:3::5:5000", "dual", false],
+    ["v6-double-brackets", "[[fd00:1:2:3::5]]:5000", "dual", false],
+    ["v6-empty-brackets", "[]:5000", "dual", false],
+    ["v6-zone", "[fd00:1:2:3::5%en0]:5000", "dual", false],
+    ["v6-empty-zone", "[fd00:1:2:3::5%]:5000", "dual", false],
+    ["v6-upper-case", "[FD00:1:2:3::5]:5000", "dual", false],
+    ["v6-long-form", "[fd00:1:2:3:0:0:0:5]:5000", "dual", false],
+    ["v6-leading-zeros", "[fd00:0001:2:3::5]:5000", "dual", false],
+    ["v6-extra-zero-group", "[fd00:1:2:3::0:5]:5000", "dual", false],
+    ["v6-dotted-tail", "[fd00:1:2:3::0.0.0.5]:5000", "dual", false],
+    ["v6-single-zero-compressed", "[fd00:1::1:1:1:1:1]:5000", "zero", false],
+    ["v6-shorter-run-compressed", "[2001:db8:0:0:1:0:0:1]:5000", "dual", false],
+    ["v6-mapped", "[::ffff:192.168.1.20]:5000", "dual", false],
+    ["v6-mapped-hex", "[::ffff:c0a8:114]:5000", "dual", false],
+    ["v6-trailing-newline", "[fd00:1:2:3::5]:5000\n", "dual", false],
+    ["v6-nul", "[fd00:1:2:3::5\u0000]:5000", "dual", false],
+    ["entry-empty", "", "dual", false],
+    ["entry-colon", ":", "dual", false],
+  ];
+  const out = rows.map(([id, entry, set, dialled]) => {
+    const interfaces = sets[set]!;
+    const got = refCandidateTarget(entry, interfaces);
+    check(`lanAddresses candidates ${id}`, got !== null, dialled);
+    return { id, entry, interfaces, target: got };
+  });
+  return {
+    note: "CANDIDATES entries (15.6, 15.4.1): candidateTarget(entry, interfaces) -> {host, port} or null. `interfaces` lists the device's own addresses, one per entry: `{address, prefix, up, tunnel}`, `tunnel` meaning a VPN, tunnel, point-to-point or pseudo-interface. An entry is dialled only when all hold: it is `a.b.c.d:port` or `[addr]:port` (brackets only around IPv6) with a plain decimal port from 1024 to 65535 (no sign, no leading zero, no space, no other character); an IPv6 address is in RFC 5952 text, has no zone, is not IPv4-mapped and is not in fe80::/10; the address is not one of the device's own; it lies inside the subnet (address and prefix) of an up, non-tunnel interface address; and lanVerdict(address, that interface address, false) allows it. `target.host` is the address as dialled.",
+    rows: out,
+  };
+}
+
+// ── mdnsAnswers (§15.4 "Addresses") ──────────────────────────────────────────
+
+function buildMdnsAnswers(): unknown {
+  const I1 = "p1-aaaaaaaaaaaaaaaa";
+  const I2 = "p1-bbbbbbbbbbbbbbbb";
+  const H1 = `${I1}.local`;
+  const H2 = `${I2}.local`;
+  const SVC = "_pkeypeer._tcp.local";
+  const LL = "fe80::1c2:3ff:fe4:5a6";
+  const LL_TEXT = LL;
+  const a = (name: string, address: string, ttl = 120): RefDnsRecord => ({
+    name,
+    type: "A",
+    ttl,
+    address,
+  });
+  const aaaa = (name: string, address: string, ttl = 120): RefDnsRecord => ({
+    name,
+    type: "AAAA",
+    ttl,
+    address,
+  });
+  const ptr = (ttl: number): RefDnsRecord => ({
+    name: SVC,
+    type: "PTR",
+    ttl,
+    target: `${I1}.${SVC}`,
+  });
+  const srv: RefDnsRecord = {
+    name: `${I1}.${SVC}`,
+    type: "SRV",
+    ttl: 120,
+    port: 40123,
+    target: H1,
+  };
+  const txt: RefDnsRecord = {
+    name: `${I1}.${SVC}`,
+    type: "TXT",
+    ttl: 4500,
+    txt: ["v=1", "m=a"],
+  };
+  const ll = (name: string, address: string): RefLearned => ({ name, address });
+  /** Four addresses held for the first host: the most a name keeps. */
+  const held4 = ["2", "3", "4", "5"].map((n) => ll(H1, `192.168.1.${n}`));
+
+  // A known answer for the encoder, written by hand from RFC 1035 (a compressed PTR, then an A).
+  const knownCompressed = refDnsEncode({
+    answers: [
+      { name: SVC, type: "PTR", ttl: 4500, target: `i.${SVC}` },
+      { name: "h.local", type: "A", ttl: 120, address: "192.168.1.20" },
+    ],
+    compress: true,
+  });
+  // h.local: "h" then a pointer to "local" at offset 27; the A record follows.
+  const wantHex =
+    "000084000000000200000000" +
+    "095f706b657970656572045f746370056c6f63616c00" +
+    "000c0001000011940004" +
+    "0169c00c" +
+    "0168c01b" + // h + pointer to "local" (offset 27)
+    "00018001" +
+    "00000078" +
+    "0004" +
+    "c0a80114";
+  check("mdnsAnswers known compressed encoding", hex(knownCompressed), wantHex);
+
+  type Row = {
+    id: string;
+    records: RefDnsRecord[];
+    additionals?: RefDnsRecord[];
+    compress?: boolean;
+    source: string;
+    zone: string | null;
+    prior?: RefLearned[];
+    /** The known answer: the table for the name(s) after the packet. */
+    learned: RefLearned[];
+  };
+  const rows: Row[] = [
+    {
+      id: "a-equals-source",
+      records: [a(H1, "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "a-not-source",
+      records: [a(H1, "192.168.1.99")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [],
+    },
+    {
+      id: "a-equals-source-and-another-a-dropped",
+      records: [a(H1, "192.168.1.99"), a(H1, "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "a-in-additional-section",
+      records: [ptr(4500), srv, txt],
+      additionals: [a(H1, "10.0.0.7")],
+      source: "10.0.0.7",
+      zone: null,
+      learned: [ll(H1, "10.0.0.7")],
+    },
+    {
+      id: "aaaa-link-local-equals-source-takes-zone",
+      records: [aaaa(H1, LL)],
+      source: LL,
+      zone: "en0",
+      learned: [ll(H1, `${LL_TEXT}%en0`)],
+    },
+    {
+      id: "aaaa-link-local-kept-global-dropped",
+      records: [aaaa(H1, "2001:db8:1:2::5"), aaaa(H1, LL)],
+      source: LL,
+      zone: "wlan0",
+      learned: [ll(H1, `${LL_TEXT}%wlan0`)],
+    },
+    {
+      id: "aaaa-global-alone-dropped",
+      records: [aaaa(H1, "2001:db8:1:2::5")],
+      source: LL,
+      zone: "en0",
+      learned: [],
+    },
+    {
+      id: "aaaa-link-local-no-arrival-zone-dropped",
+      records: [aaaa(H1, LL)],
+      source: LL,
+      zone: null,
+      learned: [],
+    },
+    {
+      id: "aaaa-ula-equals-source-has-no-zone",
+      records: [aaaa(H1, "fd12:0:0:0:0:0:0:5")],
+      source: "fd12::5",
+      zone: "en0",
+      learned: [ll(H1, "fd12::5")],
+    },
+    {
+      id: "a-in-ipv6-packet-dropped",
+      records: [a(H1, "192.168.1.20"), aaaa(H1, LL)],
+      source: LL,
+      zone: "en0",
+      learned: [ll(H1, `${LL_TEXT}%en0`)],
+    },
+    {
+      id: "a-alone-in-ipv6-packet-dropped",
+      records: [a(H1, "192.168.1.20")],
+      source: LL,
+      zone: "en0",
+      learned: [],
+    },
+    {
+      id: "aaaa-in-ipv4-packet-dropped",
+      records: [aaaa(H1, LL), a(H1, "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "two-names-same-source",
+      records: [a(H1, "172.20.0.9"), a(H2, "172.20.0.9")],
+      source: "172.20.0.9",
+      zone: null,
+      learned: [ll(H1, "172.20.0.9"), ll(H2, "172.20.0.9")],
+    },
+    {
+      id: "repeat-is-not-a-second-address",
+      records: [a(H1, "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "new-address-follows-in-first-seen-order",
+      records: [aaaa(H1, "fd12:0:0:0:0:0:0:7")],
+      source: "fd12::7",
+      zone: "en0",
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [ll(H1, "192.168.1.20"), ll(H1, "fd12::7")],
+    },
+    {
+      id: "fourth-address-is-kept",
+      records: [a(H1, "192.168.1.9")],
+      source: "192.168.1.9",
+      zone: null,
+      prior: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, `${LL_TEXT}%en0`),
+      ],
+      learned: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, `${LL_TEXT}%en0`),
+        ll(H1, "192.168.1.9"),
+      ],
+    },
+    {
+      id: "fifth-address-is-dropped",
+      records: [a(H1, "192.168.1.9")],
+      source: "192.168.1.9",
+      zone: null,
+      prior: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, `${LL_TEXT}%en0`),
+        ll(H1, "fd12::5"),
+      ],
+      learned: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, `${LL_TEXT}%en0`),
+        ll(H1, "fd12::5"),
+      ],
+    },
+    {
+      id: "cap-is-per-name",
+      records: [a(H2, "192.168.1.9")],
+      source: "192.168.1.9",
+      zone: null,
+      prior: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+        ll(H1, "192.168.1.5"),
+      ],
+      learned: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+        ll(H1, "192.168.1.5"),
+        ll(H2, "192.168.1.9"),
+      ],
+    },
+    {
+      id: "compressed-names",
+      records: [ptr(4500), srv, txt, a(H1, "192.168.1.20"), aaaa(H1, LL)],
+      compress: true,
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "compressed-names-link-local",
+      records: [ptr(4500), srv, txt],
+      additionals: [a(H1, "192.168.1.20"), aaaa(H1, LL)],
+      compress: true,
+      source: LL,
+      zone: "en0",
+      learned: [ll(H1, `${LL_TEXT}%en0`)],
+    },
+    {
+      id: "goodbye-teaches-nothing",
+      records: [ptr(0)],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [],
+    },
+    {
+      id: "goodbye-beside-a-live-address",
+      records: [ptr(0)],
+      additionals: [a(H1, "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    // An IPv4-mapped source is judged as its IPv4 address.
+    {
+      id: "mapped-source-a-equals-ipv4",
+      records: [a(H1, "192.168.1.20")],
+      source: "::ffff:192.168.1.20",
+      zone: "en0",
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "mapped-source-hex-form",
+      records: [a(H1, "192.168.1.20")],
+      source: "::ffff:c0a8:114",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "mapped-source-a-not-equal",
+      records: [a(H1, "192.168.1.99")],
+      source: "::ffff:192.168.1.20",
+      zone: null,
+      learned: [],
+    },
+    {
+      id: "mapped-source-aaaa-of-mapped-address-dropped",
+      records: [aaaa(H1, "::ffff:c0a8:114"), a(H1, "192.168.1.20")],
+      source: "::ffff:192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    // An address record with TTL 0 removes that address, under the equality rule.
+    {
+      id: "address-goodbye-removes",
+      records: [a(H1, "192.168.1.20", 0)],
+      source: "192.168.1.20",
+      zone: null,
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [],
+    },
+    {
+      id: "address-goodbye-keeps-the-others-in-order",
+      records: [a(H1, "192.168.1.3", 0)],
+      source: "192.168.1.3",
+      zone: null,
+      prior: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+      ],
+      learned: [ll(H1, "192.168.1.2"), ll(H1, "192.168.1.4")],
+    },
+    {
+      id: "address-goodbye-link-local-takes-zone",
+      records: [aaaa(H1, LL, 0)],
+      source: LL,
+      zone: "en0",
+      prior: [ll(H1, `${LL_TEXT}%en0`)],
+      learned: [],
+    },
+    {
+      id: "address-goodbye-other-zone-removes-nothing",
+      records: [aaaa(H1, LL, 0)],
+      source: LL,
+      zone: "wlan0",
+      prior: [ll(H1, `${LL_TEXT}%en0`)],
+      learned: [ll(H1, `${LL_TEXT}%en0`)],
+    },
+    {
+      id: "address-goodbye-not-from-source-is-ignored",
+      records: [a(H1, "192.168.1.20", 0)],
+      source: "192.168.1.99",
+      zone: null,
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "address-goodbye-of-unheld-address-learns-nothing",
+      records: [a(H1, "192.168.1.20", 0)],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [],
+    },
+    {
+      id: "address-goodbye-then-return-goes-last",
+      records: [a(H1, "192.168.1.2", 0), a(H1, "192.168.1.2")],
+      source: "192.168.1.2",
+      zone: null,
+      prior: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+        ll(H1, "192.168.1.5"),
+      ],
+      learned: [
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+        ll(H1, "192.168.1.5"),
+        ll(H1, "192.168.1.2"),
+      ],
+    },
+    // Names compare case-insensitively by ASCII fold, and are held in lower case.
+    {
+      id: "name-case-is-folded",
+      records: [a(H1.toUpperCase(), "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "name-case-matches-the-held-name",
+      records: [a(H1.toUpperCase(), "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "name-case-shares-the-cap",
+      records: [a(H1.toUpperCase(), "192.168.1.9")],
+      source: "192.168.1.9",
+      zone: null,
+      prior: held4,
+      learned: held4,
+    },
+    {
+      id: "name-case-goodbye-removes",
+      records: [a(H1.toUpperCase(), "192.168.1.20", 0)],
+      source: "192.168.1.20",
+      zone: null,
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [],
+    },
+  ];
+  const out = rows.map((r) => {
+    const packet = refDnsEncode({
+      answers: r.records,
+      ...(r.additionals !== undefined ? { additionals: r.additionals } : {}),
+      ...(r.compress === true ? { compress: true } : {}),
+    });
+    const got = refMdnsLearn(packet, r.source, r.zone, r.prior ?? []);
+    check(`mdnsAnswers ${r.id}`, got, r.learned);
+    return {
+      id: r.id,
+      packet: hex(packet),
+      source: r.source,
+      zone: r.zone,
+      ...(r.prior !== undefined ? { prior: r.prior } : {}),
+      learned: got,
+    };
+  });
+  // A compressed packet is shorter than the same message without compression, or the row proves nothing.
+  const sample = rows.find((r) => r.id === "compressed-names")!;
+  const flat = refDnsEncode({ answers: sample.records });
+  const packed = refDnsEncode({ answers: sample.records, compress: true });
+  check("mdnsAnswers compression shrinks", packed.length < flat.length, true);
+  return {
+    note: "mDNS address learning (15.4 Addresses). `packet` is one mDNS response as lower-case hex (header, then the answer and additional sections; names may be compressed, RFC 1035 4.1.4). `source` is the packet's source address as text and `zone` the interface it arrived on (null: none). A browser believes an A or AAAA record only when its address equals `source` (so an A record is never believed in an IPv6 packet, nor an AAAA in an IPv4 packet); the section a record sits in does not matter. A link-local (fe80::/10) address is learned as `<RFC 5952 text>%<zone>`; any other address has no zone. A name keeps at most 4 addresses, of any family, in first-seen order, and a repeat is not a second address. Learning is by that equality alone; there is no address filter at learn time, the dial-time check (15.4.1) decides what may be dialled. `source` may be an IPv4-mapped IPv6 address (`::ffff:a.b.c.d`, or the hex form), which is judged as its IPv4 address: an A record equal to it is learned, an AAAA record never is. An address record with TTL 0 removes that address (the same text, so a link-local address with the same zone) when it passes the same equality test, and learns nothing; records apply in packet order. A PTR goodbye (TTL 0) teaches none and removes none. `prior` (absent: nothing held) is the table the browser held before the packet, in first-seen order; `learned` is the table after it: the `{name, address}` entries in first-seen order. Names compare case-insensitively by ASCII fold (A-Z only) and are held, and shown in `learned`, in lower case. A link-local `source` with `zone` null learns nothing (no arrival interface names the host). The roster filter, the per-source limit on new names and the SRV port range need a roster, a clock and SRV records, which these rows do not model: each SDK tests them itself. Rows need an own DNS codec: Node, Python, Kotlin JVM and Godot GDScript run them; Swift and Android leave address learning to the OS resolver.",
+    rows: out,
+  };
+}
+
+// ── vouch (CC-15.0c; WIRE-CONTRACT-V5 §15.6.1) ───────────────────────────────
+
+const VOUCH_SLUG = "demo";
+const vouchSigner = refVouchSigner(mat("vouch d signing"));
+const vouchOtherSigner = refVouchSigner(mat("vouch other signing"));
+const VOUCH_AGREE = b64u(refX25519Public(mat("vouch d agree")));
+const VOUCH_DEVICE = devId("vouch d device");
+const VOUCH_OTHER_DEVICE = devId("vouch other device");
+const vouchHandle = (label: string): string =>
+  `nr_${b64u(mat(label).slice(0, 16))}`;
+const VOUCH_REQUEST = vouchHandle("vouch request");
+const VOUCH_OTHER_REQUEST = vouchHandle("vouch other request");
+
+interface VouchHello {
+  label?: string;
+  platform: string;
+}
+const VOUCH_HELLO: VouchHello = { label: "Ana's Switch", platform: "linux" };
+
+type Body = Record<string, unknown>;
+
+/** The ed25519 signature over the joined proof lines, even when a field breaks the line format. */
+function vouchSig(o: {
+  signer?: typeof vouchSigner;
+  purpose?: string;
+  slug?: string;
+  device?: string;
+  hHex: string;
+  request?: string;
+}): string {
+  const text = [
+    "pkey-proof/1",
+    o.purpose ?? "vouch",
+    o.slug ?? VOUCH_SLUG,
+    o.device ?? VOUCH_DEVICE,
+    `${b64u(hexBytes(o.hHex))}.${o.request ?? VOUCH_REQUEST}`,
+    "-",
+  ].join("\n");
+  return (o.signer ?? vouchSigner).sign(utf8(text));
+}
+
+/** A copy of `s` with its last character changed so the unused low bits are not zero. */
+function dirtyLastChar(s: string): string {
+  const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  return s.slice(0, -1) + A[A.indexOf(s.slice(-1)) ^ 1]!;
+}
+
+function buildVouch(): unknown {
+  const nv = buildNoiseVectors() as {
+    handshakes: { id: string; handshakeHash: string }[];
+  };
+  const hOf = (id: string): string =>
+    nv.handshakes.find((h) => h.id === id)!.handshakeHash;
+  const H = hOf("mode-v");
+  const OTHER_H = hOf("mode-a");
+
+  // ── requests ──
+  interface ReqIn {
+    id: string;
+    note: string;
+    hello?: VouchHello;
+    slug?: string;
+    hHex?: string;
+    /** Edit the body object after it is signed. */
+    edit?: (b: Body) => void;
+    /** Sign this instead of the body's own values. */
+    sigOf?: Partial<Parameters<typeof vouchSig>[0]>;
+    /** Replace the body text, given the valid compact text. */
+    text?: (valid: string) => string;
+    hex?: (validHex: string) => string;
+    /** Pad the body with an unknown member to exactly this many bytes. */
+    padTo?: number;
+    /** `ok`, or the reference's reason prefix. */
+    want: string;
+  }
+  const requests: Record<string, unknown>[] = [];
+  const addReq = (r: ReqIn): void => {
+    const hello = r.hello ?? VOUCH_HELLO;
+    const slug = r.slug ?? VOUCH_SLUG;
+    const hHex = r.hHex ?? H;
+    const body: Body = {
+      v: 1,
+      request: VOUCH_REQUEST,
+      deviceId: VOUCH_DEVICE,
+      signKey: vouchSigner.signKey,
+      agreeKey: VOUCH_AGREE,
+      ...(hello.label !== undefined ? { label: hello.label } : {}),
+      platform: hello.platform,
+    };
+    body.sig = vouchSig({ hHex: H, ...(r.sigOf ?? {}) });
+    r.edit?.(body);
+    let text = JSON.stringify(body);
+    const row: Record<string, unknown> = {
+      id: r.id,
+      note: r.note,
+      slug,
+      hHex,
+      hello,
+    };
+    let bytes: Uint8Array;
+    if (r.padTo !== undefined) {
+      const prefix = `${text.slice(0, -1)},"pad":"`;
+      const suffix = '"}';
+      const count = r.padTo - utf8(prefix).length - utf8(suffix).length;
+      row.bodyPad = { prefix, fill: "a", count, suffix };
+      row.length = r.padTo;
+      bytes = utf8(prefix + "a".repeat(count) + suffix);
+    } else if (r.hex !== undefined) {
+      const hex = r.hex(bytesHex(utf8(text)));
+      row.bodyHex = hex;
+      bytes = hexBytes(hex);
+    } else {
+      if (r.text) text = r.text(text);
+      row.body = text;
+      bytes = utf8(text);
+    }
+    const got = refVouchRequest({ slug, hHex, hello, body: bytes });
+    if (r.want === "ok") {
+      if (!got.ok)
+        throw new Error(
+          `vouch request ${r.id}: reference refuses (${got.reason})`,
+        );
+      row.verdict = "ok";
+      row.result = got.result;
+    } else {
+      if (got.ok || !got.reason.startsWith(r.want))
+        throw new Error(
+          `vouch request ${r.id}: reference gives ${JSON.stringify(got)}, wanted ${r.want}`,
+        );
+      row.verdict = "refuse";
+      row.close = "peer_bad_frame";
+      row.reason = got.reason;
+    }
+    requests.push(row);
+  };
+  const has = (b: Body, ...keys: string[]): void => {
+    for (const k of keys) delete b[k];
+  };
+  const u = (hex: string): string => b64u(hexBytes(hex));
+
+  addReq({ id: "valid", note: "The shape a conforming D sends.", want: "ok" });
+  addReq({
+    id: "valid-no-label",
+    note: "No label in the HELLO and none in the request.",
+    hello: { platform: "linux" },
+    want: "ok",
+  });
+  addReq({
+    id: "valid-label-cleaned-both",
+    note: "A zero-width and a bidi character in both labels: both are cleaned and equal.",
+    hello: { label: "Ana\u200b's\u202e Switch", platform: "linux" },
+    want: "ok",
+  });
+  addReq({
+    id: "valid-label-cleaned-differs-raw",
+    note: "The raw labels differ (zero-width character, doubled spaces) and are equal after cleaning.",
+    edit: (b) => {
+      b.label = "  Ana\u200b's   Switch ";
+    },
+    want: "ok",
+  });
+  addReq({
+    id: "valid-label-nfc-nfd",
+    note: "NFC in the HELLO, NFD in the request: equal after NFC.",
+    hello: { label: "Zo\u00eb's Mac", platform: "linux" },
+    edit: (b) => {
+      b.label = "Zoë's Mac";
+    },
+    want: "ok",
+  });
+  addReq({
+    id: "valid-label-emptied",
+    note: "A label with nothing left after cleaning is no label: the HELLO had none.",
+    hello: { platform: "linux" },
+    edit: (b) => {
+      b.label = "\u200b\u202e";
+    },
+    want: "ok",
+  });
+  addReq({
+    id: "valid-label-cut-at-64",
+    note: "Labels equal in their first 64 code points are equal: the cut comes after cleaning.",
+    hello: { label: "a".repeat(64) + "b", platform: "linux" },
+    edit: (b) => {
+      b.label = "a".repeat(64) + "c";
+    },
+    want: "ok",
+  });
+  addReq({
+    id: "valid-platform-unknown-both",
+    note: "A platform outside the allowed characters shows as Unknown in both, so they are equal.",
+    hello: { label: "Ana's Switch", platform: "Win<10>" },
+    edit: (b) => {
+      b.platform = "\u0001other";
+    },
+    want: "ok",
+  });
+  addReq({
+    id: "valid-platform-known",
+    note: "A known platform spelling.",
+    hello: { label: "Ana's Switch", platform: "visionos" },
+    want: "ok",
+  });
+  addReq({
+    id: "valid-unknown-members-ignored",
+    note: "Unknown members, including the retired userCode and pop, are ignored.",
+    edit: (b) => {
+      b.userCode = "ABCD-EFGH";
+      b.pop = "x";
+      b.extra = { a: [1, 2, 3] };
+    },
+    want: "ok",
+  });
+  addReq({
+    id: "valid-member-order",
+    note: "The member order does not matter.",
+    text: (t) => {
+      const o = JSON.parse(t) as Body;
+      return JSON.stringify(Object.fromEntries(Object.entries(o).reverse()));
+    },
+    want: "ok",
+  });
+  addReq({
+    id: "valid-whitespace",
+    note: "JSON whitespace between tokens is allowed.",
+    text: (t) => JSON.stringify(JSON.parse(t), null, 2),
+    want: "ok",
+  });
+  addReq({
+    id: "valid-size-4096",
+    note: "A body of exactly 4096 bytes is read.",
+    padTo: 4096,
+    want: "ok",
+  });
+  addReq({
+    id: "size-4097",
+    note: "4096 bytes and one more: refused before it is parsed.",
+    padTo: 4097,
+    want: "size",
+  });
+
+  // JSON and the body as a whole.
+  addReq({
+    id: "not-an-object-array",
+    note: "A JSON array.",
+    text: () => "[]",
+    want: "object",
+  });
+  addReq({
+    id: "not-an-object-null",
+    note: "JSON null.",
+    text: () => "null",
+    want: "object",
+  });
+  addReq({ id: "empty-body", note: "No bytes.", text: () => "", want: "json" });
+  addReq({
+    id: "byte-order-mark",
+    note: "A BOM before the object.",
+    text: (t) => `\ufeff${t}`,
+    want: "bom",
+  });
+  addReq({
+    id: "invalid-utf8",
+    note: "A 0xff byte inside a string.",
+    hex: (h) => {
+      const b = Buffer.from(h, "hex");
+      b[b.indexOf("Ana")] = 0xff;
+      return b.toString("hex");
+    },
+    want: "utf8",
+  });
+  addReq({
+    id: "duplicate-key",
+    note: "The member request twice.",
+    text: (t) => t.replace(/}$/, `,"request":"${VOUCH_REQUEST}"}`),
+    want: "json",
+  });
+  addReq({
+    id: "trailing-comma",
+    note: "A trailing comma.",
+    text: (t) => t.replace(/}$/, ",}"),
+    want: "json",
+  });
+  addReq({
+    id: "lone-surrogate-escape",
+    note: "A lone surrogate escape in the label.",
+    text: (t) => t.replace("Ana's", "\\ud800"),
+    want: "json",
+  });
+
+  // v
+  addReq({
+    id: "version-2",
+    note: "v is 2.",
+    edit: (b) => {
+      b.v = 2;
+    },
+    want: "version",
+  });
+  addReq({
+    id: "version-missing",
+    note: "No v.",
+    edit: (b) => has(b, "v"),
+    want: "version",
+  });
+  addReq({
+    id: "version-string",
+    note: 'v is the string "1".',
+    edit: (b) => {
+      b.v = "1";
+    },
+    want: "version",
+  });
+
+  // request
+  const reqRow = (id: string, note: string, value: unknown | undefined): void =>
+    addReq({
+      id,
+      note,
+      sigOf: typeof value === "string" ? { request: value } : {},
+      edit: (b) => {
+        if (value === undefined) delete b.request;
+        else b.request = value;
+      },
+      want: "request",
+    });
+  reqRow("request-missing", "No request.", undefined);
+  reqRow(
+    "request-21-chars",
+    "The handle is one character short.",
+    VOUCH_REQUEST.slice(0, -1),
+  );
+  reqRow(
+    "request-23-chars",
+    "The handle is one character long.",
+    `${VOUCH_REQUEST}A`,
+  );
+  reqRow(
+    "request-wrong-prefix",
+    "nx_ instead of nr_.",
+    `nx_${VOUCH_REQUEST.slice(3)}`,
+  );
+  reqRow(
+    "request-bad-character",
+    "A + in the handle.",
+    `${VOUCH_REQUEST.slice(0, -1)}+`,
+  );
+  reqRow(
+    "request-padded",
+    "A base64 padding character.",
+    `${VOUCH_REQUEST.slice(0, -1)}=`,
+  );
+  reqRow(
+    "request-trailing-newline",
+    "A newline after a valid handle.",
+    `${VOUCH_REQUEST}\n`,
+  );
+  reqRow(
+    "request-non-ascii",
+    "A non-ASCII letter in the handle.",
+    `${VOUCH_REQUEST.slice(0, -1)}\u00e9`,
+  );
+  reqRow("request-number", "The handle is a number.", 7);
+
+  // deviceId
+  const devRow = (id: string, note: string, value: unknown | undefined): void =>
+    addReq({
+      id,
+      note,
+      sigOf: typeof value === "string" ? { device: value } : {},
+      edit: (b) => {
+        if (value === undefined) delete b.deviceId;
+        else b.deviceId = value;
+      },
+      want: "device-id",
+    });
+  devRow("device-id-missing", "No deviceId.", undefined);
+  devRow(
+    "device-id-31-chars",
+    "One character short.",
+    VOUCH_DEVICE.slice(0, -1),
+  );
+  devRow("device-id-33-chars", "One character long.", `${VOUCH_DEVICE}A`);
+  devRow(
+    "device-id-bad-character",
+    "A + in the id.",
+    `${VOUCH_DEVICE.slice(0, -1)}+`,
+  );
+  addReq({
+    id: "device-id-not-the-signed-one",
+    note: "A well-formed deviceId that is not the one the proof covers: the proof fails.",
+    edit: (b) => {
+      b.deviceId = VOUCH_OTHER_DEVICE;
+    },
+    want: "sig",
+  });
+
+  // signKey
+  addReq({
+    id: "sign-key-missing",
+    note: "No signKey.",
+    edit: (b) => has(b, "signKey"),
+    want: "sign-key",
+  });
+  addReq({
+    id: "sign-key-padded",
+    note: "The key with a padding character.",
+    edit: (b) => {
+      b.signKey = `${vouchSigner.signKey}=`;
+    },
+    want: "sign-key",
+  });
+  addReq({
+    id: "sign-key-not-canonical",
+    note: "The last character carries non-zero unused bits.",
+    edit: (b) => {
+      b.signKey = dirtyLastChar(vouchSigner.signKey);
+    },
+    want: "sign-key",
+  });
+  addReq({
+    id: "sign-key-small-order",
+    note: "The identity point as the key.",
+    edit: (b) => {
+      b.signKey = u(`01${"00".repeat(31)}`);
+    },
+    want: "sign-key",
+  });
+  addReq({
+    id: "sign-key-other",
+    note: "A valid key that did not sign.",
+    edit: (b) => {
+      b.signKey = vouchOtherSigner.signKey;
+    },
+    want: "sig",
+  });
+
+  // agreeKey (not under the signature, so each row has a valid proof)
+  addReq({
+    id: "agree-key-missing",
+    note: "No agreeKey.",
+    edit: (b) => has(b, "agreeKey"),
+    want: "agree-key",
+  });
+  addReq({
+    id: "agree-key-padded",
+    note: "The key with a padding character.",
+    edit: (b) => {
+      b.agreeKey = `${VOUCH_AGREE}=`;
+    },
+    want: "agree-key",
+  });
+  addReq({
+    id: "agree-key-not-canonical-base64",
+    note: "The last character carries non-zero unused bits.",
+    edit: (b) => {
+      b.agreeKey = dirtyLastChar(VOUCH_AGREE);
+    },
+    want: "agree-key",
+  });
+  addReq({
+    id: "agree-key-low-order-zero",
+    note: "u = 0.",
+    edit: (b) => {
+      b.agreeKey = u("00".repeat(32));
+    },
+    want: "agree-key",
+  });
+  addReq({
+    id: "agree-key-low-order-one",
+    note: "u = 1.",
+    edit: (b) => {
+      b.agreeKey = u(`01${"00".repeat(31)}`);
+    },
+    want: "agree-key",
+  });
+  addReq({
+    id: "agree-key-low-order-high-bit",
+    note: "u = 1 with bit 255 set: low-order whichever way bit 255 is read.",
+    edit: (b) => {
+      b.agreeKey = u(`01${"00".repeat(30)}80`);
+    },
+    want: "agree-key",
+  });
+  {
+    const hi = Uint8Array.from(Buffer.from(VOUCH_AGREE, "base64url"));
+    hi[31] = hi[31]! | 0x80;
+    addReq({
+      id: "agree-key-bit-255-set",
+      note: "A good key with bit 255 set: the same point to a loose reader, a different spelling.",
+      edit: (b) => {
+        b.agreeKey = b64u(hi);
+      },
+      want: "agree-key-spelling",
+    });
+  }
+  addReq({
+    id: "agree-key-u-above-p",
+    note: "u = p + 2, with bit 255 clear: not the canonical spelling of any point.",
+    edit: (b) => {
+      b.agreeKey = u(`ef${"ff".repeat(30)}7f`);
+    },
+    want: "agree-key-spelling",
+  });
+  addReq({
+    id: "agree-key-u-max",
+    note: "u = 2^255 - 1.",
+    edit: (b) => {
+      b.agreeKey = u(`ff${"ff".repeat(30)}7f`);
+    },
+    want: "agree-key-spelling",
+  });
+
+  // label and platform against the HELLO
+  addReq({
+    id: "label-number",
+    note: "The label is a number.",
+    edit: (b) => {
+      b.label = 5;
+    },
+    want: "label",
+  });
+  addReq({
+    id: "label-null",
+    note: "The label is null.",
+    edit: (b) => {
+      b.label = null;
+    },
+    want: "label",
+  });
+  addReq({
+    id: "label-differs-from-hello",
+    note: "Another label than the HELLO showed.",
+    edit: (b) => {
+      b.label = "Ana's Deck";
+    },
+    want: "hello-label",
+  });
+  addReq({
+    id: "label-case-differs-from-hello",
+    note: "The same words in another case.",
+    edit: (b) => {
+      b.label = "ana's switch";
+    },
+    want: "hello-label",
+  });
+  addReq({
+    id: "label-added-after-hello",
+    note: "The HELLO had no label and the request has one.",
+    hello: { platform: "linux" },
+    edit: (b) => {
+      b.label = "Ana's Switch";
+    },
+    want: "hello-label",
+  });
+  addReq({
+    id: "label-dropped-after-hello",
+    note: "The HELLO had a label and the request has none.",
+    edit: (b) => has(b, "label"),
+    want: "hello-label",
+  });
+  addReq({
+    id: "platform-missing",
+    note: "No platform.",
+    edit: (b) => has(b, "platform"),
+    want: "platform",
+  });
+  addReq({
+    id: "platform-number",
+    note: "The platform is a number.",
+    edit: (b) => {
+      b.platform = 1;
+    },
+    want: "platform",
+  });
+  addReq({
+    id: "platform-differs-from-hello",
+    note: "Another platform than the HELLO showed.",
+    edit: (b) => {
+      b.platform = "windows";
+    },
+    want: "hello-platform",
+  });
+  addReq({
+    id: "platform-trailing-newline",
+    note: "A newline after a valid platform is not the platform.",
+    edit: (b) => {
+      b.platform = "linux\n";
+    },
+    want: "hello-platform",
+  });
+  addReq({
+    id: "platform-known-vs-unknown",
+    note: "The HELLO's platform shows as Unknown and the request names a real one.",
+    hello: { label: "Ana's Switch", platform: "Win<10>" },
+    edit: (b) => {
+      b.platform = "windows";
+    },
+    want: "hello-platform",
+  });
+  addReq({
+    id: "platform-over-32",
+    note: "33 allowed characters show as Unknown, so a request with the same text still equals the HELLO.",
+    hello: { label: "Ana's Switch", platform: "a".repeat(33) },
+    edit: (b) => {
+      b.platform = "b".repeat(40);
+    },
+    want: "ok",
+  });
+
+  // sig
+  addReq({
+    id: "sig-missing",
+    note: "No sig.",
+    edit: (b) => has(b, "sig"),
+    want: "sig",
+  });
+  addReq({
+    id: "sig-number",
+    note: "The sig is a number.",
+    edit: (b) => {
+      b.sig = 1;
+    },
+    want: "sig",
+  });
+  addReq({
+    id: "sig-padded",
+    note: "A padding character after the signature.",
+    edit: (b) => {
+      b.sig = `${b.sig as string}=`;
+    },
+    want: "sig:sig-encoding",
+  });
+  addReq({
+    id: "sig-scalar-not-reduced",
+    note: "S + L: the same signature to a loose verifier, refused by a strict one.",
+    edit: (b) => {
+      const s = Uint8Array.from(Buffer.from(b.sig as string, "base64url"));
+      let n = 0n;
+      for (let i = 31; i >= 0; i--) n = (n << 8n) | BigInt(s[32 + i]!);
+      n += 2n ** 252n + 27742317777372353535851937790883648493n;
+      for (let i = 0; i < 32; i++) {
+        s[32 + i] = Number(n & 0xffn);
+        n >>= 8n;
+      }
+      b.sig = b64u(s);
+    },
+    want: "sig:sig-scalar",
+  });
+  addReq({
+    id: "sig-bit-flipped",
+    note: "One signature character changed.",
+    edit: (b) => {
+      const s = b.sig as string;
+      b.sig = `${s.slice(0, 10)}${s[10] === "A" ? "B" : "A"}${s.slice(11)}`;
+    },
+    want: "sig",
+  });
+  addReq({
+    id: "sig-over-another-h",
+    note: "Signed over another session's handshake hash.",
+    sigOf: { hHex: OTHER_H },
+    want: "sig",
+  });
+  addReq({
+    id: "replayed-into-another-session",
+    note: "A body that was valid in one session, presented in a session with another handshake hash.",
+    hHex: OTHER_H,
+    want: "sig",
+  });
+  addReq({
+    id: "sig-over-another-purpose",
+    note: "A proof of purpose nearby-approve.",
+    sigOf: { purpose: "nearby-approve" },
+    want: "sig",
+  });
+  addReq({
+    id: "sig-over-another-slug",
+    note: "Signed for another product.",
+    sigOf: { slug: "djdl" },
+    want: "sig",
+  });
+  addReq({
+    id: "sig-checked-for-another-slug",
+    note: "A valid proof for this product, checked in a session of another product.",
+    slug: "djdl",
+    want: "sig",
+  });
+  addReq({
+    id: "sig-over-another-device",
+    note: "Signed for another device id.",
+    sigOf: { device: VOUCH_OTHER_DEVICE },
+    want: "sig",
+  });
+  addReq({
+    id: "sig-over-another-request",
+    note: "Signed for another request handle.",
+    sigOf: { request: VOUCH_OTHER_REQUEST },
+    want: "sig",
+  });
+  addReq({
+    id: "sig-by-another-key",
+    note: "Signed by a key that is not the signKey.",
+    sigOf: { signer: vouchOtherSigner },
+    want: "sig",
+  });
+
+  // ── results ──
+  const results: Record<string, unknown>[] = [];
+  const addRes = (
+    id: string,
+    note: string,
+    body: { text: string } | { hex: string },
+    want: { status: string } | { refuse: "peer_bad_frame" },
+  ): void => {
+    const bytes = "text" in body ? utf8(body.text) : hexBytes(body.hex);
+    check(`vouch result ${id}`, refVouchResult(bytes), want);
+    results.push({
+      id,
+      note,
+      ...("text" in body ? { body: body.text } : { bodyHex: body.hex }),
+      ...want,
+    });
+  };
+  const st = (s: string, extra = ""): { text: string } => ({
+    text: `{"status":${JSON.stringify(s)}${extra}}`,
+  });
+  addRes("approved", "The three statuses D shows.", st("approved"), {
+    status: "approved",
+  });
+  addRes("denied", "As above.", st("denied"), { status: "denied" });
+  addRes("expired", "As above.", st("expired"), { status: "expired" });
+  addRes(
+    "unknown-status",
+    "Any other string is read as denied.",
+    st("pending"),
+    { status: "denied" },
+  );
+  addRes(
+    "unknown-status-case",
+    "Status names are case-sensitive.",
+    st("Approved"),
+    { status: "denied" },
+  );
+  addRes("unknown-status-padded", "A space after the name.", st("approved "), {
+    status: "denied",
+  });
+  addRes("unknown-status-empty", "The empty string.", st(""), {
+    status: "denied",
+  });
+  addRes(
+    "retired-status-not-nearby",
+    "A sender no longer sends it; a receiver reads it as denied.",
+    st("not_nearby"),
+    { status: "denied" },
+  );
+  addRes("retired-status-device-limit", "Same.", st("device_limit"), {
+    status: "denied",
+  });
+  addRes("retired-status-choose", "Same.", st("choose"), { status: "denied" });
+  addRes(
+    "extra-members-ignored",
+    "Members other than status are ignored.",
+    st("approved", ',"deviceLabel":"x","n":[1]'),
+    { status: "approved" },
+  );
+  addRes(
+    "whitespace",
+    "JSON whitespace around the object.",
+    { text: ' \n{"status" : "denied"}\t' },
+    { status: "denied" },
+  );
+  addRes(
+    "status-missing",
+    "No status member.",
+    { text: "{}" },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes(
+    "status-number",
+    "A number.",
+    { text: '{"status":1}' },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes(
+    "status-null",
+    "null.",
+    { text: '{"status":null}' },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes(
+    "status-true",
+    "true.",
+    { text: '{"status":true}' },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes(
+    "status-array",
+    "An array holding a status.",
+    { text: '{"status":["approved"]}' },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes(
+    "status-object",
+    "An object.",
+    { text: '{"status":{"v":"approved"}}' },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes(
+    "body-array",
+    "The body is an array.",
+    { text: '[{"status":"approved"}]' },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes(
+    "body-string",
+    "The body is a string.",
+    { text: '"approved"' },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes(
+    "body-null",
+    "The body is null.",
+    { text: "null" },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes("body-empty", "No bytes.", { hex: "" }, { refuse: "peer_bad_frame" });
+  addRes(
+    "duplicate-status",
+    "status twice.",
+    { text: '{"status":"approved","status":"denied"}' },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes(
+    "trailing-garbage",
+    "Text after the object.",
+    { text: '{"status":"approved"}x' },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes(
+    "byte-order-mark",
+    "A BOM before the object.",
+    { text: '\ufeff{"status":"approved"}' },
+    { refuse: "peer_bad_frame" },
+  );
+  addRes(
+    "invalid-utf8",
+    "A 0xff byte in an extra member.",
+    {
+      hex:
+        bytesHex(utf8('{"status":"approved","x":"')) +
+        "ff" +
+        bytesHex(utf8('"}')),
+    },
+    { refuse: "peer_bad_frame" },
+  );
+
+  // ── flows ──
+  const flows: Record<string, unknown>[] = [];
+  const caps = ["app/1", "vouch/1"];
+  const hs = (capsD: string[], capsM: string[]): RefFlowStep => ({
+    ev: "handshake",
+    capsD,
+    capsM,
+  });
+  const ev = (
+    e:
+      | "shown"
+      | "picked"
+      | "wrong-pick"
+      | "none-match"
+      | "timeout"
+      | "confirmed",
+  ): RefFlowStep => ({ ev: e });
+  const rec = (
+    dir: "d2m" | "m2d",
+    type: string,
+    extra: { status?: "approved" | "denied" | "expired"; bytes?: number } = {},
+  ): RefFlowStep => ({ dir, type, ...extra });
+  const REQ = (): RefFlowStep => rec("d2m", "8010");
+  const RES = (s: "approved" | "denied" | "expired"): RefFlowStep =>
+    rec("m2d", "8011", { status: s });
+  const WRAP = (t = "0030", bytes = 200): RefFlowStep =>
+    rec("m2d", t, { bytes });
+  const addFlow = (
+    id: string,
+    note: string,
+    steps: RefFlowStep[],
+    want: RefFlowWant,
+  ): void => {
+    check(`vouch flow ${id}`, refVouchFlow(steps), want);
+    flows.push({ id, note, steps, want });
+  };
+  const ok = (delivered: number[]): RefFlowWant => ({
+    close: null,
+    at: null,
+    delivered,
+  });
+  const bad = (
+    close: string,
+    at: number,
+    delivered: number[] = [],
+  ): RefFlowWant => ({ close, at, delivered });
+
+  addFlow(
+    "happy-path",
+    "The order of rule 7: code shown, request, pick, result, wrap held until D confirms the account.",
+    [
+      hs(caps, caps),
+      ev("shown"),
+      REQ(),
+      ev("picked"),
+      RES("approved"),
+      WRAP(),
+      ev("confirmed"),
+    ],
+    ok([2, 4, 5]),
+  );
+  addFlow(
+    "happy-path-pick-first",
+    "The pick comes before the request arrives: the request is delivered on arrival.",
+    [hs(caps, caps), ev("shown"), ev("picked"), REQ(), RES("approved")],
+    ok([3, 4]),
+  );
+  addFlow(
+    "happy-path-wrap-after-confirm",
+    "A wrap that arrives after D confirmed is delivered at once.",
+    [
+      hs(caps, caps),
+      ev("shown"),
+      REQ(),
+      ev("picked"),
+      RES("approved"),
+      ev("confirmed"),
+      WRAP(),
+    ],
+    ok([2, 4, 6]),
+  );
+  addFlow(
+    "happy-path-sync-types",
+    "0x0030 and every type up to 0x003f are carried.",
+    [
+      hs(caps, caps),
+      ev("shown"),
+      REQ(),
+      ev("picked"),
+      RES("approved"),
+      ev("confirmed"),
+      WRAP("0031"),
+      WRAP("003f"),
+    ],
+    ok([2, 4, 6, 7]),
+  );
+  addFlow(
+    "request-held-until-pick",
+    "No pick: the request is never handed to the host.",
+    [hs(caps, caps), ev("shown"), REQ()],
+    ok([]),
+  );
+  addFlow(
+    "request-never-delivered-after-wrong-pick",
+    "A pick of a decoy closes peer_bye; the held request is never delivered.",
+    [hs(caps, caps), ev("shown"), REQ(), ev("wrong-pick")],
+    bad("peer_bye", 3),
+  );
+  addFlow(
+    "none-match-closes",
+    "None of these match closes peer_bye.",
+    [hs(caps, caps), ev("shown"), REQ(), ev("none-match")],
+    bad("peer_bye", 3),
+  );
+  addFlow(
+    "code-timeout",
+    "No pick in 120 s closes peer_timeout.",
+    [hs(caps, caps), ev("shown"), REQ(), ev("timeout")],
+    bad("peer_timeout", 3),
+  );
+  addFlow(
+    "request-from-m",
+    "VOUCH_REQ sent by M: D refuses it.",
+    [hs(caps, caps), rec("m2d", "8010")],
+    bad("peer_not_allowed", 1),
+  );
+  addFlow(
+    "request-twice",
+    "A repeated VOUCH_REQ.",
+    [hs(caps, caps), ev("shown"), REQ(), REQ()],
+    bad("peer_bad_frame", 3),
+  );
+  addFlow(
+    "request-twice-after-pick",
+    "A repeated VOUCH_REQ after the pick.",
+    [hs(caps, caps), ev("shown"), REQ(), ev("picked"), REQ()],
+    bad("peer_bad_frame", 4, [2]),
+  );
+  addFlow(
+    "result-from-d",
+    "VOUCH_RESULT sent by D: M refuses it.",
+    [hs(caps, caps), ev("shown"), rec("d2m", "8011", { status: "approved" })],
+    bad("peer_not_allowed", 2),
+  );
+  addFlow(
+    "result-before-request",
+    "VOUCH_RESULT before D sent its request.",
+    [hs(caps, caps), ev("shown"), RES("approved")],
+    bad("peer_not_allowed", 2),
+  );
+  addFlow(
+    "result-twice",
+    "A second VOUCH_RESULT.",
+    [
+      hs(caps, caps),
+      ev("shown"),
+      REQ(),
+      ev("picked"),
+      RES("denied"),
+      RES("denied"),
+    ],
+    bad("peer_bad_frame", 5, [2, 4]),
+  );
+  addFlow(
+    "result-denied-is-delivered",
+    "A denied result is shown to D.",
+    [hs(caps, caps), ev("shown"), REQ(), ev("picked"), RES("denied")],
+    ok([2, 4]),
+  );
+  addFlow(
+    "wrap-before-result",
+    "A wrap before any result.",
+    [hs(caps, caps), ev("shown"), REQ(), ev("picked"), WRAP()],
+    bad("peer_not_allowed", 4, [2]),
+  );
+  addFlow(
+    "wrap-before-request",
+    "A wrap with no request at all.",
+    [hs(caps, caps), ev("shown"), WRAP()],
+    bad("peer_not_allowed", 2),
+  );
+  addFlow(
+    "wrap-after-denied",
+    "A wrap after a denied result.",
+    [hs(caps, caps), ev("shown"), REQ(), ev("picked"), RES("denied"), WRAP()],
+    bad("peer_not_allowed", 5, [2, 4]),
+  );
+  addFlow(
+    "wrap-after-expired",
+    "A wrap after an expired result.",
+    [
+      hs(caps, caps),
+      ev("shown"),
+      REQ(),
+      ev("picked"),
+      RES("expired"),
+      WRAP("0035"),
+    ],
+    bad("peer_not_allowed", 5, [2, 4]),
+  );
+  addFlow(
+    "wrap-from-d",
+    "A wrap sent by D.",
+    [
+      hs(caps, caps),
+      ev("shown"),
+      REQ(),
+      ev("picked"),
+      RES("approved"),
+      rec("d2m", "0030", { bytes: 10 }),
+    ],
+    bad("peer_not_allowed", 5, [2, 4]),
+  );
+  addFlow(
+    "wrap-held-without-confirm",
+    "Records after approved are held, not delivered, until D's person confirms the account.",
+    [
+      hs(caps, caps),
+      ev("shown"),
+      REQ(),
+      ev("picked"),
+      RES("approved"),
+      WRAP(),
+      WRAP("0031"),
+    ],
+    ok([2, 4]),
+  );
+  const manyWraps = (n: number, bytes = 10): RefFlowStep[] =>
+    Array.from({ length: n }, () => WRAP("0030", bytes));
+  addFlow(
+    "held-16-records",
+    "Sixteen held records are kept.",
+    [
+      hs(caps, caps),
+      ev("shown"),
+      REQ(),
+      ev("picked"),
+      RES("approved"),
+      ...manyWraps(16),
+      ev("confirmed"),
+    ],
+    ok([2, 4, ...Array.from({ length: 16 }, (_, i) => 5 + i)]),
+  );
+  addFlow(
+    "held-17th-record",
+    "The seventeenth held record closes peer_busy.",
+    [
+      hs(caps, caps),
+      ev("shown"),
+      REQ(),
+      ev("picked"),
+      RES("approved"),
+      ...manyWraps(17),
+    ],
+    bad("peer_busy", 21, [2, 4]),
+  );
+  addFlow(
+    "held-16-kib",
+    "Held bodies of exactly 16 KiB are kept.",
+    [
+      hs(caps, caps),
+      ev("shown"),
+      REQ(),
+      ev("picked"),
+      RES("approved"),
+      WRAP("0030", 8192),
+      WRAP("0031", 8192),
+    ],
+    ok([2, 4]),
+  );
+  addFlow(
+    "held-over-16-kib",
+    "One byte more than 16 KiB held closes peer_busy.",
+    [
+      hs(caps, caps),
+      ev("shown"),
+      REQ(),
+      ev("picked"),
+      RES("approved"),
+      WRAP("0030", 8192),
+      WRAP("0031", 8193),
+    ],
+    bad("peer_busy", 6, [2, 4]),
+  );
+  addFlow(
+    "vouch-1-both",
+    "vouch/1 among other capabilities on both sides.",
+    [hs(["app/1", "vouch/1", "vouch/2"], ["vouch/1"]), ev("shown")],
+    ok([]),
+  );
+  addFlow(
+    "vouch-1-missing-on-d",
+    "D lists no vouch/1: M closes peer_not_allowed before any SAS record.",
+    [hs(["app/1"], caps), ev("shown")],
+    bad("peer_not_allowed", 0),
+  );
+  addFlow(
+    "vouch-1-missing-on-m",
+    "M lists no vouch/1.",
+    [hs(caps, ["app/1"]), ev("shown")],
+    bad("peer_not_allowed", 0),
+  );
+  addFlow(
+    "vouch-2-only",
+    "A later vouch/2 is not read as vouch/1.",
+    [hs(["vouch/2"], ["vouch/2"]), ev("shown")],
+    bad("peer_not_allowed", 0),
+  );
+  addFlow(
+    "no-capabilities",
+    "Neither side lists a capability.",
+    [hs([], []), ev("shown")],
+    bad("peer_not_allowed", 0),
+  );
+
+  // ── finish ──
+  const finish: Record<string, unknown>[] = [];
+  const addFin = (
+    id: string,
+    note: string,
+    r: {
+      http: number | null;
+      body?: string | null;
+      keysRetried?: boolean;
+      discoveryNearby?: boolean;
+    },
+    result: RefFinishResult,
+  ): void => {
+    const row: RefFinishRow = {
+      keysRetried: r.keysRetried ?? false,
+      http: r.http,
+      body: r.body ?? null,
+      discoveryNearby: r.discoveryNearby ?? true,
+    };
+    check(`vouch finish ${id}`, refVouchFinish(row), result);
+    finish.push({ id, note, ...row, result });
+  };
+  const code = (c: string): string => JSON.stringify({ code: c });
+  addFin(
+    "approved",
+    "200 approved: send approved.",
+    { http: 200, body: '{"status":"approved","deviceLabel":null}' },
+    { send: "approved" },
+  );
+  addFin(
+    "approved-after-keys-retry",
+    "The retry after registering keys answers approved.",
+    {
+      http: 200,
+      body: '{"status":"approved","deviceLabel":"Ana"}',
+      keysRetried: true,
+    },
+    { send: "approved" },
+  );
+  addFin("deny-204", "204: send denied.", { http: 204 }, { send: "denied" });
+  addFin(
+    "not-nearby",
+    "403 not_nearby: send denied (the code is not told to D).",
+    { http: 403, body: code("not_nearby") },
+    { send: "denied" },
+  );
+  addFin(
+    "device-limit",
+    "403 device_limit: send denied.",
+    { http: 403, body: code("device_limit") },
+    { send: "denied" },
+  );
+  addFin(
+    "not-found-discovery-nearby",
+    "404 while discovery still names nearby and nearbyApprove: send expired.",
+    { http: 404, body: code("not_found") },
+    { send: "expired" },
+  );
+  addFin(
+    "not-found-device-mismatch",
+    "404 for a deviceId, signKey or agreeKey that is not D's reads the same: send expired.",
+    { http: 404, body: code("not_found") },
+    { send: "expired" },
+  );
+  addFin(
+    "not-found-discovery-lost",
+    "404 after discovery lost nearby: close and stop the advert.",
+    { http: 404, body: code("not_found"), discoveryNearby: false },
+    { close: true, stopAdvert: true },
+  );
+  addFin(
+    "choose",
+    "200 choose: nothing sent; M shows the choice and calls again.",
+    { http: 200, body: '{"status":"choose","choices":[]}' },
+    { wait: "choice" },
+  );
+  addFin(
+    "keys-required-first",
+    "The first 409 device_keys_required: register keys and call again.",
+    { http: 409, body: code("device_keys_required") },
+    { wait: "keys" },
+  );
+  addFin(
+    "keys-required-again",
+    "A second 409 device_keys_required after the retry: close.",
+    { http: 409, body: code("device_keys_required"), keysRetried: true },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "license-choice-required",
+    "409 license_choice_required (a lost mint): show the choice again and call again.",
+    { http: 409, body: code("license_choice_required") },
+    { wait: "choice" },
+  );
+  addFin(
+    "license-choice-required-after-keys",
+    "The same after a keys retry.",
+    { http: 409, body: code("license_choice_required"), keysRetried: true },
+    { wait: "choice" },
+  );
+  addFin(
+    "conflict-other",
+    "Any other 409 closes.",
+    { http: 409, body: code("conflict") },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "conflict-no-body",
+    "A 409 with no body closes.",
+    { http: 409 },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "account-required",
+    "403 account_required: close.",
+    { http: 403, body: code("account_required") },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "forbidden-other",
+    "A 403 with another code: close.",
+    { http: 403, body: code("forbidden") },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "bad-request",
+    "400 bad_request: close.",
+    { http: 400, body: code("bad_request") },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "invalid-grant",
+    "400 invalid_grant: close.",
+    { http: 400, body: code("invalid_grant") },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "unauthorized",
+    "401: close.",
+    { http: 401 },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "rate-limited",
+    "429: close.",
+    { http: 429, body: code("rate_limited") },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "unavailable",
+    "503: close.",
+    { http: 503 },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "server-error",
+    "500: close.",
+    { http: 500 },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "no-answer",
+    "No answer: close.",
+    { http: null },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "ok-unknown-status",
+    "A 200 with a status M does not know: close.",
+    { http: 200, body: '{"status":"pending"}' },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "ok-no-body",
+    "A 200 with no body: close.",
+    { http: 200 },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "ok-not-json",
+    "A 200 whose body is not JSON: close.",
+    { http: 200, body: "approved" },
+    { close: true, stopAdvert: false },
+  );
+  addFin(
+    "no-content-after-keys",
+    "A 204 after the keys retry: send denied.",
+    { http: 204, keysRetried: true },
+    { send: "denied" },
+  );
+  addFin(
+    "created",
+    "A status M does not map (201): close.",
+    { http: 201, body: '{"status":"approved"}' },
+    { close: true, stopAdvert: false },
+  );
+
+  return {
+    note: "Mode v: the vouch (15.6.1). `requests`: M's check of a VOUCH_REQ body, `{id, slug, hHex, hello, body | bodyHex | bodyPad, verdict, close?, result?}`; `hHex` is the session's handshake hash (the mode-v handshake of noise-vectors.json), `hello` the members of D's HELLO, cleaned by 15.6 before they are compared. A refusal closes `peer_bad_frame` and calls no route. The proof is the `vouch` proof of 12.11.1 over `<b64url h>.<request>`. `results`: D's reading of a VOUCH_RESULT body, `{id, body | bodyHex, status | refuse}`. `flows`: the order, direction and gating of rule 7, 8 and 12 on one session, `{id, steps, want}`; a step is an event (`handshake` with both capability lists, `shown`, `picked`, `wrong-pick`, `none-match`, `timeout`, `confirmed`) or a record (`dir` d2m or m2d, `type` as four hex digits: 8010 VOUCH_REQ, 8011 VOUCH_RESULT with its `status`, 0030 to 003f the Sync records with their `bytes`); `want` is the close code the receiving side sends and the step index it closes at, and the indices of the records handed to the host in order. `finish`: what M does with the answer to nearby/approve, `{id, keysRetried, http, body, discoveryNearby, result}` with `result` one of `{send}`, `{wait}` or `{close, stopAdvert}`; a problem body names its refusal in `code`.",
+    requests,
+    results,
+    flows,
+    finish,
+  };
+}
+
 export function buildPeerMatrix(): unknown {
   return {
     peerMatrixVersion: 1,
     description:
-      "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`. A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+      "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`; `lanAddresses` (which peer addresses a device dials or accepts, and the per-address count key); `mdnsAnswers` (which A and AAAA records a browser believes); `vouch` (the mode-v vouch of 15.6.1: `requests`, `results`, `flows`, `finish`). A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
     adverts: buildAdverts(),
     prologue: buildPrologue(),
     psk: buildPsk(),
@@ -1183,5 +3399,8 @@ export function buildPeerMatrix(): unknown {
     records: buildRecords(),
     relayEnvelopes: buildRelay(),
     handshakePayloads: buildPayloads(),
+    lanAddresses: buildLanAddresses(),
+    mdnsAnswers: buildMdnsAnswers(),
+    vouch: buildVouch(),
   };
 }

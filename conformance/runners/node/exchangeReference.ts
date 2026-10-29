@@ -223,3 +223,18 @@ export async function replay(
       expect(reported[i]![key], `${t.id} step ${i}: ${key}`).toEqual(want);
   });
 }
+
+/** One JSON POST the way the reference client sends it: the device's headers, a JSON body. */
+export async function postJson(
+  server: ReplayServer,
+  url: string,
+  headers: Record<string, string>,
+  body: Record<string, unknown>,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const res = await server.fetch(url, {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return { status: res.status, body: await json(res) };
+}

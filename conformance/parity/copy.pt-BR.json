@@ -601,6 +601,50 @@
       "title": "Rede local bloqueada",
       "message": "Este app não consegue acessar dispositivos da sua rede local. Permita nas configurações do sistema."
     },
+    "nearby-unsupported": {
+      "title": "Login por proximidade indisponível",
+      "message": "Este dispositivo não pode procurar dispositivos próximos aqui."
+    },
+    "peer-handshake-failed": {
+      "title": "Não foi possível conectar com segurança",
+      "message": "Não foi possível estabelecer uma conexão segura com o dispositivo próximo. Tente novamente."
+    },
+    "peer-closed": {
+      "title": "Conexão encerrada",
+      "message": "A conexão com o dispositivo próximo foi encerrada. Tente novamente."
+    },
+    "peer_revoked": {
+      "title": "Dispositivo não é mais confiável",
+      "message": "O outro dispositivo foi removido da conta. Nada foi compartilhado."
+    },
+    "peer_expired": {
+      "title": "Certificado do dispositivo expirado",
+      "message": "O certificado do outro dispositivo expirou. Atualize e tente novamente."
+    },
+    "peer_bad_frame": {
+      "title": "Erro de conexão",
+      "message": "O dispositivo próximo enviou algo inesperado. Tente novamente."
+    },
+    "peer_unknown_critical": {
+      "title": "Solicitação não compatível",
+      "message": "O dispositivo próximo pediu algo que este app não aceita. Tente novamente."
+    },
+    "peer_not_allowed": {
+      "title": "Não permitido aqui",
+      "message": "O dispositivo próximo pediu algo que não é permitido nesta etapa. Tente novamente."
+    },
+    "peer_busy": {
+      "title": "Dispositivo próximo ocupado",
+      "message": "Há conexões demais abertas. Tente novamente em instantes."
+    },
+    "peer_timeout": {
+      "title": "Tempo de conexão esgotado",
+      "message": "O dispositivo próximo não respondeu a tempo. Tente novamente."
+    },
+    "peer_bye": {
+      "title": "Conexão encerrada",
+      "message": "O dispositivo próximo encerrou a conexão."
+    },
     "platform-error": {
       "title": "Problema na plataforma",
       "message": "A plataforma informou um erro. Tente novamente."

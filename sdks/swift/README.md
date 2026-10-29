@@ -490,8 +490,39 @@ starts clean. A root that cannot be deleted throws and stops the release.
 **Where the root lives.** In memory while the app runs, and in one Keychain item: service
 `pkey:<product>`, account `sync-root`, accessible after first unlock on this device only
 (`AfterFirstUnlockThisDeviceOnly`), never synchronizable. A restart takes it back while it matches
-the pin. A Keychain write that fails leaves the root in memory only. An iCloud Keychain backup of
-the root is planned.
+the pin. A Keychain write that fails leaves the root in memory only. A second, synchronizable copy in the
+person's iCloud Keychain is on by default; see [Back up the Sync key](#back-up-the-sync-key).
+
+### Back up the Sync key
+
+By default the root is also saved to the person's iCloud Keychain, so a new device on the same Apple
+ID unlocks Cloud Sync without the recovery code. The item is synchronizable, with service
+`pkey-sync:<product>` and account `<subject>:<ringId>`, and it holds only the root's record: the
+recovery code is never in it. It is written when the ring is created, reset, recovered or unlocked.
+Nothing is backed up without a signed-in subject, or on a build with no Keychain access group
+entitlement; the ring calls carry on without it and never fail because of it.
+
+A new device with no root of its own reads the item, uses it only when it derives the `kid` of the
+ring the Worker serves, and unlocks with no prompt. It then stores its own wrap with the Worker, as
+`recover(_:)` does, so its next start no longer depends on the backup. If that request fails the
+device is unlocked all the same.
+
+To keep the root out of iCloud, turn the backup off before the first read of `client.keyring`:
+
+```swift
+import PolarisKey
+
+func keyRingWithoutBackup(_ client: PolarisKeyClient) throws -> SyncKeyring {
+    // The default is `.platform`. `.off` writes and reads no backup item.
+    try client.configureKeyring(SyncKeyringOptions(backup: .off))
+}
+```
+
+**Sign-out keeps the item.** `forget()` removes the root from memory and from this device's Keychain
+item, but not the iCloud copy: a synchronizable item deleted on one device is deleted on every
+device of the Apple ID. The next sign-in on this device, or any other on the same Apple ID, unlocks
+from it. Only `reset()` (which removes the old ring's item and writes the new one), `deleteBackup()`
+(call it before account deletion) and the person's own Keychain remove it.
 
 ### Cloud Sync settings
 

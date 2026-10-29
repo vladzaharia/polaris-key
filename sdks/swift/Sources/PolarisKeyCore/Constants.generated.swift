@@ -159,6 +159,17 @@ public enum ErrorCode {
     public static let connectUnavailable = "connect-unavailable"
     public static let peerCertInvalid = "peer-cert-invalid"
     public static let nearbyPermissionDenied = "nearby-permission-denied"
+    public static let nearbyUnsupported = "nearby-unsupported"
+    public static let peerHandshakeFailed = "peer-handshake-failed"
+    public static let peerClosed = "peer-closed"
+    public static let peerRevoked = "peer_revoked"
+    public static let peerExpired = "peer_expired"
+    public static let peerBadFrame = "peer_bad_frame"
+    public static let peerUnknownCritical = "peer_unknown_critical"
+    public static let peerNotAllowed = "peer_not_allowed"
+    public static let peerBusy = "peer_busy"
+    public static let peerTimeout = "peer_timeout"
+    public static let peerBye = "peer_bye"
     public static let platformError = "platform-error"
     public static let noToken = "no-token"
     public static let mintUnavailable = "mint-unavailable"
@@ -370,6 +381,17 @@ public let ERROR_CODE_VALUES: [String] = [
     "connect-unavailable",
     "peer-cert-invalid",
     "nearby-permission-denied",
+    "nearby-unsupported",
+    "peer-handshake-failed",
+    "peer-closed",
+    "peer_revoked",
+    "peer_expired",
+    "peer_bad_frame",
+    "peer_unknown_critical",
+    "peer_not_allowed",
+    "peer_busy",
+    "peer_timeout",
+    "peer_bye",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -581,6 +603,17 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "connect-unavailable": "client",
     "peer-cert-invalid": "client",
     "nearby-permission-denied": "client",
+    "nearby-unsupported": "client",
+    "peer-handshake-failed": "client",
+    "peer-closed": "client",
+    "peer_revoked": "peer",
+    "peer_expired": "peer",
+    "peer_bad_frame": "peer",
+    "peer_unknown_critical": "peer",
+    "peer_not_allowed": "peer",
+    "peer_busy": "peer",
+    "peer_timeout": "peer",
+    "peer_bye": "peer",
     "platform-error": "client",
     "no-token": "client",
     "mint-unavailable": "client",
@@ -717,6 +750,7 @@ public enum Feature {
     public static let identityPgs = "identity.pgs"
     public static let identityAutosignin = "identity.autosignin"
     public static let identityLink = "identity.link"
+    public static let identityNearby = "identity.nearby"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
     public static let releaseRecord = "release.record"
@@ -858,6 +892,7 @@ public let FEATURE_VALUES: [String] = [
     "identity.pgs",
     "identity.autosignin",
     "identity.link",
+    "identity.nearby",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1999,6 +2034,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.pgs": CapabilityRow(status: "na", service: "identity", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "identity.autosignin": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.link": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.nearby": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -2066,4 +2102,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "4df8b276c8f4b6f39f804ffa988c1509ae9f8b03332bf880b2bd411c155d46c0"
+public let CAPABILITY_DIGEST = "a562a62da3902e4564a454392b6460a7c0b69dc9587bd4d70b72e86b02e4f719"

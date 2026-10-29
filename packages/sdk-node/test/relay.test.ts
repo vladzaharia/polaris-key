@@ -264,7 +264,7 @@ describe("LAN first, then the relay", () => {
     const name = await accountInstance(keys.current, advertEpoch(T0), B);
     net.inject({
       instance: name,
-      host: "127.0.0.1",
+      hosts: ["127.0.0.1"],
       port: 9,
       txt: ["v=1", "m=a"],
     });

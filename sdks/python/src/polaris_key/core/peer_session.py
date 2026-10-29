@@ -14,8 +14,10 @@ transport exists nothing is sent, after it a CLOSE record names the code.
 Modes ``v`` and ``p``: after HELLO the initiator (the device) commits to a nonce, the responder (the
 approver) answers with its own, the initiator reveals, and both show the same six-digit code. The
 host calls :meth:`PeerSession.confirm_sas` when the person agrees; until then host records from the
-peer are held (at most 16), and HELLO display data is unauthenticated. A responder in these modes
-needs a :class:`HandshakeLimiter`.
+peer are held (at most 16 records and 16 KiB of bodies, then ``peer_busy``). HELLO display data is
+unauthenticated there: a HELLO is at most 4 KiB, ``label`` and ``app`` are cleaned (NFC, controls and
+bidi stripped, 64 code points; an empty ``app`` is "Unknown"), and a ``platform`` that is not at most 32 of
+``A-Z a-z 0-9 space . _ + -`` is "Unknown". A responder in these modes needs a :class:`HandshakeLimiter`.
 
 Keys: the device's static private key is handed to the Noise engine only, as bytes or a key port whose
 ``dh`` runs the static operations (G1). A session's repr names no key, and it cannot be pickled (G19).
@@ -24,6 +26,7 @@ Keys: the device's static private key is handed to the Noise engine only, as byt
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 import unicodedata
@@ -91,6 +94,13 @@ __all__ = [
 TRANSPORT_DEADLINE_SECONDS = 30
 SAS_DEADLINE_SECONDS = 120
 _MAX_QUEUED = 16
+#: §15.6: bytes of held records before the person's confirmation, modes v and p.
+_MAX_QUEUED_BYTES = 16 * 1024
+#: §15.6: a HELLO in mode v or p is at most this many bytes.
+_MAX_UNVERIFIED_HELLO = 4096
+#: §15.6: ``platform`` is shown as sent only when it is up to 32 of these characters; else "Unknown".
+_PLATFORM_DISPLAY = re.compile(r"[A-Za-z0-9 ._+-]{1,32}")
+_UNKNOWN_DISPLAY = "Unknown"
 _MAX_SAFE_INTEGER = 2**53 - 1
 _KNOWN_CLOSE = frozenset(
     {
@@ -652,8 +662,10 @@ class PeerSession:
             return
         self._on_message(r.type, r.body)
 
-    @staticmethod
-    def _parse_hello(body: bytes) -> Optional[PeerHello]:
+    def _parse_hello(self, body: bytes) -> Optional[PeerHello]:
+        # Modes v and p take a HELLO from a peer that is not yet verified: 4 KiB at most (§15.6).
+        if self._mode != "a" and len(body) > _MAX_UNVERIFIED_HELLO:
+            return None
         o = parse_strict_object(body)
         if o is None:
             return None
@@ -664,9 +676,12 @@ class PeerSession:
             return None
         if isinstance(mm, bool) or not isinstance(mm, int) or mm < 1 or mm > _MAX_SAFE_INTEGER:
             return None
-        # Display data from the peer: NFC, controls and bidi stripped, 64 code points.
+        # Display data from an unauthenticated peer: NFC, controls and bidi stripped, 64 code points. An
+        # ``app`` with nothing left, and a ``platform`` that is not a known shape, show as "Unknown".
         clean = normalize_device_label(unicodedata.normalize("NFC", label)) if isinstance(label, str) else None
-        return PeerHello(platform, app, mm, clean)
+        shown_app = normalize_device_label(unicodedata.normalize("NFC", app)) or _UNKNOWN_DISPLAY
+        shown_platform = platform if _PLATFORM_DISPLAY.fullmatch(platform) else _UNKNOWN_DISPLAY
+        return PeerHello(shown_platform, shown_app, mm, clean)
 
     def _on_message(self, type_: int, body: bytes) -> None:
         if self._phase == "hello":
@@ -727,7 +742,8 @@ class PeerSession:
         # Everything else belongs to the host, and only once the code is settled.
         if self._phase == "sas-shown":
             # The peer may confirm first: hold the record (bounded) until this side's person does.
-            if len(self._queued) >= _MAX_QUEUED:
+            held = sum(len(b) for _, b in self._queued)
+            if len(self._queued) >= _MAX_QUEUED or held + len(body) > _MAX_QUEUED_BYTES:
                 raise _Fail("peer_busy")
             self._queued.append((type_, body))
             return

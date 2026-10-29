@@ -314,7 +314,9 @@ public actor PolarisKeyClient {
             applyTrust: { await core.applyPeerTrust($0) })
         self.cloudConnect = cloudConnect
         let attachments = self.attachments
-        let ring: @Sendable () -> SyncKeyring = { PolarisKeyClient.keyring(core: core, attachments: attachments) }
+        let ring: @Sendable () -> SyncKeyring = {
+            PolarisKeyClient.keyring(core: core, attachments: attachments, subject: { identityClient.account })
+        }
         let syncOptions = options.cloudSync
         let api = CloudSyncApi(
             core: core, config: config,

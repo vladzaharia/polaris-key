@@ -367,6 +367,17 @@ class ErrorCode:
     CONNECT_UNAVAILABLE: Final = "connect-unavailable"
     PEER_CERT_INVALID: Final = "peer-cert-invalid"
     NEARBY_PERMISSION_DENIED: Final = "nearby-permission-denied"
+    NEARBY_UNSUPPORTED: Final = "nearby-unsupported"
+    PEER_HANDSHAKE_FAILED: Final = "peer-handshake-failed"
+    PEER_CLOSED: Final = "peer-closed"
+    PEER_REVOKED: Final = "peer_revoked"
+    PEER_EXPIRED: Final = "peer_expired"
+    PEER_BAD_FRAME: Final = "peer_bad_frame"
+    PEER_UNKNOWN_CRITICAL: Final = "peer_unknown_critical"
+    PEER_NOT_ALLOWED: Final = "peer_not_allowed"
+    PEER_BUSY: Final = "peer_busy"
+    PEER_TIMEOUT: Final = "peer_timeout"
+    PEER_BYE: Final = "peer_bye"
     PLATFORM_ERROR: Final = "platform-error"
     NO_TOKEN: Final = "no-token"
     MINT_UNAVAILABLE: Final = "mint-unavailable"
@@ -578,6 +589,17 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "connect-unavailable",
     "peer-cert-invalid",
     "nearby-permission-denied",
+    "nearby-unsupported",
+    "peer-handshake-failed",
+    "peer-closed",
+    "peer_revoked",
+    "peer_expired",
+    "peer_bad_frame",
+    "peer_unknown_critical",
+    "peer_not_allowed",
+    "peer_busy",
+    "peer_timeout",
+    "peer_bye",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -791,6 +813,17 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "connect-unavailable": "client",
         "peer-cert-invalid": "client",
         "nearby-permission-denied": "client",
+        "nearby-unsupported": "client",
+        "peer-handshake-failed": "client",
+        "peer-closed": "client",
+        "peer_revoked": "peer",
+        "peer_expired": "peer",
+        "peer_bad_frame": "peer",
+        "peer_unknown_critical": "peer",
+        "peer_not_allowed": "peer",
+        "peer_busy": "peer",
+        "peer_timeout": "peer",
+        "peer_bye": "peer",
         "platform-error": "client",
         "no-token": "client",
         "mint-unavailable": "client",
@@ -930,6 +963,7 @@ class Feature:
     IDENTITY_PGS: Final = "identity.pgs"
     IDENTITY_AUTOSIGNIN: Final = "identity.autosignin"
     IDENTITY_LINK: Final = "identity.link"
+    IDENTITY_NEARBY: Final = "identity.nearby"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
     RELEASE_RECORD: Final = "release.record"
@@ -1071,6 +1105,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.pgs",
     "identity.autosignin",
     "identity.link",
+    "identity.nearby",
     "release.changelog",
     "release.download",
     "release.record",
@@ -2473,6 +2508,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.autosignin": CapabilityRow("planned", "identity", ()),
         "identity.link": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
+        "identity.nearby": CapabilityRow("planned", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -2541,4 +2577,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "e159051d1cb45b0ecd03fea9d2e66d564602c5b55c322a9917b6fe38c41cf23f"
+CAPABILITY_DIGEST: Final[str] = "a9b8800263135da1ab35a457f9b4eb512c1ae74076887c5b8b2af83f142f1c5b"
