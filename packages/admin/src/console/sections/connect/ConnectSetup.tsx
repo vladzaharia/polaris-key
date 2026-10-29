@@ -213,28 +213,26 @@ function RelayCeiling({ slug }: { slug: string }): React.ReactElement | null {
           ) : undefined
         }
       >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p
-            className="tabular-nums text-fg-strong"
-            data-testid="connect-ceiling-value"
+        <p
+          className="min-w-0 tabular-nums text-fg-strong"
+          data-testid="connect-ceiling-value"
+        >
+          {!Number.isFinite(value)
+            ? "Not set"
+            : value === 0
+              ? "0 GiB: no relay traffic"
+              : `${formatBinaryBytes(value)} a month`}
+        </p>
+        {gate.allowed ? (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Change the relay ceiling"
+            onClick={() => setDialog(true)}
           >
-            {!Number.isFinite(value)
-              ? "Not set"
-              : value === 0
-                ? "0 GiB: no relay traffic"
-                : `${formatBinaryBytes(value)} a month`}
-          </p>
-          {gate.allowed ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label="Change the relay ceiling"
-              onClick={() => setDialog(true)}
-            >
-              Change…
-            </Button>
-          ) : null}
-        </div>
+            Change…
+          </Button>
+        ) : null}
       </SettingsRow>
       <CeilingDialog
         open={dialog}
@@ -268,19 +266,17 @@ function TierQuota({
       help="Per person per day. A tier sets it with the pkey.cloudConnect.relayBytes entitlement; a tier that sets none gets the platform default."
       source={fallback ? <PlatformPill /> : undefined}
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        {fallback ? (
-          <p className="tabular-nums text-fg-strong">
-            {formatBinaryBytes(fallback.value)} a day by default
-          </p>
-        ) : null}
-        <Link
-          to={r.tiers(slug)}
-          className="inline-flex min-h-6 items-center text-sm text-accent-fg underline underline-offset-2"
-        >
-          Edit tiers
-        </Link>
-      </div>
+      {fallback ? (
+        <p className="tabular-nums text-fg-strong">
+          {formatBinaryBytes(fallback.value)} a day by default
+        </p>
+      ) : null}
+      <Link
+        to={r.tiers(slug)}
+        className="inline-flex min-h-6 items-center text-sm text-accent-fg underline underline-offset-2"
+      >
+        Edit tiers
+      </Link>
     </SettingsRow>
   );
 }

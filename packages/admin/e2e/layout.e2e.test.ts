@@ -37,7 +37,16 @@ import {
   unlabelledScrollers,
 } from "./pageChecks.js";
 import { reduceTransparency } from "../../ui-qa/src/index.ts";
-import { pausedPlatformSettings } from "./layoutData.js";
+import {
+  CONNECT_PEOPLE_MANY,
+  CONNECT_PEOPLE_NONE,
+  CONNECT_PEOPLE_ONE,
+  CONNECT_SETUP_API,
+  CONNECT_SETUP_GATED_API,
+  CONNECT_USAGE_HEAVY,
+  CONNECT_USAGE_QUIET,
+  pausedPlatformSettings,
+} from "./layoutData.js";
 import { staleUxDebt, uxBarChecked } from "./uxBar.js";
 import {
   probeLayout,
@@ -491,6 +500,44 @@ function cases(): Case[] {
     },
     // U-05.20: Cloud Sync's Usage tab is a route tab, not a nav row: its empty twin by hand.
     { name: "empty:sync-usage", hash: "#/p/empty/sync/usage" },
+    // CC-16.5: Cloud Connect's three pages over fixtures that fill them (layoutData.ts): Setup
+    // live and held back by the launch gate, Linked devices at its tightest, filtered to one
+    // person and filtered to none, Usage near the ceiling and with no traffic yet.
+    {
+      name: "djdl:connect-setup?live",
+      hash: "#/p/djdl/connect/setup",
+      api: CONNECT_SETUP_API,
+    },
+    {
+      name: "djdl:connect-setup?gated",
+      hash: "#/p/djdl/connect/setup",
+      api: CONNECT_SETUP_GATED_API,
+    },
+    {
+      name: "djdl:connect-devices?many",
+      hash: "#/p/djdl/connect/devices",
+      api: CONNECT_PEOPLE_MANY,
+    },
+    {
+      name: "djdl:connect-devices?subject",
+      hash: "#/p/djdl/connect/devices?subject=ps_Qm3x1ZkP8sVn2LwB7eRt5YcA9hUdJfG",
+      api: CONNECT_PEOPLE_ONE,
+    },
+    {
+      name: "djdl:connect-devices?subject-none",
+      hash: "#/p/djdl/connect/devices?subject=ps_Nobody",
+      api: CONNECT_PEOPLE_NONE,
+    },
+    {
+      name: "djdl:connect-usage?heavy",
+      hash: "#/p/djdl/connect/usage",
+      api: CONNECT_USAGE_HEAVY,
+    },
+    {
+      name: "djdl:connect-usage?quiet",
+      hash: "#/p/djdl/connect/usage",
+      api: CONNECT_USAGE_QUIET,
+    },
     // U-05.21: Setup as a product admin while writes are paused (the access line, no Resume).
     {
       name: "djdl:sync-setup?role",
@@ -777,6 +824,16 @@ const PAUSED_HOME_CASES = [
   "home:paused-product-role",
   "dialog:resume-from-home",
 ];
+/** CC-16.5: the Cloud Connect fixtures' cases (Setup, Linked devices, Usage). */
+const CONNECT_CASES = [
+  "djdl:connect-setup?live",
+  "djdl:connect-setup?gated",
+  "djdl:connect-devices?many",
+  "djdl:connect-devices?subject",
+  "djdl:connect-devices?subject-none",
+  "djdl:connect-usage?heavy",
+  "djdl:connect-usage?quiet",
+];
 /** The cases the zoom rows open: Home, tables, a record, a settings page and an overlay. */
 const ZOOM_CASES = [
   "global:home",
@@ -797,6 +854,8 @@ const ZOOM_CASES = [
   "djdl:sync-usage",
   "djdl:sync-setup",
   "djdl:sync-setup?role",
+  // CC-16.5: Cloud Connect's three pages at 320 px (zoom400), 360 px and the zoom rows.
+  ...CONNECT_CASES,
   "djdl:storefronts?flow=prerequisites",
   "djdl:storefronts?flow=listing",
   "djdl:storefronts?flow=assets",
@@ -825,6 +884,8 @@ const TEXT200_CASES = [
   // U-05.21: Cloud Sync Setup's tier rows, ceiling meter and pause row.
   "djdl:sync-setup",
   "djdl:sync-setup?role",
+  // CC-16.5: Cloud Connect's tier quota row, device table and usage tiles at 200 % text.
+  ...CONNECT_CASES,
   "djdl:services",
   "djdl:portal",
   "djdl:licenses/record/overview",
