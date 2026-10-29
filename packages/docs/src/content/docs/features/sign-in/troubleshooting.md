@@ -85,7 +85,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** A key activation found the key has no entries left. The SDK answers the typed outcome `key-entry-limit` with `keyEntries` (`used`, `limit`) and, while the portal is on, `manageUrl`. It keeps the device's token and cache and doesn't retry.
 
-**Fix** Open `manageUrl` so the person adds the key to their account, or sign them in. Don't wipe local state.
+**Fix** Open `manageUrl` so the person adds the key to their account, or sign them in. Don't wipe local state. Swift answers `.keyEntryLimit`, Kotlin `KeyEntryLimit` and Godot `KIND_KEY_ENTRY_LIMIT`.
 
 **Check it works** The next activation, or the sign-in, returns a token.
 
@@ -93,7 +93,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** The key's license is in an account and never moves by its key. The SDK answers `license-owned` with `signInUrl`, the product's sign-in page. It names no account.
 
-**Fix** Open `signInUrl` from a user action and sign in to the account that owns the license.
+**Fix** Open `signInUrl` from a user action and sign in to the account that owns the license. Swift answers `.licenseOwned`, Kotlin `LicenseOwned` and Godot `KIND_LICENSE_OWNED`.
 
 **Check it works** The sign-in returns a token on that license.
 

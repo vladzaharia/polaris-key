@@ -103,6 +103,22 @@ struct MyApp: View {
 }
 ```
 
+## License choice and refusals
+
+A sign-in on the redirect channel with `licenseChoice: .app` can settle with a license to choose.
+The gate draws that step itself: the account's licenses with their seat meters, **Replace a device**
+on a full one, and the no-license and expired-grant states. Nothing is bound until the person
+confirms. An app that runs its own redirect session gives the pending grant to the model with
+`presentLicenseChoice(_:)`; `model.choice` holds the step (`selectLicense`, `confirmLicenseChoice`,
+`openChoiceReplace`, `replaceChoiceDevice`, `cancelLicenseChoice`). The calls under it are
+[`identity.choice`](/docs/build/sdks/swift/your-own-ui/#the-license-choice).
+
+Two key refusals get a step of their own, with **Sign in** as the one primary action and no key
+field, because the same key cannot succeed: a key with no entries left (with a link to add it to an
+account) and a license that an account holds. A finished sign-in
+shows the toast "Signed in as Mara · Pro license". The Account pane's **Sign Out…** runs
+`signOut()`.
+
 ## Piecemeal
 
 Every screen and part is public and takes the core's `KitScreen` for its component, so it can sit
