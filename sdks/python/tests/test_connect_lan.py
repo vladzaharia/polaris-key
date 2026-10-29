@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import pickle
+import socket
 import threading
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -15,10 +16,13 @@ import pytest
 from test_connect_peer_session import ID_A, ID_B, NOW, SUB, TRUST, Dev, _ring, _rnd
 from test_connect_session import KeyPort
 
+import polaris_key.connect.lan as lan_mod
 from polaris_key.connect.client import DiscoveryKeys, PeerSource
+from polaris_key.connect.dial import DialRefused, dial_race, sockaddr_of
 from polaris_key.connect.errors import LanError
 from polaris_key.connect.lan import (
     MAX_PENDING,
+    MAX_PENDING_PER_64,
     MAX_PENDING_PER_ADDRESS,
     MAX_SESSIONS_PER_PEER,
     LanOptions,
@@ -26,6 +30,7 @@ from polaris_key.connect.lan import (
     LanService,
     LanSource,
 )
+from polaris_key.connect.lan_judge import PendingLimiter, limiter_keys, socket_text, socket_verdict, text_verdict
 from polaris_key.connect.loop import connect_loop
 from polaris_key.core.b64url import b64url_encode
 from polaris_key.core.peer_advert import ADVERT_EPOCH_SECONDS, account_instance, advert_epoch
@@ -53,13 +58,14 @@ class Network:
         self.adverts: Dict[str, MdnsAdvert] = {}
         self.browsers: List[Tuple[Callable[[MdnsFound], None], Optional[Callable[[str], None]]]] = []
         self.log: List[str] = []
+        #: The address every advert is found at.
+        self.host = "127.0.0.1"
 
     def adapter(self) -> "Network":
         return self
 
-    @staticmethod
-    def _found(a: MdnsAdvert) -> MdnsFound:
-        return MdnsFound(a.instance, "127.0.0.1", a.port, list(a.txt))
+    def _found(self, a: MdnsAdvert) -> MdnsFound:
+        return MdnsFound(a.instance, self.host, a.port, list(a.txt))
 
     async def advertise(self, a: MdnsAdvert) -> MdnsHandle:
         self.adverts[a.instance] = a
@@ -126,7 +132,7 @@ class World:
         return LanSource(load=lambda: ps, now=lambda: self.now)
 
     def start(self, dev: Dev, src: Optional[LanSource] = None, **opts: Any) -> LanService:
-        o = LanOptions(mdns=self.net, host="127.0.0.1", allow_loopback=True, **opts)
+        o = LanOptions(**{"mdns": self.net, "host": "127.0.0.1", "allow_loopback": True, **opts})
 
         async def go() -> LanService:
             return await LanService.start(src or self.source(dev), o)
@@ -526,9 +532,10 @@ class Raw:
 
 
 def test_the_limits_are_32_unauthenticated_sockets_and_4_per_address() -> None:
-    assert (MAX_PENDING, MAX_PENDING_PER_ADDRESS) == (32, 4)
+    assert (MAX_PENDING, MAX_PENDING_PER_ADDRESS, MAX_PENDING_PER_64) == (32, 4, 16)
     o = LanOptions()
-    assert (o.max_pending, o.max_pending_per_address, o.handshake_seconds) == (32, 4, 30.0)
+    assert (o.max_pending, o.max_pending_per_address, o.max_pending_per_64, o.handshake_seconds) == (32, 4, 16, 30.0)
+    assert o.host is None  # the dual-stack listener
 
 
 def test_garbage_and_oversized_and_empty_first_frames_close_without_a_word() -> None:
@@ -575,14 +582,14 @@ def test_a_socket_that_stalls_in_the_handshake_is_dropped() -> None:
         la = w.start(w.a, handshake_seconds=0.3)
         s = Raw(la.port)
         assert s.closed.wait(3) and s.received == 0
-        until(lambda: la._pending == set() and la._per_address == {})
+        until(lambda: la._pending == set() and la._limit.empty)
 
 
 def test_an_admitted_session_stops_counting_as_pending() -> None:
     with World() as w:
         la, lb = w.start(w.a), w.start(w.b)
         pair(w, la, lb)
-        until(lambda: len(la._pending) == 0 and la._per_address == {})
+        until(lambda: len(la._pending) == 0 and la._limit.empty)
 
 
 def test_a_source_off_the_lan_is_refused_at_accept() -> None:
@@ -658,3 +665,415 @@ def test_a_device_with_a_wrong_first_address_is_reached_by_falling_through_the_l
         s = run(lb.connect(peer._replace(host="127.0.0.2", alt_hosts=("127.0.0.1",))))
         assert s.peer_device_id == ID_A
         until(lambda: inbound)
+
+
+# -- IPv6 and the dual-stack listener (CC-IPV6.4b; §15.4.1) --------------------------------------------
+
+
+def _have_v6() -> bool:
+    try:
+        s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        try:
+            s.bind(("::1", 0))
+        finally:
+            s.close()
+        return True
+    except OSError:
+        return False
+
+
+needs_v6 = pytest.mark.skipif(not _have_v6(), reason="no IPv6 loopback here")
+
+
+@needs_v6
+def test_one_port_serves_both_families_and_a_session_runs_over_ipv6() -> None:
+    with World() as w:
+        la = w.start(w.a, host=None)
+        lb = w.start(w.b, host=None, advertise=False, browse=False)
+        srv = la._server.sockets[0]
+        assert srv.family == socket.AF_INET6 and srv.getsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY) == 0
+        inbound: List[Any] = []
+        la.on_session(inbound.append)
+        # The same port over IPv4 and over IPv6.
+        for host in ("127.0.0.1", "::1"):
+            s = run(lb.connect(LanPeer(ID_A, host, la.port)))
+            until(lambda: len(inbound) >= 1)
+            assert s.peer_device_id == ID_A
+            s.send(b"over " + host.encode())
+            assert inbound[-1].receive(5).body == b"over " + host.encode()
+            s.close()
+            inbound.clear()
+
+
+@needs_v6
+def test_services_find_each_other_at_an_ipv6_address() -> None:
+    with World() as w:
+        w.net.host = "::1"
+        la = w.start(w.a, host=None)
+        lb = w.start(w.b, host=None)
+        until(lambda: len(la.peers()) == 1 and len(lb.peers()) == 1)
+        assert lb.peers()[0] == LanPeer(ID_A, "::1", la.port)
+        out, inn = pair(w, la, lb)
+        out.send(b"six")
+        assert inn.receive(5).body == b"six"
+
+
+def test_the_listener_falls_back_to_ipv4_where_ipv6_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    real = socket.socket
+
+    def no_v6(family: int = socket.AF_INET, *a: Any, **k: Any) -> Any:
+        if family == socket.AF_INET6:
+            raise OSError("no IPv6")
+        return real(family, *a, **k)
+
+    monkeypatch.setattr(lan_mod.socket, "socket", no_v6)
+    with World() as w:
+        la = w.start(w.a, host=None)
+        assert la._server.sockets[0].family == socket.AF_INET
+        Raw(la.port)  # the one port still answers on IPv4
+
+
+@needs_v6
+def test_a_source_off_the_lan_is_closed_before_a_slot_or_a_read_over_ipv6() -> None:
+    w = World()
+    reads: List[int] = []
+
+    async def go() -> Tuple[bool, bool]:
+        svc = await LanService.start(w.source(w.a), LanOptions(mdns=w.net, advertise=False, browse=False))
+        accept = svc._accept
+
+        async def spy(r: Any, wr: Any) -> None:
+            reads.append(1)
+            await accept(r, wr)
+
+        svc._accept = spy  # type: ignore[method-assign]
+        try:
+            ends = []
+            for host in ("::1", "127.0.0.1"):  # loopback is not allowed: both are off the LAN
+                r, wr = await asyncio.open_connection(host, svc.port)
+                wr.write(b"\x00\x30" + b"x" * 48)
+                try:
+                    ends.append(await asyncio.wait_for(r.read(10), 5) == b"")  # closed, and not a byte written
+                except ConnectionResetError:
+                    ends.append(True)  # an abort may arrive as a reset
+                wr.close()
+            return all(ends), svc._limit.empty and not svc._slots and not svc._pending
+        finally:
+            await svc.stop()
+
+    assert run(go()) == (True, True)
+    assert reads == []  # the accept callback, which reads, never ran
+
+
+class _Transport:
+    def __init__(self, peer: Any, local: Any) -> None:
+        self.extra = {"peername": peer, "sockname": local}
+        self.aborted = False
+
+    def get_extra_info(self, name: str) -> Any:
+        return self.extra.get(name)
+
+    def abort(self) -> None:
+        self.aborted = True
+
+
+@pytest.mark.parametrize(
+    "peer,local,ok,key",
+    [
+        (("10.0.0.5", 4000), ("10.0.0.9", 5000), True, "10.0.0.5"),
+        (("::ffff:192.168.1.5", 4000, 0, 0), ("::ffff:192.168.1.9", 5000, 0, 0), True, "192.168.1.5"),
+        (("8.8.8.8", 4000), ("10.0.0.9", 5000), False, None),
+        (("::ffff:8.8.8.8", 4000, 0, 0), ("::", 5000, 0, 0), False, None),
+        (("fe80::7", 4000, 0, 0), ("fe80::1", 5000, 0, 0), True, "fe80::7"),
+        (("fe80::7%en0", 4000, 0, 0), ("fe80::1%en0", 5000, 0, 0), True, "fe80::7%en0"),
+        (("2001:db8:1:2::7", 4000, 0, 0), ("2001:db8:1:2::1", 5000, 0, 0), True, "2001:db8:1:2::7"),
+        (("2001:db8:1:2::7", 4000, 0, 0), ("2001:db8:1:3::1", 5000, 0, 0), False, None),  # another /64
+        (("2001:db8:1:2::7", 4000, 0, 0), ("10.0.0.9", 5000), False, None),
+        (("2001:db8:1:2::7", 4000, 0, 0), None, False, None),  # own address unknown: a global one is refused
+        (("fd12::7", 4000, 0, 0), ("fd12::1", 5000, 0, 0), True, "fd12::7"),
+        (("fd12::7", 4000, 0, 0), ("fd13::1", 5000, 0, 0), False, None),
+        (("2002:a00:1::1", 4000, 0, 0), ("2002:a00:1::2", 5000, 0, 0), False, None),  # 6to4 never qualifies
+        (None, ("10.0.0.9", 5000), False, None),
+    ],
+)
+def test_the_accept_gate_judges_the_sockets_own_addresses(peer: Any, local: Any, ok: bool, key: Optional[str]) -> None:
+    w = World()
+
+    async def go() -> Tuple[bool, bool, bool]:
+        svc = await LanService.start(
+            w.source(w.a), LanOptions(mdns=w.net, host="127.0.0.1", advertise=False, browse=False)
+        )
+        try:
+            t = _Transport(peer, local)
+            got = svc._gate(t)
+            held = t in svc._slots
+            return got, held, svc._limit.size == (1 if ok else 0)
+        finally:
+            await svc.stop()
+
+    assert run(go()) == (ok, ok, True)
+    assert socket_verdict(socket_text(peer), socket_text(local), False).key == key
+
+
+def test_the_gate_takes_slots_per_address_per_64_and_in_total() -> None:
+    w = World()
+
+    async def go() -> List[bool]:
+        svc = await LanService.start(
+            w.source(w.a),
+            LanOptions(mdns=w.net, host="127.0.0.1", advertise=False, browse=False, max_pending=20),
+        )
+        try:
+            out = []
+            same = ("fe80::7", 1, 0, 3)
+            for _ in range(5):  # 4 per address
+                out.append(svc._gate(_Transport(same, ("fe80::1", 5, 0, 3))))
+            for n in range(8, 8 + 14):  # 16 per /64: 4 are taken, 12 more fit, the 13th does not
+                out.append(svc._gate(_Transport(("fe80::%x" % n, 1, 0, 3), ("fe80::1", 5, 0, 3))))
+            return out
+        finally:
+            await svc.stop()
+
+    got = run(go())
+    assert got[:5] == [True] * 4 + [False]
+    assert got[5:] == [True] * 12 + [False] * 2
+
+
+def test_the_limiter_counts_per_address_per_64_and_in_total() -> None:
+    lim = PendingLimiter(32, 4, 16)
+    held = []
+    for _ in range(4):
+        r = lim.take(object(), limiter_keys("10.0.0.5"))
+        assert r is not None
+        held.append(r)
+    assert lim.take(object(), limiter_keys("10.0.0.5")) is None  # the fifth of one address
+    assert lim.take(object(), limiter_keys("10.0.0.6")) is not None  # IPv4 has no /64
+    held[0]()
+    held[0]()  # releasing twice frees one slot, not two
+    assert lim.take(object(), limiter_keys("10.0.0.5")) is not None
+    assert lim.take(object(), limiter_keys("10.0.0.5")) is None
+    # One neighbour rotating through its /64: 16 sockets, the 17th is refused whatever the address.
+    lim = PendingLimiter(32, 4, 16)
+    for n in range(16):
+        assert lim.take(object(), limiter_keys("2001:db8:1:2::%x" % (n + 1))) is not None
+    assert lim.take(object(), limiter_keys("2001:db8:1:2::ff")) is None
+    assert lim.take(object(), limiter_keys("2001:db8:1:3::1")) is not None  # another /64 is not affected
+    # The same fe80 address on two links is two hosts, and two /64s.
+    lim = PendingLimiter(32, 1, 1)
+    assert lim.take(object(), limiter_keys("fe80::1%en0")) is not None
+    assert lim.take(object(), limiter_keys("fe80::1%en1")) is not None
+    assert lim.take(object(), limiter_keys("fe80::1%en0")) is None
+    # The total bounds one that rotates /64s.
+    lim = PendingLimiter(32, 4, 16)
+    for n in range(32):
+        assert lim.take(object(), limiter_keys("2001:db8:%x::1" % n)) is not None
+    assert lim.take(object(), limiter_keys("2001:db8:ff::1")) is None
+    assert lim.size == 32 and not lim.empty
+
+
+def test_text_and_socket_helpers() -> None:
+    assert text_verdict("10.0.0.1", False) and not text_verdict("10.0.0.1\n", False)
+    assert text_verdict("2001:db8::1", False)  # could be on-link: the connected socket decides
+    assert not text_verdict("2002::1", False) and not text_verdict("8.8.8.8", False)
+    assert socket_text(("10.0.0.1", 80)) == "10.0.0.1"
+    assert socket_text(("fe80::1%en0", 80, 0, 4)) == "fe80::1%en0"
+    assert socket_text(("fe80::1", 80, 0, 0)) == "fe80::1"
+    assert socket_text(("2001:db8::1", 80, 0, 0)) == "2001:db8::1"
+    assert socket_text(None) is None
+    assert not socket_verdict(None, None, False).dial and not socket_verdict("", None, False).dial
+
+
+# -- the dial race -------------------------------------------------------------------------------------
+
+
+class Target:
+    """A TCP listener on 127.0.0.1 that records what it is sent; the race's real connect goes to it."""
+
+    def __init__(self) -> None:
+        self.srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.srv.bind(("127.0.0.1", 0))
+        self.srv.listen(8)
+        self.port = self.srv.getsockname()[1]
+        self.started: Dict[str, float] = {}
+        self.cancelled: List[str] = []
+        self.live = 0
+        self.peak = 0
+
+    def hook(self, delays: Dict[str, float], dead: Tuple[str, ...] = ()) -> Callable[..., Any]:
+        t0 = time.monotonic()
+
+        async def connect(sock: socket.socket, sockaddr: Any) -> None:
+            host = sockaddr[0]
+            self.started[host] = time.monotonic() - t0
+            self.live += 1
+            self.peak = max(self.peak, self.live)
+            try:
+                await asyncio.sleep(delays.get(host, 0))
+                if host in dead:
+                    raise ConnectionRefusedError("refused")
+                await asyncio.get_running_loop().sock_connect(sock, ("127.0.0.1", self.port))
+            except asyncio.CancelledError:
+                self.cancelled.append(host)
+                raise
+            finally:
+                self.live -= 1
+
+        return connect
+
+    def close(self) -> None:
+        self.srv.close()
+
+
+def race(hosts: List[str], tgt: Target, delays: Dict[str, float], dead: Tuple[str, ...] = (), **kw: Any) -> Any:
+    async def go() -> Any:
+        return await dial_race(hosts, tgt.port, kw.pop("allow_loopback", True), connect=tgt.hook(delays, dead), **kw)
+
+    return run(go())
+
+
+def test_the_race_starts_the_next_address_at_once_when_one_fails() -> None:
+    t = Target()
+    try:
+        s, host = race(["10.0.0.1", "10.0.0.2"], t, {"10.0.0.1": 0.05}, dead=("10.0.0.1",))
+        assert host == "10.0.0.2" and t.started["10.0.0.2"] < 0.2  # not after a full 250 ms
+        s.close()
+    finally:
+        t.close()
+
+
+def test_a_slow_address_gets_250_ms_before_the_next_starts_and_the_loser_is_cancelled() -> None:
+    t = Target()
+    try:
+        s, host = race(["10.0.0.1", "10.0.0.2"], t, {"10.0.0.1": 5.0})
+        assert host == "10.0.0.2"
+        assert t.started["10.0.0.1"] < 0.1 and 0.2 <= t.started["10.0.0.2"] < 1.0
+        assert t.cancelled == ["10.0.0.1"]
+        s.close()
+    finally:
+        t.close()
+
+
+def test_at_most_two_attempts_are_in_flight() -> None:
+    t = Target()
+    try:
+        hosts = ["10.0.0.%d" % n for n in range(1, 5)]
+        s, host = race(hosts, t, {h: 0.6 for h in hosts[:3]} | {hosts[3]: 0.0}, stagger=0.05)
+        assert t.peak <= 2
+        assert host in hosts
+        s.close()
+    finally:
+        t.close()
+
+
+def test_the_first_address_in_first_seen_order_wins_a_tie() -> None:
+    t = Target()
+    try:
+        s, host = race(["10.0.0.1", "10.0.0.2"], t, {})
+        assert host == "10.0.0.1"
+        s.close()
+    finally:
+        t.close()
+
+
+def test_an_address_that_fails_the_text_verdict_never_reaches_connect() -> None:
+    t = Target()
+    try:
+        s, host = race(["8.8.8.8", "169.254.1.1", "10.0.0.1"], t, {})
+        assert host == "10.0.0.1" and set(t.started) == {"10.0.0.1"}
+        s.close()
+        t.started.clear()
+        with pytest.raises(OSError):
+            race(["8.8.8.8", "100.64.0.1"], t, {})
+        assert set(t.started) == set()
+    finally:
+        t.close()
+
+
+def test_a_connected_socket_is_judged_on_its_own_addresses_before_it_is_handed_back() -> None:
+    t = Target()
+    try:
+        # The text is a LAN address, but the socket really reached 127.0.0.1, and loopback is not allowed.
+        with pytest.raises(OSError):
+            race(["10.0.0.1"], t, {}, allow_loopback=False)
+    finally:
+        t.close()
+
+
+def test_when_every_address_fails_the_last_failure_is_raised() -> None:
+    t = Target()
+    try:
+        with pytest.raises(ConnectionRefusedError):
+            race(["10.0.0.1", "10.0.0.2"], t, {}, dead=("10.0.0.1", "10.0.0.2"))
+        with pytest.raises(OSError):
+            race(["10.0.0.1"], t, {"10.0.0.1": 5.0}, timeout=0.2)
+        assert t.cancelled[-1] == "10.0.0.1"
+        with pytest.raises(OSError):
+            race([], t, {})
+    finally:
+        t.close()
+
+
+def test_no_byte_is_sent_on_the_winner_or_the_losers() -> None:
+    t = Target()
+    try:
+        s, _ = race(["10.0.0.1", "10.0.0.2"], t, {"10.0.0.1": 0.0, "10.0.0.2": 0.0}, stagger=0.0)
+        t.srv.settimeout(1)
+        conns = []
+        try:
+            while True:
+                c, _a = t.srv.accept()
+                c.settimeout(0.2)
+                conns.append(c)
+        except (socket.timeout, OSError):
+            pass
+        quiet = 0
+        for c in conns:
+            try:
+                assert c.recv(1) == b""  # a loser closed without a byte
+            except (socket.timeout, TimeoutError):
+                quiet += 1  # the winner: open, and nothing sent on it
+        assert len(conns) == 2 and quiet == 1
+        s.close()
+    finally:
+        t.close()
+
+
+def test_sockaddr_of_takes_literals_and_a_zone_as_the_scope_id() -> None:
+    assert sockaddr_of("10.0.0.5", 80) == (socket.AF_INET, ("10.0.0.5", 80))
+    assert sockaddr_of("::ffff:10.0.0.5", 80) == (socket.AF_INET, ("10.0.0.5", 80))
+    assert sockaddr_of("2001:DB8::1", 80) == (socket.AF_INET6, ("2001:db8::1", 80, 0, 0))
+    idx, name = socket.if_nameindex()[0]
+    assert sockaddr_of("fe80::1%" + name, 80) == (socket.AF_INET6, ("fe80::1", 80, 0, idx))
+    assert sockaddr_of("fe80::1%7", 80)[1][3] in (7, socket.if_nametoindex("7") if False else 7)
+    for bad in ("fe80::1%no-such-if", "example.com", "10.0.0.5\n", "fe80::1%"):
+        with pytest.raises(DialRefused):
+            sockaddr_of(bad, 80)
+
+
+def test_a_winner_that_fails_the_handshake_does_not_end_the_dial(monkeypatch: pytest.MonkeyPatch) -> None:
+    with World() as w:
+        la = w.start(w.a)
+        lb = w.start(w.b, advertise=False, browse=False, handshake_seconds=0.5)
+        calls: List[List[str]] = []
+        junk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        junk.bind(("127.0.0.1", 0))
+        junk.listen(4)
+
+        async def fake(hosts: List[str], port: int, allow_loopback: bool, **kw: Any) -> Tuple[socket.socket, str]:
+            calls.append(list(hosts))
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.setblocking(False)
+            target = junk.getsockname() if len(calls) == 1 else ("127.0.0.1", port)
+            await asyncio.get_running_loop().sock_connect(s, target)
+            return s, hosts[0]
+
+        monkeypatch.setattr(lan_mod, "dial_race", fake)
+        try:
+            peer = LanPeer(ID_A, "10.0.0.66", la.port, ("10.0.0.5",))
+            s = run(lb.connect(peer))
+            assert s.peer_device_id == ID_A
+            # The first winner was a neighbour that took the connection and said nothing: the race
+            # runs again over the addresses that are left.
+            assert calls == [["10.0.0.66", "10.0.0.5"], ["10.0.0.5"]]
+        finally:
+            junk.close()
