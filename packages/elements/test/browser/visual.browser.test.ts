@@ -89,6 +89,9 @@ function extras(input: UiInput): Partial<UiInput> {
   };
 }
 
+/** The recovery code the host hands RecoveryCode: a property, never in the input (U-42.2); the same value the React suite passes. */
+const RECOVERY_CODE = "K7QF-2M9D-XR4T-8WHB-3JNC-6PEZ-V5GD-HT0S";
+
 beforeAll(() => {
   PolarisKey.fonts(__PKEY_FONTS__);
   PolarisKey.theme({ product: PRODUCT });
@@ -108,6 +111,9 @@ async function mount(
   document.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
   const el = document.createElement(TAGS[f.component]) as PkElement;
   el.colorScheme = scheme;
+  if (f.component === "RecoveryCode") el.code = RECOVERY_CODE;
+  // The React kit draws Unlock sync, Review and Use code itself; the host here handles all three.
+  el.handles = "unlock review use-code";
   el.input = {
     elapsedMs: 60_000,
     ...withDefaults(f.input),
