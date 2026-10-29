@@ -116,4 +116,11 @@ export {
   type PeerSessionOptions,
   type SessionEvent,
 } from "./session.js";
-export { lanVerdict, type LanVerdict } from "./lanAddress.js";
+export {
+  candidateTarget,
+  lanGroupKey,
+  lanVerdict,
+  type CandidateTarget,
+  type LanVerdict,
+  type LocalInterfaceAddress,
+} from "./lanAddress.js";

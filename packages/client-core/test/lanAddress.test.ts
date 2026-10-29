@@ -7,7 +7,12 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { lanVerdict } from "../src/peer/index.js";
+import {
+  candidateTarget,
+  lanGroupKey,
+  lanVerdict,
+  type LocalInterfaceAddress,
+} from "../src/peer/index.js";
 
 interface Row {
   id: string;
@@ -16,6 +21,14 @@ interface Row {
   allowLoopback: boolean;
   dial: boolean;
   key: string | null;
+  group: string | null;
+}
+
+interface CandidateRow {
+  id: string;
+  entry: string;
+  interfaces: LocalInterfaceAddress[];
+  target: { host: string; port: number } | null;
 }
 
 const MATRIX = JSON.parse(
@@ -32,21 +45,37 @@ const MATRIX = JSON.parse(
     ),
     "utf8",
   ),
-) as { lanAddresses: { rows: Row[] } };
+) as {
+  lanAddresses: { rows: Row[]; candidates: { rows: CandidateRow[] } };
+};
+
+/** Exact: a row added or dropped is a deliberate corpus change. */
+function pinRows(rows: { id: string }[], count: number): void {
+  it("has the rows", () => {
+    expect(rows.length).toBe(count);
+    expect(new Set(rows.map((r) => r.id)).size).toBe(rows.length);
+  });
+}
+const byId = <T extends { id: string }>(rows: T[]) =>
+  rows.map((r) => [r.id, r] as const);
 
 describe("lanVerdict: peer-matrix lanAddresses", () => {
   const rows = MATRIX.lanAddresses.rows;
-
-  it("has the rows", () => {
-    expect(rows.length).toBeGreaterThanOrEqual(35);
-    expect(new Set(rows.map((r) => r.id)).size).toBe(rows.length);
-  });
-
-  it.each(rows.map((r) => [r.id, r] as const))("%s", (_id, r) => {
+  pinRows(rows, 133);
+  it.each(byId(rows))("%s", (_id, r) => {
     expect(lanVerdict(r.remote, r.local, r.allowLoopback)).toEqual({
       dial: r.dial,
       key: r.key,
     });
+    expect(lanGroupKey(r.key)).toBe(r.group);
+  });
+});
+
+describe("candidateTarget: peer-matrix lanAddresses.candidates", () => {
+  const rows = MATRIX.lanAddresses.candidates.rows;
+  pinRows(rows, 73);
+  it.each(byId(rows))("%s", (_id, r) => {
+    expect(candidateTarget(r.entry, r.interfaces)).toEqual(r.target);
   });
 });
 
@@ -63,6 +92,28 @@ describe("lanVerdict: edges", () => {
         dial: false,
         key: null,
       });
+  });
+
+  it("keeps the zone in a link-local key only", () => {
+    expect(lanVerdict("fe80::1%en0", null, false).key).toBe("fe80::1%en0");
+    expect(lanVerdict("fe80::1%en1", null, false).key).not.toBe(
+      lanVerdict("fe80::1%en0", null, false).key,
+    );
+    expect(lanVerdict("fd00::1%en0", null, false).key).toBe("fd00::1");
+  });
+
+  it("gives one /64 key to the addresses of one /64", () => {
+    const g = (a: string) =>
+      lanGroupKey(lanVerdict(a, "fd00:1:2:3::9", false).key);
+    expect(g("fd00:1:2:3::5")).toBe(g("fd00:1:2:3:0:0:0:6"));
+    expect(g("fd00:1:2:3::5")).toBe("fd00:1:2:3::/64");
+    expect(lanGroupKey("10.0.0.1")).toBeNull();
+    expect(lanGroupKey(null)).toBeNull();
+  });
+
+  it("keeps the dial rule off loopback and a mapped zone, whatever the flag", () => {
+    expect(lanVerdict("::ffff:127.0.0.1%lo", null, true).dial).toBe(false);
+    expect(lanVerdict("127.0.0.1", null, false).dial).toBe(false);
   });
 
   it("keys on the full address, not the /64", () => {
