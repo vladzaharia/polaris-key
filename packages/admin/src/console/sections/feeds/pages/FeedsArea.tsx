@@ -65,6 +65,7 @@ import {
   useFirstFeedArrived,
 } from "./PackagesOverview.js";
 import { CleanupNotice } from "./CleanupDryRun.js";
+import { InstallCards } from "./InstallCards.js";
 import { PackagesFoot } from "./PackagesFoot.js";
 import { TurnOffFeeds } from "./TurnOffFeeds.js";
 import { RegistryTokensPage } from "./RegistryTokens.js";
@@ -456,6 +457,11 @@ export function FeedsOverview({
           <>
             <CleanupNotice scope={scope} />
             <FeedCards scope={scope} feeds={feeds} focusFirst={arrived} />
+            <InstallCards
+              scope={scope}
+              owner={scope.slug}
+              ecosystem={feeds[0]!.ecosystem}
+            />
             <PackagesFoot
               onTurnOff={() => setTurningOff(true)}
               disabledReason={gate.disabledReason}

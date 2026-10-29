@@ -116,6 +116,26 @@ const TOKEN_VALUE = /^[A-Za-z0-9_.~-]{8,512}$/;
 const OWNER = /^[a-z0-9-]{1,64}$/;
 const VERSION = /^[0-9A-Za-z][0-9A-Za-z.+_-]{0,127}$/;
 
+/** The command that sets a person's machine up: `pkey feeds setup --write` (F-37.3). The CLI
+ *  and the console's Install cards both read this one string. */
+export const FEEDS_SETUP_WRITE_COMMAND = "pkey feeds setup --write";
+
+/** The environment variable the console's CI card names for the Service token. */
+export const FEEDS_CI_TOKEN_ENV = "PKEY_REGISTRY_TOKEN";
+
+/**
+ * The command CI runs to print one feed's setup with the Service token read from `tokenEnv`:
+ * what `pkey feeds setup --ecosystem <e> --owner <slug> --token-env NAME` accepts. It names the
+ * variable, never a token.
+ */
+export function feedsSetupCiCommand(
+  ecosystem: string,
+  owner: string,
+  tokenEnv: string = FEEDS_CI_TOKEN_ENV,
+): string {
+  return `pkey feeds setup --ecosystem ${ecosystem} --owner ${owner} --token-env ${tokenEnv}`;
+}
+
 /** Is `v` a usable environment-variable name for `--token-env`? */
 export function isFeedTokenEnvName(v: string): boolean {
   return ENV_NAME.test(v);

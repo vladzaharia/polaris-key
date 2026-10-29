@@ -205,3 +205,14 @@ describe("pkey feeds setup", () => {
     expect(version.err).toContain("--version goes with --package");
   });
 });
+
+describe("the console's Install in CI command (F-34.10)", () => {
+  it("is a command the CLI runs, and names the variable, not a token", async () => {
+    const { feedsSetupCiCommand } = await import("@polaris-key/manifest");
+    const cmd = feedsSetupCiCommand("npm", "djdl");
+    const args = cmd.split(" ").slice(1);
+    const r = await run(args);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("PKEY_REGISTRY_TOKEN");
+  });
+});
