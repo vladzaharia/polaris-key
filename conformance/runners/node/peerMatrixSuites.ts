@@ -354,7 +354,7 @@ function mdnsAnswers(m: PeerMatrix): void {
   describe("peer-matrix mdnsAnswers (shape)", () => {
     const rows = m.mdnsAnswers.rows;
     it("has well-formed rows", () => {
-      expect(rows.length).toBe(36);
+      expect(rows.length).toBe(37);
       expect(new Set(rows.map((r: { id: string }) => r.id)).size).toBe(
         rows.length,
       );

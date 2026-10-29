@@ -1430,11 +1430,11 @@ function buildLanAddresses(): unknown {
   const groups = new Map<string, string | null>([
     ["global-same-64", "2001:db8:1:2::/64"],
     ["ula-local-same-64", "fd00:1:2:3::/64"],
-    ["v6-link-local-zone", "fe80::/64%en0"],
-    ["key-link-local-no-zone", "fe80::/64"],
-    ["v4-10-low", null],
-    ["mapped-lan", null],
-    ["diff-v6-isatap", "fe80::/64"],
+    ["v6-link-local-zone", "fe80::/10%en0"],
+    ["key-link-local-no-zone", "fe80::/10"],
+    ["v4-10-low", "10.0.0.0/24"],
+    ["mapped-lan", "192.168.1.0/24"],
+    ["diff-v6-isatap", "fe80::/10"],
   ]);
   const out = rows.map(([id, remote, local, allowLoopback, key]) => {
     const got = refLanVerdict(remote, local, allowLoopback);
@@ -1453,7 +1453,7 @@ function buildLanAddresses(): unknown {
     };
   });
   return {
-    note: "LAN addresses (15.4.1): lanVerdict(remote, local, allowLoopback) -> {dial, key}, applied to an accepted socket before it takes a slot or is read, to a dialled address's text before connect and again to the connected socket before its first byte. `remote` is the socket's peer address as text and `local` its own address (absent: unknown). Spelling: a zone is `%` and 1 to 15 characters of U+0021 to U+007E other than `%`; an empty or longer zone, a second `%`, a control, a space or a non-ASCII character, a zone on IPv4 and a zone on an IPv4-mapped address are malformed and refused; the grammar is strict (RFC 3986 IPv4address and IPv6address): no whitespace, NUL, port, prefix length, trailing dot, brackets, non-ASCII digits or leading-zero octet. IPv4-mapped (::ffff:0:0/96) is judged as its IPv4 address. IPv4: 10/8, 172.16/12, 192.168/16, and 127/8 only with allowLoopback. IPv6: fe80::/10; fc00::/7, which with a known `local` must be IPv6 (not mapped) in the same /64; ::1 only with allowLoopback; an address in 2000::/3, outside 2001::/32 (Teredo) and 2002::/16 (6to4), only when `local` is IPv6 (not mapped) in the same /64. Anything else, and text that is not an address, is refused. `key` is the per-address connection count key: dotted IPv4, or RFC 5952 lower-case IPv6 text without its zone, except that a link-local (fe80::/10) key keeps its zone; null when `dial` is false. `group` is the per-/64 count key of an IPv6 key (`<masked address>/64`, with `%zone` appended for link-local), null for IPv4 and for no key. `candidates` holds the rule for a CANDIDATES entry (15.6).",
+    note: "LAN addresses (15.4.1): lanVerdict(remote, local, allowLoopback) -> {dial, key}, applied to an accepted socket before it takes a slot or is read, to a dialled address's text before connect and again to the connected socket before its first byte. `remote` is the socket's peer address as text and `local` its own address (absent: unknown). Spelling: a zone is `%` and 1 to 15 characters of U+0021 to U+007E other than `%`; an empty or longer zone, a second `%`, a control, a space or a non-ASCII character, a zone on IPv4 and a zone on an IPv4-mapped address are malformed and refused; the grammar is strict (RFC 3986 IPv4address and IPv6address): no whitespace, NUL, port, prefix length, trailing dot, brackets, non-ASCII digits or leading-zero octet. IPv4-mapped (::ffff:0:0/96) is judged as its IPv4 address. IPv4: 10/8, 172.16/12, 192.168/16, and 127/8 only with allowLoopback. IPv6: fe80::/10; fc00::/7, which with a known `local` must be IPv6 (not mapped) in the same /64; ::1 only with allowLoopback; an address in 2000::/3, outside 2001::/32 (Teredo) and 2002::/16 (6to4), only when `local` is IPv6 (not mapped) in the same /64. Anything else, and text that is not an address, is refused. `key` is the per-address connection count key: dotted IPv4, or RFC 5952 lower-case IPv6 text without its zone, except that a link-local (fe80::/10) key keeps its zone; null when `dial` is false. `group` is the per-group count key of a key: `fe80::/10%zone` for a link-local key (`fe80::/10` with no zone), `a.b.c.0/24` for an IPv4 key, `<masked address>/64` for any other IPv6 key, and null for no key. `candidates` holds the rule for a CANDIDATES entry (15.6).",
     rows: out,
     candidates: buildCandidates(),
   };
@@ -1702,6 +1702,13 @@ function buildMdnsAnswers(): unknown {
       records: [aaaa(H1, "2001:db8:1:2::5")],
       source: LL,
       zone: "en0",
+      learned: [],
+    },
+    {
+      id: "aaaa-link-local-no-arrival-zone-dropped",
+      records: [aaaa(H1, LL)],
+      source: LL,
+      zone: null,
       learned: [],
     },
     {
@@ -1996,7 +2003,7 @@ function buildMdnsAnswers(): unknown {
   const packed = refDnsEncode({ answers: sample.records, compress: true });
   check("mdnsAnswers compression shrinks", packed.length < flat.length, true);
   return {
-    note: "mDNS address learning (15.4 Addresses). `packet` is one mDNS response as lower-case hex (header, then the answer and additional sections; names may be compressed, RFC 1035 4.1.4). `source` is the packet's source address as text and `zone` the interface it arrived on (null: none). A browser believes an A or AAAA record only when its address equals `source` (so an A record is never believed in an IPv6 packet, nor an AAAA in an IPv4 packet); the section a record sits in does not matter. A link-local (fe80::/10) address is learned as `<RFC 5952 text>%<zone>`; any other address has no zone. A name keeps at most 4 addresses, of any family, in first-seen order, and a repeat is not a second address. Learning is by that equality alone; there is no address filter at learn time, the dial-time check (15.4.1) decides what may be dialled. `source` may be an IPv4-mapped IPv6 address (`::ffff:a.b.c.d`, or the hex form), which is judged as its IPv4 address: an A record equal to it is learned, an AAAA record never is. An address record with TTL 0 removes that address (the same text, so a link-local address with the same zone) when it passes the same equality test, and learns nothing; records apply in packet order. A PTR goodbye (TTL 0) teaches none and removes none. `prior` (absent: nothing held) is the table the browser held before the packet, in first-seen order; `learned` is the table after it: the `{name, address}` entries in first-seen order. Names compare case-insensitively by ASCII fold (A-Z only) and are held, and shown in `learned`, in lower case. Rows need an own DNS codec: Node, Python, Kotlin JVM and Godot GDScript run them; Swift and Android leave address learning to the OS resolver.",
+    note: "mDNS address learning (15.4 Addresses). `packet` is one mDNS response as lower-case hex (header, then the answer and additional sections; names may be compressed, RFC 1035 4.1.4). `source` is the packet's source address as text and `zone` the interface it arrived on (null: none). A browser believes an A or AAAA record only when its address equals `source` (so an A record is never believed in an IPv6 packet, nor an AAAA in an IPv4 packet); the section a record sits in does not matter. A link-local (fe80::/10) address is learned as `<RFC 5952 text>%<zone>`; any other address has no zone. A name keeps at most 4 addresses, of any family, in first-seen order, and a repeat is not a second address. Learning is by that equality alone; there is no address filter at learn time, the dial-time check (15.4.1) decides what may be dialled. `source` may be an IPv4-mapped IPv6 address (`::ffff:a.b.c.d`, or the hex form), which is judged as its IPv4 address: an A record equal to it is learned, an AAAA record never is. An address record with TTL 0 removes that address (the same text, so a link-local address with the same zone) when it passes the same equality test, and learns nothing; records apply in packet order. A PTR goodbye (TTL 0) teaches none and removes none. `prior` (absent: nothing held) is the table the browser held before the packet, in first-seen order; `learned` is the table after it: the `{name, address}` entries in first-seen order. Names compare case-insensitively by ASCII fold (A-Z only) and are held, and shown in `learned`, in lower case. A link-local `source` with `zone` null learns nothing (no arrival interface names the host). The roster filter, the per-source limit on new names and the SRV port range need a roster, a clock and SRV records, which these rows do not model: each SDK tests them itself. Rows need an own DNS codec: Node, Python, Kotlin JVM and Godot GDScript run them; Swift and Android leave address learning to the OS resolver.",
     rows: out,
   };
 }

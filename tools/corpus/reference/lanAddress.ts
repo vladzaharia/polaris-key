@@ -1,7 +1,7 @@
 // Reference: the LAN address rule (WIRE-CONTRACT-V5 §15.4.1; plans/CC-IPV6.md §1).
 //
 // `lanVerdict(remote, local, allowLoopback)` answers whether a socket's peer may be dialled or
-// accepted, and the key of the per-address connection count (G7). `refGroupKey` is the per-/64
+// accepted, and the key of the per-address connection count (G7). `refGroupKey` is the per-group
 // count's key and `refCandidateTarget` the rule for a CANDIDATES entry. Written from the
 // specification over 128-bit integers (BigInt), so it shares nothing with client-core's
 // `peer/lanAddress.ts`, which works on eight 16-bit groups.
@@ -157,14 +157,19 @@ export function refLanVerdict(
   return sameSlash64(n, local) ? yes : no;
 }
 
-/** The per-/64 count key of a verdict key: `<masked address>/64`, plus `%zone` for link-local; `null` for IPv4 or no key. */
+/**
+ * The per-group count key of a verdict key (§15.4.1): `fe80::/10%zone` for a link-local address
+ * (`fe80::/10` with no zone), `a.b.c.0/24` for IPv4, `<masked address>/64` for any other IPv6
+ * address; `null` for no key.
+ */
 export function refGroupKey(key: string | null): string | null {
-  if (key === null || !key.includes(":")) return null;
+  if (key === null) return null;
   const p = parse(key);
-  if (p === null || p.kind !== "v6") return null;
-  const masked = (p.n >> 64n) << 64n;
-  const text = `${text6(masked)}/64`;
-  return p.zone === null ? text : `${text}%${p.zone}`;
+  if (p === null) return null;
+  if (p.kind === "v4") return `${key.split(".").slice(0, 3).join(".")}.0/24`;
+  if (top(p.n, 10) === 0x3fan)
+    return p.zone === null ? "fe80::/10" : `fe80::/10%${p.zone}`;
+  return `${text6((p.n >> 64n) << 64n)}/64`;
 }
 
 export interface RefCandidate {

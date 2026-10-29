@@ -107,8 +107,22 @@ describe("lanVerdict: edges", () => {
       lanGroupKey(lanVerdict(a, "fd00:1:2:3::9", false).key);
     expect(g("fd00:1:2:3::5")).toBe(g("fd00:1:2:3:0:0:0:6"));
     expect(g("fd00:1:2:3::5")).toBe("fd00:1:2:3::/64");
-    expect(lanGroupKey("10.0.0.1")).toBeNull();
     expect(lanGroupKey(null)).toBeNull();
+  });
+
+  it("groups a link-local key by link, an IPv4 key by /24 and the rest by /64", () => {
+    // fe80::/10 holds 2^54 /64s: the group is the link, whatever the /64 of the address.
+    expect(lanGroupKey("fe80::1%en0")).toBe("fe80::/10%en0");
+    expect(lanGroupKey("febf:1:2:3::9%en0")).toBe("fe80::/10%en0");
+    expect(lanGroupKey("fe80::1%en1")).toBe("fe80::/10%en1");
+    expect(lanGroupKey("fe80::1")).toBe("fe80::/10");
+    expect(lanGroupKey("10.0.0.1")).toBe("10.0.0.0/24");
+    expect(lanGroupKey("10.0.0.254")).toBe("10.0.0.0/24");
+    expect(lanGroupKey("10.0.1.1")).toBe("10.0.1.0/24");
+    expect(lanGroupKey("192.168.1.2")).toBe("192.168.1.0/24");
+    expect(lanGroupKey("2001:db8:1:2::5")).toBe("2001:db8:1:2::/64");
+    expect(lanGroupKey("fd00:1:2:3::5")).toBe("fd00:1:2:3::/64");
+    expect(lanGroupKey("not an address")).toBeNull();
   });
 
   it("keeps the dial rule off loopback and a mapped zone, whatever the flag", () => {

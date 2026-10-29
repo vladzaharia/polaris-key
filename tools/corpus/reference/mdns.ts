@@ -338,7 +338,8 @@ function foldMapped(b: Uint8Array): Uint8Array {
  * §15.4 "Addresses": a browser believes an A or AAAA record only when its address equals the
  * packet's source address, and that is the only test when it learns (the dial-time check of
  * §15.4.1 decides what may be dialled). An IPv4-mapped source is judged as its IPv4 address. A
- * link-local address (`fe80::/10`) takes the arrival interface as its zone. A name keeps at most
+ * link-local address (`fe80::/10`) takes the arrival interface as its zone, and one with no known
+ * arrival zone is dropped. A name keeps at most
  * 4 addresses, of any family, in first-seen order. An address record with a TTL of 0 removes the
  * address it names (the same address, with the same zone), under the same equality rule. Names
  * compare case-insensitively by ASCII fold and are held in lower case. Records are applied in
@@ -369,7 +370,10 @@ export function refMdnsLearn(
       r.address.length === 16 &&
       r.address[0] === 0xfe &&
       (r.address[1]! & 0xc0) === 0x80;
-    const address = linkLocal && zone !== null ? `${text}%${zone}` : text;
+    // A link-local source with no known arrival zone is dropped (§15.4): `fe80` text alone does
+    // not name a host.
+    if (linkLocal && zone === null) continue;
+    const address = linkLocal ? `${text}%${zone}` : text;
     if (r.ttl === 0) {
       table = table.filter((l) => !(l.name === name && l.address === address));
       continue;

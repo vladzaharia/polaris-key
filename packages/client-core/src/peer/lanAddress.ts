@@ -1,5 +1,5 @@
 // The LAN address rule (WIRE-CONTRACT-V5 §15.4.1): which peer address a device may dial or
-// accept on the local network, and the keys of the per-address and per-/64 connection counts.
+// accept on the local network, and the keys of the per-address and per-group connection counts.
 //
 // Pure and isomorphic: text in, a verdict out. The caller passes the connected socket's remote
 // address and its own local address (the on-link tests for a ULA and a global IPv6 address need
@@ -200,17 +200,20 @@ function sameSlash64(g: number[], local: string): boolean {
 }
 
 /**
- * The key of the per-/64 count (§15.4.1) for a verdict `key`: the /64 of an IPv6 address
- * (`2001:db8:1:2::/64`; a link-local /64 keeps the zone, `fe80::/64%en0`), `null` for IPv4 and
- * for no key.
+ * The key of the per-group count (§15.4.1) for a verdict `key`: `fe80::/10%zone` for a link-local
+ * address (`fe80::/10` when the key has no zone), `a.b.c.0/24` for IPv4, the /64
+ * (`2001:db8:1:2::/64`) for any other IPv6 address; `null` for no key. One neighbour cannot rotate
+ * out of its link, its /24 or its /64 by changing source address.
  */
 export function lanGroupKey(key: string | null): string | null {
-  if (key === null || !key.includes(":")) return null;
+  if (key === null) return null;
   const p = parse(key);
-  if (p === null || !("v6" in p.addr)) return null;
-  const head = p.addr.v6.slice(0, 4);
-  const text = `${text6([...head, 0, 0, 0, 0])}/64`;
-  return p.zone === null ? text : `${text}%${p.zone}`;
+  if (p === null) return null;
+  if ("v4" in p.addr) return `${p.addr.v4.slice(0, 3).join(".")}.0/24`;
+  const g = p.addr.v6;
+  if ((g[0]! & 0xffc0) === 0xfe80)
+    return p.zone === null ? "fe80::/10" : `fe80::/10%${p.zone}`;
+  return `${text6([...g.slice(0, 4), 0, 0, 0, 0])}/64`;
 }
 
 /** One address of a local interface, as the platform reports it. */
