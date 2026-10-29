@@ -534,7 +534,10 @@ class MulticastDnsAdapter:
             addrs: Optional[List[InterfaceAddress]] = interface_addresses()
             nets = v4_subnets(self._loop_ok, addrs)
             if nets is None:
-                raise MdnsUnavailableError("The network interfaces cannot be listed here; LAN discovery is off.")
+                raise MdnsUnavailableError(
+                    "The network interfaces cannot be listed here (getifaddrs, or GetAdaptersAddresses on Windows); "
+                    "LAN discovery is off."
+                )
             self._memo = (now, nets)
         return self._memo[1]
 
