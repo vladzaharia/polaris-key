@@ -110,7 +110,14 @@ public class PeerLink<H>(
     private var wake: Job? = null
     private var deadline: Job? = null
     private var ended = false
-    private var lost = false
+    @Volatile private var lost = false
+
+    // True once the host asked to end the link ([close], [closeNow]). Sdk-node and the Python engine run on
+    // one thread, so a local close reaches its Closed event before any socket event can mark the pipe lost.
+    // Here the reader runs on another thread: the CLOSE record can be flushed, the peer can hang up, and the
+    // reader can see the end of the stream while the close still holds the channel's lock. The close the host
+    // began first keeps its code; the pipe going away after it is its consequence, not connection_lost.
+    @Volatile private var closing = false
     private var open = false
     private val queuedBytes = java.util.concurrent.atomic.AtomicLong()
 
@@ -124,6 +131,9 @@ public class PeerLink<H>(
 
     /** True once the link has ended. */
     public val isEnded: Boolean get() = ended
+
+    /** True once the reader has seen the pipe end (the link's tests wait on it to order a close against it). */
+    internal val sawPipeEnd: Boolean get() = lost
 
     init {
         scope.launch {
@@ -188,10 +198,12 @@ public class PeerLink<H>(
     override suspend fun sendRecord(type: Int, body: ByteArray): Unit = channel.sendRecord(type, body)
 
     override suspend fun close(code: PeerCloseCode) {
+        closing = true
         channel.close(code)
     }
 
     override fun closeNow(code: PeerCloseCode) {
+        closing = true
         scope.launch { channel.close(code) }
     }
 
@@ -267,7 +279,7 @@ public class PeerLink<H>(
 
             is SessionEvent.Sas -> Unit
 
-            is SessionEvent.Closed -> finish(if (lost && !e.byPeer) SessionEvent.Closed("connection_lost", false) else e)
+            is SessionEvent.Closed -> finish(if (lost && !closing && !e.byPeer) SessionEvent.Closed("connection_lost", false) else e)
         }
     }
 
