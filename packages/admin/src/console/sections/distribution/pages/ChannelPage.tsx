@@ -47,7 +47,9 @@ export function ChannelPage({
       : CHANNEL_TABS.slice(0, 1);
   const current = tabs.find((t) => t.value === tab) ?? tabs[0]!;
   // A tab that is in the address but not built yet opens Status, and the address says so.
-  const unbuilt = tab !== undefined && current.value !== tab;
+  // While the read loads the channel-specific tabs are unknown, so nothing is "unbuilt" yet.
+  const unbuilt =
+    tab !== undefined && !channels.isPending && current.value !== tab;
   React.useEffect(() => {
     if (unbuilt && id) navigate(r.channel(slug, id), { replace: true });
   }, [unbuilt, slug, id]);

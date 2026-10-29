@@ -8,6 +8,7 @@ import type * as React from "react";
 import type { ChannelRow } from "../../../../api.js";
 import type { CHANNEL_TAB_IDS } from "../../../nav.js";
 import { ChannelListing, hasListing } from "./ChannelListing.js";
+import { ChannelSales, hasSales } from "./ChannelSales.js";
 import { ChannelReleases } from "./ChannelReleases.js";
 import { ChannelSetup, hasCredentials } from "./ChannelSetup.js";
 import { ChannelStatus } from "./ChannelStatus.js";
@@ -38,6 +39,7 @@ export const CHANNEL_TABS: readonly ChannelTab[] = [
     applies: hasListing,
     Panel: ChannelListing,
   },
+  { value: "sales", label: "Sales", applies: hasSales, Panel: ChannelSales },
   {
     value: "setup",
     label: "Setup",

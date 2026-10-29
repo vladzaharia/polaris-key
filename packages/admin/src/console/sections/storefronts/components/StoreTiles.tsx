@@ -138,7 +138,7 @@ function BuiltInTile({
         </span>
         {hasPanel ? (
           <Button size="sm" variant="outline" asChild>
-            <Link to={r.storefront(slug, store.id)}>Manage</Link>
+            <Link to={r.channel(slug, store.id, "sales")}>Manage</Link>
           </Button>
         ) : null}
       </div>

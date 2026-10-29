@@ -22,3 +22,17 @@ export const channels = (c: ChannelRow): ChannelsView => ({
   kinds: [],
   channels: [c],
 });
+
+/** A-22.6: a store Commerce sells through (the default row is the App Store, commerce ready). */
+export const channelRow = (over: Partial<ChannelRow> = {}): ChannelRow =>
+  channel({
+    id: "app-store",
+    label: "App Store",
+    commerce: { state: "ready", reason: null, attention: [] },
+    ...over,
+  });
+
+export const channelsView = (...rows: ChannelRow[]): ChannelsView => ({
+  ...channels(channel({})),
+  channels: rows,
+});

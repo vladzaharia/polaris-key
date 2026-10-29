@@ -52,7 +52,12 @@ import { STOREFRONTS_FLOW } from "../../../wizard/flows.js";
 import { skippedIn } from "../../../wizard/setup.js";
 import { useSetup } from "../../../wizard/useSetup.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
-import { Link, useLocation, useSearchParam } from "../../../router.js";
+import {
+  Link,
+  navigate,
+  useLocation,
+  useSearchParam,
+} from "../../../router.js";
 import { channelInScope, navFeaturesOf } from "../../../nav.js";
 import { useProduct } from "../../../data/hooks.js";
 import { codecs, globalPage, r } from "../../../routes.js";
@@ -70,21 +75,12 @@ import {
   StepDialog,
   type StepIntent,
 } from "../components/StepDialog.js";
-import { PolarisKeyPanel } from "../components/PolarisKeyPanel.js";
+import { STORE_PANELS, StorePage } from "./StorePage.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { ScopeLine } from "../components/ScopeLine.js";
 import { platformName } from "../../../../lib/vocab/platforms.js";
 
-/**
- * A storefront's own page, by store id: one line per store that has one. The built-in Polaris Key
- * storefront's panel is the only one (PS-06); SETUP.md's per-store pages add theirs here.
- */
-export const STORE_PANELS: Readonly<
-  Record<string, (props: { slug: string }) => React.ReactElement>
-> = {
-  "polaris-key": PolarisKeyPanel,
-};
-
+export { STORE_PANELS };
 export { FLOW_STEPS, type FlowStep };
 
 const STEPS: readonly WizardStep[] = STOREFRONTS_FLOW.steps.map((x) => ({
@@ -106,35 +102,6 @@ export function StorefrontsPage({
 }): React.ReactElement {
   if (store !== undefined) return <StorePage slug={slug} store={store} />;
   return <Catalogue slug={slug} />;
-}
-
-/** `distribution/storefronts/<id>`: the store's own page, or not found. */
-function StorePage({
-  slug,
-  store,
-}: {
-  slug: string;
-  store: string;
-}): React.ReactElement {
-  const Panel = Object.hasOwn(STORE_PANELS, store) ? STORE_PANELS[store] : null;
-  if (Panel) return <Panel slug={slug} />;
-  return (
-    <div className="space-y-6" data-template="collection">
-      <PageHeader title="Storefronts" />
-      <EmptyState
-        kind="not-found"
-        headingLevel={2}
-        title="This storefront has no page of its own"
-        description="Storefronts with a connection are set up from Add to storefronts."
-        primaryAction={
-          <Button asChild>
-            <Link to={r.storefronts(slug)}>Open Storefronts</Link>
-          </Button>
-        }
-        docs={docsUrl("storefronts")}
-      />
-    </div>
-  );
 }
 
 function Catalogue({ slug }: { slug: string }): React.ReactElement {
