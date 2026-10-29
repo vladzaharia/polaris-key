@@ -67,7 +67,6 @@ import { readBodyText, BodyTooLargeError } from "../../../core/cappedBody.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import {
   accountForSubject,
-  PAIRWISE_SUBJECT_PATTERN,
   resolveSubject,
 } from "../../../core/accounts/accountSubjects.js";
 import {
@@ -301,9 +300,9 @@ export async function handleToken(ctx: {
  * A code on a product whose launch gate, Identity or License is off is `invalid_grant`, and so is
  * a code whose key, licence or product no longer holds (`bindKeyReturn`). A licence that is in an
  * account is a flat `403 license_owned` with `signInUrl`. The answer is the ordinary one plus
- * `via: "key"`, `scope: ""` and `keyEntries`; `subject` is the binding the device holds after the
- * bind, and only when the request carried that device's own bearer token (otherwise `null`). The
- * code was consumed before this runs, so every refusal here spends it.
+ * `via: "key"`, `scope: ""` and `keyEntries`; `subject` is always `null`, because the key bind
+ * clears any binding the device held (U-02). The code was consumed before this runs, so every
+ * refusal here spends it.
  */
 async function redeemKeyReturn(
   cx: {
@@ -329,14 +328,6 @@ async function redeemKeyReturn(
     !(await launchGateOn(env, db, "launch.identityKeyReturn"))
   )
     return invalidGrant();
-
-  // The device's own token is the proof that it holds the device; only then may the answer
-  // carry a binding. It is checked before the bind, which rotates the credential.
-  const presented = bearer(req);
-  const held = presented
-    ? await validateDeviceToken(env, db, product, presented, now, { deviceId })
-    : null;
-  const proven = held !== null && !("error" in held);
 
   const bound = await bindKeyReturn(
     cx,
@@ -365,7 +356,8 @@ async function redeemKeyReturn(
       );
     return flatRefusal(r);
   }
-  // Identity is on, so the gate admitted and counted; a missing count is never answered.
+  // Unreachable: Identity is on, so the gate admitted and counted. A fail-closed guard, so a
+  // missing count is never answered.
   if (!bound.keyEntries) return oauth(503, "unavailable");
 
   await appendAudit(db, {
@@ -383,23 +375,6 @@ async function redeemKeyReturn(
   });
   const license = await getLicense(db, product.slug, bound.licenseId);
   if (!license) return oauth(503, "unavailable");
-  // What `GET identity/subject` reads for the device now (an erased account is no one's), and only
-  // for a device that proved it holds the device. A key entry re-binds the device without an
-  // account (U-02), so a binding it held is gone and this is `null` today.
-  let subject: string | null = null;
-  const bindingNow = bound.device.subject ?? null;
-  if (proven && bindingNow && PAIRWISE_SUBJECT_PATTERN.test(bindingNow)) {
-    const live = await resolveSubject(db, product.slug, bindingNow);
-    if (
-      live &&
-      (await erasureVerdict(
-        env,
-        now,
-        await accountForSubject(db, product.slug, live),
-      )) === "clear"
-    )
-      subject = live;
-  }
   const body: KeyReturnTokenResponse = {
     access_token: bound.token,
     token_type: "Bearer",
@@ -408,7 +383,7 @@ async function redeemKeyReturn(
     schemaVersion: product.schemaVersion,
     device: shapeDevice(bound.device, deviceId),
     license: shapeLicense(license, await customerTierId(db, license)),
-    subject,
+    subject: null,
     keyEntries: bound.keyEntries,
   };
   return withNoStore(json(body));

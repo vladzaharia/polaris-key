@@ -1590,10 +1590,8 @@ on (§12.8).
    `license` (`null` on a licence-less device) and `subject`. There is no `expires_in` and no
    `refresh_token` before I-21, and no `keyEntries` before I-08b. The `200` for a key-return code
    (§12.4.2) is exactly these members plus `via: "key"` and `keyEntries`. In it `scope` is `""`,
-   `license` is never `null`, and `subject` is the device's existing binding as
-   `GET identity/subject` reads it (§12.3), but only when the redeem request carried that
-   device's own bearer token; otherwise it is `null`. It is also `null` unless the device was
-   already signed in, because a key entry never writes or clears a binding. The Worker sends
+   `license` is never `null`, and `subject` is `null`: the bind by key re-binds the device without an account, as `license/activate` does,
+   so it writes no binding and clears any binding the device held (U-02). The Worker sends
    `via` only for a §12.4.2 code. A client reads the answer as a key return only when it sent
    `key_return=allow` and the body carries `via: "key"`; `via` with any other value, or
    `via: "key"` without the opt-in, is malformed. A `via: "key"` body is also malformed, and a
@@ -1744,8 +1742,10 @@ licence, with no account and no subject. Nothing is signed and no signed documen
       `404 not_found`, always in the same shape;
    4. 5 calls per request handle in 600 seconds: `429 rate_limited`;
    5. a malformed key is `422 bad_request`; a key that is unknown, inactive, or for another
-      product than the request's, or a missing licence, is `401 unauthorized` (the answers of
-      `POST /api/key/preview`, §12.2 rule 8);
+      product than the request's, a missing licence, or a licence that is not usable (not
+      `active`, or past `expiresAt`), is `401 unauthorized` (the answers of
+      `POST /api/key/preview`, §12.2 rule 8, and for an unusable licence the answer of
+      `license/activate`, §12.2 rule 3.3);
    6. a licence in an account is `403 license_owned` with `signInUrl`, whatever
       `identity.keyEntryRefusals` says. An owned licence never moves by key through the card;
    7. with `identity.keyEntryRefusals` on and `used ≥ limit`: `403 key_entry_limit` with
@@ -1759,12 +1759,17 @@ licence, with no account and no subject. Nothing is signed and no signed documen
    key by the code's key hash and answers `invalid_grant` if the key is no longer active, the
    licence is unusable, or the licence's product differs. It repeats item 3.6 whatever
    `identity.keyEntryRefusals` says: a licence that is in an account at `token` is refused with
-   a flat `403 license_owned` with `signInUrl`, and nothing is counted. It then binds the device
+   a flat `403 license_owned` with `signInUrl`, and nothing is counted. The check reads the
+   licence before the seat claim and is not part of its batch, so a claim that commits between
+   the two leaves the device seated, as the same race does on `license/activate`; the owner sees
+   that device on the licence and can remove it. It then binds the device
    exactly as `license/activate` binds the same key and `X-PKey-Device`: `bound_by = 'key'`, one
    `browser` key entry (§12.2 rule 1), and the seat, fingerprint and hardware rules unchanged, so
    `device_limit`, `fingerprint_required`, `hardware_mismatch` and `key_entry_limit` come from
-   there. It writes no sign-in binding and never answers `choose` (§12.5.1). The `200` is the
-   key-return body of §12.5 rule 3. The code is consumed before the bind, so a refusal at `token`
+   there. `token` carries no fingerprint, so on a tier whose fingerprint mode is `strict` the
+   answer is always `403 fingerprint_required`, as for a sign-in at `token`, and in the other
+   modes the device is recorded unverified. It writes no sign-in binding, clears any binding the device held (U-02), and never
+   answers `choose` (§12.5.1). The `200` is the key-return body of §12.5 rule 3. The code is consumed before the bind, so a refusal at `token`
    spends it and the person presses the card again for a fresh code; no seat was taken.
 6. **A client** uses the answer only after its own opt-in, and only if the body is well formed
    (§12.5 rule 3: `scope` `""`, `license` an object, `keyEntries` `{used, limit}` of

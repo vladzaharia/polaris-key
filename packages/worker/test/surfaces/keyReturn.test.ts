@@ -587,6 +587,24 @@ describe("refusals, in the contract's order (§12.4.2 item 3)", () => {
       expect(await alive(handle, binder)).toBe(true);
     });
 
+    it.each([
+      [
+        "suspended (disabled)",
+        "UPDATE licenses SET status = 'disabled' WHERE product = ?",
+      ],
+      ["expired", "UPDATE licenses SET expires_at = 1 WHERE product = ?"],
+    ])(
+      "a %s licence is 401 unauthorized and the request is not consumed",
+      async (_n, sql) => {
+        await db.run(sql, SLUG);
+        const { handle, binder } = await begin();
+        const res = await press(handle, { binder, body: withKey() });
+        expect(res.status).toBe(401);
+        expect(await res.json()).toMatchObject({ error: "unauthorized" });
+        expect(await alive(handle, binder)).toBe(true);
+      },
+    );
+
     it("an unknown and a malformed key are told apart exactly as the preview does", async () => {
       const { handle, binder } = await begin();
       expect((await press(handle, { binder, body: withKey("x") })).status).toBe(
@@ -846,7 +864,10 @@ describe("POST identity/token for a key code (§12.4.2 items 5 and 6, §12.5 rul
     });
 
     it.each([
-      ["disabled", "UPDATE licenses SET status = 'disabled' WHERE product = ?"],
+      [
+        "suspended (disabled)",
+        "UPDATE licenses SET status = 'disabled' WHERE product = ?",
+      ],
       ["expired", "UPDATE licenses SET expires_at = 1 WHERE product = ?"],
     ])("a licence %s in the window: invalid_grant", async (_n, sql) => {
       const code = await codeNow();

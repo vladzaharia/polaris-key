@@ -10986,7 +10986,8 @@ device on the key's licence, with no account and no subject. The route is
 Tests are in `test/surfaces/keyReturn.test.ts` and the transcripts `redirect-web-key-return*.json`.
 
 - **Worth of a code.** Exactly the key, for one device id, for 60 seconds. It equals
-  `license/activate` with that key: one counted key entry and no account binding. Only a holder of
+  `license/activate` with that key: one counted key entry, no account binding, and any binding the
+  device held cleared (U-02). Only a holder of
   the key can mint one, and the app never learns the key.
 - **Replay.** The request is consumed atomically, so one press gives one code. The code is single
   use, lives 60 seconds, and is bound to S256, `client_id` and `redirect_uri`. A wrong verifier ends it.
@@ -11004,21 +11005,33 @@ Tests are in `test/surfaces/keyReturn.test.ts` and the transcripts `redirect-web
 - **Enumeration.** Keys are 128-bit and the signed-out preview already confirms a key, so the route
   adds no oracle. The budgets are 10 a minute per client network, charged before any lookup and
   failing closed, and 5 per request handle in 600 seconds. There is no Turnstile, because nothing is
-  emailed.
-- **Limits hold.** An owned licence never moves by key through the card (S-16 D24):
+  emailed. Anyone on the same client network can spend the per-network budget, binder or not, and
+  hold the skip at `429` for a minute at a time. That costs availability only (sign-in and key
+  entry in the app are unaffected), as on the preview. Charging after the binder check would not
+  raise the cost, because a binder is one `authorize` away.
+- **Limits hold.** An owned licence does not move by key through the card (S-16 D24):
   `license_owned` is answered whatever `identity.keyEntryRefusals` says, at the route and again at
   `token`, where a licence that joined an account inside the code's 60 seconds is a flat `403
-license_owned` with `signInUrl` and nothing is counted. `token` also re-resolves the key by the
+license_owned` with `signInUrl` and nothing is counted. A licence that is not usable is `401` at
+  the card, as on `license/activate`. `token` also re-resolves the key by the
   code's key hash and answers `invalid_grant` if the key is no longer active, the licence is
   unusable or the product differs, and the same when the gate, Identity or License went off in
   the window. The entry is counted once, at `token`. `device_limit`, `fingerprint_required` and
-  `hardware_mismatch` come from `authorizeDevice`, unchanged.
+  `hardware_mismatch` come from `authorizeDevice`, unchanged. Residual: the check at `token` reads
+  the licence before the seat claim and is not in its batch, so a claim that commits in those
+  milliseconds leaves one seat on the licence. Both racers hold the key; `license/activate` has the
+  same window and, with `identity.keyEntryRefusals` off, admits an owned licence outright, so the
+  race grants nothing the key does not. The owner sees the device and can remove it. `token`
+  carries no fingerprint, so a `strict` tier always answers `fingerprint_required` there (the code
+  is spent), and other modes record the device unverified, as a sign-in at `token` does.
 - **The key stays in the body.** It is never in a URL, the redirect, the request or code record,
   browser storage, a log or the audit. The code holds the peppered hash D1 already stores, which
   cannot be presented as a key.
-- **Disclosure.** The answer carries the device, the licence, `keyEntries` and the device's own
-  binding, the last only when the redeem request carried that device's own bearer token (else
-  `subject` is `null`). It never carries an email, an account or the key.
+- **Disclosure.** The answer carries the device, the licence (with its own `name` and `email`, as
+  `license/activate` shows any key holder) and `keyEntries`. `subject` is always `null`: the bind by
+  key writes no binding and clears any the device held (U-02), so a device signed in on the product
+  leaves its account and its Cloud Sync principal, and the answer names no subject whatever bearer
+  is presented. It never carries an account, an account email or the key.
 
 ### Platform → Connections: the operator's side of connections (I-31)
 

@@ -27,7 +27,8 @@
  *   4. `identityKeyReturnRequest`, 5 per handle in 600 s (keyed by the handle's peppered hash):
  *      429.
  *   5. A malformed key is 422 `bad_request`. A key of another product, an unknown or inactive
- *      key, or a missing licence is 401 `unauthorized` (the answers of `POST /api/key/preview`).
+ *      key, a missing licence, or a licence that is not usable is 401 `unauthorized` (the answers
+ *      of `POST /api/key/preview`, and of `license/activate` for an unusable licence).
  *   6. A licence in an account: 403 `license_owned` with `signInUrl`, whatever
  *      `identity.keyEntryRefusals` says. An owned licence never moves by key through the card.
  *   7. Refusals on and `used >= limit`: 403 `key_entry_limit` with `keyEntries` and `manageUrl`.
@@ -173,7 +174,7 @@ export async function handleSignInKeyReturn(
   const keyRow = await getKey(db, product.slug, keyHash);
   if (!keyRow || keyRow.status !== "active") return unauthorized();
   const license = await getLicense(db, product.slug, keyRow.license_id);
-  if (!license) return unauthorized();
+  if (!license || !licenseUsable(license, now)) return unauthorized();
 
   // 6. A licence in an account never moves by key through the card.
   if ((license.account_id ?? null) !== null)
@@ -181,7 +182,9 @@ export async function handleSignInKeyReturn(
       signInUrl: await buildSignInUrl(env, db, req, product),
     });
 
-  // 7. The key-entry limit, as `license/activate` would refuse a new device.
+  // 7. The key-entry limit, as `license/activate` would refuse a new device. The card cannot see
+  // the device, so an enrolled device on a full licence is refused here although `license/activate`
+  // would admit it.
   const keyEntries = await keyEntryState(
     { env, db, ...(settings ? { registry: settings } : {}) },
     product,
@@ -190,7 +193,6 @@ export async function handleSignInKeyReturn(
   if (
     keyEntries &&
     keyEntries.used >= keyEntries.limit &&
-    licenseUsable(license, now) &&
     (await keyEntryRefusalsOn(env, db))
   ) {
     const manageUrl = await buildManageUrl(env, db, req, product, {

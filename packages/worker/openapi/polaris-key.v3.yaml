@@ -14139,7 +14139,8 @@ paths:
         closed) is `429`; an unknown, expired, foreign, taken or device-code request, a product
         with Identity or License off, or the launch gate `launch.identityKeyReturn` off is `404`;
         5 calls per request in 600 s is `429`; a malformed key is `422`; another product's, an
-        unknown or inactive key or a missing licence is `401`; a licence in an account is `403
+        unknown or inactive key, a missing licence or a licence that is not usable is `401`; a
+        licence in an account is `403
         license_owned` whatever `identity.keyEntryRefusals` says; with refusals on and the
         key-entry limit reached, `403 key_entry_limit`. Then the request is taken in one atomic
         consume and `{redirect}` is `<redirect_uri>?code=…&state=…&iss=…`. The code names the key
@@ -14167,7 +14168,9 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "401":
-          description: "`unauthorized`: no such key, another product's key, or no licence."
+          description: >
+            `unauthorized`: no such key, another product's key, no licence, or a licence that is
+            not usable.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }

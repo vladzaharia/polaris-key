@@ -461,9 +461,8 @@ export interface TokenResponse {
 /**
  * LK-SKIP (§12.5 rule 3): the `200` of `token` for a key-return code (§12.4.2). {@link TokenResponse}
  * plus `via: "key"`, with `scope` always `""`, `license` never `null` and `keyEntries` present.
- * `subject` is the device's existing binding as `GET identity/subject` reads it, and only when the
- * redeem request carried that device's own bearer token; otherwise, and unless the device was
- * already signed in, it is `null`, because a key entry never writes or clears a binding (§12.3). A
+ * `subject` is `null`: the bind by key writes no binding and clears any binding the device held
+ * (U-02). A client still accepts a pairwise-subject string here, so a later Worker may carry one. A
  * client tells this answer apart by `via: "key"` and its own `key_return` opt-in, never by
  * `subject`, and refuses a `via: "key"` body that breaks any member here (§12.5 rule 3).
  */
