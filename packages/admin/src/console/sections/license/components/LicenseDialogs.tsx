@@ -191,6 +191,14 @@ export function OfflineBundleDialog({
     }
   }, [open]);
 
+  // The result is the news: focus its title in the commit that shows it, not a frame later. The
+  // form's focused button leaves in that commit, and Radix puts focus on the dialog's container when
+  // the focused node is removed; a focus call deferred to the next frame (a loaded machine delays it)
+  // leaves the container focused, not the title, for as long as the frame takes.
+  React.useLayoutEffect(() => {
+    if (minted) titleRef.current?.focus({ preventScroll: true });
+  }, [minted]);
+
   const mint = async (): Promise<void> => {
     const e: typeof errors = {};
     if (!DEVICE_ID_RE.test(deviceId.trim()))
@@ -217,9 +225,6 @@ export function OfflineBundleDialog({
       if (configOn) body.includeConfig = includeConfig;
       const res = await mutate("mintBundle", slug, body);
       setMinted({ ...res, deviceId: body.deviceId });
-      requestAnimationFrame(() =>
-        titleRef.current?.focus({ preventScroll: true }),
-      );
       announce("Bundle minted.");
     } catch (err) {
       setError(err);

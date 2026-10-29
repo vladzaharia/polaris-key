@@ -106,7 +106,16 @@ class PeerLinkTest {
         val ended = CompletableDeferred<Unit>()
     }
 
-    private fun link(scope: CoroutineScope, pipe: PeerPipe, dev: Dev, role: NoiseRole, disc: ByteArray, seen: Seen, handshakeSeconds: Double = 30.0) =
+    private fun link(
+        scope: CoroutineScope,
+        pipe: PeerPipe,
+        dev: Dev,
+        role: NoiseRole,
+        disc: ByteArray,
+        seen: Seen,
+        handshakeSeconds: Double = 30.0,
+        wrapSend: ((ByteArray) -> Unit) -> (ByteArray) -> Unit = { it },
+    ) =
         PeerLink(
             pipe,
             scope,
@@ -121,7 +130,7 @@ class PeerLinkTest {
             PeerChannel(
                 role, "djdl", dev.stat,
                 AccountContext(signer.trust, "djdl", dev.cert, sub, dev.id, { null }, listOf(disc)),
-                HelloInfo("test", "demo"), send, onEvent,
+                HelloInfo("test", "demo"), wrapSend(send), onEvent,
                 caps = listOf("app/1"), now = { now },
             )
         }
@@ -162,6 +171,52 @@ class PeerLinkTest {
             p.sa.ended.await()
             p.sb.ended.await()
             assertTrue(p.a.isEnded && p.b.isEnded)
+        } finally {
+            s.cancel()
+        }
+    }
+
+    // The host's close and the pipe's end race on two threads: the CLOSE record is flushed, the peer hangs up,
+    // and the reader sees the end of the stream while the close still holds the channel's lock. Sdk-node and
+    // the Python engine cannot interleave so; here the close the host began first must keep its code.
+    // The test orders the two events: the close does not finish until the reader has seen the pipe end.
+    @Test
+    fun aLocalCloseKeepsPeerByeWhenTheReaderSeesTheEndBeforeTheCloseFinishes() = bounded {
+        val s = scope()
+        try {
+            val (pa, pb) = pipes()
+            val k = rnd()
+            val sa = Seen()
+            val sb = Seen()
+            val closeRequested = java.util.concurrent.atomic.AtomicBoolean()
+            val holder = arrayOfNulls<PeerLink<Unit>>(1)
+            val testThread = Thread.currentThread()
+            val a = link(s, pa, Dev(idA, 1), NoiseRole.initiator, k, sa) { send ->
+                { bytes ->
+                    send(bytes)
+                    // The CLOSE record is queued by the close call on this thread. Hold that call until the
+                    // reader (another thread, so it is never this wait) has seen the pipe end.
+                    if (closeRequested.get() && Thread.currentThread() === testThread) {
+                        val giveUp = System.nanoTime() + 5_000_000_000L
+                        while (holder[0]?.sawPipeEnd != true) {
+                            check(System.nanoTime() < giveUp) { "the reader never saw the pipe end" }
+                            Thread.onSpinWait()
+                        }
+                    }
+                }
+            }
+            holder[0] = a
+            val b = link(s, pb, Dev(idB, 2), NoiseRole.responder, k, sb)
+            s.launch { a.run() }
+            s.launch { b.run() }
+            openInitiator(a)
+            b.opened.await()
+            closeRequested.set(true)
+            a.close()
+            assertEquals(SessionEvent.Closed("peer_bye", false), sa.closed.await())
+            assertEquals(SessionEvent.Closed("peer_bye", true), sb.closed.await())
+            sa.ended.await()
+            sb.ended.await()
         } finally {
             s.cancel()
         }
