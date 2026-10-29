@@ -27,10 +27,15 @@ class JvmMdnsTest {
 
     private class FakeSocket(val onPacket: (ByteArray, String) -> Unit) : MdnsSocket {
         val sent = ArrayList<MdnsPacket>()
+        val sent6 = ArrayList<Pair<String, MdnsPacket>>()
         var closed = false
 
         override fun send(data: ByteArray) {
             sent += parseMdnsPacket(data)
+        }
+
+        override fun send6(data: ByteArray, zone: String) {
+            sent6 += zone to parseMdnsPacket(data)
         }
 
         override fun close() {
@@ -38,17 +43,26 @@ class JvmMdnsTest {
         }
     }
 
-    private class Rig(val addresses: (() -> List<String>)? = null, val allowLoopback: Boolean = false, val interfaces: List<String>? = null) {
+    private val lan4 = listOf("192.168.1.0/24", "10.0.0.0/8", "172.20.0.0/16")
+
+    private val en0 = Mdns6Interface("en0", "en0", listOf("fe80::1"), listOf("fe80::1/64", "fd12::5/64"))
+
+    private class Rig(
+        val addresses: (() -> List<String>)? = null,
+        val allowLoopback: Boolean = false,
+        val interfaces: List<String>? = null,
+        val subnets: List<String> = listOf("192.168.1.0/24", "10.0.0.0/8", "172.20.0.0/16", "2001:db8:1::/64"),
+        val v6: List<Mdns6Interface> = emptyList(),
+    ) {
         val scope = CoroutineScope(Dispatchers.Default + Job())
         val socks = ArrayList<FakeSocket>()
         var t = 1000.0
         val adapter = JvmMdns(
             scope,
             { on -> FakeSocket(on).also { socks += it } },
-            addresses,
             allowLoopback,
             interfaces,
-            { t },
+            MdnsEnvironment(addresses, { subnets }, { v6 }, { t }),
         )
         val sock: FakeSocket get() = socks.last()
         val up = ArrayList<MdnsFound>()
@@ -69,11 +83,14 @@ class JvmMdnsTest {
 
     private fun ptr(i: String = inst, ttl: Long = 120) = MdnsRecord(PEER_SERVICE, MdnsType.PTR, ttl, MdnsData.Ptr(fqdn(i)))
 
-    private fun a(i: String = inst, ip: String = "192.168.1.20") = MdnsRecord("$i.local", MdnsType.A, 120, MdnsData.Address(ip))
+    private fun a(i: String = inst, ip: String = "192.168.1.20", ttl: Long = 120) = MdnsRecord("$i.local", MdnsType.A, ttl, MdnsData.Address(ip))
+
+    private fun aaaa(i: String = inst, ip: String = "fe80::1c2:3ff:fe4:5a6", ttl: Long = 120) =
+        MdnsRecord("$i.local", MdnsType.AAAA, ttl, MdnsData.Address(ip))
 
     private fun fqdn(i: String) = "$i.$PEER_SERVICE"
 
-    private fun full(i: String = inst, ip: String = "192.168.1.20") = listOf(ptr(i), srv(i), txt(i), a(i, ip))
+    private fun full(i: String = inst, ip: String = "192.168.1.20") = listOf(ptr(i), srv(i), txt(i), if (ip.contains(':')) aaaa(i, ip) else a(i, ip))
 
     @Test
     fun lanAddresses() {
@@ -117,6 +134,56 @@ class JvmMdnsTest {
         assertTrue(none.sock.sent.isEmpty()) // no LAN address: nothing to say
         r.close()
         none.close()
+    }
+
+    @Test
+    fun anAaaaRecordLeavesOnItsOwnLinkAndAnArecordOnTheIpv4Group() {
+        val two = Mdns6Interface("wlan0", "wlan0", listOf("fe80::2", "fe80::3"), listOf("fe80::2/64"))
+        val r = Rig(addresses = { listOf("192.168.1.20") }, v6 = listOf(en0, two))
+        advertise(r)
+        val v4 = r.sock.sent.single()
+        assertEquals(listOf(MdnsType.A), v4.answers.map { it.type }.filter { it == MdnsType.A || it == MdnsType.AAAA })
+        assertEquals(listOf("en0", "wlan0"), r.sock.sent6.map { it.first })
+        for ((zone, p) in r.sock.sent6) {
+            val addrs = p.answers.filter { it.type == MdnsType.AAAA }
+            assertTrue(addrs.all { it.name == host })
+            assertEquals(if (zone == "en0") listOf("fe80::1") else listOf("fe80::2", "fe80::3"), addrs.map { (it.data as MdnsData.Address).ip })
+            assertEquals(MdnsData.Srv(4242, host, 0, 0), p.answers.first { it.type == MdnsType.SRV }.data)
+        }
+        // An IPv6-only host (no private IPv4 address) still says where it is.
+        val only6 = Rig(addresses = { emptyList() }, v6 = listOf(en0))
+        advertise(only6)
+        assertTrue(only6.sock.sent.isEmpty())
+        assertEquals(1, only6.sock.sent6.size)
+        // The goodbye goes out on every link too, with TTL 0.
+        runBlocking { advertise(r).stop() }
+        assertTrue(r.sock.sent6.takeLast(2).all { (_, p) -> p.answers.all { it.ttl == 0L } })
+        r.close()
+        only6.close()
+    }
+
+    @Test
+    fun aBrowseAsksForAaaaAndQueriesEveryLink() {
+        val q = Rig(v6 = listOf(en0))
+        q.browse()
+        assertEquals(listOf("en0"), q.sock.sent6.map { it.first })
+        q.push(listOf(ptr(), srv(), txt()))
+        runBlocking { delay(1300) } // the second ask, after a second: the chased name is asked for with both address types
+        val last = q.sock.sent.last().questions
+        assertTrue(last.contains(MdnsQuestion(host, MdnsType.A)))
+        assertTrue(last.contains(MdnsQuestion(host, MdnsType.AAAA)))
+        assertEquals(last, q.sock.sent6.last().second.questions)
+        q.close()
+    }
+
+    @Test
+    fun aLinkLocalSourceNeedsNoSubnet() {
+        // fe80::/10 is on-link by definition (RFC 6762 section 11): no subnet list is consulted for it.
+        val r = Rig(subnets = emptyList())
+        r.browse()
+        r.push(listOf(ptr(), srv(), txt(), aaaa(ip = "fe80::7")), src = "fe80::7%en0")
+        assertEquals(listOf("fe80::7%en0"), r.up.single().hosts)
+        r.close()
     }
 
     @Test
@@ -263,22 +330,108 @@ class JvmMdnsTest {
         // A neighbour at .66 claims the instance lives at .20.
         r.push(full(ip = "192.168.1.20"), src = "192.168.1.66")
         assertTrue(r.up.isEmpty())
-        // The name belongs to the first source that announced it: .20 cannot claim it afterwards.
+        // The name's SRV and TXT belong to the first source that announced it; .20 can say where it is.
         r.push(listOf(a(ip = "192.168.1.20")), src = "192.168.1.20")
-        assertTrue(r.up.isEmpty())
+        assertEquals(listOf(listOf("192.168.1.20")), r.up.map { it.hosts })
         r.close()
     }
 
     @Test
-    fun anAddressOutsideTheLanIsNeverDialled() {
-        for (ip in listOf("8.8.8.8", "169.254.9.9", "100.64.0.9", "127.0.0.1")) {
+    fun anAaaaRecordIsBelievedOnlyFromItsOwnSourceAndALinkLocalOneTakesTheArrivalZone() {
+        val r = Rig()
+        r.browse()
+        val ll = "fe80::1c2:3ff:fe4:5a6"
+        r.push(listOf(ptr(), srv(), txt(), aaaa(ip = "fe80::9")), src = "$ll%en0") // not the source: nothing learned
+        assertTrue(r.up.isEmpty())
+        r.push(listOf(aaaa()), src = "$ll%en0")
+        assertEquals(listOf("$ll%en0"), r.up.single().hosts)
+        assertEquals("$ll%en0", r.up.single().host)
+        // The same address on another link is another neighbour.
+        r.push(listOf(aaaa()), src = "$ll%wlan0")
+        assertEquals(listOf("$ll%en0", "$ll%wlan0"), r.up.last().hosts)
+        // An A record in an IPv6 packet, and an AAAA record in an IPv4 packet, are never believed.
+        r.push(listOf(a(ip = "192.168.1.20")), src = "$ll%en0")
+        r.push(listOf(aaaa(ip = "fd12::7")), src = "192.168.1.20")
+        assertEquals(2, r.up.last().hosts.size)
+        r.close()
+    }
+
+    @Test
+    fun aMappedSourceIsJudgedAsItsIpv4Address() {
+        val r = Rig()
+        r.browse()
+        r.push(full(ip = "192.168.1.20"), src = "::ffff:192.168.1.20")
+        assertEquals(listOf("192.168.1.20"), r.up.single().hosts)
+        r.close()
+    }
+
+    @Test
+    fun aDualStackHostIsDialledAtItsAnnouncingSourceFirstThenItsOtherFamily() {
+        val r = Rig()
+        r.browse()
+        r.push(full(ip = "192.168.1.20"), src = "192.168.1.20")
+        r.push(listOf(aaaa(ip = "fe80::1")), src = "fe80::1%en0")
+        assertEquals(listOf("192.168.1.20", "fe80::1%en0"), r.up.last().hosts)
+        // An IPv6-first host lists its own source first too.
+        val r2 = Rig()
+        r2.browse()
+        r2.push(listOf(ptr(), srv(), txt(), aaaa(ip = "fe80::1")), src = "fe80::1%en0")
+        r2.push(listOf(a()), src = "192.168.1.20")
+        assertEquals(listOf("fe80::1%en0", "192.168.1.20"), r2.up.last().hosts)
+        r.close()
+        r2.close()
+    }
+
+    @Test
+    fun anAddressRecordWithTtlZeroWithdrawsItsAddressAndTheLastOneTakesTheAdvertDown() {
+        val r = Rig()
+        r.browse()
+        r.push(full(ip = "192.168.1.20"), src = "192.168.1.20")
+        r.push(listOf(aaaa(ip = "fe80::1")), src = "fe80::1%en0")
+        // Not from its source: ignored.
+        r.push(listOf(a(ttl = 0)), src = "192.168.1.99")
+        assertTrue(r.down.isEmpty())
+        r.push(listOf(a(ttl = 0)), src = "192.168.1.20")
+        assertEquals(listOf("fe80::1%en0"), r.up.last().hosts)
+        assertTrue(r.down.isEmpty())
+        r.push(listOf(aaaa(ip = "fe80::1", ttl = 0)), src = "fe80::1%wlan0") // another zone: removes nothing
+        assertTrue(r.down.isEmpty())
+        r.push(listOf(aaaa(ip = "fe80::1", ttl = 0)), src = "fe80::1%en0")
+        assertEquals(listOf(inst), r.down)
+        // It comes back: reported again.
+        val n = r.up.size
+        r.push(listOf(a()), src = "192.168.1.20")
+        assertEquals(n + 1, r.up.size)
+        r.close()
+    }
+
+    @Test
+    fun aNameKeepsFourAddressesInFirstSeenOrder() {
+        val r = Rig()
+        r.browse()
+        r.push(full(ip = "192.168.1.20"), src = "192.168.1.20")
+        for (n in 21..26) r.push(listOf(a(ip = "192.168.1.$n")), src = "192.168.1.$n")
+        assertEquals(listOf(20, 21, 22, 23).map { "192.168.1.$it" }, r.up.last().hosts)
+        r.close()
+    }
+
+    @Test
+    fun aSourceOutsideTheInterfacesConnectedSubnetsIsIgnored() {
+        for (ip in listOf("8.8.8.8", "169.254.9.9", "100.64.0.9", "127.0.0.1", "192.168.2.20", "2001:db8:2::1", "fd00::1")) {
             val r = Rig()
             r.browse()
             r.push(full(ip = ip), src = ip)
             assertTrue(ip, r.up.isEmpty())
             r.close()
         }
-        val r = Rig(allowLoopback = true)
+        // A global address on a connected /64 is heard (the dial-time verdict decides what is dialled); a
+        // link-local source is on-link by definition; loopback only where its interface is in use.
+        val g = Rig()
+        g.browse()
+        g.push(full(ip = "2001:db8:1::7"), src = "2001:db8:1::7")
+        assertEquals(listOf("2001:db8:1::7"), g.up.single().hosts)
+        g.close()
+        val r = Rig(allowLoopback = true, subnets = listOf("127.0.0.0/8"))
         r.browse()
         r.push(full(ip = "127.0.0.1"), src = "127.0.0.1")
         assertEquals("127.0.0.1", r.up[0].host)
@@ -286,16 +439,15 @@ class JvmMdnsTest {
     }
 
     @Test
-    fun aNamesAddressBelongsToTheSourceThatAnnouncedItAndAnotherSourceCannotAddOrReplaceIt() {
+    fun aNamesSrvAndTxtBelongToTheSourceThatAnnouncedItAndAnotherSourceCannotChangeThePort() {
         val r = Rig()
         r.browse()
         r.push(listOf(ptr(), srv(), txt()), "192.168.1.30")
         r.push(listOf(a(ip = "192.168.1.30")), "192.168.1.30")
         assertEquals(listOf("192.168.1.30"), r.up.map { it.host })
-        for (n in 31..39) r.push(listOf(a(ip = "192.168.1.$n")), "192.168.1.$n")
         r.push(listOf(srv(port = 5000)), "192.168.1.31") // another source cannot change the port
         assertEquals(1, r.up.size)
-        assertEquals(listOf("192.168.1.30"), r.up[0].hosts)
+        assertEquals(4242, r.up[0].port)
         r.push(listOf(srv(port = 5000)), "192.168.1.30") // the owner can
         assertEquals("192.168.1.30", r.up.last().host)
         assertEquals(5000, r.up.last().port)
@@ -303,13 +455,12 @@ class JvmMdnsTest {
     }
 
     @Test
-    fun anAddressAnnouncedFirstByAStrangerDoesNotBeatTheNamesOwnSource() {
+    fun anAddressAnnouncedFirstByAStrangerKeepsItsPlaceButTheNamesOwnSourceIsDialledFirst() {
         val r = Rig()
         r.browse()
         r.push(listOf(a(ip = "192.168.1.66")), "192.168.1.66") // the stranger is first with an A
         r.push(full(ip = "192.168.1.20"), "192.168.1.20")
-        assertEquals(listOf("192.168.1.20"), r.up.map { it.host })
-        assertEquals(1, r.up.size)
+        assertEquals(listOf("192.168.1.20", "192.168.1.66"), r.up.last().hosts)
         r.close()
     }
 
@@ -443,7 +594,7 @@ class JvmMdnsTest {
         val scope = CoroutineScope(Dispatchers.Default + Job())
         var sock: FakeSocket? = null
         var calls = 0
-        val a = JvmMdns(scope, { on -> FakeSocket(on).also { sock = it } }, null, false, null, { 1000.0 })
+        val a = JvmMdns(scope, { on -> FakeSocket(on).also { sock = it } }, env = MdnsEnvironment(subnets = { lan4 }, clock = { 1000.0 }))
         runBlocking {
             a.browse({
                 calls++
@@ -486,6 +637,37 @@ class JvmMdnsTest {
             assertNotNull(f)
             assertEquals(inst, f.instance)
             assertEquals(4242, f.port)
+        } finally {
+            ah.stop()
+            bh.stop()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun liveTwoAdaptersFindEachOtherOverTheRealInterfacesOnBothFamilies() = runBlocking {
+        assumeTrue("live multicast: PKEY_LIVE_MDNS=1", System.getenv("PKEY_LIVE_MDNS") == "1")
+        val v4 = lanInterfaces().map { it.second }
+        val v6 = lanInterfaces6()
+        assumeTrue("no LAN interface on this host", v4.isNotEmpty() || v6.isNotEmpty())
+        val scope = CoroutineScope(Dispatchers.Default + Job())
+        val got = java.util.concurrent.LinkedBlockingQueue<MdnsFound>()
+        val adapter = JvmMdns(scope)
+        val bh = runCatching { adapter.browse({ got.add(it) }) }.getOrElse {
+            assumeTrue("no multicast socket here", false)
+            return@runBlocking
+        }
+        val ah = adapter.advertise(MdnsAdvert(inst, 4242, listOf("v=1", "m=a")))
+        try {
+            var f = got.poll(8, java.util.concurrent.TimeUnit.SECONDS)
+            assertNotNull(f)
+            assertEquals(inst, f.instance)
+            // The report is repeated as each address arrives: collect for a moment.
+            while (true) f = got.poll(3, java.util.concurrent.TimeUnit.SECONDS) ?: break
+            println("[live] hosts=${f.hosts} v4=$v4 v6=${v6.map { it.zone to it.addresses }}")
+            // every family this host announces on is heard, link-local with its zone
+            if (v4.isNotEmpty()) assertTrue(f.hosts.toString(), f.hosts.any { '.' in it })
+            if (v6.isNotEmpty()) assertTrue(f.hosts.toString(), f.hosts.any { it.startsWith("fe80:") && '%' in it })
         } finally {
             ah.stop()
             bh.stop()

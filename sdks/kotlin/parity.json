@@ -601,7 +601,7 @@
     "connect.lan": {
       "status": "planned",
       "wp": "CC-12b",
-      "note": "The JVM half is built and tested: :core mDNS (JvmMdns, bounded tables, per-source caps) and TCP pipes, and :sdk ConnectLan, used off Android (ConnectLanTest, the live test under PKEY_LIVE_MDNS=1). Android has no adapter yet, so LAN reports off with reason unsupported there and the relay still works; CC-12b adapts :platform NSD to the MdnsAdapter and PeerPipe ports, adds the ACCESS_LOCAL_NETWORK permission (nearby-permission-denied) and the Keystore-sealed state storage."
+      "note": "The JVM half is built and tested: :core mDNS (JvmMdns, bounded tables, per-source caps) and TCP pipes, and :sdk ConnectLan, used off Android (ConnectLanTest, the live test under PKEY_LIVE_MDNS=1). IPv6: :core lanVerdict and lanGroupKey (V5 15.4.1), AAAA and ff02::fb per link with the source-subnet check and learning by equality (MdnsAddressBook); :conformance PeerMatrixLanTest runs every lanAddresses row and every mdnsAnswers row (with prior); the lanAddresses candidates rows are not run, because Kotlin neither sends nor reads CANDIDATES. Android has no adapter yet, so LAN reports off with reason unsupported there and the relay still works; CC-12b adapts :platform NSD to the MdnsAdapter and PeerPipe ports, adds the ACCESS_LOCAL_NETWORK permission (nearby-permission-denied) and the Keystore-sealed state storage."
     },
     "connect.relay": {
       "status": "implemented",

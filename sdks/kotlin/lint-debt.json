@@ -990,15 +990,12 @@
       "ktlint:standard:enum-entry-name-case": 3
     },
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/lan/JvmMdns.kt": {
-      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.CyclomaticComplexMethod": 2,
       "detekt:complexity.TooManyFunctions": 1,
-      "detekt:exceptions.SwallowedException": 13,
-      "detekt:exceptions.TooGenericExceptionCaught": 2,
-      "detekt:style.LoopWithTooManyJumpStatements": 3,
+      "detekt:exceptions.SwallowedException": 6,
+      "detekt:exceptions.TooGenericExceptionCaught": 1,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
       "detekt:style.MagicNumber": 1,
-      "detekt:style.ReturnCount": 2
-    },
-    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/lan/MdnsAdapter.kt": {
       "detekt:style.ReturnCount": 1
     },
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/lan/MdnsPacket.kt": {
