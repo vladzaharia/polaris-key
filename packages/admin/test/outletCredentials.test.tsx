@@ -10,7 +10,7 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { resetConsole } from "./consoleHarness.js";
 import { expectNoAxeViolations } from "./coreTestUtils.js";
-import { openSetDrawer, pick, resetAround } from "./credentialsKit.js";
+import { openSetDrawer, resetAround, VIEW_ONLY } from "./credentialsKit.js";
 import {
   apiError,
   bootWith,
@@ -73,7 +73,7 @@ const NO_APPLE = {
 };
 
 async function table(): Promise<HTMLElement> {
-  const t = await screen.findByRole("table", { name: "Channel credentials" });
+  const t = await screen.findByRole("table", { name: "Credentials" });
   await within(t).findByText("sentry-alerts");
   return t;
 }
@@ -83,7 +83,7 @@ describe("Distribution → Channel credentials", () => {
     boot(HASH);
     const t = await table();
     expect(
-      screen.getByRole("heading", { level: 1, name: "Channel credentials" }),
+      screen.getByRole("heading", { level: 1, name: "Credentials" }),
     ).toBeTruthy();
     expect(within(t).getByText("Sentry internal integration")).toBeTruthy();
     // The App Store and Google keys moved to their channels' Setup tabs.
@@ -99,7 +99,7 @@ describe("Distribution → Channel credentials", () => {
     const links = screen.getByRole("region", { name: "Store keys" });
     expect(
       within(links)
-        .getByRole("link", { name: "App Store" })
+        .getByRole("link", { name: /^App Store/ })
         .getAttribute("href"),
     ).toBe("#/p/djdl/distribution/channels/app-store/setup");
     expect(within(links).getByRole("link", { name: "Steam" })).toBeTruthy();
@@ -110,11 +110,16 @@ describe("Distribution → Channel credentials", () => {
     const t = await table();
     expect(within(t).getByText("asc-team-key")).toBeTruthy();
     expect(within(t).getAllByText("Out of scope")).toHaveLength(1);
+    expect(
+      within(t).getByText(/Delete the key, or add a platform/),
+    ).toBeTruthy();
     // Its channel is out of scope, so there is no Setup link for it; Google Play's is there.
     const links = screen.getByRole("region", { name: "Store keys" });
-    expect(within(links).queryByRole("link", { name: "App Store" })).toBeNull();
     expect(
-      within(links).getByRole("link", { name: "Google Play" }),
+      within(links).queryByRole("link", { name: /^App Store/ }),
+    ).toBeNull();
+    expect(
+      within(links).getByRole("link", { name: /^Google Play/ }),
     ).toBeTruthy();
     // The key is still editable here: delete is offered.
     await userEvent.click(
@@ -143,13 +148,11 @@ describe("Distribution → Channel credentials", () => {
     });
     await table();
     const drawer = await openSetDrawer();
-    await userEvent.click(
-      within(drawer).getByRole("combobox", { name: /Kind/ }),
-    );
-    const options = await screen.findAllByRole("option");
-    expect(options).toHaveLength(1);
-    expect(options[0]!.textContent).toMatch(/Sentry internal integration/);
-    await userEvent.keyboard("{Escape}");
+    // The only kind here: said, not asked.
+    expect(within(drawer).queryByRole("combobox", { name: /Kind/ })).toBeNull();
+    expect(
+      within(drawer).getByText("Sentry internal integration"),
+    ).toBeTruthy();
     await userEvent.type(
       within(drawer).getByLabelText(/Credential ID/),
       "sentry-2",
@@ -184,7 +187,6 @@ describe("Distribution → Channel credentials", () => {
     });
     await table();
     const drawer = await openSetDrawer();
-    await pick(drawer, /Kind/, /Sentry internal integration/);
     await userEvent.type(
       within(drawer).getByLabelText(/Credential ID/),
       "sentry-alerts",
@@ -219,7 +221,7 @@ describe("Distribution → Channel credentials", () => {
 
   it("round-trips the kind facet through the URL", async () => {
     boot(`${HASH}?kind=sentry-integration`, NO_APPLE);
-    const t = await screen.findByRole("table", { name: "Channel credentials" });
+    const t = await screen.findByRole("table", { name: "Credentials" });
     await waitFor(() => expect(within(t).getAllByRole("row")).toHaveLength(2));
     expect(within(t).getByText("sentry-alerts")).toBeTruthy();
   });
@@ -355,6 +357,39 @@ describe("Distribution → Channel credentials", () => {
     fail = false;
     await userEvent.click(retry);
     expect(await table()).toBeTruthy();
+  });
+
+  it("is read-only without Ship edit, and carries one action when empty", async () => {
+    boot(HASH, { "/manage/api/me": VIEW_ONLY });
+    await table();
+    expect(
+      screen
+        .getByRole("button", { name: "Set credential…" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    cleanup();
+    resetConsole();
+    boot(HASH, {
+      [P("/outlet-credentials")]: { ...CREDENTIALS, credentials: [] },
+    });
+    await screen.findByText("No other credentials yet");
+    expect(
+      screen.getAllByRole("button", { name: "Set credential…" }),
+    ).toHaveLength(1);
+  });
+
+  it("tells each store link how many keys it holds and whether one fails", async () => {
+    boot(HASH);
+    await table();
+    const links = screen.getByRole("region", { name: "Store keys" });
+    expect(
+      within(links).getByRole("link", { name: "App Store · 1 key" }),
+    ).toBeTruthy();
+    expect(
+      within(links).getByRole("link", {
+        name: "Google Play · 1 key · 1 failed",
+      }),
+    ).toBeTruthy();
   });
 
   it("passes axe", async () => {

@@ -32,8 +32,10 @@ import {
   describe,
   kindLabel,
   pinField,
+  sharedLine,
   type KindSpec,
 } from "../model/credentialKinds.js";
+import { humanField } from "../model/channelCopy.js";
 import { PinDialog, SetCredentialDrawer } from "./CredentialForms.js";
 
 export function LastResult({
@@ -48,7 +50,10 @@ export function LastResult({
           Failed
         </StatusPill>
         <span
-          className="line-clamp-2 max-w-64 text-xs break-all text-fg-muted"
+          // A long id in the text breaks anywhere; prose breaks between words.
+          className={`line-clamp-2 max-w-64 text-xs text-fg-muted${
+            /\S{25,}/.test(c.lastError) ? " break-all" : ""
+          }`}
           title={c.lastError}
         >
           {c.lastError}
@@ -77,6 +82,7 @@ function CredentialDetail({
   onRotate,
   onPin,
   showChannel,
+  disabledReason,
 }: {
   cred: OutletCredentialInfo | undefined;
   missing: string | null;
@@ -86,6 +92,8 @@ function CredentialDetail({
   onPin: (c: OutletCredentialInfo) => void;
   /** The outlet a credential is bound to. A channel page already says which channel it is. */
   showChannel: boolean;
+  /** Why a change is unavailable to this reader. */
+  disabledReason: string | undefined;
 }): React.ReactElement {
   const field = cred ? pinField(data, cred.kind) : null;
   return (
@@ -111,7 +119,9 @@ function CredentialDetail({
               items={[
                 {
                   term: "Status",
-                  detail: (
+                  detail: cred.lastError ? (
+                    <StatusPill tone="danger">Failing</StatusPill>
+                  ) : (
                     <StatusPill
                       tone={cred.status === "active" ? "success" : "neutral"}
                     >
@@ -136,8 +146,10 @@ function CredentialDetail({
                 ...Object.entries(cred.meta)
                   .filter(([k]) => k !== field)
                   .map(([k, v]) => ({
-                    term: k,
-                    detail: <span className="font-mono text-xs">{v}</span>,
+                    term: humanField(k),
+                    detail: (
+                      <span className="font-mono text-xs break-all">{v}</span>
+                    ),
                   })),
                 ...(showChannel
                   ? [
@@ -155,8 +167,7 @@ function CredentialDetail({
                       <Timestamp
                         at={fromSeconds(cred.createdAt)}
                         format="detail"
-                      />{" "}
-                      by {cred.createdBy}
+                      />
                     </>
                   ),
                 },
@@ -204,11 +215,20 @@ function CredentialDetail({
       {cred ? (
         <DrawerFooter>
           {field ? (
-            <Button variant="outline" onClick={() => onPin(cred)}>
+            <Button
+              variant="outline"
+              disabledReason={disabledReason}
+              onClick={() => onPin(cred)}
+            >
               Pin…
             </Button>
           ) : null}
-          <Button onClick={() => onRotate(cred)}>Rotate…</Button>
+          <Button
+            disabledReason={disabledReason}
+            onClick={() => onRotate(cred)}
+          >
+            Rotate…
+          </Button>
         </DrawerFooter>
       ) : null}
     </Drawer>
@@ -239,12 +259,21 @@ export function useCredentialEditor({
   rows,
   kinds,
   channelScoped,
+  channelName,
+  disabledReason,
+  alsoUsedBy,
 }: {
   slug: string;
   creds: ReturnType<typeof useCredentials>;
   rows: readonly OutletCredentialInfo[];
   kinds: readonly KindSpec[];
   channelScoped: boolean;
+  /** The channel the editors sit on (names the set drawer); omitted on the Credentials page. */
+  channelName?: string;
+  /** Why this reader cannot change a credential (the Ship edit gate); the controls show it. */
+  disabledReason?: string;
+  /** The other in-scope channels a kind's key also serves, named in the rotate and delete confirms. */
+  alsoUsedBy?: (kind: string) => string[];
 }): CredentialEditor {
   const [openId] = useSearchParam("credential", CREDENTIAL);
   const [drawer, setDrawer] = React.useState<
@@ -260,15 +289,17 @@ export function useCredentialEditor({
   const rowActions = (c: OutletCredentialInfo): RowActionItem[] => [
     {
       label: "Rotate…",
+      disabledReason,
       onSelect: () => setDrawer({ mode: "rotate", cred: c }),
     },
     ...(pinField(creds.data, c.kind)
-      ? [{ label: "Pin…", onSelect: () => setPinning(c) }]
+      ? [{ label: "Pin…", disabledReason, onSelect: () => setPinning(c) }]
       : []),
     { type: "separator" as const },
     {
       label: "Delete…",
       tone: "danger" as const,
+      disabledReason,
       onSelect: () => setDeleting(c),
     },
   ];
@@ -279,6 +310,7 @@ export function useCredentialEditor({
         missing={openId !== "" && !open && !creds.isPending ? openId : null}
         data={creds.data}
         showChannel={!channelScoped}
+        disabledReason={disabledReason}
         onClose={() => patchQuery({ credential: null })}
         onRotate={(c) => setDrawer({ mode: "rotate", cred: c })}
         onPin={setPinning}
@@ -290,6 +322,8 @@ export function useCredentialEditor({
           rotate={drawer.mode === "rotate" ? drawer.cred : null}
           kinds={kinds}
           channelScoped={channelScoped}
+          channelName={channelName}
+          alsoUsedBy={alsoUsedBy}
           onClose={() => setDrawer(null)}
         />
       ) : null}
@@ -308,6 +342,7 @@ export function useCredentialEditor({
         title={`Delete the channel credential “${deleting?.id ?? ""}”?`}
         consequences={[
           "Connectors using it stop working until another is set.",
+          ...sharedLine(deleting, alsoUsedBy),
           "The value cannot be recovered.",
         ]}
         confirmLabel={deleting ? `Delete ${deleting.id}` : "Delete"}
@@ -338,6 +373,7 @@ export function CredentialTable({
   caption,
   channelColumn,
   outOfScope,
+  kindChannels,
   filters,
   pending = false,
   empty,
@@ -350,7 +386,9 @@ export function CredentialTable({
   /** The "Channel" column: the outlet a credential is bound to. Off on a channel's own page. */
   channelColumn: boolean;
   /** A held credential whose channel is out of scope for the product is flagged (A-20 R6). */
-  outOfScope?: (c: OutletCredentialInfo) => boolean;
+  outOfScope?: (c: OutletCredentialInfo) => string | undefined;
+  /** The channel names a kind serves, for a credential bound to no outlet (instead of "Any"). */
+  kindChannels?: (kind: string) => string;
   /** Search and the kind facet: on for the page that lists many, off for one channel's few. */
   filters: boolean;
   /** Something the rows depend on (the product's scope) is still loading. */
@@ -388,10 +426,13 @@ export function CredentialTable({
               </span>
             ) : null}
             {outOfScope?.(row.original) ? (
-              <span className="mt-0.5">
+              <span className="mt-0.5 flex max-w-72 flex-col items-start gap-1">
                 <StatusPill tone="neutral" size="sm">
                   Out of scope
                 </StatusPill>
+                <span className="text-xs text-fg-muted">
+                  {outOfScope(row.original)}
+                </span>
               </span>
             ) : null}
           </span>
@@ -427,9 +468,10 @@ export function CredentialTable({
             accessorFn: (c: OutletCredentialInfo) => c.outletId ?? "",
             meta: { priority: 2 },
             cell: ({ row }: { row: { original: OutletCredentialInfo } }) =>
-              row.original.outletId ?? (
+              row.original.outletId ??
+              (kindChannels?.(row.original.kind) || (
                 <span className="text-fg-subtle">Any</span>
-              ),
+              )),
           } satisfies DataColumn<OutletCredentialInfo>,
         ]
       : []),

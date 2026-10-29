@@ -165,6 +165,7 @@ export function ChannelPage({
         value={current.value}
         current={current.value}
         idPrefix={TAB_PREFIX}
+        className="pt-0"
       >
         <Panel slug={slug} name={name} channel={row} />
       </TabPanel>

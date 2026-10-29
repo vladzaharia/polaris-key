@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, expect, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { resetConsole } from "./consoleHarness.js";
+import { ME, resetConsole } from "./consoleHarness.js";
 import { writes, type Call } from "./distributionFixture.js";
 
 /** Reset the console before each test and unmount after it. */
@@ -33,7 +33,7 @@ export async function openSetDrawer(): Promise<HTMLElement> {
   await userEvent.click(
     screen.getByRole("button", { name: "Set credential…" }),
   );
-  return screen.findByRole("dialog", { name: "Set a channel credential" });
+  return screen.findByRole("dialog", { name: /^Set a .*(credential|key)$/ });
 }
 
 /** Open a row's action menu and choose an item. */
@@ -67,3 +67,14 @@ export async function expectGoogleKeyWrite(calls: Call[]): Promise<void> {
     ]),
   );
 }
+
+/** A member who can see Ship but not edit it. */
+export const VIEW_ONLY = {
+  ...ME,
+  platformAdmin: false,
+  permissions: {
+    roles: [],
+    platform: { view: ["console"], edit: [] },
+    products: { djdl: { view: ["core", "keys", "ship"], edit: [] } },
+  },
+};

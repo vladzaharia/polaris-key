@@ -451,9 +451,13 @@ describe("Direct links, the add flow and the credentials page (A-20.7)", () => {
       "/manage/api/products/djdl/distribution/connectors": CONNECTORS,
     });
     const main = await screen.findByRole("main");
-    await within(main).findByText("Microsoft Store");
-    expect(within(main).queryByText("App Store Connect")).toBeNull();
-    expect(within(main).queryByText("Google Play")).toBeNull();
+    await within(main).findByRole("region", { name: "Microsoft Store" });
+    expect(
+      within(main).queryByRole("region", { name: "App Store Connect" }),
+    ).toBeNull();
+    expect(
+      within(main).queryByRole("link", { name: /^Google Play/ }),
+    ).toBeNull();
   });
 
   it("Channel credentials shows a skeleton, no card, until the product has loaded (R2)", async () => {
@@ -472,11 +476,17 @@ describe("Direct links, the add flow and the credentials page (A-20.7)", () => {
     await screen.findByRole("main");
     await new Promise((r) => setTimeout(r, 400));
     const main = screen.getByRole("main");
-    expect(within(main).queryByText("App Store Connect")).toBeNull();
-    expect(within(main).queryByText("Microsoft Store")).toBeNull();
+    expect(
+      within(main).queryByRole("region", { name: "App Store Connect" }),
+    ).toBeNull();
+    expect(
+      within(main).queryByRole("region", { name: "Microsoft Store" }),
+    ).toBeNull();
     release();
-    await within(main).findByText("Microsoft Store");
-    expect(within(main).queryByText("App Store Connect")).toBeNull();
+    await within(main).findByRole("region", { name: "Microsoft Store" });
+    expect(
+      within(main).queryByRole("region", { name: "App Store Connect" }),
+    ).toBeNull();
   });
 
   it("Channel credentials shows every card while the scope is unknown", async () => {

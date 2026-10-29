@@ -31,6 +31,7 @@ import {
   KIND,
   kindLabel,
   pinField,
+  sharedLine,
   type KindSpec,
 } from "../model/credentialKinds.js";
 
@@ -40,6 +41,8 @@ export function SetCredentialDrawer({
   rotate,
   kinds,
   channelScoped,
+  channelName,
+  alsoUsedBy,
   onClose,
 }: {
   slug: string;
@@ -49,6 +52,9 @@ export function SetCredentialDrawer({
   kinds: readonly KindSpec[];
   /** On a channel's own page the channel is known: no channel field. */
   channelScoped: boolean;
+  /** The channel's name, for the title and a fixed kind. */
+  channelName?: string;
+  alsoUsedBy?: (kind: string) => string[];
   onClose: () => void;
 }): React.ReactElement {
   const outlets = useOutlets(slug);
@@ -141,7 +147,13 @@ export function SetCredentialDrawer({
   };
 
   const copy = failure ? describe(failure) : null;
-  const title = rotate ? `Rotate “${rotate.id}”` : "Set a channel credential";
+  const title = rotate
+    ? `Rotate “${rotate.id}”`
+    : channelName
+      ? `Set a ${channelName} key`
+      : "Set a channel credential";
+  // One kind to offer: say it, do not ask.
+  const fixedKind = !rotate && kinds.length === 1 ? kinds[0] : undefined;
 
   return (
     <Drawer
@@ -159,29 +171,38 @@ export function SetCredentialDrawer({
         aria-label={title}
       >
         <DrawerBody className="space-y-4">
-          <FormField<string | null>
-            name="kind"
-            label="Kind"
-            required
-            value={kind}
-            onChange={(v) => setKind(v as OutletCredentialKind | null)}
-            error={errors.kind}
-            announceError
-            disabled={Boolean(rotate)}
-          >
-            {(field) => (
-              <Select
-                {...field}
-                ref={undefined}
-                placeholder="Choose a kind"
-                options={kinds.map((k) => ({
-                  value: k.value,
-                  label: k.label,
-                  description: k.description,
-                }))}
-              />
-            )}
-          </FormField>
+          {fixedKind ? (
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium text-fg-strong">
+                {fixedKind.label}
+              </p>
+              <p className="text-sm text-fg-muted">{fixedKind.description}</p>
+            </div>
+          ) : (
+            <FormField<string | null>
+              name="kind"
+              label="Kind"
+              required
+              value={kind}
+              onChange={(v) => setKind(v as OutletCredentialKind | null)}
+              error={errors.kind}
+              announceError
+              disabled={Boolean(rotate)}
+            >
+              {(field) => (
+                <Select
+                  {...field}
+                  ref={undefined}
+                  placeholder="Choose a kind"
+                  options={kinds.map((k) => ({
+                    value: k.value,
+                    label: k.label,
+                    description: k.description,
+                  }))}
+                />
+              )}
+            </FormField>
+          )}
           {spec ? (
             <>
               {!rotate ? (
@@ -362,6 +383,10 @@ export function SetCredentialDrawer({
         title={`Rotate “${rotate?.id ?? id.trim()}”?`}
         consequences={[
           "The new value replaces the stored one at once; the old one cannot be recovered.",
+          ...sharedLine(
+            rotate ?? existing.find((c) => c.id === id.trim()) ?? null,
+            alsoUsedBy,
+          ),
           "Connectors use the new value from their next call.",
         ]}
         confirmLabel="Rotate credential"

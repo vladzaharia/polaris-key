@@ -1,5 +1,5 @@
 /**
- * Distribution → Channel credentials (ADMIN.md §6.4): the credentials that belong to no channel
+ * Distribution → Credentials (ADMIN.md §6.4): the credentials that belong to no channel
  * (Sentry's integration secret, whose alerts open halt candidates), and a held credential whose
  * channel is out of scope for the product, flagged (A-20 R6). A store's own keys moved to its
  * channel's Setup tab (A-22.3a); this page links to each. Values are write-only: the table shows
@@ -19,6 +19,8 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
+import { useWriteGate } from "../../../access/useCan.js";
+import { useProduct } from "../../../data/hooks.js";
 import { channelInScope } from "../../../nav.js";
 import { Link, navigate, useSearchParam } from "../../../router.js";
 import { codecs, r } from "../../../routes.js";
@@ -54,6 +56,8 @@ export function CredentialsPage({
   const features = useScope(slug);
   const scopeLoading = useScopeLoading(slug);
   const [openId] = useSearchParam("credential", CREDENTIAL);
+  const gate = useWriteGate("ship", slug);
+  const name = useProduct(slug).data?.name ?? slug;
 
   const all = creds.data?.credentials ?? [];
   const outOfScope = (kind: string): boolean =>
@@ -78,7 +82,19 @@ export function CredentialsPage({
     rows,
     kinds,
     channelScoped: false,
+    disabledReason: gate.disabledReason,
   });
+  const names = (kind: string): string =>
+    channelsOfKind(kind).map(channelLabel).join(" · ");
+  // What each store link says: how many keys it holds and whether one is failing.
+  const summary = (id: string): string => {
+    const held = all.filter((c) => channelsOfKind(c.kind).includes(id));
+    if (!held.length) return "";
+    const failing = held.filter((c) => c.lastError).length;
+    return ` · ${held.length} ${held.length === 1 ? "key" : "keys"}${
+      failing ? ` · ${failing} failed` : ""
+    }`;
+  };
 
   // An old deep link to a store credential opens it on its channel's Setup.
   const moved = all.find((c) => c.id === openId && !rows.includes(c));
@@ -100,7 +116,7 @@ export function CredentialsPage({
     <CollectionTemplate
       header={
         <PageHeader
-          title="Channel credentials"
+          title="Credentials"
           titleAside={
             creds.data ? (
               <span className="text-sm tabular-nums text-fg-muted">
@@ -109,15 +125,22 @@ export function CredentialsPage({
             ) : undefined
           }
           primaryAction={
-            <Button iconStart={<Plus aria-hidden />} onClick={editor.create}>
-              Set credential…
-            </Button>
+            // One action, once: the empty state carries its own.
+            rows.length ? (
+              <Button
+                iconStart={<Plus aria-hidden />}
+                disabledReason={gate.disabledReason}
+                onClick={editor.create}
+              >
+                Set credential…
+              </Button>
+            ) : undefined
           }
           refetching={creds.isFetching && !creds.isPending}
         />
       }
     >
-      {scopeLoading || channels.length ? (
+      {!scopeLoading && channels.length ? (
         <section aria-labelledby="store-keys-title" className="space-y-2">
           <h2
             id="store-keys-title"
@@ -136,6 +159,7 @@ export function CredentialsPage({
                   className="inline-flex min-h-6 items-center text-accent-fg underline underline-offset-4"
                 >
                   {channelLabel(id)}
+                  {summary(id)}
                 </Link>
               </li>
             ))}
@@ -148,18 +172,28 @@ export function CredentialsPage({
         creds={creds}
         rows={rows}
         id="credentials"
-        caption="Channel credentials"
+        caption="Credentials"
         channelColumn
         filters
         pending={scopeLoading}
-        outOfScope={(c) => outOfScope(c.kind)}
+        outOfScope={(c) =>
+          outOfScope(c.kind)
+            ? `${names(c.kind)} ${channelsOfKind(c.kind).length > 1 ? "aren't" : "isn't"} in ${name}'s platforms. Delete the key, or add a platform it serves.`
+            : undefined
+        }
+        kindChannels={names}
         empty={
           <EmptyState
             kind="first-run"
             title="No other credentials yet"
             description="Sentry needs its integration secret to send alerts that open halt candidates."
             primaryAction={
-              <Button onClick={editor.create}>Set credential…</Button>
+              <Button
+                disabledReason={gate.disabledReason}
+                onClick={editor.create}
+              >
+                Set credential…
+              </Button>
             }
             docs={docsUrl("credentialsPage")}
           />

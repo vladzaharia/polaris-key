@@ -6,6 +6,7 @@
 
 import {
   HttpError,
+  type OutletCredentialInfo,
   type OutletCredentialKind,
   type OutletCredentialsResponse,
 } from "../../../../api.js";
@@ -190,4 +191,13 @@ export function describe(e: unknown): { title: string; description?: string } {
           : "It is assigned to another product through the platform's store connection. Unassign it there first.",
     };
   return errorCopy(e, { area: "distribution", thing: "Channel credential" });
+}
+
+/** "Also used by Google Play": one key can serve two channels, so a change here changes both. */
+export function sharedLine(
+  c: OutletCredentialInfo | null,
+  alsoUsedBy: ((kind: string) => string[]) | undefined,
+): string[] {
+  const names = c ? (alsoUsedBy?.(c.kind) ?? []) : [];
+  return names.length ? [`It is also used by ${names.join(" and ")}.`] : [];
 }

@@ -17,6 +17,7 @@ import {
   openSetDrawer,
   pick,
   resetAround,
+  VIEW_ONLY,
   rowAction,
 } from "./credentialsKit.js";
 import {
@@ -317,10 +318,12 @@ describe("a channel's Setup tab: credentials", () => {
     });
     await playTable();
     const drawer = await openSetDrawer();
-    // The only kind this channel has: already chosen.
+    // The only kind this channel has: said, not asked.
+    expect(within(drawer).queryByRole("combobox", { name: /Kind/ })).toBeNull();
+    expect(within(drawer).getByText("Google service account")).toBeTruthy();
     expect(
-      within(drawer).getByRole("combobox", { name: /Kind/ }).textContent,
-    ).toContain("Google service account");
+      screen.getByRole("dialog", { name: "Set a Google Play key" }),
+    ).toBeTruthy();
     await userEvent.type(
       within(drawer).getByLabelText(/Credential ID/),
       "play-2",
@@ -487,6 +490,57 @@ describe("a channel's Setup tab: credentials", () => {
       expect(screen.queryByRole("tab", { name: "Setup" })).toBeNull(),
     );
     expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("is read-only without Ship edit: every change is off with its reason", async () => {
+    boot(`${HASH_APP}?credential=asc-team-key`, {
+      "/manage/api/me": VIEW_ONLY,
+    });
+    const drawer = await screen.findByRole("dialog", { name: "asc-team-key" });
+    for (const n of ["Pin…", "Rotate…"])
+      expect(
+        within(drawer)
+          .getByRole("button", { name: n })
+          .getAttribute("aria-disabled"),
+      ).toBe("true");
+    await userEvent.keyboard("{Escape}");
+    await table();
+    expect(
+      screen
+        .getByRole("button", { name: "Set credential…" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for asc-team-key" }),
+    );
+    for (const n of ["Rotate…", "Pin…", "Delete…"])
+      expect(
+        (
+          await screen.findByRole("menuitem", { name: new RegExp(`^${n}`) })
+        ).getAttribute("aria-disabled"),
+      ).toBe("true");
+  });
+
+  it("names the other channel a shared key serves, in the section and in the confirms", async () => {
+    boot(HASH_PLAY);
+    await playTable();
+    expect(
+      screen.getByText(
+        /Also used by Play testing|Also used by Google Play testing/,
+      ),
+    ).toBeTruthy();
+    await rowAction("play", "Delete…");
+    const confirm = await screen.findByRole("alertdialog");
+    expect(within(confirm).getByText(/also used by .*testing/i)).toBeTruthy();
+  });
+
+  it("shows a failing key as Failing, with a human label for its facts", async () => {
+    boot(`${HASH_PLAY}?credential=play`);
+    const drawer = await screen.findByRole("dialog", { name: "play" });
+    expect(within(drawer).getByText("Failing")).toBeTruthy();
+    expect(within(drawer).queryByText("Active")).toBeNull();
+    expect(within(drawer).getByText("Client email")).toBeTruthy();
+    expect(within(drawer).queryByText(/by u1/)).toBeNull();
   });
 
   it("passes axe", async () => {

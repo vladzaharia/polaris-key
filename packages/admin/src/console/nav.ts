@@ -788,8 +788,8 @@ export const SECTIONS: NavSection[] = [
       {
         page: "credentials",
         accent: "distribution",
-        label: "Channel credentials",
-        keywords: "store keys connectors",
+        label: "Credentials",
+        keywords: "channel credentials store keys connectors",
         path: "distribution/credentials",
         icon: Plug,
         docs: "/docs/features/ship-builds/channels/",

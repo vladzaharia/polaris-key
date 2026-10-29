@@ -14,7 +14,14 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { Section } from "../../../../ui/Section.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { useCredentials } from "../data.js";
-import { kindsOfChannel } from "../model/channelScope.js";
+import { channelLabel } from "@polaris-key/manifest";
+import { useWriteGate } from "../../../access/useCan.js";
+import { channelInScope } from "../../../nav.js";
+import {
+  channelsOfKind,
+  kindsOfChannel,
+  useScope,
+} from "../model/channelScope.js";
 import { KIND } from "../model/credentialKinds.js";
 import { CredentialTable, useCredentialEditor } from "./CredentialEditors.js";
 import type { ChannelTabProps } from "./channelTabs.js";
@@ -42,26 +49,44 @@ function ChannelCredentials({
   const rows = (creds.data?.credentials ?? []).filter((c) =>
     kindIds.includes(c.kind),
   );
+  const gate = useWriteGate("ship", slug);
+  const features = useScope(slug);
+  // A key can serve two channels (Google Play and its testing track): a change here changes both.
+  const alsoUsedBy = (kind: string): string[] =>
+    channelsOfKind(kind)
+      .filter((id) => id !== channel.id && channelInScope(features, id))
+      .map((id) => channelLabel(id));
+  const shared = [...new Set(kindIds.flatMap(alsoUsedBy))];
   const editor = useCredentialEditor({
     slug,
     creds,
     rows,
     kinds,
     channelScoped: true,
+    channelName: channel.label,
+    disabledReason: gate.disabledReason,
+    alsoUsedBy,
   });
   return (
     <Section
       title="Credentials"
-      description={`The keys Polaris Key signs in to ${channel.label} with. Values are sent once and never shown again.`}
-      actions={
-        // One action, once: the empty state carries its own.
-        rows.length ? (
-          <Button iconStart={<Plus aria-hidden />} onClick={editor.create}>
+      description={`The keys Polaris Key signs in to ${channel.label} with.${
+        shared.length ? ` Also used by ${shared.join(" and ")}.` : ""
+      } Values are sent once and never shown again.`}
+    >
+      {rows.length ? (
+        // One action, once (the empty state carries its own). In the body, not the head band, so
+        // it never squeezes the description on a phone.
+        <div className="mb-3 flex justify-end">
+          <Button
+            iconStart={<Plus aria-hidden />}
+            disabledReason={gate.disabledReason}
+            onClick={editor.create}
+          >
             Set credential…
           </Button>
-        ) : undefined
-      }
-    >
+        </div>
+      ) : null}
       <CredentialTable
         editor={editor}
         creds={creds}
@@ -76,7 +101,12 @@ function ChannelCredentials({
             title={`No ${channel.label} credentials yet`}
             description={`A connector needs ${channel.label}'s key to read review and release state and to drive staged rollouts.`}
             primaryAction={
-              <Button onClick={editor.create}>Set credential…</Button>
+              <Button
+                disabledReason={gate.disabledReason}
+                onClick={editor.create}
+              >
+                Set credential…
+              </Button>
             }
             docs={docsUrl("credentialsPage")}
           />
