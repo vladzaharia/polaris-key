@@ -63,6 +63,14 @@ var bundle = null
 var last_sync_unauthorized := false
 ## {reason, allowedRange?} from the last 403 build block, or null.
 var blocked = null
+## True after `identity.sign_out()` until the next sign-in the person started: automatic sign-in
+## must not sign them back in (`explicitSignOut` in the record). Unsigned, and only ever stricter: a
+## record the SDK cannot read reads as set (fail closed). It survives `clear()` and `replace()`.
+var explicit_sign_out := false
+## How the device holds its token (`sign_in`, `register` or `key`; `tokenOrigin` in the record), or ""
+## when unknown. Automatic sign-in's rung 1 counts only `sign_in`. Unsigned: a forged value can only
+## skip the ladder's network rungs, never grant anything.
+var token_origin := ""
 ## Epoch seconds of the last verification: the newest verified document's signed `issuedAt` at
 ## load, then the time of each successful authenticated exchange (200 or 304). null: never.
 var last_verified_at = null
@@ -111,10 +119,17 @@ func load_record() -> void:
 	trust.reset()
 	_reset_loaded()
 	var rec = store.read_cache()
-	if not (rec is Dictionary) or not PKeyClaims.is_number(rec.get("v")) or float(rec["v"]) != VERSION:
+	if not (rec is Dictionary):
 		_record = null
+		explicit_sign_out = store.cache_unreadable()
+		return
+	if not PKeyClaims.is_number(rec.get("v")) or float(rec["v"]) != VERSION:
+		_record = null
+		explicit_sign_out = true
 		return
 	_record = _normalize(rec)
+	explicit_sign_out = PKeyClaims.is_true(_record.get("explicitSignOut"))
+	token_origin = _record.get("tokenOrigin", "")
 	var now := clock.system_now()
 
 	# §4.1: the tombstones first, so the manifest, the documents and the bundle all verify against
@@ -313,6 +328,24 @@ func set_subject(value: String) -> bool:
 	return true
 
 
+## Keep how the token was obtained ("" forgets it). True when the value changed.
+func set_token_origin(value: String) -> bool:
+	if value == token_origin:
+		return false
+	token_origin = value
+	patch({"tokenOrigin": value if value != "" else null})
+	return true
+
+
+## Raise or lower the signed-out flag. True when the value changed.
+func set_explicit_sign_out(on: bool) -> bool:
+	if on == explicit_sign_out:
+		return false
+	explicit_sign_out = on
+	patch({"explicitSignOut": true if on else null})
+	return true
+
+
 ## Persist whatever `apply_*` staged, with `changes` folded into the same single write.
 func flush(changes: Dictionary = {}) -> bool:
 	return patch(changes)
@@ -329,6 +362,11 @@ func replace(rec: Dictionary) -> bool:
 			if _record.has(slice) and not out.has(slice):
 				out[slice] = _record[slice].duplicate(true)
 	out.erase("pinRevocations")
+	out.erase("tokenOrigin")
+	token_origin = ""
+	out.erase("explicitSignOut")
+	if explicit_sign_out:
+		out["explicitSignOut"] = true
 	var evidence := trust.pin_revocations()
 	if not evidence.is_empty():
 		out["pinRevocations"] = evidence
@@ -344,9 +382,14 @@ func clear() -> bool:
 	_reset_loaded()
 	trust.reset()
 	clock.reset()
-	if evidence.is_empty():
+	# The sign-out flag is not a credential: only a sign-in the person starts lowers it.
+	if evidence.is_empty() and not explicit_sign_out:
 		return store.clear_cache()
-	_record = {"v": VERSION, "pinRevocations": evidence}
+	_record = {"v": VERSION}
+	if not evidence.is_empty():
+		_record["pinRevocations"] = evidence
+	if explicit_sign_out:
+		_record["explicitSignOut"] = true
 	return store.write_cache(_record)
 
 
@@ -357,6 +400,7 @@ func _reset_loaded() -> void:
 	last_sync_unauthorized = false
 	blocked = null
 	subject = ""
+	token_origin = ""
 	last_verified_at = null
 	feeds = {}
 	feed_floors = {}
@@ -428,6 +472,10 @@ static func _normalize(rec: Dictionary) -> Dictionary:
 		out["blocked"] = b
 	if rec.get("subject") is String and rec["subject"] != "":
 		out["subject"] = rec["subject"]
+	if rec.get("tokenOrigin") in ["sign_in", "register", "key"]:
+		out["tokenOrigin"] = rec["tokenOrigin"]
+	if PKeyClaims.is_true(rec.get("explicitSignOut")):
+		out["explicitSignOut"] = true
 	for slice in UPDATE_SLICES + ["pinRevocations"]:
 		if rec.get(slice) is Dictionary:
 			var m := {}

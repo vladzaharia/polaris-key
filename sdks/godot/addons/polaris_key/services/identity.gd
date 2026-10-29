@@ -14,6 +14,10 @@ extends RefCounted
 ##                                         sign-in with license_choice = "app"; see PKeyIdentityChoice
 ##   exchange.nonce(kind) / exchange.exchange(kind, token, nonce)
 ##                                         the platform exchange primitive; see PKeyIdentityExchange
+##   auto_sign_in(opts)                    the automatic sign-in ladder (a coroutine answering a
+##                                         PKeyAutoSignInResult); see PKeyIdentityAutoSignIn
+##   install_platform_provider(provider)   add a platform sign-in (PKeyPlatformIdentityProvider) the
+##                                         ladder and sign_out() use; platform_providers() lists them
 ##   is_available()                        Identity is on for this product and set up
 ##   open_in_browser(session), copy_link(session)
 ##                                         for the dialog's two buttons
@@ -25,6 +29,8 @@ extends RefCounted
 ##   sign_out()                            cancel any sign-in, run the pre-sign-out hooks, POST the
 ##                                         discovered `signout` and forget the identity; the token
 ##                                         goes only on `released: true`. ok with detail {released}.
+##                                         Once the Worker accepted it, automatic sign-in stays quiet
+##                                         until the person signs in again (see PKeyIdentityAutoSignIn).
 ##                                         Without the endpoint it is the old path: release this
 ##                                         device with license.deactivate()
 ##   attach(confirm)                       preview (false) or add this device's licence to the signed-in
@@ -73,6 +79,8 @@ var sign_in: PKeySignInNamespace
 var choice: PKeyIdentityChoice
 ## `exchange.nonce / exchange`: the platform exchange primitive (PKeyIdentityExchange).
 var exchange: PKeyIdentityExchange
+## `auto_sign_in()`'s ladder (PKeyIdentityAutoSignIn).
+var ladder: PKeyIdentityAutoSignIn
 ## The device key port (PKeyDeviceKeyStore or the options' own) the exchange signs its proof with:
 ## the autoload hands identity the one instance the key ring holds. Null until configure().
 var device_keys: Object = null
@@ -87,6 +95,7 @@ var redirect_acquisition_sync := true
 var _core_ref: WeakRef = null
 var _account: PKeyIdentityAccount = null
 var _before_sign_out: Array[Callable] = []
+var _platform_providers: Array = []
 var _host: Node = null
 ## The sign-in `sign_in.start` last returned (weak: the game holds the session), or null.
 var _active: WeakRef = null
@@ -98,6 +107,7 @@ func _init() -> void:
 	sign_in = PKeySignInNamespace.new(self)
 	choice = PKeyIdentityChoice.new(self)
 	exchange = PKeyIdentityExchange.new(self)
+	ladder = PKeyIdentityAutoSignIn.new(self)
 
 
 ## Bind to Core (PolarisKey.configure). A sign-in in progress is cancelled.
@@ -176,6 +186,30 @@ func current() -> Variant:
 	return {"name": name, "email": email, "activatedAt": int(at) if PKeyClaims.is_number(at) else null}
 
 
+## The automatic sign-in ladder: stored session, then the installed platform providers silently, then (with
+## `{prompt = "optional"}`) one account sheet. Answers a PKeyAutoSignInResult; see PKeyIdentityAutoSignIn. A coroutine.
+func auto_sign_in(opts := {}) -> PKeyAutoSignInResult:
+	return await ladder.run(opts)
+
+
+## Add a platform sign-in (a PKeyPlatformIdentityProvider, or any object with its members). One per
+## `kind`: installing another of the same kind replaces it.
+func install_platform_provider(provider: Object) -> void:
+	for existing in _platform_providers.duplicate():
+		if existing.get("kind") == provider.get("kind"):
+			_platform_providers.erase(existing)
+	_platform_providers.append(provider)
+
+
+## The installed platform providers, in installation order.
+func platform_providers() -> Array:
+	return _platform_providers.duplicate()
+
+
+func clear_platform_providers() -> void:
+	_platform_providers.clear()
+
+
 ## Sign this device out (SDK parity §3.12's `identity.signOut()`): cancel a sign-in in progress,
 ## forget the identity this session saw, run the pre-sign-out hooks and POST the product's
 ## discovered `signout`. ok, detail {released}: true when the seat was released and the token and
@@ -188,14 +222,33 @@ func sign_out() -> PKeyResult:
 	var license = _host.get("license") if _host != null and is_instance_valid(_host) else null
 	if license == null or _account == null:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
+	# A ladder in flight must store nothing from here on (the generation is checked with the store).
+	_core().tokens.bump_sign_out_generation()
 	var r := await _account.sign_out()
-	if r.ok or not (r.detail is Dictionary and r.detail.get("kind") == "unavailable"):
+	if r.ok:
+		await _mark_signed_out()
+		return r
+	if not (r.detail is Dictionary and r.detail.get("kind") == "unavailable"):
 		return r
 	for hook in _before_sign_out.duplicate():
 		var stopped: Variant = await hook.call()
 		if stopped is PKeyResult and not stopped.ok:
 			return stopped
-	return await license.deactivate()
+	var released: PKeyResult = await license.deactivate()
+	if released.ok:
+		await _mark_signed_out()
+	return released
+
+
+## The Worker accepted a sign-out: no silent rung runs until the person signs in again, and each
+## platform provider forgets its session. Device keys stay (they are the device's, not the account's).
+func _mark_signed_out() -> void:
+	var core := _core()
+	core.tokens.bump_sign_out_generation()
+	core.cache.set_explicit_sign_out(true)
+	for provider in _platform_providers.duplicate():
+		if provider.has_method("sign_out_cleanup"):
+			await provider.sign_out_cleanup()
 
 
 ## The pairwise subject signed in on the device (ok, detail {subject}: null for a key-only device
@@ -364,7 +417,7 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String) -> P
 			if retry != null:
 				refused.detail = {"retry_after_seconds": retry}
 			return refused
-	var stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN)
+	var stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN, true)
 	var subject: String = answer["subject"]
 	if _account != null:
 		_account.note_signed_in(subject)
@@ -500,7 +553,7 @@ func _poll(prompt: PKeySignInSession, current: int, decision: Variant) -> Dictio
 			if not _str(b.get("token")):
 				return {"status": "error", "code": PKeyErrors.INVALID_RESPONSE, "message": "The poll answered ready without a token.", "status_code": status}
 			var shown := _shown(b.get("identity"))
-			var stored := core.tokens.set_token(b["token"], PKeyTokenManager.SOURCE_SIGNIN)
+			var stored := core.tokens.set_token(b["token"], PKeyTokenManager.SOURCE_SIGNIN, true)
 			# The account's subject, kept beside the token, and the `identity` event.
 			var subject: String = b["subject"] if _str(b.get("subject")) else ""
 			if _account != null:

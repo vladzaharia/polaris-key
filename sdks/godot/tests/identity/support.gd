@@ -27,6 +27,9 @@ var choice_requests: Array = []
 ## Answers for `POST …/identity/nonce`: as `tokens`. Every nonce request: {path, body (parsed), headers}.
 var nonces: Array = []
 var nonce_requests: Array = []
+## Answers for `POST …/identity/signout`: as `tokens`; empty answers `{released: false}`. Every request: {path, headers}.
+var signouts: Array = []
+var signout_requests: Array = []
 ## The options' device key port (null: the autoload builds its own).
 var device_keys: Object = null
 var sdk: Node = null
@@ -88,6 +91,12 @@ func _answer(req: Dictionary) -> Dictionary:
 			return {"status": 500}
 		var n = nonces[0] if nonces.size() == 1 else nonces.pop_front()
 		return n.call(req) if n is Callable else n
+	if path.ends_with("/identity/signout"):
+		signout_requests.append({"path": path, "headers": req["headers"]})
+		if signouts.is_empty():
+			return json(200, {"released": false})
+		var so = signouts[0] if signouts.size() == 1 else signouts.pop_front()
+		return so.call(req) if so is Callable else so
 	if path.ends_with("/identity/token"):
 		token_requests.append({"path": path, "body": (req["body"] as PackedByteArray).get_string_from_utf8(), "headers": req["headers"]})
 		if tokens.is_empty():

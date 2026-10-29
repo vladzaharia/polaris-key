@@ -69,6 +69,12 @@ func clear_cache() -> bool:
 	return true
 
 
+## True when a cache record is held but cannot be read or parsed. PKeyCache then treats the person as
+## signed out (the sign-out flag fails closed). A store that cannot tell answers false.
+func cache_unreadable() -> bool:
+	return false
+
+
 func status() -> Dictionary:
 	return {"backend": "custom"}
 

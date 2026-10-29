@@ -71,7 +71,8 @@ func nonce(kind: String) -> PKeyExchangeResult:
 ## Exchange a platform token for a device token. `nonce` is the value the token was requested with
 ## (nonce()); "" takes a fresh one after the token exists (Game Center and Play Games have no
 ## nonce to sign in, and tests). Any answer spends the nonce. `opts`: device_name, license_choice
-## ("app" or "card"). A coroutine answering a PKeyExchangeResult.
+## ("app" or "card"). A call here is a sign-in the person started: a stored token lowers the
+## sign-out flag. (The ladder passes the private `ladder_generation`; it never does.) A coroutine answering a PKeyExchangeResult.
 func exchange(kind: String, subject_token: String, p_nonce := "", opts := {}) -> PKeyExchangeResult:
 	if subject_token == "":
 		return PKeyExchangeResult.failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "subject_token is empty.")
@@ -116,7 +117,7 @@ func exchange(kind: String, subject_token: String, p_nonce := "", opts := {}) ->
 	var sent = await _send(ctx["token"], PKeyIdentityRedirect.TOKEN_CONTENT_TYPE, "&".join(parts).to_utf8_buffer())
 	if sent is PKeyExchangeResult:
 		return sent
-	return await _outcome(sent["status"], sent["body"], sent["response"])
+	return await _outcome(sent["status"], sent["body"], sent["response"], opts)
 
 
 # ── Routes and keys ──────────────────────────────────────────────────────────────────────
@@ -188,7 +189,7 @@ func _send(url: String, content_type: String, body: PackedByteArray, is_nonce :=
 	return _refusal(status, r, answer)
 
 
-func _outcome(status: int, body: Variant, response: PKeyResult) -> PKeyExchangeResult:
+func _outcome(status: int, body: Variant, _response: PKeyResult, opts := {}) -> PKeyExchangeResult:
 	var core := _identity()._core()
 	var identity := _identity()
 	var bad := PKeyExchangeResult.failed(PKeyErrors.INVALID_RESPONSE, "The token endpoint answered without a complete exchange.")
@@ -220,7 +221,16 @@ func _outcome(status: int, body: Variant, response: PKeyResult) -> PKeyExchangeR
 			return ch
 		"token":
 			var out := PKeyExchangeResult.made(PKeyExchangeResult.KIND_SIGNED_IN)
-			out.stored = core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN)
+			var ladder = opts.get("ladder_generation")
+			if ladder is int:
+				# The ladder's own exchange: stored only if no sign-out happened since it started, and
+				# it never lowers the sign-out flag.
+				var verdict = core.tokens.set_token_unless_signed_out(answer["access_token"], ladder)
+				if verdict == null:
+					return PKeyExchangeResult.signed_out()
+				out.stored = verdict
+			else:
+				out.stored = core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN, true)
 			out.subject = answer["subject"]
 			out.scope = answer["scope"]
 			var lic = answer["license"]

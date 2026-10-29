@@ -130,7 +130,7 @@ func _complete(grant: String, choice: Variant, consent: Variant = null) -> PKeyC
 		return PKeyChoiceResult.failed(PKeyErrors.INVALID_RESPONSE, "choice complete answered without a complete sign-in.")
 	var identity := _identity()
 	var core := identity._core()
-	var stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN)
+	var stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN, true)
 	if identity._account != null:
 		identity._account.note_signed_in(answer["subject"])
 	var r := PKeyChoiceResult.made_ok()
@@ -143,6 +143,7 @@ func _complete(grant: String, choice: Variant, consent: Variant = null) -> PKeyC
 	if entries is Dictionary and PKeyClaims.is_number(entries.get("used")) and PKeyClaims.is_number(entries.get("limit")):
 		r.key_entries = {"used": int(entries["used"]), "limit": int(entries["limit"])}
 	r.attachable = choice is Dictionary and choice.get("kind") == "keep"
+	await identity.ladder.session_completed(grant)
 	if identity.redirect_acquisition_sync and identity.on_acquired.is_valid():
 		var synced: PKeySyncResult = await identity.on_acquired.call()
 		var problem := PKeyLicense.unverified(core, synced, "the sign-in succeeded")
@@ -156,6 +157,7 @@ func cancel(grant: String) -> PKeyChoiceResult:
 	var sent := await _post("choiceCancel", {"grant": grant}, "choice cancel")
 	if sent is PKeyChoiceResult:
 		return sent
+	_identity().ladder.session_dropped(grant)
 	return PKeyChoiceResult.made_ok(sent["status"])
 
 

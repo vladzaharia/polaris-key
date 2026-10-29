@@ -10,8 +10,8 @@ extends PKeyResult
 ##                  `identity.choice.complete(grant, choice, {claims = [...]})`.
 ##   choose         a licence choice is due: `grant`, `expires_in`, `view` (as a redirect's
 ##                  `choices`). `identity.choice.*` finishes it.
-##   needs_sign_in  no account to sign in (`403 interstitial_required`): `reason` (`no_link` or
-##                  `terms`), `url` (the sign-in card) and, for `no_link`, `link_handle` and `expires_in`.
+##   needs_sign_in  no account to sign in (`403 interstitial_required`): `reason` (`no_link`,
+##                  `terms`, or `signed_out` for an automatic sign-in a sign-out overtook), `url` (the sign-in card) and, for `no_link`, `link_handle` and `expires_in`.
 ##   unavailable    no exchange here (`ok` false): `code` is `not_found` for a 404, else
 ##                  `platform-identity-unavailable`. Fall to the next rung; nothing changed.
 ##   refused        the Worker said no (4xx, `ok` false): `code` is its wire code. Only the members
@@ -54,6 +54,13 @@ static func made(p_kind: StringName, p_status := 200) -> PKeyExchangeResult:
 	var r := PKeyExchangeResult.new(true)
 	r.kind = p_kind
 	r.http_status = p_status
+	return r
+
+
+## The person signed out while an automatic sign-in was in flight: nothing was stored.
+static func signed_out() -> PKeyExchangeResult:
+	var r := made(KIND_NEEDS_SIGN_IN, 0)
+	r.reason = "signed_out"
 	return r
 
 
