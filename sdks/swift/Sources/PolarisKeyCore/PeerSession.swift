@@ -5,7 +5,8 @@
 // Modes v and p: after HELLO the initiator (the device) commits to a nonce, the responder (the
 // approver) answers with its own, the initiator reveals, and both show the same six-digit code.
 // The host calls `confirmSas()` when the person agrees; until then host records from the peer are
-// held (at most 16), and HELLO display data is unauthenticated. A responder in these modes needs a
+// held (at most 16 and 16 KiB), and HELLO display data is unauthenticated (at most 4 KiB, with
+// `platform` and `app` cleaned). A responder in these modes needs a
 // `HandshakeLimiter`.
 //
 // An engine that owns no socket and starts no timer: Noise messages come in through `receive`
@@ -27,6 +28,12 @@ import Foundation
 public let peerTransportDeadlineSeconds: TimeInterval = 30
 public let peerSasDeadlineSeconds: TimeInterval = 120
 let peerPongsPerSecond = 16
+/// §15.6: a HELLO in mode v or p (a peer not yet verified) is at most this many bytes.
+let peerMaxUnverifiedHelloBytes = 4096
+/// §15.6: bytes of host records held before the person's confirmation, modes v and p.
+let peerMaxQueuedBytes = 16 * 1024
+/// §15.6: a `platform` is shown as sent only when it is 1 to 32 of [A-Za-z0-9 ._+-]; else "Unknown".
+let peerUnknownDisplay = "Unknown"
 
 /// Why a session ended: a close code, or `handshake_failed` (nothing is sent for that one).
 public enum PeerClosedReason: String, Sendable, Equatable {
@@ -576,7 +583,21 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         }
     }
 
-    private static func parseHello(_ body: Data) -> PeerHello? {
+    /// `platform` as sent when it is 1 to 32 of [A-Za-z0-9 ._+-], else "Unknown".
+    static func cleanPlatform(_ raw: String) -> String {
+        let u = Array(raw.utf8)
+        let ok =
+            (1...32).contains(u.count)
+            && u.allSatisfy { c in
+                (c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x20
+                    || c == 0x2E || c == 0x5F || c == 0x2B || c == 0x2D
+            }
+        return ok ? raw : peerUnknownDisplay
+    }
+
+    private static func parseHello(_ body: Data, mode: PeerNoiseMode) -> PeerHello? {
+        // Modes v and p take a HELLO from a peer that is not yet verified: 4 KiB at most (§15.6).
+        if mode != .a && body.count > peerMaxUnverifiedHelloBytes { return nil }
         guard let (o, nonWire) = PeerPayload.parseStrictObject(body),
             case .string(let platform)? = o["platform"], case .string(let app)? = o["app"],
             case .int(let mm)? = o["maxMessage"], wireInteger(mm, pointer: "/maxMessage", min: 1, in: nonWire)
@@ -587,13 +608,15 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             // Display data from the peer: NFC, controls and bidi stripped, 64 code points.
             label = normalizeDeviceLabel(raw.precomposedStringWithCanonicalMapping)
         }
-        return PeerHello(label: label, platform: platform, app: app, maxMessage: mm)
+        // `app` is cleaned like `label`; `platform` is shown only in the narrow character set.
+        let cleanApp = normalizeDeviceLabel(app.precomposedStringWithCanonicalMapping) ?? peerUnknownDisplay
+        return PeerHello(label: label, platform: cleanPlatform(platform), app: cleanApp, maxMessage: mm)
     }
 
     private func onMessage(_ type: Int, _ body: Data) async throws {
         if phase == .hello {
             // The first record each way is HELLO; anything else is refused and closed.
-            guard type == PeerRecordType.hello, let hello = Self.parseHello(body), let p = pending else {
+            guard type == PeerRecordType.hello, let hello = Self.parseHello(body, mode: mode), let p = pending else {
                 throw Fail(.peerBadFrame)
             }
             maxSend = min(peerMaxMessageBytes, hello.maxMessage)
@@ -657,7 +680,8 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             // Everything else belongs to the host, and only once the code is settled.
             if phase == .sasShown {
                 // The peer may confirm first: hold the record (bounded) until this side's person does.
-                if queued.count >= 16 { throw Fail(.peerBusy) }
+                let heldBytes = queued.reduce(0) { $0 + $1.body.count }
+                if queued.count >= 16 || heldBytes + body.count > peerMaxQueuedBytes { throw Fail(.peerBusy) }
                 queued.append((type, body))
                 return
             }

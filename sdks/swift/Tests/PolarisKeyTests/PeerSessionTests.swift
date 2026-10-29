@@ -85,7 +85,7 @@ private final class Side: @unchecked Sendable {
 
     init(
         _ role: PeerChannel.Role, _ dev: Dev, _ disc: [Data?], held h: (String, Int)? = nil,
-        label: String? = nil, rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600
+        label: String? = nil, app: String = "demo", rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600
     ) {
         if let h { held.value = HeldRing(jws: h.0, epoch: h.1) }
         let held = self.held
@@ -98,7 +98,7 @@ private final class Side: @unchecked Sendable {
             heldRing: { held.value.map { (jws: $0.jws, epoch: $0.epoch) } }, discKeys: disc)
         s = try! PeerChannel(
             role: role, slug: "djdl", staticKey: try! PeerNoiseRawStaticKey(privateKey: dev.priv.rawRepresentation),
-            account: acct, caps: ["app/1", "ring/1"], hello: (label, "test", "demo", nil),
+            account: acct, caps: ["app/1", "ring/1"], hello: (label, "test", app, nil),
             send: { d in out.mutate { $0.append(d) } },
             onEvent: { e in events.mutate { $0.append(e) } },
             now: { now.value }, mono: { clock.value }, rekeyMessages: rekeyMessages, rekeySeconds: rekeySeconds)
@@ -322,6 +322,20 @@ final class PeerSessionTests: XCTestCase {
         await a.s.start()
         await pump(a, b)
         XCTAssertEqual(b.established.first?.hello.label, "Caf\u{E9} TV")
+    }
+
+    /// §15.6: the 4 KiB HELLO bound is for modes v and p; the account mode's HELLO is authenticated.
+    /// Its `app` is still cleaned to 64 code points.
+    func testModeAHelloIsNotCappedAtFourKiBButAppIsCleaned() async {
+        let devA = Dev(idA, signByte: 1)
+        let devB = Dev(idB, signByte: 2)
+        let k = rnd()
+        let a = Side(.initiator, devA, [k], app: String(repeating: "a", count: 5000))
+        let b = Side(.responder, devB, [k])
+        await a.s.start()
+        await pump(a, b)
+        XCTAssertTrue(b.closed.isEmpty)
+        XCTAssertEqual(b.established.first?.hello.app, String(repeating: "a", count: 64))
     }
 
     func testTheFirstRecordMustBeHelloAndTheRefusalIsSaid() async throws {

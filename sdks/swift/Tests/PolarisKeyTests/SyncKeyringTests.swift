@@ -3,12 +3,16 @@
 // ring, its wraps, the recovery blob and the adopted roots. The crypto bytes are pinned by
 // SyncVectorsTests; this file pins the client's rules: the pin, the Keychain root, the typed
 // locked and ring-changed answers, the recovery path, reset and adopt, forget, and redaction.
+// U-39.5 adds the iCloud Keychain root backup: written on create, reset, recovery and unlock,
+// read as a silent rung on a new device, kept by sign-out, removed by reset and `deleteBackup()`.
 
 import Foundation
+import Security
 import XCTest
 
 @testable import PolarisKey
 @testable import PolarisKeyCore
+@testable import PolarisKeyPlatform
 
 /// A Worker's key ring routes, in memory. A bearer token names the device: `pkeyt_<x>` is `dev_<x>`.
 private final class RingServer: PolarisTransport, @unchecked Sendable {
@@ -134,6 +138,34 @@ private final class RingGate: PolarisTransport, @unchecked Sendable {
     }
 }
 
+/// The iCloud Keychain, as one Apple ID shares it between devices: items by (subject, ringId).
+private final class FakeICloud: SyncRootBackupPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var items: [String: Data] = [:]
+    var failWrites = false
+    var failLoads = false
+    struct Down: Error {}
+
+    private func key(_ s: String, _ r: String) -> String { "\(s):\(r)" }
+    var keys: [String] { lock.withLock { items.keys.sorted() } }
+    func value(_ s: String, _ r: String) -> Data? { lock.withLock { items[key(s, r)] } }
+    func plant(_ s: String, _ r: String, _ v: Data) { lock.withLock { items[key(s, r)] = v } }
+
+    func load(subject: String, ringId: String) throws -> Data? {
+        if failLoads { throw Down() }
+        return value(subject, ringId)
+    }
+    func save(subject: String, ringId: String, value: Data) throws {
+        if failWrites { throw Down() }
+        lock.withLock { items[key(subject, ringId)] = value }
+    }
+    func remove(subject: String, ringId: String) throws {
+        lock.withLock { items[key(subject, ringId)] = nil }
+    }
+}
+
+private let subjectA = "ps_" + "aB3-_xYz09" + "QrStUvWxyZ_-"
+
 private final class Listener: SyncRootListener, @unchecked Sendable {
     private let lock = NSLock()
     private var seen: [Bool] = []
@@ -152,7 +184,10 @@ final class SyncKeyringTests: XCTestCase {
         let name: String
     }
 
-    private func device(_ name: String, server: any PolarisTransport) async throws -> Device {
+    private func device(
+        _ name: String, server: any PolarisTransport, backup: SyncKeyringOptions.Backup = .off,
+        subject: String? = nil
+    ) async throws -> Device {
         let store = InMemoryStore(productSlug: "djdl", deviceId: "dev_\(name)")
         await store.setToken("pkeyt_\(name)")
         let core = try CoreContext(
@@ -162,7 +197,9 @@ final class SyncKeyringTests: XCTestCase {
         try await core.start()
         let keys = try DeviceKeyStore.inMemory(productSlug: "djdl")
         let roots = RingRootStore.inMemory()
-        let keyring = SyncKeyring(core: core, options: SyncKeyringOptions(keys: keys, rootStore: roots))
+        let keyring = SyncKeyring(
+            core: core,
+            options: SyncKeyringOptions(keys: keys, rootStore: roots, backup: backup, subject: { subject }))
         return Device(keyring: keyring, core: core, roots: roots, store: store, keys: keys, name: name)
     }
 
@@ -476,5 +513,236 @@ final class SyncKeyringTests: XCTestCase {
         XCTAssertFalse(a.keyring.unlocked)
         let pin = await a.core.store.readRecord("sync-ring-pin")
         XCTAssertNil(pin, "the pin was written after the forget")
+    }
+
+    // ── U-39.5: the iCloud Keychain root backup ──────────────────────────────────────────
+
+    private func backedUp(_ icloud: FakeICloud, ringId: String) throws -> StoredRingRoot {
+        let data = try XCTUnwrap(icloud.value(subjectA, ringId), "no backup item")
+        return try JSONDecoder().decode(StoredRingRoot.self, from: data)
+    }
+
+    func testCreateWritesTheBackupItemForTheSubjectAndRing() async throws {
+        let icloud = FakeICloud()
+        let a = try await device("a", server: RingServer(), backup: .custom(icloud), subject: subjectA)
+        let made = try await a.keyring.create()
+        XCTAssertEqual(icloud.keys, ["\(subjectA):\(made.ringId)"])
+        let item = try backedUp(icloud, ringId: made.ringId)
+        XCTAssertEqual(item.ringId, made.ringId)
+        XCTAssertEqual(item.kid, made.rootKid)
+        XCTAssertEqual(item, try XCTUnwrap(try a.roots.load()), "the same record as the device Keychain item")
+        // Nothing but the root's record: the recovery code is never in the backup.
+        let text = String(decoding: try XCTUnwrap(icloud.value(subjectA, made.ringId)), as: UTF8.self)
+        XCTAssertFalse(text.contains(try XCTUnwrap(made.recoveryCode)))
+    }
+
+    func testANewDeviceUnlocksSilentlyFromTheBackupWithNoWrap() async throws {
+        let icloud = FakeICloud()
+        let server = RingServer()
+        let a = try await device("a", server: server, backup: .custom(icloud), subject: subjectA)
+        let made = try await a.keyring.create()
+        // Device b has no wrap on the server and no local root; it shares the Apple ID.
+        let b = try await device("b", server: server, backup: .custom(icloud), subject: subjectA)
+        let got = try await b.keyring.unlock()
+        XCTAssertEqual(got, .unlocked(ringId: made.ringId, epoch: 1))
+        XCTAssertEqual(b.keyring.codec.kid, made.rootKid)
+        let pin = await b.keyring.pin()
+        XCTAssertEqual(pin, SyncRingPin(ringId: made.ringId, epoch: 1, rootKid: made.rootKid))
+        XCTAssertNotNil(try b.roots.load(), "the device keeps its own copy")
+        let env = try a.keyring.codec.seal(collection: "saves", name: "slot", value: .int(3))
+        guard case .ok(_, let v) = try b.keyring.codec.open(collection: "saves", name: "slot", envelope: env)
+        else { return XCTFail("b could not open a's envelope") }
+        XCTAssertEqual(v, .int(3))
+        XCTAssertFalse(server.requestLog().contains { $0.hasPrefix("GET /recovery") }, "no recovery code was needed")
+    }
+
+    func testABackupUnlockDepositsTheDevicesOwnWrapAndTheNextStartNeedsNoBackup() async throws {
+        let icloud = FakeICloud()
+        let server = RingServer()
+        let a = try await device("a", server: server, backup: .custom(icloud), subject: subjectA)
+        let made = try await a.keyring.create()
+        let b = try await device("b", server: server, backup: .custom(icloud), subject: subjectA)
+        let got = try await b.keyring.unlock()
+        XCTAssertEqual(got, .unlocked(ringId: made.ringId, epoch: 1))
+        XCTAssertTrue(server.requestLog().contains("PUT /wraps/dev_b"), "b stored its own wrap")
+        // With the backup gone and the local root dropped, b's own wrap still opens the ring.
+        try await b.keyring.forget()
+        try icloud.remove(subject: subjectA, ringId: made.ringId)
+        let again = try await b.keyring.unlock()
+        XCTAssertEqual(again, .unlocked(ringId: made.ringId, epoch: 1))
+    }
+
+    func testABackupUnlockWhereTheWrapStandsDepositsNothing() async throws {
+        let icloud = FakeICloud()
+        let server = RingServer()
+        let a = try await device("a", server: server, backup: .custom(icloud), subject: subjectA)
+        let made = try await a.keyring.create()
+        try await a.keyring.forget()
+        let got = try await a.keyring.unlock()
+        XCTAssertEqual(got, .unlocked(ringId: made.ringId, epoch: 1))
+        XCTAssertFalse(server.requestLog().contains("PUT /wraps/dev_a"), "the wrap from create() stands")
+    }
+
+    func testABackupThatIsNotTheServedRingsRootIsIgnored() async throws {
+        let icloud = FakeICloud()
+        let server = RingServer()
+        let a = try await device("a", server: server, backup: .custom(icloud), subject: subjectA)
+        let made = try await a.keyring.create()
+        // A root whose record names the right ring and kid but is another key.
+        let rogue = StoredRingRoot(
+            ringId: made.ringId, epoch: 1, kid: made.rootKid, root: Base64URL.encode(Data(repeating: 7, count: 32)))
+        icloud.plant(subjectA, made.ringId, try JSONEncoder().encode(rogue))
+        let b = try await device("b", server: server, backup: .custom(icloud), subject: subjectA)
+        let got = try await b.keyring.unlock()
+        XCTAssertEqual(got, .locked(reason: .noWrap))
+        XCTAssertTrue(b.keyring.codec.locked)
+        // Garbage, and another subject's item, are misses too.
+        icloud.plant(subjectA, made.ringId, Data("{}".utf8))
+        let again = try await b.keyring.unlock()
+        XCTAssertEqual(again, .locked(reason: .noWrap))
+        let c = try await device(
+            "c", server: server, backup: .custom(icloud), subject: "ps_" + String(repeating: "Z", count: 22))
+        let other = try await c.keyring.unlock()
+        XCTAssertEqual(other, .locked(reason: .noWrap))
+    }
+
+    func testSignOutKeepsTheBackupAndTheNextSignInUnlocksFromIt() async throws {
+        let icloud = FakeICloud()
+        let server = RingServer()
+        let a = try await device("a", server: server, backup: .custom(icloud), subject: subjectA)
+        let made = try await a.keyring.create()
+        let before = icloud.value(subjectA, made.ringId)
+        try await a.keyring.forget()
+        XCTAssertNil(try a.roots.load(), "the device Keychain item is gone")
+        XCTAssertEqual(icloud.value(subjectA, made.ringId), before, "R-11: sign-out keeps the backup item")
+        // Remove the wrap too, so only the backup can unlock the next sign-in.
+        try await a.keyring.removeWrap(deviceId: a.id)
+        let got = try await a.keyring.unlock()
+        XCTAssertEqual(got, .unlocked(ringId: made.ringId, epoch: 1))
+    }
+
+    func testResetRemovesTheOldRingsItemAndWritesTheNewOne() async throws {
+        let icloud = FakeICloud()
+        let a = try await device("a", server: RingServer(), backup: .custom(icloud), subject: subjectA)
+        let first = try await a.keyring.create()
+        let second = try await a.keyring.reset()
+        XCTAssertNotEqual(first.ringId, second.ringId)
+        XCTAssertEqual(icloud.keys, ["\(subjectA):\(second.ringId)"])
+        XCTAssertEqual(try backedUp(icloud, ringId: second.ringId).kid, second.rootKid)
+    }
+
+    func testStartOverFromALockedDeviceRemovesTheOldItem() async throws {
+        let icloud = FakeICloud()
+        let server = RingServer()
+        let a = try await device("a", server: server, backup: .custom(icloud), subject: subjectA)
+        let first = try await a.keyring.create()
+        try await a.keyring.forget()
+        _ = try await a.keyring.unlock()  // pins the ring again
+        await a.keyring.lock()
+        let second = try await a.keyring.reset()
+        XCTAssertEqual(icloud.keys, ["\(subjectA):\(second.ringId)"])
+        XCTAssertNotEqual(first.ringId, second.ringId)
+    }
+
+    func testDeleteBackupRemovesTheItemAndForgetDoesNot() async throws {
+        let icloud = FakeICloud()
+        let a = try await device("a", server: RingServer(), backup: .custom(icloud), subject: subjectA)
+        _ = try await a.keyring.create()
+        try await a.keyring.forget()
+        XCTAssertEqual(icloud.keys.count, 1)
+        _ = try await a.keyring.unlock()
+        try await a.keyring.deleteBackup()
+        XCTAssertEqual(icloud.keys, [])
+    }
+
+    func testARecoveryWritesTheBackupToo() async throws {
+        let icloud = FakeICloud()
+        let server = RingServer()
+        let a = try await device("a", server: server)
+        let made = try await a.keyring.create()
+        let b = try await device("b", server: server, backup: .custom(icloud), subject: subjectA)
+        _ = try await b.keyring.recover(try XCTUnwrap(made.recoveryCode))
+        XCTAssertEqual(icloud.keys, ["\(subjectA):\(made.ringId)"])
+    }
+
+    func testNoSubjectOrOptOutOrAFailingStoreNeverTouchesTheRingCalls() async throws {
+        let icloud = FakeICloud()
+        let noSubject = try await device("a", server: RingServer(), backup: .custom(icloud), subject: nil)
+        _ = try await noSubject.keyring.create()
+        XCTAssertEqual(icloud.keys, [], "no subject, no item")
+        let off = try await device("b", server: RingServer(), backup: .off, subject: subjectA)
+        _ = try await off.keyring.create()
+        XCTAssertEqual(icloud.keys, [])
+        icloud.failWrites = true
+        icloud.failLoads = true
+        let down = try await device("c", server: RingServer(), backup: .custom(icloud), subject: subjectA)
+        let made = try await down.keyring.create()
+        XCTAssertFalse(down.keyring.codec.locked, "a backup that cannot be written does not fail create")
+        try await down.keyring.deleteBackup()
+        let again = try await down.keyring.unlock()
+        XCTAssertEqual(again, .unlocked(ringId: made.ringId, epoch: 1))
+    }
+
+    func testRealSubjectsAndRingIdsFitThePlatformStoreAndItsAddress() async throws {
+        let keychain = BackupKeychain()
+        let store = PlatformBackupStore(backend: keychain)
+        // The wire patterns decide the shape: `ps_` + 22 and `rg_` + 22 base64url characters, with
+        // `-` and `_` anywhere after the prefix.
+        let alphabet = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
+        for n in 0..<200 {
+            let tail = { (shift: Int) in String((0..<22).map { alphabet[($0 * 7 + n * 3 + shift) % alphabet.count] }) }
+            let subject = "ps_" + tail(1)
+            let ringId = "rg_" + tail(5)
+            XCTAssertTrue(SignedInUser.isSubject(subject))
+            XCTAssertNotNil(subject.range(of: PAIRWISE_SUBJECT_PATTERN, options: .regularExpression))
+            XCTAssertNotNil(ringId.range(of: SYNC_RING_ID_PATTERN, options: .regularExpression))
+            let item = PlatformBackupStore.Item.syncRoot(product: "djdl", subject: subject, ringId: ringId)
+            try store.set(item, value: Data(#"{"v":1}"#.utf8))
+            XCTAssertNotNil(try store.get(item))
+        }
+        let edge = "ps_" + String(repeating: "-", count: 22)
+        let edgeRing = "rg_" + String(repeating: "_", count: 22)
+        try store.set(.syncRoot(product: "djdl", subject: edge, ringId: edgeRing), value: Data("{}".utf8))
+    }
+
+    func testThePlatformBackupMapsToTheSyncRootItem() async throws {
+        let keychain = BackupKeychain()
+        let port = PlatformSyncRootBackup(product: "djdl", store: PlatformBackupStore(backend: keychain))
+        let ringId = "rg_" + String(repeating: "Q", count: 22)
+        try port.save(subject: subjectA, ringId: ringId, value: Data("{}".utf8))
+        let key = "pkey-sync:djdl|\(subjectA):\(ringId)"
+        XCTAssertEqual(keychain.keys, [key])
+        XCTAssertEqual(try port.load(subject: subjectA, ringId: ringId), Data("{}".utf8))
+        try port.remove(subject: subjectA, ringId: ringId)
+        XCTAssertEqual(keychain.keys, [])
+        // A value that is not a JSON object, or a bad name, is refused by the store, not stored.
+        XCTAssertThrowsError(try port.save(subject: "bad/subject", ringId: ringId, value: Data("{}".utf8)))
+    }
+}
+
+/// An in-memory keychain keyed by service and account.
+private final class BackupKeychain: KeychainBackend, @unchecked Sendable {
+    private let lock = NSLock()
+    private var items: [String: Data] = [:]
+    var keys: [String] { lock.withLock { items.keys.sorted() } }
+    private func key(_ q: [String: Any]) -> String {
+        "\(q[kSecAttrService as String] ?? "")|\(q[kSecAttrAccount as String] ?? "")"
+    }
+    func copyMatching(_ query: [String: Any]) -> (OSStatus, Data?) {
+        lock.withLock { items[key(query)].map { (errSecSuccess, $0) } ?? (errSecItemNotFound, nil) }
+    }
+    func add(_ a: [String: Any]) -> OSStatus {
+        lock.withLock { items[key(a)] = a[kSecValueData as String] as? Data }
+        return errSecSuccess
+    }
+    func update(_ q: [String: Any], _ a: [String: Any]) -> OSStatus {
+        lock.withLock {
+            guard items[key(q)] != nil else { return errSecItemNotFound }
+            items[key(q)] = a[kSecValueData as String] as? Data
+            return errSecSuccess
+        }
+    }
+    func delete(_ q: [String: Any]) -> OSStatus {
+        lock.withLock { items.removeValue(forKey: key(q)) == nil ? errSecItemNotFound : errSecSuccess }
     }
 }

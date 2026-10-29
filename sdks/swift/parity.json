@@ -520,11 +520,11 @@
     },
     "connect.protocol": {
       "status": "implemented",
-      "note": "PolarisKeyCore peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter), PeerLink, and the trust manager's accept-peer; PeerBytesTests, PeerCodecTests, PeerSessionTests, PeerSessionSASTests, ConnectSessionTests and TrustAcceptPeerTests replay peer-matrix.json."
+      "note": "PolarisKeyCore peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter; HELLO display data cleaned: platform in [A-Za-z0-9 ._+-] up to 32 characters else Unknown, app cleaned like label, a HELLO in modes v and p up to 4 KiB, held host records up to 16 and 16 KiB), PeerLink, and the trust manager's accept-peer; PeerBytesTests, PeerCodecTests, PeerSessionTests, PeerSessionSASTests, ConnectSessionTests and TrustAcceptPeerTests replay peer-matrix.json."
     },
     "connect.lan": {
       "status": "implemented",
-      "note": "PolarisKeyPlatform BonjourBrowse and BonjourPipes (Network.framework: NWBrowser, NWListener, NWConnection; dial policy G6 and D-10 before the first byte, accept gate and 30 s authentication bound) and PolarisKey ConnectLan (advert rotation, browse index, dial, wrong_peer, session caps); the Info.plist needs NSLocalNetworkUsageDescription and the NSBonjourServices entry _pkeypeer._tcp, and a sandboxed macOS app needs com.apple.security.network.client and .server; BonjourBrowseTests, BonjourPipesTests, ConnectLanTests."
+      "note": "PolarisKeyPlatform BonjourBrowse and BonjourPipes (Network.framework: NWBrowser, NWListener, NWConnection; the LAN address rule lanVerdict of V5 §15.4.1 (LanAddress.swift: IPv4, fe80::/10, fc00::/7 and an on-link global IPv6 address) judged on a host and port as text before connect and on the connected path's remote and local endpoints before the first byte, and on an accepted source before a slot and again before the host sees the pipe, a non-LAN accept closed with no read; the 30 s authentication bound; unauthenticated sockets capped per address 4, per /64 16 and 32 in all, a link-local key with its zone; PeerCodecTests runs every peer-matrix.json lanAddresses row, skips the candidates rows because Swift reads no CANDIDATES entry, and skips mdnsAnswers because the OS resolver owns it) and PolarisKey ConnectLan (advert rotation, browse index, dial, wrong_peer, session caps); the Info.plist needs NSLocalNetworkUsageDescription and the NSBonjourServices entry _pkeypeer._tcp, and a sandboxed macOS app needs com.apple.security.network.client and .server; BonjourBrowseTests, BonjourPipesTests, ConnectLanTests."
     },
     "connect.relay": {
       "status": "implemented",

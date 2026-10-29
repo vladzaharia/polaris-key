@@ -60,6 +60,20 @@ final class BonjourPipesTests: XCTestCase {
         XCTAssertFalse(p.allows(addressBytes: [1, 2, 3]))
     }
 
+    func testAddressTextFromPlatformBytesMatchesTheCorpusSpelling() {
+        XCTAssertEqual(lanAddressText(bytes: [192, 168, 1, 9]), "192.168.1.9")
+        let ll: [UInt8] = [0xFE, 0x80] + [UInt8](repeating: 0, count: 13) + [1]
+        XCTAssertEqual(lanAddressText(bytes: ll, zone: "en0"), "fe80::1%en0")
+        XCTAssertEqual(lanAddressText(bytes: ll), "fe80::1")
+        let global: [UInt8] = [0x20, 0x01, 0x0D, 0xB8, 0, 1, 0, 2] + [UInt8](repeating: 0, count: 7) + [5]
+        XCTAssertEqual(lanAddressText(bytes: global, zone: "en0"), "2001:db8:1:2::5%en0")
+        // A mapped address carries no zone: the rule refuses one.
+        let mapped: [UInt8] = [UInt8](repeating: 0, count: 10) + [0xFF, 0xFF, 10, 0, 0, 1]
+        XCTAssertEqual(lanAddressText(bytes: mapped, zone: "en0"), "::ffff:a00:1")
+        XCTAssertNil(lanAddressText(bytes: [1, 2, 3]))
+        XCTAssertEqual(BonjourDialPolicy().verdict(remote: "10.0.0.1"), LanVerdict(dial: true, key: "10.0.0.1"))
+    }
+
     // MARK: limiter (G7)
 
     func testLimiterTotalAndPerAddress() {
@@ -67,7 +81,6 @@ final class BonjourPipesTests: XCTestCase {
         var slots: [UnauthenticatedLimiter.Slot] = []
         for _ in 0..<4 { slots.append(l.admit(address: "192.168.1.5")!) }
         XCTAssertNil(l.admit(address: "192.168.1.5"), "5th from one address")
-        XCTAssertNil(l.admit(address: "192.168.1.5%en0"), "the scope id is not part of the address")
         l.release(slots[0])
         l.release(slots[0])  // idempotent
         XCTAssertEqual(l.count, 3)
@@ -77,6 +90,29 @@ final class BonjourPipesTests: XCTestCase {
         for i in 0..<28 { XCTAssertNotNil(l.admit(address: "10.0.0.\(i)")) }
         XCTAssertEqual(l.count, 32)
         XCTAssertNil(l.admit(address: "10.9.9.9"), "33rd socket")
+    }
+
+    /// §15.4.1: per address 4, per /64 16, total 32; a link-local key carries its zone.
+    func testLimiterCountsPerSlash64AndKeepsTheLinkLocalZone() {
+        let l = UnauthenticatedLimiter()
+        var held: [UnauthenticatedLimiter.Slot] = []
+        // Four hosts of one /64 take 4 each: the 16-socket cap lands on the 17th.
+        for host in 1...4 {
+            for _ in 0..<4 { held.append(l.admit(address: "2001:db8:1:2::\(host)")!) }
+        }
+        XCTAssertNil(l.admit(address: "2001:db8:1:2::5"), "the /64 holds 16")
+        XCTAssertNotNil(l.admit(address: "2001:db8:1:3::5"), "another /64 is another bucket")
+        l.release(held[0])
+        XCTAssertNotNil(l.admit(address: "2001:db8:1:2::5"), "a freed slot reopens the /64")
+
+        // The same fe80 address on two links is two hosts.
+        let ll = UnauthenticatedLimiter()
+        for _ in 0..<4 { XCTAssertNotNil(ll.admit(address: "fe80::1%en0")) }
+        XCTAssertNil(ll.admit(address: "fe80::1%en0"))
+        XCTAssertNotNil(ll.admit(address: "fe80::1%en1"))
+        // IPv4 has no /64 bucket.
+        let v4 = UnauthenticatedLimiter(total: 99, perAddress: 99, perGroup: 1)
+        for i in 0..<5 { XCTAssertNotNil(v4.admit(address: "10.0.0.\(i)")) }
     }
 
     // MARK: rename (never kept under another name)
@@ -187,7 +223,7 @@ final class BonjourPipesTests: XCTestCase {
             await s.close()
         }
 
-        func testPolicyRefusesLoopbackByDefaultBeforeAnyByte() async throws {
+        func testPolicyRefusesLoopbackByDefaultBeforeAnySocket() async throws {
             let sink = Sink()
             let l = BonjourListener(policy: BonjourDialPolicy(allowLoopback: true))
             defer { l.stop() }
@@ -196,10 +232,18 @@ final class BonjourPipesTests: XCTestCase {
                 _ = try await BonjourPipes.dial(endpoint(port), options: BonjourDialOptions(timeout: 5))
                 XCTFail("loopback is refused unless opted in")
             } catch { XCTAssertEqual(error as? BonjourPipeError, .addressRefused) }
-            // The accepted side saw a connection but no byte, and then the end.
-            try await waitFor("accept") { !sink.pipes.isEmpty }
-            let r = try await sink.pipes[0].read()
-            XCTAssertNil(r, "nothing was sent")
+            // The address text is judged before connect, so the listener never sees a socket.
+            try await Task.sleep(nanoseconds: 200_000_000)
+            XCTAssertTrue(sink.pipes.isEmpty, "no connection was made")
+            // A name, a public literal and a global address with no on-link claim are refused the same way.
+            for host: NWEndpoint.Host in ["localhost", "8.8.8.8", "100.64.0.1", "169.254.1.1"] {
+                do {
+                    _ = try await BonjourPipes.dial(
+                        .hostPort(host: host, port: NWEndpoint.Port(rawValue: port)!),
+                        options: BonjourDialOptions(timeout: 5))
+                    XCTFail("\(host) is not a LAN address")
+                } catch { XCTAssertEqual(error as? BonjourPipeError, .addressRefused, "\(host)") }
+            }
         }
 
         func testDialToAClosedPortFailsAndAnEndpointlessRowIsUnresolvable() async throws {
@@ -236,6 +280,17 @@ final class BonjourPipesTests: XCTestCase {
                     .service(name: "x", type: "_t._tcp", domain: "local", interface: nil), policy: policy,
                     limiter: limiter))
             XCTAssertEqual(limiter.count, 0, "no slot was taken")
+            // No own address shares the /64 of a global source, so it is closed with no slot.
+            XCTAssertNil(
+                BonjourListener.allowedSource(ep("2001:db8:1:2::5"), policy: policy, own: { ["2001:db8:9::9"] }))
+            XCTAssertEqual(
+                BonjourListener.allowedSource(ep("2001:db8:1:2::5"), policy: policy, own: { ["2001:db8:1:2::9"] }),
+                "2001:db8:1:2::5", "an on-link global source takes a slot")
+            XCTAssertNil(
+                BonjourListener.allowedSource(
+                    ep("2001:db8:1:2::5"), local: ep("2001:db8:7::9"), policy: policy, own: { ["2001:db8:1:2::9"] }),
+                "a known local address decides")
+            XCTAssertEqual(limiter.count, 0)
             let ok = BonjourListener.gate(ep("192.168.1.5"), policy: policy, limiter: limiter)
             XCTAssertEqual(ok?.address, "192.168.1.5")
             XCTAssertEqual(limiter.count, 1)
