@@ -261,6 +261,119 @@ export function Export() {
 Config precedence is the same in every SDK: server-enforced, local override, remote default,
 fallback. The environment layer does not exist in a browser.
 
+## Synced settings
+
+With [Cloud Sync](/docs/features/cloud-sync/) on, a person's synced settings follow them to every
+browser and device they sign in on. `useConfigSetting()` already does it: while a person is signed
+in, `set()` and `clear()` go to the synced copy, and the same code runs with Cloud Sync off.
+`useSetting(key)` is `useConfigSetting(key)` plus `sync`, so you can show where the value lives.
+`useCloudSync()` is the connection: its `status`, a `flush()` and the sign-in offer. Which keys sync
+is the catalog's decision (see [Synced settings](/docs/features/cloud-sync/#synced-settings)); a
+locked key never does. Nothing syncs before sign-in, and no value passes through `status` or the
+offer.
+
+```tsx
+import {
+  useCloudSync,
+  useRecoveryCode,
+  useSetting,
+  useSyncLock,
+} from "@polaris-key/react";
+
+export function ThemeSetting() {
+  const theme = useSetting("ui.theme", "light");
+  const cloud = useCloudSync();
+  const lock = useSyncLock();
+  const ring = useRecoveryCode();
+
+  if (cloud.unsupported)
+    return <p>Settings stay on this device ({cloud.unsupported.reason}).</p>;
+  return (
+    <section>
+      <button
+        disabled={theme.locked}
+        onClick={() =>
+          void theme.set(theme.value === "dark" ? "light" : "dark")
+        }
+      >
+        Theme: {theme.value} ({theme.sync})
+      </button>
+      {cloud.status.state === "pending" && <p>Saving…</p>}
+      {cloud.status.state === "offline" && (
+        <p>Offline. Changes are saved on this device.</p>
+      )}
+      {cloud.offer && (
+        <p>
+          Sign in to sync your settings.{" "}
+          {cloud.offer.signInUrl && <a href={cloud.offer.signInUrl}>Sign in</a>}{" "}
+          <button onClick={cloud.dismissOffer}>Not now</button>
+        </p>
+      )}
+      {lock.state === "none" && (
+        <button onClick={() => void ring.create()}>
+          Set up a recovery code
+        </button>
+      )}
+      <button onClick={() => void cloud.flush()}>Save now</button>
+    </section>
+  );
+}
+```
+
+`useSetting(key).sync` is one of:
+
+| `sync`    | Meaning                                                                            |
+| --------- | ---------------------------------------------------------------------------------- |
+| `local`   | Stays on this device: nobody is signed in, Cloud Sync is off or the key is `local` |
+| `pending` | An edit waits to be sent, or is parked for a quota or an entitlement               |
+| `synced`  | The synced copy and this device agree                                              |
+
+`locked` is true for a key the operator locks; the signed value wins and the key never syncs.
+`useCloudSync().status.state` is the connection:
+
+| `state`       | Show                                                                           |
+| ------------- | ------------------------------------------------------------------------------ |
+| `idle`        | Nothing                                                                        |
+| `pending`     | "Saving…" (`pending` counts the edits)                                         |
+| `syncing`     | "Saving…"                                                                      |
+| `offline`     | "Offline. Changes are saved on this device."                                   |
+| `local`       | Sign-in needed: nobody is signed in, so nothing syncs                          |
+| `locked`      | The key ring is locked: `useSyncLock()`, then `useRecoveryCode().unlock(code)` |
+| `paused`      | Polaris Key paused writes; edits wait and send later                           |
+| `blocked`     | `reason`: `account_required`, `unauthorized`, `attestation` or `forbidden`     |
+| `unsupported` | The app requires end-to-end encryption and the server doesn't offer it         |
+
+`cloud.offer` is set when Cloud Sync lost the person (`account_required`, a sign-out or another
+person's sign-in) and clears on a sign-in. `signInUrl` is where the Worker says to go, or `null`
+for your own sign-in.
+
+Settings are end-to-end encrypted by default. What each side can read is under
+[Who can read it](/docs/features/cloud-sync/#who-can-read-it). The key ring decrypts them:
+`useSyncLock().state` is `none` (no ring yet), `locked`, `unlocked`, `ring-changed` or `failed`.
+`useRecoveryCode()` creates the ring, unlocks it with the code the person typed, replaces the code,
+resets and accepts a changed ring. Show a new code once; nothing keeps it, and a person who loses
+every device and the code loses their synced settings.
+
+### Where it runs
+
+- **Browser sign-in only.** Cloud Sync in a browser needs the redirect sign-in. A cookie-only page
+  and the desktop bridge answer `unsupported` and keep every setting `local`, as does a product
+  without the Sync service.
+- **Bearer, on your origins.** The page sends the redirect token as a bearer header and never the
+  session cookie. The Worker answers Cloud Sync for a page on the product's `web.origins` only,
+  without credentialed CORS, and the token works for one device of one product. A cookie-only
+  request is `401`. Serve the page from an origin the product lists.
+- **Strict CSP.** The key ring's root is a non-extractable key in the browser's vault, so a script
+  cannot copy it out, but a script that runs on your page can still ask the page to decrypt. Keep a
+  strict `Content-Security-Policy`: no `unsafe-inline` or `unsafe-eval` in `script-src`, and
+  `connect-src` limited to your origin and the Polaris Key origin. Sync needs no other source.
+  Settings are kept in IndexedDB, one store per product, and shared between tabs; one tab writes at a time.
+- **Tabs and unload.** A change in one tab reaches the others. Edits are flushed when the page is
+  hidden. If a flush must complete first, `await cloud.flush()`.
+
+A drop-in settings panel, `ConfigPanel`, is planned; until it lands, build the screen from these
+hooks.
+
 ## Updates
 
 ```tsx
