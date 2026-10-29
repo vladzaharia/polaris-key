@@ -217,6 +217,23 @@
       ],
       "note": "I-45.1/I-45.3: identity.exchangeNonce/exchange over the endpoints discovery names (Unavailable otherwise; a Worker refusal throws PolarisException); the nine exchange transcripts are replayed. The Credential Manager provider is I-45.4; JVM desktop has no platform identity."
     },
+    "identity.gamecenter": {
+      "status": "na",
+      "runtime": ["android", "jvm"],
+      "reason": "runtime",
+      "note": "Game Center exists only on Apple platforms."
+    },
+    "identity.pgs": {
+      "status": "planned",
+      "wp": "I-45",
+      "except": [
+        {
+          "runtime": "jvm",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Play Games server auth code (I-45.5); JVM desktop has none."
+    },
     "identity.autosignin": {
       "status": "implemented",
       "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in \u00a71, I-45): a stored sign-in, the platform provider silently, then its one sheet; every refusal is a result."

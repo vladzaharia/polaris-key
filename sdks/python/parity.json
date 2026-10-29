@@ -178,6 +178,18 @@
       "reason": "runtime",
       "note": "No OS account to take a platform identity from (I-13); Python signs in by loopback or device code."
     },
+    "identity.gamecenter": {
+      "status": "na",
+      "runtime": ["python"],
+      "reason": "runtime",
+      "note": "Game Center exists only on Apple platforms."
+    },
+    "identity.pgs": {
+      "status": "na",
+      "runtime": ["python"],
+      "reason": "runtime",
+      "note": "Play Games runs only on Android."
+    },
     "identity.autosignin": {
       "status": "planned",
       "wp": "I-47",
