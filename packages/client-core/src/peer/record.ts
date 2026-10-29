@@ -10,15 +10,23 @@ export const MAX_CHAIN_RECORDS =
   Math.ceil(MAX_PEER_MESSAGE_BYTES / MAX_RECORD_BODY) + 1;
 
 export type RecordMode = "a" | "v" | "p" | "c";
-export type PeerCloseCode =
-  | "peer_revoked"
-  | "peer_expired"
-  | "peer_bad_frame"
-  | "peer_unknown_critical"
-  | "peer_not_allowed"
-  | "peer_busy"
-  | "peer_timeout"
-  | "peer_bye";
+/**
+ * The channel close codes (§15.6, §15.9), the registry's `peer` kind in
+ * `conformance/parity/errors.json`: the SDK constants are generated from it, and
+ * `test/peerSession.test.ts` fails when this list and the registry differ. This package sits below
+ * the SDKs, so it keeps the list itself rather than importing their generated file.
+ */
+export const PEER_CLOSE_CODES = [
+  "peer_revoked",
+  "peer_expired",
+  "peer_bad_frame",
+  "peer_unknown_critical",
+  "peer_not_allowed",
+  "peer_busy",
+  "peer_timeout",
+  "peer_bye",
+] as const;
+export type PeerCloseCode = (typeof PEER_CLOSE_CODES)[number];
 
 export const RECORD = {
   HELLO: 0x8001,

@@ -601,6 +601,50 @@
       "title": "本地网络已被阻止",
       "message": "此应用无法访问本地网络上的设备。请在系统设置中允许。"
     },
+    "nearby-unsupported": {
+      "title": "附近登录不可用",
+      "message": "此设备在此处无法查找附近的设备。"
+    },
+    "peer-handshake-failed": {
+      "title": "无法建立安全连接",
+      "message": "无法与附近的设备建立安全连接。请重试。"
+    },
+    "peer-closed": {
+      "title": "连接已结束",
+      "message": "与附近设备的连接已结束。请重试。"
+    },
+    "peer_revoked": {
+      "title": "设备不再受信任",
+      "message": "对方设备已从账户中移除。未共享任何内容。"
+    },
+    "peer_expired": {
+      "title": "设备证书已过期",
+      "message": "对方设备的证书已过期。请刷新后重试。"
+    },
+    "peer_bad_frame": {
+      "title": "连接错误",
+      "message": "附近设备发送了意外的内容。请重试。"
+    },
+    "peer_unknown_critical": {
+      "title": "不支持的请求",
+      "message": "附近设备提出了此应用不支持的请求。请重试。"
+    },
+    "peer_not_allowed": {
+      "title": "此处不允许",
+      "message": "附近设备提出了此步骤中不允许的请求。请重试。"
+    },
+    "peer_busy": {
+      "title": "附近设备繁忙",
+      "message": "打开的连接过多。请稍后重试。"
+    },
+    "peer_timeout": {
+      "title": "连接超时",
+      "message": "附近设备未及时响应。请重试。"
+    },
+    "peer_bye": {
+      "title": "连接已关闭",
+      "message": "附近设备已结束连接。"
+    },
     "platform-error": {
       "title": "平台出现问题",
       "message": "平台报告了一个错误。请重试。"

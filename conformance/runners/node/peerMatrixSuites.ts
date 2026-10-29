@@ -44,6 +44,15 @@ import {
   type PeerMode,
   type RecordMode,
   type RelayMessage,
+  RECORD,
+  VouchFlow,
+  buildVouchResult,
+  finishMap,
+  parseVouchResult,
+  verifyVouchRequest,
+  type VouchRecord,
+  type VouchStatus,
+  type VouchVerdict,
 } from "@polaris-key/client-core";
 
 /** The parsed `peer-matrix.json`. */
@@ -362,6 +371,152 @@ function mdnsAnswers(m: PeerMatrix): void {
   });
 }
 
+// ── vouch (WIRE-CONTRACT-V5 §15.6.1) ─────────────────────────────────────────
+//
+// The rows run through the `peer/vouch.ts` codecs of client-core: `verifyVouchRequest`,
+// `parseVouchResult`, `finishMap` and `VouchFlow`. The flow rows drive one requester flow and one
+// approver flow, the receiving end checking each record first, as the two ends of one session.
+
+interface FlowStep {
+  ev?: string;
+  capsD?: string[];
+  capsM?: string[];
+  dir?: "d2m" | "m2d";
+  type?: string;
+  status?: string;
+  bytes?: number;
+}
+
+interface FlowRecord extends VouchRecord {
+  at: number;
+}
+
+/** One session's order, direction and gating rules (§15.6.1 rules 1, 4, 7, 8, 12). */
+function runVouchFlow(steps: FlowStep[]): {
+  close: string | null;
+  at: number | null;
+  delivered: number[];
+} {
+  const d = new VouchFlow<FlowRecord>("requester");
+  const m = new VouchFlow<FlowRecord>("approver");
+  const delivered: number[] = [];
+  for (const [i, s] of steps.entries()) {
+    const fail = (close: string) => ({ close, at: i, delivered });
+    const take = (v: VouchVerdict<FlowRecord>, onM = false): string | null => {
+      if (!v.ok) return v.close;
+      for (const r of v.deliver) {
+        delivered.push(r.at);
+        if (onM && r.type === RECORD.VOUCH_REQ) m.verified();
+      }
+      return null;
+    };
+    let code: string | null = null;
+    switch (s.ev) {
+      case "handshake":
+        code = take(d.negotiate(s.capsD!, s.capsM!));
+        code ??= take(m.negotiate(s.capsM!, s.capsD!));
+        break;
+      case "shown":
+        d.codeShown();
+        m.codeShown();
+        break;
+      case "picked":
+        code = take(m.picked(), true);
+        break;
+      case "wrong-pick":
+      case "none-match":
+        code = take(m.abandon(s.ev));
+        break;
+      case "timeout":
+        code = take(m.abandon("timeout"));
+        break;
+      case "confirmed":
+        code = take(d.confirmAccount());
+        break;
+      case undefined: {
+        const type = parseInt(s.type!, 16);
+        const body =
+          type === RECORD.VOUCH_RESULT
+            ? buildVouchResult(s.status as VouchStatus)
+            : new Uint8Array(s.bytes ?? 0);
+        const r: FlowRecord = { type, body, at: i };
+        const [from, to] = s.dir === "d2m" ? [d, m] : [m, d];
+        code = take(to.receive(r), to === m);
+        // The sender's verdict only gates: what the receiver delivers is what counts.
+        const sent = from.send(r);
+        if (code === null && !sent.ok) code = sent.close;
+        break;
+      }
+      default:
+        throw new Error(`unknown event ${s.ev}`);
+    }
+    if (code !== null) return fail(code);
+  }
+  return { close: null, at: null, delivered };
+}
+
+/** A request row's body bytes: text, hex, or a prefix, a filler and a suffix. */
+function vouchBody(r: any): Uint8Array {
+  // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (r.bodyHex !== undefined) return unhex(r.bodyHex);
+  if (r.bodyPad !== undefined)
+    return utf8(
+      r.bodyPad.prefix +
+        r.bodyPad.fill.repeat(r.bodyPad.count) +
+        r.bodyPad.suffix,
+    );
+  return utf8(r.body);
+}
+
+function vouch(m: PeerMatrix): void {
+  describe("peer-matrix vouch", () => {
+    const v = m.vouch;
+    const unique = (rows: { id: string }[]) =>
+      new Set(rows.map((r) => r.id)).size === rows.length;
+    // Exact: a row added or dropped is a deliberate corpus change, never a silent one.
+    it("has the rows", () => {
+      expect(v.requests.length).toBe(78);
+      expect(v.results.length).toBe(26);
+      expect(v.flows.length).toBe(30);
+      expect(v.finish.length).toBe(29);
+      for (const k of ["requests", "results", "flows", "finish"])
+        expect(unique(v[k]), k).toBe(true);
+    });
+    it("requests", async () => {
+      for (const r of v.requests) {
+        const body = vouchBody(r);
+        if (r.bodyPad !== undefined) expect(body.length, r.id).toBe(r.length);
+        const got = await verifyVouchRequest({
+          slug: r.slug,
+          h: unhex(r.hHex),
+          hello: r.hello,
+          body,
+        });
+        if (r.verdict === "ok") expect(got, r.id).toEqual(r.result);
+        else {
+          expect(got, r.id).toBeNull();
+          expect(r.close, r.id).toBe("peer_bad_frame");
+        }
+      }
+    });
+    it("results", () => {
+      for (const r of v.results) {
+        const got = parseVouchResult(vouchBody(r));
+        expect(got, r.id).toEqual(
+          r.refuse !== undefined ? { refuse: r.refuse } : { status: r.status },
+        );
+      }
+    });
+    it("flows", () => {
+      for (const r of v.flows)
+        expect(runVouchFlow(r.steps), r.id).toEqual(r.want);
+    });
+    it("finish", () => {
+      for (const r of v.finish) expect(finishMap(r), r.id).toEqual(r.result);
+    });
+  });
+}
+
 /** Keys of the matrix that are not sections. */
 const META = new Set(["peerMatrixVersion", "description"]);
 
@@ -379,6 +534,7 @@ const SUITES: {
   { sections: ["handshakePayloads"], run: handshakePayloads },
   { sections: ["lanAddresses"], run: lanAddresses },
   { sections: ["mdnsAnswers"], run: mdnsAnswers },
+  { sections: ["vouch"], run: vouch },
 ];
 
 /** Register every suite whose sections the matrix has, and fail on a section no suite covers. */

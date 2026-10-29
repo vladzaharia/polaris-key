@@ -7161,6 +7161,116 @@ msgstr "Lokales Netzwerk gesperrt"
 msgid "core.codes.nearby-permission-denied.message"
 msgstr "Diese App kann keine Geräte in Ihrem lokalen Netzwerk erreichen. Erlauben Sie es in den Systemeinstellungen."
 
+#. Nearby sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-unsupported.title"
+msgstr "Anmeldung in der Nähe nicht verfügbar"
+
+#. This device can't look for nearby devices here.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-unsupported.message"
+msgstr "Dieses Gerät kann hier nicht nach Geräten in der Nähe suchen."
+
+#. Couldn't connect securely
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-handshake-failed.title"
+msgstr "Sichere Verbindung fehlgeschlagen"
+
+#. A secure connection to the nearby device couldn't be set up. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-handshake-failed.message"
+msgstr "Eine sichere Verbindung zum Gerät in der Nähe konnte nicht hergestellt werden. Versuchen Sie es erneut."
+
+#. Connection ended
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-closed.title"
+msgstr "Verbindung beendet"
+
+#. The connection to the nearby device ended. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-closed.message"
+msgstr "Die Verbindung zum Gerät in der Nähe wurde beendet. Versuchen Sie es erneut."
+
+#. Device no longer trusted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_revoked.title"
+msgstr "Gerät nicht mehr vertrauenswürdig"
+
+#. The other device was removed from the account. Nothing was shared.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_revoked.message"
+msgstr "Das andere Gerät wurde aus dem Konto entfernt. Es wurde nichts geteilt."
+
+#. Device certificate expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_expired.title"
+msgstr "Gerätezertifikat abgelaufen"
+
+#. The other device's certificate has expired. Refresh and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_expired.message"
+msgstr "Das Zertifikat des anderen Geräts ist abgelaufen. Aktualisieren Sie und versuchen Sie es erneut."
+
+#. Connection error
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bad_frame.title"
+msgstr "Verbindungsfehler"
+
+#. The nearby device sent something unexpected. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bad_frame.message"
+msgstr "Das Gerät in der Nähe hat etwas Unerwartetes gesendet. Versuchen Sie es erneut."
+
+#. Unsupported request
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_unknown_critical.title"
+msgstr "Nicht unterstützte Anfrage"
+
+#. The nearby device asked for something this app doesn't support. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_unknown_critical.message"
+msgstr "Das Gerät in der Nähe hat etwas angefordert, das diese App nicht unterstützt. Versuchen Sie es erneut."
+
+#. Not allowed here
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_not_allowed.title"
+msgstr "Hier nicht erlaubt"
+
+#. The nearby device asked for something that isn't allowed in this step. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_not_allowed.message"
+msgstr "Das Gerät in der Nähe hat etwas angefordert, das in diesem Schritt nicht erlaubt ist. Versuchen Sie es erneut."
+
+#. Nearby device busy
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_busy.title"
+msgstr "Gerät in der Nähe ausgelastet"
+
+#. Too many connections are open. Try again in a moment.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_busy.message"
+msgstr "Zu viele Verbindungen sind offen. Versuchen Sie es gleich noch einmal."
+
+#. Connection timed out
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_timeout.title"
+msgstr "Zeitüberschreitung"
+
+#. The nearby device didn't respond in time. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_timeout.message"
+msgstr "Das Gerät in der Nähe hat nicht rechtzeitig geantwortet. Versuchen Sie es erneut."
+
+#. Connection closed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bye.title"
+msgstr "Verbindung geschlossen"
+
+#. The nearby device ended the connection.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bye.message"
+msgstr "Das Gerät in der Nähe hat die Verbindung beendet."
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"

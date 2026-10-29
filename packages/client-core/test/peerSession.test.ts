@@ -1,5 +1,6 @@
 // Two PeerSessions wired in memory: the three modes end to end, plus the refusals the matrix
 // cannot show (silent bad PSK, first record not HELLO, the SAS commit-reveal, rekey).
+import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { base64UrlEncodeBytes, signJws, type TrustSet } from "@polaris-key/jws";
 import {
@@ -7,6 +8,7 @@ import {
   NoiseHandshake,
   peerNoiseProtocol,
   peerPrologue,
+  PEER_CLOSE_CODES,
   PeerChannel,
   RECORD,
   encodeRecord,
@@ -120,7 +122,10 @@ describe("PeerSession modes v and p", () => {
         SessionEvent,
         { type: "established" }
       >;
-      expect(est.caps).toEqual(["app/1", "ring/1"]);
+      // Mode v adds `vouch/1` itself (rule 1).
+      expect(est.caps).toEqual(
+        mode === "v" ? ["app/1", "ring/1", "vouch/1"] : ["app/1", "ring/1"],
+      );
       // Nothing flows until the person confirms; an inbound record is held, not refused.
       await expect(d.s.sendRecord(RECORD.VOUCH_RESULT, NONE)).rejects.toThrow();
       await d.s.confirmSas();
@@ -471,5 +476,139 @@ describe("PeerSession refusals", () => {
     ]);
     t = 61;
     expect(l.begin()).not.toBeNull();
+  });
+});
+
+describe("PeerSession vouch hooks (mode v)", () => {
+  it("lists vouch/1 itself and exposes the order guard, mode v only", () => {
+    const v = side("v", "initiator", rnd());
+    const p = side("p", "initiator", rnd());
+    expect(v.s.vouch?.role).toBe("requester");
+    expect(side("v", "responder", rnd()).s.vouch?.role).toBe("approver");
+    expect(p.s.vouch).toBeNull();
+  });
+
+  it("handshakeHash() is the same value on both ends once established, and a copy", async () => {
+    const d = side("v", "initiator", rnd());
+    const m = side("v", "responder", rnd());
+    expect(() => d.s.handshakeHash()).toThrow();
+    await d.s.start();
+    await pump(d, m);
+    const h = d.s.handshakeHash();
+    expect(h).toHaveLength(32);
+    expect(h).toEqual(m.s.handshakeHash());
+    h.fill(0);
+    expect(d.s.handshakeHash()).toEqual(m.s.handshakeHash());
+  });
+
+  it("holdSas stops after HELLO; startSas() sends the commit and the code follows", async () => {
+    const d = side("v", "initiator", rnd(), { holdSas: true });
+    const m = side("v", "responder", rnd());
+    await d.s.start();
+    await pump(d, m);
+    expect(of(d, "established")).toHaveLength(1);
+    expect(of(m, "established")).toHaveLength(1);
+    expect(of(d, "sas")).toHaveLength(0);
+    expect(of(m, "sas")).toHaveLength(0);
+    expect(d.s.closed || m.s.closed).toBe(false);
+    await d.s.startSas();
+    await pump(d, m);
+    const sd = of(d, "sas")[0] as Extract<SessionEvent, { type: "sas" }>;
+    const sm = of(m, "sas")[0] as Extract<SessionEvent, { type: "sas" }>;
+    expect(sd.code).toBe(sm.code);
+    // A second start is refused and closes the session.
+    await d.s.startSas();
+    expect(of(d, "closed")).toEqual([
+      { type: "closed", code: "peer_not_allowed", byPeer: false },
+    ]);
+  });
+
+  it("choosing one of two held approvers starts the SAS on that session only", async () => {
+    const d1 = side("v", "initiator", rnd(), { holdSas: true });
+    const m1 = side("v", "responder", rnd());
+    const d2 = side("v", "initiator", rnd(), { holdSas: true });
+    const m2 = side("v", "responder", rnd());
+    await d1.s.start();
+    await d2.s.start();
+    await pump(d1, m1);
+    await pump(d2, m2);
+    await d1.s.startSas();
+    await pump(d1, m1);
+    await d2.s.close("peer_bye");
+    await pump(d2, m2);
+    expect(of(m1, "sas")).toHaveLength(1);
+    expect(of(m2, "sas")).toHaveLength(0);
+    expect(of(m2, "closed")).toEqual([
+      { type: "closed", code: "peer_bye", byPeer: true },
+    ]);
+  });
+
+  it("refuses startSas() before established, without holdSas, and holdSas outside mode v", async () => {
+    const early = side("v", "initiator", rnd(), { holdSas: true });
+    await early.s.start();
+    await early.s.startSas();
+    expect(of(early, "closed")).toEqual([
+      { type: "closed", code: "peer_not_allowed", byPeer: false },
+    ]);
+    const plain = side("v", "initiator", rnd());
+    const m = side("v", "responder", rnd());
+    await plain.s.start();
+    await pump(plain, m);
+    await plain.s.startSas();
+    expect(of(plain, "closed")).toEqual([
+      { type: "closed", code: "peer_not_allowed", byPeer: false },
+    ]);
+    expect(() => side("p", "initiator", rnd(), { holdSas: true })).toThrow(
+      RangeError,
+    );
+    expect(() => side("v", "responder", rnd(), { holdSas: true })).toThrow(
+      RangeError,
+    );
+  });
+
+  it("closes peer_not_allowed after HELLO and before any SAS record when the peer lacks vouch/1", async () => {
+    const m = side("v", "responder", rnd());
+    const raw = new NoiseHandshake({
+      role: "initiator",
+      protocol: peerNoiseProtocol("v"),
+      prologue: peerPrologue("djdl", "v"),
+      staticKey: rnd(),
+    });
+    await m.s.receive(await raw.writeMessage(utf8('{"v":1}')));
+    await raw.readMessage(m.out.splice(0)[0]!);
+    await m.s.receive(await raw.writeMessage(utf8('{"v":1,"caps":["app/1"]}')));
+    const tp = await raw.transport();
+    const hello = utf8('{"platform":"t","app":"a","maxMessage":1048576}');
+    await m.s.receive(
+      await tp.send.encrypt(
+        NONE,
+        encodeRecord({ type: RECORD.HELLO, flags: 0, body: hello }),
+      ),
+    );
+    expect(of(m, "established")).toHaveLength(0);
+    expect(of(m, "closed")).toEqual([
+      { type: "closed", code: "peer_not_allowed", byPeer: false },
+    ]);
+    // Its own HELLO, then CLOSE: no SAS record.
+    const types: number[] = [];
+    for (const out of m.out) {
+      const rec = await tp.receive.decrypt(NONE, out);
+      types.push((rec[0]! << 8) | rec[1]!);
+    }
+    expect(types).toEqual([RECORD.HELLO, RECORD.CLOSE]);
+  });
+
+  it("keeps PEER_CLOSE_CODES equal to the registry's peer kind", () => {
+    const reg = JSON.parse(
+      readFileSync(
+        new URL("../../../conformance/parity/errors.json", import.meta.url),
+        "utf8",
+      ),
+    ) as { codes: { code: string; kind: string }[] };
+    const peer = reg.codes
+      .filter((e) => e.kind === "peer")
+      .map((e) => e.code)
+      .sort();
+    expect([...PEER_CLOSE_CODES].sort()).toEqual(peer);
   });
 });
