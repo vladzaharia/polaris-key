@@ -16,6 +16,7 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import { resetConsole } from "./consoleHarness.js";
+import { channelRow, channelsView } from "./channelFixture.js";
 import { P, bootWith, writes } from "./distributionFixture.js";
 import type {
   PolarisKeyAnalyticsResponse,
@@ -33,7 +34,7 @@ const axe = configureAxe({
 });
 
 const HUB = "#/p/djdl/distribution/storefronts";
-const PAGE = "#/p/djdl/distribution/storefronts/polaris-key";
+const PAGE = "#/p/djdl/distribution/channels/polaris-key/sales";
 const SF = (path = "") => P(`/distribution/storefronts${path}`);
 const PK = (path = "") => P(`/storefronts/polaris-key${path}`);
 const PORTAL = P("/identity/portal");
@@ -238,6 +239,14 @@ function routes(
 ): Record<string, unknown> {
   return {
     [SF()]: HUB_VIEW,
+    // A-22.6: the store's page is the Sales tab of its channel page.
+    [P("/distribution/channels")]: channelsView(
+      channelRow({
+        id: "polaris-key",
+        label: "Polaris Locker",
+        commerce: null,
+      }),
+    ),
     [PK()]: status,
     [PK("/analytics")]: ANALYTICS,
     [`PATCH ${PORTAL}`]: { ok: true, settings: {} },

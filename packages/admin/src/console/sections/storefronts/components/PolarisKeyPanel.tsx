@@ -84,14 +84,36 @@ export const POLARIS_KEY = "polaris-key";
 
 export function PolarisKeyPanel({
   slug,
+  embedded = false,
 }: {
   slug: string;
+  embedded?: boolean; // A-22.6: the channel's Sales tab, actions only
 }): React.ReactElement {
   const q = usePolarisKey(slug);
   const origin = useMe().data?.customerOrigin;
   const lockerPage =
     q.data && visibleOnLocker(q.data) ? lockerUrl(origin, slug) : null;
-  const header = (
+  const actions = (
+    <div className="flex flex-col gap-2 sm:flex-row">
+      {lockerPage ? (
+        <Button variant="outline" asChild>
+          <a href={lockerPage} target="_blank" rel="noreferrer">
+            Open in Polaris Locker
+            <ExternalLink aria-hidden />
+            <span className="sr-only"> (opens a new tab)</span>
+          </a>
+        </Button>
+      ) : null}
+      <Button variant="outline" asChild>
+        <Link to={r.listing(slug, { tab: "fit", store: POLARIS_KEY })}>
+          Edit the listing
+        </Link>
+      </Button>
+    </div>
+  );
+  const header = embedded ? (
+    actions
+  ) : (
     <PageHeader
       eyebrow={
         <Breadcrumbs
@@ -109,24 +131,7 @@ export function PolarisKeyPanel({
           </StatusPill>
         ) : null
       }
-      primaryAction={
-        <div className="flex flex-col gap-2 sm:flex-row">
-          {lockerPage ? (
-            <Button variant="outline" asChild>
-              <a href={lockerPage} target="_blank" rel="noreferrer">
-                Open in Polaris Locker
-                <ExternalLink aria-hidden />
-                <span className="sr-only"> (opens a new tab)</span>
-              </a>
-            </Button>
-          ) : null}
-          <Button variant="outline" asChild>
-            <Link to={r.listing(slug, { tab: "fit", store: POLARIS_KEY })}>
-              Edit the listing
-            </Link>
-          </Button>
-        </div>
-      }
+      primaryAction={actions}
     />
   );
   if (q.isPending)

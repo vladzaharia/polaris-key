@@ -40,10 +40,16 @@ export function ChannelPage({
   const channels = useChannels(slug, known);
   const row = channels.data?.channels.find((c) => c.id === id);
   // An out-of-scope channel can hold nothing: Status only.
-  const tabs = row && !row.inScope ? CHANNEL_TABS.slice(0, 1) : CHANNEL_TABS;
+  const tabs = !row
+    ? CHANNEL_TABS.filter((t) => !t.visible)
+    : !row.inScope
+      ? CHANNEL_TABS.slice(0, 1)
+      : CHANNEL_TABS.filter((t) => !t.visible || t.visible(row));
   const current = tabs.find((t) => t.value === tab) ?? tabs[0]!;
   // A tab that is in the address but not built yet opens Status, and the address says so.
-  const unbuilt = tab !== undefined && current.value !== tab;
+  // While the read loads the channel-specific tabs are unknown, so nothing is "unbuilt" yet.
+  const unbuilt =
+    tab !== undefined && !channels.isPending && current.value !== tab;
   React.useEffect(() => {
     if (unbuilt && id) navigate(r.channel(slug, id), { replace: true });
   }, [unbuilt, slug, id]);

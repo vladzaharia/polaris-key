@@ -363,6 +363,22 @@ const ROUTES: Record<string, unknown> = {
           source: "typed",
         },
       },
+      // A-22.6: a store Commerce sells through (the Sales tab's App Store products).
+      {
+        id: "app-store",
+        label: "App Store",
+        inScope: true,
+        declared: true,
+        oneClick: false,
+        notUsing: false,
+        delivery: {
+          state: "live",
+          attention: [],
+          platforms: [{ platform: "ios", arches: ["arm64"] }],
+        },
+        commerce: { state: "ready", reason: null, attention: [] },
+        identity: null,
+      },
     ],
   },
   // F-34.8: the owner row of the switch (feeds on); `feedsoff` answers the off row below.

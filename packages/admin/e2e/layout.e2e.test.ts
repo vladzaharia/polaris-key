@@ -474,6 +474,11 @@ function cases(): Case[] {
       name: "djdl:channel/releases",
       hash: "#/p/djdl/distribution/channels/google-play/releases",
     },
+    // A-22.6: the Sales tab (the App Store products).
+    {
+      name: "djdl:channel/sales",
+      hash: "#/p/djdl/distribution/channels/app-store/sales",
+    },
     // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
     {
       name: "waiting:package-feeds",

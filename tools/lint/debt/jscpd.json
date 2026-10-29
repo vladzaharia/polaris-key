@@ -348,10 +348,10 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/distribution/pages/AppStorePage.tsx": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/distribution/pages/CommercePage.tsx": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/distribution/pages/CredentialsPage.tsx": {
       "jscpd:duplicate": 5

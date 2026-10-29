@@ -7,6 +7,7 @@
 import type * as React from "react";
 import type { ChannelRow } from "../../../../api.js";
 import type { CHANNEL_TAB_IDS } from "../../../nav.js";
+import { ChannelSales, hasSales } from "./ChannelSales.js";
 import { ChannelReleases } from "./ChannelReleases.js";
 import { ChannelStatus } from "./ChannelStatus.js";
 
@@ -22,10 +23,13 @@ export interface ChannelTabProps {
 export interface ChannelTab {
   value: ChannelTabId;
   label: string;
+  /** Shown only for channels this accepts; absent, always. */
+  visible?: (channel: ChannelRow) => boolean;
   Panel: React.ComponentType<ChannelTabProps>;
 }
 
 export const CHANNEL_TABS: readonly ChannelTab[] = [
   { value: "status", label: "Status", Panel: ChannelStatus },
   { value: "releases", label: "Releases", Panel: ChannelReleases },
+  { value: "sales", label: "Sales", visible: hasSales, Panel: ChannelSales },
 ];
