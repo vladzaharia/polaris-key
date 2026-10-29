@@ -424,9 +424,19 @@ final class KitRenderMacTests: XCTestCase {
             .appendingPathComponent("\(name).png")
         let small = Self.oneX(image)
         if Self.env("PKEY_KIT_RECORD") == "1" || Self.recordFirst {
-            try FileManager.default.createDirectory(
-                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try Self.png(small).write(to: url)
+            let data = try Self.png(small)
+            do {
+                try FileManager.default.createDirectory(
+                    at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try data.write(to: url)
+            } catch {
+                // CI's UI-test runner is sandboxed and may not write into the repo: keep the
+                // recorded baseline in the result bundle (CI uploads it) instead of failing.
+                let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.png")
+                attachment.name = "\(Self.baselineName(state))/\(name).png"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
             return
         }
         guard let reference = NSImage(contentsOf: url) else {
