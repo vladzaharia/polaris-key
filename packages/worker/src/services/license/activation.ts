@@ -89,6 +89,14 @@ export function authorizationError(
       // Also the answer for a device id another licence holds: indistinguishable from a
       // refused key, saying neither who holds the id nor whether anything does.
       return errorResponse(401, ErrorCode.Unauthorized);
+    case "license_owned":
+      // The callers that ask for the guard answer this themselves, with the sign-in link; any
+      // other never receives it.
+      return errorResponse(
+        403,
+        ErrorCode.LicenseOwned,
+        "license is in an account",
+      );
     case "device_limit":
       return errorResponse(403, ErrorCode.DeviceLimit, "device limit reached", {
         limit: err.limit,
@@ -203,8 +211,16 @@ async function activateWithKey(
       ...(gate.kind === "admit"
         ? { keyEntry: { surface: "app" as const } }
         : {}),
+      // CORE-SEAT-GUARD: with the refusals switch on, a claim that lands after the read above
+      // still seats nothing on the licence. Off, the claim is exactly as before.
+      ...(gate.kind === "admit" && gate.guardOwned
+        ? { refuseOwnedLicense: true }
+        : {}),
     },
   );
+  // Already logged by `authorizeDevice`; the answer is the one the gate gives.
+  if ("error" in authorized && authorized.error === "license_owned")
+    return licenseOwnedResponse(env, db, req, product);
   if ("error" in authorized)
     return authorizationError(
       authorized,

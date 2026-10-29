@@ -139,6 +139,12 @@ async function authzRefusal(
         ...(error.racedAfterFree ? { racedAfterFree: true as const } : {}),
       };
     }
+    case "license_owned":
+      // `authorizeDevice` has logged the refusal already.
+      return {
+        reason: "license_owned",
+        signInUrl: await buildSignInUrl(cx.env, cx.db, cx.req, cx.product),
+      };
     case "fingerprint_required":
       return { reason: "fingerprint_required" };
     case "hardware_mismatch":
@@ -461,6 +467,12 @@ async function admitByKey(
       // A key binds by key: signing the account in on top must not let a sign-out release it.
       boundBy: "key",
       ...(gate.kind === "admit" ? { keyEntry: { surface: key.surface } } : {}),
+      // CORE-SEAT-GUARD: the key return refuses an owned licence whatever the switch says; a key
+      // typed in the app does while `identity.keyEntryRefusals` is on. The seat claim re-checks
+      // at commit, so a claim that lands after the read above seats nothing.
+      ...(who === null || (gate.kind === "admit" && gate.guardOwned)
+        ? { refuseOwnedLicense: true }
+        : {}),
     },
   );
   if ("error" in authorized)

@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { dispatchWith } from "../../src/dispatch.js";
 import { SETTINGS } from "../../src/mount.js";
 import { KvMock } from "../kvMock.js";
+import { claimRace } from "../helpers/claimRace.js";
 import { makeTestDb } from "../helpers.js";
 import { portalHooksFor } from "../portalHarness.js";
 import {
@@ -180,7 +181,12 @@ const DEVICE_B = "KEYRETURNDEVICE000000000000000002";
 /** `POST identity/token` as the SDK sends it. */
 function redeem(
   code: string,
-  opts: { device?: string; bearer?: string; verifier?: string } = {},
+  opts: {
+    device?: string;
+    bearer?: string;
+    verifier?: string;
+    db?: SqliteDb;
+  } = {},
 ): Promise<Response> {
   return dispatchWith(
     new Request(`${BASE}/${SLUG}/identity/token`, {
@@ -199,7 +205,7 @@ function redeem(
       }).toString(),
     }) as never,
     env,
-    db,
+    opts.db ?? db,
     NOW,
   );
 }
@@ -914,6 +920,30 @@ describe("POST identity/token for a key code (§12.4.2 items 5 and 6, §12.5 rul
         expect(await devices()).toEqual([]);
         expect(await entries()).toEqual([]);
         // The refusal spent the code.
+        expect((await redeem(code)).status).toBe(400);
+      });
+    }
+  });
+
+  describe("claimed between the read and the seat (CORE-SEAT-GUARD)", () => {
+    for (const refusals of [false, true]) {
+      it(`403 license_owned, no seat and no counted entry, refusals ${refusals ? "on" : "off"}`, async () => {
+        await setRefusals(refusals);
+        const code = await codeNow();
+        // The licence is read unowned; the claim lands before the seat batch.
+        const race = claimRace(db, licenseId);
+        const res = await redeem(code, { db: race.db });
+        expect(race.fired()).toBe(1);
+        await expectOwned(res);
+        expect(await devices()).toEqual([]);
+        expect(await entries()).toEqual([]);
+        expect(
+          await db.all(
+            "SELECT reason FROM license_refusals WHERE product = ? AND license_id = ?",
+            SLUG,
+            licenseId,
+          ),
+        ).toEqual([{ reason: "license_owned" }]);
         expect((await redeem(code)).status).toBe(400);
       });
     }

@@ -1759,10 +1759,11 @@ licence, with no account and no subject. Nothing is signed and no signed documen
    key by the code's key hash and answers `invalid_grant` if the key is no longer active, the
    licence is unusable, or the licence's product differs. It repeats item 3.6 whatever
    `identity.keyEntryRefusals` says: a licence that is in an account at `token` is refused with
-   a flat `403 license_owned` with `signInUrl`, and nothing is counted. The check reads the
-   licence before the seat claim and is not part of its batch, so a claim that commits between
-   the two leaves the device seated, as the same race does on `license/activate`; the owner sees
-   that device on the licence and can remove it. It then binds the device
+   a flat `403 license_owned` with `signInUrl`, and nothing is counted. A claim that commits
+   after that check and before the seat claim is refused the same way: the seat claim and the
+   key entry in its batch write nothing while the licence is in an account, so no seat is taken
+   and no entry is counted. The guard is on the seat claim of `token` always and of
+   `license/activate` while `identity.keyEntryRefusals` is on. It then binds the device
    exactly as `license/activate` binds the same key and `X-PKey-Device`: `bound_by = 'key'`, one
    `browser` key entry (§12.2 rule 1), and the seat, fingerprint and hardware rules unchanged, so
    `device_limit`, `fingerprint_required`, `hardware_mismatch` and `key_entry_limit` come from

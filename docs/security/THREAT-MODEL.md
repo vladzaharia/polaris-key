@@ -11017,11 +11017,16 @@ license_owned` with `signInUrl` and nothing is counted. A licence that is not us
   code's key hash and answers `invalid_grant` if the key is no longer active, the licence is
   unusable or the product differs, and the same when the gate, Identity or License went off in
   the window. The entry is counted once, at `token`. `device_limit`, `fingerprint_required` and
-  `hardware_mismatch` come from `authorizeDevice`, unchanged. Residual: the check at `token` reads
-  the licence before the seat claim and is not in its batch, so a claim that commits in those
-  milliseconds leaves one seat on the licence. Both racers hold the key; `license/activate` has the
-  same window and, with `identity.keyEntryRefusals` off, admits an owned licence outright, so the
-  race grants nothing the key does not. The owner sees the device and can remove it. `token`
+  `hardware_mismatch` come from `authorizeDevice`, unchanged. The race is closed on the guarded paths: a claim that
+  commits after the check and before the seat claim is refused `license_owned`, because the seat
+  claim and the key entry beside it write nothing while the licence has an `account_id`
+  (`claimDeviceSeat` with `refuseOwnedLicense`, tested by a wrapped D1 that claims the licence
+  just before the seat batch). The guard is on the seat claim of `token` always and of
+  `license/activate` while `identity.keyEntryRefusals` is on; with it off, `license/activate`
+  admits an owned licence outright, as before. The browser-session key entry
+  (`identity/session/license`) still reads the licence once before its seat claim, so a claim that
+  commits in those milliseconds can leave one seat there; both racers hold the key and the owner
+  can remove the device. `token`
   carries no fingerprint, so a `strict` tier always answers `fingerprint_required` there (the code
   is spent), and other modes record the device unverified, as a sign-in at `token` does.
 - **The key stays in the body.** It is never in a URL, the redirect, the request or code record,

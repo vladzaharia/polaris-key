@@ -173,6 +173,14 @@ export async function releaseDormantSeats(
   return changed;
 }
 
+/**
+ * CORE-SEAT-GUARD: true while NO `licenses` row of (product, id) has an `account_id`. Two
+ * placeholders: the product and the licence id. Evaluated inside the statement that writes, so it
+ * reads the licence at commit, not as the caller saw it.
+ */
+export const LICENSE_NOT_IN_AN_ACCOUNT = `NOT EXISTS (
+           SELECT 1 FROM licenses WHERE product = ? AND id = ? AND account_id IS NOT NULL)`;
+
 export async function claimDeviceSeat(
   db: Db,
   product: string,
@@ -198,6 +206,16 @@ export async function claimDeviceSeat(
      * the claim. Never run for a device that already holds a seat on this licence.
      */
     withClaim?: () => DbStatement;
+    /**
+     * CORE-SEAT-GUARD: refuse a licence that is in an account AT COMMIT. The seat upsert (and the
+     * adoption's clears) apply only while no `licenses` row of this product and id has an
+     * `account_id`, so a claim that commits between the caller's read of the licence and this
+     * batch leaves no seat. The batch is one transaction, so `withClaim` (built with the same
+     * guard) and the upsert agree. A refused claim returns `false`; the caller tells it from a
+     * full licence by reading the licence again. Set only by the paths that must refuse an owned
+     * licence (the key return, and `license/activate` while `identity.keyEntryRefusals` is on).
+     */
+    refuseOwnedLicense?: boolean;
     /**
      * I-08b (Replace a device): a seat-holding device that leaves in the SAME batch as the
      * claim, so a lost race rolls the removal back with it. Its ordinal is not counted as taken
@@ -247,18 +265,22 @@ export async function claimDeviceSeat(
       opts.freeing?.deviceId ?? "",
     );
     if (!free || free.n == null) return false; // every seat is taken
+    const guard = opts.refuseOwnedLicense === true;
     const seat: DbStatement = {
       sql: `INSERT INTO devices
            (product, device_id, license_id, status, seat_no, first_seen, last_seen)
-         VALUES (?, ?, ?, 'authorized', ?, ?, ?)
+         SELECT ?, ?, ?, 'authorized', ?, ?, ?
+          WHERE ${guard ? LICENSE_NOT_IN_AN_ACCOUNT : "1 = 1"}
          ON CONFLICT(product, device_id) DO UPDATE SET
            license_id = excluded.license_id,
            status = 'authorized',
            seat_no = excluded.seat_no,
            last_seen = excluded.last_seen
-         WHERE (devices.license_id = excluded.license_id
+         WHERE ((devices.license_id = excluded.license_id
                 AND (devices.seat_no IS NULL OR devices.status <> 'authorized'))
-            OR (devices.license_id = ? AND devices.status = ?)`,
+            OR (devices.license_id = ? AND devices.status = ?))${
+              guard ? ` AND ${LICENSE_NOT_IN_AN_ACCOUNT}` : ""
+            }`,
       params: [
         product,
         deviceId,
@@ -266,8 +288,10 @@ export async function claimDeviceSeat(
         free.n,
         now,
         now,
+        ...(guard ? [product, licenseId] : []),
         opts.adoptFrom?.licenseId ?? null,
         opts.adoptFrom?.status ?? null,
+        ...(guard ? [product, licenseId] : []),
       ],
     };
     const adopt = opts.adoptFrom;
@@ -276,13 +300,25 @@ export async function claimDeviceSeat(
           {
             sql: `UPDATE devices SET label = NULL, overrides_json = NULL, reported_json = NULL,
                     customer_id = NULL
-                  WHERE product = ? AND device_id = ? AND license_id = ? AND status = ?`,
-            params: [product, deviceId, adopt.licenseId, adopt.status],
+                  WHERE product = ? AND device_id = ? AND license_id = ? AND status = ?${
+                    guard ? ` AND ${LICENSE_NOT_IN_AN_ACCOUNT}` : ""
+                  }`,
+            params: [
+              product,
+              deviceId,
+              adopt.licenseId,
+              adopt.status,
+              ...(guard ? [product, licenseId] : []),
+            ],
           },
           {
             sql: `DELETE FROM device_facts WHERE product = ? AND device_id = ?
                     AND EXISTS (SELECT 1 FROM devices WHERE product = ? AND device_id = ?
-                                  AND license_id = ? AND status = ?)`,
+                                  AND license_id = ? AND status = ?)${
+                                    guard
+                                      ? ` AND ${LICENSE_NOT_IN_AN_ACCOUNT}`
+                                      : ""
+                                  }`,
             params: [
               product,
               deviceId,
@@ -290,6 +326,7 @@ export async function claimDeviceSeat(
               deviceId,
               adopt.licenseId,
               adopt.status,
+              ...(guard ? [product, licenseId] : []),
             ],
           },
         ]
