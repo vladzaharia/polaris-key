@@ -1,11 +1,16 @@
 import * as React from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   HttpError,
   type ConfigEntry,
   type ProductCatalog,
 } from "../../../../api.js";
+import { cloudSyncEncryption } from "@polaris-key/catalog";
 import { lineDiff } from "../../../../lib/diff.js";
+import {
+  ENCRYPTION_LABEL,
+  encryptionChangeCopy,
+} from "../../../../lib/encryption.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import type { CatalogIssue } from "../../../../schema/index.js";
 import { Button } from "../../../../ui/Button.js";
@@ -34,6 +39,7 @@ import {
 } from "../model/diffView.js";
 import { mergeDraft } from "../model/mergeDraft.js";
 import { CATALOG_PATH, useCatalogUsage } from "../data.js";
+import { syncUsageQuery } from "../../sync/data.js";
 
 /**
  * The review step behind "Review changes" (docs/design/mockups config.catalog-review and
@@ -160,6 +166,24 @@ export function ReviewDrawer({
   const stale = server !== null && server.schemaVersion !== draft.baseVersion;
   const live = server?.schemaVersion ?? draft.baseVersion;
   const nextVersion = live + 1;
+  // A publish carries the active catalog's Cloud Sync block forward, so encryption changes when
+  // the draft started from a version that had the other mode. The notice is for a product that
+  // has synced data (or whose usage cannot be read, where it errs toward saying so).
+  const encryptionTo = server ? cloudSyncEncryption(server) : null;
+  const encryptionDiffers =
+    encryptionTo !== null &&
+    draft.baseEncryption !== undefined &&
+    draft.baseEncryption !== encryptionTo;
+  const syncUsage = useQuery({
+    ...syncUsageQuery(slug),
+    enabled: open && encryptionDiffers,
+  });
+  const encryptionChanged =
+    open &&
+    encryptionDiffers &&
+    !syncUsage.isPending &&
+    syncUsage.data?.enabled !== false &&
+    (syncUsage.data?.enabled !== true || syncUsage.data.usage.people > 0);
   const empty = diff.all.length === 0;
   const hasIssues = issues.length > 0;
 
@@ -215,6 +239,13 @@ export function ReviewDrawer({
     >
       <DrawerBody>
         <div className="space-y-6">
+          {encryptionChanged && encryptionTo && draft.baseEncryption ? (
+            <Callout tone="warning" title="Encryption changes" live>
+              Cloud Sync goes from {ENCRYPTION_LABEL[draft.baseEncryption]} to{" "}
+              {ENCRYPTION_LABEL[encryptionTo]}.{" "}
+              {encryptionChangeCopy(encryptionTo)}
+            </Callout>
+          ) : null}
           {(stale || conflict) && server ? (
             <section className="space-y-3" aria-label="Changes on the server">
               <Callout tone="warning" live>

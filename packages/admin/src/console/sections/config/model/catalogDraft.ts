@@ -7,12 +7,20 @@
  */
 
 import type { ConfigEntry, ProductCatalog } from "../../../../api.js";
+import {
+  cloudSyncEncryption,
+  type CloudSyncEncryption,
+} from "@polaris-key/catalog";
 import { structuredDiff, type StructuredDiff } from "../../../../lib/diff.js";
 import type { EntryConflict } from "./mergeDraft.js";
 
 export interface CatalogDraft {
   baseVersion: number;
   baseEntries: ConfigEntry[];
+  /** The Cloud Sync encryption of the catalog the draft started from, kept through a rebase. A
+   *  publish carries the active catalog's block forward; the review compares the two. Absent in
+   *  drafts saved before it existed. */
+  baseEncryption?: CloudSyncEncryption;
   entries: ConfigEntry[];
   /** Edits the repository also made, until each is settled (`mergeDraft.ts`). Review waits. */
   conflicts?: EntryConflict[];
@@ -65,6 +73,7 @@ export function draftFrom(catalog: ProductCatalog | null): CatalogDraft {
   return {
     baseVersion: catalog?.schemaVersion ?? 0,
     baseEntries: entries,
+    ...(catalog ? { baseEncryption: cloudSyncEncryption(catalog) } : {}),
     entries: entries.map((e) => structuredClone(e)),
   };
 }

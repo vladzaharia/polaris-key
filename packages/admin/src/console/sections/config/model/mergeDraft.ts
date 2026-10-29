@@ -101,6 +101,8 @@ export function mergeDraft(
   return {
     baseVersion: server.schemaVersion,
     baseEntries: server.entries,
+    // Kept: the review compares the encryption the person started from with the active one.
+    ...(draft.baseEncryption ? { baseEncryption: draft.baseEncryption } : {}),
     entries,
     conflicts,
   };

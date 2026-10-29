@@ -322,6 +322,24 @@ describe("Cloud Sync → Setup", () => {
     expect(screen.getByText("Up to 256")).toBeTruthy();
   });
 
+  it.each([
+    [undefined, "End-to-end"],
+    ["e2e", "End-to-end"],
+    ["server", "Readable by Polaris Key"],
+  ] as const)(
+    "shows the catalog's encryption (%s) as '%s'",
+    async (declared, label) => {
+      const cat = await schema();
+      schema.mockResolvedValue({
+        ...cat,
+        ...(declared ? { cloudSync: { encryption: declared } } : {}),
+      });
+      renderPage();
+      const term = await screen.findByText("Encryption");
+      expect(term.closest("div")?.textContent).toContain(label);
+    },
+  );
+
   it("draws nothing for a setting the platform list does not serve", async () => {
     platformSettings.mockResolvedValue(view([]));
     renderPage();

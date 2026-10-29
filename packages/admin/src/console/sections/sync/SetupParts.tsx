@@ -12,7 +12,8 @@ import type {
   SyncUsageResponse,
 } from "../../../api.js";
 import { cn } from "../../../lib/cn.js";
-import { CLOUD_SYNC_DEFAULTS } from "@polaris-key/catalog";
+import { CLOUD_SYNC_DEFAULTS, cloudSyncEncryption } from "@polaris-key/catalog";
+import { ENCRYPTION_LABEL } from "../../../lib/encryption.js";
 import { formatCount } from "../../../lib/format.js";
 import { DescriptionList } from "../../../ui/DescriptionList.js";
 import { Button } from "../../../ui/Button.js";
@@ -366,6 +367,10 @@ export function WhatSyncs({
         <DescriptionList
           columns={2}
           items={[
+            {
+              term: "Encryption",
+              detail: ENCRYPTION_LABEL[cloudSyncEncryption(catalog)],
+            },
             {
               term: "Keys per person",
               detail: `Up to ${formatCount(CLOUD_SYNC_DEFAULTS.settings.maxKeys)}`,
