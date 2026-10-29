@@ -309,8 +309,9 @@ find each other and talk over the local network or a relay.
   not what.
 - **On the local network.** An advert carries the service type, a rotating name and a protocol
   version and mode, with no label, id or subject. The host name, the MAC address and the IP address
-  are still visible to others on the same network, and anyone who knows a product's slug can tell
-  that an app of that product is nearby.
+  (IPv4, and the IPv6 link-local address, which can embed the MAC) are still visible to others on
+  the same network, and anyone who knows a product's slug can tell that an app of that product is
+  nearby.
 - **Kept for.** Device keys until the device is removed; the roster and discovery key until the
   product is removed or the account is deleted; relay counters 90 days.
 - **Admin view.** Rosters with labels and relay totals, never content.

@@ -2,8 +2,9 @@
 // (WIRE-CONTRACT-V5 §15.4 to §15.7, §15.9; plans/CC-01-cloud-connect.md §2.4, §2.6, §2.7, §2.9).
 // `peerMatrixVersion` 1.
 //
-// `adverts`, `prologue`, `psk`, `sas`, `frames`, `records`, `relayEnvelopes` and
-// `handshakePayloads`. The device proof is not here: it lives in `device-proof.json`. Every row is
+// `adverts`, `prologue`, `psk`, `sas`, `frames`, `records`, `relayEnvelopes`,
+// `handshakePayloads` and `lanAddresses` (CC-IPV6.1; the rule is reference/lanAddress.ts). The
+// device proof is not here: it lives in `device-proof.json`. Every row is
 // recomputed through `reference/peerMatrix.ts` (`node:crypto` only; nothing from client-core);
 // the generator throws when a hand-written known answer disagrees, and the HKDF and base32 steps
 // are also checked against `crypto.hkdfSync` and the RFC 4648 test vectors.
@@ -48,6 +49,7 @@ import {
   utf8,
 } from "./reference/peerMatrix.js";
 import { sha256 } from "./reference/noise.js";
+import { refLanVerdict } from "./reference/lanAddress.js";
 
 const hex = bytesHex;
 const b64u = (b: Uint8Array): string => Buffer.from(b).toString("base64url");
@@ -1170,11 +1172,174 @@ function buildPayloads(): unknown {
   };
 }
 
+// ── lanAddresses (§15.4.1) ───────────────────────────────────────────────────
+
+function buildLanAddresses(): unknown {
+  // [id, remote, local (or null for none), allowLoopback, known answer: the key, or null to refuse].
+  // The answer is written by hand and the reference must agree with it.
+  type Row = [string, string, string | null, boolean, string | null];
+  const own = "2001:db8:1:2::9";
+  const rows: Row[] = [
+    // IPv4: RFC 1918 and its edges.
+    ["v4-10-low", "10.0.0.1", null, false, "10.0.0.1"],
+    ["v4-10-high", "10.255.255.254", null, false, "10.255.255.254"],
+    ["v4-172-16", "172.16.0.1", null, false, "172.16.0.1"],
+    ["v4-172-31", "172.31.255.254", null, false, "172.31.255.254"],
+    ["v4-172-15", "172.15.255.255", null, false, null],
+    ["v4-172-32", "172.32.0.1", null, false, null],
+    ["v4-192-168", "192.168.1.2", null, false, "192.168.1.2"],
+    ["v4-192-167", "192.167.255.255", null, false, null],
+    ["v4-192-169", "192.169.0.1", null, false, null],
+    ["v4-link-local", "169.254.1.1", null, false, null],
+    ["v4-cgnat", "100.64.0.1", null, false, null],
+    ["v4-public", "8.8.8.8", null, false, null],
+    ["v4-this-network", "0.0.0.0", null, false, null],
+    ["v4-multicast", "224.0.0.251", null, false, null],
+    ["v4-broadcast", "255.255.255.255", null, false, null],
+    ["v4-loopback-off", "127.0.0.1", null, false, null],
+    ["v4-loopback-on", "127.0.0.1", null, true, "127.0.0.1"],
+    ["v4-loopback-high-on", "127.255.255.254", null, true, "127.255.255.254"],
+    ["v4-public-loopback-flag", "8.8.8.8", null, true, null],
+    // IPv4 text that is not an address.
+    ["v4-leading-zero", "192.168.01.2", null, false, null],
+    ["v4-octet-256", "192.168.1.256", null, false, null],
+    ["v4-three-octets", "192.168.1", null, false, null],
+    ["v4-zone", "192.168.1.2%en0", null, false, null],
+    ["text-empty", "", null, false, null],
+    ["text-name", "printer.local", null, false, null],
+    // IPv4-mapped: judged as IPv4.
+    ["mapped-lan", "::ffff:192.168.1.2", null, false, "192.168.1.2"],
+    ["mapped-hex", "::ffff:c0a8:102", null, false, "192.168.1.2"],
+    ["mapped-upper", "::FFFF:192.168.1.2", null, false, "192.168.1.2"],
+    ["mapped-long", "0:0:0:0:0:ffff:c0a8:102", null, false, "192.168.1.2"],
+    ["mapped-public", "::ffff:8.8.8.8", null, false, null],
+    ["mapped-loopback-off", "::ffff:127.0.0.1", null, false, null],
+    ["mapped-loopback-on", "::ffff:127.0.0.1", null, true, "127.0.0.1"],
+    ["compatible-not-mapped", "::192.168.1.2", null, false, null],
+    ["nat64", "64:ff9b::c0a8:102", null, false, null],
+    ["nat64-dotted", "64:ff9b::192.168.1.2", null, false, null],
+    // IPv6 link-local, ULA and the rest.
+    ["v6-link-local-zone", "fe80::1%en0", null, false, "fe80::1"],
+    ["v6-link-local-upper", "FE80::0001", null, false, "fe80::1"],
+    ["v6-link-local-top", "febf::1", null, false, "febf::1"],
+    ["v6-below-link-local", "fe7f::1", null, false, null],
+    ["v6-site-local", "fec0::1", null, false, null],
+    ["v6-ula", "fd12::5", null, false, "fd12::5"],
+    ["v6-ula-fc", "fc00::1", null, false, "fc00::1"],
+    ["v6-fe00", "fe00::1", null, false, null],
+    ["v6-loopback-off", "::1", null, false, null],
+    ["v6-loopback-on", "::1", null, true, "::1"],
+    ["v6-unspecified-off", "::", null, false, null],
+    ["v6-unspecified-on", "::", null, true, null],
+    ["v6-multicast", "ff02::fb", null, false, null],
+    ["v6-zone-empty", "fe80::1%", null, false, null],
+    ["v6-brackets", "[fe80::1]", null, false, null],
+    ["v6-two-gaps", "fe80::1::2", null, false, null],
+    ["v6-nine-groups", "1:2:3:4:5:6:7:8:9", null, false, null],
+    ["v6-eight-groups-and-gap", "1:2:3:4:5:6:7::8", null, false, null],
+    ["v6-group-too-long", "fd12::12345", null, false, null],
+    // The key is RFC 5952 text.
+    [
+      "key-first-longest-run",
+      "fd00:0:0:0:1:0:0:1",
+      null,
+      false,
+      "fd00::1:0:0:1",
+    ],
+    ["key-tie-first-run", "fd00:0:0:1:1:0:0:1", null, false, "fd00::1:1:0:0:1"],
+    [
+      "key-single-zero-kept",
+      "fd00:0:1:1:1:1:1:1",
+      null,
+      false,
+      "fd00:0:1:1:1:1:1:1",
+    ],
+    [
+      "key-trailing-run",
+      "FD00:0000:0000:0000:0000:0000:0000:0000",
+      null,
+      false,
+      "fd00::",
+    ],
+    ["key-dotted-tail", "fd00::192.168.1.2", null, false, "fd00::c0a8:102"],
+    ["key-zone-dropped", "fd00::5%wlan0", null, false, "fd00::5"],
+    // A global address dials only on the same /64 as the socket's own address.
+    ["global-same-64", "2001:db8:1:2::5", own, false, "2001:db8:1:2::5"],
+    [
+      "global-same-64-loopback-flag",
+      "2001:db8:1:2::5",
+      own,
+      true,
+      "2001:db8:1:2::5",
+    ],
+    [
+      "global-same-64-local-zone",
+      "2001:db8:1:2::5",
+      `${own}%en0`,
+      false,
+      "2001:db8:1:2::5",
+    ],
+    ["global-other-64", "2001:db8:1:2::5", "2001:db8:1:3::9", false, null],
+    ["global-no-local", "2001:db8:1:2::5", null, false, null],
+    ["global-local-ipv4", "2001:db8:1:2::5", "192.168.1.9", false, null],
+    [
+      "global-local-mapped",
+      "2001:db8:1:2::5",
+      "::ffff:192.168.1.9",
+      false,
+      null,
+    ],
+    ["global-local-not-an-address", "2001:db8:1:2::5", "en0", false, null],
+    ["global-local-link-local", "2001:db8:1:2::5", "fe80::9", false, null],
+    ["global-3fff", "3fff::1", "3fff::2", false, "3fff::1"],
+    ["global-other-isp", "2600:1700::1", "2600:1700::2", false, "2600:1700::1"],
+    ["global-outside-2000-3", "4000::1", "4000::2", false, null],
+    [
+      "global-teredo-same-64",
+      "2001:0:4136:e378:8000:63bf:3fff:fdd2",
+      "2001:0:4136:e378::9",
+      false,
+      null,
+    ],
+    [
+      "global-6to4-same-64",
+      "2002:c0a8:102::1",
+      "2002:c0a8:102::2",
+      false,
+      null,
+    ],
+    [
+      "global-2001-0db8-is-not-teredo",
+      "2001:db8::1",
+      "2001:db8::2",
+      false,
+      "2001:db8::1",
+    ],
+    ["link-local-ignores-local", "fe80::1", own, false, "fe80::1"],
+  ];
+  const out = rows.map(([id, remote, local, allowLoopback, key]) => {
+    const got = refLanVerdict(remote, local, allowLoopback);
+    check(`lanAddresses ${id}`, got, { dial: key !== null, key });
+    return {
+      id,
+      remote,
+      ...(local !== null ? { local } : {}),
+      allowLoopback,
+      dial: got.dial,
+      key: got.key,
+    };
+  });
+  return {
+    note: "LAN addresses (15.4.1): lanVerdict(remote, local, allowLoopback) -> {dial, key}, applied to a dialled socket before its first byte and to an accepted socket before it takes a slot. `remote` is the connected socket's peer address as text and `local` its own address (absent: unknown). A zone (text after %) is ignored and an empty zone is malformed. IPv4-mapped (::ffff:0:0/96) is judged as its IPv4 address. IPv4: 10/8, 172.16/12, 192.168/16, and 127/8 only with allowLoopback; octets are decimal with no leading zero. IPv6: fe80::/10 and fc00::/7; ::1 only with allowLoopback; an address in 2000::/3, outside 2001::/32 (Teredo) and 2002::/16 (6to4), only when `local` is IPv6 (not mapped) in the same /64. Anything else, and text that is not an address, is refused. `key` is the per-address connection count key: dotted IPv4, or RFC 5952 lower-case IPv6 text without its zone (not the /64); null when `dial` is false.",
+    rows: out,
+  };
+}
+
 export function buildPeerMatrix(): unknown {
   return {
     peerMatrixVersion: 1,
     description:
-      "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`. A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+      "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`; `lanAddresses` (which peer addresses a device dials or accepts, and the per-address count key). A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
     adverts: buildAdverts(),
     prologue: buildPrologue(),
     psk: buildPsk(),
@@ -1183,5 +1348,6 @@ export function buildPeerMatrix(): unknown {
     records: buildRecords(),
     relayEnvelopes: buildRelay(),
     handshakePayloads: buildPayloads(),
+    lanAddresses: buildLanAddresses(),
   };
 }

@@ -116,3 +116,4 @@ export {
   type PeerSessionOptions,
   type SessionEvent,
 } from "./session.js";
+export { lanVerdict, type LanVerdict } from "./lanAddress.js";

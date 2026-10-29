@@ -1,6 +1,6 @@
 {
   "peerMatrixVersion": 1,
-  "description": "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`. A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+  "description": "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`; `lanAddresses` (which peer addresses a device dials or accepts, and the per-address count key). A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
   "adverts": {
     "epochSeconds": 900,
     "epochs": [
@@ -3057,6 +3057,558 @@
         "local": ["b/1", "a/10", "a/2", "a/1"],
         "remote": ["a/1", "a/10", "a/2", "b/1"],
         "want": ["a/1", "a/10", "a/2", "b/1"]
+      }
+    ]
+  },
+  "lanAddresses": {
+    "note": "LAN addresses (15.4.1): lanVerdict(remote, local, allowLoopback) -> {dial, key}, applied to a dialled socket before its first byte and to an accepted socket before it takes a slot. `remote` is the connected socket's peer address as text and `local` its own address (absent: unknown). A zone (text after %) is ignored and an empty zone is malformed. IPv4-mapped (::ffff:0:0/96) is judged as its IPv4 address. IPv4: 10/8, 172.16/12, 192.168/16, and 127/8 only with allowLoopback; octets are decimal with no leading zero. IPv6: fe80::/10 and fc00::/7; ::1 only with allowLoopback; an address in 2000::/3, outside 2001::/32 (Teredo) and 2002::/16 (6to4), only when `local` is IPv6 (not mapped) in the same /64. Anything else, and text that is not an address, is refused. `key` is the per-address connection count key: dotted IPv4, or RFC 5952 lower-case IPv6 text without its zone (not the /64); null when `dial` is false.",
+    "rows": [
+      {
+        "id": "v4-10-low",
+        "remote": "10.0.0.1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "10.0.0.1"
+      },
+      {
+        "id": "v4-10-high",
+        "remote": "10.255.255.254",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "10.255.255.254"
+      },
+      {
+        "id": "v4-172-16",
+        "remote": "172.16.0.1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "172.16.0.1"
+      },
+      {
+        "id": "v4-172-31",
+        "remote": "172.31.255.254",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "172.31.255.254"
+      },
+      {
+        "id": "v4-172-15",
+        "remote": "172.15.255.255",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-172-32",
+        "remote": "172.32.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-192-168",
+        "remote": "192.168.1.2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "192.168.1.2"
+      },
+      {
+        "id": "v4-192-167",
+        "remote": "192.167.255.255",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-192-169",
+        "remote": "192.169.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-link-local",
+        "remote": "169.254.1.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-cgnat",
+        "remote": "100.64.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-public",
+        "remote": "8.8.8.8",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-this-network",
+        "remote": "0.0.0.0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-multicast",
+        "remote": "224.0.0.251",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-broadcast",
+        "remote": "255.255.255.255",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-loopback-off",
+        "remote": "127.0.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-loopback-on",
+        "remote": "127.0.0.1",
+        "allowLoopback": true,
+        "dial": true,
+        "key": "127.0.0.1"
+      },
+      {
+        "id": "v4-loopback-high-on",
+        "remote": "127.255.255.254",
+        "allowLoopback": true,
+        "dial": true,
+        "key": "127.255.255.254"
+      },
+      {
+        "id": "v4-public-loopback-flag",
+        "remote": "8.8.8.8",
+        "allowLoopback": true,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-leading-zero",
+        "remote": "192.168.01.2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-octet-256",
+        "remote": "192.168.1.256",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-three-octets",
+        "remote": "192.168.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v4-zone",
+        "remote": "192.168.1.2%en0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "text-empty",
+        "remote": "",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "text-name",
+        "remote": "printer.local",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "mapped-lan",
+        "remote": "::ffff:192.168.1.2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "192.168.1.2"
+      },
+      {
+        "id": "mapped-hex",
+        "remote": "::ffff:c0a8:102",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "192.168.1.2"
+      },
+      {
+        "id": "mapped-upper",
+        "remote": "::FFFF:192.168.1.2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "192.168.1.2"
+      },
+      {
+        "id": "mapped-long",
+        "remote": "0:0:0:0:0:ffff:c0a8:102",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "192.168.1.2"
+      },
+      {
+        "id": "mapped-public",
+        "remote": "::ffff:8.8.8.8",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "mapped-loopback-off",
+        "remote": "::ffff:127.0.0.1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "mapped-loopback-on",
+        "remote": "::ffff:127.0.0.1",
+        "allowLoopback": true,
+        "dial": true,
+        "key": "127.0.0.1"
+      },
+      {
+        "id": "compatible-not-mapped",
+        "remote": "::192.168.1.2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "nat64",
+        "remote": "64:ff9b::c0a8:102",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "nat64-dotted",
+        "remote": "64:ff9b::192.168.1.2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-link-local-zone",
+        "remote": "fe80::1%en0",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fe80::1"
+      },
+      {
+        "id": "v6-link-local-upper",
+        "remote": "FE80::0001",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fe80::1"
+      },
+      {
+        "id": "v6-link-local-top",
+        "remote": "febf::1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "febf::1"
+      },
+      {
+        "id": "v6-below-link-local",
+        "remote": "fe7f::1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-site-local",
+        "remote": "fec0::1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-ula",
+        "remote": "fd12::5",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd12::5"
+      },
+      {
+        "id": "v6-ula-fc",
+        "remote": "fc00::1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fc00::1"
+      },
+      {
+        "id": "v6-fe00",
+        "remote": "fe00::1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-loopback-off",
+        "remote": "::1",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-loopback-on",
+        "remote": "::1",
+        "allowLoopback": true,
+        "dial": true,
+        "key": "::1"
+      },
+      {
+        "id": "v6-unspecified-off",
+        "remote": "::",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-unspecified-on",
+        "remote": "::",
+        "allowLoopback": true,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-multicast",
+        "remote": "ff02::fb",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-zone-empty",
+        "remote": "fe80::1%",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-brackets",
+        "remote": "[fe80::1]",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-two-gaps",
+        "remote": "fe80::1::2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-nine-groups",
+        "remote": "1:2:3:4:5:6:7:8:9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-eight-groups-and-gap",
+        "remote": "1:2:3:4:5:6:7::8",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "v6-group-too-long",
+        "remote": "fd12::12345",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "key-first-longest-run",
+        "remote": "fd00:0:0:0:1:0:0:1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::1:0:0:1"
+      },
+      {
+        "id": "key-tie-first-run",
+        "remote": "fd00:0:0:1:1:0:0:1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::1:1:0:0:1"
+      },
+      {
+        "id": "key-single-zero-kept",
+        "remote": "fd00:0:1:1:1:1:1:1",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00:0:1:1:1:1:1:1"
+      },
+      {
+        "id": "key-trailing-run",
+        "remote": "FD00:0000:0000:0000:0000:0000:0000:0000",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::"
+      },
+      {
+        "id": "key-dotted-tail",
+        "remote": "fd00::192.168.1.2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::c0a8:102"
+      },
+      {
+        "id": "key-zone-dropped",
+        "remote": "fd00::5%wlan0",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fd00::5"
+      },
+      {
+        "id": "global-same-64",
+        "remote": "2001:db8:1:2::5",
+        "local": "2001:db8:1:2::9",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "2001:db8:1:2::5"
+      },
+      {
+        "id": "global-same-64-loopback-flag",
+        "remote": "2001:db8:1:2::5",
+        "local": "2001:db8:1:2::9",
+        "allowLoopback": true,
+        "dial": true,
+        "key": "2001:db8:1:2::5"
+      },
+      {
+        "id": "global-same-64-local-zone",
+        "remote": "2001:db8:1:2::5",
+        "local": "2001:db8:1:2::9%en0",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "2001:db8:1:2::5"
+      },
+      {
+        "id": "global-other-64",
+        "remote": "2001:db8:1:2::5",
+        "local": "2001:db8:1:3::9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "global-no-local",
+        "remote": "2001:db8:1:2::5",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "global-local-ipv4",
+        "remote": "2001:db8:1:2::5",
+        "local": "192.168.1.9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "global-local-mapped",
+        "remote": "2001:db8:1:2::5",
+        "local": "::ffff:192.168.1.9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "global-local-not-an-address",
+        "remote": "2001:db8:1:2::5",
+        "local": "en0",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "global-local-link-local",
+        "remote": "2001:db8:1:2::5",
+        "local": "fe80::9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "global-3fff",
+        "remote": "3fff::1",
+        "local": "3fff::2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "3fff::1"
+      },
+      {
+        "id": "global-other-isp",
+        "remote": "2600:1700::1",
+        "local": "2600:1700::2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "2600:1700::1"
+      },
+      {
+        "id": "global-outside-2000-3",
+        "remote": "4000::1",
+        "local": "4000::2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "global-teredo-same-64",
+        "remote": "2001:0:4136:e378:8000:63bf:3fff:fdd2",
+        "local": "2001:0:4136:e378::9",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "global-6to4-same-64",
+        "remote": "2002:c0a8:102::1",
+        "local": "2002:c0a8:102::2",
+        "allowLoopback": false,
+        "dial": false,
+        "key": null
+      },
+      {
+        "id": "global-2001-0db8-is-not-teredo",
+        "remote": "2001:db8::1",
+        "local": "2001:db8::2",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "2001:db8::1"
+      },
+      {
+        "id": "link-local-ignores-local",
+        "remote": "fe80::1",
+        "local": "2001:db8:1:2::9",
+        "allowLoopback": false,
+        "dial": true,
+        "key": "fe80::1"
       }
     ]
   }

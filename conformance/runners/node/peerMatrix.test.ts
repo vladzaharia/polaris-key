@@ -2,7 +2,8 @@
 // The Node conformance runner for `conformance/corpus/v2/peer-matrix.json` (WIRE-CONTRACT-V5
 // §15.4 to §15.7). It covers React too, since both JS SDKs share `@polaris-key/client-core`.
 // Every section runs through the codecs of `peer/`: adverts, prologue and PSK, the SAS with its
-// commit and reveal, framing, records and reassembly, relay envelopes and handshake payloads.
+// commit and reveal, framing, records and reassembly, relay envelopes, handshake payloads and the
+// LAN address rule (§15.4.1).
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -21,6 +22,7 @@ import {
   encodeFrame,
   encodeRelay,
   isInstanceName,
+  lanVerdict,
   parseHandshakePayload,
   parseRecord,
   parseSasBody,
@@ -268,5 +270,16 @@ describe("peer-matrix handshake payloads", () => {
   it("intersection", () => {
     for (const r of m.handshakePayloads.intersection)
       expect(capsIntersection(r.local, r.remote), r.id).toEqual(r.want);
+  });
+});
+
+describe("peer-matrix lanAddresses", () => {
+  it("rows", () => {
+    expect(m.lanAddresses.rows.length).toBeGreaterThanOrEqual(35);
+    for (const r of m.lanAddresses.rows)
+      expect(lanVerdict(r.remote, r.local, r.allowLoopback), r.id).toEqual({
+        dial: r.dial,
+        key: r.key,
+      });
   });
 });
