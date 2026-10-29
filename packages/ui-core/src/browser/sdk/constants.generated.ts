@@ -2183,7 +2183,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "identity.autosignin": { status: "planned", service: "identity", na: [] },
+  "identity.autosignin": { status: "implemented", service: "identity", na: [] },
   "identity.link": {
     status: "implemented",
     service: "identity",
@@ -2374,4 +2374,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "4a6d39e15190dabc635a18dd1a799057a678bc0a0a1f3a47ef821ea3376b1b17";
+  "1b2fae4a21ea2230fa94ab611cb9feeba78c06261eb99a41495abb08b7158bf3";

@@ -3408,9 +3408,7 @@
         "node": {},
         "react": {
           "spelling": "usePolarisAuth().choice.complete",
-          "shape": "hook",
-          "planned": "I-46",
-          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3481,8 +3479,8 @@
           "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
         },
         "react": {
-          "planned": "I-46",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+          "spelling": "usePolarisAuth().autoSignIn",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-47",

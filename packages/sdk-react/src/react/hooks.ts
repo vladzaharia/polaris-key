@@ -391,6 +391,9 @@ export interface UsePolarisAuth {
   /** The licence choice an app shows itself after a sign-in answered `choose`
    *  (identity.choice); see `useLicenseChoice`. */
   choice: PolarisAdapter["choice"];
+  /** The automatic sign-in ladder (identity.autosignin): a result, never a throw. The drop-in
+   *  gate runs it once at boot; call it to run it yourself. */
+  autoSignIn: PolarisAdapter["autoSignIn"];
   openAccount: PolarisAdapter["openAccount"];
   /** Register a function `signOut()` awaits first. Returns the remover. */
   onBeforeSignOut: PolarisAdapter["onBeforeSignOut"];
@@ -422,6 +425,7 @@ export function usePolarisAuth(): UsePolarisAuth {
       subject: () => adapter.subject(),
       attach: (opts) => adapter.attach(opts),
       choice: adapter.choice,
+      autoSignIn: (opts) => adapter.autoSignIn(opts),
       openAccount: () => adapter.openAccount(),
       onBeforeSignOut: (hook) => adapter.onBeforeSignOut(hook),
       supportsOidcLogin: state.capabilities.identity.enabled,
