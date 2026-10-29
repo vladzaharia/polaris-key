@@ -115,25 +115,24 @@ class PeerLinkTest {
         seen: Seen,
         handshakeSeconds: Double = 30.0,
         wrapSend: ((ByteArray) -> Unit) -> (ByteArray) -> Unit = { it },
-    ) =
-        PeerLink(
-            pipe,
-            scope,
-            LinkHandlers(
-                onEstablished = { _, _ -> Unit },
-                onRecord = { _, t, b -> seen.records.trySend(t to b) },
-                onClosed = { seen.closed.complete(it) },
-                onEnded = { seen.ended.complete(Unit) },
-            ),
-            handshakeSeconds,
-        ) { send, onEvent ->
-            PeerChannel(
-                role, "djdl", dev.stat,
-                AccountContext(signer.trust, "djdl", dev.cert, sub, dev.id, { null }, listOf(disc)),
-                HelloInfo("test", "demo"), wrapSend(send), onEvent,
-                caps = listOf("app/1"), now = { now },
-            )
-        }
+    ) = PeerLink(
+        pipe,
+        scope,
+        LinkHandlers(
+            onEstablished = { _, _ -> Unit },
+            onRecord = { _, t, b -> seen.records.trySend(t to b) },
+            onClosed = { seen.closed.complete(it) },
+            onEnded = { seen.ended.complete(Unit) },
+        ),
+        handshakeSeconds,
+    ) { send, onEvent ->
+        PeerChannel(
+            role, "djdl", dev.stat,
+            AccountContext(signer.trust, "djdl", dev.cert, sub, dev.id, { null }, listOf(disc)),
+            HelloInfo("test", "demo"), wrapSend(send), onEvent,
+            caps = listOf("app/1"), now = { now },
+        )
+    }
 
     private fun scope() = CoroutineScope(Dispatchers.Default + Job())
 

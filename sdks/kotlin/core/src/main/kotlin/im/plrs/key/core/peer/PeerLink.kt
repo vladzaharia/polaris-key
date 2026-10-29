@@ -110,6 +110,7 @@ public class PeerLink<H>(
     private var wake: Job? = null
     private var deadline: Job? = null
     private var ended = false
+
     @Volatile private var lost = false
 
     // True once the host asked to end the link ([close], [closeNow]). Sdk-node and the Python engine run on
