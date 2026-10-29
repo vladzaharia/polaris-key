@@ -5,7 +5,12 @@
 // The real `multicast-dns` socket is covered in connectMdns.test.ts (skipped there when the
 // sandbox has no multicast). Negative cases: a foreign roster, an expired certificate, a wrong
 // K_disc, oversized frames, flooding and a stalled handshake.
-import { connect as tcp, createServer, type Socket } from "node:net";
+import {
+  connect as tcp,
+  createServer,
+  type Server,
+  type Socket,
+} from "node:net";
 import { rmSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { base64UrlDecode } from "@polaris-key/jws";
@@ -401,6 +406,16 @@ async function hasIpv6Loopback(): Promise<boolean> {
   });
 }
 
+/** A listener that takes each connection and closes it: a neighbour that answers first. */
+async function dropper(host: string, port: number): Promise<Server> {
+  const server = createServer((x) => x.destroy());
+  await new Promise<void>((done, fail) => {
+    server.once("error", fail);
+    server.listen({ port, host }, () => done());
+  });
+  return server;
+}
+
 describe("LAN over IPv6 (one port for both families)", () => {
   it("listens on `::` and takes a session over ::1 and over 127.0.0.1 on the same port", async (ctx) => {
     if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
@@ -440,10 +455,9 @@ describe("LAN over IPv6 (one port for both families)", () => {
     expect(text((await inbound[1]!.receive()).body)).toBe("over 127.0.0.1");
   });
 
-  it("dials the next address when the first is not listening", async (ctx) => {
-    if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
+  /** A listens on IPv4 only; B knows it at ::1 first and 127.0.0.1 second. */
+  async function twoAddresses() {
     const { a, b, net } = await world();
-    // ::1 refuses (A listens on IPv4 only), 127.0.0.1 answers.
     net.hosts = ["::1", "127.0.0.1"];
     const la = await lan(a, net, { host: "127.0.0.1" });
     const lb = await lan(b, net);
@@ -451,29 +465,26 @@ describe("LAN over IPv6 (one port for both families)", () => {
     la.onSession((s) => (inn = s));
     await until(() => lb.peers().some((p) => p.deviceId === A));
     expect(lb.peers()[0]!.hosts).toEqual(["::1", "127.0.0.1"]);
+    return { la, lb, answered: () => inn !== null };
+  }
+
+  it("dials the next address when the first is not listening", async (ctx) => {
+    if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
+    // ::1 refuses, 127.0.0.1 answers.
+    const { lb, answered } = await twoAddresses();
     const out = await lb.connect(A);
-    await until(() => inn !== null);
+    await until(answered);
     expect(out.peerDeviceId).toBe(A);
   });
 
   it("falls through to the next address when the handshake with the first fails", async (ctx) => {
     if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
-    const { a, b, net } = await world();
-    net.hosts = ["::1", "127.0.0.1"];
-    const la = await lan(a, net, { host: "127.0.0.1" });
-    const lb = await lan(b, net);
+    const { la, lb, answered } = await twoAddresses();
     // A neighbour answers first on ::1 at the same port, takes the connection and drops it.
-    const decoy = createServer((x) => x.destroy());
-    await new Promise<void>((done, fail) => {
-      decoy.once("error", fail);
-      decoy.listen({ port: la.port, host: "::1" }, () => done());
-    });
+    const decoy = await dropper("::1", la.port);
     try {
-      let inn: ConnectSession | null = null;
-      la.onSession((x) => (inn = x));
-      await until(() => lb.peers().some((p) => p.deviceId === A));
       const out = await lb.connect(A);
-      await until(() => inn !== null);
+      await until(answered);
       expect(out.peerDeviceId).toBe(A);
     } finally {
       decoy.close();
@@ -484,17 +495,9 @@ describe("LAN over IPv6 (one port for both families)", () => {
     if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
     const { b, net } = await world();
     const lb = await lan(b, net);
-    const decoys = [
-      createServer((x) => x.destroy()),
-      createServer((x) => x.destroy()),
-    ];
-    await new Promise<void>((done) =>
-      decoys[0]!.listen({ port: 0, host: "::1" }, () => done()),
-    );
-    const port = (decoys[0]!.address() as { port: number }).port;
-    await new Promise<void>((done) =>
-      decoys[1]!.listen({ port, host: "127.0.0.1" }, () => done()),
-    );
+    const first = await dropper("::1", 0);
+    const port = (first.address() as { port: number }).port;
+    const decoys = [first, await dropper("127.0.0.1", port)];
     try {
       const err = await lb
         .connect({
