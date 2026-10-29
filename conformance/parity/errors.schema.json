@@ -28,8 +28,8 @@
           "pattern": "^[a-z][a-z0-9]*([_-][a-z0-9]+)*$"
         },
         "kind": {
-          "description": "`wire`: appears in a Worker response body. `client`: raised only by an SDK. `backend`: answered by an SDK's server core to an app's request to its own backend (WIRE-CONTRACT-V4 §14), and read by the client halves; the Worker never emits one.",
-          "enum": ["wire", "client", "backend"]
+          "description": "`wire`: appears in a Worker response body. `client`: raised only by an SDK. `backend`: answered by an SDK's server core to an app's request to its own backend (WIRE-CONTRACT-V4 §14), and read by the client halves; the Worker never emits one. `peer`: a close code of a device-to-device session (WIRE-CONTRACT-V5 §15.6), carried in a peer close frame and never in an HTTP body; the Worker never emits one.",
+          "enum": ["wire", "client", "backend", "peer"]
         },
         "service": {
           "description": "The service whose behaviour the code reports, or `core` for the always-on substrate.",

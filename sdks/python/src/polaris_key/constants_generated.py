@@ -367,6 +367,17 @@ class ErrorCode:
     CONNECT_UNAVAILABLE: Final = "connect-unavailable"
     PEER_CERT_INVALID: Final = "peer-cert-invalid"
     NEARBY_PERMISSION_DENIED: Final = "nearby-permission-denied"
+    NEARBY_UNSUPPORTED: Final = "nearby-unsupported"
+    PEER_HANDSHAKE_FAILED: Final = "peer-handshake-failed"
+    PEER_CLOSED: Final = "peer-closed"
+    PEER_REVOKED: Final = "peer_revoked"
+    PEER_EXPIRED: Final = "peer_expired"
+    PEER_BAD_FRAME: Final = "peer_bad_frame"
+    PEER_UNKNOWN_CRITICAL: Final = "peer_unknown_critical"
+    PEER_NOT_ALLOWED: Final = "peer_not_allowed"
+    PEER_BUSY: Final = "peer_busy"
+    PEER_TIMEOUT: Final = "peer_timeout"
+    PEER_BYE: Final = "peer_bye"
     PLATFORM_ERROR: Final = "platform-error"
     NO_TOKEN: Final = "no-token"
     MINT_UNAVAILABLE: Final = "mint-unavailable"
@@ -578,6 +589,17 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "connect-unavailable",
     "peer-cert-invalid",
     "nearby-permission-denied",
+    "nearby-unsupported",
+    "peer-handshake-failed",
+    "peer-closed",
+    "peer_revoked",
+    "peer_expired",
+    "peer_bad_frame",
+    "peer_unknown_critical",
+    "peer_not_allowed",
+    "peer_busy",
+    "peer_timeout",
+    "peer_bye",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -791,6 +813,17 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "connect-unavailable": "client",
         "peer-cert-invalid": "client",
         "nearby-permission-denied": "client",
+        "nearby-unsupported": "client",
+        "peer-handshake-failed": "client",
+        "peer-closed": "client",
+        "peer_revoked": "peer",
+        "peer_expired": "peer",
+        "peer_bad_frame": "peer",
+        "peer_unknown_critical": "peer",
+        "peer_not_allowed": "peer",
+        "peer_busy": "peer",
+        "peer_timeout": "peer",
+        "peer_bye": "peer",
         "platform-error": "client",
         "no-token": "client",
         "mint-unavailable": "client",

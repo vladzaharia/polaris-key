@@ -601,6 +601,50 @@
       "title": "Red local bloqueada",
       "message": "Esta app no puede acceder a los dispositivos de tu red local. Permítelo en los ajustes del sistema."
     },
+    "nearby-unsupported": {
+      "title": "Inicio de sesión cercano no disponible",
+      "message": "Este dispositivo no puede buscar dispositivos cercanos aquí."
+    },
+    "peer-handshake-failed": {
+      "title": "No se pudo conectar de forma segura",
+      "message": "No se pudo establecer una conexión segura con el dispositivo cercano. Inténtalo de nuevo."
+    },
+    "peer-closed": {
+      "title": "Conexión finalizada",
+      "message": "La conexión con el dispositivo cercano ha finalizado. Inténtalo de nuevo."
+    },
+    "peer_revoked": {
+      "title": "Dispositivo ya no es de confianza",
+      "message": "El otro dispositivo se eliminó de la cuenta. No se compartió nada."
+    },
+    "peer_expired": {
+      "title": "Certificado del dispositivo caducado",
+      "message": "El certificado del otro dispositivo ha caducado. Actualiza e inténtalo de nuevo."
+    },
+    "peer_bad_frame": {
+      "title": "Error de conexión",
+      "message": "El dispositivo cercano envió algo inesperado. Inténtalo de nuevo."
+    },
+    "peer_unknown_critical": {
+      "title": "Solicitud no admitida",
+      "message": "El dispositivo cercano pidió algo que esta app no admite. Inténtalo de nuevo."
+    },
+    "peer_not_allowed": {
+      "title": "No permitido aquí",
+      "message": "El dispositivo cercano pidió algo que no se permite en este paso. Inténtalo de nuevo."
+    },
+    "peer_busy": {
+      "title": "Dispositivo cercano ocupado",
+      "message": "Hay demasiadas conexiones abiertas. Inténtalo de nuevo en un momento."
+    },
+    "peer_timeout": {
+      "title": "Se agotó el tiempo de conexión",
+      "message": "El dispositivo cercano no respondió a tiempo. Inténtalo de nuevo."
+    },
+    "peer_bye": {
+      "title": "Conexión cerrada",
+      "message": "El dispositivo cercano finalizó la conexión."
+    },
     "platform-error": {
       "title": "Problema de la plataforma",
       "message": "La plataforma informó de un error. Vuelve a intentarlo."

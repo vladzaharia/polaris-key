@@ -161,6 +161,17 @@ public object ErrorCode {
     public const val connectUnavailable: String = "connect-unavailable"
     public const val peerCertInvalid: String = "peer-cert-invalid"
     public const val nearbyPermissionDenied: String = "nearby-permission-denied"
+    public const val nearbyUnsupported: String = "nearby-unsupported"
+    public const val peerHandshakeFailed: String = "peer-handshake-failed"
+    public const val peerClosed: String = "peer-closed"
+    public const val peerRevoked: String = "peer_revoked"
+    public const val peerExpired: String = "peer_expired"
+    public const val peerBadFrame: String = "peer_bad_frame"
+    public const val peerUnknownCritical: String = "peer_unknown_critical"
+    public const val peerNotAllowed: String = "peer_not_allowed"
+    public const val peerBusy: String = "peer_busy"
+    public const val peerTimeout: String = "peer_timeout"
+    public const val peerBye: String = "peer_bye"
     public const val platformError: String = "platform-error"
     public const val noToken: String = "no-token"
     public const val mintUnavailable: String = "mint-unavailable"
@@ -372,6 +383,17 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "connect-unavailable",
     "peer-cert-invalid",
     "nearby-permission-denied",
+    "nearby-unsupported",
+    "peer-handshake-failed",
+    "peer-closed",
+    "peer_revoked",
+    "peer_expired",
+    "peer_bad_frame",
+    "peer_unknown_critical",
+    "peer_not_allowed",
+    "peer_busy",
+    "peer_timeout",
+    "peer_bye",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -583,6 +605,17 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "connect-unavailable" to "client",
     "peer-cert-invalid" to "client",
     "nearby-permission-denied" to "client",
+    "nearby-unsupported" to "client",
+    "peer-handshake-failed" to "client",
+    "peer-closed" to "client",
+    "peer_revoked" to "peer",
+    "peer_expired" to "peer",
+    "peer_bad_frame" to "peer",
+    "peer_unknown_critical" to "peer",
+    "peer_not_allowed" to "peer",
+    "peer_busy" to "peer",
+    "peer_timeout" to "peer",
+    "peer_bye" to "peer",
     "platform-error" to "client",
     "no-token" to "client",
     "mint-unavailable" to "client",

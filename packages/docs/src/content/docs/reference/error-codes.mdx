@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 17 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
-(207 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+(218 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -145,6 +145,9 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `connect-unavailable` | `connect` | Cloud Connect cannot run here: the product has it off, or this SDK has no Connect on this platform. A host hides its Connect surface and does not retry (WIRE-CONTRACT-V5 §15). | [Help](/docs/help/messages/other/#connect-unavailable) |
 | `peer-cert-invalid` | `connect` | A device certificate or roster failed verification, or a roster is stale or belongs to another account or product (WIRE-CONTRACT-V5 §15.2, §15.3). Nothing is trusted; a host fetches a fresh one. | [Help](/docs/help/messages/devices/#peer-cert-invalid) |
 | `nearby-permission-denied` | `connect` | The OS refused this app access to devices on the local network (iOS and macOS Local Network permission; Android local-network access). The person can allow it in the system settings. | [Help](/docs/help/messages/devices/#nearby-permission-denied) |
+| `nearby-unsupported` | `connect` | Nearby sign-in cannot run here: this SDK or platform has no local-network discovery (web, a desktop bridge, or a runtime that has not shipped it yet). A host hides its nearby surface and does not retry. | developer only |
+| `peer-handshake-failed` | `connect` | The secure session with a nearby device could not be established: the handshake failed, or the other device could not be verified. Nothing is trusted; a host may start again. | developer only |
+| `peer-closed` | `connect` | The session with a nearby device ended before the exchange finished. A host tells the person and may start again. | developer only |
 | `platform-error` | `core` | Godot: a native platform plugin answered an error, or a reply that is not JSON: the Apple plugin (PolarisKeyPlatform through the PolarisKeyApple GDExtension) or the Android plugin (polaris-key-platform through PolarisKeyAndroid); `detail` carries the plugin's own fields. | [Help](/docs/help/messages/other/#platform-error) |
 | `no-token` | `core` | Godot: An authenticated call ran with no device token in hand. | [Help](/docs/help/messages/license-key/#no-token) |
 | `mint-unavailable` | `config` | Godot: this session's discovery document says the product has no approved edge-mint recipe (`config.mint.available` is false), so the mint was not sent. | [Help](/docs/help/messages/other/#mint-unavailable) |
@@ -200,6 +203,21 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `pack-not-data-only` | `update` | A pack release signed by a delegated content key holds a file the data-only rule refuses (plans/P4-19.md §2.5): its extension is not in `DATA_ONLY_EXTENSIONS` (detail `extension`, checked over the files index before any payload object is fetched), or its first 64 or last 65,557 decoded bytes carry a Godot resource, pack, script, archive or native-binary magic (detail `content`). The plan is aborted and staging discarded; `path` names the file. | [Help](/docs/help/messages/downloads-and-updates/#pack-not-data-only) |
 | `marker-rejected` | `release` | An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8). | developer only |
 | `attach-declined` | `identity` | `identity.attach` ended without attaching the device's licence because the user declined the preview (WIRE-CONTRACT-V4 §12.3, `confirm: false` writes nothing). Not an error on the wire: the SDK keeps its state. The Worker's own refusals (`account_required`, `license_owned`, `license_email_bound`) keep their wire codes. | [Help](/docs/help/messages/accounts/#attach-declined) |
+
+## Peer codes (`conformance/parity/errors.json`)
+
+Close codes of a device-to-device session (WIRE-CONTRACT-V5 §15.6). They travel in a peer close frame, never in an HTTP body, and the Worker never emits one.
+
+| Code | Service | Meaning |
+| --- | --- | --- |
+| `peer_revoked` | `connect` | The other device was revoked, or its certificate chain no longer verifies against the account roster. The session closes at once and nothing it carried is trusted. |
+| `peer_expired` | `connect` | The other device's certificate or the roster it relied on has expired. The session closes; a host refreshes its roster and may retry. |
+| `peer_bad_frame` | `connect` | The other device sent a frame or record that breaks the peer framing rules (bad flags, size, order or body). The session closes and the record is dropped. |
+| `peer_unknown_critical` | `connect` | The other device sent a record whose critical bit is set and whose type this device does not know. The session closes. |
+| `peer_not_allowed` | `connect` | The record type is not allowed in this session's mode. The session closes. |
+| `peer_busy` | `connect` | This device has no room for another session or pending request (a limit on open sessions or held requests). The other device may retry later. |
+| `peer_timeout` | `connect` | The other device did not complete the handshake, confirmation or a reply within its time limit. The session closes. |
+| `peer_bye` | `connect` | The other device closed the session on purpose: a normal end, not a failure. |
 
 ## Backend codes (`conformance/parity/errors.json`)
 
