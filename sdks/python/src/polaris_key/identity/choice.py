@@ -207,7 +207,10 @@ class ChoiceClient:
         body: Dict[str, Any] = {"grant": grant}
         if choice is not None:
             body["choice"] = choice
-        res = self._post("choiceComplete", body)
+        # ``keep`` is proven by the device's own token (the Worker reads it as held); every other
+        # choice is made on the grant alone.
+        held = deps.tokens.current if choice is not None and choice.get("kind") == "keep" else None
+        res = self._post("choiceComplete", body, held)
         if res.status_code != 200:
             return self._refusal(res, "choice complete")
         raw = _body(res)
@@ -269,15 +272,20 @@ class ChoiceClient:
             )
         return url
 
-    def _post(self, name: str, body: Dict[str, Any]) -> httpx.Response:
+    def _post(
+        self, name: str, body: Dict[str, Any], bearer: Optional[str] = None
+    ) -> httpx.Response:
         url = self._endpoint(name)
         ctx = self._ctx
-        # No authorization header: the grant in the body is the credential. A 5xx raises
-        # `server-error` and no answer `network-error` (CoreContext.request).
+        # No authorization header but for `keep`: the grant in the body is the credential. A 5xx
+        # raises `server-error` and no answer `network-error` (CoreContext.request).
+        extra = {"content-type": "application/json"}
+        if bearer:
+            extra["authorization"] = "Bearer " + bearer
         return ctx.request(
             "POST",
             url,
-            headers=ctx.headers({"content-type": "application/json"}),
+            headers=ctx.headers(extra),
             content=json.dumps(body, separators=(",", ":")).encode("utf-8"),
         )
 

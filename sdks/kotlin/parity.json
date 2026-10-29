@@ -202,7 +202,7 @@
     },
     "identity.choice": {
       "status": "implemented",
-      "note": "I-10b.19: identity.choice.licenses/devices/complete/cancel over the endpoints discovery names (typed service-unavailable N/A otherwise), no bearer, the grant never in an error; a Worker refusal is ChoiceResult.Refused (retryAfterSeconds, manageUrl, signInUrl, keyEntries, the fresh view); Keep completes attachable. The three choice-* transcripts are replayed."
+      "note": "I-10b.19: identity.choice.licenses/devices/complete/cancel over the endpoints discovery names (typed service-unavailable N/A otherwise), no bearer (but complete with keep sends the device's own token, which the Worker reads as held), the grant never in an error; a Worker refusal is ChoiceResult.Refused (retryAfterSeconds, manageUrl, signInUrl, keyEntries, the fresh view); Keep completes attachable. The three choice-* transcripts are replayed."
     },
     "identity.signin.hints": {
       "status": "implemented"

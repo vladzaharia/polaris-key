@@ -201,7 +201,7 @@
     },
     "identity.choice": {
       "status": "implemented",
-      "note": "I-10b.6: sign_in.start({channel = \"redirect\", license_choice = \"app\"}) settles complete() as the license_choice outcome (a grant, the choices) when discovery names the choice endpoints; PolarisKey.identity.choice.licenses / devices / complete / cancel (PKeyIdentityChoice) dial only those endpoints, send no bearer, return the Worker's refusals as PKeyChoiceResult values (retry_after_seconds, manage_url, sign_in_url, key_entries, the fresh view) and never print the grant. choice.primitives() are the Callables the sign-in form (ui/model/sign_in_session.gd) drives."
+      "note": "I-10b.6: sign_in.start({channel = \"redirect\", license_choice = \"app\"}) settles complete() as the license_choice outcome (a grant, the choices) when discovery names the choice endpoints; PolarisKey.identity.choice.licenses / devices / complete / cancel (PKeyIdentityChoice) dial only those endpoints, send no bearer (but complete with keep sends the device's own token, which the Worker reads as held), return the Worker's refusals as PKeyChoiceResult values (retry_after_seconds, manage_url, sign_in_url, key_entries, the fresh view) and never print the grant. choice.primitives() are the Callables the sign-in form (ui/model/sign_in_session.gd) drives."
     },
     "identity.signin.hints": {
       "status": "implemented"

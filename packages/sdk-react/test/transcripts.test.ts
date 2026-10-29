@@ -708,9 +708,11 @@ async function replay(t: Transcript): Promise<void> {
   let slices: UpdateSlices = structuredClone(initialUpdate?.cache ?? {});
   let belief: ServicesMap = t.initial.services
     ? servicesFromList(t.initial.services as never)
-    : usesRedirect(t)
-      ? servicesFromList(["identity"] as never)
-      : defaultServices();
+    : t.steps.some((s) => s.action === "attach") && usesRedirect(t)
+      ? servicesFromList(["license", "config", "identity"] as never)
+      : usesRedirect(t)
+        ? servicesFromList(["identity"] as never)
+        : defaultServices();
   // identity.redirect.web: the entropy of the recorded conversation, set by the step.
   let entropy: { state?: string; codeVerifier?: string } = {};
   // identity.exchange: a step that supplies a recorded `nonce` uses it (test-only: the nonce
@@ -813,7 +815,16 @@ async function replay(t: Transcript): Promise<void> {
           attach: `${t.baseUrl}/${t.product}/identity/attach`,
         },
     });
-  let session = makeSession();
+  // The sign-in's acquisition sync (trust, documents, report) is pinned by the sync transcripts,
+  // so a transcript that signs in (redirect steps) over a product with License on skips it.
+  const quiet = (s: BearerSession): BearerSession => {
+    if (usesRedirect(t))
+      (
+        s as unknown as { syncAfterSignIn: () => Promise<void> }
+      ).syncAfterSignIn = async () => undefined;
+    return s;
+  };
+  let session = quiet(makeSession());
   await session.init();
   // sync.keyring: the engine over this session. The ring id of the next create or reset is the
   // one the step's expectation names, because the recording fixes the Worker's answer.
@@ -1336,7 +1347,7 @@ async function replay(t: Transcript): Promise<void> {
         // Each recorded attempt is its own client: one that signed in earlier holds no token now.
         if (session.hasToken) {
           store.token = null;
-          session = makeSession();
+          session = quiet(makeSession());
           await session.init();
         }
         suppliedNonce = stringArg(step, "nonce") ?? null;

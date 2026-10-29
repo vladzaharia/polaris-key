@@ -72,6 +72,7 @@ import { CONNECT_SCENARIOS } from "./connect.js";
 import { KEYRING_SCENARIOS } from "./keyring.js";
 import { LOCKER_SCENARIOS } from "./locker.js";
 import { EXCHANGE_SCENARIOS } from "./exchange.js";
+import { HOLDERS_SCENARIOS } from "./holders.js";
 import { LINK_SCENARIOS } from "./link.js";
 
 export const SCENARIOS: Scenario[] = [
@@ -127,4 +128,5 @@ export const SCENARIOS: Scenario[] = [
   ...CLOUD_SYNC_SCENARIOS,
   ...KEYRING_SCENARIOS,
   ...CONNECT_SCENARIOS,
+  ...HOLDERS_SCENARIOS,
 ];
