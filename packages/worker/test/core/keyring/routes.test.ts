@@ -632,6 +632,36 @@ describe("reset", () => {
     ).toBe(409);
   });
 
+  it("refuses a ring id the subject already had: the current, the previous, an adopted one", async () => {
+    const RING3 = "rg_CCCCCCCCCCCCCCCCCCCCCC";
+    await create(w);
+    expect((await reset(D1)).status).toBe(201); // RING -> RING2
+    // RING is now the previous ring: not reusable, and nothing changes.
+    const back = await reset(D1, { ringId: RING });
+    expect(back.status).toBe(409);
+    expect(back.body).toMatchObject({ error: { code: "keyring_conflict" } });
+    const { ring } = (await call(w, D1, "GET", "")).body;
+    expect(ring.ringId).toBe(RING2);
+    expect(ring.previous.ringId).toBe(RING);
+    // Adopt the previous root, then replace again: RING is no longer previous, but the store still
+    // holds it as an adopted root, so it stays refused. RING2 is previous now.
+    expect(
+      (
+        await call(w, D1, "POST", "/adopt", {
+          fromRingId: RING,
+          epoch: 1,
+          kid: KID,
+          ct: blob(5),
+        })
+      ).status,
+    ).toBe(204);
+    expect((await reset(D1, { ringId: RING3 })).status).toBe(201);
+    expect((await reset(D1, { ringId: RING })).status).toBe(409);
+    expect((await reset(D1, { ringId: RING2 })).status).toBe(409);
+    expect((await reset(D1, { ringId: RING3 })).status).toBe(409);
+    expect((await call(w, D1, "GET", "")).body.ring.ringId).toBe(RING3);
+  });
+
   it("checks the body and the recovery blob layout", async () => {
     await create(w);
     expect((await reset(D1, { ringId: "x" })).status).toBe(400);

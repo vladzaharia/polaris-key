@@ -3,7 +3,10 @@
 // `webCryptoSyncPort` is the one on WebCrypto that Node, browsers and workers all have.
 //
 // Every derivation is HKDF-SHA256 (RFC 5869). Labels are ASCII; a label that scopes by name ends
-// in a NUL and then the name. Every symmetric key seals one plaintext, so the nonce is a constant.
+// in a NUL and then the name. The nonce depends on the key (§13.10.2): K_msg, K_file and the HPKE
+// wrap key use a constant nonce (each seals one plaintext); K_chunk, which is per chunk id and not
+// per body, uses a synthetic one; K_rec and K_adopt use a random one; K_coll, K_names and K_cid
+// seal nothing.
 
 import {
   hmac as hmacSha256,

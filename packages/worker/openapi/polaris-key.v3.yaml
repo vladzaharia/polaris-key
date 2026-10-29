@@ -1367,7 +1367,8 @@ paths:
         `previous` for 30 days (its wraps stay with it, so a device that holds that root can
         adopt it); the nightly sweep then forgets it. It needs no wrap: this is the way out for a
         person who lost every root. The device must have registered its keys. `409
-        keyring_conflict` when there is no ring (create one) or `ringId` is the current ring's.
+        keyring_conflict` when there is no ring (create one) or `ringId` is one the subject
+        already had: the current ring's, the previous ring's or an adopted root's.
         Audited, and the account is emailed.
       security: [{ deviceToken: [] }]
       requestBody:
