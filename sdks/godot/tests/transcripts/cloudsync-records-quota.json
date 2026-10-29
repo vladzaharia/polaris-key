@@ -1,0 +1,507 @@
+{
+  "transcriptVersion": 1,
+  "id": "cloudsync-records-quota",
+  "description": "The limits on records (§13.3). maxRecords bounds a collection and answers quota_exceeded with scope collection to a create only; an update and a delete never hit it. A collection's requires, an entitlement the licence must grant, answers entitlement_required, except to a delete. The person's byte quota charges every live element of a union record 45 bytes beyond its value, so many tiny elements cannot slip under it. A collection no declaration names is collection_unknown.",
+  "features": ["sync.records"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_SdopfuHHnOTNWtBIaPl7iqpwhC9ow7K0GCYTJ8TBAdY",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "cloudSyncPush",
+      "note": "Two slots fill the collection: a third create is refused with scope collection, an update still lands, and a delete frees a slot.",
+      "args": { "cursor": 0, "atomic": false, "mutations": 6 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 0,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_XNAwa3rk19q3xI354pCKHA",
+                "serverNow": 1700000000000,
+                "cursor": 5,
+                "more": false,
+                "lastMutationId": 6,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 14,
+                  "settings": 0,
+                  "records": 2,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["slots", "b"],
+                    "value": 2,
+                    "version": 2,
+                    "editedHlc": "018bcfe56800:0000"
+                  },
+                  {
+                    "record": ["slots", "c"],
+                    "value": 3,
+                    "version": 5,
+                    "editedHlc": "018bcfe56800:0000"
+                  }
+                ],
+                "tombstones": [
+                  { "record": ["slots", "a"], "editedHlc": "018bcfe56800:0000" }
+                ],
+                "results": [
+                  { "mutationId": 1, "status": "ok", "version": 1 },
+                  { "mutationId": 2, "status": "ok", "version": 2 },
+                  {
+                    "mutationId": 3,
+                    "status": "rejected",
+                    "code": "quota_exceeded",
+                    "scope": "collection"
+                  },
+                  { "mutationId": 4, "status": "ok", "version": 3 },
+                  { "mutationId": 5, "status": "ok", "version": 4 },
+                  { "mutationId": 6, "status": "ok", "version": 5 }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 5,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["slots/b", "slots/c"],
+        "deletedRecords": ["slots/a"],
+        "lastMutationId": 6,
+        "results": [
+          "ok",
+          "ok",
+          "rejected:quota_exceeded:collection",
+          "ok",
+          "ok",
+          "ok"
+        ]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "The vip collection requires game.vip, which the licence lacks: a write is refused, a delete of an absent record is ok; an unknown collection is refused.",
+      "args": { "cursor": 5, "atomic": false, "mutations": 3 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 5,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_XNAwa3rk19q3xI354pCKHA",
+                "serverNow": 1700000000000,
+                "cursor": 5,
+                "more": false,
+                "lastMutationId": 9,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 14,
+                  "settings": 0,
+                  "records": 2,
+                  "files": 0
+                },
+                "changes": [],
+                "tombstones": [],
+                "results": [
+                  {
+                    "mutationId": 7,
+                    "status": "rejected",
+                    "code": "entitlement_required"
+                  },
+                  { "mutationId": 8, "status": "ok", "version": 5 },
+                  {
+                    "mutationId": 9,
+                    "status": "rejected",
+                    "code": "collection_unknown"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 5,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "lastMutationId": 9,
+        "results": [
+          "rejected:entitlement_required",
+          "ok",
+          "rejected:collection_unknown"
+        ]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "The licence now grants game.vip.",
+      "args": { "cursor": 5, "atomic": false, "mutations": 1 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 5,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_XNAwa3rk19q3xI354pCKHA",
+                "serverNow": 1700000000000,
+                "cursor": 6,
+                "more": false,
+                "lastMutationId": 10,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 27,
+                  "settings": 0,
+                  "records": 3,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["vip", "perk"],
+                    "value": "gold",
+                    "version": 6,
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [{ "mutationId": 10, "status": "ok", "version": 6 }]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 6,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["vip/perk"],
+        "lastMutationId": 10,
+        "results": ["ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "The entitlement lapsed: a write is refused, but a delete of the stored record passes, so a lapse never traps the person's data.",
+      "args": { "cursor": 6, "atomic": false, "mutations": 2 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 6,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_XNAwa3rk19q3xI354pCKHA",
+                "serverNow": 1700000000000,
+                "cursor": 7,
+                "more": false,
+                "lastMutationId": 12,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 14,
+                  "settings": 0,
+                  "records": 2,
+                  "files": 0
+                },
+                "changes": [],
+                "tombstones": [
+                  {
+                    "record": ["vip", "perk"],
+                    "editedHlc": "018bcfe5679c:0000"
+                  }
+                ],
+                "results": [
+                  {
+                    "mutationId": 11,
+                    "status": "rejected",
+                    "code": "entitlement_required"
+                  },
+                  { "mutationId": 12, "status": "ok", "version": 7 }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 7,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "deletedRecords": ["vip/perk"],
+        "lastMutationId": 12,
+        "results": ["rejected:entitlement_required", "ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "A person quota of 200 bytes. Each one-character element is charged its value plus 45, so the set holds a few of them and the rest are refused with scope user.",
+      "args": { "cursor": 7, "atomic": false, "mutations": 6 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 7,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_XNAwa3rk19q3xI354pCKHA",
+                "serverNow": 1700000000000,
+                "cursor": 10,
+                "more": false,
+                "lastMutationId": 18,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 200, "files": true },
+                "usage": {
+                  "bytes": 163,
+                  "settings": 0,
+                  "records": 3,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["bag", "b1"],
+                    "value": ["a", "b", "c"],
+                    "version": 10,
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  { "mutationId": 13, "status": "ok", "version": 8 },
+                  { "mutationId": 14, "status": "ok", "version": 9 },
+                  { "mutationId": 15, "status": "ok", "version": 10 },
+                  {
+                    "mutationId": 16,
+                    "status": "rejected",
+                    "code": "quota_exceeded",
+                    "scope": "user"
+                  },
+                  {
+                    "mutationId": 17,
+                    "status": "rejected",
+                    "code": "quota_exceeded",
+                    "scope": "user"
+                  },
+                  {
+                    "mutationId": 18,
+                    "status": "rejected",
+                    "code": "quota_exceeded",
+                    "scope": "user"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 10,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["bag/b1"],
+        "lastMutationId": 18,
+        "results": [
+          "ok",
+          "ok",
+          "ok",
+          "rejected:quota_exceeded:user",
+          "rejected:quota_exceeded:user",
+          "rejected:quota_exceeded:user"
+        ],
+        "quotaBytes": 200,
+        "files": true
+      }
+    }
+  ]
+}

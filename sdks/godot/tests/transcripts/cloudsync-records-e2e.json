@@ -1,0 +1,672 @@
+{
+  "transcriptVersion": 1,
+  "id": "cloudsync-records-e2e",
+  "description": "Records in end-to-end mode (§13.3, §13.10). The record id, a merge field and a union element are blinded names (x: and 43 characters) and the value is a sealed ct. A value, an unblinded id, field or element is encryption_mismatch; a malformed envelope is value_invalid. The pull answers ct for a record, fields [{field, ct, editedHlc}] for a merge record and elements [{element, ct}] for a union record, with encryption and encryptionSince. A max record is a compare-and-swap register. Once the store holds sealed rows, a plaintext write made in server mode is refused encryption_mismatch.",
+  "features": ["sync.records"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_Kse3FRsbAI01cC2gtrncG_KvUXWOmY_oZxSNDfv0xGI",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "cloudSyncPull",
+      "note": "An empty store names its first sealed sequence.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"0.0\""
+              },
+              "body": {
+                "subject": "ps_9dVVOPo4D292o7DDuP1X1Q",
+                "serverNow": 1700000000000,
+                "cursor": 0,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "empty": true,
+                "encryption": "e2e",
+                "encryptionSince": 1,
+                "changes": [],
+                "tombstones": []
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 0,
+        "more": false,
+        "empty": true,
+        "settings": [],
+        "encryption": "e2e",
+        "encryptionSince": 1
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "One sealed record of each policy: a revision value, two merge fields, two union elements and a max register.",
+      "args": { "cursor": 0, "atomic": false, "mutations": 6 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 0,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_9dVVOPo4D292o7DDuP1X1Q",
+                "serverNow": 1700000000000,
+                "cursor": 6,
+                "more": false,
+                "lastMutationId": 6,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 1386,
+                  "settings": 0,
+                  "records": 4,
+                  "files": 0
+                },
+                "encryption": "e2e",
+                "encryptionSince": 1,
+                "changes": [
+                  {
+                    "record": [
+                      "profiles",
+                      "x:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                    ],
+                    "ct": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+                    "version": 1,
+                    "editedHlc": "018bcfe56418:0000"
+                  },
+                  {
+                    "record": [
+                      "cards",
+                      "x:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                    ],
+                    "fields": [
+                      {
+                        "field": "x:FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+                        "ct": "AQICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+                        "editedHlc": "018bcfe56030:0000"
+                      },
+                      {
+                        "field": "x:GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+                        "ct": "AQMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD",
+                        "editedHlc": "018bcfe56418:0000"
+                      }
+                    ],
+                    "version": 3,
+                    "editedHlc": "018bcfe56418:0000"
+                  },
+                  {
+                    "record": [
+                      "tags",
+                      "x:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+                    ],
+                    "elements": [
+                      {
+                        "element": "x:HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
+                        "ct": "AQQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ"
+                      },
+                      {
+                        "element": "x:IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII",
+                        "ct": "AQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU"
+                      }
+                    ],
+                    "version": 5
+                  },
+                  {
+                    "record": [
+                      "scores",
+                      "x:DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+                    ],
+                    "ct": "AQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY",
+                    "version": 6,
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  { "mutationId": 1, "status": "ok", "version": 1 },
+                  { "mutationId": 2, "status": "ok", "version": 2 },
+                  { "mutationId": 3, "status": "ok", "version": 3 },
+                  { "mutationId": 4, "status": "ok", "version": 4 },
+                  { "mutationId": 5, "status": "ok", "version": 5 },
+                  { "mutationId": 6, "status": "ok", "version": 6 }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 6,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": [
+          "cards/x:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "profiles/x:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "scores/x:DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
+          "tags/x:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+        ],
+        "encryption": "e2e",
+        "encryptionSince": 1,
+        "lastMutationId": 6,
+        "results": ["ok", "ok", "ok", "ok", "ok", "ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "The snapshot: ct, fields and elements, no value.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"6.0\""
+              },
+              "body": {
+                "subject": "ps_9dVVOPo4D292o7DDuP1X1Q",
+                "serverNow": 1700000000000,
+                "cursor": 6,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 1386,
+                  "settings": 0,
+                  "records": 4,
+                  "files": 0
+                },
+                "encryption": "e2e",
+                "encryptionSince": 1,
+                "changes": [
+                  {
+                    "record": [
+                      "profiles",
+                      "x:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                    ],
+                    "ct": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+                    "version": 1,
+                    "editedHlc": "018bcfe56418:0000"
+                  },
+                  {
+                    "record": [
+                      "cards",
+                      "x:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                    ],
+                    "fields": [
+                      {
+                        "field": "x:FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+                        "ct": "AQICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+                        "editedHlc": "018bcfe56030:0000"
+                      },
+                      {
+                        "field": "x:GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+                        "ct": "AQMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD",
+                        "editedHlc": "018bcfe56418:0000"
+                      }
+                    ],
+                    "version": 3,
+                    "editedHlc": "018bcfe56418:0000"
+                  },
+                  {
+                    "record": [
+                      "tags",
+                      "x:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+                    ],
+                    "elements": [
+                      {
+                        "element": "x:HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
+                        "ct": "AQQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ"
+                      },
+                      {
+                        "element": "x:IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII",
+                        "ct": "AQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU"
+                      }
+                    ],
+                    "version": 5
+                  },
+                  {
+                    "record": [
+                      "scores",
+                      "x:DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+                    ],
+                    "ct": "AQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY",
+                    "version": 6,
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "tombstones": []
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 6,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": [
+          "cards/x:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "profiles/x:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "scores/x:DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
+          "tags/x:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+        ],
+        "encryption": "e2e",
+        "encryptionSince": 1
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "A value, an unblinded id, an unblinded field and an unblinded element are encryption_mismatch; a malformed envelope is value_invalid.",
+      "args": { "cursor": 6, "atomic": false, "mutations": 5 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 6,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_9dVVOPo4D292o7DDuP1X1Q",
+                "serverNow": 1700000000000,
+                "cursor": 6,
+                "more": false,
+                "lastMutationId": 11,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 1386,
+                  "settings": 0,
+                  "records": 4,
+                  "files": 0
+                },
+                "encryption": "e2e",
+                "encryptionSince": 1,
+                "changes": [],
+                "tombstones": [],
+                "results": [
+                  {
+                    "mutationId": 7,
+                    "status": "rejected",
+                    "code": "encryption_mismatch"
+                  },
+                  {
+                    "mutationId": 8,
+                    "status": "rejected",
+                    "code": "encryption_mismatch"
+                  },
+                  {
+                    "mutationId": 9,
+                    "status": "rejected",
+                    "code": "encryption_mismatch"
+                  },
+                  {
+                    "mutationId": 10,
+                    "status": "rejected",
+                    "code": "encryption_mismatch"
+                  },
+                  {
+                    "mutationId": 11,
+                    "status": "rejected",
+                    "code": "value_invalid"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 6,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "encryption": "e2e",
+        "encryptionSince": 1,
+        "lastMutationId": 11,
+        "results": [
+          "rejected:encryption_mismatch",
+          "rejected:encryption_mismatch",
+          "rejected:encryption_mismatch",
+          "rejected:encryption_mismatch",
+          "rejected:value_invalid"
+        ]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "A max record is decided by baseVersion alone: the current version lands, the same version again is stale and answers the server's ct.",
+      "args": { "cursor": 6, "atomic": false, "mutations": 2 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 6,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_9dVVOPo4D292o7DDuP1X1Q",
+                "serverNow": 1700000000000,
+                "cursor": 7,
+                "more": false,
+                "lastMutationId": 13,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 1386,
+                  "settings": 0,
+                  "records": 4,
+                  "files": 0
+                },
+                "encryption": "e2e",
+                "encryptionSince": 1,
+                "changes": [
+                  {
+                    "record": [
+                      "scores",
+                      "x:DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+                    ],
+                    "ct": "AQoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgo",
+                    "version": 7,
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  { "mutationId": 12, "status": "ok", "version": 7 },
+                  {
+                    "mutationId": 13,
+                    "status": "conflict",
+                    "server": {
+                      "ct": "AQoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgo",
+                      "version": 7,
+                      "editedHlc": "018bcfe56418:0000"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 7,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["scores/x:DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"],
+        "encryption": "e2e",
+        "encryptionSince": 1,
+        "lastMutationId": 13,
+        "results": ["ok", "conflict"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "With the launch gate off the product is served in server mode; a plaintext value into the sealed store is encryption_mismatch, and a delete still works.",
+      "args": { "cursor": 7, "atomic": false, "mutations": 2 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 7,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_9dVVOPo4D292o7DDuP1X1Q",
+                "serverNow": 1700000000000,
+                "cursor": 8,
+                "more": false,
+                "lastMutationId": 15,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 1180,
+                  "settings": 0,
+                  "records": 3,
+                  "files": 0
+                },
+                "changes": [],
+                "tombstones": [
+                  {
+                    "record": [
+                      "profiles",
+                      "x:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                    ],
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "results": [
+                  {
+                    "mutationId": 14,
+                    "status": "rejected",
+                    "code": "encryption_mismatch"
+                  },
+                  { "mutationId": 15, "status": "ok", "version": 8 }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 8,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "deletedRecords": [
+          "profiles/x:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        ],
+        "lastMutationId": 15,
+        "results": ["rejected:encryption_mismatch", "ok"]
+      }
+    }
+  ]
+}

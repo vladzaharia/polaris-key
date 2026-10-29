@@ -1,0 +1,504 @@
+{
+  "transcriptVersion": 1,
+  "id": "cloudsync-records-orset",
+  "description": "A union record is an observed-remove set (§13.3). add stamps the element with the store sequence; remove drops the tags at or below observedSeq, so an add the remover has not seen survives. A remove without observedSeq, or with one above the store sequence, is value_invalid. The pull lists the elements in the order of their first surviving add.",
+  "features": ["sync.records"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_eIInboWfjGRAt5X2CcujmhuMJUvqRYTgwQBQvuZIB7A",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "cloudSyncPush",
+      "note": "Device one adds two elements; they take sequences 1 and 2.",
+      "args": { "cursor": 0, "atomic": false, "mutations": 2 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 0,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_kJkWGek5Meqqz0Wf0bBE5A",
+                "serverNow": 1700000000000,
+                "cursor": 2,
+                "more": false,
+                "lastMutationId": 2,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 107,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["tags", "t1"],
+                    "value": ["red", "blue"],
+                    "version": 2,
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  { "mutationId": 1, "status": "ok", "version": 1 },
+                  { "mutationId": 2, "status": "ok", "version": 2 }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 2,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["tags/t1"],
+        "lastMutationId": 2,
+        "results": ["ok", "ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "Device two, which had not seen device one's add, adds red again: a second tag at sequence 3.",
+      "args": { "cursor": 2, "atomic": false, "mutations": 1 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_BBBBBBBBBBBBBBBBBBBBBB",
+                  "cursor": 2,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_kJkWGek5Meqqz0Wf0bBE5A",
+                "serverNow": 1700000000000,
+                "cursor": 3,
+                "more": false,
+                "lastMutationId": 3,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 115,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["tags", "t1"],
+                    "value": ["red", "blue"],
+                    "version": 3,
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [{ "mutationId": 3, "status": "ok", "version": 3 }]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 3,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["tags/t1"],
+        "lastMutationId": 3,
+        "results": ["ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "Device one removes red having seen only sequence 1; a remove with no observedSeq, or one above the store sequence, is refused.",
+      "args": { "cursor": 3, "atomic": false, "mutations": 3 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 3,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_kJkWGek5Meqqz0Wf0bBE5A",
+                "serverNow": 1700000000000,
+                "cursor": 4,
+                "more": false,
+                "lastMutationId": 6,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 107,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["tags", "t1"],
+                    "value": ["blue", "red"],
+                    "version": 4,
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  { "mutationId": 4, "status": "ok", "version": 4 },
+                  {
+                    "mutationId": 5,
+                    "status": "rejected",
+                    "code": "value_invalid"
+                  },
+                  {
+                    "mutationId": 6,
+                    "status": "rejected",
+                    "code": "value_invalid"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 4,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["tags/t1"],
+        "lastMutationId": 6,
+        "results": ["ok", "rejected:value_invalid", "rejected:value_invalid"]
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "Red survived on device two's tag; both elements are listed.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"4.0\""
+              },
+              "body": {
+                "subject": "ps_kJkWGek5Meqqz0Wf0bBE5A",
+                "serverNow": 1700000000000,
+                "cursor": 4,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 107,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["tags", "t1"],
+                    "value": ["blue", "red"],
+                    "version": 4,
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "tombstones": []
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 4,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["tags/t1"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "Having seen sequence 3, the remove takes red's last tag; blue's only tag goes too.",
+      "args": { "cursor": 4, "atomic": false, "mutations": 2 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 4,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_kJkWGek5Meqqz0Wf0bBE5A",
+                "serverNow": 1700000000000,
+                "cursor": 6,
+                "more": false,
+                "lastMutationId": 8,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [],
+                "tombstones": [
+                  { "record": ["tags", "t1"], "editedHlc": "018bcfe56418:0000" }
+                ],
+                "results": [
+                  { "mutationId": 7, "status": "ok", "version": 5 },
+                  { "mutationId": 8, "status": "ok", "version": 6 }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 6,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "deletedRecords": ["tags/t1"],
+        "lastMutationId": 8,
+        "results": ["ok", "ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "A set whose last element is removed is a deleted record: the pull carries its tombstone.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"6.0\""
+              },
+              "body": {
+                "subject": "ps_kJkWGek5Meqqz0Wf0bBE5A",
+                "serverNow": 1700000000000,
+                "cursor": 6,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [],
+                "tombstones": [
+                  { "record": ["tags", "t1"], "editedHlc": "018bcfe56418:0000" }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 6,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "deletedRecords": ["tags/t1"]
+      }
+    }
+  ]
+}

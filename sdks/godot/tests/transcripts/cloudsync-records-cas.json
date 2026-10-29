@@ -1,0 +1,515 @@
+{
+  "transcriptVersion": 1,
+  "id": "cloudsync-records-cas",
+  "description": "A revision record (§13.3). baseVersion \"*\" creates and is refused while the record is live; a number is compare-and-swap and a stale one answers conflict with the server's copy; an absent baseVersion overwrites; delete removes the record, the pull then carries its tombstone, and \"*\" creates it again.",
+  "features": ["sync.records"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_6YPQea4rNEDZI9bPG2T2PmeqHSC2T2kJDuWUlYYA2ZY",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "cloudSyncPush",
+      "note": "Create-only: no such record, so it lands as version 1.",
+      "args": { "cursor": 0, "atomic": false, "mutations": 1 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 0,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_WnQPdfTIpfFc2n7Mn_gHwQ",
+                "serverNow": 1700000000000,
+                "cursor": 1,
+                "more": false,
+                "lastMutationId": 1,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 24,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["profiles", "p1"],
+                    "value": { "name": "Ada" },
+                    "version": 1,
+                    "editedHlc": "018bcfe56800:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [{ "mutationId": 1, "status": "ok", "version": 1 }]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 1,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["profiles/p1"],
+        "lastMutationId": 1,
+        "results": ["ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "Create-only on a live record conflicts; the right version swaps; the same version again is stale.",
+      "args": { "cursor": 1, "atomic": false, "mutations": 3 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 1,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_WnQPdfTIpfFc2n7Mn_gHwQ",
+                "serverNow": 1700000000000,
+                "cursor": 2,
+                "more": false,
+                "lastMutationId": 4,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 27,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["profiles", "p1"],
+                    "value": { "name": "Ada L." },
+                    "version": 2,
+                    "editedHlc": "018bcfe56800:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  {
+                    "mutationId": 2,
+                    "status": "conflict",
+                    "server": {
+                      "value": { "name": "Ada" },
+                      "version": 1,
+                      "editedHlc": "018bcfe56800:0000"
+                    }
+                  },
+                  { "mutationId": 3, "status": "ok", "version": 2 },
+                  {
+                    "mutationId": 4,
+                    "status": "conflict",
+                    "server": {
+                      "value": { "name": "Ada L." },
+                      "version": 2,
+                      "editedHlc": "018bcfe56800:0000"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 2,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["profiles/p1"],
+        "lastMutationId": 4,
+        "results": ["conflict", "ok", "conflict"]
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "A snapshot: the live record.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"2.0\""
+              },
+              "body": {
+                "subject": "ps_WnQPdfTIpfFc2n7Mn_gHwQ",
+                "serverNow": 1700000000000,
+                "cursor": 2,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 27,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["profiles", "p1"],
+                    "value": { "name": "Ada L." },
+                    "version": 2,
+                    "editedHlc": "018bcfe56800:0000"
+                  }
+                ],
+                "tombstones": []
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 2,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["profiles/p1"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "A delete on the current version.",
+      "args": { "cursor": 2, "atomic": false, "mutations": 1 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 2,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_WnQPdfTIpfFc2n7Mn_gHwQ",
+                "serverNow": 1700000000000,
+                "cursor": 3,
+                "more": false,
+                "lastMutationId": 5,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [],
+                "tombstones": [
+                  {
+                    "record": ["profiles", "p1"],
+                    "editedHlc": "018bcfe56800:0000"
+                  }
+                ],
+                "results": [{ "mutationId": 5, "status": "ok", "version": 3 }]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 3,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "deletedRecords": ["profiles/p1"],
+        "lastMutationId": 5,
+        "results": ["ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "The pull since the snapshot carries the tombstone and no change.",
+      "args": { "cursor": 2 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=2",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"3.0\""
+              },
+              "body": {
+                "subject": "ps_WnQPdfTIpfFc2n7Mn_gHwQ",
+                "serverNow": 1700000000000,
+                "cursor": 3,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [],
+                "tombstones": [
+                  {
+                    "record": ["profiles", "p1"],
+                    "editedHlc": "018bcfe56800:0000"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 3,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "deletedRecords": ["profiles/p1"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "A delete of a record that was never stored is ok and stores nothing; create-only works again over a tombstone.",
+      "args": { "cursor": 3, "atomic": false, "mutations": 2 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 3,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_WnQPdfTIpfFc2n7Mn_gHwQ",
+                "serverNow": 1700000000000,
+                "cursor": 4,
+                "more": false,
+                "lastMutationId": 7,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 24,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["profiles", "p1"],
+                    "value": { "name": "Ada" },
+                    "version": 4,
+                    "editedHlc": "018bcfe56800:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  { "mutationId": 6, "status": "ok", "version": 3 },
+                  { "mutationId": 7, "status": "ok", "version": 4 }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 4,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["profiles/p1"],
+        "lastMutationId": 7,
+        "results": ["ok", "ok"]
+      }
+    }
+  ]
+}

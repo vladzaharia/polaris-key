@@ -1,0 +1,298 @@
+{
+  "transcriptVersion": 1,
+  "id": "cloudsync-records-max",
+  "description": "A max record (§13.3): the server keeps the value whose conflictField is larger. A worse write is answered conflict with the stored record; an equal or better one lands; a value without a numeric conflictField is op_invalid_for_policy; delete is decided by editedHlc alone.",
+  "features": ["sync.records"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_LGp1geQ9BRw5RNNhudAi4JAIGa0Dp-1tt8n5K082AJw",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "cloudSyncPush",
+      "note": "A first write, a worse one, a better one, and two values with no numeric best.",
+      "args": { "cursor": 0, "atomic": false, "mutations": 5 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 0,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_bP3lcA71Ip84NMqyRdrlfw",
+                "serverNow": 1700000000000,
+                "cursor": 2,
+                "more": false,
+                "lastMutationId": 5,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 34,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["scores", "run1"],
+                    "value": { "best": 180, "who": "cyd" },
+                    "version": 2,
+                    "editedHlc": "018bcfe56224:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  { "mutationId": 1, "status": "ok", "version": 1 },
+                  {
+                    "mutationId": 2,
+                    "status": "conflict",
+                    "server": {
+                      "value": { "best": 100, "who": "ada" },
+                      "version": 1,
+                      "editedHlc": "018bcfe55c48:0000"
+                    }
+                  },
+                  { "mutationId": 3, "status": "ok", "version": 2 },
+                  {
+                    "mutationId": 4,
+                    "status": "rejected",
+                    "code": "op_invalid_for_policy"
+                  },
+                  {
+                    "mutationId": 5,
+                    "status": "rejected",
+                    "code": "op_invalid_for_policy"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 2,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["scores/run1"],
+        "lastMutationId": 5,
+        "results": [
+          "ok",
+          "conflict",
+          "ok",
+          "rejected:op_invalid_for_policy",
+          "rejected:op_invalid_for_policy"
+        ]
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "The best value stands.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"2.0\""
+              },
+              "body": {
+                "subject": "ps_bP3lcA71Ip84NMqyRdrlfw",
+                "serverNow": 1700000000000,
+                "cursor": 2,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 34,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["scores", "run1"],
+                    "value": { "best": 180, "who": "cyd" },
+                    "version": 2,
+                    "editedHlc": "018bcfe56224:0000"
+                  }
+                ],
+                "tombstones": []
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 2,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["scores/run1"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "A delete older than the record loses to it; a later delete removes it; a later set re-creates it.",
+      "args": { "cursor": 2, "atomic": false, "mutations": 3 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 2,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_bP3lcA71Ip84NMqyRdrlfw",
+                "serverNow": 1700000000000,
+                "cursor": 4,
+                "more": false,
+                "lastMutationId": 8,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 20,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["scores", "run1"],
+                    "value": { "best": 5 },
+                    "version": 4,
+                    "editedHlc": "018bcfe567ce:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  {
+                    "mutationId": 6,
+                    "status": "conflict",
+                    "server": {
+                      "value": { "best": 180, "who": "cyd" },
+                      "version": 2,
+                      "editedHlc": "018bcfe56224:0000"
+                    }
+                  },
+                  { "mutationId": 7, "status": "ok", "version": 3 },
+                  { "mutationId": 8, "status": "ok", "version": 4 }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 4,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["scores/run1"],
+        "lastMutationId": 8,
+        "results": ["conflict", "ok", "ok"]
+      }
+    }
+  ]
+}
