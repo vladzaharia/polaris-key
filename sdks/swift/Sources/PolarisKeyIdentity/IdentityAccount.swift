@@ -103,6 +103,10 @@ extension IdentityClient {
         await core.bumpSignOutGeneration()
         let url = try await accountEndpoint("signout") { $0.signout }
         for hook in beforeSignOut.current.map(\.hook) { try await hook() }
+        // Silent restore (I-49): revoke this device's key while the bearer still exists. The Worker's
+        // `signout` deletes it in the same request too; this covers a signout that is refused, and queues
+        // the delete for the next launch when the Worker cannot be reached.
+        await restoreSignOutPrelude()
         let response = try await withBearer(url, method: "POST")
         guard response.status == 200 else { throw refusal(response) }
         guard
@@ -214,7 +218,7 @@ extension IdentityClient {
         return url
     }
 
-    private func withBearer(
+    func withBearer(
         _ url: URL, method: String, headers: [String: String] = [:], body: Data? = nil
     ) async throws -> PolarisResponse {
         guard let token = await core.token else {

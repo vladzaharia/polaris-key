@@ -662,7 +662,7 @@ enum SwiftReplay {
                 out["firstTime"] = .bool(pending.consent.firstTime)
                 out["changed"] = .bool(pending.consent.changed)
                 out["as"] = .object([
-                    "provider": .string(pending.consent.as.provider),
+                    "provider": pending.consent.as.provider.map(JSONValue.string) ?? .null,
                     "email": pending.consent.as.email.map(JSONValue.string) ?? .null,
                 ])
             case .choose: out["result"] = .string("choose")
