@@ -108,3 +108,8 @@ export async function world(): Promise<World> {
     await upsertDeviceKeys(db, SLUG, d, await newKeys(), NOW);
   return { ...w, subject };
 }
+
+/** I-49: the launch gate for silent restore (`launch.identityRestore`); the test env sets it on. */
+export function setRestoreGate(w: Pick<World, "env">, v: string | undefined) {
+  (w.env as unknown as Record<string, unknown>).LAUNCH_IDENTITY_RESTORE = v;
+}

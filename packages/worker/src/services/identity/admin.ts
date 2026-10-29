@@ -102,8 +102,7 @@ async function handleRestorePurge(
   ctx: ServiceContext & { session: AdminSession },
 ): Promise<Response> {
   const { req, db, product, session, now } = ctx;
-  if (req.method !== "POST")
-    return err(405, ErrorCode.BadRequest, "method not allowed");
+  // The route table lists POST only for this path: another method never gets here.
   const body = await readBody(req);
   if (body.confirmSlug !== product.slug)
     return err(422, ErrorCode.BadRequest, "confirmSlug must match product", {

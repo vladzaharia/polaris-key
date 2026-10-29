@@ -41,6 +41,20 @@ async function openDialog(user: ReturnType<typeof userEvent.setup>) {
   return screen.findByRole("alertdialog");
 }
 
+/** Type the slug into the open dialog and press its confirm button. */
+async function typeSlugAndConfirm(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+) {
+  await user.type(
+    within(dialog).getByLabelText(/Type the product slug/),
+    "djdl",
+  );
+  await user.click(
+    within(dialog).getByRole("button", { name: "Purge restore keys" }),
+  );
+}
+
 describe("Purge restore keys", () => {
   it("stays disabled until the slug is typed, then sends it as confirmSlug and reports the count", async () => {
     const user = userEvent.setup();
@@ -53,13 +67,7 @@ describe("Purge restore keys", () => {
     expect(confirm.getAttribute("aria-disabled")).toBe("true");
     await user.click(confirm);
     expect(purgeRestoreKeys).not.toHaveBeenCalled();
-    await user.type(
-      within(dialog).getByLabelText(/Type the product slug/),
-      "djdl",
-    );
-    await user.click(
-      within(dialog).getByRole("button", { name: "Purge restore keys" }),
-    );
+    await typeSlugAndConfirm(user, dialog);
     await waitFor(() =>
       expect(purgeRestoreKeys).toHaveBeenCalledWith("djdl", "djdl"),
     );
@@ -70,14 +78,7 @@ describe("Purge restore keys", () => {
     const user = userEvent.setup();
     purgeRestoreKeys.mockRejectedValue(new HttpError(500));
     mount();
-    const dialog = await openDialog(user);
-    await user.type(
-      within(dialog).getByLabelText(/Type the product slug/),
-      "djdl",
-    );
-    await user.click(
-      within(dialog).getByRole("button", { name: "Purge restore keys" }),
-    );
+    await typeSlugAndConfirm(user, await openDialog(user));
     await waitFor(() => expect(purgeRestoreKeys).toHaveBeenCalled());
     expect(screen.getByRole("alertdialog")).toBeTruthy();
   });

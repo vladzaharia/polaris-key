@@ -17,6 +17,7 @@ import {
   SLUG,
   activate,
   enable,
+  setRestoreGate,
   world,
   type World,
 } from "../connect/connectFixture.js";
@@ -27,9 +28,7 @@ beforeEach(async () => {
 });
 afterEach(() => vi.restoreAllMocks());
 
-const gate = (v: string | undefined) => {
-  (w.env as unknown as Record<string, unknown>).LAUNCH_IDENTITY_RESTORE = v;
-};
+const gate = (v: string | undefined) => setRestoreGate(w, v);
 
 function call(
   method: "POST" | "DELETE",
@@ -153,10 +152,10 @@ describe("POST enrol", () => {
   it("answers 403 account_required for a device with no sign-in binding", async () => {
     w.tokens[C] = await activate(w, w.key, C);
     const res = await call("POST", C);
-    expect(res.status).toBe(403);
-    expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
-      "account_required",
-    );
+    expect([res.status, await res.text()]).toEqual([
+      403,
+      JSON.stringify({ error: { code: "account_required" } }),
+    ]);
     expect(await rows()).toHaveLength(0);
   });
 });
