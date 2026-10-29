@@ -8,14 +8,18 @@ import { PolarisKeyGate } from "@polaris-key/react/kit";
 import "@polaris-key/react/fonts.css";
 
 import { App } from "./App";
-import { tidewaterAdapter } from "./fixtures";
+import { desktopAdapter } from "@polaris-key/react/desktop";
+import { tidewaterBridge } from "./fixtures";
 import { polarisKey as samplePolarisKey } from "./polaris.config";
 import "./app.css";
 
 function Root() {
   // One adapter for the page's life: a new one would start the SDK over.
   const fixture = useMemo(
-    () => (__POLARIS_LIVE__ ? undefined : tidewaterAdapter()),
+    () =>
+      __POLARIS_LIVE__
+        ? undefined
+        : desktopAdapter({ bridge: tidewaterBridge() }),
     [],
   );
   const polarisKey = useMemo(

@@ -13,5 +13,6 @@ export function focusClear(el: HTMLElement | null | undefined): void {
     ?.querySelector<HTMLElement>(":scope > .actions");
   if (!bar) return;
   el.style.scrollMarginBottom = `${bar.offsetHeight + 8}px`;
-  el.scrollIntoView({ block: "nearest" });
+  // jsdom has no scrollIntoView.
+  el.scrollIntoView?.({ block: "nearest" });
 }

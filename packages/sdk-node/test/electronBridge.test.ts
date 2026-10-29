@@ -305,6 +305,26 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
     expect(sent.last).not.toHaveProperty("licenseChoice");
   });
 
+  // @pkey-feature identity.signin.hints identity.attach
+  it("an attach sign-in never hangs when the Worker answers choose: the poll ends in error (UK-42.18)", async () => {
+    // The device-code channel has no choice step (the card in the browser holds it), so a
+    // `choose` answer is not one the Worker gives; if one ever came, the poll must end, not wait.
+    const { bridge } = await setup({
+      "POST /djdl/identity/auth/device/start": () => json(START),
+      "POST /djdl/identity/auth/device/poll": () =>
+        json({ status: "choose", grant: "sg_never_shown", choices: {} }),
+    });
+    const begin = await bridge.beginSignIn({
+      purpose: "attach",
+      licenseChoice: "app",
+      loginHint: "ada@example.com",
+    });
+    const r = await bridge.pollSignIn(begin.flowId);
+    expect(r.kind).toBe("error");
+    expect(JSON.stringify(r)).not.toContain("sg_never_shown");
+    expect(await bridge.pollSignIn(begin.flowId)).toEqual({ kind: "expired" });
+  });
+
   it("refuses a malformed sign-in bag before any request, and drops unknown members", async () => {
     const { bridge, sent } = await startCapture();
     for (const bad of [

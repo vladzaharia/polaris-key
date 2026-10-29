@@ -21,10 +21,9 @@ import {
   type JSONValue,
   type ServicesMap,
 } from "@polaris-key/react/core";
-import type { PolarisAdapter } from "@polaris-key/react/core";
 import {
-  desktopAdapter,
   type BridgeActivation,
+  type BridgeSignInBegin,
   type BridgeOidcPoll,
   type BridgeState,
   type PolarisBridge,
@@ -230,12 +229,6 @@ export function tidewaterBridge(): PolarisBridge {
     for (const l of listeners) l(state);
   };
 
-  /** Sign-in hints from the form (the desktop bridge's beginSignIn carries none). */
-  const hint = (h: Holder | null) => {
-    typed = h;
-  };
-  hintSink = hint;
-
   return {
     version: 4,
     async getSyncState() {
@@ -245,7 +238,11 @@ export function tidewaterBridge(): PolarisBridge {
       await wait(300);
       return state;
     },
-    async beginSignIn() {
+    async beginSignIn(opts?: BridgeSignInBegin) {
+      // The form's name and email ride the bag; the sign-in answers as that person.
+      typed = opts?.loginHint
+        ? { name: opts.nameHint ?? "", email: opts.loginHint }
+        : null;
       const flowId = `flow_${flows.size + 1}`;
       flows.set(flowId, Date.now());
       return {
@@ -388,41 +385,4 @@ const openers = new Set<(view: "settings" | "update") => void>();
  *  account pane (and its "Not in an account" row) above the rows. */
 export function openFromMenu(view: "settings" | "update" = "settings"): void {
   for (const open of openers) open(view);
-}
-
-let hintSink: (h: Holder | null) => void = () => undefined;
-
-/** The Tidewater adapter: the desktop adapter over the fixture bridge. The bridge's device-code
- *  sign-in carries no hints, so "Add your name and email" would be refused; this keeps the name
- *  and email the form typed for the fixture's sign-in and starts the session without them. */
-export function tidewaterAdapter(): PolarisAdapter {
-  const inner = desktopAdapter({ bridge: tidewaterBridge() });
-  return new Proxy(inner, {
-    get(target, prop) {
-      const v = Reflect.get(target, prop, target) as unknown;
-      if (prop === "signIn") {
-        const ns = target.signIn;
-        return {
-          ...ns,
-          start: (o: Parameters<typeof ns.start>[0]) => {
-            const { loginHint, nameHint, purpose, licenseChoice, ...rest } =
-              o as unknown as {
-                loginHint?: string;
-                nameHint?: string;
-                purpose?: string;
-                licenseChoice?: string;
-              };
-            hintSink(
-              loginHint ? { name: nameHint ?? "", email: loginHint } : null,
-            );
-            (void purpose, licenseChoice);
-            return ns.start(rest as unknown as typeof o);
-          },
-        };
-      }
-      return typeof v === "function"
-        ? (v as (...a: unknown[]) => unknown).bind(target)
-        : v;
-    },
-  });
 }

@@ -66,13 +66,13 @@
       "jscpd:duplicate": 1
     },
     "examples/ui/react-next/app/fixtures.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 8
     },
     "examples/ui/react-next/app/polaris.config.ts": {
       "jscpd:duplicate": 1
     },
     "examples/ui/react-vite/src/fixtures.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 7
     },
     "examples/ui/react-vite/src/polaris.config.ts": {
       "jscpd:duplicate": 1
