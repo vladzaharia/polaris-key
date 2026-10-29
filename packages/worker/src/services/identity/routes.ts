@@ -25,6 +25,9 @@
  *     /identity/nonce                       POST  I-13.2, the native exchange's nonce (keys in the body)
  *     /identity/link                        GET   I-43.2, the link offer (device bearer)
  *                                           POST  I-43.2, add a Google or Apple identity (device bearer)
+ *     /identity/nearby/start                POST  I-40.4, a signed-out device asks a nearby one to approve
+ *     /identity/nearby/approve              POST  I-40.5, the signed-in device decides (device bearer)
+ *     /identity/nearby/poll                 POST  I-40.7, the new device collects its credential
  *     /identity/choice/licenses             POST  I-08b, the pending sign-in grant: the licence view
  *     /identity/choice/devices              POST  I-08b, a full licence's seat-holding devices
  *     /identity/choice/complete             POST  I-08b, the choice; answers the `token` response
@@ -79,6 +82,9 @@ import {
 import { handleAuthorize } from "./passthrough/authorize.js";
 import { handleToken } from "./passthrough/token.js";
 import { handleExchangeNonce } from "./passthrough/nonce.js";
+import { handleNearbyStart } from "./passthrough/nearbyStart.js";
+import { handleNearbyApprove } from "./passthrough/nearbyApprove.js";
+import { handleNearbyPoll } from "./passthrough/nearbyPoll.js";
 import { handleLink } from "./passthrough/link.js";
 import { readCiJson } from "../../core/ciScope.js";
 import { handleChoice } from "./passthrough/choiceRoutes.js";
@@ -177,6 +183,34 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     auth: { kind: "device" },
     handler: ({ req, env, db, product, now }) =>
       handleLink(req, env, db, product, now),
+  },
+  // I-40.4 (§12.11.5): a signed-out device asks a nearby signed-in one to approve its sign-in.
+  // The handler answers 404 with Identity, `identity.nearby` or `launch.identityNearby` off.
+  {
+    path: "nearby/start",
+    cors: true,
+    methods: ["POST"],
+    auth: { kind: "none" },
+    handler: ({ req, env, db, product, now }) =>
+      handleNearbyStart(req, env, db, product, now),
+  },
+  // I-40.5 (§12.11.5): the signed-in device approves or denies. Same gates as `start`.
+  {
+    path: "nearby/approve",
+    cors: true,
+    methods: ["POST"],
+    auth: { kind: "device" },
+    handler: ({ req, env, db, product, now }) =>
+      handleNearbyApprove(req, env, db, product, now),
+  },
+  // I-40.7 (§12.11.5): the new device collects the outcome and its credential. Same gates.
+  {
+    path: "nearby/poll",
+    cors: true,
+    methods: ["POST"],
+    auth: { kind: "none" },
+    handler: ({ req, env, db, product, now }) =>
+      handleNearbyPoll(req, env, db, product, now),
   },
   // I-08b (§12.5.1): the pending sign-in grant's routes.
   choiceRow("licenses"),

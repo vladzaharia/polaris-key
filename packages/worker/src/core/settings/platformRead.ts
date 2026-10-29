@@ -48,6 +48,7 @@ export interface PlatformValues {
   "launch.connect": "on" | "off";
   "launch.syncE2e": "on" | "off";
   "launch.relay": "on" | "off";
+  "launch.identityNearby": "on" | "off";
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;

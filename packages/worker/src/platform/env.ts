@@ -186,6 +186,16 @@ export interface Env {
    */
   LAUNCH_RELAY?: string;
   /**
+   * LG-1 launch gate for nearby approval (I-40; the three `identity/nearby/*` routes and the discovery
+   * members that name them). Off until the feature's security sign-off. A `[vars]` value, read
+   * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
+   * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the
+   * console says off. An unreadable store reads off.
+   * @inventory var jobs
+   * @editable LAUNCH_IDENTITY_NEARBY
+   */
+  LAUNCH_IDENTITY_NEARBY?: string;
+  /**
    * The lazy-delta queue (P4-17; `pkey-deltas-<env>`). The main Worker only PRODUCES to it (the
    * nightly sweep's hot pairs); the consumer is its own Worker script (`wrangler.deltas.toml`,
    * `src/deltasEntry.ts`), which produces to it too (an R2 event fans out into pair jobs), so no

@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 108 | 15 | 14 | 0 |
-| React | `web`, `desktop-bridge` | 102 | 24 | 11 | 0 |
-| Python | `python` | 94 | 15 | 28 | 0 |
-| Swift | `macos`, `ios` | 108 | 10 | 18 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 103 | 9 | 25 | 0 |
-| Kotlin | `android`, `jvm` | 109 | 9 | 18 | 1 |
+| Node | `node` | 108 | 15 | 15 | 0 |
+| React | `web`, `desktop-bridge` | 102 | 25 | 11 | 0 |
+| Python | `python` | 94 | 15 | 29 | 0 |
+| Swift | `macos`, `ios` | 108 | 10 | 19 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 103 | 9 | 26 | 0 |
+| Kotlin | `android`, `jvm` | 109 | 9 | 19 | 1 |
 
 ## Core
 
@@ -96,7 +96,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `connect.identity` | Device certificates and rings: verify, key choice and admission | `cases.json` `peerCertCases` + transcripts | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
 | `connect.noise` | Noise_XX_25519_AESGCM_SHA256 and its primitives | `noise-vectors.json` | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
 | `connect.protocol` | pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes | `peer-matrix.json` | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
-| `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (CC-14) | planned (CC-12b) | web, desktop-bridge: runtime |
+| `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit + `peer-matrix.json` `lanAddresses` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (CC-14) | planned (CC-12b) | web, desktop-bridge: runtime |
 | `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
 | `connect.links` | Inter-account links: mode p pairing and contacts | unit | planned (CC-19) | N/A (web, desktop-bridge: runtime) | planned (CC-19) | planned (CC-19) | planned (CC-19) | planned (CC-19) | web, desktop-bridge: runtime |
 | `connect.transfer` | Direct Transfer: data between Cloud Connect peers | unit | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | — |
@@ -128,6 +128,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.pgs` | Platform sign-in: a Play Games server auth code for a device token (the exchange) | transcripts (I-14) | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime); N/A (macos: runtime); N/A (ios: runtime); N/A (web: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm: runtime |
 | `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | planned (I-47) | planned (I-46) | planned (I-47) | ✓ | planned (I-48) | ✓ | — |
 | `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
+| `identity.nearby` | Nearby approval: a signed-in device approves a device that cannot sign itself in | transcripts + `peer-matrix.json` `vouch` | planned (I-47) | N/A (web, desktop-bridge: runtime) | planned (I-47) | planned (I-44) | planned (I-48); N/A (web: runtime) | planned (I-45) | web, desktop-bridge: runtime |
 
 ## Release and update
 

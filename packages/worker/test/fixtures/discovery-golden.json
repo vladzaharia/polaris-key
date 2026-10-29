@@ -217,6 +217,7 @@
         "issuer": "https://key.plrs.im/full/identity",
         "account": true,
         "keyEntryLimit": 10,
+        "nearby": true,
         "endpoints": {
           "session": "https://key.plrs.im/full/identity/session",
           "sessionLicense": "https://key.plrs.im/full/identity/session/license",
@@ -238,6 +239,9 @@
           "signout": "https://key.plrs.im/full/identity/signout",
           "nonce": "https://key.plrs.im/full/identity/nonce",
           "link": "https://key.plrs.im/full/identity/link",
+          "nearbyStart": "https://key.plrs.im/full/identity/nearby/start",
+          "nearbyApprove": "https://key.plrs.im/full/identity/nearby/approve",
+          "nearbyPoll": "https://key.plrs.im/full/identity/nearby/poll",
           "accountPortal": "https://key.plrs.im/#/p/full"
         }
       },

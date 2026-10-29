@@ -294,6 +294,45 @@
 //   connectDevices `expect`: `result` "ok" with `devices`, the answer's list by value
 //     ({deviceId, label, platform, lastSeen, self}), or "refused" with `code`.
 //
+// nearbyStart / nearbyApprove / nearbyPoll (I-40.8, WIRE-CONTRACT-V5 §12.11.5, `identity.nearby`) — the
+// nearby approval of the `nearby-*` transcripts, replayed only by an SDK that marks `identity.nearby`
+// implemented. TWO devices take part: D (the transcript's own device, `initial.deviceId`) calls
+// `nearbyStart` (`POST …/identity/nearby/start`) and `nearbyPoll` (`POST …/identity/nearby/poll`); M, a
+// signed-in device nearby, calls `nearbyApprove` (`POST …/identity/nearby/approve`). A replayer plays
+// both, or the one its role is. Every key is a fixture derived from a label (see `exchange`), every
+// request carries a `pkey-proof/1` proof (§12.11.1) with line 6 `-`, and the bodies are asserted
+// EXACTLY, so a replayer's proof must be the recorded bytes: the purpose is `nearby-start` (value
+// `<signKey>.<agreeKey>`), `nearby-approve` or `nearby-poll` (value the request handle), the device
+// is the one that signs. The request handle (`nr_…`) is the Worker's answer to start, served as
+// recorded, and appears literally in the later bodies.
+//   nearbyStart   args: `keyLabel` (D's keys), `deviceName`? (sent as given), `proofKeyLabel`?
+//                 (sign the proof with these keys instead: a proof that is not the body's).
+//                 expect: result "ok" (`expiresIn`, `interval`) | "refused" (`status`, `code`) |
+//                 "unavailable" (the client sends nothing, a step with no exchanges, because the last
+//                 discovery names no `nearby` member; or a 404 answers: the gate went off).
+//                 For SDK authors: M never calls start, so a bare 404 from approve is ambiguous
+//                 (decided, expired, keys that differ, or off); check discovery before reading it as
+//                 "unavailable".
+//   nearbyApprove args: `approverDeviceId`, `approverToken` (M's id and device token, bound to
+//                 `{approverDeviceId}` and `Bearer {approverToken}` in the request's headers: M is not
+//                 the transcript's device), `approverKeyLabel` (M's keys), `keyLabel` (D's keys, the
+//                 body's `signKey` and `agreeKey`; the body's `deviceId` is the transcript's own
+//                 device, `initial.deviceId`), `decision` ("approve" | "deny"), `choice`? (the
+//                 body's), `request`? (the handle to approve, else the one `nearbyStart` answered),
+//                 `proofKeyLabel`? and `proofValue`? (a proof by other keys, or over another value),
+//                 `agreeKeyLabel`? (send another label's agreement key). expect: result "approved"
+//                 (`deviceLabel`, string or null) | "choose" (`choices`, the answer's list by value) |
+//                 "denied" (the 204) | "refused" (`status`, `code`) | "unavailable".
+//   nearbyPoll    args: `keyLabel` (D's keys), `request`? (else the one `nearbyStart` answered),
+//                 `proofKeyLabel`?. expect: result "pending" | "slow-down" (`interval`) | "timeout" |
+//                 "error" (`reason`, "access_denied") | "ready" (`tokenHeld` true, `scope`; the
+//                 token response binds `{token}`) | "refused" (`status`, `code`) |
+//                 "unavailable". The poll interval is 3 seconds: a poll inside it is "slow-down", and the
+//                 steps' `now` are the recorder's clock, so a replayer moves its clock to each step.
+//   Q13: the Worker decides proximity from the client network, which a replayer cannot choose.
+//   Each exchange records the `clientIp` it was sent from; a replayer neither sends nor matches it.
+//   `not_nearby` is served as recorded.
+//
 // chunkRange (P4-32, plans/P4-32.md §4) — `{ bundle, offset, length }`: the SDK's chunk-range
 // fetch (client-core `chunkRangeFetch`, Python `chunk_range_fetch`, Swift `chunkRangeFetch`,
 // Kotlin `chunkRangeFetch`, Godot `PKeyPackChunks.chunk_range_fetch`) of `length` bytes at
@@ -345,6 +384,12 @@ export interface Exchange {
   response: RecordedResponse;
   /** Bind a value from the JSON response for later steps: name → `$.path.to.member`. */
   capture?: Record<string, string>;
+  /**
+   * Q13 (I-40.8): the client network the recorder sent the request from. Informational: a
+   * replayer neither sends nor matches it, so `not_nearby` is the recorded answer a fake server
+   * serves, not a proximity check the replay makes.
+   */
+  clientIp?: string;
 }
 
 export type Action =
@@ -428,7 +473,11 @@ export type Action =
   | "relayTicket"
   /** CC-06.4 (WIRE-CONTRACT-V5 §15.2 to §15.4): the Cloud Connect identity of the `connect-identity*` transcripts. */
   | "connectIdentity"
-  | "connectDevices";
+  | "connectDevices"
+  /** I-40.8 (WIRE-CONTRACT-V5 §12.11.5): the nearby approval calls of the `nearby-*` transcripts. */
+  | "nearbyStart"
+  | "nearbyApprove"
+  | "nearbyPoll";
 
 export interface Step {
   action: Action;

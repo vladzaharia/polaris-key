@@ -291,6 +291,17 @@
       ],
       "note": "Link offer (I-43.3 transcripts, I-48)."
     },
+    "identity.nearby": {
+      "status": "planned",
+      "wp": "I-48",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Nearby approval (I-40.8 transcripts, I-48)."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10b.1: activate_with_key() and enroll() return key-entry-limit (key_entries, manage_url) and license-owned (sign_in_url); key_entries on ok."

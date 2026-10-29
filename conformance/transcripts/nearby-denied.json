@@ -1,0 +1,245 @@
+{
+  "transcriptVersion": 1,
+  "id": "nearby-denied",
+  "description": "Nearby approval that M refuses (WIRE-CONTRACT-V5 §12.11.5 rule 6). M posts decision deny and gets 204 with no body. The denial is final for the request: D's poll answers {status:error, reason:access_denied}, as the device code does (§12.10), and a later approve of the same request is 404 not_found.",
+  "features": ["identity.nearby"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": []
+  },
+  "steps": [
+    {
+      "action": "nearbyStart",
+      "note": "D asks to be approved.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "deviceName": "Living-room console"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/start",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "deviceName": "Living-room console",
+                  "proof": "zk_wvU5LmsL8rb_vu2sa7ew8TS-F4xYgdMPMiS05e69Na5kLjeBN0h2Nly6MeoMNSp1-yMthWfJRo7a5K4o6DQ"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 201,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "request": "nr_Ny7Ph5GFYA8Hwt9FRdFcmQ",
+                "expiresIn": 300,
+                "interval": 3
+              }
+            },
+            "clientIp": "198.51.100.7",
+            "capture": { "request": "$.request" }
+          }
+        ]
+      },
+      "expect": { "result": "ok", "expiresIn": 300, "interval": 3 }
+    },
+    {
+      "action": "nearbyApprove",
+      "note": "M refuses.",
+      "args": {
+        "approverDeviceId": "TRANSCRIPTAPPROVER00000000000001",
+        "approverToken": "pkeyt_fbsXZI0DjY-M8sl5f7FIr3inOgVao3HrPbVuCw119Lg",
+        "approverKeyLabel": "transcript-nearby-m-1",
+        "keyLabel": "transcript-nearby-d-1",
+        "decision": "deny",
+        "request": "nr_Ny7Ph5GFYA8Hwt9FRdFcmQ"
+      },
+      "now": 1700000001,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/approve",
+              "headers": {
+                "x-pkey-device": "{approverDeviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {approverToken}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_Ny7Ph5GFYA8Hwt9FRdFcmQ",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "decision": "deny",
+                  "proof": "bbDjvZaGiwHFKd6bQMEwP84BYjpu8u8r8wFQZi18ikhtdu80wklQUhei8w9E5dzTkkQp_A0d1UR6ghdH19HWAw"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 204,
+              "headers": { "cache-control": "no-store" },
+              "body": ""
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "denied" }
+    },
+    {
+      "action": "nearbyPoll",
+      "note": "D is told.",
+      "args": {
+        "keyLabel": "transcript-nearby-d-1",
+        "request": "nr_Ny7Ph5GFYA8Hwt9FRdFcmQ"
+      },
+      "now": 1700000004,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_Ny7Ph5GFYA8Hwt9FRdFcmQ",
+                  "proof": "oCOV_AdjgJk4GN_EoispKCO2z9C3xPAVurdLWwa4xIAEjrUjD0obaiVQo86KZjVQ38oWIyCtpEMlaSi7pa7gCw"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "error", "reason": "access_denied" }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "error", "reason": "access_denied" }
+    },
+    {
+      "action": "nearbyApprove",
+      "note": "The decision is final.",
+      "args": {
+        "approverDeviceId": "TRANSCRIPTAPPROVER00000000000001",
+        "approverToken": "pkeyt_fbsXZI0DjY-M8sl5f7FIr3inOgVao3HrPbVuCw119Lg",
+        "approverKeyLabel": "transcript-nearby-m-1",
+        "keyLabel": "transcript-nearby-d-1",
+        "decision": "approve",
+        "request": "nr_Ny7Ph5GFYA8Hwt9FRdFcmQ"
+      },
+      "now": 1700000005,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nearby/approve",
+              "headers": {
+                "x-pkey-device": "{approverDeviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {approverToken}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "request": "nr_Ny7Ph5GFYA8Hwt9FRdFcmQ",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+                  "signKey": "tr8tkqfXd_Y7w6_mNhNT5szlQxG01mr082eZUHw0rb0",
+                  "agreeKey": "8cnP9-K2HbiD40Pf2p58XzDCxq9xI_9b0kzzedXw7UM",
+                  "decision": "approve",
+                  "proof": "bbDjvZaGiwHFKd6bQMEwP84BYjpu8u8r8wFQZi18ikhtdu80wklQUhei8w9E5dzTkkQp_A0d1UR6ghdH19HWAw"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "not_found" } }
+            },
+            "clientIp": "198.51.100.7"
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 404, "code": "not_found" }
+    }
+  ]
+}

@@ -750,6 +750,7 @@ public enum Feature {
     public static let identityPgs = "identity.pgs"
     public static let identityAutosignin = "identity.autosignin"
     public static let identityLink = "identity.link"
+    public static let identityNearby = "identity.nearby"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
     public static let releaseRecord = "release.record"
@@ -891,6 +892,7 @@ public let FEATURE_VALUES: [String] = [
     "identity.pgs",
     "identity.autosignin",
     "identity.link",
+    "identity.nearby",
     "release.changelog",
     "release.download",
     "release.record",
@@ -2032,6 +2034,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.pgs": CapabilityRow(status: "na", service: "identity", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "identity.autosignin": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.link": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.nearby": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -2099,4 +2102,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "4df8b276c8f4b6f39f804ffa988c1509ae9f8b03332bf880b2bd411c155d46c0"
+public let CAPABILITY_DIGEST = "a562a62da3902e4564a454392b6460a7c0b69dc9587bd4d70b72e86b02e4f719"

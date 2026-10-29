@@ -1,4 +1,4 @@
-# @pkey-feature connect.protocol
+# @pkey-feature connect.protocol connect.lan
 """The ``adverts``, ``sas``, ``handshakePayloads``, ``lanAddresses`` and ``mdnsAnswers`` rows of
 ``peer-matrix.json`` (WIRE-CONTRACT-V5 §15.4, §15.4.1, §15.5) through the Python codecs. Mirrors the Node
 runner ``peerMatrix.test.ts``.

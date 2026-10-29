@@ -249,6 +249,11 @@
       ],
       "note": "Link offer (I-43.3 transcripts, I-45)."
     },
+    "identity.nearby": {
+      "status": "planned",
+      "wp": "I-45",
+      "note": "Nearby approval (I-40.8 transcripts, I-45)."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10b.14: ActivationResult.Ok.keyEntries, KeyEntryLimit(manageUrl, keyEntries) and LicenseOwned(signInUrl); keyentry-* transcripts replayed."

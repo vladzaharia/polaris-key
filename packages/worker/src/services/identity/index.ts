@@ -154,6 +154,13 @@ export const identityService: ServiceDescriptor = {
     if (audiences?.google.serverClientId) kinds.push("google");
     if (audiences?.apple.teamId && audiences.apple.bundleIds.length > 0)
       kinds.push("apple");
+    // I-40.8 (§12.11.6): nearby approval is named only while the operator gate, the product row
+    // and `identity.nearby` all serve it: the same test the three routes answer 404 with.
+    const nearbyRow = (await launchGateOn(env, db, "launch.identityNearby"))
+      ? await getProduct(db, product.slug)
+      : null;
+    const nearbyOn =
+      nearbyRow !== null && (await readPlatformSignIn(db, nearbyRow)).nearby;
     const fragment: IdentityDiscovery = {
       enabled: true,
       // I-08: the platform sign-in (`authorize`, `token`) needs no per-product IdP row, so a
@@ -178,6 +185,7 @@ export const identityService: ServiceDescriptor = {
             },
           }
         : {}),
+      ...(nearbyOn ? { nearby: true as const } : {}),
       endpoints: {
         session: `${base}/identity/session`,
         sessionLicense: `${base}/identity/session/license`,
@@ -201,6 +209,13 @@ export const identityService: ServiceDescriptor = {
           ? {
               nonce: `${base}/identity/nonce`,
               link: `${base}/identity/link`,
+            }
+          : {}),
+        ...(nearbyOn
+          ? {
+              nearbyStart: `${base}/identity/nearby/start`,
+              nearbyApprove: `${base}/identity/nearby/approve`,
+              nearbyPoll: `${base}/identity/nearby/poll`,
             }
           : {}),
         ...(accountPortal ? { accountPortal } : {}),

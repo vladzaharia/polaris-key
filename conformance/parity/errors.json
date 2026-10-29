@@ -313,8 +313,7 @@
       "code": "not_nearby",
       "kind": "wire",
       "service": "identity",
-      "description": "403, nested, from POST /<p>/identity/nearby/approve (WIRE-CONTRACT-V5 §12.11.5): the approving device is not on the requesting device's client network. Nothing is written and the request stays open; the device code is the fallback.",
-      "plannedBy": "I-40"
+      "description": "403, nested, from POST /<p>/identity/nearby/approve (WIRE-CONTRACT-V5 §12.11.5): the approving device is not on the requesting device's client network. Nothing is written and the request stays open; the device code is the fallback."
     },
     {
       "code": "auth_method_disabled",
