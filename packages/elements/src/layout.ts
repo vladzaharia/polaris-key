@@ -410,6 +410,9 @@ export const KIT_LAYOUTS: Readonly<
     meta: ["common.loading", "part.poweredBy", "part.status.grace"],
     content: [
       "account.tier",
+      // A floating license: the row and its Add action (UK-42).
+      "account.notInAccount",
+      "activate.recommend.action",
       "account.devices",
       "account.cloudSync",
       "account.updates",

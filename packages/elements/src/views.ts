@@ -1978,6 +1978,18 @@ function accountRows(c: RenderCtx): TemplateResult | typeof nothing {
   const ok = (k: string) => usable(c, k);
   if (keys.has("account.tier") && ok("account.tier"))
     rows.push(accountRow("account.tier", t("account.tier")));
+  // A floating license (held by the key alone, UK-42): says so, and the one action adds it to an
+  // account. The press is the host's to answer (the gate opens AddToAccount, or the portal).
+  if (keys.has("account.notInAccount"))
+    rows.push(
+      accountRow(
+        "account.notInAccount",
+        t("account.notInAccount"),
+        keys.has("activate.recommend.action")
+          ? button(c, "activate.recommend.action", "secondary")
+          : nothing,
+      ),
+    );
   if (keys.has("account.devices")) {
     const d = i.account?.devices;
     rows.push(

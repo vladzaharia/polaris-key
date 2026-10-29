@@ -13,6 +13,7 @@ import {
 import {
   drivenInput,
   gateScreen,
+  isHolderStep,
   AutoSignInRun,
   GateBinding,
   parseHandles,
@@ -24,7 +25,7 @@ import {
 import type { AutoOutcome, SignInPrimitives } from "@polaris-key/ui-core";
 import { linkOfferOutcome, primitivesOf } from "./auto.js";
 import { PkElement, type PkActionDetail } from "./element.js";
-import { isHolder } from "./holderViews.js";
+import { isHolder, readHolderFields } from "./holderViews.js";
 import { TAGS } from "./layout.js";
 import {
   actionOf,
@@ -165,6 +166,11 @@ export class PkGate extends PkElement {
 
   protected override willUpdate(changed: PropertyValues): void {
     this.hadFocus = this.matches(":focus-within");
+    // A key that activated is spent: the typed text does not outlive the step that took it.
+    if (this.driven && this.holderStep && this.input?.keyField) {
+      const { keyField: _spent, ...rest } = this.input;
+      this.input = rest;
+    }
     const before = this.binding.driver;
     this.binding.sync(
       this.driven ? this.config : undefined,
@@ -260,6 +266,14 @@ export class PkGate extends PkElement {
       this.auto.openMethods()
     )
       return;
+    // Add your name and email: the two fields leave in this press only, into the driver's model.
+    if (
+      this.step === "add" &&
+      (d.key === "common.continue" || d.key === "common.tryAgain")
+    ) {
+      if (typeof d.name === "string") driver.edit("name", d.name);
+      if (typeof d.email === "string") driver.edit("email", d.email);
+    }
     if (d.component === "UpdatePrompt") driver.actUpdate(d.key);
     else driver.act(d.key);
   };
@@ -318,6 +332,7 @@ export class PkGate extends PkElement {
   /** The gate's step morphs the card between its screens (not into the app or the banner). */
   protected override morphKey(): string | null {
     const view = this.view;
+    if (this.holderStep) return `holder.${gateScreen(view, this.step)}`;
     if (view.state !== "needs-activation" && view.state !== "blocked")
       return null;
     return `${view.state}.${gateScreen(view, this.driven ? this.step : "home")}`;
@@ -325,13 +340,28 @@ export class PkGate extends PkElement {
 
   /** Booting, Welcome and the blocking screens own the window; the app and the banner do not. */
   protected override fillsWindow(state: string): boolean {
-    return state !== "licensed" && state !== "grace";
+    return (state !== "licensed" && state !== "grace") || this.holderStep;
+  }
+
+  /** Add your name and email: the fields are read at the press and leave in this action only. */
+  protected override actionDetail(key: string): Record<string, unknown> {
+    return this.driven &&
+      this.step === "add" &&
+      (key === "common.continue" || key === "common.tryAgain")
+      ? readHolderFields(this.renderRoot)
+      : {};
+  }
+
+  /** ActivateDone or AddToAccount holds the window over the running license (UK-42). */
+  private get holderStep(): boolean {
+    return this.driven && isHolderStep(this.step);
   }
 
   /** The app, in the default slot, beside the root: it is the host's content, not the kit's; and
    *  the update prompt over it when the product offers one. */
   protected override renderProjected(view: View): unknown {
     if (view.state !== "licensed" && view.state !== "grace") return nothing;
+    if (this.holderStep) return nothing;
     const offer = this.driven ? this.snapshot?.updateInput : null;
     const link =
       this.linkSeed && this.linkPrims
@@ -356,8 +386,11 @@ export class PkGate extends PkElement {
 
   protected override renderBody(c: RenderCtx): unknown {
     const { view } = c;
-    const sub = (component: ComponentName) =>
-      renderView({ ...c, view: viewOf(component, c.input) });
+    const sub = (component: ScreenName) =>
+      renderView({
+        ...c,
+        view: viewOf(component, c.input) as unknown as View,
+      });
     // The gate's own state, announced once for assistive technology while the screen it hands
     // to (Welcome, StatusScreen, the grace banner) draws the paths.
     const announce = html`<p class="visually-hidden" role="status">
@@ -366,6 +399,8 @@ export class PkGate extends PkElement {
         .map((k) => html`<span data-key=${k}>${text(c, k)} </span>`)}
     </p>`;
     const screen = gateScreen(view, this.driven ? this.step : "home");
+    // The steps after a key with no account hold the window over the license.
+    if (this.holderStep && screen) return sub(screen);
     switch (view.state) {
       case "licensed":
         return nothing;
@@ -388,7 +423,8 @@ export class PkGate extends PkElement {
    *  the gate's own screens: an already-open gate on first render, or a person working elsewhere,
    *  keeps theirs. */
   private focusApp(): void {
-    const state = this.view.state;
+    // A holder step is its own state here: leaving it for the app gives the app focus.
+    const state = this.view.state + (this.holderStep ? "+holder" : "");
     const was = this.lastState;
     this.lastState = state;
     if (

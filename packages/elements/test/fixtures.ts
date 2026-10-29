@@ -42,7 +42,7 @@ export const COMPONENT_FAMILIES = [
 ] as const;
 
 /** A family's rows. `holders` also holds the SignIn and AccountAndLicense rows of UK-42 (the
- *  sign-in form's own steps, UK-42.8); this kit draws the two screens it owns here. */
+ *  sign-in form's own steps and the settings row, UK-42.8). */
 export function familyRows(
   matrix: Record<string, unknown>,
   family: (typeof COMPONENT_FAMILIES)[number],
@@ -51,7 +51,6 @@ export function familyRows(
   return family === "holders"
     ? rows.filter(
         (r) =>
-          ["ActivateDone", "AddToAccount"].includes(r.expect.component) &&
           // BLOCKED (reported, UK-42.7): the failed state's `locker.activate.addFailed` is in the
           // portal's copy table only (PORTAL_NAMESPACES), so no kit table can draw it. Re-enable
           // when the key moves into the kit catalog.

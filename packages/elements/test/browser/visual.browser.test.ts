@@ -156,9 +156,7 @@ describe("the registry is covered", () => {
         .map((s) => `${c}.${s}`),
     );
     const have = new Set(FIXTURES.map((f) => f.id));
-    // The sign-in form's holder steps are drawn by UK-42.8 (its baselines come with it).
-    const later = new Set(["SignIn.key-done", "SignIn.attach", "SignIn.added"]);
-    expect(want.filter((id) => !have.has(id) && !later.has(id))).toEqual([]);
+    expect(want.filter((id) => !have.has(id))).toEqual([]);
   });
 });
 

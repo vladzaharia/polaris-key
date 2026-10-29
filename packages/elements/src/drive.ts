@@ -17,7 +17,7 @@ import {
 } from "@polaris-key/ui-core/browser";
 import type {
   AutoOutcome,
-  ComponentName,
+  ScreenName,
   SignInPrimitives,
   UiInput,
   View,
@@ -26,6 +26,11 @@ import type {
 import { AUTO_WAIT_MS, autoSupported, primitivesOf, runAuto } from "./auto.js";
 
 export { type GateConfig, type GateSnapshot, type GateStep };
+
+/** The steps that follow a key with no account: ActivateDone and AddToAccount. */
+export function isHolderStep(step: GateStep): boolean {
+  return step === "done" || step === "add";
+}
 
 /** What the host can act on itself (lead decision 7): each is drawn only when the host says it
  *  answers it, in `handles` (`handles="trial restore continue-free renew"`). */
@@ -60,8 +65,12 @@ export function drivenInput(
   };
 }
 
-/** The component the gate draws for its state and the sign-in step it is on. */
-export function gateScreen(view: View, step: GateStep): ComponentName | null {
+/** The component the gate draws for its state and the sign-in step it is on. The steps after a
+ *  key with no account (UK-42) show over any state: the license is active, so they hold the
+ *  window until the person leaves them (ActivateDone, then AddToAccount). */
+export function gateScreen(view: View, step: GateStep): ScreenName | null {
+  if (step === "done") return "ActivateDone";
+  if (step === "add") return "AddToAccount";
   switch (view.state) {
     case "grace":
       return "GraceBanner";
@@ -151,6 +160,11 @@ export class GateBinding {
       ...(parsed.returnUrl ? { returnUrl: parsed.returnUrl } : {}),
       ...(parsed.version ? { version: parsed.version } : {}),
       product: parsed.product,
+      // The control-plane origin: the one place the held key may go (the portal link's origin
+      // is checked against it), and the product page's fallback.
+      ...(parsed.baseUrl ? { baseUrl: parsed.baseUrl } : {}),
+      // A page is a browser: the lines that name this device say so.
+      deviceKind: "browser",
       ...(locale ? { locale } : {}),
     });
     this.unsub = this.driver.subscribe(this.onChange);

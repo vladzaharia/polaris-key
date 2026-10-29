@@ -9,7 +9,17 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createBrowserClient } from "@polaris-key/ui-core/browser";
 
 import { type PkElement, type PkGate } from "../src/index.js";
-import { parseHandles } from "../src/drive.js";
+import { gateScreen, GateBinding, parseHandles } from "../src/drive.js";
+import {
+  fakeFetch,
+  NOW,
+  PAGE,
+  typeKey,
+  world,
+  type World,
+} from "./driveWorld.js";
+import { floatingRow } from "./holdersFixtures.js";
+import { viewOf } from "@polaris-key/ui-core";
 
 beforeAll(() => {
   globalThis.ResizeObserver ??= class {
@@ -23,114 +33,6 @@ afterEach(() => {
   document.body.replaceChildren();
   vi.restoreAllMocks();
 });
-
-const NOW = 2000;
-/** The page is the Worker's origin, so the browser adapter signs in with its cookie session. */
-const PAGE = {
-  product: "acme",
-  baseUrl: location.origin,
-  auth: "cookie",
-} as const;
-const SERVICES = (on: readonly string[]) =>
-  Object.fromEntries(
-    ["license", "config", "release", "update", "identity"].map((s) => [
-      s,
-      on.includes(s)
-        ? {
-            enabled: true,
-            endpoints: {
-              document: `/acme/${s}/document`,
-              version: `/acme/update/version`,
-              session: `/acme/identity/session`,
-              authStart: `/acme/identity/auth/start`,
-            },
-          }
-        : { enabled: false },
-    ]),
-  );
-
-interface World {
-  /** The session's license document (`null`: signed out). */
-  doc: { expiresAt: number; graceUntil: number } | null;
-  services: readonly string[];
-  /** What `update/version` answers, if anything. */
-  update?: { version: string; tag: string; url: string };
-  changelog?: { version: string; summary: string | null; url: string }[];
-  posted: unknown[];
-  /** The key route refuses with this body (a device limit), when set. */
-  refuse?: { status: number; body: unknown };
-}
-
-function world(over: Partial<World> = {}): World {
-  return {
-    doc: null,
-    services: ["license", "identity"],
-    posted: [],
-    ...over,
-  };
-}
-
-const fused = (d: NonNullable<World["doc"]>) => ({
-  schemaVersion: 1,
-  aud: "acme",
-  iss: "key.plrs.im",
-  licenseId: "lic-1",
-  deviceId: "dev-1",
-  issuedAt: 1000,
-  expiresAt: d.expiresAt,
-  graceUntil: d.graceUntil,
-  profile: { name: "Ada", firstName: "Ada", activatedAt: 900 },
-  payload: { config: {}, secrets: {}, entitlements: {} },
-});
-
-function fakeFetch(w: World): typeof fetch {
-  const json = (body: unknown, status = 200) =>
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "content-type": "application/json" },
-    });
-  return (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.href
-          : input.url;
-    if (url.includes("/.well-known/polaris.json"))
-      return json({
-        version: 2,
-        protocolVersion: 4,
-        product: "acme",
-        slug: "acme",
-        baseUrl: "https://key.plrs.im",
-        core: { registration: "requires-license" },
-        services: SERVICES(w.services),
-      });
-    if (url.includes("/identity/session/license")) {
-      w.posted.push(JSON.parse(String(init?.body ?? "{}")));
-      if (w.refuse) return json(w.refuse.body, w.refuse.status);
-      w.doc = { expiresAt: 4600, graceUntil: 90_000 };
-      return json({ ok: true }, 201);
-    }
-    if (url.includes("/identity/session"))
-      return json({
-        authenticated: w.doc !== null,
-        doc: w.doc ? fused(w.doc) : null,
-        csrfToken: "csrf-1",
-      });
-    if (url.includes("/update/version"))
-      return w.update ? json(w.update) : new Response("no", { status: 404 });
-    if (url.includes("/release/changelog"))
-      return json({
-        entries: (w.changelog ?? []).map((e) => ({
-          tag: `v${e.version}`,
-          date: "2026-10-01T00:00:00Z",
-          ...e,
-        })),
-      });
-    return new Response("not found", { status: 404 });
-  }) as unknown as typeof fetch;
-}
 
 interface Mounted {
   gate: PkGate;
@@ -240,31 +142,20 @@ describe("<pk-gate config>: status", () => {
 
 describe("<pk-gate config>: Welcome, Activate and the hosted sign-in", () => {
   it("takes a key through Activate and lets the app in", async () => {
-    const { gate, w } = await mount(world());
-    await settle(gate, () => control(gate, "welcome.useKey") !== null);
-    control(gate, "welcome.useKey")!.click();
-    await settle(
-      gate,
-      () => gate.shadowRoot!.querySelector("#pk-key") !== null,
-    );
-    const field = gate.shadowRoot!.querySelector<HTMLInputElement>("#pk-key")!;
-    field.value = "pkey_acme_KEY";
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-    await gate.updateComplete;
+    const { gate, w } = await toKeyStep(world());
+    await typeKey(gate, "pkey_acme_KEY");
     control(gate, "activate.submit")!.click();
-    await settle(gate, () => w.doc !== null && state(gate) === undefined);
+    // The key activated with no account: ActivateDone first, the app after Start using.
+    await settle(gate, () => control(gate, "signin.done.start") !== null);
     expect(w.posted).toEqual([{ key: "pkey_acme_KEY" }]);
+    expect(gate.shadowRoot!.querySelector("slot")).toBeNull();
+    control(gate, "signin.done.start")!.click();
+    await settle(gate, () => state(gate) === undefined);
     expect(gate.shadowRoot!.querySelector("slot")).not.toBeNull();
   });
 
   it("backs out of Activate with Escape and gives focus back to its opener", async () => {
-    const { gate } = await mount(world());
-    await settle(gate, () => control(gate, "welcome.useKey") !== null);
-    control(gate, "welcome.useKey")!.click();
-    await settle(
-      gate,
-      () => gate.shadowRoot!.querySelector("#pk-key") !== null,
-    );
+    const { gate } = await toKeyStep(world());
     gate.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
     );
@@ -288,19 +179,10 @@ describe("<pk-gate config>: Welcome, Activate and the hosted sign-in", () => {
         },
       },
     });
-    const { gate } = await mount(w, {
+    const { gate } = await toKeyStep(w, {
       config: { product: "acme", returnUrl: "https://app.acme.test/" },
     });
-    await settle(gate, () => control(gate, "welcome.useKey") !== null);
-    control(gate, "welcome.useKey")!.click();
-    await settle(
-      gate,
-      () => gate.shadowRoot!.querySelector("#pk-key") !== null,
-    );
-    const field = gate.shadowRoot!.querySelector<HTMLInputElement>("#pk-key")!;
-    field.value = "pkey_acme_KEY";
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-    await gate.updateComplete;
+    await typeKey(gate, "pkey_acme_KEY");
     control(gate, "activate.submit")!.click();
     await settle(gate, () => control(gate, "deviceLimit.title") !== null);
     const primary = control(gate, "deviceLimit.title");
@@ -352,6 +234,150 @@ describe("<pk-gate config>: Welcome, Activate and the hosted sign-in", () => {
       "renew",
       "trial",
     ]);
+  });
+});
+
+/** Welcome's Use a license key: the gate stands on the key step. */
+async function toKeyStep(w: World, over: Parameters<typeof mount>[1] = {}) {
+  const m = await mount(w, over);
+  const { gate } = m;
+  await settle(gate, () => control(gate, "welcome.useKey") !== null);
+  control(gate, "welcome.useKey")!.click();
+  await settle(gate, () => gate.shadowRoot!.querySelector("#pk-key") !== null);
+  return m;
+}
+
+/** Take a key through Activate: the gate stands on ActivateDone. */
+async function toDone(w: World, over: Parameters<typeof mount>[1] = {}) {
+  const m = await toKeyStep(w, over);
+  await typeKey(m.gate, "pkey_acme_KEY");
+  control(m.gate, "activate.submit")!.click();
+  await settle(m.gate, () => control(m.gate, "signin.done.start") !== null);
+  return m;
+}
+
+const component = (g: PkElement) =>
+  g.shadowRoot!.querySelector<HTMLElement>(".pk-root")?.dataset.component;
+
+describe("the gate's step-to-screen mapping (UK-42.8)", () => {
+  const licensed = viewOf("PolarisKeyGate", { gate: { status: "licensed" } });
+  const needs = viewOf("PolarisKeyGate", {
+    gate: { status: "needs-activation" },
+  });
+
+  it("done and add draw the holders' screens over any state; the rest is as before", () => {
+    for (const v of [licensed, needs]) {
+      expect(gateScreen(v, "done")).toBe("ActivateDone");
+      expect(gateScreen(v, "add")).toBe("AddToAccount");
+    }
+    expect(gateScreen(licensed, "home")).toBeNull();
+    expect(gateScreen(needs, "home")).toBe("Welcome");
+    expect(gateScreen(needs, "activate")).toBe("Activate");
+  });
+
+  it("the binding hands the driver the config's baseUrl and a browser device kind", () => {
+    const b = new GateBinding(() => {});
+    b.sync(
+      { product: "acme", baseUrl: "https://api.acme.test", auth: "cookie" },
+      { client: undefined, fetchImpl: fakeFetch(world()) },
+      "en",
+    );
+    const options = (
+      b.driver as unknown as { options: Record<string, unknown> }
+    ).options;
+    expect(options).toMatchObject({
+      baseUrl: "https://api.acme.test",
+      deviceKind: "browser",
+      product: "acme",
+    });
+    b.dispose();
+  });
+});
+
+describe("<pk-gate config>: activation without an account (UK-42.8)", () => {
+  it("maps the driver's done and add steps to ActivateDone and AddToAccount", async () => {
+    const { gate } = await toDone(world());
+    expect(state(gate)).toBe("licensed");
+    expect(
+      gate.shadowRoot!.querySelector('[data-key="activate.recommend.title"]'),
+    ).not.toBeNull();
+    // The key is not in the gate's input once it activated.
+    expect(JSON.stringify(gate.input ?? {})).not.toContain("pkey_acme_KEY");
+    control(gate, "activate.recommend.action")!.click();
+    await settle(gate, () => control(gate, "common.continue") !== null);
+    expect(
+      gate.shadowRoot!.querySelector('[data-key="signin.gate.name"]'),
+    ).not.toBeNull();
+    // Cancel goes back to ActivateDone; Start using lets the app in.
+    gate
+      .shadowRoot!.querySelector<HTMLElement>('[data-key="common.cancel"]')!
+      .click();
+    await settle(gate, () => control(gate, "signin.done.start") !== null);
+    control(gate, "signin.done.start")!.click();
+    await settle(gate, () => gate.shadowRoot!.querySelector("slot") !== null);
+    expect(gate.querySelector('[data-testid="app"]')).not.toBeNull();
+  });
+
+  it("sends name and email only in the Continue action, into the driver", async () => {
+    const { gate } = await toDone(world());
+    // The failed line is in the portal's copy table only (reported, UK-42.7).
+    gate.theme = {
+      copy: {
+        en: { "locker.activate.addFailed": "Couldn't add this license." },
+      },
+    };
+    control(gate, "activate.recommend.action")!.click();
+    await settle(gate, () => control(gate, "common.continue") !== null);
+    const seen: Array<Record<string, unknown>> = [];
+    gate.addEventListener("pk-action", (e) =>
+      seen.push((e as CustomEvent).detail),
+    );
+    gate.addEventListener("pk-input", (e) =>
+      seen.push((e as CustomEvent).detail),
+    );
+    const type = (label: string, value: string) => {
+      const f = gate.shadowRoot!.querySelector<HTMLInputElement>(
+        `[data-key="${label}"]`,
+      )!;
+      f.value = value;
+      f.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    type("signin.gate.name", "Mara Quill");
+    type("signin.email.label", "mara@example.test");
+    control(gate, "common.continue")!.click();
+    await settle(gate, () => false);
+    const carriers = seen.filter((d) =>
+      JSON.stringify(d).includes("mara@example.test"),
+    );
+    expect(carriers.map((d) => d.key)).toEqual(["common.continue"]);
+    expect(carriers[0]).toMatchObject({
+      name: "Mara Quill",
+      email: "mara@example.test",
+    });
+  });
+
+  it("the AccountAndLicense row's Add opens AddToAccount over the app, Cancel returns", async () => {
+    const { gate } = await mount(
+      world({ doc: { expiresAt: 4600, graceUntil: 90_000 } }),
+    );
+    await settle(gate, () => gate.shadowRoot!.querySelector("slot") !== null);
+    const row = document.createElement("pk-account-and-license") as PkElement;
+    row.input = floatingRow();
+    gate.append(row);
+    await row.updateComplete;
+    row
+      .shadowRoot!.querySelector<HTMLElement>(
+        'button[data-key="activate.recommend.action"]',
+      )!
+      .click();
+    await settle(gate, () => control(gate, "common.continue") !== null);
+    expect(component(gate)).toBe("PolarisKeyGate");
+    expect(gate.shadowRoot!.querySelector("slot")).toBeNull();
+    gate
+      .shadowRoot!.querySelector<HTMLElement>('[data-key="common.cancel"]')!
+      .click();
+    await settle(gate, () => gate.shadowRoot!.querySelector("slot") !== null);
+    expect(gate.shadowRoot!.querySelector("slot")).not.toBeNull();
   });
 });
 

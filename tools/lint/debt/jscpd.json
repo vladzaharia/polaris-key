@@ -1476,7 +1476,7 @@
       "jscpd:duplicate": 2
     },
     "packages/elements/test/drive.test.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 2
     },
     "packages/elements/test/fixtures.ts": {
       "jscpd:duplicate": 2
@@ -1488,19 +1488,16 @@
       "jscpd:duplicate": 3
     },
     "packages/elements/test/renew.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/elements/test/review.test.ts": {
       "jscpd:duplicate": 7
-    },
-    "packages/elements/test/settingsControls.test.ts": {
-      "jscpd:duplicate": 2
     },
     "packages/elements/test/signin.test.ts": {
       "jscpd:duplicate": 2
     },
     "packages/elements/test/uk04Fix.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/elements/test/uk06Polish.test.ts": {
       "jscpd:duplicate": 3

@@ -163,8 +163,10 @@ for (const family of COMPONENT_FAMILIES) {
         // A choice drawn as a radio row (keep, create) is not a button.
         const asRow = root.querySelector(`[role="radio"] [data-key="${key}"]`);
         // Add your name and email heads AddToAccount's form: its action there is the heading.
+        // The sign-in form's attach step is the same screen.
         const heads =
-          view.component === ("AddToAccount" as string) &&
+          (view.component === ("AddToAccount" as string) ||
+            (view.component === "SignIn" && view.state === "attach")) &&
           key === "activate.recommend.action";
         if ((role === "button" || role === "menu") && !asRow && !heads)
           expect(

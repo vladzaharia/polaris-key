@@ -169,3 +169,16 @@ export function holderContent(c: RenderCtx): Out {
     ? recommendation(c)
     : form(c);
 }
+
+/** The two fields as typed, read when Continue or Try again is pressed: they leave in that
+ *  `pk-action` only (the sign-in form and the gate answer it from there). */
+export function readHolderFields(root: ParentNode): {
+  name: string;
+  email: string;
+} {
+  const read = (label: string) =>
+    root
+      .querySelector<HTMLInputElement>(`[data-key="${label}"]`)
+      ?.value.trim() ?? "";
+  return { name: read("signin.gate.name"), email: read("signin.email.label") };
+}
