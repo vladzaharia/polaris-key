@@ -5,21 +5,17 @@ import { StrictMode, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { PolarisKeyProvider } from "@polaris-key/react";
 import { PolarisKeyGate } from "@polaris-key/react/kit";
-import { desktopAdapter } from "@polaris-key/react/desktop";
 import "@polaris-key/react/fonts.css";
 
 import { App } from "./App";
-import { tidewaterBridge } from "./fixtures";
+import { tidewaterAdapter } from "./fixtures";
 import { polarisKey as samplePolarisKey } from "./polaris.config";
 import "./app.css";
 
 function Root() {
   // One adapter for the page's life: a new one would start the SDK over.
   const fixture = useMemo(
-    () =>
-      __POLARIS_LIVE__
-        ? undefined
-        : desktopAdapter({ bridge: tidewaterBridge() }),
+    () => (__POLARIS_LIVE__ ? undefined : tidewaterAdapter()),
     [],
   );
   const polarisKey = useMemo(
