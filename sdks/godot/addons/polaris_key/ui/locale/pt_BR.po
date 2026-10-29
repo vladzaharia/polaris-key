@@ -6384,6 +6384,16 @@ msgstr "Coleção desconhecida"
 msgid "core.codes.collection_unknown.message"
 msgstr "Esta coleção não está disponível."
 
+#. Not in your license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.title"
+msgstr "Não incluído na sua licença"
+
+#. Your license doesn't include this. Upgrade it, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.message"
+msgstr "Sua licença não inclui isso. Faça o upgrade e tente de novo."
+
 #. Storage full
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.quota_exceeded.title"

@@ -87,6 +87,7 @@ const COPY_CODES := {
 	"op_invalid_for_policy": {"title": "Change not allowed", "message": "That change isn't allowed for this setting."},
 	"setting_not_synced": {"title": "Not synced", "message": "This setting isn't synced to your account."},
 	"collection_unknown": {"title": "Unknown collection", "message": "This collection isn't available."},
+	"entitlement_required": {"title": "Not in your license", "message": "Your license doesn't include this. Upgrade it, then try again."},
 	"quota_exceeded": {"title": "Storage full", "message": "Your synced storage is full. Free some space, then try again."},
 	"writes_paused": {"title": "Sync paused", "message": "Syncing is paused for a moment. Your changes are kept and will sync later."},
 	"encryption_mismatch": {"title": "Encryption mismatch", "message": "This app and the sync service don't agree on encryption. Update the app and try again."},

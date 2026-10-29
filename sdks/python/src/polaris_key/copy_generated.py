@@ -109,6 +109,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "op_invalid_for_policy": CopyEntry("Change not allowed", "That change isn't allowed for this setting."),
         "setting_not_synced": CopyEntry("Not synced", "This setting isn't synced to your account."),
         "collection_unknown": CopyEntry("Unknown collection", "This collection isn't available."),
+        "entitlement_required": CopyEntry("Not in your license", "Your license doesn't include this. Upgrade it, then try again."),
         "quota_exceeded": CopyEntry("Storage full", "Your synced storage is full. Free some space, then try again."),
         "writes_paused": CopyEntry("Sync paused", "Syncing is paused for a moment. Your changes are kept and will sync later."),
         "encryption_mismatch": CopyEntry("Encryption mismatch", "This app and the sync service don't agree on encryption. Update the app and try again."),

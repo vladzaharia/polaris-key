@@ -80,6 +80,60 @@ describe("CloudSyncDO under workerd (U-05.7)", () => {
     expect(usage.empty).toBe(false);
   });
 
+  it("stores records on SQLite-backed storage: create, delete, the tombstone bound and the usage (U-09.4)", async () => {
+    const pin = { product: "wd", subject: "sub_records" };
+    const route: Classification = {
+      verdict: "record",
+      policy: "revision",
+      maxRecords: 1,
+    };
+    const rec = (id: number, rid: string, op: "set" | "delete") => ({
+      mutationId: id,
+      target: { record: ["saves", rid] as [string, string] },
+      op,
+      ...(op === "set" ? { value: { n: id } } : {}),
+      editedHlc: formatHlc(NOW - 1000 + id, 0),
+    });
+    const mutations = [
+      rec(1, "r1", "set"),
+      rec(2, "r1", "delete"),
+      rec(3, "r2", "set"),
+      rec(4, "r2", "delete"),
+      rec(5, "r3", "set"),
+      rec(6, "r3", "delete"),
+      rec(7, "r4", "set"),
+    ];
+    const pushed = await callCloudSync<"push">(env, pin, {
+      op: "push",
+      deviceId: "d1",
+      family: "desktop",
+      platform: "macos",
+      limits: { quotaBytes: 1_000_000 },
+      request: { clientId: C1, cursor: 0, mutations },
+      classified: mutations.map(() => route),
+      serverNow: NOW,
+    });
+    expect(
+      pushed.outcome.ok && pushed.outcome.results.map((r) => r.status),
+    ).toEqual(["ok", "ok", "ok", "ok", "ok", "ok", "ok"]);
+    const stub = env.CLOUD_SYNC.get(
+      env.CLOUD_SYNC.idFromName(cloudSyncObjectName(pin)),
+    );
+    const rows = await runInDurableObject(stub, async (_obj, state) =>
+      state.storage.sql
+        .exec("SELECT id, deleted FROM records ORDER BY id")
+        .toArray(),
+    );
+    // Two tombstones kept (2 x maxRecords), the oldest forgotten, and the live one.
+    expect(rows).toEqual([
+      { id: "r2", deleted: 1 },
+      { id: "r3", deleted: 1 },
+      { id: "r4", deleted: 0 },
+    ]);
+    const usage = await callCloudSync<"usage">(env, pin, { op: "usage" });
+    expect(usage.usage).toMatchObject({ records: 1 });
+  });
+
   it("creates nothing on a read, and refuses another pair on the same object", async () => {
     const pin = { product: "wd", subject: "sub_lazy" };
     expect(
@@ -124,7 +178,7 @@ describe("CloudSyncDO under workerd (U-05.7)", () => {
           .exec("SELECT value FROM meta WHERE key = 'schema_version'")
           .one().value,
     );
-    expect(version).toBe("2");
+    expect(version).toBe("3");
   });
 
   it("deleteAll clears the data and the alarm, and the object can be written again", async () => {

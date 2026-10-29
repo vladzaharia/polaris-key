@@ -1111,6 +1111,8 @@ export type KitCopyKey =
   | "core.codes.setting_not_synced.message"
   | "core.codes.collection_unknown.title"
   | "core.codes.collection_unknown.message"
+  | "core.codes.entitlement_required.title"
+  | "core.codes.entitlement_required.message"
   | "core.codes.quota_exceeded.title"
   | "core.codes.quota_exceeded.message"
   | "core.codes.writes_paused.title"

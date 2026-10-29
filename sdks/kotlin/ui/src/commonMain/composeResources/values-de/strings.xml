@@ -2413,6 +2413,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_collection_unknown_message">Diese Sammlung ist nicht verfügbar.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_title">Nicht in Ihrer Lizenz</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_message">Ihre Lizenz enthält das nicht. Erweitern Sie sie und versuchen Sie es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_title">Speicher voll</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_message">Ihr synchronisierter Speicher ist voll. Geben Sie Platz frei und versuchen Sie es erneut.</string>

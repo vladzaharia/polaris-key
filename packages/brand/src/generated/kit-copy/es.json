@@ -1097,6 +1097,8 @@
   "core.codes.setting_not_synced.message": "Este ajuste no se sincroniza con tu cuenta.",
   "core.codes.collection_unknown.title": "Colección desconocida",
   "core.codes.collection_unknown.message": "Esta colección no está disponible.",
+  "core.codes.entitlement_required.title": "No incluido en tu licencia",
+  "core.codes.entitlement_required.message": "Tu licencia no incluye esto. Mejórala e inténtalo de nuevo.",
   "core.codes.quota_exceeded.title": "Almacenamiento lleno",
   "core.codes.quota_exceeded.message": "Tu almacenamiento sincronizado está lleno. Libera espacio e inténtalo de nuevo.",
   "core.codes.writes_paused.title": "Sincronización en pausa",

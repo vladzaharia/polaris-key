@@ -4,7 +4,7 @@
  */
 
 import type { SyncScope } from "@polaris-key/protocol/sync";
-import { settingId } from "./store.js";
+import { recordsDump, settingId } from "./store.js";
 import type {
   ClientRecord,
   StoredRecord,
@@ -232,6 +232,37 @@ export class MemoryStore implements SyncStore {
     return n;
   }
 
+  private tombstones(collection?: string): StoredRecord[] {
+    return [...this.records.values()].filter(
+      (r) =>
+        r.deleted && (collection === undefined || r.collection === collection),
+    );
+  }
+
+  recordTombstoneCount(collection?: string): number {
+    return this.tombstones(collection).length;
+  }
+
+  oldestRecordTombstones(limit: number, collection?: string): StoredRecord[] {
+    return this.tombstones(collection)
+      .sort(
+        (a, b) =>
+          (a.stamp.hlc < b.stamp.hlc
+            ? -1
+            : a.stamp.hlc > b.stamp.hlc
+              ? 1
+              : 0) ||
+          (a.stamp.clientId < b.stamp.clientId
+            ? -1
+            : a.stamp.clientId > b.stamp.clientId
+              ? 1
+              : 0) ||
+          a.version - b.version,
+      )
+      .slice(0, limit)
+      .map(cloneRecord);
+  }
+
   isEmpty(): boolean {
     return this.settings.size === 0 && this.records.size === 0;
   }
@@ -293,18 +324,7 @@ export class MemoryStore implements SyncStore {
           { ...r, members: r.members ? [...r.members] : undefined },
         ]),
       ...(this.records.size > 0
-        ? {
-            records: [...this.records]
-              .sort(([a], [b]) => (a < b ? -1 : 1))
-              .map(([k, r]) => [
-                k,
-                {
-                  ...r,
-                  fields: r.fields ? [...r.fields] : undefined,
-                  elements: r.elements ? [...r.elements] : undefined,
-                },
-              ]),
-          }
+        ? { records: recordsDump([...this.records.values()]) }
         : {}),
     };
   }

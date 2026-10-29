@@ -340,6 +340,10 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Unknown collection",
     message: "This collection isn't available.",
   },
+  entitlement_required: {
+    title: "Not in your license",
+    message: "Your license doesn't include this. Upgrade it, then try again.",
+  },
   quota_exceeded: {
     title: "Storage full",
     message: "Your synced storage is full. Free some space, then try again.",

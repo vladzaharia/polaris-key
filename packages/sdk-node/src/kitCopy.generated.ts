@@ -1352,6 +1352,9 @@ export const KIT_COPY: Readonly<
       "This setting isn't synced to your account.",
     "core.codes.collection_unknown.title": "Unknown collection",
     "core.codes.collection_unknown.message": "This collection isn't available.",
+    "core.codes.entitlement_required.title": "Not in your license",
+    "core.codes.entitlement_required.message":
+      "Your license doesn't include this. Upgrade it, then try again.",
     "core.codes.quota_exceeded.title": "Storage full",
     "core.codes.quota_exceeded.message":
       "Your synced storage is full. Free some space, then try again.",
@@ -3256,6 +3259,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "Unbekannte Sammlung",
     "core.codes.collection_unknown.message":
       "Diese Sammlung ist nicht verfügbar.",
+    "core.codes.entitlement_required.title": "Nicht in Ihrer Lizenz",
+    "core.codes.entitlement_required.message":
+      "Ihre Lizenz enthält das nicht. Erweitern Sie sie und versuchen Sie es erneut.",
     "core.codes.quota_exceeded.title": "Speicher voll",
     "core.codes.quota_exceeded.message":
       "Ihr synchronisierter Speicher ist voll. Geben Sie Platz frei und versuchen Sie es erneut.",
@@ -5158,6 +5164,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "Collection inconnue",
     "core.codes.collection_unknown.message":
       "Cette collection n'est pas disponible.",
+    "core.codes.entitlement_required.title": "Non inclus dans votre licence",
+    "core.codes.entitlement_required.message":
+      "Votre licence n'inclut pas cela. Mettez-la à niveau, puis réessayez.",
     "core.codes.quota_exceeded.title": "Stockage plein",
     "core.codes.quota_exceeded.message":
       "Votre stockage synchronisé est plein. Libérez de l'espace, puis réessayez.",
@@ -7048,6 +7057,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "Colección desconocida",
     "core.codes.collection_unknown.message":
       "Esta colección no está disponible.",
+    "core.codes.entitlement_required.title": "No incluido en tu licencia",
+    "core.codes.entitlement_required.message":
+      "Tu licencia no incluye esto. Mejórala e inténtalo de nuevo.",
     "core.codes.quota_exceeded.title": "Almacenamiento lleno",
     "core.codes.quota_exceeded.message":
       "Tu almacenamiento sincronizado está lleno. Libera espacio e inténtalo de nuevo.",
@@ -8914,6 +8926,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "Coleção desconhecida",
     "core.codes.collection_unknown.message":
       "Esta coleção não está disponível.",
+    "core.codes.entitlement_required.title": "Não incluído na sua licença",
+    "core.codes.entitlement_required.message":
+      "Sua licença não inclui isso. Faça o upgrade e tente de novo.",
     "core.codes.quota_exceeded.title": "Armazenamento cheio",
     "core.codes.quota_exceeded.message":
       "Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo.",
@@ -10780,6 +10795,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "Raccolta sconosciuta",
     "core.codes.collection_unknown.message":
       "Questa raccolta non è disponibile.",
+    "core.codes.entitlement_required.title": "Non incluso nella tua licenza",
+    "core.codes.entitlement_required.message":
+      "La tua licenza non lo include. Passa a un piano superiore e riprova.",
     "core.codes.quota_exceeded.title": "Spazio pieno",
     "core.codes.quota_exceeded.message":
       "Lo spazio sincronizzato è pieno. Libera spazio e riprova.",
@@ -12666,6 +12684,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "不明なコレクション",
     "core.codes.collection_unknown.message":
       "このコレクションは利用できません。",
+    "core.codes.entitlement_required.title": "ライセンスに含まれていません",
+    "core.codes.entitlement_required.message":
+      "お使いのライセンスには含まれていません。アップグレードしてから、もう一度お試しください。",
     "core.codes.quota_exceeded.title": "容量がいっぱいです",
     "core.codes.quota_exceeded.message":
       "同期用の容量がいっぱいです。空きを作ってから、もう一度お試しください。",
@@ -14494,6 +14515,9 @@ export const KIT_COPY: Readonly<
       "이 설정은 계정과 동기화되지 않습니다.",
     "core.codes.collection_unknown.title": "알 수 없는 컬렉션",
     "core.codes.collection_unknown.message": "이 컬렉션은 사용할 수 없습니다.",
+    "core.codes.entitlement_required.title": "라이선스에 포함되지 않음",
+    "core.codes.entitlement_required.message":
+      "현재 라이선스에는 포함되어 있지 않습니다. 업그레이드한 뒤 다시 시도하세요.",
     "core.codes.quota_exceeded.title": "저장 공간이 가득 찼습니다",
     "core.codes.quota_exceeded.message":
       "동기화 저장 공간이 가득 찼습니다. 공간을 확보한 뒤 다시 시도하세요.",
@@ -16200,6 +16224,9 @@ export const KIT_COPY: Readonly<
     "core.codes.setting_not_synced.message": "此设置不会同步到你的账户。",
     "core.codes.collection_unknown.title": "未知的集合",
     "core.codes.collection_unknown.message": "此集合不可用。",
+    "core.codes.entitlement_required.title": "不在你的许可证内",
+    "core.codes.entitlement_required.message":
+      "你的许可证不包含此项。请升级后再试。",
     "core.codes.quota_exceeded.title": "存储空间已满",
     "core.codes.quota_exceeded.message":
       "你的同步存储空间已满。请释放一些空间后再试。",

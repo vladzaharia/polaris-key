@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { MemoryStore } from "../../../src/services/sync/engine/memoryStore.js";
 import type {
+  FieldCell,
   StoredRecord,
   SyncStore,
 } from "../../../src/services/sync/engine/types.js";
@@ -18,6 +19,11 @@ const stamp = (n: number) => ({
   hlc: `0190f3a2c1b4:${n.toString(16).padStart(4, "0")}`,
   clientId: "c_aaaaaaaaaaaaaaaaaaaaaa",
 });
+
+const GONE: [string, FieldCell] = [
+  "gone",
+  { value: null, removed: true, stamp: stamp(3), kid: "cd".repeat(16) },
+];
 
 const valueRecord = (
   collection: string,
@@ -72,10 +78,7 @@ describe.each(stores)("record methods: %s store", (_name, make) => {
       floor: stamp(1),
       fields: new Map([
         ["title", { value: "Hi", removed: false, stamp: stamp(2) }],
-        [
-          "gone",
-          { value: null, removed: true, stamp: stamp(3), kid: "cd".repeat(16) },
-        ],
+        GONE,
       ]),
     });
     s.putRecord({
@@ -94,10 +97,7 @@ describe.each(stores)("record methods: %s store", (_name, make) => {
     const notes = s.getRecord("notes", "n1");
     expect([...(notes?.fields ?? [])]).toEqual([
       ["title", { value: "Hi", removed: false, stamp: stamp(2) }],
-      [
-        "gone",
-        { value: null, removed: true, stamp: stamp(3), kid: "cd".repeat(16) },
-      ],
+      GONE,
     ]);
     expect(notes?.floor).toEqual(stamp(1));
     const tags = s.getRecord("tags", "t1");

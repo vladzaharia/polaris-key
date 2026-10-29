@@ -80,6 +80,7 @@ public enum ErrorCode {
     public static let opInvalidForPolicy = "op_invalid_for_policy"
     public static let settingNotSynced = "setting_not_synced"
     public static let collectionUnknown = "collection_unknown"
+    public static let entitlementRequired = "entitlement_required"
     public static let quotaExceeded = "quota_exceeded"
     public static let writesPaused = "writes_paused"
     public static let encryptionMismatch = "encryption_mismatch"
@@ -291,6 +292,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "op_invalid_for_policy",
     "setting_not_synced",
     "collection_unknown",
+    "entitlement_required",
     "quota_exceeded",
     "writes_paused",
     "encryption_mismatch",
@@ -502,6 +504,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "op_invalid_for_policy": "wire",
     "setting_not_synced": "wire",
     "collection_unknown": "wire",
+    "entitlement_required": "wire",
     "quota_exceeded": "wire",
     "writes_paused": "wire",
     "encryption_mismatch": "wire",

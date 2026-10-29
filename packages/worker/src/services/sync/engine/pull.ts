@@ -131,7 +131,12 @@ export function applyPull(store: SyncStore, input: PullInput): PullOutcome {
     ...(cursor === 0 && store.isEmpty() ? { empty: true as const } : {}),
     changes,
     tombstones,
-    usage: { bytes: u.bytes, settings: u.settings, records: 0, files: 0 },
+    usage: {
+      bytes: u.bytes,
+      settings: u.settings,
+      records: u.records,
+      files: 0,
+    },
     etag: pullEtag(seq, lastMutationId),
     ...(since !== undefined ? { encryptionSince: since } : {}),
   };

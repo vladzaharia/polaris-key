@@ -285,6 +285,10 @@
       "title": "Unbekannte Sammlung",
       "message": "Diese Sammlung ist nicht verfügbar."
     },
+    "entitlement_required": {
+      "title": "Nicht in Ihrer Lizenz",
+      "message": "Ihre Lizenz enthält das nicht. Erweitern Sie sie und versuchen Sie es erneut."
+    },
     "quota_exceeded": {
       "title": "Speicher voll",
       "message": "Ihr synchronisierter Speicher ist voll. Geben Sie Platz frei und versuchen Sie es erneut."

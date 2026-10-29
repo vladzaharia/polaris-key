@@ -6358,6 +6358,16 @@ msgstr "不明なコレクション"
 msgid "core.codes.collection_unknown.message"
 msgstr "このコレクションは利用できません。"
 
+#. Not in your license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.title"
+msgstr "ライセンスに含まれていません"
+
+#. Your license doesn't include this. Upgrade it, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.message"
+msgstr "お使いのライセンスには含まれていません。アップグレードしてから、もう一度お試しください。"
+
 #. Storage full
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.quota_exceeded.title"

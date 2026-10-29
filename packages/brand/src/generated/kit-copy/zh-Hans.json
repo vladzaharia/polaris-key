@@ -1097,6 +1097,8 @@
   "core.codes.setting_not_synced.message": "此设置不会同步到你的账户。",
   "core.codes.collection_unknown.title": "未知的集合",
   "core.codes.collection_unknown.message": "此集合不可用。",
+  "core.codes.entitlement_required.title": "不在你的许可证内",
+  "core.codes.entitlement_required.message": "你的许可证不包含此项。请升级后再试。",
   "core.codes.quota_exceeded.title": "存储空间已满",
   "core.codes.quota_exceeded.message": "你的同步存储空间已满。请释放一些空间后再试。",
   "core.codes.writes_paused.title": "同步已暂停",

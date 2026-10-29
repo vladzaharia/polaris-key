@@ -1097,6 +1097,8 @@
   "core.codes.setting_not_synced.message": "This setting isn't synced to your account.",
   "core.codes.collection_unknown.title": "Unknown collection",
   "core.codes.collection_unknown.message": "This collection isn't available.",
+  "core.codes.entitlement_required.title": "Not in your license",
+  "core.codes.entitlement_required.message": "Your license doesn't include this. Upgrade it, then try again.",
   "core.codes.quota_exceeded.title": "Storage full",
   "core.codes.quota_exceeded.message": "Your synced storage is full. Free some space, then try again.",
   "core.codes.writes_paused.title": "Sync paused",

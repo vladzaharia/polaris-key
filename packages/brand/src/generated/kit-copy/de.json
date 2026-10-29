@@ -1097,6 +1097,8 @@
   "core.codes.setting_not_synced.message": "Diese Einstellung wird nicht mit Ihrem Konto synchronisiert.",
   "core.codes.collection_unknown.title": "Unbekannte Sammlung",
   "core.codes.collection_unknown.message": "Diese Sammlung ist nicht verfügbar.",
+  "core.codes.entitlement_required.title": "Nicht in Ihrer Lizenz",
+  "core.codes.entitlement_required.message": "Ihre Lizenz enthält das nicht. Erweitern Sie sie und versuchen Sie es erneut.",
   "core.codes.quota_exceeded.title": "Speicher voll",
   "core.codes.quota_exceeded.message": "Ihr synchronisierter Speicher ist voll. Geben Sie Platz frei und versuchen Sie es erneut.",
   "core.codes.writes_paused.title": "Synchronisierung pausiert",

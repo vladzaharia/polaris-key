@@ -8,6 +8,8 @@
  *   clamp   an `editedHlc` later than `serverNow` plus the allowed skew becomes `serverNow`.
  *   rule 6  a renamed key is written under its new name and answers `renamedTo`; a dropped key
  *           answers `dropped: true` and writes nothing (`migrations`).
+ *   record  a record target is applied by `records.ts` (U-09): the Worker's refusal first, then
+ *           the policy; `editedHlc` is optional there, and the server's clock stands in.
  *   quota   a write that grows the store past the budget, quota or ceiling is `rejected` with
  *           `quota_exceeded`; the rest of the batch is unaffected (settings.ts).
  *   atomic  all or nothing: the first mutation that is not `ok` keeps its result, every other
@@ -19,10 +21,17 @@
  */
 
 import type { MutationResult, SyncMutation } from "@polaris-key/protocol/sync";
-import { clampHlc } from "./hlc.js";
+import { clampHlc, formatHlc } from "./hlc.js";
 import { resolveKey } from "./migrations.js";
+import { applyRecordMutation } from "./records.js";
 import { applySettingMutation } from "./settings.js";
-import type { PushInput, PushOutcome, Stamp, SyncStore } from "./types.js";
+import type {
+  Classification,
+  PushInput,
+  PushOutcome,
+  Stamp,
+  SyncStore,
+} from "./types.js";
 import { validatePush } from "./validate.js";
 
 /** Client bindings one person's object keeps; a new one past it needs an idle one to replace. */
@@ -37,6 +46,14 @@ class AtomicRollback extends Error {
   }
 }
 
+/** Whether an accepted mutation carries sealed values (end-to-end mode, §13.10). */
+function isSealed(route: Classification | undefined): boolean {
+  return (
+    (route?.verdict === "accept" || route?.verdict === "record") &&
+    route.sealed === true
+  );
+}
+
 function applyOne(
   store: SyncStore,
   input: PushInput,
@@ -45,15 +62,40 @@ function applyOne(
 ): MutationResult {
   const route = input.classified[index];
   if (!route) throw new Error("push: classified is shorter than mutations");
-  // A record target: the Worker's refusal stands; the record rules are U-09.4's.
-  if (!("setting" in m.target))
+  // A record target (U-09): the Worker's refusal stands; otherwise the record rules apply. A
+  // record carries no migrations (rule 6 renames settings), and its `editedHlc` is optional: a
+  // `revision` write is ordered by `baseVersion`, so a mutation without one is stamped with the
+  // server's clock.
+  if (!("setting" in m.target)) {
+    if (route.verdict === "reject")
+      return { mutationId: m.mutationId, status: "rejected", code: route.code };
+    // A setting classification for a record target is a Worker mistake: refuse, never apply.
+    if (route.verdict !== "record")
+      return {
+        mutationId: m.mutationId,
+        status: "rejected",
+        code: "collection_unknown",
+      };
+    return applyRecordMutation(
+      store,
+      m,
+      route,
+      {
+        hlc:
+          m.editedHlc !== undefined
+            ? clampHlc(m.editedHlc, input.serverNow)
+            : formatHlc(input.serverNow, 0),
+        clientId: input.request.clientId,
+      },
+      { limits: input.limits },
+    );
+  }
+  if (route.verdict === "record")
     return {
       mutationId: m.mutationId,
       status: "rejected",
-      code: route.verdict === "reject" ? route.code : "collection_unknown",
+      code: "setting_not_synced",
     };
-  if (route.verdict === "record")
-    throw new Error("push: a record classification for a setting target");
   // Rule 6: the catalog's migrations speak for a key before its classification does.
   const migration = resolveKey(m.target.setting, input.migrations);
   if (migration.kind === "dropped")
@@ -138,8 +180,7 @@ export function applyPush(store: SyncStore, input: PushInput): PushOutcome {
         sealedAt !== null &&
         store.getEncryptionSince() === undefined &&
         result.status === "ok" &&
-        input.classified[i]?.verdict === "accept" &&
-        input.classified[i]?.sealed
+        isSealed(input.classified[i])
       )
         store.setEncryptionSince(sealedAt);
       if (shape.request.atomic && result.status !== "ok")

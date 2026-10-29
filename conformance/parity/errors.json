@@ -419,6 +419,12 @@
       "description": "A per-mutation result, not an HTTP status: the record target names a collection the catalog does not declare (WIRE-CONTRACT-V4 §13.2, §13.3, §13.9; U-09). Emitted by the push engine for any record target until U-09 adds collections."
     },
     {
+      "code": "entitlement_required",
+      "kind": "wire",
+      "service": "sync",
+      "description": "A per-mutation result, or 403 for files: the record target's collection declares `requires` and the anchor licence does not grant it; a `delete` never answers it (WIRE-CONTRACT-V5 §13.3, §13.8.4, §13.9; U-09, U-10)."
+    },
+    {
       "code": "quota_exceeded",
       "kind": "wire",
       "service": "sync",

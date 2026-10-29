@@ -285,6 +285,10 @@
       "title": "Raccolta sconosciuta",
       "message": "Questa raccolta non è disponibile."
     },
+    "entitlement_required": {
+      "title": "Non incluso nella tua licenza",
+      "message": "La tua licenza non lo include. Passa a un piano superiore e riprova."
+    },
     "quota_exceeded": {
       "title": "Spazio pieno",
       "message": "Lo spazio sincronizzato è pieno. Libera spazio e riprova."

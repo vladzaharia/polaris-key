@@ -11,7 +11,12 @@
 import type { SyncJson } from "@polaris-key/protocol/sync";
 import { budgetBytes } from "./sealed.js";
 import { liveMembers } from "./store.js";
-import type { StoredSetting, StoreUsage, SyncStore } from "./types.js";
+import type {
+  StoredRecord,
+  StoredSetting,
+  StoreUsage,
+  SyncStore,
+} from "./types.js";
 
 const byteOrder = (a: string, b: string): number =>
   a < b ? -1 : a > b ? 1 : 0;
@@ -94,4 +99,48 @@ export function account(
     bytes: move(u.bytes, after.bytes - before.bytes),
   };
   store.setUsage(out);
+}
+
+export interface RecordCost {
+  /** 1 for a live record, else 0. */
+  records: number;
+  /** The stored bytes: what the quota charges. */
+  bytes: number;
+}
+
+/**
+ * What a record costs: the collection and id (a `prefix.*` collection's suffix is person-chosen,
+ * so it is charged too) plus its content as stored: the value's canonical JSON (the quoted `ct` in
+ * E2E mode), each live field's name and value, each element once however many tags it has. A
+ * tombstone or no row costs nothing.
+ */
+export function recordCost(row: StoredRecord | undefined): RecordCost {
+  if (!row || row.deleted) return { records: 0, bytes: 0 };
+  let bytes = utf8Length(row.collection) + utf8Length(row.id);
+  if (row.kind === "fields") {
+    for (const [name, cell] of row.fields ?? [])
+      if (!cell.removed) bytes += utf8Length(name) + valueBytes(cell.value);
+  } else if (row.kind === "set") {
+    for (const el of row.elements?.values() ?? [])
+      bytes += valueBytes(el.element);
+  } else bytes += valueBytes(row.value);
+  return { records: 1, bytes };
+}
+
+/** Moves the store's totals by the change from `prev` to `next` (a record). */
+export function accountRecord(
+  store: SyncStore,
+  prev: StoredRecord | undefined,
+  next: StoredRecord,
+): void {
+  const before = recordCost(prev);
+  const after = recordCost(next);
+  const u = store.getUsage();
+  const move = (n: number, d: number) => Math.max(0, n + d);
+  store.setUsage({
+    ...u,
+    records: move(u.records, after.records - before.records),
+    recordBytes: move(u.recordBytes, after.bytes - before.bytes),
+    bytes: move(u.bytes, after.bytes - before.bytes),
+  });
 }

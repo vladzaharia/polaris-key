@@ -285,6 +285,10 @@
       "title": "未知的集合",
       "message": "此集合不可用。"
     },
+    "entitlement_required": {
+      "title": "不在你的许可证内",
+      "message": "你的许可证不包含此项。请升级后再试。"
+    },
     "quota_exceeded": {
       "title": "存储空间已满",
       "message": "你的同步存储空间已满。请释放一些空间后再试。"

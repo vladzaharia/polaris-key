@@ -193,6 +193,13 @@ export interface SyncStore {
   ): StoredRecord[];
   /** How many live (not deleted) records the concrete `collection` holds. */
   liveRecordCount(collection: string): number;
+  /** How many record tombstones the store keeps: in the concrete `collection`, or all of them. */
+  recordTombstoneCount(collection?: string): number;
+  /**
+   * The `limit` oldest record tombstones by clock (HLC, then clientId), in the concrete
+   * `collection` or across all of them. The forgetting bounds read this way (§13.3).
+   */
+  oldestRecordTombstones(limit: number, collection?: string): StoredRecord[];
   /** No row at all, tombstones and records included. */
   isEmpty(): boolean;
   /** The object has held a live setting or record at some point (a tombstone alone does not count). */

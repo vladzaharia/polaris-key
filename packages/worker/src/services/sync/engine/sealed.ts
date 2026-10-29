@@ -57,6 +57,20 @@ export function envelopeBytes(ct: unknown): number | null {
   return byte0 === 1 ? n : null;
 }
 
+/**
+ * The key id of a well-shaped envelope: the lowercase hex of its bytes 1 to 16 (§13.10.4). The
+ * first 24 characters decode to exactly 18 bytes, so no padding is needed. `undefined` for a
+ * string too short to hold one (the shape check refuses those first).
+ */
+export function envelopeKid(ct: string): string | undefined {
+  if (ct.length < 24) return undefined;
+  const bin = atob(ct.slice(0, 24).replace(/-/g, "+").replace(/_/g, "/"));
+  let out = "";
+  for (let i = 1; i <= 16; i++)
+    out += bin.charCodeAt(i).toString(16).padStart(2, "0");
+  return out;
+}
+
 /** What a budget charges for a sealed value: the envelope less its fixed overhead. */
 export const budgetBytes = (ct: string): number =>
   Math.max(0, (decodedLength(ct.length) ?? 0) - SYNC_E2E_OVERHEAD_BYTES);

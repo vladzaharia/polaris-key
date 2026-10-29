@@ -25,12 +25,10 @@
  */
 
 import type { SyncJson, SyncScope } from "@polaris-key/protocol/sync";
+import { floorOf, RecordTables, settle, type Row } from "./sqlRecords.js";
 import type {
   ClientRecord,
-  FieldCell,
   MemberCell,
-  RecordKind,
-  SetElement,
   StoredRecord,
   StoredSetting,
   StoreUsage,
@@ -94,6 +92,7 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        PRIMARY KEY (collection, id)) WITHOUT ROWID`,
     `CREATE INDEX IF NOT EXISTS records_version ON records (version)`,
     `CREATE INDEX IF NOT EXISTS records_live ON records (collection, deleted)`,
+    `CREATE INDEX IF NOT EXISTS records_dead ON records (deleted, hlc, client_id)`,
     `CREATE TABLE IF NOT EXISTS record_fields (
        ord INTEGER PRIMARY KEY AUTOINCREMENT,
        collection TEXT NOT NULL, id TEXT NOT NULL, field TEXT NOT NULL,
@@ -118,8 +117,6 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
 if (MIGRATIONS.length !== SCHEMA_VERSION)
   throw new Error("sqlStore: SCHEMA_VERSION and MIGRATIONS disagree");
 
-type Row = Record<string, SqlStorageValue>;
-
 interface SettingRow extends Row {
   scope: string;
   family: string;
@@ -141,38 +138,12 @@ interface MemberRow extends Row {
   client_id: string;
 }
 
-interface RecordRow extends Row {
-  collection: string;
-  id: string;
-  version: number;
-  hlc: string;
-  client_id: string;
-  value_json: string;
-  kind: string;
-  deleted: number;
-  floor_hlc: string | null;
-  floor_client: string | null;
-  kid: string | null;
-}
-
-interface FieldRow extends Row {
-  field: string;
-  value_json: string;
-  removed: number;
-  hlc: string;
-  client_id: string;
-  kid: string | null;
-}
-
-interface ElementRow extends Row {
-  element_key: string;
-  element_json: string;
-  add_tag: number;
-  kid: string | null;
-}
-
 export class SqlStore implements SyncStore {
   private schema: "unknown" | "absent" | "ready" = "unknown";
+  private readonly recordTables = new RecordTables({
+    all: (q, ...b) => this.all(q, ...b),
+    run: (q, ...b) => this.run(q, ...b),
+  });
 
   constructor(
     private readonly h: SqlHandle,
@@ -507,16 +478,7 @@ export class SqlStore implements SyncStore {
     const members = row.members ?? new Map<string, MemberCell>();
     for (const [name, cell] of members) {
       const json = JSON.stringify(cell.value);
-      const old = have.get(name);
-      have.delete(name);
-      if (
-        old &&
-        old.value_json === json &&
-        (old.removed === 1) === cell.removed &&
-        old.hlc === cell.stamp.hlc &&
-        old.client_id === cell.stamp.clientId
-      )
-        continue;
+      if (settle(have, name, json, cell)) continue;
       this.run(
         `INSERT INTO setting_members
            (scope, family, key, member, value_json, removed, hlc, client_id)
@@ -642,152 +604,23 @@ export class SqlStore implements SyncStore {
     return this.all(`SELECT 1 AS x FROM settings LIMIT 1`).length > 0;
   }
 
-  // ---- records (U-09) ----------------------------------------------------------------------
+  // ---- records (U-09; the rows are `sqlRecords.ts`'s) ---------------------------------------
 
   getRecord(collection: string, id: string): StoredRecord | undefined {
     if (!this.hasSchema()) return undefined;
-    const r = this.all<RecordRow>(
-      `SELECT * FROM records WHERE collection = ? AND id = ?`,
-      collection,
-      id,
-    )[0];
-    return r ? this.hydrateRecord(r) : undefined;
+    return this.recordTables.read(collection, id);
   }
 
-  /**
-   * Writes the record: one upsert of the row, then its cells (`merge`) or tagged elements
-   * (`union`) as a diff against what is stored, so a mutation writes O(mutations) rows however
-   * many cells the record holds (the rule `putSetting` keeps).
-   */
   putRecord(row: StoredRecord): void {
     this.requireWritable();
     if (!row.deleted && this.getMeta("held_data") !== "1")
       this.setMeta("held_data", "1");
-    this.run(
-      `INSERT INTO records
-         (collection, id, version, hlc, client_id, value_json, kind, deleted, floor_hlc, floor_client, kid)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT (collection, id) DO UPDATE SET
-         version = excluded.version, hlc = excluded.hlc, client_id = excluded.client_id,
-         value_json = excluded.value_json, kind = excluded.kind, deleted = excluded.deleted,
-         floor_hlc = excluded.floor_hlc, floor_client = excluded.floor_client, kid = excluded.kid`,
-      row.collection,
-      row.id,
-      row.version,
-      row.stamp.hlc,
-      row.stamp.clientId,
-      JSON.stringify(row.value),
-      row.kind,
-      row.deleted ? 1 : 0,
-      row.floor?.hlc ?? null,
-      row.floor?.clientId ?? null,
-      row.kid ?? null,
-    );
-    this.writeFields(row);
-    this.writeElements(row);
-  }
-
-  private writeFields(row: StoredRecord): void {
-    const have = new Map<string, FieldRow>();
-    for (const f of this.all<FieldRow>(
-      `SELECT field, value_json, removed, hlc, client_id, kid FROM record_fields
-         WHERE collection = ? AND id = ?`,
-      row.collection,
-      row.id,
-    ))
-      have.set(f.field, f);
-    for (const [name, cell] of row.fields ?? new Map<string, FieldCell>()) {
-      const json = JSON.stringify(cell.value);
-      const old = have.get(name);
-      have.delete(name);
-      if (
-        old &&
-        old.value_json === json &&
-        (old.removed === 1) === cell.removed &&
-        old.hlc === cell.stamp.hlc &&
-        old.client_id === cell.stamp.clientId &&
-        (old.kid ?? null) === (cell.kid ?? null)
-      )
-        continue;
-      this.run(
-        `INSERT INTO record_fields
-           (collection, id, field, value_json, removed, hlc, client_id, kid)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT (collection, id, field) DO UPDATE SET
-           value_json = excluded.value_json, removed = excluded.removed,
-           hlc = excluded.hlc, client_id = excluded.client_id, kid = excluded.kid`,
-        row.collection,
-        row.id,
-        name,
-        json,
-        cell.removed ? 1 : 0,
-        cell.stamp.hlc,
-        cell.stamp.clientId,
-        cell.kid ?? null,
-      );
-    }
-    for (const name of have.keys())
-      this.run(
-        `DELETE FROM record_fields WHERE collection = ? AND id = ? AND field = ?`,
-        row.collection,
-        row.id,
-        name,
-      );
-  }
-
-  private writeElements(row: StoredRecord): void {
-    const have = new Map<string, ElementRow>();
-    for (const e of this.all<ElementRow>(
-      `SELECT element_key, element_json, add_tag, kid FROM set_elements
-         WHERE collection = ? AND id = ?`,
-      row.collection,
-      row.id,
-    ))
-      have.set(`${e.element_key}\u0000${e.add_tag}`, e);
-    for (const [key, el] of row.elements ?? new Map<string, SetElement>()) {
-      const json = JSON.stringify(el.element);
-      for (const tag of el.tags) {
-        const ident = `${key}\u0000${tag}`;
-        const old = have.get(ident);
-        have.delete(ident);
-        if (
-          old &&
-          old.element_json === json &&
-          (old.kid ?? null) === (el.kid ?? null)
-        )
-          continue;
-        this.run(
-          `INSERT OR REPLACE INTO set_elements
-             (collection, id, element_key, element_json, add_tag, kid)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          row.collection,
-          row.id,
-          key,
-          json,
-          tag,
-          el.kid ?? null,
-        );
-      }
-    }
-    for (const e of have.values())
-      this.run(
-        `DELETE FROM set_elements
-           WHERE collection = ? AND id = ? AND element_key = ? AND add_tag = ?`,
-        row.collection,
-        row.id,
-        e.element_key,
-        e.add_tag,
-      );
+    this.recordTables.write(row);
   }
 
   deleteRecordRow(collection: string, id: string): void {
     this.requireWritable();
-    for (const table of ["records", "record_fields", "set_elements"])
-      this.run(
-        `DELETE FROM ${table} WHERE collection = ? AND id = ?`,
-        collection,
-        id,
-      );
+    this.recordTables.remove(collection, id);
   }
 
   recordsPageAfter(seq: number, limit: number): StoredRecord[] {
@@ -800,74 +633,22 @@ export class SqlStore implements SyncStore {
     limit: number,
   ): StoredRecord[] {
     if (!this.hasSchema()) return [];
-    return this.all<RecordRow>(
-      `SELECT * FROM records WHERE version > ? AND version <= ?
-         ORDER BY version, collection, id LIMIT ?`,
-      after,
-      through,
-      limit,
-    ).map((r) => this.hydrateRecord(r));
+    return this.recordTables.page(after, through, limit);
   }
 
   liveRecordCount(collection: string): number {
     if (!this.hasSchema()) return 0;
-    return Number(
-      this.all<{ n: number }>(
-        `SELECT COUNT(*) AS n FROM records WHERE collection = ? AND deleted = 0`,
-        collection,
-      )[0]?.n ?? 0,
-    );
+    return this.recordTables.liveCount(collection);
   }
 
-  private hydrateRecord(r: RecordRow): StoredRecord {
-    const out: StoredRecord = {
-      collection: r.collection,
-      id: r.id,
-      version: r.version,
-      stamp: { hlc: r.hlc, clientId: r.client_id },
-      deleted: r.deleted === 1,
-      kind: r.kind as RecordKind,
-      value: JSON.parse(r.value_json) as SyncJson,
-    };
-    if (r.floor_hlc !== null && r.floor_client !== null)
-      out.floor = { hlc: r.floor_hlc, clientId: r.floor_client };
-    if (r.kid !== null) out.kid = r.kid;
-    if (r.kind === "fields") {
-      const fields = new Map<string, FieldCell>();
-      for (const f of this.all<FieldRow>(
-        `SELECT field, value_json, removed, hlc, client_id, kid FROM record_fields
-           WHERE collection = ? AND id = ? ORDER BY ord`,
-        r.collection,
-        r.id,
-      ))
-        fields.set(f.field, {
-          value: JSON.parse(f.value_json) as SyncJson,
-          removed: f.removed === 1,
-          stamp: { hlc: f.hlc, clientId: f.client_id },
-          ...(f.kid !== null ? { kid: f.kid } : {}),
-        });
-      out.fields = fields;
-    } else if (r.kind === "set") {
-      // By add tag, so the map lists elements in the order of their first surviving add.
-      const elements = new Map<string, SetElement>();
-      for (const e of this.all<ElementRow>(
-        `SELECT element_key, element_json, add_tag, kid FROM set_elements
-           WHERE collection = ? AND id = ? ORDER BY add_tag, element_key`,
-        r.collection,
-        r.id,
-      )) {
-        const have = elements.get(e.element_key);
-        if (have) have.tags.push(e.add_tag);
-        else
-          elements.set(e.element_key, {
-            element: JSON.parse(e.element_json) as SyncJson,
-            tags: [e.add_tag],
-            ...(e.kid !== null ? { kid: e.kid } : {}),
-          });
-      }
-      out.elements = elements;
-    }
-    return out;
+  recordTombstoneCount(collection?: string): number {
+    if (!this.hasSchema()) return 0;
+    return this.recordTables.tombstoneCount(collection);
+  }
+
+  oldestRecordTombstones(limit: number, collection?: string): StoredRecord[] {
+    if (!this.hasSchema()) return [];
+    return this.recordTables.oldestTombstones(limit, collection);
   }
 
   private hydrate(r: SettingRow, deleted: boolean): StoredSetting {
@@ -880,8 +661,8 @@ export class SqlStore implements SyncStore {
       deleted,
       value: JSON.parse(r.value_json) as SyncJson,
     };
-    if (r.floor_hlc !== null && r.floor_client !== null)
-      out.floor = { hlc: r.floor_hlc, clientId: r.floor_client };
+    const floor = floorOf(r);
+    if (floor) out.floor = floor;
     if (r.is_merge) {
       const members = new Map<string, MemberCell>();
       for (const m of this.all<MemberRow>(

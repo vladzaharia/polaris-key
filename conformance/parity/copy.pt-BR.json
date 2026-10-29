@@ -285,6 +285,10 @@
       "title": "Coleção desconhecida",
       "message": "Esta coleção não está disponível."
     },
+    "entitlement_required": {
+      "title": "Não incluído na sua licença",
+      "message": "Sua licença não inclui isso. Faça o upgrade e tente de novo."
+    },
     "quota_exceeded": {
       "title": "Armazenamento cheio",
       "message": "Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo."

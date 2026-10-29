@@ -1097,6 +1097,8 @@
   "core.codes.setting_not_synced.message": "この設定はアカウントと同期されません。",
   "core.codes.collection_unknown.title": "不明なコレクション",
   "core.codes.collection_unknown.message": "このコレクションは利用できません。",
+  "core.codes.entitlement_required.title": "ライセンスに含まれていません",
+  "core.codes.entitlement_required.message": "お使いのライセンスには含まれていません。アップグレードしてから、もう一度お試しください。",
   "core.codes.quota_exceeded.title": "容量がいっぱいです",
   "core.codes.quota_exceeded.message": "同期用の容量がいっぱいです。空きを作ってから、もう一度お試しください。",
   "core.codes.writes_paused.title": "同期を一時停止中",
