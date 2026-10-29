@@ -11,6 +11,7 @@ import { isTitleKey, type Layout } from "./layout.js";
 import { desktopStylesCss, stylesCss, webStylesCss } from "./styles.js";
 
 export {
+  HOLDER_LAYOUTS,
   KIT_LAYOUTS,
   LAYOUTS,
   SYNC_LAYOUTS,

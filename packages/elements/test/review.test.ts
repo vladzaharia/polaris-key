@@ -24,6 +24,7 @@ import {
 } from "../src/index.js";
 import {
   COMPONENT_FAMILIES,
+  familyRows,
   readMatrix,
   withDefaults,
   type Row,
@@ -109,7 +110,7 @@ const view = (
 describe("no raw placeholder reaches a person", () => {
   for (const family of COMPONENT_FAMILIES)
     it(`${family}: every row draws without a brace`, async () => {
-      for (const r of matrix[family] as Row[]) {
+      for (const r of familyRows(matrix, family)) {
         const tag = TAGS[r.expect.component as keyof typeof TAGS];
         const el = await draw(tag, base(withDefaults(r.input, defaults)));
         const shown =

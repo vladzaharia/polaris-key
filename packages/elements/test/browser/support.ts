@@ -61,9 +61,27 @@ export async function axeViolations(
 
 /** The page the suites draw on: the brand fonts and the fixture product (Tidewater Studio, teal,
  *  by Harbor Audio). */
+/** `locker.activate.addFailed` is in the portal's copy table only (reported, UK-42.7): the failed
+ *  state's line is given here, as the catalog words it, so the state renders until the key moves
+ *  into the kit catalog. */
+export const HOLDER_COPY = {
+  en: {
+    "locker.activate.addFailed":
+      "Couldn't add this license. Try again in a moment.",
+  },
+};
+
+/** The `holders` family's rows this kit draws: the two screens, the sign-in form's own steps and
+ *  the settings row (UK-42.8). */
+export const isHolderScreen = (r: { expect: { component: string } }): boolean =>
+  ["ActivateDone", "AddToAccount", "SignIn", "AccountAndLicense"].includes(
+    r.expect.component,
+  );
+
 export function fixtureTheme(fonts: string): void {
   PolarisKey.fonts(fonts);
   PolarisKey.theme({
+    copy: HOLDER_COPY,
     product: {
       name: "Tidewater Studio",
       developer: "Harbor Audio",
@@ -72,4 +90,35 @@ export function fixtureTheme(fonts: string): void {
     iconSrc: ICON,
   });
   document.body.style.margin = "0";
+}
+
+/** The two rows the flows run at (UI-KITS §7.1): a phone and a desktop window. */
+export const SIZES = [
+  { label: "390", width: 390, height: 844 },
+  { label: "1440", width: 1440, height: 900 },
+] as const;
+export const SCHEMES = ["dark", "light"] as const;
+
+/** Let an element (and the sign-in form it may draw) finish drawing and animating: `until` ends
+ *  the wait early once it holds, after a few frames. */
+export async function settle(
+  el: HTMLElement & { updateComplete: Promise<unknown> },
+  until: () => boolean = () => true,
+): Promise<void> {
+  for (let i = 0; i < 60 && (i < 3 || !until()); i++) {
+    await new Promise((r) => setTimeout(r, 20));
+    await el.updateComplete;
+  }
+  await document.fonts.ready;
+  await new Promise((r) =>
+    requestAnimationFrame(() => requestAnimationFrame(r)),
+  );
+  const root = el.shadowRoot;
+  const nested = root?.querySelector<HTMLElement>("pk-sign-in");
+  const running = [
+    ...document.getAnimations(),
+    ...(root?.getAnimations() ?? []),
+    ...(nested?.shadowRoot?.getAnimations() ?? []),
+  ].filter((a) => a.effect?.getTiming().iterations !== Infinity);
+  await Promise.allSettled(running.map((a) => a.finished));
 }

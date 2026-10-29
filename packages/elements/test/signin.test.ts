@@ -13,6 +13,14 @@ import type {
   UiInput,
 } from "@polaris-key/ui-core";
 
+import { FORM_ORDER } from "../src/form.js";
+import {
+  EMAIL,
+  fakeHolders,
+  KEY,
+  NAME,
+  type FakeHolders,
+} from "./holdersFixtures.js";
 import { formStep, type PkSignIn } from "../src/index.js";
 import {
   readMatrix,
@@ -245,5 +253,181 @@ describe("live: the form drives the SDK primitives", () => {
     );
     expect(el.view.state).toBe("done");
     expect(el.shadowRoot!.querySelector(".success")).not.toBeNull();
+  });
+});
+
+describe("the form's steps after a key with no account (UK-42.5)", () => {
+  it("key-done, attach and added travel forward from the key, before done", () => {
+    const at = (s: string) => FORM_ORDER.indexOf(s);
+    expect(at("key")).toBeGreaterThan(-1);
+    expect(at("key-done")).toBeGreaterThan(at("key"));
+    expect(at("attach")).toBeGreaterThan(at("key-done"));
+    expect(at("added")).toBeGreaterThan(at("attach"));
+    expect(at("done")).toBeGreaterThan(at("added"));
+  });
+
+  it("formStep draws the form's own view for each", () => {
+    for (const step of ["key-done", "attach", "added"] as const) {
+      const i = {
+        platform: { os: "macos", formFactor: "mac" },
+        services: ["license", "identity"],
+        signIn: {
+          presentation: "inline",
+          replace: "inline",
+          channel: "browser",
+          step,
+        },
+        activateDone: {},
+        addToAccount: { step: "form" },
+      } as UiInput;
+      const f = formStep(i);
+      expect(f.form.state).toBe(step);
+      expect(f.body).toBe(f.form);
+    }
+  });
+});
+
+describe("live: a key with no account, then Add your name and email (UK-42.8)", () => {
+  async function atKeyDone(f: FakeHolders, extra: Partial<PkSignIn> = {}) {
+    const base = input("SignIn/methods: web");
+    delete base.signIn;
+    const el = await draw("pk-sign-in", {
+      input: {
+        ...base,
+        services: ["license", "identity"],
+      },
+      primitives: f.primitives,
+      ...extra,
+    });
+    await el.signIn!.submitKey(KEY);
+    await flush(el);
+    return el;
+  }
+
+  const press = async (el: PkSignIn, key: string) => {
+    el.shadowRoot!.querySelector<HTMLElement>(`[data-key="${key}"]`)!.click();
+    await flush(el);
+  };
+  const type = (el: PkSignIn, label: string, value: string) => {
+    el.shadowRoot!.querySelector<HTMLInputElement>(
+      `[data-key="${label}"]`,
+    )!.value = value;
+  };
+
+  it("key-done draws ActivateDone's body; the key is nowhere in the input", async () => {
+    const f = fakeHolders();
+    const el = await atKeyDone(f);
+    expect(el.view.state).toBe("key-done");
+    const root = el.shadowRoot!;
+    expect(
+      root.querySelector('[data-key="activate.recommend.action"]'),
+    ).not.toBeNull();
+    expect(root.querySelector('[data-key="signin.done.start"]')).not.toBeNull();
+    expect(JSON.stringify(el.signIn!.snapshot)).not.toContain(KEY);
+    expect(JSON.stringify(el.input ?? {})).not.toContain(KEY);
+  });
+
+  it("Add your name and email: the fields leave only in Continue, the hints carry them, attach is previewed first", async () => {
+    const f = fakeHolders();
+    const el = await atKeyDone(f);
+    const seen: Array<Record<string, unknown>> = [];
+    el.addEventListener("pk-action", (e) =>
+      seen.push((e as CustomEvent).detail),
+    );
+    await press(el, "activate.recommend.action");
+    expect(el.view.state).toBe("attach");
+    expect(
+      el.shadowRoot!.querySelector('[data-key="signin.gate.name"]'),
+    ).not.toBeNull();
+    type(el, "signin.gate.name", NAME);
+    type(el, "signin.email.label", EMAIL);
+    await press(el, "common.continue");
+    // Previewed with confirm:false, then written; the form ends on Added.
+    expect(f.attaches).toEqual([false, true]);
+    expect(f.starts[0]).toMatchObject({
+      licenseChoice: "app",
+      hints: { loginHint: EMAIL, nameHint: NAME, purpose: "attach" },
+    });
+    expect(el.view.state).toBe("added");
+    // Name and email are in the Continue detail and nowhere else.
+    const carriers = seen.filter((d) => JSON.stringify(d).includes(EMAIL));
+    expect(carriers.map((d) => d.key)).toEqual(["common.continue"]);
+    expect(JSON.stringify(el.signIn!.snapshot)).not.toContain(EMAIL);
+    expect(JSON.stringify(el.signIn!.snapshot)).not.toContain(KEY);
+    // Start using ends the form, once.
+    let done = 0;
+    el.addEventListener("pk-done", () => done++);
+    await press(el, "signin.done.start");
+    expect(done).toBe(1);
+  });
+
+  it("Cancel on the attach step lets the model go, back to Done with the key still held", async () => {
+    const f = fakeHolders();
+    const el = await atKeyDone(f);
+    await press(el, "activate.recommend.action");
+    type(el, "signin.gate.name", NAME);
+    await press(el, "common.cancel");
+    expect(el.view.state).toBe("key-done");
+    // A new Add starts from empty fields: the old model is gone.
+    await press(el, "activate.recommend.action");
+    expect(
+      el.shadowRoot!.querySelector<HTMLInputElement>(
+        '[data-key="signin.gate.name"]',
+      )!.value,
+    ).toBe("");
+    // Owned, then Cancel: the same way back.
+    f.attach.code = "license_owned";
+    type(el, "signin.gate.name", NAME);
+    type(el, "signin.email.label", EMAIL);
+    await press(el, "common.continue");
+    await press(el, "common.cancel");
+    expect(el.view.state).toBe("key-done");
+    // Start using drops the key.
+    await press(el, "signin.done.start");
+    expect(el.signIn!.snapshot.session.step).toBeUndefined();
+  });
+
+  it("owned: a second Sign in press does nothing; a preview mismatch goes to email-bound", async () => {
+    const f = fakeHolders();
+    const el = await atKeyDone(f);
+    await press(el, "activate.recommend.action");
+    f.attach.code = "license_owned";
+    type(el, "signin.gate.name", NAME);
+    type(el, "signin.email.label", EMAIL);
+    await press(el, "common.continue");
+    expect(
+      el.shadowRoot!.querySelector('[data-key="signin.key.ownedSignIn"]'),
+    ).not.toBeNull();
+    // Both presses land before the first sign-in has started.
+    const button = el.shadowRoot!.querySelector<HTMLElement>(
+      '[data-key="signin.key.ownedSignIn"]',
+    )!;
+    const before = f.starts.length;
+    button.click();
+    button.click();
+    await flush(el);
+    expect(f.starts.length - before).toBe(1);
+
+    const g = fakeHolders();
+    g.attach.code = "license_email_bound";
+    const el2 = await atKeyDone(g);
+    await press(el2, "activate.recommend.action");
+    type(el2, "signin.gate.name", NAME);
+    type(el2, "signin.email.label", EMAIL);
+    await press(el2, "common.continue");
+    expect(g.attaches).toEqual([false]);
+    expect(
+      el2.shadowRoot!.querySelector('[data-key="activate.otherEmail.verify"]'),
+    ).not.toBeNull();
+  });
+
+  it("a sheet closed on a holder step drops the key and the model", async () => {
+    const f = fakeHolders();
+    const el = await atKeyDone(f, { presentation: "sheet", open: true });
+    await press(el, "activate.recommend.action");
+    el.close();
+    await flush(el);
+    expect(el.signIn!.snapshot.session.step).toBeUndefined();
+    expect(JSON.stringify(el.signIn!.snapshot)).not.toContain(KEY);
   });
 });

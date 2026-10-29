@@ -12,7 +12,7 @@ import { commands, page, userEvent } from "vitest/browser";
 import type { ComponentName, UiInput } from "@polaris-key/ui-core";
 import matrix from "../../../../conformance/corpus/v2/ui-matrix.json" with { type: "json" };
 
-import { axeViolations, fixtureTheme } from "./support.js";
+import { axeViolations, fixtureTheme, isHolderScreen } from "./support.js";
 import { TAGS, type PkElement } from "../../src/index.js";
 import { LAYOUTS } from "../../src/contract.js";
 
@@ -42,6 +42,7 @@ const FAMILIES = [
   "update",
   "settings",
   "paywall",
+  "holders",
 ] as const;
 
 const defaults = (
@@ -72,6 +73,7 @@ const SCENES: Row[] = (() => {
     for (const r of (matrix as unknown as Record<string, Row[]>)[f]!) {
       const id = `${r.expect.component}.${r.expect.state}`;
       if (r.expect.state === "hidden" || seen.has(id)) continue;
+      if (f === "holders" && !isHolderScreen(r)) continue;
       seen.add(id);
       out.push(r);
     }

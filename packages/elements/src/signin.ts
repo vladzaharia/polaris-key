@@ -16,15 +16,20 @@
 
 import { html, nothing, type PropertyValues } from "lit";
 import {
+  AddToAccountModel,
+  driverOf,
   SignInModel,
+  viewOf,
   type AutoOutcome,
   type SignInPrimitives,
+  type UiInput,
   type View,
 } from "@polaris-key/ui-core";
 import { openLink, openManage, safeLink } from "@polaris-key/ui-core/browser";
 import { JOIN_ACCOUNTS_URL } from "@polaris-key/ui-core/browser/sdk/linkOffer.js";
 
 import { PkElement } from "./element.js";
+import { readHolderFields } from "./holderViews.js";
 import { GLYPHS, text, type RenderCtx } from "./render.js";
 import { renderView } from "./views.js";
 import { FORM_ORDER, formStep, type FormInput, type FormStep } from "./form.js";
@@ -77,6 +82,33 @@ function confirmWords(view: View, c: RenderCtx): View {
   };
 }
 
+/** The form's steps after a key with no account (UK-42). */
+const HOLDER_STEPS: ReadonlySet<string> = new Set([
+  "key-done",
+  "attach",
+  "added",
+]);
+
+/** The screen a holder step draws, from the holders' own models: ActivateDone for `key-done`,
+ *  AddToAccount for `attach` and `added`. The form's view (the SignIn state) supplies the step;
+ *  the body is the screen's own, so the form and the standalone elements read the same copy and
+ *  draw the same DOM. */
+function holderBody(view: View, input: UiInput): View {
+  switch (view.state) {
+    case "key-done":
+      return viewOf("ActivateDone", input) as unknown as View;
+    case "attach":
+      return viewOf("AddToAccount", input) as unknown as View;
+    case "added":
+      return viewOf("AddToAccount", {
+        ...input,
+        addToAccount: { ...input.addToAccount, step: "added" },
+      }) as unknown as View;
+    default:
+      return view;
+  }
+}
+
 /**
  * `<pk-sign-in>`: the one sign-in form. With `primitives` it runs the sign-in itself; with only
  * `input` it draws the snapshot it is given and reports every control as `pk-action`.
@@ -113,6 +145,11 @@ export class PkSignIn extends PkElement {
   /** The tier of the license the person chose, for the Done line ("Pro license"). */
   private pickedTier: string | undefined;
   private doneSent = false;
+  /** AddToAccount's model while the form is on `attach`/`added`. Name and email live only in it. */
+  private addModel: AddToAccountModel | null = null;
+  private stopAdd: (() => void) | null = null;
+  /** An owned-sign-in press is starting its sign-in: a second press does nothing. */
+  private ownedBusy = false;
   private opener: HTMLElement | null = null;
   private pushed = false;
   private lastStep: string | null = null;
@@ -148,6 +185,9 @@ export class PkSignIn extends PkElement {
   }): Promise<void> {
     const m = this.formModel!;
     const s = m.snapshot;
+    const holder = s.session.step;
+    if (holder && HOLDER_STEPS.has(holder) && (await this.driveHolder(d)))
+      return;
     switch (d.key) {
       case "signin.provider.continue":
         // The provider's account chooser first, then what the ladder found (this press lifts a
@@ -271,6 +311,104 @@ export class PkSignIn extends PkElement {
     }
   }
 
+  /** The controls of the steps after a key with no account (UK-42). True when one was answered.
+   *  Security (SEC-UK42): Cancel lets the model and its sign-in go; a second owned-sign-in press
+   *  is ignored; the key lives in the model only and is dropped by Done, Cancel and Start using;
+   *  name and email arrive only in the Continue / Try again detail. */
+  private async driveHolder(d: {
+    key: string;
+    [k: string]: unknown;
+  }): Promise<boolean> {
+    const m = this.formModel!;
+    const step = m.snapshot.session.step;
+    switch (d.key) {
+      case "activate.recommend.action":
+        // With Identity off there is no account to add to: the host answers (the portal).
+        if (step !== "key-done" || !this.identityOn()) return true;
+        this.openAttach();
+        return true;
+      case "activate.recommend.skip":
+      case "signin.done.start":
+        this.dropAdd();
+        m.done();
+        this.finish();
+        if (this.sheet) this.close();
+        else if (this.embedded) this.leave();
+        return true;
+      case "activate.waitingSignIn":
+        if (step !== "key-done") return true;
+        await m.start({ channel: "browser" });
+        return true;
+      case "common.continue":
+      case "common.tryAgain": {
+        if (step !== "attach" || !this.addModel) return true;
+        if (typeof d.name === "string") this.addModel.setField("name", d.name);
+        if (typeof d.email === "string")
+          this.addModel.setField("email", d.email);
+        await (d.key === "common.continue"
+          ? this.addModel.submit()
+          : this.addModel.tryAgain());
+        return true;
+      }
+      case "activate.otherEmail.verify":
+      case "signin.auto.confirm.other":
+        if (step === "attach") await this.addModel?.cancel();
+        return true;
+      case "signin.key.ownedSignIn":
+        // The license is in an account already: sign in to it. One press at a time.
+        if (step !== "attach" || this.ownedBusy) return true;
+        this.ownedBusy = true;
+        this.dropAdd();
+        try {
+          await m.start({ channel: "browser" });
+        } finally {
+          this.ownedBusy = false;
+        }
+        return true;
+      case "common.cancel":
+      case "common.back":
+        // Back to ActivateDone: the model and its sign-in session are let go; the key stays held.
+        if (step === "attach" || step === "added") {
+          this.dropAdd();
+          m.closeAttach();
+        }
+        return true;
+    }
+    return false;
+  }
+
+  private identityOn(): boolean {
+    const services = this.baseInput().services;
+    return !services || services.includes("identity");
+  }
+
+  /** ActivateDone's card: AddToAccount opens in the form, over the form's own primitives. */
+  private openAttach(): void {
+    const m = this.formModel;
+    const p = this.primitives;
+    if (!m || !p || this.addModel) return;
+    const model = new AddToAccountModel({
+      driver: driverOf(p),
+      deviceKind: this.baseInput().activateDone?.deviceKind,
+    });
+    this.addModel = model;
+    this.stopAdd = model.store.subscribe(() => {
+      // Added: the form moves to the added step.
+      if (model.snapshot.step === "added") m.attached();
+      this.requestUpdate();
+    });
+    m.openAttach();
+  }
+
+  /** Let AddToAccount go: its sign-in is cancelled, so approving it later attaches nothing. */
+  private dropAdd(): void {
+    this.stopAdd?.();
+    this.stopAdd = null;
+    const model = this.addModel;
+    this.addModel = null;
+    if (model) void model.cancel().catch(() => undefined);
+  }
+
   /** The row's Replace button after a redraw of its row (focus fell to the page). */
   private refocusRowReplace(id: string | undefined): void {
     const root = this.renderRoot as ShadowRoot;
@@ -333,6 +471,7 @@ export class PkSignIn extends PkElement {
     super.disconnectedCallback();
     window.removeEventListener("focus", this.back);
     document.removeEventListener("visibilitychange", this.back);
+    this.dropAdd();
     this.stopForm?.();
     this.stopForm = null;
     if (this.countTimer !== null) clearInterval(this.countTimer);
@@ -357,6 +496,7 @@ export class PkSignIn extends PkElement {
   }
 
   private restartForm(): void {
+    this.dropAdd();
     this.stopForm?.();
     this.formModel?.dispose();
     this.formModel = null;
@@ -368,7 +508,15 @@ export class PkSignIn extends PkElement {
       base: this.input ?? {},
     });
     if (this.seed) this.formModel.presentAuto(this.seed);
-    this.stopForm = this.formModel.subscribe(() => this.requestUpdate());
+    this.stopForm = this.formModel.subscribe(() => {
+      // A key that activated is spent: the typed text does not outlive the step that took it.
+      const hs = this.formModel?.snapshot.session.step;
+      if (hs && HOLDER_STEPS.has(hs) && this.input?.keyField) {
+        const { keyField: _spent, ...rest } = this.input;
+        this.input = rest;
+      }
+      this.requestUpdate();
+    });
   }
 
   protected override baseInput(): FormInput {
@@ -382,6 +530,19 @@ export class PkSignIn extends PkElement {
         ...(this.replace ? { replace: this.replace } : {}),
       };
     if (this.replacePick !== undefined) base.replacePick = this.replacePick;
+    const hs = this.formModel?.snapshot.session.step;
+    if (hs && HOLDER_STEPS.has(hs)) {
+      // The holders' screens read these members; the key is never one of them.
+      // A page is a browser: the lines that name this device say so.
+      base.activateDone = {
+        deviceKind: "browser",
+        ...(base.activateDone ?? {}),
+      };
+      base.addToAccount = this.addModel
+        ? this.addModel.input().addToAccount
+        : { ...(base.addToAccount ?? { step: "form" }) };
+      delete base.keyField;
+    }
     // The code step counts down on its own (at 0:00 the view goes to expired, DL14).
     const dc = base.deviceCode;
     if (dc?.secondsLeft !== undefined && dc.phase === "waiting") {
@@ -431,6 +592,13 @@ export class PkSignIn extends PkElement {
         devices[0];
       return pick ? { deviceId: pick.id } : {};
     }
+    // Add your name and email: the fields are read at the press and leave in this action only.
+    if (
+      this.formModel?.snapshot.session.step === "attach" &&
+      (key === "common.continue" || key === "common.tryAgain")
+    ) {
+      return readHolderFields(this.renderRoot);
+    }
     if (key === "signin.choice.continue") {
       const id = input.selected ?? input.choices?.preselected ?? null;
       return id ? { licenseId: id } : {};
@@ -459,7 +627,7 @@ export class PkSignIn extends PkElement {
     const step = formStep(c.input);
     const body = renderView({
       ...c,
-      view: confirmWords(step.body, c),
+      view: confirmWords(holderBody(step.body, c.input), c),
       form: true,
     });
     const announce = step.announce.length
@@ -545,7 +713,13 @@ export class PkSignIn extends PkElement {
   close(): void {
     // Idempotent: a host that calls close() inside its pk-close handler must not re-enter.
     if (!this.open) return;
-    if (this.formModel && this.formModel.snapshot.session.outcome !== undefined)
+    this.dropAdd();
+    const hs = this.formModel?.snapshot.session.step;
+    if (hs && HOLDER_STEPS.has(hs)) this.formModel?.done();
+    else if (
+      this.formModel &&
+      this.formModel.snapshot.session.outcome !== undefined
+    )
       void this.formModel.cancel();
     this.open = false;
     // `toast`: a line stays on after the sheet, so the host keeps this element mounted for it.

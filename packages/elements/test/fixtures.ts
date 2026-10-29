@@ -38,7 +38,26 @@ export const COMPONENT_FAMILIES = [
   "settings",
   "paywall",
   "cloudSync",
+  "holders",
 ] as const;
+
+/** A family's rows. `holders` also holds the SignIn and AccountAndLicense rows of UK-42 (the
+ *  sign-in form's own steps and the settings row, UK-42.8). */
+export function familyRows(
+  matrix: Record<string, unknown>,
+  family: (typeof COMPONENT_FAMILIES)[number],
+): Row[] {
+  const rows = matrix[family] as Row[];
+  return family === "holders"
+    ? rows.filter(
+        (r) =>
+          // BLOCKED (reported, UK-42.7): the failed state's `locker.activate.addFailed` is in the
+          // portal's copy table only (PORTAL_NAMESPACES), so no kit table can draw it. Re-enable
+          // when the key moves into the kit catalog.
+          r.name !== "AddToAccount/failed: Try again",
+      )
+    : rows;
+}
 
 export function readMatrix(): Obj & { vocabulary: Obj & { defaults: Obj } } {
   return JSON.parse(

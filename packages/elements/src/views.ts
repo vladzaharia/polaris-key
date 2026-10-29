@@ -25,6 +25,7 @@ import {
 import { copyPending } from "./copy.js";
 import { LAYOUTS, dialogControls, type Layout } from "./layout.js";
 import { platformLabel } from "./platforms.js";
+import { holderContent, isHolder } from "./holderViews.js";
 import { syncContent } from "./syncViews.js";
 import {
   actions,
@@ -88,6 +89,7 @@ const OWN_EXIT: ReadonlySet<string> = new Set([
 function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
   const { view, input } = c;
   const keys = new Set(view.copy);
+  if (isHolder(view.component)) return holderContent(c);
   switch (view.component) {
     case "UnlockSync":
     case "RecoveryCode":
@@ -360,8 +362,10 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
             developer: !heroTitle && view.copy.includes("common.byDeveloper"),
           })
         : nothing}
-      ${view.component === "SignIn" &&
-      (view.state === "done" || view.state === "link-done")
+      ${(view.component === "SignIn" &&
+        (view.state === "done" || view.state === "link-done")) ||
+      (view.component as string) === "ActivateDone" ||
+      ((view.component as string) === "AddToAccount" && view.state === "added")
         ? successMark()
         : view.component === "SignIn" &&
             view.state === "link-offer" &&
@@ -1974,6 +1978,18 @@ function accountRows(c: RenderCtx): TemplateResult | typeof nothing {
   const ok = (k: string) => usable(c, k);
   if (keys.has("account.tier") && ok("account.tier"))
     rows.push(accountRow("account.tier", t("account.tier")));
+  // A floating license (held by the key alone, UK-42): says so, and the one action adds it to an
+  // account. The press is the host's to answer (the gate opens AddToAccount, or the portal).
+  if (keys.has("account.notInAccount"))
+    rows.push(
+      accountRow(
+        "account.notInAccount",
+        t("account.notInAccount"),
+        keys.has("activate.recommend.action")
+          ? button(c, "activate.recommend.action", "secondary")
+          : nothing,
+      ),
+    );
   if (keys.has("account.devices")) {
     const d = i.account?.devices;
     rows.push(

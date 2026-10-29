@@ -20,6 +20,7 @@ import {
 } from "../../ui-qa/src/strings.ts";
 import {
   COMPONENT_FAMILIES,
+  familyRows,
   REPO,
   readMatrix,
   withDefaults,
@@ -79,7 +80,7 @@ function visibleStrings(root: ShadowRoot): string[] {
 const FIXTURE_GAPS = [/\{tier\} · \{term\}$/u];
 
 for (const family of COMPONENT_FAMILIES) {
-  const rows = matrix[family] as Row[];
+  const rows = familyRows(matrix, family);
   describe(`string lint × ${family}`, () => {
     it.each(rows.map((r) => [r.name, r] as const))("%s", async (_n, row) => {
       const tag = TAGS[row.expect.component as ComponentName];

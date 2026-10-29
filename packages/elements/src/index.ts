@@ -34,6 +34,7 @@ export {
 } from "./signin.js";
 export { settingLabel } from "./views.js";
 export {
+  HOLDER_LAYOUTS,
   KIT_LAYOUTS,
   LAYOUTS,
   SYNC_LAYOUTS,

@@ -12,7 +12,14 @@ import type { UiInput } from "@polaris-key/ui-core";
 
 import { PolarisKey, type PkGate, type PkSignIn } from "../../src/index.js";
 import { CONSENT, fakeClient } from "../autoFixtures.js";
-import { axeViolations, fixtureTheme, inputRow } from "./support.js";
+import {
+  axeViolations,
+  fixtureTheme,
+  inputRow,
+  SCHEMES,
+  settle,
+  SIZES,
+} from "./support.js";
 
 declare module "vitest/browser" {
   interface BrowserCommands {
@@ -22,38 +29,12 @@ declare module "vitest/browser" {
 declare const __PKEY_KIT_SHOTS__: string;
 declare const __PKEY_FONTS__: string;
 
-const SIZES = [
-  { label: "390", width: 390, height: 844 },
-  { label: "1440", width: 1440, height: 900 },
-] as const;
-const SCHEMES = ["dark", "light"] as const;
-
 beforeAll(() => {
   fixtureTheme(__PKEY_FONTS__);
 });
 afterEach(() => {
   document.body.replaceChildren();
 });
-
-const settle = async (
-  el: HTMLElement & { updateComplete: Promise<unknown> },
-) => {
-  for (let i = 0; i < 6; i++) {
-    await new Promise((r) => setTimeout(r, 20));
-    await el.updateComplete;
-  }
-  await document.fonts.ready;
-  await new Promise((r) =>
-    requestAnimationFrame(() => requestAnimationFrame(r)),
-  );
-  const root = el.shadowRoot!;
-  const nested = root.querySelector<HTMLElement>("pk-sign-in");
-  await Promise.all(
-    [...root.getAnimations(), ...(nested?.shadowRoot?.getAnimations() ?? [])]
-      .filter((a) => a.effect?.getTiming().iterations !== Infinity)
-      .map((a) => a.finished.catch(() => undefined)),
-  );
-};
 
 interface Scene {
   id: string;

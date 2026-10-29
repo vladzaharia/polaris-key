@@ -5,7 +5,12 @@
 // test/matrix.test.ts holds the table to the catalog's roles (every `button` key a control, every
 // `title` key a heading) for every row of ui-matrix.json.
 
-import type { ComponentName, SyncScreenName } from "@polaris-key/ui-core";
+import type {
+  ComponentName,
+  HolderScreenName,
+  ScreenName,
+  SyncScreenName,
+} from "@polaris-key/ui-core";
 
 import { SYNC_LAYOUTS } from "./syncLayouts.js";
 
@@ -405,6 +410,9 @@ export const KIT_LAYOUTS: Readonly<
     meta: ["common.loading", "part.poweredBy", "part.status.grace"],
     content: [
       "account.tier",
+      // A floating license: the row and its Add action (UK-42).
+      "account.notInAccount",
+      "activate.recommend.action",
       "account.devices",
       "account.cloudSync",
       "account.updates",
@@ -481,9 +489,56 @@ export const KIT_LAYOUTS: Readonly<
   },
 };
 
+/**
+ * The two screens activation without an account adds (UK-42.7). Each draws its own card and fields
+ * in `content`; the one filled control is Start using, Continue or the step's own. The reasons
+ * and the recommendation card are content: a quiet card, never a second primary (DL4).
+ */
+export const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
+  ActivateDone: {
+    kind: "screen",
+    header: "compact",
+    controls: ["signin.done.start", "activate.waitingSignIn"],
+    titles: ["activate.done.title"],
+    content: [
+      "activate.recommend.title",
+      "activate.recommend.badge",
+      "activate.recommend.sync",
+      "activate.recommend.recover",
+      "activate.recommend.devices",
+      "activate.recommend.portal",
+      "activate.recommend.action",
+      "activate.recommend.skip",
+    ],
+  },
+  AddToAccount: {
+    kind: "screen",
+    header: "compact",
+    controls: [
+      "common.continue",
+      "common.tryAgain",
+      "signin.key.ownedSignIn",
+      "activate.otherEmail.verify",
+      "signin.done.start",
+    ],
+    links: ["common.cancel", "signin.auto.confirm.other"],
+    // The form's heading is the action it came from ("Add your name and email").
+    titles: ["activate.recommend.action", "activate.attach.done"],
+    meta: ["common.working"],
+    content: [
+      "signin.gate.name",
+      "signin.email.label",
+      "signin.gate.nameRequired",
+      "signin.email.invalid",
+      "activate.attach.fine",
+      "activate.attach.lede",
+    ],
+  },
+};
+
 /** Every component's layout. */
-export const LAYOUTS: Readonly<Record<ComponentName, Layout>> =
-  /* @__PURE__ */ Object.assign({}, KIT_LAYOUTS, SYNC_LAYOUTS);
+export const LAYOUTS: Readonly<Record<ScreenName, Layout>> =
+  /* @__PURE__ */ Object.assign({}, KIT_LAYOUTS, SYNC_LAYOUTS, HOLDER_LAYOUTS);
 
 /** A key that titles its screen or section. */
 export function isTitleKey(key: string, layout: Layout): boolean {
@@ -493,7 +548,7 @@ export function isTitleKey(key: string, layout: Layout): boolean {
 }
 
 /** The custom element name of each component (UI-KITS.md §4.1: web components prefix `pk-`). */
-export const TAGS: Readonly<Record<ComponentName, string>> = {
+export const TAGS: Readonly<Record<ScreenName, string>> = {
   PolarisKeyGate: "pk-gate",
   Boot: "pk-boot",
   Welcome: "pk-welcome",
@@ -521,6 +576,8 @@ export const TAGS: Readonly<Record<ComponentName, string>> = {
   UnlockSync: "pk-unlock-sync",
   RecoveryCode: "pk-recovery-code",
   RingChange: "pk-ring-change",
+  ActivateDone: "pk-activate-done",
+  AddToAccount: "pk-add-to-account",
 };
 
 // ── Dialog controls (UK-06.6) ────────────────────────────────────────────────────────────────
