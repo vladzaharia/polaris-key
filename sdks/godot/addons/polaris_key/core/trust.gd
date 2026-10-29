@@ -17,6 +17,9 @@ extends RefCounted
 ## clock floor) and the tombstones with their evidence. Nothing here is ever persisted except
 ## compact JWSs.
 
+## Emitted when a manifest change ends, for the waiters on the lock.
+signal lock_released
+
 ## The statuses that keep a published key; anything else (a case variant, a non-string, an
 ## absent status, `revoked`) drops it.
 const LIVE_STATUSES := ["active", "staged", "retired"]
@@ -28,6 +31,8 @@ var _manifest = null
 var _tombstones: Array = []
 ## The `pinRevocations` slice as it should be written: kid -> the revoking manifest's compact JWS.
 var _evidence: Dictionary = {}
+## One manifest change at a time (see `_acquire`).
+var _busy := false
 
 
 func _init(pinned: Dictionary = {}) -> void:
@@ -297,15 +302,54 @@ func load_cached(jws: String, product: String, now: float) -> float:
 ## Install a manifest fetched from the network: usable pins only, freshness on, anti-rollback
 ## against the manifest held in memory. Returns its `issuedAt`, or -1 when it was not accepted
 ## (the previous set stays). A manifest that tombstoned a pin also changed `pin_revocations()`,
-## which the caller writes in the same patch.
+## which the caller writes in the same patch. One manifest change at a time: a refresh and a
+## peer's manifest do not interleave.
 func accept_network(jws: String, product: String, now: float, offload := false) -> float:
+	await _acquire()
 	var opts := {"pinned": _pinned, "tombstones": _tombstones, "expected_aud": product, "now": now, "offload": offload}
 	if _manifest != null:
 		opts["last_trust_issued_at"] = _manifest["issuedAt"]
 	var r := await verify_manifest(jws, opts)
-	if r["doc"] == null:
-		return -1.0
-	return _install(jws, r)
+	var issued := -1.0
+	if r["doc"] != null:
+		issued = _install(jws, r)
+	_release()
+	return issued
+
+
+## Verify a manifest a connected peer pushed (V5 section 15.8) and install it, under the rules the
+## Worker's own manifest meets: signed by a usable pin (the pins minus the tombstones), bound to
+## this product, fresh, and newer than the one held (anti-rollback). A pushed manifest raises the
+## clock floor to its `issuedAt`, as an accepted one from the network does. Answers {applied = true}
+## or {applied = false, reason = "invalid" | "not_newer"}; a refusal changes nothing. The caller
+## persists the manifest and `pin_revocations()` when it was applied. Concurrent pushes apply at
+## most once per `issuedAt`. A coroutine.
+func accept_peer(jws: String, product: String, clock: PKeyClock, offload := false) -> Dictionary:
+	await _acquire()
+	var r := await verify_manifest(jws, {
+		"pinned": _pinned, "tombstones": _tombstones, "expected_aud": product, "now": clock.now(), "offload": offload,
+	})
+	var out := {"applied": false, "reason": "invalid"}
+	if r["doc"] != null:
+		if _manifest != null and float(r["doc"]["issuedAt"]) <= float(_manifest["issuedAt"]):
+			out["reason"] = "not_newer"
+		else:
+			clock.raise(_install(jws, r))
+			out = {"applied": true}
+	_release()
+	return out
+
+
+## The lock behind accept_network and accept_peer: the waiters wake together and the first takes it.
+func _acquire() -> void:
+	while _busy:
+		await lock_released
+	_busy = true
+
+
+func _release() -> void:
+	_busy = false
+	lock_released.emit()
 
 
 func _install(jws: String, r: Dictionary) -> float:
