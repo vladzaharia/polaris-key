@@ -338,8 +338,9 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
             )
             val exchange = JsonObject(
                 mapOf(
-                    "kinds" to JsonArray(listOf(JsonPrimitive("google"), JsonPrimitive("apple"))),
+                    "kinds" to JsonArray(listOf(JsonPrimitive("google"), JsonPrimitive("apple"), JsonPrimitive("pgs"))),
                     "google" to JsonObject(mapOf("serverClientId" to JsonPrimitive("1234-web.apps.googleusercontent.com"))),
+                    "pgs" to JsonObject(mapOf("serverClientId" to JsonPrimitive("5678-pgs.apps.googleusercontent.com"))),
                 ),
             )
             val identity = JsonObject(
