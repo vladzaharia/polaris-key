@@ -1763,7 +1763,7 @@ licence, with no account and no subject. Nothing is signed and no signed documen
    after that check and before the seat claim is refused the same way: the seat claim and the
    key entry in its batch write nothing while the licence is in an account, so no seat is taken
    and no entry is counted. The guard is on the seat claim of `token` always and of
-   `license/activate` while `identity.keyEntryRefusals` is on. It then binds the device
+   `license/activate` and `identity/session/license` while `identity.keyEntryRefusals` is on. It then binds the device
    exactly as `license/activate` binds the same key and `X-PKey-Device`: `bound_by = 'key'`, one
    `browser` key entry (§12.2 rule 1), and the seat, fingerprint and hardware rules unchanged, so
    `device_limit`, `fingerprint_required`, `hardware_mismatch` and `key_entry_limit` come from

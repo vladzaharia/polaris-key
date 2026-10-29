@@ -899,3 +899,56 @@ describe("an owned licence at the seat claim (CORE-SEAT-GUARD, §12.4.2 item 5)"
     ).toEqual({ license_id: a.licenseId, label: "Ada laptop", seat_no: 1 });
   });
 });
+
+describe("an owned licence at the browser key entry's seat claim (CORE-SEAT-GUARD)", () => {
+  async function raced(refusals: boolean) {
+    const product = await setIdentity(true);
+    const { key, licenseId } = await seedLicenseWithKey(db, SLUG, SEATS(5));
+    await setRefusals(refusals);
+    const race = claimRace(db, licenseId);
+    const res = await handleBrowserSessionLicense(
+      new Request(`https://key.plrs.im/${SLUG}/identity/session/license`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key }),
+      }) as unknown as Request,
+      env,
+      race.db,
+      product,
+      NOW,
+    );
+    expect(race.fired()).toBe(1);
+    return { res, licenseId };
+  }
+  const seats = (licenseId: string) =>
+    db.all(
+      "SELECT device_id FROM devices WHERE product = ? AND license_id = ?",
+      SLUG,
+      licenseId,
+    );
+
+  it("refusals on: 403 license_owned with signInUrl, no session, no seat, no counted entry", async () => {
+    const { res, licenseId } = await raced(true);
+    expect(res.status).toBe(403);
+    expect(res.headers.get("set-cookie")).toBeNull();
+    const body = (await res.json()) as { error: string; signInUrl?: string };
+    expect(body.error).toBe("license_owned");
+    expect(body.signInUrl).toBeTruthy();
+    expect(await seats(licenseId)).toEqual([]);
+    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(0);
+    expect(
+      await db.all(
+        "SELECT reason FROM license_refusals WHERE product = ? AND license_id = ?",
+        SLUG,
+        licenseId,
+      ),
+    ).toEqual([{ reason: "license_owned" }]);
+  });
+
+  it("refusals off: unchanged, the session opens and the entry is counted", async () => {
+    const { res, licenseId } = await raced(false);
+    expect(res.status).toBe(201);
+    expect(await seats(licenseId)).toHaveLength(1);
+    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(1);
+  });
+});

@@ -41,7 +41,10 @@ import { type LicenseRow } from "../../core/repo.js";
 import { getKey, getLicense, touchKey } from "../../core/licensing/store.js";
 import { setDeviceStatus } from "../../core/devices/store.js";
 import { deviceMetadata } from "../../core/devices.js";
-import { buildManageUrl } from "../../core/licensing/manageUrl.js";
+import {
+  buildManageUrl,
+  buildSignInUrl,
+} from "../../core/licensing/manageUrl.js";
 import {
   countKeyEntries,
   keyEntryGate,
@@ -188,6 +191,9 @@ export async function createBrowserSession(
    *  `provider: platform` sign-in (see `BrowserSessionRecord`). */
   opts: {
     keyEntry?: { surface: "browser" };
+    /** CORE-SEAT-GUARD: refuse a licence that is in an account at the seat claim (the key route
+     *  sets it with `keyEntryGate`'s `guardOwned`); the answer is `403 license_owned`. */
+    refuseOwnedLicense?: boolean;
     subject?: BrowserSessionSubject | null;
     accountId?: string | null;
   } = {},
@@ -236,8 +242,22 @@ export async function createBrowserSession(
     // I-05: a browser key entry (plans/I-04.md §2.2) never sets the account binding.
     boundBy: "key",
     ...(opts.keyEntry ? { keyEntry: opts.keyEntry } : {}),
+    ...(opts.refuseOwnedLicense ? { refuseOwnedLicense: true } : {}),
   });
   if ("error" in auth) {
+    if (auth.error === "license_owned") {
+      return {
+        ok: false,
+        status: 403,
+        code: ErrorCode.LicenseOwned,
+        message: "license is in an account",
+        ...(req
+          ? {
+              extra: { signInUrl: await buildSignInUrl(env, db, req, product) },
+            }
+          : {}),
+      };
+    }
     if (auth.error === "device_limit") {
       return {
         ok: false,
@@ -664,7 +684,14 @@ export async function handleBrowserSessionLicense(
     license,
     now,
     req,
-    gate.kind === "admit" ? { keyEntry: { surface: "browser" } } : {},
+    gate.kind === "admit"
+      ? {
+          keyEntry: { surface: "browser" },
+          // CORE-SEAT-GUARD: with refusals on, a claim that lands after the read above still
+          // seats nothing on the licence.
+          ...(gate.guardOwned ? { refuseOwnedLicense: true } : {}),
+        }
+      : {},
   );
   if (!session.ok) {
     // PX-W8: the browser key entry's seat refusal carries the refusal link. The OIDC return

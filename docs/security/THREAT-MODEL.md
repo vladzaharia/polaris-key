@@ -11024,9 +11024,7 @@ license_owned` with `signInUrl` and nothing is counted. A licence that is not us
   just before the seat batch). The guard is on the seat claim of `token` always and of
   `license/activate` while `identity.keyEntryRefusals` is on; with it off, `license/activate`
   admits an owned licence outright, as before. The browser-session key entry
-  (`identity/session/license`) still reads the licence once before its seat claim, so a claim that
-  commits in those milliseconds can leave one seat there; both racers hold the key and the owner
-  can remove the device. `token`
+  (`identity/session/license`) is guarded the same way while the switch is on. `token`
   carries no fingerprint, so a `strict` tier always answers `fingerprint_required` there (the code
   is spent), and other modes record the device unverified, as a sign-in at `token` does.
 - **The key stays in the body.** It is never in a URL, the redirect, the request or code record,
