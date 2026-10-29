@@ -52,19 +52,30 @@ export function refAddressBytes(text: string): Uint8Array {
       throw new Error(`mdns reference: not an IPv4 address: ${text}`);
     return Uint8Array.from(parts.map(Number));
   }
-  // IPv6: split at "::", expand each side into 16-bit groups.
+  // IPv6: split at "::", expand each side into 16-bit groups. A dotted IPv4 tail
+  // (`::ffff:192.168.1.20`) stands for the last two groups.
   const gaps = text.split("::");
   if (gaps.length > 2) throw new Error(`mdns reference: bad IPv6: ${text}`);
-  const side = (s: string): number[] =>
-    s === ""
-      ? []
-      : s.split(":").map((g) => {
-          if (!/^[0-9a-fA-F]{1,4}$/.test(g))
-            throw new Error(`mdns reference: bad IPv6 group in ${text}`);
-          return parseInt(g, 16);
-        });
-  const head = side(gaps[0]!);
-  const tail = gaps.length === 2 ? side(gaps[1]!) : [];
+  const side = (s: string, last: boolean): number[] => {
+    if (s === "") return [];
+    const items = s.split(":");
+    const out: number[] = [];
+    items.forEach((g, i) => {
+      if (last && i === items.length - 1 && g.includes(".")) {
+        const o = refAddressBytes(g);
+        if (o.length !== 4)
+          throw new Error(`mdns reference: bad IPv4 tail in ${text}`);
+        out.push((o[0]! << 8) | o[1]!, (o[2]! << 8) | o[3]!);
+        return;
+      }
+      if (!/^[0-9a-fA-F]{1,4}$/.test(g))
+        throw new Error(`mdns reference: bad IPv6 group in ${text}`);
+      out.push(parseInt(g, 16));
+    });
+    return out;
+  };
+  const head = side(gaps[0]!, gaps.length === 1);
+  const tail = gaps.length === 2 ? side(gaps[1]!, true) : [];
   const fill = 8 - head.length - tail.length;
   if ((gaps.length === 2 && fill < 1) || (gaps.length === 1 && fill !== 0))
     throw new Error(`mdns reference: bad IPv6 length: ${text}`);
@@ -309,15 +320,33 @@ export interface RefLearned {
 /** The most addresses one name keeps. */
 export const REF_MAX_ADDRESSES = 4;
 
+/** ASCII fold: `A-Z` to `a-z` and nothing else (a name is not Unicode-folded). */
+export const refFoldName = (name: string): string =>
+  name.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
+
+/** An IPv4-mapped source (`::ffff:a.b.c.d`) is judged as its IPv4 address (§15.4.1). */
+function foldMapped(b: Uint8Array): Uint8Array {
+  return b.length === 16 &&
+    b.subarray(0, 10).every((x) => x === 0) &&
+    b[10] === 0xff &&
+    b[11] === 0xff
+    ? b.slice(12)
+    : b;
+}
+
 /**
  * §15.4 "Addresses": a browser believes an A or AAAA record only when its address equals the
- * packet's source address. A link-local address (`fe80::/10`) takes the arrival interface as its
- * zone. A name keeps at most 4 addresses, of any family, in first-seen order. `prior` is what the
- * browser already held (in first-seen order); the result is the table after this packet.
+ * packet's source address, and that is the only test when it learns (the dial-time check of
+ * §15.4.1 decides what may be dialled). An IPv4-mapped source is judged as its IPv4 address. A
+ * link-local address (`fe80::/10`) takes the arrival interface as its zone. A name keeps at most
+ * 4 addresses, of any family, in first-seen order. An address record with a TTL of 0 removes the
+ * address it names (the same address, with the same zone), under the same equality rule. Names
+ * compare case-insensitively by ASCII fold and are held in lower case. Records are applied in
+ * packet order. `prior` is what the browser already held (in first-seen order); the result is the
+ * table after this packet.
  *
  * The record's section (answer or additional) does not matter, and neither does a goodbye
- * (TTL 0) on a PTR: only address records teach addresses. The text is silent on a TTL-0 address
- * record, so no row pins one.
+ * (TTL 0) on a PTR: only address records teach or remove addresses.
  */
 export function refMdnsLearn(
   packet: Uint8Array,
@@ -325,22 +354,30 @@ export function refMdnsLearn(
   zone: string | null,
   prior: RefLearned[],
 ): RefLearned[] {
-  const table = prior.map((l) => ({ ...l }));
-  const src = refAddressBytes(source);
+  let table = prior.map((l) => ({
+    name: refFoldName(l.name),
+    address: l.address,
+  }));
+  const src = foldMapped(refAddressBytes(source));
   for (const r of refDnsDecode(packet).records) {
     if ((r.type !== "A" && r.type !== "AAAA") || r.address === undefined)
       continue;
     if (!sameBytes(r.address, src)) continue;
+    const name = refFoldName(r.name);
     const text = refAddressText(r.address);
     const linkLocal =
       r.address.length === 16 &&
       r.address[0] === 0xfe &&
       (r.address[1]! & 0xc0) === 0x80;
     const address = linkLocal && zone !== null ? `${text}%${zone}` : text;
-    if (table.some((l) => l.name === r.name && l.address === address)) continue;
-    if (table.filter((l) => l.name === r.name).length >= REF_MAX_ADDRESSES)
+    if (r.ttl === 0) {
+      table = table.filter((l) => !(l.name === name && l.address === address));
       continue;
-    table.push({ name: r.name, address });
+    }
+    if (table.some((l) => l.name === name && l.address === address)) continue;
+    if (table.filter((l) => l.name === name).length >= REF_MAX_ADDRESSES)
+      continue;
+    table.push({ name, address });
   }
   return table;
 }

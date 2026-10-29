@@ -1605,6 +1605,147 @@ function buildMdnsAnswers(): unknown {
       zone: null,
       learned: [ll(H1, "192.168.1.20")],
     },
+    // An IPv4-mapped source is judged as its IPv4 address.
+    {
+      id: "mapped-source-a-equals-ipv4",
+      records: [a(H1, "192.168.1.20")],
+      source: "::ffff:192.168.1.20",
+      zone: "en0",
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "mapped-source-hex-form",
+      records: [a(H1, "192.168.1.20")],
+      source: "::ffff:c0a8:114",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "mapped-source-a-not-equal",
+      records: [a(H1, "192.168.1.99")],
+      source: "::ffff:192.168.1.20",
+      zone: null,
+      learned: [],
+    },
+    {
+      id: "mapped-source-aaaa-of-mapped-address-dropped",
+      records: [aaaa(H1, "::ffff:c0a8:114"), a(H1, "192.168.1.20")],
+      source: "::ffff:192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    // An address record with TTL 0 removes that address, under the equality rule.
+    {
+      id: "address-goodbye-removes",
+      records: [a(H1, "192.168.1.20", 0)],
+      source: "192.168.1.20",
+      zone: null,
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [],
+    },
+    {
+      id: "address-goodbye-keeps-the-others-in-order",
+      records: [a(H1, "192.168.1.3", 0)],
+      source: "192.168.1.3",
+      zone: null,
+      prior: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+      ],
+      learned: [ll(H1, "192.168.1.2"), ll(H1, "192.168.1.4")],
+    },
+    {
+      id: "address-goodbye-link-local-takes-zone",
+      records: [aaaa(H1, LL, 0)],
+      source: LL,
+      zone: "en0",
+      prior: [ll(H1, `${LL_TEXT}%en0`)],
+      learned: [],
+    },
+    {
+      id: "address-goodbye-other-zone-removes-nothing",
+      records: [aaaa(H1, LL, 0)],
+      source: LL,
+      zone: "wlan0",
+      prior: [ll(H1, `${LL_TEXT}%en0`)],
+      learned: [ll(H1, `${LL_TEXT}%en0`)],
+    },
+    {
+      id: "address-goodbye-not-from-source-is-ignored",
+      records: [a(H1, "192.168.1.20", 0)],
+      source: "192.168.1.99",
+      zone: null,
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "address-goodbye-of-unheld-address-learns-nothing",
+      records: [a(H1, "192.168.1.20", 0)],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [],
+    },
+    {
+      id: "address-goodbye-then-return-goes-last",
+      records: [a(H1, "192.168.1.2", 0), a(H1, "192.168.1.2")],
+      source: "192.168.1.2",
+      zone: null,
+      prior: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+        ll(H1, "192.168.1.5"),
+      ],
+      learned: [
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+        ll(H1, "192.168.1.5"),
+        ll(H1, "192.168.1.2"),
+      ],
+    },
+    // Names compare case-insensitively by ASCII fold, and are held in lower case.
+    {
+      id: "name-case-is-folded",
+      records: [a(H1.toUpperCase(), "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "name-case-matches-the-held-name",
+      records: [a(H1.toUpperCase(), "192.168.1.20")],
+      source: "192.168.1.20",
+      zone: null,
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [ll(H1, "192.168.1.20")],
+    },
+    {
+      id: "name-case-shares-the-cap",
+      records: [a(H1.toUpperCase(), "192.168.1.9")],
+      source: "192.168.1.9",
+      zone: null,
+      prior: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+        ll(H1, "192.168.1.5"),
+      ],
+      learned: [
+        ll(H1, "192.168.1.2"),
+        ll(H1, "192.168.1.3"),
+        ll(H1, "192.168.1.4"),
+        ll(H1, "192.168.1.5"),
+      ],
+    },
+    {
+      id: "name-case-goodbye-removes",
+      records: [a(H1.toUpperCase(), "192.168.1.20", 0)],
+      source: "192.168.1.20",
+      zone: null,
+      prior: [ll(H1, "192.168.1.20")],
+      learned: [],
+    },
   ];
   const out = rows.map((r) => {
     const packet = refDnsEncode({
@@ -1629,7 +1770,7 @@ function buildMdnsAnswers(): unknown {
   const packed = refDnsEncode({ answers: sample.records, compress: true });
   check("mdnsAnswers compression shrinks", packed.length < flat.length, true);
   return {
-    note: "mDNS address learning (15.4 Addresses). `packet` is one mDNS response as lower-case hex (header, then the answer and additional sections; names may be compressed, RFC 1035 4.1.4). `source` is the packet's source address as text and `zone` the interface it arrived on (null: none). A browser believes an A or AAAA record only when its address equals `source` (so an A record is never believed in an IPv6 packet, nor an AAAA in an IPv4 packet); the section a record sits in does not matter. A link-local (fe80::/10) address is learned as `<RFC 5952 text>%<zone>`; any other address has no zone. A name keeps at most 4 addresses, of any family, in first-seen order, and a repeat is not a second address. Only address records teach addresses: a PTR goodbye (TTL 0) teaches none and does not remove any, and no row pins the TTL of an address record. `prior` (absent: nothing held) is the table the browser held before the packet, in first-seen order; `learned` is the table after it: the `{name, address}` entries in first-seen order. Names are lower case. Rows need an own DNS codec: Node, Python, Kotlin JVM and Godot GDScript run them; Swift and Android leave address learning to the OS resolver.",
+    note: "mDNS address learning (15.4 Addresses). `packet` is one mDNS response as lower-case hex (header, then the answer and additional sections; names may be compressed, RFC 1035 4.1.4). `source` is the packet's source address as text and `zone` the interface it arrived on (null: none). A browser believes an A or AAAA record only when its address equals `source` (so an A record is never believed in an IPv6 packet, nor an AAAA in an IPv4 packet); the section a record sits in does not matter. A link-local (fe80::/10) address is learned as `<RFC 5952 text>%<zone>`; any other address has no zone. A name keeps at most 4 addresses, of any family, in first-seen order, and a repeat is not a second address. Learning is by that equality alone; there is no address filter at learn time, the dial-time check (15.4.1) decides what may be dialled. `source` may be an IPv4-mapped IPv6 address (`::ffff:a.b.c.d`, or the hex form), which is judged as its IPv4 address: an A record equal to it is learned, an AAAA record never is. An address record with TTL 0 removes that address (the same text, so a link-local address with the same zone) when it passes the same equality test, and learns nothing; records apply in packet order. A PTR goodbye (TTL 0) teaches none and removes none. `prior` (absent: nothing held) is the table the browser held before the packet, in first-seen order; `learned` is the table after it: the `{name, address}` entries in first-seen order. Names compare case-insensitively by ASCII fold (A-Z only) and are held, and shown in `learned`, in lower case. Rows need an own DNS codec: Node, Python, Kotlin JVM and Godot GDScript run them; Swift and Android leave address learning to the OS resolver.",
     rows: out,
   };
 }
