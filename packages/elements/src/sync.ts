@@ -6,9 +6,16 @@ export { copyForm, recoveryGroups, spokenForm } from "./recoveryCode.js";
 export { SYNC_LAYOUTS } from "./syncLayouts.js";
 
 import { scopeCss } from "./scopeCss.js";
+import { HOLDER_CSS } from "./holderStyles.js";
 import { SYNC_CSS } from "./syncStyles.js";
 
 /** The Cloud Sync screens' part of `lightDomCss()`, to adopt where they are drawn. */
 export function lightDomSyncCss(): string {
   return scopeCss(`@layer polaris-key {\n${SYNC_CSS}}\n`);
 }
+
+/** The holder screens' rules (ActivateDone, AddToAccount), to adopt where they are drawn. */
+export function lightDomHolderCss(): string {
+  return scopeCss(`@layer polaris-key {\n${HOLDER_CSS}}\n`);
+}
+export { HOLDER_LAYOUTS } from "./layout.js";

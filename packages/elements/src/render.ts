@@ -304,6 +304,22 @@ export const GLYPHS = {
   external: () =>
     glyph(svg`${KIT_GLYPHS.newWindow.paths.map((d) => svg`<path d=${d} />`)}`),
   check: (cls = "check") => glyph(svg`<path d="M20 6 9 17l-5-5"/>`, cls),
+  // The recommendation's reasons (lucide: refresh-cw, key-round, monitor-smartphone).
+  refresh: () =>
+    glyph(
+      svg`<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>`,
+      "holder-glyph",
+    ),
+  keyRound: () =>
+    glyph(
+      svg`<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>`,
+      "holder-glyph",
+    ),
+  monitorSmartphone: () =>
+    glyph(
+      svg`<path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8"/><path d="M10 19v-3.96 3.15"/><path d="M7 19h5"/><rect width="6" height="10" x="16" y="12" rx="2"/>`,
+      "holder-glyph",
+    ),
   copy: () =>
     glyph(
       svg`<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>`,

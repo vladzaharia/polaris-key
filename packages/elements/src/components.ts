@@ -5,6 +5,7 @@ import { html, LitElement, nothing, type PropertyValues } from "lit";
 import {
   viewOf,
   type ComponentName,
+  type ScreenName,
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
@@ -23,6 +24,7 @@ import {
 import type { AutoOutcome, SignInPrimitives } from "@polaris-key/ui-core";
 import { linkOfferOutcome, primitivesOf } from "./auto.js";
 import { PkElement, type PkActionDetail } from "./element.js";
+import { isHolder } from "./holderViews.js";
 import { TAGS } from "./layout.js";
 import {
   actionOf,
@@ -36,7 +38,7 @@ import type { ElementsTheme, ThemeHost } from "./theme.js";
 import { renderView } from "./views.js";
 
 /** A plain component element: its view, drawn. */
-function componentClass(component: ComponentName): typeof PkElement {
+function componentClass(component: ScreenName): typeof PkElement {
   // An anonymous subclass per component: the same base, the component fixed.
   return class extends PkElement {
     readonly component = component;
@@ -44,6 +46,11 @@ function componentClass(component: ComponentName): typeof PkElement {
     /** The key step is a blocking screen: it owns the window, as the gate's screens do (DL2). */
     protected override fillsWindow(): boolean {
       return component === "Activate";
+    }
+
+    /** The holder screens morph between their states (Done to the form, the form to added). */
+    protected override morphKey(): string | null {
+      return isHolder(component) ? this.view.state : null;
     }
   } as unknown as typeof PkElement;
 }
@@ -598,9 +605,9 @@ export class PkProvider extends LitElement implements ThemeHost {
 }
 
 /** Every component's element class, by component. */
-export const ELEMENTS: Readonly<Record<ComponentName, typeof PkElement>> =
+export const ELEMENTS: Readonly<Record<ScreenName, typeof PkElement>> =
   Object.fromEntries(
-    (Object.keys(TAGS) as ComponentName[]).map((c) => [
+    (Object.keys(TAGS) as ScreenName[]).map((c) => [
       c,
       c === "PolarisKeyGate"
         ? (PkGate as unknown as typeof PkElement)
@@ -610,7 +617,7 @@ export const ELEMENTS: Readonly<Record<ComponentName, typeof PkElement>> =
             ? (PkUpdatePrompt as unknown as typeof PkElement)
             : componentClass(c),
     ]),
-  ) as Record<ComponentName, typeof PkElement>;
+  ) as Record<ScreenName, typeof PkElement>;
 
 /** Register every element (idempotent: a second copy of the module defines nothing). */
 export function defineElements(
@@ -620,10 +627,7 @@ export function defineElements(
   for (const [tag, cls] of Object.entries(STEP_ELEMENTS))
     if (!registry.get(tag))
       registry.define(tag, cls as unknown as CustomElementConstructor);
-  for (const [component, tag] of Object.entries(TAGS) as [
-    ComponentName,
-    string,
-  ][])
+  for (const [component, tag] of Object.entries(TAGS) as [ScreenName, string][])
     if (!registry.get(tag))
       registry.define(
         tag,

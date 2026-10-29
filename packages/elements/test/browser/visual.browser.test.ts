@@ -21,6 +21,7 @@ import {
   type ComponentStateFixture,
   type MatrixComponentRow,
 } from "../../../sdk-react/test/kitFixtures.js";
+import { HOLDER_COPY, isHolderScreen } from "./support.js";
 import { PolarisKey, TAGS, LAYOUTS, type PkElement } from "../../src/index.js";
 
 declare module "vitest/browser" {
@@ -44,8 +45,13 @@ const FAMILIES = [
   "settings",
   "paywall",
   "cloudSync",
+  "holders",
 ] as const;
-const ROWS = FAMILIES.flatMap((f) => m[f] as MatrixComponentRow[]);
+const ROWS = FAMILIES.flatMap((f) =>
+  (m[f] as MatrixComponentRow[]).filter(
+    (r) => f !== "holders" || isHolderScreen(r),
+  ),
+);
 const FIXTURES: readonly ComponentStateFixture[] = [
   ...matrixComponentStateFixtures(ROWS),
   ...DIRECT_COMPONENT_STATE_FIXTURES,
@@ -91,7 +97,7 @@ function extras(input: UiInput): Partial<UiInput> {
 
 beforeAll(() => {
   PolarisKey.fonts(__PKEY_FONTS__);
-  PolarisKey.theme({ product: PRODUCT });
+  PolarisKey.theme({ product: PRODUCT, copy: HOLDER_COPY });
   document.body.style.margin = "0";
 });
 
@@ -150,7 +156,9 @@ describe("the registry is covered", () => {
         .map((s) => `${c}.${s}`),
     );
     const have = new Set(FIXTURES.map((f) => f.id));
-    expect(want.filter((id) => !have.has(id))).toEqual([]);
+    // The sign-in form's holder steps are drawn by UK-42.8 (its baselines come with it).
+    const later = new Set(["SignIn.key-done", "SignIn.attach", "SignIn.added"]);
+    expect(want.filter((id) => !have.has(id) && !later.has(id))).toEqual([]);
   });
 });
 

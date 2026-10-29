@@ -6,10 +6,14 @@
 import { LitElement, nothing, type PropertyValues } from "lit";
 import { html } from "lit";
 import {
+  BareViewModel,
   focusOnMount,
+  HOLDER_MODELS,
   renewTarget,
   ViewModel,
   type ComponentName,
+  type HolderScreenName,
+  type ScreenName,
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
@@ -77,7 +81,7 @@ const ARM_MS = 500;
 export interface PkActionDetail {
   key: string;
   action: string | null;
-  component: ComponentName;
+  component: ScreenName;
   state: string;
   [k: string]: unknown;
 }
@@ -125,9 +129,9 @@ export abstract class PkElement extends LitElement {
   handles?: string;
 
   /** The component this element draws. */
-  abstract readonly component: ComponentName;
+  abstract readonly component: ScreenName;
 
-  private model: ViewModel | null = null;
+  private model: BareViewModel | null = null;
   private lastSyncStep = "";
   private copied = false;
   private armUntil = 0;
@@ -352,9 +356,16 @@ export abstract class PkElement extends LitElement {
     return this.ensureModel().view;
   }
 
-  private ensureModel(): ViewModel {
+  private ensureModel(): BareViewModel {
     if (!this.model) {
-      this.model = new ViewModel(this.component, this.modelInput());
+      const holder = HOLDER_MODELS[this.component as HolderScreenName];
+      this.model = holder
+        ? new BareViewModel(
+            this.component as ComponentName,
+            holder as never,
+            this.modelInput(),
+          )
+        : new ViewModel(this.component as ComponentName, this.modelInput());
       this.model.subscribe(() => this.requestUpdate());
     }
     return this.model;
@@ -465,6 +476,18 @@ export abstract class PkElement extends LitElement {
             field?.focus();
             return;
           }
+        }
+        // Add your name and email: the fields are read at the press and leave in this action only.
+        if (
+          (view.component as string) === "AddToAccount" &&
+          (key === "common.continue" || key === "common.tryAgain")
+        ) {
+          const read = (label: string) =>
+            this.renderRoot
+              .querySelector<HTMLInputElement>(`[data-key="${label}"]`)
+              ?.value.trim() ?? "";
+          detail.name = read("signin.gate.name");
+          detail.email = read("signin.email.label");
         }
         this.unlockStep(key, view);
         if (key === "ringChange.accept" && this.input.ringChange?.served)
@@ -745,7 +768,10 @@ export abstract class PkElement extends LitElement {
     if (
       e.key !== "Escape" ||
       e.defaultPrevented ||
-      !(v.component in SYNC_LAYOUTS) ||
+      !(
+        v.component in SYNC_LAYOUTS ||
+        (v.component as string) === "AddToAccount"
+      ) ||
       !v.copy.includes("common.cancel")
     )
       return;

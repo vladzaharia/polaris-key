@@ -19,6 +19,7 @@ import { LAYOUTS, TAGS, type PkElement, type PkSignIn } from "../src/index.js";
 import { resetMissingWarnings } from "../src/render.js";
 import {
   COMPONENT_FAMILIES,
+  familyRows,
   readMatrix,
   roles,
   withDefaults,
@@ -98,7 +99,7 @@ function literal(message: string): string {
 }
 
 for (const family of COMPONENT_FAMILIES) {
-  const rows = matrix[family] as Row[];
+  const rows = familyRows(matrix, family);
   describe(`elements × ui-matrix.json ${family}`, () => {
     it.each(rows.map((r) => [r.name, r] as const))("%s", async (_n, row) => {
       const el = await draw(row);
@@ -161,7 +162,11 @@ for (const family of COMPONENT_FAMILIES) {
         const role = ROLE[key];
         // A choice drawn as a radio row (keep, create) is not a button.
         const asRow = root.querySelector(`[role="radio"] [data-key="${key}"]`);
-        if ((role === "button" || role === "menu") && !asRow)
+        // Add your name and email heads AddToAccount's form: its action there is the heading.
+        const heads =
+          view.component === ("AddToAccount" as string) &&
+          key === "activate.recommend.action";
+        if ((role === "button" || role === "menu") && !asRow && !heads)
           expect(
             root.querySelector(`button[data-key="${key}"]`),
             `${key} is a control`,

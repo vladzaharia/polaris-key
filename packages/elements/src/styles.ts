@@ -6,6 +6,7 @@
 
 import { DESKTOP_CSS } from "./desktopStyles.js";
 import { platformTokenCss } from "./desktopTokens.js";
+import { HOLDER_CSS } from "./holderStyles.js";
 import { SYNC_CSS } from "./syncStyles.js";
 import { tokenCss } from "./tokens.js";
 
@@ -1888,7 +1889,7 @@ dialog.sheet .identity {
  *  desktop chrome's rules come last. */
 export function stylesCss(): string {
   const kit = KIT_CSS.trim();
-  return `@layer polaris-key {\n${tokenCss()}\n}\n\n${kit.slice(0, -1)}${SYNC_CSS}${DESKTOP_CSS}}\n`;
+  return `@layer polaris-key {\n${tokenCss()}\n}\n\n${kit.slice(0, -1)}${SYNC_CSS}${HOLDER_CSS}${DESKTOP_CSS}}\n`;
 }
 
 /** Everything but the desktop chrome and the Cloud Sync screens (UK-06): what a web page draws. */
