@@ -510,6 +510,7 @@ export class CloudSyncDO implements DurableObject {
         meter: this.store.takeMeter(),
       });
     let changed = 0;
+    let skipped = 0;
     try {
       this.ctx.storage.transactionSync(() => {
         this.store.prepare(true);
@@ -524,12 +525,16 @@ export class CloudSyncDO implements DurableObject {
             records: parsed.records,
             parked: parsed.parked,
             fromSubject: doc.subject,
+            ...(parsed.encryptionSince !== undefined
+              ? { encryptionSince: parsed.encryptionSince }
+              : {}),
             now: Math.floor(this.now() / 1000),
             ...(policies ? { policies } : {}),
             ...(recordPolicies ? { recordPolicies } : {}),
           }),
         );
         changed = out.rows + out.clients;
+        skipped = out.skipped;
         if (changed > 0) markDirty(this.store);
       });
     } catch (e) {
@@ -538,7 +543,12 @@ export class CloudSyncDO implements DurableObject {
       throw e;
     }
     if (changed > 0) await this.scheduleFlush();
-    return reply({ op: "absorb", changed, meter: this.store.takeMeter() });
+    return reply({
+      op: "absorb",
+      changed,
+      ...(skipped > 0 ? { skipped } : {}),
+      meter: this.store.takeMeter(),
+    });
   }
 
   private pull(op: Extract<CloudSyncOp, { op: "pull" }>): Response {
@@ -573,6 +583,9 @@ export class CloudSyncDO implements DurableObject {
       seq: this.store.currentSeq(),
       writes: this.store.writeCount(),
       watermark: this.store.getWatermark(),
+      ...(this.store.getEncryptionSince() !== undefined
+        ? { encryptionSince: this.store.getEncryptionSince() as number }
+        : {}),
       usage: this.store.getUsage(),
       settings: this.store.settingsAfter(0).map(({ members, ...row }) => ({
         ...row,

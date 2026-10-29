@@ -27,8 +27,8 @@
 
 import type { SyncJson } from "@polaris-key/protocol/sync";
 import { compareStamps } from "./hlc.js";
-import { liveElements } from "./recordSets.js";
-import { accountRecord, canonicalJson } from "./usage.js";
+import { clampRemovedCells, liveElements } from "./recordSets.js";
+import { accountParked, accountRecord, canonicalJson } from "./usage.js";
 import type {
   FieldCell,
   ParkedRecord,
@@ -62,6 +62,23 @@ export interface AbsorbRecordsOutcome {
   rows: number;
   /** Copies parked or carried over. */
   parked: number;
+}
+
+/** Parked copies one person keeps; past it the oldest go. */
+export const MAX_PARKED_COPIES = 64;
+
+/**
+ * Whether a live record holds sealed values (§13.10.7): a key id on the record, a live cell or an
+ * element. A tombstone has no content.
+ */
+export function isSealedRecord(r: StoredRecord): boolean {
+  if (r.deleted) return false;
+  if (r.kid !== undefined) return true;
+  for (const c of r.fields?.values() ?? [])
+    if (!c.removed && c.kid !== undefined) return true;
+  for (const e of r.elements?.values() ?? [])
+    if (e.kid !== undefined) return true;
+  return false;
 }
 
 const newer = (a: Stamp, b: Stamp): Stamp =>
@@ -175,6 +192,7 @@ function joinFields(cur: StoredRecord, inc: StoredRecord): StoredRecord {
     for (const [name, cell] of cells)
       if (compareStamps(cell.stamp, floor) < 0) cells.delete(name);
   }
+  clampRemovedCells(cells);
   out.stamp = newer(cur.stamp, inc.stamp);
   out.deleted = !anyLiveField(cells);
   return out;
@@ -360,6 +378,7 @@ function writeRecord(
   verdict: Extract<Verdict, { kind: "write" }>,
 ): void {
   const next = verdict.next;
+  if (next.fields) clampRemovedCells(next.fields);
   const elements = next.elements;
   for (const key of verdict.retag ?? []) {
     const el = elements?.get(key);
@@ -375,6 +394,64 @@ function writeRecord(
 }
 
 /**
+ * Parks a copy: counted in the quota, and bounded to `MAX_PARKED_COPIES` (the oldest go, the copy
+ * just parked never). One copy is kept per record and source, so a fresher export of the same
+ * source replaces the earlier copy. Returns whether anything was written.
+ */
+function park(store: SyncStore, copy: ParkedRecord): boolean {
+  const have = store.getParkedRecord(
+    copy.collection,
+    copy.id,
+    copy.fromSubject,
+  );
+  if (have && sameParked(have, copy)) return false;
+  store.putParkedRecord(copy);
+  accountParked(store, have, copy);
+  let over = store.parkedCount() - MAX_PARKED_COPIES;
+  if (over > 0)
+    for (const old of store.oldestParked(over + 1)) {
+      if (over <= 0) break;
+      if (
+        old.collection === copy.collection &&
+        old.id === copy.id &&
+        old.fromSubject === copy.fromSubject
+      )
+        continue;
+      store.deleteParkedRecord(old.collection, old.id, old.fromSubject);
+      accountParked(store, old, undefined);
+      over--;
+    }
+  return true;
+}
+
+/**
+ * The verdict for one absorbed record, with the sealing rules of §13.10.7. A live plaintext record
+ * never enters a store that has `encryptionSince` (it would be served as sealed), and a sealed one
+ * never joins a live legacy-plaintext record (the join would mix them): those are parked, as a
+ * collision is. A tombstone has no content and joins as ever.
+ */
+function verdictFor(
+  store: SyncStore,
+  cur: StoredRecord | undefined,
+  inc: StoredRecord,
+  join: RecordJoin | undefined,
+): Verdict {
+  const since = store.getEncryptionSince();
+  const sealed = isSealedRecord(inc);
+  if (!inc.deleted && !sealed && since !== undefined) return PARK;
+  const legacy =
+    since !== undefined &&
+    cur !== undefined &&
+    !cur.deleted &&
+    cur.version < since;
+  if (legacy && sealed) return PARK;
+  const verdict = decide(cur, inc, join);
+  // A write that would give a legacy record's content a sealed record's version.
+  if (legacy && verdict.kind === "write" && !verdict.next.deleted) return PARK;
+  return verdict;
+}
+
+/**
  * Joins the absorbed records into `store`. Call inside the store's transaction (see
  * `absorbSettings`). Deterministic in the input's order, which is the export's version order.
  */
@@ -386,34 +463,33 @@ export function absorbRecords(
   let parked = 0;
   for (const inc of input.records) {
     const cur = store.getRecord(inc.collection, inc.id);
-    const verdict = decide(cur, inc, input.recordPolicies?.get(inc.collection));
+    const verdict = verdictFor(
+      store,
+      cur,
+      inc,
+      input.recordPolicies?.get(inc.collection),
+    );
     if (verdict.kind === "write") {
       writeRecord(store, cur, verdict);
       rows++;
     } else if (verdict.kind === "park") {
-      const copy = parkedFrom(inc, input.fromSubject, input.now);
-      const have = store.getParkedRecord(
-        inc.collection,
-        inc.id,
-        input.fromSubject,
-      );
-      if (have && sameParked(have, copy)) continue;
-      store.putParkedRecord(copy);
-      rows++;
-      parked++;
+      if (park(store, parkedFrom(inc, input.fromSubject, input.now))) {
+        rows++;
+        parked++;
+      }
     }
   }
   // Copies an earlier merge parked on the absorbed side travel with the rest of its data.
   for (const p of input.parked) {
-    const have = store.getParkedRecord(p.collection, p.id, p.fromSubject);
-    if (have && sameParked(have, p)) continue;
-    store.putParkedRecord({
+    const copy = {
       ...p,
       stamp: { ...p.stamp },
       value: structuredClone(p.value) as SyncJson,
-    });
-    rows++;
-    parked++;
+    };
+    if (park(store, copy)) {
+      rows++;
+      parked++;
+    }
   }
   return { rows, parked };
 }

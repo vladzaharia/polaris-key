@@ -253,8 +253,9 @@ function classifyRecord(
   } else if (m.op === "setField") {
     if (
       !("value" in m) ||
-      valueBytes(m.value as SyncJson) > SYNC_MAX_RECORD_BYTES ||
-      propertyInvalid(decl.schema, m.field as string, m.value)
+      // The depth guard first: `valueBytes` recurses and would throw on a value nested too deep.
+      propertyInvalid(decl.schema, m.field as string, m.value) ||
+      valueBytes(m.value as SyncJson) > SYNC_MAX_RECORD_BYTES
     )
       invalid = true;
   } else if (m.op === "add" || m.op === "remove") {

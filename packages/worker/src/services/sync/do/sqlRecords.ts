@@ -365,6 +365,31 @@ export class RecordTables {
       .map(parkedOf);
   }
 
+  parkedCount(): number {
+    return Number(
+      this.q.all<{ n: number }>(`SELECT COUNT(*) AS n FROM parked_records`)[0]
+        ?.n ?? 0,
+    );
+  }
+
+  oldestParked(limit: number): ParkedRecord[] {
+    return this.q
+      .all<ParkedRow>(
+        `SELECT * FROM parked_records ORDER BY parked_at, collection, id, from_subject LIMIT ?`,
+        limit,
+      )
+      .map(parkedOf);
+  }
+
+  deleteParked(collection: string, id: string, fromSubject: string): void {
+    this.q.run(
+      `DELETE FROM parked_records WHERE collection = ? AND id = ? AND from_subject = ?`,
+      collection,
+      id,
+      fromSubject,
+    );
+  }
+
   writeParked(row: ParkedRecord): void {
     this.q.run(
       `INSERT OR REPLACE INTO parked_records

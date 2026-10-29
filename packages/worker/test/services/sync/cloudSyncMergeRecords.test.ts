@@ -291,6 +291,96 @@ describe("a merge moves records", () => {
   });
 });
 
+describe("a merge keeps sealed and plaintext rows apart (U-09.R B3)", () => {
+  const SEALED_REC: Classification = { ...REVISION, sealed: true } as never;
+  const sealedPush = (env: Cs, subject: string, n: number) =>
+    push(
+      env,
+      subject,
+      [[rec("saves", BLIND(n), "set", n, { ct: envelope(9) }), SEALED_REC]],
+      C2,
+      "d2",
+    );
+
+  it("the export names encryptionSince, and the survivor takes the sealed rows as sealed", async () => {
+    const { env } = world();
+    await sealedPush(env, "from", 1);
+    const doc = (await ex(env, "from"))!;
+    expect(doc.encryptionSince).toBe(1);
+    // The survivor holds plaintext of its own first.
+    await push(env, "to", [
+      [rec("legacy", "l", "set", 1, { value: { a: 1 } }), REVISION],
+    ]);
+    expect((await ex(env, "to"))!.encryptionSince).toBeUndefined();
+    await merge(env, "from", "to");
+    const after = (await ex(env, "to"))!;
+    expect(after.encryptionSince).toBe(2);
+    const pulled = await callCloudSync<"pull">(
+      env,
+      { product: P, subject: "to" },
+      { op: "pull", deviceId: "d1", family: "desktop", encryption: "e2e" },
+    );
+    if (!pulled.outcome.ok) throw new Error("pull");
+    expect(pulled.outcome.encryptionSince).toBe(2);
+    const byId = (id: string) =>
+      pulled.outcome.ok &&
+      pulled.outcome.changes.find((c) => "record" in c && c.record[1] === id);
+    expect(byId(BLIND(1))).toMatchObject({ ct: envelope(9) });
+    expect(byId("l")).toMatchObject({ value: { a: 1 } });
+  });
+
+  it("live plaintext rows are parked or left out when the survivor has encryptionSince", async () => {
+    const { env } = world();
+    await sealedPush(env, "to", 2);
+    await push(
+      env,
+      "from",
+      [
+        [rec("notes", "n", "setField", 3, { field: "x", value: 1 }), MERGE_REC],
+        [
+          {
+            mutationId: nextId++,
+            target: { setting: "plain.key", scope: "user" },
+            op: "set",
+            editedHlc: at(4),
+            value: 1,
+          },
+          { verdict: "accept", scope: "user", policy: "lastWrite" },
+        ],
+      ],
+      C1,
+      "d1",
+    );
+    const doc = (await ex(env, "from"))!;
+    const reply = await callCloudSync<"absorb">(
+      env,
+      { product: P, subject: "to" },
+      { op: "absorb", document: doc },
+    );
+    expect(reply.skipped).toBe(1);
+    const after = (await ex(env, "to"))!;
+    expect(after.records?.map((r) => r.collection)).toEqual(["saves"]);
+    expect(after.settings).toHaveLength(0);
+    expect(after.parked).toEqual([
+      expect.objectContaining({ collection: "notes", id: "n" }),
+    ]);
+  });
+
+  it("the object refuses a malformed encryptionSince before any write", async () => {
+    const { env } = world();
+    await sealedPush(env, "from", 1);
+    const doc = (await ex(env, "from"))!;
+    for (const bad of [0, -3, 1.5, "1"])
+      await expect(
+        absorbCloudSync(
+          env,
+          { product: P, subject: "to" },
+          { ...doc, encryptionSince: bad as never },
+        ),
+      ).rejects.toMatchObject({ status: 400 });
+  });
+});
+
 describe("the directory half of a merge", () => {
   it("adds the record bytes of the two people and exports them", async () => {
     const { env } = world();

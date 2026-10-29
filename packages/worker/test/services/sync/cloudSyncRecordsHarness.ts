@@ -137,3 +137,17 @@ export function pullAs(
   if (!out.ok) throw new Error(out.error);
   return out;
 }
+
+/** What an absorb is given of the absorbed store `src` (an export document, read back). */
+export function absorbInputOf(src: MemoryStore, fromSubject: string) {
+  const since = src.getEncryptionSince();
+  return {
+    settings: src.rows(),
+    clients: [],
+    records: src.recordRows(),
+    parked: src.parkedRecords(),
+    fromSubject,
+    now: 1_760_000_100,
+    ...(since !== undefined ? { encryptionSince: since } : {}),
+  };
+}

@@ -54,6 +54,37 @@ function isSealed(route: Classification | undefined): boolean {
   );
 }
 
+/** The operations that put a plaintext value in a row. */
+const VALUE_OPS: ReadonlySet<string> = new Set([
+  "set",
+  "setMember",
+  "setField",
+  "add",
+]);
+
+/**
+ * A server-mode write to a store that has `encryptionSince` (§13.10.7): every row from there on is
+ * sealed, so a plaintext value would be served as a sealed one. Refused whatever the policy.
+ */
+function plaintextIntoSealed(
+  store: SyncStore,
+  route: Classification,
+  m: SyncMutation,
+): boolean {
+  return (
+    (route.verdict === "accept" || route.verdict === "record") &&
+    route.sealed !== true &&
+    VALUE_OPS.has(m.op) &&
+    store.getEncryptionSince() !== undefined
+  );
+}
+
+const mismatch = (m: SyncMutation): MutationResult => ({
+  mutationId: m.mutationId,
+  status: "rejected",
+  code: "encryption_mismatch",
+});
+
 function applyOne(
   store: SyncStore,
   input: PushInput,
@@ -69,6 +100,7 @@ function applyOne(
   if (!("setting" in m.target)) {
     if (route.verdict === "reject")
       return { mutationId: m.mutationId, status: "rejected", code: route.code };
+    if (plaintextIntoSealed(store, route, m)) return mismatch(m);
     // A setting classification for a record target is a Worker mistake: refuse, never apply.
     if (route.verdict !== "record")
       return {
@@ -107,6 +139,7 @@ function applyOne(
     } as MutationResult;
   if (route.verdict === "reject")
     return { mutationId: m.mutationId, status: "rejected", code: route.code };
+  if (plaintextIntoSealed(store, route, m)) return mismatch(m);
   const stamp: Stamp = {
     hlc: clampHlc(m.editedHlc as string, input.serverNow),
     clientId: input.request.clientId,
@@ -163,9 +196,8 @@ export function applyPush(store: SyncStore, input: PushInput): PushOutcome {
   const run = (): MutationResult[] => {
     // The first end-to-end write fixes `encryptionSince` (§13.10.7): every row at or above the
     // next sequence is sealed, every row below it is legacy plaintext. Set once, and only by a
-    // sealed write that was accepted: a rejected one does not count.
-    const sealedAt =
-      store.getEncryptionSince() === undefined ? store.currentSeq() + 1 : null;
+    // sealed mutation that wrote: a rejected one, and an `ok` that changed nothing, do not count.
+    let unsealed = store.getEncryptionSince() === undefined;
     const results: MutationResult[] = [];
     let last = startLast;
     mutations.forEach((m, i) => {
@@ -173,16 +205,15 @@ export function applyPush(store: SyncStore, input: PushInput): PushOutcome {
         results.push({ mutationId: m.mutationId, status: "duplicate" });
         return;
       }
+      const watch = unsealed && isSealed(input.classified[i]);
+      const before = watch ? store.currentSeq() : 0;
       const result = applyOne(store, input, m, i);
       last = m.mutationId;
       results.push(result);
-      if (
-        sealedAt !== null &&
-        store.getEncryptionSince() === undefined &&
-        result.status === "ok" &&
-        isSealed(input.classified[i])
-      )
-        store.setEncryptionSince(sealedAt);
+      if (watch && result.status === "ok" && store.currentSeq() > before) {
+        store.setEncryptionSince(before + 1);
+        unsealed = false;
+      }
       if (shape.request.atomic && result.status !== "ok")
         throw new AtomicRollback(results);
     });

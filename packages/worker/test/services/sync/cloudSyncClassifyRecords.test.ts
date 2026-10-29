@@ -408,3 +408,23 @@ describe("classify: record targets, E2E mode", () => {
     });
   });
 });
+
+describe("classify: a value nested too deep (U-09.R B4)", () => {
+  const deep = (n: number): SyncJson =>
+    JSON.parse("[".repeat(n) + "]".repeat(n)) as SyncJson;
+
+  it.each([
+    ["setField", ["notes", "a"], { field: "title" }, "value"],
+    ["set", ["saves", "a"], {}, "value"],
+    ["add", ["tags", "a"], {}, "element"],
+  ] as const)(
+    "%s answers value_invalid and does not throw",
+    (op, rec, extra, member) => {
+      const m = mut([rec[0], rec[1]], op, {
+        ...extra,
+        [member]: deep(5000),
+      } as Partial<SyncMutation>);
+      expect(one(m)).toMatchObject({ verdict: "record", valueInvalid: true });
+    },
+  );
+});

@@ -17,7 +17,8 @@
  * Policy change (§13.6): the server reads the policy at push time and converts at write. An object
  * becomes field cells, and an array becomes elements, stamped as the record stood. A shape that
  * cannot convert (an object stored for a `union` policy, a number for either) is
- * `op_invalid_for_policy`, and a `delete` always works. In end-to-end mode the server cannot read a
+ * `op_invalid_for_policy`, as is a name or element over the 1 KiB a push allows, and a `delete` always
+ * works. In end-to-end mode the server cannot read a
  * sealed record, so it converts nothing: a live record of another shape is `op_invalid_for_policy`
  * for every operation but `delete`.
  *
@@ -27,7 +28,9 @@
  */
 
 import {
+  SYNC_MAX_MERGE_MEMBERS,
   SYNC_MAX_RECORD_BYTES,
+  SYNC_MAX_UNION_ELEMENT_BYTES,
   type SyncJson,
   type SyncMutation,
   type SyncSealedElement,
@@ -35,7 +38,13 @@ import {
 } from "@polaris-key/protocol/sync";
 import { compareStamps } from "./hlc.js";
 import { budgetBytes, envelopeKid } from "./sealed.js";
-import { canonicalJson, valueBytes } from "./usage.js";
+import {
+  canonicalJson,
+  ENTRY_CHARGE,
+  EXTRA_TAG_CHARGE,
+  utf8Length,
+  valueBytes,
+} from "./usage.js";
 import type {
   Classification,
   FieldCell,
@@ -60,7 +69,7 @@ export function tagAdd(next: StoredRecord, key: string, version: number): void {
 }
 
 /** What a blinded field or element name adds to an E2E record's budget (§13.3 Budget). */
-export const SEALED_NAME_CHARGE = 45;
+export const SEALED_NAME_CHARGE = ENTRY_CHARGE;
 
 export type RecordPlan =
   | { kind: "reject"; code: "value_invalid" | "op_invalid_for_policy" }
@@ -148,15 +157,29 @@ export function sealedElements(row: StoredRecord): SyncSealedElement[] {
 
 /**
  * Whether the record is over its 64 KiB (`SYNC_MAX_RECORD_BYTES`): the canonical JSON of its
- * content in server mode; in E2E mode each live entry's `envelopeBytes - 113` plus 45 for its
- * blinded name, so a record of many tiny entries cannot charge nothing.
+ * content in server mode plus 45 for every live field or element and 8 for every tag of an element
+ * beyond its first; in E2E mode each live entry's `envelopeBytes - 113` plus 45 for its blinded
+ * name (and the 8 per extra tag), so a record of many tiny entries cannot charge nothing.
  */
 function overBudget(row: StoredRecord, sealed: boolean): boolean {
+  let extraTags = 0;
+  for (const e of row.elements?.values() ?? [])
+    if (e.tags.length > 1) extraTags += e.tags.length - 1;
+  const tagBytes = EXTRA_TAG_CHARGE * extraTags;
   if (!sealed) {
     const v = liveRecordValue(row);
-    return v !== null && valueBytes(v) > SYNC_MAX_RECORD_BYTES;
+    if (v === null) return false;
+    const entries =
+      row.kind === "fields"
+        ? liveFieldCount(row)
+        : row.kind === "set"
+          ? liveElements(row).length
+          : 0;
+    return (
+      valueBytes(v) + ENTRY_CHARGE * entries + tagBytes > SYNC_MAX_RECORD_BYTES
+    );
   }
-  let total = 0;
+  let total = tagBytes;
   const charge = (v: SyncJson) =>
     (total +=
       SEALED_NAME_CHARGE + (typeof v === "string" ? budgetBytes(v) : 0));
@@ -167,6 +190,31 @@ function overBudget(row: StoredRecord, sealed: boolean): boolean {
     for (const [, e] of liveElements(row)) charge(e.element);
   }
   return total > SYNC_MAX_RECORD_BYTES;
+}
+
+const liveFieldCount = (row: StoredRecord): number => {
+  let n = 0;
+  for (const c of row.fields?.values() ?? []) if (!c.removed) n++;
+  return n;
+};
+
+/**
+ * Removed field cells one record keeps (§13.3): the newest `SYNC_MAX_MERGE_MEMBERS`, by stamp. The
+ * per-collection and per-person bounds count rows already stored, so without this a single record
+ * could hold them all, and every write to it would read them.
+ */
+export function clampRemovedCells(fields: Map<string, FieldCell>): void {
+  let removed = 0;
+  for (const c of fields.values()) if (c.removed) removed++;
+  if (removed <= SYNC_MAX_MERGE_MEMBERS) return;
+  const oldest = [...fields]
+    .filter(([, c]) => c.removed)
+    .sort(
+      ([ka, a], [kb, b]) =>
+        compareStamps(a.stamp, b.stamp) || (ka < kb ? -1 : ka > kb ? 1 : 0),
+    )
+    .slice(0, removed - SYNC_MAX_MERGE_MEMBERS);
+  for (const [name] of oldest) fields.delete(name);
 }
 
 // ---- the base row --------------------------------------------------------------------------
@@ -228,8 +276,13 @@ function fieldsBase(
   // Live, and of another shape: only an object in server mode converts.
   if (sealed || prev.kind !== "value" || !isPlainObject(prev.value))
     return { ok: false, plan: badPolicy };
-  for (const [name, value] of Object.entries(prev.value))
+  // The caps a push applies to a name hold for a converted one (§13.3): an over-long name stays
+  // with the shape it was written under.
+  for (const [name, value] of Object.entries(prev.value)) {
+    if (name === "" || utf8Length(name) > SYNC_MAX_UNION_ELEMENT_BYTES)
+      return { ok: false, plan: badPolicy };
     row.fields?.set(name, { value, removed: false, stamp: prev.stamp });
+  }
   row.deleted = false;
   if (hasStamp(prev.stamp)) row.floor = prev.stamp;
   return { ok: true, row };
@@ -257,6 +310,8 @@ function setBase(
   // Every converted element is tagged with the version the array was stored at, so an
   // `observedSeq` taken from that pull still removes it.
   for (const e of prev.value) {
+    if (valueBytes(e) > SYNC_MAX_UNION_ELEMENT_BYTES)
+      return { ok: false, plan: badPolicy };
     row.elements?.set(canonicalJson(e), { element: e, tags: [prev.version] });
   }
   row.deleted = false;
@@ -350,6 +405,7 @@ export function planFields(
   row.stamp = newer(stamp, row.stamp);
   if (m.op === "removeField") {
     fields.set(name, { value: null, removed: true, stamp });
+    clampRemovedCells(fields);
     row.deleted = !anyLive(fields);
     return { kind: "write", next: row, shrinking: true, removedCell: true };
   }

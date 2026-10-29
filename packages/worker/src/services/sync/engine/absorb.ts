@@ -29,7 +29,11 @@
 
 import type { SyncJson } from "@polaris-key/protocol/sync";
 import { compareStamps } from "./hlc.js";
-import { absorbRecords, type RecordJoin } from "./absorbRecords.js";
+import {
+  absorbRecords,
+  isSealedRecord,
+  type RecordJoin,
+} from "./absorbRecords.js";
 import { asMerged, newer, pruneRemoved } from "./settings.js";
 import { liveMembers } from "./store.js";
 import { account } from "./usage.js";
@@ -52,6 +56,8 @@ export interface AbsorbInput {
   policies?: ReadonlyMap<string, SettingPolicy>;
   /** The absorbed person's records (live and tombstones). Their `version`s are ignored. */
   records?: readonly StoredRecord[];
+  /** The absorbed store's `encryptionSince`, if it has one: a setting at or above it is sealed. */
+  encryptionSince?: number;
   /** Copies an earlier merge parked on the absorbed side; they travel to the survivor. */
   parked?: readonly ParkedRecord[];
   /** The absorbed subject: the owner of a record copy this absorb parks. */
@@ -69,6 +75,8 @@ export interface AbsorbOutcome {
   clients: number;
   /** Record copies parked or carried over (counted in `rows`). */
   parked: number;
+  /** Settings left out because they would mix sealed and plaintext values (§13.10.7); not in `rows`. */
+  skipped: number;
 }
 
 const copyCell = (c: MemberCell): MemberCell => ({
@@ -175,26 +183,85 @@ const keyOf = (r: StoredSetting): [string, "user" | "platform", string] => [
   r.scope === "platform" ? (r.family ?? "") : "",
 ];
 
+/** Whether an absorbed live row holds sealed values (§13.10.7): a key id anywhere, or a version at or above the absorbed store's `encryptionSince`. */
+function incomingSealed(r: StoredSetting, since: number | undefined): boolean {
+  if (r.deleted) return false;
+  if (r.kid !== undefined) return true;
+  for (const c of r.members?.values() ?? [])
+    if (c.kid !== undefined) return true;
+  return since !== undefined && r.version >= since;
+}
+
 /**
- * Joins `input` into `store`. Call inside the store's transaction: a failure part way must leave
- * nothing behind. Deterministic in the input's order, which is the export's version order.
+ * The rows of one phase joined into the survivor. A live plaintext row never enters a store that
+ * has `encryptionSince` (it would be served as sealed), and a sealed row never joins a live
+ * legacy-plaintext row (the join would mix them): those are `skipped`, and counted. A tombstone
+ * has no content and joins as ever.
  */
-export function absorbSettings(
+function joinSettings(
   store: SyncStore,
+  settings: readonly StoredSetting[],
   input: AbsorbInput,
-): AbsorbOutcome {
+): { rows: number; skipped: number } {
   let rows = 0;
-  for (const incoming of input.settings) {
+  let skipped = 0;
+  for (const incoming of settings) {
     const [key, scope, family] = keyOf(incoming);
+    const since = store.getEncryptionSince();
+    const sealed = incomingSealed(incoming, input.encryptionSince);
+    if (!incoming.deleted && !sealed && since !== undefined) {
+      skipped++;
+      continue;
+    }
     const prev = store.getSetting(key, scope, family);
     const policy = input.policies?.get(key);
+    const legacy =
+      since !== undefined && prev && !prev.deleted && prev.version < since;
     const next = prev ? joinRows(prev, incoming, policy) : copyRow(incoming);
     if (prev && sameRow(prev, next)) continue;
+    // A write that would give a legacy row's content a sealed row's version.
+    if (legacy && !next.deleted) {
+      skipped++;
+      continue;
+    }
     next.version = store.nextSeq();
     store.putSetting(next);
     account(store, prev, next);
     rows++;
   }
+  return { rows, skipped };
+}
+
+/**
+ * Joins `input` into `store`. Call inside the store's transaction: a failure part way must leave
+ * nothing behind. Deterministic in the input's order, which is the export's version order.
+ *
+ * Sealed rows (§13.10.7) go in last: the plaintext rows and tombstones are joined first, then, if
+ * any sealed row comes and the survivor has no `encryptionSince`, it is fixed at the next
+ * sequence, and the sealed rows are written at or above it.
+ */
+export function absorbSettings(
+  store: SyncStore,
+  input: AbsorbInput,
+): AbsorbOutcome {
+  const sealedSettings = input.settings.filter((r) =>
+    incomingSealed(r, input.encryptionSince),
+  );
+  const plainSettings = input.settings.filter(
+    (r) => !incomingSealed(r, input.encryptionSince),
+  );
+  const records = input.records ?? [];
+  const sealedRecords = records.filter(isSealedRecord);
+  const plainRecords = records.filter((r) => !isSealedRecord(r));
+  const recordInput = {
+    fromSubject: input.fromSubject ?? "",
+    now: input.now ?? Math.floor(Date.now() / 1000),
+    ...(input.recordPolicies ? { recordPolicies: input.recordPolicies } : {}),
+  };
+
+  const first = joinSettings(store, plainSettings, input);
+  let rows = first.rows;
+  let skipped = first.skipped;
   let clients = 0;
   for (const c of input.clients) {
     const have = store.getClient(c.clientId);
@@ -207,12 +274,26 @@ export function absorbSettings(
     }
   }
   const recs = absorbRecords(store, {
-    records: input.records ?? [],
+    ...recordInput,
+    records: plainRecords,
     parked: input.parked ?? [],
-    fromSubject: input.fromSubject ?? "",
-    now: input.now ?? Math.floor(Date.now() / 1000),
-    ...(input.recordPolicies ? { recordPolicies: input.recordPolicies } : {}),
   });
   rows += recs.rows;
-  return { rows, clients, parked: recs.parked };
+  let parked = recs.parked;
+
+  if (
+    (sealedSettings.length > 0 || sealedRecords.length > 0) &&
+    store.getEncryptionSince() === undefined
+  )
+    store.setEncryptionSince(store.currentSeq() + 1);
+  const last = joinSettings(store, sealedSettings, input);
+  const sealedRecs = absorbRecords(store, {
+    ...recordInput,
+    records: sealedRecords,
+    parked: [],
+  });
+  rows += last.rows + sealedRecs.rows;
+  skipped += last.skipped;
+  parked += sealedRecs.parked;
+  return { rows, clients, parked, skipped };
 }

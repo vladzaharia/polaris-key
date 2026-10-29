@@ -256,6 +256,12 @@ export interface SyncStore {
   putParkedRecord(row: ParkedRecord): void;
   /** Every parked copy, in the order they were parked. */
   parkedRecords(): ParkedRecord[];
+  /** How many parked copies the store keeps. */
+  parkedCount(): number;
+  /** The `limit` oldest parked copies, in the order `parkedRecords` lists them. */
+  oldestParked(limit: number): ParkedRecord[];
+  /** Drops one parked copy. Written only by the absorb, which keeps the bound on them. */
+  deleteParkedRecord(collection: string, id: string, fromSubject: string): void;
   /** No row at all, tombstones, records and parked copies included. */
   isEmpty(): boolean;
   /** The object has held a live setting or record at some point (a tombstone alone does not count). */

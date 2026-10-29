@@ -12,6 +12,7 @@ import type { SyncJson } from "@polaris-key/protocol/sync";
 import { budgetBytes } from "./sealed.js";
 import { liveMembers } from "./store.js";
 import type {
+  ParkedRecord,
   StoredRecord,
   StoredSetting,
   StoreUsage,
@@ -108,26 +109,55 @@ export interface RecordCost {
   bytes: number;
 }
 
+/** What each live field or element of a record adds to its charge, in either mode (§13.3 Budget). */
+export const ENTRY_CHARGE = 45;
+
+/** What each tag of an element beyond its first adds: every tag is a stored row. */
+export const EXTRA_TAG_CHARGE = 8;
+
 /**
  * What a record costs: the collection and id (a `prefix.*` collection's suffix is person-chosen,
  * so it is charged too) plus its content as stored: the value's canonical JSON (the quoted `ct` in
- * E2E mode), each live field's name and value, each element once however many tags it has (plus its
- * blinded name in E2E mode). A
- * tombstone or no row costs nothing.
+ * E2E mode), each live field's name and value, each element's value, 45 for every live field or
+ * element however small (an E2E entry's 45-character blinded name is that charge), and 8 for each
+ * tag of an element beyond its first. A tombstone or no row costs nothing.
  */
 export function recordCost(row: StoredRecord | undefined): RecordCost {
   if (!row || row.deleted) return { records: 0, bytes: 0 };
   let bytes = utf8Length(row.collection) + utf8Length(row.id);
   if (row.kind === "fields") {
     for (const [name, cell] of row.fields ?? [])
-      if (!cell.removed) bytes += utf8Length(name) + valueBytes(cell.value);
+      if (!cell.removed)
+        bytes +=
+          utf8Length(name) +
+          valueBytes(cell.value) +
+          (cell.kid !== undefined ? 0 : ENTRY_CHARGE);
   } else if (row.kind === "set") {
-    // An E2E element is stored under its blinded name, which is charged as a field's name is.
-    for (const [key, el] of row.elements ?? [])
-      bytes +=
-        valueBytes(el.element) + (el.kid !== undefined ? utf8Length(key) : 0);
+    for (const el of row.elements?.values() ?? [])
+      if (el.tags.length > 0)
+        bytes +=
+          valueBytes(el.element) +
+          ENTRY_CHARGE +
+          EXTRA_TAG_CHARGE * (el.tags.length - 1);
   } else bytes += valueBytes(row.value);
   return { records: 1, bytes };
+}
+
+/** What a parked copy costs: its content as a live record of its shape would. */
+export const parkedCost = (p: ParkedRecord | undefined): number =>
+  p ? recordCost({ ...p, version: 0, deleted: false }).bytes : 0;
+
+/** Moves the store's quota total by the change from the parked copy `prev` to `next`. */
+export function accountParked(
+  store: SyncStore,
+  prev: ParkedRecord | undefined,
+  next: ParkedRecord | undefined,
+): void {
+  const u = store.getUsage();
+  store.setUsage({
+    ...u,
+    bytes: Math.max(0, u.bytes + parkedCost(next) - parkedCost(prev)),
+  });
 }
 
 /** Moves the store's totals by the change from `prev` to `next` (a record). */

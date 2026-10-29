@@ -114,6 +114,8 @@ export interface ExportDocument {
   /** The write count (see `SqlStore.writeCount`): `seq` plus the writes that do not move it. */
   writes: number;
   watermark: number;
+  /** The store's `encryptionSince` (§13.10.7); absent until its first sealed write. */
+  encryptionSince?: number;
   usage: StoreUsage;
   /** Live rows and tombstones, in version order. */
   settings: ExportedSetting[];
@@ -135,7 +137,7 @@ export type CloudSyncReply =
   | { op: "pull"; outcome: PullOutcome; meter?: OpMeter }
   | { op: "usage"; usage: StoreUsage; seq: number; empty: boolean }
   | { op: "exportAll"; document: ExportDocument | null }
-  | { op: "absorb"; changed: number; meter?: OpMeter }
+  | { op: "absorb"; changed: number; skipped?: number; meter?: OpMeter }
   | { op: "deleteAll"; deleted: boolean };
 
 export type CloudSyncError = {

@@ -334,6 +334,22 @@ export class MemoryStore implements SyncStore {
       .map(cloneParked);
   }
 
+  parkedCount(): number {
+    return this.parked.size;
+  }
+
+  oldestParked(limit: number): ParkedRecord[] {
+    return this.parkedRecords().slice(0, limit);
+  }
+
+  deleteParkedRecord(
+    collection: string,
+    id: string,
+    fromSubject: string,
+  ): void {
+    this.parked.delete(`${recordId(collection, id)}\u0000${fromSubject}`);
+  }
+
   isEmpty(): boolean {
     return (
       this.settings.size === 0 &&

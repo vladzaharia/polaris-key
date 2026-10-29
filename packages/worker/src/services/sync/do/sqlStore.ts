@@ -671,6 +671,26 @@ export class SqlStore implements SyncStore {
     return this.recordTables.allParked();
   }
 
+  parkedCount(): number {
+    if (!this.hasSchema()) return 0;
+    return this.recordTables.parkedCount();
+  }
+
+  oldestParked(limit: number): ParkedRecord[] {
+    if (!this.hasSchema()) return [];
+    return this.recordTables.oldestParked(limit);
+  }
+
+  deleteParkedRecord(
+    collection: string,
+    id: string,
+    fromSubject: string,
+  ): void {
+    this.requireWritable();
+    this.setMeta("writes", String(this.num("writes") + 1));
+    this.recordTables.deleteParked(collection, id, fromSubject);
+  }
+
   liveRecordCount(collection: string): number {
     if (!this.hasSchema()) return 0;
     return this.recordTables.liveCount(collection);

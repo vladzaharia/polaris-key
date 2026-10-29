@@ -238,11 +238,11 @@ describe("merge records, server mode", () => {
     reset();
     const s = new MemoryStore();
     one(s, m("setField", { field: "name", value: "ab" }), MERGE);
-    // "c" + "r" + "name" + `"ab"`
+    // "c" + "r" + "name" + `"ab"` + 45 for the field
     expect(s.getUsage()).toMatchObject({
       records: 1,
-      recordBytes: 1 + 1 + 4 + 4,
-      bytes: 10,
+      recordBytes: 1 + 1 + 4 + 4 + 45,
+      bytes: 55,
     });
   });
 });
@@ -489,7 +489,11 @@ describe("union records, server mode", () => {
       scope: "user",
     });
     one(s, m("add", { element: "x" }), UNION);
-    expect(s.getUsage()).toMatchObject({ records: 1, recordBytes: 1 + 1 + 3 });
+    // "c" + "r" + `"x"` + 45 for the element
+    expect(s.getUsage()).toMatchObject({
+      records: 1,
+      recordBytes: 1 + 1 + 3 + 45,
+    });
   });
 });
 

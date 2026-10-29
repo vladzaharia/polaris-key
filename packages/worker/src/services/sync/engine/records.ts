@@ -27,8 +27,9 @@
  * records, are each kept to 2 x `maxRecords` per concrete collection and 20,000 per person. Past
  * either the oldest, by clock, are forgotten. A forgotten tombstone raises the tombstone watermark
  * past it, so a cursor from before cannot silently miss the delete; a forgotten cell is invisible
- * to a pull, so it moves nothing. A tombstone or a removed cell costs no quota; this bound is what
- * stops delete floods from growing the store.
+ * to a pull, so it moves nothing. A `merge` record also keeps its newest 256 removed cells only
+ * (`recordSets.ts`), so no one record holds them all. A tombstone or a removed cell costs no quota;
+ * these bounds are what stop delete floods from growing the store.
  */
 
 import { CLOUD_SYNC_DEFAULTS } from "@polaris-key/catalog";

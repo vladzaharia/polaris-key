@@ -79,7 +79,11 @@ function rowOf(v: unknown): StoredSetting | null {
     key: v.key,
     scope: v.scope,
     ...(v.scope === "platform" ? { family: v.family as string } : {}),
-    version: 0,
+    // Kept to tell a sealed row from a legacy one (§13.10.7); the join gives it a version of its own.
+    version:
+      Number.isSafeInteger(v.version) && (v.version as number) >= 0
+        ? (v.version as number)
+        : 0,
     stamp,
     deleted: v.deleted,
     value: v.value as SyncJson,
@@ -253,12 +257,20 @@ export interface ParsedExport {
   /** Copies an earlier account merge parked (D3); the survivor carries them on. */
   parked: ParkedRecord[];
   clients: ClientRecord[];
+  /** The absorbed store's `encryptionSince`, when it has one. */
+  encryptionSince?: number;
 }
 
 /** The document's rows and clients, or `null` when its shape is wrong. */
 export function parseExportDocument(doc: unknown): ParsedExport | null {
   if (!isObject(doc) || !Array.isArray(doc.settings)) return null;
   if (!Array.isArray(doc.clients)) return null;
+  const since = doc.encryptionSince;
+  if (
+    since !== undefined &&
+    (!Number.isSafeInteger(since) || (since as number) < 1)
+  )
+    return null;
   const settings: StoredSetting[] = [];
   for (const raw of doc.settings) {
     const row = rowOf(raw);
@@ -296,7 +308,13 @@ export function parseExportDocument(doc: unknown): ParsedExport | null {
       lastMutationId: c.lastMutationId as number,
     });
   }
-  return { settings, records, parked, clients };
+  return {
+    settings,
+    records,
+    parked,
+    clients,
+    ...(since !== undefined ? { encryptionSince: since as number } : {}),
+  };
 }
 
 /** The wire form of a policy table, or `null` when it is not one. */

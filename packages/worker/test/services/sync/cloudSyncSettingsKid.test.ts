@@ -34,8 +34,9 @@ const row = (store: MemoryStore, key: string) =>
 describe("the key id of a sealed setting write", () => {
   it("is recorded on a scalar row, and not on a plaintext one", () => {
     const store = new MemoryStore();
-    push(store, { op: "set", ct: envelope(7) }, BLIND(1), "lastWrite", true);
+    // The plaintext row first: a store with `encryptionSince` takes no plaintext write.
     push(store, { op: "set", value: 1 }, "plain", "lastWrite", false);
+    push(store, { op: "set", ct: envelope(7) }, BLIND(1), "lastWrite", true);
     expect(row(store, BLIND(1))?.kid).toBe(kidOf(7));
     expect(row(store, "plain")?.kid).toBeUndefined();
   });
