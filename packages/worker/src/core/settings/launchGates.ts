@@ -72,6 +72,7 @@ export const LAUNCH_GATES: readonly SettingDef[] = [
       "services/identity/passthrough/authorize.ts",
       "services/identity/passthrough/keyReturn.ts",
       "services/identity/passthrough/routes.ts",
+      "services/identity/passthrough/token.ts",
     ],
     storage: { kind: "scalar", storedAs: "LAUNCH_IDENTITY_RETURNKEY" },
   }),

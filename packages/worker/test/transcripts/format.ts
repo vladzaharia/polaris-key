@@ -67,6 +67,12 @@
 // | "rate-limited" | "error", then `scope`, `subject`, `licenseId` (null on a licence-less device)
 // and `tokenHeld` on "ok".
 //
+// `redirectComplete` with the step arg `keyReturn: true` (LK-SKIP, WIRE-CONTRACT-V5 §12.4.2) is the
+// SDK that sent `key_return=allow`: it reports "activated" (the answer carried `via: "key"`; the
+// SDK holds a key activation, not a sign-in) with `scope` "", `licenseId`, `subject` (null),
+// `keyEntries` {used, limit} and `tokenHeld`, or "device-limit" with `limit`, `deviceCount` and
+// `manageUrl` (the flat `device_limit` of `token`), or "invalid-grant".
+//
 // `redirectComplete` also reports result "choose" (I-08b, §12.5.1): `token` answered a pending
 // sign-in grant instead of a device token, and the SDK holds no token yet. The `choice*` steps
 // report `result` "ok" | "refused" (with `code`, the nested error's code); `choiceLicenses`

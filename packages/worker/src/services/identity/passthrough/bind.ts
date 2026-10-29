@@ -33,6 +33,7 @@ import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { hashKey } from "../../../platform/crypto.js";
 import {
   deviceMetadata,
+  licenseUsable,
   type PresentedDeviceMetadata,
 } from "../../../core/devices.js";
 import { getDevice } from "../../../core/devices/store.js";
@@ -308,14 +309,10 @@ export async function bindChoice(
 async function bindKey(
   cx: BindCx,
   who: BindWho,
-  device: {
-    id: string;
-    metadata: PresentedDeviceMetadata;
-    label: string | null;
-  },
+  device: KeyDevice,
   key: string,
 ): Promise<BindResult> {
-  const { env, db, product, now, req } = cx;
+  const { env, db, product } = cx;
   if (!product.services.license.enabled) return refuse({ reason: "not_found" });
   const keyHash = await hashKey(key, env.KEY_HASH_PEPPER);
   const keyRow = await getKey(db, product.slug, keyHash);
@@ -323,6 +320,103 @@ async function bindKey(
     return refuse({ reason: "unauthorized" });
   const license = await getLicense(db, product.slug, keyRow.license_id);
   if (!license) return refuse({ reason: "unauthorized" });
+  return admitByKey(cx, who, device, { keyHash, license, surface: "app" });
+}
+
+type KeyDevice = {
+  id: string;
+  metadata: PresentedDeviceMetadata;
+  label: string | null;
+};
+
+/** A key-return bind that `token` answers as `invalid_grant` (nothing about the key is said). */
+export type KeyReturnRefusal = BindRefusal | { reason: "invalid_grant" };
+
+export type KeyReturnBindResult =
+  | Extract<BindResult, { ok: true }>
+  | { ok: false; refusal: KeyReturnRefusal };
+
+/**
+ * LK-SKIP (WIRE-CONTRACT-V5 §12.4.2 items 5 and 6): redeem a key-return code's device. The code
+ * names the key by its peppered hash and its licence; both are read again here, so a key revoked,
+ * a licence disabled or a product that changed inside the code's 60 seconds ends it with
+ * `invalid_grant`. A licence in an account is `license_owned` whatever `identity.keyEntryRefusals`
+ * says (the card's route refused it the same way), and nothing is counted. Past that the device
+ * binds exactly as `license/activate` binds the same key: `bound_by = 'key'`, one `browser` entry,
+ * and the seat, fingerprint and hardware rules unchanged. No account is written onto the device.
+ */
+export async function bindKeyReturn(
+  cx: BindCx,
+  device: KeyDevice,
+  code: { keyHash: string; licenseId: string },
+): Promise<KeyReturnBindResult> {
+  const { db, product, now } = cx;
+  const invalid = (): KeyReturnBindResult => ({
+    ok: false,
+    refusal: { reason: "invalid_grant" },
+  });
+  if (!product.services.license.enabled || !product.services.identity?.enabled)
+    return invalid();
+  const keyRow = await getKey(db, product.slug, code.keyHash);
+  if (
+    !keyRow ||
+    keyRow.status !== "active" ||
+    keyRow.license_id !== code.licenseId
+  )
+    return invalid();
+  const license = await getLicense(db, product.slug, keyRow.license_id);
+  if (
+    !license ||
+    license.product !== product.slug ||
+    !licenseUsable(license, now)
+  )
+    return invalid();
+  if ((license.account_id ?? null) !== null)
+    return refuse(await ownedRefusal(cx, license, device));
+  const bound = await admitByKey(cx, null, device, {
+    keyHash: code.keyHash,
+    license,
+    surface: "browser",
+  });
+  return bound;
+}
+
+/** `license_owned`: logged as a refusal of the device, with the link to the product's card. */
+async function ownedRefusal(
+  cx: BindCx,
+  license: LicenseRow,
+  device: KeyDevice,
+): Promise<BindRefusal> {
+  const { env, db, product, now, req } = cx;
+  await logRefusal(db, {
+    product: product.slug,
+    licenseId: license.id,
+    deviceId: device.id,
+    reason: "license_owned",
+    at: now,
+    platform: device.metadata.platform,
+    arch: device.metadata.arch,
+    userAgent: device.metadata.userAgent,
+  });
+  return {
+    reason: "license_owned",
+    signInUrl: await buildSignInUrl(env, db, req, product),
+  };
+}
+
+/**
+ * The rest of a bind by key, shared by a key entered in the app and a key-return code: the
+ * key-entry gate, the seat, the count. With `who` the account is then written onto the device;
+ * without it (the key return) no binding is written.
+ */
+async function admitByKey(
+  cx: BindCx,
+  who: BindWho | null,
+  device: KeyDevice,
+  key: { keyHash: string; license: LicenseRow; surface: "app" | "browser" },
+): Promise<BindResult> {
+  const { env, db, product, now } = cx;
+  const { keyHash, license } = key;
 
   const gate = await keyEntryGate(
     { env, db, ...(cx.settings ? { registry: cx.settings } : {}) },
@@ -332,22 +426,19 @@ async function bindKey(
     now,
   );
   if (gate.kind === "refuse" || gate.kind === "owned") {
+    if (gate.kind === "owned")
+      return refuse(await ownedRefusal(cx, license, device));
     await logRefusal(db, {
       product: product.slug,
       licenseId: license.id,
       deviceId: device.id,
-      reason: gate.kind === "owned" ? "license_owned" : "key_entry_limit",
+      reason: "key_entry_limit",
       at: now,
       platform: device.metadata.platform,
       arch: device.metadata.arch,
       userAgent: device.metadata.userAgent,
     });
-    if (gate.kind === "owned")
-      return refuse({
-        reason: "license_owned",
-        signInUrl: await buildSignInUrl(env, db, req, product),
-      });
-    const manageUrl = await buildManageUrl(env, db, req, product, {
+    const manageUrl = await buildManageUrl(env, db, cx.req, product, {
       kind: "key_entry_limit",
     });
     return refuse({
@@ -369,9 +460,7 @@ async function bindKey(
       label: device.label,
       // A key binds by key: signing the account in on top must not let a sign-out release it.
       boundBy: "key",
-      ...(gate.kind === "admit"
-        ? { keyEntry: { surface: "app" as const } }
-        : {}),
+      ...(gate.kind === "admit" ? { keyEntry: { surface: key.surface } } : {}),
     },
   );
   if ("error" in authorized)
@@ -380,7 +469,10 @@ async function bindKey(
   // The seat and its counted entry are committed. If the account cannot be written onto the
   // device now, answer a retryable 503 and let the caller put the grant back: the retry finds the
   // device enrolled (never counted twice) and writes the subject.
-  if (!(await setDeviceSubject(env, db, product.slug, device.id, who.subject)))
+  if (
+    who &&
+    !(await setDeviceSubject(env, db, product.slug, device.id, who.subject))
+  )
     return refuse({ reason: "unavailable" });
   const row =
     (await getDevice(db, product.slug, device.id)) ?? authorized.device;
