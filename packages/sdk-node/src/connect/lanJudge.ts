@@ -7,18 +7,13 @@
 //    link-local key carries its zone, because the same fe80 address on two links is two hosts.
 
 import { lanVerdict, type LanVerdict } from "@polaris-key/client-core/peer";
-import { foldMapped, ipBytes, ipText, splitZone } from "./ip.js";
+import { canonIp, isLinkLocal, isMapped, prefix64, splitZone } from "./ip.js";
 
 const REFUSED: LanVerdict = { dial: false, key: null };
 
 const isMappedText = (addr: string): boolean => {
-  const b = ipBytes(addr);
-  return (
-    b !== null &&
-    b.length === 16 &&
-    foldMapped(b).length === 4 &&
-    addr.includes(":")
-  );
+  const c = canonIp(addr);
+  return c !== null && isMapped(c);
 };
 
 /**
@@ -52,15 +47,11 @@ export interface LimiterKeys {
 
 /** The keys the limiter counts under, for an address `lanVerdict` allowed (`key`). */
 export function limiterKeys(remote: string, key: string): LimiterKeys {
-  const b = ipBytes(key);
-  if (b === null || b.length === 4) return { address: key, net64: null };
+  const net = key.includes(":") ? prefix64(key) : null;
+  if (net === null) return { address: key, net64: null };
   const { zone } = splitZone(remote);
-  const linkLocal = b[0] === 0xfe && (b[1]! & 0xc0) === 0x80;
-  const z = linkLocal && zone !== null ? `%${zone}` : "";
-  const prefix = ipText(
-    Uint8Array.from([...b.subarray(0, 8), ...new Array<number>(8).fill(0)]),
-  );
-  return { address: `${key}${z}`, net64: `${prefix}/64${z}` };
+  const z = isLinkLocal(key) && zone !== null ? `%${zone}` : "";
+  return { address: `${key}${z}`, net64: `${net}/64${z}` };
 }
 
 /** Counts of sockets that have not finished the handshake. */

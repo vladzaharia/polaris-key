@@ -24,10 +24,10 @@
 //  - a peer whose PTR TTL lapses without a refresh is reported down, like a goodbye (TTL 0);
 //  - query replies are sent at most once a second per socket.
 
-import { networkInterfaces } from "node:os";
+import { networkInterfaces, type NetworkInterfaceInfo } from "node:os";
 import { createSocket } from "node:dgram";
 import { isInstanceName } from "@polaris-key/client-core/peer";
-import { foldMapped, inCidr, ipBytes, ipText, splitZone } from "./ip.js";
+import { canonIp, foldMapped, inCidr, isLinkLocal, splitZone } from "./ip.js";
 
 export const PEER_SERVICE = "_pkeypeer._tcp.local";
 const MAX_INSTANCES = 256;
@@ -125,28 +125,20 @@ const fqdn = (instance: string): string => `${instance}.${PEER_SERVICE}`;
 const hostOf = (instance: string): string => `${instance}.local`;
 const INSTANCE_FQDN = /^(p1-[a-z2-7]{16})\._pkeypeer\._tcp\.local$/;
 
+/** This machine's IPv4 interface addresses (the loopback ones only when allowed). */
+function ipv4Entries(allowLoopback: boolean): NetworkInterfaceInfo[] {
+  return Object.values(networkInterfaces())
+    .flatMap((list) => list ?? [])
+    .filter((i) => i.family === "IPv4" && (!i.internal || allowLoopback));
+}
+
 function ownAddresses(allowLoopback: boolean): string[] {
-  const out: string[] = [];
-  for (const list of Object.values(networkInterfaces()))
-    for (const i of list ?? [])
-      if (
-        i.family === "IPv4" &&
-        (!i.internal || allowLoopback) &&
-        isLanAddress(i.address, allowLoopback)
-      )
-        out.push(i.address);
-  return out;
+  return ipv4Entries(allowLoopback)
+    .map((i) => i.address)
+    .filter((x) => isLanAddress(x, allowLoopback));
 }
 
 const ZERO_MAC = /^(?:00:){5}00$/;
-
-/** fe80::/10 */
-const isLinkLocal = (a: string): boolean => {
-  const b = ipBytes(a);
-  return (
-    b !== null && b.length === 16 && b[0] === 0xfe && (b[1]! & 0xc0) === 0x80
-  );
-};
 
 /**
  * The interfaces IPv6 mDNS uses: up (Node lists only interfaces that have an address), with an
@@ -158,7 +150,7 @@ export function ownInterfaces(allowLoopback = false): MdnsInterface[] {
   const out: MdnsInterface[] = [];
   for (const [name, list] of Object.entries(networkInterfaces())) {
     const v6 = (list ?? []).filter((i) => i.family === "IPv6");
-    const ll = v6.filter((i) => isLinkLocal(i.address));
+    const ll = v6.filter((i) => isLinkLocal(canonIp(i.address) ?? ""));
     const first = ll[0];
     if (first === undefined) continue;
     if (first.internal ? !allowLoopback : ZERO_MAC.test(first.mac)) continue;
@@ -175,18 +167,8 @@ export function ownInterfaces(allowLoopback = false): MdnsInterface[] {
 }
 
 /** This machine's connected IPv4 subnets. */
-function ownSubnets(allowLoopback: boolean): string[] {
-  const out: string[] = [];
-  for (const list of Object.values(networkInterfaces()))
-    for (const i of list ?? [])
-      if (
-        i.family === "IPv4" &&
-        i.cidr !== null &&
-        (!i.internal || allowLoopback)
-      )
-        out.push(i.cidr);
-  return out;
-}
+const ownSubnets = (allowLoopback: boolean): string[] =>
+  ipv4Entries(allowLoopback).flatMap((i) => (i.cidr === null ? [] : [i.cidr]));
 
 /** ASCII fold: `A-Z` to `a-z` and nothing else. */
 export const foldName = (name: string): string =>
@@ -225,15 +207,10 @@ export class AddressBook {
     zone: string | null,
     now: number,
   ): void {
-    const want = ipBytes(splitZone(source).addr);
-    const got = ipBytes(r.data);
-    if (want === null || got === null) return;
-    const src = foldMapped(want);
-    if (src.length !== got.length || !src.every((x, i) => x === got[i])) return;
-    const linkLocal =
-      got.length === 16 && got[0] === 0xfe && (got[1]! & 0xc0) === 0x80;
-    const text = ipText(got);
-    const address = linkLocal && zone !== null ? `${text}%${zone}` : text;
+    const want = canonIp(splitZone(source).addr);
+    const got = canonIp(r.data);
+    if (want === null || got === null || foldMapped(want) !== got) return;
+    const address = isLinkLocal(got) && zone !== null ? `${got}%${zone}` : got;
     const name = foldName(r.name);
     let e = this.#m.get(name);
     if (r.ttl === 0) {

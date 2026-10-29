@@ -9,7 +9,11 @@
 //  - the listener starts a handshake only when this device holds a verified identity. The
 //    handshake (XXpsk0) and admission (certificate, ring, expiry, revocation) run in client-core;
 //    a failed tag closes the socket without a word;
-//  - unauthenticated sockets are bounded in number, per address and in time;
+//  - unauthenticated sockets are bounded in number, per address, per /64 and in time; an accepted
+//    socket is judged (client-core's `lanVerdict` on its own addresses, lanJudge.ts) before it is
+//    read, and one that fails is closed at once;
+//  - one TCP port serves both families: a dual-stack `::` listener, falling back to 0.0.0.0;
+//    a device with several learned addresses dials them in a race (dial.ts);
 //  - the device's X25519 private key never leaves the `DeviceKeyPort`: Noise is given a handle
 //    whose static-key operations call `port.dh`.
 
@@ -36,7 +40,13 @@ import {
   type RingAdoption,
   type TrustApplication,
 } from "./channel.js";
-import { textVerdict } from "./lanJudge.js";
+import { dialRace } from "./dial.js";
+import {
+  PendingLimiter,
+  limiterKeys,
+  socketVerdict,
+  textVerdict,
+} from "./lanJudge.js";
 import {
   MulticastDnsAdapter,
   type MdnsAdapter,
@@ -79,7 +89,7 @@ export interface LanSource {
 
 export interface LanOptions {
   mdns?: MdnsAdapter;
-  /** Where to listen. Default 0.0.0.0. */
+  /** Where to listen. Default `::` (both families on one port), or 0.0.0.0 where IPv6 is unavailable. */
   host?: string;
   /** Default 0: a random port each listen (§15.4). */
   port?: number;
@@ -94,6 +104,8 @@ export interface LanOptions {
   /** Unauthenticated sockets at once (default 32) and per source address (default 4). */
   maxPending?: number;
   maxPendingPerAddress?: number;
+  /** Unauthenticated sockets from one /64 (default 16). */
+  maxPendingPer64?: number;
   /** Open sessions at once (default 64). */
   maxSessions?: number;
   rekeyMessages?: number;
@@ -128,7 +140,7 @@ export class LanService {
   #peers = new Map<string, LanPeer & { instance: string }>();
   #miss = new Map<string, number>();
   #pending = new Set<Socket>();
-  #perAddress = new Map<string, number>();
+  #limit: PendingLimiter;
   #links = new Set<SocketLink>();
   #sessions = new Set<ConnectSession>();
   #onSession = new Set<(s: ConnectSession) => void>();
@@ -143,6 +155,11 @@ export class LanService {
   private constructor(src: LanSource, o: LanOptions) {
     this.#src = src;
     this.#o = o;
+    this.#limit = new PendingLimiter(
+      o.maxPending ?? 32,
+      o.maxPendingPerAddress ?? 4,
+      o.maxPendingPer64 ?? 16,
+    );
     this.#docs = new PeerDocs(src, () => {
       this.#id = null;
       // A new K_disc changes the advert name inside the epoch.
@@ -206,13 +223,18 @@ export class LanService {
       throw new LanError("not_listening", "The LAN service is stopped.");
     const want = typeof target === "string" ? target : target.deviceId;
     const peer = typeof target === "string" ? this.#peers.get(target) : target;
-    if (peer === undefined || !this.#dialable(peer.host))
+    // The address text is judged before any socket exists (a global IPv6 address is judged
+    // again on the connected socket, with its own local address).
+    const hosts = (peer?.hosts ?? (peer ? [peer.host] : [])).filter((h) =>
+      this.#dialable(h),
+    );
+    if (peer === undefined || hosts.length === 0)
       throw new LanError(
         "unknown_peer",
         "That device was not found on this network.",
       );
     const id = await this.#identity(false);
-    const socket = await this.#dial(peer);
+    const socket = await this.#dial(hosts, peer.port);
     const link = this.#link(socket, id, "initiator");
     void link.channel.start();
     let session: ConnectSession;
@@ -325,55 +347,66 @@ export class LanService {
     return textVerdict(host, this.#o.allowLoopback === true);
   }
 
-  #dial(peer: LanPeer): Promise<Socket> {
-    return new Promise((resolve, reject) => {
-      const s = netConnect({ host: peer.host, port: peer.port });
-      const t = setTimeout(() => s.destroy(new Error("timeout")), 10_000);
-      s.once("connect", () => {
-        clearTimeout(t);
-        s.removeAllListeners("error");
-        resolve(s);
+  async #dial(hosts: readonly string[], port: number): Promise<Socket> {
+    try {
+      return await dialRace(hosts, port, {
+        allowLoopback: this.#o.allowLoopback === true,
       });
-      s.once("error", (e) => {
-        clearTimeout(t);
-        reject(
-          new LanError("connect_failed", "The device did not answer.", {
-            cause: e,
-          }),
-        );
+    } catch (e) {
+      throw new LanError("connect_failed", "The device did not answer.", {
+        cause: e,
       });
-    });
+    }
   }
 
   async #listen(): Promise<void> {
-    const server = createServer({ noDelay: true }, (s) => this.#accept(s));
-    this.#server = server;
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(this.#o.port ?? 0, this.#o.host ?? "0.0.0.0", () => {
-        server.removeListener("error", reject);
-        resolve();
+    const port = this.#o.port ?? 0;
+    const on = (host: string): Promise<Server> =>
+      new Promise((resolve, reject) => {
+        const server = createServer({ noDelay: true }, (s) => this.#accept(s));
+        server.once("error", reject);
+        // `ipv6Only: false` is the dual-stack `::`; it is ignored for an IPv4 address.
+        server.listen({ port, host, ipv6Only: false }, () => {
+          server.removeListener("error", reject);
+          resolve(server);
+        });
       });
-    });
+    let server: Server;
+    if (this.#o.host !== undefined) server = await on(this.#o.host);
+    else
+      try {
+        server = await on("::");
+      } catch {
+        // No IPv6 here: IPv4 only, on the same single port.
+        server = await on("0.0.0.0");
+      }
+    this.#server = server;
     server.on("error", () => undefined);
     this.#port = (server.address() as { port: number }).port;
   }
 
   #accept(socket: Socket): void {
-    const addr = socket.remoteAddress ?? "";
-    const per = this.#perAddress.get(addr) ?? 0;
-    if (
-      this.#stopped ||
-      this.#pending.size >= (this.#o.maxPending ?? 32) ||
-      per >= (this.#o.maxPendingPerAddress ?? 4) ||
-      this.#sessions.size >= (this.#o.maxSessions ?? 64) ||
-      !this.#dialable(addr.replace(/^::ffff:/, ""))
-    ) {
+    // Judged first, on the socket's own addresses and before a byte is read: a source off the LAN
+    // is closed at once and costs no slot.
+    const remote = socket.remoteAddress ?? "";
+    const v = socketVerdict(
+      remote,
+      socket.localAddress,
+      this.#o.allowLoopback === true,
+    );
+    if (!v.dial || v.key === null || this.#stopped) {
+      socket.destroy();
+      return;
+    }
+    const release =
+      this.#sessions.size >= (this.#o.maxSessions ?? 64)
+        ? null
+        : this.#limit.take(socket, limiterKeys(remote, v.key));
+    if (release === null) {
       socket.destroy();
       return;
     }
     this.#pending.add(socket);
-    this.#perAddress.set(addr, per + 1);
     // An unauthenticated socket lives for the handshake window and no longer.
     const deadline = setTimeout(
       () => socket.destroy(),
@@ -383,9 +416,7 @@ export class LanService {
     const done = (): void => {
       clearTimeout(deadline);
       if (!this.#pending.delete(socket)) return;
-      const n = (this.#perAddress.get(addr) ?? 1) - 1;
-      if (n <= 0) this.#perAddress.delete(addr);
-      else this.#perAddress.set(addr, n);
+      release();
     };
     socket.once("close", done);
     // The identity is read before the first byte is handled.
@@ -450,6 +481,7 @@ export class LanService {
   }
 
   async #found(f: MdnsFound): Promise<void> {
+    // Keep the addresses that could be dialled; the connected socket is judged again.
     const hosts = f.hosts.filter((h) => this.#dialable(h));
     if (this.#stopped || hosts.length === 0) return;
     const txt = parseTxt(f.txt);
@@ -473,6 +505,7 @@ export class LanService {
       this.#miss.set(f.instance, this.#src.now());
       return;
     }
+    const had = this.#peers.get(hit.deviceId);
     const peer = {
       deviceId: hit.deviceId,
       host: hosts[0]!,
@@ -481,12 +514,14 @@ export class LanService {
       instance: f.instance,
     };
     this.#peers.set(hit.deviceId, peer);
-    for (const fn of [...this.#onPeer])
-      fn({
-        deviceId: peer.deviceId,
-        host: peer.host,
-        hosts: [...hosts],
-        port: peer.port,
-      });
+    // A new address for a device already known is not a new peer.
+    if (had?.port !== peer.port || had?.instance !== peer.instance)
+      for (const fn of [...this.#onPeer])
+        fn({
+          deviceId: peer.deviceId,
+          host: peer.host,
+          hosts: [...hosts],
+          port: peer.port,
+        });
   }
 }

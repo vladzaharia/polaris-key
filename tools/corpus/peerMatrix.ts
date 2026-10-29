@@ -1384,6 +1384,8 @@ function buildMdnsAnswers(): unknown {
     txt: ["v=1", "m=a"],
   };
   const ll = (name: string, address: string): RefLearned => ({ name, address });
+  /** Four addresses held for the first host: the most a name keeps. */
+  const held4 = ["2", "3", "4", "5"].map((n) => ll(H1, `192.168.1.${n}`));
 
   // A known answer for the encoder, written by hand from RFC 1035 (a compressed PTR, then an A).
   const knownCompressed = refDnsEncode({
@@ -1725,18 +1727,8 @@ function buildMdnsAnswers(): unknown {
       records: [a(H1.toUpperCase(), "192.168.1.9")],
       source: "192.168.1.9",
       zone: null,
-      prior: [
-        ll(H1, "192.168.1.2"),
-        ll(H1, "192.168.1.3"),
-        ll(H1, "192.168.1.4"),
-        ll(H1, "192.168.1.5"),
-      ],
-      learned: [
-        ll(H1, "192.168.1.2"),
-        ll(H1, "192.168.1.3"),
-        ll(H1, "192.168.1.4"),
-        ll(H1, "192.168.1.5"),
-      ],
+      prior: held4,
+      learned: held4,
     },
     {
       id: "name-case-goodbye-removes",

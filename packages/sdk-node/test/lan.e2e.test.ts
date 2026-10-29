@@ -5,7 +5,7 @@
 // The real `multicast-dns` socket is covered in connectMdns.test.ts (skipped there when the
 // sandbox has no multicast). Negative cases: a foreign roster, an expired certificate, a wrong
 // K_disc, oversized frames, flooding and a stalled handshake.
-import { connect as tcp, type Socket } from "node:net";
+import { connect as tcp, createServer, type Socket } from "node:net";
 import { rmSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { base64UrlDecode } from "@polaris-key/jws";
@@ -333,10 +333,10 @@ describe("LAN admission refusals", () => {
 });
 
 /** A raw TCP client; resolves what the listener sent and whether it closed. */
-function raw(port: number) {
+function raw(port: number, host = "127.0.0.1") {
   const got: Buffer[] = [];
   let closed = false;
-  const s = tcp({ host: "127.0.0.1", port });
+  const s = tcp({ host, port });
   sockets.push(s);
   s.on("data", (d) => got.push(d));
   s.on("error", () => undefined);
@@ -389,5 +389,101 @@ describe("LAN listener bounds", () => {
     const s = raw(la.port);
     await until(() => s.closed, 2000);
     expect(s.received).toBe(0);
+  });
+});
+
+/** Does this machine have ::1? Tests that need IPv6 loopback skip, with the reason, without it. */
+async function hasIpv6Loopback(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const probe = createServer();
+    probe.once("error", () => resolve(false));
+    probe.listen(0, "::1", () => probe.close(() => resolve(true)));
+  });
+}
+
+describe("LAN over IPv6 (one port for both families)", () => {
+  it("listens on `::` and takes a session over ::1 and over 127.0.0.1 on the same port", async (ctx) => {
+    if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
+    const { a, b, net } = await world();
+    // No `host`: the default is the dual-stack `::`, falling back to 0.0.0.0.
+    const open = async (c: PolarisKeyClient) => {
+      const s = await c.connect.lan({
+        mdns: net.adapter(),
+        allowLoopback: true,
+      });
+      services.push(s);
+      return s;
+    };
+    net.hosts = ["::1"];
+    const la = await open(a);
+    const lb = await open(b);
+    const inbound: ConnectSession[] = [];
+    la.onSession((s) => inbound.push(s));
+    await until(() => lb.peers().some((p) => p.deviceId === A));
+    expect(lb.peers()[0]).toMatchObject({
+      host: "::1",
+      hosts: ["::1"],
+      port: la.port,
+    });
+    const viaV6 = await lb.connect(A);
+    await until(() => inbound.length === 1);
+    await viaV6.send(utf8("over ::1"));
+    expect(text((await inbound[0]!.receive()).body)).toBe("over ::1");
+    // The same port answers IPv4.
+    const viaV4 = await lb.connect({
+      deviceId: A,
+      host: "127.0.0.1",
+      port: la.port,
+    });
+    await until(() => inbound.length === 2);
+    await viaV4.send(utf8("over 127.0.0.1"));
+    expect(text((await inbound[1]!.receive()).body)).toBe("over 127.0.0.1");
+  });
+
+  it("dials the next address when the first is not listening", async (ctx) => {
+    if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
+    const { a, b, net } = await world();
+    // ::1 refuses (A listens on IPv4 only), 127.0.0.1 answers.
+    net.hosts = ["::1", "127.0.0.1"];
+    const la = await lan(a, net, { host: "127.0.0.1" });
+    const lb = await lan(b, net);
+    let inn: ConnectSession | null = null;
+    la.onSession((s) => (inn = s));
+    await until(() => lb.peers().some((p) => p.deviceId === A));
+    expect(lb.peers()[0]!.hosts).toEqual(["::1", "127.0.0.1"]);
+    const out = await lb.connect(A);
+    await until(() => inn !== null);
+    expect(out.peerDeviceId).toBe(A);
+  });
+
+  it("closes a source off the LAN at once, without reading, and spends no slot on it", async (ctx) => {
+    if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
+    const { a, net } = await world();
+    // Loopback is not a LAN address unless the host allows it.
+    const la = await lan(a, net, { host: "::", allowLoopback: false });
+    const socks = [
+      raw(la.port, "::1"),
+      raw(la.port, "127.0.0.1"),
+      raw(la.port, "::1"),
+    ];
+    for (const x of socks) x.s.write(Buffer.from([0, 48]));
+    await until(() => socks.every((x) => x.closed));
+    expect(socks.every((x) => x.received === 0)).toBe(true);
+  });
+
+  it("holds a loopback source when loopback is allowed, per address", async (ctx) => {
+    if (!(await hasIpv6Loopback())) return ctx.skip("no ::1 on this machine");
+    const { a, net } = await world();
+    const la = await lan(a, net, { host: "::", maxPendingPerAddress: 2 });
+    const socks = [
+      raw(la.port, "::1"),
+      raw(la.port, "::1"),
+      raw(la.port, "::1"),
+    ];
+    await until(() => socks.filter((x) => x.closed).length === 1);
+    // The same peer over IPv4 is another address and keeps its own count.
+    const v4 = raw(la.port, "127.0.0.1");
+    await sleep(100);
+    expect(v4.closed).toBe(false);
   });
 });
