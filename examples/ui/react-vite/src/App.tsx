@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePolarisAuth } from "@polaris-key/react";
 
+import { openFromMenu } from "./fixtures";
 import { SettingsPage } from "./SettingsPage";
 
 type Page = "studio" | "settings";
@@ -35,6 +36,12 @@ export function App() {
             Settings
           </a>
         </nav>
+        {__POLARIS_LIVE__ ? null : (
+          // Stands in for the desktop host's menu item: the kit's Settings with the account row.
+          <button type="button" onClick={() => openFromMenu("settings")}>
+            Manage license
+          </button>
+        )}
         <button type="button" onClick={() => void signOut()}>
           Sign out
         </button>

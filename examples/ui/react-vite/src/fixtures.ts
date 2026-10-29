@@ -9,18 +9,25 @@
 //   sign in    shows a code, then signs in as Mara Fennick about four seconds later.
 //   sign out   back to Welcome.
 //
-// `?state=` on the page's address pins the gate for one load: ok, grace, expired or revoked.
+// A key holds the license with no account (floating): the gate shows Done, "Add your name and
+// email" signs in by code and attaches it, and Settings shows "Not in an account" until then.
+//
+// `?state=` on the page's address pins the gate for one load: ok, grace, expired or revoked (an
+// account holds it). `?identity=off` turns Identity off (Add opens polaris.locker). `?attach=`
+// other, owned or failed makes Add end on that step.
 
 import {
   servicesFromList,
   type JSONValue,
   type ServicesMap,
 } from "@polaris-key/react/core";
-import type {
-  BridgeActivation,
-  BridgeOidcPoll,
-  BridgeState,
-  PolarisBridge,
+import type { PolarisAdapter } from "@polaris-key/react/core";
+import {
+  desktopAdapter,
+  type BridgeActivation,
+  type BridgeOidcPoll,
+  type BridgeState,
+  type PolarisBridge,
 } from "@polaris-key/react/desktop";
 
 /** The key that activates. */
@@ -33,12 +40,31 @@ export const TIDEWATER = {
   accent: "#369186",
 };
 
-const SERVICES: ServicesMap = servicesFromList([
-  "license",
-  "config",
-  "identity",
-  "update",
-]);
+const identityOff = (): boolean =>
+  typeof location !== "undefined" &&
+  new URLSearchParams(location.search).get("identity") === "off";
+
+const services = (): ServicesMap =>
+  servicesFromList(
+    identityOff()
+      ? ["license", "config", "update"]
+      : ["license", "config", "identity", "update"],
+  );
+
+type Attach = "other" | "owned" | "failed";
+function attachFromUrl(): Attach | null {
+  if (typeof location === "undefined") return null;
+  const v = new URLSearchParams(location.search).get("attach");
+  return v === "other" || v === "owned" || v === "failed" ? v : null;
+}
+
+/** Who holds the license: nobody (the key alone) or a person. */
+interface Holder {
+  name: string;
+  email: string;
+}
+const MARA: Holder = { name: "Mara Fennick", email: "mara@fennick.studio" };
+const FLOATING: Holder = { name: "", email: "" };
 const MANAGE =
   "https://key.plrs.im/activate?product=tidewater&next=free-device";
 const DAY = 86_400;
@@ -51,7 +77,7 @@ const nowSec = (): number => Math.floor(Date.now() / 1000);
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** The license document once this device holds Tidewater Studio Pro. */
-function licenseDoc(pinned: Pinned | null): Doc {
+function licenseDoc(pinned: Pinned | null, holder: Holder): Doc {
   const now = nowSec();
   return {
     aud: "tidewater",
@@ -69,9 +95,9 @@ function licenseDoc(pinned: Pinned | null): Doc {
           ? now - 30
           : now + 30 * DAY,
     profile: {
-      name: "Mara Fennick",
-      firstName: "Mara",
-      email: "mara@fennick.studio",
+      name: holder.name,
+      firstName: holder.name.split(" ")[0] ?? "",
+      email: holder.email,
       activatedAt: now - 3_600,
     },
     entitlements: {
@@ -176,14 +202,18 @@ export function tidewaterBridge(): PolarisBridge {
   const base = (): BridgeState => ({
     activation: null,
     doc: null,
-    capabilities: SERVICES,
+    capabilities: services(),
     config: CONFIG,
     presentation: TIDEWATER,
   });
+  let holder: Holder = pinned ? MARA : FLOATING;
+  // What the last "Add your name and email" typed: the sign-in answers as that person.
+  let typed: Holder | null = null;
+  const attach = attachFromUrl();
   const licensed = (): BridgeState => ({
     ...base(),
     activation: "token",
-    doc: licenseDoc(pinned),
+    doc: licenseDoc(pinned, holder),
     lastVerifiedAt: Date.now(),
     highWaterMark: nowSec() - 60,
     ...(pinned === "revoked" ? { lastSyncUnauthorized: true } : {}),
@@ -199,6 +229,12 @@ export function tidewaterBridge(): PolarisBridge {
     state = next;
     for (const l of listeners) l(state);
   };
+
+  /** Sign-in hints from the form (the desktop bridge's beginSignIn carries none). */
+  const hint = (h: Holder | null) => {
+    typed = h;
+  };
+  hintSink = hint;
 
   return {
     version: 4,
@@ -226,10 +262,19 @@ export function tidewaterBridge(): PolarisBridge {
       if (started === undefined) return { kind: "expired" };
       if (Date.now() - started < SIGN_IN_MS) return { kind: "pending" };
       flows.delete(flowId);
-      push(licensed());
+      // The welcome sign-in holds the license for the account. A sign-in made while a key holds
+      // it (Add your name and email) changes nothing until the attach.
+      if (state.doc === null) {
+        holder = MARA;
+        push(licensed());
+      }
+      const who = typed ?? MARA;
       return {
         kind: "ok",
-        identity: { name: "Mara Fennick", email: "mara@fennick.studio" },
+        identity: {
+          name: who.name,
+          email: attach === "other" ? "someone.else@example.com" : who.email,
+        },
       };
     },
     async submitKey(key): Promise<BridgeActivation> {
@@ -244,16 +289,44 @@ export function tidewaterBridge(): PolarisBridge {
           manageUrl: MANAGE,
         };
       }
+      holder = pinned ? MARA : FLOATING;
       push(licensed());
       return { kind: "ok" };
     },
     async signOut() {
+      holder = FLOATING;
+      typed = null;
       push(base());
     },
     async fetchSchema() {
       return CATALOG as unknown as JSONValue;
     },
     async invoke(service, method, args) {
+      if (service === "core" && method === "discovery")
+        return {
+          core: {
+            portal: {
+              enabled: true,
+              activate: "https://polaris.locker/activate?product=tidewater",
+            },
+          },
+        };
+      if (service === "identity" && method === "attach") {
+        const { confirm } = (args ?? {}) as { confirm?: boolean };
+        if (attach === "owned")
+          return { kind: "refused", code: "license_owned", status: 409 };
+        if (attach === "failed")
+          return { kind: "refused", code: "failed", status: 500 };
+        if (!confirm)
+          return {
+            kind: "confirm",
+            license: { id: "lic_tidewater_pro", tierId: null, name: null },
+          };
+        await wait(400);
+        holder = typed ?? MARA;
+        push(licensed());
+        return { kind: "ok", subject: "ps_tidewater_1", attached: "claimed" };
+      }
       if (service === "config" && method === "set") {
         const { key, value } = (args ?? {}) as {
           key?: string;
@@ -298,9 +371,58 @@ export function tidewaterBridge(): PolarisBridge {
       // product's monogram.
       return null;
     },
+    onOpen(cb) {
+      openers.add(cb);
+      return () => openers.delete(cb);
+    },
     on(_event, cb) {
       listeners.add(cb);
       return () => listeners.delete(cb);
     },
   };
+}
+
+const openers = new Set<(view: "settings" | "update") => void>();
+
+/** What a desktop host's menu item ("Manage License…") does: the kit's Settings dialog, with the
+ *  account pane (and its "Not in an account" row) above the rows. */
+export function openFromMenu(view: "settings" | "update" = "settings"): void {
+  for (const open of openers) open(view);
+}
+
+let hintSink: (h: Holder | null) => void = () => undefined;
+
+/** The Tidewater adapter: the desktop adapter over the fixture bridge. The bridge's device-code
+ *  sign-in carries no hints, so "Add your name and email" would be refused; this keeps the name
+ *  and email the form typed for the fixture's sign-in and starts the session without them. */
+export function tidewaterAdapter(): PolarisAdapter {
+  const inner = desktopAdapter({ bridge: tidewaterBridge() });
+  return new Proxy(inner, {
+    get(target, prop) {
+      const v = Reflect.get(target, prop, target) as unknown;
+      if (prop === "signIn") {
+        const ns = target.signIn;
+        return {
+          ...ns,
+          start: (o: Parameters<typeof ns.start>[0]) => {
+            const { loginHint, nameHint, purpose, licenseChoice, ...rest } =
+              o as unknown as {
+                loginHint?: string;
+                nameHint?: string;
+                purpose?: string;
+                licenseChoice?: string;
+              };
+            hintSink(
+              loginHint ? { name: nameHint ?? "", email: loginHint } : null,
+            );
+            (void purpose, licenseChoice);
+            return ns.start(rest as unknown as typeof o);
+          },
+        };
+      }
+      return typeof v === "function"
+        ? (v as (...a: unknown[]) => unknown).bind(target)
+        : v;
+    },
+  });
 }
