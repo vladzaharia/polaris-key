@@ -68,6 +68,7 @@ import { bindChoice, type BindRefusal, type BindResult } from "./bind.js";
 import { bindWithoutChoice } from "./token.js";
 import { verifyDeviceProof } from "../../../core/devices/proof.js";
 import { deviceHolder, deviceOf } from "../attach.js";
+import { SingleUseUnavailableError } from "../../../core/singleUse.js";
 import { gatedBody } from "./nearbyStart.js";
 import { licenseChoiceView, offerFor } from "./choice.js";
 import {
@@ -75,6 +76,7 @@ import {
   decideNearby,
   dropNearby,
   mismatchNearby,
+  hasClientNetwork,
   nearbyNetHash,
   nearbyRef,
   readNearby,
@@ -171,9 +173,29 @@ export async function handleNearbyApprove(
   product: Product,
   now: number,
 ): Promise<Response> {
+  try {
+    return await decideApproval(req, env, db, product, now);
+  } catch (e) {
+    // The request store could not be reached: the request is kept, M may retry (§12.11.5 rule 10).
+    if (e instanceof SingleUseUnavailableError)
+      return wireError(503, "unavailable");
+    throw e;
+  }
+}
+
+async function decideApproval(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  now: number,
+): Promise<Response> {
   // 1. The gates, then the shape (§12.11.5 rule 13: an off route is 404 even for a bad body).
   const body = await gatedApproval(req, env, db, product);
   if (body instanceof Response) return body;
+
+  // Proximity needs a client network: with none, two callers would compare equal, so refuse.
+  if (!hasClientNetwork(req)) return wireError(403, "not_nearby");
 
   // 3. M's bearer, then its budget.
   const auth = await deviceOf(req, env, db, product, now);
@@ -225,15 +247,16 @@ export async function handleNearbyApprove(
     return notFoundNested();
   if (rec.deviceId === approver) return notFoundNested();
 
+  // 7. Proximity: the approver's network, hashed as `start`'s was. Before the key comparison, so
+  // a caller on another network cannot spend the request's mismatch budget.
+  if ((await nearbyNetHash(env, req)) !== rec.netHash)
+    return wireError(403, "not_nearby");
+
   // The keys M sends are the ones D started with (learned from D's authenticated VOUCH_REQ).
   if (body.signKey !== rec.signKey || body.agreeKey !== rec.agreeKey) {
     await mismatchNearby(env, ref);
     return notFoundNested();
   }
-
-  // 7. Proximity: the approver's network, hashed as `start`'s was.
-  if ((await nearbyNetHash(env, req)) !== rec.netHash)
-    return wireError(403, "not_nearby");
 
   // 8. A denial: charged on the subject, then final.
   if (body.decision === "deny") {
@@ -329,7 +352,14 @@ export async function handleNearbyApprove(
     return end(wireError(400, ErrorCode.DeviceKeysInvalid));
   // A credential that appeared on D's id after `start` was not proven there: never take it over.
   const existing = await getDevice(db, product.slug, rec.deviceId);
-  if (existing?.token_hash && !rec.proven) return end(notFoundNested());
+  // A device already bound to M's own subject is a resumed bind (an earlier attempt by this
+  // person stopped part-way), not a credential from someone else.
+  if (
+    existing?.token_hash &&
+    !rec.proven &&
+    existing.subject !== holder.subject
+  )
+    return end(notFoundNested());
 
   // c. Bind.
   const bcx = { req, env, db, product, now };

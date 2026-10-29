@@ -65,7 +65,12 @@ import {
 } from "../../../core/devices/keys.js";
 import { verifyDeviceProof } from "../../../core/devices/proof.js";
 import { readPlatformSignIn } from "../platformSignIn.js";
-import { createNearby, nearbyNetHash, nearbyRef } from "./nearbyStore.js";
+import {
+  createNearby,
+  hasClientNetwork,
+  nearbyNetHash,
+  nearbyRef,
+} from "./nearbyStore.js";
 
 /** `start`: 10 a minute per client network, failing closed (§12.11.5 rule 12). */
 export const NEARBY_START_RATE = {
@@ -217,6 +222,9 @@ export async function handleNearbyStart(
   );
   if (got instanceof Response) return got;
   const { body: asked, deviceId } = got;
+
+  // Proximity needs a client network: with none, two callers would compare equal, so refuse.
+  if (!hasClientNetwork(req)) return wireError(503, "unavailable");
 
   // 4. The keys: well formed, the held-key rule, an agreement key no other device holds.
   const { signKey, agreeKey } = asked;

@@ -30,6 +30,7 @@
  * the request is gone.
  */
 
+import { SingleUseUnavailableError } from "../../../core/singleUse.js";
 import {
   DEVICE_POLL_DENIED,
   NEARBY_POLL_INTERVAL_SECONDS,
@@ -88,6 +89,12 @@ function unavailable(): Response {
   );
 }
 
+/** The request store could not be reached: a retryable `503`, never a terminal `timeout`. */
+function storeDown(e: unknown): Response {
+  if (e instanceof SingleUseUnavailableError) return unavailable();
+  throw e;
+}
+
 /** The body, or null when it is not exactly the documented shape. */
 function parseBody(r: Record<string, unknown>): NearbyPollRequest | null {
   const { request, proof } = r;
@@ -134,7 +141,12 @@ export async function handleNearbyPoll(
   // 4. The request. Absent, expired, collected or ended: `timeout`.
   const ref = await nearbyRef(env, product.slug, body.request);
   if (!ref) return timeout();
-  const rec = await readNearby(env, ref);
+  let rec: NearbyRequestRecord | null;
+  try {
+    rec = await readNearby(env, ref);
+  } catch (e) {
+    return storeDown(e);
+  }
   if (!rec || rec.product !== product.slug) return timeout();
 
   // 5. The proof, by the key `start` recorded, for the device `start` named. One body for either.
@@ -163,7 +175,12 @@ export async function handleNearbyPoll(
     now - rec.lastPollAt < NEARBY_POLL_INTERVAL_SECONDS
   )
     return slowDown();
-  const slot = await takeNearbyPollSlot(env, ref, rec.lastPollAt, now);
+  let slot: Awaited<ReturnType<typeof takeNearbyPollSlot>>;
+  try {
+    slot = await takeNearbyPollSlot(env, ref, rec.lastPollAt, now);
+  } catch (e) {
+    return storeDown(e);
+  }
   if (!slot.ok) return slot.record ? slowDown() : timeout();
 
   // 7. The answer from the state.

@@ -310,6 +310,9 @@
 //                 expect: result "ok" (`expiresIn`, `interval`) | "refused" (`status`, `code`) |
 //                 "unavailable" (the client sends nothing, a step with no exchanges, because the last
 //                 discovery names no `nearby` member; or a 404 answers: the gate went off).
+//                 For SDK authors: M never calls start, so a bare 404 from approve is ambiguous
+//                 (decided, expired, keys that differ, or off); check discovery before reading it as
+//                 "unavailable".
 //   nearbyApprove args: `approverDeviceId`, `approverToken` (M's id and device token, bound to
 //                 `{approverDeviceId}` and `Bearer {approverToken}` in the request's headers: M is not
 //                 the transcript's device), `approverKeyLabel` (M's keys), `keyLabel` (D's keys, the
