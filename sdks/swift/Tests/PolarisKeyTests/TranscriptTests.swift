@@ -10,7 +10,7 @@
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
 // @pkey-feature connect.relay
-// @pkey-feature identity.exchange sync.keyring sync.settings
+// @pkey-feature identity.exchange sync.keyring sync.settings identity.gamecenter
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -48,6 +48,7 @@
 import CryptoKit
 import Foundation
 import PolarisKey
+import PolarisKeyGameCenter
 import PolarisKeyLicense
 import PolarisKeyRelease
 import PolarisKeyUpdate
@@ -138,6 +139,18 @@ final class FixtureKeyPort: DeviceKeyPort, @unchecked Sendable {
 
 /// The fake platform provider: it returns the ID token the recording was made with.
 struct RecordedProvider: Sendable { let token: String }
+
+/// A signed-in Game Center player with persistent ids; no GameKit.
+struct ReplayGameCenterPlayer: GameCenterPlayerPort {
+    let signature: GameCenterSignature
+    let team: String
+    var authenticated = true
+    var persistent = true
+    func isAuthenticated() async -> Bool { authenticated }
+    func scopedIDsArePersistent() async -> Bool { persistent }
+    func teamPlayerID() async -> String { team }
+    func identityVerification() async throws -> GameCenterSignature { signature }
+}
 
 enum SwiftReplay {
     /// THE mapping from transcript verbs and `expect` keys onto the Swift SDK. Kept in one place.
@@ -645,7 +658,24 @@ enum SwiftReplay {
             throw ReplayError("exchange: unknown kind")
         }
         // A step that never reaches the token route records no token; the SDK needs a non-empty one.
-        let provider = RecordedProvider(token: step.args["subjectToken"]?.stringValue ?? "unused.subject.token")
+        // Game Center: the recording holds the player's fields; the SDK's own encoder makes the
+        // `gc1.` token (the recorded request body is matched exactly), over a fake player.
+        var recordedToken = step.args["subjectToken"]?.stringValue ?? "unused.subject.token"
+        if kind == .gamecenter {
+            guard let fields = step.args["gameCenter"]?.objectValue,
+                let url = fields["publicKeyUrl"]?.stringValue.flatMap(URL.init(string:)),
+                let signature = fields["signature"]?.stringValue.flatMap(Base64URL.decodeStrict),
+                let salt = fields["salt"]?.stringValue.flatMap(Base64URL.decodeStrict),
+                let team = fields["teamPlayerId"]?.stringValue, let bundle = fields["bundleId"]?.stringValue,
+                case .int(let stamp)? = fields["timestamp"]
+            else { throw ReplayError("exchange: gameCenter fields are incomplete") }
+            let player = ReplayGameCenterPlayer(
+                signature: GameCenterSignature(
+                    publicKeyURL: url, signature: signature, salt: salt, timestamp: UInt64(stamp)),
+                team: team)
+            recordedToken = try await GameCenterIdentity(port: player, bundleID: { bundle }).token()
+        }
+        let provider = RecordedProvider(token: recordedToken)
         let heldBefore = await client.core.token
         var signedIn = false
         do {
