@@ -276,6 +276,15 @@
       "wp": "I-48",
       "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-48)."
     },
+    "identity.restore": {
+      "status": "planned",
+      "wp": "I-49",
+      "except": [
+        { "runtime": "linux", "reason": "runtime" },
+        { "runtime": "windows", "reason": "runtime" }
+      ],
+      "note": "Rung 2 over the pkp_call bk_* ops on the native Apple and Android lanes (I-49.13 to I-49.15)."
+    },
     "identity.link": {
       "status": "planned",
       "wp": "I-48",

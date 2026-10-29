@@ -929,6 +929,7 @@ class Feature:
     IDENTITY_GAMECENTER: Final = "identity.gamecenter"
     IDENTITY_PGS: Final = "identity.pgs"
     IDENTITY_AUTOSIGNIN: Final = "identity.autosignin"
+    IDENTITY_RESTORE: Final = "identity.restore"
     IDENTITY_LINK: Final = "identity.link"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
@@ -1070,6 +1071,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.gamecenter",
     "identity.pgs",
     "identity.autosignin",
+    "identity.restore",
     "identity.link",
     "release.changelog",
     "release.download",
@@ -2472,6 +2474,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.gamecenter": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.autosignin": CapabilityRow("planned", "identity", ()),
+        "identity.restore": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.link": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
@@ -2541,4 +2544,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "e159051d1cb45b0ecd03fea9d2e66d564602c5b55c322a9917b6fe38c41cf23f"
+CAPABILITY_DIGEST: Final[str] = "f2966306e098dc8c1b5052d5addb4defac60ad6807ea6e6bed18c05579b6ce2d"

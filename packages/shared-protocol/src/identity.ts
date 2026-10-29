@@ -351,6 +351,8 @@ export interface IdentityDiscovery {
   };
   /** I-40 (§12.11.5): nearby approval is served. */
   nearby?: true;
+  /** I-49 (§12.11.8): silent restore is served; the `restore` endpoint comes with it. */
+  restore?: true;
   endpoints: {
     session: string;
     sessionLicense: string;
@@ -376,6 +378,8 @@ export interface IdentityDiscovery {
     nearbyStart?: string;
     nearbyApprove?: string;
     nearbyPoll?: string;
+    /** I-49 (§12.11.8): enrol and revoke a restore key. Present only with `restore: true`. */
+    restore?: string;
     attach?: string;
     subject?: string;
     signout?: string;
@@ -812,3 +816,66 @@ export type NearbyPollResponse =
   | TokenResponse
   | DevicePollSlowDown
   | DevicePollUnavailable;
+
+// ── I-49: silent restore (§12.11.8) ──────────────────────────────────────────────────────────────
+
+/** §12.11.8: the restore grant on `POST /<p>/identity/token`. */
+export const RESTORE_GRANT_TYPE = "urn:polaris-key:grant-type:restore";
+/** §12.11.8: a restore key's id, `rk_` and 16 random bytes in base64url. */
+export const RESTORE_ID_PATTERN = "^rk_[A-Za-z0-9_-]{22}$";
+/** §12.11.8: a restore key's secret, `rs_` and 32 random bytes in base64url. */
+export const RESTORE_SECRET_PATTERN = "^rs_[A-Za-z0-9_-]{43}$";
+/** §12.11.8: the most restore keys one subject holds for one product; the oldest check goes. */
+export const RESTORE_KEYS_MAX = 10;
+/** §12.11.8: days without a check after which maintenance deletes a restore key. */
+export const RESTORE_IDLE_DAYS = 180;
+/** §12.11.8: how often a signed-in client re-checks its restore key, seconds (24 hours). */
+export const RESTORE_CHECK_INTERVAL_SECONDS = 86_400;
+
+/**
+ * §12.11.8: the form parameters of the restore grant. The proof's purpose is `restore`, its value
+ * is `<restore_id>.<device_key>` and its sixth line is the base64url SHA-256 of `restore_secret`.
+ */
+export interface RestoreTokenParams {
+  grant_type: typeof RESTORE_GRANT_TYPE;
+  /** The product slug. */
+  client_id: string;
+  restore_id: string;
+  restore_secret: string;
+  /** The device's signing key, raw 32 bytes in base64url. */
+  device_key: string;
+  /** The device's agreement key, raw 32 bytes in base64url. */
+  agree_key: string;
+  /** A `pkey-proof/1` signature, purpose `restore` (§12.11.1). */
+  proof: string;
+  license_choice?: AuthorizeLicenseChoice;
+  device_name?: string;
+}
+
+/** §12.11.8: a silent restore's `200` is the exchange's (§12.11.3): a device token. */
+export type RestoreTokenResponse = ExchangeTokenResponse;
+
+/** §12.11.8: `POST /<p>/identity/restore`. `restoreId` is the id of the item the device holds. */
+export interface RestoreKeyRequest {
+  restoreId?: string;
+}
+
+/** §12.11.8: `200`. The id is a live key of this product and subject; `checkedAt` moved. */
+export interface RestoreKeyCurrent {
+  status: "current";
+}
+
+/** §12.11.8: `201`. The key replaces this device's; the secret is shown here once. */
+export interface RestoreKeyIssued {
+  restoreId: string;
+  secret: string;
+}
+
+/** §12.11.8: the answers to {@link RestoreKeyRequest}. `DELETE` answers `204` with no body. */
+export type RestoreKeyResponse = RestoreKeyCurrent | RestoreKeyIssued;
+
+/** §12.11.8: the members of the identity fragment that announce silent restore. */
+export interface RestoreDiscovery {
+  restore: true;
+  endpoints: { restore: string };
+}

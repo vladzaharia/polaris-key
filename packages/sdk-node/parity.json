@@ -204,6 +204,12 @@
       "wp": "I-47",
       "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-47)."
     },
+    "identity.restore": {
+      "status": "na",
+      "runtime": ["node"],
+      "reason": "runtime",
+      "note": "No iCloud Keychain or Block Store to keep a restore secret in (I-49)."
+    },
     "identity.link": {
       "status": "na",
       "runtime": ["node"],

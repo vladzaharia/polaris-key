@@ -196,6 +196,11 @@
       "status": "implemented",
       "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in §1, I-44): a stored sign-in, then the platform provider's silent mode where it has one (Apple has none; Game Center is I-44.5), then its one sheet under prompt: .optional; every refusal is a result."
     },
+    "identity.restore": {
+      "status": "planned",
+      "wp": "I-49",
+      "note": "Rung 2 of autoSignIn() and the PlatformBackupStore restore item (I-49.9, I-49.10)."
+    },
     "identity.link": {
       "status": "planned",
       "wp": "I-44",
