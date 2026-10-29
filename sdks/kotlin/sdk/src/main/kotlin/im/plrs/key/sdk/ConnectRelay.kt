@@ -612,11 +612,13 @@ internal class RelayService(
             quiet { s.close(CLOSE_NORMAL) }
             return null
         }
+        // The last LIMIT and error are cleared before the socket counts as open: a caller released
+        // by ready() must never read the previous socket's error as this one's.
+        lastLimit = null
+        errorNow = null
         ws = s
         openNow = true
         val openedAt = o.clock()
-        lastLimit = null
-        errorNow = null
         val q = Outbox(o.outboxBytes)
         outbox = q
         val pc = (o.pacer ?: { Pacer() })()

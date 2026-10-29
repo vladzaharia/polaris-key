@@ -66,6 +66,14 @@ on:
         required: false
         type: string
         default: ""
+      publish-on:
+        description: >-
+          always (the default) or tags. With tags the publish step is skipped, and the job
+          succeeds, unless the ref is a v* release tag. TEMPORARY: npm.elements only, until the
+          v0.10.0 deploy declares it (publish-sdks.yml, the npm-tier-5 call).
+        required: false
+        type: string
+        default: always
 
 permissions:
   contents: read
@@ -90,7 +98,15 @@ jobs:
           CHANNEL: ${{ inputs.channel }}
           DELIVERABLE: ${{ inputs.deliverable }}
           RELEASE_TAG: ${{ inputs.release-tag }}
+          PUBLISH_ON: ${{ inputs.publish-on }}
         run: |
+          case "$PUBLISH_ON" in
+            always | tags) ;;
+            *)
+              echo "::error::publish-on is always or tags (got ${PUBLISH_ON})." >&2
+              exit 1
+              ;;
+          esac
           case "$GITHUB_REF" in
             refs/heads/main) want=main ;;
             refs/tags/v*)
@@ -199,8 +215,11 @@ jobs:
         run: >-
           node tools/feed-closure.mjs requires "$DIR" --version "$VERSION"
           --origin https://pkg.plrs.im --owner polaris-key --timeout 600
+      # TEMPORARY tag-only gate (publish-on: tags): off a v* tag nothing is published and the job
+      # still succeeds, so a main build stays green and the tag deploy is not blocked.
       - name: Publish ${{ inputs.deliverable }}
         id: publish
+        if: inputs.publish-on != 'tags' || startsWith(github.ref, 'refs/tags/v')
         uses: ./actions/publish
         with:
           args: >-
@@ -210,7 +229,13 @@ jobs:
             --dir dist-feed/${{ inputs.dir }}
           base-url: ${{ inputs.base-url }}
           channels: none
+      - name: Not published off a release tag
+        if: inputs.publish-on == 'tags' && !startsWith(github.ref, 'refs/tags/v')
+        env:
+          DELIVERABLE: ${{ inputs.deliverable }}
+        run: echo "$DELIVERABLE publishes from release tags only for now; skipped on $GITHUB_REF." >> "$GITHUB_STEP_SUMMARY"
       - name: Summary
+        if: inputs.publish-on != 'tags' || startsWith(github.ref, 'refs/tags/v')
         env:
           DELIVERABLE: ${{ inputs.deliverable }}
           VERSION: ${{ inputs.version }}

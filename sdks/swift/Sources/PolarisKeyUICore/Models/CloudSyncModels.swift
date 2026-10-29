@@ -69,15 +69,20 @@ public final class UnlockSyncModel: CustomStringConvertible {
     /// The red confirm answers only after this long (a double tap on Start over must not reset).
     public private(set) var startOverArmed = false
     private let armDelay: Duration
+    /// Waits out `armDelay`. The seam for time: a test passes one it advances by hand, instead of
+    /// racing a real sleep on a slow runner (as `ConnectPacer`'s `sleep`).
+    private let sleep: @Sendable (Duration) async throws -> Void
     private var armTask: Task<Void, Never>?
 
     public init(
         inputs: KitInputs = KitInputs(), host: CloudSyncScreenHost? = nil,
-        armDelay: Duration = .milliseconds(500)
+        armDelay: Duration = .milliseconds(500),
+        sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) {
         self.inputs = inputs
         self.host = host
         self.armDelay = armDelay
+        self.sleep = sleep
         if inputs.unlockSync == nil { self.inputs.unlockSync = KitUnlockSync(step: .code) }
         // A model that starts on the warning arms its confirm like one that moves there.
         show(self.inputs.unlockSync?.step ?? .code)
@@ -93,8 +98,8 @@ public final class UnlockSyncModel: CustomStringConvertible {
         armTask?.cancel()
         startOverArmed = false
         if step == .startOver {
-            armTask = Task { [armDelay] in
-                try? await Task.sleep(for: armDelay)
+            armTask = Task { [armDelay, sleep] in
+                try? await sleep(armDelay)
                 guard !Task.isCancelled else { return }
                 self.startOverArmed = true
             }
