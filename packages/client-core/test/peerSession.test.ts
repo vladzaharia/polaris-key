@@ -523,6 +523,38 @@ describe("PeerSession vouch hooks (mode v)", () => {
     ]);
   });
 
+  it("startSas() restarts the code deadline at the choice", async () => {
+    const timers: { fn: () => void; ms: number; cancelled: boolean }[] = [];
+    const timer = (fn: () => void, ms: number) => {
+      const t = { fn, ms, cancelled: false };
+      timers.push(t);
+      return () => {
+        t.cancelled = true;
+      };
+    };
+    const d = side("v", "initiator", rnd(), { holdSas: true, timer });
+    const m = side("v", "responder", rnd());
+    await d.s.start();
+    await pump(d, m);
+    // Held at HELLO: the transport deadline is over, the code deadline from the first byte stands.
+    const held = timers.filter((t) => t.ms === 120_000);
+    expect(held).toHaveLength(1);
+    expect(held[0]!.cancelled).toBe(false);
+    await d.s.startSas();
+    const all = timers.filter((t) => t.ms === 120_000);
+    expect(all).toHaveLength(2);
+    expect(all[0]!.cancelled).toBe(true);
+    expect(all[1]!.cancelled).toBe(false);
+    // The new deadline closes a session whose person never confirms.
+    all[1]!.fn();
+    await d.s.close();
+    expect(of(d, "closed")[0]).toEqual({
+      type: "closed",
+      code: "peer_timeout",
+      byPeer: false,
+    });
+  });
+
   it("choosing one of two held approvers starts the SAS on that session only", async () => {
     const d1 = side("v", "initiator", rnd(), { holdSas: true });
     const m1 = side("v", "responder", rnd());
