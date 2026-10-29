@@ -66,7 +66,7 @@ import {
 
 import { PolarisContext } from "../react/context.js";
 import { GLYPHS, text, type Chrome, type KitCtx } from "./parts.js";
-import type { AutoOutcome } from "@polaris-key/ui-core";
+import type { AddIn, AutoOutcome } from "@polaris-key/ui-core";
 import type { PolarisAdapter } from "../core/index.js";
 import { useSdkGate, type SdkStep } from "./sdk.js";
 import { holderScreen } from "./holdersLazy.js";
@@ -793,6 +793,9 @@ export interface PolarisKeyGateProps extends KitProps {
   children?: ReactNode;
   /** The app's own address, added to the device-limit link as `return=` (PX-W8). */
   returnUrl?: string;
+  /** Where Add your name and email, and Sign in to that account, go: the Polaris Locker portal
+   *  (the web default, `WEB_ADD_IN`) or the in-page form. */
+  addIn?: AddIn;
   /** Draws the in-app sign-in form for automatic sign-in's steps. `gate.tsx` supplies it, so the
    *  form loads on demand from the module that already loads the host's menu views. */
   signInStep?: (a: SignInStepArgs) => ReactNode;
@@ -853,6 +856,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
   const sdk = useSdkGate({
     ...(props.returnUrl !== undefined ? { returnUrl: props.returnUrl } : {}),
     locale: themeLocale(mergeThemes(provided, props.theme)),
+    ...(props.addIn !== undefined ? { addIn: props.addIn } : {}),
   });
   const driven = props.input === undefined && sdk !== null;
   const step: SdkStep = driven ? sdk.step : "home";
