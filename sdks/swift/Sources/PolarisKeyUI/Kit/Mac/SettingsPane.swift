@@ -227,13 +227,14 @@
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityElement(children: .ignore)
+                        // Combined, not ignored: ignoring the children drops the button's press, and the
+                        // audit then finds a button with no action.
+                        .accessibilityElement(children: .combine)
                         .accessibilityLabel(
                             strings.string("account.devices") + ", "
                                 + strings.string(
                                     "part.seatMeter.caption",
                                     ["used": .number(counts.used), "limit": .number(counts.limit)]))
-                        .accessibilityAddTraits(.isButton)
                     }
                     if let cloudSync {
                         LabeledContent {
@@ -386,6 +387,7 @@
                     PaneText(CopyLine("account.channel"), .body, color: .default)
                 }
                 .pickerStyle(.menu)
+                .accessibilityLabel(strings.string("account.channel"))
             case .locked(let current, let reason):
                 LabeledContent {
                     HStack(spacing: style.space(.xxs)) {

@@ -101,7 +101,7 @@ public struct PolarisPalette: Sendable, Equatable {
         #endif
         return PolarisPalette(
             page: page, raised: raised, textStrong: .primary, textDefault: .primary,
-            textMuted: .secondary, borderSubtle: border, borderStrong: strong,
+            textMuted: .nativeMutedText, borderSubtle: border, borderStrong: strong,
             accent: .accentColor, accentText: .accentColor, onAccent: .white,
             focus: .accentColor, warning: .orange, warningSubtle: Color.orange.opacity(0.12),
             danger: .red, prefersMaterials: true)

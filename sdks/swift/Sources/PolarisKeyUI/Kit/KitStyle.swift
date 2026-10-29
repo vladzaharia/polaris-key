@@ -429,8 +429,8 @@ enum KitPaletteResolver {
             p.sunken = Color.secondarySystemGroupedGround
             p.textStrong = .primary
             p.textDefault = .primary
-            p.textMuted = .secondary
-            p.textSubtle = .secondary
+            p.textMuted = .nativeMutedText
+            p.textSubtle = .nativeMutedText
         }
 
         let input: String?
@@ -535,10 +535,16 @@ extension Color {
         static let systemGroupedGround = Color(uiColor: .systemGroupedBackground)
         static let secondarySystemGroupedGround = Color(uiColor: .secondarySystemGroupedBackground)
         static let tertiarySystemGroupedGround = Color(uiColor: .tertiarySystemGroupedBackground)
+        /// The native preset's secondary text: the system's secondary label (60 %, 4.5:1 and up).
+        static let nativeMutedText = Color.secondary
     #else
         static let systemGroupedGround = Color(nsColor: .windowBackgroundColor)
         static let secondarySystemGroupedGround = Color(nsColor: .controlBackgroundColor)
         static let tertiarySystemGroupedGround = Color(nsColor: .textBackgroundColor)
+        /// The native preset's secondary text. AppKit's secondary label is 50 % ink, about 3.9:1 on
+        /// the window in light, which fails the 4.5:1 floor; 68 % of the primary label passes in
+        /// both appearances and follows the system's own label colour.
+        static let nativeMutedText = Color.primary.opacity(0.68)
     #endif
 }
 
