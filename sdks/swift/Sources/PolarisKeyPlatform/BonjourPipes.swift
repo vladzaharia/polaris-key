@@ -6,15 +6,19 @@
 //   - Listener: an `NWListener` for TCP on a random port. With an advert it registers
 //     `service` (instance + TXT). If the OS registers the service under any other name the
 //     registration is withdrawn (`service = nil`), never kept under that name.
-//   - Dial: an `NWConnection` to a browse endpoint (or a host and port). Before the first byte the
-//     connected path's `remoteEndpoint` must pass the dial policy: RFC 1918 IPv4, fe80::/10 and
-//     fc00::/7 (G6, D-10), plus loopback only when the caller opts in. A name, a public address,
-//     169.254/16 and 100.64/10 are refused and the connection is cancelled unused.
+//   - Dial: an `NWConnection` to a browse endpoint (or a host and port). The address rule is
+//     `lanVerdict` (§15.4.1): RFC 1918 IPv4, fe80::/10, fc00::/7 and an on-link global IPv6 address
+//     (G6, D-10), plus loopback only when the caller opts in. A host and port is judged as text
+//     before a socket exists (a name is refused), and the connected path's remote and local
+//     endpoints are judged again before the first byte; a refusal cancels the connection unused. A
+//     name, a public address, 169.254/16 and 100.64/10 are refused.
 //   - The pipe: reads are pull-based (one `receive` per `read()`), so a reader that stops reading
 //     stops the TCP window; writes complete when the OS has taken the bytes.
-//   - G7: the listener admits at most 32 unauthenticated sockets in all and 4 per address. A slot
-//     is held from accept until `markAuthenticated()` or the socket's end. Time (30 s) and frame
-//     size (16 KiB) before admission are `PeerLink`'s.
+//   - G7: the listener admits at most 32 unauthenticated sockets in all, 16 per /64 and 4 per
+//     address (a link-local key carries its zone). A slot is held from accept until
+//     `markAuthenticated()` or the socket's end. A source that fails the address rule is closed with
+//     no read and no slot, at accept and again on the connected path. Time (30 s) and frame size
+//     (16 KiB) before admission are `PeerLink`'s.
 //   - Peer-to-peer (AWDL) is off unless the host asks (D-5).
 
 import Foundation
@@ -25,85 +29,82 @@ import Foundation
 
 // MARK: - Dial policy (G6, D-10)
 
-/// Which addresses the device will connect to.
+/// Which addresses the device will connect to and accept: `lanVerdict` (`LanAddress.swift`) with
+/// the loopback opt-in.
 public struct BonjourDialPolicy: Sendable, Equatable {
     /// Loopback (127/8 and ::1) is dialled only when a test opts in.
     public var allowLoopback: Bool
 
     public init(allowLoopback: Bool = false) { self.allowLoopback = allowLoopback }
 
-    /// `bytes` is 4 bytes (IPv4) or 16 (IPv6), network order.
-    public func allows(addressBytes b: [UInt8]) -> Bool {
-        switch b.count {
-        case 4: return allowsIPv4(b)
-        case 16:
-            // IPv4-mapped is the same address as its IPv4 form.
-            if b[0..<10].allSatisfy({ $0 == 0 }) && b[10] == 0xFF && b[11] == 0xFF {
-                return allowsIPv4(Array(b[12..<16]))
-            }
-            if b[0..<15].allSatisfy({ $0 == 0 }) && b[15] == 1 { return allowLoopback }
-            if b[0] == 0xFE && (b[1] & 0xC0) == 0x80 { return true }  // fe80::/10
-            if (b[0] & 0xFE) == 0xFC { return true }  // fc00::/7
-            return false
-        default: return false
-        }
+    /// The verdict on `remote` (text) given the socket's own address when known.
+    public func verdict(remote: String, local: String? = nil) -> LanVerdict {
+        lanVerdict(remote, local: local, allowLoopback: allowLoopback)
     }
 
-    private func allowsIPv4(_ b: [UInt8]) -> Bool {
-        if b[0] == 10 { return true }
-        if b[0] == 172 && (16...31).contains(b[1]) { return true }
-        if b[0] == 192 && b[1] == 168 { return true }
-        if b[0] == 127 { return allowLoopback }
-        return false  // 169.254/16, 100.64/10, public, 0/8, multicast...
+    /// `bytes` is 4 bytes (IPv4) or 16 (IPv6), network order. The local address is unknown, so a
+    /// global IPv6 address is refused.
+    public func allows(addressBytes b: [UInt8]) -> Bool {
+        guard let text = lanAddressText(bytes: b) else { return false }
+        return verdict(remote: text).dial
     }
 
     #if canImport(Network)
-        public func allows(host: NWEndpoint.Host) -> Bool {
-            switch host {
-            case .ipv4(let a): return allows(addressBytes: Array(a.rawValue))
-            case .ipv6(let a): return allows(addressBytes: Array(a.rawValue))
-            case .name: return false
-            @unknown default: return false
-            }
+        /// The verdict on a connected path's endpoints (hosts and ports only). A remote that is not an
+        /// address is refused; an unknown local endpoint is `nil`.
+        public func pathVerdict(remote: NWEndpoint?, local: NWEndpoint?) -> LanVerdict {
+            guard let r = BonjourPipes.addressText(remote) else { return .refused }
+            return verdict(remote: r, local: BonjourPipes.addressText(local))
         }
     #endif
 }
 
 // MARK: - G7 limiter
 
-/// At most `total` unauthenticated sockets, and `perAddress` from one address.
+/// At most `total` unauthenticated sockets, `perGroup` from one /64 and `perAddress` from one address.
+/// Keys are `lanVerdict`'s: a link-local address counts with its zone.
 public final class UnauthenticatedLimiter: @unchecked Sendable {
     public static let defaultTotal = 32
     public static let defaultPerAddress = 4
+    public static let defaultPerGroup = 16
 
     public struct Slot: Sendable, Hashable {
         fileprivate let id: Int
         fileprivate let address: String
+        fileprivate let group: String?
     }
 
     private let total: Int
     private let perAddress: Int
+    private let perGroup: Int
     private let lock = NSLock()
     private var next = 0
-    private var held: [Int: String] = [:]
+    private var held: [Int: Slot] = [:]
     private var perAddr: [String: Int] = [:]
+    private var perNet: [String: Int] = [:]
 
-    public init(total: Int = defaultTotal, perAddress: Int = defaultPerAddress) {
+    public init(
+        total: Int = defaultTotal, perAddress: Int = defaultPerAddress, perGroup: Int = defaultPerGroup
+    ) {
         self.total = total
         self.perAddress = perAddress
+        self.perGroup = perGroup
     }
 
     public var count: Int { lock.withLock { held.count } }
 
-    /// A slot, or nil when the socket must be refused. The scope id (`%en0`) is not part of the address.
+    /// A slot, or nil when the socket must be refused. `address` is a `lanVerdict` key.
     public func admit(address: String) -> Slot? {
-        let key = String(address.split(separator: "%", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
+        let group = lanGroupKey(address)
         return lock.withLock {
-            guard held.count < total, (perAddr[key] ?? 0) < perAddress else { return nil }
+            guard held.count < total, (perAddr[address] ?? 0) < perAddress else { return nil }
+            if let group, (perNet[group] ?? 0) >= perGroup { return nil }
             next += 1
-            held[next] = key
-            perAddr[key, default: 0] += 1
-            return Slot(id: next, address: key)
+            let slot = Slot(id: next, address: address, group: group)
+            held[next] = slot
+            perAddr[address, default: 0] += 1
+            if let group { perNet[group, default: 0] += 1 }
+            return slot
         }
     }
 
@@ -113,6 +114,10 @@ public final class UnauthenticatedLimiter: @unchecked Sendable {
             guard held.removeValue(forKey: slot.id) != nil else { return }
             let n = (perAddr[slot.address] ?? 1) - 1
             perAddr[slot.address] = n > 0 ? n : nil
+            if let group = slot.group {
+                let m = (perNet[group] ?? 1) - 1
+                perNet[group] = m > 0 ? m : nil
+            }
         }
     }
 }
@@ -315,11 +320,63 @@ public enum BonjourRegistration {
             return try await dial(network, options: options)
         }
 
-        /// Dial an endpoint. The pipe is handed back only after the connected path passed the policy;
-        /// a refused or failed dial has sent nothing.
+        /// The text of a host and port endpoint's address, or nil for a name, a service and anything
+        /// else. A link-local address keeps the zone of its interface.
+        static func addressText(_ e: NWEndpoint?) -> String? {
+            guard case .hostPort(let host, _)? = e else { return nil }
+            switch host {
+            case .ipv4(let a): return lanAddressText(bytes: Array(a.rawValue))
+            case .ipv6(let a):
+                var b = Array(a.rawValue)
+                // Some stacks keep the link-local scope in bytes 2 and 3 (KAME); RFC 4291 has them zero.
+                if b.count == 16, b[0] == 0xFE, (b[1] & 0xC0) == 0x80 {
+                    b[2] = 0
+                    b[3] = 0
+                }
+                return lanAddressText(bytes: b, zone: a.interface?.name)
+            case .name: return nil
+            @unknown default: return nil
+            }
+        }
+
+        /// This device's own IPv6 addresses on up interfaces, as text (the zone is not needed).
+        static func ownIPv6Addresses() -> [String] {
+            var head: UnsafeMutablePointer<ifaddrs>?
+            guard getifaddrs(&head) == 0, let first = head else { return [] }
+            defer { freeifaddrs(head) }
+            var out: [String] = []
+            var next: UnsafeMutablePointer<ifaddrs>? = first
+            while let cur = next {
+                defer { next = cur.pointee.ifa_next }
+                guard cur.pointee.ifa_flags & UInt32(IFF_UP) != 0, let sa = cur.pointee.ifa_addr,
+                    sa.pointee.sa_family == sa_family_t(AF_INET6)
+                else { continue }
+                let bytes = sa.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) { s in
+                    withUnsafeBytes(of: s.pointee.sin6_addr) { Array($0) }
+                }
+                if let t = lanAddressText(bytes: bytes) { out.append(t) }
+            }
+            return out
+        }
+
+        /// Dial an endpoint. A host and port is judged as text before a socket exists (a name is
+        /// refused); the pipe is handed back only after the connected path's remote and local
+        /// endpoints passed `lanVerdict`. A refused or failed dial has sent nothing.
         public static func dial(_ endpoint: NWEndpoint, options: BonjourDialOptions = BonjourDialOptions()) async throws
             -> NWPipe
         {
+            switch endpoint {
+            case .hostPort:
+                // The address itself stands in for "some local address in the same /64"; the
+                // connected path decides with the real one.
+                guard let text = addressText(endpoint), options.policy.verdict(remote: text, local: text).dial else {
+                    throw BonjourPipeError.addressRefused
+                }
+            case .service:
+                break  // the OS resolves a browse hit; only the connected path can be judged
+            default:
+                throw BonjourPipeError.addressRefused
+            }
             let params = NWParameters.tcp
             params.includePeerToPeer = options.peerToPeer
             let conn = NWConnection(to: endpoint, using: params)
@@ -332,8 +389,9 @@ public enum BonjourRegistration {
                 _ = NWPipe.open(
                     conn, queue: queue, remote: "", release: nil,
                     onReady: { pipe in
-                        guard case .hostPort(let host, _)? = conn.currentPath?.remoteEndpoint,
-                            options.policy.allows(host: host)
+                        let path = conn.currentPath
+                        guard
+                            options.policy.pathVerdict(remote: path?.remoteEndpoint, local: path?.localEndpoint).dial
                         else {
                             pipe.fail(.addressRefused, to: finishFail)
                             return
@@ -388,25 +446,36 @@ public enum BonjourRegistration {
             self.readyBound = readySeconds
         }
 
-        /// The limiter key of a source the policy allows, else nil. An IPv4-mapped IPv6 source and its
-        /// IPv4 form share one key; the scope id is not part of it.
-        static func allowedSource(_ e: NWEndpoint, policy: BonjourDialPolicy) -> String? {
-            guard case .hostPort(let host, _) = e, policy.allows(host: host) else { return nil }
-            if case .ipv6(let a) = host {
-                let b = Array(a.rawValue)
-                if b.count == 16, b[0..<10].allSatisfy({ $0 == 0 }), b[10] == 0xFF, b[11] == 0xFF {
-                    return b[12..<16].map(String.init).joined(separator: ".")
-                }
+        /// The limiter key of a source the policy allows, else nil: `lanVerdict`'s key (an IPv4-mapped
+        /// IPv6 source and its IPv4 form share one; a link-local key keeps its zone). `local` is the
+        /// socket's own endpoint when known. At accept it is not, so a global IPv6 source passes only
+        /// when it shares a /64 with one of this device's own IPv6 addresses (`own`); the connected
+        /// path is judged again, with its real local address, before the host sees the pipe.
+        static func allowedSource(
+            _ e: NWEndpoint, local: NWEndpoint? = nil, policy: BonjourDialPolicy,
+            own: () -> [String] = BonjourPipes.ownIPv6Addresses
+        ) -> String? {
+            guard let text = BonjourPipes.addressText(e) else { return nil }
+            if let l = local.flatMap(BonjourPipes.addressText) {
+                let v = policy.verdict(remote: text, local: l)
+                return v.dial ? v.key : nil
             }
-            let text = "\(host)"
-            return String(text.split(separator: "%", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
+            let first = policy.verdict(remote: text, local: nil)
+            if first.dial { return first.key }
+            for l in own() {
+                let v = policy.verdict(remote: text, local: l)
+                if v.dial { return v.key }
+            }
+            return nil
         }
 
         /// Policy first, then a slot: a refused source never takes one.
-        static func gate(_ e: NWEndpoint, policy: BonjourDialPolicy, limiter: UnauthenticatedLimiter)
-            -> (address: String, slot: UnauthenticatedLimiter.Slot)?
-        {
-            guard let address = allowedSource(e, policy: policy), let slot = limiter.admit(address: address) else {
+        static func gate(
+            _ e: NWEndpoint, local: NWEndpoint? = nil, policy: BonjourDialPolicy, limiter: UnauthenticatedLimiter
+        ) -> (address: String, slot: UnauthenticatedLimiter.Slot)? {
+            guard let address = allowedSource(e, local: local, policy: policy),
+                let slot = limiter.admit(address: address)
+            else {
                 return nil
             }
             return (address, slot)
@@ -462,12 +531,21 @@ public enum BonjourRegistration {
             let preAuth = preAuth
             l.newConnectionHandler = { [queue] conn in
                 guard let (address, slot) = Self.gate(conn.endpoint, policy: policy, limiter: limiter) else {
-                    conn.cancel()  // a non-LAN source or a full pool: refused before a byte is read
+                    conn.cancel()  // a non-LAN source or a full pool: closed with no read
                     return
                 }
                 let pipe = NWPipe.open(
                     conn, queue: queue, remote: address, release: { limiter.release(slot) },
-                    onReady: { onPipe($0) }, onFail: { _ in })
+                    onReady: { pipe in
+                        // The connected path, judged with its own local address before the host sees the
+                        // pipe, so before any read: a non-LAN source is closed here and never served.
+                        let path = conn.currentPath
+                        guard policy.pathVerdict(remote: path?.remoteEndpoint, local: path?.localEndpoint).dial else {
+                            pipe.shut()
+                            return
+                        }
+                        onPipe(pipe)
+                    }, onFail: { _ in })
                 // The 30 s clock starts at accept, not when the host gets round to the handshake (G7).
                 queue.asyncAfter(deadline: .now() + preAuth) { pipe.closeUnlessAuthenticated() }
             }
