@@ -243,6 +243,27 @@ export function catalogEncryption(
   }
 }
 
+/**
+ * Whether the active catalog declares at least one collection (`cloudSync.collections`): the only
+ * condition under which discovery says `collections: true` (WIRE-CONTRACT-V5 §13.5). A catalog
+ * that cannot be read declares none.
+ */
+export function catalogDeclaresCollections(
+  loaded: { catalog_json: string } | null,
+): boolean {
+  if (!loaded) return false;
+  try {
+    const catalog: unknown = JSON.parse(loaded.catalog_json);
+    if (!isRecord(catalog)) return false;
+    const cs = catalog.cloudSync;
+    return (
+      isRecord(cs) && Array.isArray(cs.collections) && cs.collections.length > 0
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function syncMode(
   env: Env,
   db: Db,

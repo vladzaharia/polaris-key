@@ -1,11 +1,12 @@
 /**
  * The pull (§13.4) and the tombstone horizon, as pure functions over a `SyncStore`.
  *
- *   - Changes since a cursor, oldest first, in pages of `SYNC_PULL_PAGE_CHANGES` (changes and
- *     tombstones together, one cursor order). `more` while rows remain; the answer's `cursor` is
- *     the page's last row while `more`, else the store's sequence.
+ *   - Changes since a cursor, oldest first, in pages of `SYNC_PULL_PAGE_CHANGES` (settings, records
+ *     and tombstones together, one cursor order). `more` while rows remain; the answer's `cursor`
+ *     is the page's last row while `more`, else the store's sequence. The page is the merge of two
+ *     paged reads (settings, records), each at most one page and one row long: never a full load.
  *   - Which rows (L9): every `user` row, and the `platform` rows of the asking device's own
- *     family. Rows of another family stay stored, dormant and exported; a scope or policy change
+ *     family; every record (records belong to the person, not a platform family). Rows of another family stay stored, dormant and exported; a scope or policy change
  *     rewrites nothing (R4 rule 6), so a row under a scope the catalog no longer routes is simply
  *     still there.
  *   - `empty: true` only on a cursor-0 answer for a principal with nothing stored.
@@ -25,15 +26,13 @@ import {
   type SyncTombstone,
   type SyncUsage,
 } from "@polaris-key/protocol/sync";
+import { liveRecordValue, sealedElements, sealedFields } from "./recordSets.js";
 import { sealedMembers } from "./settings.js";
 import { liveMembers } from "./store.js";
-import type { StoredSetting, SyncStore } from "./types.js";
+import type { StoredRecord, StoredSetting, SyncStore } from "./types.js";
 
-/** The setting members of the wire unions: what this engine can produce until U-09. */
-export type SettingChange =
-  | Extract<SyncChange, { setting: string }>
-  | Extract<SyncSealedChange, { setting: string }>;
-export type SettingTombstone = Extract<SyncTombstone, { setting: string }>;
+/** A change as the wire carries it: a setting or a record, plaintext or sealed. */
+export type PullChange = SyncChange | SyncSealedChange;
 
 export interface PullInput {
   /** 0 or absent: a snapshot. */
@@ -60,8 +59,8 @@ export type PullOutcome =
       more: boolean;
       lastMutationId: number;
       empty?: true;
-      changes: SettingChange[];
-      tombstones: SettingTombstone[];
+      changes: PullChange[];
+      tombstones: SyncTombstone[];
       usage: SyncUsage;
       etag: string;
       /** End-to-end pulls only. */
@@ -72,7 +71,7 @@ export type PullOutcome =
 export const pullEtag = (seq: number, lastMutationId: number): string =>
   `"${seq}.${lastMutationId}"`;
 
-function toChange(row: StoredSetting, sealed: boolean): SettingChange {
+function toChange(row: StoredSetting, sealed: boolean): PullChange {
   if (sealed) {
     const base = {
       setting: row.key,
@@ -94,6 +93,46 @@ function toChange(row: StoredSetting, sealed: boolean): SettingChange {
   };
 }
 
+/**
+ * A record change (§13.4). In server mode `value` is the record's live content: its value, a
+ * `merge` record's object, a `union` record's array in the order of each element's first
+ * surviving add tag. A sealed record carries `ct` (one value), `fields` (a `merge` record's whole
+ * live content) or `elements` (a `union` record's), and no `value`; a list replaces the client's
+ * copy.
+ */
+function toRecordChange(row: StoredRecord, sealed: boolean): PullChange {
+  const record: [string, string] = [row.collection, row.id];
+  if (sealed) {
+    if (row.kind === "value" && typeof row.value === "string")
+      return {
+        record,
+        ct: row.value,
+        version: row.version,
+        editedHlc: row.stamp.hlc,
+      };
+    if (row.kind === "fields")
+      return {
+        record,
+        fields: sealedFields(row),
+        version: row.version,
+        editedHlc: row.stamp.hlc,
+      };
+    if (row.kind === "set")
+      return { record, elements: sealedElements(row), version: row.version };
+  }
+  return {
+    record,
+    value: liveRecordValue(row),
+    version: row.version,
+    editedHlc: row.stamp.hlc,
+  };
+}
+
+/** One row of the merged page: a setting or a record, ordered by the store sequence it was written at. */
+type PageRow =
+  | { version: number; setting: StoredSetting }
+  | { version: number; record: StoredRecord };
+
 export function applyPull(store: SyncStore, input: PullInput): PullOutcome {
   const cursor = input.cursor ?? 0;
   const seq = store.currentSeq();
@@ -101,21 +140,43 @@ export function applyPull(store: SyncStore, input: PullInput): PullOutcome {
     return { ok: false, error: "cursor_expired" };
 
   const size = input.pageSize ?? SYNC_PULL_PAGE_CHANGES;
-  // One row past the page says whether more remain; the store pages in storage (SR-1 N12).
-  const rows = store.settingsPageAfter(cursor, input.family, size + 1);
+  // One row past the page says whether more remain; the store pages in storage (SR-1 N12). Each
+  // table is read for one page and one row, and the two are merged in version order (versions are
+  // store sequences, one per write, so they never tie).
+  const rows: PageRow[] = [
+    ...store
+      .settingsPageAfter(cursor, input.family, size + 1)
+      .map((setting) => ({ version: setting.version, setting })),
+    ...store
+      .recordsPageAfter(cursor, size + 1)
+      .map((record) => ({ version: record.version, record })),
+  ]
+    .sort((a, b) => a.version - b.version)
+    .slice(0, size + 1);
   const page = rows.slice(0, size);
   const more = rows.length > size;
   const last = page[page.length - 1];
 
   // A store with no end-to-end write yet answers the sequence its first one will take.
   const since = input.e2e ? (store.getEncryptionSince() ?? seq + 1) : undefined;
-  const changes: SettingChange[] = [];
-  const tombstones: SettingTombstone[] = [];
-  for (const row of page) {
-    if (row.deleted)
-      tombstones.push({ setting: row.key, editedHlc: row.stamp.hlc });
-    else
-      changes.push(toChange(row, since !== undefined && row.version >= since));
+  const changes: PullChange[] = [];
+  const tombstones: SyncTombstone[] = [];
+  for (const item of page) {
+    const sealed = since !== undefined && item.version >= since;
+    if ("setting" in item) {
+      const row = item.setting;
+      if (row.deleted)
+        tombstones.push({ setting: row.key, editedHlc: row.stamp.hlc });
+      else changes.push(toChange(row, sealed));
+    } else {
+      const row = item.record;
+      if (row.deleted)
+        tombstones.push({
+          record: [row.collection, row.id],
+          editedHlc: row.stamp.hlc,
+        });
+      else changes.push(toRecordChange(row, sealed));
+    }
   }
 
   const bound = input.clientId ? store.getClient(input.clientId) : undefined;

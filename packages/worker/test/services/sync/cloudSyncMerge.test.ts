@@ -495,7 +495,8 @@ describe("absorb: the join", () => {
       },
     );
     expect(
-      pulled.outcome.ok && pulled.outcome.changes.map((c) => c.setting),
+      pulled.outcome.ok &&
+        pulled.outcome.changes.map((c) => (c as { setting: string }).setting),
     ).toEqual(["b"]);
   });
 });

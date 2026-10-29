@@ -16,7 +16,8 @@
  *
  * U-04 landed the slug, the descriptor, its settings slice and its discovery fragment. U-05 serves
  * the device routes under `/<p>/sync` (pull and push) from the per-principal Durable Object, and
- * the fragment names them; records are U-09's and files on records U-10's, so those stay off. An
+ * the fragment names them; records are U-09's (`collections` turns true when the catalog declares
+ * one) and files on records U-10's, so those stay off. An
  * SDK uses an endpoint only when discovery names it (WIRE-CONTRACT-V4 §13.5).
  */
 
@@ -24,10 +25,11 @@ import type {
   DiscoveryContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
+import { getActiveSchema } from "../../core/products/store.js";
 import { SYNC_SETTINGS_SLICE } from "./settings.js";
 
 import { handleSyncAdmin } from "./admin/index.js";
-import { syncMode } from "./handlers/common.js";
+import { catalogDeclaresCollections, syncMode } from "./handlers/common.js";
 import { syncKeyring } from "./keyring.js";
 import { syncIntegration } from "./integration.js";
 import { syncProductDeletion, syncProductPurge } from "./productDeletion.js";
@@ -65,7 +67,7 @@ export const syncService: ServiceDescriptor = {
   /**
    * Cloud Sync's slice of `/.well-known/polaris.json` (plans/U-01b.md D9). Each capability turns
    * true, and its endpoint appears, only when the package that serves it has shipped: `settings`
-   * and `pull`/`push` with U-05, `collections` with U-09, `saves` and `files` (the files on
+   * and `pull`/`push` with U-05, `collections` with U-09 (and only while the catalog declares one), `saves` and `files` (the files on
    * records) with U-10. Discovery carries no quota: it depends on the requesting device's
    * licence, so the pull carries it.
    */
@@ -74,11 +76,14 @@ export const syncService: ServiceDescriptor = {
     // only while the operator's launch gate `launch.syncE2e` is on. With the gate off the member
     // is absent, as on a Worker that cannot take `ct`, so an app that requires E2E stays local
     // (`unsupported`). The key ring endpoint is named for E2E products only.
-    const mode = await syncMode(env, db, product.slug);
+    // U-09.7 (§13.5, G5d): `collections` is true only when the active catalog declares at least
+    // one collection.
+    const active = await getActiveSchema(db, product.slug);
+    const mode = await syncMode(env, db, product.slug, active);
     return {
       enabled: true,
       settings: true,
-      collections: false,
+      collections: catalogDeclaresCollections(active),
       saves: false,
       ...(mode.advertise !== undefined ? { encryption: mode.advertise } : {}),
       endpoints: {

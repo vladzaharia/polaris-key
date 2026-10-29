@@ -159,7 +159,9 @@ describe("pages", () => {
     expect(page.cursor).toBe(3);
     const next = pull(store, { cursor: page.cursor, pageSize: 2 });
     expect(next.more).toBe(false);
-    expect(next.tombstones.map((t) => t.setting)).toEqual(["a"]);
+    expect(
+      next.tombstones.map((t) => (t as { setting: string }).setting),
+    ).toEqual(["a"]);
     expect(next.cursor).toBe(4);
   });
 
@@ -185,7 +187,10 @@ describe("which rows (L9)", () => {
     expect(store.rows()).toHaveLength(3);
     const desktop = pull(store, { family: "desktop" });
     expect(
-      desktop.changes.map((c) => [c.scope, (c as { value: unknown }).value]),
+      desktop.changes.map((c) => [
+        (c as { scope: string }).scope,
+        (c as { value: unknown }).value,
+      ]),
     ).toEqual([
       ["user", "user"],
       ["platform", "desk"],
@@ -308,10 +313,11 @@ describe("the tombstone horizon", () => {
       applyPull(store, { deviceId: "dev1", family: "desktop", cursor: 3 }).ok,
     ).toBe(true);
     // A snapshot is always served.
-    expect(pull(store, { cursor: 0 }).changes.map((c) => c.setting)).toEqual([
-      "b",
-      "c",
-    ]);
+    expect(
+      pull(store, { cursor: 0 }).changes.map(
+        (c) => (c as { setting: string }).setting,
+      ),
+    ).toEqual(["b", "c"]);
   });
 
   it("never lowers the watermark, and keeps live rows", () => {
