@@ -363,6 +363,21 @@ const ROUTES: Record<string, unknown> = {
           source: "typed",
         },
       },
+      // A-22.4: the App Store channel, whose Releases tab leads with the Distribute flow.
+      {
+        id: "app-store",
+        label: "App Store",
+        inScope: true,
+        declared: true,
+        oneClick: false,
+        notUsing: false,
+        delivery: { state: "live", attention: [], platforms: [] },
+        commerce: null,
+        identity: {
+          fields: { bundleId: "com.example.djdl", appleId: "6478123905" },
+          source: "derived",
+        },
+      },
     ],
   },
   // F-34.8: the owner row of the switch (feeds on); `feedsoff` answers the off row below.

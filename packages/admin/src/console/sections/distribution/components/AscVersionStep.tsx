@@ -1,5 +1,5 @@
 /**
- * Distribute flow, step 5: the App Store version. Split out of `pages/AppStorePage.tsx`.
+ * Distribute flow, step 5: the App Store version. Split out of `components/AscDistribute.tsx`.
  */
 
 import * as React from "react";

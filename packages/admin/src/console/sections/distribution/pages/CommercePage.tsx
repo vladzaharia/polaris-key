@@ -280,7 +280,7 @@ function AppStoreProducts({
       <p className="text-sm text-fg-muted">
         Ready purchases go to App Review with the next version from the{" "}
         <Link
-          to={r.appStore(slug)}
+          to={r.channel(slug, "app-store", "releases")}
           className="py-1 text-accent-fg underline underline-offset-4"
         >
           App Store

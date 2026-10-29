@@ -335,6 +335,9 @@
     "packages/admin/src/console/sections/core/pages/UserRelink.tsx": {
       "jscpd:duplicate": 2
     },
+    "packages/admin/src/console/sections/distribution/components/AscDistribute.tsx": {
+      "jscpd:duplicate": 1
+    },
     "packages/admin/src/console/sections/distribution/components/CredentialForms.tsx": {
       "jscpd:duplicate": 4
     },
@@ -350,11 +353,8 @@
     "packages/admin/src/console/sections/distribution/pages/AccessPage.tsx": {
       "jscpd:duplicate": 1
     },
-    "packages/admin/src/console/sections/distribution/pages/AppStorePage.tsx": {
-      "jscpd:duplicate": 3
-    },
     "packages/admin/src/console/sections/distribution/pages/CommercePage.tsx": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/distribution/pages/OutletsPage.tsx": {
       "jscpd:duplicate": 2
@@ -675,7 +675,7 @@
       "jscpd:duplicate": 7
     },
     "packages/admin/test/distributionMatrix.test.tsx": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 8
     },
     "packages/admin/test/distributionOutlets.test.tsx": {
       "jscpd:duplicate": 4
@@ -762,7 +762,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/test/outletCredentials.test.tsx": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "packages/admin/test/overview.test.tsx": {
       "jscpd:duplicate": 11

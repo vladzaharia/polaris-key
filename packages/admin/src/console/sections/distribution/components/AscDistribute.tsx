@@ -1,7 +1,8 @@
 /**
- * Distribution → App Store (A-17g; notes/S-14 §8.2, T6): the **Distribute** flow that takes a build
- * of the product's pinned app to TestFlight and the App Store, beside what App Store Connect has
- * now (its versions and review submissions, with the release controls).
+ * The App Store channel's **Distribute** flow (A-17g; notes/S-14 §8.2, T6; re-homed from
+ * Distribution → App Store by A-22.4): it takes a build of the product's pinned app to TestFlight
+ * and the App Store, beside what App Store Connect has now (its versions and review submissions,
+ * with the release controls). It is the first section of the channel's Releases tab.
  *
  * Steps, each in the URL (`?step=`, with `?build=` and `?version=`), so a refresh or a closed tab
  * resumes: **Build** (unexpired builds, newest first, polled while one is processing) → **Export
@@ -31,9 +32,7 @@ import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Stepper, type WizardStep } from "../../../../ui/wizard/index.js";
-import { PageHeader } from "../../../../ui/PageHeader.js";
 import { Link, useSearchParam } from "../../../router.js";
 import { codecs, r } from "../../../routes.js";
 import {
@@ -44,17 +43,17 @@ import {
   releaseNotesSeed,
   type AscIntent,
   type LocaleNotes,
-} from "../components/ascShared.js";
-import { StoreState } from "../components/AscStoreState.js";
-import { PreflightStep, SubmitStep } from "../components/AscSubmitSteps.js";
-import { VersionStep } from "../components/AscVersionStep.js";
+} from "./ascShared.js";
+import { StoreState } from "./AscStoreState.js";
+import { PreflightStep, SubmitStep } from "./AscSubmitSteps.js";
+import { VersionStep } from "./AscVersionStep.js";
 import {
   BuildStep,
   ComplianceStep,
   NotesStep,
   TestFlightStep,
-} from "../components/AscBuildSteps.js";
-import type { StepCtx } from "../components/AscStepShared.js";
+} from "./AscBuildSteps.js";
+import type { StepCtx } from "./AscStepShared.js";
 import { patchQuery, useConnectorRead, useConnectors } from "../data.js";
 
 // ── Steps ─────────────────────────────────────────────────────────────────────────────────────
@@ -128,7 +127,14 @@ function writeNotes(slug: string, buildId: string, notes: LocaleNotes[]) {
 
 // ── The page ──────────────────────────────────────────────────────────────────────────────────
 
-export function AppStorePage({ slug }: { slug: string }): React.ReactElement {
+export function AscDistribute({
+  slug,
+  name,
+}: {
+  slug: string;
+  /** The channel's display name, for the empty state. */
+  name: string;
+}): React.ReactElement {
   const connectors = useConnectors(slug);
   const asc = ascConnector(connectors.data?.connectors);
   const blocked = connectors.data ? ascBlocked(asc) : null;
@@ -136,21 +142,6 @@ export function AppStorePage({ slug }: { slug: string }): React.ReactElement {
 
   return (
     <div className="space-y-6" data-template="flow">
-      <PageHeader
-        title={channelLabel("app-store")}
-        titleAside={
-          asc && !blocked ? (
-            <StatusPill tone="success">Connected</StatusPill>
-          ) : null
-        }
-        meta={
-          appleId ? (
-            <span className="font-mono text-xs text-fg-muted">
-              Apple ID {appleId}
-            </span>
-          ) : undefined
-        }
-      />
       {connectors.isPending ? (
         <Skeleton className="h-64 w-full" />
       ) : connectors.isError ? (
@@ -162,12 +153,14 @@ export function AppStorePage({ slug }: { slug: string }): React.ReactElement {
       ) : blocked || !asc || !appleId ? (
         <EmptyState
           kind="first-run"
-          headingLevel={2}
+          headingLevel={3}
           title="App Store Connect can't be used for this product yet"
           description={blocked ?? "The connector names no app."}
           primaryAction={
             <Button variant="outline" asChild>
-              <Link to={r.credentials(slug)}>Open Channel credentials</Link>
+              <Link to={r.channel(slug, "app-store", "setup")}>
+                Open {name} setup
+              </Link>
             </Button>
           }
           docs={docsUrl("appStorePage")}

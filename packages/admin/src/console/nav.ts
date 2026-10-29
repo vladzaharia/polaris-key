@@ -60,7 +60,6 @@ import {
   Radar,
   Rocket,
   Rss,
-  Send,
   Server,
   ServerCog,
   Settings,
@@ -156,7 +155,6 @@ export type ProductPageId =
   | "outlets"
   | "storefronts"
   | "presentation-listing"
-  | "app-store"
   | "channel"
   | "commerce"
   | "access"
@@ -723,17 +721,6 @@ export const SECTIONS: NavSection[] = [
         // PS-06 (SETUP.md §2.1: one page per storefront): a built-in store's own page,
         // `distribution/storefronts/polaris-key`.
         record: { noun: "Storefront" },
-      },
-      {
-        // A-17g: the App Store Distribute flow (T6) for the product's pinned app.
-        page: "app-store",
-        accent: "distribution",
-        label: "App Store",
-        path: "distribution/app-store",
-        icon: Send,
-        docs: "/docs/features/ship-builds/channels/app-store/",
-        inNav: true,
-        requires: "channel:app-store",
       },
       {
         // A-22: one page per channel, `distribution/channels/<id>/<tab>`. No sidebar item: the

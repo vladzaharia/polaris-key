@@ -1,5 +1,5 @@
 /**
- * Distribute flow aside: what App Store Connect has now. Split out of `pages/AppStorePage.tsx`.
+ * Distribute flow aside: what App Store Connect has now. Split out of `components/AscDistribute.tsx`.
  */
 
 import * as React from "react";

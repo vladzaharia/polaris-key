@@ -474,6 +474,11 @@ function cases(): Case[] {
       name: "djdl:channel/releases",
       hash: "#/p/djdl/distribution/channels/google-play/releases",
     },
+    // A-22.4: the App Store channel's Releases tab (the Distribute flow beside App Store Connect's state).
+    {
+      name: "djdl:channel/app-store",
+      hash: "#/p/djdl/distribution/channels/app-store/releases",
+    },
     // A-22.3a: the Setup tab's credential table (a failed key's long error, a pin, the actions).
     {
       name: "djdl:channel/setup",
@@ -903,7 +908,11 @@ const TEXT200_CASES = [
   "djdl:releases/record/builds",
   "djdl:outlets",
   "djdl:credentials",
+  // A-22: the channel page's tabs (the tab strip's labels at 200 % text) and the App Store flow.
+  "djdl:channel/status",
+  "djdl:channel/releases",
   "djdl:channel/setup",
+  "djdl:channel/app-store",
   "djdl:storefronts",
   "djdl:storefronts?flow=prerequisites",
   "djdl:storefronts?flow=listing",

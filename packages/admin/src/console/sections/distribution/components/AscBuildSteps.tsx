@@ -1,6 +1,6 @@
 /**
  * Distribute flow, steps 1 to 4: Build, Export compliance, Release notes and TestFlight.
- * Split out of `pages/AppStorePage.tsx`.
+ * Split out of `components/AscDistribute.tsx`.
  */
 
 import * as React from "react";

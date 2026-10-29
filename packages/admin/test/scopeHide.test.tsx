@@ -68,10 +68,7 @@ const labelsOf = (key: "distribution" | "commerce", f = navFeaturesOf) =>
   );
 
 describe("nav requirements (A-20.7)", () => {
-  it("a Windows-only product hides Distribution → App Store and Commerce → In-app purchases", () => {
-    expect(labelsOf("distribution").map((p) => p.label)).not.toContain(
-      "App Store",
-    );
+  it("a Windows-only product hides Commerce → In-app purchases", () => {
     expect(labelsOf("commerce").map((p) => p.label)).not.toContain(
       "In-app purchases",
     );
@@ -79,11 +76,6 @@ describe("nav requirements (A-20.7)", () => {
 
   it("an App Store product keeps both", () => {
     const f = navFeaturesOf({ channels: IOS, platforms: PLATFORMS } as never);
-    expect(
-      navItems(SECTIONS.find((s) => s.key === "distribution")!, f).map(
-        (p) => p.label,
-      ),
-    ).toContain("App Store");
     expect(
       navItems(SECTIONS.find((s) => s.key === "commerce")!, f).map(
         (p) => p.label,
@@ -93,11 +85,6 @@ describe("nav requirements (A-20.7)", () => {
 
   it("shows both while the product loads, and when an older Worker sends no channels", () => {
     for (const f of [null, navFeaturesOf({})]) {
-      expect(
-        navItems(SECTIONS.find((s) => s.key === "distribution")!, f).map(
-          (p) => p.label,
-        ),
-      ).toContain("App Store");
       expect(channelInScope(f, "app-store")).toBe(true);
     }
   });
@@ -118,11 +105,6 @@ describe("nav requirements (A-20.7)", () => {
     ]) {
       const f = navFeaturesOf(product as never);
       expect(channelInScope(f, "app-store")).toBe(true);
-      expect(
-        navItems(SECTIONS.find((s) => s.key === "distribution")!, f).map(
-          (p) => p.label,
-        ),
-      ).toContain("App Store");
     }
   });
 
@@ -134,7 +116,6 @@ describe("nav requirements (A-20.7)", () => {
     const hrefs = navigationSource("djdl", "DJDL", ALL_ON, f).map(
       (i) => i.href,
     );
-    expect(hrefs).not.toContain("#/p/djdl/distribution/app-store");
     expect(hrefs).not.toContain("#/p/djdl/commerce/in-app-purchases");
     const on = navigationSource(
       "djdl",
@@ -142,7 +123,7 @@ describe("nav requirements (A-20.7)", () => {
       ALL_ON,
       navFeaturesOf({ channels: IOS, platforms: PLATFORMS } as never),
     ).map((i) => i.href);
-    expect(on).toContain("#/p/djdl/distribution/app-store");
+    expect(on).not.toContain("#/p/djdl/distribution/app-store");
   });
 });
 
@@ -268,13 +249,13 @@ describe("Storefronts and the Commerce overview (A-20.7)", () => {
 });
 
 describe("Direct links, the add flow and the credentials page (A-20.7)", () => {
-  it("a link to a hidden page says the store is not one of the channels", async () => {
-    bootWith("#/p/djdl/distribution/app-store", PRODUCT(WINDOWS));
-    await screen.findByRole("heading", {
-      level: 2,
-      name: "App Store isn't one of this product's channels",
-    });
-    expect(screen.getByRole("link", { name: "Open Storefronts" })).toBeTruthy();
+  it("the old App Store address opens the App Store channel's Releases (A-22.4)", async () => {
+    bootWith("#/p/djdl/distribution/app-store?step=notes", PRODUCT(WINDOWS));
+    await screen.findByRole("heading", { level: 2, name: /moved to/ });
+    const go = screen.getByRole("link", { name: /Open channel app-store/ });
+    expect(go.getAttribute("href")).toBe(
+      "#/p/djdl/distribution/channels/app-store/releases?step=notes",
+    );
   });
 
   it("the Commerce overview with no store in scope drops the table and the set-up link", async () => {
@@ -361,39 +342,6 @@ describe("Direct links, the add flow and the credentials page (A-20.7)", () => {
     });
   });
 
-  it("a direct link to a hidden page shows the loading state, not the real page, while the product loads (R3)", async () => {
-    let release!: () => void;
-    const gate = new Promise<void>((r) => (release = r));
-    // Start on the products list, so the list row stands in as placeholder data (without the
-    // channel facts) when the direct link opens: the case that flashed the real page.
-    const { calls, queryClient } = bootWith("#/products", {
-      "/manage/api/products/djdl": async () => {
-        await gate;
-        return PRODUCT(WINDOWS)["/manage/api/products/djdl"];
-      },
-    });
-    await screen.findByRole("main");
-    await vi.waitFor(() =>
-      expect(queryClient.getQueryData(["products"])).toBeTruthy(),
-    );
-    window.location.hash = "#/p/djdl/distribution/app-store";
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
-    await new Promise((r) => setTimeout(r, 1500));
-    const main = screen.getByRole("main");
-    expect(
-      within(main).queryByText(/can.t be used for this product yet/),
-    ).toBeNull();
-    expect(within(main).queryByText(/Declare an app-store channel/)).toBeNull();
-    expect(calls.some((c) => c.path.includes("/distribution/app-store"))).toBe(
-      false,
-    );
-    release();
-    await screen.findByRole("heading", {
-      level: 2,
-      name: "App Store isn't one of this product's channels",
-    });
-  });
-
   it("the Commerce overview shows no title and no cards until the product has loaded (R5)", async () => {
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
@@ -423,80 +371,6 @@ describe("Direct links, the add flow and the credentials page (A-20.7)", () => {
     expect(
       screen.queryByRole("heading", { level: 1, name: "Overview" }),
     ).toBeNull();
-  });
-
-  const connector = (kind: string, label: string, outletKinds: string[]) => ({
-    kind,
-    label,
-    outletKinds,
-    configured: false,
-    inert: { reason: "no_outlet", message: "declare a channel" },
-    setup: null,
-    controls: [],
-  });
-  const CONNECTORS = {
-    connectors: [
-      connector("asc", "App Store Connect", ["app-store", "testflight"]),
-      connector("play", "Google Play", ["play", "play-testing"]),
-      connector("ms-store", "Microsoft Store", ["ms-store"]),
-    ],
-  };
-
-  it("Channel credentials hides the cards and the kinds of an out-of-scope store", async () => {
-    bootWith("#/p/djdl/distribution/credentials", {
-      ...PRODUCT(
-        [row("polaris-key", true), row("microsoft-store", true)],
-        PLATFORMS,
-      ),
-      "/manage/api/products/djdl/distribution/connectors": CONNECTORS,
-    });
-    const main = await screen.findByRole("main");
-    await within(main).findByRole("region", { name: "Microsoft Store" });
-    expect(
-      within(main).queryByRole("region", { name: "App Store Connect" }),
-    ).toBeNull();
-    expect(
-      within(main).queryByRole("link", { name: /^Google Play/ }),
-    ).toBeNull();
-  });
-
-  it("Channel credentials shows a skeleton, no card, until the product has loaded (R2)", async () => {
-    let release!: () => void;
-    const gate = new Promise<void>((r) => (release = r));
-    bootWith("#/p/djdl/distribution/credentials", {
-      "/manage/api/products/djdl": async () => {
-        await gate;
-        return PRODUCT([
-          row("polaris-key", true),
-          row("microsoft-store", true),
-        ])["/manage/api/products/djdl"];
-      },
-      "/manage/api/products/djdl/distribution/connectors": CONNECTORS,
-    });
-    await screen.findByRole("main");
-    await new Promise((r) => setTimeout(r, 400));
-    const main = screen.getByRole("main");
-    expect(
-      within(main).queryByRole("region", { name: "App Store Connect" }),
-    ).toBeNull();
-    expect(
-      within(main).queryByRole("region", { name: "Microsoft Store" }),
-    ).toBeNull();
-    release();
-    await within(main).findByRole("region", { name: "Microsoft Store" });
-    expect(
-      within(main).queryByRole("region", { name: "App Store Connect" }),
-    ).toBeNull();
-  });
-
-  it("Channel credentials shows every card while the scope is unknown", async () => {
-    bootWith("#/p/djdl/distribution/credentials", {
-      ...PRODUCT([], []),
-      "/manage/api/products/djdl/distribution/connectors": CONNECTORS,
-    });
-    const main = await screen.findByRole("main");
-    await within(main).findByText("App Store Connect");
-    expect(within(main).getByText("Google Play")).toBeTruthy();
   });
 });
 

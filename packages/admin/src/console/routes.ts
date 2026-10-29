@@ -394,7 +394,12 @@ export function movedHref(
     return globalHref(moved.page, queryString(carried), { id: moved.id });
   }
   if (slug === undefined) return undefined;
-  return productHref(slug, moved.page, { id: moved.id }, queryString(query));
+  return productHref(
+    slug,
+    moved.page,
+    { id: moved.id, tab: moved.tab },
+    queryString(query),
+  );
 }
 
 /**
@@ -545,8 +550,6 @@ export const r = {
     productPage(slug, "storefronts", { id: store }),
   listing: (slug: string, query?: QueryInit) =>
     productPage(slug, "presentation-listing", { query }),
-  appStore: (slug: string, query?: QueryInit) =>
-    productPage(slug, "app-store", { query }),
   /** A-22: one channel's page, on a tab (the first, Status, by default). */
   channel: (slug: string, id: string, tab?: string) =>
     productPage(slug, "channel", { id, tab }),

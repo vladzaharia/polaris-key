@@ -7,8 +7,7 @@
  *   they move (`StoreRolloutControls`).
  * - **Configuration actions** (App Store **Release this version**, **TestFlight public link**,
  *   **Webhook setup**; Play **Update priority** and **Settings**) live on the connector cards of
- *   Outlet credentials (`ConnectorCard`). The App Store card also links to **Distribute**, the
- *   App Store page's flow (A-17g).
+ *   the channel's Setup (`ConnectorCard`); the App Store card links to **Distribute** (A-22.4).
  *
  * Every control is the connector's own audited route; a store's refusal comes back as a reason
  * `errorCopy` words (`store_refused`, `not_held`, `credential_pin_missing`, …). Controls appear
@@ -615,9 +614,10 @@ export function ConnectorCard({
         // Pinned to the card's foot, level with its neighbour's in a row of cards.
         <div className="mt-auto flex flex-wrap gap-2">
           {connector.kind === "asc" && has("distribute/submit") && !blocked ? (
-            // A-17g: the Distribute flow and App Store products have their own pages.
             <Button size="sm" variant="outline" asChild>
-              <Link to={r.appStore(slug)}>Distribute</Link>
+              <Link to={r.channel(slug, "app-store", "releases")}>
+                Distribute
+              </Link>
             </Button>
           ) : null}
           {actions.map((a) => (

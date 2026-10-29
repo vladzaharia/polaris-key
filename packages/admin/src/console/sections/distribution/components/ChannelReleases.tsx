@@ -2,6 +2,9 @@
  * A channel's Releases tab (A-22.2): that store's rollouts, with the same row actions and dialogs
  * as Distribution → Rollouts (`RolloutList`). The read model serves no per-channel lane or
  * live-version fact, so only the rollouts of the channel's own outlets are drawn.
+ *
+ * The App Store channel leads with its Distribute flow (A-22.4): a build to TestFlight and the App
+ * Store, beside what App Store Connect has now.
  */
 
 import * as React from "react";
@@ -15,6 +18,7 @@ import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { useOutlets, useRollouts } from "../data.js";
 import { cellKey } from "../pages/MatrixPage.js";
+import { AscDistribute } from "./AscDistribute.js";
 import { RolloutList } from "./RolloutList.js";
 import type { ChannelTabProps } from "./channelTabs.js";
 
@@ -80,7 +84,7 @@ export function ChannelReleases({
     outlets.data !== undefined &&
     rollouts.data !== undefined &&
     !rollouts.data.rollouts.some(keep);
-  return (
+  const rollout = (
     <section aria-labelledby="channel-rollouts-heading" className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2
@@ -126,5 +130,23 @@ export function ChannelReleases({
         }
       />
     </section>
+  );
+  if (channel.id !== "app-store") return rollout;
+  return (
+    <div className="space-y-8">
+      <section
+        aria-labelledby="channel-distribute-heading"
+        className="space-y-4"
+      >
+        <h2
+          id="channel-distribute-heading"
+          className="text-base font-semibold text-fg-strong"
+        >
+          Distribute
+        </h2>
+        <AscDistribute slug={slug} name={channel.label} />
+      </section>
+      {rollout}
+    </div>
   );
 }
