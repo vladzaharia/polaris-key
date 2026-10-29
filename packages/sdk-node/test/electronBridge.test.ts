@@ -272,6 +272,60 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
     });
   });
 
+  /** A bridge whose device start records the body it was sent. */
+  async function startCapture() {
+    const sent = { count: 0, last: null as Record<string, unknown> | null };
+    const { bridge } = await setup({
+      "POST /djdl/identity/auth/device/start": (req) => {
+        sent.count++;
+        sent.last = JSON.parse(req.body!) as Record<string, unknown>;
+        return json(START);
+      },
+    });
+    return { bridge, sent };
+  }
+
+  // @pkey-feature identity.signin.hints identity.attach
+  it("carries the sign-in hints, purpose and licenseChoice to the device start (UK-42.17)", async () => {
+    const { bridge, sent } = await startCapture();
+    await bridge.beginSignIn({
+      loginHint: "ada@example.com",
+      nameHint: "Ada Lovelace",
+      purpose: "attach",
+      licenseChoice: "app",
+    });
+    expect(sent.last).toMatchObject({
+      loginHint: "ada@example.com",
+      nameHint: "Ada Lovelace",
+      purpose: "attach",
+      licenseChoice: "app",
+    });
+    // "card" is the Worker's default: nothing is sent.
+    await bridge.beginSignIn({ licenseChoice: "card" });
+    expect(sent.last).not.toHaveProperty("licenseChoice");
+  });
+
+  it("refuses a malformed sign-in bag before any request, and drops unknown members", async () => {
+    const { bridge, sent } = await startCapture();
+    for (const bad of [
+      { loginHint: 7 },
+      { loginHint: "a".repeat(255) },
+      { nameHint: "x".repeat(201) },
+      { nameHint: "line\nbreak" },
+      { purpose: "signin" },
+      { purpose: "admin" },
+      { licenseChoice: "other" },
+    ])
+      await expect(bridge.beginSignIn(bad as never)).rejects.toMatchObject({
+        code: "invalid-argument",
+      });
+    expect(sent.count).toBe(0);
+    await bridge.beginSignIn({ scope: "admin", channel: "redirect" } as never);
+    expect(sent.count).toBe(1);
+    expect(sent.last).not.toHaveProperty("scope");
+    expect(sent.last).not.toHaveProperty("channel");
+  });
+
   it("returns v4 activation kinds without folding them into error", async () => {
     const answers = [
       json({ error: { code: "fingerprint_required" } }, 403),
