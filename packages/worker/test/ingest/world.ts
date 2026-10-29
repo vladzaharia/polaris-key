@@ -114,7 +114,6 @@ const PRODUCT = {
   compatMax: "9.0.0",
   defaultMaxOfflineDays: 14,
   defaultDeviceLimit: 3,
-  adminGroup: "acme-admins",
   tiers: [{ id: "pro", label: "Pro", profileId: null, policyExpiryDays: 365 }],
   provisioning: [],
 };

@@ -1192,7 +1192,6 @@ Before linking, confirm the DJDL repo contains `.pkey/schema`, `.pkey/product`, 
 ```text
 provider: platform
 redirectUris: https://key.plrs.im/djdl/identity/auth/callback
-adminGroup: admins
 ```
 
 Link the repo:

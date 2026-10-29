@@ -69,7 +69,6 @@ interface Decl {
   name?: string;
   offline?: number;
   devices?: number;
-  adminGroup?: string;
   origins?: string[];
   tiers?: { id: string; label?: string; profileId?: string }[];
   profiles?: string[];
@@ -80,7 +79,6 @@ const BASE: Required<Omit<Decl, "origins">> & { origins?: string[] } = {
   name: "Acme",
   offline: 14,
   devices: 3,
-  adminGroup: "acme-admins",
   origins: ["https://app.acme.example"],
   tiers: [{ id: "standard", label: "Standard", profileId: "standard" }],
   profiles: ["standard"],
@@ -98,7 +96,6 @@ function files(d: Decl = {}): Record<string, string> {
       compatMax: "9.0.0",
       defaultMaxOfflineDays: m.offline,
       defaultDeviceLimit: m.devices,
-      adminGroup: m.adminGroup,
       ...(m.origins ? { web: { origins: m.origins } } : {}),
       profiles: m.profiles.map((id) => ({ id, name: id })),
       tiers: m.tiers.map((t) => ({ label: t.id, ...t })),
@@ -612,10 +609,6 @@ describe("the system product (ST-20, S-18 §4.5 item 8)", () => {
     expect(
       (await settingRows(ctx)).map((r) => r.key).includes("core.name"),
     ).toBe(false);
-    expect(await call(ctx, "PATCH", "", { adminGroup: "x" })).toMatchObject({
-      status: 409,
-      json: { reason: "manifest_only" },
-    });
   });
 
   it("refuses a webhook resync: the deploy hook is its single writer", async () => {

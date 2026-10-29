@@ -313,7 +313,7 @@ async function prepareCreate(
       compat_max: manifest.product.compatMax,
       default_max_offline_days: manifest.product.defaultMaxOfflineDays,
       default_device_limit: manifest.product.defaultDeviceLimit,
-      admin_group: manifest.product.adminGroup,
+      admin_group: null,
       release_source: ctx.source.repo ? "github" : null,
       // Which Polaris Key services this product runs (the registration policy is derived from
       // it, ST-38). In the SAME atomic batch as the row itself: enablement decides which routes
@@ -416,13 +416,11 @@ async function prepareApply(ctx: IngestContext): Promise<ManifestContribution> {
   );
 
   // The product row's manifest fields (S-18 §4.5 item 1). A field the console has claimed
-  // (`product_settings`, ST-01b) is skipped; `admin_group` is manifest-only and always follows
-  // the manifest (owner decision 1). `web_origins_json` (P0-05) keeps `omitClears`: dropping
+  // (`product_settings`, ST-01b) is skipped; `web_origins_json` (P0-05) keeps `omitClears`: dropping
   // `web.origins` from `.pkey/product` clears it back to NULL (no origin allowed) rather than
   // freezing the old list, unless the console has claimed it. `presentation_json` (HA-12) is
-  // manifest-only like `admin_group`, and dropping `presentation` clears it to NULL; its row names
-  // its own audit key (the fifth member), so it is audited as `core.presentation`, never as the
-  // `core.adminGroup` fallback the unkeyed rows share.
+  // manifest-only, and dropping `presentation` clears it to NULL; its row names
+  // its own audit key, so it is audited as `core.presentation`.
   const nextOrigins = serializeWebOrigins(manifest.webOrigins);
   const nextPresentation = serializePresentation(manifest.presentation);
   const productFields: [string, ClaimKey | null, unknown, unknown, string?][] =
@@ -440,7 +438,6 @@ async function prepareApply(ctx: IngestContext): Promise<ManifestContribution> {
         product.default_device_limit,
         manifest.product.defaultDeviceLimit,
       ],
-      ["admin_group", null, product.admin_group, manifest.product.adminGroup],
       [
         "web_origins_json",
         "core.web.origins",
@@ -479,7 +476,7 @@ async function prepareApply(ctx: IngestContext): Promise<ManifestContribution> {
     }
     if (before !== after)
       auditSetting(
-        auditKey ?? key ?? "core.adminGroup",
+        auditKey ?? key ?? column,
         column === "web_origins_json"
           ? parseWebOrigins(before as string | null)
           : column === "presentation_json"

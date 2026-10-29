@@ -1037,7 +1037,6 @@ async function cmdInit(parsed: ParsedArgs, rt: Runtime): Promise<number> {
     name,
     modules,
     starterTier,
-    adminGroup: flagString(parsed, "admin-group"),
     releaseOwner: flagString(parsed, "release-owner"),
     releaseRepo: flagString(parsed, "release-repo"),
     force: flagBool(parsed, "force"),

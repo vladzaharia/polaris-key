@@ -20,7 +20,6 @@ const PRODUCT = {
   compatMax: "99.0.0",
   defaultMaxOfflineDays: 30,
   defaultDeviceLimit: 5,
-  adminGroup: "admin",
   oidc: {
     provider: "custom",
     issuer: "https://id.scruffy.spot",

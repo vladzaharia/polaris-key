@@ -654,10 +654,10 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "settings",
     label: "Admin group",
     description:
-      "The identity-provider group named by the manifest as this product's administrators. Not enforced: console access is platform-wide. Manifest-only (owner decision 1).",
+      "Retired: the manifest field was removed (console SSO rules replace it). The stored value is kept only for the conversion offers, until ST-25 drops it.",
     keywords: [],
     docs: "/docs/operate/console/products/",
-    ownership: "manifest",
+    ownership: "read-only",
     critical: true,
     secret: false,
     pending: null,
@@ -2388,6 +2388,12 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     reason:
       "The slug is the product's identity and never changes; apiVersion selects a manifest shape; schemaVersion stamps the catalog and is written with it (config.catalog) as one unit.",
     shows: "Core → Overview; pkey validate",
+  },
+  {
+    thing: "The retired product.adminGroup manifest field (ST-32.6)",
+    reason:
+      "Removed in 0.9: it granted nothing, and the validator answers invalid_admin_group at either spelling. Console SSO rules map an IdP group to a role.",
+    shows: "Platform → Members",
   },
   {
     thing: "Deprecated manifest spellings (ST-19)",
