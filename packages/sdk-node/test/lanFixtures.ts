@@ -25,9 +25,11 @@ export const devId = (n: string): string => "LANDEVICE".padEnd(31, "0") + n;
 export const tokenOf = (n: string): string =>
   `pkeyt_${n.repeat(43).slice(0, 43)}`;
 
-/** Every advert and browser on one fake LAN, all at 127.0.0.1. */
+/** Every advert and browser on one fake LAN, all at 127.0.0.1 unless `hosts` says otherwise. */
 export class MemoryMdnsNetwork {
   adverts = new Map<string, MdnsAdvert>();
+  /** The addresses every advert is found at. */
+  hosts: string[] = ["127.0.0.1"];
   #browsers = new Set<{
     up: (f: MdnsFound) => void;
     down?: (i: string) => void;
@@ -65,7 +67,7 @@ export class MemoryMdnsNetwork {
   #found(a: MdnsAdvert): MdnsFound {
     return {
       instance: a.instance,
-      host: "127.0.0.1",
+      hosts: [...this.hosts],
       port: a.port,
       txt: [...a.txt],
     };

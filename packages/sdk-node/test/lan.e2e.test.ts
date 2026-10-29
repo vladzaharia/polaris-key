@@ -227,7 +227,7 @@ describe("LAN discovery and sessions", () => {
     const f = (instance: string, o: Record<string, unknown> = {}) =>
       net.inject({
         instance,
-        host: "127.0.0.1",
+        hosts: ["127.0.0.1"],
         port: 4000,
         txt: ["v=1", "m=a"],
         ...o,
@@ -237,7 +237,7 @@ describe("LAN discovery and sessions", () => {
     f(right, { txt: ["v=1", "m=v", "h=0123456789abcdef"] }); // wrong mode
     f(right, { txt: ["v=2", "m=a"] });
     f(right, { txt: ["v=1", "m=a", "v=1"] }); // repeated key
-    f(right, { host: "8.8.8.8" }); // not a LAN address
+    f(right, { hosts: ["8.8.8.8"] }); // not a LAN address
     f("not-an-instance");
     await sleep(100);
     expect(la.peers()).toEqual([]);

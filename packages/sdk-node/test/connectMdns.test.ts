@@ -1,14 +1,18 @@
 // @pkey-feature connect.lan
-// The mDNS adapter (CC-08.2): the PTR/SRV/TXT/A layer against a fake `multicast-dns` socket, what
-// a browse keeps and drops, and one real multicast round trip on this machine (skipped, with the
-// reason printed, when the sandbox has no multicast).
+// The mDNS adapter (CC-08.2, CC-IPV6.3): the PTR/SRV/TXT/A/AAAA layer against fake `multicast-dns`
+// sockets (one for IPv4, one per IPv6 interface), what a browse keeps and drops, and real multicast
+// round trips on this machine, IPv4 and IPv6 (skipped, with the reason printed, when the sandbox
+// has no multicast).
 import { EventEmitter } from "node:events";
+import { networkInterfaces } from "node:os";
 import { describe, expect, it, vi } from "vitest";
 import {
   MulticastDnsAdapter,
   PEER_SERVICE,
   isLanAddress,
+  ownInterfaces,
   type MdnsFound,
+  type MdnsInterface,
   type MdnsSocket,
 } from "../src/connect/mdns.js";
 
@@ -17,6 +21,8 @@ const FQDN = `${INST}.${PEER_SERVICE}`;
 /** The UDP source of the packets: an A record is believed only from its own address. */
 const SRC = { address: "192.168.1.20" };
 const HOST = `${INST}.local`;
+/** The connected IPv4 subnets of the fake machine. */
+const subnets = (): string[] => ["192.168.0.0/16"];
 
 class FakeSocket extends EventEmitter implements MdnsSocket {
   responses: any[] = [];
@@ -113,7 +119,7 @@ describe("MulticastDnsAdapter", () => {
 
   it("browses: resolves PTR, SRV, TXT and A once, asks for what is missing, reports goodbyes", async () => {
     const s = new FakeSocket();
-    const a = new MulticastDnsAdapter({ create: () => s });
+    const a = new MulticastDnsAdapter({ create: () => s, subnets });
     const up: MdnsFound[] = [];
     const down: string[] = [];
     const h = await a.browse(
@@ -129,14 +135,21 @@ describe("MulticastDnsAdapter", () => {
     expect(up).toEqual([]);
     s.emit("response", { answers: packet().answers.slice(1) }, SRC);
     expect(up).toEqual([
-      { instance: INST, host: "192.168.1.20", port: 4242, txt: ["v=1", "m=a"] },
+      {
+        instance: INST,
+        hosts: ["192.168.1.20"],
+        port: 4242,
+        txt: ["v=1", "m=a"],
+      },
     ]);
     // The same answer again is not a second event.
     s.emit("response", packet(), SRC);
     expect(up).toHaveLength(1);
-    s.emit("response", {
-      answers: [{ name: PEER_SERVICE, type: "PTR", ttl: 0, data: FQDN }],
-    });
+    s.emit(
+      "response",
+      { answers: [{ name: PEER_SERVICE, type: "PTR", ttl: 0, data: FQDN }] },
+      SRC,
+    );
     expect(down).toEqual([INST]);
     await h.stop();
     expect(s.destroyed).toBe(true);
@@ -148,7 +161,10 @@ describe("MulticastDnsAdapter", () => {
       const s = new FakeSocket();
       const up: MdnsFound[] = [];
       const down: string[] = [];
-      const h = await new MulticastDnsAdapter({ create: () => s }).browse(
+      const h = await new MulticastDnsAdapter({
+        create: () => s,
+        subnets,
+      }).browse(
         (f) => up.push(f),
         (i) => down.push(i),
       );
@@ -175,7 +191,7 @@ describe("MulticastDnsAdapter", () => {
     const run = async (answers: any[]): Promise<MdnsFound[]> => {
       const s = new FakeSocket();
       const up: MdnsFound[] = [];
-      await new MulticastDnsAdapter({ create: () => s }).browse((f) =>
+      await new MulticastDnsAdapter({ create: () => s, subnets }).browse((f) =>
         up.push(f),
       );
       s.emit("response", { answers }, SRC);
@@ -215,10 +231,10 @@ describe("MulticastDnsAdapter", () => {
     expect(await run(other)).toHaveLength(1); // SRV/TXT/A still name the instance by themselves
   });
 
-  it("believes an A record only from its own source, keeps four, and dials the first seen", async () => {
+  it("believes an A record only from its own source, keeps four, and lists the first seen first", async () => {
     const s = new FakeSocket();
     const up: MdnsFound[] = [];
-    await new MulticastDnsAdapter({ create: () => s }).browse((f) =>
+    await new MulticastDnsAdapter({ create: () => s, subnets }).browse((f) =>
       up.push(f),
     );
     const [ptr, srv, txt] = packet().answers;
@@ -227,7 +243,7 @@ describe("MulticastDnsAdapter", () => {
     // A neighbour claims another device's name for an address that is not its own.
     s.emit("response", { answers: [a("192.168.1.99")] }, SRC);
     expect(up).toEqual([]);
-    // Several sources answer; the first is dialled, not the lexically smallest.
+    // Several sources answer; the first seen leads, not the lexically smallest.
     s.emit(
       "response",
       { answers: [a("192.168.1.50")] },
@@ -239,8 +255,78 @@ describe("MulticastDnsAdapter", () => {
         { answers: [a(`192.168.1.${n}`)] },
         { address: `192.168.1.${n}` },
       );
+    expect(up.map((f) => f.hosts)).toEqual([
+      ["192.168.1.50"],
+      ["192.168.1.50", "192.168.1.10"],
+      ["192.168.1.50", "192.168.1.10", "192.168.1.11"],
+      ["192.168.1.50", "192.168.1.10", "192.168.1.11", "192.168.1.12"],
+    ]);
+  });
+
+  it("learns by equality alone: a public address that is the source is kept for the dial-time verdict", async () => {
+    const s = new FakeSocket();
+    const up: MdnsFound[] = [];
+    await new MulticastDnsAdapter({
+      create: () => s,
+      subnets: () => ["8.8.8.0/24"],
+    }).browse((f) => up.push(f));
+    const [ptr, srv, txt] = packet().answers;
+    s.emit(
+      "response",
+      {
+        answers: [
+          ptr,
+          srv,
+          txt,
+          { name: HOST, type: "A", ttl: 120, data: "8.8.8.8" },
+        ],
+      },
+      { address: "8.8.8.8" },
+    );
+    expect(up.map((f) => f.hosts)).toEqual([["8.8.8.8"]]);
+  });
+
+  it("ignores a response whose source is outside the connected subnets, or unknown", async () => {
+    const s = new FakeSocket();
+    const up: MdnsFound[] = [];
+    await new MulticastDnsAdapter({ create: () => s, subnets }).browse((f) =>
+      up.push(f),
+    );
+    const from = (address: string) => ({
+      answers: packet().answers.map((r) =>
+        r.type === "A" ? { ...r, data: address } : r,
+      ),
+    });
+    s.emit("response", from("10.9.9.9"), { address: "10.9.9.9" });
+    s.emit("response", packet()); // no source at all
+    s.emit("response", packet(), { address: "fe80::5" }); // wrong family
+    expect(up).toEqual([]);
+    s.emit("response", packet(), SRC);
     expect(up).toHaveLength(1);
-    expect(up[0]!.host).toBe("192.168.1.50");
+  });
+
+  it("names fold by ASCII, and an address record with TTL 0 withdraws the address", async () => {
+    const s = new FakeSocket();
+    const up: MdnsFound[] = [];
+    const down: string[] = [];
+    await new MulticastDnsAdapter({ create: () => s, subnets }).browse(
+      (f) => up.push(f),
+      (i) => down.push(i),
+    );
+    const [ptr, srv, txt] = packet().answers;
+    const a = (ttl: number) => ({
+      name: HOST.toUpperCase(),
+      type: "A",
+      ttl,
+      data: "192.168.1.20",
+    });
+    s.emit("response", { answers: [ptr, srv, txt, a(120)] }, SRC);
+    expect(up.map((f) => f.hosts)).toEqual([["192.168.1.20"]]);
+    s.emit("response", { answers: [a(0)] }, SRC);
+    expect(down).toEqual([INST]);
+    // It can come back.
+    s.emit("response", { answers: [a(120)] }, SRC);
+    expect(up).toHaveLength(2);
   });
 
   it("expires and evicts resolve entries so a flood cannot stop discovery", async () => {
@@ -248,7 +334,7 @@ describe("MulticastDnsAdapter", () => {
     try {
       const s = new FakeSocket();
       const up: MdnsFound[] = [];
-      await new MulticastDnsAdapter({ create: () => s }).browse((f) =>
+      await new MulticastDnsAdapter({ create: () => s, subnets }).browse((f) =>
         up.push(f),
       );
       const base32 = "abcdefghijklmnopqrstuvwxyz234567";
@@ -284,7 +370,7 @@ describe("MulticastDnsAdapter", () => {
 
   it("bounds the instances it tracks", async () => {
     const s = new FakeSocket();
-    const a = new MulticastDnsAdapter({ create: () => s });
+    const a = new MulticastDnsAdapter({ create: () => s, subnets });
     const up: MdnsFound[] = [];
     await a.browse((f) => up.push(f));
     const base32 = "abcdefghijklmnopqrstuvwxyz234567";
@@ -298,10 +384,10 @@ describe("MulticastDnsAdapter", () => {
         data: `${inst}.${PEER_SERVICE}`,
       });
     }
-    s.emit("response", { answers });
+    s.emit("response", { answers }, SRC);
     // Nothing resolves (no SRV), and asking is capped.
     expect(up).toEqual([]);
-    s.emit("response", { answers: [] });
+    s.emit("response", { answers: [] }, SRC);
     expect(s.queries.every((q) => q.questions.length <= 32)).toBe(true);
   });
 
@@ -326,11 +412,18 @@ describe("MulticastDnsAdapter", () => {
 
 describe("multicast-dns on this machine", () => {
   it("advertises and browses over real multicast", async (ctx) => {
-    const adv = new MulticastDnsAdapter({
-      allowLoopback: true,
-      addresses: () => ["127.0.0.1"],
-    });
-    const brw = new MulticastDnsAdapter({ allowLoopback: true });
+    // The packet's source is this machine's own address on the sending interface, so the advert
+    // names this machine's real LAN addresses.
+    const own = Object.values(networkInterfaces())
+      .flatMap((l) => l ?? [])
+      .filter(
+        (i) => i.family === "IPv4" && !i.internal && isLanAddress(i.address),
+      )
+      .map((i) => i.address);
+    if (own.length === 0)
+      return ctx.skip("no RFC 1918 address on this machine");
+    const adv = new MulticastDnsAdapter({ allowLoopback: true, v6: false });
+    const brw = new MulticastDnsAdapter({ allowLoopback: true, v6: false });
     let found: MdnsFound | null = null;
     let handles: { stop(): Promise<void> }[] = [];
     try {
@@ -352,10 +445,292 @@ describe("multicast-dns on this machine", () => {
     }
     if (found === null)
       return ctx.skip("no multicast loopback delivery in this sandbox");
-    expect(found).toMatchObject({
-      instance: INST,
-      host: "127.0.0.1",
-      port: 4242,
+    const f: MdnsFound = found;
+    expect(f.port).toBe(4242);
+    expect(f.hosts.length).toBeGreaterThan(0);
+    for (const h of f.hosts) expect(own).toContain(h);
+  });
+
+  it("advertises and browses over real IPv6 multicast, with the interface as the zone", async (ctx) => {
+    const ifaces = ownInterfaces();
+    if (ifaces.length === 0)
+      return ctx.skip("no multicast-capable interface with an fe80 address");
+    const only = { v6: { interfaces: () => ifaces } };
+    const adv = new MulticastDnsAdapter({
+      create: () => new FakeSocket(),
+      ...only,
     });
+    const brw = new MulticastDnsAdapter({
+      create: () => new FakeSocket(),
+      ...only,
+    });
+    let found: MdnsFound | null = null;
+    const handles: { stop(): Promise<void> }[] = [];
+    try {
+      handles.push(await brw.browse((f) => f.instance === INST && (found = f)));
+      handles.push(
+        await adv.advertise({
+          instance: INST,
+          port: 4242,
+          txt: ["v=1", "m=a"],
+        }),
+      );
+      const t = Date.now();
+      while (found === null && Date.now() - t < 4000)
+        await new Promise((r) => setTimeout(r, 50));
+    } catch (e) {
+      ctx.skip(`IPv6 multicast is not available here: ${(e as Error).message}`);
+    } finally {
+      await Promise.all(handles.map((h) => h.stop()));
+    }
+    if (found === null)
+      return ctx.skip("no IPv6 multicast loopback delivery in this sandbox");
+    const f: MdnsFound = found;
+    expect(f.port).toBe(4242);
+    expect(f.hosts.length).toBeGreaterThan(0);
+    for (const h of f.hosts) {
+      const [addr, zone] = h.split("%");
+      expect(addr).toMatch(/^fe80:/);
+      expect(ifaces.map((i) => i.zone)).toContain(zone);
+    }
+  });
+});
+
+describe("IPv6: one socket per interface", () => {
+  const LL = "fe80::1c2:3ff:fe4:5a6";
+  const en0: MdnsInterface = {
+    name: "en0",
+    zone: "en0",
+    addresses: [LL],
+    nets: ["fe80::1c2:3ff:fe4:5a6/64", "2001:db8:1:2::9/64"],
+  };
+  const wlan0: MdnsInterface = {
+    name: "wlan0",
+    zone: "wlan0",
+    addresses: ["fe80::9"],
+    nets: ["fe80::9/64"],
+  };
+  const world = () => {
+    const v4 = new FakeSocket();
+    const v6 = new Map<string, FakeSocket>([
+      ["en0", new FakeSocket()],
+      ["wlan0", new FakeSocket()],
+    ]);
+    const a = new MulticastDnsAdapter({
+      create: () => v4,
+      subnets,
+      addresses: () => ["192.168.1.20"],
+      v6: { interfaces: () => [en0, wlan0], create: (i) => v6.get(i.name)! },
+    });
+    return { v4, v6, a };
+  };
+  const aaaa = (data: string, ttl = 120) => ({
+    name: HOST,
+    type: "AAAA",
+    ttl,
+    data,
+  });
+
+  it("is off when only the IPv4 socket is injected, and with v6: false", async () => {
+    const calls: string[] = [];
+    const v6 = {
+      interfaces: () => [en0],
+      create: (i: MdnsInterface) => (calls.push(i.name), new FakeSocket()),
+    };
+    await new MulticastDnsAdapter({ create: () => new FakeSocket() }).browse(
+      () => undefined,
+    );
+    await new MulticastDnsAdapter({
+      create: () => new FakeSocket(),
+      v6: false,
+    }).browse(() => undefined);
+    expect(calls).toEqual([]);
+    await new MulticastDnsAdapter({
+      create: () => new FakeSocket(),
+      v6,
+    }).browse(() => undefined);
+    expect(calls).toEqual(["en0"]);
+  });
+
+  it("uses at most eight interfaces, and skips one whose socket cannot be made", async () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({
+      ...en0,
+      name: `if${i}`,
+      zone: `if${i}`,
+    }));
+    const made: string[] = [];
+    await new MulticastDnsAdapter({
+      create: () => new FakeSocket(),
+      v6: {
+        interfaces: () => many,
+        create: (i) => {
+          made.push(i.name);
+          if (i.name === "if1") throw new Error("EADDRNOTAVAIL");
+          return new FakeSocket();
+        },
+      },
+    }).browse(() => undefined);
+    expect(made).toEqual(Array.from({ length: 8 }, (_, i) => `if${i}`));
+  });
+
+  it("answers an A on the IPv4 socket and an AAAA on each interface's own, and says goodbye on all", async () => {
+    const { v4, v6, a } = world();
+    const h = await a.advertise({
+      instance: INST,
+      port: 4242,
+      txt: ["v=1", "m=a"],
+    });
+    const kinds = (s: FakeSocket) =>
+      s.responses[0].answers.map((r: any) => `${r.type} ${r.data}`).slice(3);
+    expect(kinds(v4)).toEqual(["A 192.168.1.20"]);
+    expect(kinds(v6.get("en0")!)).toEqual([`AAAA ${LL}`]);
+    expect(kinds(v6.get("wlan0")!)).toEqual(["AAAA fe80::9"]);
+    // A query on one socket is answered on that socket only.
+    v6.get("wlan0")!.emit("query", {
+      questions: [{ name: PEER_SERVICE.toUpperCase(), type: "PTR" }],
+    });
+    expect(v6.get("wlan0")!.responses).toHaveLength(2);
+    expect(v6.get("en0")!.responses).toHaveLength(1);
+    await h.stop();
+    for (const s of [v4, ...v6.values()]) {
+      expect(s.responses.at(-1).answers.every((r: any) => r.ttl === 0)).toBe(
+        true,
+      );
+      expect(s.destroyed).toBe(true);
+    }
+  });
+
+  it("asks for AAAA as well as A, on every socket", async () => {
+    vi.useFakeTimers();
+    try {
+      const { v4, v6, a } = world();
+      await a.browse(() => undefined);
+      for (const s of [v4, ...v6.values()])
+        expect(s.queries[0].questions).toEqual([
+          { name: PEER_SERVICE, type: "PTR" },
+        ]);
+      // An instance whose SRV, TXT or address is missing is asked for by type.
+      v4.emit("response", { answers: [packet().answers[0]] }, SRC);
+      vi.advanceTimersByTime(1000);
+      for (const s of [v4, ...v6.values()])
+        expect(s.queries[1].questions.map((q: any) => q.type)).toEqual([
+          "PTR",
+          "SRV",
+          "TXT",
+          "A",
+          "AAAA",
+        ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("takes the arrival interface as the zone of a link-local address, and lists A and AAAA together", async () => {
+    const { v4, v6, a } = world();
+    const up: MdnsFound[] = [];
+    await a.browse((f) => up.push(f));
+    const [ptr, srv, txt] = packet().answers;
+    // The same neighbour is heard on two links: two hosts, told apart by their zone.
+    v6.get("en0")!.emit(
+      "response",
+      { answers: [ptr, srv, txt, aaaa(LL)] },
+      { address: `${LL}%en0` },
+    );
+    expect(up.at(-1)!.hosts).toEqual([`${LL}%en0`]);
+    v6.get("wlan0")!.emit(
+      "response",
+      { answers: [aaaa("fe80::1c2:3ff:fe4:5a6")] },
+      { address: LL },
+    );
+    expect(up.at(-1)!.hosts).toEqual([`${LL}%en0`, `${LL}%wlan0`]);
+    v4.emit("response", { answers: [packet().answers[3]] }, SRC);
+    expect(up.at(-1)!.hosts).toEqual([
+      `${LL}%en0`,
+      `${LL}%wlan0`,
+      "192.168.1.20",
+    ]);
+    // A fifth address is not kept: at most four.
+    v6.get("en0")!.emit(
+      "response",
+      { answers: [aaaa("2001:db8:1:2::5")] },
+      { address: "2001:db8:1:2::5" },
+    );
+    v6.get("en0")!.emit(
+      "response",
+      { answers: [aaaa("2001:db8:1:2::6")] },
+      { address: "2001:db8:1:2::6" },
+    );
+    expect(up.at(-1)!.hosts).toHaveLength(4);
+    expect(up.at(-1)!.hosts[3]).toBe("2001:db8:1:2::5");
+  });
+
+  it("ignores a response from outside the interface's connected subnets, and an AAAA that is not the source", async () => {
+    const { v6, a } = world();
+    const up: MdnsFound[] = [];
+    await a.browse((f) => up.push(f));
+    const [ptr, srv, txt] = packet().answers;
+    const full = (data: string) => ({ answers: [ptr, srv, txt, aaaa(data)] });
+    // A global source that is not on any of en0's subnets.
+    v6.get("en0")!.emit("response", full("2001:db8:9::5"), {
+      address: "2001:db8:9::5",
+    });
+    // A source on the subnet claiming another address.
+    v6.get("en0")!.emit("response", full("fe80::dead"), {
+      address: `${LL}%en0`,
+    });
+    // fe80 is on wlan0's /64 too, but its own address is fe80::9/64: a global one is not.
+    v6.get("wlan0")!.emit("response", full("2001:db8:1:2::5"), {
+      address: "2001:db8:1:2::5",
+    });
+    expect(up).toEqual([]);
+    v6.get("en0")!.emit("response", full("2001:db8:1:2::5"), {
+      address: "2001:db8:1:2::5",
+    });
+    expect(up.map((f) => f.hosts)).toEqual([["2001:db8:1:2::5"]]);
+  });
+
+  it("withdraws one address on TTL 0 and reports the peer down when none is left", async () => {
+    const { v6, a } = world();
+    const up: MdnsFound[] = [];
+    const down: string[] = [];
+    await a.browse(
+      (f) => up.push(f),
+      (i) => down.push(i),
+    );
+    const en0s = v6.get("en0")!;
+    const [ptr, srv, txt] = packet().answers;
+    en0s.emit(
+      "response",
+      { answers: [ptr, srv, txt, aaaa(LL)] },
+      { address: LL },
+    );
+    en0s.emit(
+      "response",
+      { answers: [aaaa("2001:db8:1:2::5")] },
+      { address: "2001:db8:1:2::5" },
+    );
+    expect(up.at(-1)!.hosts).toEqual([`${LL}%en0`, "2001:db8:1:2::5"]);
+    en0s.emit("response", { answers: [aaaa(LL, 0)] }, { address: LL });
+    expect(up.at(-1)!.hosts).toEqual(["2001:db8:1:2::5"]);
+    expect(down).toEqual([]);
+    en0s.emit(
+      "response",
+      { answers: [aaaa("2001:db8:1:2::5", 0)] },
+      { address: "2001:db8:1:2::5" },
+    );
+    expect(down).toEqual([INST]);
+  });
+});
+
+describe("ownInterfaces", () => {
+  it("lists at most eight interfaces, each with an fe80 address and its subnets", () => {
+    const list = ownInterfaces();
+    expect(list.length).toBeLessThanOrEqual(8);
+    for (const i of list) {
+      expect(i.addresses.length).toBeGreaterThan(0);
+      for (const a of i.addresses) expect(a).toMatch(/^fe[89ab][0-9a-f]:/);
+      expect(i.nets.length).toBeGreaterThan(0);
+      expect(i.zone).toBe(process.platform === "win32" ? i.zone : i.name);
+    }
   });
 });

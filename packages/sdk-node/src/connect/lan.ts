@@ -36,9 +36,9 @@ import {
   type RingAdoption,
   type TrustApplication,
 } from "./channel.js";
+import { textVerdict } from "./lanJudge.js";
 import {
   MulticastDnsAdapter,
-  isLanAddress,
   type MdnsAdapter,
   type MdnsFound,
   type MdnsHandle,
@@ -105,7 +105,10 @@ export interface LanOptions {
 
 export interface LanPeer {
   deviceId: string;
+  /** The first learned address. */
   host: string;
+  /** Every learned address (at most four), first seen first; a link-local one carries its `%zone`. */
+  hosts?: readonly string[];
   port: number;
 }
 
@@ -173,9 +176,10 @@ export class LanService {
 
   /** Roster devices seen on the network right now. */
   peers(): LanPeer[] {
-    return [...this.#peers.values()].map(({ deviceId, host, port }) => ({
+    return [...this.#peers.values()].map(({ deviceId, host, hosts, port }) => ({
       deviceId,
       host,
+      hosts: [...(hosts ?? [host])],
       port,
     }));
   }
@@ -318,7 +322,7 @@ export class LanService {
   // ── TCP ─────────────────────────────────────────────────────────────────────────────────────
 
   #dialable(host: string): boolean {
-    return isLanAddress(host, this.#o.allowLoopback === true);
+    return textVerdict(host, this.#o.allowLoopback === true);
   }
 
   #dial(peer: LanPeer): Promise<Socket> {
@@ -446,7 +450,8 @@ export class LanService {
   }
 
   async #found(f: MdnsFound): Promise<void> {
-    if (this.#stopped || !this.#dialable(f.host)) return;
+    const hosts = f.hosts.filter((h) => this.#dialable(h));
+    if (this.#stopped || hosts.length === 0) return;
     const txt = parseTxt(f.txt);
     if (!txt.ok || txt.mode !== "a") return;
     if (this.#miss.has(f.instance)) return;
@@ -470,12 +475,18 @@ export class LanService {
     }
     const peer = {
       deviceId: hit.deviceId,
-      host: f.host,
+      host: hosts[0]!,
+      hosts,
       port: f.port,
       instance: f.instance,
     };
     this.#peers.set(hit.deviceId, peer);
     for (const fn of [...this.#onPeer])
-      fn({ deviceId: peer.deviceId, host: peer.host, port: peer.port });
+      fn({
+        deviceId: peer.deviceId,
+        host: peer.host,
+        hosts: [...hosts],
+        port: peer.port,
+      });
   }
 }
