@@ -5,13 +5,16 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { makeEnv, NOW, seedProduct } from "../seed.js";
-import { makeTestDb } from "../helpers.js";
-import { KvMock } from "../kvMock.js";
+import { NOW } from "../seed.js";
 import type { Db } from "../../src/db/types.js";
 import type { Env } from "../../src/platform/env.js";
 import { listAudit } from "../../src/core/audit.js";
-import { putOutletCredential } from "../../src/core/outletCredentials.js";
+import {
+  PGS_CLIENT_ID as CLIENT_ID,
+  PGS_FAKE_SECRET as FAKE_SECRET,
+  pgsTestWorld,
+  putPgsServerCredential,
+} from "../pgsServerCredential.js";
 import {
   PGS_REDEEM_LIMIT,
   PGS_SECRET_CACHE_SECONDS,
@@ -21,8 +24,6 @@ import {
   type PgsResult,
 } from "../../src/core/stores/playGames/serverAuth.js";
 
-const CLIENT_ID = "123456789012-fakeserverclient.apps.googleusercontent.com";
-const FAKE_SECRET = "FAKE-secret-not-real-0000";
 const APP_ID = "123456789012";
 const CODE = "4/0FakeServerAuthCode";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -33,27 +34,18 @@ let db: Db;
 let env: Env;
 
 beforeEach(async () => {
-  resetPgsSecretCache();
-  db = makeTestDb();
-  env = makeEnv(new KvMock(), ["djdl"]);
-  await seedProduct(db, "djdl");
+  ({ db, env } = await pgsTestWorld());
 });
 
-async function putCred(
-  value: unknown = { clientSecret: FAKE_SECRET },
-  pin: string | undefined = CLIENT_ID,
-  id = "pgs-server",
+function putCred(
+  value?: unknown,
+  pin?: string | undefined,
+  credentialId?: string,
 ) {
-  return putOutletCredential(env, db, {
-    product: "djdl",
-    credentialId: id,
-    kind: "pgs-server-client",
-    outletId: null,
-    value,
-    expiresAt: null,
-    pin,
-    actor: "admin-1",
-    now: NOW,
+  return putPgsServerCredential(env, db, {
+    ...(value === undefined ? {} : { value }),
+    ...(pin === undefined ? {} : { pin }),
+    ...(credentialId === undefined ? {} : { credentialId }),
   });
 }
 

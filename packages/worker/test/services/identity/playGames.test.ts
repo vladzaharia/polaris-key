@@ -4,14 +4,16 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { makeEnv, NOW, seedProduct } from "../../seed.js";
-import { makeTestDb } from "../../helpers.js";
-import { KvMock } from "../../kvMock.js";
+import { NOW } from "../../seed.js";
 import type { Db } from "../../../src/db/types.js";
 import type { Env } from "../../../src/platform/env.js";
 import { listAudit } from "../../../src/core/audit.js";
-import { putOutletCredential } from "../../../src/core/outletCredentials.js";
-import { resetPgsSecretCache } from "../../../src/core/stores/playGames/serverAuth.js";
+import {
+  PGS_CLIENT_ID as CLIENT_ID,
+  PGS_FAKE_SECRET as FAKE_SECRET,
+  pgsTestWorld,
+  putPgsServerCredential,
+} from "../../pgsServerCredential.js";
 import {
   findPgsLink,
   pgsScope,
@@ -19,8 +21,6 @@ import {
 } from "../../../src/services/identity/providers/playGames.js";
 import type { PlatformSignInAudiences } from "../../../src/services/identity/platformSignIn.js";
 
-const CLIENT_ID = "123456789012-fakeserverclient.apps.googleusercontent.com";
-const FAKE_SECRET = "FAKE-secret-not-real-0000";
 const APP_ID = "123456789012";
 const CODE = "4/0FakeServerAuthCode";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -41,25 +41,11 @@ let db: Db;
 let env: Env;
 
 beforeEach(async () => {
-  resetPgsSecretCache();
-  db = makeTestDb();
-  env = makeEnv(new KvMock(), ["djdl"]);
-  await seedProduct(db, "djdl");
+  ({ db, env } = await pgsTestWorld());
 });
 afterEach(() => vi.restoreAllMocks());
 
-const putCred = () =>
-  putOutletCredential(env, db, {
-    product: "djdl",
-    credentialId: "pgs-server",
-    kind: "pgs-server-client",
-    outletId: null,
-    value: { clientSecret: FAKE_SECRET },
-    expiresAt: null,
-    pin: CLIENT_ID,
-    actor: "admin-1",
-    now: NOW,
-  });
+const putCred = () => putPgsServerCredential(env, db);
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
