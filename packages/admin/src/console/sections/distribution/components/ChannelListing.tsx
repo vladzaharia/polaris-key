@@ -15,31 +15,30 @@ import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { issueLine } from "../../storefronts/components/FitReport.js";
 import { EditListingLink } from "../../storefronts/components/EditListingLink.js";
-import {
-  useListing,
-  useListingFit,
-  useStorefronts,
-} from "../../storefronts/data.js";
+import { useListing, useListingFit } from "../../storefronts/data.js";
 import { fieldLabel } from "../../storefronts/model/listingFields.js";
 import type { ChannelRow } from "../../../../api.js";
 import type { ChannelTabProps } from "./channelTabs.js";
 
-/** The store channels that have a listing column (the Worker's `LISTING_STORES`). */
-const LISTING_CHANNELS: ReadonlySet<string> = new Set([
-  "app-store",
-  "google-play",
-  "microsoft-store",
-  "steam",
-  "flathub",
-  "snap",
-  "winget",
-  "fdroid",
-  "polaris-key",
-]);
+/**
+ * The listing column each store channel is projected to (the Worker's `LISTING_STORES`, pinned by
+ * a test); a channel not listed has no listing of its own.
+ */
+export const LISTING_COLUMN: Readonly<Record<string, string>> = {
+  "app-store": "app-store",
+  "google-play": "play",
+  "microsoft-store": "ms-store",
+  steam: "steam",
+  flathub: "flathub",
+  snap: "snap",
+  winget: "winget",
+  fdroid: "fdroid",
+  "polaris-key": "polaris-key",
+};
 
 /** The Listing tab shows for a channel that has a listing of its own. */
 export const hasListing = (channel: ChannelRow): boolean =>
-  LISTING_CHANNELS.has(channel.id);
+  channel.id in LISTING_COLUMN;
 
 type Cell = ListingFitResponse["stores"][number]["cells"][number];
 type Locale = ListingResponse["locales"][number];
@@ -47,16 +46,27 @@ type Locale = ListingResponse["locales"][number];
 export interface ListingFact {
   key: string;
   label: string;
+  /** The model field it is projected from. */
+  from: string;
   /** Empty when the store takes it but it is not written, or is set in the store. */
   value: string;
   plane: Cell["plane"];
   present: boolean;
   overridden: boolean;
-  issues: string[];
+  issues: { text: string; blocking: boolean }[];
 }
 
 const asText = (v: unknown): string =>
   Array.isArray(v) ? v.join(", ") : typeof v === "string" ? v : "";
+
+/** The model fields that live under the app's `urls`, as the projection reads them. */
+const URL_KEY: Readonly<Record<string, string>> = {
+  website: "website",
+  supportUrl: "support",
+  privacyUrl: "privacy",
+  marketingUrl: "marketing",
+  eulaUrl: "eula",
+};
 
 /** The shared value for a model field in the default locale. */
 function modelValue(data: ListingResponse, from: string): string {
@@ -64,8 +74,8 @@ function modelValue(data: ListingResponse, from: string): string {
   const locale = data.locales.find((l) => l.locale === app?.defaultLocale) as
     | Locale
     | undefined;
-  if (from.startsWith("urls."))
-    return asText(app?.urls?.[from.slice("urls.".length)]);
+  const url = URL_KEY[from];
+  if (url) return asText(app?.urls?.[url]);
   return asText(
     (locale as Record<string, unknown> | undefined)?.[from] ??
       (app as Record<string, unknown> | undefined)?.[from],
@@ -89,6 +99,7 @@ export function listingFacts(
       );
       return {
         key: `${c.field}:${c.locale ?? ""}`,
+        from: c.from,
         label: fieldLabel(c.field),
         value:
           c.plane === "manual"
@@ -103,7 +114,10 @@ export function listingFacts(
           .filter(
             (i) => i.from === c.from && (i.locale === null || i.locale === dl),
           )
-          .map(issueLine),
+          .map((i) => ({
+            text: issueLine(i),
+            blocking: i.severity === "block",
+          })),
       };
     });
 }
@@ -153,15 +167,24 @@ function Value({
   );
 }
 
+const isNotes = (from: string): boolean =>
+  from === "releaseNotes" || from === "releaseNotesShort";
+
+/** The header's fit line, from the store's own status. */
+function fitLine(row: ListingFitResponse["stores"][number]): string {
+  if (row.status === "green") return "Fits";
+  const blocking = row.issues.filter((i) => i.severity === "block").length;
+  return blocking ? `${blocking} blocking` : `${row.issues.length} to review`;
+}
+
 export function ChannelListing({
   slug,
   channel,
 }: ChannelTabProps): React.ReactElement {
   const listing = useListing(slug);
   const fit = useListingFit(slug);
-  const stores = useStorefronts(slug);
-  const q = [listing, fit, stores].find((x) => x.isError);
-  if (listing.isPending || fit.isPending || stores.isPending)
+  const q = [listing, fit].find((x) => x.isError);
+  if (listing.isPending || fit.isPending)
     return <Skeleton className="h-64 w-full" />;
   if (q)
     return (
@@ -171,11 +194,7 @@ export function ChannelListing({
         onRetry={() => void q.refetch()}
       />
     );
-  const column = stores.data?.stores.find(
-    (s) => s.id === channel.id,
-  )?.listingStore;
-  const row = column ? fit.data?.stores.find((s) => s.store === column) : null;
-  if (!fit.data?.exists || !listing.data?.listing || !row)
+  if (!fit.data?.exists || !listing.data?.listing)
     return (
       <EmptyState
         kind="first-run"
@@ -183,17 +202,24 @@ export function ChannelListing({
         title="No listing yet"
         description="Write it in Settings → Presentation → Listing."
         primaryAction={
-          <EditListingLink slug={slug} store={channel.id} variant="outline" />
+          <EditListingLink
+            slug={slug}
+            store={channel.id}
+            variant="outline"
+            label="Write the listing"
+          />
         }
       />
     );
-  const facts = listingFacts(listing.data, row);
+  const row = fit.data.stores.find(
+    (s) => s.store === LISTING_COLUMN[channel.id],
+  );
+  const facts = row ? listingFacts(listing.data, row) : [];
   const dl = listing.data.listing.app.defaultLocale;
-  const status = row.issues.length ? `${row.issues.length} to review` : "Fits";
   return (
     <Section
       title="Listing"
-      description={`What ${channel.label} takes, in ${humanLocale(dl)}. ${status}.`}
+      description={`What ${channel.label} takes, in ${humanLocale(dl)}.${row ? ` ${fitLine(row)}.` : ""}`}
       actions={
         <EditListingLink
           slug={slug}
@@ -202,43 +228,53 @@ export function ChannelListing({
         />
       }
     >
-      <dl className="divide-y divide-border">
-        {facts.map((f) => (
-          <div
-            key={f.key}
-            className="min-w-0 space-y-1 py-3 first:pt-0 last:pb-0"
-          >
-            <dt className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted">
-              <span>{f.label}</span>
-              {f.overridden ? (
-                <StatusPill tone="info" icon={false} size="sm">
-                  {channel.label} only
-                </StatusPill>
-              ) : null}
-              {PLANE_NOTE[f.plane] ? (
-                <span>· {PLANE_NOTE[f.plane]}</span>
-              ) : null}
-            </dt>
-            <dd className="min-w-0">
-              {f.plane === "manual" ? null : f.value ? (
-                <Value
-                  text={f.value}
-                  clamp={
-                    f.label === "Description" || f.label === "Full description"
-                  }
-                />
-              ) : (
-                <p className="text-sm text-fg-muted">Not written yet</p>
-              )}
-              {f.issues.map((i) => (
-                <p key={i} className="mt-1 text-sm text-warning">
-                  {i}
-                </p>
-              ))}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      {facts.length === 0 ? (
+        <p className="text-sm text-fg-muted">
+          Nothing is projected to {channel.label} yet.
+        </p>
+      ) : (
+        <dl className="divide-y divide-border">
+          {facts.map((f) => (
+            <div
+              key={f.key}
+              className="min-w-0 space-y-1 py-3 first:pt-0 last:pb-0"
+            >
+              <dt className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted">
+                <span>{f.label}</span>
+                {f.overridden ? (
+                  <StatusPill tone="info" icon={false} size="sm">
+                    {channel.label} only
+                  </StatusPill>
+                ) : null}
+                {PLANE_NOTE[f.plane] ? (
+                  <span>· {PLANE_NOTE[f.plane]}</span>
+                ) : null}
+              </dt>
+              <dd className="min-w-0">
+                {f.plane === "manual" ? null : f.value ? (
+                  <Value text={f.value} clamp={f.from === "description"} />
+                ) : isNotes(f.from) ? (
+                  <p className="text-sm text-fg-muted">
+                    Written per release, on Releases.
+                  </p>
+                ) : (
+                  <p className="text-sm text-fg-muted">
+                    {f.present ? "Written" : "Not written yet"}
+                  </p>
+                )}
+                {f.issues.map((i) => (
+                  <p
+                    key={i.text}
+                    className={`mt-1 text-sm ${i.blocking ? "text-danger" : "text-warning"}`}
+                  >
+                    {i.text}
+                  </p>
+                ))}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </Section>
   );
 }
