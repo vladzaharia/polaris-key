@@ -16,7 +16,7 @@ public data class MdnsFound(
     val host: String,
     val port: Int,
     val txt: List<String>,
-    /** Every address the name was announced from, [host] first; a dial tries them in order. */
+    /** The addresses learned for the name, at most four, [host] first; a link-local one carries its `%zone`. A dial tries them in order. */
     val hosts: List<String> = listOf(host),
 )
 
@@ -46,14 +46,25 @@ public interface MdnsAdapter {
     public suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit = {}, accept: (String) -> Boolean = { true }): MdnsHandle
 }
 
-/** The multicast socket the adapter drives: [send] multicasts one packet on every selected interface. */
+/**
+ * The multicast socket the adapter drives: [send] multicasts one packet to 224.0.0.251 on every selected
+ * interface, and [send6] one packet to ff02::fb on the link [zone] only (an AAAA record names the
+ * interface it leaves on).
+ */
 public interface MdnsSocket {
     public fun send(data: ByteArray)
+
+    /** The default does nothing: a socket without IPv6 has no link to send on. */
+    public fun send6(data: ByteArray, zone: String) {}
 
     public fun close()
 }
 
-/** Make a socket that calls `onPacket(data, sourceAddress)` for every datagram it receives. */
+/**
+ * Make a socket that calls `onPacket(data, sourceAddress)` for every datagram it receives. The source is
+ * the address as RFC 5952 text; a link-local IPv6 source carries the zone of the arrival interface
+ * (`fe80::1%en0`).
+ */
 public fun interface MdnsSocketFactory {
     public suspend fun open(onPacket: (ByteArray, String) -> Unit): MdnsSocket
 }
@@ -63,30 +74,9 @@ public class MdnsUnavailableException(message: String, cause: Throwable? = null)
     public val reason: String = "mdns_unavailable"
 }
 
-private val IPV4 = Regex("(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})")
-private const val OCTET_MAX = 255
-private const val CLASS_A = 10
-private const val LOOPBACK = 127
-private const val B_172 = 172
-private const val B_172_FIRST = 16
-private const val B_172_LAST = 31
-private const val C_192 = 192
-private const val C_168 = 168
-
 /**
- * An address a LAN peer may legitimately have: RFC 1918, or loopback if allowed. Link-local
- * (169.254/16) and CGNAT (100.64/10) are not dialled.
+ * An IPv4 address a LAN peer may legitimately have: RFC 1918, or loopback if allowed. Link-local
+ * (169.254/16) and CGNAT (100.64/10) are not. It is [lanVerdict] on the IPv4 literal; an IPv6 address
+ * is never one of the device's own advert addresses.
  */
-public fun isLanAddress(ip: String, allowLoopback: Boolean = false): Boolean {
-    val m = IPV4.matchEntire(ip) ?: return false
-    val g = m.groupValues.drop(1)
-    if (g.any { it.length > 1 && it[0] == '0' }) return false
-    val p = g.map { it.toInt() }
-    if (p.any { it > OCTET_MAX }) return false
-    val a = p[0]
-    val b = p[1]
-    return a == CLASS_A ||
-        (a == B_172 && b in B_172_FIRST..B_172_LAST) ||
-        (a == C_192 && b == C_168) ||
-        (a == LOOPBACK && allowLoopback)
-}
+public fun isLanAddress(ip: String, allowLoopback: Boolean = false): Boolean = !ip.contains(':') && lanVerdict(ip, null, allowLoopback).dial
