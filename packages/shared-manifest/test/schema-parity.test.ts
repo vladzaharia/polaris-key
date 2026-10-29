@@ -177,6 +177,12 @@ function base(): Docs {
             clientIds: ["1234-and.apps.googleusercontent.com"],
           },
           apple: { teamId: "ABCDE12345", bundleIds: ["com.acme.app.mac"] },
+          // I-14.2: Game Center and Play Games.
+          gameCenter: true,
+          playGames: {
+            applicationId: "123456789012",
+            serverClientId: "1234-gs.apps.googleusercontent.com",
+          },
         },
         nearby: true,
       },
@@ -1371,6 +1377,52 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "rejects",
     mutate: (d) => delete p(d).identity.platformSignIn.apple.teamId,
+  },
+  // I-14.2: gameCenter and playGames (plans/I-14.md section 4).
+  {
+    code: "invalid_identity_platform_sign_in",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.platformSignIn.gameCenter = "yes"),
+  },
+  {
+    code: "invalid_identity_platform_sign_in",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.platformSignIn.playGames = "123456789012"),
+  },
+  {
+    // The client secret never lives in the manifest.
+    code: "invalid_identity_platform_sign_in",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.platformSignIn.playGames.clientSecret = "x"),
+  },
+  {
+    code: "game_center_without_team",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => delete p(d).identity.platformSignIn.apple.teamId,
+  },
+  {
+    code: "invalid_play_games_application_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.platformSignIn.playGames.applicationId = "12345"),
+  },
+  {
+    code: "invalid_google_client_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.platformSignIn.playGames.serverClientId = "web-client"),
+  },
+  {
+    code: "play_games_incomplete",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => delete p(d).identity.platformSignIn.playGames.serverClientId,
   },
   {
     // A redirect URI is an origin from web.origins plus a path: paths with no origin match nothing.
