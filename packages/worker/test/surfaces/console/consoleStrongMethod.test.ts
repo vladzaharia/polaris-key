@@ -558,20 +558,18 @@ describe("the computed root rule", () => {
     const cleared = (await consoleLink(db))!;
     expect(cleared.groups_json).toBeNull();
     expect(cleared.asserted_at).toBeNull();
+    // A connection sign-in on the console IdP's issuer never writes the groups or `asserted_at`.
+    await recordLinkGroups(db, link0.id, [GROUP], NOW + 800);
     await recordLinkAssertion(
+      env,
       db,
       link0.id,
-      { groups: [GROUP], claims: null },
-      NOW + 800,
-    );
-    expect((await consoleLink(db))!.asserted_at).toBe(NOW + 800);
-    await recordLinkAssertion(
-      db,
-      link0.id,
-      { groups: null, claims: null },
+      { groups: null, claims: { team: "x" } },
       NOW + 900,
     );
-    expect((await consoleLink(db))!.asserted_at).toBeNull();
+    const kept = (await consoleLink(db))!;
+    expect(kept.asserted_at).toBe(NOW + 800);
+    expect(kept.groups_json).toBe(JSON.stringify([GROUP]));
   });
 
   it("a v1 cookie keeps its groups-only behaviour until it expires", async () => {
