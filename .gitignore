@@ -86,3 +86,6 @@ packages/admin/e2e/__baselines__/portal/*
 
 # Local review renders and transcripts (agents write them; never commit)
 /_shots/
+
+# jscpd output
+report/
