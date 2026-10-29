@@ -55,7 +55,10 @@ private func docOf(_ v: Double) -> SyncMachineDocument {
         try await Task.sleep(nanoseconds: 150_000_000)
         let purging = Task { try await h.purge() }
         while await h.generationCount() == gen { try await Task.sleep(nanoseconds: 5_000_000) }
-        #expect(await h.status() == nil)  // gone before the purge awaited anything
+        // Gone before the purge awaited anything. A slow runner can see the purge already finished
+        // (the new local machine); never the old signed-in one.
+        let mid = await h.status()
+        #expect(mid == nil || mid?.state == .local)
         let sentBefore = rig.sent.count
         await h.touch()  // blocked: no pump on any machine while the purge runs
         #expect(rig.sent.count == sentBefore)
