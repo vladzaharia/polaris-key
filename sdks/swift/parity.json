@@ -183,7 +183,7 @@
     },
     "identity.gamecenter": {
       "status": "implemented",
-      "note": "PolarisKeyGameCenter (I-44.5, standalone): GameCenterIdentity checks the local player is signed in (authenticateHandler, never presenting Game Center's view) and scopedIDsArePersistent(), takes fetchItemsForIdentityVerificationSignature() and encodes the gc1. token (GameCenterToken, V5 §12.11.7) over a GameCenterPlayerPort; ExchangeKind.gamecenter sends subject_token_type urn:polaris-key:token-type:gamecenter-signature; GameCenterSignInProvider (umbrella) is the autoSignIn provider. Replayed against exchange-gamecenter-* (TranscriptTests) with a fake player; link-game waits on identity.link. The signature hash and timestamp unit are unconfirmed on a real device (owner step)."
+      "note": "PolarisKeyGameCenter (I-44.5, standalone): GameCenterIdentity checks the local player is signed in (authenticateHandler, never presenting Game Center's view) and scopedIDsArePersistent(), takes fetchItemsForIdentityVerificationSignature() and encodes the gc1. token (GameCenterToken, V5 §12.11.7) over a GameCenterPlayerPort; ExchangeKind.gamecenter sends subject_token_type urn:polaris-key:token-type:gamecenter-signature; GameCenterSignInProvider (opt-in product PolarisKeyGameCenterSignIn; the umbrella links no GameKit) is the autoSignIn provider. Replayed against exchange-gamecenter-* (TranscriptTests) with a fake player; link-game waits on identity.link. The signature hash and timestamp unit are unconfirmed on a real device (owner step)."
     },
     "identity.pgs": {
       "status": "na",

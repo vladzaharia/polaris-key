@@ -33,6 +33,8 @@ import PackageDescription
 //   PolarisKeyGameCenter Game Center identity (I-44.5, Q-2): GKLocalPlayer's authenticated check, the
 //                   identity-verification signature and the `gc1.` token. STANDALONE like
 //                   PolarisKeyPlatform, so the Godot natives link it alone.      (deps none)
+//   PolarisKeyGameCenterSignIn the ladder provider over it (deps Identity, GameCenter); opt-in, so the
+//                   umbrella links no GameKit.
 //   PolarisKeyPlatformC the C surface over it (`pkp_call`, `pkp_free`,
 //                   `pkp_set_event_callback`), linked by native hosts only, so a Swift
 //                   consumer of PolarisKeyPlatform exports no `pkp_*` symbols.  (deps Platform)
@@ -107,6 +109,8 @@ let package = Package(
         .library(name: "PolarisKeyPlatformC", targets: ["PolarisKeyPlatformC"]),
         // Game Center identity (I-44.5): standalone; the umbrella adapts it to the sign-in ladder.
         .library(name: "PolarisKeyGameCenter", targets: ["PolarisKeyGameCenter"]),
+        // Its `GameCenterSignInProvider` for `AutoSignInOptions(provider:)`; an app opts in.
+        .library(name: "PolarisKeyGameCenterSignIn", targets: ["PolarisKeyGameCenterSignIn"]),
     ],
     dependencies: [
         // D-24: Sparkle continues as the update mechanism. 2.9.6 is the security floor: the
@@ -163,6 +167,12 @@ let package = Package(
             name: "PolarisKeyGameCenter",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        // The ladder provider over it: opt-in, so the umbrella and Identity never link GameKit.
+        .target(
+            name: "PolarisKeyGameCenterSignIn",
+            dependencies: ["PolarisKeyIdentity", "PolarisKeyGameCenter"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         .target(
             name: "PolarisKeyPlatformC",
             dependencies: ["PolarisKeyPlatform"],
@@ -189,7 +199,7 @@ let package = Package(
                 "PolarisKeyRelease",
                 // Standalone and dependency-free: App Attest for `client.devices.attest()` and
                 // StoreKit 2 for `client.commerce.purchase(productID:)`.
-                "PolarisKeyPlatform", "PolarisKeyGameCenter",
+                "PolarisKeyPlatform",
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
@@ -243,7 +253,7 @@ let package = Package(
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
                 "PolarisKeyIdentity", "PolarisKeyUI", "PolarisKeyUICore", "PolarisKeyUpdate",
                 "PolarisKeyUpdateUI", "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform", "PolarisKeyGameCenter",
-                "libzstd",
+                "PolarisKeyGameCenterSignIn", "libzstd",
             ],
             // No resources: the tests read the SAME cross-language corpus the Node and Python
             // runners drive (`conformance/corpus/v2/`) and the HTTP transcripts

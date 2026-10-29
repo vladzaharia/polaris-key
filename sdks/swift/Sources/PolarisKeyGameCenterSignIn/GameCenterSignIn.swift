@@ -1,4 +1,4 @@
-// The umbrella's Game Center adapter (I-44.5): a thin layer over PolarisKeyGameCenter that hands the
+// The Game Center adapter for the sign-in ladder (I-44.5), its own opt-in target so the umbrella never links GameKit: a thin layer over PolarisKeyGameCenter that hands the
 // exchange the `gc1.` token. It keeps no Game Center state and never shows Game Center's sign-in.
 
 import Foundation

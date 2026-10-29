@@ -2,6 +2,7 @@
 import Foundation
 import PolarisKey
 import PolarisKeyGameCenter
+import PolarisKeyGameCenterSignIn
 import PolarisKeyIdentity
 import XCTest
 
