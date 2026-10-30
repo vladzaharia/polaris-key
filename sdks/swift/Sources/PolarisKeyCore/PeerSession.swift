@@ -605,11 +605,11 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         var label: String?
         if let l = o["label"] {
             guard case .string(let raw) = l else { return nil }
-            // Display data from the peer: NFC, controls and bidi stripped, 64 code points.
-            label = normalizeDeviceLabel(raw.precomposedStringWithCanonicalMapping)
+            // Display data from the peer, cleaned as a device label with NFC after the strip (§15.6).
+            label = cleanDisplayLabel(raw)
         }
         // `app` is cleaned like `label`; `platform` is shown only in the narrow character set.
-        let cleanApp = normalizeDeviceLabel(app.precomposedStringWithCanonicalMapping) ?? peerUnknownDisplay
+        let cleanApp = cleanDisplayLabel(app) ?? peerUnknownDisplay
         return PeerHello(label: label, platform: cleanPlatform(platform), app: cleanApp, maxMessage: mm)
     }
 
