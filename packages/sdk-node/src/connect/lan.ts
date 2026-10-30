@@ -72,6 +72,8 @@ export interface LanSource {
   load(): Promise<LanIdentity>;
   /** Seconds since the epoch. */
   now(): number;
+  /** Monotonic seconds, for rate rules a wall clock set back must not hold off. Default `performance.now()`. */
+  mono?(): number;
   /** Ask the Worker for a newer roster (a peer is on a newer one). Best effort. */
   refresh?(): Promise<void>;
   /** Verify and store a roster a peer pushed (the same replacement rules as the identity fetch). */
