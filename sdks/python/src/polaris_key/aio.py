@@ -193,6 +193,11 @@ class _AsyncIdentity(_AsyncFacet):
     def sign_in(self) -> _AsyncSignInNamespace:
         return _AsyncSignInNamespace(self._target.sign_in)
 
+    @property
+    def nearby(self) -> _AsyncFacet:
+        """``identity.nearby``: ``available(role=...)`` is a coroutine (it may load discovery)."""
+        return _AsyncFacet(self._target.nearby)
+
 
 async def _queue_stream(subscribe: Callable[[Callable[[Any], None]], Callable[[], None]],
                         until: Optional[Callable[[Any], bool]] = None) -> AsyncIterator[Any]:

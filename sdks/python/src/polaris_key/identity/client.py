@@ -7,6 +7,10 @@
   :class:`~polaris_key.identity.redirect.RedirectSession` (a host-supplied https redirect URI,
   ``complete(callback_url)``); its ``choose`` outcome is finished with :attr:`IdentityClient.choice`.
 
+* :meth:`IdentityClient.auto_sign_in` answers whether this device already holds a sign-in (rung 1 of the
+  automatic ladder; :mod:`polaris_key.identity.auto_sign_in`), and :attr:`IdentityClient.nearby`
+  ``.available(role=...)`` whether nearby sign-in can run here.
+
 A ``ready`` poll stores the device token through Core's token manager and raises the same
 acquisition event activation does, so the facade's forced sync runs exactly as it would
 after ``license.activate_with_key()``, then reads and stores the account subject.
@@ -37,13 +41,26 @@ from .sign_in import (
     SignInSession,
     start_device_code,
 )
+from .auto_sign_in import (
+    AutoSignInNeedsSignIn,
+    AutoSignInResult,
+    AutoSignInSignedIn,
+    AutoSignInUnavailable,
+    NearbyNamespace,
+    run_auto_sign_in,
+)
 from .choice import ChoiceClient
 from .redirect import RedirectSession, start_redirect_sign_in
 from ..core.context import CoreContext
 from ..core.token import TokenManager
 
 __all__ = [
+    "AutoSignInNeedsSignIn",
+    "AutoSignInResult",
+    "AutoSignInSignedIn",
+    "AutoSignInUnavailable",
     "ChoiceClient",
+    "NearbyNamespace",
     "IdentityClient",
     "SignedInIdentity",
     "SignInNamespace",
@@ -67,6 +84,7 @@ class IdentityClient:
         license_id: Optional[Callable[[], Optional[str]]] = None,
         emit: Optional[Callable[..., Any]] = None,
         on_forget: Optional[Callable[[], Any]] = None,
+        nearby_runtime: Optional[Callable[[str], bool]] = None,
     ) -> None:
         self._ctx = ctx
         self._tokens = tokens
@@ -102,6 +120,9 @@ class IdentityClient:
         )
         self._sign_in = SignInNamespace(self._start_sign_in, self._start_redirect)
         self._choice = ChoiceClient(self._deps)
+        self._discover = discover or (lambda: None)
+        self._license_id = license_id or (lambda: None)
+        self._nearby = NearbyNamespace(ctx, self._discover, nearby_runtime)
 
     def _store_identity(self, who: Optional[SignedInIdentity]) -> None:
         self._identity = who
@@ -119,6 +140,27 @@ class IdentityClient:
         raises the typed ``service-unavailable`` N/A when the product's discovery names no choice
         endpoint."""
         return self._choice
+
+    @property
+    def nearby(self) -> NearbyNamespace:
+        """``identity.nearby.available(role=...)``: whether nearby sign-in can run on this device
+        (see :class:`~polaris_key.identity.auto_sign_in.NearbyNamespace`)."""
+        return self._nearby
+
+    def auto_sign_in(self, options: Optional[Dict[str, Any]] = None) -> AutoSignInResult:
+        """The automatic sign-in ladder: ``AutoSignInSignedIn`` when this device holds a sign-in and
+        a licence (rung 1, no network), ``AutoSignInNeedsSignIn`` (``signed_out`` after an explicit
+        sign-out, else ``no_credential``) or ``AutoSignInUnavailable`` when Identity is off. Python
+        has no platform identity, so the platform rungs do not exist and ``options`` is accepted for
+        parity and ignored. Never raises for a missing session. The regular form is
+        :attr:`sign_in`."""
+        return run_auto_sign_in(
+            self._ctx,
+            self._tokens,
+            self._account,
+            license_id=self._license_id,
+            discover=self._discover,
+        )
 
     @property
     def sign_in(self) -> SignInNamespace:

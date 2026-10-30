@@ -405,7 +405,7 @@ class SignInSession:
                 raise PolarisError(
                     ErrorCode.SIGN_IN_FAILED, "device sign-in answered ready without a token."
                 )
-            tokens.set(token, "signin")
+            tokens.set(token, "signin", person_initiated=True)
             deps.store_identity(identity)
             deps.on_acquired()
             try:
