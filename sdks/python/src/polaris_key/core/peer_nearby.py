@@ -78,15 +78,14 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Set, Tuple, Union
 
-from ..connect.dial import dial_race
-from ..connect.errors import LanError
-from ..connect.lan import Admitted, GatedProtocol, admit_transport, listen_socket
-from ..connect.lan_judge import PendingLimiter, text_verdict
-from ..connect.nearby import ApproveAnswerInput
 from ..constants_generated import ErrorCode
 from .device_keys import DeviceKeyPort
 from .peer_advert import advert_epoch, parse_txt, product_tag
+from .peer_dial import dial_race
 from .peer_frame import RECORD
+from .peer_lan_error import LanError
+from .peer_lan_gate import Admitted, GatedProtocol, admit_transport, listen_socket
+from .peer_lan_judge import PendingLimiter, text_verdict
 from .peer_link import LinkHandlers, SocketLink
 from .peer_mdns import MdnsAdapter, MdnsAdvert, MdnsFound, MdnsHandle, MulticastDnsAdapter
 from .peer_noise import NoisePorts
@@ -95,6 +94,7 @@ from .peer_session import Closed, Established, HandshakeLimiter, PeerHello, Reco
 from .peer_vouch import (
     VOUCH_REQ_MAX,
     ApproveAnswer,
+    ApproveAnswerInput,
     BuildVouchRequestOptions,
     VouchFailureBudget,
     VouchFlow,

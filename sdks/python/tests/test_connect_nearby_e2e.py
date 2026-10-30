@@ -355,6 +355,36 @@ def test_sign_out_closes_the_sessions_even_when_the_adverts_stop_hangs(w: World)
     assert h.status().state == "stopped"
 
 
+def test_stop_all_stops_the_approvers_side_by_side_not_one_after_another(w: World) -> None:
+    base = w.net
+    SLOW = 0.5
+
+    class Slow:
+        async def advertise(self, a: Any) -> Any:
+            import asyncio
+
+            await base.advertise(a)
+
+            class H:
+                async def stop(self) -> None:
+                    await asyncio.sleep(SLOW)
+
+            return H()
+
+        async def browse(self, *a: Any, **k: Any) -> Any:
+            return await base.browse(*a, **k)
+
+    hs = [w.m.nearby.on_request(w.approvals.append, prompt=True, mdns=Slow(), **LOOP) for _ in range(2)]  # type: ignore[arg-type]
+    w.handles.extend(hs)
+    until(lambda: all(h.status().state == "advertising" for h in hs))
+    t0 = time.monotonic()
+    w.m.nearby.stop_all(10.0)
+    took = time.monotonic() - t0
+    # One after the other it would take two waits; side by side, about one.
+    assert took < SLOW * 1.8, took
+    assert all(h.status().state == "stopped" for h in hs)
+
+
 def test_force_stop_works_from_another_thread_while_the_loop_is_held(w: World) -> None:
     w.approve()
     r = w.ask()

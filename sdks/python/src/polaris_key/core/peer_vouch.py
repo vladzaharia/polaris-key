@@ -33,6 +33,7 @@ __all__ = [
     "APPROVER_RENEW_SECONDS",
     "AbandonReason",
     "ApproveAnswer",
+    "ApproveAnswerInput",
     "BuildVouchRequestOptions",
     "DecoyCodes",
     "FinishAction",
@@ -329,6 +330,18 @@ class ApproveAnswer:
     discovery_nearby: bool
     #: True once M already answered a ``device_keys_required`` by registering its keys.
     keys_retried: bool = False
+
+
+@dataclass(frozen=True)
+class ApproveAnswerInput:
+    """The answer of ``nearby/approve`` as the host read it (§15.6.1 rule 6)."""
+
+    #: The HTTP status, or ``None`` when there was no answer.
+    http: Optional[int]
+    #: The body text, or ``None``.
+    body: Optional[str]
+    #: The host's fresh read of discovery: does it still name ``nearby`` and ``nearbyApprove``?
+    discovery_nearby: bool
 
 
 class FinishAction(NamedTuple):

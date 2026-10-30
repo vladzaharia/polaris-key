@@ -531,6 +531,8 @@ Name the device in `label` (`"Ana's laptop"`); never use an account identifier. 
 unauthenticated display data: show it as "reported by the device", never as proof of who is asking. The
 blocking calls raise from the Connect thread (hand the work to a thread); the `AsyncClient` mirrors them as
 coroutines. A sign-out stops every advert and request (`nearby.stop_all()`, bounded to 15 s).
+Handlers run on the Connect loop, so keep them short: one that blocks the loop keeps the advert up past that bound
+(sign-out still clears the token, so nothing can be approved, and the sockets drop when the loop is free).
 
 ## Edge-mint
 

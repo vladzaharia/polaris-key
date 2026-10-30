@@ -104,7 +104,7 @@ def _vouch_body(r: Dict[str, Any]) -> bytes:
 
 def test_every_vouch_row_is_present() -> None:
     # Exact: a row added or dropped is a deliberate corpus change, never a silent one.
-    assert len(_VOUCH["requests"]) == 78
+    assert len(_VOUCH["requests"]) == 80
     assert len(_VOUCH["results"]) == 26
     assert len(_VOUCH["flows"]) == 30
     assert len(_VOUCH["finish"]) == 29

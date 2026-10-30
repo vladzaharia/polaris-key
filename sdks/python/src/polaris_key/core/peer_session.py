@@ -16,8 +16,9 @@ approver) answers with its own, the initiator reveals, and both show the same si
 host calls :meth:`PeerSession.confirm_sas` when the person agrees; until then host records from the
 peer are held (at most 16 records and 16 KiB of bodies, then ``peer_busy``). HELLO display data is
 unauthenticated there: a HELLO is at most 4 KiB, ``label`` and ``app`` are cleaned (blanks and invisible
-code points stripped, then NFC, 64 code points; an empty ``app`` is "Unknown"), and a ``platform`` that is not at most 32 of
-``A-Z a-z 0-9 space . _ + -`` is "Unknown". A responder in these modes needs a :class:`HandshakeLimiter`.
+code points stripped, then NFC, 64 code points; an empty ``app`` is "Unknown"), and a ``platform`` that is
+not at most 32 of ``A-Z a-z 0-9 space . _ + -`` is "Unknown". A responder in these modes needs a
+:class:`HandshakeLimiter`.
 
 Keys: the device's static private key is handed to the Noise engine only, as bytes or a key port whose
 ``dh`` runs the static operations (G1). A session's repr names no key, and it cannot be pickled (G19).

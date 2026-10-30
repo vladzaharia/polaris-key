@@ -38,6 +38,7 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional
 from ..constants_generated import ErrorCode, Feature, UnsupportedReason
 from ..core.caps import Unsupported, UnsupportedError
 from ..core.errors import PolarisError
+from ..core.peer_vouch import ApproveAnswerInput
 from .errors import LanError
 from .loop import ConnectLoop, connect_loop
 
@@ -86,18 +87,6 @@ class NearbyDeps:
     identity: Callable[[bool], Optional[Dict[str, Any]]]
     signed_in: Callable[[], bool]
     signer: Callable[[], Tuple[Any, str]]
-
-
-@dataclass(frozen=True)
-class ApproveAnswerInput:
-    """The answer of ``nearby/approve`` as the host read it (§15.6.1 rule 6)."""
-
-    #: The HTTP status, or ``None`` when there was no answer.
-    http: Optional[int]
-    #: The body text, or ``None``.
-    body: Optional[str]
-    #: The host's fresh read of discovery: does it still name ``nearby`` and ``nearbyApprove``?
-    discovery_nearby: bool
 
 
 def _unsupported(detail: str, reason: str) -> UnsupportedError:
@@ -521,16 +510,11 @@ class CloudNearby:
             raise RuntimeError(_BLOCKED)
 
         async def go() -> None:
-            for h in hs:
-                try:
-                    await h.stop()
-                except Exception:
-                    pass
-            for r in rs:
-                try:
-                    await r.close()
-                except Exception:
-                    pass
+            import asyncio  # not at import: loading Connect starts no loop
+
+            # In parallel: one approver whose advert will not withdraw must not hold the next one's halt
+            # until the bound (the other SDKs stop them side by side too).
+            await asyncio.gather(*(h.stop() for h in hs), *(r.close() for r in rs), return_exceptions=True)
 
         fut = self._calls.loop.submit(go())
         try:
