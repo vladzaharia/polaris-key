@@ -1,6 +1,6 @@
 {
   "syncVectorsVersion": 1,
-  "description": "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcEditCases: a base input (the cdcCases input forms), then edit applied to it (op insert | delete | overwrite at `at` for `length` bytes, the inserted or overwriting bytes being SHA-256(UTF-8 of `pkey-sync vector cdc-edit ` + label, u32be counter) blocks cut to length); a runner cuts both at avg and expects baseLens and editedLens, computes the E2E chunk ids under rootHex and collection (baseIdsHex, editedIdsHex), expects keptIndexes (edited chunks whose id the base has) and changedIndexes (the rest), and expects baseManifestHex and editedManifestHex to parse to those ids and lengths (plainSize and plainSha256 of the whole input; encoding the parsed manifest gives the same bytes). deltaCases: what a transfer moves: have is the set of ids the other side holds (a cdcEditCases side or an explicit list), want is the manifest to reach; moveIdsHex is the distinct ids of want absent from have, in first-appearance order, and moveBytes the sum of their plainLen. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes, 0x01 codec nonce(12) then the sealed body, the nonce being HMAC-SHA256(K_chunk, 0x01 codec body)[0:12]: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, nonce, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames); kind pair (one id sealed with codec 0 and codec 1: both objects open to plainHex and their nonces, bytes 2 to 14, differ)). fileStreamCases: pkey-sync-file/1 (header little-endian, nonce counter big-endian; the plaintext of a seal row is SHA-256(UTF-8 of `pkey-sync vector file ` + label, u32be counter) blocks cut to length; the salt is in the row). kind seal: seal that plaintext under rootHex and collection with saltHex and expect sealedSize, headerHex, sealedSha256Hex and plainSha256Hex (and sealedHex when present). kind sizes: plainToSealed pairs and sealedToPlain pairs (null: no stream has that size). kind open: take the sealed stream of the row named by base (a seal row), apply the mutate ops in order (truncate length; dropSegment index; swapSegments a b; appendSegment from; xor offset value; setHex offset hex; appendHex hex; segment i starts at 64 + i * (1 MiB + 16)), open it under openCollection (default collection) expecting the kid derived from the root unless expectKidHex is given, and expect ok with plainSha256Hex or a refusal; the reasons are shape, magic, version, flags, segmentSize, kid, size and auth in that order (auth covers truncation, reordering, a missing last flag and a tampered header). kind range: the same stored stream, open plaintext [start, end) through a reader that sees only offset and length; expect ok with length, sha256Hex and the exact reads (the header first, then one per segment overlapped, in order) or a refusal (range adds to the reasons). Only the segments read are authenticated; the stored size alone says which is last. manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. canonicalJsonCases: canonical JSON, the input of a blinded element name: a runner parses inputJson with every number an IEEE double (Python: parse_int=float), or builds the number named by special, canonicalises it and expects canonical, or a refusal (invalid) for a number that is not finite and a string or key with a lone surrogate. Numbers print per ECMAScript Number::toString. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
+  "description": "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcEditCases: a base input (the cdcCases input forms), then edit applied to it (op insert | delete | overwrite at `at` for `length` bytes, the inserted or overwriting bytes being SHA-256(UTF-8 of `pkey-sync vector cdc-edit ` + label, u32be counter) blocks cut to length); a runner cuts both at avg and expects baseLens and editedLens, computes the E2E chunk ids under rootHex and collection (baseIdsHex, editedIdsHex), expects keptIndexes (edited chunks whose id the base has) and changedIndexes (the rest), and expects baseManifestHex and editedManifestHex to parse to those ids and lengths (plainSize and plainSha256 of the whole input; encoding the parsed manifest gives the same bytes). deltaCases: what a transfer moves: have is the set of ids the other side holds (a cdcEditCases side or an explicit list), want is the manifest to reach; moveIdsHex is the distinct ids of want absent from have, in first-appearance order, and moveBytes the sum of their plainLen. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes, 0x01 codec nonce(12) then the sealed body, the nonce being HMAC-SHA256(K_chunk, 0x01 codec body)[0:12]: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, nonce, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames); kind pair (one id sealed with codec 0 and codec 1: both objects open to plainHex and their nonces, bytes 2 to 14, differ)). fileStreamCases: pkey-sync-file/1 (header little-endian, nonce counter big-endian; the plaintext of a seal row is SHA-256(UTF-8 of `pkey-sync vector file ` + label, u32be counter) blocks cut to length; the salt is in the row). kind seal: seal that plaintext under rootHex and collection with saltHex and expect sealedSize, headerHex, sealedSha256Hex and plainSha256Hex (and sealedHex when present). kind sizes: plainToSealed pairs and sealedToPlain pairs (null: no stream has that size). kind open: take the sealed stream of the row named by base (a seal row), apply the mutate ops in order (truncate length; dropSegment index; swapSegments a b; appendSegment from; xor offset value; setHex offset hex; appendHex hex; segment i starts at 64 + i * (1 MiB + 16)), open it under openCollection (default collection) expecting the kid derived from the root unless expectKidHex is given, and expect ok with plainSha256Hex or a refusal; the reasons are shape, magic, version, flags, segmentSize, kid, size and auth in that order (auth covers truncation, reordering, a missing last flag and a tampered header). kind range: the same stored stream, open plaintext [start, end) through a reader that sees only offset and length; expect ok with length, sha256Hex and the exact reads (the header first, then one per segment overlapped, in order) or a refusal (range adds to the reasons). Only the segments read are authenticated; the stored size alone says which is last. manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. canonicalJsonCases: canonical JSON, the input of a blinded element name: a runner parses inputJson with every number an IEEE double (Python: parse_int=float), or builds the number named by special, canonicalises it and expects canonical, or a refusal (invalid) for a number that is not finite and a string or key with a lone surrogate. Numbers print per ECMAScript Number::toString. A row with a `record` member (U-09) names the blinded wire names the envelope arrived under: kind value (id), field (id and name) or element (id and name), all from blind() under the row's collection; its `name` is still the k the reader expects (the record id, id U+0000 field, or id U+0000 canonicalJson(element)), so a runner that opens by name reads every verdict, and a runner for records opens without a name, splits k at the first U+0000, recomputes blind(record, c, id) and blind(field or element, c, rest) and compares them with the wire names: any difference is invalid with reason name. The container fixes the kind (a fields entry is read as a field, an elements entry as an element), and an element's canonicalJson(v) must equal the name part of k. A row whose only refusal is one of those rules carries a `name` that differs from k, so a runner that opens by name refuses it too. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
   "constants": {
     "envelopeOverheadBytes": 113,
     "envelopeFixedBytes": 49,
@@ -419,6 +419,246 @@
       "name": "gold",
       "aliases": [],
       "envelopeHex": "0159c632a8309f827930905fa8a05fddf2c8f7208f1f544053d0daace3db7d6e494c08681343ecf677e658480f13d77d5a81a210a498a4d110b97c8718c8699713aa2679d2574b9ea7b893ec3711fa6329b7ea974722030456d4b811c3fef11e125e66278bda0e1f9016d2b4bee503bab5",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "seal-record-value",
+      "description": "A record's value: k is the record id ('slot-1').",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1",
+      "aliases": [],
+      "seal": {
+        "saltHex": "28082475ffd686f9cd2be64e2acadfc5",
+        "value": { "hp": 10, "gold": 3 }
+      },
+      "record": {
+        "kind": "value",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf228082475ffd686f9cd2be64e2acadfc5b310c4b8c7b68e10aa82e6d655fbf45c0696ebee10387a75b06eecec3857fdd101822b7f659a7f2204f7f1936f140484115403fbc0fa5631e28a94fcdd3c8a985b2f3805132f10575eb35f3fa7ed6526",
+      "expect": {
+        "result": "ok",
+        "name": "slot-1",
+        "value": { "hp": 10, "gold": 3 }
+      }
+    },
+    {
+      "id": "record-value-swapped-id",
+      "description": "The envelope of record 'slot-1' served under the blinded id of 'slot-2': authentic, but the id recomputed from k is not the one on the wire, so a server cannot place a value under another record.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-2",
+      "aliases": [],
+      "record": {
+        "kind": "value",
+        "id": "x:ty33UGwSiv9Z4NDNHy4mB1kYPWmWlYPjsu94S9nL_gg"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf228082475ffd686f9cd2be64e2acadfc5b310c4b8c7b68e10aa82e6d655fbf45c0696ebee10387a75b06eecec3857fdd101822b7f659a7f2204f7f1936f140484115403fbc0fa5631e28a94fcdd3c8a985b2f3805132f10575eb35f3fa7ed6526",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "record-value-served-as-field",
+      "description": "A record's value envelope (k = 'slot-1') served as the field 'hp' of that record: k holds no U+0000 to split, so it is refused.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1\u0000hp",
+      "aliases": [],
+      "record": {
+        "kind": "field",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ",
+        "name": "x:Xc2MlnHl3LYRYsIL1XWw9LhtRxPt3L7IUJOnCQwkP2I"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf228082475ffd686f9cd2be64e2acadfc5b310c4b8c7b68e10aa82e6d655fbf45c0696ebee10387a75b06eecec3857fdd101822b7f659a7f2204f7f1936f140484115403fbc0fa5631e28a94fcdd3c8a985b2f3805132f10575eb35f3fa7ed6526",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "seal-record-field",
+      "description": "A merge record's field: k is the record id, U+0000, then the field name ('slot-1' and 'hp').",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1\u0000hp",
+      "aliases": [],
+      "seal": { "saltHex": "6705370e60295b6d1cd33c5c158a4b0b", "value": 10 },
+      "record": {
+        "kind": "field",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ",
+        "name": "x:Xc2MlnHl3LYRYsIL1XWw9LhtRxPt3L7IUJOnCQwkP2I"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf26705370e60295b6d1cd33c5c158a4b0ba7544055aad4aa6e8d3fe28f9203a919775b66a8d819ed441091ff1cee87d9ab4a1631c2f772cf5b68e510a152d023501061b63bcbd690a6acc5a0dc7fd5345becea8b3bd76a775b37448cc41934eeaf",
+      "expect": { "result": "ok", "name": "slot-1\u0000hp", "value": 10 }
+    },
+    {
+      "id": "record-field-swapped-id",
+      "description": "The field 'hp' of 'slot-1' served as the field 'hp' of 'slot-2': the field name is right, the record id is not.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-2\u0000hp",
+      "aliases": [],
+      "record": {
+        "kind": "field",
+        "id": "x:ty33UGwSiv9Z4NDNHy4mB1kYPWmWlYPjsu94S9nL_gg",
+        "name": "x:Xc2MlnHl3LYRYsIL1XWw9LhtRxPt3L7IUJOnCQwkP2I"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf26705370e60295b6d1cd33c5c158a4b0ba7544055aad4aa6e8d3fe28f9203a919775b66a8d819ed441091ff1cee87d9ab4a1631c2f772cf5b68e510a152d023501061b63bcbd690a6acc5a0dc7fd5345becea8b3bd76a775b37448cc41934eeaf",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "record-field-swapped-field",
+      "description": "The field 'hp' of 'slot-1' served as the field 'mp' of the same record: the id is right, the field is not, so a server cannot swap fields within a record.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1\u0000mp",
+      "aliases": [],
+      "record": {
+        "kind": "field",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ",
+        "name": "x:C_5sQkbf4j08JlO0tf3I9z6CdvtnjKaNM6L9GECzF4I"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf26705370e60295b6d1cd33c5c158a4b0ba7544055aad4aa6e8d3fe28f9203a919775b66a8d819ed441091ff1cee87d9ab4a1631c2f772cf5b68e510a152d023501061b63bcbd690a6acc5a0dc7fd5345becea8b3bd76a775b37448cc41934eeaf",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "record-field-served-as-value",
+      "description": "A field envelope (k = 'slot-1' U+0000 'hp') served as the value of 'slot-1': the whole k is not the record id.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1",
+      "aliases": [],
+      "record": {
+        "kind": "value",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf26705370e60295b6d1cd33c5c158a4b0ba7544055aad4aa6e8d3fe28f9203a919775b66a8d819ed441091ff1cee87d9ab4a1631c2f772cf5b68e510a152d023501061b63bcbd690a6acc5a0dc7fd5345becea8b3bd76a775b37448cc41934eeaf",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "seal-record-element",
+      "description": "A union record's element: k is the record id, U+0000, then canonicalJson(e) (here {\"id\":7,\"tag\":\"a\"}); v is the element.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1\u0000{\"id\":7,\"tag\":\"a\"}",
+      "aliases": [],
+      "seal": {
+        "saltHex": "2d93e68010936d4e7853781dc10e533e",
+        "value": { "tag": "a", "id": 7 }
+      },
+      "record": {
+        "kind": "element",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ",
+        "name": "x:8t3Z5PhKsltuH0uCArgiYZy7luOsRI2iJtYr0z5V0ps"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf22d93e68010936d4e7853781dc10e533eef310e2f382e611696544d77a1a4a90b18e4ef769a0fd2367e2280f08f01e64e903feed1528c03b99273afd32e5f35349b70fe77012f37b1f9d9dac7bd4e37c8ee279669798f97b80f53669bd83a6ed93c62763c84c5d18d15262d6d02a9f768f2500a6b8631617a8277f89822aa77e5f7e2a2beac39a0e88a4d24357a3030433c797eaaebc4ec654f377e4c0c09a084",
+      "expect": {
+        "result": "ok",
+        "name": "slot-1\u0000{\"id\":7,\"tag\":\"a\"}",
+        "value": { "tag": "a", "id": 7 }
+      }
+    },
+    {
+      "id": "record-element-swapped-id",
+      "description": "The element of 'slot-1' served under the blinded id of 'slot-2'.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-2\u0000{\"id\":7,\"tag\":\"a\"}",
+      "aliases": [],
+      "record": {
+        "kind": "element",
+        "id": "x:ty33UGwSiv9Z4NDNHy4mB1kYPWmWlYPjsu94S9nL_gg",
+        "name": "x:8t3Z5PhKsltuH0uCArgiYZy7luOsRI2iJtYr0z5V0ps"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf22d93e68010936d4e7853781dc10e533eef310e2f382e611696544d77a1a4a90b18e4ef769a0fd2367e2280f08f01e64e903feed1528c03b99273afd32e5f35349b70fe77012f37b1f9d9dac7bd4e37c8ee279669798f97b80f53669bd83a6ed93c62763c84c5d18d15262d6d02a9f768f2500a6b8631617a8277f89822aa77e5f7e2a2beac39a0e88a4d24357a3030433c797eaaebc4ec654f377e4c0c09a084",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "record-element-swapped-element",
+      "description": "The element {id:7,tag:'a'} of 'slot-1' served as the blinded element 'shield' of the same record: a server cannot swap elements within a record.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1\u0000\"shield\"",
+      "aliases": [],
+      "record": {
+        "kind": "element",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ",
+        "name": "x:SY6lZyUcZfDB7Jt7HWvUYOrZVZqtqCM-bZNqMJaHrhU"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf22d93e68010936d4e7853781dc10e533eef310e2f382e611696544d77a1a4a90b18e4ef769a0fd2367e2280f08f01e64e903feed1528c03b99273afd32e5f35349b70fe77012f37b1f9d9dac7bd4e37c8ee279669798f97b80f53669bd83a6ed93c62763c84c5d18d15262d6d02a9f768f2500a6b8631617a8277f89822aa77e5f7e2a2beac39a0e88a4d24357a3030433c797eaaebc4ec654f377e4c0c09a084",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "seal-record-field-seven",
+      "description": "A merge record's field named '7' holding 7: k = 'slot-1' U+0000 '7', whose name part is also canonicalJson(v).",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1\u00007",
+      "aliases": [],
+      "seal": { "saltHex": "38b75e20c4d6c3a384b419f1c7f4193c", "value": 7 },
+      "record": {
+        "kind": "field",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ",
+        "name": "x:FCdCz24PSRJhp-NfplLUDelxo6jOXHyZNPfbnPh35xY"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf238b75e20c4d6c3a384b419f1c7f4193cccee14bc625c6567145b72aa488cee29aee60de590e878f57ca95cb4b135a060c29256970fd43dee9d5761bc5079efda2043c77384a8ffff3fdac6f04eb7505fb7024086fddce8fe105b57b6859d6502",
+      "expect": { "result": "ok", "name": "slot-1\u00007", "value": 7 }
+    },
+    {
+      "id": "record-field-served-as-element",
+      "description": "The field cell '7' of 'slot-1' (k = 'slot-1' U+0000 '7', v = 7) served in the elements of that record: its k even names canonicalJson(v), but the wire name is a blinded field, not the blinded element '7', so the container's kind refuses it. The host expected the element 'shield' there.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1\u0000\"shield\"",
+      "aliases": [],
+      "record": {
+        "kind": "element",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ",
+        "name": "x:FCdCz24PSRJhp-NfplLUDelxo6jOXHyZNPfbnPh35xY"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf238b75e20c4d6c3a384b419f1c7f4193cccee14bc625c6567145b72aa488cee29aee60de590e878f57ca95cb4b135a060c29256970fd43dee9d5761bc5079efda2043c77384a8ffff3fdac6f04eb7505fb7024086fddce8fe105b57b6859d6502",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "record-element-served-as-field",
+      "description": "The element cell of 'slot-1' served in the fields of that record: the wire name is a blinded element, not the blinded field with that text, so the container's kind refuses it. The host expected the field 'hp' there.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1\u0000hp",
+      "aliases": [],
+      "record": {
+        "kind": "field",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ",
+        "name": "x:8t3Z5PhKsltuH0uCArgiYZy7luOsRI2iJtYr0z5V0ps"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf22d93e68010936d4e7853781dc10e533eef310e2f382e611696544d77a1a4a90b18e4ef769a0fd2367e2280f08f01e64e903feed1528c03b99273afd32e5f35349b70fe77012f37b1f9d9dac7bd4e37c8ee279669798f97b80f53669bd83a6ed93c62763c84c5d18d15262d6d02a9f768f2500a6b8631617a8277f89822aa77e5f7e2a2beac39a0e88a4d24357a3030433c797eaaebc4ec654f377e4c0c09a084",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "record-element-value-not-name",
+      "description": "An element cell whose k names 'shield' but whose v is 'sword', with the blinded element 'shield' on the wire: the blinded names agree, but canonicalJson(v) is not the name part of k, so it is refused. The host expected the element 'sword'.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1\u0000\"sword\"",
+      "aliases": [],
+      "record": {
+        "kind": "element",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ",
+        "name": "x:SY6lZyUcZfDB7Jt7HWvUYOrZVZqtqCM-bZNqMJaHrhU"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf21eb7b8aae0ff5b8dc3e369b43ef0547019b01073a5fc3c16c319d870425a00b8c40b4f8ef6de1745502a1862fd8284ea4d86e40ce968739a3f98214b66d655fa78f896d8f368fbe32b39f6c56894f6de8e5ea29d62234388a170af9ad2e119e8",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "record-element-noncanonical-name",
+      "description": "An element cell whose k carries the element as {\"tag\":\"a\",\"id\":7}, not in canonical JSON, with the blinded form of that text on the wire: the blinded names agree, but canonicalJson(v) is not the name part of k, so it is refused. The host expected the canonical {\"id\":7,\"tag\":\"a\"}.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-1\u0000{\"id\":7,\"tag\":\"a\"}",
+      "aliases": [],
+      "record": {
+        "kind": "element",
+        "id": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ",
+        "name": "x:8LfqQ3dsfoRSJVKKY2biRoQIYjTC7rvgzL1yCM0Hy9A"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf24f4e5b6c8d14cc041db51005863c191fa247e9ed3686bed298802293dfe143737ad51cde9eeaf1f1055905b4564c17cafac438c3d80624e34ce2bec9f741bb691dcca5827c677113b6f771f8bd02d6e78fda93a308ab33ff90af607ca12db1d8f5005d3c64e1056559facb5ef0035704a353a8e75e0b864cd5958bedf59fb1b12e7f8f54b520d8901cb60b1a1b18e37270ac93a10e7da74938984b25a9ee87d8",
       "expect": { "result": "invalid", "reason": "name" }
     },
     {
