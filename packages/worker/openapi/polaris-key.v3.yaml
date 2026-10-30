@@ -10007,7 +10007,14 @@ paths:
         pushed with `platform`. A declared key is validated against its entry (`value_invalid`); an
         undeclared key is an open setting, `lastWrite`, at most 8 KiB. `quota_exceeded` carries its
         `scope`: `user` for the person's quota and budget, `product` past the operator's ceiling.
-        A clear always passes. A `clientId` that belongs to another device is `409 client_mismatch`;
+        A clear always passes.
+
+        A record target `{record: [collection, id]}` (U-09, §13.3, §13.7) is matched to a declared
+        collection (an exact name beats a pattern, then the longest `prefix.*`). The first check
+        that fails answers: `collection_unknown`; `entitlement_required` (a `requires` the licence
+        lacks; never for `delete`); `encryption_mismatch`; `value_invalid`;
+        `op_invalid_for_policy`. `quota_exceeded` with `scope: collection` means `maxRecords` is
+        reached, and only a create can hit it. A `clientId` that belongs to another device is `409 client_mismatch`;
         a `cursor` the store cannot serve is `410 cursor_expired` (the mutations were applied and
         the retry finds them `duplicate`).
       security: [{ deviceToken: [] }]
@@ -29294,6 +29301,10 @@ components:
                   ct: { type: string }
                   editedHlc: { type: string }
         - type: object
+          description: >
+            A record in server mode (or a legacy plaintext row). `value` is the live record: a
+            `merge` record's object, or a `union` record's array in the order of each element's
+            first surviving add tag (§13.4, U-09).
           required: [record, value, version]
           additionalProperties: false
           properties:
@@ -29306,6 +29317,72 @@ components:
             value: {}
             version: { type: integer, minimum: 1 }
             editedHlc: { type: string }
+        - type: object
+          description: >
+            End-to-end mode (§13.4, §13.10.4): a `revision`, `lastWrite`, `max` or `min` record.
+            `ct` replaces `value` and seals under `k = id`; `record[1]` is the blinded id.
+          required: [record, ct, version]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, blinded id]."
+            ct: { type: string }
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+        - type: object
+          description: >
+            End-to-end mode (§13.4, U-09): a `merge` record. Each field is sealed under
+            `k = id ‖ U+0000 ‖ field`; there is no `ct` and no `value`. `editedHlc` is the newest
+            of its cells.
+          required: [record, fields, version, editedHlc]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, blinded id]."
+            fields:
+              type: array
+              items:
+                type: object
+                required: [field, ct, editedHlc]
+                additionalProperties: false
+                properties:
+                  field: { type: string, description: "Blinded (`x:…`)." }
+                  ct: { type: string }
+                  editedHlc: { type: string }
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+        - type: object
+          description: >
+            End-to-end mode (§13.4, U-09): a `union` record. Each element is sealed under
+            `k = id ‖ U+0000 ‖ canonicalJson(e)`, listed in the order of its first surviving add
+            tag; there is no `ct` and no `value`.
+          required: [record, elements, version]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, blinded id]."
+            elements:
+              type: array
+              items:
+                type: object
+                required: [element, ct]
+                additionalProperties: false
+                properties:
+                  element: { type: string, description: "Blinded (`x:…`)." }
+                  ct: { type: string }
+            version: { type: integer, minimum: 1 }
     SyncTombstone:
       description: "A deleted setting or record with its `editedHlc` (§13.4)."
       oneOf:
@@ -29403,7 +29480,10 @@ components:
               { type: string, description: "`<origin>/signin?product=<slug>`." }
     SyncMutation:
       type: object
-      description: "One mutation of a push body (§13.3). Settings only until U-09."
+      description: >
+        One mutation of a push body (§13.3). A record target `{record: [collection, id]}` takes the
+        operations of its collection's policy (U-09): `set` and `delete` (`revision`, `lastWrite`,
+        `max`, `min`), `setField` and `removeField` (`merge`), `add` and `remove` (`union`).
       required: [mutationId, target, op]
       properties:
         mutationId:
@@ -29443,16 +29523,35 @@ components:
             ]
         value: {}
         member: { type: string }
+        field:
+          type: string
+          description: >
+            `setField` and `removeField` on a `merge` record (U-09). In end-to-end mode a blinded
+            name (`x:…`).
+        element:
+          description: >
+            `add` and `remove` on a `union` record (U-09): the element (any JSON; at most 1 KiB of
+            canonical JSON). In end-to-end mode a blinded name (`x:…`) and the value rides in `ct`.
+        observedSeq:
+          type: integer
+          minimum: 0
+          description: >
+            `remove` on a `union` record (U-09): the pull cursor the client held when it saw the
+            element. The server drops the element's add tags at or below it, so a concurrent `add`
+            survives. A `remove` without it is `value_invalid`.
         ct:
           type: string
           description: >
             End-to-end mode (§13.3, §13.10, U-09.1): the sealed value, a `pkey-sync-value/1`
-            envelope in canonical base64url, in place of `value`. The wrong one of the two is a
-            `rejected` result with `encryption_mismatch`.
+            envelope in canonical base64url, in place of `value`. On a record it seals the record's
+            value, a `setField` value or an `add` element, under the name of §13.10.4. The wrong
+            one of the two is a `rejected` result with `encryption_mismatch`.
         baseVersion:
           description: >
-            A `max`/`min` setting in end-to-end mode is a compare-and-swap register: a number
-            equal to the row's `version`, or `"*"` for create-only.
+            A `max`/`min` setting or record in end-to-end mode is a compare-and-swap register: a
+            number equal to the row's `version`, or `"*"` for create-only. On a `revision` or
+            `lastWrite` record, a number is compare-and-swap, `"*"` create-only and absent
+            unconditional.
           oneOf: [{ type: integer, minimum: 0 }, { type: string, const: "*" }]
         editedHlc: { type: string, pattern: "^[0-9a-f]{12}:[0-9a-f]{4}$" }
     PushRequest:
@@ -29500,8 +29599,9 @@ components:
               type: object
               required: [version]
               description: >
-                The server's copy. A sealed row (end-to-end mode, §13.3) answers `ct`, or sealed
-                `members`, in place of `value`.
+                The server's copy. A sealed row (end-to-end mode, §13.3) answers `ct`, sealed
+                `members` (a `merge` setting) or sealed `fields` (a `merge` record, U-09) in place
+                of `value`. A record's `value` is its live object.
               properties:
                 value: {}
                 ct: { type: string }
@@ -29511,6 +29611,16 @@ components:
                   oneOf:
                     - { type: object, additionalProperties: {} }
                     - { type: array, items: { type: object } }
+                fields:
+                  type: array
+                  description: "A sealed `merge` record's cells (U-09)."
+                  items:
+                    type: object
+                    required: [field, ct, editedHlc]
+                    properties:
+                      field: { type: string, description: "Blinded (`x:…`)." }
+                      ct: { type: string }
+                      editedHlc: { type: string }
         - type: object
           required: [mutationId, status, code]
           properties:
@@ -29529,7 +29639,8 @@ components:
             scope:
               type: string
               enum: [user, collection, product]
-              description: "Only with `quota_exceeded`."
+              description: >
+                Only with `quota_exceeded`. `collection`: the collection's `maxRecords` (U-09).
         - type: object
           required: [mutationId, status]
           properties:
