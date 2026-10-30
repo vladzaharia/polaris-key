@@ -109,7 +109,6 @@ function base(): Docs {
       product: {
         slug: "acme",
         name: "Acme",
-        adminGroup: "admins",
         compatMin: "1.0.0",
         compatMax: "99.0.0",
       },
@@ -3611,8 +3610,8 @@ const MUTATIONS: Mutation[] = [
     schema: "accepts",
     row: 2,
     mutate: (d) => {
-      p(d).adminGroup = p(d).product.adminGroup;
-      delete p(d).product.adminGroup;
+      p(d).compatMin = p(d).product.compatMin;
+      delete p(d).product.compatMin;
     },
   },
   {
@@ -4019,7 +4018,6 @@ describe("valid manifests pass both validators", () => {
       [
         "/slug",
         "/name",
-        "/adminGroup",
         "/compatMin",
         "/compatMax",
         "/defaultDeviceLimit",
@@ -4303,13 +4301,6 @@ const SPELLING_CASES: Record<string, SpellingCase> = {
     read: (m) => m.product.name,
     alone: "Old",
     both: "Acme",
-  },
-  "product/adminGroup": {
-    old: "ops",
-    canon: "admins",
-    read: (m) => m.product.adminGroup,
-    alone: "ops",
-    both: "admins",
   },
   "product/compatMin": {
     old: "2.0.0",

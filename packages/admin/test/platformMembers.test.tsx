@@ -234,7 +234,6 @@ describe("Members: the roster", () => {
       "polaris-admins",
     );
     expect(screen.queryByText(/Open SSO rules/)).toBeNull();
-    expect(screen.queryByRole("tab", { name: /SSO rules/ })).toBeNull();
     // Roles are named by roleLabel; Console access hides beside another role.
     expect(within(t).getByText("Superadmin")).toBeTruthy();
     expect(within(t).getByText("Platform admin")).toBeTruthy();
@@ -1904,5 +1903,133 @@ describe("Members: the second fix round", () => {
     expect(footerOf(drawer).textContent).not.toContain(
       "Every Superadmin is told",
     );
+  });
+});
+
+describe("Members: sign out everywhere (ST-34.12b)", () => {
+  const SO = "/manage/api/members/mbr_kenji/sign-out";
+  const PREVIEW = {
+    memberId: "mbr_kenji",
+    tokens: [
+      { label: "deploy laptop", lastUsedAt: NOW - 600, expiresAt: NOW + 9e5 },
+      { label: "ci helper", lastUsedAt: null, expiresAt: NOW + 9e5 },
+    ],
+  };
+  const DONE = {
+    ok: true,
+    memberId: "mbr_kenji",
+    sessions: 2,
+    tokens: 2,
+    notified: true,
+  };
+
+  async function menu(
+    user: ReturnType<typeof userEvent.setup>,
+    who: string,
+  ): Promise<HTMLElement> {
+    const t = await table();
+    await user.click(
+      within(t).getByRole("button", { name: `Actions for ${who}` }),
+    );
+    return screen.findByRole("menu");
+  }
+
+  it("is missing from your own row and offered on another", async () => {
+    const user = userEvent.setup();
+    open();
+    const mine = await menu(user, "Ada Lovelace");
+    expect(
+      within(mine).queryByRole("menuitem", { name: /Sign out everywhere/ }),
+    ).toBeNull();
+    await user.keyboard("{Escape}");
+    const theirs = await menu(user, "Kenji Mori");
+    const item = within(theirs).getByRole("menuitem", {
+      name: /Sign out everywhere/,
+    });
+    expect(disabledOf(item)).toBe(false);
+  });
+
+  it("is off, with the reason, when the Worker would refuse", async () => {
+    const user = userEvent.setup();
+    answer = view({
+      members: [
+        ada,
+        { ...priya, roles: [ROOT_ROLE, ...priya.roles], you: false },
+        kenji,
+      ],
+    });
+    open({}, asRole("platform_admin"));
+    const m = await menu(user, "Priya Raman");
+    const item = within(m).getByRole("menuitem", {
+      name: /Sign out everywhere/,
+    });
+    expect(disabledOf(item)).toBe(true);
+    await user.hover(item);
+    expect(
+      (await screen.findAllByText(/Only a Superadmin can sign out/)).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("lists the tokens before the confirm, then signs out and says so", async () => {
+    const user = userEvent.setup();
+    let roster = 0;
+    const log = open({
+      [PATH]: () => (roster++, view()),
+      [`GET ${SO}`]: PREVIEW,
+      [`POST ${SO}`]: DONE,
+    });
+    const m = await menu(user, "Kenji Mori");
+    await user.click(
+      within(m).getByRole("menuitem", { name: /Sign out everywhere/ }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    expect(await within(confirm).findByText("deploy laptop")).toBeTruthy();
+    expect(within(confirm).getByText("ci helper")).toBeTruthy();
+    expect(within(confirm).getByText("Never used")).toBeTruthy();
+    expect(within(confirm).getByText(/within 30 seconds/)).toBeTruthy();
+    expect(
+      within(confirm).getByText(/Package tokens keep working/),
+    ).toBeTruthy();
+    expect(within(confirm).getByText(/They get an email/)).toBeTruthy();
+    expect(log.calls.some((c) => c.method === "POST" && c.path === SO)).toBe(
+      false,
+    );
+    const before = roster;
+    await user.click(
+      within(confirm).getByRole("button", { name: "Sign out everywhere" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.some((c) => c.method === "POST" && c.path === SO)).toBe(
+        true,
+      ),
+    );
+    expect(await screen.findByText("Signed out Kenji Mori")).toBeTruthy();
+    expect(screen.getByText(/2 sessions, 2 tokens ended/)).toBeTruthy();
+    // The write's declared invalidation refetches the roster.
+    await waitFor(() => expect(roster).toBeGreaterThan(before));
+  });
+
+  it("shows a refusal and keeps the dialog open", async () => {
+    const user = userEvent.setup();
+    open({
+      [`GET ${SO}`]: PREVIEW,
+      [`POST ${SO}`]: json(
+        { error: "forbidden", reason: "grant_refused" },
+        403,
+      ),
+    });
+    const m = await menu(user, "Kenji Mori");
+    await user.click(
+      within(m).getByRole("menuitem", { name: /Sign out everywhere/ }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    await within(confirm).findByText("deploy laptop");
+    await user.click(
+      within(confirm).getByRole("button", { name: "Sign out everywhere" }),
+    );
+    expect(
+      await within(confirm).findByText(/can't sign this member out/),
+    ).toBeTruthy();
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
   });
 });

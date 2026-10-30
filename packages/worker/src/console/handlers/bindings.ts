@@ -98,9 +98,11 @@ import { requireStepUp } from "../stepUp.js";
 import type { AdminCtx } from "../routes.js";
 import {
   ROLE_LABEL,
+  invalidRequest as invalid,
   scopeLabel,
   sendOperatorNotice,
   superadminAccountIds,
+  unknownFields,
 } from "./accessShared.js";
 import { requireAccountSession } from "../lib/accountSession.js";
 import { NOTICE_CAP, notifySuperadmins } from "../lib/operatorNotices.js";
@@ -128,20 +130,6 @@ export interface Via {
 
 const forbiddenReason = (reason: string, message: string, extra = {}) =>
   err(403, ErrorCode.Forbidden, message, { reason, ...extra });
-
-const invalid = (fields: string[], reason?: string) =>
-  err(422, ErrorCode.BadRequest, "invalid request", {
-    fields,
-    ...(reason ? { reason } : {}),
-  });
-
-/** Only these body fields are read; anything else is refused, not ignored. */
-function unknownFields(
-  body: Record<string, unknown>,
-  allowed: readonly string[],
-): string[] {
-  return Object.keys(body).filter((k) => !allowed.includes(k));
-}
 
 interface Writer {
   memberId: string;
@@ -207,7 +195,7 @@ function view(
  * id of each account that holds a binding or the root rule, and compare. A person who holds
  * neither is not a candidate, so this cannot be used to look anyone else up.
  */
-async function resolveMember(
+export async function resolveMember(
   c: AdminCtx,
   memberId: string,
 ): Promise<{ accountId: string; entry: ConsoleDirectoryEntry } | Response> {

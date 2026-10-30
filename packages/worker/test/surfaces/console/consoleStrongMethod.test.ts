@@ -564,7 +564,7 @@ describe("the computed root rule", () => {
       env,
       db,
       link0.id,
-      { groups: null, claims: { team: "x" } },
+      { groups: null, claims: { team: "x" }, connectionId: "ops" },
       NOW + 900,
     );
     const kept = (await consoleLink(db))!;

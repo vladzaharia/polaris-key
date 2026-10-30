@@ -3735,7 +3735,7 @@
       "jscpd:duplicate": 21
     },
     "packages/worker/test/services/release/manifestIngestGates.test.ts": {
-      "jscpd:duplicate": 13
+      "jscpd:duplicate": 11
     },
     "packages/worker/test/services/release/packProvides.test.ts": {
       "jscpd:duplicate": 43
@@ -3933,7 +3933,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/surfaces/console/consoleInviteConversion.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 7
     },
     "packages/worker/test/surfaces/console/consoleMembers.test.ts": {
       "jscpd:duplicate": 13

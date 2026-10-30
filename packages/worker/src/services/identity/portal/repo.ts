@@ -1,5 +1,5 @@
 import { adminOidcConfig } from "../../../platform/platformOidc.js";
-import { operatorIssuerAllowed } from "../../../core/rbac/operatorIssuer.js";
+import { isConsoleIdpIssuer } from "../../../core/rbac/operatorIssuer.js";
 import { portalAudit } from "../../../core/accounts/portalAudit.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import { parseJsonColumn } from "../../../platform/json.js";
@@ -209,13 +209,21 @@ export async function recordLinkGroups(
   linkId: string,
   groups: readonly string[] | undefined,
   now: number,
+  /**
+   * The connection that asserted them (`console-idp` for the console's own sign-in); null for a
+   * caller with no connection, whose facts no access rule reads. Claims are replaced with the
+   * groups, in the same statement: a path that has no claim map writes none, so a claim the IdP
+   * dropped cannot outlive the sign-in that dropped it (ST-32.3).
+   */
+  connectionId: string | null = null,
 ): Promise<void> {
   // `asserted_at` (ST-30, ST-28 §2.4) moves in THIS statement and nowhere else: it is when the IdP
   // last asserted these groups, so a sign-in that does not rewrite them cannot freshen them.
   await db.run(
-    "UPDATE account_links SET groups_json = ?, asserted_at = ? WHERE id = ?",
+    "UPDATE account_links SET groups_json = ?, claims_json = NULL, asserted_at = ?, asserted_connection_id = ? WHERE id = ?",
     groups ? JSON.stringify(groups) : null,
     groups ? now : null,
+    connectionId,
     linkId,
   );
 }
@@ -223,14 +231,15 @@ export async function recordLinkGroups(
 /**
  * What a connection asserted at this sign-in, on the link it signed in through (I-30; plans/I-27.md
  * §2.3 "Links"): the mapped groups and the access-rule claims, replaced together in ONE `UPDATE`.
- * `null` is "not asserted" (fail closed). `asserted_at` (ST-30) is written in this same statement, when anything was asserted;
+ * `null` is "not asserted" (fail closed). `asserted_at` (ST-30) is written in this same statement, always;
  * nothing else writes these columns for a connection link.
  *
- * A link is keyed by (issuer, subject), not by the connection that wrote it. On an issuer that may
- * sign operators in (`operatorIssuerAllowed`) the console's root rule reads `groups_json` and
- * `asserted_at`, so ONLY the console sign-in (`recordLinkGroups`, the IdP's own groups claim) may
- * write them there: a connection's claim map is operator-editable and may name any claim. On such
- * a link this writes `claims_json` alone and leaves the groups and `asserted_at` untouched.
+ * A link is keyed by (issuer, subject), not by the connection that wrote it. On the console IdP's
+ * own issuer the console's root rule reads `groups_json` and `asserted_at`, so ONLY the console
+ * sign-in (`recordLinkGroups`, the IdP's own groups claim) may write them there: a connection's
+ * claim map is operator-editable and may name any claim. On such a link this writes `claims_json`
+ * alone and leaves the groups, `asserted_at` and the connection id untouched. Elsewhere the facts
+ * carry the asserting connection's id, and a rule reads them only for that connection.
  */
 export async function recordLinkAssertion(
   env: Env,
@@ -239,6 +248,8 @@ export async function recordLinkAssertion(
   assertion: {
     groups: readonly string[] | null;
     claims: Readonly<Record<string, string>> | null;
+    /** The asserting connection's id: the only connection whose rules read these facts. */
+    connectionId: string;
   },
   now: number,
 ): Promise<void> {
@@ -247,9 +258,15 @@ export async function recordLinkAssertion(
     linkId,
   );
   if (!link) return;
+  // The console's root rule reads the groups and `asserted_at` of the link on the console IdP's own
+  // issuer, whichever connection wrote them, so on that link only the console sign-in
+  // (`recordLinkGroups`) writes the groups, `asserted_at` and the connection id: a connection's
+  // assertion there writes the claims alone. On any other issuer the root rule reads nothing, and
+  // the facts are bound to the asserting connection by `asserted_connection_id` (ST-32.3), which
+  // is how an operator connection on a listed host gets its own groups and claims read.
   const consoleIssuer = adminOidcConfig(env)?.issuer;
   if (
-    operatorIssuerAllowed(env, link.issuer_key) ||
+    isConsoleIdpIssuer(env, link.issuer_key) ||
     (consoleIssuer !== undefined &&
       link.issuer_key === portalIdentityIssuerKey(consoleIssuer))
   ) {
@@ -260,11 +277,14 @@ export async function recordLinkAssertion(
     );
     return;
   }
+  // `asserted_at` and the connection id are set at every sign-in through a connection, even one
+  // that maps nothing, so a `domain` rule works on an IdP with no groups or claims mapped (ST-32.3).
   await db.run(
-    "UPDATE account_links SET groups_json = ?, claims_json = ?, asserted_at = ? WHERE id = ?",
+    "UPDATE account_links SET groups_json = ?, claims_json = ?, asserted_at = ?, asserted_connection_id = ? WHERE id = ?",
     assertion.groups ? JSON.stringify(assertion.groups) : null,
     assertion.claims ? JSON.stringify(assertion.claims) : null,
-    assertion.groups || assertion.claims ? now : null,
+    now,
+    assertion.connectionId,
     linkId,
   );
 }

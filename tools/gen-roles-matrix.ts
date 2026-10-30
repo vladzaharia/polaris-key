@@ -46,11 +46,20 @@ function table(first: string, rows: readonly MatrixRow[]): string {
   return [head, rule, ...body].join("\n");
 }
 
+/**
+ * Notes that explain no one cell, so no footnote carries them (the matrix test requires each
+ * footnote to be pointed at by a cell). They hold for the whole table.
+ */
+const GENERAL_NOTES: readonly string[] = [
+  "- Personal admin tokens: a token holds what its owner's roles allow, never a write that needs a step-up.",
+  "- SSO rules: a rule can give Product admin or Console access to people who sign in through an operator connection. It never gives Superadmin or Platform admin, and only a Superadmin writes rules.",
+];
+
 export function renderDoc(): string {
   const notes = FOOTNOTES.map((f) => {
     const who = f.role ? ` (${ROLE_NAMES[f.role]})` : "";
     return `- **${f.word}**${who}: ${f.text}`;
-  });
+  }).concat(GENERAL_NOTES);
   return `---
 title: "Roles"
 description: "What each console role can do, area by area: Superadmin, Platform admin, Product admin and Console access."

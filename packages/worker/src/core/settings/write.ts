@@ -45,7 +45,16 @@ import {
   type SettingsEnv,
 } from "../platformSettings.js";
 import type { SettingsRegistry } from "./registry.js";
-import { can, PLATFORM, type Principal, type Scope } from "../rbac/can.js";
+import {
+  can,
+  isSuperadmin,
+  PLATFORM,
+  type Principal,
+  type Scope,
+} from "../rbac/can.js";
+import type { Env } from "../../platform/env.js";
+import { PRIVILEGE_GRANT_KEYS } from "./rules.js";
+import { accessRulesRefusal } from "./consoleAccessCheck.js";
 import {
   followsManifest,
   isSettingValue,
@@ -130,6 +139,11 @@ export interface WriteOptions {
    * operator's own) without one is refused: the check fails closed rather than being skipped.
    */
   principal?: Principal;
+  /**
+   * The session stepped up (`isSteppedUp`). Required to write a `PRIVILEGE_GRANT_KEYS` key
+   * (`console.access`), which also needs a Superadmin principal.
+   */
+  steppedUp?: boolean;
   /** Epoch seconds: one value for every timestamp the write records. */
   now: number;
   /** The product (a slug, or the `products` row the caller holds) for a product-scope write. */
@@ -208,7 +222,11 @@ export type WriteRefusalReason =
   | "nothing_stored"
   | "version_conflict"
   | "invalid_origin"
-  | "no_access";
+  | "no_access"
+  | "step_up_required"
+  | "invalid_rules"
+  | "not_operator_connection"
+  | "domain_not_enforced";
 
 export interface WriteRefusal {
   ok: false;
@@ -1086,6 +1104,37 @@ async function writePlatform(
     if (def.ownership !== "operator" || def.storage.kind !== "scalar")
       return refuse(409, "read_only", `${def.key} is not writable`, def.key);
     const op = w.op ?? "set";
+    // A privilege-grant key (`console.access`): Superadmin and a step-up, whatever the caller.
+    if (PRIVILEGE_GRANT_KEYS.includes(def.key)) {
+      if (!isSuperadmin(opts.principal))
+        return refuse(
+          403,
+          "no_access",
+          `writing ${def.key} needs a Superadmin`,
+          def.key,
+        );
+      if (opts.steppedUp !== true)
+        return refuse(
+          403,
+          "step_up_required",
+          `writing ${def.key} needs a recent step-up sign-in`,
+          def.key,
+        );
+      if (op === "set") {
+        const bad = await accessRulesRefusal(
+          ctx.env as unknown as Env,
+          ctx.db,
+          w.value,
+        );
+        if (bad)
+          return refuse(
+            422,
+            bad.reason as WriteRefusalReason,
+            bad.message,
+            def.key,
+          );
+      }
+    }
     const before = await resolvePlatformSetting(ctx, def.key, { fresh: true });
     const storedStep = before.chain.find((s) => s.source === "platform");
     if (op === "reset" && !storedStep)

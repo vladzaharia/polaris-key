@@ -220,6 +220,12 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/platform/ready", ["get"]],
     // ST-29, ST-31.5: who can give the caller access to an area.
     ["/manage/api/access/admins", ["get"]],
+    // ST-32.5: the SSO rules' preview and the admin_group conversion offers.
+    // ST-32.7: the rule list's read and replace.
+    ["/manage/api/access/rules", ["get", "put"]],
+    ["/manage/api/access/rules/preview", ["post"]],
+    ["/manage/api/access/offers", ["get", "post"]],
+    ["/manage/api/access/offers/{slug}", ["post"]],
     // ST-30c.3 (SM-3(a), (d)): the signed-in operator's own sign-in methods.
     ["/manage/api/me/prefs", ["put"]],
     ["/manage/api/me/methods", ["get"]],
@@ -248,6 +254,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // ST-31.4: the Platform Members roster (platform scope, area `members`).
     ["/manage/api/members", ["get"]],
     ["/manage/api/members/{memberId}", ["get"]],
+    // ST-34.12: sign a member out everywhere (the GET is the dry run).
+    ["/manage/api/members/{memberId}/sign-out", ["get", "post"]],
     // ST-31.6: grant, edit and take back a console role (area `members`; Superadmin-only cases are
     // the handler's, through the grant rules).
     ["/manage/api/bindings", ["post"]],
@@ -920,6 +928,8 @@ function concrete(template: string): string {
     id: "dst_AAAAAAAAAAAA",
     runId: "mig_AAAAAAAAAAAA",
     code: "K7M-4QX-9TZ",
+    // ST-32.5: an admin_group offer's product.
+    slug: "acme",
     // UK-04b: the Elements CDN module's file.
     file: "pk.js",
   };

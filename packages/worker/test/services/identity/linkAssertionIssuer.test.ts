@@ -232,7 +232,11 @@ describe("a console issuer configured with a double trailing slash", () => {
       w.env,
       w.db,
       id,
-      { groups: [GROUP], claims: { department: "ops" } },
+      {
+        groups: [GROUP],
+        claims: { department: "ops" },
+        connectionId: "ops",
+      },
       NOW,
     );
     const r = (await row(w))!;

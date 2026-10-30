@@ -23,7 +23,7 @@ never a caller-supplied ref, so the manifest applied to production can't be a fu
 unreviewed branch — and re-applies each in place:
 
 - Product metadata (name, license defaults, web origins) is written unless the console has
-  claimed that field; the admin group is manifest-only and always follows the manifest. The
+  claimed that field. The
   compatibility window follows the ownership rule below.
 - The catalog gets a new active `schemaVersion` **only when its content actually changed**, and
   never once a console publish has claimed it.
@@ -61,7 +61,7 @@ claims it for the console: you confirm first, the row's source badge then reads 
 console**, and resyncs leave it alone. **Revert…** in that badge restores the value from the
 last applied manifest at once, or at the next resync for a product not applied since claims
 arrived. Publishing the catalog claims it the same way, with Revert in the catalog's source
-badge. The admin group is read-only on every product: change it in `.pkey/product`.
+badge.
 
 ## Manifest-authoritative mode
 
@@ -95,13 +95,13 @@ Resync of it are refused with "the system product is applied by the deploy hook"
 offers no Resync for it. The deploy hook applies the release configuration, the package
 deliverables, the trusted publisher and each enabled service's manifest rows, plus the value of
 any field whose break-glass claim it ends. It does not yet apply the display name, the license
-defaults, the web origins, the catalog or the admin group from `.pkey/`; applying every declared
-field is not built. Its break-glass claims (today on the license defaults: its display name and
-admin group cannot be changed in the console) end after 7 days or at the first deploy that
+defaults, the web origins or the catalog from `.pkey/`; applying every declared
+field is not built. Its break-glass claims (today on the license defaults: its display name
+cannot be changed in the console) end after 7 days or at the first deploy that
 changes the field, and each deploy's log names the live ones as warnings.
 
 Every save is checked against the [settings reference](/docs/reference/settings/): the display
-name and the admin group are at most 200 characters, the device limit at most 1,000,000 and the
+name is at most 200 characters, the device limit at most 1,000,000 and the
 offline grace 1 to 365 days, and a value outside answers 422 `invalid_value`.
 
 ## Linking a repository to an existing product

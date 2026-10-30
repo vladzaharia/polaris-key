@@ -36,7 +36,7 @@ Shell), and `pkey <command> --help` prints one command's usage lines and notes. 
 
 ```
 pkey init [--product slug] [--name name] [--modules license,config,release,distribution,update,identity,sync]
-          [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]
+          [--release-owner owner] [--release-repo repo] [--force]
 pkey validate [path] [--json]
 pkey distribution outlet-ids --outlet id
 pkey doctor [--base-url url --product slug]
@@ -118,7 +118,7 @@ lowercased and reduced to `[a-z0-9-]`; `--name` defaults to a titleized version 
 Existing files are never overwritten without `--force`.
 
 ```sh
-pkey init --product djdl --modules license,config,release,distribution,update,identity --admin-group djdl-admins \
+pkey init --product djdl --modules license,config,release,distribution,update,identity \
   --release-owner vladzaharia --release-repo djdl
 # Created 3 manifest files:
 # - .pkey/product.yaml

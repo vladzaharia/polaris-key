@@ -140,15 +140,7 @@ export const DEPRECATED_SPELLINGS: readonly DeprecatedSpelling[] = [
     { doc: P, pointer: "/product/name" },
     "canonical",
   ),
-  // 2. Administration and compatibility outside the wrapper.
-  row(
-    2,
-    P,
-    "/adminGroup",
-    "product:product.adminGroup",
-    { doc: P, pointer: "/product/adminGroup" },
-    "canonical",
-  ),
+  // 2. Compatibility outside the wrapper.
   row(
     2,
     P,

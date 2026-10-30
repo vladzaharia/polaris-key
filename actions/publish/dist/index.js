@@ -1190,9 +1190,8 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "deprecated": true
     },
     "adminGroup": {
-      "$ref": "#/$defs/groupName",
-      "description": "Deprecated: write product.adminGroup. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
-      "deprecated": true
+      "not": {},
+      "$comment": "Removed in 0.9 (invalid_admin_group). Map the IdP group in Platform → Members (console.access)."
     },
     "compatMin": {
       "$ref": "#/$defs/semver",
@@ -1713,7 +1712,10 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "properties": {
         "slug": { "$ref": "#/$defs/slug" },
         "name": { "$ref": "#/$defs/displayName" },
-        "adminGroup": { "$ref": "#/$defs/groupName" },
+        "adminGroup": {
+          "not": {},
+          "$comment": "Removed in 0.9 (invalid_admin_group). Map the IdP group in Platform → Members (console.access)."
+        },
         "compatMin": { "$ref": "#/$defs/semver" },
         "compatMax": { "$ref": "#/$defs/semver" },
         "defaultDeviceLimit": {
@@ -16838,15 +16840,7 @@ var DEPRECATED_SPELLINGS = [
     { doc: P, pointer: "/product/name" },
     "canonical"
   ),
-  // 2. Administration and compatibility outside the wrapper.
-  row(
-    2,
-    P,
-    "/adminGroup",
-    "product:product.adminGroup",
-    { doc: P, pointer: "/product/adminGroup" },
-    "canonical"
-  ),
+  // 2. Compatibility outside the wrapper.
   row(
     2,
     P,
@@ -20440,6 +20434,7 @@ var DEFAULT_TRUSTED_PUBLISHER_ENVIRONMENT = "release";
 var BRANCH_RE = /^[A-Za-z0-9._][A-Za-z0-9._/-]{0,254}$/;
 var SUMMARY_MARKER_RE = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/;
 var SPARKLE_PUB_RE = /^[A-Za-z0-9+/=_-]{1,512}$/;
+var REMOVED_ADMIN_GROUP = "product.adminGroup was removed in 0.9. It granted nothing: map the IdP group in Platform → Members (`console.access`).";
 var GROUP_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$/;
 var CLAIM_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 var RESERVED_PROPERTY_NAMES = /* @__PURE__ */ new Set([
@@ -20842,15 +20837,13 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     MAX_LABEL_LENGTH,
     "product.name"
   );
-  constrained(
-    errors,
-    "product",
-    productNode.adminGroup ?? productRoot.adminGroup,
-    "/product/adminGroup",
-    "invalid_admin_group",
-    GROUP_NAME_RE,
-    "product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$)."
-  );
+  for (const [value, path37] of [
+    [productNode.adminGroup, "/product/adminGroup"],
+    [productRoot.adminGroup, "/adminGroup"]
+  ]) {
+    if (value !== void 0)
+      add4(errors, "product", path37, "invalid_admin_group", REMOVED_ADMIN_GROUP);
+  }
   for (const [key, path37] of [
     [productNode.compatMin ?? productRoot.compatMin, "/compatMin"],
     [productNode.compatMax ?? productRoot.compatMax, "/compatMax"]
@@ -23226,8 +23219,7 @@ function parseManifest(files, opts = {}) {
       ),
       defaultDeviceLimit: Number(
         prod.defaultDeviceLimit ?? productRoot.defaultDeviceLimit ?? licensing.defaultDeviceLimit ?? 5
-      ),
-      adminGroup: String(prod.adminGroup ?? productRoot.adminGroup ?? "admin")
+      )
     },
     catalog,
     profiles: rawProfiles.map(normalizeProfile).filter(notNull),
@@ -25312,7 +25304,7 @@ var COMMANDS = [
     summary: "Scaffold .pkey/ in this directory",
     rows: [["init", "Scaffold .pkey/ in this directory"]],
     usage: [
-      "pkey init [--product slug] [--name name] [--modules slugs] [--admin-group group] [--release-owner owner] [--release-repo repo] [--starter-tier free|none] [--force]"
+      "pkey init [--product slug] [--name name] [--modules slugs] [--release-owner owner] [--release-repo repo] [--starter-tier free|none] [--force]"
     ],
     about: [
       {
@@ -26635,8 +26627,7 @@ apiVersion: pkey.dev/v1
 product:
   slug: ${quoteYaml(opts.slug)}
   name: ${quoteYaml(opts.name)}
-${opts.adminGroup ? `  adminGroup: ${quoteYaml(opts.adminGroup)}
-` : ""}modules:
+modules:
 ${moduleLines.join("\n")}
 
 profiles:
@@ -53997,7 +53988,6 @@ async function cmdInit(parsed, rt) {
     name,
     modules,
     starterTier,
-    adminGroup: flagString(parsed, "admin-group"),
     releaseOwner: flagString(parsed, "release-owner"),
     releaseRepo: flagString(parsed, "release-repo"),
     force: flagBool(parsed, "force")

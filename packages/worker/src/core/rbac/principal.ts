@@ -16,11 +16,16 @@
  * granting on the next request. The two sources are summed; neither can remove the other. A v1
  * cookie and a `pkeya_` token carry no account id and stay root-only. Email rows (unclaimed
  * invites) never grant: only a row naming the account does.
+ *
+ * ST-32.3: the same account also holds the grants of the `console.access` rules that match its
+ * strong operator-connection links (`source: "rule"`, `ruleGrants.ts`), computed on every request.
  */
 
 import type { Db } from "../../db/types.js";
 import type { Grant, Principal } from "./can.js";
+import type { Env } from "../../platform/env.js";
 import { listAccountGrants } from "./bindings.js";
+import { assertionFresh, ruleGrantsFor } from "./ruleGrants.js";
 
 /** The verified identity a principal is resolved for (the console session's `sub` and groups). */
 export interface ConsoleSubject {
@@ -70,9 +75,6 @@ export interface RootLink {
   groups: readonly string[];
 }
 
-/** How far ahead of the Worker's clock an `asserted_at` may be before it counts as not fresh. */
-const ASSERTED_SKEW_SECONDS = 60;
-
 /**
  * The root rule (ST-28 plan §2.4), computed and never stored: the link is strong, its groups
  * carry `PLATFORM_ADMIN_GROUP`, and the IdP asserted them no more than `maxAgeSeconds` ago
@@ -90,8 +92,7 @@ export function rootRuleHolds(
   if (link.strongAt === null || link.assertedAt === null) return false;
   if (!Number.isFinite(link.assertedAt) || !Number.isFinite(link.strongAt))
     return false;
-  const age = now - link.assertedAt;
-  if (age < -ASSERTED_SKEW_SECONDS || age > maxAgeSeconds) return false;
+  if (!assertionFresh(link.assertedAt, now, maxAgeSeconds)) return false;
   return holdsRoot(env, link.groups);
 }
 
@@ -105,10 +106,10 @@ function grantKey(g: Grant): string {
  * denies it everything, `console` included.
  */
 export async function resolvePrincipal(
-  env: RootEnv,
+  env: RootEnv & Partial<Env>,
   db: Db | null,
   subject: ConsoleSubject,
-  _now: number,
+  now: number,
 ): Promise<Principal> {
   const grants: Grant[] = [];
   const root =
@@ -117,6 +118,20 @@ export async function resolvePrincipal(
   if (db && subject.accountId) {
     const seen = new Set(grants.map(grantKey));
     for (const g of await listAccountGrants(db, subject.accountId)) {
+      const key = grantKey(g);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      grants.push(g);
+    }
+    // ST-32.3: SSO rules (`console.access`), evaluated now from the account's links. They add
+    // `product_admin` and `console_access` grants only; the root rule and the stored bindings
+    // above are unchanged and neither can remove the other.
+    for (const g of await ruleGrantsFor(
+      env as Env,
+      db,
+      subject.accountId,
+      now,
+    )) {
       const key = grantKey(g);
       if (seen.has(key)) continue;
       seen.add(key);

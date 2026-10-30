@@ -2272,6 +2272,107 @@ export const DATA_ROUTES: Record<string, unknown> = {
   // ST-31.11: Platform → Members. Nine people (a root holder, both admin kinds, a narrowed
   // Product admin, a long name and address) and three invites, one of them for a platform role.
   "/manage/api/members": membersView(),
+  // ST-32.7: Platform → Members → SSO rules. A group, a domain and a claim rule, an operator
+  // connection with an enforced domain, and a preview with a long name and a long group.
+  "/manage/api/access/rules": {
+    version: 3,
+    unreadable: false,
+    editable: true,
+    connections: [
+      { id: "console-idp", label: "Console identity provider", domains: [] },
+      {
+        id: "okta",
+        label: "Studio Okta",
+        domains: ["studio.example.com", "engineering.studio-example.com"],
+      },
+    ],
+    rules: [
+      {
+        id: "r_aaaaaaaaaaaa",
+        when: { connection: "okta", group: "release-managers" },
+        grant: {
+          role: "product_admin",
+          scope: "product:djdl",
+          areas: ["ship"],
+        },
+      },
+      {
+        id: "r_bbbbbbbbbbbb",
+        when: { connection: "okta", domain: "studio.example.com" },
+        grant: { role: "console_access", scope: "platform" },
+      },
+      {
+        id: "r_cccccccccccc",
+        when: {
+          connection: "okta",
+          claim: { name: "department", equals: "djdl-quality-assurance-team" },
+        },
+        grant: {
+          role: "product_admin",
+          scope: "product:djdl",
+          areas: ["config", "ship", "license"],
+        },
+      },
+    ],
+  },
+  // ST-32.8: two products whose old admin group is still offered as a rule (one long name and group).
+  "/manage/api/access/offers": {
+    offers: [
+      { product: "djdl", name: "DJDL", group: "djdl-release-managers" },
+      {
+        product: "tuner",
+        name: "Tuner Studio Professional Edition",
+        group:
+          "studio-example-com/engineering/tuner-professional-administrators",
+      },
+    ],
+  },
+  "/manage/api/access/rules/preview": {
+    members: [
+      {
+        memberId: "mbr_2",
+        name: "Noor Haddad",
+        email: "noor@example.com",
+        grant: {
+          role: "product_admin",
+          scope: "product:djdl",
+          areas: ["ship"],
+        },
+      },
+      {
+        memberId: "mbr_3",
+        name: "Hartmut Wolfeschlegelsteinhausenbergerdorff",
+        email: "hartmut.wolfeschlegelsteinhausenbergerdorff@example.com",
+        grant: {
+          role: "product_admin",
+          scope: "product:djdl",
+          areas: ["ship"],
+        },
+      },
+    ],
+    matchedMembers: 2,
+    otherLinks: 3,
+    scanned: 9,
+    truncated: false,
+    incomplete: false,
+  },
+  // ST-34.12b: what signing Sam Okoye out would stop; one label long enough to wrap.
+  "/manage/api/members/mbr_4/sign-out": {
+    memberId: "mbr_4",
+    tokens: [
+      {
+        label: "deploy laptop",
+        lastUsedAt: 1_789_990_000,
+        expiresAt: 1_792_000_000,
+      },
+      {
+        label:
+          "release pipeline for the long-named customer integration, staging",
+        lastUsedAt: null,
+        expiresAt: 1_792_000_000,
+      },
+    ],
+  },
   // ST-31.14: Product → Settings → Members (DJDL): Kenji (you), Lucía (two areas), a long name
   // with a long address and four areas, an invite, and two roles that reach DJDL from above.
   [`${PROD}/members`]: productMembersView(),

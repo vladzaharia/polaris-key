@@ -63,6 +63,24 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+### Corrections recorded at ST-32.9 (the code is the fact)
+
+- Rules are evaluated on every request from the stored link facts (`core/rbac/ruleGrants.ts`), not
+  only at sign-in, and a grant is never stored. A link counts for 8 h from `asserted_at` and only
+  while `asserted_connection_id` is the rule's own connection.
+- A rule can grant Product admin or Console access only. It never yields Superadmin or Platform
+  admin, and only a Superadmin with a step-up writes rules.
+- The manifest field is retired, not deprecated with a warning: `product.adminGroup` (either
+  spelling) is refused with `invalid_admin_group`.
+- The conversion offer is not one click. "Map to ... admin..." opens the editor on the stored
+  group, then the Superadmin confirms with a step-up, the typed `console.access` and a reason; the
+  accept body carries the group the Superadmin saw (409 `offer_changed` otherwise). Dismiss and
+  Dismiss all are the other outcomes.
+- Operators route by `operatorRouteForEmail` (the domain alone, ST-32.4); operator audience on a
+  platform connection is a Superadmin's write.
+- Rule 11 (docs tiers) needs no ST-32 edit: no docs path changed tier. Any rule 11 wording stays
+  with ST-35.
+
 ## UX coverage (2026-10-09)
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
@@ -71,10 +89,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Rules evaluate identically in preview and at sign-in (test)
-- [ ] An address confirmed only by email code never matches a console domain rule (test)
-- [ ] Every product with an adminGroup gets a one-click conversion offer
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
+- [x] Rules evaluate identically in preview and at sign-in (test)
+- [x] An address confirmed only by email code never matches a console domain rule (test)
+- [x] Every product with an adminGroup gets a one-click conversion offer
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

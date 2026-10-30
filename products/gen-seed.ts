@@ -50,7 +50,6 @@ interface ProductDef {
   compatMax: string;
   defaultMaxOfflineDays: number;
   defaultDeviceLimit: number;
-  adminGroup: string;
   /** `modules.<name>.enabled` — the same block a `.pkey/product` manifest carries. */
   modules?: Record<string, { enabled?: boolean }>;
   /** Removed (ST-38): the registration policy follows the services. Refused when present. */
@@ -120,7 +119,7 @@ function main(): void {
     servicesJson[slug] = { enabled: services[slug].enabled };
 
   out.push(
-    `INSERT INTO products (slug,name,signing_kid,signing_pub,compat_min,compat_max,default_max_offline_days,default_device_limit,admin_group,branding_json,services_json,services_source,created_at,modified_at) VALUES (${q(p)},${q(product.name)},${q(product.signingKid)},${q(product.signingPub)},${q(product.compatMin)},${q(product.compatMax)},${product.defaultMaxOfflineDays},${product.defaultDeviceLimit},${q(product.adminGroup)},NULL,${j(servicesJson)},'manifest',${now},${now});`,
+    `INSERT INTO products (slug,name,signing_kid,signing_pub,compat_min,compat_max,default_max_offline_days,default_device_limit,branding_json,services_json,services_source,created_at,modified_at) VALUES (${q(p)},${q(product.name)},${q(product.signingKid)},${q(product.signingPub)},${q(product.compatMin)},${q(product.compatMax)},${product.defaultMaxOfflineDays},${product.defaultDeviceLimit},NULL,${j(servicesJson)},'manifest',${now},${now});`,
   );
   out.push(
     `INSERT INTO product_schema (product,catalog_version,catalog_json,active,created_at) VALUES (${q(p)},1,${q(catalogRaw)},1,${now});`,

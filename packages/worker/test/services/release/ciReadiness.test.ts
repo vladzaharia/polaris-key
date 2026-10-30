@@ -34,7 +34,6 @@ const PLATFORM_GROUP = "platform-admins";
 const PRODUCT = JSON.stringify({
   name: "Acme",
   slug: SLUG,
-  adminGroup: "acme-admins",
   tiers: [{ id: "standard", label: "Standard", profileId: "standard" }],
   profiles: [{ id: "standard", name: "standard" }],
   provisioning: [],

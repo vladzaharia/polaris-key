@@ -463,6 +463,18 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     },
   },
   {
+    thing: "The retired product.adminGroup manifest field (ST-32.6)",
+    reason:
+      "Removed in 0.9: it gave nothing, and the validator answers invalid_admin_group at either spelling. Console SSO rules map an IdP group to a role.",
+    shows: "Platform → Members",
+    covers: {
+      ids: [
+        "manifest:product:product.adminGroup",
+        "manifest:product:adminGroup",
+      ],
+    },
+  },
+  {
     thing: "Deprecated manifest spellings (ST-19)",
     reason:
       "A second spelling of a field that has a canonical one (a flat product document, tiers outside licensing:, a release body without the release: wrapper, catalog for entries). Each is still read, with today's precedence, and pkey validate warns with deprecated_spelling; the setting lives at the canonical spelling.",

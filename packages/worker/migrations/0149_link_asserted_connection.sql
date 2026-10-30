@@ -1,0 +1,13 @@
+-- ST-32.3 (security review SEC-ST32 B1): which connection asserted a link's access facts.
+--
+-- `account_links.asserted_connection_id`: the id of the connection whose sign-in last wrote the
+-- link's `groups_json`, `claims_json` and `asserted_at` (`console-idp` for the console IdP's own
+-- sign-in). Several connections may share one issuer and so one link row; the console.access rules
+-- read those facts only when this id is the rule's own connection. NULL: not known, so no rule
+-- reads them (fail closed). Written in the same UPDATE as the facts, by Identity only.
+--
+-- Expand only: the Worker deployed before this never names it. Rollback:
+-- scripts/rollback/0149_link_asserted_connection.down.sql.
+--
+-- ONE statement per file (R11-04).
+ALTER TABLE account_links ADD COLUMN asserted_connection_id TEXT;

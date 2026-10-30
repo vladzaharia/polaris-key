@@ -21,9 +21,8 @@
       "deprecated": true
     },
     "adminGroup": {
-      "$ref": "#/$defs/groupName",
-      "description": "Deprecated: write product.adminGroup. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
-      "deprecated": true
+      "not": {},
+      "$comment": "Removed in 0.9 (invalid_admin_group). Map the IdP group in Platform → Members (console.access)."
     },
     "compatMin": {
       "$ref": "#/$defs/semver",
@@ -544,7 +543,10 @@
       "properties": {
         "slug": { "$ref": "#/$defs/slug" },
         "name": { "$ref": "#/$defs/displayName" },
-        "adminGroup": { "$ref": "#/$defs/groupName" },
+        "adminGroup": {
+          "not": {},
+          "$comment": "Removed in 0.9 (invalid_admin_group). Map the IdP group in Platform → Members (console.access)."
+        },
         "compatMin": { "$ref": "#/$defs/semver" },
         "compatMax": { "$ref": "#/$defs/semver" },
         "defaultDeviceLimit": {

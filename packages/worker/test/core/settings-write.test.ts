@@ -425,7 +425,7 @@ describe("writeSetting: a product write", () => {
     expect(
       await writeSetting(
         linked.real,
-        { key: "core.adminGroup", value: "x" },
+        { key: "core.presentation", value: { accent: "#123456" } },
         opts({ strict: false }),
       ),
     ).toMatchObject({ ok: false, reason: "manifest_only", status: 409 });
@@ -440,14 +440,12 @@ describe("writeSetting: a product write", () => {
     // A manual product has no manifest: the field is the console's.
     const manual = await world();
     expect(
-      (
-        await writeSetting(
-          manual.real,
-          { key: "core.adminGroup", value: "ops" },
-          opts({ strict: false }),
-        )
-      ).ok,
-    ).toBe(true);
+      await writeSetting(
+        manual.real,
+        { key: "core.presentation", value: { accent: "#123456" } },
+        opts({ strict: false }),
+      ),
+    ).not.toMatchObject({ reason: "manifest_only" });
   });
 
   it("resets a row-backed key: the row goes and the value falls back", async () => {

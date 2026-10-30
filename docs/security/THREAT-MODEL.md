@@ -7467,7 +7467,7 @@ here). Session only (no `tokenScope`). Read-only.
 - **No slug oracle in `/access/admins`.** The product is never looked up. A product's admins are read only when
   the caller already holds an area of `product:<slug>` (`can()`); every other caller, for a real or a
   nonexistent slug, gets the Superadmins alone. Equal answers are tested. (The dispatcher's own 404-before-403
-  on `/products/:slug/*` is the older behaviour and unchanged.)
+  on `/products/:slug/*` was the older behaviour; ST-31.8 closed it, see the consolidation below.)
 - **Real Superadmins.** The source is `consoleRootHolders` (the principal's own rule) plus stored platform
   Superadmin bindings, both on active accounts. The old rule counted every recent `admin.signin` actor, which
   could name a person the principal no longer treats as a Superadmin.
@@ -7535,6 +7535,118 @@ answers "may this member act" and not "may this member give that away".
   long it lasts; the handler owns that.
 - **D-g: no self-grants.** A grant whose grantee is the granter is refused. The engine cannot see
   the grantee, so the handlers enforce it (ST-31.6, below).
+
+### Console SSO rules (ST-32)
+
+A `console.access` rule turns a sign-in through an operator connection into a role (Product admin
+or Console access), and the retired `adminGroup` manifest field is replaced by offers that
+convert a product's old group into a rule. What can be made to satisfy a rule, who may write one,
+and what the console shows about the people it would match are what an attacker aims at. The
+section covers the matcher, the operator connections it trusts, the preview and offers, and the
+write route.
+
+**Rule hijack (ST-32.3).** `console.access` rules turn a sign-in through an operator connection
+into a grant, so what can be made to satisfy a rule is what an attacker aims at. The grant is
+computed on every request (`core/rbac/ruleGrants.ts`), never stored:
+
+- Only a Superadmin with a step-up writes the rules. The writer refuses a connection that is not
+  an operator connection and a `domain` rule without a verified, enforced domain. A rule grants
+  Product admin or Console access; `evaluate` never returns Superadmin or Platform admin.
+- A rule reads only the account's link through the rule's own connection: the issuer's link,
+  `kind = 'oidc'`, with `strong_at` set, and only while `asserted_connection_id` is that
+  connection. Connections that share an issuer share a link row, so each sign-in records which
+  connection wrote the groups, claims and `asserted_at`; a link last written by another connection
+  (a product-scope one, say) or by none is not read. An email-code link never counts.
+- A link counts for 8 h from `asserted_at`, the root rule's bound. A stale, future or missing
+  value grants nothing, so removing a person at the IdP ends the grant at their next sign-in or
+  after 8 h. Every sign-in rewrites groups, claims, `asserted_at` and the connection in one
+  statement, so a dropped group or claim cannot outlive the sign-in that dropped it, and a
+  sign-in that maps neither still refreshes `asserted_at`. The console IdP has no claim map, so
+  its sign-in stores no claims.
+- A `domain` rule matches only an address the IdP marked verified, on a domain still enforced for
+  the connection. An address confirmed by an email code is not passed to the matcher.
+- A connection that stops qualifying (disabled, audience narrowed, issuer off the allowlist) grants
+  nothing at the next request. A deleted rule stops granting within the 30 s settings cache.
+- A document that cannot be read or parsed grants nothing.
+
+**Operator connections and audience (ST-32.4).** A rule trusts only a connection a Superadmin has
+made an operator connection, so who can create or widen one is part of the rule's defence.
+
+- A platform connection's audience is `customers`, `operators` or `both`. Only a Superadmin
+  creates a connection that covers operators, widens one to cover them, or changes the issuer,
+  client, JWKS, claim map, secret or audience of one that does (`403 audience_not_available`,
+  `403` for the other edits). A Platform admin keeps the narrowing edits on such a connection:
+  rename, disable, remove a domain, turn enforcement off and delete (a connection with no links).
+- Every route that writes `identity_connections` requires a step-up and excludes tokens. Each
+  change to an operator connection is one batch with an `rbac.operator_connection` audit row whose
+  shape holds whether a secret exists, never the secret.
+- A domain routes an operator's console email to the connection only when it is verified there,
+  the connection is active, its audience covers operators and its issuer is on the operator
+  allowlist. The route depends on the domain alone, so the answer is the same for a known and an
+  unknown address, and the customer card never sees an operators-only connection.
+- The operator allowlist is checked where the grant is evaluated, not at the write, so a
+  connection whose issuer is not on the allowlist grants nothing at the next request.
+
+Residual (ST-32.4):
+
+- A domain a Platform admin verified on a customers connection stays verified when a Superadmin
+  later widens that connection's audience, and the widening's audit row does not list it.
+  Review the connection's domains when you widen it.
+- Domain add, verify and enforce on an operator connection are audited as
+  `identity.connection.domain_*` rows, with no extra `rbac.operator_connection` row.
+- An update does not condition on the audience it read, so a Platform admin's concurrent edit can
+  write back the old, narrower audience over a Superadmin's widening. It only narrows.
+- A Platform admin can claim a domain on a customers connection first, so a Superadmin's
+  verification of it on an operator connection answers `taken`. This costs availability only.
+
+**Rule preview and offers (ST-32.5).** `POST /access/rules/preview` and the `admin_group` offers sit
+on the Members area. The preview hands the draft to `ruleMatchesFor`, the call sign-in makes, so it
+cannot disagree with a grant. It checks the draft as the write does (operator connection, enforced
+domain), is rate-limited and reads at most 300 accounts. It names only a person the roster already
+names (member id, display name, address) and never an account id. People who hold no role are never
+named; their count (`otherLinks`), the scan size and `truncated` go to a Superadmin only. Even so,
+a Platform admin learns, for roster members, whether each matches a draft group, claim or
+verified-email domain. Accept is the `console.access` write (Superadmin, step-up, typed confirmation, reason). The body
+must carry the group the Superadmin saw: a changed `admin_group` is a 409 `offer_changed`, and the
+group is recorded in the outcome. The id is minted by the server, a rule already stored is not
+appended twice, and the default areas leave out `members`; every Superadmin is mailed. An
+offer's outcome is an `rbac.admin_group_offer` row on both trails, written once. Tests:
+`test/surfaces/console/accessRules.test.ts`.
+
+**The rule list's read and write (ST-32.7).** `GET /access/rules` is on the Members area, so a
+Platform admin reads the rules (a group, domain or claim and the grant, never a person or an
+account id) and the operator connections with their enforced domains. `PUT /access/rules` replaces
+the list and is a Superadmin's alone (`403 superadmin_only` before anything is read). It is the
+`writeConsoleAccess` path: a step-up, the typed `console.access` confirmation, a reason and the
+stored version (a stale one is `409 version_conflict`); the server mints every new rule id and
+refuses one the caller names that is not stored; each rule is checked as sign-in checks it (an
+operator connection, a verified and enforced domain). One `rbac.access_rules` row is written, then
+every Superadmin is mailed (`accessRulesNotice`), a removal or a clear included. The console's
+editor offers only operator connections and enforced domains, but the Worker is what refuses.
+Tests: `test/surfaces/console/accessRules.test.ts`.
+
+**Residual (ST-32).**
+
+- A group or claim the IdP asserts is trusted as asserted, so whoever administers an operator
+  IdP can mint what its rules match. An attribute the IdP lets its users edit, mapped as a group
+  or claim, is only as trustworthy as that IdP's admin settings. That is why making a connection
+  an operator connection is a Superadmin write with a step-up.
+- A Platform admin can probe, 60 drafts per 5 minutes, which roster members carry a given IdP
+  group, claim or domain. The roster shows roles, not IdP facts.
+- The notice's before and after reads sit outside the write. A concurrent Superadmin write
+  between them can skew the notice's change kind (added or changed) and rule count. The audit
+  row is exact.
+- The notice uses the priority path, which skips the per-recipient hourly mail budget. It is
+  bounded by the write route's rate limit (60 writes per 5 minutes) and the recipient cap, and
+  only a Superadmin with a step-up reaches it. An add combined with an edit is worded "changed".
+- Accepting an offer writes the rule and then the offer's outcome in two commits. If the second
+  fails the offer stays open, and a retry finds the stored rule and does not append it again. A
+  dismiss racing an accept can leave the offer reading dismissed beside the rule.
+- A preview that meets a malformed link row answers 500 for the preview only. Sign-in treats the
+  same row as no grant.
+
+Tests: `test/core/ruleGrants.test.ts`, `test/surfaces/console/accessRules.test.ts`,
+`test/surfaces/console/connectionsAdmin.test.ts`.
 
 ### Console role bindings: writes (ST-31.6)
 
@@ -7756,6 +7868,25 @@ verified address converts the invite (intended). At most 20 invites convert per 
 failures are silent to the caller, by design (no oracle on why).
 
 **Tests:** `test/surfaces/console/consoleInviteConversion.test.ts`; `identityErasureFence`.
+
+### Console members and roles: consolidation (ST-31.18)
+
+One reading of ST-31.2 to 31.9 for a reviewer. The rows above hold the detail; this section names
+the threats and the control that stops each. Admin-facing page: `operate/console/members`.
+
+| Threat                                                                                    | Control                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Test                                               |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **Grant escalation**: a member gives themselves, a peer or a stranger more than they hold | `grantRules.ts` (G1 to G4): coverage is a union of the granter's own grants; Superadmin, Platform admin and `products:*` only a Superadmin gives; an edit is `mayChange`, so a rewrite cannot drop areas the granter lacks; a widening needs step-up and L2 confirm for the top roles; D-g refuses a grant to the granter's own account, address or any address on it; a `products:*` row is revoked or narrowed by a Superadmin alone                                                                                                                                                                                                                                                                      | `rbacGrantRules`, `consoleBindingWrites`           |
+| **Invite takeover**: a forwarded or guessed invite becomes a role for someone else        | The link carries an address only. Conversion needs the address to be proven at this sign-in: the IdP vouches for it (operator connection) or, for a passkey sign-in, it is the account's own verified primary email (no IdP assertion, no ASCII guard on that path, and only SM-6 eligible grants: Console access, or Product admin on one named product). Either way it must be the account's verified primary email on exactly one active account (the sole-claimant check), an unexpired row, and the inviter re-checked as still able to give that role. A platform role or `products:*` converts only through the operator connection, never a passkey alone (SM-6, SM-7). A failed check says nothing | `consoleInviteConversion`                          |
+| **Invite flooding and enumeration**                                                       | 20 addresses a request, 100 a member an hour counted per valid address whether or not it is a member, 10 operator notices per recipient an hour; an invitee is named in audit by an opaque reference, never the address                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `consoleInvites`                                   |
+| **Slug oracle**: a member of one product learns which other product slugs exist           | **404-before-403 is closed.** ST-31.8 made `/products/:slug/*` answer an unknown slug with the same 403 (scope and area) a real, unreachable product gets, unless the caller holds a scope that reaches every product (Superadmin, `products:*`), who can list them anyway. Pinned in `console/api.ts` and `consoleInviteConversion.test.ts`. `/access/admins` never looks the product up                                                                                                                                                                                                                                                                                                                   | `consoleInviteConversion`, `consoleProductMembers` |
+| **Roster as a lookup**: reading people who hold no role                                   | Only people with a binding appear; a person is a random member id, never an account id (`accountIdBoundary`); Platform admins are not named on a product's page; a Product admin cannot read the platform roster                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `consoleMembers`, `accountIdBoundary`              |
+
+**Residual, as accepted.** Whoever controls an invited mailbox and can sign in with that address
+converts the invite; cancel one sent to a wrong address. The roster is capped (500 members, 500
+invites) and the page says so; a member past the cap is still found by id. A removed member's open
+session works for up to 30 s (the live-check cache). Passkey conversion trusts the account's verified primary email without an IdP assertion; it is limited to SM-6 eligible grants and the sole-claimant check applies. L2 notices go on the priority path and skip the 10-an-hour recipient budget; only a Superadmin can issue an L2 grant, so the bypass is theirs alone. Console access can be granted by any holder of `members` on a product but revoked only with platform `members`; this cannot happen in practice, because the product route fixes the role to Product admin and granting Console access through `POST /bindings` needs platform `members`, but the engine does not enforce it itself. Timing: a real unreachable product costs a
+context load and a budgeted audit write that an unknown slug does not, a few queries of difference.
 
 ### Break-glass (ST-30c.1)
 
@@ -8019,6 +8150,46 @@ revoking the token recalls no bundle.
 
 **Residual.** A holder without a grant can still make requests that write at most the budgeted rows.
 A token whose holder holds no grant cannot end itself (`current` is not a no-grant row, so 403): the holder revokes it in the console instead, where `GET /me/personal-tokens` and `DELETE /me/personal-tokens/:id` are no-grant rows (session only, own tokens only, a revoke only narrows, no product data read), so a holder with no grants can still find and end their own tokens. Two concurrent revokes of one token write one `account_token.revoke` row (the UPDATE's change count decides).
+
+### Members: sign out everywhere (ST-34.12)
+
+`POST /manage/api/members/<memberId>/sign-out` (and its `GET` dry run) ends one member's console access
+without touching their grants. It ends the member's `account_sessions` rows, writes the member's
+`admin-revoked` mark (the one a sign-out writes, keyed by the member id and by each IdP subject of the member's console links, so a
+break-glass session, whose `sub` is the subject, ends too), and revokes the account's `admin`-scope
+personal tokens (reason `access_removed`). The session ends within 30 s on every isolate (the console's
+live check is cached that long); the admin tokens end at once. `packages` tokens are left alone. It is audited as `rbac.signout`
+and the member is mailed.
+
+- **Who may.** Area `members`, level `edit`, platform scope, on the `GET` as well as the `POST`, because the
+  preview names token labels. No step-up: it only narrows (G4). The caller must pass `mayRevoke` over every
+  grant the target holds, and a holder of the root rule is signed out by a Superadmin alone. A member cannot
+  use it on themselves.
+- **What the answer says.** An unknown, stale, forged or erased member is the same 404, found by computing
+  each candidate's member id (as `GET /members/<id>`), so the route is no lookup for anyone who holds no
+  binding. A body names a token by label and times, never by id, hint or value, and never names an account id.
+- **Limits.** The mark is the existing one, so a cookie minted before the sign-out ends and one minted after
+  it does not. The account's sessions are shared with the portal, so a portal session ends too. A later
+  change to the mark's format changes its one writer, and this route follows it.
+
+### Admin-scope personal tokens: consolidation (ST-34.13)
+
+One view of what ST-34 added, for the review that closes it. The detail is in the subsections named.
+
+- **The credential (A17, AT-2, T7).** An `admin` `pkeyp_` token is minted only by a console-approved
+  `pkey login` (step-up on the card; ST-34.5, 34.6), lives 7 days (30 at most) and is stored hashed.
+  It reaches the flagged admin routes alone, never the registry host, and holds what its owner's roles
+  allow at the time of use, never a write that needs a step-up (ST-34.3; the footnote on `reference/roles`).
+  Every use is audited (`account_token.used`). The CLI keeps it in the credential store (ST-34.7).
+- **Ending it.** The owner revokes it (ST-34.4), a Superadmin or a merge revokes it (ST-34.1), and
+  "Sign out everywhere" revokes all of a member's `admin` tokens at once and ends their console sessions
+  within 30 s (ST-34.12). `packages` tokens are not touched by any of these.
+- **Break-glass (ST-34.13).** A break-glass session has no account; its `sub` is the IdP subject. "Sign
+  out everywhere" therefore also writes the sign-out mark under each IdP subject of the member's console
+  links, so that session ends with the rest (test: `consoleMemberSignOut`). Found in the ST-30c.8 review.
+- **Residual.** A stolen admin session (T7) stays the larger risk; a stolen admin token is bounded by the
+  holder's roles, the flagged routes and its expiry. A break-glass cookie minted for a subject the member
+  has no console link for is not reached by the member's sign-out.
 
 ### Console roles read feeds, and creators manage what they make (ST-31.9)
 
@@ -10725,7 +10896,7 @@ plans/I-27.md §6: one row per threat, each written by the package that builds i
   audience is always `customers` (a table CHECK), and it never vouches for an address, so its
   identities always meet the email gate's code (`connectionVouchesForEmail`, tests). An operator
   audience (`operators`, `both`) is a platform connection's only, and a console write of either
-  is refused until ST-32's Superadmin gate; the env seed is exempt.
+  needs a Superadmin with a step-up (ST-32.4); the env seed is exempt.
 - **Domain takeover or lapse (I-30).** A domain counts only once a TXT record at
   `_pkey-challenge.<domain>` holds `pkey-domain-verification=<token>`, with one random token per
   connection and domain, so one connection's record proves nothing for another
@@ -10997,8 +11168,7 @@ operator session, a stolen session, and a hostile issuer an operator is talked i
   document whose endpoints point elsewhere is refused. A row is written only after discovery
   answered. Test: private, loopback, link-local, port, credential, query and non-https issuers
   make no request.
-- **Audience.** `operators` and `both` are refused (403 `audience_not_available`) until ST-32's
-  Superadmin gate exists. A seeded row keeps its audience; its issuer and client cannot move.
+- **Audience.** `operators` and `both` are a Superadmin's alone (403 `audience_not_available`, ST-32.4). A seeded row keeps its audience; its issuer and client cannot move.
 - **Audit.** Each change is one batch with its `platform_audit` row
   (`identity.connection.create|update|rotate_secret|enable|disable|delete|domain_*`), so a change
   cannot land unrecorded (a domain's add, release and enforce included; a verification that finds

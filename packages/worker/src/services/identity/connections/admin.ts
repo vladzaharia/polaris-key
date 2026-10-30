@@ -12,9 +12,13 @@
  *     capped, timed out), so a hostile issuer URL cannot reach an internal address.
  *   - **Secrets are sealed and never read back.** The client secret goes under PLATFORM_KEK with
  *     `connectionSecretContext(id)`; every view says only whether one is set.
- *   - **No operator audience yet.** `operators` and `both` are refused until ST-32's Superadmin
- *     gate lands (plans/I-27.md §2.3); a row seeded with either keeps it while the console
- *     changes nothing else about the audience.
+ *   - **Operator audiences are Superadmin-only.** An `operators` or `both` connection is what
+ *     console access rules trust, so only a Superadmin (the route already demands a step-up) may
+ *     give a connection either audience, and the same holds for every change to one: issuer,
+ *     client, JWKS, claim map, secret, enabling, and its domain claims (ST-28 SM-2; ST-32.4). A
+ *     product admin never reaches these routes, and `superadmin` defaults to false here, so a
+ *     caller that forgets it is refused. Each such change also writes a `rbac.operator_connection`
+ *     audit row in its batch.
  *   - **Every change is one batch with its `platform_audit` row**, so a change cannot land
  *     unrecorded. The audit text never carries a secret or anything derived from one.
  */
@@ -411,14 +415,52 @@ function clean(input: ConnectionInput, creating: boolean): Clean | Refusal {
   return out;
 }
 
-const AUDIENCE_WAITS =
-  "Operator sign-in through a connection needs the Superadmin gate, which is not built yet.";
+const AUDIENCE_NEEDS_SUPERADMIN =
+  "Only a Superadmin can give a connection an operator audience.";
+const OPERATOR_CONNECTION_NEEDS_SUPERADMIN =
+  "Only a Superadmin can change a connection that signs operators in.";
 
-function audienceRefusal(audience: unknown, current?: string): Refusal | null {
-  if (audience === undefined || audience === "customers") return null;
+/** An audience that lets the connection sign operators in. */
+const coversOperators = (audience: string): boolean =>
+  audience === "operators" || audience === "both";
+
+/** A Superadmin changed what operators may sign in through: the audit row SM-2 names. */
+function operatorAuditRow(
+  actor: AuditActor,
+  now: number,
+  id: string,
+  summary: string,
+  before?: Record<string, unknown>,
+  after?: Record<string, unknown>,
+): DbStatement {
+  return auditRow(
+    actor,
+    now,
+    "rbac.operator_connection",
+    id,
+    summary,
+    before,
+    after,
+  );
+}
+
+function audienceRefusal(
+  audience: unknown,
+  current: string | undefined,
+  superadmin: boolean,
+): Refusal | null {
+  if (audience === undefined) return null;
   if (audience === current) return null;
+  if (audience === "customers") {
+    // Narrowing an operator connection is still a change to one: the caller checks it.
+    return null;
+  }
   if (audience === "operators" || audience === "both") {
-    return refuse(403, "audience_not_available", AUDIENCE_WAITS, ["audience"]);
+    return superadmin
+      ? null
+      : refuse(403, "audience_not_available", AUDIENCE_NEEDS_SUPERADMIN, [
+          "audience",
+        ]);
   }
   return refuse(422, "invalid_audience", "Audience is customers.", [
     "audience",
@@ -570,10 +612,13 @@ export async function createConnection(
   input: ConnectionInput,
   actor: AuditActor,
   now: number,
-  opts: { fetch?: OidcFetch } = {},
+  opts: { fetch?: OidcFetch; superadmin?: boolean } = {},
 ): Promise<{ ok: true; connection: ConnectionView } | Refusal> {
-  const aud = audienceRefusal(input.audience);
+  const superadmin = opts.superadmin === true;
+  const aud = audienceRefusal(input.audience, undefined, superadmin);
   if (aud) return aud;
+  const audience =
+    typeof input.audience === "string" ? input.audience : "customers";
   const c = clean(input, true);
   if ("ok" in c) return c;
   const count = await db.first<{ n: number }>(
@@ -609,6 +654,16 @@ export async function createConnection(
     }
   }
   const claimMap = c.claimMap ?? {};
+  const created = auditShape({
+    label: c.label!,
+    issuer: c.issuer!,
+    clientId: c.clientId!,
+    jwksUri: c.jwksUri ?? null,
+    audience,
+    claimMap,
+    status: c.status ?? "active",
+    hasSecret: sealed !== null,
+  });
   try {
     await db.batch([
       {
@@ -616,7 +671,7 @@ export async function createConnection(
                 (id, scope, label, issuer, client_id, client_secret_sealed, client_secret_ref,
                  jwks_uri, audience, claim_map_json, exchange, status, source, created_at,
                  modified_at)
-              VALUES (?, 'platform', ?, ?, ?, ?, NULL, ?, 'customers', ?, 0, ?, 'console', ?, ?)`,
+              VALUES (?, 'platform', ?, ?, ?, ?, NULL, ?, ?, ?, 0, ?, 'console', ?, ?)`,
         params: [
           id,
           c.label!,
@@ -624,6 +679,7 @@ export async function createConnection(
           c.clientId!,
           sealed,
           c.jwksUri ?? null,
+          audience,
           JSON.stringify(claimMap),
           c.status ?? "active",
           now,
@@ -637,17 +693,20 @@ export async function createConnection(
         id,
         `Added the connection ${c.label}`,
         undefined,
-        auditShape({
-          label: c.label!,
-          issuer: c.issuer!,
-          clientId: c.clientId!,
-          jwksUri: c.jwksUri ?? null,
-          audience: "customers",
-          claimMap,
-          status: c.status ?? "active",
-          hasSecret: sealed !== null,
-        }),
+        created,
       ),
+      ...(coversOperators(audience)
+        ? [
+            operatorAuditRow(
+              actor,
+              now,
+              id,
+              `Added ${c.label} as a connection that signs operators in`,
+              undefined,
+              created,
+            ),
+          ]
+        : []),
     ]);
   } catch (e) {
     if (isUnique(e)) {
@@ -671,7 +730,7 @@ export async function updateConnection(
   input: ConnectionInput,
   actor: AuditActor,
   now: number,
-  opts: { fetch?: OidcFetch } = {},
+  opts: { fetch?: OidcFetch; superadmin?: boolean } = {},
 ): Promise<{ ok: true; connection: ConnectionView } | Refusal> {
   if (!CONNECTION_ID_RE.test(id))
     return refuse(404, "not_found", "No such connection.");
@@ -679,10 +738,33 @@ export async function updateConnection(
   if (!before || before.scope !== PLATFORM_SCOPE) {
     return refuse(404, "not_found", "No such connection.");
   }
-  const aud = audienceRefusal(input.audience, before.audience);
+  const superadmin = opts.superadmin === true;
+  const aud = audienceRefusal(input.audience, before.audience, superadmin);
   if (aud) return aud;
   const c = clean(input, false);
   if ("ok" in c) return c;
+  const nextAudience =
+    typeof input.audience === "string" ? input.audience : before.audience;
+  // A change to a connection that signs operators in (before or after) is a Superadmin's. Only
+  // a new label, or switching it off, is open to a Platform admin.
+  const operatorTouch =
+    coversOperators(before.audience as string) || coversOperators(nextAudience);
+  if (operatorTouch && !superadmin) {
+    const moved =
+      nextAudience !== before.audience ||
+      (c.issuer !== undefined && c.issuer !== before.issuer) ||
+      (c.clientId !== undefined && c.clientId !== before.clientId) ||
+      (c.jwksUri !== undefined && c.jwksUri !== before.jwksUri) ||
+      (c.claimMap !== undefined &&
+        JSON.stringify(c.claimMap) !== JSON.stringify(before.claimMap)) ||
+      c.clientSecret !== undefined ||
+      (c.status === "active" && before.status !== "active");
+    if (moved) {
+      return refuse(403, "forbidden", OPERATOR_CONNECTION_NEEDS_SUPERADMIN, [
+        "audience",
+      ]);
+    }
+  }
   // An env-seeded row keeps its issuer and client: they are the provider the links are keyed to.
   const moves =
     (c.issuer && c.issuer !== before.issuer) ||
@@ -731,7 +813,7 @@ export async function updateConnection(
     issuer: c.issuer ?? before.issuer,
     clientId: c.clientId ?? before.clientId,
     jwksUri: c.jwksUri === undefined ? before.jwksUri : c.jwksUri,
-    audience: before.audience as string,
+    audience: nextAudience as string,
     claimMap: c.claimMap ?? before.claimMap,
     status: c.status ?? before.status,
     hasSecret: sealed !== undefined || before.hasSealedSecret,
@@ -744,6 +826,7 @@ export async function updateConnection(
     "jwks_uri = ?",
     "claim_map_json = ?",
     "status = ?",
+    "audience = ?",
     "modified_at = ?",
   ];
   const params: (string | number | null)[] = [
@@ -753,6 +836,7 @@ export async function updateConnection(
     next.jwksUri,
     JSON.stringify(next.claimMap),
     next.status,
+    next.audience,
     now,
   ];
   if (sealed !== undefined) {
@@ -790,6 +874,18 @@ export async function updateConnection(
         was,
         auditShape(next),
       ),
+      ...(operatorTouch
+        ? [
+            operatorAuditRow(
+              actor,
+              now,
+              id,
+              `Changed ${next.label}, a connection that signs operators in`,
+              was,
+              auditShape(next),
+            ),
+          ]
+        : []),
     ]);
   } catch (e) {
     if (isUnique(e)) {
@@ -869,7 +965,7 @@ export async function changeDomain(
   action: DomainAction,
   actor: AuditActor,
   now: number,
-  opts: { fetch?: OidcFetch } = {},
+  opts: { fetch?: OidcFetch; superadmin?: boolean } = {},
 ): Promise<
   | {
       ok: true;
@@ -883,6 +979,18 @@ export async function changeDomain(
     : null;
   if (!conn || conn.scope !== PLATFORM_SCOPE)
     return refuse(404, "not_found", "No such connection.");
+  // A verified, enforced domain on an operator connection is what a `domain` rule matches: claiming,
+  // verifying and enforcing one is a Superadmin's. Releasing or relaxing one only narrows it.
+  const operatorConn = coversOperators(conn.audience as string);
+  const widens =
+    action.op === "add" ||
+    action.op === "verify" ||
+    (action.op === "enforce" && action.enforce);
+  if (operatorConn && widens && opts.superadmin !== true) {
+    return refuse(403, "forbidden", OPERATOR_CONNECTION_NEEDS_SUPERADMIN, [
+      "domain",
+    ]);
+  }
   const audit = (op: DomainAction["op"], domain: string, summary: string) =>
     auditRow(actor, now, DOMAIN_AUDIT[op], id, summary, undefined, { domain });
   let verify: VerifyDomainResult["status"] | undefined;

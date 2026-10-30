@@ -142,6 +142,29 @@ export interface Member {
   roles: MemberRole[];
 }
 
+/** One admin token a sign-out would stop: label and last use only, never an id or the token. */
+export interface SignOutToken {
+  label: string;
+  /** Epoch seconds; `null` when it was never used. */
+  lastUsedAt: number | null;
+  expiresAt: number;
+}
+
+/** `GET /manage/api/members/<id>/sign-out`: the dry run (ST-34.12). */
+export interface SignOutPreview {
+  memberId: string;
+  tokens: SignOutToken[];
+}
+
+/** `POST /manage/api/members/<id>/sign-out`. */
+export interface SignOutResult {
+  ok: true;
+  memberId: string;
+  sessions: number;
+  tokens: number;
+  notified: boolean;
+}
+
 export interface MemberInvite {
   bindingId: string;
   email: string;
@@ -151,6 +174,112 @@ export interface MemberInvite {
   invitedBy: { name: string | null } | null;
   sentAt: number;
   expiresAt: number | null;
+}
+
+// ── SSO rules (ST-32.7: Platform → Members → SSO rules) ─────────────────────────────
+
+/** One matcher: exactly one of `group`, `domain`, `claim` beside the connection. */
+export type RuleWhen = { connection: string } & (
+  | { group: string }
+  | { domain: string }
+  | { claim: { name: string; equals: string } }
+);
+
+/** What a rule gives: Product admin on one product (with areas) or Console access. */
+export interface RuleGrantBody {
+  role: "product_admin" | "console_access";
+  scope: string;
+  areas?: AreaId[];
+}
+
+/** One stored rule. A draft has no `id`; the Worker mints it. */
+export interface AccessRuleBody {
+  id?: string;
+  label?: string;
+  when: RuleWhen;
+  grant: RuleGrantBody;
+}
+
+/** A connection a rule may name, with the domains it has verified and enforced. */
+export interface RuleConnection {
+  id: string;
+  label: string;
+  domains: string[];
+}
+
+/** `GET /manage/api/access/rules`. */
+export interface AccessRulesView {
+  rules: (AccessRuleBody & { id: string })[];
+  version: number;
+  /** The stored document does not parse: no edit is offered. */
+  unreadable: boolean;
+  /** The caller is a Superadmin. */
+  editable: boolean;
+  connections: RuleConnection[];
+}
+
+/** `POST /manage/api/access/rules/preview`. */
+export interface RulePreview {
+  members: {
+    memberId: string;
+    name: string;
+    email: string;
+    grant: { role: string; scope: string; areas: AreaId[] | null };
+  }[];
+  matchedMembers: number;
+  /** People with no role who also match; a Superadmin only. */
+  otherLinks: number | null;
+  scanned: number | null;
+  truncated: boolean | null;
+  incomplete: boolean;
+}
+
+/** `PUT /manage/api/access/rules`. */
+export interface AccessRulesWrite {
+  rules: AccessRuleBody[];
+  expectedVersion: number;
+  reason: string;
+  /** The typed confirmation: the setting's key. */
+  confirm: "console.access";
+}
+
+export interface AccessRulesSaved {
+  ok: true;
+  rules: AccessRulesView["rules"];
+  version: number;
+  notified: { sent: number; of: number };
+}
+
+/** `GET /manage/api/access/offers`: a product's `admin_group` the rules tab can turn into a rule. */
+export interface AccessOffer {
+  product: string;
+  name: string;
+  group: string;
+}
+
+export interface AccessOffersView {
+  offers: AccessOffer[];
+}
+
+/** `POST /manage/api/access/offers/<slug>`. Accept names the group the Superadmin saw. */
+export type AccessOfferDecision =
+  | { action: "dismiss" }
+  | {
+      action: "accept";
+      group: string;
+      connection: string;
+      areas: AreaId[];
+      label?: string;
+      reason: string;
+      confirm: "console.access";
+    };
+
+export interface AccessOfferDecided {
+  ok: true;
+  product: string;
+  outcome: "accepted" | "dismissed";
+  ruleId?: string;
+  notified?: { sent: number; of: number };
 }
 
 export interface MembersView {
@@ -1269,6 +1398,34 @@ export const platformApi = {
     ),
   /** Platform → Members: everyone with a role, the root rule and the pending invites. */
   members: () => call<MembersView>("/manage/api/members"),
+  /** The SSO rules, their version and the operator connections a rule may name. */
+  accessRules: () => call<AccessRulesView>("/manage/api/access/rules"),
+  /** Who a draft rule would match (writes nothing). */
+  previewAccessRule: (rule: AccessRuleBody) =>
+    call<RulePreview>("/manage/api/access/rules/preview", {
+      method: "POST",
+      body: JSON.stringify({ rule }),
+    }),
+  /** Replace the rule list. A Superadmin, a recent sign-in, a reason and the typed key. */
+  replaceAccessRules: (body: AccessRulesWrite) =>
+    call<AccessRulesSaved>("/manage/api/access/rules", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  /** The open conversion offers: products whose old `admin_group` is not yet a rule. */
+  accessOffers: () => call<AccessOffersView>("/manage/api/access/offers"),
+  /** Accept (a Superadmin, a recent sign-in, a reason, the typed key) or dismiss one offer. */
+  decideAccessOffer: (slug: string, body: AccessOfferDecision) =>
+    call<AccessOfferDecided>(`/manage/api/access/offers/${enc(slug)}`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** Dismiss every open offer; each is audited under its own product. */
+  dismissAccessOffers: () =>
+    call<{ ok: true; dismissed: string[] }>("/manage/api/access/offers", {
+      method: "POST",
+      body: JSON.stringify({ action: "dismiss_all" }),
+    }),
   /** Invite addresses (`emails`) to a role. */
   inviteMembers: (body: GrantBody & { emails: string[] }) =>
     call<InviteResult>("/manage/api/bindings", {
@@ -1294,6 +1451,14 @@ export const platformApi = {
   revokeBinding: (id: string) =>
     call<{ ok: true }>(`/manage/api/bindings/${enc(id)}`, {
       method: "DELETE",
+    }),
+  /** What signing a member out everywhere would stop (writes nothing). */
+  memberSignOutPreview: (memberId: string) =>
+    call<SignOutPreview>(`/manage/api/members/${enc(memberId)}/sign-out`),
+  /** End a member's console sessions and admin tokens (packages tokens stay). */
+  signOutMember: (memberId: string) =>
+    call<SignOutResult>(`/manage/api/members/${enc(memberId)}/sign-out`, {
+      method: "POST",
     }),
   /**
    * Product → Settings → Members (ST-31.14): who holds access to one product. The Worker leaves

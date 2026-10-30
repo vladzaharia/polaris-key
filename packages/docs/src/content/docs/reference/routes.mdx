@@ -16,6 +16,12 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | Method | Path | Service | Summary |
 | --- | --- | --- | --- |
 | GET | `/manage/api/access/admins` | admin | Who can give the caller access to an area |
+| POST | `/manage/api/access/offers/{slug}` | admin | Accept or dismiss one admin group offer |
+| GET | `/manage/api/access/offers` | admin | List the open admin group conversion offers |
+| POST | `/manage/api/access/offers` | admin | Dismiss every open admin group offer |
+| POST | `/manage/api/access/rules/preview` | admin | Preview who a draft SSO rule would give access to |
+| GET | `/manage/api/access/rules` | admin | List the SSO rules and the connections a rule may name |
+| PUT | `/manage/api/access/rules` | admin | Replace the SSO rule list |
 | DELETE | `/manage/api/account-tokens/{tokenId}` | admin | Revoke a person's personal token |
 | GET | `/manage/api/account-tokens` | admin | List people's personal tokens |
 | GET | `/manage/api/attention` | admin | What needs the operator across every product the session can see |
@@ -31,6 +37,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | DELETE | `/manage/api/me/personal-tokens/current` | admin | Revoke the personal token you are presenting |
 | GET | `/manage/api/me/personal-tokens` | admin | List your own personal tokens |
 | PUT | `/manage/api/me/prefs` | admin | Set the signed-in operator's console preferences |
+| GET | `/manage/api/members/{memberId}/sign-out` | admin | Preview signing a member out everywhere |
+| POST | `/manage/api/members/{memberId}/sign-out` | admin | Sign a member out everywhere |
 | GET | `/manage/api/members/{memberId}` | admin | Read one console member |
 | GET | `/manage/api/members` | admin | List the console's members and pending invites |
 | POST | `/manage/api/platform/alerts/{id}/test` | admin | Send a test alert to a destination |

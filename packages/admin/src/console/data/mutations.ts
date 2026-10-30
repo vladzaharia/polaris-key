@@ -73,6 +73,11 @@ export type WriteMethod =
   | "grantRole"
   | "editBindingAreas"
   | "revokeBinding"
+  | "signOutMember"
+  | "previewAccessRule"
+  | "replaceAccessRules"
+  | "decideAccessOffer"
+  | "dismissAccessOffers"
   | "revokeMyPersonalToken"
   | "createPlatformConnection"
   | "updatePlatformConnection"
@@ -464,6 +469,43 @@ export const MUTATIONS: MutationTable = {
   revokeBinding: {
     label: "role revoke",
     invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  // ST-34.12: the roster's sign-in times and the preview move; the platform trail gets `rbac.signout`.
+  signOutMember: {
+    label: "member sign-out",
+    invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  // ST-32.7: a draft rule's preview reads the stored sign-ins and writes nothing.
+  previewAccessRule: {
+    label: "rule preview",
+    invalidates: () => [],
+    why: "A dry check: it reads stored sign-ins and writes nothing.",
+  },
+  // The list write moves the rules, the roster (a rule changes who has a role) and the trail.
+  replaceAccessRules: {
+    label: "SSO rules save",
+    invalidates: () => [
+      prefix(qk.accessRules()),
+      prefix(qk.members()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  // ST-32.8: an accepted offer adds a rule (rules, roster, trail); a dismissal only the offers and trail.
+  decideAccessOffer: {
+    label: "admin group offer",
+    invalidates: () => [
+      prefix(qk.accessOffers()),
+      prefix(qk.accessRules()),
+      prefix(qk.members()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  dismissAccessOffers: {
+    label: "admin group offers dismissal",
+    invalidates: () => [
+      prefix(qk.accessOffers()),
+      prefix(qk.platformActivity()),
+    ],
   },
   // ST-31.14: the product twins also move the platform roster and the access lists NoAccess reads.
   inviteProductMembers: {

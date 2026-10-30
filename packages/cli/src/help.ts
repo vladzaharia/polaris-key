@@ -246,7 +246,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
     summary: "Scaffold .pkey/ in this directory",
     rows: [["init", "Scaffold .pkey/ in this directory"]],
     usage: [
-      "pkey init [--product slug] [--name name] [--modules slugs] [--admin-group group] " +
+      "pkey init [--product slug] [--name name] [--modules slugs] " +
         "[--release-owner owner] [--release-repo repo] [--starter-tier free|none] [--force]",
     ],
     about: [

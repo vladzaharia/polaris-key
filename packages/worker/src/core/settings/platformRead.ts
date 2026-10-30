@@ -48,6 +48,8 @@ export interface PlatformValues {
   "launch.connect": "on" | "off";
   "launch.syncE2e": "on" | "off";
   "launch.relay": "on" | "off";
+  /** The rule document, unparsed: `parseAccessRules` (`core/rbac/ruleGrants.ts`) reads it. */
+  "console.access": unknown;
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;

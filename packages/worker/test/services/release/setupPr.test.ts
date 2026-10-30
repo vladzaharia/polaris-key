@@ -43,7 +43,6 @@ const PRODUCT = JSON.stringify({
   provisioning: [],
   profiles: [{ id: "standard", name: "standard" }],
   tiers: [{ id: "standard", label: "Standard", profileId: "standard" }],
-  adminGroup: "acme-admins",
 });
 const RELEASE = JSON.stringify({
   release: {

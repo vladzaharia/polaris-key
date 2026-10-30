@@ -27,6 +27,11 @@
  *     reservedDisplayNames, and the resync and link dry runs list every policy refusal, not
  *     only the first. Captured from the pipeline's plan when the deltas landed; the pre-delta
  *     behaviour had no scenario.
+ *   - ST-32.6: the manifest's `adminGroup` is refused, so the fixture manifest no longer carries it
+ *     and ingest no longer writes `products.admin_group` (a new product's row holds NULL; a
+ *     resync's UPDATE drops the column). Entries were re-captured for exactly that: the snapshot
+ *     text, the `admin_group` value, the product UPDATE and the dry runs' summary and
+ *     deprecated-spelling warning.
  *   - UK-04b: 11a/11b ingest the repository's own `.pkey/release.yaml`, which gained the
  *     `npm.elements` deliverable. Both entries were re-captured for exactly that: one more
  *     `release_deliverables` row (and its snapshot text) in each.

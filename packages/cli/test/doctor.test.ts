@@ -1203,7 +1203,7 @@ describe("pkey doctor: in sync and the fix hint", () => {
     const dir = await repo();
     await writeFile(
       path.join(dir, ".pkey", "product.yaml"),
-      "apiVersion: pkey.dev/v1\nproduct:\n  slug: djdl\n  name: DJDL\nadminGroup: ops\nmodules:\n  license:\n    enabled: true\n",
+      "apiVersion: pkey.dev/v1\nproduct:\n  slug: djdl\n  name: DJDL\ncompatMin: 0.0.0\nmodules:\n  license:\n    enabled: true\n",
     );
     const [t, j] = await doctor(dir, ["license"]);
     expect(plain(t.out)).toContain("→ pkey validate --fix");

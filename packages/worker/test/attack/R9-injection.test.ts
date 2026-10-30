@@ -231,7 +231,6 @@ function acmeProduct(
     name: "Acme",
     compatMin: "1.0.0",
     compatMax: "9.0.0",
-    adminGroup: "acme-admins",
     tiers: [{ id: "pro", label: "Pro" }],
     ...(issuer
       ? {

@@ -22,7 +22,6 @@ export interface DocumentsCreate {
   /** The licence defaults the old manual create took; absent: 30 days and 5 devices. */
   defaultMaxOfflineDays?: number;
   defaultDeviceLimit?: number;
-  adminGroup?: string;
   /** The signing key's kid; absent: `<slug>-<year>`. */
   kid?: string;
   choices: CreateChoices;
@@ -52,7 +51,6 @@ export async function createFromDocuments(
       compatMax: "99.0.0",
       defaultMaxOfflineDays: input.defaultMaxOfflineDays ?? 30,
       defaultDeviceLimit: input.defaultDeviceLimit ?? 5,
-      ...(input.adminGroup ? { adminGroup: input.adminGroup } : {}),
     }),
     ".pkey/schema.json":
       typeof input.schema === "string"

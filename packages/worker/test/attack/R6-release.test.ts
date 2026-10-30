@@ -295,7 +295,6 @@ const PRODUCT_JSON = JSON.stringify({
   name: "Acme",
   compatMin: "1.0.0",
   compatMax: "9.0.0",
-  adminGroup: "acme-admins",
   tiers: [{ id: "pro", label: "Pro" }],
 });
 
@@ -315,7 +314,6 @@ const ATTACKER_PRODUCT_JSON = JSON.stringify({
   name: "Acme",
   compatMin: "1.0.0",
   compatMax: "9.0.0",
-  adminGroup: "attacker-controlled-group",
   oidc: {
     provider: "custom",
     issuer: "https://idp.attacker.example",
@@ -334,7 +332,6 @@ const OVERSIZED_LIMIT_PRODUCT_JSON = JSON.stringify({
   name: "Acme",
   compatMin: "1.0.0",
   compatMax: "9.0.0",
-  adminGroup: "acme-admins",
   tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 100_000 }],
 });
 
@@ -1261,13 +1258,8 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       "acme",
     );
     expect(oidc).toBeNull(); // no IdP introduced
-    // ...and because the gate precedes every write, the rest of the hostile manifest — the
-    // admin_group takeover included — never landed either.
-    const product = await db.first<{ admin_group: string; name: string }>(
-      "SELECT admin_group, name FROM products WHERE slug = ?",
-      "acme",
-    );
-    expect(product?.admin_group).toBe("acme-admins");
+    // ...and because the gate precedes every write, the rest of the hostile manifest never
+    // landed either.
     const tier = await db.first<{ policy_device_limit: number | null }>(
       "SELECT policy_device_limit FROM tiers WHERE product = ? AND id = ?",
       "acme",
@@ -1277,9 +1269,9 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
   });
 
   // STILL NOT FIXED (R6-05 proper): once the issuer host IS operator-blessed, everything else
-  // in `.pkey/product` is still repo-owned with no admin-ownership flag — clientId, tiers and
-  // `admin_group` are all rewritten by a push.
-  it("a webhook push still rewrites clientId, tiers, and admin_group once the host is allowlisted", async () => {
+  // in `.pkey/product` is still repo-owned with no admin-ownership flag — clientId and tiers are
+  // both rewritten by a push.
+  it("a webhook push still rewrites clientId and tiers once the host is allowlisted", async () => {
     const db = makeTestDb();
     const env = envFor();
     env.GITHUB_WEBHOOK_SECRET = "webhook-secret";
@@ -1323,11 +1315,12 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
     );
     expect(oidc?.issuer).toBe("https://idp.attacker.example");
     expect(oidc?.client_id).toBe("attacker-client");
-    const product = await db.first<{ admin_group: string }>(
-      "SELECT admin_group FROM products WHERE slug = ?",
+    const tier = await db.first<{ policy_device_limit: number | null }>(
+      "SELECT policy_device_limit FROM tiers WHERE product = ? AND id = ?",
       "acme",
+      "pro",
     );
-    expect(product?.admin_group).toBe("attacker-controlled-group");
+    expect(tier?.policy_device_limit).toBe(999);
   });
 
   // The same push is also the delivery vehicle for an unbounded seat cap: a tier's

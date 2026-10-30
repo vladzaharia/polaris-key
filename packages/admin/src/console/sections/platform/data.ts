@@ -141,4 +141,14 @@ export const platformReads = {
     }),
   members: () =>
     queryOptions({ queryKey: qk.members(), queryFn: () => api.members() }),
+  accessRules: () =>
+    queryOptions({
+      queryKey: qk.accessRules(),
+      queryFn: () => api.accessRules(),
+    }),
+  accessOffers: () =>
+    queryOptions({
+      queryKey: qk.accessOffers(),
+      queryFn: () => api.accessOffers(),
+    }),
 };

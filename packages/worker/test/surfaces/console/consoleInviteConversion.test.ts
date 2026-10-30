@@ -750,6 +750,42 @@ describe("the slug oracle (404 before 403)", () => {
   });
 });
 
+describe("the slug oracle holds on service route families too (ST-31.18)", () => {
+  it.each(["devices", "keys", "activity"])(
+    "/products/<slug>/%s answers an unknown slug like a real product the caller cannot reach",
+    async (family) => {
+      const r = await root();
+      const dana = await member("dana", r.memberId);
+      await bind(dana.aid, "product_admin", "product:alpha", null);
+      const s = await signInWith({ sub: "idp-dana" });
+      if (!s.signedIn) throw new Error("no session");
+      const get = async (slug: string) => {
+        const res = await handleAdmin(
+          new Request(
+            `https://key.plrs.im/manage/api/products/${slug}/${family}`,
+            { headers: { cookie: `${ADMIN_COOKIE}=${s.token}` } },
+          ) as unknown as Request,
+          env,
+          db,
+          `/api/products/${slug}/${family}`,
+          { now: NOW + 1 },
+        );
+        return {
+          status: res.status,
+          body: (await res.json()) as Record<string, unknown>,
+        };
+      };
+      const real = await get("beta");
+      const ghost = await get("nope");
+      expect(real.status).toBe(403);
+      expect(ghost.status).toBe(real.status);
+      expect(ghost.body.code).toBe(real.body.code);
+      expect(ghost.body.reason).toBe(real.body.reason);
+      expect(ghost.body.area).toBe(real.body.area);
+    },
+  );
+});
+
 describe("the asserted address is plain ASCII before it is lower-cased (REV-ST31-8 note 1)", () => {
   it("a Kelvin-sign lookalike asserts nothing, so it cannot fold onto kate@x", () => {
     expect(

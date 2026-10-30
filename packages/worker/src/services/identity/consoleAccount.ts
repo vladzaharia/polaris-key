@@ -66,8 +66,10 @@ import {
 import { signIn, type SignInResult } from "./accounts/signIn.js";
 import {
   openAccountSessionRow,
+  revokeAllAccountSessions,
   sessionIdHash,
 } from "./portal/accountSessions.js";
+import { CONSOLE_IDP_CONNECTION } from "../../core/rbac/operatorConnections.js";
 import { portalIdentityIssuerKey, recordLinkGroups } from "./portal/repo.js";
 import { providerVouchesForEmail } from "./providers/vouch.js";
 import { handleAccountPasskeys, passkeyAddable } from "./passkeys/routes.js";
@@ -228,7 +230,15 @@ export async function consoleSignIn(
   // links predate `strong_at`) get in at once; nothing else marks it.
   const strong = Boolean(known?.strong_at) || opts.operator || linkCreated;
   if (!strong) return { status: "refused", reason: "method" };
-  await recordLinkGroups(db, result.linkId, identity.groups, now);
+  // Groups, the (empty) claims and the asserting connection in one statement: the console IdP has
+  // no claim map, so no claim outlives the sign-in that dropped it (ST-32.3).
+  await recordLinkGroups(
+    db,
+    result.linkId,
+    identity.groups,
+    now,
+    CONSOLE_IDP_CONNECTION,
+  );
   if (
     !known?.strong_at &&
     !(await markLinkStrong(db, result.account.id, result.linkId, now))
@@ -523,6 +533,20 @@ export async function endConsoleSession(
 }
 
 /**
+ * End every live session row of the account now (ST-34.12, "Sign out everywhere"). The rows are
+ * shared with the portal, so this ends both. The console's 30 s session cache elsewhere ends
+ * within its window, and the caller writes the operator's revocation mark for the cookie itself.
+ * Answers how many rows ended.
+ */
+export async function endConsoleSessionsForAccount(
+  db: Db,
+  accountId: string,
+  now: number,
+): Promise<number> {
+  return revokeAllAccountSessions(db, accountId, now);
+}
+
+/**
  * Whether the account could open the console: it holds a link through an issuer that may sign
  * operators in, whose last-asserted groups carry `PLATFORM_ADMIN_GROUP`. Only the portal's
  * "Open console" link asks (a pointer, never an authorisation: the console decides on arrival).
@@ -632,6 +656,28 @@ export async function consoleMemberIdForIdpSub(
     sub,
   );
   return row ? memberIdFor(env, row.account_id) : null;
+}
+
+/**
+ * The IdP subject(s) of the console links of an account (ST-34.13). A break-glass session has no
+ * account: its `sub` is the IdP subject, so a sign-out mark for the member must also be written
+ * under each of these. Read-only, bounded.
+ */
+export async function consoleIdpSubjectsForAccount(
+  env: Env,
+  db: Db,
+  accountId: string,
+): Promise<string[]> {
+  const rp = adminOidcConfig(env);
+  if (!rp) return [];
+  return (
+    await db.all<{ subject: string }>(
+      `SELECT subject FROM account_links
+        WHERE account_id = ? AND issuer_key = ? AND tenant_scope = '' LIMIT 20`,
+      accountId,
+      portalIdentityIssuerKey(rp.issuer),
+    )
+  ).map((r) => r.subject);
 }
 
 /** A console member as the Members page shows them (ST-31.4). Never carries the account id. */

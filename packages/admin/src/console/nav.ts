@@ -470,7 +470,7 @@ export const SECTIONS: NavSection[] = [
         label: "Members",
         path: "settings/members",
         icon: UsersRound,
-        docs: "/docs/operate/console/products/",
+        docs: "/docs/operate/console/members/",
         inNav: false,
       },
       {
@@ -950,7 +950,7 @@ const PLATFORM_PAGES: NavPage[] = [
     keywords: "people roles invite access admin superadmin",
     path: "platform/members",
     icon: UsersRound,
-    docs: "/docs/operate/console/tour/",
+    docs: "/docs/operate/console/members/",
     inNav: true,
     group: "platform",
   },

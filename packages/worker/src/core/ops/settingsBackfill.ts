@@ -267,7 +267,6 @@ const PRODUCT_ROW_KEYS: ReadonlySet<string> = new Set([
   "license.defaults.maxOfflineDays",
   "license.defaults.deviceLimit",
   "core.web.origins",
-  "core.adminGroup",
 ]);
 
 /** Evidence rows kept per item. */
@@ -633,19 +632,16 @@ export function planBackfill(
     return { ...item, evidence };
   };
 
-  // ── the column-backed claimable settings and the admin group ──────────────────────────
+  // ── the column-backed claimable settings ──────────────────────────
   const scalar = (
-    key: ClaimKey | "core.adminGroup",
+    key: ClaimKey,
     column: string,
     stored: unknown,
     declared: unknown,
     write: string | number | null,
     view: (v: unknown) => unknown = (v) => v,
   ): void => {
-    const claim =
-      key === "core.adminGroup"
-        ? null
-        : claimFor(state.settings, key, now, ended);
+    const claim = claimFor(state.settings, key, now, ended);
     const cls: BackfillClass =
       canonical(stored ?? null) === canonical(declared ?? null)
         ? "equal"
@@ -710,14 +706,6 @@ export function planBackfill(
     serializeWebOrigins(origins),
     serializeWebOrigins(origins),
     (v) => parseWebOrigins(v as string | null),
-  );
-  // Manifest-only (owner decision 1): never claimable, always follows the manifest.
-  scalar(
-    "core.adminGroup",
-    "admin_group",
-    product.admin_group ?? null,
-    m.adminGroup ?? null,
-    m.adminGroup ?? null,
   );
 
   // ── the catalog (one claimable unit, `config.catalog`) ─────────────────────────────────

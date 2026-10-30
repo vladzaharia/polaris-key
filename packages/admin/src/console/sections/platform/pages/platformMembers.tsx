@@ -7,7 +7,7 @@
  * Superadmins and Platform admins see the same list; what they may change differs (a Platform admin
  * cannot give or take the platform roles), and the controls say why they are off. The Worker
  * decides every write. Invite and Edit roles are the drawer (`access/InviteDrawer.tsx`, ST-31.12);
- * the Roles tab and SSO rules are other slices.
+ * the Roles tab and SSO rules (`platformSsoRules.tsx`) are tabs of the same page.
  */
 
 import * as React from "react";
@@ -36,14 +36,17 @@ import { useMe } from "../../../data/hooks.js";
 import { navigate, useRoute } from "../../../router.js";
 import { PageTabs } from "../../../components/PageTabs.js";
 import { PlatformRoles } from "./platformRoles.js";
+import { PlatformSsoRules } from "./platformSsoRules.js";
 import { r as routes } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import { InviteDrawer } from "../../../access/InviteDrawer.js";
 import type { ProductName } from "../../../access/InviteDrawerParts.js";
 import {
+  cannotSignOut,
   RemoveMemberDialog,
   RevokeInviteDialog,
+  SignOutMemberDialog,
 } from "./platformMembersDialogs.js";
 import {
   AccessLines,
@@ -90,6 +93,7 @@ export function PlatformMembers(): React.ReactElement {
     null,
   );
   const [removing, setRemoving] = React.useState<string | null>(null);
+  const [signingOut, setSigningOut] = React.useState<string | null>(null);
   const [revoking, setRevoking] = React.useState<MemberInvite | null>(null);
 
   const products = React.useMemo(
@@ -309,6 +313,18 @@ export function PlatformMembers(): React.ReactElement {
         onSelect: () => setRemoving(m.memberId),
         disabledReason: removeWhy,
       },
+      // Hidden on your own row: the ordinary Sign out is for that.
+      ...(m.you
+        ? []
+        : [
+            {
+              label: "Sign out everywhere…",
+              tone: "danger" as const,
+              onSelect: () => setSigningOut(m.memberId),
+              disabledReason:
+                write.disabledReason ?? cannotSignOut(me, m, productName),
+            },
+          ]),
       { type: "separator" },
       {
         label: "Show activity",
@@ -325,11 +341,14 @@ export function PlatformMembers(): React.ReactElement {
   };
 
   const roster = view.data;
-  const onRoles = useRoute().query.get("tab") === "roles";
+  const tab = useRoute().query.get("tab");
+  const onRoles = tab === "roles";
+  const onSso = tab === "sso";
+  const rules = useQuery({ ...platformReads.accessRules(), retry: false });
   const tabs = (
     <PageTabs
       label="Members"
-      value={onRoles ? "roles" : "members"}
+      value={onRoles ? "roles" : onSso ? "sso" : "members"}
       items={[
         {
           value: "members",
@@ -344,6 +363,14 @@ export function PlatformMembers(): React.ReactElement {
             : {}),
         },
         {
+          value: "sso",
+          label: "SSO rules",
+          to: routes.platformMembers({ tab: "sso" }),
+          ...(Array.isArray(rules.data?.rules)
+            ? { count: rules.data.rules.length }
+            : {}),
+        },
+        {
           value: "roles",
           label: "Roles",
           to: routes.platformMembers({ tab: "roles" }),
@@ -351,6 +378,17 @@ export function PlatformMembers(): React.ReactElement {
       ]}
     />
   );
+  if (onSso)
+    return (
+      <CollectionTemplate header={<PageHeader title="Members" tabs={tabs} />}>
+        <PlatformSsoRules
+          roster={roster}
+          me={me}
+          products={products}
+          productName={productName}
+        />
+      </CollectionTemplate>
+    );
   if (onRoles)
     return (
       <CollectionTemplate
@@ -486,6 +524,10 @@ export function PlatformMembers(): React.ReactElement {
         me={me}
         productName={productName}
         onClose={() => setRemoving(null)}
+      />
+      <SignOutMemberDialog
+        member={roster?.members.find((m) => m.memberId === signingOut) ?? null}
+        onClose={() => setSigningOut(null)}
       />
       <RevokeInviteDialog
         invite={revoking}

@@ -6,7 +6,7 @@ Every error and warning `pkey validate` can emit, with its JSON-pointer path and
 
 Contents:
 
-- [`product`](#product-codes): 124 codes
+- [`product`](#product-codes): 123 codes
 - [`schema`](#schema-codes): 14 codes
 - [`release`](#release-codes): 110 codes
 - [`distribution`](#distribution-codes): 37 codes
@@ -30,7 +30,6 @@ Contents:
 | `google_client_ids_without_server`        | error    | `/identity/platformSignIn/google/clientIds`         | identity.platformSignIn.google.clientIds needs serverClientId: the web client is the token audience.                                                                                                                                                           |
 | `identity_block_without_service`          | warning  | `/identity`                                         | identity is declared but the identity service is off, so none of it applies.                                                                                                                                                                                   |
 | `identity_redirect_paths_without_origins` | warning  | `/identity/redirectPaths`                           | identity.redirectPaths needs at least one web.origins entry: a redirect URI is an origin from web.origins and one of these paths.                                                                                                                              |
-| `invalid_admin_group`                     | error    | `/product/adminGroup`                               | product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$).                                                                                                                                                                        |
 | `invalid_allowed_host`                    | error    | `/provisioning/${i}/allowedHosts`                   | allowedHosts entries must be a host, optionally with a port.                                                                                                                                                                                                   |
 | `invalid_api_version`                     | error    | `/apiVersion`                                       | apiVersion must be pkey.dev/v1 when present.                                                                                                                                                                                                                   |
 | `invalid_apple_bundle_id`                 | error    | `/identity/platformSignIn/apple/bundleIds/${i}`     | identity.platformSignIn.apple.bundleIds entries must be unique reverse-DNS bundle ids (such as gg.vlad.diceroll).                                                                                                                                              |

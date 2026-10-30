@@ -601,6 +601,35 @@ function cases(): Case[] {
         if (await tile.isVisible()) await tile.click();
       },
     },
+    // ST-32.7: the SSO rules tab, and the same tab with the rule editor and its preview open.
+    {
+      name: "global:platform-members?tab=sso",
+      hash: "#/platform/members?tab=sso",
+      act: async (page) => {
+        await page.getByTestId("sso-rules").waitFor();
+      },
+    },
+    {
+      name: "global:platform-members?tab=sso&add",
+      hash: "#/platform/members?tab=sso",
+      act: async (page) => {
+        await page.getByRole("button", { name: "Add rule" }).click();
+        await page.getByLabel("Group", { exact: true }).fill("ops-oncall");
+        await page.getByTestId("rule-matches").waitFor();
+      },
+    },
+    // ST-32.8: a mapped admin group in the editor, prefilled with its group.
+    {
+      name: "global:platform-members?tab=sso&accept",
+      hash: "#/platform/members?tab=sso",
+      act: async (page) => {
+        await page
+          .getByRole("button", { name: /^Map to .* admin…/ })
+          .first()
+          .click();
+        await page.getByTestId("rule-matches").waitFor();
+      },
+    },
     {
       name: "global:platform-members?edit-roles",
       hash: "#/platform/members",
@@ -639,6 +668,32 @@ function cases(): Case[] {
             .waitFor();
           await primaryInView(page);
         }
+      },
+    },
+    // ST-34.12b: Sign out everywhere's confirm, with the token list, whatever the window.
+    {
+      name: "global:platform-members?sign-out",
+      hash: "#/platform/members",
+      act: async (page) => {
+        await page
+          .getByRole("button", { name: "Actions for Sam Okoye" })
+          .first()
+          .click();
+        await page
+          .getByRole("menuitem", { name: /Sign out everywhere/ })
+          .click();
+        const dialog = page.getByRole("alertdialog");
+        await dialog.getByText("deploy laptop").waitFor();
+        const out = await dialog
+          .getByRole("button")
+          .evaluateAll(
+            (bs) =>
+              bs
+                .map((b) => b.getBoundingClientRect())
+                .filter((r) => r.bottom > window.innerHeight + 0.5 || r.top < 0)
+                .length,
+          );
+        if (out > 0) throw new Error("a confirm button is out of view");
       },
     },
 
@@ -818,6 +873,9 @@ const TEXT200_CASES = [
   "djdl:sync-usage",
   // ST-31.13: the Roles tab's tiles and one-column matrix.
   "global:platform-members?tab=roles",
+  // ST-32.7: the rule rows and the editor at 200 % text.
+  "global:platform-members?tab=sso&add",
+  "global:platform-members?tab=sso&accept",
   // ST-30c.4: the rows' name column kept its width at 200 % text.
   "global:sign-in-methods",
   ...NO_ACCESS_CASES,
@@ -1204,6 +1262,12 @@ async function open(
             },
           },
         });
+      // ST-32.7: a rule preview is a POST that answers like a read.
+      if (
+        route.request().method() === "POST" &&
+        url.pathname.endsWith("/access/rules/preview")
+      )
+        return route.fulfill({ json: resolve(url.pathname) });
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
       const body =
