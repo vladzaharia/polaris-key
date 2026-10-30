@@ -318,7 +318,7 @@ stops at the first rung that answers:
 | Rung | What it does                                            | Runs when                                                |
 | ---- | ------------------------------------------------------- | -------------------------------------------------------- |
 | 1    | A stored sign-in and a license: `.signedIn`, no network | Always                                                   |
-| 2    | Silent restore of a saved sign-in                       | Not in this SDK yet                                      |
+| 2    | Silent restore from the device backup                   | The backup holds a key and restore is served and on      |
 | 3    | The platform provider with no UI, then the exchange     | The provider has a silent mode (Apple has none: skipped) |
 | 4    | The provider's one account sheet, then the exchange     | `prompt: .optional`                                      |
 
@@ -331,7 +331,7 @@ import PolarisKeyIdentity
 
 func signInAutomatically(_ client: PolarisKeyClient) async throws {
     // PolarisKeyClient installs Sign in with Apple. Apple has no silent mode, so `.optional`
-    // is what shows its sheet; the default `.never` runs rungs 1 and 3 only.
+    // is what shows its sheet; the default `.never` runs rungs 1 to 3.
     let result = try await client.identity.autoSignIn(AutoSignInOptions(prompt: .optional))
     switch result {
     case .signedIn(let ready):
@@ -353,7 +353,7 @@ func signInAutomatically(_ client: PolarisKeyClient) async throws {
 }
 ```
 
-- **Signing out sticks.** `identity.signOut()` sets a flag that keeps rungs 3 and 4 quiet until the
+- **Signing out sticks.** `identity.signOut()` sets a flag that keeps rungs 2 to 4 quiet until the
   person starts a sign-in themselves (`reason: .signedOut`). A sign-out during the Apple sheet wins
   too: nothing is stored.
 - **Revoked in Settings.** If the person revokes the app's Apple credential, the next
@@ -376,6 +376,41 @@ In the SwiftUI kit the gate runs the ladder once at launch with no sheet, and th
 Sign in with Apple button opens the sheet and then the exchange. Pass
 `.polarisKeyGate(client, autoSignIn: false)` (or `.polarisKey(client, autoSignIn: false)`) to turn
 the launch attempt off.
+
+#### Restore from backup
+
+Rung 2 signs a person in on a new device with no click. A signed-in device keeps a restore key in
+the Keychain, as a synchronizable item (iCloud Keychain, end-to-end encrypted) named
+`pkey-restore:<product>`. A new device on the same Apple ID reads it and redeems it once. The key
+reaches your product and that person's account, never another product, the card or a license. Each
+restore sign-in emails the person a notice with a **Sign out everywhere** action.
+
+- **Enrolment.** After any completed sign-in, and on a stored sign-in at most once every 24 hours,
+  the client asks the Worker to enrol or check the key and writes the item when it gets a new one. A
+  failure is swallowed and the next launch checks again.
+- **Refusals.** A refused redeem, a `429`, a `5xx` or a network failure leaves the item alone and the
+  ladder goes on to rung 3. A synchronizable delete reaches every device on the Apple ID, so only
+  sign-out deletes the item. A key that was spent and then refused (terms, device limit, no license)
+  is replaced at the next enrolment.
+- **No backup here.** With no Keychain entitlement or no iCloud Keychain, the item reads as missing:
+  rung 2 is skipped and nothing is enrolled.
+- **Signing out.** `identity.signOut()` deletes the item and sends `DELETE restore` while the bearer
+  still exists (queued for the next launch when the Worker cannot be reached). It also sets the
+  signed-out flag, which no backup carries. Until the person signs in again, rung 2 does not run and
+  nothing enrols.
+- **Two or more Apple devices on one Apple ID.** The item is shared, so each device's daily check
+  finds a key that belongs to another device, enrols its own and rewrites the item. This is
+  harmless: the newest key wins, and each device keeps its own key at the Worker. Two people who
+  sign in to your app on devices that share one Apple ID restore into whichever account wrote the
+  item last.
+- **Opt out.** `AutoSignInOptions(restore: false)` skips rung 2 and never enrols. The next
+  `autoSignIn()` revokes the device's key and deletes this app's item. The default is on.
+- **Share across your apps.** The item lives in your app's own Keychain access group. Pass
+  `AutoSignInOptions(backupAccessGroup:)` a `TEAMID.group` to share it across the apps of one team.
+
+Restore runs only while your product's `identity.restore` setting is on (the default) and the
+platform has switched silent restore on. Otherwise discovery omits the member and the SDK skips
+rung 2.
 
 ### Cloud Sync platforms
 
