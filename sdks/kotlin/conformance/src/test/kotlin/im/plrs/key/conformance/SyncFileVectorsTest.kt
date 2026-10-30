@@ -1,24 +1,32 @@
-// @pkey-feature sync.files.delta
+// @pkey-feature sync.files sync.files.delta
 //
 // The synced-file primitives against conformance/corpus/v2/sync-vectors.json (U-23.K1;
 // WIRE-CONTRACT-V5 section 13.8.3), read in place: cdcCases, cdcEditCases, deltaCases, chunkCases
-// and manifestCases. fileStreamCases and transferPlanCases belong to U-23.K2. Core links no zstd,
-// so the chunk rows inject the opt-in :packs decoder (zstd-jni).
+// and manifestCases, and (U-23.K2) fileStreamCases and transferPlanCases. Core links no zstd, so
+// the chunk rows inject the opt-in :packs decoder (zstd-jni).
 
 package im.plrs.key.conformance
 
+import im.plrs.key.core.SYNC_FILE_MAX_BYTES
 import im.plrs.key.core.arrayValue
+import im.plrs.key.core.boolValue
 import im.plrs.key.core.longValue
 import im.plrs.key.core.stringValue
 import im.plrs.key.core.sync.SyncCdc
 import im.plrs.key.core.sync.SyncChunks
 import im.plrs.key.core.sync.SyncCrypto
+import im.plrs.key.core.sync.SyncCryptoException
+import im.plrs.key.core.sync.SyncFileStream
+import im.plrs.key.core.sync.SyncKeys
 import im.plrs.key.core.sync.SyncManifest
+import im.plrs.key.core.sync.SyncTransferPlan
 import im.plrs.key.core.sync.ZstdDecode
 import im.plrs.key.packs.LibZstd
 import kotlinx.serialization.json.JsonObject
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class SyncFileVectorsTest : ConformanceSuite() {
@@ -234,5 +242,246 @@ class SyncFileVectorsTest : ConformanceSuite() {
         for (c in rows.values) editRow(c, f)
         for (d in list("deltaCases")) deltaRow(d, rows, f)
         f.done(rows.size + list("deltaCases").size)
+    }
+
+    // -- U-23.K2: the transfer planner and the file stream ---------------------------------------
+
+    /** The parts of a multipart plan tile the file: contiguous, every one full but the last, none empty. */
+    private fun partsTile(id: String, p: SyncTransferPlan.Plan, size: Long, f: Failures) {
+        var at = 0L
+        val parts = p.parts!!
+        for (n in 1..parts) {
+            val r = SyncTransferPlan.partRange(p, size, n)
+            f.check(r.first == at && !r.isEmpty() && (n == parts || r.last - r.first + 1 == p.partBytes)) { "$id part $n" }
+            at = r.last + 1
+        }
+        f.equal(size, at) { "$id parts tile the file" }
+        f.check(runCatching { SyncTransferPlan.partRange(p, size, 0) }.isFailure) { "$id has no part 0" }
+        f.check(runCatching { SyncTransferPlan.partRange(p, size, parts + 1) }.isFailure) { "$id has no part past the last" }
+    }
+
+    @Test
+    fun transferPlans() {
+        val f = Failures("sync transfer plans")
+        for (c in list("transferPlanCases")) {
+            val id = c.s("id")
+            val size = c["size"].longValue!!
+            val p = SyncTransferPlan.plan(size, c["delta"].boolValue == true)
+            val e = c["expect"]!!.obj
+            f.equal(e.s("mode"), p.mode.wire) { "$id mode" }
+            f.equal(e["partBytes"].longValue, p.partBytes) { "$id partBytes" }
+            f.equal(e["parts"].longValue, p.parts) { "$id parts" }
+            if (p.mode == SyncTransferPlan.Mode.MULTIPART) {
+                partsTile(id, p, size, f)
+            } else {
+                f.check(runCatching { SyncTransferPlan.partRange(p, size, 1) }.isFailure) { "$id has no part ranges" }
+            }
+        }
+        f.done(list("transferPlanCases").size)
+        assertThrows(IllegalArgumentException::class.java) { SyncTransferPlan.plan(-1, false) }
+    }
+
+    /** Applies the corpus's byte mutations. Segment i of a stream is at 64 + i * (1 MiB + 16). */
+    private fun applyOps(stream: ByteArray, ops: List<JsonObject>): ByteArray {
+        var b = stream.copyOf()
+        val stride = SyncFileStream.SEGMENT_BYTES + SyncFileStream.TAG_BYTES
+        fun seg(i: Int): IntRange = (64 + i * stride) until minOf(b.size, 64 + i * stride + stride)
+        for (o in ops) {
+            when (val op = o.s("op")) {
+                "truncate" -> b = b.copyOfRange(0, o.i("length"))
+
+                "dropSegment" -> seg(o.i("index")).let { r -> b = b.copyOfRange(0, r.first) + b.copyOfRange(r.last + 1, b.size) }
+
+                "swapSegments" -> {
+                    val r1 = seg(minOf(o.i("a"), o.i("b")))
+                    val r2 = seg(maxOf(o.i("a"), o.i("b")))
+                    b = b.copyOfRange(0, r1.first) + b.copyOfRange(r2.first, r2.last + 1) +
+                        b.copyOfRange(r1.last + 1, r2.first) + b.copyOfRange(r1.first, r1.last + 1) + b.copyOfRange(r2.last + 1, b.size)
+                }
+
+                "appendSegment" -> seg(o.i("from")).let { r -> b += b.copyOfRange(r.first, r.last + 1) }
+
+                "xor" -> b[o.i("offset")] = (b[o.i("offset")].toInt() xor o.i("value")).toByte()
+
+                "setHex" -> bytes(o.s("hex")).copyInto(b, o.i("offset"))
+
+                "appendHex" -> b += bytes(o.s("hex"))
+
+                else -> error("unknown op $op")
+            }
+        }
+        return b
+    }
+
+    private class Base(val bytes: ByteArray, val root: ByteArray, val collection: String)
+
+    private fun sealedBases(f: Failures): Map<String, Base> {
+        val out = HashMap<String, Base>()
+        for (r in list("fileStreamCases").filter { it.s("kind") == "seal" }) {
+            val id = r.s("id")
+            val root = bytes(r.s("rootHex"))
+            val collKey = SyncKeys.deriveCollKey(root, r.s("collection"))
+            val kid = SyncKeys.deriveKid(root)
+            val plainRow = r["plain"]!!.obj
+            val plain = counterBytes("pkey-sync vector file ", plainRow.s("label"), plainRow.i("length"))
+            val e = r["expect"]!!.obj
+            f.equal(e.s("plainSha256Hex"), hex(SyncCrypto.sha256(plain))) { "$id plaintext" }
+            val sealed = SyncFileStream.sealFile(collKey, kid, plain, bytes(r.s("saltHex")))
+            f.equal(e.i("sealedSize"), sealed.size) { "$id sealed size" }
+            f.equal(sealed.size.toLong(), SyncFileStream.sealedSize(plain.size.toLong())) { "$id sealedSize()" }
+            f.equal(plain.size.toLong(), SyncFileStream.plainSize(sealed.size.toLong())) { "$id plainSize()" }
+            f.equal(e.s("headerHex"), hex(sealed.copyOfRange(0, 64))) { "$id header" }
+            f.equal(e.s("sealedSha256Hex"), hex(SyncCrypto.sha256(sealed))) { "$id sealed bytes" }
+            // The same bytes from a source that arrives in awkward pieces.
+            val s = SyncFileStream.Sealer(collKey, kid, bytes(r.s("saltHex")))
+            val parts = arrayListOf(s.header)
+            var at = 0
+            while (at < plain.size) {
+                parts += s.push(plain, at, minOf(at + 100_003, plain.size))
+                at += 100_003
+            }
+            parts += s.finish()
+            f.equal(e.s("sealedSha256Hex"), hex(SyncCrypto.sha256(SyncCrypto.cat(*parts.toTypedArray())))) { "$id streams to the same bytes" }
+            out[id] = Base(sealed, root, r.s("collection"))
+        }
+        return out
+    }
+
+    /** The verdict of an [SyncFileStream.Opener] fed [piece] bytes at a time: the plaintext SHA-256, or "!" and the reason. */
+    private fun openInPieces(collKey: ByteArray, kid: ByteArray, bytes: ByteArray, piece: Int): String = try {
+        val o = SyncFileStream.Opener(collKey, kid)
+        val parts = ArrayList<ByteArray>()
+        var at = 0
+        while (at < bytes.size) {
+            parts += o.push(bytes, at, minOf(at + piece, bytes.size))
+            at += piece
+        }
+        parts += o.finish()
+        hex(SyncCrypto.sha256(SyncCrypto.cat(*parts.toTypedArray())))
+    } catch (refused: SyncFileStream.Failure) {
+        "!" + refused.reason.wire
+    }
+
+    private fun openRow(r: JsonObject, bases: Map<String, Base>, f: Failures) {
+        val id = r.s("id")
+        val base = bases[r.s("base")]!!
+        val bytes = applyOps(base.bytes, r["mutate"]!!.arrayValue!!.map { it.obj })
+        val collKey = SyncKeys.deriveCollKey(base.root, r["openCollection"]?.stringValue ?: base.collection)
+        val kid = if (r.containsKey("expectKidHex")) bytes(r.s("expectKidHex")) else SyncKeys.deriveKid(base.root)
+        val e = r["expect"]!!.obj
+        val opened = SyncFileStream.openFile(collKey, kid, bytes)
+        val verdict = if (e.s("result") == "ok") e.s("plainSha256Hex") else "!" + e.s("reason")
+        val got = when (opened) {
+            is SyncFileStream.Opened.Ok -> hex(SyncCrypto.sha256(opened.plain))
+            is SyncFileStream.Opened.Refused -> "!" + opened.reason.wire
+        }
+        f.equal(verdict, got) { "$id whole" }
+        f.equal(verdict, openInPieces(collKey, kid, bytes, 300_007)) { "$id in pieces" }
+    }
+
+    private fun rangeRow(r: JsonObject, bases: Map<String, Base>, f: Failures) {
+        val id = r.s("id")
+        val base = bases[r.s("base")]!!
+        val bytes = applyOps(base.bytes, r["mutate"]!!.arrayValue!!.map { it.obj })
+        val collKey = SyncKeys.deriveCollKey(base.root, base.collection)
+        val kid = SyncKeys.deriveKid(base.root)
+        val reads = ArrayList<List<Long>>()
+        val reader = SyncFileStream.RangeReader { offset, length ->
+            reads += listOf(offset, length.toLong())
+            bytes.copyOfRange(minOf(offset.toInt(), bytes.size), minOf(offset.toInt() + length, bytes.size))
+        }
+        val e = r["expect"]!!.obj
+        try {
+            val got = SyncFileStream.openRange(
+                collKey,
+                kid,
+                SyncFileStream.Stored(bytes.size.toLong(), reader),
+                r["start"].longValue!!,
+                r["end"].longValue!!,
+            )
+            f.equal("ok", e.s("result")) { "$id result" }
+            f.equal(e.i("length"), got.size) { "$id length" }
+            f.equal(e.s("sha256Hex"), hex(SyncCrypto.sha256(got))) { "$id bytes" }
+            val want = e["reads"]!!.arrayValue!!.map { p -> p.arrayValue!!.map { it.longValue!! } }
+            f.equal(want, reads) { "$id reads only what it needs" }
+        } catch (refused: SyncFileStream.Failure) {
+            f.equal("invalid", e.s("result")) { "$id result" }
+            f.equal(e.s("reason"), refused.reason.wire) { "$id reason" }
+        }
+    }
+
+    private fun sizeRow(r: JsonObject, f: Failures) {
+        for (p in r["plainToSealed"]!!.arrayValue!!) {
+            val (plain, sealed) = p.arrayValue!!.map { it.longValue!! }
+            f.equal(sealed, SyncFileStream.sealedSize(plain)) { "sealedSize($plain)" }
+        }
+        for (p in r["sealedToPlain"]!!.arrayValue!!) {
+            val (sealed, plain) = p.arrayValue!!.let { it[0].longValue!! to it[1].longValue }
+            f.equal(plain, SyncFileStream.plainSize(sealed)) { "plainSize($sealed)" }
+        }
+    }
+
+    @Test
+    fun fileStreams() {
+        val f = Failures("sync file streams")
+        val bases = sealedBases(f)
+        for (r in list("fileStreamCases")) {
+            when (r.s("kind")) {
+                "sizes" -> sizeRow(r, f)
+                "open" -> openRow(r, bases, f)
+                "range" -> rangeRow(r, bases, f)
+            }
+        }
+        f.done(list("fileStreamCases").size)
+    }
+
+    @Test
+    fun fileStreamBeyondTheCorpus() {
+        val root = ByteArray(32) { (it * 5 + 3).toByte() }
+        val collKey = SyncKeys.deriveCollKey(root, "saves")
+        val kid = SyncKeys.deriveKid(root)
+        val plain = ByteArray(300_000) { (it * 7 + (it shr 3)).toByte() }
+        // A seal draws a fresh salt: two seals of one file differ and both open.
+        val a = SyncFileStream.sealFile(collKey, kid, plain)
+        val b = SyncFileStream.sealFile(collKey, kid, plain)
+        check(!a.contentEquals(b) && !a.copyOfRange(32, 64).contentEquals(b.copyOfRange(32, 64)))
+        assertArrayEquals(plain, (SyncFileStream.openFile(collKey, kid, a) as SyncFileStream.Opened.Ok).plain)
+        assertThrows(SyncCryptoException::class.java) { SyncFileStream.encodeHeader(kid.copyOf(15), ByteArray(32)) }
+        assertThrows(SyncCryptoException::class.java) { SyncFileStream.encodeHeader(kid, ByteArray(31)) }
+        assertThrows(SyncCryptoException::class.java) { SyncFileStream.Sealer(collKey.copyOf(31), kid) }
+        // A ranged read that answers the wrong size is `size`.
+        val short = SyncFileStream.RangeReader { o, l -> a.copyOfRange(o.toInt(), o.toInt() + l - 1) }
+        val refused =
+            assertThrows(SyncFileStream.Failure::class.java) {
+                SyncFileStream.openRange(collKey, kid, SyncFileStream.Stored(a.size.toLong(), short), 0, 10)
+            }
+        assertEquals(SyncFileStream.Invalid.SIZE, refused.reason)
+        val whole = SyncFileStream.RangeReader { o, l -> a.copyOfRange(o.toInt(), o.toInt() + l) }
+        assertArrayEquals(
+            plain.copyOfRange(1000, 2000),
+            SyncFileStream.openRange(collKey, kid, SyncFileStream.Stored(a.size.toLong(), whole), 1000, 2000),
+        )
+        // Reassembly: the manifest's plain size and SHA-256 over the pieces.
+        val digest = SyncCrypto.sha256(plain)
+        SyncFileStream.Reassembly(plain.size.toLong(), digest).also { r ->
+            var at = 0
+            while (at < plain.size) {
+                r.push(plain, at, minOf(at + 70_001, plain.size))
+                at += 70_001
+            }
+            r.finish()
+        }
+        val over = SyncFileStream.Reassembly(plain.size.toLong(), digest).also { it.push(plain) }
+        assertEquals(SyncFileStream.Invalid.PLAIN_SIZE, assertThrows(SyncFileStream.Failure::class.java) { over.push(byteArrayOf(1)) }.reason)
+        val shortR = SyncFileStream.Reassembly(plain.size.toLong(), digest).also { it.push(plain, 0, 100) }
+        assertEquals(SyncFileStream.Invalid.PLAIN_SIZE, assertThrows(SyncFileStream.Failure::class.java) { shortR.finish() }.reason)
+        val wrong = plain.copyOf().also { it[5] = (it[5].toInt() xor 1).toByte() }
+        val bad = SyncFileStream.Reassembly(plain.size.toLong(), digest).also { it.push(wrong) }
+        assertEquals(SyncFileStream.Invalid.PLAIN_SHA256, assertThrows(SyncFileStream.Failure::class.java) { bad.finish() }.reason)
+        assertEquals(
+            SyncFileStream.Invalid.PLAIN_SIZE,
+            assertThrows(SyncFileStream.Failure::class.java) { SyncFileStream.Reassembly(SYNC_FILE_MAX_BYTES + 1L, digest) }.reason,
+        )
+        SyncFileStream.Reassembly(0, SyncCrypto.sha256(ByteArray(0))).finish()
     }
 }
