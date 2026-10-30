@@ -253,6 +253,47 @@ describe("autoSignIn(): the explicit sign-out flag", () => {
   });
 });
 
+describe("autoSignIn(): without discovery", () => {
+  it("a stored sign-in is rung 1 before any discovery: offline, nothing sent", async () => {
+    const { client, store, dir } = await seededClient({
+      token: null,
+      extra,
+      routes: routes(),
+    });
+    await signIn(client);
+    client.close();
+    // A new process: no discovery read, the defaults say Identity is off, the network is gone.
+    const offline = await seededClient({
+      token: null,
+      routes: {},
+      extra: {
+        store,
+        stateDir: dir,
+        dataDir: dir,
+        cacheDir: dir,
+        configDir: dir,
+      },
+    });
+    expect(await offline.client.identity.autoSignIn()).toMatchObject({
+      kind: "signedIn",
+      via: "stored",
+    });
+    expect(offline.seen).toEqual([]);
+  });
+
+  it("reads discovery once when the session has none, then asks the form's question", async () => {
+    const { client, seen } = await seededClient({
+      token: null,
+      routes: routes(),
+    });
+    expect(await client.identity.autoSignIn()).toEqual({
+      kind: "needsSignIn",
+      reason: "no_credential",
+    });
+    expect(seen.map((r) => r.path)).toEqual(["/djdl/.well-known/polaris.json"]);
+  });
+});
+
 describe("autoSignIn(): unavailable", () => {
   it("answers unavailable{product} while Identity is off, and never throws", async () => {
     const { client, seen } = await seededClient({ token: "pkeyt_a" });
@@ -260,7 +301,8 @@ describe("autoSignIn(): unavailable", () => {
       kind: "unavailable",
       code: "product",
     });
-    expect(seen).toEqual([]);
+    // The only request is the discovery read that tells this session Identity is off.
+    expect(seen.map((r) => r.path)).toEqual(["/djdl/.well-known/polaris.json"]);
   });
 });
 

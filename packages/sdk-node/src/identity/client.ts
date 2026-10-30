@@ -37,6 +37,15 @@ import {
 import { ChoiceClient } from "./choice.js";
 import { NearbyRoutes } from "./nearby.js";
 import {
+  onNearbyRequest,
+  type NearbyApproverLan,
+  type NearbyAsk,
+} from "./nearbyApprover.js";
+import type {
+  NearbyApproverHandle,
+  NearbyApproverOptions,
+} from "../connect/nearbyApprover.js";
+import {
   startNearbySignIn,
   type NearbyLan,
   type NearbySignInOptions,
@@ -124,7 +133,7 @@ export interface NearbyBinding {
   /** Load discovery again and answer it (N11). */
   refreshDiscovery(): Promise<ProductDiscoveryDocument | null>;
   /** The LAN half of nearby approval (`cloudConnect.nearby`). */
-  lan(): NearbyLan;
+  lan(): NearbyLan & NearbyApproverLan;
 }
 
 /** Raised after a sign-in mints a credential; the facade syncs. */
@@ -238,6 +247,7 @@ export class IdentityClient {
   autoSignIn(_opts: AutoSignInOptions = {}): Promise<AutoSignInResult> {
     return runAutoSignIn({
       ctx: this.ctx,
+      discovery: this.loadDiscovery,
       signedIn: () => this.tokens.signedIn,
       state: this.signInState,
       licenseId: this.licenseId,
@@ -246,6 +256,32 @@ export class IdentityClient {
 
   /** Nearby approval (CC-15; V5 §12.11.5): whether this device can take part on one side. */
   readonly nearby = {
+    /**
+     * M, a signed-in device: advertise while the person has "Approve a nearby device" open
+     * (`prompt: true`), or has allowed background approval (`prompt: false`, `background: true`),
+     * and hand each session that reaches the code to `handler` as an `ask` (nearbyApprover.ts).
+     * Returns CC-15's handle (`stop`, `pause`, `resume`, `setPrompt`, `reopen`, `status`). Throws
+     * `account_required` when signed out and the typed N/A when nearby approval is not served.
+     * Signing out stops it.
+     */
+    onRequest: (
+      handler: (ask: NearbyAsk) => void,
+      o: NearbyApproverOptions,
+    ): Promise<NearbyApproverHandle> => {
+      const b = this.nearbyBinding;
+      if (b === null)
+        return Promise.reject(
+          new PolarisError(
+            ErrorCode.serviceUnavailable,
+            "nearby approval is not set up on this client.",
+          ),
+        );
+      return onNearbyRequest(
+        { routes: this.nearbyRoutes, lan: () => b.lan() },
+        handler,
+        o,
+      );
+    },
     /** True when Identity is on, discovery names `nearby` and the role's endpoints, and this
      *  runtime can do mDNS. Never throws. */
     available: (o: { role: NearbyRole }): Promise<boolean> =>

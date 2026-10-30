@@ -145,6 +145,8 @@ export class SignInState implements TokenMarks {
 
 export interface AutoSignInDeps {
   ctx: CoreContext;
+  /** Load discovery when this session has not (the service table comes from it). */
+  discovery: () => Promise<ProductDiscoveryDocument | null>;
   /** A token from a sign-in is held. */
   signedIn: () => boolean;
   state: SignInState;
@@ -155,11 +157,7 @@ export interface AutoSignInDeps {
 export async function runAutoSignIn(
   deps: AutoSignInDeps,
 ): Promise<AutoSignInResult> {
-  try {
-    deps.ctx.requireService("identity", Feature.identityAutosignin);
-  } catch {
-    return { kind: "unavailable", code: "product" };
-  }
+  // Rung 1 needs no network and no discovery: a token a sign-in produced is a sign-in.
   if (deps.signedIn()) {
     const subject = await readStoredSubject(deps.ctx.dirs.state).catch(
       () => null,
@@ -170,6 +168,14 @@ export async function runAutoSignIn(
       subject,
       activation: { licenseId: deps.licenseId() },
     };
+  }
+  // Past it the form is next, so whether this product runs Identity matters; a session that has
+  // not read discovery yet reads it now (best effort: a failure leaves the defaults).
+  if (!deps.ctx.enabled("identity")) await deps.discovery().catch(() => null);
+  try {
+    deps.ctx.requireService("identity", Feature.identityAutosignin);
+  } catch {
+    return { kind: "unavailable", code: "product" };
   }
   return {
     kind: "needsSignIn",

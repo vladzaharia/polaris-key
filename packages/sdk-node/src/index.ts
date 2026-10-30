@@ -175,6 +175,10 @@ export {
   type NearbyRole,
 } from "./identity/autoSignIn.js";
 export {
+  type NearbyApprovalStep,
+  type NearbyAsk,
+} from "./identity/nearbyApprover.js";
+export {
   NearbySignInSession,
   type NearbyApprover,
   type NearbySignInOptions,

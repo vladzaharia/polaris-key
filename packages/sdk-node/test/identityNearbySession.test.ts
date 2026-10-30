@@ -21,24 +21,13 @@ import {
   type NearbySignInSession,
 } from "../src/identity/nearbySession.js";
 import type { CoreContext } from "../src/core/context.js";
-import { identityDiscovery, json, seededClient } from "./parityFixtures.js";
+import { identityDiscovery, json } from "./parityFixtures.js";
 import type { Handler } from "./parityFixtures.js";
-import { fixtureKeys } from "../../../conformance/runners/node/nearbyActions.js";
+import { FRAGMENT, REQ, nearbyClient } from "./identityNearbyFixtures.js";
 import type { VouchStatus } from "@polaris-key/client-core/peer";
 
-const REQ = "nr_pA71hdu4pwET01lPlZ_Pow";
 const TOKEN = "pkeyt_nearbysecretnearbysecretnearbysecret000";
 const SUBJECT = "ps_Wnnfb0uwgWH1iDEe7g0Fbg";
-const BASE = "https://k.test/djdl/identity";
-const FRAGMENT = {
-  nearby: true,
-  endpoints: {
-    nearbyStart: `${BASE}/nearby/start`,
-    nearbyApprove: `${BASE}/nearby/approve`,
-    nearbyPoll: `${BASE}/nearby/poll`,
-    signout: `${BASE}/signout`,
-  },
-};
 
 /** The CC-15 `NearbyRequest`, scriptable. */
 class FakeRequest implements NearbyRequest {
@@ -96,29 +85,6 @@ class FakeRequest implements NearbyRequest {
 
 const noPause = async (): Promise<void> => undefined;
 
-/** A client with the nearby Worker routes and a fixture key store; `routes` adds or overrides. */
-async function nearbyClient(routes: Record<string, Handler> = {}) {
-  const r = await seededClient({
-    token: null,
-    extra: {
-      expectedServices: ["license", "config", "identity"] as never,
-      deviceName: "",
-      keyring: { deviceKeys: fixtureKeys("session-d") as never },
-    },
-    routes: {
-      "GET /djdl/.well-known/polaris.json": identityDiscovery(FRAGMENT),
-      "POST /djdl/identity/nearby/start": () =>
-        json({ request: REQ, expiresIn: 300, interval: 3 }, 201),
-      ...routes,
-    },
-  });
-  // The acquisition sync after a sign-in is pinned by the sync transcripts, not here.
-  (
-    r.client.identity as unknown as { onAcquired: () => Promise<void> }
-  ).onAcquired = async () => undefined;
-  return r;
-}
-
 type Client = Awaited<ReturnType<typeof nearbyClient>>["client"];
 
 /** Start a session on `client` over the fake LAN request `req`. */
@@ -151,7 +117,7 @@ interface World {
   seen: { path: string; body: string | null }[]; // live
   order: string[];
   signOut: ReturnType<typeof vi.fn>;
-  client: Awaited<ReturnType<typeof seededClient>>["client"];
+  client: Client;
   polls: () => number;
 }
 

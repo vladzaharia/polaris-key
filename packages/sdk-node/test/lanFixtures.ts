@@ -1,7 +1,7 @@
 // Shared fixtures for the Cloud Connect LAN tests (CC-08.2): an in-process mDNS network, a small
 // multi-device fake of the Worker's connect routes, and helpers to build clients.
 import { randomBytes } from "node:crypto";
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { base64UrlEncodeBytes, signJws } from "@polaris-key/jws";
@@ -226,15 +226,20 @@ export async function makeClient(
   worker: MultiWorker,
   n: string,
   dirs: string[],
-  extra: { trustRefresh?: boolean } = {},
+  extra: {
+    trustRefresh?: boolean;
+    /** A device with no credential (and so not known to the Worker's token table). */
+    noToken?: boolean;
+  } = {},
 ): Promise<PolarisKeyClient> {
   const deviceId = devId(n);
-  const token = tokenOf(n);
-  worker.add(deviceId, token);
   const store = Object.assign(new InMemoryStore(), {
     getDeviceId: async () => deviceId,
   });
-  await store.setToken(token);
+  if (extra.noToken !== true) {
+    worker.add(deviceId, tokenOf(n));
+    await store.setToken(tokenOf(n));
+  }
   const stateDir = tmpDir(dirs);
   const client = new PolarisKeyClient({
     productSlug: PRODUCT,
@@ -253,6 +258,17 @@ export async function makeClient(
   });
   await client.init();
   return client;
+}
+
+/** Mark a client signed in, as a finished sign-in leaves it (identity.json beside the token). */
+export function markSignedIn(c: PolarisKeyClient): void {
+  const state = (c as unknown as { core: { dirs: { state: string } } }).core
+    .dirs.state;
+  mkdirSync(state, { recursive: true });
+  writeFileSync(
+    join(state, "identity.json"),
+    JSON.stringify({ email: "ana@example.test", signedInAt: T0 }),
+  );
 }
 
 export const sleep = (ms: number): Promise<void> =>

@@ -22,6 +22,7 @@ import {
   T0,
   devId,
   makeClient,
+  markSignedIn,
   until,
 } from "../lanFixtures.js";
 import { FakeNearbyWorker, REQUEST } from "./nearbyFixtures.js";
@@ -78,22 +79,11 @@ afterEach(async () => {
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
 
-/** Mark a client signed in, as a finished sign-in leaves it (identity.json beside the token). */
-function signIn(c: PolarisKeyClient): void {
-  const state = (c as unknown as { core: { dirs: { state: string } } }).core
-    .dirs.state;
-  mkdirSync(state, { recursive: true });
-  writeFileSync(
-    join(state, "identity.json"),
-    JSON.stringify({ email: "ana@example.test", signedInAt: T0 }),
-  );
-}
-
 async function world() {
   const w = new NearbyWorld();
   const m = await makeClient(w, "1", dirs);
   const d = await makeClient(w, "2", dirs);
-  signIn(m);
+  markSignedIn(m);
   return {
     w,
     m,
