@@ -1,7 +1,7 @@
-// @pkey-feature sync.files.delta
+// @pkey-feature sync.files sync.files.delta
 // The synced-file primitives against `conformance/corpus/v2/sync-vectors.json` (U-23.S1;
-// WIRE-CONTRACT-V5 §13.8.3): cdcCases, cdcEditCases, deltaCases, chunkCases and manifestCases.
-// fileStreamCases and transferPlanCases belong to U-23.S2.
+// WIRE-CONTRACT-V5 §13.8.3): cdcCases, cdcEditCases, deltaCases, chunkCases and manifestCases, and
+// (U-23.S2) fileStreamCases and transferPlanCases.
 
 import CryptoKit
 import Foundation
@@ -80,11 +80,47 @@ private struct FileVectors: Decodable {
         let id, manifestHex: String
         let expect: Expect
     }
+    struct FileOp: Decodable {
+        let op: String
+        let length, index, a, b, from, offset, value: Int?
+        let hex: String?
+    }
+    struct FileRow: Decodable {
+        struct Plain: Decodable {
+            let label: String
+            let length: Int
+        }
+        struct Expect: Decodable {
+            let result, reason, plainSha256Hex, sha256Hex, headerHex, sealedSha256Hex: String?
+            let sealedSize, length: Int?
+            let reads: [[Int]]?
+        }
+        let id, kind: String
+        let rootHex, collection, saltHex, base, openCollection, expectKidHex: String?
+        let plain: Plain?
+        let mutate: [FileOp]?
+        let start, end: Int?
+        let plainToSealed: [[Int]]?
+        let sealedToPlain: [[Int?]]?
+        let expect: Expect?
+    }
+    struct PlanCase: Decodable {
+        struct Expect: Decodable {
+            let mode: String
+            let partBytes, parts: Int?
+        }
+        let id: String
+        let size: Int
+        let delta: Bool
+        let expect: Expect
+    }
     let cdcCases: [Cdc]
     let cdcEditCases: [CdcEdit]
     let deltaCases: [Delta]
     let chunkCases: [Chunk]
     let manifestCases: [Manifest]
+    let fileStreamCases: [FileRow]
+    let transferPlanCases: [PlanCase]
 }
 
 private func hex(_ s: String) -> Data {
@@ -329,5 +365,237 @@ struct SyncFileVectorsTests {
         }
         #expect(move == c.moveIdsHex)
         #expect(bytes == c.moveBytes)
+    }
+
+    // ── U-23.S2: the transfer planner and the file stream ───────────────────────────────────
+
+    @Test(arguments: corpus.transferPlanCases.map(\.id))
+    func transferPlan(id: String) {
+        let c = corpus.transferPlanCases.first { $0.id == id }!
+        let p = SyncTransferPlan.plan(size: c.size, delta: c.delta)
+        #expect(p?.mode.rawValue == c.expect.mode)
+        #expect(p?.partBytes == c.expect.partBytes)
+        #expect(p?.parts == c.expect.parts)
+        guard let p, p.mode == .multipart, let parts = p.parts, let partBytes = p.partBytes else {
+            #expect(SyncTransferPlan.partRange(p!, size: c.size, part: 1) == nil)
+            return
+        }
+        // The parts tile the file: contiguous, every one full but the last, none empty.
+        var at = 0
+        for n in 1...parts {
+            let r = SyncTransferPlan.partRange(p, size: c.size, part: n)!
+            #expect(r.lowerBound == at && !r.isEmpty && (n == parts || r.count == partBytes))
+            at = r.upperBound
+        }
+        #expect(at == c.size)
+        #expect(SyncTransferPlan.partRange(p, size: c.size, part: 0) == nil)
+        #expect(SyncTransferPlan.partRange(p, size: c.size, part: parts + 1) == nil)
+    }
+
+    @Test func transferPlanRefusesNegative() {
+        #expect(SyncTransferPlan.plan(size: -1, delta: false) == nil)
+    }
+
+    private static func applyOps(_ stream: Data, _ ops: [FileVectors.FileOp]) -> Data {
+        var b = [UInt8](stream)
+        let stride = SyncFileStream.segmentBytes + SyncFileStream.tagBytes
+        func seg(_ i: Int) -> Range<Int> {
+            let a = 64 + i * stride
+            return a..<min(b.count, a + stride)
+        }
+        for o in ops {
+            switch o.op {
+            case "truncate": b = Array(b.prefix(o.length!))
+            case "dropSegment": b.removeSubrange(seg(o.index!))
+            case "swapSegments":
+                let (lo, hi) = (min(o.a!, o.b!), max(o.a!, o.b!))
+                let r1 = seg(lo)
+                let r2 = seg(hi)
+                let parts = [
+                    Array(b[..<r1.lowerBound]), Array(b[r2]), Array(b[r1.upperBound..<r2.lowerBound]),
+                    Array(b[r1]), Array(b[r2.upperBound...]),
+                ]
+                b = Array(parts.joined())
+            case "appendSegment": b += Array(b[seg(o.from!)])
+            case "xor": b[o.offset!] ^= UInt8(o.value!)
+            case "setHex":
+                for (i, v) in hex(o.hex!).enumerated() { b[o.offset! + i] = v }
+            case "appendHex": b += [UInt8](hex(o.hex!))
+            default: Issue.record("unknown op \(o.op)")
+            }
+        }
+        return Data(b)
+    }
+
+    /// The pinned bytes of every `seal` row, sealed once.
+    private static let sealed: [String: (bytes: Data, root: Data, collection: String)] = {
+        var out: [String: (Data, Data, String)] = [:]
+        for r in corpus.fileStreamCases where r.kind == "seal" {
+            let root = hex(r.rootHex!)
+            let plain = counterBytes("pkey-sync vector file ", r.plain!.label, r.plain!.length)
+            // swiftlint:disable:next force_try
+            let bytes = try! SyncFileStream.sealFile(
+                collKey: SyncCrypto.deriveCollKey(root: root, collection: r.collection!),
+                kid: SyncCrypto.deriveKid(root: root), plain: plain, salt: hex(r.saltHex!))
+            out[r.id] = (bytes, root, r.collection!)
+        }
+        return out
+    }()
+
+    @Test(arguments: corpus.fileStreamCases.filter { $0.kind == "seal" }.map(\.id))
+    func fileSeal(id: String) throws {
+        let r = corpus.fileStreamCases.first { $0.id == id }!
+        let root = hex(r.rootHex!)
+        let collKey = SyncCrypto.deriveCollKey(root: root, collection: r.collection!)
+        let kid = SyncCrypto.deriveKid(root: root)
+        let plain = counterBytes("pkey-sync vector file ", r.plain!.label, r.plain!.length)
+        let e = r.expect!
+        #expect(hexString(SyncCrypto.sha256(plain)) == e.plainSha256Hex)
+        let sealed = Self.sealed[id]!.bytes
+        #expect(sealed.count == e.sealedSize)
+        #expect(SyncFileStream.sealedSize(plainSize: plain.count) == sealed.count)
+        #expect(SyncFileStream.plainSize(sealedSize: sealed.count) == plain.count)
+        #expect(hexString(sealed.prefix(64)) == e.headerHex)
+        #expect(hexString(SyncCrypto.sha256(sealed)) == e.sealedSha256Hex)
+        // The same bytes from a source that arrives in awkward pieces.
+        var s = try SyncFileStream.Sealer(collKey: collKey, kid: kid, salt: hex(r.saltHex!))
+        var streamed = s.header
+        var at = 0
+        while at < plain.count {
+            for seg in try s.push(plain.subdata(in: at..<min(at + 100_003, plain.count))) { streamed.append(seg) }
+            at += 100_003
+        }
+        streamed.append(try s.finish())
+        #expect(hexString(SyncCrypto.sha256(streamed)) == e.sealedSha256Hex)
+    }
+
+    @Test(arguments: corpus.fileStreamCases.filter { $0.kind == "sizes" }.map(\.id))
+    func fileSizes(id: String) {
+        let r = corpus.fileStreamCases.first { $0.id == id }!
+        for p in r.plainToSealed! { #expect(SyncFileStream.sealedSize(plainSize: p[0]) == p[1]) }
+        for p in r.sealedToPlain! { #expect(SyncFileStream.plainSize(sealedSize: p[0]!) == p[1]) }
+        #expect(SyncFileStream.sealedSize(plainSize: -1) == nil)
+    }
+
+    @Test(arguments: corpus.fileStreamCases.filter { $0.kind == "open" }.map(\.id))
+    func fileOpen(id: String) {
+        let r = corpus.fileStreamCases.first { $0.id == id }!
+        let base = Self.sealed[r.base!]!
+        let bytes = Self.applyOps(base.bytes, r.mutate!)
+        let collKey = SyncCrypto.deriveCollKey(root: base.root, collection: r.openCollection ?? base.collection)
+        let kid = r.expectKidHex.map(hex) ?? SyncCrypto.deriveKid(root: base.root)
+        let opened = SyncFileStream.openFile(collKey: collKey, kid: kid, sealed: bytes)
+        let e = r.expect!
+        // The verdict does not depend on how the bytes arrive.
+        var o = SyncFileStream.Opener(collKey: collKey, kid: kid)
+        var pieces = Data()
+        var piecewise: SyncFileStream.Opened
+        do {
+            var at = 0
+            while at < bytes.count {
+                for seg in try o.push(bytes.subdata(in: at..<min(at + 300_007, bytes.count))) { pieces.append(seg) }
+                at += 300_007
+            }
+            pieces.append(try o.finish())
+            piecewise = .ok(plain: pieces)
+        } catch let f as SyncFileStream.Failure {
+            piecewise = .invalid(f.reason)
+        } catch {
+            piecewise = .invalid(.auth)
+        }
+        if e.result == "ok" {
+            guard case .ok(let plain) = opened else {
+                Issue.record("\(id): \(opened)")
+                return
+            }
+            #expect(hexString(SyncCrypto.sha256(plain)) == e.plainSha256Hex)
+        } else {
+            #expect(opened.reason?.rawValue == e.reason)
+        }
+        #expect(opened == piecewise)
+    }
+
+    @Test(arguments: corpus.fileStreamCases.filter { $0.kind == "range" }.map(\.id))
+    func fileRange(id: String) {
+        let r = corpus.fileStreamCases.first { $0.id == id }!
+        let base = Self.sealed[r.base!]!
+        let bytes = Self.applyOps(base.bytes, r.mutate!)
+        let collKey = SyncCrypto.deriveCollKey(root: base.root, collection: base.collection)
+        let kid = SyncCrypto.deriveKid(root: base.root)
+        var reads: [[Int]] = []
+        let e = r.expect!
+        do {
+            let got = try SyncFileStream.openRange(
+                collKey: collKey, kid: kid,
+                read: { offset, length in
+                    reads.append([offset, length])
+                    return bytes.subdata(in: min(offset, bytes.count)..<min(offset + length, bytes.count))
+                }, sealedSize: bytes.count, start: r.start!, end: r.end!)
+            #expect(e.result == "ok")
+            #expect(got.count == e.length)
+            #expect(hexString(SyncCrypto.sha256(got)) == e.sha256Hex)
+            #expect(reads == e.reads)
+        } catch let f as SyncFileStream.Failure {
+            #expect(e.result == "invalid")
+            #expect(f.reason.rawValue == e.reason)
+        } catch {
+            Issue.record("\(error)")
+        }
+    }
+
+    @Test func fileStreamBeyondTheCorpus() throws {
+        let root = Data((0..<32).map { UInt8($0 &* 5 &+ 3) })
+        let collKey = SyncCrypto.deriveCollKey(root: root, collection: "saves")
+        let kid = SyncCrypto.deriveKid(root: root)
+        let plain = Data((0..<300_000).map { UInt8(truncatingIfNeeded: $0 &* 7 &+ ($0 >> 3)) })
+        // A seal draws a fresh salt: two seals of one file differ and both open.
+        let a = try SyncFileStream.sealFile(collKey: collKey, kid: kid, plain: plain)
+        let b = try SyncFileStream.sealFile(collKey: collKey, kid: kid, plain: plain)
+        #expect(a != b && a.subdata(in: 32..<64) != b.subdata(in: 32..<64))
+        #expect(SyncFileStream.openFile(collKey: collKey, kid: kid, sealed: a) == .ok(plain: plain))
+        #expect(throws: SyncCryptoError.self) {
+            try SyncFileStream.encodeHeader(kid: kid.prefix(15), salt: Data(count: 32))
+        }
+        #expect(throws: SyncCryptoError.self) { try SyncFileStream.encodeHeader(kid: kid, salt: Data(count: 31)) }
+        #expect(throws: SyncCryptoError.self) { try SyncFileStream.Sealer(collKey: collKey.prefix(31), kid: kid) }
+        // A ranged read that answers the wrong size is `size`.
+        #expect(throws: SyncFileStream.Failure(.size)) {
+            try SyncFileStream.openRange(
+                collKey: collKey, kid: kid, read: { o, l in a.subdata(in: o..<(o + l - 1)) }, sealedSize: a.count,
+                start: 0, end: 10)
+        }
+        let got = try SyncFileStream.openRange(
+            collKey: collKey, kid: kid, read: { o, l in a.subdata(in: o..<(o + l)) }, sealedSize: a.count,
+            start: 1000, end: 2000)
+        #expect(got == plain.subdata(in: 1000..<2000))
+        // A slice of a larger Data opens like a copy.
+        let padded = Data([9, 9, 9]) + a
+        #expect(
+            SyncFileStream.openFile(collKey: collKey, kid: kid, sealed: padded.dropFirst(3)) == .ok(plain: plain))
+        // Reassembly: the manifest's plain size and SHA-256 over the pieces.
+        let digest = SyncCrypto.sha256(plain)
+        var ra = try SyncFileStream.Reassembly(plainSize: plain.count, plainSha256: digest)
+        var at = 0
+        while at < plain.count {
+            try ra.push(plain.subdata(in: at..<min(at + 70_001, plain.count)))
+            at += 70_001
+        }
+        try ra.finish()
+        ra = try SyncFileStream.Reassembly(plainSize: plain.count, plainSha256: digest)
+        try ra.push(plain)
+        #expect(throws: SyncFileStream.Failure(.plainSize)) { try ra.push(Data([1])) }
+        ra = try SyncFileStream.Reassembly(plainSize: plain.count, plainSha256: digest)
+        try ra.push(plain.prefix(100))
+        #expect(throws: SyncFileStream.Failure(.plainSize)) { try ra.finish() }
+        var wrong = plain
+        wrong[5] ^= 1
+        ra = try SyncFileStream.Reassembly(plainSize: plain.count, plainSha256: digest)
+        try ra.push(wrong)
+        #expect(throws: SyncFileStream.Failure(.plainSha256)) { try ra.finish() }
+        #expect(throws: SyncFileStream.Failure(.plainSize)) {
+            try SyncFileStream.Reassembly(plainSize: SYNC_FILE_MAX_BYTES + 1, plainSha256: digest)
+        }
+        var empty = try SyncFileStream.Reassembly(plainSize: 0, plainSha256: SyncCrypto.sha256(Data()))
+        try empty.finish()
     }
 }
