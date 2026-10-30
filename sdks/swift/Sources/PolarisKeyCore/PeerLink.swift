@@ -216,7 +216,7 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         }
         deadline = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
-            if !Task.isCancelled { await self?.fail("handshake_failed") }
+            if !Task.isCancelled { await self?.fail("peer_timeout") }
         }
     }
 
@@ -337,11 +337,13 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         await arm()
     }
 
+    /// The link ends itself: the closing side names its reason (V5 15.6; a zero-length frame is
+    /// `peer_bad_frame`, the handshake deadline `peer_timeout`). A CLOSE goes out only once the transport exists.
     private func fail(_ code: String) {
         if ended { return }
         // Not a live session: the channel has nothing to send.
         if !open { finish(PeerLinkClosed(code: code, byPeer: false)) }
-        closeSoon(.peerBye)
+        closeSoon(PeerCloseCode(rawValue: code) ?? .peerBye)
     }
 
     private func handle(_ e: PeerSessionEvent) {

@@ -17,7 +17,8 @@ import Foundation
 import PolarisKeyCore
 
 public let connectRefreshGapSeconds = 60
-/// Pushed documents handled at once; the rest are refused as `busy`.
+/// Pushed documents handled at once; the rest are refused as `busy`. A TRUST flood cannot take the last
+/// slot: it is kept for a RING (at most 7 waiting TRUST documents, 8 in total).
 public let connectMaxDocsQueued = 8
 private let maxRetries = 5
 
@@ -41,6 +42,9 @@ public struct ConnectNotice: Sendable, Equatable {
 /// refused as `unsupported`, or no refresh is made).
 public struct ConnectPeerDocsSource: Sendable {
     public var now: @Sendable () -> Int
+    /// Monotonic seconds, for the rate rules (the refresh gap, the `busy` notices) that a wall clock set back
+    /// must not hold off. Default: the system uptime.
+    public var mono: @Sendable () -> Double
     /// Ask the Worker for a newer roster; throws on failure.
     public var refresh: (@Sendable () async throws -> Void)?
     /// Verify and store a pushed roster.
@@ -49,11 +53,13 @@ public struct ConnectPeerDocsSource: Sendable {
     public var applyTrust: (@Sendable (String) async -> PeerTrustResult)?
 
     public init(
-        now: @escaping @Sendable () -> Int, refresh: (@Sendable () async throws -> Void)? = nil,
+        now: @escaping @Sendable () -> Int, mono: (@Sendable () -> Double)? = nil,
+        refresh: (@Sendable () async throws -> Void)? = nil,
         adoptRing: (@Sendable (String) async -> RingAdoption)? = nil,
         applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil
     ) {
         self.now = now
+        self.mono = mono ?? { Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000 }
         self.refresh = refresh
         self.adoptRing = adoptRing
         self.applyTrust = applyTrust
@@ -106,7 +112,7 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
 
     private struct State {
         var queued: Set<String> = []
-        var lastRefresh: Int?
+        var lastRefresh: Double?
         var retry: (@Sendable () -> Void)?
         var tries = 0
         var fns: [(id: Int, fn: @Sendable (ConnectNotice) -> Void)] = []
@@ -116,7 +122,7 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
         /// `close()` ran: nothing queued or armed runs any more (G18, the sign-out order).
         var closed = false
         /// The last second a `busy` notice was emitted, by kind: the rest are dropped, not reported.
-        var lastBusy: [String: Int] = [:]
+        var lastBusy: [String: Double] = [:]
     }
 
     /// A queued job. `always` jobs (the drain marker) run even after `close()`.
@@ -238,7 +244,8 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
     }
 
     /// A peer is on a newer roster, or the relay said the roster changed: fetch it (a fresh
-    /// `identity(refresh:)`, verified under the normal replacement rules). At most one a minute.
+    /// `identity(refresh:)`, verified under the normal replacement rules). At most one a minute, on the
+    /// monotonic clock, so a wall clock set back cannot hold refreshes off.
     public func wantRing() {
         if isClosed { return }
         jobs.yield(Job(always: false, fn: { [self] in _ = await want(retry: false) }))
@@ -247,20 +254,20 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
     /// True when a fetch started.
     func want(retry: Bool) async -> Bool {
         guard let refresh = src.refresh, !isClosed else { return false }
-        let t = src.now()
+        let t = src.mono()
         enum Gate {
             case go
-            case wait(Int)
+            case wait(Double)
         }
         let gate: Gate = state.with { s in
-            if let last = s.lastRefresh, t - last < connectRefreshGapSeconds {
-                return .wait(last + connectRefreshGapSeconds - t)
+            if let last = s.lastRefresh, t - last < Double(connectRefreshGapSeconds) {
+                return .wait(last + Double(connectRefreshGapSeconds) - t)
             }
             s.lastRefresh = t
             return .go
         }
         if case .wait(let gap) = gate {
-            if retry { defer_(TimeInterval(gap)) }
+            if retry { defer_(gap) }
             return false
         }
         do {
@@ -299,7 +306,7 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
     /// queued twice: the excess is refused visibly, not worked on.
     private func run(_ kind: String, _ jws: String, _ job: @escaping @Sendable () async -> Void) {
         let key = kind + ":" + jws
-        let now = src.now()
+        let now = src.mono()
         enum Gate {
             case run
             case busy(notify: Bool)
@@ -308,12 +315,11 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
         let gate: Gate = state.with { s in
             if s.closed { return .closed }
             // One slot is kept for RING: a flood of TRUST documents cannot starve a roster (G11).
-            let nonRing = s.queued.filter { !$0.hasPrefix("ring:") }.count
-            let full = kind == "ring" ? s.queued.count >= connectMaxDocsQueued : nonRing >= connectMaxDocsQueued - 1
+            let full = kind == "ring" ? s.queued.count >= connectMaxDocsQueued : s.queued.count >= connectMaxDocsQueued - 1
             if s.queued.contains(key) || full {
                 // At most one busy notice per kind per second; the rest are dropped, not reported.
-                let notify = s.lastBusy[kind] != now
-                s.lastBusy[kind] = now
+                let notify = s.lastBusy[kind].map { now - $0 >= 1 } ?? true
+                if notify { s.lastBusy[kind] = now }
                 return .busy(notify: notify)
             }
             s.queued.insert(key)
