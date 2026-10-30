@@ -57,16 +57,23 @@ public interface MdnsSocket {
     /** The default does nothing: a socket without IPv6 has no link to send on. */
     public fun send6(data: ByteArray, zone: String) {}
 
+    /**
+     * Send one packet to [host]:[port] alone (a legacy unicast answer, RFC 6762 section 6.7); [host] carries
+     * its `%zone` when link-local. The default does nothing: a socket that cannot send unicast answers no
+     * legacy querier.
+     */
+    public fun sendTo(data: ByteArray, host: String, port: Int) {}
+
     public fun close()
 }
 
 /**
- * Make a socket that calls `onPacket(data, sourceAddress)` for every datagram it receives. The source is
- * the address as RFC 5952 text; a link-local IPv6 source carries the zone of the arrival interface
+ * Make a socket that calls `onPacket(data, sourceAddress, sourcePort)` for every datagram it receives. The
+ * source is the address as RFC 5952 text; a link-local IPv6 source carries the zone of the arrival interface
  * (`fe80::1%en0`).
  */
 public fun interface MdnsSocketFactory {
-    public suspend fun open(onPacket: (ByteArray, String) -> Unit): MdnsSocket
+    public suspend fun open(onPacket: (ByteArray, String, Int) -> Unit): MdnsSocket
 }
 
 /** LAN discovery cannot run here: the socket could not be opened. */

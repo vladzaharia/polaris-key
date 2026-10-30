@@ -38,27 +38,27 @@ internal class JvmMdnsSocket(
     private var closed = false
 
     /** One datagram, or null when the socket failed or the datagram is not ours to hear. */
-    private fun receive(buf: ByteArray): Pair<ByteArray, String>? {
+    private fun receive(buf: ByteArray): Triple<ByteArray, String, Int>? {
         val p = DatagramPacket(buf, buf.size)
         sock.receive(p)
         val src = literalOfInetAddress(p.address)
         // A link-local source that arrived on an interface we did not join is not ours to hear.
         val zone = src.substringAfter('%', "")
         val heard = src.isNotEmpty() && (zone.isEmpty() || zone in zones)
-        return if (heard) p.data.copyOfRange(p.offset, p.offset + p.length) to src else null
+        return if (heard) Triple(p.data.copyOfRange(p.offset, p.offset + p.length), src, p.port) else null
     }
 
-    private fun readLoop(onPacket: (ByteArray, String) -> Unit) {
+    private fun readLoop(onPacket: (ByteArray, String, Int) -> Unit) {
         val buf = ByteArray(RECEIVE_BUFFER)
         while (!closed) {
             val got = runCatching { receive(buf) }
             if (got.isFailure && !closed) Thread.sleep(RETRY_READ_MILLIS) // a socket that keeps failing does not spin
             // a bad packet or a host callback never stops the socket
-            got.getOrNull()?.let { (data, src) -> runCatching { onPacket(data, src) } }
+            got.getOrNull()?.let { (data, src, port) -> runCatching { onPacket(data, src, port) } }
         }
     }
 
-    fun startReader(onPacket: (ByteArray, String) -> Unit) {
+    fun startReader(onPacket: (ByteArray, String, Int) -> Unit) {
         val t = Thread { readLoop(onPacket) }
         t.isDaemon = true
         t.name = "polaris-key-mdns"
@@ -77,6 +77,12 @@ internal class JvmMdnsSocket(
         val ni = links6[zone] ?: return
         val group = Inet6Address.getByAddress(null, inetAddressOfLiteral(MDNS_GROUP6)!!.address, ni.index)
         sendOn(ni, InetSocketAddress(group, MDNS_PORT), data)
+    }
+
+    override fun sendTo(data: ByteArray, host: String, port: Int) {
+        if (closed) return
+        val to = inetAddressOfLiteral(host) ?: return
+        runCatching { synchronized(sock) { sock.send(DatagramPacket(data, data.size, InetSocketAddress(to, port))) } }
     }
 
     /** This interface may be down for now: a failed send is dropped. */
@@ -108,7 +114,7 @@ internal fun openMulticastSocket(
     ifaces: List<NetworkInterface>,
     links: List<Mdns6Interface>,
     fallback: Boolean,
-    onPacket: (ByteArray, String) -> Unit,
+    onPacket: (ByteArray, String, Int) -> Unit,
 ): MdnsSocket {
     val byZone = HashMap<String, NetworkInterface>()
     for (l in links) runCatching { NetworkInterface.getByName(l.name) }.getOrNull()?.let { byZone[l.zone] = it }

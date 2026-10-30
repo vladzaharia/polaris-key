@@ -80,7 +80,13 @@ public data class MdnsQuestion(val name: String, val type: MdnsType)
 public data class MdnsRecord(val name: String, val type: MdnsType, val ttl: Long, val data: MdnsData)
 
 /** A decoded datagram; [answers] are the answers followed by the additionals (authority is dropped). */
-public data class MdnsPacket(val isResponse: Boolean, val questions: List<MdnsQuestion>, val answers: List<MdnsRecord>)
+public data class MdnsPacket(
+    val isResponse: Boolean,
+    val questions: List<MdnsQuestion>,
+    val answers: List<MdnsRecord>,
+    /** The header's query ID (a legacy unicast answer echoes it). */
+    val id: Int = 0,
+)
 
 private fun typeOf(code: Int): MdnsType? = MdnsType.values().firstOrNull { it.code == code }
 
@@ -216,7 +222,7 @@ public fun parseMdnsPacket(data: ByteArray): MdnsPacket {
     val (answers, afterAnswers) = r.records(pos, counts[1], true)
     val (_, afterAuthority) = r.records(afterAnswers, counts[2], false)
     val (extra, _) = r.records(afterAuthority, counts[3], true)
-    return MdnsPacket((flags and RESPONSE_BIT) != 0, questions, answers + extra)
+    return MdnsPacket((flags and RESPONSE_BIT) != 0, questions, answers + extra, r.u16(0))
 }
 
 private fun u16(out: ByteArrayOutputStream, v: Int) {
@@ -313,22 +319,34 @@ public fun buildMdnsQuery(questions: List<MdnsQuestion>, packetId: Int = 0): Byt
 
 /**
  * An authoritative response packet (flags 0x8400) holding [answers]. Class IN; the cache-flush bit
- * is set on SRV, TXT, A and AAAA (unique records), never on the shared PTR.
+ * is set on SRV, TXT, A and AAAA (unique records), never on the shared PTR, unless [flush] is false.
+ * A legacy unicast answer (RFC 6762 section 6.7) passes the query's [packetId] and the [questions] to
+ * repeat, and no cache-flush bit.
  */
-public fun buildMdnsResponse(answers: List<MdnsRecord>): ByteArray {
-    require(answers.size <= MDNS_MAX_RECORDS) { "too many records" }
+public fun buildMdnsResponse(
+    answers: List<MdnsRecord>,
+    packetId: Int = 0,
+    questions: List<MdnsQuestion> = emptyList(),
+    flush: Boolean = true,
+): ByteArray {
+    require(answers.size <= MDNS_MAX_RECORDS && questions.size <= MDNS_MAX_RECORDS) { "too many records" }
     val out = ByteArrayOutputStream()
-    u16(out, 0)
+    u16(out, packetId and WORD)
     u16(out, RESPONSE_FLAGS)
-    u16(out, 0)
+    u16(out, questions.size)
     u16(out, answers.size)
     u16(out, 0)
     u16(out, 0)
+    for (q in questions) {
+        out.write(encodeName(q.name))
+        u16(out, q.type.code)
+        u16(out, CLASS_IN)
+    }
     for (r in answers) {
         val rdata = encodeRdata(r.data, r.type)
         out.write(encodeName(r.name))
         u16(out, r.type.code)
-        u16(out, if (r.type == MdnsType.PTR) CLASS_IN else CLASS_IN or CACHE_FLUSH)
+        u16(out, if (r.type == MdnsType.PTR || !flush) CLASS_IN else CLASS_IN or CACHE_FLUSH)
         val ttl = r.ttl and 0xffffffffL
         u16(out, (ttl shr 16).toInt())
         u16(out, (ttl and WORD.toLong()).toInt())
