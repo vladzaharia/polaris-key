@@ -53,9 +53,12 @@ private final class FakeRestoreStore: RestoreItemStore, @unchecked Sendable {
     let item = LockedValue<RestoreItem?>(nil)
     let failing = LockedValue<Bool>(false)
     let calls = LockedValue<[String]>([])
+    /// While true, `read()` waits: the detached daily check is parked at the start of its work.
+    let hold = LockedValue<Bool>(false)
 
     func read() async throws -> RestoreItem? {
         calls.with { $0.append("read") }
+        while hold.current { try? await Task.sleep(nanoseconds: 5_000_000) }
         if failing.current { throw RestoreStoreError.unavailable }
         return item.current
     }
@@ -621,6 +624,13 @@ final class AutoSignInTests: XCTestCase {
         dump(itemA, to: &dumped)
         XCTAssertFalse(dumped.contains(itemA.secret))
         XCTAssertTrue(dumped.contains("[redacted]"))
+        let enrolled = RestoreEnrolResult.enrolled(restoreId: itemB.restoreId, secret: itemB.secret)
+        XCTAssertFalse("\(enrolled)".contains(itemB.secret))
+        XCTAssertFalse(String(reflecting: enrolled).contains(itemB.secret))
+        var dumpedResult = ""
+        dump(enrolled, to: &dumpedResult)
+        XCTAssertFalse(dumpedResult.contains(itemB.secret))
+        XCTAssertTrue(dumpedResult.contains("[redacted]"))
     }
 
     // ── Enrolment (I-49.9) ──────────────────────────────────────────────────────────────
@@ -631,6 +641,7 @@ final class AutoSignInTests: XCTestCase {
         let (c, store) = try await client(token: "pkeyt_a", licensed: true)
         let first = try await c.identity.autoSignIn()
         guard case .signedIn = first else { return XCTFail("\(first)") }
+        await c.identity.restoreAwaitDailyCheck()
         var posts = await restoreRequests("POST")
         XCTAssertEqual(posts.count, 1)
         XCTAssertEqual(bodyText(posts[0]), "{}", "no item yet")
@@ -640,6 +651,7 @@ final class AutoSignInTests: XCTestCase {
 
         // Within the day: no request.
         _ = try await c.identity.autoSignIn()
+        await c.identity.restoreAwaitDailyCheck()
         posts = await restoreRequests("POST")
         XCTAssertEqual(posts.count, 1)
 
@@ -649,6 +661,7 @@ final class AutoSignInTests: XCTestCase {
         await server.reply("/djdl/identity/restore", status: 200, body: #"{"status":"current"}"#)
         let writesBefore = backup.calls.current.filter { $0 == "write" }.count
         _ = try await c.identity.autoSignIn()
+        await c.identity.restoreAwaitDailyCheck()
         posts = await restoreRequests("POST")
         XCTAssertEqual(posts.count, 2)
         XCTAssertEqual(bodyText(posts[1]), #"{"restoreId":"\#(itemB.restoreId)"}"#)
@@ -683,6 +696,7 @@ final class AutoSignInTests: XCTestCase {
         await discovery(restore: false)
         let (d, _) = try await client(token: "pkeyt_a", licensed: true)
         _ = try await d.identity.autoSignIn()
+        await d.identity.restoreAwaitDailyCheck()
         let none = await restoreRequests()
         XCTAssertTrue(none.isEmpty, "an old Worker: no member, no enrolment")
     }
@@ -722,7 +736,7 @@ final class AutoSignInTests: XCTestCase {
         do { _ = try await c.identity.signOut() } catch {}
         let queued = await store.readRecord("restore-delete-pending")
         XCTAssertNotNil(queued, "queued in a local record that no backup carries")
-        XCTAssertEqual(backup.item.current, itemA, "the sign-out did not happen")
+        XCTAssertNil(backup.item.current, "the item goes whatever the Worker answered")
 
         // The next launch: the Worker answers; the queued DELETE is the first call to the restore route.
         await server.route("/djdl/identity/restore") { request in
@@ -754,6 +768,173 @@ final class AutoSignInTests: XCTestCase {
         XCTAssertNil(backup.item.current)
         let queued = await store.readRecord("restore-delete-pending")
         XCTAssertNotNil(queued, "no bearer to send it with: it waits for the next sign-in")
+    }
+
+    // ── The I-49 fix round ──────────────────────────────────────────────────────────────
+
+    func testAnOfflineLaunchKeepsTheQueuedDeleteAndTheNextOnlineLaunchSendsIt() async throws {
+        await discovery(restore: true)
+        await server.route("/djdl/identity/restore") { _ in StubServer.Reply(status: 204, body: "") }
+        let (seed, store) = try await client(token: "pkeyt_a")
+        _ = seed
+        await store.writeRecord("restore-delete-pending", Data("1".utf8))
+        // A new process: no discovery in memory, and the Worker is unreachable.
+        server = StubServer()
+        await server.drop("/djdl/.well-known/polaris.json")
+        let offline = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: [:], trustRefresh: false, store: store, transport: server.transport,
+                expectedServices: [], fingerprint: false,
+                connect: ConnectOptions(keys: try LabelKeyPort(label: "transcript-device-key-1"))))
+        offline.identity.installRestoreStore(backup)
+        _ = try await offline.identity.autoSignIn()
+        let kept = await store.readRecord("restore-delete-pending")
+        XCTAssertNotNil(kept)
+
+        server = StubServer()
+        await discovery(restore: true)
+        await server.route("/djdl/identity/restore") { _ in StubServer.Reply(status: 204, body: "") }
+        let online = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: [:], trustRefresh: false, store: store, transport: server.transport,
+                expectedServices: [.identity], fingerprint: false,
+                connect: ConnectOptions(keys: try LabelKeyPort(label: "transcript-device-key-1"))))
+        online.identity.installRestoreStore(backup)
+        _ = try await online.identity.autoSignIn()
+        let sent = await restoreRequests("DELETE")
+        XCTAssertEqual(sent.count, 1)
+        let cleared = await store.readRecord("restore-delete-pending")
+        XCTAssertNil(cleared)
+    }
+
+    private func expectSignOutToFail(_ c: PolarisKeyClient) async {
+        do { _ = try await c.identity.signOut() } catch { return }
+        XCTFail("the sign-out should have failed")
+    }
+
+    func testSignOutDeletesTheItemAndSendsDeleteWhenTheWorkerRefusesTheSignOut() async throws {
+        await discovery(restore: true)
+        await server.route("/djdl/identity/restore") { _ in StubServer.Reply(status: 204, body: "") }
+        await server.reply("/djdl/identity/signout", status: 500, body: "{}")
+        backup.item.set(itemA)
+        let (c, store) = try await client(token: "pkeyt_a", licensed: true)
+        await store.writeRecord("restore-checked", Data("1".utf8))
+        await expectSignOutToFail(c)
+        let deletes = await restoreRequests("DELETE")
+        XCTAssertEqual(deletes.count, 1)
+        XCTAssertNil(backup.item.current)
+        let checked = await store.readRecord("restore-checked")
+        XCTAssertNil(checked)
+        let pending = await store.readRecord("restore-delete-pending")
+        XCTAssertNil(pending, "the DELETE was delivered")
+    }
+
+    func testSignOutDeletesTheItemAndQueuesTheDeleteWhenNothingCanBeReached() async throws {
+        await discovery(restore: true)
+        await server.drop("/djdl/identity/restore")
+        await server.drop("/djdl/identity/signout")
+        backup.item.set(itemA)
+        let (c, store) = try await client(token: "pkeyt_a", licensed: true)
+        await expectSignOutToFail(c)
+        XCTAssertNil(backup.item.current)
+        let pending = await store.readRecord("restore-delete-pending")
+        XCTAssertNotNil(pending)
+    }
+
+    func testSignOutWithNoItemStillRevokesTheDeviceKey() async throws {
+        await discovery(restore: true)
+        await server.route("/djdl/identity/restore") { _ in StubServer.Reply(status: 204, body: "") }
+        await server.reply("/djdl/identity/signout", body: #"{"released":false}"#)
+        let (c, _) = try await client(token: "pkeyt_a", licensed: true)
+        _ = try await c.identity.signOut()
+        let deletes = await restoreRequests("DELETE")
+        XCTAssertEqual(deletes.count, 1, "the item may have been deleted by a sibling; the key is still revoked")
+    }
+
+    func testTheDailyCheckIsDetachedAndNeverDelaysTheSignInResult() async throws {
+        await discovery(restore: true)
+        await server.reply("/djdl/identity/restore", status: 201, body: enrolBody)
+        let (c, _) = try await client(token: "pkeyt_a", licensed: true)
+        backup.hold.set(true)
+        let done = LockedValue(false)
+        let ladder = Task {
+            let result = try await c.identity.autoSignIn()
+            done.set(true)
+            return result
+        }
+        for _ in 0..<400 where !done.current { try await Task.sleep(nanoseconds: 10_000_000) }
+        let returned = done.current
+        backup.hold.set(false)
+        let result = try await ladder.value
+        XCTAssertTrue(returned, "the sign-in returned while the check was still running")
+        guard case .signedIn = result else { return XCTFail("\(result)") }
+        await c.identity.restoreAwaitDailyCheck()
+        XCTAssertEqual(backup.item.current, itemB)
+    }
+
+    func testADetachedCheckThatFailsIsSwallowedAndTriedAgainAtTheNextLaunch() async throws {
+        await discovery(restore: true)
+        await server.drop("/djdl/identity/restore")
+        let (c, store) = try await client(token: "pkeyt_a", licensed: true)
+        let first = try await c.identity.autoSignIn()
+        guard case .signedIn = first else { return XCTFail("\(first)") }
+        await c.identity.restoreAwaitDailyCheck()
+        let stamp = await store.readRecord("restore-checked")
+        XCTAssertNil(stamp, "a failed check stamps nothing")
+        server = StubServer()
+        await discovery(restore: true)
+        await server.reply("/djdl/identity/restore", status: 201, body: enrolBody)
+        let (d, _) = try await client(token: "pkeyt_a", licensed: true)
+        _ = try await d.identity.autoSignIn()
+        await d.identity.restoreAwaitDailyCheck()
+        XCTAssertEqual(backup.item.current, itemB)
+    }
+
+    func testASignOutDuringTheDetachedCheckWaitsForItThenRevokesWhatItEnrolled() async throws {
+        await discovery(restore: true)
+        let created = enrolBody
+        await server.route("/djdl/identity/restore") { request in
+            request.method == "DELETE"
+                ? StubServer.Reply(status: 204, body: "")
+                : StubServer.Reply(status: 201, body: created)
+        }
+        await server.reply("/djdl/identity/signout", body: #"{"released":false}"#)
+        let (c, _) = try await client(token: "pkeyt_a", licensed: true)
+        backup.hold.set(true)
+        _ = try await c.identity.autoSignIn()
+        // The check is parked inside its first read of the backup: only now does the sign-out begin.
+        for _ in 0..<400 where !backup.calls.current.contains("read") { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertTrue(backup.calls.current.contains("read"))
+        let out = Task { try await c.identity.signOut() }
+        try await Task.sleep(nanoseconds: 200_000_000)
+        backup.hold.set(false)
+        _ = try await out.value
+        await c.identity.restoreAwaitDailyCheck()
+        let order = await server.requests.filter {
+            $0.url.path == "/djdl/identity/restore" || $0.url.path == "/djdl/identity/signout"
+        }.map { "\($0.method) \($0.url.path)" }
+        XCTAssertEqual(
+            order,
+            ["POST /djdl/identity/restore", "DELETE /djdl/identity/restore", "POST /djdl/identity/signout"])
+        XCTAssertNil(backup.item.current)
+    }
+
+    func testTheOptionOffRevokesWhenOnlyTheCheckRecordRemains() async throws {
+        await discovery(restore: true)
+        await server.route("/djdl/identity/restore") { _ in StubServer.Reply(status: 204, body: "") }
+        let (c, store) = try await client(token: "pkeyt_a", licensed: true)
+        await store.writeRecord("restore-checked", Data("1".utf8))
+        _ = try await c.identity.autoSignIn(AutoSignInOptions(restore: false))
+        let deletes = await restoreRequests("DELETE")
+        XCTAssertEqual(deletes.count, 1, "a sibling deleted the item; this device's key is still revoked")
+        let checked = await store.readRecord("restore-checked")
+        XCTAssertNil(checked)
+        // Nothing left to remove: the next launch sends nothing more.
+        _ = try await c.identity.autoSignIn(AutoSignInOptions(restore: false))
+        let again = await restoreRequests("DELETE")
+        XCTAssertEqual(again.count, 1)
     }
 
     // ── Scenario 11 ─────────────────────────────────────────────────────────────────────

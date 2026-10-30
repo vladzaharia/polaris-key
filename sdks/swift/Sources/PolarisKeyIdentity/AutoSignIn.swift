@@ -194,7 +194,7 @@ extension IdentityClient {
             await core.cache().license != nil
         {
             let id = await core.cache().license?.doc.licenseId
-            if options.restore { await restoreDailyCheck() }
+            if options.restore { restoreLaunchDailyCheck(generation: generation) }
             return .signedIn(SignInReady(subject: subjectValue.current, licenseId: id))
         }
         // Signed out on purpose: rungs 2-4 stay quiet.

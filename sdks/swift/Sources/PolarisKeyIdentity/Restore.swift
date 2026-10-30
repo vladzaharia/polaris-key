@@ -21,10 +21,13 @@
 //     item is the one that deletes). `429`, `5xx`, a network failure and an unavailable store leave it too;
 //   - a key that was consumed and then refused (`terms`, `device_limit`, `not_entitled`, ...) falls to
 //     rung 3. The next enrolment replaces the dead key;
-//   - sign-out sends `DELETE restore` first, while the bearer still exists, and queues it (a local,
-//     non-synced record) when the Worker cannot be reached. A queued delete is retried before any other
-//     call at the next launch, and before any enrolment. The Worker's own `signout` also deletes this
-//     device's key in the same request, so the queue is cleared once that is accepted;
+//   - sign-out deletes the item and sends `DELETE restore` first, while the bearer still exists, whatever
+//     the Worker's own `signout` then answers (or if it cannot be reached). A DELETE that cannot be
+//     delivered is queued (a local record, kept out of device backups) and retried before any other call
+//     at the next launch, and before any enrolment. The Worker's own `signout` also deletes this device's
+//     key in the same request, so the queue is cleared once that is accepted;
+//   - rung 1's daily check runs detached, after the sign-in result is returned; a failure is swallowed and
+//     the next launch checks again. A sign-out waits for one in flight, then revokes what it enrolled;
 //   - the secret is never logged, printed or put in an error: `RestoreItem` redacts it.
 
 import CryptoKit
@@ -70,6 +73,12 @@ public protocol RestoreItemStore: Sendable {
 /// Makes the store for an access group (`AutoSignInOptions.backupAccessGroup`), or nil for none.
 public typealias RestoreStoreFactory = @Sendable (_ accessGroup: String?) -> (any RestoreItemStore)?
 
+/// The daily check running off the ladder's path.
+struct RestoreDailyState: Sendable {
+    var running = false
+    var task: Task<Void, Never>?
+}
+
 /// What the ladder and the enrolment share: the option, the access group and the store.
 struct RestoreSetup: Sendable {
     var enabled = true
@@ -78,8 +87,10 @@ struct RestoreSetup: Sendable {
     var fixed: (any RestoreItemStore)?
 }
 
-/// `POST restore`.
-enum RestoreEnrolResult: Sendable, Equatable {
+/// `POST restore`. Printing it shows the secret of `.enrolled` as `[redacted]`.
+enum RestoreEnrolResult: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
     /// `201`: a new key. The caller writes it to the backup.
     case enrolled(restoreId: String, secret: String)
     /// `200 {"status":"current"}`: the item stays as it is.
@@ -88,11 +99,22 @@ enum RestoreEnrolResult: Sendable, Equatable {
     case unavailable
     /// `403 account_required`, `429`, a Worker error.
     case refused(code: String, status: Int)
+
+    var description: String {
+        switch self {
+        case .enrolled(let id, _): return "RestoreEnrolResult.enrolled(restoreId: \(id), secret: \(redactedCredential))"
+        case .current: return "RestoreEnrolResult.current"
+        case .unavailable: return "RestoreEnrolResult.unavailable"
+        case .refused(let code, let status): return "RestoreEnrolResult.refused(code: \(code), status: \(status))"
+        }
+    }
+    var debugDescription: String { description }
+    var customMirror: Mirror { Mirror(self, children: ["result": description], displayStyle: .struct) }
 }
 
 enum Restore {
     static let grantType = "urn:polaris-key:grant-type:restore"
-    /// The local, non-synced records (`Store.readRecord`): none of them is in any backup.
+    /// The local, non-synced records (`Store.readRecord`): the file store keeps them out of device backups.
     static let checkedRecord = "restore-checked"
     static let pendingDeleteRecord = "restore-delete-pending"
     /// A rung-1 launch checks the key at most this often.
@@ -261,7 +283,28 @@ extension IdentityClient {
         await restoreEnrol(load: false)
     }
 
-    /// Rung 1: at most once every 24 hours, check the key and enrol when there is none.
+    /// Rung 1's daily check, detached: the sign-in result is returned first and a launch never waits for it.
+    /// A failure is swallowed (the next launch checks again). `generation` is the sign-out generation the
+    /// ladder read: a sign-out since then stops the check. One check runs at a time.
+    func restoreLaunchDailyCheck(generation: Int) {
+        guard restoreSetup.current.enabled, restoreStore() != nil else { return }
+        restoreDaily.with { state in
+            guard !state.running else { return }
+            state.running = true
+            state.task = Task.detached(priority: .utility) { [self] in
+                if await core.signOutGeneration == generation { await restoreDailyCheck() }
+                restoreDaily.with { $0.running = false }
+            }
+        }
+    }
+
+    /// Wait for the daily check in flight, if any (sign-out, and tests).
+    func restoreAwaitDailyCheck() async {
+        let task = restoreDaily.current.task
+        await task?.value
+    }
+
+    /// At most once every 24 hours, check the key and enrol when there is none.
     func restoreDailyCheck() async {
         guard restoreSetup.current.enabled, restoreStore() != nil else { return }
         guard !(await core.explicitSignOut()) else { return }
@@ -275,6 +318,10 @@ extension IdentityClient {
     /// `DELETE restore`: true when it is settled (`204`, or an answer no retry would change), false for a
     /// `429` or a `5xx`. A network failure throws. It runs whatever the state of Identity and the gates.
     func restoreDeleteWire() async throws -> Bool {
+        if await core.discoveryDocument == nil { await core.discover() }
+        // Offline with no discovery document: the revocation cannot be addressed yet, so it is not settled
+        // and stays queued. A document that names no usable endpoint leaves nothing to send.
+        guard await core.discoveryDocument != nil else { return false }
         guard let url = await restoreURL(derive: true) else { return true }
         let response = try await withBearer(url, method: "DELETE")
         if response.status == 429 || response.status >= 500 { return false }
@@ -297,18 +344,22 @@ extension IdentityClient {
         await restoreSendDelete()
     }
 
-    /// Sign-out, before the Worker's `signout` (the bearer is still there): revoke the key, queueing it
-    /// when the Worker cannot be reached.
+    /// Sign-out, before the Worker's `signout` and whatever it answers: the synchronizable item goes (every
+    /// device on the Apple ID loses it; their next daily check enrols their own), so does the check clock, and
+    /// `DELETE restore` is sent while the bearer is still there, or queued when it cannot be delivered. A daily
+    /// check in flight finishes first, so it cannot write an item after this has deleted it.
     func restoreSignOutPrelude() async {
         guard let store = restoreStore() else { return }
-        let held = (try? await store.read()) ?? nil
-        guard held != nil else { return await restoreFlushPending() }
+        await restoreAwaitDailyCheck()
+        try? await store.delete()
+        await core.store.writeRecord(Restore.checkedRecord, nil)
+        await setPendingDelete(true)
         await restoreSendDelete()
     }
 
-    /// Sign-out, once it is decided: the synchronizable item goes (every device on the Apple ID loses it;
-    /// their next daily check enrols their own), and so does the check clock. `serverRevoked` is true
-    /// when the Worker's `signout` ran, which deleted the key in the same request.
+    /// Sign-out, once it is decided. `serverRevoked` is true when the Worker's `signout` ran, which deleted the
+    /// key in the same request; false is a sign-out with no session (a revoked platform credential), where an
+    /// item that was there is dropped and its revocation queued.
     func restoreAfterSignOut(serverRevoked: Bool) async {
         var hadItem = false
         if let store = restoreStore() {
@@ -327,7 +378,9 @@ extension IdentityClient {
     func restoreOptOut() async {
         guard let store = restoreStore() else { return }
         let held = (try? await store.read()) ?? nil
-        guard held != nil else { return }
+        // A device whose item a sibling deleted still holds a key of its own: the check record says so.
+        let hadCheck = await checkedAt() != nil
+        guard held != nil || hadCheck else { return }
         await restoreSendDelete()
         try? await store.delete()
         await core.store.writeRecord(Restore.checkedRecord, nil)

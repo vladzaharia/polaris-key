@@ -119,6 +119,22 @@ final class KeychainStoreTests: XCTestCase {
         KeychainStore(productSlug: "djdl", configDir: root, keychain: fake)
     }
 
+    /// I-49: silent restore's check clock and queued revocation are per-install; a device backup must not carry them.
+    func testTheRestoreRecordsAreExcludedFromDeviceBackups() async throws {
+        let s = store(FakeKeychain())
+        await s.writeRecord("restore-checked", Data("1".utf8))
+        await s.writeRecord("restore-delete-pending", Data("1".utf8))
+        await s.writeRecord("boot-guard", Data("1".utf8))
+        let dir = root.appendingPathComponent("djdl", isDirectory: true)
+        func excluded(_ name: String) throws -> Bool? {
+            try dir.appendingPathComponent("\(name).json").resourceValues(forKeys: [.isExcludedFromBackupKey])
+                .isExcludedFromBackup
+        }
+        XCTAssertEqual(try excluded("restore-checked"), true)
+        XCTAssertEqual(try excluded("restore-delete-pending"), true)
+        XCTAssertNotEqual(try excluded("boot-guard"), true, "other records are untouched")
+    }
+
     private func string(_ data: Data?) -> String? { data.flatMap { String(data: $0, encoding: .utf8) } }
 
     /// SP-S15: an access group rides on every data-protection query, never on the legacy one.
