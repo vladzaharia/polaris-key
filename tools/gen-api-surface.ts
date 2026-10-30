@@ -279,6 +279,9 @@ function renderPython(api: Api): string {
       continue; // an instance attribute set in __init__
     } else if (r.handle) {
       attrs.push(`(${q(r.id)}, "ConfigSetting", ${q(r.name)})`);
+    } else if (r.id.startsWith("cloudConnect.nearby.")) {
+      // Nearby approval (CC-15): request and on_request live on `cloud_connect.nearby`.
+      attrs.push(`(${q(r.id)}, "CloudNearby", ${q(r.name)})`);
     } else if (r.id === "identity.signIn") {
       // sign_in is a property on the identity client; start is its one verb.
       attrs.push(`(${q(r.id)}, "IdentityClient", "sign_in")`);
@@ -308,6 +311,7 @@ import pytest
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
+from polaris_key.connect.nearby import CloudNearby
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
@@ -323,6 +327,7 @@ CLASSES = {
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
+    "CloudNearby": CloudNearby,
 }
 
 ${list("ATTRS", attrs)}

@@ -140,6 +140,8 @@ def identity_fragment_from(manifest: Optional[Dict[str, Any]]) -> Optional[Dict[
     limit = raw.get("keyEntryLimit")
     if isinstance(limit, int) and not isinstance(limit, bool) and limit >= 1:
         out["keyEntryLimit"] = limit
+    if raw.get("nearby") is True:
+        out["nearby"] = True
     return out
 
 

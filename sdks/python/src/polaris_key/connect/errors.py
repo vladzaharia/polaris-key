@@ -29,6 +29,8 @@ LAN_CODE: Dict[str, str] = {
     "closed": ErrorCode.NETWORK_ERROR,
     "too_large": ErrorCode.INVALID_ARGUMENT,
     "bad_type": ErrorCode.INVALID_ARGUMENT,
+    "not_picked": ErrorCode.INVALID_ARGUMENT,
+    "bad_input": ErrorCode.INVALID_ARGUMENT,
 }
 
 #: The registered code of each relay reason: the Worker's own for the four it answers with.

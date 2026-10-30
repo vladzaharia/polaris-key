@@ -52,6 +52,8 @@ from .lan_judge import PendingLimiter, limiter_keys, socket_text, socket_verdict
 from .session import ConnectSession, session_handlers, wait_opened
 
 __all__ = [
+    "Admitted",
+    "GatedProtocol",
     "LanOptions",
     "LanPeer",
     "LanService",
@@ -61,7 +63,9 @@ __all__ = [
     "MAX_PENDING_PER_64",
     "MAX_SESSIONS",
     "MAX_SESSIONS_PER_PEER",
+    "admit_transport",
     "lan_source",
+    "listen_socket",
 ]
 
 #: Unauthenticated sockets at once, per source address and per group (G7, §15.4.1).
@@ -148,7 +152,7 @@ class LanPeer(NamedTuple):
     alt_hosts: Tuple[str, ...] = ()
 
 
-class _GatedProtocol(asyncio.StreamReaderProtocol):
+class GatedProtocol(asyncio.StreamReaderProtocol):
     """``start_server``'s protocol with the address gate in ``connection_made``: a transport the gate
     refuses is aborted there, before its reader is added, so no byte is ever read from it."""
 
@@ -167,6 +171,65 @@ class _GatedProtocol(asyncio.StreamReaderProtocol):
             transport.abort()
             return
         super().connection_made(transport)
+
+
+_GatedProtocol = GatedProtocol
+
+
+class Admitted(NamedTuple):
+    """An accepted transport that passed the gate: its slot's ``release`` and the judged source address
+    (a link-local one keeps its zone)."""
+
+    release: Callable[[], None]
+    address: str
+
+
+def admit_transport(
+    transport: Any, limit: PendingLimiter, allow_loopback: bool, refuse: bool = False
+) -> Optional[Admitted]:
+    """The accept gate of every LAN listener (mode a and the mode v approver), written once (§15.4.1,
+    §15.6.1 rule 2). The transport is judged on its own peer and local address, before a slot and before any
+    byte is read; one that fails the verdict, or is refused for capacity (``refuse``), or meets a limit,
+    gets ``None`` and the caller closes it. Otherwise it holds a slot until ``release()``."""
+    v = socket_verdict(
+        socket_text(transport.get_extra_info("peername")),
+        socket_text(transport.get_extra_info("sockname")),
+        allow_loopback,
+    )
+    if not v.dial or v.key is None or refuse:
+        return None
+    release = limit.take(transport, limiter_keys(v.key))
+    if release is None:
+        return None
+    return Admitted(release, v.key)
+
+
+def listen_socket(host: Optional[str], port: int) -> "socket.socket":
+    """One dual-stack ``::`` socket (``IPV6_V6ONLY`` off) so one port serves both families, or an IPv4
+    socket where IPv6 is unavailable. An explicit ``host`` binds only that."""
+    if host is None or ":" in host:
+        s6: Optional[socket.socket] = None
+        try:
+            s6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+            if os.name == "posix":
+                s6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s6.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+            s6.bind((host or "::", port))
+            return s6
+        except OSError:
+            if s6 is not None:
+                s6.close()
+            if host is not None:
+                raise
+    s4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        if os.name == "posix":
+            s4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s4.bind((host or "0.0.0.0", port))
+    except OSError:
+        s4.close()
+        raise
+    return s4
 
 
 class LanService:
@@ -527,32 +590,7 @@ class LanService:
     # -- TCP --------------------------------------------------------------------------------------
 
     def _listen_socket(self) -> "socket.socket":
-        """One dual-stack ``::`` socket (``IPV6_V6ONLY`` off) so one port serves both families, or an IPv4
-        socket where IPv6 is unavailable. An explicit ``host`` binds only that."""
-        host, port = self._o.host, self._o.port
-        if host is None or ":" in host:
-            s6: Optional[socket.socket] = None
-            try:
-                s6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-                if os.name == "posix":
-                    s6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                s6.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
-                s6.bind((host or "::", port))
-                return s6
-            except OSError:
-                if s6 is not None:
-                    s6.close()
-                if host is not None:
-                    raise
-        s4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            if os.name == "posix":
-                s4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s4.bind((host or "0.0.0.0", port))
-        except OSError:
-            s4.close()
-            raise
-        return s4
+        return listen_socket(self._o.host, self._o.port)
 
     async def _listen(self) -> None:
         sock = self._listen_socket()
@@ -566,7 +604,7 @@ class LanService:
 
     def _protocol(self) -> "asyncio.StreamReaderProtocol":
         reader = asyncio.StreamReader(loop=self._loop)
-        return _GatedProtocol(reader, self._accept, self._gate, self._loop)
+        return GatedProtocol(reader, self._accept, self._gate, self._loop)
 
     @staticmethod
     def _abort(writer: Any) -> None:
@@ -579,17 +617,15 @@ class LanService:
     def _gate(self, transport: Any) -> bool:
         """An accepted socket is judged first, on its own addresses, before a slot and before any byte is
         read: a source off the LAN is closed at once and costs nothing (§15.4.1)."""
-        v = socket_verdict(
-            socket_text(transport.get_extra_info("peername")),
-            socket_text(transport.get_extra_info("sockname")),
+        admitted = admit_transport(
+            transport,
+            self._limit,
             self._o.allow_loopback,
+            refuse=self._stopped or len(self._sessions) >= self._o.max_sessions,
         )
-        if not v.dial or v.key is None or self._stopped or len(self._sessions) >= self._o.max_sessions:
+        if admitted is None:
             return False
-        release = self._limit.take(transport, limiter_keys(v.key))
-        if release is None:
-            return False
-        self._slots[transport] = release
+        self._slots[transport] = admitted.release
         return True
 
     async def _accept(self, reader: Any, writer: Any) -> None:

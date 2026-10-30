@@ -501,6 +501,37 @@ old `/identity/auth/poll` route is retired and the Worker no longer serves it.
 
 A `MintedToken`'s `repr` leaves out `token`, so logging it does not leak the credential.
 
+## Nearby approval
+
+A signed-in device (M) approves a device that cannot sign itself in (D), over the LAN and with a short
+code the person matches. It is `client.cloud_connect.nearby`, gated by the Identity service's discovery
+and working with Connect off; it needs the multicast layer (`MdnsUnavailableError` answers
+`nearby-unsupported`). It calls no route: your code calls `nearby/start`, `poll` and `approve` and hands the
+answers to the handles.
+
+```python
+# D: the new device. `request` is the handle `nearby/start` answered.
+req = client.cloud_connect.nearby.request(request, label="Ana's phone")
+req.on_approvers(lambda approvers: show(approvers))     # label and platform, as the device reports them
+shown = req.choose(approver.id)                         # the person tapped one: show shown.code
+req.on_result(lambda status: ...)                       # display only: your poll is the authority
+
+# M: a signed-in device. The handler runs on the Connect thread: hand the approval to your UI thread.
+handle = client.cloud_connect.nearby.on_request(on_approval, prompt=True, label="Ana's laptop")
+
+def on_approval(approval):
+    ...                                                 # show approval.codes; the person picks one
+    got = approval.pick(code)                           # a VouchRequest, "mismatch" or "invalid"
+    if not isinstance(got, str):
+        status, body = call_approve(got)                # your POST nearby/approve with exactly `got`
+        approval.finish(ApproveAnswerInput(status, body, discovery_nearby=True))
+```
+
+Name the device in `label` (`"Ana's laptop"`); never use an account identifier. The label D reports is
+unauthenticated display data: show it as "reported by the device", never as proof of who is asking. The
+blocking calls raise from the Connect thread (hand the work to a thread); the `AsyncClient` mirrors them as
+coroutines. A sign-out stops every advert and request (`nearby.stop_all()`, bounded to 15 s).
+
 ## Edge-mint
 
 `client.config.mint_token(recipe_id)` asks the Worker to sign a short-lived third-party token
