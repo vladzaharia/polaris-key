@@ -158,6 +158,7 @@ async function finalizeUpload(
       deviceId: c.device.device_id,
       clientId,
       maxRecords: decl.maxRecords,
+      keepRevisions: decl.files.keepRevisions,
     });
   });
   if (committed instanceof Response) return committed;

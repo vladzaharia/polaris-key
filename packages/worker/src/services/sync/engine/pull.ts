@@ -22,14 +22,17 @@
 import {
   SYNC_PULL_PAGE_CHANGES,
   type SyncChange,
+  type SyncFilePointer,
   type SyncSealedChange,
   type SyncTombstone,
   type SyncUsage,
 } from "@polaris-key/protocol/sync";
+import { livePointer } from "./fileRows.js";
 import { liveRecordValue, sealedElements, sealedFields } from "./recordSets.js";
 import { sealedMembers } from "./settings.js";
 import { liveMembers } from "./store.js";
 import type { StoredRecord, StoredSetting, SyncStore } from "./types.js";
+import { fileUsage } from "./usage.js";
 
 /** A change as the wire carries it: a setting or a record, plaintext or sealed. */
 export type PullChange = SyncChange | SyncSealedChange;
@@ -100,8 +103,21 @@ function toChange(row: StoredSetting, sealed: boolean): PullChange {
  * live content) or `elements` (a `union` record's), and no `value`; a list replaces the client's
  * copy.
  */
-function toRecordChange(row: StoredRecord, sealed: boolean): PullChange {
+function toRecordChange(
+  row: StoredRecord,
+  sealed: boolean,
+  file?: SyncFilePointer,
+): PullChange {
   const record: [string, string] = [row.collection, row.id];
+  const pointer = file ? { file } : {};
+  // A record that has a file and no value carries neither `value` nor `ct` (§13.4, U-10).
+  if (file && row.kind === "value" && row.value === null)
+    return {
+      record,
+      version: row.version,
+      editedHlc: row.stamp.hlc,
+      file,
+    };
   if (sealed) {
     if (row.kind === "value" && typeof row.value === "string")
       return {
@@ -109,6 +125,7 @@ function toRecordChange(row: StoredRecord, sealed: boolean): PullChange {
         ct: row.value,
         version: row.version,
         editedHlc: row.stamp.hlc,
+        ...pointer,
       };
     if (row.kind === "fields")
       return {
@@ -116,15 +133,22 @@ function toRecordChange(row: StoredRecord, sealed: boolean): PullChange {
         fields: sealedFields(row),
         version: row.version,
         editedHlc: row.stamp.hlc,
+        ...pointer,
       };
     if (row.kind === "set")
-      return { record, elements: sealedElements(row), version: row.version };
+      return {
+        record,
+        elements: sealedElements(row),
+        version: row.version,
+        ...pointer,
+      };
   }
   return {
     record,
     value: liveRecordValue(row),
     version: row.version,
     editedHlc: row.stamp.hlc,
+    ...pointer,
   };
 }
 
@@ -161,6 +185,9 @@ export function applyPull(store: SyncStore, input: PullInput): PullOutcome {
   const since = input.e2e ? (store.getEncryptionSince() ?? seq + 1) : undefined;
   const changes: PullChange[] = [];
   const tombstones: SyncTombstone[] = [];
+  // A store that holds no file looks no record up (the counters say so).
+  const u = store.getUsage();
+  const files = fileUsage(u).files;
   for (const item of page) {
     const sealed = since !== undefined && item.version >= since;
     if ("setting" in item) {
@@ -175,14 +202,20 @@ export function applyPull(store: SyncStore, input: PullInput): PullOutcome {
           record: [row.collection, row.id],
           editedHlc: row.stamp.hlc,
         });
-      else changes.push(toRecordChange(row, sealed));
+      else
+        changes.push(
+          toRecordChange(
+            row,
+            sealed,
+            files > 0 ? livePointer(store, row.collection, row.id) : undefined,
+          ),
+        );
     }
   }
 
   const bound = input.clientId ? store.getClient(input.clientId) : undefined;
   const lastMutationId =
     bound && bound.deviceId === input.deviceId ? bound.lastMutationId : 0;
-  const u = store.getUsage();
   const answerCursor = more && last ? last.version : seq;
   return {
     ok: true,
@@ -196,7 +229,7 @@ export function applyPull(store: SyncStore, input: PullInput): PullOutcome {
       bytes: u.bytes,
       settings: u.settings,
       records: u.records,
-      files: 0,
+      files,
     },
     etag: pullEtag(seq, lastMutationId),
     ...(since !== undefined ? { encryptionSince: since } : {}),

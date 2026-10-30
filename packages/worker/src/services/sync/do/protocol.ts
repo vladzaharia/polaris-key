@@ -143,6 +143,8 @@ export type CloudSyncOp =
       clientId: string;
       /** The matched declaration's `maxRecords`. */
       maxRecords: number;
+      /** The matched declaration's `files.keepRevisions`. */
+      keepRevisions: number;
       serverNow: number;
     })
   | (DoPin & {

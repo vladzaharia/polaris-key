@@ -66,6 +66,9 @@
  * `signout` while the `launch.identityExchange` gate is on (it is, in this suite's env), and the
  * `exchange` member only for a product that declares a platform sign-in kind (none here). Additive;
  * the transcripts `discovery-identity-exchange` and `exchange-gate-off` pin both.
+ * U-10.9 (WIRE-CONTRACT-V5 §13.5, GF6) turns `saves` and `endpoints.files` (`<base>/sync/files`) on only while
+ * the Worker has a file store (`SYNC_FILES`) and the launch gate `launch.syncFiles` is on; these worlds bind
+ * no file store, so the goldens are unchanged (`cloudSyncFilesRecords.test.ts` pins both states).
  * I-13.9 added `endpoints.link` (`<base>/identity/link`) right after `nonce`, under the same gate.
  */
 

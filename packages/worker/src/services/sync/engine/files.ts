@@ -21,6 +21,7 @@ import {
   type FinalizeResponse,
   type SyncUploadMode,
 } from "@polaris-key/protocol/sync";
+import { pruneRevisions } from "./fileRows.js";
 import { formatHlc } from "./hlc.js";
 import { casMismatch } from "./records.js";
 import type {
@@ -246,6 +247,8 @@ export interface FinalizeInput {
   /** The write's clock owner: a clientId-shaped name derived from the device (the file routes carry none). */
   clientId: string;
   maxRecords: number;
+  /** The matched declaration's `files.keepRevisions`: the older versions the record keeps. */
+  keepRevisions: number;
   nowMs: number;
 }
 
@@ -258,7 +261,8 @@ export type FinalizeCommit =
  * The commit of a verified upload: a record write (GF2). It re-checks `begin`'s `baseVersion`
  * against the record as it is now (GF3: any write in between is a conflict), takes the next store
  * sequence as the record's `version` and the file's, makes the stored file the live one (the
- * previous live file stays as a revision), charges its bytes and releases the reservation. A
+ * previous live file stays as a revision, and revisions past `keepRevisions` are retired), charges
+ * its bytes and releases the reservation. A
  * create-only `finalize` of a missing record makes a record with no value. The session becomes
  * `done` and keeps the answer, so a repeat of `finalize` replays it and charges nothing.
  *
@@ -314,6 +318,13 @@ export function commitFinalize(
   };
   store.putFile(file);
   accountFile(store, before, file, upload.reservedBytes);
+  // The older versions beyond `keepRevisions` die with this write; the alarm frees their bytes.
+  pruneRevisions(
+    store,
+    upload.collection,
+    upload.recordId,
+    input.keepRevisions,
+  );
 
   const result: FinalizeResponse = {
     version,

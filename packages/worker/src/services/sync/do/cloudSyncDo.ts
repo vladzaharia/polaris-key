@@ -433,7 +433,12 @@ export class CloudSyncDO implements DurableObject {
       const out = filePart(host, op);
       return reply(out.body, out.status);
     }
-    if (op.op === "fileFinalizeCommit" && !isName(op.clientId))
+    if (
+      op.op === "fileFinalizeCommit" &&
+      (!isName(op.clientId) ||
+        !Number.isSafeInteger(op.keepRevisions) ||
+        op.keepRevisions < 0)
+    )
       return reply({ error: "bad_request" }, 400);
     const out =
       op.op === "fileStatus"

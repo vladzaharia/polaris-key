@@ -537,6 +537,7 @@ export function fileFinalizeCommit(
         objectKey: fileObjectKey(op, u.uploadId),
         clientId: op.clientId,
         maxRecords: op.maxRecords,
+        keepRevisions: op.keepRevisions,
         nowMs: op.serverNow,
       });
       if (committed.ok) markDirty(host.store);

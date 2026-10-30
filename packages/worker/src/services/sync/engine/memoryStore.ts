@@ -7,6 +7,7 @@ import type { SyncScope } from "@polaris-key/protocol/sync";
 import { compareRemoved, recordsDump, settingId } from "./store.js";
 import type {
   ClientRecord,
+  FileStatus,
   ParkedRecord,
   RemovedField,
   StoredFile,
@@ -448,6 +449,19 @@ export class MemoryStore implements SyncStore {
     return [...this.files]
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
       .map(([, f]) => ({ ...f }));
+  }
+
+  filesWithStatus(status: FileStatus, limit: number): StoredFile[] {
+    return this.allFiles()
+      .filter((f) => f.status === status)
+      .sort((a, b) => a.version - b.version)
+      .slice(0, limit);
+  }
+
+  fileKeyInUse(objectKey: string): boolean {
+    for (const f of this.files.values())
+      if (f.objectKey === objectKey && f.status !== "dead") return true;
+    return false;
   }
 
   getUpload(uploadId: string): UploadRow | undefined {

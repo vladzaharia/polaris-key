@@ -39,6 +39,7 @@ import {
 } from "./sqlRecords.js";
 import type {
   ClientRecord,
+  FileStatus,
   MemberCell,
   ParkedRecord,
   RemovedField,
@@ -637,6 +638,16 @@ export class SqlStore implements SyncStore {
   allFiles(): StoredFile[] {
     if (!this.hasSchema()) return [];
     return this.fileTables.all();
+  }
+
+  filesWithStatus(status: FileStatus, limit: number): StoredFile[] {
+    if (!this.hasSchema()) return [];
+    return this.fileTables.withStatus(status, limit);
+  }
+
+  fileKeyInUse(objectKey: string): boolean {
+    if (!this.hasSchema()) return false;
+    return this.fileTables.keyInUse(objectKey);
   }
 
   getUpload(uploadId: string): UploadRow | undefined {

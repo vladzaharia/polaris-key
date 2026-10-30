@@ -160,9 +160,10 @@ export interface ParkedRecord {
 
 /**
  * Where a stored file stands (schema v4, U-10): `live` is the one a record points at, `revision`
- * an older version kept for `keepRevisions`, `parked` a file of a record an account merge parked.
+ * an older version kept for `keepRevisions`, `parked` a file of a record an account merge parked,
+ * `dead` one nothing points at: the alarm deletes its object, then the row (no quota is held).
  */
-export type FileStatus = "live" | "revision" | "parked";
+export type FileStatus = "live" | "revision" | "parked" | "dead";
 
 /**
  * One stored file of a record (U-10). `version` is the store sequence of the `finalize` that
@@ -374,6 +375,10 @@ export interface SyncStore {
   filesOf(collection: string, recordId: string): StoredFile[];
   /** Every file row, in (collection, recordId, version) order. */
   allFiles(): StoredFile[];
+  /** The file rows in one status, oldest `version` first, at most `limit` (the alarm's work list). */
+  filesWithStatus(status: FileStatus, limit: number): StoredFile[];
+  /** Whether a file row that is not `dead` names this R2 key (the alarm never deletes such an object). */
+  fileKeyInUse(objectKey: string): boolean;
   getUpload(uploadId: string): UploadRow | undefined;
   /** Inserts or replaces the session. */
   putUpload(row: UploadRow): void;
