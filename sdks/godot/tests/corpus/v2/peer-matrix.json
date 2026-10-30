@@ -6283,6 +6283,28 @@
         "reason": "version"
       },
       {
+        "id": "version-1-point-0",
+        "note": "v is written 1.0: a number with a fraction part is not the integer 1, whatever a JSON reader makes of it.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1.0,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "version"
+      },
+      {
+        "id": "version-1-exponent",
+        "note": "v is written 1e0: an exponent part is not an integer token either.",
+        "slug": "demo",
+        "hHex": "9aa82c1c3a7de9eb6643e4ae30b163751374571d5c88aef67bd9b7c911fe5fd8",
+        "hello": { "label": "Ana's Switch", "platform": "linux" },
+        "body": "{\"v\":1e0,\"request\":\"nr_0IvbE7YHMGPBP0VAfZDQhg\",\"deviceId\":\"yLOTkYomb4xKmDRpnlnvrvB4_ktxXwrS\",\"signKey\":\"lOut80ivphAA4Kgoo6WWqfPkHaC84HRoOV2FV70ZIkI\",\"agreeKey\":\"0NvG9zHIm7-9WHmgRt3z4gE8Su7QAOFI2-Zadp3NMFg\",\"label\":\"Ana's Switch\",\"platform\":\"linux\",\"sig\":\"ubMF_fD9c85ZTicSIIZR1io6ZBz27_xbS-kWlXF5VdyBzcZy-0VdoLlIyqQKbhmvrrMBL3AcYXnSl1-eLI7XDw\"}",
+        "verdict": "refuse",
+        "close": "peer_bad_frame",
+        "reason": "version"
+      },
+      {
         "id": "request-missing",
         "note": "No request.",
         "slug": "demo",

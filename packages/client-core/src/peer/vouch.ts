@@ -21,7 +21,11 @@ import { signDeviceProof, type DeviceKeyPort } from "../deviceKeys.js";
 import type { RandomBytes } from "../identityRedirect.js";
 import { base32Lower } from "./advert.js";
 import { cleanLabel, cleanPlatform } from "./display.js";
-import { capsIntersection, parseStrictObject } from "./payload.js";
+import {
+  capsIntersection,
+  parseStrictObject,
+  parseStrictObjectScanned,
+} from "./payload.js";
 import { RECORD, type PeerCloseCode } from "./record.js";
 
 /** The capability both mode-v payloads list (rule 1). */
@@ -139,8 +143,11 @@ export interface ParsedVouchRequest {
 /** Strict JSON, size, shape and key checks; `null` means close `peer_bad_frame`. */
 export function parseVouchRequest(body: Uint8Array): ParsedVouchRequest | null {
   if (body.length > VOUCH_REQ_MAX) return null;
-  const o = parseStrictObject(body);
-  if (o === null || o.v !== 1) return null;
+  const scanned = parseStrictObjectScanned(body);
+  if (scanned === null) return null;
+  const o = scanned.o;
+  // `v` is the integer 1: `1.0` and `1e0` read as 1 in JavaScript and are refused here.
+  if (o.v !== 1 || scanned.nonWireIntegers.has("/v")) return null;
   const { request, deviceId, signKey, agreeKey, label, platform, sig } = o;
   if (typeof request !== "string" || !REQUEST_RE.test(request)) return null;
   if (typeof deviceId !== "string" || !DEVICE_RE.test(deviceId)) return null;

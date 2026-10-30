@@ -1,6 +1,6 @@
 // WIRE-CONTRACT-V5 §15.5: handshake payloads. Strict JSON (§1.2), an object, at most 8 KiB.
 
-import { scanStrictJson } from "@polaris-key/jws";
+import { scanStrictJson, type NonWireIntegers } from "@polaris-key/jws";
 import type { PeerMode } from "./noise.js";
 
 export const MAX_HANDSHAKE_PAYLOAD = 8192;
@@ -16,6 +16,18 @@ export type PayloadVerdict =
 export function parseStrictObject(
   bytes: Uint8Array,
 ): Record<string, unknown> | null {
+  return parseStrictObjectScanned(bytes)?.o ?? null;
+}
+
+/**
+ * `parseStrictObject` plus the pointers of the number tokens that cannot be wire integers
+ * (a fraction or an exponent part): `JSON.parse` reads `1.0` as `1`, so a field that must be
+ * an integer asks `nonWireIntegers.has("/v")` as well.
+ */
+export function parseStrictObjectScanned(bytes: Uint8Array): {
+  o: Record<string, unknown>;
+  nonWireIntegers: NonWireIntegers;
+} | null {
   let text: string;
   try {
     text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
@@ -25,11 +37,15 @@ export function parseStrictObject(
     return null;
   }
   if (text.startsWith("\ufeff")) return null;
-  if (!scanStrictJson(text).ok) return null;
+  const scan = scanStrictJson(text);
+  if (!scan.ok) return null;
   try {
     const v: unknown = JSON.parse(text);
     return v !== null && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
+      ? {
+          o: v as Record<string, unknown>,
+          nonWireIntegers: scan.nonWireIntegers,
+        }
       : null;
   } catch {
     return null;

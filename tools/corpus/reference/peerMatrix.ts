@@ -609,12 +609,14 @@ export function refVouchRequest(r: RefVouchRequestRow): RefVouchRequestVerdict {
     return no("utf8");
   }
   if (text.startsWith("\ufeff")) return no("bom");
-  const parsed = refParseStrict(text);
+  const nonInteger = new Set<string>();
+  const parsed = refParseStrict(text, nonInteger);
   if (!parsed.ok) return no("json");
   const o = parsed.value;
   if (o === null || typeof o !== "object" || Array.isArray(o))
     return no("object");
-  if (o.v !== 1) return no("version");
+  // v is the integer 1: a token with a fraction or an exponent part (1.0, 1e0) is not.
+  if (o.v !== 1 || nonInteger.has("v")) return no("version");
   const { request, deviceId, signKey, agreeKey, label, platform, sig } = o;
   if (typeof request !== "string" || !/^nr_[A-Za-z0-9_-]{22}$/.test(request))
     return no("request");

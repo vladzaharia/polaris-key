@@ -2322,6 +2322,19 @@ function buildVouch(): unknown {
     want: "version",
   });
 
+  addReq({
+    id: "version-1-point-0",
+    note: "v is written 1.0: a number with a fraction part is not the integer 1, whatever a JSON reader makes of it.",
+    text: (t) => t.replace('"v":1,', '"v":1.0,'),
+    want: "version",
+  });
+  addReq({
+    id: "version-1-exponent",
+    note: "v is written 1e0: an exponent part is not an integer token either.",
+    text: (t) => t.replace('"v":1,', '"v":1e0,'),
+    want: "version",
+  });
+
   // request
   const reqRow = (id: string, note: string, value: unknown | undefined): void =>
     addReq({

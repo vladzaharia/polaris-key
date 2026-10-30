@@ -170,6 +170,17 @@ describe("VOUCH_REQ", () => {
     ).toBeNull();
   });
 
+  it("refuses a v that is not written as the integer 1 (1.0, 1e0)", async () => {
+    const valid = text(body);
+    expect(valid).toContain('"v":1,');
+    for (const v of ["1.0", "1e0", "1E0", "10e-1"]) {
+      expect(
+        await verify(utf8(valid.replace('"v":1,', `"v":${v},`))),
+      ).toBeNull();
+    }
+    expect(await verify(utf8(valid))).not.toBeNull();
+  });
+
   it("ignores unknown members and refuses a body over 4 KiB", async () => {
     expect(await verify(edit((o) => (o.extra = [1, 2])))).not.toBeNull();
     expect(await verify(edit((o) => (o.extra = "x".repeat(4096))))).toBeNull();
