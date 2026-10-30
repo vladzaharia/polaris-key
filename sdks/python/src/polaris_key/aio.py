@@ -234,9 +234,9 @@ class _AsyncIdentity(_AsyncFacet):
         return _AsyncSignInNamespace(self._target.sign_in)
 
     @property
-    def nearby(self) -> _AsyncFacet:
-        """``identity.nearby``: ``available(role=...)`` is a coroutine (it may load discovery)."""
-        return _AsyncFacet(self._target.nearby)
+    def nearby(self) -> "_AsyncIdentityNearby":
+        """``identity.nearby``: ``available(role=...)`` and ``on_request(...)`` are coroutines."""
+        return _AsyncIdentityNearby(self._target.nearby)
 
 
 async def _queue_stream(subscribe: Callable[[Callable[[Any], None]], Callable[[], None]],
@@ -294,6 +294,18 @@ class _AsyncNearbyApprover(_AsyncFacet):
 
     def status(self) -> Any:
         return self._target.status()
+
+
+class _AsyncIdentityNearby(_AsyncFacet):
+    """``identity.nearby`` on the async client: ``available`` is a coroutine (it may load discovery) and
+    ``on_request`` answers an async approver handle (the handler still receives the blocking ask on the
+    Connect thread: hand it to a thread that talks to the person)."""
+
+    def on_request(self, handler: Any, **options: Any) -> GuardedCoroutine:
+        async def run() -> "_AsyncNearbyApprover":
+            return _AsyncNearbyApprover(await _to_thread(self._target.on_request, handler, **options))
+
+        return GuardedCoroutine(run(), "identity.nearby.on_request")
 
 
 class _AsyncCloudNearby(_AsyncFacet):

@@ -53,6 +53,7 @@ from .auto_sign_in import (
 )
 from .choice import ChoiceClient
 from .nearby import NearbyCredentials, NearbyRoutes
+from .nearby_approver import start_nearby_approver
 from .nearby_session import NearbyDeps, NearbySignInSession, start_nearby_sign_in
 from .redirect import RedirectSession, start_redirect_sign_in
 from ..core.context import CoreContext
@@ -130,7 +131,7 @@ class IdentityClient:
         self._choice = ChoiceClient(self._deps)
         self._discover = discover or (lambda: None)
         self._license_id = license_id or (lambda: None)
-        self._nearby = NearbyNamespace(ctx, self._discover, nearby_runtime)
+        self._nearby = NearbyNamespace(ctx, self._discover, nearby_runtime, self._start_nearby_approver)
         self._nearby_signer = nearby_signer
         self._cloud_nearby = cloud_nearby
         self._nearby_runtime = nearby_runtime
@@ -165,6 +166,24 @@ class IdentityClient:
             and bool(self._nearby_runtime(role)),
         )
         return start_nearby_sign_in(deps, self._deps, **opts)
+
+    def _start_nearby_approver(self, handler: Callable[[Any], None], **opts: Any) -> Any:
+        nearby = self._cloud_nearby() if self._cloud_nearby is not None else None
+        if nearby is None or self._nearby_runtime is None or not self._nearby_runtime("approver"):
+            raise UnsupportedError(
+                Unsupported(
+                    Feature.IDENTITY_NEARBY,
+                    UnsupportedReason.RUNTIME,
+                    "this runtime cannot advertise to nearby devices",
+                ),
+                ErrorCode.NEARBY_UNSUPPORTED,
+            )
+        if "label" not in opts:
+            # This device's name in the other device's list (§12.7.1); never an account identifier.
+            opts["label"] = self._ctx.device_label(None) or None
+        return start_nearby_approver(
+            nearby=nearby, routes=self._nearby_routes, creds=self._nearby_credentials, handler=handler, **opts
+        )
 
     def _store_identity(self, who: Optional[SignedInIdentity]) -> None:
         self._identity = who

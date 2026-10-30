@@ -35,7 +35,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
-from ..constants_generated import ErrorCode
+from ..constants_generated import ErrorCode, Feature, UnsupportedReason
+from ..core.caps import Unsupported, UnsupportedError
 from ..core.context import CoreContext
 from ..core.errors import PolarisError
 from ..core.token import TokenManager
@@ -128,12 +129,33 @@ class NearbyNamespace:
         ctx: CoreContext,
         discover: Callable[[], Optional[Dict[str, Any]]],
         runtime_supported: Optional[Callable[[str], bool]] = None,
+        on_request: Optional[Callable[..., Any]] = None,
     ) -> None:
         self._ctx = ctx
         self._discover = discover
+        self._on_request = on_request
         #: Whether this runtime can browse (``requester``) or advertise (``approver``) on the LAN. The
         #: facade supplies it from Cloud Connect's nearby engine; with none the runtime is unsupported.
         self._runtime_supported = runtime_supported
+
+    def on_request(self, handler: Callable[[Any], None], **options: Any) -> Any:
+        """M, a signed-in device: advertise while the host's prompt is open and hand each session that
+        reaches the code to ``handler`` as a :class:`~polaris_key.identity.nearby_approver.NearbyAsk`
+        (on the Connect thread). ``options`` are ``prompt`` (default ``True``: "Approve a nearby device" is
+        open), ``background``, ``label``, ``on_notice`` and ``on_stopped``. Returns the handle (``stop``,
+        ``pause``, ``resume``, ``set_prompt``, ``reopen``, ``status``). Raises ``account-required`` while
+        the device is signed out, and the typed N/A when the product or this runtime cannot take part. See
+        :mod:`polaris_key.identity.nearby_approver`."""
+        if self._on_request is None:
+            raise UnsupportedError(
+                Unsupported(
+                    Feature.IDENTITY_NEARBY,
+                    UnsupportedReason.RUNTIME,
+                    "this client cannot approve nearby devices",
+                ),
+                ErrorCode.NEARBY_UNSUPPORTED,
+            )
+        return self._on_request(handler, **options)
 
     def available(self, *, role: str) -> bool:
         """True when all of these hold: Identity is on; discovery names ``nearby`` and the endpoints
