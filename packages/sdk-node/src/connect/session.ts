@@ -301,7 +301,7 @@ export class SocketLink {
   #deadline: NodeJS.Timeout;
   #ended = false;
   #lost = false;
-  /** Raw mode: the handshake is done (a frame may then be the full 65,535 bytes). */
+  /** The transport exists (a frame may then be the full 65,535 bytes, and a CLOSE can go out). */
   #up = false;
 
   readonly #o: SocketLinkOptions;
@@ -324,7 +324,7 @@ export class SocketLink {
       onEvent: (e) => this.#event(e),
     });
     this.#deadline = setTimeout(
-      () => this.#fail("handshake_failed", false),
+      () => this.#fail("peer_timeout"),
       o.handshakeMs ?? HANDSHAKE_MS,
     );
     this.#deadline.unref();
@@ -347,10 +347,10 @@ export class SocketLink {
   #data(chunk: Buffer): void {
     if (this.#ended) return;
     const frames = this.#reader.push(chunk);
-    if (frames === null) return this.#fail("peer_bad_frame", false);
+    if (frames === null) return this.#fail("peer_bad_frame");
     for (const f of frames) {
       if (this.#session === null && !this.#up && f.length > HANDSHAKE_FRAME_MAX)
-        return this.#fail("handshake_failed", false);
+        return this.#fail("handshake_failed");
       void this.channel.receive(f);
     }
   }
@@ -372,6 +372,7 @@ export class SocketLink {
     switch (e.type) {
       case "established": {
         if (e.peerDeviceId === undefined) break;
+        this.#up = true;
         clearTimeout(this.#deadline);
         this.#session = new ConnectSession(
           this,
@@ -409,15 +410,15 @@ export class SocketLink {
     }
   }
 
-  #fail(code: SessionCloseCode, byPeer: boolean): void {
+  /** The link ends itself: the closing side names its reason (§15.6; a zero-length frame is
+   *  `peer_bad_frame`, the handshake deadline `peer_timeout`). A CLOSE goes out only once the
+   *  transport exists. */
+  #fail(code: "peer_bad_frame" | "peer_timeout" | "handshake_failed"): void {
     if (this.#ended) return;
-    if (this.#session === null) {
-      // Not a live session: the channel has nothing to send.
-      this.#finish({ code, byPeer });
-      void this.channel.close("peer_bye");
-      return;
-    }
-    void this.channel.close("peer_bye");
+    // No transport yet: the channel has nothing to send. Past it the CLOSE goes out first, and
+    // the channel's `closed` event ends the link.
+    if (!this.#up) this.#finish({ code, byPeer: false });
+    void this.channel.close(code === "handshake_failed" ? "peer_bye" : code);
   }
 
   #finish(c: SessionClosed): void {

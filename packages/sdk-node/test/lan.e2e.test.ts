@@ -5,12 +5,7 @@
 // The real `multicast-dns` socket is covered in connectMdns.test.ts (skipped there when the
 // sandbox has no multicast). Negative cases: a foreign roster, an expired certificate, a wrong
 // K_disc, oversized frames, flooding and a stalled handshake.
-import {
-  connect as tcp,
-  createServer,
-  type Server,
-  type Socket,
-} from "node:net";
+import { connect as tcp, createServer, Socket, type Server } from "node:net";
 import { rmSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { base64UrlDecode } from "@polaris-key/jws";
@@ -142,6 +137,34 @@ describe("LAN discovery and sessions", () => {
       reason: "closed",
     });
     await expect(inn.receive()).rejects.toMatchObject({ reason: "closed" });
+  });
+
+  it("a zero-length frame in an established session closes peer_bad_frame, and the peer is told", async () => {
+    const { a, b, net } = await world();
+    const la = await lan(a, net);
+    const lb = await lan(b, net);
+    // Each link sets TCP_NODELAY on its socket first thing: that is how the test reaches them.
+    const spy = vi.spyOn(Socket.prototype, "setNoDelay");
+    try {
+      const { out, inn } = await pair(la, lb);
+      const seen: string[] = [];
+      inn.onClose((c) => seen.push(`inn:${c.code}:${c.byPeer}`));
+      out.onClose((c) => seen.push(`out:${c.code}:${c.byPeer}`));
+      // The inbound link's socket is the one bound to the listener's port; feed it a zero length
+      // as if the dialler had sent one.
+      const server = spy.mock.contexts.find(
+        (c): c is Socket => c instanceof Socket && c.localPort === la.port,
+      );
+      expect(server).toBeDefined();
+      server!.emit("data", Buffer.from([0, 0]));
+      await until(() => seen.length === 2);
+      expect(seen.sort()).toEqual([
+        "inn:peer_bad_frame:false",
+        "out:peer_bad_frame:true",
+      ]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("reassembles a 1 MiB message and refuses a larger one", async () => {

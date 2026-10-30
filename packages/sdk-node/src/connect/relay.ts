@@ -254,8 +254,8 @@ class RelayLink {
       onEvent: (e) => this.#event(e),
     });
     this.#deadline = setTimeout(() => {
-      void this.channel.close("peer_bye");
-      this.finish({ code: "handshake_failed", byPeer: false });
+      void this.channel.close("peer_timeout");
+      this.finish({ code: "peer_timeout", byPeer: false });
     }, handshakeMs);
     this.#deadline.unref();
   }

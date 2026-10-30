@@ -194,6 +194,20 @@ describe("sessions over the relay", () => {
     });
   });
 
+  it("a peer that never answers ends the session with peer_timeout at the handshake deadline", async () => {
+    const { a, b, room } = await world();
+    await a.cloudConnect.start(relayOnly(room));
+    await b.cloudConnect.start(relayOnly(room, { handshakeMs: 80 }));
+    await until(() => b.cloudConnect.peers().some((p) => p.deviceId === A));
+    // A's socket stops hearing the room, so B's first message is never answered.
+    for (const s of room.sockets.filter((x) => x.device === A))
+      s.deliver = () => undefined;
+    await expect(b.cloudConnect.open(A)).rejects.toMatchObject({
+      name: "RelayError",
+      closeCode: "peer_timeout",
+    });
+  });
+
   it("ignores a first message from a device that is not on the roster", async () => {
     const { a, room, worker } = await world();
     let got = 0;
