@@ -228,7 +228,7 @@ export class CloudNearby {
       return CloudNearby.#wrap(e);
     }
     // The sign-out may have landed while the advert was starting, before the handle was kept.
-    if (epoch !== this.#epoch || !(await d.signedIn().catch(() => false))) {
+    if (!(await d.signedIn().catch(() => false)) || epoch !== this.#epoch) {
       await h.stop().catch(() => undefined);
       throw signedOut();
     }
