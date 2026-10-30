@@ -30,6 +30,7 @@ from polaris_key.ui.core.models import (
     parse_key,
 )
 from polaris_key.ui.terminal import screens
+from polaris_key.ui.terminal.nearby import NearbyApprovalView, NearbyLoginView, nearby_approval, nearby_login
 from polaris_key.ui.terminal.env import TermEnv
 from polaris_key.ui.terminal.parts import Kit
 from polaris_key.ui.terminal.text import Line
@@ -118,6 +119,7 @@ _ROWS = (
 )
 _NOTES = ("Stem export in one click, with loudness matching", "Track freeze now works with every plug-in")
 _UPDATE = dict(version="2.5", current="2.4.1", size="61 MB", notes=_NOTES, notes_url="https://tidewater.app/releases/2.5")
+_ASK = NearbyApprovalView("ask", device="New phone", codes=("111 111", "482 913", "777 777"))
 _LIMIT = ActivateView("DeviceLimit", "browser-mode", "device-limit", "device_limit", KEY, 3, 3, "https://polaris.locker/#/p/tidewater/devices")
 
 
@@ -170,6 +172,26 @@ FIXTURES: Tuple[Fixture, ...] = (
     Fixture("SignInHandoff", "failed", "login", _sign_in(True, ("errored", "sign-in-failed"))),
     Fixture("SignInHandoff", "cancelled", "login", _sign_in(False, ("cancelled", None))),
     Fixture("SignIn", "error", "login", _sign_in(False, ("failed", "sign-in-unavailable"))),
+    # ── SignIn nearby (I-47.13): login looks for the person's other devices first ──
+    Fixture("SignIn", "nearby-prompt", "login", lambda k: nearby_login(k, NearbyLoginView("prompt"), "login")),
+    Fixture("SignIn", "nearby-wait", "login", lambda k: nearby_login(k, NearbyLoginView("looking"), "login", frame=2), "looking"),
+    Fixture("SignIn", "nearby-wait", "login", lambda k: nearby_login(k, NearbyLoginView("pick", approvers=("Ana’s laptop", "Ben’s phone")), "login"), "pick"),
+    Fixture("SignIn", "nearby-wait", "login", lambda k: nearby_login(k, NearbyLoginView("wait", code="482 913"), "login", frame=2)),
+    Fixture("SignIn", "nearby-done", "login", lambda k: nearby_login(k, NearbyLoginView("done", name="Mara Fennick", email="mara@fennick.studio"), "login")),
+    Fixture("SignIn", "nearby-done", "login", lambda k: nearby_login(k, NearbyLoginView("signed-out"), "login"), "signed-out"),
+    # ── NearbyApproval: devices approve ──
+    Fixture("NearbyApproval", "entry", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("entry"), frame=2)),
+    Fixture("NearbyApproval", "entry", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("unsupported")), "unsupported"),
+    Fixture("NearbyApproval", "ask", "devices approve", lambda k: nearby_approval(k, _ASK)),
+    Fixture("NearbyApproval", "approved", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("approved", device="New phone"))),
+    Fixture("NearbyApproval", "mismatch", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("mismatch", device="New phone"))),
+    Fixture("NearbyApproval", "denied", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("denied", device="New phone"))),
+    Fixture("NearbyApproval", "not-nearby", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("not-nearby", device="New phone"))),
+    Fixture("NearbyApproval", "expired", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("expired", device="New phone"))),
+    Fixture("NearbyApproval", "device-limit", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("device-limit", device="New phone"))),
+    Fixture("NearbyApproval", "choose", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("choose", device="New phone", choices=("Pro", "Team"), create=True))),
+    Fixture("NearbyApproval", "account-required", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("account-required"))),
+    Fixture("NearbyApproval", "rate-limited", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("rate-limited", device="New phone"))),
     # ── Activate ──
     Fixture("Activate", "empty", "activate", lambda k: screens.key_entry(k, "", parse_key(""))),
     Fixture("Activate", "typing", "activate", lambda k: screens.key_entry(k, "pkey_tidewater_7Q2M", parse_key("pkey_tidewater_7Q2M"))),
@@ -239,9 +261,6 @@ NOT_DRAWN = {
     ("SignIn", "link-offer"): _AUTO_SIGN_IN,
     ("SignIn", "link-done"): _AUTO_SIGN_IN,
     ("SignIn", "link-conflict"): _AUTO_SIGN_IN,
-    ("SignIn", "nearby-prompt"): _AUTO_SIGN_IN,
-    ("SignIn", "nearby-wait"): _AUTO_SIGN_IN,
-    ("SignIn", "nearby-done"): _AUTO_SIGN_IN,
     ("SignIn", "device-limit"): (
         "a device limit with no license rows follows an automatic or provider sign-in; "
         "the terminal's device limit is Activate device-limit, drawn by the activate verb"
@@ -279,7 +298,6 @@ OUT_OF_SCOPE = {
     "About": "should tier; doctor covers diagnostics",
     "ChannelPicker": "should tier; update --channel",
     "Toast": "a terminal prints lines, it has no toasts",
-    "NearbyApproval": "the approving device is an app with a screen; a terminal never approves a nearby sign-in",
     "UnlockSync": "should tier; no CLI verb for unlocking synced data yet",
     "RecoveryCode": "should tier; no CLI verb for the recovery code yet",
     "RingChange": "should tier; no CLI verb for a linked-device change yet",

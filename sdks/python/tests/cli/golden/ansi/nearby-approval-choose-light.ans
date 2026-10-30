@@ -1,0 +1,89 @@
+── truecolor · 80 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mChoose a license for New phone[0m
+[2m│[0m  Tidewater Studio will use it.
+[2m│[0m  [1m1[0m  Pro
+[2m│[0m  [1m2[0m  Team
+[2m│[0m  [1m3[0m  Create a new free license
+[2m│[0m
+[2m└[0m  [1m1-9[0m [2mchoose a license · [0m[1mEsc[0m [2mdeny[0m
+── ansi16 · 80 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[36m◆[0m  [1mChoose a license for New phone[0m
+[2m│[0m  Tidewater Studio will use it.
+[2m│[0m  [1m1[0m  Pro
+[2m│[0m  [1m2[0m  Team
+[2m│[0m  [1m3[0m  Create a new free license
+[2m│[0m
+[2m└[0m  [1m1-9[0m [2mchoose a license · [0m[1mEsc[0m [2mdeny[0m
+── no-color · 80 ──
+┌  [7m Tidewater Studio [0m · devices approve
+│
+◆  [1mChoose a license for New phone[0m
+│  Tidewater Studio will use it.
+│  [1m1[0m  Pro
+│  [1m2[0m  Team
+│  [1m3[0m  Create a new free license
+│
+└  [1m1-9[0m choose a license · [1mEsc[0m deny
+── ascii · 80 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices approve[0m
+[2m|[0m
+[36m*[0m  [1mChoose a license for New phone[0m
+[2m|[0m  Tidewater Studio will use it.
+[2m|[0m  [1m1[0m  Pro
+[2m|[0m  [1m2[0m  Team
+[2m|[0m  [1m3[0m  Create a new free license
+[2m|[0m
+[2m`[0m  [1m1-9[0m [2mchoose a license - Esc deny[0m
+── truecolor · 60 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mChoose a license for New phone[0m
+[2m│[0m  Tidewater Studio will use it.
+[2m│[0m  [1m1[0m  Pro
+[2m│[0m  [1m2[0m  Team
+[2m│[0m  [1m3[0m  Create a new free license
+[2m│[0m
+[2m└[0m  [1m1-9[0m [2mchoose a license · [0m[1mEsc[0m [2mdeny[0m
+── ansi16 · 60 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[36m◆[0m  [1mChoose a license for New phone[0m
+[2m│[0m  Tidewater Studio will use it.
+[2m│[0m  [1m1[0m  Pro
+[2m│[0m  [1m2[0m  Team
+[2m│[0m  [1m3[0m  Create a new free license
+[2m│[0m
+[2m└[0m  [1m1-9[0m [2mchoose a license · [0m[1mEsc[0m [2mdeny[0m
+── no-color · 60 ──
+┌  [7m Tidewater Studio [0m · devices approve
+│
+◆  [1mChoose a license for New phone[0m
+│  Tidewater Studio will use it.
+│  [1m1[0m  Pro
+│  [1m2[0m  Team
+│  [1m3[0m  Create a new free license
+│
+└  [1m1-9[0m choose a license · [1mEsc[0m deny
+── ascii · 60 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices approve[0m
+[2m|[0m
+[36m*[0m  [1mChoose a license for New phone[0m
+[2m|[0m  Tidewater Studio will use it.
+[2m|[0m  [1m1[0m  Pro
+[2m|[0m  [1m2[0m  Team
+[2m|[0m  [1m3[0m  Create a new free license
+[2m|[0m
+[2m`[0m  [1m1-9[0m [2mchoose a license - Esc deny[0m
+── pipe · 80 ──
+Tidewater Studio · devices approve
+Choose a license for New phone
+Tidewater Studio will use it.
+1  Pro
+2  Team
+3  Create a new free license
+
+1-9 choose a license · Esc deny

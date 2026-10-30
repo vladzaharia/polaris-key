@@ -1,0 +1,61 @@
+── truecolor · 80 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[33m▲[0m  [1mSign-in needed[0m
+[2m│[0m  Sign in to your Polaris Locker account on this device, then try again.
+[2m└[0m  [1mtidewater login[0m   [2mSign in with your account in the browser[0m
+── ansi16 · 80 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[33m▲[0m  [1mSign-in needed[0m
+[2m│[0m  Sign in to your Polaris Locker account on this device, then try again.
+[2m└[0m  [1mtidewater login[0m   [2mSign in with your account in the browser[0m
+── no-color · 80 ──
+┌  [7m Tidewater Studio [0m · devices approve
+│
+▲  [1mSign-in needed[0m
+│  Sign in to your Polaris Locker account on this device, then try again.
+└  [1mtidewater login[0m   Sign in with your account in the browser
+── ascii · 80 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices approve[0m
+[2m|[0m
+[33m![0m  [1mSign-in needed[0m
+[2m|[0m  Sign in to your Polaris Locker account on this device, then try again.
+[2m`[0m  [1mtidewater login[0m   [2mSign in with your account in the browser[0m
+── truecolor · 60 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[33m▲[0m  [1mSign-in needed[0m
+[2m│[0m  Sign in to your Polaris Locker account on this device,
+[2m│[0m  then try again.
+[2m│[0m  [1mtidewater login[0m
+[2m└[0m    [2mSign in with your account in the browser[0m
+── ansi16 · 60 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[33m▲[0m  [1mSign-in needed[0m
+[2m│[0m  Sign in to your Polaris Locker account on this device,
+[2m│[0m  then try again.
+[2m│[0m  [1mtidewater login[0m
+[2m└[0m    [2mSign in with your account in the browser[0m
+── no-color · 60 ──
+┌  [7m Tidewater Studio [0m · devices approve
+│
+▲  [1mSign-in needed[0m
+│  Sign in to your Polaris Locker account on this device,
+│  then try again.
+│  [1mtidewater login[0m
+└    Sign in with your account in the browser
+── ascii · 60 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices approve[0m
+[2m|[0m
+[33m![0m  [1mSign-in needed[0m
+[2m|[0m  Sign in to your Polaris Locker account on this device,
+[2m|[0m  then try again.
+[2m|[0m  [1mtidewater login[0m
+[2m`[0m    [2mSign in with your account in the browser[0m
+── pipe · 80 ──
+Tidewater Studio · devices approve
+Sign-in needed
+Sign in to your Polaris Locker account on this device, then try again.
+tidewater login   Sign in with your account in the browser
