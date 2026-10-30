@@ -180,6 +180,7 @@ class FakeServer implements FileTransport {
   putChunk = this.planChunks;
   getFile = this.planChunks;
   getChunk = this.planChunks;
+  revisions = this.planChunks;
 
   bytes(uploadId: string): Uint8Array {
     const u = this.uploads.get(uploadId)!;

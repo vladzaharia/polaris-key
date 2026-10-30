@@ -30,6 +30,7 @@ import {
   plainFileSize,
   sealedFileSize,
   sealFile,
+  sealFileStream,
   type ByteSource,
   type FileStreamInvalid,
 } from "./fileStream.js";
@@ -66,6 +67,8 @@ export interface FileCodec {
   /** The stored form of a manifest. */
   sealManifest(plain: Uint8Array): Promise<Uint8Array>;
   openManifest(stored: Uint8Array): Promise<OpenedStoredFile>;
+  /** The stored form of a whole file: `source` sealed as one stream (a fresh salt every call). */
+  sealStream(source: ByteSource): AsyncGenerator<Uint8Array>;
   /** The plaintext of a whole stored file, piece by piece; throws `FileStreamError`. A piece is provisional until the generator ends. */
   openStream(stored: ByteSource): AsyncGenerator<Uint8Array>;
 }
@@ -109,6 +112,10 @@ export function e2eFileCodec(
     async openManifest(stored) {
       const { coll, kid } = await material();
       return openFile(port, coll, kid, stored);
+    },
+    async *sealStream(source) {
+      const { coll, kid } = await material();
+      yield* sealFileStream(port, coll, kid, source);
     },
     async *openStream(stored) {
       const { coll, kid } = await material();
@@ -161,6 +168,9 @@ export function serverFileCodec(
     plainSize: (n) => n,
     sealManifest: async (plain) => plain,
     openManifest: async (stored) => ({ ok: true, plain: stored }),
+    async *sealStream(source) {
+      for await (const piece of source) yield piece;
+    },
     async *openStream(stored) {
       for await (const piece of stored) yield piece;
     },

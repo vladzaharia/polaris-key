@@ -48,6 +48,7 @@ import type {
   BeginFileResponse,
   ChunkPlanRequest,
   ChunkPlanResponse,
+  FileRevisionsResponse,
   FinalizeRequest,
   FinalizeResponse,
   SyncFileEnc,
@@ -196,6 +197,11 @@ export interface FileTransport {
     query: FileQuery,
     options: FileCallOptions,
   ): Promise<FileReply<FileBody>>;
+  /** `GET …/{id}/revisions`: the kept revisions of the record's file, newest first. */
+  revisions(
+    target: FileTarget,
+    options: FileCallOptions,
+  ): Promise<FileReply<FileRevisionsResponse>>;
   /** `GET /<p>/sync/files/{collection}/chunks/{chunkId}`. A host bounds the body to `SERVER_CHUNK_MAX_STORED_BYTES`. */
   getChunk(
     collection: string,
