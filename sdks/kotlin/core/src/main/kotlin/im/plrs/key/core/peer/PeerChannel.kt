@@ -32,8 +32,8 @@ import im.plrs.key.core.RingResult
 import im.plrs.key.core.StrictJson
 import im.plrs.key.core.StrictParse
 import im.plrs.key.core.TrustSet
+import im.plrs.key.core.cleanDisplayLabel
 import im.plrs.key.core.longValue
-import im.plrs.key.core.normalizeDeviceLabel
 import im.plrs.key.core.stringValue
 import im.plrs.key.core.wireInteger
 import kotlinx.coroutines.CancellationException
@@ -41,7 +41,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import java.text.Normalizer
 import im.plrs.key.core.PeerSession as CertSession
 
 /** Seconds from the first byte to the transport. */
@@ -67,8 +66,8 @@ private const val UNKNOWN_DISPLAY = "Unknown"
 /** Section 15.6: `platform` is shown as sent only when it is up to 32 of these characters. */
 private val PLATFORM_DISPLAY = Regex("[A-Za-z0-9 ._+-]{1,32}")
 
-/** NFC, then the device-label cleaning (section 12.7.1): null when nothing is left. */
-private fun cleanDisplay(raw: String): String? = normalizeDeviceLabel(Normalizer.normalize(raw, Normalizer.Form.NFC))
+/** The device-label cleaning with NFC after the strip (sections 12.7.1 and 15.6): null when nothing is left. */
+private fun cleanDisplay(raw: String): String? = cleanDisplayLabel(raw)
 private const val SAS_NONCE_BYTES = 32
 private const val RATE_WINDOW_SECONDS = 60.0
 private const val MAX_SAFE_INTEGER = 9_007_199_254_740_991L
