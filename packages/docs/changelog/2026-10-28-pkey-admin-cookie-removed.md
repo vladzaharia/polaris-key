@@ -1,7 +1,7 @@
 ---
 title: "PKEY_ADMIN_COOKIE is removed"
 date: "2026-10-28"
-version: "0.10.0"
+version: "0.10.1"
 type: "removed"
 services: []
 sdks: []
