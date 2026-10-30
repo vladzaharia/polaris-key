@@ -152,3 +152,41 @@ export async function shownProductRow<T extends { slug: string; name: string }>(
   if (!row) return null;
   return { ...row, name: await shownAppName(env, db, row.slug, row.name) };
 }
+
+/**
+ * Why a console rename of `slug` to `name` is refused, or `null` (DISPLAY-NAME-INVISIBLE D-10).
+ * Text with a control, invisible or bidirectional-formatting code point is always refused. A
+ * reserved name is refused only when `identity.reservedDisplayNames` is `error`: in `warn` mode
+ * the screens show the slug instead, which `shownAppName` guarantees. The system product is
+ * exempt from the reserved check, and a product the operator approved by name is too.
+ */
+export async function productNameRefusal(
+  env: SettingsEnv,
+  db: Db,
+  slug: string,
+  name: string,
+): Promise<{
+  reason: "invalid_display_text" | "reserved_display_name";
+  message: string;
+} | null> {
+  const verdict = checkDisplayName(
+    name,
+    await displayCheckOptions(env, db, slug),
+  );
+  if (verdict === "invalid")
+    return {
+      reason: "invalid_display_text",
+      message:
+        "name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace",
+    };
+  if (
+    verdict === "reserved" &&
+    (await reservedDisplayNamesMode(env, db)) === "error"
+  )
+    return {
+      reason: "reserved_display_name",
+      message:
+        "name uses a reserved platform or store name; an app may not present itself as one",
+    };
+  return null;
+}
