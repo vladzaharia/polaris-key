@@ -9,6 +9,7 @@ import { openProductSecret, type Product } from "../../../core/products.js";
 import { errorResponse } from "../../../core/errors.js";
 import { rateLimitOk, type RateLimit } from "../../../core/rateLimit.js";
 import { type ChoiceNotice } from "../licenseChoice.js";
+import type { DeviceHints } from "../passthrough/request.js";
 import { artefactRef, type ArtefactRef } from "../../../core/singleUse.js";
 import {
   type OidcConfigRow,
@@ -147,6 +148,8 @@ export interface DeviceFlowRecord {
   userCode: string;
   authorizeUrl: string;
   deviceName?: string;
+  /** What the start sent beside the label (§12.10.1). Absent: card mode, as every start was. */
+  hints?: DeviceHints;
   /** Unix seconds the code was issued: the confirmation page shows its static expiry. */
   startedAt?: number;
   confirmedAt?: number;

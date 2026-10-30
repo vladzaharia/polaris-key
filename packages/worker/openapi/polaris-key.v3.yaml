@@ -7836,6 +7836,16 @@ paths:
               named:
                 summary: test/services/identity/oidcEdge.test.ts
                 value: { deviceId: dev-1, deviceName: Studio Mac }
+              hinted:
+                summary: test/services/identity/deviceStartHints.test.ts — Add your name and email, in the app
+                value:
+                  {
+                    deviceId: dev-1,
+                    loginHint: ada@example.com,
+                    nameHint: Ada,
+                    purpose: attach,
+                    licenseChoice: app,
+                  }
               headerOnly:
                 summary: Device id supplied by `X-PKey-Device` instead
                 value: {}
@@ -7859,7 +7869,10 @@ paths:
                     pollUrl: https://key.plrs.im/djdl/identity/auth/device/poll
                     deviceName: Studio Mac
         "400":
-          description: Unparseable body, or no device id from any of the three sources — LEGACY FLAT.
+          description: >
+            Unparseable body, no device id from any of the three sources, or a `purpose`,
+            `licenseChoice`, `loginHint` or `nameHint` that is not an allowed value or not a string
+            — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -7868,6 +7881,8 @@ paths:
                   { value: { error: bad_request, message: invalid json } }
                 missingDevice:
                   { value: { error: bad_request, message: missing device id } }
+                invalidHints:
+                  { value: { error: bad_request, message: invalid hints } }
         "404":
           description: The product has no OIDC configuration — LEGACY FLAT.
           content:
@@ -25958,7 +25973,9 @@ components:
         purpose:
           type: string
           enum: [signin, attach]
-          description: On a request that came through `authorize` (§12.4).
+          description: >
+            On a request that came through `authorize` (§12.4), and on a `device` request whose
+            start sent the hints (§12.10.1; there the view has no `scope`).
         licenseChoice: { type: string, enum: [card, app] }
         scope:
           type: array
@@ -29959,13 +29976,37 @@ components:
     DeviceAuthStartRequest:
       type: object
       description: >
-        Both fields optional; an empty body is legal. The device id is taken from `deviceId`,
+        Every field is optional; an empty body is legal. The device id is taken from `deviceId`,
         then the `X-PKey-Device` header, then `?device=`.
       properties:
         deviceId: { type: string }
         deviceName:
           type: string
           description: The device label (WIRE-CONTRACT-V4 §12.7.1), normalised and never rejected; shown to the human on the sign-in page as reported by the device.
+        loginHint:
+          type: string
+          description: >
+            An email that prefills the sign-in card and verifies nothing (WIRE-CONTRACT-V5 §12.10.1).
+            A value that is not a strict email is dropped, never an error.
+        nameHint:
+          type: string
+          description: >
+            A display name that prefills the card and verifies nothing. Normalised as a device
+            label (§12.7.1) and dropped when nothing is left.
+        purpose:
+          type: string
+          enum: [signin, attach]
+          description: >
+            Why the person signs in: `signin` (default), or `attach` ("add this device's license
+            to your account"). Any other value is `400 bad_request`.
+        licenseChoice:
+          type: string
+          enum: [card, app]
+          description: >
+            `card` (default) is today's device-code sign-in. `app` asks the poll to answer
+            `choose` with a pending sign-in grant when a licence choice is due, so the app runs
+            the choice itself; an SDK sends it only when discovery carries `deviceChoice`. Any
+            other value is `400 bad_request`. `scope` is ignored.
     DeviceAuthStartResult:
       type: object
       description: >

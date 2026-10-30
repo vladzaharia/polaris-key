@@ -71,6 +71,18 @@ export interface AuthzRecord {
   nameHint: string | null;
 }
 
+/**
+ * What a device-code start sent beside `deviceId` and `deviceName` (WIRE-CONTRACT-V5 §12.10.1):
+ * the same four members `authorize` carries, validated the same way. Hints prefill the card and
+ * verify nothing. Absent on a flow that sent none of them: that flow is card mode.
+ */
+export interface DeviceHints {
+  purpose: "signin" | "attach";
+  licenseChoice: "card" | "app";
+  loginHint: string | null;
+  nameHint: string | null;
+}
+
 /** What a handle's record holds. */
 export interface SignInRequestRecord {
   product: string;
@@ -82,6 +94,8 @@ export interface SignInRequestRecord {
   flowRef: string;
   /** The `authorize` request behind a web (or later native) sign-in; absent on a device-code request. */
   authz?: AuthzRecord;
+  /** The hints a device-code start sent (§12.10.1); absent on a start that sent none. */
+  hints?: DeviceHints;
   /** The binder's peppered hash. */
   binder: string;
   /** Epoch seconds. */
@@ -135,6 +149,7 @@ export async function createSignInRequest(
     origin?: string | null;
     flowRef: string;
     authz?: AuthzRecord;
+    hints?: DeviceHints;
     /**
      * The card is on another host (LK-04): no cookie is set here. A fresh binder is bound to the
      * request and travels in a single-use bind token to the customer host.
@@ -158,6 +173,7 @@ export async function createSignInRequest(
     origin: init.origin ?? null,
     flowRef: init.flowRef,
     ...(init.authz ? { authz: init.authz } : {}),
+    ...(init.hints ? { hints: init.hints } : {}),
     binder: await hashKey(binder, env.KEY_HASH_PEPPER),
     expiresAt: now + REQUEST_HANDLE_TTL_SECONDS,
   };

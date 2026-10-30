@@ -38,6 +38,8 @@ import {
 } from "../../../core/singleUse.js";
 import { readBodyText } from "../../../core/cappedBody.js";
 import { sameOriginPost } from "../../../core/accounts/browserRequestGuard.js";
+import { strictEmail } from "../../../core/strictEmail.js";
+import type { DeviceHints } from "../passthrough/request.js";
 import { beginAuthFlow } from "./browserFlow.js";
 import { startAgainPage } from "./chooser.js";
 import {
@@ -69,6 +71,36 @@ import {
   formatUserCode,
   normalizeUserCode,
 } from "./userCode.js";
+
+/**
+ * The optional members of a device start beyond the label (WIRE-CONTRACT-V5 §12.10.1), validated
+ * as `authorize` validates its own: `purpose` and `licenseChoice` are enumerations and anything
+ * else is a `400`; a hint that does not normalise is dropped, never an error. A body that names
+ * none of the four members yields no hints (card mode, exactly as before). `scope` is not read.
+ */
+export function parseDeviceHints(
+  body: Record<string, unknown>,
+): { ok: true; hints: DeviceHints | undefined } | { ok: false } {
+  const names = ["loginHint", "nameHint", "purpose", "licenseChoice"] as const;
+  if (names.every((n) => body[n] === undefined))
+    return { ok: true, hints: undefined };
+  for (const n of names)
+    if (body[n] !== undefined && typeof body[n] !== "string")
+      return { ok: false };
+  const purpose = (body.purpose as string | undefined) ?? "signin";
+  const licenseChoice = (body.licenseChoice as string | undefined) ?? "card";
+  if (purpose !== "signin" && purpose !== "attach") return { ok: false };
+  if (licenseChoice !== "card" && licenseChoice !== "app") return { ok: false };
+  return {
+    ok: true,
+    hints: {
+      purpose,
+      licenseChoice,
+      loginHint: strictEmail(body.loginHint as string | undefined),
+      nameHint: normalizeDeviceLabel(body.nameHint),
+    },
+  };
+}
 
 /** POST /<product>/identity/auth/device/start — begin desktop/CLI sign-in, return a poll handle. */
 export async function handleAuthDeviceStart(
@@ -106,6 +138,9 @@ export async function handleAuthDeviceStart(
   // WIRE-CONTRACT-V4 §12.7.1 (PX-W13): display data only, normalised exactly as the SDK
   // normalised it, never rejected. Absent when nothing is left.
   const deviceName = normalizeDeviceLabel(body.deviceName) ?? undefined;
+  // UK-42.22 (§12.10.1): the hints and the licence-choice mode. Refused before anything is written.
+  const parsed = parseDeviceHints(body);
+  if (!parsed.ok) return errorResponse(400, "bad_request", "invalid hints");
   const flow = await beginAuthFlow(
     req,
     env,
@@ -146,6 +181,7 @@ export async function handleAuthDeviceStart(
     userCode,
     authorizeUrl: flow.authorizeUrl,
     deviceName,
+    ...(parsed.hints ? { hints: parsed.hints } : {}),
     startedAt: Math.floor(Date.now() / 1000),
   };
   await putArtefact(
