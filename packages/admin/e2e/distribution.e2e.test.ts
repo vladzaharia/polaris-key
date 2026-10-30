@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
+import { channelRow, channelsView } from "../test/channelFixture.js";
 import { DISTRIBUTION_ROUTES } from "../test/distributionData.js";
 
 /**
@@ -73,6 +74,8 @@ const ROUTES: Record<string, unknown> = {
     environment: "staging",
   },
   ...DISTRIBUTION_ROUTES,
+  // A-22.4: the App Store flow is the app-store channel's Releases tab, which reads the channels.
+  "/manage/api/products/djdl/distribution/channels": channelsView(channelRow()),
 };
 
 let server: PreviewServer;
@@ -217,29 +220,29 @@ const PAGES: { hash: string; title: string; file: string }[] = [
     title: "Credentials",
     file: "credentials",
   },
-  // A-17g: the App Store Distribute flow (its steps) and Commerce's App Store products.
+  // A-17g: the App Store Distribute flow (its steps), on the channel's Releases tab since A-22.4 and Commerce's App Store products.
   {
-    hash: "#/p/djdl/distribution/app-store",
+    hash: "#/p/djdl/distribution/channels/app-store/releases",
     title: "App Store",
     file: "app-store",
   },
   {
-    hash: "#/p/djdl/distribution/app-store?build=b-52&step=compliance",
+    hash: "#/p/djdl/distribution/channels/app-store/releases?build=b-52&step=compliance",
     title: "App Store",
     file: "app-store-compliance",
   },
   {
-    hash: "#/p/djdl/distribution/app-store?build=b-48&step=notes",
+    hash: "#/p/djdl/distribution/channels/app-store/releases?build=b-48&step=notes",
     title: "App Store",
     file: "app-store-notes",
   },
   {
-    hash: "#/p/djdl/distribution/app-store?build=b-48&step=testflight",
+    hash: "#/p/djdl/distribution/channels/app-store/releases?build=b-48&step=testflight",
     title: "App Store",
     file: "app-store-testflight",
   },
   {
-    hash: "#/p/djdl/distribution/app-store?build=b-48&version=v-240&step=version",
+    hash: "#/p/djdl/distribution/channels/app-store/releases?build=b-48&version=v-240&step=version",
     title: "App Store",
     file: "app-store-version",
   },
@@ -361,7 +364,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
 
   it("app store: the typed submit dialog and an IAP price change open cleanly", async () => {
     const { page, errors } = await open(
-      "#/p/djdl/distribution/app-store?build=b-48&version=v-239&step=version",
+      "#/p/djdl/distribution/channels/app-store/releases?build=b-48&version=v-239&step=version",
     );
     await title(page, "App Store");
     await overlay(page, "release to everyone", async () => {
@@ -395,12 +398,12 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
 
   for (const p of [
     {
-      hash: "#/p/djdl/distribution/app-store",
+      hash: "#/p/djdl/distribution/channels/app-store/releases",
       title: "App Store",
       file: "app-store",
     },
     {
-      hash: "#/p/djdl/distribution/app-store?build=b-48&version=v-240&step=version",
+      hash: "#/p/djdl/distribution/channels/app-store/releases?build=b-48&version=v-240&step=version",
       title: "App Store",
       file: "app-store-version",
     },

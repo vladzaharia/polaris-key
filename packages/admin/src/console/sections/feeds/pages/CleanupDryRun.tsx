@@ -374,7 +374,7 @@ export function CleanupDryRun({
           {canTurnOff ? (
             <Button
               variant="ghost"
-              className="sm:mr-auto"
+              className="sm:me-auto"
               loading={turningOff}
               disabledReason={gate.disabledReason}
               onClick={() => void turnOff()}
