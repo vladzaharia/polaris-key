@@ -104,6 +104,18 @@ async function pump(a: Side, b: Side): Promise<void> {
     for (const m of b.out.splice(0)) await a.s.receive(m);
   }
 }
+/** A timer that records what was scheduled and whether it was cancelled. */
+function recordedTimers() {
+  const timers: { fn: () => void; ms: number; cancelled: boolean }[] = [];
+  const timer = (fn: () => void, ms: number) => {
+    const t = { fn, ms, cancelled: false };
+    timers.push(t);
+    return () => {
+      t.cancelled = true;
+    };
+  };
+  return { timers, timer };
+}
 const of = (x: Side, type: SessionEvent["type"]) =>
   x.events.filter((e) => e.type === type);
 
@@ -522,6 +534,39 @@ describe("PeerSession vouch hooks (mode v)", () => {
       { type: "closed", code: "peer_not_allowed", byPeer: false },
     ]);
   });
+
+  it.each(["D", "M"] as const)(
+    "%s restarts its code deadline at the choice (D at startSas(), M at SAS_COMMIT)",
+    async (who) => {
+      const { timers, timer } = recordedTimers();
+      const d = side("v", "initiator", rnd(), {
+        holdSas: true,
+        ...(who === "D" ? { timer } : {}),
+      });
+      const m = side("v", "responder", rnd(), who === "M" ? { timer } : {});
+      await d.s.start();
+      await pump(d, m);
+      // Held at HELLO: the code deadline from the first byte stands, and no commit has come.
+      const held = timers.filter((t) => t.ms === 120_000);
+      expect(held).toHaveLength(1);
+      expect(held[0]!.cancelled).toBe(false);
+      await d.s.startSas();
+      await pump(d, m);
+      const all = timers.filter((t) => t.ms === 120_000);
+      expect(all).toHaveLength(2);
+      expect(all[0]!.cancelled).toBe(true);
+      expect(all[1]!.cancelled).toBe(false);
+      // The new deadline closes a session whose person never confirms.
+      all[1]!.fn();
+      const mine = who === "D" ? d : m;
+      await mine.s.close();
+      expect(of(mine, "closed")[0]).toEqual({
+        type: "closed",
+        code: "peer_timeout",
+        byPeer: false,
+      });
+    },
+  );
 
   it("choosing one of two held approvers starts the SAS on that session only", async () => {
     const d1 = side("v", "initiator", rnd(), { holdSas: true });

@@ -151,6 +151,11 @@ function renderNode(api: Api): string {
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in ${cls}.prototype).toBe(true));`,
       );
+    } else if (r.id.startsWith("cloudConnect.nearby.")) {
+      // Nearby approval (CC-15): request and onRequest live on `cloudConnect.nearby`.
+      lines.push(
+        `it(${q(r.id)}, () => expect(${q(r.name)} in CloudNearby.prototype).toBe(true));`,
+      );
     } else if (r.id.startsWith("identity.choice.")) {
       // The licence choice an app shows itself: licenses, devices, complete, cancel live on `identity.choice`.
       lines.push(
@@ -179,6 +184,7 @@ function renderNode(api: Api): string {
     `import {`,
     `  ChoiceClient,`,
     `  CloudConnect,`,
+    `  CloudNearby,`,
     `  ConfigClient,`,
     `  DeviceCodeSession,`,
     `  EntitlementsClient,`,

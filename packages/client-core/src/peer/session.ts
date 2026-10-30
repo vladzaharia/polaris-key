@@ -249,8 +249,9 @@ export class PeerSession {
   }
 
   /**
-   * Mode v, `holdSas` initiator: the person chose this approver; send `SAS_COMMIT` now. Only
-   * once, only after `established`; any other call closes the session `peer_not_allowed`.
+   * Mode v, `holdSas` initiator: the person chose this approver; send `SAS_COMMIT` now and start
+   * the 120 s code deadline over. Only once, only after `established`; any other call closes the
+   * session `peer_not_allowed`.
    */
   startSas(): Promise<void> {
     return this.run(async () => {
@@ -261,6 +262,10 @@ export class PeerSession {
         this.nD !== null
       )
         throw new SessionFail("peer_not_allowed");
+      // The code deadline counts from the person's choice, not from the first byte: a session
+      // held while the person looked at the list keeps its whole 120 s.
+      this.sasCancel?.();
+      this.sasCancel = this.guard(SAS_DEADLINE_SECONDS);
       await this.commitSas();
     });
   }
@@ -283,16 +288,19 @@ export class PeerSession {
     });
   }
 
+  /** A deadline that closes the session `peer_timeout` after `sec` seconds. */
+  private guard(sec: number): () => void {
+    return this.timer(
+      () => void this.run(() => this.fail("peer_timeout", false)),
+      sec * 1000,
+    );
+  }
+
   private startClock(): void {
     if (this.started) return;
     this.started = true;
-    const guard = (sec: number): (() => void) =>
-      this.timer(
-        () => void this.run(() => this.fail("peer_timeout", false)),
-        sec * 1000,
-      );
-    this.transportCancel = guard(TRANSPORT_DEADLINE_SECONDS);
-    if (this.o.mode !== "a") this.sasCancel = guard(SAS_DEADLINE_SECONDS);
+    this.transportCancel = this.guard(TRANSPORT_DEADLINE_SECONDS);
+    if (this.o.mode !== "a") this.sasCancel = this.guard(SAS_DEADLINE_SECONDS);
   }
 
   /** The transport is up: its deadline ends. */
@@ -698,6 +706,12 @@ export class PeerSession {
     if (type === RECORD.SAS_COMMIT && !initiator && this.sasStep === 0) {
       const c = parseSasBody("c", body);
       if (c === null) throw new SessionFail("peer_bad_frame");
+      // Mode v: the code deadline counts from D's choice, as D's does from `startSas()`; a session
+      // held while D's person looked at the list keeps its whole 120 s on this end too.
+      if (this.o.mode === "v") {
+        this.sasCancel?.();
+        this.sasCancel = this.guard(SAS_DEADLINE_SECONDS);
+      }
       this.commit = encodeSasValue(c);
       this.nM = this.ports.random(32);
       await this.emitRecords(RECORD.SAS_NONCE, sasBody("nM", this.nM));
