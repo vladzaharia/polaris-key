@@ -179,10 +179,16 @@ import PolarisKeyCore
 
         /// The sign-out step: Connect stops (bounded), then the nearby adverts and requests, before the device
         /// leaves Connect (G18). Never throws and never waits past 15 s a step.
-        func stopForSignOut() async {
-            await core.stop(timeout: cloudConnectStopSeconds)
+        func stopForSignOut(bound: TimeInterval = cloudConnectStopSeconds) async {
+            await core.stop(timeout: bound)
+            await stopNearby(bound: bound)
+        }
+
+        /// Stop every nearby advert and close every request, for at most `bound` seconds: past it, every socket and
+        /// listener is dropped at once (no goodbye). Also what `PolarisKeyClient.close()` runs.
+        func stopNearby(bound: TimeInterval = cloudConnectStopSeconds) async {
             let nearby = nearby
-            if !(await connectBounded(cloudConnectStopSeconds) { await nearby.stopAll() }) { nearby.forceStop() }
+            if !(await connectBounded(bound) { await nearby.stopAll() }) { nearby.forceStop() }
         }
 
         /// The person's other devices that can be reached now, with the paths each has.

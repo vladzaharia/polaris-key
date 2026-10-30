@@ -98,7 +98,7 @@ final class PeerVouchTests: XCTestCase {
     // MARK: The corpus rows
 
     func testTheRowCountsArePinned() {
-        XCTAssertEqual(v.requests.count, 78)
+        XCTAssertEqual(v.requests.count, 80)
         XCTAssertEqual(v.results.count, 26)
         XCTAssertEqual(v.flows.count, 30)
         XCTAssertEqual(v.finish.count, 29)
@@ -265,6 +265,13 @@ final class PeerVouchTests: XCTestCase {
         for text in [String(describing: ok), "\(ok)", String(reflecting: ok), dumped(ok)] {
             XCTAssertFalse(text.contains(request))
             XCTAssertFalse(text.contains(ok.signKey))
+        }
+        // The parse result carries the handle and the unverified proof: it prints neither.
+        let parsed = try XCTUnwrap(PeerVouch.parseRequest(b))
+        for text in [String(describing: parsed), "\(parsed)", String(reflecting: parsed), dumped(parsed)] {
+            XCTAssertFalse(text.contains(request))
+            XCTAssertFalse(text.contains(parsed.sig))
+            XCTAssertFalse(text.contains(parsed.signKey))
         }
     }
 

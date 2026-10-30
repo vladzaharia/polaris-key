@@ -281,17 +281,19 @@ import PolarisKeyPlatform
 
         /// Stop every advert and close every request. The sign-out step.
         func stopAll() async {
+            // The handles stay in the state until they have stopped: the sign-out bound's `forceStop` must
+            // still find the ones a hanging withdrawal holds.
             let (hs, rs) = state.with { s -> ([NearbyApprover], [NearbyRequester]) in
                 s.epoch += 1
-                defer {
-                    s.approvers = []
-                    s.requests = []
-                }
                 return (s.approvers, s.requests)
             }
             await withTaskGroup(of: Void.self) { group in
                 for h in hs { group.addTask { await h.stop() } }
                 for r in rs { group.addTask { await r.close() } }
+            }
+            state.with { s in
+                s.approvers.removeAll { a in hs.contains { $0 === a } }
+                s.requests.removeAll { q in rs.contains { $0 === q } }
             }
         }
 

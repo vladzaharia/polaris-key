@@ -247,6 +247,22 @@ final class NearbyE2ETests: XCTestCase {
         await d.close()
     }
 
+    func testTheSignOutBoundForcesAdvertsWhoseWithdrawalHangs() async throws {
+        let w = try await world()
+        let approver = try await w.startApprover()
+        let d = try await w.request()
+        w.requesterNet.up(w.approverNet)
+        await nearbyUntil("listed") { await d.approvers().count == 1 }
+        let handle = try XCTUnwrap(w.approverNet.live.first)
+        handle.hang.value = true
+        // `stopAll` is held by the hanging withdrawal; the bound ends it and the force path drops the advert.
+        await w.mCloud.stopForSignOut(bound: 0.3)
+        XCTAssertTrue(handle.cancelled.value, "the force path reached the advert a hanging stop was holding")
+        XCTAssertEqual(approver.status().state, .stopped)
+        handle.hang.value = false
+        await d.close()
+    }
+
     // MARK: Gating
 
     func testAnswersTheTypedNotApplicableWhenDiscoveryDoesNotNameNearby() async throws {

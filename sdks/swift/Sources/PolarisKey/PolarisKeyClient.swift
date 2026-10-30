@@ -823,8 +823,9 @@ public actor PolarisKeyClient {
     public func close() {
         refreshTask?.cancel()
         refreshTask = nil
-        let nearby = cloudConnect.nearby
-        Task { await nearby.stopAll() }
+        // Bounded like the sign-out step: a hanging advert withdrawal cannot keep a closed client's sockets.
+        let cloud = cloudConnect
+        Task { await cloud.stopNearby() }
     }
 }
 

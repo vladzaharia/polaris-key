@@ -101,7 +101,7 @@ public struct VouchRequest: Sendable, Equatable, CustomStringConvertible, Custom
 }
 
 /// A `VOUCH_REQ` body that passed every check that needs no session (rule 5), signature unread.
-public struct ParsedVouchRequest: Sendable, Equatable {
+public struct ParsedVouchRequest: Sendable, Equatable, CustomStringConvertible, CustomReflectable {
     public let request: String
     public let deviceId: String
     public let signKey: String
@@ -110,6 +110,10 @@ public struct ParsedVouchRequest: Sendable, Equatable {
     public let platform: String
     /// Unverified until `PeerVouch.verifyRequest`.
     public let sig: String
+
+    /// The handle and the proof are secrets (G19): a log line or a repr never prints them.
+    public var description: String { "ParsedVouchRequest()" }
+    public var customMirror: Mirror { Mirror(self, children: [:]) }
 }
 
 public enum VouchStatus: String, Sendable, Equatable {
