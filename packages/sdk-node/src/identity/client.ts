@@ -36,6 +36,14 @@ import {
 } from "./signIn.js";
 import { ChoiceClient } from "./choice.js";
 import {
+  nearbyAvailable,
+  runAutoSignIn,
+  SignInState,
+  type AutoSignInOptions,
+  type AutoSignInResult,
+  type NearbyRole,
+} from "./autoSignIn.js";
+import {
   startRedirectSignIn,
   type RedirectSession,
   type RedirectSignInOptions,
@@ -125,6 +133,9 @@ export class IdentityClient {
     private readonly onForget: () => Promise<void> | void = () => undefined,
   ) {
     this.identityFile = join(ctx.dirs.state, "identity.json");
+    this.signInState = new SignInState(ctx.dirs.state);
+    // The token manager keeps "a sign-in produced this token" in the state directory.
+    tokens.setMarks(this.signInState);
     this.account = new Account({
       ctx,
       tokens,
@@ -134,10 +145,15 @@ export class IdentityClient {
       wipeLocal: this.wipeLocal,
       openUrl: (url) => openInBrowser(url),
       emit: this.emit,
+      signedOut: async () => {
+        await this.tokens.dropSignIn();
+        await this.signInState.signedOut();
+      },
     });
   }
 
   private readonly account: Account;
+  private readonly signInState: SignInState;
   private choiceClient: ChoiceClient | undefined;
 
   /**
@@ -162,6 +178,30 @@ export class IdentityClient {
   onBeforeSignOut(hook: () => Promise<void> | void): () => void {
     return this.beforeSignOut.add(hook);
   }
+
+  /**
+   * The automatic sign-in ladder (CC-01-auto-sign-in; I-47.2). Node runs rung 1 (a token a
+   * sign-in produced: `signedIn`, no network) and ends at the regular sign-in:
+   * `needsSignIn{reason: "signed_out"}` after an explicit `signOut()` (until the next sign-in),
+   * `needsSignIn{reason: "no_credential"}` otherwise, `unavailable` when Identity is off. It never
+   * throws and starts nothing: the sign-in form (a kit) starts nearby or the device code.
+   */
+  autoSignIn(_opts: AutoSignInOptions = {}): Promise<AutoSignInResult> {
+    return runAutoSignIn({
+      ctx: this.ctx,
+      signedIn: () => this.tokens.signedIn,
+      state: this.signInState,
+      licenseId: this.licenseId,
+    });
+  }
+
+  /** Nearby approval (CC-15; V5 §12.11.5): whether this device can take part on one side. */
+  readonly nearby = {
+    /** True when Identity is on, discovery names `nearby` and the role's endpoints, and this
+     *  runtime can do mDNS. Never throws. */
+    available: (o: { role: NearbyRole }): Promise<boolean> =>
+      nearbyAvailable({ ctx: this.ctx, discovery: this.loadDiscovery }, o),
+  };
 
   /** The pairwise subject of the account signed in on this device, or null (persisted). */
   subject(): Promise<string | null> {

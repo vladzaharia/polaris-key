@@ -42,6 +42,19 @@ export type TokenSource =
   | "signin"
   | "reacquire";
 
+/**
+ * Where "this token came from a sign-in" is kept across a restart (I-47.2): the store's record
+ * has no room for it (a client-core change), so the identity client keeps it beside the token in
+ * the state directory. A token no sign-in produced (a key activation, an enrolment, a
+ * registration) is not a sign-in, and `autoSignIn()`'s first rung counts only a sign-in.
+ */
+export interface TokenMarks {
+  /** At load: was the token in the store produced by a sign-in? */
+  loaded(): Promise<boolean>;
+  /** A token was stored (`signin` says whether a sign-in produced it) or cleared (false). */
+  stored(signin: boolean): Promise<void>;
+}
+
 /** The two routes the §5 single re-acquire can take. */
 export type ReacquireRoute = "license-token" | "devices-register";
 
@@ -96,6 +109,9 @@ export class TokenManager {
   private tokenSource: TokenSource | null = null;
   private inFlight: Promise<boolean> | null = null;
   private attempted = false;
+  private marks: TokenMarks | null = null;
+  /** The held token was produced by a sign-in (kept in `marks` across a restart). */
+  private fromSignIn = false;
 
   constructor(
     private readonly ctx: CoreContext,
@@ -110,9 +126,29 @@ export class TokenManager {
     }));
   }
 
+  /** Keep the sign-in mark in `marks` (the identity client's). */
+  setMarks(marks: TokenMarks): void {
+    this.marks = marks;
+  }
+
   async load(): Promise<void> {
     this.token = await this.store.getToken();
     this.tokenSource = null;
+    this.fromSignIn =
+      this.token !== null && this.marks !== null
+        ? await this.marks.loaded().catch(() => false)
+        : false;
+  }
+
+  /** The held token was produced by a sign-in, and nothing has replaced it since. */
+  get signedIn(): boolean {
+    return this.token !== null && this.fromSignIn;
+  }
+
+  /** The account signed out here: the token, when it stays, is no longer a sign-in. */
+  async dropSignIn(): Promise<void> {
+    this.fromSignIn = false;
+    await this.marks?.stored(false);
   }
 
   get current(): string | null {
@@ -125,16 +161,34 @@ export class TokenManager {
     return this.tokenSource;
   }
 
-  async set(token: string, source: TokenSource): Promise<void> {
+  /**
+   * Hold `token`. Only `source: "signin"` makes it a sign-in; a re-acquire (and `keepSignIn`, for
+   * an attach that rotates a signed-in device's token) leaves the mark as it was; anything else
+   * clears it.
+   */
+  async set(
+    token: string,
+    source: TokenSource,
+    keepSignIn = false,
+  ): Promise<void> {
     this.token = token;
     this.tokenSource = source;
+    this.fromSignIn =
+      source === "signin"
+        ? true
+        : keepSignIn || source === "reacquire"
+          ? this.fromSignIn
+          : false;
     await this.store.setToken(token);
+    await this.marks?.stored(this.fromSignIn);
   }
 
   async clear(): Promise<void> {
     this.token = null;
     this.tokenSource = null;
+    this.fromSignIn = false;
     await this.store.clearToken();
+    await this.marks?.stored(false);
   }
 
   /** Re-arm the single-attempt budget. Called once at the top of each `sync()`. */
