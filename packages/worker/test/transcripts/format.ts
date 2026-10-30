@@ -108,9 +108,12 @@
 //   documents       sync: slice → "applied" | "unchanged" | "unauthorized" | "blocked" |
 //                   "device-cap" | "error" (only the slices the product runs)
 //                   pollSignIn / waitForSignIn: "pending" | "slow-down" | "ready" | "expired" |
-//                     "error" | "transient" (waitForSignIn only ever reports "ready", "expired"
-//                     and "error"). "transient" (I-37d): no answer or a 5xx, with `code`
-//                     "network-error" or "server-error"; the client keeps polling
+//                     "error" | "transient" | "choose" (waitForSignIn only ever reports "ready",
+//                     "expired", "error" and "choose"). "transient" (I-37d): no answer or a 5xx,
+//                     with `code` "network-error" or "server-error"; the client keeps polling.
+//                     "choose" (UK-42.22, WIRE-CONTRACT-V5 §12.10.1): the start asked
+//                     `licenseChoice: "app"` and a choice is due; the SDK holds a pending sign-in
+//                     grant, stops polling, and a `choiceComplete` step finishes it
 //                   mintToken: "ok", or the error code the call failed with — the Worker's
 //                     wire code ("not_found", "unauthorized", "rate_limited") or a client one
 //   prompt          beginSignIn: what the host shows the player — { userCode, verificationUri,
@@ -185,7 +188,7 @@
 // report carries at most 16 of them, oldest first (`core/updateHealth.ts` `MAX_UPDATE_EVENTS`),
 // and drops the ones a 200 delivered.
 //
-// Step `args` per action: activate { key }; attach { confirm }; sync { force }; beginSignIn { deviceName? };
+// Step `args` per action: activate { key }; attach { confirm }; sync { force }; beginSignIn { deviceName?, loginHint?, nameHint?, purpose?, licenseChoice? } (UK-42.22: the hints ride on the device start);
 // mintToken { recipeId }; updateDecide { channel } (the REQUESTED name, which may be an alias);
 // commerceClaim { store, payload } (payload: the store's own fields, sent beside `store`). pollSignIn and waitForSignIn act on the prompt the transcript's last
 // beginSignIn returned. boot {} and downloadModel {} take none.

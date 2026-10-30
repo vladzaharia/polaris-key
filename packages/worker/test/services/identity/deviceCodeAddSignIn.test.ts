@@ -290,7 +290,10 @@ describe("device-code Add to account over a floating key licence", () => {
           const out = (await res.json()) as {
             license: { id: string };
             subject: string;
+            scope: string;
           };
+          // The device sign-in keeps the product's full grant (D6).
+          expect(out.scope).toBe("profile email");
           // The same licence the device activated, now signed in to the account.
           expect(out.license.id).toBe(licenseId);
           subject = out.subject;

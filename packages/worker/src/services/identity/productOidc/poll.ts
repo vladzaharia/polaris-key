@@ -21,6 +21,7 @@ import { appendAudit } from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
 import { settleAppMode, type Settled } from "../passthrough/settle.js";
 import { bindChoice } from "../passthrough/bind.js";
+import { resolveScope } from "../passthrough/authorize.js";
 import { offerFor } from "../passthrough/choice.js";
 import { mintAccountLicense } from "../passthrough/mint.js";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
@@ -384,7 +385,8 @@ async function settleDevicePoll(
       };
   }
   settled ??= await settleAppMode(cx, who, device, {
-    scope: [],
+    // D6: a device sign-in keeps the product's full grant; the start's `scope` is ignored.
+    scope: resolveScope(undefined, product) ?? [],
     via: "device",
     keepable: false,
     proven: false,
