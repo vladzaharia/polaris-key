@@ -25,6 +25,15 @@ import type { PeerCloseCode } from "./record.js";
 /** Contacts one device holds for one product. */
 export const MAX_CONTACTS = 64;
 export const MAX_CONTACT_CATS = 8;
+/**
+ * Pairings with a peer the host already holds wait here as pending contacts (§15.10). At most
+ * this many at once; the oldest is dropped for a newer one.
+ */
+export const MAX_PENDING_CONTACTS = 8;
+/** A pending contact that no handshake has promoted is dropped this long after it was stored. */
+export const PENDING_CONTACT_SECONDS = 86_400;
+/** The secrets a responder tries and a browser tests: the held contacts and the pending ones. */
+export const MAX_CONTACT_SECRETS = MAX_CONTACTS + MAX_PENDING_CONTACTS;
 /** Contact adverts a host keeps live at once. */
 export const MAX_LIVE_CONTACT_ADVERTS = 8;
 export const CONTACT_BODY_MAX = 4096;
@@ -173,9 +182,16 @@ export type ExchangeEvent =
 export interface ExchangeStep {
   /** The records this step makes the side send. */
   sends: ("CONFIRM" | "CONTACT")[];
-  close?: Extract<PeerCloseCode, "peer_bad_frame" | "peer_timeout">;
-  /** The peer's `CONTACT`, valid, read in order: the host stores it. */
-  stored?: ContactBody;
+  close?: Extract<
+    PeerCloseCode,
+    "peer_bad_frame" | "peer_timeout" | "peer_not_allowed"
+  >;
+  /**
+   * The peer's `CONTACT`, valid, read in order: the host stores it. `pending` is true when the
+   * host already holds that `agreeKey`: the new contact then waits (`storeContact`) and replaces
+   * the held one only after a handshake under its secret passes the pin (§15.10).
+   */
+  stored?: ContactBody & { pending: boolean };
 }
 
 /**
@@ -190,7 +206,15 @@ export class ContactExchange {
   private peerContact = false;
   private dead = false;
 
-  constructor(private readonly own?: string) {}
+  /**
+   * `own` is this device's agreeKey. `held` is the agreeKey of every active contact the host
+   * holds for the product: a peer in it is a re-pair, accepted at any count; a peer not in it is
+   * refused (`peer_not_allowed`, nothing stored) when the host already holds `MAX_CONTACTS`.
+   */
+  constructor(
+    private readonly own?: string,
+    private readonly held: readonly string[] = [],
+  ) {}
 
   /** This side's `CONFIRM` is out and the peer's `CONTACT` is still wanted. */
   get waiting(): boolean {
@@ -227,11 +251,18 @@ export class ContactExchange {
           return bad();
         const v = parseContact(e.body, this.own);
         if (!v.ok) return bad();
+        const pending = this.held.includes(v.agreeKey);
+        if (!pending && this.held.length >= MAX_CONTACTS) {
+          this.dead = true;
+          r.close = "peer_not_allowed";
+          return r;
+        }
         this.peerContact = true;
         r.stored = {
           agreeKey: v.agreeKey,
           ...(v.label !== undefined ? { label: v.label } : {}),
           cats: v.cats,
+          pending,
         };
         return r;
       }
@@ -243,6 +274,111 @@ export class ContactExchange {
         return r;
     }
   }
+}
+
+// ── The contact list ─────────────────────────────────────────────────────────────────────────
+
+/** A contact the host holds. `pendingSince` (unix seconds) marks a pending one. */
+export interface StoredContact {
+  agreeKey: string;
+  secret: Uint8Array;
+  label?: string;
+  cats: readonly string[];
+  pendingSince?: number;
+}
+
+export type StoreVerdict =
+  | { ok: true; contacts: StoredContact[]; pending: boolean }
+  | { ok: false; reason: "full" };
+
+const activeOf = (list: readonly StoredContact[]): StoredContact[] =>
+  list.filter((c) => c.pendingSince === undefined);
+
+/**
+ * Store a contact the exchange produced (§15.10). A peer whose `agreeKey` the host does not hold
+ * is added as an active contact, or refused (`full`) at `MAX_CONTACTS`. A peer it does hold is
+ * stored pending: the held contact stays as it is, one pending contact per key (a newer one
+ * replaces an older), at most `MAX_PENDING_CONTACTS` (the oldest goes first). Pure: the list in,
+ * the list out.
+ */
+export function storeContact(
+  list: readonly StoredContact[],
+  incoming: Omit<StoredContact, "pendingSince">,
+  nowSeconds: number,
+): StoreVerdict {
+  const held = activeOf(list).some((c) => c.agreeKey === incoming.agreeKey);
+  if (!held) {
+    if (activeOf(list).length >= MAX_CONTACTS)
+      return { ok: false, reason: "full" };
+    return { ok: true, contacts: [...list, { ...incoming }], pending: false };
+  }
+  const next = list.filter(
+    (c) => !(c.pendingSince !== undefined && c.agreeKey === incoming.agreeKey),
+  );
+  next.push({ ...incoming, pendingSince: nowSeconds });
+  for (;;) {
+    const pend = next.filter((c) => c.pendingSince !== undefined);
+    if (pend.length <= MAX_PENDING_CONTACTS) break;
+    // Oldest first; of equal age, the one stored earlier (lower in the list).
+    let oldest = pend[0]!;
+    for (const c of pend)
+      if (c.pendingSince! < oldest.pendingSince!) oldest = c;
+    next.splice(next.indexOf(oldest), 1);
+  }
+  return { ok: true, contacts: next, pending: true };
+}
+
+/**
+ * A handshake under a pending contact's secret passed the pin: it replaces the held contact of
+ * that key, in the held one's place. A key with no pending contact leaves the list as it is.
+ */
+export function promoteContact(
+  list: readonly StoredContact[],
+  agreeKey: string,
+): StoredContact[] {
+  const p = list.find(
+    (c) => c.pendingSince !== undefined && c.agreeKey === agreeKey,
+  );
+  if (p === undefined) return [...list];
+  const fresh: StoredContact = {
+    agreeKey: p.agreeKey,
+    secret: p.secret,
+    ...(p.label !== undefined ? { label: p.label } : {}),
+    cats: p.cats,
+  };
+  const out: StoredContact[] = [];
+  for (const c of list) {
+    if (c === p) continue;
+    out.push(
+      c.pendingSince === undefined && c.agreeKey === agreeKey ? fresh : c,
+    );
+  }
+  return out;
+}
+
+/** Drop the pending contacts stored `PENDING_CONTACT_SECONDS` ago or earlier. */
+export function dropStalePending(
+  list: readonly StoredContact[],
+  nowSeconds: number,
+): StoredContact[] {
+  return list.filter(
+    (c) =>
+      c.pendingSince === undefined ||
+      nowSeconds - c.pendingSince < PENDING_CONTACT_SECONDS,
+  );
+}
+
+/**
+ * The order a responder tries secrets and a browser tests contacts in: the active contacts in
+ * held order, then the pending ones in the order they were stored, at most `MAX_CONTACT_SECRETS`.
+ */
+export function contactTrialOrder(
+  list: readonly StoredContact[],
+): StoredContact[] {
+  return [
+    ...list.filter((c) => c.pendingSince === undefined),
+    ...list.filter((c) => c.pendingSince !== undefined),
+  ].slice(0, MAX_CONTACT_SECRETS);
 }
 
 // ── The LAN advert ───────────────────────────────────────────────────────────────────────────
@@ -302,8 +438,9 @@ export interface ContactHit {
 }
 
 /**
- * Which held contact an instance belongs to: the first of the first `MAX_CONTACTS`, in held order,
- * that matches in the current or the previous epoch. At most 128 HMACs.
+ * Which contact an instance belongs to: the first of the first `MAX_CONTACT_SECRETS`, in the
+ * order of `contactTrialOrder`, that matches in the current or the previous epoch. At most 144
+ * HMACs.
  */
 export async function browseContactInstance(
   instance: string,
@@ -312,7 +449,7 @@ export async function browseContactInstance(
 ): Promise<ContactHit | null> {
   if (!isInstanceName(instance)) return null;
   const epoch = advertEpoch(nowSeconds);
-  for (let i = 0; i < contacts.length && i < MAX_CONTACTS; i++)
+  for (let i = 0; i < contacts.length && i < MAX_CONTACT_SECRETS; i++)
     for (const epochBack of [0, 1] as const)
       if (
         (await contactInstance(
