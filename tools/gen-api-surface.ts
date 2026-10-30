@@ -440,6 +440,9 @@ function renderSwift(api: Api): string {
       lines.push(
         `_ = \\${r.name === "events" ? "PolarisKeyClient" : (SWIFT_TYPE[r.ns] ?? "PolarisKeyClient")}.${r.name}  // ${r.id}`,
       );
+    } else if (r.id.startsWith("cloudConnect.nearby.")) {
+      // Nearby approval (CC-15): request and onRequest live on `cloudConnect.nearby`.
+      lines.push(`_ = CloudNearby.${ref}  // ${r.id}`);
     } else if (SWIFT_TYPE[r.ns]) {
       lines.push(`_ = ${SWIFT_TYPE[r.ns]}.${ref}  // ${r.id}`);
     }

@@ -166,11 +166,15 @@ public struct IdentityDiscovery: Sendable, Equatable {
     /// The platform sign-in kinds the product accepts (WIRE-CONTRACT-V5 §12.11), or nil when the
     /// document publishes none.
     public let exchange: IdentityExchangeDiscovery?
+    /// Nearby approval (§12.11.5, CC-15) is served: a signed-in device nearby can approve a device with no
+    /// sign-in. The routes are `nearbyStart`, `nearbyPoll` and `nearbyApprove` in `endpoints`.
+    public let nearby: Bool
 
     public init(
         issuer: String? = nil, account: Bool = false, keyEntryLimit: Int? = nil,
-        endpoints: [String: String] = [:], exchange: IdentityExchangeDiscovery? = nil
+        endpoints: [String: String] = [:], exchange: IdentityExchangeDiscovery? = nil, nearby: Bool = false
     ) {
+        self.nearby = nearby
         self.issuer = issuer
         self.account = account
         self.keyEntryLimit = keyEntryLimit
@@ -184,7 +188,8 @@ public struct IdentityDiscovery: Sendable, Equatable {
             account: fragment.extras["account"]?.boolValue == true,
             keyEntryLimit: fragment.extras["keyEntryLimit"]?.intValue,
             endpoints: fragment.endpoints,
-            exchange: IdentityExchangeDiscovery(fragment.extras["exchange"]))
+            exchange: IdentityExchangeDiscovery(fragment.extras["exchange"]),
+            nearby: fragment.extras["nearby"]?.boolValue == true)
     }
 
     /// The authorize endpoint a redirect sign-in sends the browser to.
@@ -215,6 +220,10 @@ public struct IdentityDiscovery: Sendable, Equatable {
     public var nonce: String? { endpoints["nonce"] }
     /// `POST`: the link offer (§12.11.4).
     public var link: String? { endpoints["link"] }
+    /// `POST`: D's nearby request (§12.11.5), `POST`: its poll, and M's approval.
+    public var nearbyStart: String? { endpoints["nearbyStart"] }
+    public var nearbyPoll: String? { endpoints["nearbyPoll"] }
+    public var nearbyApprove: String? { endpoints["nearbyApprove"] }
 }
 
 /// `identity.exchange` of the discovery document (§12.11): which providers the product accepts.
