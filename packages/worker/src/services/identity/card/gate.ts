@@ -81,6 +81,7 @@ import {
   verifyEmailCodeLive,
 } from "../../../core/notify/emailLimits.js";
 import { isApplePrivateRelay } from "../../../core/notify/emailDelivery.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 import {
   EMAIL_GATE_COOKIE,
   accountRealmCookie,
@@ -584,14 +585,21 @@ function nameSuggestions(
 }
 
 /** The card's view of a gate. Carries no account id and nothing about another account. */
-async function gateView(db: Db, gate: GateRecord): Promise<unknown> {
+async function gateView(env: Env, db: Db, gate: GateRecord): Promise<unknown> {
+  // The sign-in screen names the app before the person consents, so it takes the checked name:
+  // a stored name that fails the display rules shows as the slug (DISPLAY-NAME-INVISIBLE B2).
   const productName = gate.product
-    ? ((
-        await db.first<{ name: string | null }>(
-          "SELECT name FROM products WHERE slug = ?",
-          gate.product,
-        )
-      )?.name ?? gate.product)
+    ? await shownAppName(
+        env,
+        db,
+        gate.product,
+        (
+          await db.first<{ name: string | null }>(
+            "SELECT name FROM products WHERE slug = ?",
+            gate.product,
+          )
+        )?.name ?? gate.product,
+      )
     : null;
   const providerEmail = gate.identity.email;
   return {
@@ -657,7 +665,7 @@ export async function handleEmailGate(
   const { ref, gate } = found;
   const [action] = rest;
   if (action === undefined) {
-    if (req.method === "GET") return cardJson(await gateView(db, gate));
+    if (req.method === "GET") return cardJson(await gateView(env, db, gate));
     if (req.method === "POST") return gateChoose(req, env, db, ref, gate, now);
     return cardJson({ error: "method_not_allowed" }, 405);
   }

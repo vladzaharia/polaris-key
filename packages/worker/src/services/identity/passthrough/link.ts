@@ -67,6 +67,7 @@ import {
   validateDeviceKeys,
 } from "../../../core/devices/keys.js";
 import { verifyDeviceProof } from "../../../core/devices/proof.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 import { verifiedAccountEmails } from "../../../core/accounts/verifiedEmails.js";
 import { consumeArtefact, getArtefact } from "../../../core/singleUse.js";
 import { deviceHolder, deviceOf } from "../attach.js";
@@ -384,7 +385,7 @@ async function link(
       amr: [source.kind],
     },
     {
-      app: product.name,
+      app: await shownAppName(env, db, product.slug, product.name),
       // The linked identity's own verified address hears of it too.
       alsoTo: source.emailVerified ? source.email : null,
     },
