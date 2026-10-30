@@ -12,10 +12,9 @@ import type { Env } from "../../../src/platform/env.js";
 import type { Db } from "../../../src/db/types.js";
 import type { Principal } from "../../../src/core/rbac/can.js";
 import { handleAdmin } from "../../../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  issueSession,
-} from "../../../src/core/console/session.js";
+import { ADMIN_COOKIE } from "../../../src/core/console/session.js";
+import { syntheticKey } from "../../syntheticPrincipals.js";
+import { consoleTestSession } from "../../consoleSessionHelper.js";
 import { setServices } from "../../../src/core/products/store.js";
 import { serializeServices } from "../../../src/core/services.js";
 import { invalidatePlatformSettings } from "../../../src/core/platformSettings.js";
@@ -31,7 +30,9 @@ vi.mock("../../../src/core/rbac/principal.js", async (importOriginal) => {
     ...real,
     resolvePrincipal: async (
       ...args: Parameters<typeof real.resolvePrincipal>
-    ) => SYNTHETIC.get(args[2].sub) ?? real.resolvePrincipal(...args),
+    ) =>
+      SYNTHETIC.get(syntheticKey(args[2].sub)) ??
+      real.resolvePrincipal(...args),
   };
 });
 const shipOnly = PRINCIPALS.alphaShip;
@@ -111,8 +112,9 @@ async function world(syncOn = true) {
     claims: { sub: string; groups: string[] },
     at: number,
   ) => {
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       env,
+      db,
       { ...claims, name: "A", email: "a@example.test" },
       at,
     );
@@ -198,7 +200,7 @@ describe("GET sync/usage", () => {
   it("refuses a member who lacks the sync area", async () => {
     const w = await world();
     const p = PRINCIPALS.alphaShip!;
-    const token = await w.sessionFor({ sub: p.memberId, groups: [] }, NOW);
+    const token = await w.sessionFor({ sub: p.memberId, groups: [GROUP] }, NOW);
     const res = await w.get(token, NOW);
     expect(res.status).toBe(403);
     expect(await res.text()).not.toContain("subj-secret-1");
@@ -214,7 +216,10 @@ describe("GET sync/usage", () => {
 
   it("carries the platform pause for a product admin: since only: no name, no reason, no id", async () => {
     const w = await world();
-    const token = await w.sessionFor({ sub: "m-djdl-sync", groups: [] }, NOW);
+    const token = await w.sessionFor(
+      { sub: "m-djdl-sync", groups: [GROUP] },
+      NOW,
+    );
     const off = (await (await w.get(token, NOW)).json()) as { paused: unknown };
     expect(off.paused).toBeNull();
 
@@ -266,7 +271,10 @@ describe("GET sync/usage", () => {
       NOW - 60,
     );
     invalidatePlatformSettings(w.env, w.db);
-    const token = await w.sessionFor({ sub: "m-djdl-sync", groups: [] }, NOW);
+    const token = await w.sessionFor(
+      { sub: "m-djdl-sync", groups: [GROUP] },
+      NOW,
+    );
     const text = await (await w.get(token, NOW)).text();
     expect(JSON.parse(text).paused).toEqual({
       since: NOW - 60,

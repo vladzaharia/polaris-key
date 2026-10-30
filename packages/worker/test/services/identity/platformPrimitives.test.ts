@@ -20,10 +20,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  issueSessionV2,
-  verifySession,
-} from "../../../src/core/console/session.js";
+import { issueSessionV2 } from "../../../src/core/console/session.js";
 import {
   issuePortalSession,
   verifyPortalSession,
@@ -54,6 +51,7 @@ import {
   sha256Hex,
 } from "../../../src/platform/hash.js";
 import { importHmacKey } from "../../../src/platform/hash.js";
+import { readConsoleCookie } from "../../consoleSessionHelper.js";
 import {
   signHmacToken,
   verifyHmacToken,
@@ -134,16 +132,10 @@ const FALLBACK_ENV = {
 describe("session cookies survive the move onto platform/hmacToken", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("verifies a console session minted by the old code", async () => {
-    expect(await verifySession(PIN_ENV, ADMIN_PIN, PIN_NOW)).toEqual({
-      sub: "op-sub-1",
-      name: "Ada Op",
-      email: "ada@example.com",
-      groups: ["polaris-admins"],
-      csrf: "AwoRGB8mLTQ7QklQV15lbA",
-      exp: 1800028800,
-      authAt: 1799999970,
-    });
+  it("no longer reads a console session minted by the old (v1) code", async () => {
+    // The pin verifies as a signature (it is the portal-pinned format), but the v1 reader is
+    // gone (ST-30c.8): no console request resolves it.
+    expect(await readConsoleCookie(PIN_ENV, ADMIN_PIN, PIN_NOW)).toBeNull();
   });
 
   it("verifies portal sessions minted by the old code, both key sources", async () => {
@@ -186,7 +178,7 @@ describe("session cookies survive the move onto platform/hmacToken", () => {
   it("keeps the realms apart under one shared key (R1-02 domain tags)", async () => {
     // FALLBACK_ENV signs both realms with ADMIN_SESSION_SECRET.
     expect(
-      await verifySession(FALLBACK_ENV, PORTAL_FALLBACK_PIN, PIN_NOW),
+      await readConsoleCookie(FALLBACK_ENV, PORTAL_FALLBACK_PIN, PIN_NOW),
     ).toBeNull();
     const admin = await issueSessionV2(
       FALLBACK_ENV,
@@ -202,27 +194,31 @@ describe("session cookies survive the move onto platform/hmacToken", () => {
       groups: ["g"],
       exp: PIN_NOW + 60,
     });
-    expect(await verifySession(FALLBACK_ENV, portalShaped, PIN_NOW)).toBeNull();
+    expect(
+      await readConsoleCookie(FALLBACK_ENV, portalShaped, PIN_NOW),
+    ).toBeNull();
   });
 
   it("refuses a tampered body, a tampered MAC and an expired session", async () => {
-    const [body, mac] = ADMIN_PIN.split(".") as [string, string];
+    const [body, mac] = PORTAL_PIN.split(".") as [string, string];
     const flipped = (s: string) => (s[0] === "A" ? "B" : "A") + s.slice(1);
     expect(
-      await verifySession(PIN_ENV, `${flipped(body)}.${mac}`, PIN_NOW),
+      await verifyPortalSession(PIN_ENV, `${flipped(body)}.${mac}`, PIN_NOW),
     ).toBeNull();
     expect(
-      await verifySession(PIN_ENV, `${body}.${flipped(mac)}`, PIN_NOW),
+      await verifyPortalSession(PIN_ENV, `${body}.${flipped(mac)}`, PIN_NOW),
     ).toBeNull();
-    expect(await verifySession(PIN_ENV, ADMIN_PIN, 1800028800)).toBeNull();
+    expect(
+      await verifyPortalSession(PIN_ENV, PORTAL_PIN, 1801209600),
+    ).toBeNull();
   });
 
   it("answers signed-out without touching a missing secret, and still refuses when a token has to be checked", async () => {
     const noSecret = {} as Env;
-    expect(await verifySession(noSecret, null, PIN_NOW)).toBeNull();
-    expect(await verifySession(noSecret, "no-dot", PIN_NOW)).toBeNull();
+    expect(await readConsoleCookie(noSecret, null, PIN_NOW)).toBeNull();
+    expect(await readConsoleCookie(noSecret, "no-dot", PIN_NOW)).toBeNull();
     // A well-formed token with no secret to check it against is refused (null), not thrown.
-    expect(await verifySession(noSecret, ADMIN_PIN, PIN_NOW)).toBeNull();
+    expect(await readConsoleCookie(noSecret, ADMIN_PIN, PIN_NOW)).toBeNull();
     expect(await verifyPortalSession(noSecret, null, PIN_NOW)).toBeNull();
     expect(await verifyPortalSession(noSecret, PORTAL_PIN, PIN_NOW)).toBeNull();
   });

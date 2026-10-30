@@ -11,8 +11,9 @@ import { handleAdmin } from "../../../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
 } from "../../../src/core/console/session.js";
+import { syntheticKey } from "../../syntheticPrincipals.js";
+import { consoleTestSession } from "../../consoleSessionHelper.js";
 import { setServices } from "../../../src/core/products/store.js";
 import { setPlatformPin } from "../../../src/core/platformCredentials.js";
 import {
@@ -42,7 +43,9 @@ vi.mock("../../../src/core/rbac/principal.js", async (importOriginal) => {
     ...real,
     resolvePrincipal: async (
       ...args: Parameters<typeof real.resolvePrincipal>
-    ) => SYNTHETIC.get(args[2].sub) ?? real.resolvePrincipal(...args),
+    ) =>
+      SYNTHETIC.get(syntheticKey(args[2].sub)) ??
+      real.resolvePrincipal(...args),
   };
 });
 const grant = (sub: string, areas: string[]) =>
@@ -89,8 +92,9 @@ async function pin(
 }
 
 async function attention(w: AscWorld, sub = "u1") {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub, name: sub, email: `${sub}@x.io`, groups: ["platform-admins"] },
     NOW,
   );

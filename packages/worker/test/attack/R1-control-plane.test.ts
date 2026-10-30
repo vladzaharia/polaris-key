@@ -20,7 +20,6 @@ import {
   ADMIN_COOKIE,
   buildClearCookie,
   buildSessionCookie,
-  verifySession,
 } from "../../src/core/console/session.js";
 import {
   PORTAL_COOKIE,
@@ -41,7 +40,11 @@ import {
 } from "../../src/services/identity/oidc.js";
 import { artefacts, singleUseMock } from "../singleUseMock.js";
 import { adminFlowKey } from "../../src/console/auth.js";
-import { consoleTestSession, consoleActor } from "../consoleSessionHelper.js";
+import {
+  consoleTestSession,
+  consoleActor,
+  readConsoleCookie,
+} from "../consoleSessionHelper.js";
 
 /** The console sign-in gate (ST-29): the principal these groups resolve to is a member. */
 async function signInGate(env: Env, groups: string[]): Promise<boolean> {
@@ -293,9 +296,9 @@ describe("R1-02 cross-realm session signing", () => {
       { accountId: "acct_1", name: "Mallory", email: "m@evil.test" },
       NOW,
     );
-    // Signature is valid (proved above); `verifySession` still returns null because the
+    // Signature is valid (proved above); the console reader still returns null because the
     // portal body carries no `sub` and no `groups` array.
-    expect(await verifySession(env, token, NOW)).toBeNull();
+    expect(await readConsoleCookie(env, token, NOW)).toBeNull();
     const res = await handleAdmin(
       req("GET", "https://key.plrs.im/manage/api/me", {
         cookie: `${ADMIN_COOKIE}=${token}`,
@@ -319,7 +322,7 @@ describe("R1-02 cross-realm session signing", () => {
     expect(await verifyPortalSession(env, token, NOW)).toBeNull();
   });
 
-  it("R1-02d: FIXED — the latent bypass is dead: a body satisfying BOTH shape checks is accepted by AT MOST ONE realm", async () => {
+  it("R1-02d: FIXED — the latent bypass is dead: a body satisfying BOTH shape checks is accepted by the portal realm alone", async () => {
     const env = adminEnv(new KvMock());
     // This is exactly the shape the portal session would take the moment it grows a `sub`
     // (the OIDC subject `getOrCreateAccountByIdentity` already handles) and any `groups`
@@ -340,16 +343,17 @@ describe("R1-02 cross-realm session signing", () => {
     // key is byte-identical. Shape is no longer load-bearing.
     const portalToken = `${body}.${await hmacB64url(ADMIN_SECRET, `pkey.portal.v1|${body}`)}`;
     expect(await verifyPortalSession(env, portalToken, NOW)).not.toBeNull();
-    expect(await verifySession(env, portalToken, NOW)).toBeNull();
+    expect(await readConsoleCookie(env, portalToken, NOW)).toBeNull();
 
-    // And symmetrically for the admin realm.
+    // And for the admin realm's retired v1 tag.
     const adminToken = `${body}.${await hmacB64url(ADMIN_SECRET, `pkey.admin.v1|${body}`)}`;
-    expect(await verifySession(env, adminToken, NOW)).not.toBeNull();
+    // The v1 admin realm is retired (ST-30c.8): its tag still signs, and no reader accepts it.
+    expect(await readConsoleCookie(env, adminToken, NOW)).toBeNull();
     expect(await verifyPortalSession(env, adminToken, NOW)).toBeNull();
 
     // The untagged signature that used to work in both realms now works in neither.
     const legacy = `${body}.${await hmacB64url(ADMIN_SECRET, body)}`;
-    expect(await verifySession(env, legacy, NOW)).toBeNull();
+    expect(await readConsoleCookie(env, legacy, NOW)).toBeNull();
     expect(await verifyPortalSession(env, legacy, NOW)).toBeNull();
   });
 
@@ -363,7 +367,7 @@ describe("R1-02 cross-realm session signing", () => {
     // configuration in which no session can be authentic must refuse like a bad signature.
     // Asserted for both realms together so a fix to one cannot leave the other as the
     // counter-example.
-    expect(await verifySession(env, "forged.token", NOW)).toBeNull();
+    expect(await readConsoleCookie(env, "forged.token", NOW)).toBeNull();
     expect(await verifyPortalSession(env, "forged.token", NOW)).toBeNull();
 
     // Not merely "a malformed token is rejected": a WELL-FORMED token signed with a key the
@@ -381,7 +385,7 @@ describe("R1-02 cross-realm session signing", () => {
     );
     const forgedAdmin = `${body}.${await hmacB64url("attacker-chosen", `pkey.admin.v1|${body}`)}`;
     const forgedPortal = `${body}.${await hmacB64url("attacker-chosen", `pkey.portal.v1|${body}`)}`;
-    expect(await verifySession(env, forgedAdmin, NOW)).toBeNull();
+    expect(await readConsoleCookie(env, forgedAdmin, NOW)).toBeNull();
     expect(await verifyPortalSession(env, forgedPortal, NOW)).toBeNull();
   });
 
@@ -398,7 +402,7 @@ describe("R1-02 cross-realm session signing", () => {
       NOW,
     );
     // JSON.stringify escapes the quotes, so no admin claims are smuggled in.
-    expect(await verifySession(env, token, NOW)).toBeNull();
+    expect(await readConsoleCookie(env, token, NOW)).toBeNull();
   });
 });
 

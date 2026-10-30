@@ -40,7 +40,7 @@ Console sign-in: passkey step-up, break-glass link, known-operator chip, v1 read
 ## Verified against the code (ST-30c.1)
 
 - **C5.** The "full platform authority" invariant was `session.ts:1-6`. ST-30c.1 rewrote that header
-  (v2 pointer, the break-glass realm with no account, the v1 reader kept until ST-30c.8). `docs.ts`
+  (v2 pointer, the break-glass realm with no account; the v1 reader was removed in ST-30c.8). `docs.ts`
   is on `can(platform, docs)`, not on a group.
 - **C6.** The card lockup is already 52 px since 81d8c9e04. ST-30c.2 confirms it against frame 13
   rather than enlarging it.
@@ -90,7 +90,7 @@ Console sign-in: passkey step-up, break-glass link, known-operator chip, v1 read
 - [ ] SM-3(a)/(d): a person can enrol a passkey and mark it "Use for the console"
 - [x] Break-glass is an explicit link with an audit row and documented exit facts
 - [x] The known-operator chip shows from a last-operator hint
-- [ ] The `session.ts:5` comment is deleted; the v1 cookie reader is removed (one release after 8 h)
+- [x] The `session.ts:5` comment is deleted; the v1 cookie reader is removed (ST-30c.8, 2026-10-28; gate: v0.9.16 deploy at 2026-10-23T21:05Z, `deploy.yml` success; ships in 0.10.1)
 - [x] The console card has the larger lockup (64 px from 30 rem, 52 px on phones, matching frame 13; ST-30c.2 after the UX review)
 - [ ] THREAT-MODEL rows for each; security review signed
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
@@ -103,3 +103,7 @@ Each acceptance item's test in its lane, then the full green gate in `AGENTS.md`
 
 The role agent sets `--set ST-30c in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-30c done`.
+
+## ST-30c.8 note (2026-10-28)
+
+Removed the v1 cookie reader: `issueSession`, `verifySession`, the `pkey.admin.v1|` tag and the v1 branch of `sessionFromRequest` (a v1 token is no session, answered as a cookie-less request), the IdP-subject sign-out mark for v1 in `POST /logout`, and `consoleMemberIdForIdpSub`. Corrections to the plan: about 17 test files still minted v1 cookies on staging (connect, sync, commerce, channels and others landed after ST-30c.7), so they moved to `consoleTestSession`; v1-negative cases use `forgeV1Cookie` (`test/consoleSessionHelper.ts`). THREAT-MODEL rows updated, including SEC-RB1's N1 (closed). No route, error code or wire change.

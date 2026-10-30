@@ -22,9 +22,9 @@ import {
 import { resetConsoleSessionCache } from "../../../src/console/consoleSession.js";
 import {
   ADMIN_COOKIE,
-  issueSession,
   issueSessionV2,
 } from "../../../src/core/console/session.js";
+import { forgeV1Cookie } from "../../consoleSessionHelper.js";
 import { handlePortalApi } from "../../portalHarness.js";
 import { issuePortalSessionRow } from "../../portalSessionRow.js";
 import {
@@ -283,22 +283,15 @@ describe("who may open and decide", () => {
       }),
     );
 
-    const v1 = await issueSession(
+    const v1 = await forgeV1Cookie(
       w.env,
-      {
-        sub: "op-1",
-        name: "Ada",
-        email: "a@x.io",
-        groups: [GROUP],
-        authTime: NOW,
-        stepUp: true,
-      },
+      { sub: "op-1", groups: [GROUP] },
       NOW,
     );
     toLogin(
       await device(w, "POST", {
         cookie: `${ADMIN_COOKIE}=${v1.token}`,
-        form: { code: s.code, decision: "approve", csrf: v1.session.csrf },
+        form: { code: s.code, decision: "approve", csrf: v1.csrf },
       }),
     );
 

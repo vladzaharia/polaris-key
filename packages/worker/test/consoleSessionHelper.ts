@@ -8,14 +8,19 @@
  * (`mbr_…`), not the IdP subject, and groups reach a request only through the link's stored
  * assertion. `consoleTestSession` configures the console IdP on `env` when the test left it unset.
  */
+import { importHmacKey } from "../src/platform/hash.js";
+import { signHmacToken } from "../src/platform/hmacToken.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import {
   ADMIN_COOKIE,
   issueBreakGlassSession,
   issueSessionV2,
+  sessionFromRequest,
+  type AdminSession,
   type SessionIdentity,
 } from "../src/core/console/session.js";
+import { rememberMember } from "./syntheticPrincipals.js";
 import { memberIdFor } from "../src/core/console/memberId.js";
 import { adminOidcConfig } from "../src/platform/platformOidc.js";
 import { consoleSignIn } from "../src/services/identity/public.js";
@@ -93,12 +98,14 @@ export async function consoleTestSession(
     },
     now,
   );
+  const memberId = await memberIdFor(env, signedIn.accountId);
+  rememberMember(memberId, identity.sub);
   return {
     token,
     cookie: `${ADMIN_COOKIE}=${token}`,
     csrf: claims.csrf,
     session: {
-      sub: await memberIdFor(env, signedIn.accountId),
+      sub: memberId,
       name: signedIn.name,
       email: signedIn.email || identity.email || "",
       csrf: claims.csrf,
@@ -155,4 +162,58 @@ export async function consoleActor(
   );
   if (!link) throw new Error(`consoleActor: ${idpSub} never signed in`);
   return memberIdFor(env, link.account_id);
+}
+
+/**
+ * ST-30c.8: a cookie in the retired v1 shape (the IdP `sub` and `groups`, signed under the
+ * `pkey.admin.v1|` realm tag with the real key), for the tests that prove the console no longer
+ * reads one. Nothing in `src/` mints it any more.
+ */
+export async function forgeV1Cookie(
+  env: Env,
+  identity: { sub: string; groups: string[] },
+  now: number,
+): Promise<{ token: string; cookie: string; csrf: string }> {
+  const csrf = "v1-csrf-token";
+  const token = await signHmacToken(
+    await importHmacKey(env.ADMIN_SESSION_SECRET ?? ""),
+    "pkey.admin.v1|",
+    {
+      sub: identity.sub,
+      name: identity.sub,
+      email: "",
+      groups: identity.groups,
+      csrf,
+      exp: now + 8 * 60 * 60,
+      authAt: now,
+    },
+  );
+  return { token, cookie: `${ADMIN_COOKIE}=${token}`, csrf };
+}
+
+/**
+ * What the console's reader makes of a cookie value: the session it resolves to, or `null`. The
+ * live check answers for any v2 cookie (a fixed subject), so a `null` is the reader's own refusal:
+ * a bad signature, a foreign realm, an expired body, or the retired v1 shape.
+ */
+export async function readConsoleCookie(
+  env: Env,
+  token: string | null,
+  now: number,
+): Promise<AdminSession | null> {
+  return sessionFromRequest(
+    env,
+    new Request("https://key.plrs.im/manage/api/me", {
+      headers: token ? { cookie: `${ADMIN_COOKIE}=${token}` } : {},
+    }),
+    now,
+    async () => ({
+      sub: "mbr_reader",
+      idpSub: "",
+      name: "",
+      email: "",
+      groups: [],
+      root: false,
+    }),
+  );
 }

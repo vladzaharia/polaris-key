@@ -20,8 +20,8 @@ import {
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
 } from "../../../src/core/console/session.js";
+import { consoleTestSession } from "../../consoleSessionHelper.js";
 import {
   forgetRegistryTokens,
   lookupRegistryCredential,
@@ -66,8 +66,9 @@ async function admin(
   path: string,
   body?: unknown,
 ): Promise<JsonResponse> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     {
       sub: "u1",
       name: "Ada",
@@ -543,8 +544,9 @@ describe("review fixes (B1, N1 to N4)", () => {
   });
 
   it("N1: minting needs the Keys area on the product; N3: no control characters in a label", async () => {
-    const { session } = await issueSession(
+    const { session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u2",
         name: "Bo",

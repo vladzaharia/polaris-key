@@ -16,11 +16,7 @@ import {
   type IdTokenVerifier,
 } from "../../../src/console/auth.js";
 import { resetConsoleSessionCache } from "../../../src/console/consoleSession.js";
-import {
-  ADMIN_COOKIE,
-  issueSession,
-  verifySession,
-} from "../../../src/core/console/session.js";
+import { forgeV1Cookie } from "../../consoleSessionHelper.js";
 import { ADMIN_ROUTES } from "../../../src/console/routes.js";
 import { routeKey } from "../../../src/console/routeMatch.js";
 import { rateLimitOk } from "../../../src/core/rateLimit.js";
@@ -261,21 +257,18 @@ describe("GET /me/personal-tokens", () => {
     expect(tokens[0]).toMatchObject({ status: "active" });
   });
 
-  it("a v1 cookie (no account) is 409 reauth, for the list and the revoke", async () => {
-    const { token } = await issueSession(
+  it("a v1 cookie is no session: 401 for the list and the revoke (ST-30c.8)", async () => {
+    const v1 = await forgeV1Cookie(
       env,
-      { sub: "idp-v1", email: "v1@example.com", name: "v1", groups: [GROUP] },
+      { sub: "idp-v1", groups: [GROUP] },
       NOW,
     );
-    const cookie = `${ADMIN_COOKIE}=${token}`;
-    const csrf = await csrfOf(env, db, cookie);
     for (const [m, p] of [
       ["GET", MINE],
       ["DELETE", `${MINE}/ptok_x`],
     ] as const) {
-      const res = await sess(env, db, cookie, csrf, m, p);
-      expect(res.status, `${m} ${p}`).toBe(409);
-      expect(await refusal(res)).toMatchObject({ code: "reauth" });
+      const res = await sess(env, db, v1.cookie, v1.csrf, m, p);
+      expect(res.status, `${m} ${p}`).toBe(401);
     }
   });
 
@@ -691,14 +684,5 @@ describe("fold-ins from the 34.1-34.3 review", () => {
     expect((await call(env, db, a, "GET", "/api/me")).status).toBe(429);
     expect((await call(env, db, b, "GET", "/api/me")).status).toBe(429);
     expect((await call(env, db, o, "GET", "/api/me")).status).toBe(200);
-  });
-
-  it("verifySession drops a tokenId a v1 cookie body names", async () => {
-    const { token } = await issueSession(
-      env,
-      { sub: "idp-x", email: "x@example.com", name: "x", groups: [GROUP] },
-      NOW,
-    );
-    expect((await verifySession(env, token, NOW))!.tokenId).toBeUndefined();
   });
 });

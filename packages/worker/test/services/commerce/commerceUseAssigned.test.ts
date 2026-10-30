@@ -10,8 +10,12 @@ import { handleAdmin } from "../../../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
 } from "../../../src/core/console/session.js";
+import { syntheticKey } from "../../syntheticPrincipals.js";
+import {
+  consoleActor,
+  consoleTestSession,
+} from "../../consoleSessionHelper.js";
 import { setServices } from "../../../src/core/products/store.js";
 import { serializeServices } from "../../../src/core/services.js";
 import { effectiveCommerceSettings } from "../../../src/services/commerce/identity.js";
@@ -40,7 +44,9 @@ vi.mock("../../../src/core/rbac/principal.js", async (importOriginal) => {
     ...real,
     resolvePrincipal: async (
       ...args: Parameters<typeof real.resolvePrincipal>
-    ) => SYNTHETIC.get(args[2].sub) ?? real.resolvePrincipal(...args),
+    ) =>
+      SYNTHETIC.get(syntheticKey(args[2].sub)) ??
+      real.resolvePrincipal(...args),
   };
 });
 const grant = (sub: string, areas: string[] | null) =>
@@ -96,8 +102,9 @@ async function call(
   path: string,
   sub = "u1",
 ): Promise<{ status: number; json: any }> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     cw.env,
+    cw.db,
     { sub, name: sub, email: `${sub}@x.io`, groups: ["platform-admins"] },
     NOW,
   );
@@ -171,7 +178,7 @@ describe("POST …/settings/<store>/use-assigned", () => {
       SLUG,
     );
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.actor_sub).toBe("u1");
+    expect(rows[0]!.actor_sub).toBe(await consoleActor(cw.env, cw.db, "u1"));
     expect(JSON.parse(rows[0]!.before_json)).toEqual({
       store: "app-store",
       typed: { bundleId: OTHER, appAppleId: 1234567890 },
@@ -401,8 +408,8 @@ describe("attention reads follow the member's areas", () => {
   it("a license-only member triggers no binding reads; a commerce member does", async () => {
     const cw = await world({ settings: MISMATCHED });
     const reads: string[] = [];
-    const counting = {
-      ...cw.db,
+    // Object.create keeps the rest of the Db (`run`, which the sign-in writes through).
+    const counting = Object.assign(Object.create(cw.db), {
       all: (sql: string, ...p: unknown[]) => (
         reads.push(sql),
         (cw.db.all as any)(sql, ...p)
@@ -411,7 +418,7 @@ describe("attention reads follow the member's areas", () => {
         reads.push(sql),
         (cw.db.first as any)(sql, ...p)
       ),
-    };
+    });
     const binding = (sql: string) =>
       /platform_credentials|outlet_credentials|dist_connector_settings|dist_outlets/.test(
         sql,

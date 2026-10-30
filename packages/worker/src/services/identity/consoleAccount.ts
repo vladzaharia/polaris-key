@@ -639,26 +639,6 @@ export async function consoleActorAliases(
 }
 
 /**
- * The member id of the account behind a console IdP subject, or `null` when no account holds it.
- * A v1 sign-out uses it to end that operator's v2 sessions too (their mark is under the member id).
- */
-export async function consoleMemberIdForIdpSub(
-  env: Env,
-  db: Db,
-  sub: string,
-): Promise<string | null> {
-  const rp = adminOidcConfig(env);
-  if (!rp || !sub) return null;
-  const row = await db.first<{ account_id: string }>(
-    `SELECT account_id FROM account_links
-      WHERE issuer_key = ? AND tenant_scope = '' AND subject = ? LIMIT 1`,
-    portalIdentityIssuerKey(rp.issuer),
-    sub,
-  );
-  return row ? memberIdFor(env, row.account_id) : null;
-}
-
-/**
  * The IdP subject(s) of the console links of an account (ST-34.13). A break-glass session has no
  * account: its `sub` is the IdP subject, so a sign-out mark for the member must also be written
  * under each of these. Read-only, bounded.

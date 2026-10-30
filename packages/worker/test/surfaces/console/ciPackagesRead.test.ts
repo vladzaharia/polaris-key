@@ -14,8 +14,8 @@ import { handleAdmin } from "../../../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
 } from "../../../src/core/console/session.js";
+import { consoleTestSession } from "../../consoleSessionHelper.js";
 import { ensureSystemProduct } from "../../../src/console/systemProduct.js";
 
 let db: Db;
@@ -40,8 +40,9 @@ async function admin(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     {
       sub: "u1",
       name: "Ada",

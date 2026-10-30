@@ -9,7 +9,7 @@
  * The cookie grants nothing by itself. Authority is the principal resolved for each request
  * (`./authz.ts`, `../rbac/principal.ts`): the root rule plus the account's stored bindings.
  *
- * Three cookie shapes exist, tried in this order by `sessionFromRequest`:
+ * Two cookie shapes exist, tried in this order by `sessionFromRequest`:
  *
  *  - v2 (`pkey.admin.v2|`, ST-30): a POINTER. It names an account (`aid`) and a session row (`sid`)
  *    and carries no groups. Every request resolves it, at most every 30 seconds, to a live
@@ -20,8 +20,8 @@
  *    explicit `/manage/login?breakGlass=1` flow, for an identity whose IdP groups carry the root
  *    group, and lives one hour (`BREAK_GLASS_TTL_SECONDS`). It names no `aid` or `sid`, so no
  *    stored binding is read for it and it cannot reach account self-service routes.
- *  - v1 (`pkey.admin.v1|`): the IdP `sub` and `groups`, signed before the v2 deploy. It is still
- *    read until it expires and is never minted by the sign-in; the reader goes in ST-30c.8.
+ *
+ * Anything else, a cookie of the retired v1 shape included (ST-30c.8), is no session.
  *
  * Why HMAC for the cookie itself: it is server-verifiable and tamper-proof with no lookup for a
  * request that carries none; the live check above is the revocable part. Each shape has its own
@@ -77,13 +77,13 @@ export const LIVE_CHECK_SECONDS = 30;
 export interface AdminSession {
   /**
    * The audit actor, ALWAYS taken from here, never a request field. A v2 session: the member id
-   * (`mbr_…`, ST-30 slice 2b); a v1 session: the OIDC subject.
+   * (`mbr_…`, ST-30 slice 2b); a break-glass session: the OIDC subject.
    */
   sub: string;
   name: string;
   email: string;
   groups: string[];
-  /** v2: the computed root rule for this request; absent on a v1 session (groups only). */
+  /** v2: the computed root rule for this request; break-glass computes it from its own groups. */
   root?: boolean;
   /** v2: the console link's IdP subject (the `sub` above is the member id). */
   idpSub?: string;
@@ -116,8 +116,8 @@ export interface AdminSession {
   stepUpAt?: number;
   /**
    * ST-29: the principal the console dispatcher resolved for THIS request (`console/routes.ts`).
-   * Never part of the cookie: `issueSession` does not write it and `verifySession` drops it, so
-   * only the dispatcher sets it, after the cookie verifies. Handlers hand it to `writeSettings()`.
+   * Never part of the cookie: no issuer writes it and no reader reads it, so only the dispatcher
+   * sets it, after the cookie verifies. Handlers hand it to `writeSettings()`.
    */
   principal?: Principal;
 }
@@ -151,21 +151,11 @@ async function sessionKey(env: Env): Promise<CryptoKey> {
 }
 
 /**
- * Domain-separation tag mixed into the signed message (R1-02).
- *
- * The admin and portal realms once shared a raw key (the portal fell back to
- * `ADMIN_SESSION_SECRET`; that fallback is gone). Before this tag, the only thing stopping a portal
- * cookie (obtainable by anyone with an email address) from being replayed as an admin cookie
- * was that the two JSON bodies happened to carry different field names: add a `sub` and a
- * `groups` array to `PortalSession` — both natural next features — and the realms collapse.
- *
- * Signing `"pkey.admin.v1|" + body` instead of `body` makes the realms cryptographically
- * distinct regardless of payload shape: a portal token's signature is over a different
- * message, so it cannot verify here even with an identical key and an identical body. The
- * `.v1` allows a future rotation of the scheme itself.
+ * Domain-separation tags mixed into the signed message (R1-02): each realm's token is signed over
+ * `tag + body`, so a token of one realm, or a portal cookie, cannot verify as another's even with
+ * an identical key and body. The retired v1 tag (`pkey.admin.v1|`) is gone with its reader.
  */
-const ADMIN_SESSION_DOMAIN = "pkey.admin.v1|";
-/** The v2 realm tag (ST-28 §2.6): a v1 token's signature is over a different message. */
+/** The v2 realm tag (ST-28 §2.6). */
 const ADMIN_SESSION_DOMAIN_V2 = "pkey.admin.v2|";
 /** The break-glass realm tag (ST-30c.1). */
 const ADMIN_SESSION_DOMAIN_BG = "pkey.admin.bg1|";
@@ -191,69 +181,6 @@ export interface SessionIdentity {
   stepUp?: boolean;
 }
 
-/**
- * Mint a v1 token (IdP `sub` + `groups` in the cookie). The sign-in no longer does: it mints v2
- * (`issueSessionV2`). This stays so the reader's v1 branch, which honours cookies signed before
- * the deploy until they expire, has a minter to be tested with. Delete both with the v1 reader
- * once the last v1 cookie has expired (8 h after the deploy).
- */
-export async function issueSession(
-  env: Env,
-  identity: SessionIdentity,
-  now: number,
-): Promise<{ token: string; session: AdminSession }> {
-  const authAt =
-    typeof identity.authTime === "number" && identity.authTime <= now
-      ? identity.authTime
-      : now;
-  const session: AdminSession = {
-    sub: identity.sub,
-    name: identity.name ?? identity.email ?? identity.sub,
-    email: identity.email ?? "",
-    groups: identity.groups,
-    csrf: randomToken(16),
-    exp: now + SESSION_TTL_SECONDS,
-    // A future auth_time is clock skew or a lie; never let it extend a step-up window.
-    authAt,
-    ...(identity.stepUp && typeof identity.authTime === "number"
-      ? { stepUpAt: authAt }
-      : {}),
-  };
-  const token = await signHmacToken(
-    await sessionKey(env),
-    ADMIN_SESSION_DOMAIN,
-    session,
-  );
-  return { token, session };
-}
-
-/** Verify a session token; returns the claims, or null on any tamper/expiry. */
-export async function verifySession(
-  env: Env,
-  token: string | null,
-  now: number,
-): Promise<AdminSession | null> {
-  const payload = await verifyHmacToken(token, ADMIN_SESSION_DOMAIN, () =>
-    sessionKey(env),
-  );
-  if (payload === undefined) return null;
-  const session = payload as AdminSession;
-  if (typeof session.exp !== "number" || session.exp <= now) return null;
-  if (!session.sub || !Array.isArray(session.groups)) return null;
-  // The principal is resolved per request, never carried: a cookie body naming one is ignored.
-  delete session.principal;
-  // A v1 cookie names no account: stored bindings (ST-31.2) are read for a v2 session only.
-  delete session.aid;
-  delete session.sid;
-  // ST-34.3: a token session is built in memory by the dispatcher; a cookie body cannot name one.
-  delete session.tokenId;
-  // `root` is the v2 computed rule, set per request from the account link; a v1 body cannot claim it.
-  delete session.root;
-  // Only the break-glass realm may claim to be one.
-  delete session.breakGlass;
-  return session;
-}
-
 // ---------------------------------------------------------------------------
 // Cookie v2 (ST-30): account id + session id, resolved on every request
 // ---------------------------------------------------------------------------
@@ -274,7 +201,7 @@ export interface ConsoleCookieClaims {
 export interface ResolvedConsoleSubject {
   /** The member id (`mbr_…`, `memberId.ts`): the audit actor, the limiter key, what `/me` shows. */
   sub: string;
-  /** The IdP subject of the console link. Only for ending a v1 cookie's sign-out mark. */
+  /** The IdP subject of the console link (`/me`'s prior-subject list). */
   idpSub: string;
   name: string;
   email: string;
@@ -536,9 +463,8 @@ export function buildClearCookie(): string {
  *
  * A v2 cookie is a pointer: `live` (the console layer's cached `consoleSubject` read) says whether
  * it still holds and who it is today. Without `live` a v2 cookie is refused, so a caller that
- * cannot ask (no database) fails closed. A v1 cookie is read as before, for the 8 h it can still
- * live after the deploy, and checked against the sign-out mark. A break-glass cookie (ST-30c.1)
- * is tried between the two and also checked against the mark.
+ * cannot ask (no database) fails closed. A break-glass cookie (ST-30c.1) is checked against the
+ * sign-out mark. Any other value, a retired v1 cookie included, is no session.
  */
 export async function sessionFromRequest(
   env: Env,
@@ -587,8 +513,5 @@ export async function sessionFromRequest(
       ? null
       : session;
   }
-  const session = await verifySession(env, token, now);
-  if (!session) return null;
-  // Sign-out is server-side.
-  return (await isAdminSessionRevoked(env, session)) ? null : session;
+  return null;
 }

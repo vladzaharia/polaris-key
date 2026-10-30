@@ -7,7 +7,7 @@
  *     group;
  *   - the console's ID-token verification carries the same freshness options.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { bindAdminFlow } from "../flowBinderHelper.js";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
@@ -23,17 +23,17 @@ import {
   ADMIN_COOKIE,
   CSRF_HEADER,
   isSteppedUp,
-  issueSession,
-  buildSessionCookie,
   sessionFromRequest,
-  verifySession,
 } from "../../src/core/console/session.js";
-import { revokeAdminSessions } from "../../src/core/console/sessionRevocation.js";
 import {
   liveSubjectFor,
   resetConsoleSessionCache,
 } from "../../src/console/consoleSession.js";
-import { consoleTestSession } from "../consoleSessionHelper.js";
+import {
+  consoleTestBreakGlass,
+  consoleTestSession,
+  forgeV1Cookie,
+} from "../consoleSessionHelper.js";
 import { STEP_UP_ROUTES } from "../../src/console/stepUp.js";
 import { handleDocs } from "../../src/docs.js";
 
@@ -149,8 +149,9 @@ describe("dangerous platform routes", () => {
     const env = adminEnv();
     const db = makeTestDb();
     await seedProduct(db, "alpha");
-    const plain = await issueSession(
+    const plain = await consoleTestSession(
       env,
+      db,
       { sub: "op", groups: [GROUP], authTime: NOW },
       NOW,
     );
@@ -172,8 +173,9 @@ describe("dangerous platform routes", () => {
         "step_up_required",
       );
     }
-    const stepped = await issueSession(
+    const stepped = await consoleTestSession(
       env,
+      db,
       { sub: "op", groups: [GROUP], authTime: NOW, stepUp: true },
       NOW,
     );
@@ -194,9 +196,24 @@ describe("server-side sign-out", () => {
   it("a cookie replayed after logout is a 401, for every cookie that operator holds", async () => {
     const env = adminEnv();
     const db = makeTestDb();
-    const a = await issueSession(env, { sub: "op", groups: [GROUP] }, NOW);
-    const b = await issueSession(env, { sub: "op", groups: [GROUP] }, NOW);
-    const other = await issueSession(env, { sub: "ann", groups: [GROUP] }, NOW);
+    const a = await consoleTestSession(
+      env,
+      db,
+      { sub: "op", groups: [GROUP] },
+      NOW,
+    );
+    const b = await consoleTestSession(
+      env,
+      db,
+      { sub: "op", groups: [GROUP] },
+      NOW,
+    );
+    const other = await consoleTestSession(
+      env,
+      db,
+      { sub: "ann", groups: [GROUP] },
+      NOW,
+    );
     expect(
       (await api(env, db, a.token, a.session.csrf, "GET", "/api/me")).status,
     ).toBe(200);
@@ -219,10 +236,39 @@ describe("server-side sign-out", () => {
     ).toBe(200);
   });
 
+  it("an ordinary sign-out also ends the same operator's break-glass session", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const v2 = await consoleTestSession(
+      env,
+      db,
+      { sub: "op", groups: [GROUP] },
+      NOW,
+    );
+    const bg = await consoleTestBreakGlass(
+      env,
+      { sub: "op", groups: [GROUP] },
+      NOW,
+    );
+    expect(
+      (await api(env, db, bg.token, bg.csrf, "GET", "/api/me")).status,
+    ).toBe(200);
+    const out = await api(env, db, v2.token, v2.csrf, "POST", "/api/logout");
+    expect(out.status).toBe(200);
+    expect(
+      (await api(env, db, bg.token, bg.csrf, "GET", "/api/me")).status,
+    ).toBe(401);
+  });
+
   it("/docs and slug-check follow the current platform group", async () => {
     const env = adminEnv();
     const db = makeTestDb();
-    const s = await issueSession(env, { sub: "op", groups: [GROUP] }, NOW);
+    const s = await consoleTestSession(
+      env,
+      db,
+      { sub: "op", groups: [GROUP] },
+      NOW,
+    );
     const docs = () =>
       handleDocs(
         // A gated page: Operate → Platform (the landing page is public since ST-29).
@@ -231,6 +277,7 @@ describe("server-side sign-out", () => {
         }) as unknown as Request,
         env,
         NOW,
+        db,
       );
     expect((await docs()).status).not.toBe(403);
     expect(
@@ -246,6 +293,8 @@ describe("server-side sign-out", () => {
       ).status,
     ).toBe(200);
     env.PLATFORM_ADMIN_GROUP = "someone-else";
+    // The live check remembers an answer for 30 s; the group change is read from the next one.
+    resetConsoleSessionCache();
     expect((await docs()).status).toBe(403);
     expect(
       (
@@ -263,51 +312,59 @@ describe("server-side sign-out", () => {
 });
 
 // ---------------------------------------------------------------------------
-// v1 cookies. The reader still honours cookies signed before the v2 deploy, until they expire.
-// These are the cases that need a v1 minter; every other worker test signs in through
-// `consoleTestSession` (ST-30c.7). ST-30c.8 deletes the v1 reader, and with it this block (the
-// replacement asserts that a v1-signed cookie is refused).
+// ST-30c.8: the v1 cookie (the IdP `sub` and `groups`, signed before the v2 deploy) is no longer
+// read anywhere. It is no session, and the answer is the one a request with no cookie gets.
 // ---------------------------------------------------------------------------
 
-describe("v1 cookies", () => {
-  afterEach(() => vi.restoreAllMocks());
-
-  it("a v1 cookie signed before the v2 deploy is still read until it expires", async () => {
+describe("a v1 cookie is no session", () => {
+  it("is refused with the answer a cookie-less request gets, so nothing says why", async () => {
     const env = adminEnv();
     const db = makeTestDb();
-    const { token, session } = await issueSession(
+    const v1 = await forgeV1Cookie(env, { sub: "op-1", groups: [GROUP] }, NOW);
+    const none = await handleAdmin(
+      new Request("https://key.plrs.im/manage/api/me") as unknown as Request,
       env,
-      { sub: "op-1", name: "Ada", email: "ada@example.com", groups: [GROUP] },
-      NOW,
+      db,
+      "/api/me",
+      { now: NOW },
     );
-    const at = async (now: number) =>
-      (
-        await handleAdmin(
-          new Request("https://key.plrs.im/manage/api/me", {
-            headers: { cookie: `${ADMIN_COOKIE}=${token}` },
-          }) as unknown as Request,
-          env,
-          db,
-          "/api/me",
-          { now },
-        )
-      ).status;
-    expect(session.csrf).toBeTruthy();
-    expect(await at(NOW + 1)).toBe(200);
-    // Past its own 8 h it is gone.
-    expect(await at(NOW + 8 * 3600 + 1)).toBe(401);
+    const res = await api(env, db, v1.token, v1.csrf, "GET", "/api/me");
+    expect(res.status).toBe(401);
+    expect(none.status).toBe(401);
+    expect(await res.text()).toBe(await none.text());
+    expect(res.headers.get("set-cookie")).toBe(none.headers.get("set-cookie"));
   });
 
-  it("a v1 cookie honours the sign-out mark", async () => {
+  it("is refused by the reader itself, with and without a live check", async () => {
     const env = adminEnv();
     const db = makeTestDb();
-    const v1 = await issueSession(env, { sub: "op-1", groups: [GROUP] }, NOW);
-    await revokeAdminSessions(env, "op-1", NOW + 1);
-    const res = await api(env, db, v1.token, v1.session.csrf, "GET", "/api/me");
-    expect(res.status).toBe(401);
+    const v1 = await forgeV1Cookie(env, { sub: "op-1", groups: [GROUP] }, NOW);
+    const req = new Request("https://key.plrs.im/manage/api/me", {
+      headers: { cookie: v1.cookie },
+    });
+    expect(await sessionFromRequest(env, req, NOW)).toBeNull();
+    expect(
+      await sessionFromRequest(env, req, NOW, liveSubjectFor(env, db, NOW)),
+    ).toBeNull();
   });
 
-  it("a v1 logout also ends the operator's v2 sessions (member-id mark)", async () => {
+  it("is no session for /docs either", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const v1 = await forgeV1Cookie(env, { sub: "op-1", groups: [GROUP] }, NOW);
+    const res = await handleDocs(
+      new Request("https://key.plrs.im/docs/operate/platform/", {
+        headers: { cookie: v1.cookie },
+      }) as unknown as Request,
+      env,
+      NOW,
+      db,
+    );
+    // The sign-in redirect, as for a request with no cookie.
+    expect(res.status).toBe(302);
+  });
+
+  it("cannot sign out, and a sign-out attempt leaves the operator's v2 sessions alone", async () => {
     const env = adminEnv();
     const db = makeTestDb();
     const v2 = await consoleTestSession(
@@ -316,68 +373,15 @@ describe("v1 cookies", () => {
       { sub: "op-1", name: "Ada", email: "ada@example.com", groups: [GROUP] },
       NOW,
     );
+    const v1 = await forgeV1Cookie(
+      env,
+      { sub: "op-1", groups: [GROUP] },
+      NOW + 2,
+    );
+    const out = await api(env, db, v1.token, v1.csrf, "POST", "/api/logout");
+    expect(out.status).toBe(401);
     expect(
       (await api(env, db, v2.token, v2.csrf, "GET", "/api/me")).status,
     ).toBe(200);
-    const v1 = await issueSession(
-      env,
-      { sub: "op-1", name: "Ada", email: "ada@example.com", groups: [GROUP] },
-      NOW + 2,
-    );
-    const out = await api(
-      env,
-      db,
-      v1.token,
-      v1.session.csrf,
-      "POST",
-      "/api/logout",
-    );
-    expect(out.status).toBe(200);
-    resetConsoleSessionCache();
-    expect(
-      (await api(env, db, v2.token, v2.csrf, "GET", "/api/me")).status,
-    ).toBe(401);
-  });
-
-  it("R1-02e: lastIndexOf('.') splitting is not forgeable (extra dots move the signed body)", async () => {
-    const env = adminEnv();
-    const { token } = await issueSession(
-      env,
-      { sub: "u1", name: "Ada", email: "a@x.io", groups: [GROUP] },
-      NOW,
-    );
-    // Appending a fake segment makes `body` = "<real body>.<real sig>", whose HMAC the
-    // attacker cannot produce.
-    expect(await verifySession(env, `${token}.zzzz`, NOW)).toBeNull();
-    // A leading segment likewise changes the signed input.
-    expect(await verifySession(env, `zzzz.${token}`, NOW)).toBeNull();
-  });
-
-  it("mints the identical v1 token and cookie from the same inputs (the P0-15 pin)", async () => {
-    vi.spyOn(crypto, "getRandomValues").mockImplementation(
-      <T extends ArrayBufferView | null>(a: T): T => {
-        const bytes = a as unknown as Uint8Array;
-        for (let i = 0; i < bytes.length; i++) bytes[i] = (i * 7 + 3) & 0xff;
-        return a;
-      },
-    );
-    const pinNow = 1_800_000_000;
-    const { token } = await issueSession(
-      { ADMIN_SESSION_SECRET: "pin-admin-secret-0123456789" } as unknown as Env,
-      {
-        sub: "op-sub-1",
-        name: "Ada Op",
-        email: "ada@example.com",
-        groups: ["polaris-admins"],
-        authTime: pinNow - 30,
-      },
-      pinNow,
-    );
-    const pinned =
-      "eyJzdWIiOiJvcC1zdWItMSIsIm5hbWUiOiJBZGEgT3AiLCJlbWFpbCI6ImFkYUBleGFtcGxlLmNvbSIsImdyb3VwcyI6WyJwb2xhcmlzLWFkbWlucyJdLCJjc3JmIjoiQXdvUkdCOG1MVFE3UWtsUVYxNWxiQSIsImV4cCI6MTgwMDAyODgwMCwiYXV0aEF0IjoxNzk5OTk5OTcwfQ.DwEnh2CmprxeDBR8RN87_ZrORb9J9XR34l4x_spJLhk";
-    expect(token).toBe(pinned);
-    expect(buildSessionCookie(token)).toBe(
-      `__Host-pkey_admin=${pinned}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=28800`,
-    );
   });
 });
