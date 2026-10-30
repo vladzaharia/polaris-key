@@ -22,6 +22,18 @@
  *   rate, person day, product month, paused                 LIMIT 1 / 2 / 3 / 4 and the message is dropped
  *
  * The launch gate `launch.relay` is not here: CC-07.2/.3 must gate the DO and both routes.
+ *
+ * ── CONTACT ROOMS ────────────────────────────────────────────────────────────────────────────
+ *
+ * A contact room (CC-19.4; V5 §15.7) is the same machine with `{contact: true}`. The "devices" are
+ * the room's aliases (24 bytes, the `from`, `to`, MEMBERS and GONE of the wire), and the members
+ * are the at most two aliases the shell pinned: the shell hands each connect the pinned set, so
+ * a third alias is closed 4003. There is no roster, no RING and no day quota here. A SEND is paid
+ * from the sender alias's lease, bytes the shell took from the sender's account room beforehand
+ * (`credit`); the engine only spends them and emits no `meter` (the account room already counted
+ * them). A message the lease cannot cover is dropped with LIMIT (2 person, 3 product, or the reason
+ * the failed top-up gave) and, when the top-up granted nothing, the socket closes 4008. A day
+ * rollover clears every lease. `needLease` is the shell's question before it steps a SEND.
  */
 
 import {
@@ -71,7 +83,14 @@ export interface RelayTicket {
 
 export type RelayInput =
   | { kind: "connect"; socket: string; ticket: RelayTicket; now: number }
-  | { kind: "frame"; socket: string; data: Uint8Array | string; now: number }
+  | {
+      kind: "frame";
+      socket: string;
+      data: Uint8Array | string;
+      now: number;
+      /** Contact rooms: the top-up for this frame failed or fell short. */
+      denied?: LeaseDenied;
+    }
   | { kind: "tick"; now: number; paused?: boolean; productOver?: boolean }
   | { kind: "close"; socket: string; now: number }
   | { kind: "ring"; epoch: number }
@@ -95,6 +114,14 @@ interface Sock {
   lastStrike: number;
 }
 
+/** A failed lease top-up, handed to the frame that needed it (contact rooms). */
+export interface LeaseDenied {
+  /** LIMIT reason: 2 person, 3 product, 4 paused. */
+  reason: 2 | 3 | 4;
+  /** The account room granted nothing: the socket closes 4008. */
+  zero: boolean;
+}
+
 /** What the shell persists to rebuild an engine after hibernation. */
 export interface RelayRestore {
   sockets: { socket: string; device: Uint8Array; seq: number }[];
@@ -104,6 +131,8 @@ export interface RelayRestore {
   productOver: boolean;
   day: number;
   dayUsed: number;
+  /** Contact rooms: each alias's unspent lease in bytes (hex alias to count). */
+  leases?: Record<string, number>;
 }
 
 export function clampDayBytes(n: number): number {
@@ -115,7 +144,20 @@ export function clampDayBytes(n: number): number {
   );
 }
 
+export interface RelayEngineOptions {
+  /** A contact room: aliases for devices, leases for the quota, no roster (see the header). */
+  contact?: boolean;
+}
+
 export class RelayEngine {
+  private readonly contact: boolean;
+  /** Contact rooms: the unspent lease of each alias, in bytes. */
+  private leases = new Map<string, number>();
+
+  constructor(opts: RelayEngineOptions = {}) {
+    this.contact = opts.contact === true;
+  }
+
   private socks = new Map<string, Sock>();
   private members = new Map<string, Uint8Array>();
   private quota: number = CLOUD_CONNECT_DEFAULTS.unlicensedRelayBytesPerDay;
@@ -139,7 +181,58 @@ export class RelayEngine {
       productOver: this.productOver,
       day: this.day,
       dayUsed: this.dayUsed,
+      ...(this.contact ? { leases: Object.fromEntries(this.leases) } : {}),
     };
+  }
+
+  /**
+   * A person's day, by lease (account rooms): take up to `n` bytes of the day's `quota` into
+   * `dayUsed`, as a message would, and answer how many were granted. The caller records the
+   * grant as metered bytes. Used by the person's room when a contact room asks for a lease.
+   */
+  lease(
+    n: number,
+    quota: number,
+    now: number,
+  ): { granted: number; day: number } {
+    this.rollDay(now);
+    this.quota = clampDayBytes(quota);
+    const granted = Math.max(
+      0,
+      Math.min(Math.floor(n), this.quota - this.dayUsed),
+    );
+    this.dayUsed += granted;
+    return { granted, day: this.day };
+  }
+
+  /** Contact rooms: add granted bytes to an alias's lease (`alias` is hex). */
+  credit(alias: string, bytes: number, now: number): void {
+    this.rollDay(now);
+    if (bytes > 0)
+      this.leases.set(alias, (this.leases.get(alias) ?? 0) + bytes);
+  }
+
+  /** Contact rooms: an alias's unspent lease. */
+  leaseOf(alias: string): number {
+    return this.leases.get(alias) ?? 0;
+  }
+
+  /**
+   * Contact rooms: how many bytes the shell must lease before this frame can be forwarded, 0 when
+   * none (not a SEND to the other member, not paid by someone else's frame, or already covered).
+   * Pure: it consumes no rate token.
+   */
+  needLease(socket: string, data: Uint8Array | string, now: number): number {
+    if (!this.contact || typeof data === "string") return 0;
+    const s = this.socks.get(socket);
+    if (!s || this.paused) return 0;
+    this.rollDay(now);
+    const msg = decodeRelay("toRoom", data);
+    if (!msg || msg.op !== "send") return 0;
+    const to = hexEncode(msg.to);
+    if (!this.members.has(to) || to === s.device || !this.holds(to)) return 0;
+    const short = data.length - (this.leases.get(s.device) ?? 0);
+    return short > 0 ? short : 0;
   }
 
   restore(r: RelayRestore, now: number): void {
@@ -151,6 +244,7 @@ export class RelayEngine {
     this.productOver = r.productOver;
     this.day = r.day;
     this.dayUsed = r.dayUsed;
+    this.leases = new Map(Object.entries(r.leases ?? {}));
     for (const s of r.sockets) {
       this.seq = Math.max(this.seq, s.seq + 1);
       this.socks.set(s.socket, {
@@ -173,7 +267,7 @@ export class RelayEngine {
         this.connect(input.socket, input.ticket, input.now, out);
         break;
       case "frame":
-        this.frame(input.socket, input.data, input.now, out);
+        this.frame(input.socket, input.data, input.now, out, input.denied);
         break;
       case "tick":
         this.rollDay(input.now);
@@ -301,6 +395,7 @@ export class RelayEngine {
     data: Uint8Array | string,
     now: number,
     out: RelayOutput[],
+    denied?: LeaseDenied,
   ): void {
     const s = this.socks.get(id);
     if (!s) return; // unknown or already closed: frames after a close are lost
@@ -350,9 +445,21 @@ export class RelayEngine {
         const to = hexEncode(msg.to);
         if (!this.members.has(to)) return refuse(RELAY_CLOSE.notMember);
         if (this.paused) return this.limit(s, RELAY_LIMIT.paused, out);
-        if (this.productOver) return this.limit(s, RELAY_LIMIT.product, out);
-        if (this.dayUsed + data.length > this.quota)
-          return this.limit(s, RELAY_LIMIT.person, out);
+        if (this.contact) {
+          // Nobody to deliver to: dropped, and no lease is spent or asked for.
+          if (to !== s.device && !this.holds(to)) return;
+          // Paid from the sender's lease; the account room counted the bytes when it granted them.
+          const held = this.leases.get(s.device) ?? 0;
+          if (held < data.length) {
+            this.limit(s, denied?.reason ?? RELAY_LIMIT.person, out);
+            if (denied?.zero) refuse(RELAY_CLOSE.limit);
+            return;
+          }
+        } else {
+          if (this.productOver) return this.limit(s, RELAY_LIMIT.product, out);
+          if (this.dayUsed + data.length > this.quota)
+            return this.limit(s, RELAY_LIMIT.person, out);
+        }
         if (to === s.device) return; // nothing to deliver to oneself
         const targets = [...this.socks.values()].filter((x) => x.device === to);
         if (targets.length === 0) return; // offline: dropped (no mailbox in v1)
@@ -365,6 +472,13 @@ export class RelayEngine {
         });
         for (const x of targets)
           out.push({ kind: "send", socket: x.id, data: recv });
+        if (this.contact) {
+          this.leases.set(
+            s.device,
+            (this.leases.get(s.device) ?? 0) - data.length,
+          );
+          return;
+        }
         this.dayUsed += data.length;
         out.push({ kind: "meter", day: this.day, bytes: data.length });
         return;
@@ -374,11 +488,18 @@ export class RelayEngine {
 
   // ── helpers ────────────────────────────────────────────────────────────────────────────────
 
+  /** Does any socket of this device (hex) hold the room open? */
+  private holds(device: string): boolean {
+    for (const x of this.socks.values()) if (x.device === device) return true;
+    return false;
+  }
+
   private rollDay(now: number): void {
     const d = Math.floor(now / DAY_MS);
     if (d !== this.day) {
       this.day = d;
       this.dayUsed = 0;
+      this.leases.clear();
     }
   }
 

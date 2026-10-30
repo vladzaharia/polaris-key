@@ -11,9 +11,11 @@ import {
   platformSetting,
 } from "../../../core/settings/platformRead.js";
 import {
-  MAX_CONTACTS,
+  CONTACT_LEASE_BYTES,
   CONTACT_ROOM_IDLE_SECONDS,
+  MAX_CONTACTS,
 } from "@polaris-key/client-core/peer";
+import { ContactRoom, type ContactRecord } from "./contactRoom.js";
 import {
   RELAY_CLOSE,
   RelayEngine,
@@ -144,19 +146,50 @@ export class ConnectRelayDO implements DurableObject {
     // Load the room before any event is delivered, then rebuild the engine from it.
     this.loaded = ctx.blockConcurrencyWhile(async () => {
       this.cached = await ctx.storage.get<Room>("room");
+      const contact = await ctx.storage.get<ContactRecord>("croom");
+      if (contact) this.contactRoom = this.newContact(contact);
       this.wake(this.now());
     });
+  }
+
+  /** Set when this object is a contact room (`<p>:c:<rid>`, CC-19.4): the sockets are its. */
+  private contactRoom: ContactRoom | undefined;
+
+  private newContact(record: ContactRecord | undefined): ContactRoom {
+    return new ContactRoom(
+      {
+        ctx: this.ctx,
+        env: this.env,
+        db: this.db,
+        now: this.now,
+        newId: this.newId,
+        pair: this.pair,
+        upgraded: this.upgraded,
+        erased: () => {
+          this.contactRoom = undefined;
+        },
+      },
+      record,
+    );
   }
 
   // ── upgrade ────────────────────────────────────────────────────────────────────────────────
 
   async fetch(request: Request): Promise<Response> {
     await this.loaded;
-    if (new URL(request.url).pathname === "/rooms")
-      return request.method === "POST"
-        ? this.countRoom(request)
-        : new Response(null, { status: 405 });
-    if (request.method === "POST") return this.purge(request);
+    const path = new URL(request.url).pathname;
+    if (path === "/rooms" || path === "/lease")
+      return request.method !== "POST"
+        ? new Response(null, { status: 405 })
+        : this.contactRoom
+          ? new Response(null, { status: 404 })
+          : path === "/rooms"
+            ? this.countRoom(request)
+            : this.lease(request);
+    if (request.method === "POST")
+      return this.contactRoom
+        ? new Response(null, { status: 403 })
+        : this.purge(request);
     if (request.method === "PUT") return this.poke(request);
     // Fail closed: an unreadable gate is off. The route gated already; this is the second lock.
     if (!(await this.gateOn())) return new Response(null, { status: 404 });
@@ -169,8 +202,14 @@ export class ConnectRelayDO implements DurableObject {
       return new Response(null, { status: 400 });
     const adm = decodeAdmission(request.headers.get(ADMISSION_HEADER));
     if (!adm) return new Response(null, { status: 400 });
-    // CC-19.4 serves contact rooms; until then an account room never takes a contact admission.
-    if (adm.contact) return new Response(null, { status: 501 });
+    // A contact admission goes to a contact room and an account admission to an account room;
+    // an object is never both (the names cannot collide, so this is a second lock).
+    if (adm.contact) {
+      if (this.cached) return new Response(null, { status: 403 });
+      this.contactRoom ??= this.newContact(undefined);
+      return this.contactRoom.upgrade(adm);
+    }
+    if (this.contactRoom) return new Response(null, { status: 403 });
 
     const pinned = this.cached;
     if (
@@ -312,6 +351,91 @@ export class ConnectRelayDO implements DurableObject {
   }
 
   /**
+   * Lease bytes of this person's day to one of their contact rooms (CC-19.4, V5 §15.7), reached
+   * only through `do/client.ts`. The grant is added to the day's usage and to the meter exactly as
+   * a message of an account room would be, so the person's day quota, the 4 GiB ceiling and the
+   * product's month hold however many contact rooms are open. Answers `{granted, reason}`: the
+   * bytes granted (all of `n`, what is left of the day, or 0) and, when short, why: 2 the person's
+   * day is spent, 3 the product's month is, 4 the relay is paused. The room is created here when
+   * the person has never connected, with no members: only the usage lives in it. Pinned like every
+   * other call; behind both gates.
+   */
+  private async lease(request: Request): Promise<Response> {
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return new Response(null, { status: 400 });
+    }
+    const { product, subject, n, dayBytes, monthCeiling, seatsHeld } = body;
+    if (
+      typeof product !== "string" ||
+      typeof subject !== "string" ||
+      typeof n !== "number" ||
+      !Number.isSafeInteger(n) ||
+      n < 1 ||
+      n > CONTACT_LEASE_BYTES ||
+      typeof dayBytes !== "number" ||
+      !Number.isFinite(dayBytes) ||
+      dayBytes < 0 ||
+      typeof monthCeiling !== "number" ||
+      !Number.isFinite(monthCeiling) ||
+      monthCeiling < 0 ||
+      typeof seatsHeld !== "boolean"
+    )
+      return new Response(null, { status: 400 });
+    const pinned = this.cached;
+    if (pinned && (pinned.product !== product || pinned.subject !== subject))
+      return new Response(null, { status: 403 });
+    if (
+      !(await this.gateOn()) ||
+      !(await launchGateOn(this.env, this.db(), "launch.connectLinks"))
+    )
+      return new Response(null, { status: 404 });
+    const answer = (granted: number, reason: 0 | 2 | 3 | 4): Response =>
+      new Response(JSON.stringify({ granted, reason }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    const erasedAt = await this.ctx.storage.get<number>("erasedAt");
+    if (erasedAt !== undefined && this.now() - erasedAt < ERASED_MS)
+      return new Response(null, { status: 403 });
+
+    if (
+      (await platformSetting(
+        this.env,
+        this.db(),
+        "cloudConnect.relayPaused",
+      )) === "on"
+    )
+      return answer(0, 4);
+    const now = this.now();
+    const ceiling = Math.min(
+      Math.floor(monthCeiling),
+      CLOUD_CONNECT_CEILINGS.perProduct.relayBytesPerMonth,
+    );
+    const { from, to } = monthStart(Math.floor(now / DAY_MS));
+    const month = await withTimeout(
+      this.db().first<{ b: number }>(
+        "SELECT COALESCE(SUM(bytes), 0) AS b FROM connect_relay_daily WHERE product = ? AND day >= ? AND day < ?",
+        product,
+        from,
+        to,
+      ),
+    );
+    if ((month?.b ?? 0) >= ceiling) return answer(0, 3);
+
+    this.wake(now);
+    const { granted, day } = this.engine.lease(n, dayBytes, now);
+    if (granted > 0) {
+      await this.persist(product, subject, ceiling, seatsHeld);
+      await this.addBytes({ [String(day)]: granted });
+      await this.ensureAlarm();
+    }
+    return answer(granted, granted < n ? 2 : 0);
+  }
+
+  /**
    * A ring bump (CC-07.4), reached only through `do/client.ts`. The room re-derives the roster at
    * once, by the rule the alarm uses: devices that left lose their sockets (4003) and are
    * announced gone, and the sockets that remain hear RING with the new epoch. Behind the launch
@@ -378,6 +502,7 @@ export class ConnectRelayDO implements DurableObject {
     message: string | ArrayBuffer,
   ): Promise<void> {
     await this.loaded;
+    if (this.contactRoom) return this.contactRoom.message(ws, message);
     const att = ws.deserializeAttachment() as Attachment | null;
     if (!att) {
       ws.close(RELAY_CLOSE.refused, "refused");
@@ -397,7 +522,9 @@ export class ConnectRelayDO implements DurableObject {
   }
 
   async webSocketClose(ws: WebSocket, code: number): Promise<void> {
-    await this.gone(ws);
+    await this.loaded;
+    if (this.contactRoom) await this.contactRoom.close(ws);
+    else await this.gone(ws);
     try {
       ws.close(code >= 1000 && code < 5000 && code !== 1005 ? code : 1000);
     } catch {
@@ -406,7 +533,9 @@ export class ConnectRelayDO implements DurableObject {
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
-    await this.gone(ws);
+    await this.loaded;
+    if (this.contactRoom) await this.contactRoom.close(ws);
+    else await this.gone(ws);
   }
 
   private async gone(ws: WebSocket): Promise<void> {
@@ -424,6 +553,7 @@ export class ConnectRelayDO implements DurableObject {
 
   async alarm(): Promise<void> {
     await this.loaded;
+    if (this.contactRoom) return this.contactRoom.alarm();
     await this.ctx.blockConcurrencyWhile(async () => {
       const room = await this.ctx.storage.get<Room>("room");
       if (!room) return;

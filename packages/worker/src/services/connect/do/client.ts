@@ -108,6 +108,78 @@ export async function countContactRoom(
 
 const COUNT_TIMEOUT_MS = 3_000;
 const POKE_TIMEOUT_MS = 3_000;
+const LEASE_TIMEOUT_MS = 5_000;
+
+/** What a person's room answers a lease request: the bytes granted and, short of the ask, why. */
+export interface LeaseGrant {
+  granted: number;
+  /** 0 the ask was granted in full; else the LIMIT reason: 2 person, 3 product, 4 paused. */
+  reason: 0 | 2 | 3 | 4;
+}
+
+/**
+ * Take a lease for a contact room's sender from the sender's account room (V5 §15.7): the room adds
+ * the grant to the person's day, so every contact room a person opens draws on the one meter.
+ * Total and fail closed: an unbound relay, a gate that is off, a failed or slow call and an
+ * unreadable answer all grant nothing, with reason 4.
+ */
+export async function leaseBytes(
+  env: Pick<Env, "CONNECT_RELAY">,
+  req: {
+    product: string;
+    subject: string;
+    bytes: number;
+    dayBytes: number;
+    monthCeiling: number;
+    seatsHeld: boolean;
+  },
+): Promise<LeaseGrant> {
+  const none: LeaseGrant = { granted: 0, reason: 4 };
+  const ns = env.CONNECT_RELAY as DurableObjectNamespace | undefined;
+  if (!ns) return none;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const call = ns
+      .get(ns.idFromName(relayObjectName(req.product, req.subject)))
+      .fetch(
+        new Request("https://connect-relay.do/lease", {
+          method: "POST",
+          body: JSON.stringify({
+            product: req.product,
+            subject: req.subject,
+            n: req.bytes,
+            dayBytes: req.dayBytes,
+            monthCeiling: req.monthCeiling,
+            seatsHeld: req.seatsHeld,
+          }),
+        }),
+      );
+    const res = await Promise.race([
+      call,
+      new Promise<never>((_, rej) => {
+        timer = setTimeout(
+          () => rej(new Error("lease timeout")),
+          LEASE_TIMEOUT_MS,
+        );
+      }),
+    ]);
+    if (res.status !== 200) return none;
+    const j = (await res.json()) as Partial<LeaseGrant>;
+    if (
+      typeof j.granted !== "number" ||
+      !Number.isSafeInteger(j.granted) ||
+      j.granted < 0 ||
+      j.granted > req.bytes ||
+      (j.reason !== 0 && j.reason !== 2 && j.reason !== 3 && j.reason !== 4)
+    )
+      return none;
+    return { granted: j.granted, reason: j.reason };
+  } catch {
+    return none;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * Tell a person's room that their roster moved (CC-07.4). Gated: with `launch.relay` off, or an
