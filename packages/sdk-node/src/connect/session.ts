@@ -125,6 +125,11 @@ export interface ChannelLink {
   readonly channel: PeerChannel;
   /** Stop (true) or resume (false) reading from the transport, where it can. */
   pause?(on: boolean): void;
+  /**
+   * A link with a bounded send queue: true when a send of `bytes` is refused, the link having ended
+   * `peer_busy` before anything was encrypted (so the keys do not advance for a dropped message).
+   */
+  refuses?(bytes: number): boolean;
 }
 
 /** Which path a session took (WIRE-CONTRACT-V5 §15.7: the relay is the fallback). */
@@ -172,6 +177,7 @@ export class ConnectSession {
       throw new LanError("bad_type", "Application types are 0x0100 to 0x7FFF.");
     if (this.#closed !== null)
       throw new LanError("closed", "The session is closed.");
+    if (this.#link.refuses?.(body.length) === true) return;
     try {
       await this.#link.channel.sendRecord(type, body);
     } catch (e) {
@@ -187,6 +193,7 @@ export class ConnectSession {
   /** Send a record of any type the session does not own (a peer document, a later transfer
    *  type). The channel refuses HELLO, CLOSE, REKEY and SAS records. @internal */
   sendRecord(type: number, body: Uint8Array): Promise<void> {
+    if (this.#link.refuses?.(body.length) === true) return Promise.resolve();
     return this.#link.channel.sendRecord(type, body);
   }
 
