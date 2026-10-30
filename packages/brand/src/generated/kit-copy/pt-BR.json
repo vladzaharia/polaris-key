@@ -1003,6 +1003,8 @@
   "core.codes.relay_paused.message": "A conexão remota está em pausa por enquanto. Tente novamente mais tarde.",
   "core.codes.relay_quota_exceeded.title": "Limite remoto atingido",
   "core.codes.relay_quota_exceeded.message": "O limite de conexão remota acabou. Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando.",
+  "core.codes.connect_links_disabled.title": "Vínculo desativado",
+  "core.codes.connect_links_disabled.message": "O vínculo com outras pessoas está desativado neste app. Seus próprios dispositivos continuam se conectando.",
   "core.codes.relay_ticket_invalid.title": "Conexão expirada",
   "core.codes.relay_ticket_invalid.message": "O pedido de conexão expirou. Tente novamente.",
   "core.codes.key_entry_limit.title": "Nenhum uso restante da chave",

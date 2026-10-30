@@ -1017,6 +1017,8 @@ export type KitCopyKey =
   | "core.codes.relay_paused.message"
   | "core.codes.relay_quota_exceeded.title"
   | "core.codes.relay_quota_exceeded.message"
+  | "core.codes.connect_links_disabled.title"
+  | "core.codes.connect_links_disabled.message"
   | "core.codes.relay_ticket_invalid.title"
   | "core.codes.relay_ticket_invalid.message"
   | "core.codes.key_entry_limit.title"

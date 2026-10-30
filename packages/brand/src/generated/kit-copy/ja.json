@@ -1003,6 +1003,8 @@
   "core.codes.relay_paused.message": "リモート接続は現在一時停止中です。しばらくしてからもう一度お試しください。",
   "core.codes.relay_quota_exceeded.title": "リモート接続の上限に達しました",
   "core.codes.relay_quota_exceeded.message": "リモート接続の上限を使い切りました。まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。",
+  "core.codes.connect_links_disabled.title": "リンクはオフです",
+  "core.codes.connect_links_disabled.message": "このアプリでは他の人とのリンクがオフです。自分のデバイス同士は引き続き接続できます。",
   "core.codes.relay_ticket_invalid.title": "接続の期限が切れました",
   "core.codes.relay_ticket_invalid.message": "接続リクエストの期限が切れました。もう一度お試しください。",
   "core.codes.key_entry_limit.title": "キーの入力回数が残っていません",

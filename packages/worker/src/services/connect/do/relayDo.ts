@@ -5,7 +5,15 @@ import { hexDecode, hexEncode } from "../../../platform/bytes.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { accountDeviceKeys } from "../../../core/devices/keys.js";
-import { platformSetting } from "../../../core/settings/platformRead.js";
+import { hashKey } from "../../../platform/crypto.js";
+import {
+  launchGateOn,
+  platformSetting,
+} from "../../../core/settings/platformRead.js";
+import {
+  MAX_CONTACTS,
+  CONTACT_ROOM_IDLE_SECONDS,
+} from "@polaris-key/client-core/peer";
 import {
   RELAY_CLOSE,
   RelayEngine,
@@ -144,6 +152,10 @@ export class ConnectRelayDO implements DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     await this.loaded;
+    if (new URL(request.url).pathname === "/rooms")
+      return request.method === "POST"
+        ? this.countRoom(request)
+        : new Response(null, { status: 405 });
     if (request.method === "POST") return this.purge(request);
     if (request.method === "PUT") return this.poke(request);
     // Fail closed: an unreadable gate is off. The route gated already; this is the second lock.
@@ -157,6 +169,8 @@ export class ConnectRelayDO implements DurableObject {
       return new Response(null, { status: 400 });
     const adm = decodeAdmission(request.headers.get(ADMISSION_HEADER));
     if (!adm) return new Response(null, { status: 400 });
+    // CC-19.4 serves contact rooms; until then an account room never takes a contact admission.
+    if (adm.contact) return new Response(null, { status: 501 });
 
     const pinned = this.cached;
     if (
@@ -245,6 +259,55 @@ export class ConnectRelayDO implements DurableObject {
       },
       this.now(),
     );
+    return new Response(null, { status: 204 });
+  }
+
+  /**
+   * Count a contact room against this person's `MAX_CONTACTS` (V5 §15.7), reached only through
+   * `do/client.ts` after the ticket route's gates. A rid already held is refreshed for another
+   * idle period; a new one takes a slot, or is refused with 429 when the slots are all held. An
+   * entry expires `CONTACT_ROOM_IDLE_SECONDS` after its last ticket, as the contact room does.
+   * The room stores a keyed hash of the rid (per person, so two people's lists share no value),
+   * never the rid. The room is not created here: a call before the first socket pins nothing.
+   */
+  private async countRoom(request: Request): Promise<Response> {
+    let body: { product?: unknown; subject?: unknown; rid?: unknown };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return new Response(null, { status: 400 });
+    }
+    const { product, subject, rid } = body;
+    if (
+      typeof product !== "string" ||
+      typeof subject !== "string" ||
+      typeof rid !== "string" ||
+      !/^[A-Za-z0-9_-]{22}$/.test(rid)
+    )
+      return new Response(null, { status: 400 });
+    const pinned = this.cached;
+    if (pinned && (pinned.product !== product || pinned.subject !== subject))
+      return new Response(null, { status: 403 });
+    if (
+      !(await this.gateOn()) ||
+      !(await launchGateOn(this.env, this.db(), "launch.connectLinks"))
+    )
+      return new Response(null, { status: 404 });
+    const now = Math.floor(this.now() / 1000);
+    const key = await hashKey(
+      `contact-room:${product}:${subject}:${rid}`,
+      this.env.KEY_HASH_PEPPER,
+    );
+    const held =
+      (await this.ctx.storage.get<Record<string, number>>("contactRooms")) ??
+      {};
+    for (const [k, exp] of Object.entries(held)) if (exp <= now) delete held[k];
+    if (!(key in held) && Object.keys(held).length >= MAX_CONTACTS) {
+      await this.ctx.storage.put("contactRooms", held);
+      return new Response(null, { status: 429 });
+    }
+    held[key] = now + CONTACT_ROOM_IDLE_SECONDS;
+    await this.ctx.storage.put("contactRooms", held);
     return new Response(null, { status: 204 });
   }
 

@@ -1003,6 +1003,8 @@
   "core.codes.relay_paused.message": "远程连接暂时暂停。请稍后重试。",
   "core.codes.relay_quota_exceeded.title": "已达远程用量上限",
   "core.codes.relay_quota_exceeded.message": "远程连接用量已用完，即将重置。同一网络下的设备仍可连接。",
+  "core.codes.connect_links_disabled.title": "链接已关闭",
+  "core.codes.connect_links_disabled.message": "此应用已关闭与他人的链接。你自己的设备仍可连接。",
   "core.codes.relay_ticket_invalid.title": "连接已过期",
   "core.codes.relay_ticket_invalid.message": "连接请求已过期。请重试。",
   "core.codes.key_entry_limit.title": "密钥已无剩余输入次数",

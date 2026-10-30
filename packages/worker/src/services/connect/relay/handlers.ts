@@ -13,6 +13,13 @@
  * in the `relay-ticket` single-use kind for 60 s, bound to (product, subject, device) and the
  * resolved day quota. The upgrade consumes it atomically, so one ticket opens at most one socket.
  *
+ * A contact ticket (CC-19.3; V5 §15.7) is the same route with a body, `{room:"c", rid}`: it opens
+ * only that contact room, `<p>:c:<rid>`, and its answer echoes `room`. It needs the product's
+ * `cloudConnect.interAccount` setting, `launch.connectLinks` and the service on, in that the first
+ * thing the route does with a body is ask them (`connect_links_disabled`, 403), before it reads
+ * the body or the caller; the upgrade asks again. It is limited to 30 an hour per device and
+ * counts against 64 rooms per person; both refuse with 429 and fail closed.
+ *
  * Both routes check `launch.relay` themselves (gate off is the registry's not-found), and both ask
  * the same questions in the same order: the product's relay switch (`relay_disabled`), the
  * deployment's pause (`relay_paused`), the quota (`relay_quota_exceeded`, scope `person` or
@@ -32,6 +39,7 @@ import {
   mintRelayTicket,
 } from "../../../platform/crypto.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
+import { parseContactTicketBody } from "@polaris-key/client-core/peer";
 import { resolveSyncPrincipal } from "../../../core/accounts/accountSubjects.js";
 import { accountDeviceKeys } from "../../../core/devices/keys.js";
 import { getDevice } from "../../../core/devices/store.js";
@@ -50,8 +58,9 @@ import {
   RELAY_PROTOCOL,
   type Admission,
 } from "../do/admission.js";
-import { forwardToRelay } from "../do/client.js";
+import { countContactRoom, forwardToRelay } from "../do/client.js";
 import {
+  contactLinksOn,
   RELAY_PAUSED_RETRY_AFTER_SECONDS,
   RELAY_TICKET_TTL_SECONDS,
   relayDayBytes,
@@ -66,6 +75,12 @@ export const RELAY_TICKET_LIMIT = {
   bucket: "connectRelayTicket",
   limit: 12,
   windowSec: 60,
+} as const;
+/** Contact tickets per device per hour (V5 §15.7); the bucket fails closed (`FAIL_MODE`). */
+export const CONTACT_TICKET_LIMIT = {
+  bucket: "connectContactTicket",
+  limit: 30,
+  windowSec: 3600,
 } as const;
 /** Upgrades per network per minute, counted before the ticket is hashed or consumed. */
 export const RELAY_UPGRADE_LIMIT = {
@@ -88,6 +103,40 @@ interface TicketRecord {
   dayBytes: number;
   /** Epoch seconds. */
   exp: number;
+  /** Set on a contact ticket: it opens only the contact room `rid`. */
+  room?: "c";
+  rid?: string;
+}
+
+/** The longest ticket-request body the route reads (V5 §15.7). */
+const CONTACT_BODY_READ = 256;
+
+/**
+ * The request body, read up to `CONTACT_BODY_READ + 1` bytes: `null` is "longer than that". An
+ * absent or empty body reads as zero bytes. Nothing is parsed here.
+ */
+async function readSmallBody(req: Request): Promise<Uint8Array | null> {
+  if (req.body === null) return new Uint8Array(0);
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.length;
+    if (n > CONTACT_BODY_READ) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(n);
+  let at = 0;
+  for (const c of chunks) {
+    out.set(c, at);
+    at += c.length;
+  }
+  return out;
 }
 
 const relayBound = (ctx: ServiceContext): boolean =>
@@ -135,8 +184,22 @@ export async function handleRelayTicket(
   const { env, db, product, now } = ctx;
   if (!(await launchGateOn(env, db, "launch.relay")) || !relayBound(ctx))
     return notFound();
+  // A body is a contact request. The gates come before anything else is looked at.
+  const bodyBytes = await readSmallBody(ctx.req);
+  const contactAsked = bodyBytes === null || bodyBytes.length > 0;
+  if (contactAsked && !(await contactLinksOn(ctx, now)))
+    return wireError(403, ErrorCode.ConnectLinksDisabled);
   const caller = await authenticate(ctx);
   if (caller instanceof Response) return caller;
+  let rid: string | null = null;
+  if (contactAsked) {
+    const parsed =
+      bodyBytes === null
+        ? ({ ok: false } as const)
+        : parseContactTicketBody(bodyBytes);
+    if (!parsed.ok) return wireError(400, ErrorCode.BadRequest);
+    rid = parsed.rid;
+  }
   if (deviceBytes(caller.deviceId) === null)
     return wireError(409, ErrorCode.DeviceKeysRequired);
   if (
@@ -144,6 +207,16 @@ export async function handleRelayTicket(
       env,
       product.slug,
       { ...RELAY_TICKET_LIMIT, id: caller.deviceId },
+      now,
+    ))
+  )
+    return tooMany();
+  if (
+    rid !== null &&
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { ...CONTACT_TICKET_LIMIT, id: caller.deviceId },
       now,
     ))
   )
@@ -158,6 +231,13 @@ export async function handleRelayTicket(
   const dayBytes = await relayDayBytes(ctx, caller.device);
   const { refused } = await check(ctx, dayBytes);
   if (refused) return refused;
+  // Last, so a refusal above never takes a slot: a new room counts against the person's 64.
+  if (
+    rid !== null &&
+    (await countContactRoom(env, product.slug, caller.subject, rid)) !==
+      "counted"
+  )
+    return tooMany();
 
   const ticket = mintRelayTicket();
   const exp = now + RELAY_TICKET_TTL_SECONDS;
@@ -167,6 +247,7 @@ export async function handleRelayTicket(
     device: caller.deviceId,
     dayBytes,
     exp,
+    ...(rid !== null ? { room: "c" as const, rid } : {}),
   };
   await putArtefact(
     env,
@@ -179,7 +260,13 @@ export async function handleRelayTicket(
   url.pathname = `/${product.slug}/connect/relay`;
   url.search = "";
   return json(
-    { ticket, url: url.toString(), protocol: RELAY_PROTOCOL, expiresAt: exp },
+    {
+      ticket,
+      url: url.toString(),
+      protocol: RELAY_PROTOCOL,
+      expiresAt: exp,
+      ...(rid !== null ? { room: "c" } : {}),
+    },
     { headers: NO_STORE },
   );
 }
@@ -244,12 +331,19 @@ export async function handleRelayUpgrade(
   if (self === null || !roster.some((m) => m.deviceId === rec.device))
     return badTicket();
 
+  // A contact ticket outlives the gates by up to a minute: they are asked again.
+  if (rec.room === "c" && !(await contactLinksOn(ctx, now)))
+    return wireError(403, ErrorCode.ConnectLinksDisabled);
   const { refused, state } = await check(ctx, rec.dayBytes);
   if (refused) return refused;
 
-  const members = roster
-    .map((m) => deviceBytes(m.deviceId))
-    .filter((b): b is Uint8Array => b !== null);
+  // A contact room knows no roster: it is given only the one device that connects.
+  const members =
+    rec.room === "c"
+      ? [self]
+      : roster
+          .map((m) => deviceBytes(m.deviceId))
+          .filter((b): b is Uint8Array => b !== null);
   const admission: Admission = {
     product: product.slug,
     subject: rec.subject,
@@ -263,6 +357,7 @@ export async function handleRelayUpgrade(
       productOver: false,
       expiresAt: rec.exp * 1000,
     },
+    ...(rec.room === "c" && rec.rid ? { contact: { rid: rec.rid } } : {}),
   };
   // A clean copy: the room sees the bare subprotocol and no credential of the client's.
   const headers = new Headers(req.headers);
@@ -284,7 +379,11 @@ function parseRecord(raw: string | null): TicketRecord | null {
       typeof j.dayBytes === "number" &&
       Number.isFinite(j.dayBytes) &&
       typeof j.exp === "number" &&
-      Number.isFinite(j.exp)
+      Number.isFinite(j.exp) &&
+      // A contact ticket names its room; no ticket names one without the other.
+      (j.room === undefined
+        ? j.rid === undefined
+        : j.room === "c" && typeof j.rid === "string")
     )
       return j as unknown as TicketRecord;
   } catch {

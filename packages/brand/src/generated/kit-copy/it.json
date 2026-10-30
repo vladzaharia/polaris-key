@@ -1003,6 +1003,8 @@
   "core.codes.relay_paused.message": "La connessione remota è in pausa per ora. Riprova più tardi.",
   "core.codes.relay_quota_exceeded.title": "Limite remoto raggiunto",
   "core.codes.relay_quota_exceeded.message": "Il limite della connessione remota è esaurito. Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque.",
+  "core.codes.connect_links_disabled.title": "Collegamento disattivato",
+  "core.codes.connect_links_disabled.message": "Il collegamento con altre persone è disattivato per questa app. I tuoi dispositivi si collegano ancora.",
   "core.codes.relay_ticket_invalid.title": "Connessione scaduta",
   "core.codes.relay_ticket_invalid.message": "La richiesta di connessione è scaduta. Riprova.",
   "core.codes.key_entry_limit.title": "Nessun inserimento rimasto",

@@ -32,6 +32,7 @@ public enum ErrorCode {
     public static let relayDisabled = "relay_disabled"
     public static let relayPaused = "relay_paused"
     public static let relayQuotaExceeded = "relay_quota_exceeded"
+    public static let connectLinksDisabled = "connect_links_disabled"
     public static let relayTicketInvalid = "relay_ticket_invalid"
     public static let deviceLimit = "device_limit"
     public static let keyEntryLimit = "key_entry_limit"
@@ -254,6 +255,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -476,6 +478,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "relay_disabled": "wire",
     "relay_paused": "wire",
     "relay_quota_exceeded": "wire",
+    "connect_links_disabled": "wire",
     "relay_ticket_invalid": "wire",
     "device_limit": "wire",
     "key_entry_limit": "wire",

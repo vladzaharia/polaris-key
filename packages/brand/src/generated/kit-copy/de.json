@@ -1003,6 +1003,8 @@
   "core.codes.relay_paused.message": "Die Fernverbindung ist vorübergehend pausiert. Versuche es später erneut.",
   "core.codes.relay_quota_exceeded.title": "Fernlimit erreicht",
   "core.codes.relay_quota_exceeded.message": "Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.",
+  "core.codes.connect_links_disabled.title": "Verknüpfung aus",
+  "core.codes.connect_links_disabled.message": "Das Verknüpfen mit anderen Personen ist für diese App ausgeschaltet. Deine eigenen Geräte verbinden sich weiterhin.",
   "core.codes.relay_ticket_invalid.title": "Verbindung abgelaufen",
   "core.codes.relay_ticket_invalid.message": "Die Verbindungsanfrage ist abgelaufen. Versuche es erneut.",
   "core.codes.key_entry_limit.title": "Keine Schlüsseleingaben mehr",

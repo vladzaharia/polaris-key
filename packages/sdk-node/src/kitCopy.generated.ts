@@ -1217,6 +1217,9 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title": "Remote limit reached",
     "core.codes.relay_quota_exceeded.message":
       "The remote connection limit is used up. It resets soon. Devices on the same network still connect.",
+    "core.codes.connect_links_disabled.title": "Linking is off",
+    "core.codes.connect_links_disabled.message":
+      "Linking with other people is off for this app. Your own devices still connect.",
     "core.codes.relay_ticket_invalid.title": "Connection expired",
     "core.codes.relay_ticket_invalid.message":
       "The connection request expired. Try again.",
@@ -3144,6 +3147,9 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title": "Fernlimit erreicht",
     "core.codes.relay_quota_exceeded.message":
       "Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.",
+    "core.codes.connect_links_disabled.title": "Verknüpfung aus",
+    "core.codes.connect_links_disabled.message":
+      "Das Verknüpfen mit anderen Personen ist für diese App ausgeschaltet. Deine eigenen Geräte verbinden sich weiterhin.",
     "core.codes.relay_ticket_invalid.title": "Verbindung abgelaufen",
     "core.codes.relay_ticket_invalid.message":
       "Die Verbindungsanfrage ist abgelaufen. Versuche es erneut.",
@@ -5080,6 +5086,9 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title": "Limite à distance atteinte",
     "core.codes.relay_quota_exceeded.message":
       "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.",
+    "core.codes.connect_links_disabled.title": "Liaison désactivée",
+    "core.codes.connect_links_disabled.message":
+      "La liaison avec d'autres personnes est désactivée pour cette app. Tes propres appareils se connectent toujours.",
     "core.codes.relay_ticket_invalid.title": "Connexion expirée",
     "core.codes.relay_ticket_invalid.message":
       "La demande de connexion a expiré. Réessayez.",
@@ -7000,6 +7009,9 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title": "Límite remoto alcanzado",
     "core.codes.relay_quota_exceeded.message":
       "Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose.",
+    "core.codes.connect_links_disabled.title": "Vincular está desactivado",
+    "core.codes.connect_links_disabled.message":
+      "Vincular con otras personas está desactivado en esta app. Tus propios dispositivos siguen conectándose.",
     "core.codes.relay_ticket_invalid.title": "Conexión caducada",
     "core.codes.relay_ticket_invalid.message":
       "La solicitud de conexión caducó. Inténtalo de nuevo.",
@@ -8910,6 +8922,9 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title": "Limite remoto atingido",
     "core.codes.relay_quota_exceeded.message":
       "O limite de conexão remota acabou. Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando.",
+    "core.codes.connect_links_disabled.title": "Vínculo desativado",
+    "core.codes.connect_links_disabled.message":
+      "O vínculo com outras pessoas está desativado neste app. Seus próprios dispositivos continuam se conectando.",
     "core.codes.relay_ticket_invalid.title": "Conexão expirada",
     "core.codes.relay_ticket_invalid.message":
       "O pedido de conexão expirou. Tente novamente.",
@@ -10803,6 +10818,9 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title": "Limite remoto raggiunto",
     "core.codes.relay_quota_exceeded.message":
       "Il limite della connessione remota è esaurito. Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque.",
+    "core.codes.connect_links_disabled.title": "Collegamento disattivato",
+    "core.codes.connect_links_disabled.message":
+      "Il collegamento con altre persone è disattivato per questa app. I tuoi dispositivi si collegano ancora.",
     "core.codes.relay_ticket_invalid.title": "Connessione scaduta",
     "core.codes.relay_ticket_invalid.message":
       "La richiesta di connessione è scaduta. Riprova.",
@@ -12726,6 +12744,9 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title": "リモート接続の上限に達しました",
     "core.codes.relay_quota_exceeded.message":
       "リモート接続の上限を使い切りました。まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。",
+    "core.codes.connect_links_disabled.title": "リンクはオフです",
+    "core.codes.connect_links_disabled.message":
+      "このアプリでは他の人とのリンクがオフです。自分のデバイス同士は引き続き接続できます。",
     "core.codes.relay_ticket_invalid.title": "接続の期限が切れました",
     "core.codes.relay_ticket_invalid.message":
       "接続リクエストの期限が切れました。もう一度お試しください。",
@@ -14593,6 +14614,9 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title": "원격 연결 한도 도달",
     "core.codes.relay_quota_exceeded.message":
       "원격 연결 한도를 모두 사용했습니다. 곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다.",
+    "core.codes.connect_links_disabled.title": "연결이 꺼져 있어요",
+    "core.codes.connect_links_disabled.message":
+      "이 앱에서는 다른 사람과의 연결이 꺼져 있어요. 내 기기끼리는 계속 연결돼요.",
     "core.codes.relay_ticket_invalid.title": "연결 만료",
     "core.codes.relay_ticket_invalid.message":
       "연결 요청이 만료되었습니다. 다시 시도하세요.",
@@ -16343,6 +16367,9 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title": "已达远程用量上限",
     "core.codes.relay_quota_exceeded.message":
       "远程连接用量已用完，即将重置。同一网络下的设备仍可连接。",
+    "core.codes.connect_links_disabled.title": "链接已关闭",
+    "core.codes.connect_links_disabled.message":
+      "此应用已关闭与他人的链接。你自己的设备仍可连接。",
     "core.codes.relay_ticket_invalid.title": "连接已过期",
     "core.codes.relay_ticket_invalid.message": "连接请求已过期。请重试。",
     "core.codes.key_entry_limit.title": "密钥已无剩余输入次数",

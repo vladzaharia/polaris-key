@@ -186,6 +186,16 @@ export interface Env {
    */
   LAUNCH_RELAY?: string;
   /**
+   * LG-1 launch gate for links between accounts (CC-19; contact-room relay tickets, the contact
+   * rooms and the discovery member `interAccount`). Off until the feature's security sign-off. A `[vars]` value, read
+   * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
+   * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the
+   * console says off. An unreadable store reads off.
+   * @inventory var jobs
+   * @editable LAUNCH_CONNECT_LINKS
+   */
+  LAUNCH_CONNECT_LINKS?: string;
+  /**
    * LG-1 launch gate for nearby approval (I-40; the three `identity/nearby/*` routes and the discovery
    * members that name them). Off until the feature's security sign-off. A `[vars]` value, read
    * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`

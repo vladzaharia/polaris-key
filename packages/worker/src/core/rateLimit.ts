@@ -102,6 +102,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   // single-use store operation; an outage refuses rather than lets a flood through.
   connectRelayTicket: "closed",
   connectRelayUpgrade: "closed",
+  // CC-19.3: contact tickets, 30 an hour per device (V5 §15.7); a lost counter refuses.
+  connectContactTicket: "closed",
   // I-40.4: nearby approval `start` writes one single-use record per call (per client network).
   identityNearbyStart: "closed",
   // I-40.5: `approve` is per approving device; the subject budget is charged on decisions only.

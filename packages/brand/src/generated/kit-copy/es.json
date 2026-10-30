@@ -1003,6 +1003,8 @@
   "core.codes.relay_paused.message": "La conexión remota está en pausa por ahora. Inténtalo más tarde.",
   "core.codes.relay_quota_exceeded.title": "Límite remoto alcanzado",
   "core.codes.relay_quota_exceeded.message": "Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose.",
+  "core.codes.connect_links_disabled.title": "Vincular está desactivado",
+  "core.codes.connect_links_disabled.message": "Vincular con otras personas está desactivado en esta app. Tus propios dispositivos siguen conectándose.",
   "core.codes.relay_ticket_invalid.title": "Conexión caducada",
   "core.codes.relay_ticket_invalid.message": "La solicitud de conexión caducó. Inténtalo de nuevo.",
   "core.codes.key_entry_limit.title": "No quedan usos de la clave",

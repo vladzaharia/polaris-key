@@ -5905,6 +5905,16 @@ msgstr ""
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr ""
 
+#. Linking is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.title"
+msgstr ""
+
+#. Linking with other people is off for this app. Your own devices still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.message"
+msgstr ""
+
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_ticket_invalid.title"

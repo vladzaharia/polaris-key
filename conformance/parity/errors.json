@@ -130,6 +130,12 @@
       "description": "429: the relay quota is spent. The body's `scope` says whose: `person` (the day's bytes, resets at 00:00 UTC) or `product` (the month's bytes, resets on the 1st). The local network is never metered."
     },
     {
+      "code": "connect_links_disabled",
+      "kind": "wire",
+      "service": "connect",
+      "description": "403: a contact-room relay ticket was asked for while the product's inter-account setting (`cloudConnect.interAccount`), the `launch.connectLinks` gate or the service is off. Nothing else is looked at. Links between accounts are not available; the local network and the account's own devices are unaffected."
+    },
+    {
       "code": "relay_ticket_invalid",
       "kind": "wire",
       "service": "connect",

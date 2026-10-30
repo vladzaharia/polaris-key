@@ -980,6 +980,10 @@
       "service": "connect",
       "proof": [
         {
+          "kind": "transcript",
+          "wp": "CC-19"
+        },
+        {
           "kind": "unit"
         }
       ],

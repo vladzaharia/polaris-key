@@ -34,6 +34,7 @@ public object ErrorCode {
     public const val relayDisabled: String = "relay_disabled"
     public const val relayPaused: String = "relay_paused"
     public const val relayQuotaExceeded: String = "relay_quota_exceeded"
+    public const val connectLinksDisabled: String = "connect_links_disabled"
     public const val relayTicketInvalid: String = "relay_ticket_invalid"
     public const val deviceLimit: String = "device_limit"
     public const val keyEntryLimit: String = "key_entry_limit"
@@ -256,6 +257,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -478,6 +480,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "relay_disabled" to "wire",
     "relay_paused" to "wire",
     "relay_quota_exceeded" to "wire",
+    "connect_links_disabled" to "wire",
     "relay_ticket_invalid" to "wire",
     "device_limit" to "wire",
     "key_entry_limit" to "wire",

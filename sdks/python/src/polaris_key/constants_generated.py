@@ -240,6 +240,7 @@ class ErrorCode:
     RELAY_DISABLED: Final = "relay_disabled"
     RELAY_PAUSED: Final = "relay_paused"
     RELAY_QUOTA_EXCEEDED: Final = "relay_quota_exceeded"
+    CONNECT_LINKS_DISABLED: Final = "connect_links_disabled"
     RELAY_TICKET_INVALID: Final = "relay_ticket_invalid"
     DEVICE_LIMIT: Final = "device_limit"
     KEY_ENTRY_LIMIT: Final = "key_entry_limit"
@@ -462,6 +463,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -686,6 +688,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "relay_disabled": "wire",
         "relay_paused": "wire",
         "relay_quota_exceeded": "wire",
+        "connect_links_disabled": "wire",
         "relay_ticket_invalid": "wire",
         "device_limit": "wire",
         "key_entry_limit": "wire",

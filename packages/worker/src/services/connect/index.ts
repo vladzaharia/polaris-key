@@ -26,6 +26,7 @@ import { connectProductDeletion } from "./productDeletion.js";
 import { CONNECT_ROUTES } from "./routes.js";
 import { CONNECT_RINGS_STORE, connectRingsStore } from "./subjectStore.js";
 import { CONNECT_SETTINGS_SLICE } from "./settings.js";
+import { contactLinksOn } from "./relay/access.js";
 
 import type { Env } from "../../platform/env.js";
 import { pokeRelayRoom } from "./do/client.js";
@@ -63,10 +64,12 @@ export const connectService: ServiceDescriptor = {
   settings: CONNECT_SETTINGS_SLICE,
   /**
    * `lan` is true: the LAN needs no Worker. `relay` is true while `launch.relay` is on and the room
-   * is bound (CC-07.3); `interAccount` stays false until inter-account links (CC-18) ship. An endpoint is `null` until its route is served
-   * (WIRE-CONTRACT-V5 §15.9).
+   * is bound (CC-07.3); `interAccount` is true only while the product's `cloudConnect.interAccount`
+   * setting, `launch.connectLinks` and the service are all on (CC-19.3; §15.9, §15.10). An endpoint
+   * is `null` until its route is served (WIRE-CONTRACT-V5 §15.9).
    */
-  discoveryFragment: async ({ base, env, db }: DiscoveryContext) => {
+  discoveryFragment: async (dctx: DiscoveryContext) => {
+    const { base, env, db } = dctx;
     // LG-1: gate off reads as the service off (V5 §15.9: `{"enabled":false}`), the one shape
     // every SDK already treats as "do not try".
     if (!(await launchGateOn(env, db, "launch.connect")))
@@ -79,7 +82,7 @@ export const connectService: ServiceDescriptor = {
       enabled: true,
       lan: true,
       relay,
-      interAccount: false,
+      interAccount: await contactLinksOn(dctx),
       endpoints: {
         identity: `${base}/connect/identity`,
         devices: `${base}/connect/devices`,

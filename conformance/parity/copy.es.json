@@ -97,6 +97,10 @@
       "title": "Límite remoto alcanzado",
       "message": "Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose."
     },
+    "connect_links_disabled": {
+      "title": "Vincular está desactivado",
+      "message": "Vincular con otras personas está desactivado en esta app. Tus propios dispositivos siguen conectándose."
+    },
     "relay_ticket_invalid": {
       "title": "Conexión caducada",
       "message": "La solicitud de conexión caducó. Inténtalo de nuevo."

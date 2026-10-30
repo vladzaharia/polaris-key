@@ -96,6 +96,7 @@ export default defineConfig(async () => {
             // CC-07.4: the relay's launch gate, on for the relay smoke (wrangler.toml leaves it
             // to the runtime setting at the top level).
             LAUNCH_RELAY: "on",
+            LAUNCH_CONNECT_LINKS: "on",
             // 32 zero bytes, base64 — the same constant the Node lane seeds with.
             PLATFORM_KEK: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
           },

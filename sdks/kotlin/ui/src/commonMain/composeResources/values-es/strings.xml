@@ -2238,6 +2238,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_quota_exceeded_message">Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_links_disabled_title">Vincular está desactivado</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_links_disabled_message">Vincular con otras personas está desactivado en esta app. Tus propios dispositivos siguen conectándose.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">Conexión caducada</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_message">La solicitud de conexión caducó. Inténtalo de nuevo.</string>

@@ -97,6 +97,10 @@
       "title": "已达远程用量上限",
       "message": "远程连接用量已用完，即将重置。同一网络下的设备仍可连接。"
     },
+    "connect_links_disabled": {
+      "title": "链接已关闭",
+      "message": "此应用已关闭与他人的链接。你自己的设备仍可连接。"
+    },
     "relay_ticket_invalid": {
       "title": "连接已过期",
       "message": "连接请求已过期。请重试。"

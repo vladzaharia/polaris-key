@@ -1003,6 +1003,8 @@
   "core.codes.relay_paused.message": "La connexion à distance est en pause pour le moment. Réessayez plus tard.",
   "core.codes.relay_quota_exceeded.title": "Limite à distance atteinte",
   "core.codes.relay_quota_exceeded.message": "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.",
+  "core.codes.connect_links_disabled.title": "Liaison désactivée",
+  "core.codes.connect_links_disabled.message": "La liaison avec d'autres personnes est désactivée pour cette app. Tes propres appareils se connectent toujours.",
   "core.codes.relay_ticket_invalid.title": "Connexion expirée",
   "core.codes.relay_ticket_invalid.message": "La demande de connexion a expiré. Réessayez.",
   "core.codes.key_entry_limit.title": "Aucune saisie restante",

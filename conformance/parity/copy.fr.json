@@ -97,6 +97,10 @@
       "title": "Limite à distance atteinte",
       "message": "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
     },
+    "connect_links_disabled": {
+      "title": "Liaison désactivée",
+      "message": "La liaison avec d'autres personnes est désactivée pour cette app. Tes propres appareils se connectent toujours."
+    },
     "relay_ticket_invalid": {
       "title": "Connexion expirée",
       "message": "La demande de connexion a expiré. Réessayez."

@@ -5901,6 +5901,16 @@ msgstr "Fernlimit erreicht"
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin."
 
+#. Linking is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.title"
+msgstr "Verknüpfung aus"
+
+#. Linking with other people is off for this app. Your own devices still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.message"
+msgstr "Das Verknüpfen mit anderen Personen ist für diese App ausgeschaltet. Deine eigenen Geräte verbinden sich weiterhin."
+
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_ticket_invalid.title"

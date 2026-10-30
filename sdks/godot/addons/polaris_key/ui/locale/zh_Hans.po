@@ -5888,6 +5888,16 @@ msgstr "已达远程用量上限"
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "远程连接用量已用完，即将重置。同一网络下的设备仍可连接。"
 
+#. Linking is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.title"
+msgstr "链接已关闭"
+
+#. Linking with other people is off for this app. Your own devices still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.message"
+msgstr "此应用已关闭与他人的链接。你自己的设备仍可连接。"
+
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_ticket_invalid.title"

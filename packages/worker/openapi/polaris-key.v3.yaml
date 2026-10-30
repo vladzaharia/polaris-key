@@ -9982,6 +9982,16 @@ paths:
         off), `503 relay_paused` (the deployment paused it; `Retry-After`), `429
         relay_quota_exceeded` with `scope: product` (the month is spent) or `scope: person` (the
         person's day is zero). The same credential and refusals as `connect/identity`.
+
+        An optional body asks for a contact room (CC-19.3, §15.7, §15.10): `{"room":"c","rid":"…"}`,
+        strict JSON of at most 256 bytes, `rid` the 22 canonical base64url characters of the
+        room id. No body is the account ticket above. The ticket then opens only that contact
+        room, and the answer carries `"room":"c"`; an account answer carries no `room`. While the
+        product's `cloudConnect.interAccount` setting, the `launch.connectLinks` gate or the
+        service is off, a contact request is `403 connect_links_disabled` and nothing else is
+        looked at. A bad body is `400 bad_request`. Contact tickets are limited to 30 an hour per
+        device, and a person may hold at most 64 contact rooms; both refuse with `429
+        rate_limited`, and fail closed.
       security: [{ deviceToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -9990,6 +10000,14 @@ paths:
           required: true
           description: The device the bearer token belongs to.
           schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConnectRelayTicketRequest" }
+            examples:
+              contact:
+                value: { room: c, rid: lXg0MgIHVN5qAmGFUen7vA }
       responses:
         "200":
           description: "`cache-control: no-store`."
@@ -10003,8 +10021,17 @@ paths:
                     url: wss://key.plrs.im/djdl/connect/relay
                     protocol: pkey-relay.1
                     expiresAt: 1761300060
+                contact:
+                  value:
+                    ticket: pkeyrt_dGlja2V0dGlja2V0dGlja2V0dGlja2V0
+                    url: wss://key.plrs.im/djdl/connect/relay
+                    protocol: pkey-relay.1
+                    expiresAt: 1761300060
+                    room: c
         "400":
-          description: "`bad_request`: `X-PKey-Device` is missing or malformed."
+          description: >
+            `bad_request`: `X-PKey-Device` is missing or malformed, or a contact body is not
+            exactly `room` `c` and a canonical `rid`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -10013,7 +10040,8 @@ paths:
           description: >
             `account_required`: no account is signed in on the device (the body carries
             `signInUrl`). `relay_disabled`: the product turned the relay off; devices connect only
-            on the same network.
+            on the same network. `connect_links_disabled`: a contact ticket while the product's
+            inter-account setting, the `launch.connectLinks` gate or the service is off.
           content:
             application/json:
               schema:
@@ -10022,6 +10050,8 @@ paths:
                   - { $ref: "#/components/schemas/WireError" }
               examples:
                 disabled: { value: { error: { code: relay_disabled } } }
+                linksDisabled:
+                  { value: { error: { code: connect_links_disabled } } }
         "404": { $ref: "#/components/responses/NotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "409":
@@ -10036,7 +10066,8 @@ paths:
         "429":
           description: >
             `relay_quota_exceeded` (`scope` is `person` or `product`; the local network is never
-            metered), or `rate_limited` (12 tickets a minute per device; `Retry-After`).
+            metered), or `rate_limited` (12 tickets a minute per device; a contact ticket also 30
+            an hour per device and 64 contact rooms per person; `Retry-After`).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ConnectRelayQuotaExceeded" }
@@ -10078,7 +10109,8 @@ paths:
         WIRE-CONTRACT-V5 §15.7. A WebSocket upgrade with `Sec-WebSocket-Protocol: pkey-relay.1,
         pkeyrt_…`: the ticket from `POST /{product}/connect/relay/ticket`, which this request
         consumes. The Worker checks the ticket, re-reads the person's devices, and hands the socket
-        to the person's relay room, which answers `pkey-relay.1`. The ticket value never reaches the
+        to the person's relay room (a contact ticket: to the contact room it is bound to), which answers
+        `pkey-relay.1`. The ticket value never reaches the
         room. A missing, malformed, expired, spent or foreign ticket is `401 relay_ticket_invalid`
         (no `Authorization` is read). Answers `404` while the relay is off on the deployment, and
         the same `403`, `429` and `503` refusals as the ticket route. After the upgrade the room
@@ -10105,7 +10137,9 @@ paths:
               examples:
                 invalid: { value: { error: { code: relay_ticket_invalid } } }
         "403":
-          description: "`relay_disabled`: the product turned the relay off."
+          description: >
+            `relay_disabled`: the product turned the relay off. `connect_links_disabled`: a contact
+            ticket while inter-account links are off.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -28220,6 +28254,25 @@ components:
         url: { type: string, description: "The upgrade URL, `wss:`." }
         protocol: { type: string, const: pkey-relay.1 }
         expiresAt: { type: integer, description: "Epoch seconds." }
+        room:
+          type: string
+          const: c
+          description: >
+            Present only on the answer to a contact request; it echoes the request. A client that
+            asked for a contact room and got none (an older Worker) must not connect.
+    ConnectRelayTicketRequest:
+      type: object
+      required: [room, rid]
+      additionalProperties: false
+      description: >
+        The optional body of a contact ticket (WIRE-CONTRACT-V5 §15.7): strict JSON of at most 256
+        bytes.
+      properties:
+        room: { type: string, const: c }
+        rid:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{22}$"
+          description: The room id, 16 bytes in 22 canonical base64url characters.
     ConnectRelayQuotaExceeded:
       type: object
       required: [error, scope]
@@ -28234,8 +28287,10 @@ components:
       description: >
         Cloud Connect's fragment (WIRE-CONTRACT-V5 §15.9). `{"enabled": false}` when off. When on,
         `lan` says devices may find each other on the local network, `relay` that the relay is
-        available and `interAccount` that devices of different accounts may connect. Each endpoint
-        is a URL or `null` until the release that serves it.
+        available and `interAccount` that devices of different accounts may link and reach each
+        other (true only while the product's `cloudConnect.interAccount` setting, the
+        `launch.connectLinks` gate and the service are all on; an SDK needs it before it pairs).
+        Each endpoint is a URL or `null` until the release that serves it.
       oneOf:
         - type: object
           required: [enabled]

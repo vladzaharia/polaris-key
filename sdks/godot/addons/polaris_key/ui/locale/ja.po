@@ -5888,6 +5888,16 @@ msgstr "リモート接続の上限に達しました"
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "リモート接続の上限を使い切りました。まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。"
 
+#. Linking is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.title"
+msgstr "リンクはオフです"
+
+#. Linking with other people is off for this app. Your own devices still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.message"
+msgstr "このアプリでは他の人とのリンクがオフです。自分のデバイス同士は引き続き接続できます。"
+
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_ticket_invalid.title"

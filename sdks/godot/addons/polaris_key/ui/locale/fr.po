@@ -5914,6 +5914,16 @@ msgstr "Limite à distance atteinte"
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
 
+#. Linking is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.title"
+msgstr "Liaison désactivée"
+
+#. Linking with other people is off for this app. Your own devices still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.message"
+msgstr "La liaison avec d'autres personnes est désactivée pour cette app. Tes propres appareils se connectent toujours."
+
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_ticket_invalid.title"
