@@ -40,6 +40,7 @@ import {
 import type { AuditActor } from "../audit.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import { randomId } from "../../platform/crypto.js";
+import { productNameRefusal } from "../accounts/reservedDisplayNames.js";
 import {
   invalidatePlatformSettings,
   type SettingsEnv,
@@ -811,6 +812,26 @@ async function writeProduct(
       ctx.env,
     );
     if (refused) return refused;
+    // The product's name is what every sign-in card and email calls the app (DISPLAY-NAME-INVISIBLE
+    // D-10), so every writer of it runs the console rename's rule; the name already stored is
+    // not judged again.
+    if (
+      op === "set" &&
+      def.key === "core.name" &&
+      typeof w.value === "string" &&
+      w.value.trim() !== before.value
+    ) {
+      const problem = await productNameRefusal(
+        ctx.env,
+        ctx.db,
+        slug,
+        w.value.trim(),
+      );
+      if (problem)
+        return refuse(422, "invalid_value", problem.message, def.key, {
+          reason: problem.reason,
+        });
+    }
     if (op === "set") {
       const out = outOfBounds(def, w.value, await platformLinks(ctx, def));
       if (out)
