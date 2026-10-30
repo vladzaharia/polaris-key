@@ -28,7 +28,7 @@ class PlayGamesProviderTest {
         }
         override suspend fun requestServerSideAccess(serverClientId: String): String {
             audiences += serverClientId
-            if (refuse) throw IllegalStateException("refused")
+            check(!refuse) { "refused" }
             return "4/fake-server-auth-code"
         }
     }
@@ -75,7 +75,8 @@ class PlayGamesProviderTest {
     fun noClientIdIsNoToken() = runBlocking {
         val fake = Fake(true)
         assertNull(PlayGamesProvider(fake).silent(nonce, null))
-        assertEquals("fb", PlayGamesProvider(fake, "fb").let { it.silent(nonce, null); fake.audiences.single() })
+        PlayGamesProvider(fake, "fb").silent(nonce, null)
+        assertEquals("fb", fake.audiences.single())
     }
 
     @Test

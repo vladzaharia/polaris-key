@@ -23,7 +23,7 @@ public class PlayGamesSdkClient(private val activity: () -> Activity?) : PlayGam
     override suspend fun requestServerSideAccess(serverClientId: String): String =
         host().let { PlayGames.getGamesSignInClient(it).requestServerSideAccess(serverClientId, false).await() }
 
-    private fun host(): Activity = activity() ?: throw IllegalStateException("no foreground activity")
+    private fun host(): Activity = checkNotNull(activity()) { "no foreground activity" }
 
     public companion object {
         /** `PlayGamesSdk.initialize`: once, from `Application.onCreate` or before the first call. */

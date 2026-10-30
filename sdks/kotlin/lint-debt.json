@@ -545,8 +545,8 @@
       "detekt:complexity.LargeClass": 1,
       "detekt:complexity.LongParameterList": 1,
       "detekt:complexity.TooManyFunctions": 1,
-      "detekt:exceptions.SwallowedException": 11,
-      "detekt:exceptions.TooGenericExceptionCaught": 15,
+      "detekt:exceptions.SwallowedException": 10,
+      "detekt:exceptions.TooGenericExceptionCaught": 14,
       "detekt:naming.EnumNaming": 10,
       "detekt:style.LoopWithTooManyJumpStatements": 1,
       "detekt:style.MagicNumber": 9,
@@ -1153,17 +1153,8 @@
       "ktlint:standard:statement-wrapping": 3
     },
     "sdks/kotlin/games/src/main/kotlin/im/plrs/key/games/PlayGamesProvider.kt": {
-      "detekt:empty-blocks.EmptyFunctionBlock": 1,
       "detekt:exceptions.SwallowedException": 1,
-      "detekt:exceptions.TooGenericExceptionCaught": 1,
-      "detekt:style.ReturnCount": 2
-    },
-    "sdks/kotlin/games/src/main/kotlin/im/plrs/key/games/PlayGamesSdkClient.kt": {
-      "detekt:style.UseCheckOrError": 1
-    },
-    "sdks/kotlin/games/src/test/kotlin/im/plrs/key/games/PlayGamesProviderTest.kt": {
-      "detekt:style.UseCheckOrError": 1,
-      "ktlint:standard:statement-wrapping": 3
+      "detekt:exceptions.TooGenericExceptionCaught": 1
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/AutoSignIn.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,

@@ -26,22 +26,22 @@ public class PlayGamesProvider(
     override val kind: ExchangeKind = ExchangeKind.pgs
 
     override suspend fun silent(nonce: String, serverClientId: String?): PlatformSubjectToken? {
-        val audience = serverClientId ?: fallbackServerClientId ?: return null
-        if (!games.isAuthenticated()) return null
-        return code(nonce, audience)
+        val audience = serverClientId ?: fallbackServerClientId
+        return if (audience == null || !games.isAuthenticated()) null else code(nonce, audience)
     }
 
     // Play Games has no account chooser to show at launch: the sheet rung is the silent one.
     override suspend fun sheet(nonce: String, serverClientId: String?): PlatformSubjectToken? = silent(nonce, serverClientId)
 
     override suspend fun providerSheet(nonce: String, serverClientId: String?): PlatformSubjectToken? {
-        val audience = serverClientId ?: fallbackServerClientId ?: return null
-        if (!games.isAuthenticated() && !games.signIn()) return null
-        return code(nonce, audience)
+        val audience = serverClientId ?: fallbackServerClientId
+        return if (audience == null || (!games.isAuthenticated() && !games.signIn())) null else code(nonce, audience)
     }
 
     // Play Games keeps the player's session; there is nothing of ours to forget.
-    override suspend fun signOutCleanup() {}
+    override suspend fun signOutCleanup() {
+        // Nothing of ours to forget.
+    }
 
     override suspend fun credentialRevoked(): Boolean = false
 
