@@ -149,6 +149,76 @@ export interface FeedDetailDto extends FeedsHead {
   ungatedPackages?: { id: string; name: string }[];
 }
 
+// ── cleanup (F-36; worker `services/release/packages/prune.ts`) ───────────────────────────────
+
+/** The dry run the one-time notice recorded, and the day cleanup starts (epoch seconds). */
+export interface FeedPruneNotice {
+  noticedAt: number;
+  startsAt: number;
+  packages: number;
+  versions: number;
+  bytes: number;
+  freedBytes: number;
+}
+
+/** `GET <feeds base>/retention`: where the cleanup setting comes from. */
+export interface FeedRetentionDto {
+  product: string;
+  prunePrereleases: boolean;
+  locked: boolean;
+  /** `default`: nobody chose, so cleanup starts once the notice window has passed. */
+  source: "system" | "operator" | "default";
+  notice: FeedPruneNotice | null;
+  version: number;
+}
+
+export interface FeedPruneVersion {
+  releaseId: string;
+  version: string;
+  files: number;
+  bytes: number;
+  freedBytes: number;
+}
+
+export interface FeedPruneKept {
+  releaseId: string;
+  version: string;
+  /** `pinned`: a channel points at it; `referenced`: another row names it. */
+  reason: "pinned" | "referenced";
+}
+
+export interface FeedPrunePackage {
+  deliverableId: string;
+  ecosystem: string;
+  name: string;
+  /** The stable version cleanup prunes below. */
+  stable: string;
+  prune: FeedPruneVersion[];
+  kept: FeedPruneKept[];
+  bytes: number;
+  freedBytes: number;
+  failed?: { version: string; error: string }[];
+  skipped?: FeedPruneKept[];
+}
+
+/** `POST <feeds base>/prune`: the plan (`dryRun`) or what an apply deleted. */
+export interface FeedPruneReport {
+  product: string;
+  dryRun: boolean;
+  retention: FeedRetentionDto;
+  packages: FeedPrunePackage[];
+  skipped: { deliverableId: string; reason: "no-stable" }[];
+  totals: {
+    versions: number;
+    bytes: number;
+    freedBytes: number;
+    failed: number;
+    skipped: number;
+  };
+  /** Only with `apply`: more went than one request deletes; run it again. */
+  more: boolean;
+}
+
 // ── registry tokens (F-21; worker `console/handlers/registryTokens.ts`) ────────────────────────
 
 /** One registry token as the console lists it: never the plaintext or its hash. */
@@ -453,6 +523,30 @@ export const feedsApi = {
         body: JSON.stringify(licenseId ? { licenseId } : {}),
       },
     ),
+  /** F-36: the cleanup setting and its notice. */
+  feedRetention: (scope: FeedScope) =>
+    call<FeedRetentionDto>(`${feedsBase(scope)}/retention`),
+  /** F-38a: turn cleanup on or off. 409 `version_conflict` when the setting moved. */
+  saveFeedRetention: (
+    scope: FeedScope,
+    body: { expectedVersion: number; prunePrereleases: boolean },
+  ) =>
+    call<FeedRetentionDto>(`${feedsBase(scope)}/retention`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  /** F-38a: what cleanup would delete (`apply: false`: a plan, nothing is stored). */
+  previewFeedPrune: (scope: FeedScope) =>
+    call<FeedPruneReport>(`${feedsBase(scope)}/prune`, {
+      method: "POST",
+      body: JSON.stringify({ apply: false }),
+    }),
+  /** F-38a: delete the versions the plan lists now (at most one request's worth). */
+  pruneFeeds: (scope: FeedScope) =>
+    call<FeedPruneReport>(`${feedsBase(scope)}/prune`, {
+      method: "POST",
+      body: JSON.stringify({ apply: true }),
+    }),
   /** Create (or re-assert) the system product that owns the platform's feeds (F-03). */
   bootstrapPlatformFeeds: () =>
     call<{ ok: true; slug: string; created: boolean }>(

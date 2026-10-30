@@ -47,7 +47,10 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { isCi, wrapSpans, type Line } from "@polaris-key/node/terminal";
-import { isPackageEcosystem } from "@polaris-key/manifest";
+import {
+  FEEDS_SETUP_WRITE_COMMAND,
+  isPackageEcosystem,
+} from "@polaris-key/manifest";
 import {
   isExecStep,
   userConfigPlan,
@@ -76,8 +79,7 @@ import {
   type LoginIo,
 } from "./login.js";
 
-const FEEDS_WRITE_USAGE =
-  "pkey feeds setup --write [--owner slug] [--base-url url] [--json]";
+const FEEDS_WRITE_USAGE = `${FEEDS_SETUP_WRITE_COMMAND} [--owner slug] [--base-url url] [--json]`;
 
 const MAX_FEEDS = 64;
 const EXEC_TIMEOUT_MS = 60_000;
@@ -657,7 +659,7 @@ export function cmdFeedsWrite(
 ): Promise<number> {
   const mode: DeviceMode = {
     command: "feeds setup",
-    rerun: "pkey feeds setup --write",
+    rerun: FEEDS_SETUP_WRITE_COMMAND,
     scope: "packages:read",
     title: "Polaris Key packages",
     copy: {

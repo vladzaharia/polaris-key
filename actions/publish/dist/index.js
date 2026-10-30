@@ -13857,7 +13857,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-manifest/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-manifest/dist/chunk-3D7AAKB4.js
+// ../shared-manifest/dist/chunk-IT5LO3TF.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 function sortedUnique(values) {
   return [...new Set(values)].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
@@ -14239,6 +14239,7 @@ var ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/;
 var TOKEN_VALUE = /^[A-Za-z0-9_.~-]{8,512}$/;
 var OWNER = /^[a-z0-9-]{1,64}$/;
 var VERSION = /^[0-9A-Za-z][0-9A-Za-z.+_-]{0,127}$/;
+var FEEDS_SETUP_WRITE_COMMAND = "pkey feeds setup --write";
 function isFeedTokenEnvName(v) {
   return ENV_NAME.test(v);
 }
@@ -30968,6 +30969,7 @@ function userConfigPlan(feeds, ctx) {
 }
 
 // src/feedWrite.ts
+var FEEDS_WRITE_USAGE = `${FEEDS_SETUP_WRITE_COMMAND} [--owner slug] [--base-url url] [--json]`;
 var MAX_FEEDS = 64;
 var EXEC_TIMEOUT_MS = 6e4;
 var BACKUP_SUFFIX = ".pkey-backup";
@@ -31389,7 +31391,7 @@ function installed(io, o) {
 function cmdFeedsWrite(io, o) {
   const mode = {
     command: "feeds setup",
-    rerun: "pkey feeds setup --write",
+    rerun: FEEDS_SETUP_WRITE_COMMAND,
     scope: "packages:read",
     title: "Polaris Key packages",
     copy: {

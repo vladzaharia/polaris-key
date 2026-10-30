@@ -22,6 +22,7 @@ import {
   PLATFORM_ONLY_ME,
   PLATFORM_ONLY_READY,
   PRODUCT_ROLE_ME,
+  prunePlan,
   PLATFORM_PAUSE_ITEM,
   resolve,
   SYNC_USAGE,
@@ -828,6 +829,16 @@ function cases(): Case[] {
         await page.getByRole("alertdialog").waitFor();
       },
     },
+    // F-38a: the cleanup dry run behind the Packages callout.
+    {
+      name: "dialog:cleanup-dry-run",
+      hash: "#/p/djdl/distribution/feeds",
+      act: async (page) => {
+        await page.getByRole("button", { name: "See the dry run" }).click();
+        await page.getByRole("dialog", { name: "Cleanup dry run" }).waitFor();
+        await page.getByText("@djdl/source-kit-with-a-very-long").waitFor();
+      },
+    },
     // M6: the Services switch opens the same typed dialog.
     {
       name: "dialog:turn-off-feeds-services",
@@ -1348,6 +1359,12 @@ async function open(
         url.pathname.endsWith("/access/rules/preview")
       )
         return route.fulfill({ json: resolve(url.pathname) });
+      // F-38a: the cleanup dry run is a POST that answers the plan.
+      if (
+        route.request().method() === "POST" &&
+        url.pathname.endsWith("/distribution/feeds/prune")
+      )
+        return route.fulfill({ json: prunePlan() });
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
       const body =
