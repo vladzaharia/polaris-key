@@ -925,6 +925,7 @@ function concrete(template: string): string {
     // U-10.5: a Cloud Sync file route (`/sync/files/{collection}/{id}/upload/{uploadId}`).
     collection: "saves",
     uploadId: `up_${"A".repeat(22)}`,
+    n: "1",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

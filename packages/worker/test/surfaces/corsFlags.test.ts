@@ -95,6 +95,7 @@ const OLD_CORS_SERVICE_PATHS = [
   // operator's launch gate launch.syncFiles is off.
   "sync/files/{collection}/{id}/begin",
   "sync/files/{collection}/{id}/upload/{uploadId}",
+  "sync/files/{collection}/{id}/upload/{uploadId}/parts/{n}",
   // CC-06.1: the Cloud Connect roster and the linked-devices list (device bearer, never ambient).
   "connect/identity",
   "connect/relay/ticket",

@@ -95,6 +95,28 @@ export type CloudSyncOp =
       uploadId: string;
       serverNow: number;
     })
+  /**
+   * The session a byte request belongs to: what the Worker needs to stream into R2 (the key, the
+   * size, the hash, the multipart handle) and nothing it should take from the path. U-10.6.
+   */
+  | (DoPin & {
+      op: "filePrepare";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      serverNow: number;
+    })
+  /** Records part `n` after the Worker streamed it, or forgets it (`etag` absent) when it did not verify. */
+  | (DoPin & {
+      op: "filePart";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      n: number;
+      etag?: string;
+      bytes?: number;
+      serverNow: number;
+    })
   | (DoPin & {
       op: "fileAbort";
       collection: string;
@@ -178,6 +200,8 @@ export type CloudSyncReply =
   | { op: "fileBegin"; outcome: FileBeginOutcome }
   | { op: "fileStatus"; outcome: FileStatusOutcome }
   | { op: "fileAbort"; outcome: FileAbortOutcome }
+  | { op: "filePrepare"; outcome: FilePrepareOutcome }
+  | { op: "filePart"; outcome: FileAbortOutcome }
   | { op: "usage"; usage: StoreUsage; seq: number; empty: boolean }
   | { op: "exportAll"; document: ExportDocument | null }
   | { op: "absorb"; changed: number; skipped?: number; meter?: OpMeter }
@@ -197,6 +221,20 @@ export type FileBeginOutcome =
 /** `404` for a session that is not this record's, is unknown or ended; `410` once it expired. */
 export type FileStatusOutcome =
   | { ok: true; status: UploadStatus }
+  | { ok: false; error: "not_found" | "upload_expired" };
+
+/** What the Worker streams against. `parts` is 1 for a `single` upload. */
+export type FilePrepareOutcome =
+  | {
+      ok: true;
+      key: string;
+      mode: SyncUploadMode;
+      size: number;
+      sha256: string;
+      partBytes: number | null;
+      parts: number;
+      multipartId: string | null;
+    }
   | { ok: false; error: "not_found" | "upload_expired" };
 
 export type FileAbortOutcome = { ok: true } | { ok: false; error: "not_found" };

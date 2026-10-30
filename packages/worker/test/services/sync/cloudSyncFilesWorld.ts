@@ -110,6 +110,28 @@ export function call(
 export const sha256Hex = (bytes: Uint8Array): string =>
   createHash("sha256").update(bytes).digest("hex");
 
+/** RFC 9530: `sha-256=:<base64>:` of `bytes`. */
+export const digestHeader = (bytes: Uint8Array): string =>
+  `sha-256=:${createHash("sha256").update(bytes).digest("base64")}:`;
+
+/** A `PUT` of `bytes` with the headers an honest client sends; `over` replaces or (undefined) drops one. */
+export function putBytes(
+  w: Pick<World, "db" | "env" | "token">,
+  path: string,
+  bytes: Uint8Array,
+  over: Record<string, string | undefined> = {},
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    "content-type": "application/octet-stream",
+    "content-length": String(bytes.length),
+    "content-digest": digestHeader(bytes),
+  };
+  for (const [k, v] of Object.entries(over))
+    if (v === undefined) delete headers[k];
+    else headers[k] = v;
+  return call(w, "PUT", path, { bytes, headers });
+}
+
 /** A deterministic body of `n` bytes. */
 export const bytesOf = (n: number, seed = 7): Uint8Array =>
   Uint8Array.from({ length: n }, (_, i) => (i * 31 + seed) & 255);

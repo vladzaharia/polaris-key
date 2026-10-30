@@ -33,7 +33,14 @@ import {
   markDirty,
   recordWrite,
 } from "./directory.js";
-import { fileAbort, fileBegin, fileStatus, type FileHost } from "./fileOps.js";
+import {
+  fileAbort,
+  fileBegin,
+  filePart,
+  filePrepare,
+  fileStatus,
+  type FileHost,
+} from "./fileOps.js";
 import { fileStoreOf } from "./client.js";
 import { SCHEMA_VERSION, SqlStore } from "./sqlStore.js";
 import { knownPlatform } from "../../../core/devices/platformFamily.js";
@@ -292,7 +299,10 @@ export class CloudSyncDO implements DurableObject {
     if (
       (this.store.getMeta("absorbed_into") !== undefined ||
         this.store.getMeta("erased_at") !== undefined) &&
-      (op.op === "push" || op.op === "absorb" || op.op === "fileBegin")
+      (op.op === "push" ||
+        op.op === "absorb" ||
+        op.op === "fileBegin" ||
+        op.op === "filePart")
     )
       return objectError("absorbed", 410);
 
@@ -304,6 +314,8 @@ export class CloudSyncDO implements DurableObject {
       case "fileBegin":
       case "fileStatus":
       case "fileAbort":
+      case "filePrepare":
+      case "filePart":
         return this.fileOp(op);
       case "usage": {
         this.migrateIfBehind();
@@ -335,7 +347,17 @@ export class CloudSyncDO implements DurableObject {
 
   /** The file operations (`fileOps.ts`): their shape is checked here, their work is there. */
   private async fileOp(
-    op: Extract<CloudSyncOp, { op: "fileBegin" | "fileStatus" | "fileAbort" }>,
+    op: Extract<
+      CloudSyncOp,
+      {
+        op:
+          | "fileBegin"
+          | "fileStatus"
+          | "fileAbort"
+          | "filePrepare"
+          | "filePart";
+      }
+    >,
   ): Promise<Response> {
     const named =
       isName(op.collection) &&
@@ -366,10 +388,23 @@ export class CloudSyncDO implements DurableObject {
       const out = await fileBegin(host, op);
       return reply(out.body, out.status);
     }
+    if (op.op === "filePart") {
+      if (
+        !Number.isSafeInteger(op.n) ||
+        op.n < 1 ||
+        (op.etag !== undefined && !isName(op.etag)) ||
+        (op.bytes !== undefined && !Number.isSafeInteger(op.bytes))
+      )
+        return reply({ error: "bad_request" }, 400);
+      const out = filePart(host, op);
+      return reply(out.body, out.status);
+    }
     const out =
       op.op === "fileStatus"
         ? await fileStatus(host, op)
-        : await fileAbort(host, op);
+        : op.op === "filePrepare"
+          ? await filePrepare(host, op)
+          : await fileAbort(host, op);
     return reply(out.body, out.status);
   }
 

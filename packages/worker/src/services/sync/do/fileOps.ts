@@ -26,7 +26,7 @@ import type {
   CloudSyncOp,
   CloudSyncReply,
   DoPin,
-  FileStatusOutcome,
+  FilePrepareOutcome,
 } from "./protocol.js";
 import type { SqlStore } from "./sqlStore.js";
 
@@ -165,11 +165,15 @@ export function fileBegin(
   });
 }
 
+/** What names a session: the pin, the record and the session id. */
+interface SessionOp extends DoPin {
+  collection: string;
+  recordId: string;
+  uploadId: string;
+}
+
 /** The session, if it is this record's and is still there to be spoken of. */
-function sessionOf(
-  host: FileHost,
-  op: { collection: string; recordId: string; uploadId: string },
-): UploadRow | undefined {
+function sessionOf(host: FileHost, op: SessionOp): UploadRow | undefined {
   const u = host.store.getUpload(op.uploadId);
   return u && u.collection === op.collection && u.recordId === op.recordId
     ? u
@@ -190,26 +194,48 @@ function statusOf(host: FileHost, u: UploadRow): UploadStatus {
   };
 }
 
+/** Collects one expired session: its R2 objects and reservation first, then the row. */
+function collectExpired(host: FileHost, op: SessionOp): Promise<void> {
+  return host.ctx.blockConcurrencyWhile(async () => {
+    const again = sessionOf(host, op);
+    if (again && (await discard(host, op, again)))
+      host.store.transaction(() => host.store.deleteUpload(again.uploadId));
+  });
+}
+
+/**
+ * The session a call speaks of, or why there is none: `not_found` (unknown, another record's,
+ * ended, or - when `openOnly` - anything but open), `upload_expired` (past its 24 hours; it is
+ * collected here, so the client begins again).
+ */
+async function liveSession(
+  host: FileHost,
+  op: SessionOp & { serverNow: number },
+  openOnly: boolean,
+): Promise<{ u: UploadRow } | { error: "not_found" | "upload_expired" }> {
+  host.store.prepare(false);
+  const u = sessionOf(host, op);
+  if (!u || u.state === "aborted" || (openOnly && u.state !== "open"))
+    return { error: "not_found" };
+  if (u.expiresAt <= op.serverNow) {
+    await collectExpired(host, op);
+    return { error: "upload_expired" };
+  }
+  return { u };
+}
+
 export async function fileStatus(
   host: FileHost,
   op: Extract<CloudSyncOp, { op: "fileStatus" }>,
 ): Promise<FileReply> {
-  host.store.prepare(false);
-  const u = sessionOf(host, op);
-  const answer = (outcome: FileStatusOutcome) =>
-    ok({ op: "fileStatus", outcome });
-  if (!u || u.state === "aborted")
-    return answer({ ok: false, error: "not_found" });
-  if (u.expiresAt <= op.serverNow) {
-    // Collect it now, and tell the client: it begins again.
-    await host.ctx.blockConcurrencyWhile(async () => {
-      const again = sessionOf(host, op);
-      if (again && (await discard(host, op, again)))
-        host.store.transaction(() => host.store.deleteUpload(again.uploadId));
-    });
-    return answer({ ok: false, error: "upload_expired" });
-  }
-  return answer({ ok: true, status: statusOf(host, u) });
+  const s = await liveSession(host, op, false);
+  return ok({
+    op: "fileStatus",
+    outcome:
+      "u" in s
+        ? { ok: true, status: statusOf(host, s.u) }
+        : { ok: false, ...s },
+  });
 }
 
 export function fileAbort(
@@ -229,4 +255,63 @@ export function fileAbort(
       if (!(await discard(host, op, u))) return refuse("unavailable", 503);
     return ok({ op: "fileAbort", outcome: { ok: true } });
   });
+}
+
+/**
+ * The session a byte request streams against. Only an `open` session takes bytes: one that is
+ * finishing, done or ended is `not_found`, and one past its 24 hours is collected here and answers
+ * `upload_expired`, exactly as the resume call does.
+ */
+export async function filePrepare(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "filePrepare" }>,
+): Promise<FileReply> {
+  const s = await liveSession(host, op, true);
+  const outcome: FilePrepareOutcome =
+    "error" in s
+      ? { ok: false, error: s.error }
+      : {
+          ok: true,
+          key: fileObjectKey(op, s.u.uploadId),
+          mode: s.u.mode,
+          size: s.u.size,
+          sha256: s.u.sha256,
+          partBytes: s.u.partBytes,
+          parts:
+            s.u.mode === "multipart" && s.u.partBytes !== null
+              ? Math.ceil(s.u.size / s.u.partBytes)
+              : 1,
+          multipartId: s.u.multipartId,
+        };
+  return ok({ op: "filePrepare", outcome });
+}
+
+/**
+ * Records part `n` (an `etag`), or forgets it (no `etag`: the bytes did not verify, and R2 may
+ * already hold the failed bytes in place of an earlier good part, so the part counts as missing).
+ * A session that is no longer open takes nothing.
+ */
+export function filePart(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "filePart" }>,
+): FileReply {
+  host.store.prepare(false);
+  const u = sessionOf(host, op);
+  const parts =
+    u?.mode === "multipart" && u.partBytes !== null
+      ? Math.ceil(u.size / u.partBytes)
+      : 1;
+  if (!u || u.state !== "open" || u.expiresAt <= op.serverNow || op.n > parts)
+    return ok({ op: "filePart", outcome: { ok: false, error: "not_found" } });
+  host.store.transaction(() => {
+    if (op.etag === undefined) host.store.deletePart(u.uploadId, op.n);
+    else
+      host.store.putPart({
+        uploadId: u.uploadId,
+        n: op.n,
+        etag: op.etag,
+        bytes: op.bytes ?? 0,
+      });
+  });
+  return ok({ op: "filePart", outcome: { ok: true } });
 }

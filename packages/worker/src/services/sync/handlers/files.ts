@@ -69,6 +69,8 @@ export const FILE_PARAMS = {
   collection: new RegExp(SYNC_KEY_PATTERN),
   id: new RegExp(SYNC_KEY_PATTERN),
   uploadId: /^up_[A-Za-z0-9_-]{22}$/,
+  // Digits only; whether the number lies in the file's range is a `400` the handler answers.
+  n: /^[0-9]{1,9}$/,
 } as const;
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -103,7 +105,7 @@ function parseBegin(v: unknown): BeginFileRequest | null {
 }
 
 /** What every file route resolves before its own work. */
-interface FileCall {
+export interface FileCall {
   caller: SyncCaller;
   collection: string;
   id: string;

@@ -386,6 +386,8 @@ export interface SyncStore {
   getParts(uploadId: string): UploadPart[];
   /** Inserts or replaces part `n` of the session. */
   putPart(row: UploadPart): void;
+  /** Forgets part `n` of the session (its bytes did not verify). */
+  deletePart(uploadId: string, n: number): void;
   /** The SSE-C key `kid` names, server mode only. */
   getSsecKey(kid: string): Uint8Array | undefined;
   putSsecKey(kid: string, key: Uint8Array): void;

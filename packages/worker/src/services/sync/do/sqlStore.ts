@@ -674,6 +674,11 @@ export class SqlStore implements SyncStore {
     this.fileTables.putPart(row);
   }
 
+  deletePart(uploadId: string, n: number): void {
+    this.requireWritable();
+    this.fileTables.removePart(uploadId, n);
+  }
+
   getSsecKey(kid: string): Uint8Array | undefined {
     if (!this.hasSchema()) return undefined;
     return this.fileTables.ssecKey(kid);

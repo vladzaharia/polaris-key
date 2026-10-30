@@ -10410,8 +10410,167 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
+    put:
+      operationId: syncFileUploadPut
+      tags: [sync]
+      summary: Upload a whole file (mode single)
+      description: >
+        U-10 (WIRE-CONTRACT-V5 §13.8.1). The bytes of a file up to 16 MiB, for a session `begin`
+        answered `single`, with `Content-Length` and `Content-Digest: sha-256=:<base64>:`, which
+        must be the `sha256` `begin` declared. The server checks only size and SHA-256 and never
+        reads the content: R2 itself refuses bytes that do not hash to the declared value, and
+        nothing is stored. Resending a `PUT` that landed is `204` again. `Content-Length` over 16
+        MiB is `413 body_too_large`; a size or digest that does not match, or a missing
+        `Content-Length` or `Content-Digest`, is `400 upload_mismatch`. A session that is unknown,
+        ended, or another record's is `404`; one past its 24 hours is `410 upload_expired`. Writes
+        honour the platform pause and device trust like the push, and count against the 600
+        requests a device a minute.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+        - { $ref: "#/components/parameters/SyncFileUploadId" }
+        - { $ref: "#/components/parameters/ContentDigest" }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "204": { description: "Stored." }
+        "400":
+          description: "`upload_mismatch`, or a missing or malformed `X-PKey-Device` — NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                mismatch:
+                  summary: test/services/sync/cloudSyncFilesUpload.test.ts
+                  value: { error: { code: upload_mismatch } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`account_required` (the body carries the `signInUrl`) or `attestation_required`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "410":
+          description: "`upload_expired`. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "413":
+          description: "`body_too_large` — `Content-Length` over 16 MiB. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: "`writes_paused` (`Retry-After: 300`) or `unavailable` (`Retry-After: 5`). NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
     options:
       operationId: preflightSyncFileUpload
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/sync/files/{collection}/{id}/upload/{uploadId}/parts/{n}:
+    put:
+      operationId: syncFileUploadPart
+      tags: [sync]
+      summary: Upload one part of a multipart file
+      description: >
+        U-10 (WIRE-CONTRACT-V5 §13.8.1). Part `n` (from 1) of a session `begin` answered
+        `multipart`: exactly `partBytes` bytes, the last part shorter, with `Content-Length` and
+        `Content-Digest: sha-256=:<base64>:` of the part. Parts go in any order, at most four in
+        parallel. The server hashes the part as it streams to R2 and compares it with the digest;
+        a part that does not verify is forgotten (it counts as missing), so a resend replaces it.
+        Resending a part replaces it. A part number outside `1…⌈size / partBytes⌉`, a part of the
+        wrong length, or a missing `Content-Digest` is `400 upload_mismatch`. The rest is as the
+        single `PUT`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+        - { $ref: "#/components/parameters/SyncFileUploadId" }
+        - name: n
+          in: path
+          required: true
+          description: "The part number, from 1."
+          schema: { type: integer, minimum: 1 }
+        - { $ref: "#/components/parameters/ContentDigest" }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "204": { description: "Stored." }
+        "400":
+          description: "`upload_mismatch`, or a missing or malformed `X-PKey-Device` — NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                mismatch:
+                  summary: test/services/sync/cloudSyncFilesUpload.test.ts
+                  value: { error: { code: upload_mismatch } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`account_required` (the body carries the `signInUrl`) or `attestation_required`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "410":
+          description: "`upload_expired`. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: "`writes_paused` (`Retry-After: 300`) or `unavailable` (`Retry-After: 5`). NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightSyncFilePart
       tags: [sync]
       summary: CORS preflight
       description: >
@@ -23689,6 +23848,12 @@ components:
       required: true
       description: "The record id: the blinded id (`x:…`) in end-to-end mode."
       schema: { type: string, pattern: "^[A-Za-z0-9._:-]{1,128}$" }
+    ContentDigest:
+      name: Content-Digest
+      in: header
+      required: true
+      description: "RFC 9530: `sha-256=:<base64>:` of the body (of the whole file for a single `PUT`, of the part for a part)."
+      schema: { type: string, pattern: "^sha-256=:[A-Za-z0-9+/]{43}=:" }
     SyncFileUploadId:
       name: uploadId
       in: path

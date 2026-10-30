@@ -501,6 +501,10 @@ export class MemoryStore implements SyncStore {
     this.parts.set(`${row.uploadId}\u0000${row.n}`, { ...row });
   }
 
+  deletePart(uploadId: string, n: number): void {
+    this.parts.delete(`${uploadId}\u0000${n}`);
+  }
+
   getSsecKey(kid: string): Uint8Array | undefined {
     return this.ssec.get(kid)?.slice();
   }

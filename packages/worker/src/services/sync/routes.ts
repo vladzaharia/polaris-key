@@ -17,6 +17,7 @@ import {
   handleUploadAbort,
   handleUploadStatus,
 } from "./handlers/files.js";
+import { handlePartPut, handleUploadPut } from "./handlers/fileUpload.js";
 import { handlePull } from "./handlers/pull.js";
 import { handlePush } from "./handlers/push.js";
 
@@ -53,13 +54,28 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
   },
   {
     path: "files/:collection/:id/upload/:uploadId",
-    methods: ["GET", "DELETE"],
+    methods: ["GET", "PUT", "DELETE"],
     auth: { kind: "device" },
     cors: true,
-    params: FILE_PARAMS,
+    params: {
+      collection: FILE_PARAMS.collection,
+      id: FILE_PARAMS.id,
+      uploadId: FILE_PARAMS.uploadId,
+    },
     handler: (ctx, match) =>
       ctx.req.method === "DELETE"
         ? handleUploadAbort(ctx, match)
-        : handleUploadStatus(ctx, match),
+        : ctx.req.method === "PUT"
+          ? handleUploadPut(ctx, match)
+          : handleUploadStatus(ctx, match),
+  },
+  // U-10.6: part `n` of a multipart upload (from 1).
+  {
+    path: "files/:collection/:id/upload/:uploadId/parts/:n",
+    methods: ["PUT"],
+    auth: { kind: "device" },
+    cors: true,
+    params: FILE_PARAMS,
+    handler: (ctx, match) => handlePartPut(ctx, match),
   },
 ]);

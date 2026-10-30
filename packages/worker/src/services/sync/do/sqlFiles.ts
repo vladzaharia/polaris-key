@@ -291,6 +291,14 @@ export class FileTables {
     );
   }
 
+  removePart(uploadId: string, n: number): void {
+    this.q.run(
+      `DELETE FROM upload_parts WHERE upload_id = ? AND n = ?`,
+      uploadId,
+      n,
+    );
+  }
+
   // ---- SSE-C keys ----------------------------------------------------------------------------
 
   ssecKey(kid: string): Uint8Array | undefined {

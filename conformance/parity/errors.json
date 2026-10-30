@@ -452,8 +452,7 @@
       "code": "upload_mismatch",
       "kind": "wire",
       "service": "sync",
-      "description": "400 from a file upload route: the bytes do not match the declared `size` or `sha256`, a part has the wrong length or number, or `Content-Digest` is missing or does not match. Nothing is stored for the failed request (WIRE-CONTRACT-V5 §13.8.1, §13.8.4, §13.9; U-10).",
-      "plannedBy": "U-10"
+      "description": "400 from a file upload route: the bytes do not match the declared `size` or `sha256`, a part has the wrong length or number, or `Content-Digest` is missing or does not match. Nothing is stored for the failed request (WIRE-CONTRACT-V5 §13.8.1, §13.8.4, §13.9; U-10)."
     },
     {
       "code": "upload_expired",
