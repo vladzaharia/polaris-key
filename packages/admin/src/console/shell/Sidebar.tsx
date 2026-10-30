@@ -24,7 +24,7 @@ import {
 } from "../nav.js";
 import { usePendingRecipes } from "../sections/config/model/pending.js";
 import { Link } from "../router.js";
-import { globalPage, productPage } from "../routes.js";
+import { globalPage, navHref, productPage } from "../routes.js";
 import {
   SETTINGS_HUB_PAGES,
   CONNECT_PAGES,
@@ -265,9 +265,7 @@ export function Sidebar({
             <>
               {coreItems.length > 0 ? (
                 <ul className="flex flex-col gap-0.5" data-service="core">
-                  {coreItems.map((p) =>
-                    listItem(p, productPage(slug, p.page as ProductPageId)),
-                  )}
+                  {coreItems.map((p) => listItem(p, navHref(slug, p)))}
                 </ul>
               ) : null}
               {features_.map(({ section, keys, items }) => (
@@ -279,7 +277,7 @@ export function Sidebar({
                   glyph={section.glyph}
                   items={items.map((p) => ({
                     page: p,
-                    to: productPage(slug, p.page as ProductPageId),
+                    to: navHref(slug, p),
                     badge: p.page === "catalog" ? pending : 0,
                   }))}
                   activePage={activePage}
@@ -390,6 +388,8 @@ function isActivePage(activePage: PageId | null, page: string): boolean {
   return (
     activePage === page ||
     (activePage === "product-new" && page === "home") ||
+    // A channel's page is reached from Channel setup (A-22).
+    (page === "outlets" && activePage === "channel") ||
     // The settings hub's tabs are Settings (ST-08).
     (page === "settings" &&
       activePage !== null &&

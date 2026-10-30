@@ -29,22 +29,19 @@ export function fractionGate(
   );
 }
 
-/** What each connector control needs before Confirm: a release, a typed name, a group, a track. */
+/** What each connector control needs before Confirm: a release, a group, a track. */
 export function controlGate(
   control: string | undefined,
   v: {
     releaseId: string | null;
-    appName: string;
     groupId: string;
     track: string | null;
     priority: number | null;
   },
 ): ConfirmBlock {
-  const release = control === "release";
   const priority = control === "priority";
   return confirmBlocked(
-    [(release || priority) && !v.releaseId, "Choose a release first"],
-    [release && v.appName.trim() === "", NEEDS_APP_NAME],
+    [priority && !v.releaseId, "Choose a release first"],
     [
       control === "testflight/public-link" && v.groupId.trim() === "",
       "Enter a beta group to continue",

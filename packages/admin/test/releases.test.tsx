@@ -1075,7 +1075,7 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
 
   it("names each store's own halt for a mirrored rollout (P0-47)", async () => {
     const { haltBlocker, storeHalt } =
-      await import("../src/console/sections/distribution/components/RolloutDialogs.js");
+      await import("../src/console/sections/distribution/components/RolloutHalt.js");
     const mirror = (source: string, over: Record<string, unknown> = {}) =>
       rollout(source, {
         mirrored: true,

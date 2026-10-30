@@ -1,7 +1,8 @@
 /**
- * Distribution → App Store (A-17g; notes/S-14 §8.2, T6): the **Distribute** flow that takes a build
- * of the product's pinned app to TestFlight and the App Store, beside what App Store Connect has
- * now (its versions and review submissions, with the release controls).
+ * The App Store channel's **Distribute** flow (A-17g; notes/S-14 §8.2, T6; re-homed from
+ * Distribution → App Store by A-22.4): it takes a build of the product's pinned app to TestFlight
+ * and the App Store, beside what App Store Connect has now (its versions and review submissions,
+ * with the release controls). It is the first section of the channel's Releases tab.
  *
  * Steps, each in the URL (`?step=`, with `?build=` and `?version=`), so a refresh or a closed tab
  * resumes: **Build** (unexpired builds, newest first, polled while one is processing) → **Export
@@ -18,7 +19,7 @@
  */
 
 import { channelLabel } from "@polaris-key/manifest";
-import { docsUrl } from "../../../../lib/docsLinks.js";
+import { channelDocs } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type {
@@ -31,9 +32,7 @@ import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Stepper, type WizardStep } from "../../../../ui/wizard/index.js";
-import { PageHeader } from "../../../../ui/PageHeader.js";
 import { Link, useSearchParam } from "../../../router.js";
 import { codecs, r } from "../../../routes.js";
 import {
@@ -44,17 +43,18 @@ import {
   releaseNotesSeed,
   type AscIntent,
   type LocaleNotes,
-} from "../components/ascShared.js";
-import { StoreState } from "../components/AscStoreState.js";
-import { PreflightStep, SubmitStep } from "../components/AscSubmitSteps.js";
-import { VersionStep } from "../components/AscVersionStep.js";
+} from "./ascShared.js";
+import { StoreState } from "./AscStoreState.js";
+import { PreflightStep, SubmitStep } from "./AscSubmitSteps.js";
+import { VersionStep } from "./AscVersionStep.js";
 import {
   BuildStep,
   ComplianceStep,
   NotesStep,
   TestFlightStep,
-} from "../components/AscBuildSteps.js";
-import type { StepCtx } from "../components/AscStepShared.js";
+} from "./AscBuildSteps.js";
+import type { StepCtx } from "./AscStepShared.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { patchQuery, useConnectorRead, useConnectors } from "../data.js";
 
 // ── Steps ─────────────────────────────────────────────────────────────────────────────────────
@@ -128,7 +128,14 @@ function writeNotes(slug: string, buildId: string, notes: LocaleNotes[]) {
 
 // ── The page ──────────────────────────────────────────────────────────────────────────────────
 
-export function AppStorePage({ slug }: { slug: string }): React.ReactElement {
+export function AscDistribute({
+  slug,
+  name,
+}: {
+  slug: string;
+  /** The channel's display name, for the empty state. */
+  name: string;
+}): React.ReactElement {
   const connectors = useConnectors(slug);
   const asc = ascConnector(connectors.data?.connectors);
   const blocked = connectors.data ? ascBlocked(asc) : null;
@@ -136,21 +143,6 @@ export function AppStorePage({ slug }: { slug: string }): React.ReactElement {
 
   return (
     <div className="space-y-6" data-template="flow">
-      <PageHeader
-        title={channelLabel("app-store")}
-        titleAside={
-          asc && !blocked ? (
-            <StatusPill tone="success">Connected</StatusPill>
-          ) : null
-        }
-        meta={
-          appleId ? (
-            <span className="font-mono text-xs text-fg-muted">
-              Apple ID {appleId}
-            </span>
-          ) : undefined
-        }
-      />
       {connectors.isPending ? (
         <Skeleton className="h-64 w-full" />
       ) : connectors.isError ? (
@@ -162,15 +154,20 @@ export function AppStorePage({ slug }: { slug: string }): React.ReactElement {
       ) : blocked || !asc || !appleId ? (
         <EmptyState
           kind="first-run"
-          headingLevel={2}
+          headingLevel={3}
           title="App Store Connect can't be used for this product yet"
           description={blocked ?? "The connector names no app."}
+          // No connector at all is a missing `.pkey/distribution` declaration: Setup can't fix it.
           primaryAction={
-            <Button variant="outline" asChild>
-              <Link to={r.credentials(slug)}>Open Channel credentials</Link>
-            </Button>
+            asc ? (
+              <Button variant="outline" asChild>
+                <Link to={r.channel(slug, "app-store", "setup")}>
+                  Open {name} setup
+                </Link>
+              </Button>
+            ) : undefined
           }
-          docs={docsUrl("appStorePage")}
+          docs={channelDocs("app-store")}
         />
       ) : (
         <DistributeFlow slug={slug} asc={asc} appleId={appleId} />
@@ -189,6 +186,7 @@ function DistributeFlow({ slug, asc, appleId }: FlowProps): React.ReactElement {
   const [stepRaw, setStep] = useSearchParam("step", stepCodec);
   const [buildId] = useSearchParam("build", idCodec);
   const [versionId] = useSearchParam("version", idCodec);
+  const gate = useWriteGate("ship", slug);
   const [intent, setIntent] = React.useState<AscIntent | null>(null);
   const [dialog, setDialog] = React.useState<React.ReactNode>(null);
 
@@ -275,11 +273,42 @@ function DistributeFlow({ slug, asc, appleId }: FlowProps): React.ReactElement {
     if (main) main.scrollTop = 0;
   }, [step]);
 
+  // Focus has nowhere to go when the control that held it leaves (Continue into Submit, a closed
+  // confirm whose button is gone): the step's title takes it, never the page (A-22.4 UX).
+  const refocus = React.useCallback((force = false) => {
+    window.setTimeout(() => {
+      const a = document.activeElement;
+      if (force || !a || a === document.body)
+        document
+          .getElementById("wizard-step-title")
+          ?.focus({ preventScroll: true });
+    }, 120);
+  }, []);
+  const mounted = React.useRef(false);
+  React.useEffect(() => {
+    if (mounted.current) refocus();
+    mounted.current = true;
+  }, [step, refocus]);
+  // Choosing a version changes `?version=`, which sends the route's focus to the page heading.
+  const choseVersion = React.useRef(versionId);
+  React.useEffect(() => {
+    if (choseVersion.current === versionId) return;
+    choseVersion.current = versionId;
+    if (versionId) refocus(true);
+  }, [versionId, refocus]);
+
   const open = (i: AscIntent, body?: React.ReactNode) => {
     setDialog(body ?? null);
     setIntent(i);
   };
-  const ctx: StepCtx = { slug, appleId, build, version, open };
+  const ctx: StepCtx = {
+    slug,
+    appleId,
+    build,
+    version,
+    open,
+    gate: gate.disabledReason,
+  };
 
   const index = DISTRIBUTE_STEPS.indexOf(step);
   const next = DISTRIBUTE_STEPS[index + 1];
@@ -295,86 +324,91 @@ function DistributeFlow({ slug, asc, appleId }: FlowProps): React.ReactElement {
         done={[...done]}
         onStep={(id) => setStep(id as DistributeStep)}
       />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="min-w-0 space-y-6 lg:col-span-2">
-          <section
-            aria-labelledby="wizard-step-title"
-            className="rounded-lg border border-border bg-surface-raised"
-          >
-            {step === "build" ? (
-              <BuildStep
-                ctx={ctx}
-                q={buildsQ}
-                builds={builds}
-                onPick={(id) =>
-                  patchQuery({ build: id, version: null, step: null })
-                }
-              />
-            ) : step === "compliance" && build ? (
-              <ComplianceStep ctx={ctx} build={build} />
-            ) : step === "notes" && build ? (
-              <NotesStep
-                ctx={ctx}
-                build={build}
-                notes={notes}
-                setNotes={setNotes}
-              />
-            ) : step === "testflight" && build ? (
-              <TestFlightStep
-                ctx={ctx}
-                build={build}
-                groups={groupsQ.data?.betaGroups}
-                groupsQ={groupsQ}
-              />
-            ) : step === "version" && build ? (
-              <VersionStep
-                ctx={ctx}
-                build={build}
-                versions={versions}
-                notes={notes}
-                onChoose={(id) => patchQuery({ version: id })}
-              />
-            ) : step === "preflight" && version ? (
-              <PreflightStep ctx={ctx} version={version} />
-            ) : step === "submit" && version ? (
-              <SubmitStep ctx={ctx} version={version} sent={sentForReview} />
-            ) : (
-              <div className="p-5">
-                <Skeleton className="h-40 w-full" />
-              </div>
-            )}
-          </section>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-            {prev ? (
-              <Button
-                variant="outline"
-                iconStart={<ArrowLeft aria-hidden />}
-                onClick={() => setStep(prev)}
-              >
-                Back
-              </Button>
-            ) : null}
-            {next ? (
-              <Button
-                iconEnd={<ArrowRight aria-hidden />}
-                disabledReason={nextBlocked ? CONTINUE_REASON[step] : undefined}
-                onClick={() => setStep(next)}
-              >
-                Continue
-              </Button>
-            ) : null}
+      <div className="@container">
+        <div className="grid grid-cols-1 gap-6 @3xl:grid-cols-3">
+          <div className="min-w-0 space-y-6 @3xl:col-span-2">
+            <section
+              aria-labelledby="wizard-step-title"
+              className="rounded-lg border border-border bg-surface-raised"
+            >
+              {step === "build" ? (
+                <BuildStep
+                  ctx={ctx}
+                  q={buildsQ}
+                  builds={builds}
+                  onPick={(id) =>
+                    patchQuery({ build: id, version: null, step: null })
+                  }
+                />
+              ) : step === "compliance" && build ? (
+                <ComplianceStep ctx={ctx} build={build} />
+              ) : step === "notes" && build ? (
+                <NotesStep
+                  ctx={ctx}
+                  build={build}
+                  notes={notes}
+                  setNotes={setNotes}
+                />
+              ) : step === "testflight" && build ? (
+                <TestFlightStep
+                  ctx={ctx}
+                  build={build}
+                  groups={groupsQ.data?.betaGroups}
+                  groupsQ={groupsQ}
+                />
+              ) : step === "version" && build ? (
+                <VersionStep
+                  ctx={ctx}
+                  build={build}
+                  versions={versions}
+                  notes={notes}
+                  onChoose={(id) => patchQuery({ version: id })}
+                />
+              ) : step === "preflight" && version ? (
+                <PreflightStep ctx={ctx} version={version} />
+              ) : step === "submit" && version ? (
+                <SubmitStep ctx={ctx} version={version} sent={sentForReview} />
+              ) : (
+                <div className="p-5">
+                  <Skeleton className="h-40 w-full" />
+                </div>
+              )}
+            </section>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+              {prev ? (
+                <Button
+                  variant="outline"
+                  iconStart={<ArrowLeft aria-hidden />}
+                  onClick={() => setStep(prev)}
+                >
+                  Back
+                </Button>
+              ) : null}
+              {next ? (
+                <Button
+                  iconEnd={<ArrowRight aria-hidden />}
+                  disabledReason={
+                    nextBlocked ? CONTINUE_REASON[step] : undefined
+                  }
+                  onClick={() => setStep(next)}
+                >
+                  Continue
+                </Button>
+              ) : null}
+            </div>
           </div>
+          <StoreState
+            slug={slug}
+            appleId={appleId}
+            asc={asc}
+            versions={versions}
+            submissions={submissions}
+            builds={builds}
+            versionsQ={versionsQ}
+            open={open}
+            gate={gate.disabledReason}
+          />
         </div>
-        <StoreState
-          slug={slug}
-          appleId={appleId}
-          asc={asc}
-          versions={versions}
-          submissions={submissions}
-          builds={builds}
-          versionsQ={versionsQ}
-          open={open}
-        />
       </div>
       <AscActionDialog
         slug={slug}
@@ -382,6 +416,7 @@ function DistributeFlow({ slug, asc, appleId }: FlowProps): React.ReactElement {
         onClose={() => {
           setIntent(null);
           setDialog(null);
+          refocus();
         }}
       >
         {dialog}

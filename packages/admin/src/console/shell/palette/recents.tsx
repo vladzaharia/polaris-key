@@ -1,4 +1,5 @@
 import * as React from "react";
+import { CHANNEL_IDS, channelLabel } from "@polaris-key/manifest";
 import { History } from "lucide-react";
 import { pageOf } from "../../nav.js";
 import {
@@ -91,7 +92,10 @@ export function recordItem(
   const childNoun = route.child && record.child ? record.child.noun : null;
   const name = route.child
     ? `${childNoun ?? record.noun} ${route.child.ids.join("/")}`
-    : (readNames()[href] ?? `${record.noun} ${route.id}`);
+    : (readNames()[href] ??
+      (route.page === "channel" && CHANNEL_IDS.some((c) => c === route.id)
+        ? channelLabel(route.id)
+        : `${record.noun} ${route.id}`));
   let where = page.label;
   if (route.kind === "product") {
     const product = products.find((p) => p.slug === route.slug);

@@ -98,7 +98,7 @@ const stripClass = (edges: string) =>
 // control or a boxed tray. The hover tint and the ring take the same accent.
 const tabClass = (active: boolean) =>
   cn(
-    "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-[3px] px-1.5 text-sm",
+    "relative inline-flex h-10 min-w-max shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-[3px] px-1.5 text-sm",
     "focus-visible:outline-2 focus-visible:outline-focus",
     active
       ? "border-transparent font-medium text-fg-strong"
@@ -201,9 +201,9 @@ export function PageTabs({
         data-strip-overflow={strip.edges ? "" : undefined}
         className={stripClass(strip.edges)}
       >
-        <ul className="flex gap-3 sm:gap-6">
+        <ul className="flex w-max min-w-full gap-3 sm:gap-6">
           {items.map((t) => (
-            <li key={t.value}>
+            <li key={t.value} className="shrink-0">
               <Link
                 to={t.to!}
                 transition="tab"

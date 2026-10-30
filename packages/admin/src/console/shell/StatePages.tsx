@@ -25,6 +25,7 @@ import {
   type NavSection,
   type ProductPageId,
 } from "../nav.js";
+import { humanize } from "../../lib/status.js";
 import { Link } from "../router.js";
 import { movedHref, r, searchTermFor, type MovedTo } from "../routes.js";
 import { LiveRegion } from "../../ui/LiveRegion.js";
@@ -155,8 +156,15 @@ export function MovedPage({
   const tab = moved.page
     ? SETTINGS_TAB_OF[moved.page as ProductPageId]
     : undefined;
-  const home =
-    moved.page && SETTINGS_HUB_PAGES.includes(moved.page as ProductPageId)
+  // A page that moved to one record's tab ("Ship builds → App Store → Releases", A-22.4).
+  const toRecord =
+    moved.page && moved.id !== undefined && moved.tab !== undefined
+      ? { name: channelLabel(moved.id), tab: moved.tab }
+      : undefined;
+  const feature = section ? featureOfSection(section.key) : null;
+  const home = toRecord
+    ? `${(feature?.label ?? section?.label ?? "").replace(/ /g, "\u00a0")}\u00a0\u2192\u00a0${toRecord.name}\u00a0\u2192\u00a0`
+    : moved.page && SETTINGS_HUB_PAGES.includes(moved.page as ProductPageId)
       ? `Settings\u00a0\u2192\u00a0${tab ? `${pageOf(tab).label}\u00a0\u2192\u00a0` : ""}`
       : section
         ? `${section.label}\u00a0\u2192\u00a0`
@@ -172,7 +180,9 @@ export function MovedPage({
         // No-break spaces keep "License → Licenses" on one line when the title wraps on a phone.
         title={
           target
-            ? `This page moved to ${home}${target.label}`
+            ? toRecord
+              ? `This page moved to ${home}${humanize(toRecord.tab)}`
+              : `This page moved to ${home}${target.label}`
             : "This page was deleted"
         }
         description={
@@ -187,13 +197,15 @@ export function MovedPage({
         primaryAction={
           <Button asChild>
             <Link to={href ?? fallback}>
-              {target && record
-                ? `Open ${record.noun.toLowerCase()} ${moved.id}`
-                : target
-                  ? `Go to ${target.label}`
-                  : slug
-                    ? "Go to Overview"
-                    : "Go to Home"}
+              {toRecord
+                ? `Open ${toRecord.name} ${toRecord.tab}`
+                : target && record
+                  ? `Open ${record.noun.toLowerCase()} ${moved.id}`
+                  : target
+                    ? `Go to ${target.label}`
+                    : slug
+                      ? "Go to Overview"
+                      : "Go to Home"}
             </Link>
           </Button>
         }

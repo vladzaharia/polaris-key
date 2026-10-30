@@ -1,6 +1,6 @@
 /**
  * Distribute flow: the context every step receives, the step title and the date parser.
- * Split out of `pages/AppStorePage.tsx`.
+ * Split out of `components/AscDistribute.tsx`.
  */
 
 import * as React from "react";
@@ -20,6 +20,8 @@ export interface StepCtx {
   build: AscBuildDto | null;
   version: AscVersionDto | null;
   open: (i: AscIntent, body?: React.ReactNode) => void;
+  /** Why every write is off for this reader (the Ship write gate), when it is. */
+  gate?: string;
 }
 
 export function StepTitle({
@@ -33,10 +35,11 @@ export function StepTitle({
 }): React.ReactElement {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4">
-      <div className="min-w-0 flex-1 space-y-1">
+      <div className="min-w-0 flex-1 basis-56 space-y-1">
         <h2
           id="wizard-step-title"
-          className="text-lg font-semibold text-fg-strong"
+          tabIndex={-1}
+          className="text-lg font-semibold text-fg-strong outline-hidden [overflow-wrap:anywhere]"
         >
           {children}
         </h2>

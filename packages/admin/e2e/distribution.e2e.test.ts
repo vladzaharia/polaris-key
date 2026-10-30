@@ -214,7 +214,7 @@ const PAGES: { hash: string; title: string; file: string }[] = [
   { hash: "#/p/djdl/distribution/health", title: "Health", file: "health" },
   {
     hash: "#/p/djdl/distribution/credentials",
-    title: "Channel credentials",
+    title: "Credentials",
     file: "credentials",
   },
   // A-17g: the App Store Distribute flow (its steps) and Commerce's App Store products.
@@ -334,24 +334,25 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
     await closeContext(page.context());
   });
 
-  it("credentials: the set-credential drawer and its kind select", async () => {
+  it("credentials: the set-credential drawer", async () => {
     const { page, errors } = await open("#/p/djdl/distribution/credentials");
-    await title(page, "Channel credentials");
+    await title(page, "Credentials");
     await overlay(page, "set credential", async () => {
-      await page.getByRole("button", { name: "Set credential…" }).click();
+      await page
+        .getByRole("button", { name: "Set credential…" })
+        .first()
+        .click();
       await page
         .getByRole("dialog", { name: "Set a channel credential" })
         .waitFor();
     });
-    await page.getByRole("button", { name: "Set credential…" }).click();
+    await page.getByRole("button", { name: "Set credential…" }).first().click();
     await page
       .getByRole("dialog", { name: "Set a channel credential" })
       .waitFor();
     await violations(page);
-    await page.getByRole("combobox", { name: /Kind/ }).click();
-    await page
-      .getByRole("option", { name: /App Store Connect API key/ })
-      .click();
+    // The product offers one kind here: it is said, not asked.
+    await page.getByText("Sentry internal integration").first().waitFor();
     await page.waitForTimeout(250);
     expect(await violations(page)).toEqual([]);
     expect(errors).toEqual([]);

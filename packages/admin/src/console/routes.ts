@@ -349,6 +349,11 @@ function productHref(
   return `${path}${recordSuffix(p, opts)}${suffix}`;
 }
 
+/** A nav row's address: its page. */
+export function navHref(slug: string, p: NavPage): string {
+  return productPage(slug, p.page as ProductPageId);
+}
+
 /** The canonical hash for a route. `parseLocation(hrefFor(r))` round-trips every built route. */
 export function hrefFor(route: Route): string {
   const suffix = queryString(route.query);
@@ -394,7 +399,12 @@ export function movedHref(
     return globalHref(moved.page, queryString(carried), { id: moved.id });
   }
   if (slug === undefined) return undefined;
-  return productHref(slug, moved.page, { id: moved.id }, queryString(query));
+  return productHref(
+    slug,
+    moved.page,
+    { id: moved.id, tab: moved.tab },
+    queryString(query),
+  );
 }
 
 /**
@@ -545,8 +555,9 @@ export const r = {
     productPage(slug, "storefronts", { id: store }),
   listing: (slug: string, query?: QueryInit) =>
     productPage(slug, "presentation-listing", { query }),
-  appStore: (slug: string, query?: QueryInit) =>
-    productPage(slug, "app-store", { query }),
+  /** A-22: one channel's page, on a tab (the first, Status, by default). */
+  channel: (slug: string, id: string, tab?: string) =>
+    productPage(slug, "channel", { id, tab }),
   commerce: (slug: string) => productPage(slug, "commerce"),
   commerceOverview: (slug: string) => productPage(slug, "commerce-overview"),
   access: (slug: string) => productPage(slug, "access"),

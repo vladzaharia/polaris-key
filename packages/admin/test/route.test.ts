@@ -546,7 +546,7 @@ describe("the nav model (nav.ts)", () => {
       "outlets",
       "storefronts",
       "presentation-listing",
-      "app-store",
+      "channel",
       "commerce",
       "commerce-overview",
       "access",
@@ -601,12 +601,7 @@ describe("the nav model (nav.ts)", () => {
     expect(accentOf("rollouts")).toBe("release");
     expect(accentOf("feed")).toBe("release");
     // The sales surfaces keep Distribution green, a page in a mixed section.
-    for (const sales of [
-      "storefronts",
-      "presentation-listing",
-      "app-store",
-      "credentials",
-    ])
+    for (const sales of ["storefronts", "presentation-listing", "credentials"])
       expect(accentOf(sales as never), sales).toBe("distribution");
   });
 

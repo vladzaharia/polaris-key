@@ -1,0 +1,53 @@
+/**
+ * The channel page's tab registry (A-22): one line per built tab, each tab its own file. A later
+ * slice adds its line here and nothing else. The URL already knows every tab (`CHANNEL_TAB_IDS`);
+ * a tab that is not listed here does not show, and its address opens Status.
+ */
+
+import type * as React from "react";
+import type { ChannelRow } from "../../../../api.js";
+import type { CHANNEL_TAB_IDS } from "../../../nav.js";
+import { ChannelListing, hasListing } from "./ChannelListing.js";
+import { ChannelSales, hasSales } from "./ChannelSales.js";
+import { ChannelReleases } from "./ChannelReleases.js";
+import { ChannelSetup, hasCredentials } from "./ChannelSetup.js";
+import { ChannelStatus } from "./ChannelStatus.js";
+
+export type ChannelTabId = (typeof CHANNEL_TAB_IDS)[number];
+
+export interface ChannelTabProps {
+  slug: string;
+  /** The product's display name. */
+  name: string;
+  channel: ChannelRow;
+}
+
+export interface ChannelTab {
+  value: ChannelTabId;
+  label: string;
+  Panel: React.ComponentType<ChannelTabProps>;
+  /** The tab shows only for a channel it applies to; omitted, it shows for every channel. */
+  applies?: (channel: ChannelRow) => boolean;
+  /** `applies` reads only the channel's id, so it can be asked before the row loads. */
+  byId?: boolean;
+}
+
+export const CHANNEL_TABS: readonly ChannelTab[] = [
+  { value: "status", label: "Status", Panel: ChannelStatus },
+  { value: "releases", label: "Releases", Panel: ChannelReleases },
+  {
+    value: "listing",
+    label: "Listing",
+    applies: hasListing,
+    byId: true,
+    Panel: ChannelListing,
+  },
+  { value: "sales", label: "Sales", applies: hasSales, Panel: ChannelSales },
+  {
+    value: "setup",
+    label: "Setup",
+    Panel: ChannelSetup,
+    applies: (c) => hasCredentials(c.id),
+    byId: true,
+  },
+];

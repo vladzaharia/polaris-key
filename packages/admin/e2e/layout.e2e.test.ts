@@ -465,6 +465,81 @@ function cases(): Case[] {
       },
     },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
+    // A-22: the channel page's Status (attention rows, a long identity) and Releases tabs.
+    {
+      name: "djdl:channel/status",
+      hash: "#/p/djdl/distribution/channels/google-play",
+    },
+    {
+      name: "djdl:channel/releases",
+      hash: "#/p/djdl/distribution/channels/google-play/releases",
+    },
+    // A-22.4: the App Store channel's Releases tab (the Distribute flow beside App Store Connect's state).
+    {
+      name: "djdl:channel/app-store",
+      hash: "#/p/djdl/distribution/channels/app-store/releases",
+    },
+    // A-22.3a: the Setup tab's credential table (a failed key's long error, a pin, the actions).
+    {
+      name: "djdl:channel/setup",
+      hash: "#/p/djdl/distribution/channels/google-play/setup",
+      override: {
+        "/manage/api/products/djdl/outlet-credentials": {
+          ok: true,
+          kinds: ["google-service-account"],
+          pins: {
+            "google-service-account": {
+              field: "packageName",
+              label: "Google Play package name",
+            },
+          },
+          credentials: [
+            {
+              id: "play-release-service-account",
+              kind: "google-service-account",
+              outletId: null,
+              meta: {
+                clientEmail:
+                  "polaris-key-release@acme-games-production.iam.gserviceaccount.com",
+                packageName: "com.example.djdl.with.a.very.long.package.name",
+              },
+              status: "active",
+              createdAt: 1_790_000_000,
+              createdBy: "u1",
+              rotatedAt: null,
+              expiresAt: null,
+              lastUsedAt: 1_790_100_000,
+              lastOkAt: null,
+              lastError:
+                "403 from Google Play: the service account has no access to com.example.djdl.with.a.very.long.package.name",
+            },
+            {
+              id: "play-staging",
+              kind: "google-service-account",
+              outletId: null,
+              meta: { clientEmail: "staging@acme.iam.gserviceaccount.com" },
+              status: "active",
+              createdAt: 1_790_000_000,
+              createdBy: "u1",
+              rotatedAt: null,
+              expiresAt: null,
+              lastUsedAt: null,
+              lastOkAt: null,
+              lastError: null,
+            },
+          ],
+        },
+      },
+    },
+    {
+      name: "djdl:channel/listing",
+      hash: "#/p/djdl/distribution/channels/google-play/listing",
+    },
+    // A-22.6: the Sales tab (the App Store products).
+    {
+      name: "djdl:channel/sales",
+      hash: "#/p/djdl/distribution/channels/app-store/sales",
+    },
     // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
     {
       name: "waiting:package-feeds",
@@ -900,6 +975,11 @@ const TEXT200_CASES = [
   "djdl:releases/record/builds",
   "djdl:outlets",
   "djdl:credentials",
+  // A-22: the channel page's tabs (the tab strip's labels at 200 % text) and the App Store flow.
+  "djdl:channel/status",
+  "djdl:channel/releases",
+  "djdl:channel/setup",
+  "djdl:channel/app-store",
   "djdl:storefronts",
   "djdl:storefronts?flow=prerequisites",
   "djdl:storefronts?flow=listing",

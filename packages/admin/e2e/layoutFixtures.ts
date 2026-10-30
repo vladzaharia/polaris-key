@@ -331,6 +331,59 @@ const ROUTES: Record<string, unknown> = {
   ...DISTRIBUTION_ROUTES,
   ...DATA_ROUTES,
   ...SETTINGS_ROUTES,
+  // A-22: the channel page: attention rows and a long identity value (a clipped card, a rail at 200 %).
+  [`${P}/distribution/channels`]: {
+    product: "djdl",
+    now: NOW,
+    platforms: [],
+    kinds: [],
+    channels: [
+      {
+        id: "google-play",
+        label: "Google Play",
+        inScope: true,
+        declared: true,
+        oneClick: false,
+        notUsing: false,
+        delivery: {
+          state: "attention",
+          attention: [
+            { code: "credential_expiring" },
+            { code: "no_fitting_build", reasons: ["format", "arch"] },
+            { code: "identity_mismatch", field: "packageName" },
+          ],
+          platforms: [{ platform: "android", arches: ["arm64", "x64"] }],
+        },
+        commerce: null,
+        identity: {
+          fields: {
+            packageName:
+              "com.example.djdl.with.a.very.long.package.name.that.keeps.going",
+          },
+          source: "typed",
+        },
+      },
+      // A-22.4: the App Store channel, whose Releases tab leads with the Distribute flow.
+      {
+        id: "app-store",
+        label: "App Store",
+        inScope: true,
+        declared: true,
+        oneClick: false,
+        notUsing: false,
+        delivery: {
+          state: "live",
+          attention: [],
+          platforms: [{ platform: "ios", arches: ["arm64"] }],
+        },
+        commerce: { state: "ready", reason: null, attention: [] },
+        identity: {
+          fields: { bundleId: "com.example.djdl", appleId: "6478123905" },
+          source: "derived",
+        },
+      },
+    ],
+  },
   // F-34.8: the owner row of the switch (feeds on); `feedsoff` answers the off row below.
   [`${P}/distribution/package-feeds`]: {
     packageFeeds: {
@@ -510,7 +563,14 @@ const ROUTES: Record<string, unknown> = {
         modifiedBy: "ada@example.com",
       },
     ],
-    overrides: [],
+    overrides: [
+      {
+        store: "play",
+        locale: null,
+        field: "shortDescription",
+        value: "Mix on Android",
+      },
+    ],
     limits: { name: 30, subtitle: 30, shortDescription: 80 },
     stores: [
       { store: "google-play", label: "Google Play" },
@@ -522,7 +582,61 @@ const ROUTES: Record<string, unknown> = {
   [`${P}/distribution/listing/fit`]: {
     exists: true,
     release: null,
-    stores: [],
+    // A-22.5: Google Play takes a title, two texts and a category it is told in the store.
+    stores: [
+      {
+        store: "play",
+        label: "Google Play",
+        status: "amber",
+        issues: [
+          {
+            store: "play",
+            field: "shortDescription",
+            from: "shortDescription",
+            locale: null,
+            issue: "too_long",
+            severity: "warn",
+            limit: 10,
+            actual: 13,
+            unit: "chars",
+          },
+        ],
+        cells: [
+          {
+            field: "title",
+            from: "name",
+            locale: null,
+            plane: "api",
+            status: "green",
+            present: true,
+          },
+          {
+            field: "shortDescription",
+            from: "shortDescription",
+            locale: null,
+            plane: "api",
+            status: "amber",
+            present: true,
+          },
+          {
+            field: "fullDescription",
+            from: "description",
+            locale: null,
+            plane: "copy",
+            status: "green",
+            present: true,
+          },
+          {
+            field: "category",
+            from: "category",
+            locale: null,
+            plane: "manual",
+            status: "green",
+            present: false,
+          },
+        ],
+      },
+    ],
     issues: [],
   },
   // The platform's alert destinations and reserved-name rules (Settings → Platform).

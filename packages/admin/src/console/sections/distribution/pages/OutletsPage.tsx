@@ -4,8 +4,7 @@
  * its storefront feed URLs, and the distribution signing-key inventory.
  *
  * - An outlet opens in a drawer routed by `?outlet=<id>` (the `EntityLink` "outlet" target).
- * - **Narrow capabilities…** (L1) can only narrow below the kind's default; **Revert to
- *   manifest** (L1) restores the default.
+ * - **Narrow capabilities…** (L1) only narrows; **Revert to manifest** (L1) restores the default.
  * - Feeds: feed-capable kinds get one public URL per channel (`docs/services/distribution/feeds.md`).
  * - Keys: `GET/PUT/DELETE …/distribution/keys`, the inventory and CI's unmatched observations.
  */
@@ -49,6 +48,10 @@ import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { mutate } from "../../../data/mutations.js";
+import {
+  OutletKindLine,
+  outletRowActions,
+} from "../components/OutletKindLine.js";
 import { Link, useSearchParam } from "../../../router.js";
 import { Panel } from "../../../templates/Dashboard.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
@@ -295,12 +298,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
         getRowId={(o) => o.outletId}
         rowHref={(o) => hrefWithQuery({ outlet: o.outletId })}
         linkComponent={Link}
-        rowActions={(o) => [
-          {
-            label: "Open",
-            onSelect: () => patchQuery({ outlet: o.outletId }, { push: true }),
-          },
-        ]}
+        rowActions={(o) => outletRowActions(slug, o)}
         state={state}
         onStateChange={setState}
         search={{ placeholder: "Search channels", columns: ["outlet", "kind"] }}
@@ -369,7 +367,7 @@ function OutletDrawer({
         onOpenChange={(o) => !o && onClose()}
         size="lg"
         title={outlet ? outlet.outletId : "Channel not found"}
-        description={outlet ? outletKindLabel(outlet.kind) : undefined}
+        description={outlet && <OutletKindLine slug={slug} outlet={outlet} />}
       >
         <DrawerBody className="space-y-6">
           {!outlet ? (

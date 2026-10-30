@@ -5,10 +5,9 @@
  * - **Rollout-shaped verbs** (App Store phased release pause, resume, complete; Play rollout
  *   fraction, halt, resume, complete) live in the Matrix cell drawer, beside the mirrored rollout
  *   they move (`StoreRolloutControls`).
- * - **Configuration actions** (App Store **Release this version**, **TestFlight public link**,
+ * - **Configuration actions** (App Store **TestFlight public link** and
  *   **Webhook setup**; Play **Update priority** and **Settings**) live on the connector cards of
- *   Outlet credentials (`ConnectorCard`). The App Store card also links to **Distribute**, the
- *   App Store page's flow (A-17g).
+ *   the channel's Setup (`ConnectorCard`); the App Store card links to **Distribute** (A-22.4).
  *
  * Every control is the connector's own audited route; a store's refusal comes back as a reason
  * `errorCopy` words (`store_refused`, `not_held`, `credential_pin_missing`, …). Controls appear
@@ -38,7 +37,9 @@ import { Select } from "../../../../ui/Select.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Switch } from "../../../../ui/Switch.js";
 import { toast } from "../../../../ui/toast.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { mutate } from "../../../data/mutations.js";
+import { useCredentials } from "../data.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 
@@ -438,7 +439,6 @@ export function ConnectorCard({
 }): React.ReactElement {
   const [pending, setPending] = React.useState<PendingControl | null>(null);
   const [releaseId, setReleaseId] = React.useState<string | null>(null);
-  const [appName, setAppName] = React.useState("");
   const [groupId, setGroupId] = React.useState("");
   const [linkOn, setLinkOn] = React.useState(true);
   const [track, setTrack] = React.useState<string | null>(null);
@@ -447,35 +447,32 @@ export function ConnectorCard({
     playSettingsOf(connector),
   );
   const blocked = connectorBlocked(connector);
+  const ship = useWriteGate("ship", slug);
+  const creds = useCredentials(slug);
   const has = (c: string) => connector.controls.includes(c);
-  const tone = blocked ? (connector.inert ? "warning" : "neutral") : "success";
+  // A held key whose last use failed is not "Connected" (A-22.3b UX).
+  const keyId =
+    connector.setup?.apiKeyCredential ?? connector.setup?.credential;
+  const failing =
+    !blocked &&
+    creds.data?.credentials.some((c) => c.id === keyId && c.lastError);
+  const tone = blocked
+    ? connector.inert
+      ? "warning"
+      : "neutral"
+    : failing
+      ? "warning"
+      : "success";
   const state = connector.inert
     ? `Not running: ${inertWords(connector.inert.reason)}`
-    : connector.configured
-      ? "Connected"
-      : "Not configured";
+    : failing
+      ? "Key check failed"
+      : connector.configured
+        ? "Connected"
+        : "Not configured";
 
   const actions: { label: string; open: () => void }[] = [];
   if (connector.kind === "asc") {
-    if (has("release"))
-      actions.push({
-        label: "Release this version…",
-        open: () => {
-          setAppName("");
-          setPending({
-            action: "connector.releaseVersion",
-            control: "release",
-            title: "Release a held version on the App Store?",
-            consequences: [
-              "The version waiting for developer release goes live on the App Store.",
-              "App Store Connect cannot take a release back.",
-            ],
-            confirmLabel: "Release version",
-            body: {},
-            done: "Released the version on the App Store",
-          });
-        },
-      });
     if (has("testflight/public-link"))
       actions.push({
         label: "TestFlight public link…",
@@ -566,7 +563,6 @@ export function ConnectorCard({
   const control = pending?.control;
   const extra = (): Record<string, unknown> => {
     // L3 (A-17a): the typed name goes as `confirm`; the Worker compares it with Apple's.
-    if (control === "release") return { releaseId, confirm: appName.trim() };
     if (control === "testflight/public-link")
       return { betaGroupId: groupId.trim(), enabled: linkOn };
     if (control === "priority") return { track, releaseId, priority };
@@ -575,7 +571,6 @@ export function ConnectorCard({
   };
   const gate = controlGate(control, {
     releaseId,
-    appName,
     groupId,
     track,
     priority,
@@ -615,9 +610,10 @@ export function ConnectorCard({
         // Pinned to the card's foot, level with its neighbour's in a row of cards.
         <div className="mt-auto flex flex-wrap gap-2">
           {connector.kind === "asc" && has("distribute/submit") && !blocked ? (
-            // A-17g: the Distribute flow and App Store products have their own pages.
             <Button size="sm" variant="outline" asChild>
-              <Link to={r.appStore(slug)}>Distribute</Link>
+              <Link to={r.channel(slug, "app-store", "releases")}>
+                Distribute
+              </Link>
             </Button>
           ) : null}
           {actions.map((a) => (
@@ -625,7 +621,7 @@ export function ConnectorCard({
               key={a.label}
               size="sm"
               variant="outline"
-              disabledReason={blocked ?? undefined}
+              disabledReason={blocked ?? ship.disabledReason}
               onClick={a.open}
             >
               {a.label}
@@ -642,7 +638,7 @@ export function ConnectorCard({
         gate={gate}
         bodyExtra={extra}
       >
-        {control === "release" || control === "priority" ? (
+        {control === "priority" ? (
           <FormField<string | null>
             name="connector-release"
             label="Release"
@@ -660,27 +656,6 @@ export function ConnectorCard({
                 searchPlaceholder="Search versions"
                 emptyText="No release matches."
                 options={releaseOptions}
-              />
-            )}
-          </FormField>
-        ) : null}
-        {control === "release" ? (
-          <FormField<string>
-            name="connector-app-name"
-            label="App name"
-            required
-            help="Type the app's name exactly as App Store Connect shows it. Polaris Key checks it against App Store Connect before releasing."
-            value={appName}
-            onChange={setAppName}
-          >
-            {(field) => (
-              <Input
-                id={field.id}
-                value={appName}
-                autoComplete="off"
-                spellCheck={false}
-                onValueChange={setAppName}
-                aria-describedby={field["aria-describedby"]}
               />
             )}
           </FormField>

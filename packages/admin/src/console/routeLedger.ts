@@ -33,6 +33,10 @@ export interface LedgerRow {
   fate: LedgerFate;
   /** The page that took over (`moved` only). A record id in the old address follows it. */
   to?: PageId;
+  /** The record `to` opens on (a channel's id), when the old page was one fixed record. */
+  toId?: string;
+  /** The tab it opens on. */
+  toTab?: string;
   /** The package that moved or deleted the page (the 'deleted (U-27)' of the table). */
   by?: string;
 }
@@ -150,6 +154,16 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     id: "app-store",
     scope: "product",
     from: "distribution/app-store",
+    fate: "moved",
+    to: "channel",
+    toId: "app-store",
+    toTab: "releases",
+    by: "A-22.4",
+  },
+  {
+    id: "channel",
+    scope: "product",
+    from: "distribution/channels",
     fate: "live",
   },
   { id: "access", scope: "product", from: "distribution/access", fate: "live" },
@@ -416,6 +430,8 @@ export interface MovedTo {
   page?: PageId;
   scope: LedgerScope;
   id?: string;
+  /** The tab of `id` it opens on. */
+  tab?: string;
   /** The old address's path below its scope root, for the page's own words. */
   from: string;
   /** The package that moved or deleted it. */
@@ -445,7 +461,12 @@ export function ledgerLookup(
     const base = { scope, from: row.from, ...(row.by ? { by: row.by } : {}) };
     const to = row.fate === "moved" ? row.to : undefined;
     if (path.length === from.length)
-      return { ...base, ...(to ? { page: to } : {}) };
+      return {
+        ...base,
+        ...(to ? { page: to } : {}),
+        ...(to && row.toId ? { id: row.toId } : {}),
+        ...(to && row.toTab ? { tab: row.toTab } : {}),
+      };
     if (to && path.length === from.length + 1 && hasRecord(to)) {
       return { ...base, page: to, id: path[from.length]! };
     }

@@ -7,8 +7,10 @@ import {
   capabilitySummary,
 } from "../../../../ui/CapabilityBadge.js";
 import { useWriteGate } from "../../../access/useCan.js";
+import { CHANNEL_IDS } from "@polaris-key/manifest";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
+import { ChannelNameLink } from "./ChannelNameLink.js";
 import { ConnectionIssue, progress } from "./FlowPanels.js";
 
 /** The Storefronts page's tiles (A-18j): one per registered store, rendered from its declaration. */
@@ -39,7 +41,7 @@ export function StoreTile({
       <div className="flex min-h-14 items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-fg-strong">
-            {store.label}
+            <StoreName slug={slug} store={store} />
           </h2>
           <p className="break-words text-sm text-fg-muted">
             {store.app
@@ -116,7 +118,7 @@ function BuiltInTile({
       <div className="flex min-h-14 items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-fg-strong">
-            {store.label}
+            <StoreName slug={slug} store={store} />
           </h2>
           <p className="break-words text-sm text-fg-muted">
             Built in: always connected
@@ -138,10 +140,26 @@ function BuiltInTile({
         </span>
         {hasPanel ? (
           <Button size="sm" variant="outline" asChild>
-            <Link to={r.storefront(slug, store.id)}>Manage</Link>
+            <Link to={r.channel(slug, store.id, "sales")}>Manage</Link>
           </Button>
         ) : null}
       </div>
     </section>
+  );
+}
+
+/** The store's name; a store that is a channel opens the channel page, on Sales. */
+function StoreName({
+  slug,
+  store,
+}: {
+  slug: string;
+  store: StorefrontDto;
+}): React.ReactElement {
+  if (!CHANNEL_IDS.some((c) => c === store.id)) return <>{store.label}</>;
+  return (
+    <ChannelNameLink slug={slug} id={store.id}>
+      {store.label}
+    </ChannelNameLink>
   );
 }

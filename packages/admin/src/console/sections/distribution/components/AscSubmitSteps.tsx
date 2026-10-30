@@ -1,5 +1,5 @@
 /**
- * Distribute flow, steps 6 and 7: Preflight and Submit. Split out of `pages/AppStorePage.tsx`.
+ * Distribute flow, steps 6 and 7: Preflight and Submit. Split out of `components/AscDistribute.tsx`.
  */
 
 import * as React from "react";
@@ -276,11 +276,12 @@ export function SubmitStep({
         <Button
           variant="danger"
           disabledReason={
-            sent
+            ctx.gate ??
+            (sent
               ? "This version is already with App Review."
               : !version.buildId
                 ? "Attach a build in Version first."
-                : undefined
+                : undefined)
           }
           onClick={() =>
             ctx.open({

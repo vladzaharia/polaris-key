@@ -1,223 +1,165 @@
 /**
  * Distribution → Channel credentials (admin chunk 9, ADMIN.md §6.4): moved from Keys and secrets
  * (the "Channel credentials card (P5-01)" suite lived in `secrets.test.tsx`). Write-only values,
- * pins, kind-first drawer, rotate, delete, the platform store connection's refusal (A-16) and the
- * connector cards. Closes OUT-1 to OUT-7.
+ * pins, kind-first drawer, rotate, delete and the platform store connection's refusal (A-16). The
+ * connector cards moved to a channel's Setup (A-22.3b). Closes OUT-1 to OUT-7.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { configureAxe } from "vitest-axe";
 import { resetConsole } from "./consoleHarness.js";
+import { expectNoAxeViolations } from "./coreTestUtils.js";
+import { openSetDrawer, resetAround, VIEW_ONLY } from "./credentialsKit.js";
 import {
   apiError,
   bootWith,
-  CONNECTORS,
   CREDENTIALS,
   P,
   writes,
+  type Answer,
 } from "./distributionFixture.js";
 
-const axe = configureAxe({
-  rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
-});
 const HASH = "#/p/djdl/distribution/credentials";
 
-beforeEach(() => resetConsole());
-afterEach(() => {
-  cleanup();
-  vi.unstubAllGlobals();
-});
+resetAround();
+
+/** The fixture's keys plus Sentry's, the one credential that belongs to no channel. */
+const SENTRY = {
+  ...CREDENTIALS.credentials[0]!,
+  id: "sentry-alerts",
+  kind: "sentry-integration",
+  outletId: null,
+  meta: {},
+};
+const WITH_SENTRY = {
+  ...CREDENTIALS,
+  credentials: [...CREDENTIALS.credentials, SENTRY],
+};
+
+const boot = (hash: string, routes: Record<string, Answer> = {}) =>
+  bootWith(hash, { [P("/outlet-credentials")]: WITH_SENTRY, ...routes });
+
+/** A product whose platforms fit Google Play and the direct channel only. */
+const NO_APPLE = {
+  "/manage/api/products/djdl": {
+    product: {
+      slug: "djdl",
+      name: "DJDL",
+      signingKid: "kid-1",
+      compatMin: "1.0.0",
+      compatMax: "2.0.0",
+      defaultMaxOfflineDays: 14,
+      defaultDeviceLimit: 3,
+      adminGroup: null,
+      manifestAuthoritative: { value: false, locked: false },
+      createdAt: 0,
+      modifiedAt: 0,
+      platforms: [
+        { platform: "android", arches: [], formats: [], sources: [] },
+      ],
+      channels: [
+        {
+          id: "google-play",
+          label: "Google Play",
+          inScope: true,
+          delivery: "live",
+          notUsing: false,
+        },
+      ],
+    },
+  },
+};
 
 async function table(): Promise<HTMLElement> {
-  const t = await screen.findByRole("table", { name: "Channel credentials" });
-  await within(t).findByText("asc-team-key");
+  const t = await screen.findByRole("table", { name: "Credentials" });
+  await within(t).findByText("sentry-alerts");
   return t;
 }
 
-async function pick(
-  container: HTMLElement,
-  name: RegExp,
-  option: RegExp,
-): Promise<void> {
-  await userEvent.click(within(container).getByRole("combobox", { name }));
-  await userEvent.click(await screen.findByRole("option", { name: option }));
-}
-
 describe("Distribution → Channel credentials", () => {
-  it("lists metadata and health, never a value, with the last result as text (OUT-1, OUT-6)", async () => {
-    bootWith(HASH);
+  it("lists only what no channel page holds, never a value (OUT-1, OUT-6)", async () => {
+    boot(HASH);
     const t = await table();
     expect(
-      screen.getByRole("heading", { level: 1, name: "Channel credentials" }),
+      screen.getByRole("heading", { level: 1, name: "Credentials" }),
     ).toBeTruthy();
-    expect(within(t).getByText("App Store Connect API key")).toBeTruthy();
-    expect(within(t).getByText("ABC123DEFG · issuer-1")).toBeTruthy();
-    // The pin is shown apart from the key's metadata (P5-02f).
-    expect(within(t).getByText("1234567890")).toBeTruthy();
-    expect(within(t).getByText("Not pinned")).toBeTruthy();
-    expect(within(t).getByText(/403 from Google Play/)).toBeTruthy();
-    expect(within(t).getByText("Failed")).toBeTruthy();
+    expect(within(t).getByText("Sentry internal integration")).toBeTruthy();
+    // The App Store and Google keys moved to their channels' Setup tabs.
+    expect(within(t).queryByText("asc-team-key")).toBeNull();
+    expect(within(t).queryByText("play")).toBeNull();
+    expect(within(t).queryByText("Out of scope")).toBeNull();
     expect(screen.queryByText(/BEGIN PRIVATE KEY/)).toBeNull();
   });
 
-  it("says Sentry is one of the kinds (OUT-7)", async () => {
-    bootWith(HASH);
+  it("links to each in-scope store's Setup tab", async () => {
+    boot(HASH);
     await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
-    await pick(drawer, /Kind/, /Sentry internal integration/);
-    expect(within(drawer).getByLabelText(/Client secret/i)).toBeTruthy();
+    const links = screen.getByRole("region", { name: "Store keys" });
+    expect(
+      within(links)
+        .getByRole("link", { name: /^App Store/ })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/distribution/channels/app-store/setup");
+    expect(within(links).getByRole("link", { name: "Steam" })).toBeTruthy();
   });
 
-  it("re-pins a credential without its value (P5-02f)", async () => {
-    const { calls } = bootWith(HASH, {
-      [`PUT ${P("/outlet-credentials/asc-team-key")}`]: {
+  it("keeps a held key whose channel is out of scope, flagged (A-20 R6)", async () => {
+    boot(HASH, NO_APPLE);
+    const t = await table();
+    expect(within(t).getByText("asc-team-key")).toBeTruthy();
+    expect(within(t).getAllByText("Out of scope")).toHaveLength(1);
+    expect(
+      within(t).getByText(/Delete the key, or add a platform/),
+    ).toBeTruthy();
+    // Its channel is out of scope, so there is no Setup link for it; Google Play's is there.
+    const links = screen.getByRole("region", { name: "Store keys" });
+    expect(
+      within(links).queryByRole("link", { name: /^App Store/ }),
+    ).toBeNull();
+    expect(
+      within(links).getByRole("link", { name: /^Google Play/ }),
+    ).toBeTruthy();
+    // The key is still editable here: delete is offered.
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for asc-team-key" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Delete…" }),
+    ).toBeTruthy();
+  });
+
+  it("sends an old store-key link to its channel's Setup", async () => {
+    boot(`${HASH}?credential=asc-team-key`);
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        "#/p/djdl/distribution/channels/app-store/setup?credential=asc-team-key",
+      ),
+    );
+  });
+
+  it("sets Sentry's secret, the only kind offered here (OUT-7)", async () => {
+    const { calls } = boot(HASH, {
+      [`PUT ${P("/outlet-credentials/sentry-2")}`]: {
         ok: true,
-        id: "asc-team-key",
+        id: "sentry-2",
       },
     });
     await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actions for asc-team-key" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Pin…" }),
-    );
-    const dialog = await screen.findByRole("dialog", {
-      name: /Pin “asc-team-key”/,
-    });
-    const input = within(dialog).getByLabelText(
-      /App Store Connect app id/,
-    ) as HTMLInputElement;
-    expect(input.value).toBe("1234567890");
-    expect(input.getAttribute("inputmode")).toBe("numeric");
-    await userEvent.clear(input);
-    await userEvent.type(input, "5555555555");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Pin" }));
-    await waitFor(() =>
-      expect(writes(calls)).toEqual([
-        expect.objectContaining({
-          path: P("/outlet-credentials/asc-team-key"),
-          method: "PUT",
-          body: { kind: "asc-api-key", pin: "5555555555" },
-        }),
-      ]),
-    );
-  });
-
-  it("words the platform store connection's refusal on a pin (A-16)", async () => {
-    bootWith(HASH, {
-      [`PUT ${P("/outlet-credentials/asc-team-key")}`]: () =>
-        apiError(
-          409,
-          "app_assigned_elsewhere",
-          { fields: ["pin"], product: "acme" },
-          "5555555555 is assigned to product acme through the platform store connection; unassign it there first",
-        ),
-    });
-    await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actions for asc-team-key" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Pin…" }),
-    );
-    const dialog = await screen.findByRole("dialog", {
-      name: /Pin “asc-team-key”/,
-    });
-    await userEvent.click(within(dialog).getByRole("button", { name: "Pin" }));
+    const drawer = await openSetDrawer();
+    // The only kind here: said, not asked.
+    expect(within(drawer).queryByRole("combobox", { name: /Kind/ })).toBeNull();
     expect(
-      await within(dialog).findByText("That app belongs to another product"),
+      within(drawer).getByText("Sentry internal integration"),
     ).toBeTruthy();
-    expect(within(dialog).getByText(/assigned to product acme/)).toBeTruthy();
-  });
-
-  it("sets an App Store Connect key kind-first, with every missing field at once (OUT-3, OUT-5)", async () => {
-    const { calls } = bootWith(HASH, {
-      [`PUT ${P("/outlet-credentials/asc-new")}`]: { ok: true, id: "asc-new" },
-    });
-    await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
-    // Kind comes first; nothing else until it is chosen.
-    expect(within(drawer).queryByLabelText(/Credential ID/)).toBeNull();
-    await pick(drawer, /Kind/, /App Store Connect API key/);
     await userEvent.type(
       within(drawer).getByLabelText(/Credential ID/),
-      "asc-new",
-    );
-    await userEvent.click(
-      within(drawer).getByRole("button", { name: "Set credential" }),
-    );
-    expect(await within(drawer).findByText("Enter the Key ID.")).toBeTruthy();
-    expect(within(drawer).getByText("Enter the Issuer ID.")).toBeTruthy();
-    expect(within(drawer).getByText("Enter the .p8 private key.")).toBeTruthy();
-    expect(
-      within(drawer).getByText(/Enter the App Store Connect app id/),
-    ).toBeTruthy();
-    expect(writes(calls)).toEqual([]);
-    await userEvent.type(within(drawer).getByLabelText(/Key ID/), "ABC123DEFG");
-    await userEvent.type(
-      within(drawer).getByLabelText(/Issuer ID/),
-      "issuer-1",
+      "sentry-2",
     );
     await userEvent.type(
-      within(drawer).getByLabelText(/\.p8 private key/),
-      "PEM",
+      within(drawer).getByLabelText(/Client secret/i),
+      "s3cret",
     );
-    await userEvent.type(
-      within(drawer).getByLabelText(/App Store Connect app id/),
-      "1234567890",
-    );
-    await pick(drawer, /Channel/, /app-store/);
-    await userEvent.click(
-      within(drawer).getByRole("button", { name: "Set credential" }),
-    );
-    await waitFor(() =>
-      expect(writes(calls)).toEqual([
-        expect.objectContaining({
-          path: P("/outlet-credentials/asc-new"),
-          body: {
-            kind: "asc-api-key",
-            value: { keyId: "ABC123DEFG", issuerId: "issuer-1", p8: "PEM" },
-            pin: "1234567890",
-            outletId: "app-store",
-          },
-        }),
-      ]),
-    );
-  });
-
-  it("sends a Google key as its JSON file with a text keyboard for the package pin (OUT-4)", async () => {
-    const { calls } = bootWith(HASH, {
-      [`PUT ${P("/outlet-credentials/play-2")}`]: { ok: true, id: "play-2" },
-    });
-    await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
-    await pick(drawer, /Kind/, /Google service account/);
-    await userEvent.type(
-      within(drawer).getByLabelText(/Credential ID/),
-      "play-2",
-    );
-    await userEvent.type(within(drawer).getByLabelText(/JSON key file/), "{{}");
-    const pin = within(drawer).getByLabelText(/Google Play package name/);
-    expect(pin.getAttribute("inputmode")).toBe("text");
-    await userEvent.type(pin, "gg.acme.djdl");
     await userEvent.click(
       within(drawer).getByRole("button", { name: "Set credential" }),
     );
@@ -225,34 +167,28 @@ describe("Distribution → Channel credentials", () => {
       expect(writes(calls)).toEqual([
         expect.objectContaining({
           body: {
-            kind: "google-service-account",
-            value: "{}",
-            pin: "gg.acme.djdl",
+            kind: "sentry-integration",
+            value: { clientSecret: "s3cret" },
             outletId: null,
           },
         }),
       ]),
     );
+    expect(document.body.textContent).not.toContain("s3cret");
   });
 
   it("warns that reusing an id rotates it, and confirms first (OUT-2)", async () => {
-    const { calls } = bootWith(HASH, {
-      [`PUT ${P("/outlet-credentials/asc-team-key")}`]: {
+    const { calls } = boot(HASH, {
+      [`PUT ${P("/outlet-credentials/sentry-alerts")}`]: {
         ok: true,
-        id: "asc-team-key",
+        id: "sentry-alerts",
       },
     });
     await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
-    await pick(drawer, /Kind/, /Sentry internal integration/);
+    const drawer = await openSetDrawer();
     await userEvent.type(
       within(drawer).getByLabelText(/Credential ID/),
-      "asc-team-key",
+      "sentry-alerts",
     );
     expect(
       await within(drawer).findByText("A credential with this id exists"),
@@ -282,214 +218,37 @@ describe("Distribution → Channel credentials", () => {
     );
   });
 
-  it("generates an App Store webhook secret without a value", async () => {
-    const { calls } = bootWith(HASH, {
-      [`PUT ${P("/outlet-credentials/asc-hook")}`]: {
-        ok: true,
-        id: "asc-hook",
-      },
-    });
-    await table();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set credential…" }),
-    );
-    const drawer = await screen.findByRole("dialog", {
-      name: "Set a channel credential",
-    });
-    await pick(drawer, /Kind/, /App Store webhook secret/);
-    await userEvent.type(
-      within(drawer).getByLabelText(/Credential ID/),
-      "asc-hook",
-    );
-    expect(within(drawer).queryByLabelText(/^Secret/)).toBeNull();
-    await userEvent.click(
-      within(drawer).getByRole("button", { name: "Set credential" }),
-    );
-    await waitFor(() =>
-      expect(writes(calls)).toEqual([
-        expect.objectContaining({
-          body: { kind: "asc-webhook-secret", generate: true, outletId: null },
-        }),
-      ]),
-    );
+  it("round-trips the kind facet through the URL", async () => {
+    boot(`${HASH}?kind=sentry-integration`, NO_APPLE);
+    const t = await screen.findByRole("table", { name: "Credentials" });
+    await waitFor(() => expect(within(t).getAllByRole("row")).toHaveLength(2));
+    expect(within(t).getByText("sentry-alerts")).toBeTruthy();
   });
 
-  it("deletes at L2 and refreshes only after the server confirms (OUT-7)", async () => {
-    const { calls } = bootWith(HASH, {
-      [`DELETE ${P("/outlet-credentials/asc-team-key")}`]: {
-        ok: true,
-        id: "asc-team-key",
-      },
-    });
+  it("points to the channels for store controls", async () => {
+    boot(HASH);
     await table();
-    const before = calls.filter(
-      (c) => c.path === P("/outlet-credentials"),
-    ).length;
-    await userEvent.click(
-      screen.getByRole("button", { name: "Actions for asc-team-key" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Delete…" }),
-    );
-    const confirm = await screen.findByRole("alertdialog");
-    await userEvent.click(
-      within(confirm).getByRole("button", { name: "Delete asc-team-key" }),
-    );
-    await waitFor(() =>
-      expect(writes(calls)).toEqual([
-        expect.objectContaining({
-          method: "DELETE",
-          path: P("/outlet-credentials/asc-team-key"),
-        }),
-      ]),
-    );
-    await waitFor(() =>
-      expect(
-        calls.filter((c) => c.path === P("/outlet-credentials")).length,
-      ).toBeGreaterThan(before),
-    );
-  });
-
-  it("opens a credential's detail from ?credential= with its last error", async () => {
-    bootWith(`${HASH}?credential=play`);
-    const drawer = await screen.findByRole("dialog", { name: "play" });
-    expect(within(drawer).getByText("The last use failed")).toBeTruthy();
     expect(
-      within(drawer).getByRole("button", { name: "Rotate…" }),
+      screen.queryByRole("region", { name: "App Store Connect" }),
+    ).toBeNull();
+    expect(
+      within(screen.getByRole("main")).getByRole("link", {
+        name: "Channel setup",
+      }),
     ).toBeTruthy();
   });
 
-  it("round-trips the kind facet through the URL", async () => {
-    bootWith(`${HASH}?kind=google-service-account`);
-    const t = await screen.findByRole("table", { name: "Channel credentials" });
-    await waitFor(() => expect(within(t).getAllByRole("row")).toHaveLength(2));
-    expect(within(t).getByText("play")).toBeTruthy();
-  });
-
-  describe("store connectors", () => {
-    it("shows each connector's state, and an inert one's reason", async () => {
-      bootWith(HASH);
-      await table();
-      const asc = await screen.findByRole("region", {
-        name: "App Store Connect",
-      });
-      expect(within(asc).getByText("Connected")).toBeTruthy();
-      const ms = screen.getByRole("region", { name: "Microsoft Store" });
-      expect(within(ms).getByText(/Not running/)).toBeTruthy();
-      expect(within(ms).getByText(/Declare an ms-store channel/)).toBeTruthy();
-    });
-
-    it("says when App Store Connect uses the platform's team key (A-16)", async () => {
-      bootWith(HASH, {
-        [P("/distribution/connectors")]: {
-          connectors: [
-            {
-              ...CONNECTORS.connectors[0],
-              setup: {
-                ...CONNECTORS.connectors[0]!.setup,
-                apiKeyCredential: null,
-                credentialSource: "platform",
-                platformSource: "console",
-              },
-            },
-          ],
-        },
-      });
-      await table();
-      const asc = await screen.findByRole("region", {
-        name: "App Store Connect",
-      });
-      expect(
-        within(asc).getByText("The platform's team key (set in the console)"),
-      ).toBeTruthy();
-      expect(within(asc).queryByText("API key credential")).toBeNull();
-    });
-
-    /** Open the release dialog and pick 2.4.0. */
-    async function openRelease(): Promise<HTMLElement> {
-      await table();
-      const asc = await screen.findByRole("region", {
-        name: "App Store Connect",
-      });
-      await userEvent.click(
-        within(asc).getByRole("button", { name: "Release this version…" }),
-      );
-      const confirm = await screen.findByRole("alertdialog");
-      await userEvent.click(
-        within(confirm).getByRole("button", { name: /^Release Required/ }),
-      );
-      await userEvent.click(
-        await screen.findByRole("option", { name: /^2\.4\.0 / }),
-      );
-      return confirm;
-    }
-
-    it("releases a held App Store version at L3, with the app's name typed (A-17a)", async () => {
-      const { calls } = bootWith(HASH, {
-        [`POST ${P("/distribution/connectors/asc/release")}`]: { ok: true },
-      });
-      const confirm = await openRelease();
-      // The button is drawn again when its reason goes: read it afresh each time.
-      const go = () =>
-        within(confirm).getByRole("button", { name: "Release version" });
-      // A release is picked, but the name is not typed yet: still disabled.
-      expect(go().getAttribute("aria-disabled")).toBe("true");
-      await userEvent.click(go());
-      expect(writes(calls)).toEqual([]);
-      const name = within(confirm).getByRole("textbox", { name: /App name/ });
-      await userEvent.type(name, "   ");
-      expect(go().getAttribute("aria-disabled")).toBe("true");
-      await userEvent.clear(name);
-      await userEvent.type(name, " DJDL Mobile ");
-      expect(go().getAttribute("aria-disabled")).toBeNull();
-      await userEvent.click(go());
-      await waitFor(() =>
-        expect(writes(calls)).toEqual([
-          expect.objectContaining({
-            path: P("/distribution/connectors/asc/release"),
-            body: { releaseId: "rel_240", confirm: "DJDL Mobile" },
-          }),
-        ]),
-      );
-    });
-
-    it("words a name that doesn't match App Store Connect and stays open (A-17a)", async () => {
-      bootWith(HASH, {
-        [`POST ${P("/distribution/connectors/asc/release")}`]: () =>
-          apiError(
-            422,
-            "invalid_body",
-            { reason: "confirmation_mismatch", fields: ["confirm"] },
-            "confirm does not match the app's name in App Store Connect",
-          ),
-      });
-      const confirm = await openRelease();
-      await userEvent.type(
-        within(confirm).getByRole("textbox", { name: /App name/ }),
-        "Wrong name",
-      );
-      await userEvent.click(
-        within(confirm).getByRole("button", { name: "Release version" }),
-      );
-      expect(
-        await within(confirm).findByText(
-          /doesn't match the app's name in App Store Connect/,
-        ),
-      ).toBeTruthy();
-    });
-  });
-
   it("explains credentials when there are none, and shows errors with Retry", async () => {
-    bootWith(HASH, {
+    boot(HASH, {
       [P("/outlet-credentials")]: { ...CREDENTIALS, credentials: [] },
     });
-    expect(await screen.findByText("No channel credentials yet")).toBeTruthy();
+    expect(await screen.findByText("No other credentials yet")).toBeTruthy();
     cleanup();
     resetConsole();
     let fail = true;
-    bootWith(HASH, {
+    boot(HASH, {
       [P("/outlet-credentials")]: () =>
-        fail ? apiError(500, "internal") : CREDENTIALS,
+        fail ? apiError(500, "internal") : WITH_SENTRY,
     });
     const retry = (
       await screen.findAllByRole("button", { name: "Try again" })
@@ -499,15 +258,42 @@ describe("Distribution → Channel credentials", () => {
     expect(await table()).toBeTruthy();
   });
 
-  it("passes axe", async () => {
-    bootWith(HASH);
+  it("is read-only without Ship edit, and carries one action when empty", async () => {
+    boot(HASH, { "/manage/api/me": VIEW_ONLY });
     await table();
-    await screen.findByRole("region", { name: "App Store Connect" });
-    const results = await axe(document.body);
     expect(
-      results.violations.map(
-        (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
-      ),
-    ).toEqual([]);
+      screen
+        .getByRole("button", { name: "Set credential…" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    cleanup();
+    resetConsole();
+    boot(HASH, {
+      [P("/outlet-credentials")]: { ...CREDENTIALS, credentials: [] },
+    });
+    await screen.findByText("No other credentials yet");
+    expect(
+      screen.getAllByRole("button", { name: "Set credential…" }),
+    ).toHaveLength(1);
+  });
+
+  it("tells each store link how many keys it holds and whether one fails", async () => {
+    boot(HASH);
+    await table();
+    const links = screen.getByRole("region", { name: "Store keys" });
+    expect(
+      within(links).getByRole("link", { name: "App Store · 1 key" }),
+    ).toBeTruthy();
+    expect(
+      within(links).getByRole("link", {
+        name: "Google Play · 1 key · 1 failed",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("passes axe", async () => {
+    boot(HASH);
+    await table();
+    await expectNoAxeViolations(document.body);
   });
 });

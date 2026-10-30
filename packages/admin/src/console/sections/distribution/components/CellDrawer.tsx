@@ -38,10 +38,10 @@ import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { EntityLink } from "../../../components/EntityLink.js";
 import { CdnFallbackNote } from "./CdnFallbackNote.js";
+import { OutletKindLine } from "./OutletKindLine.js";
 import { mutate } from "../../../data/mutations.js";
-import { useConnectors } from "../data.js";
+import { useConnectors, useOutlets } from "../data.js";
 import {
-  outletKindLabel,
   READINESS_LABEL,
   rolloutSummary,
   sourceLabel,
@@ -104,6 +104,10 @@ export function CellDrawer({
   const outlet = target
     ? matrix.outlets.find((o) => o.outletId === target.outletId)
     : undefined;
+  // The matrix outlet carries no identity; the outlets read does, so a package manager is told apart.
+  const outletDto = useOutlets(slug).data?.outlets.find(
+    (o) => o.outletId === target?.outletId,
+  );
   const open = target !== null;
   const title =
     release && outlet
@@ -116,9 +120,13 @@ export function CellDrawer({
       size="lg"
       title={title}
       description={
-        outlet
-          ? `${outletKindLabel(outlet.kind)} · ${release?.channel ?? "no channel"}`
-          : undefined
+        outlet ? (
+          <OutletKindLine
+            slug={slug}
+            outlet={outletDto ?? outlet}
+            track={release?.channel ?? "no channel"}
+          />
+        ) : undefined
       }
     >
       <DrawerBody className="space-y-5">

@@ -1,5 +1,5 @@
 /**
- * Distribution → App Store (the Distribute flow) and Distribution → Commerce (App Store products),
+ * Distribution → the App Store channel's Releases tab (the Distribute flow) and Distribution → Commerce (App Store products),
  * A-17g; notes/S-14 §8.2, §8.3. The flow's steps follow the URL and Apple's answers; every write is
  * the named Worker control with one `Idempotency-Key` per intent; submit, release, completing a
  * phased release and price or availability changes are typed with the app's name.
@@ -10,6 +10,8 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import { resetConsole } from "./consoleHarness.js";
+import { channel, channels } from "./channelFixture.js";
+import { VIEW_ONLY } from "./credentialsKit.js";
 import {
   ASC_BUILDS,
   ASC_IAP_PRODUCTS,
@@ -24,9 +26,18 @@ const axe = configureAxe({
   rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
 });
 
-const APP = "#/p/djdl/distribution/app-store";
+const APP = "#/p/djdl/distribution/channels/app-store/releases";
 const COMMERCE = "#/p/djdl/commerce/in-app-purchases";
 const ASC = (path: string) => P(`/distribution/connectors/asc/${path}`);
+
+/** The App Store channel page (its Releases tab leads with the Distribute flow, A-22.4). */
+const bootApp = (hash: string, routes: Record<string, unknown> = {}) =>
+  bootWith(hash, {
+    [P("/distribution/channels")]: channels(
+      channel({ id: "app-store", label: "App Store" }),
+    ),
+    ...routes,
+  } as never);
 
 beforeEach(() => resetConsole());
 afterEach(() => {
@@ -56,8 +67,20 @@ async function confirmIn(dialog: HTMLElement, name: string): Promise<void> {
 }
 
 describe("Distribution → App Store: the Distribute flow", () => {
+  it("is read-only without Ship edit: every write is off with its reason", async () => {
+    bootApp(`${APP}?build=b-52&step=compliance`, {
+      "/manage/api/me": VIEW_ONLY,
+    });
+    for (const name of ["Save answer…", "Cancel submission…"])
+      expect(
+        (await screen.findByRole("button", { name })).getAttribute(
+          "aria-disabled",
+        ),
+      ).toBe("true");
+  });
+
   it("lists builds newest first; a processing build can't be chosen", async () => {
-    bootWith(APP);
+    bootApp(APP);
     const group = await screen.findByRole("radiogroup", { name: "Builds" });
     const radios = within(group).getAllByRole("radio");
     expect(radios).toHaveLength(3);
@@ -76,7 +99,7 @@ describe("Distribution → App Store: the Distribute flow", () => {
   });
 
   it("answers export compliance with the build's control and an Idempotency-Key", async () => {
-    const { calls } = bootWith(`${APP}?build=b-52&step=compliance`);
+    const { calls } = bootApp(`${APP}?build=b-52&step=compliance`);
     await screen.findByRole("heading", { name: "Export compliance" });
     await userEvent.click(
       screen.getByRole("radio", { name: /^Doesn't use non-exempt encryption/ }),
@@ -98,13 +121,13 @@ describe("Distribution → App Store: the Distribute flow", () => {
   });
 
   it("an earlier incomplete step wins over the asked one", async () => {
-    bootWith(`${APP}?build=b-52&step=submit`);
+    bootApp(`${APP}?build=b-52&step=submit`);
     await screen.findByRole("heading", { name: "Export compliance" });
     expect(window.location.hash).toContain("step=compliance");
   });
 
   it("saves release notes to TestFlight, one call per locale under one key", async () => {
-    const { calls } = bootWith(`${APP}?build=b-52&step=notes`, {
+    const { calls } = bootApp(`${APP}?build=b-52&step=notes`, {
       [ASC("distribute/builds")]: ANSWERED,
     });
     await screen.findByRole("heading", { name: "Release notes" });
@@ -138,7 +161,7 @@ describe("Distribution → App Store: the Distribute flow", () => {
   });
 
   it("adds the build to the ticked TestFlight groups", async () => {
-    const { calls } = bootWith(`${APP}?build=b-52&step=testflight`, {
+    const { calls } = bootApp(`${APP}?build=b-52&step=testflight`, {
       [ASC("distribute/builds")]: ANSWERED,
     });
     await screen.findByRole("heading", { name: "TestFlight" });
@@ -161,7 +184,7 @@ describe("Distribution → App Store: the Distribute flow", () => {
   });
 
   it("creates the version and keeps its id in the URL", async () => {
-    const { calls } = bootWith(`${APP}?build=b-52&step=version`, {
+    const { calls } = bootApp(`${APP}?build=b-52&step=version`, {
       [ASC("distribute/builds")]: ANSWERED,
       [`POST ${ASC("distribute/version")}`]: {
         ok: true,
@@ -188,7 +211,7 @@ describe("Distribution → App Store: the Distribute flow", () => {
   });
 
   it("sets a scheduled release and a phased release on the version", async () => {
-    const { calls } = bootWith(`${APP}?build=b-52&version=v-240&step=version`, {
+    const { calls } = bootApp(`${APP}?build=b-52&version=v-240&step=version`, {
       [ASC("distribute/builds")]: ANSWERED,
     });
     await screen.findByRole("heading", { name: "App Store version 2.4.0" });
@@ -222,7 +245,7 @@ describe("Distribution → App Store: the Distribute flow", () => {
   });
 
   it("shows the preflight with portal-only items and deep links", async () => {
-    bootWith(`${APP}?build=b-52&version=v-240&step=preflight`, {
+    bootApp(`${APP}?build=b-52&version=v-240&step=preflight`, {
       [ASC("distribute/builds")]: ANSWERED,
     });
     await screen.findByText("Fix the missing items before submitting");
@@ -239,7 +262,7 @@ describe("Distribution → App Store: the Distribute flow", () => {
   });
 
   it("submits for review only with the typed app name, with the ready IAP", async () => {
-    const { calls } = bootWith(`${APP}?build=b-52&version=v-240&step=submit`, {
+    const { calls } = bootApp(`${APP}?build=b-52&version=v-240&step=submit`, {
       [ASC("distribute/builds")]: ANSWERED,
     });
     await screen.findByRole("heading", { name: "Submit for review" });
@@ -277,7 +300,7 @@ describe("Distribution → App Store: the Distribute flow", () => {
 
   it("keeps the key on a retry after a refusal, and words the refusal", async () => {
     let n = 0;
-    const { calls } = bootWith(`${APP}?build=b-52&version=v-240&step=submit`, {
+    const { calls } = bootApp(`${APP}?build=b-52&version=v-240&step=submit`, {
       [ASC("distribute/builds")]: ANSWERED,
       [`POST ${ASC("distribute/submit")}`]: () =>
         n++ === 0
@@ -307,7 +330,7 @@ describe("Distribution → App Store: the Distribute flow", () => {
   });
 
   it("releases a phased release to everyone only when typed, by its linked release", async () => {
-    const { calls } = bootWith(APP);
+    const { calls } = bootApp(APP);
     const versions = await screen.findByRole("list", { name: "Versions" });
     await userEvent.click(
       await within(versions).findByRole("button", {
@@ -328,7 +351,7 @@ describe("Distribution → App Store: the Distribute flow", () => {
   });
 
   it("cancels a review submission with a plain confirm", async () => {
-    const { calls } = bootWith(APP);
+    const { calls } = bootApp(APP);
     const subs = await screen.findByRole("list", {
       name: "Review submissions",
     });
@@ -349,7 +372,7 @@ describe("Distribution → App Store: the Distribute flow", () => {
   });
 
   it("is read-only with the reason when the connector can't run", async () => {
-    bootWith(APP, {
+    bootApp(APP, {
       [P("/distribution/connectors")]: {
         connectors: [
           {
@@ -368,12 +391,14 @@ describe("Distribution → App Store: the Distribute flow", () => {
     ).toBeTruthy();
     expect(screen.queryByRole("radiogroup", { name: "Builds" })).toBeNull();
     expect(
-      screen.getByRole("link", { name: "Open Channel credentials" }),
-    ).toBeTruthy();
+      screen
+        .getByRole("link", { name: "Open App Store setup" })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/distribution/channels/app-store/setup");
   });
 
   it("passes axe", async () => {
-    bootWith(APP);
+    bootApp(APP);
     await screen.findByRole("radiogroup", { name: "Builds" });
     await screen.findByRole("list", { name: "Versions" });
     expect(violations(await axe(document.body))).toEqual([]);

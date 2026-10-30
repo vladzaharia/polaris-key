@@ -121,3 +121,25 @@ export type DocsLinkKey = keyof typeof DOCS_LINKS;
 export function docsUrl(key: DocsLinkKey): string {
   return DOCS_LINKS[key];
 }
+
+/** The channels with a docs page of their own under Ship builds → Channels (A-22.7). */
+const CHANNEL_DOCS = new Set([
+  "app-store",
+  "flathub",
+  "google-play",
+  "homebrew",
+  "itch",
+  "microsoft-store",
+  "polaris-key",
+  "scoop",
+  "snap",
+  "steam",
+  "winget",
+]);
+
+/** A channel page's Docs button: the channel's own page, else the Channels overview. */
+export function channelDocs(id: string | undefined): string {
+  return id !== undefined && CHANNEL_DOCS.has(id)
+    ? `/docs/features/ship-builds/channels/${id}/`
+    : DOCS_LINKS.channels;
+}

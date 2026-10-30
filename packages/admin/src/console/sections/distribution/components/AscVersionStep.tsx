@@ -1,5 +1,5 @@
 /**
- * Distribute flow, step 5: the App Store version. Split out of `pages/AppStorePage.tsx`.
+ * Distribute flow, step 5: the App Store version. Split out of `components/AscDistribute.tsx`.
  */
 
 import * as React from "react";
@@ -153,7 +153,7 @@ export function VersionStep({
               : "App Store Connect creates a new version."}
           </p>
           <Button
-            disabledReason={invalid ?? undefined}
+            disabledReason={ctx.gate ?? invalid ?? undefined}
             onClick={() =>
               ctx.open({
                 action: "connector.versionCreate",
@@ -228,7 +228,8 @@ export function VersionStep({
               size="sm"
               variant="outline"
               disabledReason={
-                v.editable ? undefined : "This version can't change any more."
+                ctx.gate ??
+                (v.editable ? undefined : "This version can't change any more.")
               }
               onClick={() =>
                 ctx.open({
@@ -260,9 +261,10 @@ export function VersionStep({
             size="sm"
             variant="outline"
             disabledReason={
-              notesProblem
+              ctx.gate ??
+              (notesProblem
                 ? `${notesProblem} Edit the notes in Release notes.`
-                : undefined
+                : undefined)
             }
             onClick={() =>
               ctx.open({
@@ -329,7 +331,7 @@ export function VersionStep({
               <Button
                 size="sm"
                 variant="outline"
-                disabledReason={releaseInvalid ?? undefined}
+                disabledReason={ctx.gate ?? releaseInvalid ?? undefined}
                 onClick={() =>
                   ctx.open({
                     action: "connector.releaseType",
@@ -367,6 +369,7 @@ export function VersionStep({
             </StatusPill>
           ) : (
             <Button
+              disabledReason={ctx.gate}
               size="sm"
               variant="outline"
               onClick={() =>

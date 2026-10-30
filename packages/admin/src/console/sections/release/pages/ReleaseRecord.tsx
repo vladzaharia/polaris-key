@@ -45,7 +45,7 @@ import {
   HaltEverywhereDialog,
   storeHalt,
   type HaltRow,
-} from "../../distribution/components/RolloutDialogs.js";
+} from "../../distribution/components/RolloutHalt.js";
 import { actorLabel } from "../../distribution/model/format.js";
 import { useProduct } from "../../../data/hooks.js";
 import { useActivityFeed } from "../../core/pages/Activity.js";

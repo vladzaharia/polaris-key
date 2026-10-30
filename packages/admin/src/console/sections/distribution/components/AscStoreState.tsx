@@ -1,5 +1,5 @@
 /**
- * Distribute flow aside: what App Store Connect has now. Split out of `pages/AppStorePage.tsx`.
+ * Distribute flow aside: what App Store Connect has now. Split out of `components/AscDistribute.tsx`.
  */
 
 import * as React from "react";
@@ -39,6 +39,7 @@ export function StoreState({
   builds,
   versionsQ,
   open,
+  gate,
 }: {
   slug: string;
   appleId: string;
@@ -53,6 +54,7 @@ export function StoreState({
     refetch: () => unknown;
   };
   open: StepCtx["open"];
+  gate?: string;
 }): React.ReactElement {
   const has = (c: string) => asc.controls.includes(c);
   const releaseOf = (v: AscVersionDto) =>
@@ -104,8 +106,10 @@ export function StoreState({
                       {held && has("release") ? (
                         <Button
                           size="sm"
-                          variant="danger"
-                          disabledReason={releaseId ? undefined : noRelease}
+                          variant="outline"
+                          disabledReason={
+                            gate ?? (releaseId ? undefined : noRelease)
+                          }
                           onClick={() =>
                             open({
                               action: "connector.releaseVersion",
@@ -130,7 +134,9 @@ export function StoreState({
                         <Button
                           size="sm"
                           variant="outline"
-                          disabledReason={releaseId ? undefined : noRelease}
+                          disabledReason={
+                            gate ?? (releaseId ? undefined : noRelease)
+                          }
                           onClick={() =>
                             open({
                               action: "connector.phasedPause",
@@ -155,7 +161,9 @@ export function StoreState({
                         <Button
                           size="sm"
                           variant="outline"
-                          disabledReason={releaseId ? undefined : noRelease}
+                          disabledReason={
+                            gate ?? (releaseId ? undefined : noRelease)
+                          }
                           onClick={() =>
                             open({
                               action: "connector.phasedResume",
@@ -176,8 +184,10 @@ export function StoreState({
                       {phased && has("phased-release/complete") ? (
                         <Button
                           size="sm"
-                          variant="danger"
-                          disabledReason={releaseId ? undefined : noRelease}
+                          variant="outline"
+                          disabledReason={
+                            gate ?? (releaseId ? undefined : noRelease)
+                          }
                           onClick={() =>
                             open({
                               action: "connector.phasedComplete",
@@ -231,6 +241,7 @@ export function StoreState({
                   </div>
                   {s.cancelable ? (
                     <Button
+                      disabledReason={gate}
                       size="sm"
                       variant="outline"
                       onClick={() =>

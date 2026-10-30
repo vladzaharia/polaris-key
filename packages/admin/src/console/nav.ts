@@ -60,7 +60,6 @@ import {
   Radar,
   Rocket,
   Rss,
-  Send,
   Server,
   ServerCog,
   Settings,
@@ -68,6 +67,7 @@ import {
   ShoppingBag,
   SquarePen,
   SlidersHorizontal,
+  Send,
   Store,
   TrendingUp,
   UserRound,
@@ -156,7 +156,7 @@ export type ProductPageId =
   | "outlets"
   | "storefronts"
   | "presentation-listing"
-  | "app-store"
+  | "channel"
   | "commerce"
   | "access"
   | "package-feeds"
@@ -335,6 +335,18 @@ export const CONNECT_PAGES: readonly ProductPageId[] = [
   "connect-usage",
   "connect-devices",
 ];
+
+/**
+ * A channel page's route tabs (A-22), the first the default. The URL knows every tab the page will
+ * have; the page shows the ones that are built (`channelTabs.ts`).
+ */
+export const CHANNEL_TAB_IDS = [
+  "status",
+  "releases",
+  "listing",
+  "sales",
+  "setup",
+] as const;
 
 /** A feed page's route tabs (F-11), the first the default. */
 export const FEED_TABS = ["packages", "setup", "settings", "activity"] as const;
@@ -712,15 +724,17 @@ export const SECTIONS: NavSection[] = [
         record: { noun: "Storefront" },
       },
       {
-        // A-17g: the App Store Distribute flow (T6) for the product's pinned app.
-        page: "app-store",
+        // A-22: one page per channel, `distribution/channels/<id>/<tab>`. No sidebar item: the
+        // channel list is the Outlets and Storefronts pages (A-21 owns the IA).
+        page: "channel",
         accent: "distribution",
-        label: "App Store",
-        path: "distribution/app-store",
-        icon: Send,
-        docs: "/docs/features/ship-builds/channels/app-store/",
-        inNav: true,
-        requires: "channel:app-store",
+        label: "Channel",
+        path: "distribution/channels",
+        icon: Store,
+        docs: "/docs/features/ship-builds/channels/",
+        inNav: false,
+        tile: "service",
+        record: { noun: "Channel", tabs: CHANNEL_TAB_IDS },
       },
       {
         page: "access",
@@ -762,8 +776,8 @@ export const SECTIONS: NavSection[] = [
       {
         page: "credentials",
         accent: "distribution",
-        label: "Channel credentials",
-        keywords: "store keys connectors",
+        label: "Credentials",
+        keywords: "channel credentials store keys connectors",
         path: "distribution/credentials",
         icon: Plug,
         docs: "/docs/features/ship-builds/channels/",

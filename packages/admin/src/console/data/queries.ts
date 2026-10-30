@@ -285,6 +285,8 @@ export const qk = {
     product(slug, "release", "compat", "simulate", inputs),
 
   // distribution
+  /** A-22: one product's channel read model (`GET …/distribution/channels`). */
+  channelPage: (slug: string) => product(slug, "distribution", "channels"),
   matrix: (slug: string, variant?: string) =>
     variant === undefined
       ? product(slug, "distribution", "matrix")
