@@ -274,9 +274,24 @@ class PeerLinkTest {
                 b.opened.await()
                 fail("must be refused")
             } catch (e: LinkRefused) {
-                assertEquals(HANDSHAKE_FAILED, e.closeCode)
+                assertEquals("peer_timeout", e.closeCode)
             }
             seen.ended.await()
+        } finally {
+            s.cancel()
+        }
+    }
+
+    @Test
+    fun aZeroLengthFrameInAnEstablishedLinkClosesBadFrameAndThePeerIsTold() = bounded {
+        val s = scope()
+        try {
+            val p = connected(s)
+            p.pa.write(byteArrayOf(0, 0)) // what B's link reads: a frame of length zero (V5 15.6)
+            assertEquals(SessionEvent.Closed("peer_bad_frame", false), p.sb.closed.await())
+            assertEquals(SessionEvent.Closed("peer_bad_frame", true), p.sa.closed.await())
+            p.sa.ended.await()
+            p.sb.ended.await()
         } finally {
             s.cancel()
         }

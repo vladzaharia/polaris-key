@@ -157,7 +157,7 @@ public class PeerLink<H>(
         }
         deadline = scope.launch {
             delay((handshakeSeconds * MILLIS).toLong())
-            fail(HANDSHAKE_FAILED)
+            fail(PeerCloseCode.peer_timeout.name)
         }
     }
 
@@ -259,11 +259,16 @@ public class PeerLink<H>(
         }
     }
 
+    /**
+     * The link ends itself: the closing side names its reason (V5 15.6; a zero-length frame is
+     * `peer_bad_frame`, the handshake deadline `peer_timeout`). A CLOSE goes out only once the
+     * transport exists.
+     */
     private suspend fun fail(code: String) {
         if (ended) return
         // Not a live session: the channel has nothing to send.
         if (!open) finish(SessionEvent.Closed(code, false))
-        channel.close(PeerCloseCode.peer_bye)
+        channel.close(PeerCloseCode.entries.firstOrNull { it.name == code } ?: PeerCloseCode.peer_bye)
     }
 
     private fun onEvent(e: SessionEvent) {
