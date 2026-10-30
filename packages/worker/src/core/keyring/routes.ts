@@ -666,7 +666,20 @@ async function postReset(c: Ctx): Promise<Response> {
   // A reset replaces a ring; with none, the caller creates one. The new ring is a new id (the
   // old one lives on as `previous`), and the epoch starts at 1 like any new ring.
   const ring = await getRing(c.db, c.product.slug, c.subject);
-  if (!ring || ring.ringId === ringId) return conflict();
+  if (!ring) return conflict();
+  // §13.11.4: epoch 1 may repeat across rings only because a ring id is never reused, so a reset
+  // may not name an id this subject already had. The store keeps the current ring, the ring a
+  // reset replaced (`previous`, forgotten after 30 days) and the roots sealed under the current
+  // one (`adopted`: a replaced ring that was adopted, or a merged-in ring). That is every earlier
+  // id it holds, and all of it is checked; an id it has already forgotten cannot be told from a
+  // fresh one, which the 128-bit random id makes safe. A create needs no check: it only succeeds
+  // when no ring exists, and there is then no current or previous id to repeat.
+  if (
+    ring.ringId === ringId ||
+    ring.previous?.ringId === ringId ||
+    ring.adopted.some((a) => a.ringId === ringId)
+  )
+    return conflict();
   const r = await resetRing(c.db, {
     product: c.product.slug,
     subject: c.subject,

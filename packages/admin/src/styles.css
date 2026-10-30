@@ -561,6 +561,14 @@ html[data-shell="console"] [data-pk-backdrop] {
   [data-variant="ghost"][data-size="lg"] {
     --ghost-pad: 1.5rem;
   }
+  /* At large text the Button drops its side padding to 0.5rem at every size (`conbig:px-2`,
+     `bigtext:px-2`), so the end margin follows it: the same variable sets the padding the ink
+     sits inside and the margin that cancels it, and the two never disagree. It ties the size
+     rules above on specificity and comes after them. The height floor (`min-h-*`) is untouched,
+     so the 24 px target holds. */
+  :is([data-large-text], [data-console-large-text]) [data-variant="ghost"] {
+    --ghost-pad: 0.5rem;
+  }
   :is(.justify-between, .justify-end, [data-card-header])
     > [data-variant="ghost"]:not([data-icon]):last-child,
   :is(.justify-between, .justify-end, [data-card-header])
