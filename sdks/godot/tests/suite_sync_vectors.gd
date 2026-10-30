@@ -444,6 +444,13 @@ func _envelope(t: PKeyTestContext, rows: Array) -> void:
 				t.check("envelope %s opens under any name" % c["id"], any["ok"] and any["name_bytes"] == got["name_bytes"])
 		else:
 			t.check("envelope %s is refused as %s" % [c["id"], want["reason"]], not got["ok"] and got["reason"] == want["reason"], str(got.get("reason")))
+		if c.has("record"):
+			# The reader of a record (section 13.10.4): open without a name, split k, recompute, compare.
+			var rec := _open_record(root, c["collection"], c["record"], env)
+			if want["result"] == "ok":
+				t.check("envelope %s opens as a record" % c["id"], rec["ok"] and rec["name_bytes"] == _name_of(want["name"]) and PKeySyncCanonicalJson.canonicalize_value(rec["value"]).get("canonical") == PKeySyncCanonicalJson.canonicalize_value(want["value"]).get("canonical"))
+			else:
+				t.check("envelope %s is refused as a record (%s)" % [c["id"], want["reason"]], not rec["ok"] and rec["reason"] == want["reason"], str(rec.get("reason")))
 	t.info("envelope section: %d rows in %.1f ms" % [rows.size(), (Time.get_ticks_usec() - t0) / 1000.0])
 	var consts: Dictionary = {"envelopeOverheadBytes": PKeySyncEnvelope.OVERHEAD_BYTES, "envelopeFixedBytes": PKeySyncEnvelope.FIXED_BYTES, "paddingBlockBytes": PKeySyncEnvelope.PAD_BLOCK}
 	var same_consts := true
@@ -453,6 +460,33 @@ func _envelope(t: PKeyTestContext, rows: Array) -> void:
 
 
 var _constants := {}
+
+
+## Opens a sealed record value, field or element: the envelope first, then `k` split at its first NUL, the
+## blinded forms recomputed and compared with the wire names; a difference is `name`. `wire.kind` fixes
+## the container, and an element's canonical JSON must be the name part of `k`.
+func _open_record(root: PackedByteArray, collection: String, wire: Dictionary, env: PackedByteArray) -> Dictionary:
+	var r := PKeySyncEnvelope.open_value_any_name(root, collection, env)
+	if r["ok"] and not _record_names_match(root, collection, wire, r):
+		return {"ok": false, "reason": "name"}
+	return r
+
+
+func _record_names_match(root: PackedByteArray, collection: String, wire: Dictionary, opened: Dictionary) -> bool:
+	var kind: String = wire["kind"]
+	var nb: PackedByteArray = opened["name_bytes"]
+	var cut := nb.find(0)
+	if kind != "value" and cut < 0:
+		return false
+	var id_bytes := nb if kind == "value" else nb.slice(0, cut)
+	if id_bytes.has(0) or PKeySyncBlind.blind(root, "record", collection, id_bytes.get_string_from_utf8()) != wire["id"]:
+		return false
+	if kind == "value":
+		return true
+	var rest := nb.slice(cut + 1).get_string_from_utf8()
+	if PKeySyncBlind.blind(root, kind, collection, rest) != wire["name"]:
+		return false
+	return kind != "element" or PKeySyncCanonicalJson.canonicalize_value(opened["value"]).get("canonical") == rest
 
 
 func _hpke_anchor(t: PKeyTestContext, v: Dictionary) -> void:

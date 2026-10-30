@@ -693,7 +693,7 @@
       "gdlint:max-line-length": 3
     },
     "sdks/godot/tests/suite_sync_host_codec.gd": {
-      "gdlint:max-line-length": 16
+      "gdlint:max-line-length": 23
     },
     "sdks/godot/tests/suite_sync_ring.gd": {
       "gdlint:max-line-length": 16,
@@ -706,7 +706,7 @@
     },
     "sdks/godot/tests/suite_sync_vectors.gd": {
       "gdlint:class-definitions-order": 3,
-      "gdlint:max-line-length": 6
+      "gdlint:max-line-length": 7
     },
     "sdks/godot/tests/suite_transcripts.gd": {
       "gdlint:class-definitions-order": 8,
