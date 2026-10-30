@@ -36,7 +36,13 @@ Rules this module keeps:
   after it was last refreshed, and when a table is full the least recently refreshed entry is evicted,
   so a flood cannot stop discovery;
 - query replies are sent at most once a second per socket; the packet parser's own limits (G5) live in
-  the codec.
+  the codec;
+- a query from a port other than 5353 is a legacy query (RFC 6762 section 6.7): the answer goes by unicast
+  to the querier's address and port, with the query's ID, the matching questions repeated, no cache-flush
+  bit and a TTL of 10 s. A query is dropped, before it is parsed, unless its source is one the response
+  rules above would hear (a connected subnet of the receiving interface, a link-local source with that
+  interface's zone), and a legacy one also unless its port is 1024 or higher, so the responder cannot be
+  aimed at an off-link address or a service port; it counts against the same once-a-second gap.
 
 The IPv4 socket joins 224.0.0.251 on the default multicast interface and advertises the RFC 1918 address
 the kernel routes there; ``interfaces`` (the ``lan.interfaces`` option) names the addresses to use
@@ -114,6 +120,12 @@ MAX_NEW_PER_SOURCE = 16
 NEW_WINDOW_SECONDS = 60.0
 MAX_SOURCES = 256
 TTL = 120
+#: The TTL of a legacy unicast answer (RFC 6762 section 6.7: at most 10 s).
+LEGACY_TTL = 10
+#: A legacy query is answered only from a port a normal program draws (not 1..1023).
+_MIN_LEGACY_PORT = 1024
+#: Questions a legacy answer repeats, at most: the reply stays small whatever the query holds.
+_MAX_REPEATED = 4
 _TXT_TTL = 4500
 _ASK_QUESTIONS = 32
 _SUBNET_MEMO_SECONDS = 5.0
@@ -178,17 +190,23 @@ class MdnsSocket(Protocol):
 
     def send(self, data: bytes) -> None: ...
 
+    def send_to(self, data: bytes, host: str, port: int) -> None:
+        """Send one packet to one address and port alone (a legacy unicast answer); ``host`` carries its
+        ``%zone`` when link-local."""
+        ...
+
     def close(self) -> None: ...
 
 
-#: Make a socket that calls ``on_packet(data, source_address)`` for every datagram it receives.
+#: Make a socket that calls ``on_packet(data, source_address, source_port)`` for every datagram it
+#: receives; the port may be left out (it is then 5353).
 SocketFactory = Callable[
-    [Callable[[bytes, str], None]],
+    [Callable[..., None]],
     Union[MdnsSocket, Awaitable[MdnsSocket]],
 ]
 #: The same for one IPv6 interface.
 SocketFactory6 = Callable[
-    [MdnsInterface, Callable[[bytes, str], None]],
+    [MdnsInterface, Callable[..., None]],
     Union[MdnsSocket, Awaitable[MdnsSocket]],
 ]
 
@@ -365,6 +383,10 @@ class _UdpSocket:
             except OSError:
                 continue
 
+    def send_to(self, data: bytes, host: str, port: int) -> None:
+        if not self._t.is_closing():
+            self._t.sendto(data, (host, port))
+
     def close(self) -> None:
         self._t.close()
 
@@ -380,6 +402,11 @@ class _UdpSocket6:
         if not self._t.is_closing():
             self._t.sendto(data, (MDNS_GROUP6, MDNS_PORT, 0, self._index))
 
+    def send_to(self, data: bytes, host: str, port: int) -> None:
+        if not self._t.is_closing():
+            addr = split_zone(host)[0]
+            self._t.sendto(data, (addr, port, 0, self._index if is_link_local(addr) else 0))
+
     def close(self) -> None:
         self._t.close()
 
@@ -389,7 +416,7 @@ class _Receiver(asyncio.DatagramProtocol):
     with the zone of the interface it arrived on (``fe80::1%en0``), and only when the datagram's own scope
     is that interface: one with no scope, or another, is dropped here."""
 
-    def __init__(self, on_packet: Callable[[bytes, str], None], index: int = 0, zone: str = "") -> None:
+    def __init__(self, on_packet: Callable[..., None], index: int = 0, zone: str = "") -> None:
         self._on_packet = on_packet
         self._index = index
         self._zone = zone
@@ -401,7 +428,7 @@ class _Receiver(asyncio.DatagramProtocol):
                 if len(addr) < 4 or addr[3] != self._index or not self._zone:
                     return
                 src = "%s%%%s" % (src, self._zone)
-            self._on_packet(data, src)
+            self._on_packet(data, src, int(addr[1]))
         except Exception:
             pass  # a bad packet or a host callback never stops the socket
 
@@ -428,7 +455,7 @@ def _bind_group4(sock: Any) -> None:
     sock.bind(("", MDNS_PORT))
 
 
-async def _open_udp(on_packet: Callable[[bytes, str], None], interfaces: Sequence[str]) -> MdnsSocket:
+async def _open_udp(on_packet: Callable[..., None], interfaces: Sequence[str]) -> MdnsSocket:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     try:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -460,7 +487,7 @@ async def _open_udp(on_packet: Callable[[bytes, str], None], interfaces: Sequenc
     return _UdpSocket(transport, sock, interfaces)
 
 
-async def _open_udp6(iface: MdnsInterface, on_packet: Callable[[bytes, str], None]) -> MdnsSocket:
+async def _open_udp6(iface: MdnsInterface, on_packet: Callable[..., None]) -> MdnsSocket:
     """One IPv6 socket for one interface: ``ff02::fb`` joined on it (``IPV6_JOIN_GROUP``), sent from it
     (``IPV6_MULTICAST_IF``), IPv6 only so it never shares IPv4 traffic with the other socket."""
     sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -588,7 +615,18 @@ class MulticastDnsAdapter:
             self._memo = (now, nets)
         return self._memo[1]
 
-    async def _socket(self, on_packet: Callable[[bytes, str], None]) -> MdnsSocket:
+    def _heard(self, src: str, iface: Optional[MdnsInterface]) -> bool:
+        """May a datagram from ``src`` (with its zone when link-local) be heard on ``iface``'s socket
+        (``None``: the IPv4 socket)? RFC 6762 section 11: it is inside a connected subnet of the receiving
+        interface; a link-local source is on-link by definition, but must carry that interface's zone (one
+        with none, or another, and any link-local source on the IPv4 socket, are not ours). The same test
+        gates a response we learn from and a legacy query we answer."""
+        addr, zone = split_zone(src)
+        if is_link_local(addr):
+            return iface is not None and zone is not None and zone == iface.zone
+        return source_in_subnets(addr, self._nets4() if iface is None else iface.nets)
+
+    async def _socket(self, on_packet: Callable[..., None]) -> MdnsSocket:
         if self._create is not None:
             made = self._create(on_packet)
             if inspect.isawaitable(made):
@@ -596,7 +634,7 @@ class MulticastDnsAdapter:
             return made  # type: ignore[return-value]
         return await _open_udp(on_packet, self._own())
 
-    async def _faces(self, handler: Callable[[Optional[MdnsInterface]], Callable[[bytes, str], None]]) -> List[_Face]:
+    async def _faces(self, handler: Callable[[Optional[MdnsInterface]], Callable[..., None]]) -> List[_Face]:
         """The IPv4 socket, then one IPv6 socket per usable interface. A v6 socket that cannot be made is skipped."""
         faces: List[_Face] = [(await self._socket(handler(None)), None)]
         if not self._v6:
@@ -629,11 +667,11 @@ class MulticastDnsAdapter:
         last_reply: Dict[Optional[str], float] = {}
         state: Dict[str, Any] = {"faces": [], "again": None, "closed": False}
 
-        def records(ttl: int, iface: Optional[MdnsInterface]) -> List[Record]:
+        def records(ttl: int, iface: Optional[MdnsInterface], legacy: bool = False) -> List[Record]:
             out = [
                 Record(PEER_SERVICE, "PTR", ttl, fq),
                 Record(fq, "SRV", ttl, {"port": a.port, "target": host, "priority": 0, "weight": 0}),
-                Record(fq, "TXT", 0 if ttl == 0 else _TXT_TTL, txt),
+                Record(fq, "TXT", ttl if legacy or ttl == 0 else _TXT_TTL, txt),
             ]
             # An A record leaves on the IPv4 socket and an AAAA on its interface's own: a browser believes
             # only an address equal to the packet's source.
@@ -659,11 +697,31 @@ class MulticastDnsAdapter:
             for face in list(state["faces"]):
                 send_face(face, ttl)
 
-        def handler(iface: Optional[MdnsInterface]) -> Callable[[bytes, str], None]:
+        def answer_legacy(face: _Face, p: Any, src: str, port: int) -> None:
+            """RFC 6762 section 6.7: to the querier alone, with its ID, the questions we answer, no cache-flush
+            bit and a short TTL."""
+            sock, iface = face
+            recs = records(LEGACY_TTL, iface, True)
+            if state["closed"] or not any(r.type in ("A", "AAAA") for r in recs):
+                return
+            mine = [(q.name, q.type) for q in p.questions if fold_name(q.name) in (PEER_SERVICE, fq, host)]
+            try:
+                sock.send_to(
+                    build_response(recs, p.id, mine[:_MAX_REPEATED], flush=False), src, port
+                )
+            except (ValueError, OSError):
+                pass
+
+        def handler(iface: Optional[MdnsInterface]) -> Callable[..., None]:
             key = None if iface is None else iface.name
 
-            def on_packet(data: bytes, src: str) -> None:
+            def on_packet(data: bytes, src: str, port: int = MDNS_PORT) -> None:
                 if state["closed"]:
+                    return
+                # A query from off the link, or from a privileged port that is not 5353, is dropped before
+                # it is parsed: it is answered by nobody.
+                legacy = port != MDNS_PORT
+                if (legacy and port < _MIN_LEGACY_PORT) or not self._heard(src, iface):
                     return
                 try:
                     p = parse_packet(data)
@@ -678,7 +736,10 @@ class MulticastDnsAdapter:
                     last_reply[key] = t
                     for face in list(state["faces"]):
                         if face[1] is iface:
-                            send_face(face, TTL)
+                            if legacy:
+                                answer_legacy(face, p, src, port)
+                            else:
+                                send_face(face, TTL)
 
             return on_packet
 
@@ -803,8 +864,8 @@ class MulticastDnsAdapter:
                 except Exception:
                     pass  # a host callback never stops discovery
 
-        def handler(iface: Optional[MdnsInterface]) -> Callable[[bytes, str], None]:
-            def on_packet(data: bytes, src: str) -> None:
+        def handler(iface: Optional[MdnsInterface]) -> Callable[..., None]:
+            def on_packet(data: bytes, src: str, port: int = MDNS_PORT) -> None:
                 if state["closed"]:
                     return
                 try:
@@ -816,15 +877,9 @@ class MulticastDnsAdapter:
                 # A response from outside the link's subnets teaches nothing (RFC 6762 section 11). On
                 # IPv6 a link-local source is on-link by definition and takes the interface as its zone,
                 # which the source must carry too: with none, or another, it is not ours.
-                addr, source_zone = split_zone(src)
-                if is_link_local(addr):
-                    if iface is None or source_zone is None or source_zone != iface.zone:
-                        return
-                elif iface is None:
-                    if not source_in_subnets(addr, self._nets4()):
-                        return
-                elif not source_in_subnets(addr, iface.nets):
+                if not self._heard(src, iface):
                     return
+                addr = split_zone(src)[0]
                 learn(p.answers, addr, None if iface is None else iface.zone, src)
 
             return on_packet
