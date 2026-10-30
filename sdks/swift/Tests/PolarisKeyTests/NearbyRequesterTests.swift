@@ -534,3 +534,23 @@ final class NearbyRequesterTests: XCTestCase {
         XCTAssertFalse(fast.closed.value)
     }
 }
+
+final class NearbySecretsTests: XCTestCase {
+    func testTheRequestHandleIsInNoReprOfTheOptionsOrTheHandles() async throws {
+        let o = NearbyRequestOptions(request: nearbyRequestHandle, label: "Ben's Switch")
+        for text in [String(describing: o), "\(o)", String(reflecting: o)] {
+            XCTAssertFalse(text.contains(nearbyRequestHandle))
+        }
+        var dumped = ""
+        dump(o, to: &dumped)
+        XCTAssertFalse(dumped.contains(nearbyRequestHandle))
+        let net = FakeRequesterNet()
+        let r = try await NearbyRequester.start(
+            source: NearbyRequesterSource(
+                slug: nearbySlug, signer: { (try DeviceKeyStore.inMemory(), nearbyDeviceId) }),
+            options: o, network: net)
+        XCTAssertFalse(String(describing: r).contains(nearbyRequestHandle))
+        XCTAssertFalse(String(reflecting: r).contains(nearbyRequestHandle))
+        await r.close()
+    }
+}

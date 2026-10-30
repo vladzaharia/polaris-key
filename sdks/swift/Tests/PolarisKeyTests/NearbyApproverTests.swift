@@ -700,3 +700,38 @@ final class NearbyApproverTests: XCTestCase {
         await r.approver.stop()
     }
 }
+
+final class NearbyOneTimeKeyTests: XCTestCase {
+    func testAWipedKeyAnswersNothingAndTheSessionSharesTheStorage() async throws {
+        let k = try PeerOneTimeKey()
+        let before = try await k.publicKey()
+        XCTAssertEqual(before.count, 32)
+        XCTAssertFalse(k.isWiped)
+        // The channel holds this very object, not a copy: wiping it is wiping the session's storage.
+        let sent = NBox<[Data]>([])
+        let events = NBox<[PeerSessionEvent]>([])
+        let m = try PeerChannel(
+            role: .responder, slug: nearbySlug, staticKey: k, admission: HandshakeLimiter(),
+            hello: (nil, "t", "a", nil), send: { d in sent.mutate { $0.append(d) } },
+            onEvent: { e in events.mutate { $0.append(e) } }, mode: .v)
+        let first = NBox<[Data]>([])
+        let d = try PeerChannel(
+            role: .initiator, slug: nearbySlug, staticKey: PeerOneTimeKey(), hello: (nil, "t", "a", nil),
+            send: { x in first.mutate { $0.append(x) } }, onEvent: { _ in }, mode: .v)
+        await d.start()
+        k.wipe()
+        XCTAssertTrue(k.isWiped)
+        let dh = try await k.dh(before)
+        XCTAssertNil(dh)
+        do {
+            _ = try await k.publicKey()
+            XCTFail("answered")
+        } catch { XCTAssertEqual(error as? PeerNoiseError, .badKey) }
+        await m.receive(first.value[0])
+        let closed = events.value.filter {
+            if case .closed(.handshakeFailed, _) = $0 { return true } else { return false }
+        }
+        XCTAssertEqual(closed.count, 1, "a wiped key cannot take part in a handshake")
+        XCTAssertTrue(sent.value.isEmpty, "and nothing is sent")
+    }
+}

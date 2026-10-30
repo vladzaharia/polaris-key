@@ -311,7 +311,17 @@ public actor PolarisKeyClient {
         self.connect = connect
         let cloudConnect = CloudConnect(
             connect: connect, discovery: { await core.discoveryDocument },
-            applyTrust: { await core.applyPeerTrust($0) })
+            applyTrust: { await core.applyPeerTrust($0) },
+            nearby: NearbyDeps(
+                slug: core.product,
+                requireIdentity: { try await core.requireService(.identity, feature: Feature.identityNearby) },
+                identity: { fresh in
+                    if fresh { _ = await core.discover() }
+                    return await core.discoveryDocument?.identity
+                },
+                signedIn: { await identityClient.current() != nil }, signer: { try await connect.nearbySigner() },
+                approverNetwork: options.connect.nearbyApproverNetwork ?? SystemNearbyApproverNetwork(),
+                requesterNetwork: options.connect.nearbyRequesterNetwork ?? SystemNearbyRequesterNetwork()))
         self.cloudConnect = cloudConnect
         let attachments = self.attachments
         let ring: @Sendable () -> SyncKeyring = {
@@ -349,7 +359,7 @@ public actor PolarisKeyClient {
             // A released device holds no roster and no discovery key; if they cannot be removed
             // (a locked Keychain) the release stops.
             beforeRelease: {
-                await cloudConnect.stop()  // Connect stops before the roster and the credential go
+                await cloudConnect.stopForSignOut()  // Connect stops before the roster and the credential go
                 try await connect.leave()
                 // The principal leaves with the device: the ring forgets (a failure stops the release),
                 // then the synced data is purged.
@@ -380,7 +390,7 @@ public actor PolarisKeyClient {
         // synced data is purged (A-3). A root that cannot be deleted (a locked Keychain) stops the
         // sign-out.
         identity.onBeforeSignOut {
-            await cloudConnect.stop()
+            await cloudConnect.stopForSignOut()
             try await connect.leave()
             try await api.beforeSignOut()
         }
@@ -388,7 +398,7 @@ public actor PolarisKeyClient {
             do {
                 // Fail closed: the held roster and K_disc go first, and if they cannot, nothing
                 // else is wiped.
-                await cloudConnect.stop()
+                await cloudConnect.stopForSignOut()
                 try await connect.leave()
                 try await core.clearAll()
             } catch {
@@ -813,6 +823,8 @@ public actor PolarisKeyClient {
     public func close() {
         refreshTask?.cancel()
         refreshTask = nil
+        let nearby = cloudConnect.nearby
+        Task { await nearby.stopAll() }
     }
 }
 

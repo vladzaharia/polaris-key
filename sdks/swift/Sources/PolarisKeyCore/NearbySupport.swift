@@ -17,6 +17,12 @@ public let nearbySystemTimer: NearbyTimer = { seconds, fn in
     return { t.cancel() }
 }
 
+/// How an engine calls a host callback: inline by default, or on the umbrella's serial queue.
+public typealias NearbyDeliver = @Sendable (@escaping @Sendable () -> Void) -> Void
+
+/// The default `NearbyDeliver`: the callback runs where the engine calls it.
+public let nearbyInline: NearbyDeliver = { $0() }
+
 /// Why a nearby call refused. `code` is a registered client code.
 public enum NearbyError: Error, Sendable, Equatable, CustomStringConvertible {
     /// The session or the request is closed.
@@ -154,8 +160,16 @@ public protocol NearbyInboundPipe: PeerBytePipe {
 
 /// One advert generation's listener and registration.
 public protocol NearbyAdvertHandle: Sendable {
-    /// Stop accepting and withdraw the advert. A connection already made is not touched.
+    /// Stop accepting and withdraw the advert, now: it starts the stop and does not wait for it. The engine
+    /// calls it before its first suspension, so a caller that never awaits `stop()` still leaves no advert
+    /// behind. A connection already made is not touched.
+    func cancel()
+    /// Stop as `cancel()` does, and return once it is down.
     func stop() async
+}
+
+extension NearbyAdvertHandle {
+    public func cancel() {}
 }
 
 /// Where the approver gets its network (WIRE-CONTRACT-V5 §15.4, §15.6.1 rule 2). The system one is in the

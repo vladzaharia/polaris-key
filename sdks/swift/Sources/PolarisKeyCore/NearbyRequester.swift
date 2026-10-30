@@ -183,7 +183,7 @@ public struct NearbyRequesterSource: Sendable {
     }
 }
 
-public struct NearbyRequestOptions: Sendable {
+public struct NearbyRequestOptions: Sendable, CustomStringConvertible, CustomReflectable {
     /// The handle from `nearby/start` (`nr_…`).
     public var request: String
     /// This device's label in `HELLO` and `VOUCH_REQ` (display data; optional; at most 256 characters). It is
@@ -197,6 +197,9 @@ public struct NearbyRequestOptions: Sendable {
     public var handshakeSeconds: TimeInterval
     public var timer: NearbyTimer
     public var random: PeerRandom
+    /// How the host's listeners (`onApprovers`, `onResult`, `onRecord`, `onClose`) are called: inline by
+    /// default, or on the umbrella's serial queue so a callback that blocks cannot hold a close back.
+    public var deliver: NearbyDeliver
     /// Seconds a held session nobody chose lives before it is replaced (default 20).
     public var idleSeconds: TimeInterval
     /// A short pause before a replacement dial (default 0.25 s).
@@ -205,8 +208,8 @@ public struct NearbyRequestOptions: Sendable {
     public init(
         request: String, label: String? = nil, platform: String = "swift", expiresIn: TimeInterval = 300,
         handshakeSeconds: TimeInterval = PeerLink.handshakeSeconds, timer: @escaping NearbyTimer = nearbySystemTimer,
-        random: @escaping PeerRandom = peerSystemRandom, idleSeconds: TimeInterval = 20,
-        redialSeconds: TimeInterval = 0.25
+        random: @escaping PeerRandom = peerSystemRandom, deliver: @escaping NearbyDeliver = nearbyInline,
+        idleSeconds: TimeInterval = 20, redialSeconds: TimeInterval = 0.25
     ) {
         self.request = request
         self.label = label
@@ -215,9 +218,14 @@ public struct NearbyRequestOptions: Sendable {
         self.handshakeSeconds = handshakeSeconds
         self.timer = timer
         self.random = random
+        self.deliver = deliver
         self.idleSeconds = idleSeconds
         self.redialSeconds = redialSeconds
     }
+
+    /// The request handle is a secret (G19): no log line, repr or dump of the options prints it.
+    public var description: String { "NearbyRequestOptions()" }
+    public var customMirror: Mirror { Mirror(self, children: [:]) }
 }
 
 /// One approver in the list. Unauthenticated display data: any device on the LAN can be listed.
@@ -240,6 +248,9 @@ private final class NearbyListeners<T: Sendable>: Sendable {
         var fns: [(Int, @Sendable (T) -> Void)] = []
     }
     private let state = LockedValue(S())
+    private let deliver: NearbyDeliver
+
+    init(deliver: @escaping NearbyDeliver = nearbyInline) { self.deliver = deliver }
 
     func add(_ fn: @escaping @Sendable (T) -> Void) -> @Sendable () -> Void {
         let id = state.with { s -> Int in
@@ -252,7 +263,7 @@ private final class NearbyListeners<T: Sendable>: Sendable {
 
     func fire(_ v: T) {
         let fns = state.with { $0.fns.map(\.1) }
-        for f in fns { f(v) }
+        for f in fns { deliver { f(v) } }
     }
 }
 
@@ -324,12 +335,16 @@ public actor NearbyRequester: CustomStringConvertible, CustomReflectable {
     private var cancels: [@Sendable () -> Void] = []
     private var signer: (port: any DeviceKeyPort, deviceId: String)?
     private let pipes = LockedValue<[ObjectIdentifier: any PeerBytePipe]>([:])
-    private let approversListeners = NearbyListeners<[NearbyApproverInfo]>()
-    private let resultListeners = NearbyListeners<VouchStatus>()
-    private let recordListeners = NearbyListeners<NearbyRecord>()
-    private let closeListeners = NearbyListeners<String>()
+    private let approversListeners: NearbyListeners<[NearbyApproverInfo]>
+    private let resultListeners: NearbyListeners<VouchStatus>
+    private let recordListeners: NearbyListeners<NearbyRecord>
+    private let closeListeners: NearbyListeners<String>
 
     private init(_ src: NearbyRequesterSource, _ o: NearbyRequestOptions, _ network: any NearbyRequesterNetwork) {
+        approversListeners = NearbyListeners(deliver: o.deliver)
+        resultListeners = NearbyListeners(deliver: o.deliver)
+        recordListeners = NearbyListeners(deliver: o.deliver)
+        closeListeners = NearbyListeners(deliver: o.deliver)
         self.src = src
         self.o = o
         self.network = network
@@ -357,11 +372,7 @@ public actor NearbyRequester: CustomStringConvertible, CustomReflectable {
     }
 
     private func begin(_ expires: TimeInterval) async throws {
-        do {
-            signer = try await src.signer()
-        } catch {
-            throw NearbyError.unavailable
-        }
+        signer = try await src.signer()
         cancels.append(
             o.timer(expires) { [weak self] in
                 guard let self else { return }

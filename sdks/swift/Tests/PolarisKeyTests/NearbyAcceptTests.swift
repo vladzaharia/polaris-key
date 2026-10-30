@@ -93,6 +93,34 @@ import XCTest
             await nearbyUntil("closed") { d.closed != nil }
         }
 
+        /// D's system network resolves a host and port advert, races its addresses and dials: the approver on
+        /// the other side of a real loopback socket sees a session and lists D's HELLO.
+        func testTheRequestersSystemNetworkResolvesAndDialsARealListener() async throws {
+            let approvals = NBox<[NearbyApproval]>([])
+            let spy = SpyNet()
+            let approver = try await NearbyApprover.start(
+                source: NearbyApproverSource(slug: nearbySlug, signedIn: { true }, nearbyServed: { true }),
+                handler: { a in approvals.mutate { $0.append(a) } },
+                options: NearbyApproverOptions(prompt: true, label: "Ana's Mac", platform: "macos"), network: spy)
+            let port = try XCTUnwrap(spy.handles.value.first).port
+            let net = SystemNearbyRequesterNetwork(allowLoopback: true)
+            let ad = NearbyAdvert(
+                instance: "p1-cccccccccccccccc", txt: ["v=1", "m=v"],
+                endpoint: BonjourEndpoint(
+                    name: "p1-cccccccccccccccc",
+                    network: .hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: port)!)))
+            let targets = try await net.resolve(ad)
+            XCTAssertEqual(targets.count, 1)
+            let pipe = try await nearbyDialRace(targets, timer: nearbySystemTimer) { try await net.dial($0) }
+            let d = try await RawD.over(pipe, label: "Ben's Switch")
+            await nearbyUntil("hello") { d.hello != nil }
+            XCTAssertEqual(d.hello?.label, "Ana's Mac")
+            await d.startSas()
+            await nearbyUntil("prompt") { approvals.value.count == 1 }
+            XCTAssertEqual(approvals.value[0].label, "Ben's Switch")
+            await approver.stop()
+        }
+
         func testAnUnestablishedSocketIsClosedWhenThePreAuthClockRuns() async throws {
             let l = listener(preAuth: 0.3)
             let served = NBox<[NWPipe]>([])

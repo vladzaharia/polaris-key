@@ -60,6 +60,7 @@ import PolarisKeyPlatform
                 listener = l
                 self.port = port
             }
+            func cancel() { listener.stop() }
             func stop() async { listener.stop() }
         }
 
@@ -133,6 +134,179 @@ import PolarisKeyPlatform
             } catch let e as BonjourPipeError {
                 throw NearbyError.from(e)
             }
+        }
+    }
+
+    /// What nearby approval reads of the client (CC-15.S4).
+    public struct NearbyDeps: Sendable {
+        public var slug: String
+        /// Seconds since the epoch.
+        public var now: @Sendable () -> Int
+        /// The Identity service is on for this product, else the typed N/A.
+        public var requireIdentity: @Sendable () async throws -> Void
+        /// The Identity fragment of discovery; `fresh` loads it again first. nil while it is off.
+        public var identity: @Sendable (_ fresh: Bool) async -> IdentityDiscovery?
+        /// This device is signed in on the product.
+        public var signedIn: @Sendable () async -> Bool
+        /// D's device keys and its `X-PKey-Device` value.
+        public var signer: @Sendable () async throws -> (port: any DeviceKeyPort, deviceId: String)
+        public var approverNetwork: any NearbyApproverNetwork
+        public var requesterNetwork: any NearbyRequesterNetwork
+
+        public init(
+            slug: String, now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970) },
+            requireIdentity: @escaping @Sendable () async throws -> Void,
+            identity: @escaping @Sendable (_ fresh: Bool) async -> IdentityDiscovery?,
+            signedIn: @escaping @Sendable () async -> Bool,
+            signer: @escaping @Sendable () async throws -> (port: any DeviceKeyPort, deviceId: String),
+            approverNetwork: any NearbyApproverNetwork = SystemNearbyApproverNetwork(),
+            requesterNetwork: any NearbyRequesterNetwork = SystemNearbyRequesterNetwork()
+        ) {
+            self.slug = slug
+            self.now = now
+            self.requireIdentity = requireIdentity
+            self.identity = identity
+            self.signedIn = signedIn
+            self.signer = signer
+            self.approverNetwork = approverNetwork
+            self.requesterNetwork = requesterNetwork
+        }
+    }
+
+    /// Nearby approval (CC-15; WIRE-CONTRACT-V5 §15.6.1), `client.cloudConnect.nearby`. It is gated by the
+    /// Identity service's discovery (`nearby` and its endpoints), never by Connect: it works with Connect off. It
+    /// carries the vouch over the LAN and calls no route; the host calls `nearby/start`, `poll` and `approve` and
+    /// gives the answers to the handles.
+    public final class CloudNearby: Sendable {
+        private struct State {
+            var epoch = 0
+            var approvers: [NearbyApprover] = []
+            var requests: [NearbyRequester] = []
+        }
+
+        private let deps: NearbyDeps?
+        private let deliver: NearbyDeliver
+        private let state = LockedValue(State())
+
+        init(_ deps: NearbyDeps?, deliver: @escaping NearbyDeliver) {
+            self.deps = deps
+            self.deliver = deliver
+        }
+
+        private func unsupported(_ detail: String, _ reason: String) -> PolarisError {
+            let u = Unsupported(feature: Feature.identityNearby, reason: reason, detail: detail)
+            return PolarisError(
+                code: reason == UnsupportedReason.product
+                    ? PolarisError.serviceUnavailable : ErrorCode.nearbyUnsupported,
+                message: "Nearby approval is not available here.", detail: detail, unsupported: u)
+        }
+
+        private func fragment(fresh: Bool, endpoints: [String]) async throws -> NearbyDeps {
+            guard let d = deps else {
+                throw unsupported("Nearby approval is not set up on this client.", UnsupportedReason.runtime)
+            }
+            // Discovery first: the service table comes from it once it is loaded.
+            let f = await d.identity(fresh)
+            try await d.requireIdentity()
+            guard let f, f.nearby, endpoints.allSatisfy({ f.endpoints[$0]?.isEmpty == false }) else {
+                throw unsupported(
+                    "This product's discovery does not name nearby approval.", UnsupportedReason.product)
+            }
+            return d
+        }
+
+        /// D, the device with no sign-in: browse for approvers nearby and list them for the person to tap
+        /// (`choose`). `options.request` is the handle `nearby/start` answered. Throws the typed N/A when the
+        /// product serves no nearby approval, `NearbyError.permissionDenied` or `.notConfigured` when Local
+        /// Network is refused or the app's Info.plist lacks its entries (D-8), and `NearbyError.closed` when a
+        /// sign-out (`stopAll`) landed while it was starting.
+        public func request(_ options: NearbyRequestOptions) async throws -> NearbyRequester {
+            let epoch = state.current.epoch
+            let d = try await fragment(fresh: true, endpoints: ["nearbyStart", "nearbyPoll"])
+            if epoch != state.current.epoch { throw NearbyError.closed }
+            var o = options
+            o.platform = connectPlatformName
+            o.deliver = deliver
+            let r = try await NearbyRequester.start(
+                source: NearbyRequesterSource(slug: d.slug, now: d.now, signer: d.signer), options: o,
+                network: d.requesterNetwork)
+            let kept = state.with { s -> Bool in
+                if epoch != s.epoch { return false }
+                s.requests.append(r)
+                return true
+            }
+            if !kept {
+                await r.close()
+                throw NearbyError.closed
+            }
+            return r
+        }
+
+        /// M, a signed-in device: advertise while the person has "Approve a nearby device" open
+        /// (`prompt: true`) or has allowed background approval with the permission granted (`prompt: false` with
+        /// `background: true`), and hand each session that reaches the code to `handler`. Returns the handle that
+        /// stops, pauses and resumes it. Throws `account_required` when the device is signed out (also when the
+        /// sign-out landed while this was starting), and the typed N/A when the product serves no nearby
+        /// approval.
+        public func onRequest(
+            _ handler: @escaping @Sendable (NearbyApproval) -> Void, options: NearbyApproverOptions
+        ) async throws -> NearbyApprover {
+            let epoch = state.current.epoch
+            let d = try await fragment(fresh: true, endpoints: ["nearbyApprove"])
+            let signedOut = PolarisError(
+                code: ErrorCode.accountRequired, message: "Sign in before approving a nearby device.")
+            if !(await d.signedIn()) || epoch != state.current.epoch { throw signedOut }
+            var o = options
+            o.platform = connectPlatformName
+            o.deliver = deliver
+            let me = self
+            let h = try await NearbyApprover.start(
+                source: NearbyApproverSource(
+                    slug: d.slug, now: d.now, signedIn: d.signedIn,
+                    nearbyServed: { (try? await me.fragment(fresh: true, endpoints: ["nearbyApprove"])) != nil }),
+                handler: handler, options: o, network: d.approverNetwork)
+            // The sign-out may have landed while the advert was starting, before the handle was kept.
+            let signed = await d.signedIn()
+            let kept = state.with { s -> Bool in
+                if !signed || epoch != s.epoch { return false }
+                s.approvers.append(h)
+                return true
+            }
+            if !kept {
+                await h.stop()
+                throw signedOut
+            }
+            return h
+        }
+
+        /// Stop every advert and close every request. The sign-out step.
+        func stopAll() async {
+            let (hs, rs) = state.with { s -> ([NearbyApprover], [NearbyRequester]) in
+                s.epoch += 1
+                defer {
+                    s.approvers = []
+                    s.requests = []
+                }
+                return (s.approvers, s.requests)
+            }
+            await withTaskGroup(of: Void.self) { group in
+                for h in hs { group.addTask { await h.stop() } }
+                for r in rs { group.addTask { await r.close() } }
+            }
+        }
+
+        /// The sign-out bound ran out: drop every socket and listener now, with no goodbye.
+        func forceStop() {
+            let (hs, rs) = state.with { s -> ([NearbyApprover], [NearbyRequester]) in
+                s.epoch += 1
+                defer {
+                    s.approvers = []
+                    s.requests = []
+                }
+                return (s.approvers, s.requests)
+            }
+            for h in hs { h.destroy() }
+            for r in rs { r.destroy() }
         }
     }
 #endif

@@ -105,6 +105,10 @@ public struct NearbyApproverOptions: Sendable {
     /// The handshake window of a link (default 30 s).
     public var handshakeSeconds: TimeInterval
     public var timer: NearbyTimer
+    /// How the host's callbacks (`handler`, `onNotice`, `onStopped`, `onClose`) are called. The default is
+    /// inline, on the engine's task; the umbrella hands them to a serial queue so a callback that blocks cannot
+    /// hold a stop or a sign-out back.
+    public var deliver: NearbyDeliver
     /// Monotonic seconds (limiter, failure budget).
     public var mono: @Sendable () -> TimeInterval
     /// CSPRNG bytes (instance, decoys, one-time keys).
@@ -116,6 +120,7 @@ public struct NearbyApproverOptions: Sendable {
         onStopped: (@Sendable (NearbyStopReason) -> Void)? = nil, renewSeconds: TimeInterval = 300,
         keepOpenSeconds: TimeInterval = 300, requestWaitSeconds: TimeInterval = 30, maxSessions: Int = 8,
         handshakeSeconds: TimeInterval = PeerLink.handshakeSeconds, timer: @escaping NearbyTimer = nearbySystemTimer,
+        deliver: @escaping NearbyDeliver = nearbyInline,
         mono: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
         random: @escaping PeerRandom = peerSystemRandom
     ) {
@@ -131,6 +136,7 @@ public struct NearbyApproverOptions: Sendable {
         self.maxSessions = maxSessions
         self.handshakeSeconds = handshakeSeconds
         self.timer = timer
+        self.deliver = deliver
         self.mono = mono
         self.random = random
     }
@@ -490,6 +496,7 @@ public actor NearbyApprover: CustomStringConvertible, CustomReflectable {
         if epoch != self.epoch {
             // A stop landed while this was starting: what it made is torn down, not kept.
             g.retired = true
+            handle.cancel()
             await handle.stop()
             return
         }
@@ -532,6 +539,7 @@ public actor NearbyApprover: CustomStringConvertible, CustomReflectable {
     private func retire(_ g: Generation) async {
         g.retired = true
         let cut = live.values.filter { $0.gen === g && !$0.established }.map(\.pipe)
+        g.handle?.cancel()
         for p in cut { Task { await p.close() } }
         await g.handle?.stop()
     }
@@ -552,6 +560,8 @@ public actor NearbyApprover: CustomStringConvertible, CustomReflectable {
         if let g {
             g.retired = true
             let handle = g.handle
+            // Withdrawn before the first suspension, whoever waits.
+            handle?.cancel()
             work.append(Task { await handle?.stop() })
             // A connection short of the transport is dropped; the sessions past it hear `peer_bye`.
             for l in live.values where l.gen === g && !l.established {
@@ -564,7 +574,7 @@ public actor NearbyApprover: CustomStringConvertible, CustomReflectable {
         active = nil
         for t in work { await t.value }
         // The host's own stop and pause need no word back.
-        if why != .host { o.onStopped?(why) }
+        if why != .host, let f = o.onStopped { o.deliver { f(why) } }
     }
 
     // MARK: Sessions
@@ -684,7 +694,8 @@ public actor NearbyApprover: CustomStringConvertible, CustomReflectable {
         // A prompt that was shown and ended before the person answered, by anything but this engine (the
         // 120 s deadline, the peer closing or the connection dropping), counts (rule 2).
         if l.shown && !l.picked && !l.local { failure() }
-        l.finishClosers(NearbyClosed(code: c.code, byPeer: c.byPeer))
+        let info = NearbyClosed(code: c.code, byPeer: c.byPeer)
+        o.deliver { l.finishClosers(info) }
         if active === l {
             active = nil
             pump()
@@ -724,7 +735,10 @@ public actor NearbyApprover: CustomStringConvertible, CustomReflectable {
         if !prompt {
             for l in queue where !l.noticed {
                 l.noticed = true
-                o.onNotice?(ApprovalNotice(label: l.hello?.label, platform: l.hello?.platform ?? ""))
+                if let f = o.onNotice {
+                    let n = ApprovalNotice(label: l.hello?.label, platform: l.hello?.platform ?? "")
+                    o.deliver { f(n) }
+                }
             }
             return
         }
@@ -737,7 +751,9 @@ public actor NearbyApprover: CustomStringConvertible, CustomReflectable {
         active = next
         next.shown = true
         next.flow.codeShown()
-        handler(NearbyApproval(approver: self, live: next, codes: decoys.codes.map(PeerSAS.display)))
+        let approval = NearbyApproval(approver: self, live: next, codes: decoys.codes.map(PeerSAS.display))
+        let handler = handler
+        o.deliver { handler(approval) }
     }
 
     /// The prompt is over (a pick, a decline): the next waiting session may show its codes.

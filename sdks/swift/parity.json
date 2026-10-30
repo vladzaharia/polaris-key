@@ -204,7 +204,7 @@
     "identity.nearby": {
       "status": "planned",
       "wp": "I-44",
-      "note": "Nearby approval (I-40.8 transcripts, I-44)."
+      "note": "Nearby approval (I-40.8 transcripts, I-44). The LAN half is in (CC-15.S1 to S4: client.cloudConnect.nearby.request and onRequest, the vouch rows of peer-matrix.json run in PeerVouchTests); the routes and the kit screens follow in I-44."
     },
     "identity.keyentry": {
       "status": "implemented"

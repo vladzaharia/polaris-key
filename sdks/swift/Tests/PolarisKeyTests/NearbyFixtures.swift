@@ -167,12 +167,17 @@ final class FakeAdvertHandle: NearbyAdvertHandle, @unchecked Sendable {
         self.onPipe = onPipe
     }
 
+    /// `cancel()` ran: the advert is withdrawn whether or not `stop()` ever returns.
+    let cancelled = NBox(false)
+
+    func cancel() { cancelled.value = true }
+
     func stop() async {
         stops.mutate { $0 += 1 }
         while hang.value { try? await Task.sleep(nanoseconds: 10_000_000) }
     }
 
-    var stopped: Bool { stops.value > 0 }
+    var stopped: Bool { cancelled.value || stops.value > 0 }
 }
 
 final class FakeApproverNet: NearbyApproverNetwork, @unchecked Sendable {
