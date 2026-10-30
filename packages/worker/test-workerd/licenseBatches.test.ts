@@ -12,11 +12,8 @@ import djdlCatalog from "../../../products/djdl/catalog.json";
 import { D1Db } from "../src/db/d1.js";
 import type { Env as WorkerEnv } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "../test/consoleSessionHelper.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { MAX_BATCH_COUNT } from "../src/services/license/batches.js";
@@ -37,8 +34,9 @@ async function admin(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     workerEnv,
+    db,
     { sub: "op-w", name: "Op", email: "op@x.io", groups: [GROUP] },
     NOW,
   );
