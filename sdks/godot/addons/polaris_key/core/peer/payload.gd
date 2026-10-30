@@ -50,7 +50,7 @@ static func parse_handshake_payload(
 		return no
 	var o: Dictionary = r["value"]
 	var nonwire: PKeyJson.PointerSet = r["non_wire_integers"]
-	if not _is_one(o.get("v")):
+	if not _is_one(o.get("v"), nonwire):
 		return no
 	if message == 1:
 		return no if o.has("cert") else {"ok": true, "caps": []}
@@ -169,6 +169,8 @@ static func _parse(bytes: PackedByteArray) -> Dictionary:
 	return r
 
 
-static func _is_one(v: Variant) -> bool:
-	return (v is float or v is int) and float(v) == 1.0
+## The version member is the integer 1, spelled as one: `1.0` and `1e0` are refused, as for any other wire
+## integer (section 1.2).
+static func _is_one(v: Variant, nonwire: PKeyJson.PointerSet) -> bool:
+	return PKeyClaims.is_wire_integer(v, "/v", 1, nonwire) and float(v) == 1.0
 
