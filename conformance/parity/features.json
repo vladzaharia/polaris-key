@@ -984,7 +984,10 @@
           "wp": "CC-19"
         },
         {
-          "kind": "unit"
+          "kind": "corpus",
+          "file": "peer-matrix.json",
+          "family": "contact",
+          "wp": "CC-19"
         }
       ],
       "allowedNa": [

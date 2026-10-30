@@ -80,15 +80,16 @@ const sign = (
 ): Promise<string> =>
   signJws({ iss: ISSUER, aud: PRODUCT, ...claims }, TEST_PEM, TEST_KID, typ);
 
-const DISCOVERY = {
+const discovery = (interAccount: boolean) => ({
   product: PRODUCT,
   services: {
     connect: {
       enabled: true,
+      interAccount,
       endpoints: { identity: `${BASE}/${PRODUCT}/connect/identity` },
     },
   },
-};
+});
 
 interface Member {
   signKey: string;
@@ -115,6 +116,13 @@ export class MultiWorker {
   ticketsAsked = 0;
   /** The `url` the ticket answer carries. */
   relayUrl = `wss://k.test/${PRODUCT}/connect/relay`;
+  /** Discovery's `services.connect.interAccount` and whether contact tickets are served (§15.7). */
+  interAccount = false;
+  /** An older Worker ignores the contact body and answers an account ticket. */
+  echoRoom = true;
+  /** Contact tickets: ticket to device and rid, and every ticket request body seen. */
+  contactTickets = new Map<string, { device: string; rid: string }>();
+  ticketBodies: string[] = [];
   /** Count and switch for the identity route. */
   identityCalls = 0;
   failIdentity = false;
@@ -154,7 +162,8 @@ export class MultiWorker {
     const path = new URL(String(input)).pathname.slice(PRODUCT.length + 2);
     const j = (b: unknown, s = 200) =>
       new Response(JSON.stringify(b), { status: s });
-    if (path === ".well-known/polaris.json") return j(DISCOVERY);
+    if (path === ".well-known/polaris.json")
+      return j(discovery(this.interAccount));
     const auth = new Headers(init?.headers).get("authorization") ?? "";
     const deviceId = this.tokens.get(auth.replace("Bearer ", ""));
     if (deviceId === undefined) return j({}, 401);
@@ -194,6 +203,37 @@ export class MultiWorker {
           429,
         );
       const ticket = `pkeyrt_${base64UrlEncodeBytes(randomBytes(24))}`;
+      const raw = typeof init?.body === "string" ? init.body : "";
+      this.ticketBodies.push(raw);
+      if (raw !== "") {
+        // A contact ticket (§15.7): the gate first, then the body, which must be exactly the two members.
+        if (!this.interAccount)
+          return j({ error: { code: "connect_links_disabled" } }, 403);
+        let body: unknown;
+        try {
+          body = JSON.parse(raw);
+        } catch {
+          return j({ error: { code: "bad_request" } }, 400);
+        }
+        const b = body as Record<string, unknown>;
+        if (
+          typeof b !== "object" ||
+          b === null ||
+          Object.keys(b).length !== 2 ||
+          b.room !== "c" ||
+          typeof b.rid !== "string" ||
+          !/^[A-Za-z0-9_-]{22}$/.test(b.rid)
+        )
+          return j({ error: { code: "bad_request" } }, 400);
+        this.contactTickets.set(ticket, { device: deviceId, rid: b.rid });
+        return j({
+          ticket,
+          url: this.relayUrl,
+          protocol: "pkey-relay.1",
+          expiresAt: Math.floor(Date.now() / 1000) + 60,
+          ...(this.echoRoom ? { room: "c" } : {}),
+        });
+      }
       this.tickets.set(ticket, deviceId);
       return j({
         ticket,

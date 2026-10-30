@@ -26,6 +26,7 @@ import {
   type PeerSessionOptions,
   type SessionEvent,
 } from "@polaris-key/client-core/peer";
+import type { ContactRef } from "./contacts.js";
 
 /** The `HELLO` a mode-v end sends: the optional label, this platform and the product slug. */
 export const nearbyHello = (
@@ -151,12 +152,14 @@ export class ConnectSession {
     readonly role: "initiator" | "responder",
     readonly remoteAddress: string,
     readonly path: SessionPath = "lan",
+    /** The link a mode-`c` session runs over (§15.10); null for the person's own devices. */
+    readonly contact: ContactRef | null = null,
   ) {
     this.#link = link;
     // The link holds the channel and with it the discovery keys: never printed.
     printAs(this, () => ({
       session: "ConnectSession",
-      peerDeviceId,
+      ...(contact !== null ? { contact: contact.id } : { peerDeviceId }),
       path,
       role,
     }));
@@ -217,8 +220,13 @@ export class ConnectSession {
     return () => this.#onClose.delete(fn);
   }
 
-  /** Close with `peer_bye` (or another code); resolves when the socket is down. */
-  async close(code: "peer_bye" | "peer_busy" = "peer_bye"): Promise<void> {
+  /**
+   * Close with `peer_bye` (or another code); resolves when the socket is down. `peer_revoked` is
+   * what a deleted contact's open sessions hear (§15.10).
+   */
+  async close(
+    code: "peer_bye" | "peer_busy" | "peer_revoked" = "peer_bye",
+  ): Promise<void> {
     await this.#link.channel.close(code);
   }
 
@@ -272,6 +280,11 @@ export function routeRecord(
 
 export interface SocketLinkOptions {
   socket: Socket;
+  /**
+   * The contacts the channel was given (same order): a mode-`c` session names the one that
+   * opened it by index (§15.10), and its `ConnectSession` carries that link.
+   */
+  contacts?: readonly ContactRef[];
   channel: Omit<PeerSessionOptions, "send" | "onEvent">;
   onRing?: (jws: string, epoch: number) => void;
   onTrust?: (jws: string) => void;
@@ -371,15 +384,22 @@ export class SocketLink {
     }
     switch (e.type) {
       case "established": {
-        if (e.peerDeviceId === undefined) break;
+        // Mode `c`: no device id, the contact that opened the session names the peer.
+        const ref =
+          e.contactIndex !== undefined
+            ? this.#o.contacts?.[e.contactIndex]
+            : undefined;
+        if (e.peerDeviceId === undefined && ref === undefined) break;
         clearTimeout(this.#deadline);
         this.#session = new ConnectSession(
           this,
-          e.peerDeviceId,
+          e.peerDeviceId ?? "",
           e.caps,
           e.hello,
           this.#o.channel.role,
           this.#o.socket.remoteAddress ?? "",
+          "lan",
+          ref ?? null,
         );
         this.#o.onEstablished?.(this.#session);
         this.#settle.resolve(this.#session);

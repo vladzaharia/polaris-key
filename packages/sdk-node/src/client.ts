@@ -339,6 +339,16 @@ export class PolarisKeyClient {
           if (this.discoveryDoc === null) await this.discover();
           return this.discoveryDoc;
         },
+        // WIRE-CONTRACT-V5 §15.9: links are on only while the cached document says so.
+        interAccount: () => {
+          const f: unknown = this.discoveryDoc?.services?.connect;
+          return (
+            typeof f === "object" &&
+            f !== null &&
+            (f as { enabled?: unknown }).enabled === true &&
+            (f as { interAccount?: unknown }).interAccount === true
+          );
+        },
       },
       {
         ...(opts.keyring?.deviceKeys
@@ -550,6 +560,8 @@ export class PolarisKeyClient {
       await this.portalStore.accept(result.manifest);
       this.cloudSyncHost.noteDiscovery();
       void this.cloudSyncApi.attach().catch(() => undefined);
+      // `interAccount` may have moved: links follow the document (§15.10 "Gates").
+      this.connect.notifyContacts();
     }
     return result;
   }

@@ -274,3 +274,29 @@ export function channelBase(
     rekeySeconds: o.rekeySeconds,
   };
 }
+
+/**
+ * What a mode-`c` channel needs (§15.10): no account, no certificate. The static key is the
+ * device's agreeKey behind the same handle as mode `a`.
+ */
+export function contactChannel(
+  id: LanIdentity,
+  o: Pick<
+    LanOptions,
+    "caps" | "label" | "timer" | "rekeyMessages" | "rekeySeconds"
+  >,
+  handle: Uint8Array,
+  now: () => number,
+): Omit<PeerSessionOptions, "send" | "onEvent" | "mode" | "role"> {
+  return {
+    slug: id.slug,
+    staticKey: handle,
+    caps: o.caps ?? ["app/1"],
+    hello: { label: o.label, platform: process.platform, app: id.slug },
+    ports: peerPorts(id, handle),
+    now,
+    timer: o.timer,
+    rekeyMessages: o.rekeyMessages,
+    rekeySeconds: o.rekeySeconds,
+  };
+}
