@@ -54,6 +54,7 @@ const CLOSE_CODES := [&"peer_revoked", &"peer_expired", &"peer_bad_frame", &"pee
 const HANDSHAKE_FAILED := &"handshake_failed"
 const PEER_BYE := &"peer_bye"
 const PEER_BAD_FRAME := &"peer_bad_frame"
+const PEER_UNKNOWN_CRITICAL := &"peer_unknown_critical"
 const PEER_NOT_ALLOWED := &"peer_not_allowed"
 const PEER_BUSY := &"peer_busy"
 const PEER_TIMEOUT := &"peer_timeout"
