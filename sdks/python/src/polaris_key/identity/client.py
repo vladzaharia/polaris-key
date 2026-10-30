@@ -212,7 +212,7 @@ class IdentityClient:
 
     @property
     def nearby(self) -> NearbyNamespace:
-        """``identity.nearby.available(role=...)``: whether nearby sign-in can run on this device
+        """``client.identity.nearby.available(role=...)``: whether nearby sign-in can run on this device
         (see :class:`~polaris_key.identity.auto_sign_in.NearbyNamespace`)."""
         return self._nearby
 
