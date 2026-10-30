@@ -444,6 +444,13 @@ static func _is_link_local(b: PackedByteArray) -> bool:
 
 # learning
 
+## The address bytes a packet's source stands for (an IPv4-mapped IPv6 address is its IPv4 address);
+## empty when `source` is not an address. The rule `learn` applies, for a caller that learns record by
+## record.
+static func source_address(source: String) -> PackedByteArray:
+	return _source_bytes(source)
+
+
 ## The address bytes a packet's source stands for: an IPv4-mapped IPv6 address (`::ffff:a.b.c.d`)
 ## is its IPv4 address. Empty when `source` is not an address.
 static func _source_bytes(source: String) -> PackedByteArray:
