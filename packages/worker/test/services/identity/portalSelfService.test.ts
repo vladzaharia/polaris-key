@@ -164,6 +164,27 @@ describe("license key masking and device names", () => {
 });
 
 describe("POST /api/activate/preview (G22)", () => {
+  it("names the product by its checked name before the person adds the key", async () => {
+    // DISPLAY-NAME-INVISIBLE B4: the claim preview is pre-consent.
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, "djdl");
+    await db.run(
+      "UPDATE products SET name = ? WHERE slug = ?",
+      "Steam",
+      "djdl",
+    );
+    const { key } = await seedLicenseWithKey(db, "djdl");
+    const s = await portalSession(env, db, "bob@example.com");
+    await setClaimByKey(db, "djdl", true);
+    const res = await preview(env, db, s, key);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      verdict: "addable",
+      product: { slug: "djdl", name: "djdl" },
+    });
+  });
+
   it("previews an addable key: product, tier, terms, platforms, and writes nothing", async () => {
     const db = makeTestDb();
     const env = portalEnv();

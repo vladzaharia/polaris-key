@@ -43,7 +43,9 @@ import { handlePortal } from "../../../src/services/identity/portal/index.js";
 import {
   EXPIRES_SOON_SECONDS,
   licenseStatus,
+  presentationOf,
 } from "../../../src/services/identity/portal/library.js";
+import { loadProduct } from "../../../src/core/products.js";
 import {
   MEDIA_CSP,
   MEDIA_IMMUTABLE,
@@ -285,6 +287,33 @@ describe("GET /api/library", () => {
     // The page never receives a developer URL for art.
     expect(JSON.stringify(body)).not.toContain("raw.githubusercontent.com");
     expect(JSON.stringify(body)).not.toContain(HEADER);
+  });
+
+  it("draws the checked name and developer: a listing that fails the display rules reads as the slug", async () => {
+    // DISPLAY-NAME-INVISIBLE B4: tiles and the product page, not only the sign-in surfaces.
+    const db = makeTestDb();
+    const env = portalEnv();
+    const s = await session(env, db);
+    await productWithListing(db, "tidewater", {
+      name: "Steam",
+      developerName: "Fennick\u202E Studio",
+    });
+    const { licenseId } = await seedLicenseWithKey(db, "tidewater", {
+      id: "lic_tw",
+    });
+    await linkLicense(db, s.accountId, "tidewater", licenseId, "admin", NOW);
+    const lib = (await (await api(env, db, "/api/library", s)).json()) as {
+      products: Array<Record<string, unknown>>;
+    };
+    expect(lib.products[0]).toMatchObject({
+      name: "tidewater",
+      developerName: null,
+    });
+    const page = await api(env, db, "/api/products/tidewater", s);
+    expect(await page.json()).toMatchObject({
+      name: "tidewater",
+      developerName: null,
+    });
   });
 
   it("shows the BEST licence and its status; a portal-disabled product is absent", async () => {
@@ -1017,5 +1046,35 @@ describe("the proxy's source is the slot's hosted_assets.source_ref (A-27.2)", (
       `/media/tidewater/screenshot-0?v=${await mediaVersion(S2)}`,
       `/media/tidewater/screenshot-1?v=${await mediaVersion(S3)}`,
     ]);
+  });
+});
+
+describe("presentationOf (DISPLAY-NAME-INVISIBLE B4)", () => {
+  const listing = { name: "Acme\u202E", developerName: "Dev\u3164" };
+
+  it("returns the checked name and developer, and the stored ones only on request", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, "acme");
+    const product = (await loadProduct(env, db, "acme"))!;
+    const checked = await presentationOf(env, db, product, listing, "library");
+    expect(checked).toMatchObject({ name: "acme", developerName: null });
+    const raw = await presentationOf(env, db, product, listing, "client", {
+      raw: true,
+    });
+    expect(raw).toMatchObject({
+      name: "Acme\u202E",
+      developerName: "Dev\u3164",
+    });
+    // A name that passes is shown as stored.
+    expect(
+      await presentationOf(
+        env,
+        db,
+        product,
+        { name: "Acme Arcade", developerName: "Fennick" },
+        "library",
+      ),
+    ).toMatchObject({ name: "Acme Arcade", developerName: "Fennick" });
   });
 });
