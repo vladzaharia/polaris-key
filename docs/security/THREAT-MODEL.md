@@ -4109,6 +4109,42 @@ sign-in alone: it waits at the approval page (see control 5 above).
   device label is the starter's own text, so neither is a trust signal. No package owns this
   residual; I-40 (account-initiated pairing) becomes optional.
 
+**What app mode adds under R1-07 (UK-42.22; WIRE-CONTRACT-V5 §12.10.1). OPEN, accepted by the
+lead 2026-10-30 under the owner's delegated authority.** A device start that asks
+`licenseChoice: "app"` is answered, after the same approval, by binding the starter's device to the
+approver's ACCOUNT, not to one seat on their licence. A person persuaded to press **Sign in on
+{device}** therefore gives the starter's device:
+
+- **The account binding.** `devices.subject` is the victim's pairwise subject for the product, and
+  `choice/complete` and the `ready` answer carry that subject and the product's full grant. The
+  device is the victim's Cloud Sync principal when Sync is on (it can read the ciphertext, push,
+  overwrite and spend quota) and shows in the victim's per-device key lookups.
+- **Any-licence choice.** The `choose` view lists every licence of the account the product can
+  use (ids, tier names, seat counts, expiries), and the device may bind any listed one that has a
+  free seat, or `create` the account's first licence where the policy grants one.
+- **Key and keep, with attach.** The device may enter a licence key, or `keep` its own floating
+  licence, and a later attach (`confirm: true`) moves that licence into the victim's account.
+
+Compared with the card-mode R1-07, which authorized one starter device on the identity's own
+licence, the poll no longer asks the person to pick on a card, so the approval page is the only
+consent. What the channel withholds is unchanged from the contract: **Replace** (a device-code
+grant cannot name a device to displace; `409` with the view's `replace: null`), a licence's
+**device list** (`404`), and **fresh** (the grant never marks a step-up, so Replace and the
+step-up-gated routes stay closed). The licence a device may bind is still bounded by the seat
+check, the fingerprint and hardware rules of the bind, and a foreign device row is not adopted.
+
+Mitigations, all closed by tests: (1) the approval page, when the start asked for app mode,
+says the device will be signed in to the person's Polaris Locker account and names the app, so
+the consent is not the licence-only wording; (2) every app-mode device-code bind sends the
+new-device security notice (`appDeviceApprovedNotice`, `via: "device"`) to every verified address
+of the account, with **Sign out everywhere**, so a phished approval is visible and one action
+ends it; (3) the `choice.complete` audit row says "(device code)", and the poll re-checks that the
+account is active and not being erased before anything is bound. `nameHint` from an
+unauthenticated start is shown as a placeholder only and never fills the Name field. The
+residual stays what RFC 8628 §5.4 says it is for any device flow: the approval cannot prove the
+approver is at the device. `PLATFORM_OIDC_MIGRATION="claim"` stays off until a green pass
+confirms these; turning it on widens the people who can be reached to every platform subject.
+
 **What the opt-in attach adds under R1-07 (P1-07). RETIRED on device code by I-37; kept as
 history.** The attach is decided by the device-code
 holder, and here that is the starter. If the starter's device is on an anonymous enrolled

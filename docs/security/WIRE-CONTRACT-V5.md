@@ -1733,7 +1733,7 @@ and never by `configured` alone. I-08b adds `choiceLicenses`, `choiceDevices`, `
 present.
 
 The identity fragment gains `"deviceChoice": true` (§12.10.1) from the release that serves the
-`choose` poll answer, beside `endpoints`. An SDK sends `licenseChoice: "app"` on the device start
+`choose` poll answer, beside `endpoints`, while the product's License service is on. An SDK sends `licenseChoice: "app"` on the device start
 only when `deviceChoice` is present and all four `choice*` endpoints are present. It may always
 send `loginHint`, `nameHint` and `purpose`: an older Worker ignores them. `DISCOVERY_VERSION`
 stays 2, because an SDK that predates the member ignores it.
@@ -1970,7 +1970,7 @@ the transcript `holders-add-to-account-device.json` pins it.
    client stops at `choose`. A store failure while issuing the grant is the `503` of rule 5, and
    the flow is kept.
 5. **Capability.** The identity fragment of discovery carries `"deviceChoice": true` while the
-   Worker serves this subsection (§12.6).
+   Worker serves this subsection and the product's License service is on (§12.6).
 
 ### 12.11 Platform sign-in, the link offer and nearby approval
 
