@@ -9,9 +9,11 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowRight } from "lucide-react";
 import { cn } from "../../../lib/cn.js";
 import { formatCount } from "../../../lib/format.js";
 import { Button } from "../../../ui/Button.js";
+import { useCan } from "../../access/useCan.js";
 import { reads } from "../../data/reads.js";
 import { DOCS_LINKS } from "../../../lib/docsLinks.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
@@ -21,6 +23,7 @@ import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { Panel } from "../../templates/Dashboard.js";
 import { Scroller, TILES, UsageSkeleton } from "../sync/pages/usageParts.js";
+import { MeterBar, ceilingStatus } from "../sync/SetupParts.js";
 import { ConnectHeader } from "./ConnectHeader.js";
 import { CONNECT_AREA } from "./ConnectSetup.js";
 import { USAGE_DAYS, connectUsageQuery } from "./data.js";
@@ -49,6 +52,90 @@ const dayLabel = (day: string): string =>
     day: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${day}T00:00:00Z`));
+
+const LINK =
+  "inline-flex min-h-6 items-center gap-1 text-accent-fg underline underline-offset-2";
+
+/** The people tile: a count, and the way to who they are (the tile's label stays plain text). */
+function PeopleTile({
+  slug,
+  people,
+}: {
+  slug: string;
+  people: number;
+}): React.ReactElement {
+  return (
+    <StatTile
+      label="People with linked devices"
+      value={formatCount(people)}
+      secondary={
+        <Link to={r.connectDevices(slug)} className={LINK}>
+          Linked devices
+          <ArrowRight aria-hidden className="size-3.5 rtl:-scale-x-100" />
+        </Link>
+      }
+    />
+  );
+}
+
+const WORDS = {
+  warning: "Near the ceiling",
+  danger: "At the ceiling: new connections are refused",
+} as const;
+
+/**
+ * "This month" against the ceiling: the figure, a thin meter, and the words for the state
+ * (warning tone from 80 %), then Change on Setup for a member who can edit.
+ */
+function CeilingNote({
+  slug,
+  used,
+  ceiling,
+}: {
+  slug: string;
+  used: number;
+  ceiling: number;
+}): React.ReactElement {
+  const canEdit = useCan("connect", slug, "edit");
+  const status = ceilingStatus(used, ceiling);
+  const words = status.tone === "accent" ? null : WORDS[status.tone];
+  return (
+    <span className="block space-y-1.5">
+      <span className="block tabular-nums">
+        of {bytes(ceiling)} ceiling
+        {canEdit ? (
+          <>
+            {" · "}
+            <Link to={r.connectSetup(slug)} className={LINK}>
+              Change
+            </Link>
+          </>
+        ) : null}
+      </span>
+      {words ? (
+        <span
+          className={cn(
+            "block",
+            status.tone === "danger" ? "text-danger" : "text-warning",
+          )}
+        >
+          {words}
+        </span>
+      ) : null}
+      <span
+        role="meter"
+        aria-label="Relay data this month"
+        aria-valuemin={0}
+        aria-valuemax={ceiling}
+        aria-valuenow={Math.min(used, ceiling)}
+        aria-valuetext={`${bytes(used)} of ${bytes(ceiling)}`}
+        className="block"
+      >
+        <MeterBar ratio={ceiling > 0 ? used / ceiling : 1} tone={status.tone} />
+      </span>
+    </span>
+  );
+}
 
 export function ConnectUsagePage({
   slug,
@@ -97,11 +184,7 @@ export function ConnectUsagePage({
       <>
         {data && data.people > 0 ? (
           <div className={TILES}>
-            <StatTile
-              label="People with linked devices"
-              value={formatCount(data.people)}
-              href={r.connectDevices(slug)}
-            />
+            <PeopleTile slug={slug} people={data.people} />
           </div>
         ) : null}
         <EmptyState
@@ -127,9 +210,11 @@ export function ConnectUsagePage({
             label="This month"
             value={bytes(monthBytes)}
             secondary={
-              Number.isFinite(ceiling)
-                ? `Of ${bytes(ceiling)}, UTC month`
-                : "UTC month"
+              Number.isFinite(ceiling) ? (
+                <CeilingNote slug={slug} used={monthBytes} ceiling={ceiling} />
+              ) : (
+                "UTC month"
+              )
             }
           />
           <StatTile
@@ -144,11 +229,7 @@ export function ConnectUsagePage({
             secondary={`Last ${USAGE_DAYS} days`}
             sparkline={data.days.map((d) => d.sessions)}
           />
-          <StatTile
-            label="People with linked devices"
-            value={formatCount(data.people)}
-            href={r.connectDevices(slug)}
-          />
+          <PeopleTile slug={slug} people={data.people} />
         </div>
         <Panel title="Per day" description="UTC, newest first">
           <Scroller label="Per day table" className="-m-5">

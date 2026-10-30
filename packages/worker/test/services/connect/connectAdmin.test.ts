@@ -100,8 +100,6 @@ describe("GET connect/people", () => {
       label: null,
       platform: null,
       keysSince: NOW,
-      certExpiresAt: null,
-      lastRelayAt: null,
       lastSeen: expect.any(Number),
     });
     for (const banned of ["signKey", "agreeKey", "sign_key", "discKey", "ada@"])
@@ -183,6 +181,28 @@ describe("GET connect/people", () => {
     expect(second.nextCursor).toBeNull();
     const all = [...first.people, ...second.people].map((p) => p.subject);
     expect(new Set(all).size).toBe(53);
+  });
+
+  it("filters to one person by exact subject", async () => {
+    const w = await setup();
+    await w.db.run(
+      `INSERT INTO connect_rings (product, subject, epoch, members_hash, member_ids, disc_key, bumped_at)
+       VALUES (?, 'ps_other', 3, 'h', '', 'k', ?)`,
+      SLUG,
+      NOW,
+    );
+    const one = (await (
+      await w.get("u1", [GROUP], `${PEOPLE}?subject=${w.subject}`)
+    ).json()) as { people: { subject: string }[]; nextCursor: null };
+    expect(one.people.map((p) => p.subject)).toEqual([w.subject]);
+    expect(one.nextCursor).toBeNull();
+    // Exact, not a prefix, and an unknown subject is an empty page.
+    for (const subject of [w.subject.slice(0, -1), "ps_none"])
+      expect(
+        await (
+          await w.get("u1", [GROUP], `${PEOPLE}?subject=${subject}`)
+        ).json(),
+      ).toEqual({ enabled: true, people: [], nextCursor: null });
   });
 
   it("answers an empty list for a product with no people", async () => {

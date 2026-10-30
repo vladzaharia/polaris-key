@@ -97,6 +97,8 @@ export function ProductSettingsSection({
   lockedBy = {},
   note,
   bare = false,
+  errorThing,
+  readOnlyVisible = false,
 }: {
   slug: string;
   area: string;
@@ -116,6 +118,10 @@ export function ProductSettingsSection({
   note?: React.ReactNode;
   /** Only the rows, for a card that already exists (no section of its own). */
   bare?: boolean;
+  /** Names what failed when the read does: "{errorThing} didn't load". */
+  errorThing?: string;
+  /** Say a read-only row's reason under it, for a page that does not say it elsewhere. */
+  readOnlyVisible?: boolean;
 }): React.ReactElement | null {
   const q = useQuery(reads.productSettings(slug, area));
   const product = useProduct(slug).data;
@@ -134,7 +140,12 @@ export function ProductSettingsSection({
   else if (!q.data)
     body = (
       <div className="p-5">
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} compact />
+        <ErrorState
+          error={q.error}
+          onRetry={() => void q.refetch()}
+          thing={errorThing}
+          compact
+        />
       </div>
     );
   else {
@@ -153,6 +164,7 @@ export function ProductSettingsSection({
         slug={slug}
         setting={s}
         linked={linked}
+        readOnlyVisible={readOnlyVisible}
         who={{ name: product?.name ?? slug, slug }}
         copy={copy[s.key]}
         pendingNote={pending[s.key]}
@@ -218,6 +230,7 @@ function ProductSettingRow({
   slug,
   setting: s,
   linked,
+  readOnlyVisible,
   who,
   copy,
   pendingNote,
@@ -227,6 +240,7 @@ function ProductSettingRow({
   slug: string;
   setting: ProductSetting;
   linked: boolean;
+  readOnlyVisible: boolean;
   who: ProductWho;
   copy?: SettingCopy;
   /** Set when the setting's behaviour has not shipped: the row is read-only. */
@@ -296,7 +310,7 @@ function ProductSettingRow({
       commit="explicit"
       display={pendingRow ? "text" : "control"}
       readOnly={pendingRow ? undefined : readOnly}
-      readOnlyVisible={s.platformOnly === true}
+      readOnlyVisible={readOnlyVisible || s.platformOnly === true}
       confirmCopy={copy?.confirm ? (to) => copy.confirm!(to, who) : undefined}
       locked={waitsFor ? `Applies once ${waitsFor} is on.` : undefined}
       inherited={s.inherited}

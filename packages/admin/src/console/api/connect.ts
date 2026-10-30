@@ -10,10 +10,6 @@ export interface ConnectDevice {
   platform: string | null;
   /** Seconds: when the device's current keys were published. */
   keysSince: number;
-  /** Seconds, or `null` while the Worker does not store it. */
-  certExpiresAt: number | null;
-  /** Seconds, or `null` while the Worker does not store it. */
-  lastRelayAt: number | null;
   lastSeen: number;
 }
 
@@ -25,7 +21,7 @@ export interface ConnectPerson {
   devices: ConnectDevice[];
 }
 
-/** `GET …/connect/people?cursor=`: 50 people a page, by subject. */
+/** `GET …/connect/people?cursor=&subject=`: 50 people a page, by subject; `subject` is one person. */
 export type ConnectPeoplePage =
   | { enabled: false }
   | { enabled: true; people: ConnectPerson[]; nextCursor: string | null };
@@ -41,9 +37,19 @@ export type ConnectUsageResponse =
     };
 
 export const connectApi = {
-  connectPeople: (slug: string, cursor?: string | null) =>
+  connectPeople: (
+    slug: string,
+    cursor?: string | null,
+    subject?: string | null,
+  ) =>
     call<ConnectPeoplePage>(
-      `${p(slug)}/connect/people${cursor ? `?cursor=${enc(cursor)}` : ""}`,
+      `${p(slug)}/connect/people${
+        subject
+          ? `?subject=${enc(subject)}`
+          : cursor
+            ? `?cursor=${enc(cursor)}`
+            : ""
+      }`,
     ),
   connectUsage: (slug: string, days = 30) =>
     call<ConnectUsageResponse>(`${p(slug)}/connect/usage?days=${days}`),

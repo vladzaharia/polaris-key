@@ -63,7 +63,7 @@ export const connectService: ServiceDescriptor = {
   settings: CONNECT_SETTINGS_SLICE,
   /**
    * `lan` is true: the LAN needs no Worker. `relay` is true while `launch.relay` is on and the room
-   * is bound (CC-07.3); `interAccount` stays false until inter-account links (CC-18) ship. An endpoint is `null` until its route is served
+   * is bound (CC-07.3); `interAccount` stays false until inter-account links (CC-19) ship. An endpoint is `null` until its route is served
    * (WIRE-CONTRACT-V5 §15.9).
    */
   discoveryFragment: async ({ base, env, db }: DiscoveryContext) => {

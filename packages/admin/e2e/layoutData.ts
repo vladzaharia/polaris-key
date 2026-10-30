@@ -2477,3 +2477,267 @@ function cell(
 ): CompatResponse["cells"][number] {
   return { appReleaseId, packReleaseId, state, current, yanked, reason };
 }
+
+// ── Cloud Connect: Setup, Linked devices and Usage (CC-16.5; test/connect*.test.tsx) ────────
+const GIB = 1024 ** 3;
+const CONNECT_P = "/manage/api/products/djdl";
+
+function connectProductSetting(over: Setting = {}): Setting {
+  return {
+    key: "cloudConnect.relay.enabled",
+    area: "cloudConnect",
+    service: "connect",
+    label: "Relay",
+    description:
+      "Whether the relay carries this product's device traffic when the local network cannot. Turn it off and devices connect only on the same network.",
+    docs: "/docs/features/cloud-connect/",
+    spec: { kind: "boolean" },
+    confirm: { on: "L0", off: "L1" },
+    critical: false,
+    manifestPath: "product:connect.relay",
+    visibleWhen: { service: "connect", offBehaviour: "hide" },
+    serviceEnabled: true,
+    rbacArea: "connect",
+    ownership: "claimable",
+    value: true,
+    source: "manifest",
+    defaultValue: true,
+    version: 2,
+    updatedAt: NOW_S - 3 * DAY,
+    updatedBy: "ada@example.com",
+    reason: null,
+    ...over,
+  };
+}
+
+function connectCeiling(value: number): Setting {
+  return connectProductSetting({
+    key: "cloudConnect.ceiling.relayBytes",
+    label: "Monthly relay ceiling",
+    description:
+      "The most relay data all people on the product may use together in a UTC month. Past it, the relay refuses new connections until the month turns; the local network is never metered.",
+    spec: { kind: "integer", unit: "bytes", min: 0, max: 1024 ** 5 },
+    manifestPath: null,
+    ownership: "operator",
+    critical: true,
+    value,
+    defaultValue: 500 * GIB,
+    source: value === 500 * GIB ? "default" : "console",
+  });
+}
+
+/** A platform setting the Setup page reads: the default quota, the launch gates, the pause. */
+function connectPlatform(over: Setting): Setting {
+  return {
+    scripts: ["main"],
+    precedence: "runtime",
+    deployValue: null,
+    forcedOff: false,
+    source: "default",
+    stored: null,
+    version: 0,
+    ...over,
+  };
+}
+
+/** The platform list with Cloud Connect's quota, gates and pause (`on`/`off` per gate). */
+function connectPlatformSettings(opts: {
+  connectGate: "on" | "off";
+  relayGate: "on" | "off";
+  paused?: boolean;
+}): Record<string, unknown> {
+  const v = view();
+  const gate = (key: string, label: string, value: "on" | "off") =>
+    connectPlatform({
+      key,
+      area: "launch",
+      label,
+      description: "",
+      kind: "switch",
+      default: "on",
+      value,
+      confirm: { on: "L0", off: "L1" },
+    });
+  return {
+    ...v,
+    settings: [
+      ...v.settings,
+      connectPlatform({
+        key: "cloudConnect.quota.defaultRelayBytes",
+        area: "cloudConnect",
+        label: "Default relay quota",
+        description: "What a person may relay a day when their tier sets none.",
+        kind: "integer",
+        unit: "bytes",
+        min: 0,
+        max: 1024 ** 5,
+        default: 256 * 1024 ** 2,
+        value: 256 * 1024 ** 2,
+        confirm: { raise: "L2", lower: "L2" },
+        link: "default",
+      }),
+      connectPlatform({
+        key: "cloudConnect.relayPaused",
+        area: "cloudConnect",
+        label: "Pause the relay",
+        description: "",
+        kind: "switch",
+        default: "off",
+        value: opts.paused ? "on" : "off",
+        confirm: { on: "L2", off: "L1" },
+      }),
+      gate("launch.connect", "Launch gate: Cloud Connect", opts.connectGate),
+      gate("launch.relay", "Launch gate: Cloud Connect relay", opts.relayGate),
+    ],
+  };
+}
+
+/** Setup with the relay live: the switch, the product ceiling and the tier quota row. */
+export const CONNECT_SETUP_API: Record<string, unknown> = {
+  [`${CONNECT_P}/settings/effective`]: {
+    settings: [connectProductSetting(), connectCeiling(500 * GIB)],
+  },
+  "/manage/api/platform/settings": connectPlatformSettings({
+    connectGate: "on",
+    relayGate: "on",
+  }),
+};
+
+/** Setup held back: the relay off by the operator, a zero ceiling and the launch gate off. */
+export const CONNECT_SETUP_GATED_API: Record<string, unknown> = {
+  [`${CONNECT_P}/settings/effective`]: {
+    settings: [
+      connectProductSetting({ value: false, source: "console", version: 3 }),
+      connectCeiling(0),
+    ],
+  },
+  "/manage/api/platform/settings": connectPlatformSettings({
+    connectGate: "off",
+    relayGate: "on",
+  }),
+};
+
+const connectDevice = (
+  id: string,
+  label: string | null,
+  platform: string | null,
+  ageDays: number,
+) => ({
+  deviceId: id,
+  label,
+  platform,
+  keysSince: NOW_S - (ageDays + 3) * DAY,
+  lastSeen: NOW_S - ageDays * DAY - 600,
+});
+
+const connectPerson = (
+  subject: string,
+  label: string | null,
+  devices: ReturnType<typeof connectDevice>[],
+) => ({ subject, label, ringEpoch: devices.length, devices });
+
+/** A page of people at their tightest: long labels, an unlabelled long subject, many devices. */
+export const CONNECT_PEOPLE_MANY: Record<string, unknown> = {
+  [`${CONNECT_P}/connect/people`]: {
+    enabled: true,
+    // More to load: the Load more button is drawn under the list.
+    nextCursor: "ps_Zz9",
+    people: [
+      connectPerson(
+        "ps_7Hk2q9Wm4TfX1nB8cR5vLd0aYe3JuSg",
+        "an.exceptionally.long.contact.address.for.testing@subdomain.example-company.co.uk",
+        [
+          connectDevice(
+            "dev_a1b2c3d4e5f6a7b8c9d0",
+            "Ada's MacBook Pro in the studio, the one with the cracked screen",
+            "macos",
+            0,
+          ),
+          connectDevice("dev_a2b2c3d4e5f6a7b8c9d0", null, "ios", 2),
+          connectDevice("dev_a3b2c3d4e5f6a7b8c9d0", "Pixel", "android", 9),
+          connectDevice("dev_a4b2c3d4e5f6a7b8c9d0", "Steam Deck", "linux", 31),
+          connectDevice("dev_a5b2c3d4e5f6a7b8c9d0", "Work PC", "windows", 90),
+        ],
+      ),
+      connectPerson("ps_Qm3x1ZkP8sVn2LwB7eRt5YcA9hUdJfG", null, [
+        connectDevice("dev_b1b2c3d4e5f6a7b8c9d0", null, null, 4),
+      ]),
+      connectPerson("ps_Bb4n7QxK1mWz9PdT3vLs6HcR2eYuJaF", "Sam Okoye", [
+        connectDevice(
+          "dev_c1b2c3d4e5f6a7b8c9d0",
+          "Living room PC",
+          "windows",
+          1,
+        ),
+        connectDevice("dev_c2b2c3d4e5f6a7b8c9d0", "iPad", "ipados", 12),
+      ]),
+    ],
+  },
+};
+
+/** `?subject=`: the one person the Users record linked from. */
+export const CONNECT_PEOPLE_ONE: Record<string, unknown> = {
+  [`${CONNECT_P}/connect/people`]: {
+    enabled: true,
+    nextCursor: null,
+    people: [
+      connectPerson("ps_Qm3x1ZkP8sVn2LwB7eRt5YcA9hUdJfG", "Sam Okoye", [
+        connectDevice(
+          "dev_c1b2c3d4e5f6a7b8c9d0",
+          "Living room PC",
+          "windows",
+          1,
+        ),
+        connectDevice("dev_c2b2c3d4e5f6a7b8c9d0", "iPad", "ipados", 12),
+      ]),
+    ],
+  },
+};
+
+/** `?subject=` for a person who linked nothing: the page's empty state with Show everyone. */
+export const CONNECT_PEOPLE_NONE: Record<string, unknown> = {
+  [`${CONNECT_P}/connect/people`]: {
+    enabled: true,
+    nextCursor: null,
+    people: [],
+  },
+};
+
+const usageDays = (
+  bytesOf: (i: number) => number,
+  sessionsOf: (i: number) => number,
+) =>
+  Array.from({ length: 31 }, (_, i) => ({
+    day: new Date((NOW_S - (30 - i) * DAY) * 1000).toISOString().slice(0, 10),
+    bytes: bytesOf(i),
+    sessions: sessionsOf(i),
+  }));
+
+/** Usage close to the ceiling: large figures in the tiles, "Of 500 GiB", a long table. */
+export const CONNECT_USAGE_HEAVY: Record<string, unknown> = {
+  [`${CONNECT_P}/connect/usage`]: {
+    enabled: true,
+    days: usageDays(
+      (i) => (i % 9 === 0 ? 0 : 9 * GIB + i * 137_438_953),
+      (i) => (i % 9 === 0 ? 0 : 1200 + i * 31),
+    ),
+    totals: { bytes: 0, sessions: 0 },
+    people: 12_480,
+  },
+  [`${CONNECT_P}/settings/effective`]: {
+    settings: [connectProductSetting(), connectCeiling(500 * GIB)],
+  },
+};
+
+/** No relay traffic yet, but people have linked devices: one tile above the empty state. */
+export const CONNECT_USAGE_QUIET: Record<string, unknown> = {
+  [`${CONNECT_P}/connect/usage`]: {
+    enabled: true,
+    days: usageDays(
+      () => 0,
+      () => 0,
+    ),
+    totals: { bytes: 0, sessions: 0 },
+    people: 3,
+  },
+};

@@ -44,7 +44,7 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { PageTabs } from "../../../components/PageTabs.js";
 import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
-import { navigate } from "../../../router.js";
+import { Link, navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import { RelinkDialog, UndoRelinkDialog } from "./UserRelink.js";
@@ -292,7 +292,11 @@ function UserRecordBody({
       ) : null}
       {tab === "devices" ? (
         <div className="pk-vt-tabpanel">
-          <UserDevices slug={slug} user={user} />
+          <UserDevices
+            slug={slug}
+            user={user}
+            connectOn={product?.services?.connect?.enabled ?? false}
+          />
         </div>
       ) : null}
       {tab === "activity" ? (
@@ -595,21 +599,33 @@ function UserLicenses({
 function UserDevices({
   slug,
   user,
+  connectOn,
 }: {
   slug: string;
   user: ProductUserDetail;
+  /** Cloud Connect is on for the product: link to this person's linked devices. */
+  connectOn: boolean;
 }): React.ReactElement {
+  const linked = connectOn ? (
+    <Link
+      to={r.connectDevices(slug, user.subject)}
+      className="inline-flex min-h-6 items-center text-sm text-accent-fg underline underline-offset-2"
+    >
+      Linked devices
+    </Link>
+  ) : undefined;
   if (user.devices.length === 0) {
     return (
       <EmptyState
         kind="first-run"
         title="No devices"
         description="This user has no device on a license of theirs, and has not signed in on one."
+        primaryAction={linked}
       />
     );
   }
   return (
-    <SettingsSection id="user-devices" title="Devices">
+    <SettingsSection id="user-devices" title="Devices" actions={linked}>
       <ul className="divide-y divide-border">
         {user.devices.map((d) => (
           <li

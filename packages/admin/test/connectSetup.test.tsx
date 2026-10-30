@@ -109,11 +109,14 @@ const view = (...s: unknown[]) =>
     deployTime: [],
     secrets: [],
   }) as unknown as PlatformSettingsView;
-const detail = (connect = true): ProductDetail =>
+const detail = (connect = true, license = true): ProductDetail =>
   ({
     slug: "djdl",
     name: "DJDL",
-    services: { connect: { enabled: connect } },
+    services: {
+      connect: { enabled: connect },
+      license: { enabled: license },
+    },
   }) as ProductDetail;
 
 function renderPage() {
@@ -164,7 +167,11 @@ describe("Cloud Connect → Setup", () => {
     expect(
       (await screen.findByTestId("connect-ceiling-value")).textContent,
     ).toBe("500 GiB a month");
-    expect(screen.getAllByRole("heading", { name: "Relay" })).toHaveLength(1);
+    // The card is "Relay limits", so no heading repeats the first row's "Relay".
+    expect(
+      screen.getAllByRole("heading", { name: "Relay limits" }),
+    ).toHaveLength(1);
+    expect(screen.queryByRole("heading", { name: "Relay" })).toBeNull();
     expect(screen.queryByText(/platform operator/)).toBeNull();
     expect(screen.getByText("Platform default")).toBeTruthy();
     expect(
@@ -195,16 +202,21 @@ describe("Cloud Connect → Setup", () => {
     ).toBe("0 GiB: no relay traffic");
   });
 
-  it("gates Change… on Cloud Connect edit and says who can", async () => {
+  it("gates Change… on Cloud Connect edit and says who can, once", async () => {
     platformAdmin.connect = false;
+    productSettings.mockResolvedValue({
+      settings: [{ ...RELAY, rbacArea: "connect" }, CEILING],
+    });
     renderPage();
     await screen.findByTestId("connect-ceiling-value");
     expect(
       screen.queryByRole("button", { name: "Change the relay ceiling" }),
     ).toBeNull();
-    expect(
-      screen.getAllByText("Ask Ana for Cloud Connect edit.").length,
-    ).toBeGreaterThan(0);
+    // One line for the page, not one under the relay row and another under the ceiling.
+    expect(screen.getAllByText("Ask Ana for Cloud Connect edit.")).toHaveLength(
+      1,
+    );
+    expect(document.body.textContent).not.toMatch(/Read-only\./);
   });
 
   it("names the consequence of turning the relay off", async () => {
@@ -234,6 +246,32 @@ describe("Cloud Connect → Setup", () => {
     expect(screen.queryByText("The relay is not live yet")).toBeNull();
   });
 
+  it("puts the notice above the Relay card, its link readable on the tinted ground", async () => {
+    platformSettings.mockResolvedValue(
+      view(gateSetting("launch.connect", "off")),
+    );
+    const { container } = renderPage();
+    const notice = await screen.findByText("Cloud Connect is not live yet");
+    const card = screen.getByRole("heading", { name: "Relay limits" });
+    expect(
+      notice.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // The accent measures 4.35:1 on the warning ground; fg-strong passes (calloutLinks.test.ts).
+    const link = screen.getByRole("link", { name: "Open Platform settings" });
+    expect(link.className).toContain("text-fg-strong");
+    expect(link.className).not.toContain("text-accent-fg");
+    expect(link.className).toContain("underline");
+    expect((await axe(container)).violations).toEqual([]);
+  });
+
+  it("names the settings read when it fails", async () => {
+    productSettings.mockRejectedValue(new Error("boom"));
+    renderPage();
+    expect(
+      await screen.findByText(/Cloud Connect settings didn.t load/),
+    ).toBeTruthy();
+  });
+
   it("says the relay is not live while only its gate is off", async () => {
     platformSettings.mockResolvedValue(
       view(
@@ -259,11 +297,26 @@ describe("Cloud Connect → Setup", () => {
     ).toBeTruthy();
   });
 
-  it("shows the platform's default per-person quota read-only to a platform admin", async () => {
+  it("points the per-person quota at the tier editor, with the platform default for a platform admin", async () => {
     platformSettings.mockResolvedValue(view(quota));
     renderPage();
-    expect(await screen.findByText("2 GiB a day")).toBeTruthy();
-    expect(screen.getByText("Default relay quota")).toBeTruthy();
+    expect(
+      await screen.findByText("2 GiB a day (platform default)"),
+    ).toBeTruthy();
+    expect(screen.getByText("Relay quota per person")).toBeTruthy();
+    expect(screen.getByText(/Set on each tier with the/)).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Edit on Tiers" }).getAttribute("href"),
+    ).toContain("/license/tiers");
+  });
+
+  it("leaves the tier quota row out while Licensing is off, as there are no tiers to edit", async () => {
+    product.mockResolvedValue({ product: detail(true, false) });
+    products.mockResolvedValue({ products: [detail(true, false)] });
+    platformSettings.mockResolvedValue(view(quota));
+    renderPage();
+    await screen.findByText("Monthly relay ceiling");
+    expect(screen.queryByText("Relay quota per person")).toBeNull();
   });
 
   it("draws no platform rows or notices for a member who cannot read the platform list", async () => {
@@ -272,6 +325,9 @@ describe("Cloud Connect → Setup", () => {
     await screen.findByText("Monthly relay ceiling");
     expect(platformSettings).not.toHaveBeenCalled();
     expect(screen.queryByText(/not live yet|is paused/)).toBeNull();
-    expect(screen.queryByText("Default relay quota")).toBeNull();
+    expect(screen.queryByText(/platform default\)/)).toBeNull();
+    // The row and its link stay: the quota is set per tier, whoever may read the platform list.
+    expect(screen.getByText("Set on each tier")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Edit on Tiers" })).toBeTruthy();
   });
 });

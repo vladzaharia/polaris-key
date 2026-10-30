@@ -10,7 +10,7 @@
  * service slice contributes product-scope entries only.
  *
  * CC-07.3 reads the relay switch and the ceiling (`relay/access.ts`). `cloudConnect.interAccount`
- * stays `pending` until inter-account links (CC-18), so the console does not offer it.
+ * stays `pending` until inter-account links (CC-19.3), so the console does not offer it.
  */
 
 import { CLOUD_CONNECT_CEILINGS } from "@polaris-key/catalog";
@@ -69,7 +69,7 @@ export const CONNECT_SETTINGS_SLICE: ServiceSettingsSlice = {
       visibleWhen: VISIBLE,
       storage: { kind: "scalar" },
       since: "CC-02.2",
-      pending: { wp: "CC-18" },
+      pending: { wp: "CC-19" },
     }),
     // The operator's cost control: all relay bytes of every person on the product together, per
     // UTC month. Raising it costs the platform more, so it is confirmed more strictly than lowering.

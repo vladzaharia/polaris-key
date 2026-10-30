@@ -2211,7 +2211,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "claimable",
     critical: true,
     secret: false,
-    pending: "CC-18",
+    pending: "CC-19",
     deprecated: null,
   },
   {

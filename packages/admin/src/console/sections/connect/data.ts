@@ -9,11 +9,14 @@ export const USAGE_DAYS = 30;
 /** Days read: enough to cover the current UTC month, whatever its length. */
 export const USAGE_READ_DAYS = 31;
 
-/** People with linked devices, paged by subject; the cursor is the last subject of a page. */
-export const connectPeopleQuery = (slug: string) =>
+/** People with linked devices, paged by subject (the cursor is the last subject of a page), or one by `subject`. */
+export const connectPeopleQuery = (
+  slug: string,
+  subject: string | null = null,
+) =>
   infiniteQueryOptions({
-    queryKey: [...qk.connectPeople(slug), "list"],
-    queryFn: ({ pageParam }) => api.connectPeople(slug, pageParam),
+    queryKey: [...qk.connectPeople(slug), "list", subject ?? ""],
+    queryFn: ({ pageParam }) => api.connectPeople(slug, pageParam, subject),
     initialPageParam: null as string | null,
     getNextPageParam: (last: ConnectPeoplePage) =>
       last.enabled ? (last.nextCursor ?? undefined) : undefined,

@@ -29,7 +29,7 @@ export type Nouns = { one: string; many: string };
 const NBSP = "\u00a0";
 
 export const TILES =
-  "grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3 xl:grid-cols-4";
+  "grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3";
 
 /** Stat tiles and a table card while a usage read loads: the page's own shape, no second header. */
 export function UsageSkeleton({
