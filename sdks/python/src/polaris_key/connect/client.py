@@ -295,6 +295,14 @@ class ConnectClient:
         with self._lock:
             return self._identity(refresh)
 
+    def nearby_signer(self) -> Tuple[DeviceKeyPort, str]:
+        """D's device keys (made when none exist) and its ``X-PKey-Device`` value, for the vouch of nearby
+        approval (CC-15). Needs no sign-in, no roster and no Connect."""
+        with self._lock:
+            port = self._use_port()
+            self._ensure_keys(port)
+            return port, self._ctx.device_id
+
     def current(self) -> Optional[ConnectIdentity]:
         """The held identity as it stands, verified again now; ``None`` when none is held, it does not
         verify any more or its roster expired. Sends nothing and makes no keys."""

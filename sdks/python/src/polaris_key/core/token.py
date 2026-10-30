@@ -33,8 +33,11 @@ answers a licensed device ``registration_closed``, license/token answers a licen
 
 from __future__ import annotations
 
+import os
+import tempfile
+import threading
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Literal, Optional
+from typing import TYPE_CHECKING, Any, Callable, Literal, Optional
 
 from .store import Store
 
@@ -47,11 +50,82 @@ __all__ = [
     "Reacquired",
     "ReacquireRoute",
     "TokenSource",
+    "TokenProvenance",
+    "provenance_of",
     "choose_reacquire_route",
 ]
 
 #: How the token was obtained in this process.
 TokenSource = Literal["activate", "enroll", "register", "signin", "reacquire"]
+
+#: What a stored token stands for, for the automatic sign-in ladder (I-47.3): only ``signin`` is a
+#: signed-in person's own. A key activation, an enrolment or a device registration is not.
+TokenProvenance = Literal["signin", "register", "key"]
+
+_PROVENANCES = ("signin", "register", "key")
+
+
+def provenance_of(source: Optional[str]) -> Optional[TokenProvenance]:
+    """A token source's provenance; ``None`` (leave the stored one) for an unknown source or a
+    re-acquire."""
+    if source == "signin":
+        return "signin"
+    if source in ("register", "enroll"):
+        return "register"
+    if source == "activate":
+        return "key"
+    return None
+
+
+class _TextSlot:
+    """One small unsigned text file beside the token store (in memory when the client keeps no
+    state directory). ``read`` answers ``None`` for an absent slot and RAISES for a slot that is
+    there but unreadable, so a caller can fail closed; ``write("")`` removes it. Writes are atomic
+    and 0600. Nothing secret is stored here."""
+
+    def __init__(self, path: Optional[str]) -> None:
+        self.path = path
+        self._lock = threading.Lock()
+        self._memory: Optional[str] = None
+
+    def read(self) -> Optional[str]:
+        with self._lock:
+            if self.path is None:
+                return self._memory
+            try:
+                with open(self.path, "r", encoding="utf-8") as f:
+                    return f.read()
+            except FileNotFoundError:
+                return None
+
+    def write(self, text: str) -> None:
+        with self._lock:
+            if self.path is None:
+                self._memory = text or None
+                return
+            if not text:
+                try:
+                    os.unlink(self.path)
+                except FileNotFoundError:
+                    pass
+                return
+            directory = os.path.dirname(self.path) or "."
+            os.makedirs(directory, mode=0o700, exist_ok=True)
+            fd, tmp = tempfile.mkstemp(prefix=".pkey-", dir=directory)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    f.write(text)
+                os.chmod(tmp, 0o600)
+                os.replace(tmp, self.path)
+            except BaseException:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+                raise
+
+
+_DEFAULT: Any = object()
 
 #: The two routes the §5 single re-acquire can take.
 ReacquireRoute = Literal["license-token", "devices-register"]
@@ -107,10 +181,22 @@ class TokenManager:
         # `choose_reacquire_route` keys on License alone.
         self._source: Optional[TokenSource] = None
         self._attempted = False
+        # Unsigned device-local state for the automatic sign-in ladder (I-47.3), beside the token:
+        # what the stored token stands for, and whether the person signed out on purpose.
+        state_dir = ctx.local_state_dir()
+        self._provenance_slot = _TextSlot(
+            os.path.join(state_dir, "token-provenance") if state_dir else None
+        )
+        self._sign_out_slot = _TextSlot(
+            os.path.join(state_dir, "explicit-sign-out") if state_dir else None
+        )
+        self._sign_out_memory = False
 
     def load(self) -> None:
         self._token = self._store.get_token()
         self._source = None
+        if self._token is None and self.provenance is not None:
+            self._write_provenance(None)
 
     @property
     def current(self) -> Optional[str]:
@@ -122,17 +208,84 @@ class TokenManager:
         from the store (a restart) or there is none."""
         return self._source
 
-    def set(self, token: str, source: Optional[TokenSource] = None) -> None:
+    def set(
+        self,
+        token: str,
+        source: Optional[TokenSource] = None,
+        *,
+        person_initiated: bool = False,
+        provenance: Optional[TokenProvenance] = _DEFAULT,
+    ) -> None:
         """Store ``token``. ``source`` is how it was obtained; ``None`` means unknown, which
-        routes a later re-acquire exactly as after a restart."""
+        routes a later re-acquire exactly as after a restart.
+
+        ``person_initiated`` marks a sign-in the person started (device code, redirect, the licence
+        choice): only it ends the explicit-sign-out state. ``provenance`` is what the token stands
+        for in the automatic ladder; by default it follows ``source`` (``signin``,
+        ``register``/``enroll``, ``activate`` is a key), and an unknown source or a re-acquire
+        leaves the stored provenance alone."""
+        prov = provenance_of(source) if provenance is _DEFAULT else provenance
+        # Crash-safe: cleared first, written last, so a crash between leaves "unknown" (never signin).
+        if prov is not None:
+            self._write_provenance(None)
         self._token = token
         self._source = source
         self._store.set_token(token)
+        if prov is not None:
+            self._write_provenance(prov)
+        if person_initiated:
+            self.set_explicit_sign_out(False)
 
     def clear(self) -> None:
         self._token = None
         self._source = None
         self._store.clear_token()
+        self._write_provenance(None)
+
+    # ── What the stored token stands for, and the explicit sign-out (I-47.3) ────────
+    @property
+    def provenance(self) -> Optional[TokenProvenance]:
+        """What the stored token stands for in the automatic ladder; ``None`` when unknown (an
+        unreadable slot reads as unknown, never as ``signin``)."""
+        try:
+            text = self._provenance_slot.read()
+        except (OSError, ValueError):
+            return None
+        text = (text or "").strip()
+        return text if text in _PROVENANCES else None  # type: ignore[return-value]
+
+    def set_provenance(self, provenance: Optional[TokenProvenance]) -> None:
+        """Record that the stored token no longer stands for a signed-in person (a sign-out that
+        kept the token)."""
+        self._write_provenance(provenance)
+
+    def _write_provenance(self, provenance: Optional[str]) -> None:
+        try:
+            self._provenance_slot.write(provenance or "")
+        except (OSError, ValueError):
+            pass  # unsigned convenience state: a failed write reads as unknown, which fails closed
+
+    @property
+    def explicit_sign_out(self) -> bool:
+        """True after ``identity.sign_out()`` until the person's next sign-in: the automatic
+        ladder must not sign the person back in on its own. It fails closed: a flag file that is
+        there but cannot be read is "signed out", not "no flag"."""
+        if self._sign_out_memory:
+            return True
+        try:
+            text = self._sign_out_slot.read()
+        except (OSError, ValueError):
+            return True
+        return (text or "").strip() == "1"
+
+    def set_explicit_sign_out(self, on: bool) -> None:
+        """Set or clear the flag. A failed write never stops a sign-out; the in-memory copy still
+        holds for this process."""
+        self._sign_out_memory = bool(on)
+        try:
+            self._sign_out_slot.write("1" if on else "")
+        except (OSError, ValueError):
+            pass
 
     def begin_pass(self) -> None:
         """Re-arm the single-attempt budget. Called once at the top of each ``sync()``."""

@@ -578,7 +578,7 @@ class RedirectSession:
                 choices=answer.choices,
             )
         assert answer.access_token is not None and answer.subject is not None
-        deps.tokens.set(answer.access_token, "signin")
+        deps.tokens.set(answer.access_token, "signin", person_initiated=True)
         deps.store_identity(None)
         if deps.write_subject is not None:
             deps.write_subject(answer.subject)

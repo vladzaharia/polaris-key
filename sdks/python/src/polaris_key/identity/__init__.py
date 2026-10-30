@@ -11,6 +11,13 @@ from .account import (
     OpenAccountResult,
     SignOutResult,
 )
+from .auto_sign_in import (
+    AutoSignInNeedsSignIn,
+    AutoSignInResult,
+    AutoSignInSignedIn,
+    AutoSignInUnavailable,
+    NearbyNamespace,
+)
 from .choice import (
     ChoiceCancelOk,
     ChoiceCompleteOk,
@@ -29,6 +36,11 @@ from .redirect import RedirectSession, SignInError
 from .sign_in import SignInActivation, SignInOutcome, SignInSession
 
 __all__ = [
+    "AutoSignInNeedsSignIn",
+    "AutoSignInResult",
+    "AutoSignInSignedIn",
+    "AutoSignInUnavailable",
+    "NearbyNamespace",
     "ChoiceCancelOk",
     "ChoiceCompleteOk",
     "ChoiceRefused",

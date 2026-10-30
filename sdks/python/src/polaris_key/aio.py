@@ -175,6 +175,43 @@ class _AsyncSignInSession:
             raise
 
 
+class _AsyncNearbySignInSession(_AsyncSignInSession):
+    """An async view of a :class:`~polaris_key.identity.nearby_session.NearbySignInSession`: ``wait``,
+    ``choose``, ``cancel``, ``confirm_account``, ``decline_account`` and ``close`` are coroutines (the LAN
+    calls block on the Connect loop); ``approvers``, ``code``, ``result`` and the ``on_*`` listeners return
+    at once, and the listeners run on the Connect thread, not the event loop."""
+
+    async def wait(  # type: ignore[override]
+        self,
+        timeout: Optional[float] = None,
+        *,
+        once: bool = False,
+        cancel_token: Any = None,
+    ) -> Any:
+        try:
+            return await _to_thread(self._session.wait, timeout, once=once, cancel_token=cancel_token)
+        except asyncio.CancelledError:
+            # Stop the polling now; closing the LAN side waits for the Connect loop, so it goes off-loop.
+            self._session._cancelled.set()
+            asyncio.get_running_loop().run_in_executor(None, self._session.close)
+            raise
+
+    async def choose(self, approver_id: str) -> Any:
+        return await _to_thread(self._session.choose, approver_id)
+
+    async def cancel(self) -> None:
+        await _to_thread(self._session.cancel)
+
+    async def confirm_account(self) -> None:
+        await _to_thread(self._session.confirm_account)
+
+    async def decline_account(self) -> None:
+        await _to_thread(self._session.decline_account)
+
+    async def close(self) -> None:
+        await _to_thread(self._session.close)
+
+
 class _AsyncSignInNamespace:
     def __init__(self, target: Any) -> None:
         self._target = target
@@ -182,8 +219,11 @@ class _AsyncSignInNamespace:
     def start(self, **opts: Any) -> GuardedCoroutine:
         """``identity.sign_in.start(**opts)``, awaited; answers an async session."""
 
-        async def run() -> _AsyncSignInSession:
-            return _AsyncSignInSession(await _to_thread(self._target.start, **opts))
+        async def run() -> Any:
+            session = await _to_thread(self._target.start, **opts)
+            if getattr(session, "channel", None) == "nearby":
+                return _AsyncNearbySignInSession(session)
+            return _AsyncSignInSession(session)
 
         return GuardedCoroutine(run(), "identity.sign_in.start")
 
@@ -192,6 +232,11 @@ class _AsyncIdentity(_AsyncFacet):
     @property
     def sign_in(self) -> _AsyncSignInNamespace:
         return _AsyncSignInNamespace(self._target.sign_in)
+
+    @property
+    def nearby(self) -> "_AsyncIdentityNearby":
+        """``identity.nearby``: ``available(role=...)`` and ``on_request(...)`` are coroutines."""
+        return _AsyncIdentityNearby(self._target.nearby)
 
 
 async def _queue_stream(subscribe: Callable[[Callable[[Any], None]], Callable[[], None]],
@@ -232,10 +277,65 @@ class _AsyncEvents(_AsyncFacet):
         return _queue_stream(lambda fn: self._target.subscribe(fn, k))
 
 
+class _AsyncNearbyRequest(_AsyncFacet):
+    """A nearby request on the async client: ``choose``, ``confirm_account``, ``decline_account`` and
+    ``close`` are coroutines; the listeners (``on_approvers``, ``on_result``, ``on_record``, ``on_close``)
+    register at once and run on the Connect thread."""
+
+    def __getattr__(self, name: str) -> Any:
+        if name in ("on_approvers", "on_result", "on_record", "on_close"):
+            return getattr(self._target, name)
+        return super().__getattr__(name)
+
+
+class _AsyncNearbyApprover(_AsyncFacet):
+    """A nearby approver handle on the async client: ``stop``, ``pause``, ``resume``, ``set_prompt`` and
+    ``reopen`` are coroutines; ``status`` returns at once."""
+
+    def status(self) -> Any:
+        return self._target.status()
+
+
+class _AsyncIdentityNearby(_AsyncFacet):
+    """``identity.nearby`` on the async client: ``available`` is a coroutine (it may load discovery) and
+    ``on_request`` answers an async approver handle (the handler still receives the blocking ask on the
+    Connect thread: hand it to a thread that talks to the person)."""
+
+    def on_request(self, handler: Any, **options: Any) -> GuardedCoroutine:
+        async def run() -> "_AsyncNearbyApprover":
+            return _AsyncNearbyApprover(await _to_thread(self._target.on_request, handler, **options))
+
+        return GuardedCoroutine(run(), "identity.nearby.on_request")
+
+
+class _AsyncCloudNearby(_AsyncFacet):
+    """``cloud_connect.nearby`` on the async client: ``request``, ``on_request`` and ``stop_all`` are
+    coroutines run on a worker thread. ``request`` answers an async request and ``on_request`` an async
+    handle; the handler still receives the blocking approval on the Connect thread (use
+    ``loop.call_soon_threadsafe`` and ``asyncio.to_thread`` to hand it to your loop)."""
+
+    def request(self, *args: Any, **kwargs: Any) -> GuardedCoroutine:
+        async def run() -> _AsyncNearbyRequest:
+            return _AsyncNearbyRequest(await _to_thread(self._target.request, *args, **kwargs))
+
+        return GuardedCoroutine(run(), "cloud_connect.nearby.request")
+
+    def on_request(self, *args: Any, **kwargs: Any) -> GuardedCoroutine:
+        async def run() -> _AsyncNearbyApprover:
+            return _AsyncNearbyApprover(await _to_thread(self._target.on_request, *args, **kwargs))
+
+        return GuardedCoroutine(run(), "cloud_connect.nearby.on_request")
+
+
 class _AsyncCloudConnect(_AsyncFacet):
     """``cloud_connect`` on the async client: the blocking calls (``start``, ``stop``, ``open``, ``peers``,
     ``refresh_peers``, ``devices``) are coroutines run on a worker thread. The registrations and
-    ``status`` return at once; their callbacks run on the Connect thread, not the event loop."""
+    ``status`` return at once; their callbacks run on the Connect thread, not the event loop. ``nearby`` is
+    the async form of ``cloud_connect.nearby`` (:class:`_AsyncCloudNearby`)."""
+
+    @property
+    def nearby(self) -> _AsyncCloudNearby:
+        return _AsyncCloudNearby(self._target.nearby)
 
     def on_channel(self, fn: Callable[..., Any]) -> Callable[[], None]:
         return self._target.on_channel(fn)  # type: ignore[no-any-return]
