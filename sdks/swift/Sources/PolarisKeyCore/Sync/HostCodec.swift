@@ -17,9 +17,14 @@
 //  - HC-6: a locked codec refuses with `sync-locked` before anything is sealed, so nothing is sent;
 //    a seal failure throws, so nothing is sent.
 //
-// Scope: settings (the `$settings` collection). A record mutation is refused with `invalid-options`;
-// a record change carrying a `ct` reads as `invalid`. Nothing here logs or prints a value, a name
-// or a root: errors name a rule, never content.
+// Scope: settings (the `$settings` collection), and records with a scalar value (D-2: saves are
+// `revision` records; U-23.S3). A record value is sealed under its collection with `k = id`, its id
+// travels as `blind("record", collection, id)`, and a pulled record opens only when the `k` inside
+// the envelope re-blinds to the id on the wire (§13.10.4), so a Worker cannot place a sealed value
+// under another record. A record mutation other than `set` and `delete` (a `merge` field, a `union`
+// element) and a sealed `merge` or `union` change (`fields`, `elements`) are outside this codec: a
+// mutation is refused with `invalid-options` and a change reads as `invalid`. Nothing here logs or
+// prints a value, a name or a root: errors name a rule, never content.
 //
 // Names compare as UTF-8 bytes, never by Swift's canonical equivalence, and U+0000 is looked for
 // among Unicode scalars, because a NUL followed by a combining mark is one Character.
@@ -113,8 +118,11 @@ public enum HostCodec {
     private static func sealMutation(_ m: [String: JSONValue], _ codec: any SyncCodecPort, _ declared: Set<[UInt8]>)
         throws -> [String: JSONValue]
     {
+        if case .object(let target)? = m["target"], target["record"] != nil {
+            return try sealRecordMutation(m, target, codec)
+        }
         guard case .object(let target)? = m["target"], case .string(let setting)? = target["setting"] else {
-            throw refuse("only a setting mutation can be sealed")
+            throw refuse("only a setting or a record mutation can be sealed")
         }
         if m["ct"] != nil || m["field"] != nil || m["element"] != nil {
             throw refuse("mutation carries a member this codec does not seal")
@@ -160,6 +168,58 @@ public enum HostCodec {
         }
     }
 
+    /// A record mutation (scalar value, D-2): `set` seals the value under the collection with `k = id`;
+    /// `delete` carries none. Either sends the id blinded. The collection travels in the clear (§13.10.2).
+    private static func sealRecordMutation(
+        _ m: [String: JSONValue], _ target: [String: JSONValue], _ codec: any SyncCodecPort
+    ) throws -> [String: JSONValue] {
+        guard let (collection, id) = recordRef(target["record"]) else {
+            throw refuse("a record reference is malformed")
+        }
+        if m["ct"] != nil || m["field"] != nil || m["element"] != nil || m["member"] != nil {
+            throw refuse("mutation carries a member this codec does not seal")
+        }
+        var out = m
+        switch m["op"] {
+        case .string("set")?:
+            guard let value = m["value"] else { throw refuse("set needs a value") }
+            out["value"] = nil
+            out["ct"] = .string(
+                Base64URL.encode(try codec.seal(collection: collection, name: id, value: value)))
+        case .string("delete")?:
+            if m["value"] != nil { throw refuse("delete carries no value") }
+        default:
+            throw refuse("unsupported operation")
+        }
+        var t = target
+        t["record"] = .array([
+            .string(collection), .string(try codec.blind(kind: .record, ctx: collection, name: id)),
+        ])
+        out["target"] = .object(t)
+        return out
+    }
+
+    /// `(collection, id)` when `v` is a pair of non-empty strings that can name a record: no U+0000
+    /// (the blind input has no length prefix) and not the settings collection's namespace (`$`).
+    static func recordRef(_ v: JSONValue?) -> (String, String)? {
+        guard case .array(let a)? = v, a.count == 2, case .string(let c) = a[0], case .string(let id) = a[1],
+            !c.isEmpty, !id.isEmpty, !hasNul(c), !hasNul(id), c.utf8.first != UInt8(ascii: "$")
+        else { return nil }
+        return (c, id)
+    }
+
+    /// The lookup key of a collection and a (blinded) id: their UTF-8 bytes joined by a NUL that no
+    /// name holds, so names compare as bytes.
+    private static func recordKey(_ c: String, _ id: String) -> [UInt8] { Array(c.utf8) + [0] + Array(id.utf8) }
+
+    /// The lookup key of a served `[collection, blinded id]`, or nil when it is not a pair of strings.
+    private static func servedKey(_ v: JSONValue?) -> [UInt8]? {
+        guard case .array(let a)? = v, a.count == 2, case .string(let c) = a[0], case .string(let id) = a[1] else {
+            return nil
+        }
+        return recordKey(c, id)
+    }
+
     // MARK: Pull
 
     /// Opens a pull or push answer. The body has plaintext `value`s and plaintext setting names
@@ -171,9 +231,12 @@ public enum HostCodec {
     /// server copy carries no name, so it opens against the mutation's own setting). `aliases` are
     /// the renames the app declares, never taken from the body. `openKeys` are the open-setting keys
     /// the machine already holds: a tombstone names a key blinded, and only these map back.
+    /// `recordKeys` are the `(collection, id)` pairs of the records it holds, which a record
+    /// tombstone's blinded id maps back to likewise.
     public static func openPull(
         _ body: JSONValue, codec: any SyncCodecPort, mutations: [JSONValue] = [],
-        aliases: [String: String] = [:], openKeys: some Sequence<String> = [String]()
+        aliases: [String: String] = [:], openKeys: some Sequence<String> = [String](),
+        recordKeys: some Sequence<(collection: String, id: String)> = [(collection: String, id: String)]()
     ) throws -> SyncOpenedPull {
         if codec.locked { throw locked() }
         guard case .object(let b) = body else { return SyncOpenedPull(body: body, opened: SyncOpenedBody()) }
@@ -200,12 +263,25 @@ public enum HostCodec {
         if case .array(let list)? = b["tombstones"] {
             var names: [String: String] = [:]
             for k in openKeys { names[try codec.blind(kind: .setting, ctx: settingsCollection, name: k)] = k }
+            var records: [[UInt8]: String] = [:]
+            for k in recordKeys {
+                guard let (c, id) = recordRef(.array([.string(k.collection), .string(k.id)])) else { continue }
+                records[recordKey(c, try codec.blind(kind: .record, ctx: c, name: id))] = id
+            }
             out["tombstones"] = .array(
                 list.map { t in
-                    guard case .object(var to) = t, case .string(let s)? = to["setting"], let plain = names[s]
-                    else { return t }
-                    to["setting"] = .string(plain)
-                    return .object(to)
+                    guard case .object(var to) = t else { return t }
+                    if case .string(let s)? = to["setting"], let plain = names[s] {
+                        to["setting"] = .string(plain)
+                        return .object(to)
+                    }
+                    if let key = servedKey(to["record"]), let plain = records[key],
+                        case .array(let a)? = to["record"]
+                    {
+                        to["record"] = .array([a[0], .string(plain)])
+                        return .object(to)
+                    }
+                    return t
                 })
         }
 
@@ -241,7 +317,9 @@ public enum HostCodec {
                     // Only a conflict for a mutation of this request opens: without one there is no
                     // name to open against and the copy reads as invalid.
                     let expect = conflictSetting(mutations, ro["mutationId"])
-                    let (entry, row) = try openCopy(server, expect, codec, aliases)
+                    let (entry, row) =
+                        try conflictRecord(mutations, ro["mutationId"]).map { try openRecordCopy(server, $0, codec) }
+                        ?? openCopy(server, expect, codec, aliases)
                     clean["server"] = .object(entry)
                     if case .int(let mid)? = ro["mutationId"] { opened.conflicts[mid] = row }
                 }
@@ -280,6 +358,17 @@ public enum HostCodec {
         return nil
     }
 
+    /// The `(collection, id)` of record mutation `mid`, or nil when the host did not say.
+    private static func conflictRecord(_ ms: [JSONValue], _ mid: JSONValue?) -> (String, String)? {
+        guard case .int(let id)? = mid else { return nil }
+        for m in ms {
+            guard case .object(let mo) = m, case .int(let mm)? = mo["mutationId"], mm == id else { continue }
+            if case .object(let t)? = mo["target"] { return recordRef(t["record"]) }
+            return nil
+        }
+        return nil
+    }
+
     private static func aliasesOf(_ name: String, _ aliases: [String: String]) -> [String] {
         aliases.filter { bytesEqual($0.value, name) }.map(\.key)
     }
@@ -306,8 +395,49 @@ public enum HostCodec {
         throws -> ([String: JSONValue], SyncOpenedRow)
     {
         if case .string = c["setting"] { return try openSettingChange(c, codec, aliases) }
-        // A record change: this slice seals no records, so a sealed one cannot be read.
+        if c["record"] != nil { return try openRecordChange(c, codec) }
+        // Neither a setting nor a record: a sealed one cannot be placed.
         return c["ct"] != nil ? invalidRow(c) : plainRow(c)
+    }
+
+    /// A record change: `{record: [collection, id], ct, version}`. A sealed `merge` or `union` change
+    /// (`fields`, `elements`) is outside the scalar codec and reads as invalid; a plaintext row is legacy
+    /// (the machine checks its `seq` against `encryptionSince`). A sealed id is accepted only when it is
+    /// blinded and the `k` inside the envelope re-blinds to it (HC-5); it is then replaced by the id.
+    private static func openRecordChange(_ c: [String: JSONValue], _ codec: any SyncCodecPort) throws
+        -> ([String: JSONValue], SyncOpenedRow)
+    {
+        if isArray(c["fields"]) || isArray(c["elements"]) { return invalidRow(c) }
+        if c["ct"] == nil { return plainRow(c) }
+        guard let (collection, served) = recordRef(c["record"]), SyncBlind.isBlindedName(served),
+            let env = fromCt(c["ct"]),
+            case .ok(let id, let value) = try codec.openAny(collection: collection, envelope: env),
+            !id.isEmpty, !hasNul(id),
+            try codec.blind(kind: .record, ctx: collection, name: id) == served
+        else { return invalidRow(c) }
+        var entry = stripped(c)
+        entry["record"] = .array([.string(collection), .string(id)])
+        entry["value"] = value
+        return (entry, SyncOpenedRow(sealed: true))
+    }
+
+    /// A conflict's server copy of the record of the mutation: one `ct`, opened under that id.
+    private static func openRecordCopy(
+        _ e: [String: JSONValue], _ rec: (String, String), _ codec: any SyncCodecPort
+    ) throws -> ([String: JSONValue], SyncOpenedRow) {
+        if isArray(e["fields"]) || isArray(e["elements"]) { return invalidRow(e) }
+        if e["ct"] == nil { return plainRow(e) }
+        guard let env = fromCt(e["ct"]),
+            case .ok(_, let value) = try codec.open(collection: rec.0, name: rec.1, envelope: env, aliases: [])
+        else { return invalidRow(e) }
+        var entry = stripped(e)
+        entry["value"] = value
+        return (entry, SyncOpenedRow(sealed: true))
+    }
+
+    private static func isArray(_ v: JSONValue?) -> Bool {
+        if case .array? = v { return true }
+        return false
     }
 
     private static func openSettingChange(

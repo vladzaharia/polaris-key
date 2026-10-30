@@ -25,9 +25,15 @@ private struct Vectors: Decodable {
             let value: JSONValue?
             let reason: String?
         }
+        /// A record row (U-09.2b): the blinded names the envelope arrived under (§13.10.4).
+        struct Record: Decodable {
+            let kind, id: String
+            let name: String?
+        }
         let id, rootHex, collection, name, envelopeHex: String
         let aliases: [String]
         let seal: Seal?
+        let record: Record?
         let expect: Expect
     }
     struct Blind: Decodable {
@@ -183,6 +189,48 @@ struct SyncVectorsTests {
         } else {
             #expect(got.reason?.rawValue == c.expect.reason)
         }
+        if let record = c.record {
+            // The reader of a record (§13.10.4): open without a name, split k, recompute, compare.
+            let r = Self.openRecord(root, c.collection, record, env)
+            if c.expect.result == "ok" {
+                guard case .ok(let name, let value) = r else {
+                    Issue.record("record \(c.id) expected ok, got \(r)")
+                    return
+                }
+                #expect(name == c.expect.name)
+                #expect(try CanonicalJSON.encode(value) == CanonicalJSON.encode(c.expect.value ?? .null))
+            } else {
+                #expect(r.reason?.rawValue == c.expect.reason)
+            }
+        }
+    }
+
+    /// Opens a sealed record value, field or element: the envelope first, then `k` split at its first
+    /// U+0000, the blinded forms recomputed and compared with the wire names; a difference is `name`.
+    /// The container fixes the kind, and an element's canonical JSON must be the name part of `k`.
+    private static func openRecord(
+        _ root: Data, _ collection: String, _ wire: Vectors.Envelope.Record, _ env: Data
+    ) -> SyncEnvelope.Opened {
+        let r = SyncEnvelope.openAnyName(root: root, collection: collection, envelope: env)
+        guard case .ok(let name, let value) = r else { return r }
+        let refused = SyncEnvelope.Opened.invalid(.name)
+        let scalars = Array(name.unicodeScalars)
+        let cut = scalars.firstIndex(of: "\u{0}")
+        if wire.kind != "value" && cut == nil { return refused }
+        func text(_ s: ArraySlice<Unicode.Scalar>) -> String {
+            var out = ""
+            out.unicodeScalars.append(contentsOf: s)
+            return out
+        }
+        let id = wire.kind == "value" ? name : text(scalars[..<cut!])
+        guard SyncBlind.blind(root: root, kind: .record, ctx: collection, n: id) == wire.id else { return refused }
+        if wire.kind == "value" { return r }
+        let rest = text(scalars[(cut! + 1)...])
+        guard let kind = SyncBlind.Kind(rawValue: wire.kind),
+            SyncBlind.blind(root: root, kind: kind, ctx: collection, n: rest) == wire.name
+        else { return refused }
+        if wire.kind == "element", (try? CanonicalJSON.encode(value)) != rest { return refused }
+        return r
     }
 
     @Test func openedValueIsNeverPrinted() {
