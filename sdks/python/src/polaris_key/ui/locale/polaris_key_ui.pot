@@ -6415,6 +6415,26 @@ msgstr ""
 msgid "core.codes.encryption_mismatch.message"
 msgstr ""
 
+#. Changed elsewhere
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.title"
+msgstr ""
+
+#. This was changed on another device. Refresh, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.message"
+msgstr ""
+
+#. Upload failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.title"
+msgstr ""
+
+#. The file didn't arrive intact. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.message"
+msgstr ""
+
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.upload_expired.title"

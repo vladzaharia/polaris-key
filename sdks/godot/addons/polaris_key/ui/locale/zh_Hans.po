@@ -6398,6 +6398,26 @@ msgstr "加密不一致"
 msgid "core.codes.encryption_mismatch.message"
 msgstr "应用与同步服务的加密设置不一致。请更新应用后重试。"
 
+#. Changed elsewhere
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.title"
+msgstr "已在别处更改"
+
+#. This was changed on another device. Refresh, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.message"
+msgstr "此内容已在另一台设备上更改。请刷新后重试。"
+
+#. Upload failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.title"
+msgstr "上传失败"
+
+#. The file didn't arrive intact. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.message"
+msgstr "文件未完整送达。请重试。"
+
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.upload_expired.title"

@@ -301,6 +301,14 @@
       "title": "Chiffrement incompatible",
       "message": "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez."
     },
+    "revision_conflict": {
+      "title": "Modifié ailleurs",
+      "message": "Cet élément a été modifié sur un autre appareil. Actualisez, puis réessayez."
+    },
+    "upload_mismatch": {
+      "title": "Échec de l’envoi",
+      "message": "Le fichier n’est pas arrivé intact. Réessayez."
+    },
     "upload_expired": {
       "title": "Envoi expiré",
       "message": "L’envoi a pris trop de temps et a été annulé. Réessayez."

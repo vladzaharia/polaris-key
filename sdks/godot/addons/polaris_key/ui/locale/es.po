@@ -6424,6 +6424,26 @@ msgstr "Cifrado incompatible"
 msgid "core.codes.encryption_mismatch.message"
 msgstr "La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo."
 
+#. Changed elsewhere
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.title"
+msgstr "Cambiado en otro lugar"
+
+#. This was changed on another device. Refresh, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.message"
+msgstr "Esto se cambió en otro dispositivo. Actualice e inténtelo de nuevo."
+
+#. Upload failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.title"
+msgstr "Error al subir"
+
+#. The file didn't arrive intact. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.message"
+msgstr "El archivo no llegó completo. Inténtelo de nuevo."
+
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.upload_expired.title"

@@ -97,6 +97,8 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "quota_exceeded" to CopyEntry("Storage full", "Your synced storage is full. Free some space, then try again."),
     "writes_paused" to CopyEntry("Sync paused", "Syncing is paused for a moment. Your changes are kept and will sync later."),
     "encryption_mismatch" to CopyEntry("Encryption mismatch", "This app and the sync service don't agree on encryption. Update the app and try again."),
+    "revision_conflict" to CopyEntry("Changed elsewhere", "This was changed on another device. Refresh, then try again."),
+    "upload_mismatch" to CopyEntry("Upload failed", "The file didn't arrive intact. Try again."),
     "upload_expired" to CopyEntry("Upload expired", "This upload took too long and was cancelled. Try again."),
     "upload_incomplete" to CopyEntry("Upload incomplete", "Part of the file didn't arrive. Try again."),
     "file_too_large" to CopyEntry("File too large", "This file is over the size limit for synced files."),

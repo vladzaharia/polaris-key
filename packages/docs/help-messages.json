@@ -1090,6 +1090,16 @@
       "why": "The app and the sync service use different encryption, so the app can't sync.",
       "fix": "Update the app, then try again."
     },
+    "revision_conflict": {
+      "page": "other",
+      "why": "The file was changed on another device while this one was uploading, so the upload wasn't saved.",
+      "fix": "Wait for the app to sync, then try again."
+    },
+    "upload_mismatch": {
+      "page": "other",
+      "why": "The file didn't arrive intact, so it wasn't saved.",
+      "fix": "Try again."
+    },
     "upload_expired": {
       "page": "other",
       "why": "The upload took too long, so it was canceled.",

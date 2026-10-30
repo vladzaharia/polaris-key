@@ -301,6 +301,14 @@
       "title": "Verschlüsselung passt nicht",
       "message": "App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut."
     },
+    "revision_conflict": {
+      "title": "Anderswo geändert",
+      "message": "Das wurde auf einem anderen Gerät geändert. Aktualisieren Sie und versuchen Sie es erneut."
+    },
+    "upload_mismatch": {
+      "title": "Upload fehlgeschlagen",
+      "message": "Die Datei ist nicht unversehrt angekommen. Versuchen Sie es erneut."
+    },
     "upload_expired": {
       "title": "Upload abgelaufen",
       "message": "Der Upload hat zu lange gedauert und wurde abgebrochen. Versuchen Sie es erneut."

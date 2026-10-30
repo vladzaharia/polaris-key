@@ -99,6 +99,8 @@ public let COPY_CODES: [String: CopyEntry] = [
     "quota_exceeded": CopyEntry(title: "Storage full", message: "Your synced storage is full. Free some space, then try again."),
     "writes_paused": CopyEntry(title: "Sync paused", message: "Syncing is paused for a moment. Your changes are kept and will sync later."),
     "encryption_mismatch": CopyEntry(title: "Encryption mismatch", message: "This app and the sync service don't agree on encryption. Update the app and try again."),
+    "revision_conflict": CopyEntry(title: "Changed elsewhere", message: "This was changed on another device. Refresh, then try again."),
+    "upload_mismatch": CopyEntry(title: "Upload failed", message: "The file didn't arrive intact. Try again."),
     "upload_expired": CopyEntry(title: "Upload expired", message: "This upload took too long and was cancelled. Try again."),
     "upload_incomplete": CopyEntry(title: "Upload incomplete", message: "Part of the file didn't arrive. Try again."),
     "file_too_large": CopyEntry(title: "File too large", message: "This file is over the size limit for synced files."),

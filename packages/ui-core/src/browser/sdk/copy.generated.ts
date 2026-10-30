@@ -358,6 +358,14 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "This app and the sync service don't agree on encryption. Update the app and try again.",
   },
+  revision_conflict: {
+    title: "Changed elsewhere",
+    message: "This was changed on another device. Refresh, then try again.",
+  },
+  upload_mismatch: {
+    title: "Upload failed",
+    message: "The file didn't arrive intact. Try again.",
+  },
   upload_expired: {
     title: "Upload expired",
     message: "This upload took too long and was cancelled. Try again.",

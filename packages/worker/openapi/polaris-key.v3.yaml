@@ -29317,6 +29317,23 @@ components:
             value: {}
             version: { type: integer, minimum: 1 }
             editedHlc: { type: string }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
+        - type: object
+          description: >
+            A record that has a file and no value (§13.4, §13.8.1, U-10): it carries neither
+            `value` nor `ct`.
+          required: [record, version, file]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, id] (the blinded id in E2E mode)."
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
         - type: object
           description: >
             End-to-end mode (§13.4, §13.10.4): a `revision`, `lastWrite`, `max` or `min` record.
@@ -29333,6 +29350,7 @@ components:
             ct: { type: string }
             version: { type: integer, minimum: 1 }
             editedHlc: { type: string }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
         - type: object
           description: >
             End-to-end mode (§13.4, U-09): a `merge` record. Each field is sealed under
@@ -29359,6 +29377,7 @@ components:
                   editedHlc: { type: string }
             version: { type: integer, minimum: 1 }
             editedHlc: { type: string }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
         - type: object
           description: >
             End-to-end mode (§13.4, U-09): a `union` record. Each element is sealed under
@@ -29383,6 +29402,169 @@ components:
                   element: { type: string, description: "Blinded (`x:…`)." }
                   ct: { type: string }
             version: { type: integer, minimum: 1 }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
+        - type: object
+          description: >
+            End-to-end mode (§13.4, §13.8.1, U-10): a record that has a file and no value carries
+            neither `ct`, `fields` nor `elements`; `record[1]` is the blinded id.
+          required: [record, version, file]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, blinded id]."
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
+    SyncFilePointer:
+      type: object
+      description: >
+        The file a record carries (§13.4, §13.8.1, U-10). `version` is the store sequence of the
+        `finalize` that stored it; `size` and `sha256` are those of the stored bytes (ciphertext in
+        end-to-end mode). Absent from a change when the record has no file. It is also the
+        `finalize` answer.
+      required: [version, size, sha256, format]
+      additionalProperties: false
+      properties:
+        version: { type: integer, minimum: 1 }
+        size: { type: integer, minimum: 0 }
+        sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+        format: { type: string, enum: [whole, chunks] }
+    SyncFileBeginRequest:
+      type: object
+      description: >
+        `POST /{product}/sync/files/{collection}/{id}/begin` (§13.8.1, U-10). `sha256` is the hash
+        of what is stored (ciphertext in end-to-end mode). `baseVersion` is a number
+        (compare-and-swap), `"*"` (create-only) or absent. `enc` must match the product's mode.
+      required: [size, sha256, format, enc]
+      additionalProperties: false
+      properties:
+        size: { type: integer, minimum: 0, maximum: 1073741824 }
+        sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+        format: { type: string, enum: [whole, chunks] }
+        enc: { type: string, enum: [e2e, none] }
+        baseVersion:
+          oneOf:
+            - { type: integer, minimum: 0 }
+            - { type: string, const: "*" }
+    SyncFileBeginResponse:
+      type: object
+      description: "The `begin` answer (§13.8.1). `partBytes` appears for `multipart` only."
+      required: [uploadId, mode, expiresAt]
+      additionalProperties: false
+      properties:
+        uploadId: { type: string }
+        mode: { type: string, enum: [single, multipart, chunks] }
+        partBytes: { type: integer, minimum: 8388608, maximum: 67108864 }
+        expiresAt: { type: integer, description: "Epoch milliseconds." }
+    SyncFileUploadStatus:
+      type: object
+      description: >
+        The resume answer (§13.8.2). `received` lists the part numbers of a `multipart` upload,
+        `missing` the chunk ids of a `chunks` upload.
+      required: [mode, size, expiresAt]
+      additionalProperties: false
+      properties:
+        mode: { type: string, enum: [single, multipart, chunks] }
+        size: { type: integer, minimum: 0 }
+        partBytes: { type: integer }
+        received:
+          type: array
+          items: { type: integer, minimum: 1 }
+        missing:
+          type: array
+          items: { type: string, pattern: "^[0-9a-f]{64}$" }
+        expiresAt: { type: integer, description: "Epoch milliseconds." }
+    SyncFileChunkPlanRequest:
+      type: object
+      description: "`POST …/upload/{uploadId}/chunks` (§13.8.1, U-37): at most 1,024 ids."
+      required: [chunks]
+      additionalProperties: false
+      properties:
+        chunks:
+          type: array
+          maxItems: 1024
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            description: "[chunkId, storedBytes]."
+            prefixItems:
+              - { type: string, pattern: "^[0-9a-f]{64}$" }
+              - { type: integer, minimum: 1 }
+    SyncFileChunkPlanResponse:
+      type: object
+      description: "The chunks to send, and the ones the person's collection already holds (U-37)."
+      required: [missing, present]
+      additionalProperties: false
+      properties:
+        missing:
+          type: array
+          items: { type: string, pattern: "^[0-9a-f]{64}$" }
+        present:
+          type: array
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            prefixItems:
+              - { type: string, pattern: "^[0-9a-f]{64}$" }
+              - { type: integer, minimum: 1 }
+    SyncFileFinalizeRequest:
+      type: object
+      description: "`POST /{product}/sync/files/{collection}/{id}/finalize` (§13.8.1); idempotent per `uploadId`."
+      required: [uploadId]
+      additionalProperties: false
+      properties:
+        uploadId: { type: string }
+    SyncFileRevisionsResponse:
+      type: object
+      description: "The kept versions of a record's file (§13.2), newest first."
+      required: [revisions]
+      additionalProperties: false
+      properties:
+        revisions:
+          type: array
+          items:
+            type: object
+            required: [version, size, sha256, format, createdAt]
+            additionalProperties: false
+            properties:
+              version: { type: integer, minimum: 1 }
+              size: { type: integer, minimum: 0 }
+              sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+              format: { type: string, enum: [whole, chunks] }
+              createdAt: { type: integer, description: "Epoch milliseconds." }
+    SyncFileUploadIncomplete:
+      type: object
+      description: "`409 upload_incomplete` (§13.8.4): the parts (numbers) or chunks (ids) still missing."
+      allOf:
+        - { $ref: "#/components/schemas/WireError" }
+        - type: object
+          required: [missing]
+          properties:
+            missing:
+              type: array
+              items:
+                oneOf:
+                  - { type: integer }
+                  - { type: string }
+    SyncFileRevisionConflict:
+      type: object
+      description: "`409 revision_conflict` (§13.8.4) from `begin` or `finalize`: the server's version."
+      allOf:
+        - { $ref: "#/components/schemas/WireError" }
+        - type: object
+          required: [server]
+          properties:
+            server:
+              type: object
+              required: [version]
+              properties:
+                version: { type: integer, minimum: 1 }
     SyncTombstone:
       description: "A deleted setting or record with its `editedHlc` (§13.4)."
       oneOf:
@@ -29622,6 +29804,9 @@ components:
                       field: { type: string, description: "Blinded (`x:…`)." }
                       ct: { type: string }
                       editedHlc: { type: string }
+                file:
+                  description: "The record's file, when it has one (§13.4, U-10)."
+                  $ref: "#/components/schemas/SyncFilePointer"
         - type: object
           required: [mutationId, status, code]
           properties:

@@ -113,6 +113,8 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "quota_exceeded": CopyEntry("Storage full", "Your synced storage is full. Free some space, then try again."),
         "writes_paused": CopyEntry("Sync paused", "Syncing is paused for a moment. Your changes are kept and will sync later."),
         "encryption_mismatch": CopyEntry("Encryption mismatch", "This app and the sync service don't agree on encryption. Update the app and try again."),
+        "revision_conflict": CopyEntry("Changed elsewhere", "This was changed on another device. Refresh, then try again."),
+        "upload_mismatch": CopyEntry("Upload failed", "The file didn't arrive intact. Try again."),
         "upload_expired": CopyEntry("Upload expired", "This upload took too long and was cancelled. Try again."),
         "upload_incomplete": CopyEntry("Upload incomplete", "Part of the file didn't arrive. Try again."),
         "file_too_large": CopyEntry("File too large", "This file is over the size limit for synced files."),

@@ -301,6 +301,14 @@
       "title": "Cifrado incompatible",
       "message": "La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo."
     },
+    "revision_conflict": {
+      "title": "Cambiado en otro lugar",
+      "message": "Esto se cambió en otro dispositivo. Actualice e inténtelo de nuevo."
+    },
+    "upload_mismatch": {
+      "title": "Error al subir",
+      "message": "El archivo no llegó completo. Inténtelo de nuevo."
+    },
     "upload_expired": {
       "title": "Subida caducada",
       "message": "La subida tardó demasiado y se canceló. Inténtalo de nuevo."

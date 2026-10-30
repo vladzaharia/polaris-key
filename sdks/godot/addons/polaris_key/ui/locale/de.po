@@ -6411,6 +6411,26 @@ msgstr "Verschlüsselung passt nicht"
 msgid "core.codes.encryption_mismatch.message"
 msgstr "App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut."
 
+#. Changed elsewhere
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.title"
+msgstr "Anderswo geändert"
+
+#. This was changed on another device. Refresh, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.message"
+msgstr "Das wurde auf einem anderen Gerät geändert. Aktualisieren Sie und versuchen Sie es erneut."
+
+#. Upload failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.title"
+msgstr "Upload fehlgeschlagen"
+
+#. The file didn't arrive intact. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.message"
+msgstr "Die Datei ist nicht unversehrt angekommen. Versuchen Sie es erneut."
+
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.upload_expired.title"

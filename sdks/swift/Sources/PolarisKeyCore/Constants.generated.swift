@@ -84,6 +84,8 @@ public enum ErrorCode {
     public static let quotaExceeded = "quota_exceeded"
     public static let writesPaused = "writes_paused"
     public static let encryptionMismatch = "encryption_mismatch"
+    public static let revisionConflict = "revision_conflict"
+    public static let uploadMismatch = "upload_mismatch"
     public static let uploadExpired = "upload_expired"
     public static let uploadIncomplete = "upload_incomplete"
     public static let fileTooLarge = "file_too_large"
@@ -296,6 +298,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "quota_exceeded",
     "writes_paused",
     "encryption_mismatch",
+    "revision_conflict",
+    "upload_mismatch",
     "upload_expired",
     "upload_incomplete",
     "file_too_large",
@@ -508,6 +512,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "quota_exceeded": "wire",
     "writes_paused": "wire",
     "encryption_mismatch": "wire",
+    "revision_conflict": "wire",
+    "upload_mismatch": "wire",
     "upload_expired": "wire",
     "upload_incomplete": "wire",
     "file_too_large": "wire",

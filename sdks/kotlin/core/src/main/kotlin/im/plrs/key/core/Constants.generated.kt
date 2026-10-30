@@ -86,6 +86,8 @@ public object ErrorCode {
     public const val quotaExceeded: String = "quota_exceeded"
     public const val writesPaused: String = "writes_paused"
     public const val encryptionMismatch: String = "encryption_mismatch"
+    public const val revisionConflict: String = "revision_conflict"
+    public const val uploadMismatch: String = "upload_mismatch"
     public const val uploadExpired: String = "upload_expired"
     public const val uploadIncomplete: String = "upload_incomplete"
     public const val fileTooLarge: String = "file_too_large"
@@ -298,6 +300,8 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "quota_exceeded",
     "writes_paused",
     "encryption_mismatch",
+    "revision_conflict",
+    "upload_mismatch",
     "upload_expired",
     "upload_incomplete",
     "file_too_large",
@@ -510,6 +514,8 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "quota_exceeded" to "wire",
     "writes_paused" to "wire",
     "encryption_mismatch" to "wire",
+    "revision_conflict" to "wire",
+    "upload_mismatch" to "wire",
     "upload_expired" to "wire",
     "upload_incomplete" to "wire",
     "file_too_large" to "wire",

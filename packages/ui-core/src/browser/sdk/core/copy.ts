@@ -170,6 +170,9 @@ const FR: CopyBundle = {
       "La synchronisation est en pause un instant. Vos modifications sont conservées et seront synchronisées plus tard.",
     encryption_mismatch:
       "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.",
+    revision_conflict:
+      "Cet élément a été modifié sur un autre appareil. Actualisez, puis réessayez.",
+    upload_mismatch: "Le fichier n’est pas arrivé intact. Réessayez.",
     upload_expired: "L’envoi a pris trop de temps et a été annulé. Réessayez.",
     upload_incomplete: "Une partie du fichier n’est pas arrivée. Réessayez.",
     file_too_large:
