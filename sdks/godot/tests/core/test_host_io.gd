@@ -98,14 +98,17 @@ func _chatty(t: PKeyTestContext, io: PKeyHostIo, windows: bool) -> void:
 
 func _many(t: PKeyTestContext, windows: bool) -> void:
 	# From a worker thread, as PKeyFingerprint.capture calls it, and four at once.
-	var results: Array = []
+	# One box a task, so no two threads write the same Array.
+	var boxes: Array = []
 	var ids: Array[int] = []
 	for i in 4:
+		var box: Array = []
+		boxes.append(box)
 		var one := PKeyHostIo.new()
-		ids.append(WorkerThreadPool.add_task(func() -> void: results.append(one.run(_shell(windows), _script(windows, "echo n%d" % i))), false, "host io test"))
+		ids.append(WorkerThreadPool.add_task(func() -> void: box.append(one.run(_shell(windows), _script(windows, "echo n%d" % i))), false, "host io test"))
 	for id in ids:
 		WorkerThreadPool.wait_for_task_completion(id)
-	var texts := results.map(func(r: Variant) -> String: return str(r).strip_edges())
+	var texts := boxes.map(func(b: Array) -> String: return str(b[0]).strip_edges() if not b.is_empty() else "")
 	texts.sort()
 	t.check("host io: four commands from worker threads at once all answer", texts == ["n0", "n1", "n2", "n3"], str(texts))
 	t.check("host io: the shared capability check ran once", PKeyHostIo._pipes_checked)
