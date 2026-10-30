@@ -91,6 +91,18 @@ public struct KitResolvedStyle: Sendable, Equatable {
 
     public var isNative: Bool { preset == .native }
 
+    /// A floating surface (banner, update row) is opaque rather than glass: the native preset in
+    /// light on a Mac. Glass takes its tint from what is behind the window, so the text on it has
+    /// no fixed backdrop for a contrast measure (the audit read black on it as failing), where an
+    /// opaque `raised` fill is the same on every run.
+    var opaqueFloating: Bool {
+        #if os(macOS)
+        return isNative && !dark
+        #else
+        return false
+        #endif
+    }
+
     // MARK: Measures (UI-KITS §2.1 iOS column; DL3 density steps)
 
     /// A control's height: 52 pt, a step down in compact, up in spacious.

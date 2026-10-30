@@ -408,10 +408,10 @@ struct KitAmbient: View {
                                         .init(color: .black.opacity(0), location: 1),
                                     ], startPoint: .top, endPoint: .bottom))
                     } else {
-                        RadialGradient(
-                            colors: [style.palette.accentSubtle, style.palette.page.opacity(0)],
-                            center: UnitPoint(x: 0.3, y: 0.05), startRadius: 0,
-                            endRadius: max(geo.size.width, geo.size.height) * 0.6)
+                        // A flat wash, not a gradient: the audit measures contrast against the
+                        // pixels behind a line, and behind a muted line a gradient read below
+                        // 4.5:1 on every run. One colour is the same everywhere (BRAND §9).
+                        Rectangle().fill(style.palette.accentSubtle.opacity(0.35))
                     }
                 }
                 .allowsHitTesting(false)

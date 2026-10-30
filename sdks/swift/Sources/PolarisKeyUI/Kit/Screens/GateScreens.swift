@@ -469,11 +469,11 @@ struct KitFloatingSurface: ViewModifier {
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: 26, style: .continuous)
-        if style.usesGlass, #available(iOS 26.0, macOS 26.0, *) {
+        if style.usesGlass, !style.opaqueFloating, #available(iOS 26.0, macOS 26.0, *) {
             #if compiler(>=6.2)
             content.glassEffect(.regular, in: shape)
             #endif
-        } else if style.reduceTransparency {
+        } else if style.reduceTransparency || style.opaqueFloating {
             content.background(shape.fill(style.palette.raised))
                 .overlay(shape.strokeBorder(style.palette.border, lineWidth: 1))
         } else {
