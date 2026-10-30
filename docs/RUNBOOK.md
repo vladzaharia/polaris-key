@@ -2492,6 +2492,26 @@ an older Worker ignores `approvedAt`, so flows waiting at the approval page woul
 next poll. Count approved, denied and expired-unapproved flows from the audit rows
 `identity.signin.device_approved` and `identity.signin.device_denied`.
 
+## Display-name scan
+
+Run this once, read-only, before the Worker deploy that carries the invisible-character rule for
+display names. A name that holds a refused code point (a Hangul filler, a soft hyphen, U+2800, a
+line separator, a joiner) shows as the product slug on every end-user screen from that deploy, and
+an unchanged manifest that holds one fails its next link or resync. The scan lists them first.
+
+```sh
+npx wrangler d1 execute polaris_key_prod --env prod --remote --json --command \
+  "SELECT 'product' AS t, slug, name, NULL AS developer_name FROM products WHERE COALESCE(status,'active') != 'deleted' UNION ALL SELECT 'listing', product, name, developer_name FROM dist_listings" \
+  | pnpm tsx tools/scan-display-names.ts
+```
+
+`tools/scan-display-names.ts` reads the JSON on stdin and prints `slug,field,verdict,name` for each
+name that fails the rule, with invisible code points spelled `\u{...}`. It writes nothing and opens
+no connection. No output means there is nothing to do. For each `invalid` hit, rename the product
+in the console before the deploy; the console refuses an invisible character from the same deploy.
+A `reserved` hit is judged by the built-in terms only: the platform's extra terms and a product's
+approval live in settings the scan does not read, so check the product's approval before renaming.
+
 ## Customer host (Polaris Locker)
 
 The customer site (Polaris Locker) is a second host on this Worker, `CUSTOMER_ORIGIN`; the console
