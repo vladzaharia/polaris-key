@@ -57,6 +57,8 @@ const TTL = 120;
 /** The TTL of a legacy unicast answer (RFC 6762 §6.7: at most 10 s). */
 export const LEGACY_TTL = 10;
 const MDNS_PORT = 5353;
+/** A legacy query is answered only from a port at or above this one. */
+const MIN_LEGACY_PORT = 1024;
 /** Questions a legacy answer repeats, at most: the reply stays small whatever the query holds. */
 const MAX_REPEATED = 4;
 const SWEEP_MS = 5000;
@@ -509,16 +511,18 @@ export class MulticastDnsAdapter implements MdnsAdapter {
             );
           });
           if (hits.length === 0) return;
-          // A query from another port is a legacy one (RFC 6762 §6.7): it is answered to its
-          // sender alone, and only if that sender is on this link.
-          const legacy =
-            typeof rinfo?.port === "number" && rinfo.port !== MDNS_PORT;
+          // Only a neighbour on this link is answered: a query from off the link, or with no
+          // source, is dropped (RFC 6762 §11).
           if (
-            legacy &&
-            (typeof rinfo?.address !== "string" ||
-              !heardOn(rinfo.address, iface, subnets4))
+            typeof rinfo?.address !== "string" ||
+            !heardOn(rinfo.address, iface, subnets4)
           )
             return;
+          // A query from another port is a legacy one (RFC 6762 §6.7): it is answered to its
+          // sender alone, and only from a port a normal program draws (1024 and up).
+          const legacy =
+            typeof rinfo.port === "number" && rinfo.port !== MDNS_PORT;
+          if (legacy && rinfo.port! < MIN_LEGACY_PORT) return;
           const t = Date.now();
           if (t - lastReply < REPLY_GAP_MS) return;
           lastReply = t;
@@ -529,7 +533,7 @@ export class MulticastDnsAdapter implements MdnsAdapter {
                 questions: hits.slice(0, MAX_REPEATED),
                 answers: records(LEGACY_TTL, iface, true),
               },
-              { address: rinfo!.address!, port: rinfo!.port! },
+              { address: rinfo.address, port: rinfo.port! },
             );
           else s.respond({ answers: records(TTL, iface) });
         },
