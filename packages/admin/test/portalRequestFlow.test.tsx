@@ -346,15 +346,24 @@ describe("the request's hints and purpose (UK-42.14)", () => {
     );
     await new Promise((r) => setTimeout(r, 100));
     const field = screen.queryByRole("textbox", { name: /name/i });
-    return (field as HTMLInputElement | null)?.value ?? "";
+    return {
+      value: (field as HTMLInputElement | null)?.value ?? "",
+      placeholder: (field as HTMLInputElement | null)?.placeholder ?? "",
+    };
   };
 
-  it("FinishStep starts the name from nameHint for a new account only", async () => {
-    expect(await finish(true)).toBe("Ada Lovelace");
+  // UK-42.22 (R1-07): an app's hint, and above all an unauthenticated device start's, is a
+  // suggestion the person can see, never a value they could submit unread.
+  it("FinishStep shows nameHint as a placeholder for a new account, and does not fill it", async () => {
+    const field = await finish(true);
+    expect(field.placeholder).toBe("Ada Lovelace");
+    expect(field.value).not.toBe("Ada Lovelace");
   });
 
   it("an existing account's finish step ignores nameHint", async () => {
-    expect(await finish(false)).not.toBe("Ada Lovelace");
+    const field = await finish(false);
+    expect(field.placeholder).not.toBe("Ada Lovelace");
+    expect(field.value).not.toBe("Ada Lovelace");
   });
 });
 
