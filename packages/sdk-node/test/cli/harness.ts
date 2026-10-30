@@ -197,6 +197,11 @@ export interface RunOptions {
   capture?: "stderr";
   headless?: boolean;
   copy?: (text: string) => string;
+  /** The operating system the run reads (default `linux`). */
+  platform?: NodeJS.Platform;
+  /** The 2 s and 3 s windows of nearby sign-in elapse at once (default: they never do);
+   *  "all" also ends the 300 s wait of `devices approve`. */
+  fastDelay?: boolean | "all";
 }
 
 /** Run `scenario` in `variant` and return the screen (or the snapshot) and the raw stream. */
@@ -234,9 +239,15 @@ export async function render(
       stderr: err,
       stdin,
       env,
-      platform: "linux",
+      platform: o.platform ?? "linux",
       ticker: frozenTicker,
       now: () => NOW,
+      delay: (ms, signal) =>
+        o.fastDelay && (o.fastDelay === "all" || ms < 10_000)
+          ? Promise.resolve()
+          : new Promise<void>((r) =>
+              signal?.addEventListener("abort", () => r(), { once: true }),
+            ),
       openUrl: (u) => {
         opened.push(u);
         return o.openUrl ?? true;
@@ -289,9 +300,11 @@ type Stub = Record<string, unknown>;
  * folds the one onto the other (I-10a.5), so a scenario still reads as the sign-in it drives.
  */
 function sessionStub(id: Stub): Stub {
-  const { beginSignIn, waitForSignIn, ...rest } = id as {
+  const { beginSignIn, waitForSignIn, nearbyStart, ...rest } = id as {
     beginSignIn: (o: unknown) => Promise<Record<string, unknown>>;
     waitForSignIn: (p: unknown, o: unknown) => Promise<Record<string, unknown>>;
+    /** The nearby session `signIn.start({channel: "nearby"})` answers; none: the typed N/A. */
+    nearbyStart?: (o: unknown) => Promise<unknown>;
   } & Stub;
   const outcome = (r: Record<string, unknown>) => {
     if (r.status === "ready")
@@ -314,6 +327,11 @@ function sessionStub(id: Stub): Stub {
     ...rest,
     signIn: {
       start: async (o: unknown) => {
+        if ((o as { channel?: string } | undefined)?.channel === "nearby") {
+          if (!nearbyStart)
+            throw new PolarisError("nearby-unsupported", "no nearby here");
+          return nearbyStart(o);
+        }
         const p = await beginSignIn(o);
         return {
           ...p,
@@ -421,6 +439,8 @@ export function stubClient(
         identity: { name: "Mara Fennick", email: "mara@fennick.studio" },
       }),
       signOut: async () => undefined,
+      // Nearby approval is off unless a scenario turns it on.
+      nearby: { available: async () => false },
       // Who this device is signed in as (`identity.current()`); null for a key only device.
       current: async () => ({
         name: "Mara Fennick",
@@ -474,4 +494,98 @@ export function stubClient(
     },
     ...over.extra,
   } as unknown as PolarisKeyClient;
+}
+
+/** The nearby approvers a fake session lists (labels are display data from an unverified peer). */
+export interface FakeApprover {
+  id: string;
+  label: string | null;
+  platform: string;
+}
+
+/**
+ * A nearby sign-in session (`identity.signIn.start({channel: "nearby"})`), by hand. `choose(id)`
+ * shows the code and, as if the person tapped it on the other device, lets the poll answer
+ * `signedIn`; `cancel()` ends the wait as `cancelled`; an aborted `wait` rejects as the real one.
+ */
+export class FakeNearbySession {
+  readonly channel = "nearby" as const;
+  approvers: FakeApprover[];
+  code: string | null = null;
+  readonly chosen: string[] = [];
+  confirmed = 0;
+  declined = 0;
+  cancelled = false;
+  private readonly listeners = new Set<(l: FakeApprover[]) => void>();
+  private readonly gate = deferred<void>();
+  private readonly stop = deferred<void>();
+
+  constructor(
+    approvers: FakeApprover[] = [],
+    private readonly o: {
+      outcome?: "signedIn" | "expired" | "denied";
+      identity?: { name?: string; email?: string };
+      signedInAfterChoose?: boolean;
+    } = {},
+  ) {
+    this.approvers = approvers;
+  }
+
+  onApprovers(fn: (l: FakeApprover[]) => void): () => void {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  /** A device appears or goes. */
+  list(next: FakeApprover[]): void {
+    this.approvers = next;
+    for (const f of [...this.listeners]) f(next);
+  }
+
+  async choose(id: string): Promise<{ code: string }> {
+    this.chosen.push(id);
+    this.code = "482 913";
+    if (this.o.signedInAfterChoose !== false) this.gate.resolve();
+    return { code: this.code };
+  }
+
+  cancel(): void {
+    this.cancelled = true;
+    this.stop.resolve();
+  }
+
+  async wait(w: { signal?: AbortSignal } = {}): Promise<unknown> {
+    const aborted = new Promise<never>((_r, reject) =>
+      w.signal?.addEventListener("abort", () => reject(w.signal!.reason), {
+        once: true,
+      }),
+    );
+    const r = await Promise.race([
+      this.gate.promise.then(() => "poll" as const),
+      this.stop.promise.then(() => "stop" as const),
+      aborted,
+    ]);
+    if (r === "stop") return { kind: "cancelled" };
+    const outcome = this.o.outcome ?? "signedIn";
+    if (outcome === "denied")
+      throw new PolarisError("sign-in-denied", "nearby sign-in was refused.");
+    if (outcome === "expired") return { kind: "expired" };
+    return {
+      kind: "signedIn",
+      subject: "ps_x",
+      activation: { licenseId: "lic_tw" },
+      identity: this.o.identity ?? {
+        name: "Mara Fennick",
+        email: "mara@fennick.studio",
+      },
+    };
+  }
+
+  async confirmAccount(): Promise<void> {
+    this.confirmed += 1;
+  }
+
+  async declineAccount(): Promise<void> {
+    this.declined += 1;
+  }
 }

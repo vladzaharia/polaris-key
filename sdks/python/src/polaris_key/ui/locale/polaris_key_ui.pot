@@ -3728,6 +3728,51 @@ msgstr ""
 msgid "signin.cli.nearbyKey"
 msgstr ""
 
+#. Looking for your other devices…
+#. Terminal sign-in, nearby: shown beside the spinner for the first seconds while the computer looks for the person's other devices.
+msgid "signin.cli.nearbyLooking"
+msgstr ""
+
+#. Enter continue · Esc not now
+#. Terminal key hints under the offer to look for nearby devices (macOS asks for access to the local network after it). Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
+msgid "signin.cli.nearbyPromptKeys"
+msgstr ""
+
+#. 1-9 choose · c use a code instead · Esc cancel
+#. Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators.
+msgid "signin.cli.nearbyPickKeys"
+msgstr ""
+
+#. Enter continue · n not you?
+#. Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n signs out again. Keep each key first and the ' · ' separators.
+msgid "signin.cli.nearbyDoneKeys"
+msgstr ""
+
+#. Waiting for a device to ask…
+#. Terminal 'devices approve': shown beside the spinner while the computer waits for another device to ask to sign in.
+msgid "signin.cli.approveWaiting"
+msgstr ""
+
+#. Esc stop
+#. Terminal key hint while 'devices approve' waits for a device to ask. Keep the key first.
+msgid "signin.cli.approveWaitKeys"
+msgstr ""
+
+#. 1-3 choose a code · d deny · Esc cancel
+#. Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d denies. Keep each key first and the ' · ' separators.
+msgid "signin.cli.approveKeys"
+msgstr ""
+
+#. Polaris Locker can't approve nearby sign-ins from this computer. Sign in with a code on the other device.
+#. Terminal 'devices approve': this computer cannot take part in nearby sign-in. 'Polaris Locker' is the end-user product name (never translated).
+msgid "signin.cli.approveUnsupported"
+msgstr ""
+
+#. 1-9 choose a license · Esc deny
+#. Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators.
+msgid "signin.cli.approveChooseKeys"
+msgstr ""
+
 #. No browser on this computer. Use a code instead:
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
 msgid "signin.cli.headless"
@@ -4053,7 +4098,12 @@ msgstr ""
 
 #. Approve a device signing in nearby
 #. Terminal help: what 'devices approve' does.
-msgid "cli.help.devicesApprove"
+msgid "cli.verb.devicesApprove"
+msgstr ""
+
+#. {command} needs a person at a terminal.
+#. Terminal usage error: 'devices approve' asks a person to pick a code, so it does not run with --json or without a terminal. Arguments: {command} = the command the person ran.
+msgid "cli.approve.needsPerson"
 msgstr ""
 
 #. {command} needs a license

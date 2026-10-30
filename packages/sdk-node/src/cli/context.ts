@@ -38,6 +38,21 @@ import {
   type ResolvedProduct,
 } from "./theme.js";
 
+/** Wait `ms`; an aborted signal ends the wait early (it resolves, so a caller re-checks its state). */
+export type Delay = (ms: number, signal?: AbortSignal) => Promise<void>;
+
+const realDelay: Delay = (ms, signal) =>
+  new Promise<void>((resolve) => {
+    if (signal?.aborted) return resolve();
+    const done = (): void => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal?.addEventListener("abort", done, { once: true });
+  });
+
 /** The process seams a flow touches. Every field defaults to the real process. */
 export interface TerminalIO {
   stdout?: TerminalOutput;
@@ -48,6 +63,8 @@ export interface TerminalIO {
   ticker?: Ticker;
   /** Epoch milliseconds (tests pin it). */
   now?: () => number;
+  /** Wait `ms` (a test resolves it at once); resolves early, never rejects, when `signal` aborts. */
+  delay?: Delay;
   /** Open a URL in the default browser; false when it could not (D-68's fallback). */
   openUrl?: (url: string) => Promise<boolean> | boolean;
 }
@@ -65,6 +82,8 @@ export interface KitContext {
   mounted?: readonly string[];
   /** The product slug. */
   slug: string;
+  /** The operating system the run reads (`darwin` asks for the Local Network on a first browse). */
+  platform: NodeJS.Platform;
   /** The environment the run reads (`POLARIS_KEY_ACTIVATION_KEY`). */
   env: Readonly<Record<string, string | undefined>>;
   stdout: TerminalOutput;
@@ -72,6 +91,8 @@ export interface KitContext {
   stdin: TerminalInput & Partial<AsyncIterable<Buffer | string>>;
   ticker: Ticker;
   now: () => number;
+  /** A wait that the signal ends early: the nearby sign-in's 2 s and 3 s windows (D-5). */
+  delay: Delay;
   openUrl: (url: string) => Promise<boolean> | boolean;
   /** Keys from stdin while the flow is interactive, else null. */
   keys: KeyReader | null;
@@ -250,12 +271,14 @@ function buildContext(
     bin: o.bin ?? o.slug,
     ...(o.mounted ? { mounted: o.mounted } : {}),
     slug: o.slug,
+    platform: io.platform ?? process.platform,
     env: io.env ?? process.env,
     stdout,
     stderr,
     stdin,
     ticker: io.ticker ?? realTicker,
     now: io.now ?? Date.now,
+    delay: io.delay ?? realDelay,
     // Only a safe link reaches the opener (an https URL, or loopback http, with no whitespace,
     // control character or userinfo); anything else is not opened and the flow falls back.
     openUrl: (url: string) => {

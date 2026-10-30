@@ -283,7 +283,10 @@ export class IdentityClient {
       return onNearbyRequest(
         { routes: this.nearbyRoutes, lan: () => b.lan(), keyring: b.keyring() },
         handler,
-        o,
+        // This device's name in the other device's list (§12.7.1); never an account identifier.
+        o.label !== undefined
+          ? o
+          : { ...o, ...labelFor(this.ctx.deviceLabel(undefined)) },
       );
     },
     /** True when Identity is on, discovery names `nearby` and the role's endpoints, and this
@@ -431,4 +434,9 @@ export class IdentityClient {
     );
     await this.onForget();
   }
+}
+
+/** `{label}` when this device has a name to give, else nothing. */
+function labelFor(label: string | null): { label?: string } {
+  return label !== null && label !== "" ? { label } : {};
 }

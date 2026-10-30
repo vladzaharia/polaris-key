@@ -30,9 +30,11 @@ import {
   updateCheckFlow,
 } from "../../src/cli/flows.js";
 import { renderHelp, renderVerbHelp } from "../../src/cli/help.js";
+import { devicesApproveFlow } from "../../src/cli/nearby.js";
 import { CLI_VERBS } from "../../src/cli/kit.js";
 import {
   deferred,
+  FakeNearbySession,
   KEY,
   NOW,
   settle,
@@ -157,6 +159,7 @@ const HOST_HELP_DATA = [
   "devices list",
   "devices rename",
   "devices deauthorize",
+  "devices approve",
   "<deviceId>",
   "[label...]",
   "update check",
@@ -1689,3 +1692,238 @@ export const SCENARIOS: Scenario[] = [
     },
   },
 ];
+
+// ── Nearby sign-in and approval (I-47.12) ──────────────────────────────────────────────────
+
+const ANA = { id: "a1", label: "Ana's laptop", platform: "macos" };
+const BEN = { id: "a2", label: "Ben's phone", platform: "ios" };
+const nearbyClient = (session: FakeNearbySession) =>
+  stubClient({
+    identity: {
+      nearby: { available: async () => true },
+      nearbyStart: async () => session,
+    },
+  });
+const NEARBY = [...COMMON, "login", "Ana's laptop", "Ben's phone", "482 913"];
+
+/** `devices approve` with a device asking: the three codes, and what the pick comes to. */
+const asking = (
+  step: unknown,
+  o: { device?: string | null; rejects?: string } = {},
+) =>
+  stubClient({
+    identity: {
+      nearby: {
+        available: async () => true,
+        onRequest: async (handler: (a: unknown) => void) => {
+          if (o.rejects) {
+            throw Object.assign(new Error("cannot take part"), {
+              code: o.rejects,
+            });
+          }
+          handler({
+            device: o.device === undefined ? "New phone" : o.device,
+            platform: "linux",
+            codes: ["111 111", "482 913", "777 777"],
+            pick: async () => step,
+            deny: async () => undefined,
+          });
+          return { stop: async () => undefined };
+        },
+      },
+    },
+  });
+const APPROVE = [
+  ...COMMON,
+  "devices approve",
+  "New phone",
+  "111 111",
+  "482 913",
+  "777 777",
+];
+const approveScenario = (
+  name: string,
+  step: unknown,
+  press: string,
+  extra: string[] = [],
+): Scenario => ({
+  name: `nearby-approval-${name}`,
+  opts: { interactive: true },
+  data: [...APPROVE, ...extra],
+  run: async (h) => {
+    const done = devicesApproveFlow(h.ctx, asking(step));
+    await settle();
+    h.stdin.press(press);
+    await done;
+  },
+});
+
+SCENARIOS.push(
+  {
+    // macOS names the Local Network prompt before it comes (D-A14).
+    name: "sign-in-nearby-prompt",
+    opts: { interactive: true, platform: "darwin" },
+    data: NEARBY,
+    run: async (h) => {
+      const done = loginFlow(h.ctx, nearbyClient(new FakeNearbySession([ANA])));
+      await settle();
+      h.snap();
+      h.stdin.press("escape");
+      await done;
+    },
+  },
+  {
+    // The first seconds: looking for the person's other devices.
+    name: "sign-in-nearby-wait-looking",
+    opts: { interactive: true },
+    data: NEARBY,
+    run: async (h) => {
+      const done = loginFlow(h.ctx, nearbyClient(new FakeNearbySession([])));
+      await settle();
+      h.snap();
+      h.stdin.press("escape");
+      await done;
+    },
+  },
+  {
+    // Several devices answered: the person picks one by number.
+    name: "sign-in-nearby-wait-pick",
+    opts: { interactive: true },
+    data: NEARBY,
+    run: async (h) => {
+      const done = loginFlow(
+        h.ctx,
+        nearbyClient(new FakeNearbySession([ANA, BEN])),
+      );
+      await settle();
+      h.snap();
+      h.stdin.press("escape");
+      await done;
+    },
+  },
+  {
+    // The code to tap on the other device, with the line a screen reader hears.
+    name: "sign-in-nearby-wait",
+    opts: { interactive: true, fastDelay: true },
+    data: NEARBY,
+    run: async (h) => {
+      const done = loginFlow(
+        h.ctx,
+        nearbyClient(
+          new FakeNearbySession([ANA], { signedInAfterChoose: false }),
+        ),
+      );
+      await settle();
+      h.snap();
+      h.stdin.press("escape");
+      await done;
+    },
+  },
+  {
+    // Signed in: the account is shown, Enter confirms it and n is "Not you?".
+    name: "sign-in-nearby-done",
+    opts: { interactive: true, fastDelay: true },
+    data: [...NEARBY, "mara@fennick.studio"],
+    run: async (h) => {
+      const done = loginFlow(h.ctx, nearbyClient(new FakeNearbySession([ANA])));
+      await settle();
+      h.snap();
+      h.stdin.press("return");
+      await done;
+    },
+  },
+  {
+    name: "nearby-approval-entry-waiting",
+    opts: { interactive: true },
+    data: APPROVE,
+    run: async (h) => {
+      const done = devicesApproveFlow(
+        h.ctx,
+        stubClient({
+          identity: {
+            nearby: {
+              available: async () => true,
+              onRequest: async () => ({ stop: async () => undefined }),
+            },
+          },
+        }),
+      );
+      await settle();
+      h.snap();
+      h.stdin.press("escape");
+      await done;
+    },
+  },
+  {
+    // The signed-in device cannot take part (no local network access here).
+    name: "nearby-approval-entry-unsupported",
+    opts: { interactive: true },
+    data: APPROVE,
+    run: async (h) => {
+      await devicesApproveFlow(
+        h.ctx,
+        asking(null, { rejects: "nearby-unsupported" }),
+      );
+    },
+  },
+  {
+    name: "nearby-approval-ask",
+    opts: { interactive: true },
+    data: APPROVE,
+    run: async (h) => {
+      const done = devicesApproveFlow(h.ctx, asking({ kind: "approved" }));
+      await settle();
+      h.snap();
+      h.stdin.press("d");
+      await done;
+    },
+  },
+  approveScenario("approved", { kind: "approved" }, "2"),
+  approveScenario("mismatch", { kind: "mismatch" }, "1"),
+  approveScenario("denied", { kind: "denied" }, "d"),
+  approveScenario("not-nearby", { kind: "not-nearby" }, "2"),
+  approveScenario("expired", { kind: "expired" }, "2"),
+  approveScenario("device-limit", { kind: "device-limit" }, "2", [
+    "tidewater devices list",
+  ]),
+  approveScenario("account-required", { kind: "account-required" }, "2", [
+    "tidewater login",
+  ]),
+  approveScenario("rate-limited", { kind: "rate-limited" }, "2"),
+  {
+    // The license goes to the new device by the person's choice (D-A10).
+    name: "nearby-approval-choose",
+    opts: { interactive: true },
+    data: [...APPROVE, "Pro", "Harbor Audio team"],
+    run: async (h) => {
+      const choose = {
+        kind: "choose",
+        choices: {
+          state: "choose",
+          choices: [
+            { id: "lic_1", tierName: "Pro", name: null, state: "free" },
+            {
+              id: "lic_2",
+              tierName: "Team",
+              name: "Harbor Audio team",
+              state: "free",
+            },
+          ],
+          keep: false,
+          preselected: null,
+          create: { tierName: "Pro", access: "account" },
+          getLicense: null,
+        },
+        choose: async () => ({ kind: "approved" }),
+        cancel: async () => ({ kind: "denied" }),
+      };
+      const done = devicesApproveFlow(h.ctx, asking(choose));
+      await settle();
+      h.stdin.press("2");
+      await settle();
+      h.snap();
+      h.stdin.press("escape");
+      await done;
+    },
+  },
+);

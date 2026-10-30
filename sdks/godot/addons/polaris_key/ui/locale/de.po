@@ -3729,6 +3729,51 @@ msgstr "Enter erneut öffnen · c Code verwenden · Esc abbrechen"
 msgid "signin.cli.nearbyKey"
 msgstr "c stattdessen Code verwenden · Esc abbrechen"
 
+#. Looking for your other devices…
+#. Terminal sign-in, nearby: shown beside the spinner for the first seconds while the computer looks for the person's other devices.
+msgid "signin.cli.nearbyLooking"
+msgstr "Suche nach Ihren anderen Geräten…"
+
+#. Enter continue · Esc not now
+#. Terminal key hints under the offer to look for nearby devices (macOS asks for access to the local network after it). Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
+msgid "signin.cli.nearbyPromptKeys"
+msgstr "Enter weiter · Esc nicht jetzt"
+
+#. 1-9 choose · c use a code instead · Esc cancel
+#. Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators.
+msgid "signin.cli.nearbyPickKeys"
+msgstr "1-9 wählen · c stattdessen Code verwenden · Esc abbrechen"
+
+#. Enter continue · n not you?
+#. Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n signs out again. Keep each key first and the ' · ' separators.
+msgid "signin.cli.nearbyDoneKeys"
+msgstr "Enter weiter · n nicht Sie?"
+
+#. Waiting for a device to ask…
+#. Terminal 'devices approve': shown beside the spinner while the computer waits for another device to ask to sign in.
+msgid "signin.cli.approveWaiting"
+msgstr "Warten auf ein Gerät, das anfragt…"
+
+#. Esc stop
+#. Terminal key hint while 'devices approve' waits for a device to ask. Keep the key first.
+msgid "signin.cli.approveWaitKeys"
+msgstr "Esc beenden"
+
+#. 1-3 choose a code · d deny · Esc cancel
+#. Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d denies. Keep each key first and the ' · ' separators.
+msgid "signin.cli.approveKeys"
+msgstr "1-3 Code wählen · d ablehnen · Esc abbrechen"
+
+#. Polaris Locker can't approve nearby sign-ins from this computer. Sign in with a code on the other device.
+#. Terminal 'devices approve': this computer cannot take part in nearby sign-in. 'Polaris Locker' is the end-user product name (never translated).
+msgid "signin.cli.approveUnsupported"
+msgstr "Polaris Locker kann Anmeldungen in der Nähe von diesem Computer aus nicht genehmigen. Melden Sie sich auf dem anderen Gerät mit einem Code an."
+
+#. 1-9 choose a license · Esc deny
+#. Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators.
+msgid "signin.cli.approveChooseKeys"
+msgstr "1-9 Lizenz wählen · Esc ablehnen"
+
 #. No browser on this computer. Use a code instead:
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
 msgid "signin.cli.headless"
@@ -4054,8 +4099,13 @@ msgstr "Aktivieren, anmelden, Geräte und Updates"
 
 #. Approve a device signing in nearby
 #. Terminal help: what 'devices approve' does.
-msgid "cli.help.devicesApprove"
+msgid "cli.verb.devicesApprove"
 msgstr "Anmeldung eines Geräts in der Nähe genehmigen"
+
+#. {command} needs a person at a terminal.
+#. Terminal usage error: 'devices approve' asks a person to pick a code, so it does not run with --json or without a terminal. Arguments: {command} = the command the person ran.
+msgid "cli.approve.needsPerson"
+msgstr "{command} braucht eine Person am Terminal."
 
 #. {command} needs a license
 #. Terminal: the title when a host command that needs a license is refused because the person has none (needs-activation), and the first line of the inline activate flow. {command} is the command they ran, such as 'export'.

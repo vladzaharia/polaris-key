@@ -7,7 +7,7 @@
 //
 //   license   activate [key] · status · enroll · deactivate
 //   identity  login (alias sign-in) · logout (alias sign-out)
-//   devices   register · devices list|rename|deauthorize
+//   devices   register · devices list|rename|deauthorize|approve
 //   config    config get|list|set|reset · secret · mint
 //   update    update check|apply · changelog
 //   packs     packs status|ensure
@@ -57,6 +57,7 @@ import {
   type CompletionShell,
 } from "./help.js";
 import { EXIT, type FlowResult } from "./json.js";
+import { devicesApproveFlow } from "./nearby.js";
 import { ErrorCode } from "../constants.generated.js";
 import {
   activate,
@@ -759,6 +760,19 @@ export const CLI_VERBS: readonly CliVerb[] = [
     describeKey: "cli.verb.devicesRemove",
     run: (c, a) => devicesDeauthorize(c, one(a[0])),
     flow: (ctx, c, a) => devicesRemoveFlow(ctx, need(c), one(a[0])),
+  },
+  {
+    group: "devices",
+    path: ["devices", "approve"],
+    args: [],
+    describe: "Approve a device signing in nearby",
+    describeKey: "cli.verb.devicesApprove",
+    // Both sides need a person at a terminal (I-47 D-10): there is no plain layer for it.
+    run: () => ({
+      ok: false,
+      message: "devices approve needs a person at a terminal.",
+    }),
+    flow: (ctx, c) => devicesApproveFlow(ctx, need(c)),
   },
   {
     group: "config",

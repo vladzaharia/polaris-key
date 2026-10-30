@@ -1,0 +1,64 @@
+#### truecolor-80-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mNew phone isn't on this network[22m
+[2m└[22m  Connect both to the same Wi-Fi, or sign in with a code on New phone.
+
+#### truecolor-80-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mNew phone isn't on this network[22m
+[2m└[22m  Connect both to the same Wi-Fi, or sign in with a code on New phone.
+
+#### ansi16-80
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mNew phone isn't on this network[22m
+[2m└[22m  Connect both to the same Wi-Fi, or sign in with a code on New phone.
+
+#### no-color-80
+┌  [7m Tidewater Studio [27m · devices approve
+│
+▲  [1mNew phone isn't on this network[22m
+└  Connect both to the same Wi-Fi, or sign in with a code on New phone.
+
+#### ascii-80
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - devices approve[22m
+[2m|[22m
+[33m![39m  [1mNew phone isn't on this network[22m
+[2m`[22m  Connect both to the same Wi-Fi, or sign in with a code on New phone.
+
+#### truecolor-60-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mNew phone isn't on this network[22m
+[2m│[22m  Connect both to the same Wi-Fi, or sign in with a code on
+[2m└[22m  New phone.
+
+#### truecolor-60-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mNew phone isn't on this network[22m
+[2m│[22m  Connect both to the same Wi-Fi, or sign in with a code on
+[2m└[22m  New phone.
+
+#### ansi16-60
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mNew phone isn't on this network[22m
+[2m│[22m  Connect both to the same Wi-Fi, or sign in with a code on
+[2m└[22m  New phone.
+
+#### no-color-60
+┌  [7m Tidewater Studio [27m · devices approve
+│
+▲  [1mNew phone isn't on this network[22m
+│  Connect both to the same Wi-Fi, or sign in with a code on
+└  New phone.
+
+#### ascii-60
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - devices approve[22m
+[2m|[22m
+[33m![39m  [1mNew phone isn't on this network[22m
+[2m|[22m  Connect both to the same Wi-Fi, or sign in with a code on
+[2m`[22m  New phone.

@@ -1,0 +1,79 @@
+#### truecolor-80-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mSign-in needed[22m
+[2m│[22m  Sign in to your Polaris Locker account on this device, then try again.
+[2m└[22m  [1mtidewater login[22m   Sign in with your account in the browser
+
+#### truecolor-80-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mSign-in needed[22m
+[2m│[22m  Sign in to your Polaris Locker account on this device, then try again.
+[2m└[22m  [1mtidewater login[22m   Sign in with your account in the browser
+
+#### ansi16-80
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mSign-in needed[22m
+[2m│[22m  Sign in to your Polaris Locker account on this device, then try again.
+[2m└[22m  [1mtidewater login[22m   Sign in with your account in the browser
+
+#### no-color-80
+┌  [7m Tidewater Studio [27m · devices approve
+│
+▲  [1mSign-in needed[22m
+│  Sign in to your Polaris Locker account on this device, then try again.
+└  [1mtidewater login[22m   Sign in with your account in the browser
+
+#### ascii-80
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - devices approve[22m
+[2m|[22m
+[33m![39m  [1mSign-in needed[22m
+[2m|[22m  Sign in to your Polaris Locker account on this device, then try again.
+[2m`[22m  [1mtidewater login[22m   Sign in with your account in the browser
+
+#### truecolor-60-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mSign-in needed[22m
+[2m│[22m  Sign in to your Polaris Locker account on this device,
+[2m│[22m  then try again.
+[2m│[22m  [1mtidewater login[22m
+[2m└[22m    Sign in with your account in the browser
+
+#### truecolor-60-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mSign-in needed[22m
+[2m│[22m  Sign in to your Polaris Locker account on this device,
+[2m│[22m  then try again.
+[2m│[22m  [1mtidewater login[22m
+[2m└[22m    Sign in with your account in the browser
+
+#### ansi16-60
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · devices approve[22m
+[2m│[22m
+[33m▲[39m  [1mSign-in needed[22m
+[2m│[22m  Sign in to your Polaris Locker account on this device,
+[2m│[22m  then try again.
+[2m│[22m  [1mtidewater login[22m
+[2m└[22m    Sign in with your account in the browser
+
+#### no-color-60
+┌  [7m Tidewater Studio [27m · devices approve
+│
+▲  [1mSign-in needed[22m
+│  Sign in to your Polaris Locker account on this device,
+│  then try again.
+│  [1mtidewater login[22m
+└    Sign in with your account in the browser
+
+#### ascii-60
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - devices approve[22m
+[2m|[22m
+[33m![39m  [1mSign-in needed[22m
+[2m|[22m  Sign in to your Polaris Locker account on this device,
+[2m|[22m  then try again.
+[2m|[22m  [1mtidewater login[22m
+[2m`[22m    Sign in with your account in the browser
