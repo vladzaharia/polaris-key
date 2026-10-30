@@ -91,7 +91,6 @@ function productJson(
     compatMax,
     defaultMaxOfflineDays: 14,
     defaultDeviceLimit: 3,
-    adminGroup: "acme-admins",
     tiers: [],
     provisioning: [],
     ...(modules ? { modules } : {}),

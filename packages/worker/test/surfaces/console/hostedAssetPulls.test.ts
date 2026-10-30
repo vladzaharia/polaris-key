@@ -1163,7 +1163,6 @@ const PRODUCT_JSON = JSON.stringify({
   compatMax: "9.0.0",
   defaultMaxOfflineDays: 14,
   defaultDeviceLimit: 3,
-  adminGroup: "acme-admins",
   profiles: [{ id: "standard", name: "standard" }],
   tiers: [{ id: "standard", label: "Standard", profileId: "standard" }],
   provisioning: [],

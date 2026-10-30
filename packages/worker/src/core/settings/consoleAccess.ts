@@ -11,6 +11,7 @@
 
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
+import { randomHex } from "../../platform/random.js";
 import { isSteppedUp, type AdminSession } from "../console/session.js";
 import { parseAccessRules } from "../rbac/claimMatcher.js";
 import type { SettingsRegistry } from "./registry.js";
@@ -30,8 +31,7 @@ export interface ConsoleAccessWrite {
 
 /** A fresh rule id: `r_` plus 12 random hex characters (`claimMatcher.ts` takes 6 to 32). */
 export function mintRuleId(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(6));
-  return `r_${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+  return `r_${randomHex(6)}`;
 }
 
 export async function writeConsoleAccess(

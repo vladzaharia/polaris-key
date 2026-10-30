@@ -29,6 +29,10 @@ const INTERNAL: Record<string, string[]> = {
   "core/keyring/store.ts": ["PREVIOUS_RING_SECONDS"],
   // The `keys` proof skew, fixed by the wire contract (V5 §15.8), not an operator setting.
   "core/devices/proof.ts": ["KEY_POP_SKEW_SECONDS"],
+  // The size of one `console.access` document (the rules list and a rule's label), validated at
+  // write time (ST-32.2), and the clock skew an `asserted_at` may show, not an operator setting.
+  "core/rbac/claimMatcher.ts": ["MAX_ACCESS_RULES", "MAX_RULE_LABEL"],
+  "core/rbac/ruleGrants.ts": ["ASSERTED_SKEW_SECONDS"],
   // The floating-major Cache-Control max-age of the elements CDN: a cache header, not a limit.
   "core/elements.ts": ["ELEMENTS_MAJOR_MAX_AGE"],
   "console/handlers/access.ts": ["ACCESS_ADMINS_LIMIT"],

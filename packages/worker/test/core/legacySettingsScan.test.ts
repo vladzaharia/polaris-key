@@ -56,6 +56,12 @@ export const KNOWN: Record<string, Record<string, string>> = {
     "packages/worker/src/core/repo.ts": "ST-25.6",
     "packages/worker/src/core/settings/columns.ts": "ST-25.6",
     "packages/worker/src/core/settings/core.ts": "ST-25.6",
+    // The SSO-rule conversion offers (ST-32.7/.8) read the stored value until ST-25.6 drops it.
+    "packages/worker/src/core/rbac/adminGroupOffers.ts": "ST-25.6",
+    "packages/worker/src/console/handlers/accessRules.ts": "ST-25.6",
+    "packages/worker/src/console/routes.ts": "ST-25.6",
+    "packages/admin/src/console/api/platform.ts": "ST-25.6",
+    "packages/admin/src/console/data/queries.ts": "ST-25.6",
     "packages/admin/src/console/settings.generated.ts": "ST-25.6",
     "packages/worker/scripts/registry-clients/seed.mjs": "ST-25b",
     "packages/shared-manifest/src/index.test.ts":
@@ -66,6 +72,7 @@ export const KNOWN: Record<string, Record<string, string>> = {
       "PERMANENT: ST-32's refusal names the retired field and its replacement",
   },
   adminGroup: {
+    "packages/worker/src/console/handlers/accessRules.ts": "ST-25.6",
     "packages/worker/src/console/lib/shape.ts": "ST-25.6",
     "packages/worker/src/core/products.ts": "ST-25.6",
     "packages/worker/src/core/settings/columns.ts": "ST-25.6",

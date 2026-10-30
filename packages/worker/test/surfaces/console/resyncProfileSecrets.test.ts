@@ -125,7 +125,6 @@ function productJson(
     compatMax: "9.0.0",
     defaultMaxOfflineDays: 14,
     defaultDeviceLimit: 3,
-    adminGroup: "acme-admins",
     profiles: profiles.map((p) => ({
       id: p.id,
       name: p.id,
