@@ -32,7 +32,9 @@ import {
   REQUEST_HANDLE_TTL_SECONDS,
   type ClientKind,
 } from "@polaris-key/protocol/identity";
+import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { hashKey } from "../../../platform/crypto.js";
+import { strictEmail } from "../../../core/strictEmail.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Env } from "../../../platform/env.js";
 import {
@@ -81,6 +83,37 @@ export interface DeviceHints {
   licenseChoice: "card" | "app";
   loginHint: string | null;
   nameHint: string | null;
+}
+
+/**
+ * The label and the optional members of a device start (WIRE-CONTRACT-V5 §12.7.1, §12.10.1). The
+ * label is normalised and never rejected. The hints are validated as `authorize` validates its
+ * own: `purpose` and `licenseChoice` are enumerations and anything else is a `400`; a hint that
+ * does not normalise is dropped, never an error. A body that names none of the four members yields
+ * no hints (card mode, exactly as before). `scope` is not read. `null`: answer `400`.
+ */
+export function parseDeviceStart(
+  body: Record<string, unknown>,
+): { deviceName: string | undefined; hints: DeviceHints | undefined } | null {
+  const deviceName = normalizeDeviceLabel(body.deviceName) ?? undefined;
+  const names = ["loginHint", "nameHint", "purpose", "licenseChoice"] as const;
+  if (names.every((n) => body[n] === undefined))
+    return { deviceName, hints: undefined };
+  for (const n of names)
+    if (body[n] !== undefined && typeof body[n] !== "string") return null;
+  const purpose = (body.purpose as string | undefined) ?? "signin";
+  const licenseChoice = (body.licenseChoice as string | undefined) ?? "card";
+  if (purpose !== "signin" && purpose !== "attach") return null;
+  if (licenseChoice !== "card" && licenseChoice !== "app") return null;
+  return {
+    deviceName,
+    hints: {
+      purpose,
+      licenseChoice,
+      loginHint: strictEmail(body.loginHint as string | undefined),
+      nameHint: normalizeDeviceLabel(body.nameHint),
+    },
+  };
 }
 
 /** What a handle's record holds. */

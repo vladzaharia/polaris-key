@@ -13,123 +13,66 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { makeTestDb } from "../../helpers.js";
-import { KvMock } from "../../kvMock.js";
-import { makeEnv, NOW, seedProduct } from "../../seed.js";
-import type { Env } from "../../../src/platform/env.js";
-import type { Db } from "../../../src/db/types.js";
-import { loadProduct, type Product } from "../../../src/core/products.js";
-import { serializeServices } from "../../../src/core/services.js";
-import { setServices } from "../../../src/core/products/store.js";
-import {
-  handleAuthDeviceEntry,
-  handleAuthDeviceStart,
-} from "../../../src/services/identity/oidc.js";
-import { handlePortalApi } from "../../portalHarness.js";
-import { deviceFlowKey } from "../../../src/services/identity/productOidc/config.js";
+import { dispatchWith } from "../../../src/dispatch.js";
 import { getArtefact } from "../../../src/core/singleUse.js";
-
-const ORIGIN = "https://key.plrs.im";
-const SLUG = "tidewater";
-
-function services(): string {
-  return serializeServices({
-    services: {
-      license: { enabled: true },
-      config: { enabled: true },
-      release: { enabled: false },
-      distribution: { enabled: false },
-      update: { enabled: false },
-      identity: { enabled: true },
-      sync: { enabled: false },
-      commerce: { enabled: false },
-      connect: { enabled: false },
-    },
-  });
-}
-
-interface World {
-  kv: KvMock;
-  db: Db;
-  env: Env;
-  product: Product;
-}
-
-async function world(): Promise<World> {
-  const db = makeTestDb();
-  const kv = new KvMock();
-  const env = makeEnv(kv, [SLUG]);
-  env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
-  await seedProduct(db, SLUG);
-  await db.run(
-    "UPDATE products SET name = ? WHERE slug = ?",
-    "Tidewater",
-    SLUG,
-  );
-  await setServices(db, SLUG, services(), "manifest", NOW);
-  await db.run(
-    "INSERT INTO oidc_config (product, provider, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json) VALUES (?,?,?,?,?,?,?)",
-    SLUG,
-    "custom",
-    "https://id.example",
-    "client-tidewater",
-    null,
-    JSON.stringify([`${ORIGIN}/${SLUG}/identity/auth/callback`]),
-    JSON.stringify({}),
-  );
-  return { kv, db, env, product: (await loadProduct(env, db, SLUG))! };
-}
+import { deviceFlowKey } from "../../../src/services/identity/productOidc/config.js";
+import { BASE_URL, type World } from "../../transcripts/recorder.js";
+import { DEVICE, T0 } from "../../transcripts/client.js";
+import { PRODUCT } from "../../transcripts/world.js";
+import {
+  identityWorld,
+  START,
+  type Started,
+} from "../../transcripts/scenarios/identity.js";
 
 function start(w: World, body: Record<string, unknown>): Promise<Response> {
-  return handleAuthDeviceStart(
-    new Request(`${ORIGIN}/${SLUG}/identity/auth/device/start`, {
+  return dispatchWith(
+    new Request(`${BASE_URL}${START}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ deviceId: "deck-1", ...body }),
-    }),
+      body: JSON.stringify({ deviceId: DEVICE, ...body }),
+    }) as unknown as Request,
     w.env,
     w.db,
-    w.product,
+    T0,
   );
 }
 
-/** Open the confirmation page: the handle on the form, and the binder cookie. */
-async function confirmationPage(
+async function started(
   w: World,
-  userCode: string,
-): Promise<{ handle: string; cookie: string }> {
-  const res = await handleAuthDeviceEntry(
-    new Request(
-      `${ORIGIN}/${SLUG}/identity/auth/device?user_code=${userCode}`,
-      {
-        headers: { "cf-connecting-ip": "203.0.113.9" },
-      },
-    ),
-    w.env,
-    w.product,
-  );
+  body: Record<string, unknown>,
+): Promise<Started> {
+  const res = await start(w, body);
   expect(res.status).toBe(200);
-  const html = await res.text();
-  const handle = /data-request="(rq_[A-Za-z0-9_-]{22})"/.exec(html)?.[1];
-  expect(handle).toBeTruthy();
-  return {
-    handle: handle!,
-    cookie: res.headers.get("set-cookie")!.split(";")[0]!,
-  };
+  return (await res.json()) as Started;
 }
 
+/** The card's request view of a started flow: open the code page, then read the handle. */
 async function view(
   w: World,
   userCode: string,
 ): Promise<Record<string, unknown>> {
-  const page = await confirmationPage(w, userCode);
-  const path = `/api/signin/requests/${page.handle}`;
-  const res = await handlePortalApi(
-    new Request(`${ORIGIN}${path}`, { headers: { cookie: page.cookie } }),
+  const page = await dispatchWith(
+    new Request(
+      `${BASE_URL}/${PRODUCT}/identity/auth/device?user_code=${userCode}`,
+    ) as unknown as Request,
     w.env,
     w.db,
-    path,
-    NOW,
+    T0,
+  );
+  expect(page.status).toBe(200);
+  const handle = /data-request="(rq_[A-Za-z0-9_-]{22})"/.exec(
+    await page.text(),
+  )?.[1];
+  expect(handle).toBeTruthy();
+  const cookie = page.headers.get("set-cookie")!.split(";")[0]!;
+  const res = await dispatchWith(
+    new Request(`${BASE_URL}/api/signin/requests/${handle}`, {
+      headers: { cookie },
+    }) as unknown as Request,
+    w.env,
+    w.db,
+    T0,
   );
   expect(res.status).toBe(200);
   return (await res.json()) as Record<string, unknown>;
@@ -145,21 +88,19 @@ const STARTED_KEYS = [
   "interval",
   "pollUrl",
   "deviceName",
-];
+].sort();
 
 describe("the device start's hints (§12.10.1)", () => {
   it("serves the four members in the card's view, with no scope", async () => {
-    const w = await world();
-    const res = await start(w, {
+    const w = await identityWorld();
+    const s = await started(w, {
       deviceName: "Den PC",
       loginHint: "Ada@Example.com",
       nameHint: "  Ada\u202e Lovelace ",
       purpose: "attach",
       licenseChoice: "app",
     });
-    expect(res.status).toBe(200);
-    const started = (await res.json()) as { userCode: string };
-    const v = await view(w, started.userCode);
+    const v = await view(w, s.userCode);
     expect(v).toMatchObject({
       purpose: "attach",
       licenseChoice: "app",
@@ -170,35 +111,19 @@ describe("the device start's hints (§12.10.1)", () => {
     expect(v).not.toHaveProperty("scope");
   });
 
-  it("changes nothing in the start's answer", async () => {
-    const w = await world();
-    const plain = (await (await start(w, {})).json()) as Record<
-      string,
-      unknown
-    >;
-    const hinted = (await (
-      await start(w, {
-        purpose: "attach",
-        licenseChoice: "app",
-        loginHint: "a@b.co",
-      })
-    ).json()) as Record<string, unknown>;
-    expect(Object.keys(plain).sort()).toEqual([...STARTED_KEYS].sort());
-    expect(Object.keys(hinted).sort()).toEqual([...STARTED_KEYS].sort());
-  });
-
-  it("stores them on the device flow record", async () => {
-    const w = await world();
-    const started = (await (
-      await start(w, {
-        purpose: "attach",
-        licenseChoice: "app",
-        nameHint: "Ada",
-      })
-    ).json()) as { deviceCode: string };
+  it("changes nothing in the start's answer, and stores the hints on the flow", async () => {
+    const w = await identityWorld();
+    const plain = await started(w, {});
+    const hinted = await started(w, {
+      purpose: "attach",
+      licenseChoice: "app",
+      nameHint: "Ada",
+    });
+    expect(Object.keys(plain).sort()).toEqual(STARTED_KEYS);
+    expect(Object.keys(hinted).sort()).toEqual(STARTED_KEYS);
     const raw = await getArtefact(
       w.env,
-      await deviceFlowKey(w.env, SLUG, started.deviceCode),
+      await deviceFlowKey(w.env, PRODUCT, hinted.deviceCode),
     );
     expect(JSON.parse(raw!).hints).toEqual({
       purpose: "attach",
@@ -209,13 +134,9 @@ describe("the device start's hints (§12.10.1)", () => {
   });
 
   it("defaults the members the start left out, as authorize does", async () => {
-    const w = await world();
-    const started = (await (
-      await start(w, { licenseChoice: "app" })
-    ).json()) as {
-      userCode: string;
-    };
-    expect(await view(w, started.userCode)).toMatchObject({
+    const w = await identityWorld();
+    const s = await started(w, { licenseChoice: "app" });
+    expect(await view(w, s.userCode)).toMatchObject({
       purpose: "signin",
       licenseChoice: "app",
       loginHint: null,
@@ -224,11 +145,12 @@ describe("the device start's hints (§12.10.1)", () => {
   });
 
   it("drops a hint that does not normalise, never an error", async () => {
-    const w = await world();
-    const started = (await (
-      await start(w, { loginHint: "not an email", nameHint: " \u200b " })
-    ).json()) as { userCode: string };
-    expect(await view(w, started.userCode)).toMatchObject({
+    const w = await identityWorld();
+    const s = await started(w, {
+      loginHint: "not an email",
+      nameHint: " \u200b ",
+    });
+    expect(await view(w, s.userCode)).toMatchObject({
       purpose: "signin",
       licenseChoice: "card",
       loginHint: null,
@@ -237,12 +159,9 @@ describe("the device start's hints (§12.10.1)", () => {
   });
 
   it("a start with none of the members is card mode with the view it always had", async () => {
-    const w = await world();
-    const started = (await (await start(w, { deviceName: "TV" })).json()) as {
-      deviceCode: string;
-      userCode: string;
-    };
-    const v = await view(w, started.userCode);
+    const w = await identityWorld();
+    const s = await started(w, { deviceName: "TV" });
+    const v = await view(w, s.userCode);
     for (const k of [
       "purpose",
       "licenseChoice",
@@ -253,7 +172,7 @@ describe("the device start's hints (§12.10.1)", () => {
       expect(v).not.toHaveProperty(k);
     const raw = await getArtefact(
       w.env,
-      await deviceFlowKey(w.env, SLUG, started.deviceCode),
+      await deviceFlowKey(w.env, PRODUCT, s.deviceCode),
     );
     expect(JSON.parse(raw!)).not.toHaveProperty("hints");
   });
@@ -267,16 +186,17 @@ describe("the device start's hints (§12.10.1)", () => {
     ["a non-string nameHint", { nameHint: 7 }],
     ["a null purpose", { purpose: null }],
   ])("%s is 400 bad_request and writes nothing", async (_n, extra) => {
-    const w = await world();
+    const w = await identityWorld();
+    const before = w.kv.keys().length;
     const res = await start(w, extra);
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: string }).error).toBe("bad_request");
     // Refused before anything is written: no flow, no device record, no user code.
-    expect([...w.kv.keys()]).toEqual([]);
+    expect(w.kv.keys().length).toBe(before);
   });
 
   it("ignores scope", async () => {
-    const w = await world();
+    const w = await identityWorld();
     const res = await start(w, {
       scope: "openid nonsense",
       licenseChoice: "app",

@@ -12,7 +12,7 @@ import { getLicense, getLicenseBySub } from "../../../core/licensing/store.js";
 import { getDevice } from "../../../core/devices/store.js";
 import { authorizeDevice } from "../../../core/licensing/authz.js";
 import { noticeOrigin } from "../accounts/libraryNotice.js";
-import { appModeAccount } from "../licenseChoice.js";
+import { appModeAccount } from "./appMode.js";
 import { getAccountRow } from "../accounts/repo.js";
 import { deviceMetadata, NO_LICENSE_ID } from "../../../core/devices.js";
 import { subjectForOrNull } from "../../../core/accounts/accountSubjects.js";

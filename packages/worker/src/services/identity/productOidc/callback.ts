@@ -25,7 +25,8 @@ import {
   type BrowserSessionSubject,
 } from "../browserSession.js";
 import { noticeOrigin } from "../accounts/libraryNotice.js";
-import { appModeAccount, readBinder } from "../licenseChoice.js";
+import { readBinder } from "../licenseChoice.js";
+import { appModeAccount } from "./appMode.js";
 import {
   attachClaimedLicenses,
   claimPlatformSubject,

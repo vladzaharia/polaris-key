@@ -49,6 +49,71 @@ const STATE = "tidewater-state-0123456789";
 const ENTRIES = { used: 1, limit: 10 };
 const VERIFIER = "transcript-verifier-0123456789-abcdefghijklmnopqrst";
 
+type Recorder = InstanceType<typeof TranscriptRecorder>;
+
+/** The shared first step: key activation, after which the licence is floating. */
+async function activateKey(r: Recorder, key: string): Promise<void> {
+  await r.step(
+    {
+      action: "activate",
+      note: "Key activation: the licence is floating (no account holds it).",
+      args: { key },
+    },
+    (s) => activateAndSync(s, ENTRIES),
+    {
+      result: "ok",
+      tokenHeld: true,
+      licenseStatus: "ok",
+      keyEntries: ENTRIES,
+    },
+  );
+}
+
+/**
+ * The shared completion: choice.complete(grant, {kind: keep}) with the device token. The device
+ * stays on the licence it activated; the step's expectation names the licence and the subject the
+ * Worker answered.
+ */
+async function keepOnLicense(
+  r: Recorder,
+  grant: string,
+  licenseId: string,
+): Promise<{ subject: string }> {
+  const done: Record<string, JsonValue> = {};
+  await r.step(
+    {
+      action: "choiceComplete",
+      note: "choice.complete(grant, {kind: keep}) with the device token: the device stays on its licence.",
+      args: { grant },
+    },
+    async (s) => {
+      const body = { grant, choice: { kind: "keep" } };
+      const res = await s.send({
+        method: "POST",
+        path: `/${PRODUCT}/identity/choice/complete`,
+        bearer: "token",
+        body,
+        expectBody: { json: body, match: "exact" },
+        capture: { token: "$.access_token" },
+      });
+      expect(res.status).toBe(200);
+      const out = (await res.json()) as {
+        license: { id: string };
+        subject: string;
+      };
+      expect(out.license.id).toBe(licenseId);
+      Object.assign(done, {
+        result: "ok",
+        licenseId,
+        subject: out.subject,
+        tokenHeld: true,
+      });
+    },
+    done,
+  );
+  return { subject: done.subject as string };
+}
+
 export const holdersAddToAccount: Scenario = {
   id: "holders-add-to-account",
   record: () =>
@@ -78,20 +143,7 @@ export const holdersAddToAccount: Scenario = {
         initial: { deviceId: DEVICE, version: VERSION },
       });
 
-      await r.step(
-        {
-          action: "activate",
-          note: "Key activation: the licence is floating (no account holds it).",
-          args: { key },
-        },
-        (s) => activateAndSync(s, ENTRIES),
-        {
-          result: "ok",
-          tokenHeld: true,
-          licenseStatus: "ok",
-          keyEntries: ENTRIES,
-        },
-      );
+      await activateKey(r, key);
 
       // The licence's buyer email, verified on the account, would let the portal's link sweep
       // join it the moment the card is used; the address is verified after the choice instead.
@@ -155,34 +207,8 @@ export const holdersAddToAccount: Scenario = {
         { result: "choose" },
       );
 
-      await r.step(
-        {
-          action: "choiceComplete",
-          note: "choice.complete(grant, {kind: keep}) with the device token: the device stays on its licence.",
-          args: { grant },
-        },
-        async (s) => {
-          const body = { grant, choice: { kind: "keep" } };
-          const res = await s.send({
-            method: "POST",
-            path: `/${PRODUCT}/identity/choice/complete`,
-            bearer: "token",
-            body,
-            expectBody: { json: body, match: "exact" },
-            capture: { token: "$.access_token" },
-          });
-          expect(res.status).toBe(200);
-          expect(
-            ((await res.json()) as { license: { id: string } }).license.id,
-          ).toBe(licenseId);
-        },
-        {
-          result: "ok",
-          licenseId,
-          subject: ada.subject,
-          tokenHeld: true,
-        },
-      );
+      const kept1 = await keepOnLicense(r, grant, licenseId);
+      expect(kept1.subject).toBe(ada.subject);
       await w.db.run(
         "UPDATE accounts SET primary_email_verified_at = ? WHERE id = ?",
         T0,
@@ -249,20 +275,7 @@ export const holdersAddToAccountDevice: Scenario = {
         initial: { deviceId: DEVICE, version: VERSION },
       });
 
-      await r.step(
-        {
-          action: "activate",
-          note: "Key activation: the licence is floating (no account holds it).",
-          args: { key },
-        },
-        (s) => activateAndSync(s, ENTRIES),
-        {
-          result: "ok",
-          tokenHeld: true,
-          licenseStatus: "ok",
-          keyEntries: ENTRIES,
-        },
-      );
+      await activateKey(r, key);
 
       const hints = {
         loginHint: "ada@example.com",
@@ -323,45 +336,10 @@ export const holdersAddToAccountDevice: Scenario = {
         { result: "choose", tokenHeld: true },
       );
 
-      const kept: Record<string, JsonValue> = {};
-      await r.step(
-        {
-          action: "choiceComplete",
-          note: "choice.complete(grant, {kind: keep}) with the device token: the device stays on its licence.",
-          args: { grant },
-        },
-        async (s) => {
-          const body = { grant, choice: { kind: "keep" } };
-          const res = await s.send({
-            method: "POST",
-            path: `/${PRODUCT}/identity/choice/complete`,
-            bearer: "token",
-            body,
-            expectBody: { json: body, match: "exact" },
-            capture: { token: "$.access_token" },
-          });
-          expect(res.status).toBe(200);
-          const out = (await res.json()) as {
-            license: { id: string };
-            subject: string;
-          };
-          expect(out.license.id).toBe(licenseId);
-          Object.assign(kept, {
-            result: "ok",
-            licenseId,
-            subject: out.subject,
-            tokenHeld: true,
-          });
-        },
-        kept,
-      );
+      const kept = await keepOnLicense(r, grant, licenseId);
       // The buyer's address is verified on the account after the choice (as the person does on
       // the portal), so the licence joins by attach and not by the link sweep before it.
-      const accountId = (await accountForSubject(
-        w.db,
-        PRODUCT,
-        kept.subject as string,
-      ))!;
+      const accountId = (await accountForSubject(w.db, PRODUCT, kept.subject))!;
       expect(accountId).toBeTruthy();
       await w.db.run(
         "UPDATE accounts SET primary_email = ?, primary_email_verified_at = ? WHERE id = ?",
@@ -383,7 +361,7 @@ export const holdersAddToAccountDevice: Scenario = {
         {
           result: "ok",
           attached: "claimed",
-          subject: kept.subject as string,
+          subject: kept.subject,
           tokenHeld: true,
         },
       );

@@ -17,8 +17,7 @@ import { TranscriptRecorder } from "../../transcripts/recorder.js";
 import { pinned, PRODUCT } from "../../transcripts/world.js";
 import { activateAndSync } from "../../transcripts/scenarios/keyEntry.js";
 import { seedLicense } from "../../transcripts/world.js";
-import { accountForSubject } from "../../../src/core/accounts/accountSubjects.js";
-import { attach } from "../../transcripts/scenarios/account.js";
+import { holdersAddToAccountDevice } from "../../transcripts/scenarios/holders.js";
 import {
   identityWorld,
   platformIdentityWorld,
@@ -42,8 +41,6 @@ const CARD_START = { ...HINTED_START, licenseChoice: "card" };
 /** The person, as the platform IdP vouches for them: a verified address that is NOT the licence's
  *  buyer's, so the portal's link sweep does not join the key licence to the new account. */
 const ADA = { ...PLAYER, email_verified: true };
-
-const CHOICE = `/${PRODUCT}/identity/choice`;
 
 describe("device-code Add to account over a floating key licence", () => {
   for (const [name, kind, start] of [
@@ -146,195 +143,27 @@ describe("device-code Add to account over a floating key licence", () => {
   }
 
   it("app mode: choose, keep with the device's token, then attach joins the same licence", async () => {
-    await pinned("uk-42-22-device-add", async (pin) => {
-      const w = await platformIdentityWorld();
-      const { key, licenseId } = await seedLicense(w);
-      const r = new TranscriptRecorder({
-        id: "uk-42-22-device-add",
-        description: "UK-42.22 probe; never written.",
-        features: ["identity.devicecode"],
-        requires: ["license.activate"],
-        product: PRODUCT,
-        now: T0,
-        world: w,
-        pinned: pin,
-        initial: { deviceId: DEVICE, version: "1.0.0" },
-      });
-
-      await r.step(
-        { action: "activate", args: { key } },
-        (s) => activateAndSync(s, { used: 1, limit: 10 }),
-        {},
-      );
-
-      let started!: Started;
-      await r.step(
-        { action: "beginSignIn" },
-        async (s) => {
-          const res = await s.send({
-            method: "POST",
-            path: START,
-            body: HINTED_START,
-            expectBody: { json: HINTED_START, match: "exact" },
-          });
-          expect(res.status).toBe(200);
-          started = (await res.json()) as Started;
-        },
-        {},
-      );
-      await playerSignsIn(
-        w,
-        T0 + 6,
-        started.verificationUriComplete,
-        "approve",
-        ADA,
-      );
-
-      let grant = "";
-      let subject = "";
-      let accountId = "";
-      await r.step(
-        { action: "pollSignIn", now: T0 + 7 },
-        async (s) => {
-          const res = await s.send(pollSpec(started.deviceCode));
-          expect(res.status).toBe(200);
-          const body = (await res.json()) as {
-            status: string;
-            grant: string;
-            expiresIn: number;
-            choices: { state: string; keep: boolean };
-          };
-          expect(body.status).toBe("choose");
-          expect(body.grant).toMatch(/^sg_[A-Za-z0-9_-]{43}$/);
-          expect(body.expiresIn).toBe(300);
-          // The device runs on a licence the account does not hold: keep is offered.
-          expect(body.choices.state).toBe("choose");
-          expect(body.choices.keep).toBe(true);
-          grant = body.grant;
-        },
-        {},
-      );
-      // The flow was spent when the grant was issued.
-      await r.step(
-        { action: "pollSignIn", now: T0 + 9 },
-        async (s) => {
-          const res = await s.send(pollSpec(started.deviceCode));
-          expect(await res.json()).toEqual({ status: "timeout" });
-        },
-        {},
-      );
-
-      // A device-code grant lists no devices and cannot Replace (§12.5.1 rule 5).
-      await r.step(
-        { action: "choiceDevices", args: { grant } },
-        async (s) => {
-          const body = { grant, licenseId };
-          const res = await s.send({
-            method: "POST",
-            path: `${CHOICE}/devices`,
-            body,
-            expectBody: { json: body, match: "exact" },
-          });
-          expect(res.status).toBe(404);
-        },
-        {},
-      );
-      await r.step(
-        { action: "choiceComplete", args: { grant } },
-        async (s) => {
-          const body = {
-            grant,
-            choice: { kind: "license", licenseId, replaceDeviceId: "other" },
-          };
-          const res = await s.send({
-            method: "POST",
-            path: `${CHOICE}/complete`,
-            body,
-            expectBody: { json: body, match: "exact" },
-          });
-          expect(res.status).toBe(409);
-          expect(
-            ((await res.json()) as { error: { code: string } }).error.code,
-          ).toBe("license_choice_required");
-        },
-        {},
-      );
-      // Keep needs the device's own token: without it the choice is still owed, grant open.
-      await r.step(
-        { action: "choiceComplete", args: { grant } },
-        async (s) => {
-          const body = { grant, choice: { kind: "keep" } };
-          const res = await s.send({
-            method: "POST",
-            path: `${CHOICE}/complete`,
-            body,
-            expectBody: { json: body, match: "exact" },
-          });
-          expect(res.status).toBe(409);
-        },
-        {},
-      );
-      await r.step(
-        { action: "choiceComplete", args: { grant } },
-        async (s) => {
-          const body = { grant, choice: { kind: "keep" } };
-          const res = await s.send({
-            method: "POST",
-            path: `${CHOICE}/complete`,
-            bearer: "token",
-            body,
-            expectBody: { json: body, match: "exact" },
-            capture: { token: "$.access_token" },
-          });
-          expect(res.status).toBe(200);
-          const out = (await res.json()) as {
-            license: { id: string };
-            subject: string;
-            scope: string;
-          };
-          // The device sign-in keeps the product's full grant (D6).
-          expect(out.scope).toBe("profile email");
-          // The same licence the device activated, now signed in to the account.
-          expect(out.license.id).toBe(licenseId);
-          subject = out.subject;
-        },
-        {},
-      );
-      // The buyer's address is verified on the account after the choice (as the person does on the
-      // portal), so the licence is joined by attach and not by the link sweep before it.
-      accountId = (await accountForSubject(w.db, PRODUCT, subject))!;
-      expect(accountId).toBeTruthy();
-      await w.db.run(
-        "UPDATE accounts SET primary_email = ?, primary_email_verified_at = ? WHERE id = ?",
-        "ada@example.com",
-        T0,
-        accountId,
-      );
-
-      // Attach joins that licence to the account.
-      await r.step(
-        { action: "attach", args: { confirm: true } },
-        async (s) => {
-          const res = await attach(s, true, true);
-          expect(res.status).toBe(200);
-          expect(((await res.json()) as { attached: string }).attached).toBe(
-            "claimed",
-          );
-        },
-        {},
-      );
-      const owner = await w.db.first<{ account_id: string | null }>(
-        "SELECT account_id FROM licenses WHERE product = ? AND id = ?",
-        PRODUCT,
-        licenseId,
-      );
-      expect(owner?.account_id).toBe(accountId);
-      // No stray licence was minted for the identity along the way.
-      const n = await w.db.first<{ n: number }>(
-        "SELECT COUNT(*) AS n FROM licenses WHERE product = ?",
-        PRODUCT,
-      );
-      expect(n?.n).toBe(1);
+    // The scenario drives the whole conversation against the Worker and asserts each answer as it
+    // goes (the poll's `choose` with keep offered, keep, attach `claimed`, the owner); it is the
+    // transcript the SDKs replay.
+    const t = await holdersAddToAccountDevice.record();
+    expect(t.steps.map((st) => st.action)).toEqual([
+      "activate",
+      "beginSignIn",
+      "pollSignIn",
+      "choiceComplete",
+      "attach",
+    ]);
+    expect(t.steps[2]!.expect).toMatchObject({ result: "choose" });
+    expect(t.steps[3]!.expect).toMatchObject({ result: "ok" });
+    expect(t.steps[4]!.expect).toMatchObject({
+      result: "ok",
+      attached: "claimed",
     });
+    // The device sign-in keeps the product's full grant (D6).
+    const complete = t.steps[3]!.exchanges.items[0]!.response.body as {
+      scope: string;
+    };
+    expect(complete.scope).toBe("profile email");
   });
 });

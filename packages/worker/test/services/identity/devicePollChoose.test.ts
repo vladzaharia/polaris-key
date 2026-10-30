@@ -81,6 +81,17 @@ async function signedIn(
   return started;
 }
 
+/** A platform product whose policy grants this person nothing, signed in and approved. */
+async function signedInNoGrant(): Promise<{ w: World; started: Started }> {
+  const w = await platformIdentityWorld();
+  await w.db.run(
+    "UPDATE oidc_config SET group_role_map_json = ? WHERE product = ?",
+    JSON.stringify({}),
+    PRODUCT,
+  );
+  return { w, started: await signedIn(w) };
+}
+
 function poll(w: World, s: Started, now: number): Promise<Response> {
   return call(w, now, POLL, { deviceCode: s.deviceCode, deviceId: DEVICE });
 }
@@ -131,14 +142,7 @@ describe("the device-code poll in app mode (§12.10.1)", () => {
 
   it("answers choose when no licence is granted (the no-licence state), and spends the flow", () =>
     pinned("uk-42-22-poll", async () => {
-      const w = await platformIdentityWorld();
-      // The policy grants this person nothing.
-      await w.db.run(
-        "UPDATE oidc_config SET group_role_map_json = ? WHERE product = ?",
-        JSON.stringify({}),
-        PRODUCT,
-      );
-      const started = await signedIn(w);
+      const { w, started } = await signedInNoGrant();
       const res = await poll(w, started, T0 + 5);
       const body = (await res.json()) as {
         status: string;
@@ -254,13 +258,7 @@ describe("the device-code poll in app mode (§12.10.1)", () => {
 
   it("a store failure while issuing the grant is the transient 503, and the flow is kept", () =>
     pinned("uk-42-22-poll", async () => {
-      const w = await platformIdentityWorld();
-      await w.db.run(
-        "UPDATE oidc_config SET group_role_map_json = ? WHERE product = ?",
-        JSON.stringify({}),
-        PRODUCT,
-      );
-      const started = await signedIn(w);
+      const { w, started } = await signedInNoGrant();
       grantFault.fail = true;
       try {
         const failed = await poll(w, started, T0 + 5);
