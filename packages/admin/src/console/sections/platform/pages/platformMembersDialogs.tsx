@@ -8,7 +8,6 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   HttpError,
   type Me,
   type Member,
@@ -16,12 +15,12 @@ import {
 } from "../../../../api.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
-import { qk } from "../../../data/queries.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { toast } from "../../../../ui/toast.js";
 import { roleLabel } from "../../../access/can.js";
 import type { ProductName } from "../../../access/InviteDrawerParts.js";
 import { mutate } from "../../../data/mutations.js";
+import { platformReads } from "../data.js";
 import {
   cannotTake,
   describeMembersError,
@@ -83,8 +82,7 @@ export function SignOutMemberDialog({
   const who = member ?? last.current;
   const id = member?.memberId ?? null;
   const preview = useQuery({
-    queryKey: [...qk.members(), "sign-out", id],
-    queryFn: () => api.memberSignOutPreview(id!),
+    ...platformReads.memberSignOutPreview(id ?? ""),
     enabled: id !== null,
     staleTime: 0,
     gcTime: 0,

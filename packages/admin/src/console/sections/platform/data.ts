@@ -141,6 +141,12 @@ export const platformReads = {
     }),
   members: () =>
     queryOptions({ queryKey: qk.members(), queryFn: () => api.members() }),
+  /** The admin tokens a member's sign-out ends: read fresh when the dialog opens. */
+  memberSignOutPreview: (memberId: string) =>
+    queryOptions({
+      queryKey: [...qk.members(), "sign-out", memberId],
+      queryFn: () => api.memberSignOutPreview(memberId),
+    }),
   accessRules: () =>
     queryOptions({
       queryKey: qk.accessRules(),

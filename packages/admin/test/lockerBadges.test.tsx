@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, within } from "@testing-library/react";
 import { resetConsole, ME, ALL_ON } from "./consoleHarness.js";
+import { channelRow, channelsView } from "./channelFixture.js";
 import { P, bootWith } from "./distributionFixture.js";
 import type { PolarisKeyStatusResponse } from "../src/api.js";
 import {
@@ -15,7 +16,7 @@ import {
   offeredBadges,
 } from "../src/console/sections/storefronts/model/badges.js";
 
-const PAGE = "#/p/djdl/distribution/storefronts/polaris-key";
+const PAGE = "#/p/djdl/distribution/channels/polaris-key/sales";
 
 const STATUS: PolarisKeyStatusResponse = {
   enabled: true,
@@ -102,6 +103,14 @@ describe("offeredBadges", () => {
 
 describe("the Polaris Locker page", () => {
   const routes = {
+    // A-22.6: the store's page is the Sales tab of its channel page.
+    [P("/distribution/channels")]: channelsView(
+      channelRow({
+        id: "polaris-key",
+        label: "Polaris Locker",
+        commerce: null,
+      }),
+    ),
     [P("/storefronts/polaris-key")]: STATUS,
     [P("/storefronts/polaris-key/analytics")]: { rows: [] },
   };

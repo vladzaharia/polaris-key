@@ -564,7 +564,7 @@ function Preview({
     <section
       aria-labelledby="rule-preview-title"
       aria-live="polite"
-      className="rounded-md border border-border bg-surface px-4 py-3"
+      className="rounded-md border border-border bg-surface-raised px-4 py-3"
       data-rule-preview=""
     >
       <h3

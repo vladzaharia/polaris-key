@@ -95,8 +95,9 @@ const POLARIS_KEY = "polaris-key";
 export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // ── Core ───────────────────────────────────────────────────────────────────────────────────
   "core.name": at("settings", "General"),
-  // Shown on General as a read-out marked Not enforced; there is no input (P0-47).
-  "core.adminGroup": manifest("product"),
+  // Shown on General as a read-out marked Not enforced; there is no input (P0-47). The manifest
+  // field is retired (ST-32.6), so the value is read-only and no `.pkey/` file declares it.
+  "core.adminGroup": at("settings", "General"),
   "core.web.origins": at("settings", "Web origins"),
   "core.manifest.authoritative": at("settings", "Repository"),
   // ST-27: this product's alert destinations, which replace the platform's.
