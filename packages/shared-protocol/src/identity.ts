@@ -149,6 +149,21 @@ export interface AppConsentView {
   changed: boolean;
 }
 
+/**
+ * `POST /<p>/identity/auth/device/start`'s body (§12.7.1, §12.10.1). Every member is optional. The
+ * hints prefill the card and verify nothing; `licenseChoice: "app"` asks for the `choose` poll
+ * answer, and an SDK sends it only when discovery carries `deviceChoice` and the four `choice*`
+ * endpoints. `scope` is ignored.
+ */
+export interface DeviceStartRequest {
+  deviceId?: string;
+  deviceName?: string;
+  loginHint?: string;
+  nameHint?: string;
+  purpose?: AuthorizePurpose;
+  licenseChoice?: AuthorizeLicenseChoice;
+}
+
 /** `POST /<p>/identity/auth/device/start`'s answer. `deviceName` echoes the stored label. */
 export interface DeviceStartResponse {
   status: "pending";
@@ -181,7 +196,9 @@ export type DevicePollResponse =
       identity?: { name?: string; email?: string };
     }
   | { status: "timeout" }
-  | { status: "error"; reason?: typeof DEVICE_POLL_DENIED };
+  | { status: "error"; reason?: typeof DEVICE_POLL_DENIED }
+  /** §12.10.1: only to a start that sent `licenseChoice: "app"`. The flow is spent; a client stops. */
+  | PendingSignIn;
 
 /** §12.10: the same route at HTTP 429 (a state, not an error body). */
 export interface DevicePollSlowDown {
@@ -351,6 +368,8 @@ export interface IdentityDiscovery {
   };
   /** I-40 (§12.11.5): nearby approval is served. */
   nearby?: true;
+  /** UK-42.22 (§12.10.1): the device-code poll answers `choose` to a start that asked `licenseChoice: "app"`. */
+  deviceChoice?: true;
   endpoints: {
     session: string;
     sessionLicense: string;
