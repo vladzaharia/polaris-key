@@ -1,5 +1,6 @@
-"""Nearby approval (CC-15; WIRE-CONTRACT-V5 §15.4, §15.6.1): the approver half. Mirrors
-``packages/sdk-node/src/connect/nearbyApprover.ts`` as it stands after its red-team fix round.
+"""Nearby approval (CC-15; WIRE-CONTRACT-V5 §15.4, §15.6.1): the approver half (``NearbyApprover``) and the
+requester half (``NearbyRequester``, below). Mirrors ``packages/sdk-node/src/connect/nearbyApprover.ts`` and
+``nearbyRequester.ts`` as they stand after their red-team fix round.
 
 A signed-in device (M) advertises under a random instance, lets a nearby device (D) with no sign-in
 connect in mode ``v``, shows three codes and, when the person picks the one D shows, hands the verified
@@ -39,46 +40,84 @@ Rules this module keeps:
   verified (no silent approval); records for Sync go out only after ``approved``;
 - the request handle, ``sig``, ``h``, the nonces and the one-time keys are in no message, repr or error;
   the one-time static key is wiped when the handshake ends.
+
+The requester (D, the device with no sign-in) browses for approvers, dials a few, lists them by their
+``HELLO`` and lets its person tap one. Only then does the code run on that session; the others close
+``peer_bye`` before any code record, so no other approver ever prompts. D shows its code, sends
+``VOUCH_REQ`` and reads ``VOUCH_RESULT``. It calls no route: the host holds the request from
+``nearby/start`` and polls. Rules it keeps:
+
+- D connects out and never listens; it browses ``_pkeypeer._tcp`` for ``m=v`` with the product tag of the
+  current or the previous epoch, judged by the mode-a address rule;
+- at most 4 approvers are dialled at once, picked at random and never in arrival order, each with a
+  one-time X25519 key that is wiped when the handshake ends; a session that ends before the choice is
+  replaced while the request lives (a bounded number of times per advert);
+- every session stops after ``HELLO`` (``hold_sas``); the list has at most 8 entries, shows the reported
+  label and platform only, and is never chosen from for the person;
+- the code on D's screen is D's confirmation, then ``VOUCH_REQ`` goes out;
+- ``0x0030`` to ``0x003F`` are held, 16 records and 16 KiB, until the person confirms the signed-in account
+  (``confirm_account``, rule 12); a decline or a close drops them all;
+- a session held and not chosen for 20 s is closed ``peer_bye`` and replaced, so one approver cannot sit
+  on a dial slot;
+- one answer per request: once ``VOUCH_RESULT`` said ``approved``, or ``confirm_account()`` ran, no other
+  approver is dialled or chosen. ``confirm_account()`` is for the session that was chosen;
+- the request and the label are checked when the request starts; ``expires_in`` is at most 300 s;
+- the host's callbacks run inside a guard: a throw cannot skip the cleanup that follows;
+- the browse and the wait for ``VOUCH_RESULT`` end at ``expires_in`` (300 s), then every session closes
+  ``peer_bye``; the request handle, ``sig``, ``h`` and the nonces are in no message.
 """
 
 from __future__ import annotations
 
 import asyncio
+import math
 import os
 import re
 import sys
 import time
-from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Set, Union
+from dataclasses import dataclass, field
+from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Set, Tuple, Union
 
+from ..connect.dial import dial_race
 from ..connect.errors import LanError
 from ..connect.lan import Admitted, GatedProtocol, admit_transport, listen_socket
-from ..connect.lan_judge import PendingLimiter
+from ..connect.lan_judge import PendingLimiter, text_verdict
 from ..constants_generated import ErrorCode
-from .peer_advert import advert_epoch, product_tag
+from .device_keys import DeviceKeyPort
+from .peer_advert import advert_epoch, parse_txt, product_tag
 from .peer_frame import RECORD
 from .peer_link import LinkHandlers, SocketLink
-from .peer_mdns import MdnsAdapter, MdnsAdvert, MdnsHandle, MulticastDnsAdapter
+from .peer_mdns import MdnsAdapter, MdnsAdvert, MdnsFound, MdnsHandle, MulticastDnsAdapter
 from .peer_noise import NoisePorts
 from .peer_sas import sas_display
 from .peer_session import Closed, Established, HandshakeLimiter, PeerHello, Record, Sas
 from .peer_vouch import (
     VOUCH_REQ_MAX,
     ApproveAnswer,
+    BuildVouchRequestOptions,
     VouchFailureBudget,
     VouchFlow,
     VouchHello,
     VouchRecord,
     VouchRequest,
     approver_instance,
+    build_vouch_request,
     build_vouch_result,
     decoy_codes,
     finish_map,
+    parse_vouch_result,
+    uniform_below,
     verify_vouch_request,
 )
 
 __all__ = [
     "ApprovalNotice",
+    "NearbyApproverInfo",
+    "NearbyChoice",
+    "NearbyRecord",
+    "NearbyRequestOptions",
+    "NearbyRequester",
+    "RequesterSource",
     "ApproveAnswerInput",
     "ApproverSource",
     "FinishOutcome",
@@ -750,7 +789,7 @@ class NearbyApprover:
             "mode": "v",
             "role": "responder",
             "slug": self._src.slug,
-            "static_key": bytes(key),
+            "static_key": key,
             "admission": gen.limiter,
             "hello": nearby_hello(self._src.slug, self._o.label),
             "mono": self._mono,
@@ -1023,3 +1062,533 @@ async def _quiet(aw: Awaitable[Any]) -> None:
         pass
 
 
+
+
+# -- the requester (D) --------------------------------------------------------------------------------
+
+MAX_DIALS = 4
+MAX_LIST = 8
+EXPIRES_SECONDS = 300.0
+TRIES_PER_ADVERT = 3
+REDIAL_SECONDS = 0.25
+#: A held session nobody chose is replaced after this long.
+IDLE_SECONDS = 20.0
+#: ``nearby/start``'s handle (the same pattern the vouch codec checks in a ``VOUCH_REQ``).
+_REQUEST_RE = re.compile(r"nr_[A-Za-z0-9_-]{22}\Z")
+
+
+@dataclass
+class RequesterSource:
+    """What the requester reads of the client. ``signer`` is a coroutine function: D's device keys (made
+    when none exist) and its ``X-PKey-Device`` value; ``now`` is epoch seconds."""
+
+    slug: str
+    now: Callable[[], int]
+    signer: Callable[[], Awaitable[Tuple[DeviceKeyPort, str]]]
+
+
+@dataclass
+class NearbyRequestOptions:
+    """``request`` is the handle from ``nearby/start`` (``nr_...``). ``label`` is this device's label in
+    ``HELLO`` and ``VOUCH_REQ`` (display data; optional; a string of at most 256 characters): it is shown on
+    the approving device, so name the device, and never use an account identifier (an email address, a user
+    id) as the label. ``expires_in`` is the seconds the request lives (default and most 300, from
+    ``nearby/start``'s ``expiresIn``). ``close()`` ends the request."""
+
+    request: str = field(repr=False)
+    label: Optional[str] = None
+    expires_in: Optional[float] = None
+    mdns: Optional[MdnsAdapter] = None
+    allow_loopback: bool = False
+    handshake_seconds: float = HANDSHAKE_SECONDS
+    timer: Optional[_Timer] = None
+    random: Optional[_Random] = None
+    #: Monotonic seconds for the sessions' deadlines.
+    mono: Optional[Callable[[], float]] = None
+    #: The session engine's randomness (SAS nonces, ephemeral keys); a test's seam.
+    ports: Optional[NoisePorts] = None
+
+
+@dataclass(frozen=True)
+class NearbyApproverInfo:
+    """One approver in the list. Unauthenticated display data: any device on the LAN can be listed."""
+
+    id: str
+    label: Optional[str]
+    platform: str
+
+
+@dataclass(frozen=True)
+class NearbyRecord:
+    #: A Sync record type, ``0x0030`` to ``0x003F``.
+    type: int
+    body: bytes = field(repr=False)
+
+
+class NearbyChoice(NamedTuple):
+    """What ``choose`` answers: D's code to show, like ``123 456``."""
+
+    code: str
+
+
+@dataclass
+class _Candidate:
+    instance: str
+    hosts: List[str]
+    port: int
+    tries: int
+
+
+class _Entry:
+    def __init__(self, id_: str, instance: str, link: SocketLink, key: bytearray) -> None:
+        self.id = id_
+        self.instance = instance
+        self.link = link
+        self.key = key
+        self.hello: Optional[PeerHello] = None
+        self.code: Optional[int] = None
+        self.code_wait: Optional["asyncio.Future[int]"] = None
+        self.closed = False
+        #: Cancels the idle clock.
+        self.idle: Optional[Callable[[], None]] = None
+
+
+class NearbyRequester:
+    """The browse, the dials and the one chosen session of one nearby request. Its methods are
+    coroutines (or plain calls) for the Connect loop; ``client.cloud_connect.nearby`` hands the host
+    blocking forms of them."""
+
+    def __init__(self, src: RequesterSource, o: NearbyRequestOptions) -> None:
+        self._src = src
+        self._o = o
+        self._loop = asyncio.get_running_loop()
+        self._random: _Random = o.random or os.urandom
+        self._timer: _Timer = o.timer or _default_timer
+        self._mdns: MdnsAdapter = o.mdns or MulticastDnsAdapter(allow_loopback=o.allow_loopback)
+        self._candidates: Dict[str, _Candidate] = {}
+        self._entries: Dict[str, _Entry] = {}
+        #: Instances with a dial or a session in flight.
+        self._active: Set[str] = set()
+        self._browse: Optional[MdnsHandle] = None
+        self._chosen: Optional[_Entry] = None
+        self._flow: Optional[VouchFlow[Any]] = None
+        self._result: Optional[str] = None
+        self._ended = False
+        #: ``approved`` came, or the account was confirmed: this request has its answer.
+        self._answered = False
+        self._cancels: List[Callable[[], None]] = []
+        self._signer: Optional[Tuple[DeviceKeyPort, str]] = None
+        self._tasks: Set["asyncio.Future[Any]"] = set()
+        self._on_approvers: List[Callable[[List[NearbyApproverInfo]], None]] = []
+        self._on_result: List[Callable[[str], None]] = []
+        self._on_record: List[Callable[[NearbyRecord], None]] = []
+        self._on_close: List[Callable[[str], None]] = []
+
+    def __repr__(self) -> str:
+        return "<NearbyRequest>"
+
+    def __reduce__(self) -> Any:
+        raise TypeError("a nearby request cannot be pickled")
+
+    @classmethod
+    async def start(cls, src: RequesterSource, o: NearbyRequestOptions) -> "NearbyRequester":
+        """Start browsing and dialling. The caller holds the request from ``nearby/start``."""
+        expires_in = cls._checked(o)
+        r = cls(src, o)
+        r._signer = await src.signer()
+        r._cancels.append(r._timer(r._expire, expires_in))
+        try:
+            r._browse = await r._mdns.browse(r._found_safe, r._gone, lambda _instance: True)
+        except BaseException:
+            await r.close()
+            raise
+        return r
+
+    @staticmethod
+    def _checked(o: NearbyRequestOptions) -> float:
+        """The request and the label are the host's input: refuse a bad one now, not at the tap."""
+        if not isinstance(o.request, str) or _REQUEST_RE.match(o.request) is None:
+            raise LanError("bad_input", "The request handle is not valid.")
+        if o.label is not None and (not isinstance(o.label, str) or len(o.label) > LABEL_MAX):
+            raise LanError("bad_input", "The label is not valid.")
+        n = EXPIRES_SECONDS if o.expires_in is None else o.expires_in
+        if isinstance(n, bool) or not isinstance(n, (int, float)) or not math.isfinite(n) or n <= 0:
+            raise LanError("bad_input", "expires_in must be above 0.")
+        return float(min(n, EXPIRES_SECONDS))
+
+    @staticmethod
+    def _each(fns: List[Callable[[Any], Any]], value: Any) -> None:
+        """Call every listener inside a guard."""
+        for f in list(fns):
+            _call_guarded(f, value)
+
+    @property
+    def approvers(self) -> List[NearbyApproverInfo]:
+        """The approvers that said ``HELLO``, at most 8; empty once the person chose."""
+        if self._chosen is not None:
+            return []
+        out = [
+            NearbyApproverInfo(
+                e.id,
+                e.hello.label if e.hello is not None else None,
+                e.hello.platform if e.hello is not None else "",
+            )
+            for e in self._entries.values()
+            if e.hello is not None and not e.closed
+        ]
+        return out[:MAX_LIST]
+
+    @property
+    def result(self) -> Optional[str]:
+        """What ``VOUCH_RESULT`` said. For display only: the host's poll is the authority."""
+        return self._result
+
+    @property
+    def closed(self) -> bool:
+        return self._ended
+
+    def _sub(self, fns: List[Any], fn: Any) -> Callable[[], None]:
+        fns.append(fn)
+
+        def off() -> None:
+            if fn in fns:
+                fns.remove(fn)
+
+        return off
+
+    def on_approvers(self, fn: Callable[[List[NearbyApproverInfo]], None]) -> Callable[[], None]:
+        return self._sub(self._on_approvers, fn)
+
+    def on_result(self, fn: Callable[[str], None]) -> Callable[[], None]:
+        return self._sub(self._on_result, fn)
+
+    def on_record(self, fn: Callable[[NearbyRecord], None]) -> Callable[[], None]:
+        """Sync records, once the person confirmed the account."""
+        return self._sub(self._on_record, fn)
+
+    def on_close(self, fn: Callable[[str], None]) -> Callable[[], None]:
+        """The chosen session ended (or the request expired); with why."""
+        return self._sub(self._on_close, fn)
+
+    # -- browse and dial ----------------------------------------------------------------------------
+
+    def _found_safe(self, f: MdnsFound) -> None:
+        try:
+            self._found(f)
+        except Exception:
+            pass
+
+    def _found(self, f: MdnsFound) -> None:
+        if self._ended or self._answered or self._chosen is not None:
+            return
+        txt = parse_txt(f.txt)
+        if not txt["ok"] or txt["mode"] != "v":
+            return
+        # The product tag of this epoch or the last: an advert of another product is not ours.
+        epoch = advert_epoch(self._src.now())
+        tags = [product_tag(self._src.slug, e) for e in (epoch, epoch - 1)]
+        if txt.get("h") not in tags:
+            return
+        hosts = [h for h in (f.hosts or (f.host,)) if text_verdict(h, self._o.allow_loopback)]
+        if not hosts:
+            return
+        had = self._candidates.get(f.instance)
+        self._candidates[f.instance] = _Candidate(f.instance, hosts, f.port, had.tries if had is not None else 0)
+        self._pump()
+
+    def _gone(self, instance: str) -> None:
+        self._candidates.pop(instance, None)
+
+    def _spawn(self, coro: Awaitable[Any]) -> "asyncio.Future[Any]":
+        t = asyncio.ensure_future(coro)
+        self._tasks.add(t)
+        t.add_done_callback(self._tasks.discard)
+        t.add_done_callback(lambda f: f.cancelled() or f.exception())
+        return t
+
+    def _pump(self) -> None:
+        """Dial candidates at random until 4 are in flight."""
+        while (
+            not self._ended
+            and not self._answered
+            and self._chosen is None
+            and len(self._active) < MAX_DIALS
+        ):
+            free = [
+                c for c in self._candidates.values() if c.instance not in self._active and c.tries < TRIES_PER_ADVERT
+            ]
+            if not free:
+                return
+            c = free[uniform_below(len(free), self._random)]
+            c.tries += 1
+            self._active.add(c.instance)
+            self._spawn(self._dial(c))
+
+    async def _dial(self, c: _Candidate) -> None:
+        try:
+            sock, _host = await dial_race(c.hosts, c.port, self._o.allow_loopback)
+            reader, writer = await asyncio.open_connection(sock=sock)
+        except (OSError, asyncio.TimeoutError):
+            self._active.discard(c.instance)
+            self._later()
+            return
+        if self._ended or self._answered or self._chosen is not None:
+            _abort(writer)
+            self._active.discard(c.instance)
+            return
+        key = bytearray(self._random(32))
+        entry_id = "ap_" + self._random(6).hex()
+        ref: List[Optional[_Entry]] = [None]
+        opts: Dict[str, Any] = {
+            "mode": "v",
+            "role": "initiator",
+            "slug": self._src.slug,
+            "static_key": key,
+            "hold_sas": True,
+            "hello": nearby_hello(self._src.slug, self._o.label),
+        }
+        if self._o.mono is not None:
+            opts["mono"] = self._o.mono
+        if self._o.ports is not None:
+            opts["ports"] = self._o.ports
+
+        def on_event(e: Any) -> None:
+            if ref[0] is not None:
+                self._event(ref[0], e)
+
+        def on_closed(cl: Closed) -> None:
+            if ref[0] is not None:
+                self._ended_(ref[0], cl)
+
+        link = SocketLink(
+            reader,
+            writer,
+            opts,
+            LinkHandlers(on_closed=on_closed),
+            handshake_seconds=self._o.handshake_seconds,
+            on_event=on_event,
+        )
+        e = _Entry(entry_id, c.instance, link, key)
+        ref[0] = e
+        self._entries[entry_id] = e
+        self._spawn(link.run())
+        link.start()
+
+    def _later(self) -> None:
+        """A short pause before a replacement dial, so a refusing approver is not hammered."""
+        self._cancels.append(self._timer(self._pump, REDIAL_SECONDS))
+
+    def _list(self) -> None:
+        self._each(self._on_approvers, self.approvers)  # type: ignore[arg-type]
+
+    # -- a session's events -------------------------------------------------------------------------
+
+    def _event(self, e: _Entry, ev: Any) -> None:
+        if isinstance(ev, Established):
+            # The one-time static key has done its work.
+            _wipe(e.key)
+            e.hello = ev.hello
+            # Held and not chosen for 20 s: replaced, so one approver cannot sit on a dial slot.
+            e.idle = self._timer(lambda: self._replace(e), IDLE_SECONDS)
+            self._list()
+        elif isinstance(ev, Sas):
+            e.code = ev.code
+            w, e.code_wait = e.code_wait, None
+            if w is not None and not w.done():
+                w.set_result(ev.code)
+        elif isinstance(ev, Record):
+            if e is self._chosen:
+                self._record(ev.record_type, ev.body)
+
+    def _replace(self, e: _Entry) -> None:
+        e.idle = None
+        if e is self._chosen or e.closed or self._ended:
+            return
+        # The advert gets its try back: this is not a failure of the approver.
+        c = self._candidates.get(e.instance)
+        if c is not None and c.tries > 0:
+            c.tries -= 1
+        e.link.close_nowait(ErrorCode.PEER_BYE)
+
+    def _record(self, type_: int, body: bytes) -> None:
+        flow = self._flow
+        if flow is None:
+            return
+        v = flow.receive(VouchRecord(type_, body))
+        if not v.ok:
+            if self._chosen is not None:
+                self._chosen.link.close_nowait(str(v.close))
+            return
+        for r in v.deliver:
+            self._deliver(r)
+
+    def _deliver(self, r: Any) -> None:
+        if r.type == RECORD["VOUCH_RESULT"]:
+            # Display only: an unknown status reads as ``denied`` (rule 6).
+            got = parse_vouch_result(r.body)
+            if got.refuse is not None or got.status is None:
+                return
+            self._result = got.status
+            if got.status == "approved":
+                self._answered = True
+            self._each(self._on_result, got.status)
+        elif 0x0030 <= r.type <= 0x003F:
+            self._each(self._on_record, NearbyRecord(r.type, r.body))
+
+    def _ended_(self, e: _Entry, c: Closed) -> None:
+        if e.closed:
+            return
+        e.closed = True
+        if e.idle is not None:
+            e.idle()
+            e.idle = None
+        _wipe(e.key)
+        self._entries.pop(e.id, None)
+        self._active.discard(e.instance)
+        w, e.code_wait = e.code_wait, None
+        if w is not None and not w.done():
+            w.set_exception(LanError("closed", "The session is closed."))
+        if e is self._chosen:
+            # The chosen session is over. Without an answer the request goes on: the person may choose
+            # again from a fresh list.
+            self._chosen = None
+            self._flow = None
+            if not self._ended:
+                self._each(self._on_close, c.code)
+                if self._result is None and not self._answered:
+                    self._later()
+        else:
+            self._list()
+            if not self._ended and not self._answered:
+                self._later()
+
+    # -- the person's choices -----------------------------------------------------------------------
+
+    async def choose(self, id_: str) -> NearbyChoice:
+        """The person tapped this approver. Starts the code on that session only and closes the others
+        ``peer_bye``; answers D's code to show, and sends ``VOUCH_REQ`` once it is shown."""
+        if self._ended:
+            raise LanError("closed", "The request is closed.")
+        if self._answered:
+            raise LanError("closed", "The request has its answer.")
+        if self._chosen is not None:
+            raise LanError("not_started", "An approver is already chosen.")
+        e = self._entries.get(id_)
+        if e is None or e.hello is None or e.closed:
+            raise LanError("unknown_peer", "That approver is no longer on the list.")
+        signer = self._signer
+        if signer is None:
+            raise LanError("not_started", "Not started.")
+        flow = e.link.channel.vouch
+        if flow is None:
+            raise LanError("closed", "The session is closed.")
+        self._chosen = e
+        if e.idle is not None:
+            e.idle()
+            e.idle = None
+        self._flow = flow
+        # The others close before any code record is sent on them: no other approver ever prompts.
+        for o in list(self._entries.values()):
+            if o is not e:
+                o.link.close_nowait(ErrorCode.PEER_BYE)
+        self._list()
+        if e.code is not None:
+            wait: "asyncio.Future[int]" = self._loop.create_future()
+            wait.set_result(e.code)
+        else:
+            wait = self._loop.create_future()
+            e.code_wait = wait
+        e.link.channel.start_sas()
+        code = await wait
+        # Showing the code is D's confirmation; then the request goes to the chosen approver.
+        flow.code_shown()
+        e.link.channel.confirm_sas()
+        port, device_id = signer
+        body = build_vouch_request(
+            BuildVouchRequestOptions(
+                port=port,
+                slug=self._src.slug,
+                h=e.link.channel.handshake_hash(),
+                request=self._o.request,
+                device_id=device_id,
+                hello=VouchHello(label=self._o.label, platform=sys.platform),
+            )
+        )
+        v = flow.send(VouchRecord(RECORD["VOUCH_REQ"], body))
+        if not v.ok:
+            e.link.close_nowait(str(v.close))
+            raise LanError("closed", "The session is closed.")
+        try:
+            e.link.channel.send_record(RECORD["VOUCH_REQ"], body)
+        except Exception:
+            raise LanError("closed", "The session is closed.") from None
+        return NearbyChoice(sas_display(code))
+
+    async def confirm_account(self) -> None:
+        """The person confirmed that the signed-in account is theirs: held records go to ``on_record``. It
+        counts for the session that was chosen and answered ``approved``; it is not a standing consent, and
+        after it (or after ``approved``) no other approver can be chosen."""
+        flow = self._flow
+        if flow is None:
+            raise LanError("not_started", "Nobody is chosen.")
+        self._answered = True
+        v = flow.confirm_account()
+        if not v.ok:
+            if self._chosen is not None:
+                self._chosen.link.close_nowait(str(v.close))
+            return
+        for r in v.deliver:
+            self._deliver(r)
+
+    async def decline_account(self) -> None:
+        """The person declined, or the screen timed out: every held record is dropped and the session
+        closes."""
+        flow = self._flow
+        if flow is None:
+            return
+        v = flow.decline_account()
+        if self._chosen is not None:
+            self._chosen.link.close_nowait(ErrorCode.PEER_BYE if v.ok else str(v.close))
+
+    # -- the end ------------------------------------------------------------------------------------
+
+    def _expire(self) -> None:
+        self._stop("expired")
+
+    def close(self) -> "asyncio.Future[None]":
+        """End the request: the browse stops and every session closes ``peer_bye``. The sessions are down
+        when this returns; the result completes when the browse is withdrawn."""
+        return self._stop(None)
+
+    def destroy(self) -> None:
+        """Drop every socket now, with no goodbye (the sign-out bound's force path)."""
+        fut = self._stop(None)
+        fut.add_done_callback(lambda f: f.cancelled() or f.exception())
+        for e in list(self._entries.values()):
+            e.link.destroy()
+        for t in list(self._tasks):
+            t.cancel()
+
+    def _stop(self, why: Optional[str]) -> "asyncio.Future[None]":
+        if self._ended:
+            done: "asyncio.Future[None]" = self._loop.create_future()
+            done.set_result(None)
+            return done
+        chosen = self._chosen is not None
+        self._ended = True
+        for c in self._cancels:
+            c()
+        self._cancels = []
+        if why is not None or chosen:
+            self._each(self._on_close, why or ErrorCode.PEER_BYE)
+        browse, self._browse = self._browse, None
+        # The sessions close before the browse is awaited: a browse that hangs cannot hold them up.
+        for e in list(self._entries.values()):
+            e.link.close_nowait(ErrorCode.PEER_BYE)
+        return asyncio.ensure_future(_quiet(browse.stop())) if browse is not None else _resolved(self._loop)
+
+
+def _resolved(loop: "asyncio.AbstractEventLoop") -> "asyncio.Future[None]":
+    f: "asyncio.Future[None]" = loop.create_future()
+    f.set_result(None)
+    return f

@@ -55,6 +55,7 @@ __all__ = [
     "finish_map",
     "parse_vouch_request",
     "parse_vouch_result",
+    "uniform_below",
     "verify_vouch_request",
 ]
 
@@ -378,7 +379,7 @@ def finish_map(r: ApproveAnswer) -> FinishAction:
 _MAX_DRAWS = 256
 
 
-def _uniform_below(n: int, random: _Random) -> int:
+def uniform_below(n: int, random: _Random) -> int:
     """A uniform integer in [0, n) by rejection sampling over 32-bit draws; never ``x % n`` alone."""
     limit = (2**32 // n) * n
     for _ in range(_MAX_DRAWS):
@@ -408,11 +409,11 @@ def decoy_codes(real: int, random: _Random = os.urandom) -> DecoyCodes:
         if tries >= _MAX_DRAWS:
             raise ValueError("vouch: random source")
         tries += 1
-        code = _uniform_below(1_000_000, random)
+        code = uniform_below(1_000_000, random)
         if not any(s[0] == code for s in slots):
             slots.append([code, False])
     for i in (2, 1):
-        j = _uniform_below(i + 1, random)
+        j = uniform_below(i + 1, random)
         slots[i], slots[j] = slots[j], slots[i]
     return DecoyCodes([s[0] for s in slots], next(i for i, s in enumerate(slots) if s[1]))
 

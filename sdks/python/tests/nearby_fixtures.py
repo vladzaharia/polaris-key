@@ -64,12 +64,16 @@ def approver_adverts(net: Network) -> List[MdnsAdvert]:
 
 
 class Timers:
-    """Fake timers handed to the code under test: ``fire(seconds)`` runs every live one set for that long."""
+    """Fake timers handed to the code under test: ``fire(seconds)`` runs every live one set for that long.
+    With ``only``, other delays run for real."""
 
-    def __init__(self) -> None:
+    def __init__(self, only: Optional[float] = None) -> None:
         self.items: List[Dict[str, Any]] = []
+        self.only = only
 
     def __call__(self, fn: Callable[[], None], seconds: float) -> Callable[[], None]:
+        if self.only is not None and seconds != self.only:
+            return asyncio.get_running_loop().call_later(seconds, fn).cancel
         t = {"fn": fn, "seconds": seconds, "live": True}
         self.items.append(t)
 
