@@ -27,74 +27,37 @@ vi.mock("../../../src/services/identity/passthrough/grant.js", async (orig) => {
 });
 
 import { upsertDevice } from "../../../src/core/devices/store.js";
-import { dispatchWith } from "../../../src/dispatch.js";
-import { BASE_URL, type World } from "../../transcripts/recorder.js";
+import { type World } from "../../transcripts/recorder.js";
 import { DEVICE, T0 } from "../../transcripts/client.js";
 import { pinned, PRODUCT } from "../../transcripts/world.js";
+import {
+  CHOICE,
+  noGrantWorld,
+  pollDevice,
+  signedIn as shared,
+} from "../../transcripts/appMode.js";
 import {
   identityWorld,
   platformIdentityWorld,
   PLAYER,
-  playerSignsIn,
-  START,
+  postJson,
   type Started,
 } from "../../transcripts/scenarios/identity.js";
 
-const POLL = `/${PRODUCT}/identity/auth/device/poll`;
-const CHOICE = `/${PRODUCT}/identity/choice`;
-const VERIFIED = { ...PLAYER, email_verified: true };
+const call = postJson;
 
-function call(
+const signedIn = async (
   w: World,
-  now: number,
-  path: string,
-  body: unknown,
-  headers: Record<string, string> = {},
-): Promise<Response> {
-  return dispatchWith(
-    new Request(`${BASE_URL}${path}`, {
-      method: "POST",
-      headers: { "content-type": "application/json", ...headers },
-      body: JSON.stringify(body),
-    }) as unknown as Request,
-    w.env,
-    w.db,
-    now,
-  );
-}
-
-/** Start in app mode, sign in at the IdP and approve; returns the started flow. */
-async function signedIn(
-  w: World,
-  extra: Record<string, unknown> = { licenseChoice: "app" },
-): Promise<Started> {
-  const res = await call(w, T0, START, { deviceId: DEVICE, ...extra });
-  expect(res.status).toBe(200);
-  const started = (await res.json()) as Started;
-  await playerSignsIn(
-    w,
-    T0 + 3,
-    started.verificationUriComplete,
-    "approve",
-    VERIFIED,
-  );
-  return started;
-}
+  extra?: Record<string, unknown>,
+): Promise<Started> => (await shared(w, extra)).started;
 
 /** A platform product whose policy grants this person nothing, signed in and approved. */
 async function signedInNoGrant(): Promise<{ w: World; started: Started }> {
-  const w = await platformIdentityWorld();
-  await w.db.run(
-    "UPDATE oidc_config SET group_role_map_json = ? WHERE product = ?",
-    JSON.stringify({}),
-    PRODUCT,
-  );
+  const w = await noGrantWorld();
   return { w, started: await signedIn(w) };
 }
 
-function poll(w: World, s: Started, now: number): Promise<Response> {
-  return call(w, now, POLL, { deviceCode: s.deviceCode, deviceId: DEVICE });
-}
+const poll = pollDevice;
 
 const licenceCount = async (w: World): Promise<number> =>
   (

@@ -12,7 +12,6 @@ import { getLicense, getLicenseBySub } from "../../../core/licensing/store.js";
 import { getDevice } from "../../../core/devices/store.js";
 import { authorizeDevice } from "../../../core/licensing/authz.js";
 import { noticeOrigin } from "../accounts/libraryNotice.js";
-import { appModeAccount } from "./appMode.js";
 import { getAccountRow } from "../accounts/repo.js";
 import { deviceMetadata, NO_LICENSE_ID } from "../../../core/devices.js";
 import { subjectForOrNull } from "../../../core/accounts/accountSubjects.js";
@@ -21,6 +20,7 @@ import { appendAudit } from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
 import { settleAppMode, type Settled } from "../passthrough/settle.js";
 import { bindChoice } from "../passthrough/bind.js";
+import { noticeDeviceCodeBind } from "../passthrough/deviceNotice.js";
 import { resolveScope } from "../passthrough/authorize.js";
 import { offerFor } from "../passthrough/choice.js";
 import { mintAccountLicense } from "../passthrough/mint.js";
@@ -257,16 +257,11 @@ export async function pollAuthFlow(
       // settle for. The licence choice is the app's, so the identity's own licence is never
       // minted here: the flow is redeemed and the device either gets the grant (`choose`) or binds
       // as `token` binds with no choice due.
+      // The account is the one the callback decided on and stored (`appAccount`): the poll never
+      // derives it again, so the two cannot disagree after the callback skipped the chooser.
       const appAccountId =
         flow.appChoice === true && req && product.services.license.enabled
-          ? await appModeAccount(
-              db,
-              product.slug,
-              (await getOidcConfig(db, product.slug))?.provider ?? null,
-              platformOidcConfig(env)?.issuer ?? "",
-              identity.sub,
-              flow.claimAccount,
-            )
+          ? (flow.appAccount ?? null)
           : null;
       if (appAccountId && req) {
         if (flow.claimAccount)
@@ -393,6 +388,8 @@ async function settleDevicePoll(
   });
   if (settled.kind === "choose") return json(settled.pending);
   if (!settled.bound.ok) return json({ status: "error" });
+  // R1-07: the device is bound to the person's account, so the person is told, whoever approved.
+  await noticeDeviceCodeBind(cx, who, deviceId, device.label);
   await appendAudit(db, {
     product: product.slug,
     id: randomId("aud"),

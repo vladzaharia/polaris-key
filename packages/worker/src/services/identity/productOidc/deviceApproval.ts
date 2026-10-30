@@ -88,6 +88,7 @@ export const FLOW_DENIED = "denied";
 const DENY_UNSET = [
   "identity",
   "claimAccount",
+  "appAccount",
   "approveToken",
   "identityShownAt",
   ...CHOICE_FIELDS,
@@ -661,6 +662,12 @@ async function renderApproval(
     body:
       (again
         ? `<p class="note">Check the details, then choose again.</p>`
+        : "") +
+      // UK-42.22 (THREAT-MODEL R1-07): in app mode this approval signs the device in to the
+      // person's account, not just to a licence, so the page says so and names the app.
+      (flow.appChoice === true
+        ? // TODO(DNI): shownAppName; `app.app.name` is the display-checked name today.
+          `<p>${escapeHtml(dev)} will be signed in to your Polaris Locker account for ${escapeHtml(isolate(app.app.name))}.</p>`
         : "") +
       (flow.userCode
         ? `<p>It showed the code <span class="code">${escapeHtml(flow.userCode)}</span>${

@@ -100,6 +100,11 @@ export interface FlowRecord {
    *  (`appModeAccount`) the legacy chooser never opens and the poll answers `choose`. Absent: card
    *  mode, exactly as every flow was. */
   appChoice?: true;
+  /** UK-42.22: the account the callback settled this app-mode flow for (`appModeAccount`), stored
+   *  where the callback skipped the legacy chooser. The poll reads it and never decides again, so a
+   *  difference between the two sides cannot fall back to card mode after the chooser was skipped.
+   *  Server-side only; never on a page. */
+  appAccount?: string;
   /** I-26: the chooser is open. Nothing completes, and the poll answers `pending`, until the
    *  person's choice is recorded. */
   choiceOpen?: boolean;

@@ -350,7 +350,11 @@ export async function handleAuthCallback(
     // page (`deviceApproval.ts`), which is the only thing that sets `approvedAt`. The page is
     // reached through the binder cookie alone, so the URL carries nothing.
     flow.identity = identity;
-    const stored = await updateArtefact(env, stateKey, { set: { identity } });
+    // The decision travels in the flow record (UK-42.22): the poll settles for this account and
+    // does not derive it again from another issuer source.
+    const stored = await updateArtefact(env, stateKey, {
+      set: { identity, ...(appAccount ? { appAccount } : {}) },
+    });
     if (!stored.ok) return startAgainPage();
     await putArtefact(
       env,

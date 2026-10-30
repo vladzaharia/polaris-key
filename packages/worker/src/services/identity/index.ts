@@ -164,7 +164,11 @@ export const identityService: ServiceDescriptor = {
       account: true,
       // UK-42.22 (§12.10.1): the device-code poll answers `choose` to a start that asked
       // `licenseChoice: "app"`. An SDK sends it only when this and the choice endpoints are present.
-      deviceChoice: true,
+      // Present only while License is on: without it the choice has nothing to choose, and the
+      // start would quietly settle as card mode.
+      ...(product.services.license.enabled
+        ? { deviceChoice: true as const }
+        : {}),
       keyEntryLimit: await keyEntryLimit(
         { env, db, ...(settings ? { registry: settings } : {}) },
         product.slug,

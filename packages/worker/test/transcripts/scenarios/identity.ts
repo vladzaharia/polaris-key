@@ -98,6 +98,26 @@ export async function platformIdentityWorld(): Promise<World> {
   return w;
 }
 
+/** A JSON POST to the Worker as a device would send it (outside the recording). */
+export function postJson(
+  w: World,
+  now: number,
+  path: string,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Promise<Response> {
+  return dispatchWith(
+    new Request(`${BASE_URL}${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify(body),
+    }) as unknown as Request,
+    w.env,
+    w.db,
+    now,
+  );
+}
+
 /** A request from the player's BROWSER, outside the recording: no device headers, no bearer. */
 async function browser(
   w: World,
@@ -138,7 +158,7 @@ export async function playerSignsIn(
   verificationUriComplete: string,
   decision: "approve" | "deny" = "approve",
   player: typeof PLAYER & { email_verified?: boolean } = PLAYER,
-): Promise<void> {
+): Promise<string> {
   const complete = new URL(verificationUriComplete);
   const userCode = complete.searchParams.get("user_code")!;
   const page = await browser(
@@ -188,9 +208,8 @@ export async function playerSignsIn(
     binder,
   );
   expect(approvePage.status).toBe(200);
-  const token = /name="token" value="([^"]+)"/.exec(
-    await approvePage.text(),
-  )?.[1];
+  const approveHtml = await approvePage.text();
+  const token = /name="token" value="([^"]+)"/.exec(approveHtml)?.[1];
   expect(token).toBeTruthy();
   const approved = await browser(
     w,
@@ -201,6 +220,8 @@ export async function playerSignsIn(
     binder,
   );
   expect(approved.status).toBe(200);
+  // The approval page the person pressed the button on, for a test that reads its words.
+  return approveHtml;
 }
 
 /** The KV records a device flow lives in expire with the flow (`FLOW_TTL_SECONDS`). The test KV

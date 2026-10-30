@@ -58,6 +58,7 @@ import {
 import { bindChoice, type BindRefusal } from "./bind.js";
 import { bindWithoutChoice, tokenBody } from "./token.js";
 import { markFresh } from "./fresh.js";
+import { noticeDeviceCodeBind } from "./deviceNotice.js";
 import {
   DeviceKeysConflictError,
   DeviceKeysInvalidError,
@@ -450,6 +451,9 @@ export async function handleChoice(
     });
   }
   if (taken.fresh) await markFresh(env, product.slug, deviceId, taken.subject);
+  // R1-07: a device-code grant binds a device the person only approved from elsewhere; they are told.
+  if (taken.via === "device")
+    await noticeDeviceCodeBind(bcx, who, deviceId, label ?? null);
   await appendAudit(db, {
     product: product.slug,
     id: randomId("aud"),
@@ -461,9 +465,11 @@ export async function handleChoice(
     target_kind: "device",
     target_id: deviceId,
     parent_id: bound.licenseId === NO_LICENSE_ID ? null : bound.licenseId,
-    summary: choice
-      ? `Chose a license in the app (${choice.kind})`
-      : "Confirmed consent",
+    summary:
+      (choice
+        ? `Chose a license in the app (${choice.kind})`
+        : "Confirmed consent") +
+      (taken.via === "device" ? " (device code)" : ""),
   });
   return noStore(
     json(
