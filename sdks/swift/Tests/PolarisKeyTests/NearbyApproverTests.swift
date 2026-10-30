@@ -647,16 +647,16 @@ final class NearbyApproverTests: XCTestCase {
         await r.approver.stop()
     }
 
-    func testAnHonestDWhoseLabelDoesNotCleanTwiceTheSameWayStillVerifies() async throws {
+    func testAnHonestDWhoseLabelHasAnInvisibleBetweenBaseAndMarkStillVerifies() async throws {
         let r = Rig()
         try await r.start()
-        // A zero-width space between a base letter and a combining acute: cleaning twice differs.
+        // A zero-width space between a base letter and a combining acute: the strip comes before NFC (N2).
         let raw = "e\u{200B}\u{301}x"
         let (d, a) = try await r.prompted(label: raw)
         async let picked = a.pick(r.shown(d))
         try await d.showAndRequest()
         guard case .request(let req) = try await picked else { return XCTFail("no request") }
-        XCTAssertEqual(Array(req.label!.unicodeScalars), Array("e\u{301}x".unicodeScalars))
+        XCTAssertEqual(Array(req.label!.unicodeScalars), Array("\u{E9}x".unicodeScalars))
         await r.approver.stop()
     }
 
