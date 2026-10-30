@@ -417,6 +417,10 @@
       "detekt:exceptions.SwallowedException": 3,
       "detekt:style.ReturnCount": 1
     },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/PeerMatrixVouchTest.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.ReturnCount": 1
+    },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/PlanMatrixTest.kt": {
       "detekt:style.MaxLineLength": 2,
       "ktlint:standard:argument-list-wrapping": 5,
@@ -966,7 +970,8 @@
       "detekt:complexity.LongParameterList": 1,
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 2,
-      "detekt:style.ReturnCount": 1
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:spacing-between-declarations-with-annotations": 1
     },
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/Records.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,
@@ -987,6 +992,14 @@
       "detekt:naming.EnumNaming": 3,
       "detekt:style.MagicNumber": 1,
       "detekt:style.ReturnCount": 3,
+      "ktlint:standard:enum-entry-name-case": 3
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/Vouch.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:complexity.TooManyFunctions": 2,
+      "detekt:naming.EnumNaming": 3,
+      "detekt:style.ReturnCount": 8,
       "ktlint:standard:enum-entry-name-case": 3
     },
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/lan/JvmMdns.kt": {
@@ -1126,6 +1139,10 @@
     },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/PeerLinkTest.kt": {
       "detekt:complexity.LongParameterList": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "ktlint:standard:function-signature": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/VouchTest.kt": {
       "detekt:exceptions.SwallowedException": 1
     },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/lan/JvmMdnsLiveTest.kt": {
