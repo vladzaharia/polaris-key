@@ -1941,7 +1941,10 @@ describe("R12 refuted hypotheses", () => {
 
   it("REFUTED: there is no console.* logging anywhere in packages/worker/src", () => {
     const offenders = walkTs(WORKER_SRC).filter((f) =>
-      /\bconsole\s*\./.test(readFileSync(f, "utf8")),
+      // The console API, not the setting key `console.access` that the access-rule code names.
+      /\bconsole\s*\.\s*(?:log|info|warn|error|debug|trace|dir|table|time\w*|assert|count\w*|group\w*)\b/.test(
+        readFileSync(f, "utf8"),
+      ),
     );
     expect(offenders).toEqual([]);
   });

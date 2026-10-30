@@ -1941,8 +1941,9 @@ describe("console pack views (P4-09)", () => {
     ]);
     expect(body.releases[1].pinnedBy).toEqual([]);
     expect(body.releases.every((r: any) => r.variants.length === 2)).toBe(true);
-    // The session, the product and the page itself; never one query per release.
-    expect(queries).toBeLessThanOrEqual(16);
+    // The session (its principal reads the SSO rules' links, ST-32.3), the product and the page
+    // itself; never one query per release.
+    expect(queries).toBeLessThanOrEqual(17);
   }, 60_000);
 
   it("an app release carries its contentApi, its pins and each build's embeds", async () => {

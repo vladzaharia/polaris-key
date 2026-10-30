@@ -59,7 +59,7 @@ function files(d: Decl = {}): Record<string, string> {
   return {
     ".pkey/schema.json": JSON.stringify({ schemaVersion: 1, entries: [] }),
     ".pkey/product.json": JSON.stringify({
-      product: { slug: SLUG, name: "Acme", adminGroup: "acme-admins" },
+      product: { slug: SLUG, name: "Acme" },
       modules: {
         license: { enabled: true },
         config: { enabled: true },
