@@ -55,6 +55,18 @@ const FIXTURE = [
         developer_name: "Dev\u202E",
       },
       { t: "listing", slug: "lead", name: "\uFE0FAcme", developer_name: null },
+      {
+        t: "listing-locale",
+        slug: "acme",
+        name: "Acme\u202E",
+        developer_name: null,
+      },
+      {
+        t: "listing-locale",
+        slug: "acme",
+        name: "Acme Arcade",
+        developer_name: null,
+      },
     ],
     success: true,
     meta: {},
@@ -72,6 +84,7 @@ describe("scan-display-names (DISPLAY-NAME-INVISIBLE D-12)", () => {
       "tags,listing.name,reserved",
       "tags,listing.developerName,invalid",
       "lead,listing.name,invalid",
+      "acme,listing.locale.name,invalid",
     ]);
   });
 
@@ -103,7 +116,7 @@ describe("scan-display-names (DISPLAY-NAME-INVISIBLE D-12)", () => {
     expect(ok.stdout.split("\n")[0]).toBe(
       'filler,product.name,invalid,"Steam\\u{3164}"',
     );
-    expect(ok.stderr).toContain("10 rows, 7 hits");
+    expect(ok.stderr).toContain("12 rows, 8 hits");
     const empty = run(JSON.stringify([{ results: [] }]));
     expect(empty.status).toBe(0);
     expect(empty.stdout).toBe("");

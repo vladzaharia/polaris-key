@@ -10275,14 +10275,28 @@ closes S-16 §5.4 items 13 and 14 (app impersonation on the card, and spoofed de
   dropped, lowercased, Cyrillic and Greek look-alikes and `0`, `1`, `rn`, `vv` folded, split on anything
   that is not a letter or digit, and matched as whole words or as a multi-word term written as one
   word. The same function runs at ingest (link, resync, deploy hook), on console listing edits
-  and renames, and again wherever an end user is shown the name. A failing app name renders as
-  the product slug (the sign-in card also sets `nameVerified: false`), and a failing developer
-  name is dropped. The surfaces that check at render time are the sign-in card
-  (`passthrough/client.ts`), `appForPage` (the authorize and refusal pages, the device-code
-  entry, confirmation, approval, denial and signed-in pages), the licence chooser's passport and
-  body, the callback's "no access" page and the consent card's licence anchor, through
-  `shownAppName` and `shownDeveloperName` (`core/accounts/reservedDisplayNames.ts`). A page
-  that cannot reach the database draws the slug, never `product.name`. The render-time check also
+  and renames (the console rename, and `writeSetting` for `core.name`: the unchanged stored name
+  is not judged again), and again where an end user is shown the name before they consent. A
+  failing app name renders as the product slug (the sign-in card also sets `nameVerified:
+false`), and a failing developer name is dropped. The surfaces that check at render time, through
+  `shownAppName` and `shownDeveloperName` (`core/accounts/reservedDisplayNames.ts`), are the
+  sign-in card (`passthrough/client.ts`) and its gate view (the sign-in terms step,
+  `card/gate.ts`), `appForPage` (the authorize and refusal pages, the device-code entry,
+  confirmation, approval, denial and signed-in pages), the licence chooser's passport and body,
+  the callback's "no access" page, the consent card's licence anchor, the Polaris Locker
+  presentation (`presentationOf`: the key-claim preview and confirmation, Discover offers, library
+  tiles and the product page) and every end-user email (the subject,
+  the body and the "<App> via Polaris Locker" sender: licence and admin key mail, invitations, the
+  library, device-approval and sign-in-method notices, key mail from the keyring). A page
+  that cannot reach the database draws the slug, never `product.name`. The sign-in card's client
+  record is the one reader of the stored name (it needs it to set `nameVerified`). Residuals,
+  where the stored name is printed as written: the signed-in person's own account views
+  (the licence list, releases, feeds and tokens in the Locker, which print `product_name` after
+  consent), developer-authored metadata outside the Polaris frame (updater feed titles, the
+  distribution feeds and download page, the discovery document's `name`), and operator-facing
+  console mail and alerts (invitation and binding mail, creator grants, alert destinations). A
+  legacy name stored before the rule stays in these until it is renamed (the read-only scan,
+  `tools/scan-display-names.ts`, lists them); a new one cannot be stored. The render-time check also
   covers names written before the rule existed and names accepted in `warn` mode. The system
   product `polaris-key` is exempt from the reserved check, never from the text check. Residual:
   the confusable map is a heuristic. A look-alike outside it ("Stéäm" with an unlisted

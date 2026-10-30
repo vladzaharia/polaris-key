@@ -2501,12 +2501,12 @@ an unchanged manifest that holds one fails its next link or resync. The scan lis
 
 ```sh
 npx wrangler d1 execute polaris_key_prod --env prod --remote --json --command \
-  "SELECT 'product' AS t, slug, name, NULL AS developer_name FROM products WHERE COALESCE(status,'active') != 'deleted' UNION ALL SELECT 'listing', product, name, developer_name FROM dist_listings" \
+  "SELECT 'product' AS t, slug, name, NULL AS developer_name FROM products WHERE COALESCE(status,'active') != 'deleted' UNION ALL SELECT 'listing', product, name, developer_name FROM dist_listings UNION ALL SELECT 'listing-locale', product, name, NULL FROM dist_listing_locales" \
   | pnpm tsx tools/scan-display-names.ts
 ```
 
 `tools/scan-display-names.ts` reads the JSON on stdin and prints `slug,field,verdict,name` for each
-name that fails the rule, with invisible code points spelled `\u{...}`. It writes nothing and opens
+name that fails the rule (product names, listing names and developer names, and each locale's listing name), with invisible code points spelled `\u{...}`. It writes nothing and opens
 no connection. No output means there is nothing to do. For each `invalid` hit, rename the product
 in the console before the deploy; the console refuses an invisible character from the same deploy.
 A `reserved` hit is judged by the built-in terms only: the platform's extra terms and a product's

@@ -6,7 +6,8 @@
 //   slug,field,verdict,name        verdict: invalid | reserved; name: JSON, invisibles as \u{...}
 //
 // It writes nothing, opens no network connection and reads no file: stdin in, stdout out. The
-// rows are `t, slug, name, developer_name`, where `t` is `product` or `listing` (see
+// rows are `t, slug, name, developer_name`, where `t` is `product`, `listing` or `listing-locale`
+// (a per-locale listing name, `dist_listing_locales.name`; see
 // docs/RUNBOOK.md, "Display-name scan"). `invalid` is renamed in the console before the deploy,
 // since an unchanged manifest that holds one fails its next resync. `reserved` is judged by the
 // code's floor only: the platform's extra terms and a product's approval live in settings this
@@ -59,9 +60,13 @@ export function scanRows(rows: readonly Row[]): ScanHit[] {
   const hits: ScanHit[] = [];
   for (const row of rows) {
     const slug = typeof row.slug === "string" ? row.slug : "";
-    const table = row.t === "listing" ? "listing" : "product";
+    const table =
+      row.t === "listing" || row.t === "listing-locale" ? row.t : "product";
     const fields: [string, unknown][] = [
-      [`${table}.name`, row.name],
+      [
+        table === "listing-locale" ? "listing.locale.name" : `${table}.name`,
+        row.name,
+      ],
       ...(table === "listing"
         ? ([["listing.developerName", row.developer_name]] as [
             string,

@@ -508,6 +508,7 @@ export function deviceReplacedNotice(input: {
  * A nearby approval bound a device (WIRE-CONTRACT-V5 §12.11.5 rule 7): "Diceroll signed in on
  * Living room TV". Sent to the primary address only, so it is not a security notice (no "every
  * verified email" footer); the remedy is the product's devices page. The label may be null.
+ * Callers must pass `app` as `shownAppName(...)`, never the stored product name.
  */
 export function appDeviceApprovedNotice(input: {
   deviceLabel: string | null | undefined;
