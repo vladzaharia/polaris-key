@@ -333,3 +333,94 @@ def test_the_async_client_mirrors_available_and_on_request() -> None:
         assert stopped == [1]
 
     asyncio.run(run())
+
+
+# ── The key ring wrap after approved (I-47.11) ───────────────────────────────────────────────
+
+
+class FakeRing:
+    """The key ring client's side of a wrap: a root held or not, and what ``wrap_to`` was asked."""
+
+    def __init__(self, unlocked: bool = True, unlocks_to: bool = True, put: Optional[Exception] = None) -> None:
+        self.unlocked = unlocked
+        self._unlocks_to = unlocks_to
+        self._put = put
+        self.calls: List[Any] = []
+
+    def unlock(self) -> Any:
+        self.calls.append("unlock")
+        self.unlocked = self._unlocks_to
+
+    def wrap_to(self, device_id: str, agree_key: str) -> Any:
+        self.calls.append(("wrap_to", device_id, agree_key))
+        if self._put is not None:
+            raise self._put
+        return SimpleNamespace(channel_record=lambda: b"WRAP-RECORD")
+
+
+def with_ring(w: Fake, ring: Optional[FakeRing]) -> Any:
+    c = client(w, token="pkeyt_m")
+    fake = wire(c)
+    c.identity._keyring = (lambda: ring) if ring is not None else None
+    asks: List[NearbyAsk] = []
+    c.identity.nearby.on_request(asks.append)
+    approval = FakeApproval(request_for(c))
+    sent: List[Any] = []
+    approval.send_record = lambda t, b: sent.append((t, b))  # type: ignore[attr-defined]
+    fake.handler(approval)
+    return c, approval, asks[0], sent
+
+
+APPROVED = httpx.Response(200, json={"status": "approved", "deviceLabel": "New phone"})
+
+
+def test_after_approved_the_root_is_wrapped_to_the_verified_requests_agree_key_and_sent_once() -> None:
+    ring = FakeRing()
+    c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), ring)
+    step = ask.pick("482 913")
+    k = _FixtureKeys("d-1").ensure()
+    assert step.kind == "approved" and step.wrap_sent is True
+    assert ring.calls == [("wrap_to", D_ID, k.agree_key)]
+    assert sent == [(0x0030, b"WRAP-RECORD")]
+    assert ask._send_wrap() is False and len(sent) == 1  # once
+
+
+def test_a_locked_ring_is_unlocked_first_and_with_no_root_no_wrap_is_sent() -> None:
+    ring = FakeRing(unlocked=False, unlocks_to=True)
+    c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), ring)
+    assert ask.pick("482 913").wrap_sent is True and ring.calls[0] == "unlock"
+    ring = FakeRing(unlocked=False, unlocks_to=False)
+    c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), ring)
+    step = ask.pick("482 913")
+    assert (step.kind, step.wrap_sent) == ("approved", False) and sent == [] and ring.calls == ["unlock"]
+
+
+def test_no_key_ring_or_a_refused_put_sends_nothing_over_the_channel() -> None:
+    c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), None)
+    assert ask.pick("482 913").wrap_sent is False and sent == []
+    ring = FakeRing(put=PolarisError("keyring_conflict", "a wrap exists", status=409))
+    c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), ring)
+    step = ask.pick("482 913")
+    assert (step.kind, step.wrap_sent) == ("approved", False) and sent == []
+
+
+def test_a_wrap_is_sent_only_after_approved_never_for_a_refusal_or_a_deny() -> None:
+    ring = FakeRing()
+    c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=httpx.Response(403, json={"error": {"code": "not_nearby"}})), ring)
+    assert ask.pick("482 913").kind == "not-nearby"
+    ring2 = FakeRing()
+    c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=httpx.Response(204)), ring2)
+    ask._request = approval.request
+    assert ask.deny().kind == "denied"
+    assert ring.calls == [] and ring2.calls == [] and sent == []
+
+
+def test_a_session_that_ended_still_leaves_the_servers_copy() -> None:
+    ring = FakeRing()
+    c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), ring)
+
+    def gone(t: int, b: bytes) -> None:
+        raise RuntimeError("closed")
+
+    approval.send_record = gone  # type: ignore[attr-defined]
+    assert ask.pick("482 913").wrap_sent is True and len(ring.calls) == 1

@@ -290,6 +290,7 @@ class PolarisKeyClient:
             # nearby engine, and this runtime can browse unless the client has no transport.
             nearby_signer=lambda: self.connect.nearby_signer(),
             cloud_nearby=lambda: self.cloud_connect.nearby,
+            keyring=lambda: self.keyring,
             nearby_runtime=lambda role: not self.core.local_only,
             register_nearby_keys=self._register_nearby_keys,
             license_id=lambda: self.license.get_license_id(),

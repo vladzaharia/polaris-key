@@ -608,3 +608,114 @@ def test_open_any_reads_the_name_inside_and_tries_adopted_roots() -> None:
     with pytest.raises(KeyringError) as e:
         a.keyring.codec.open_any("$settings", old)
     assert e.value.code == "sync-locked"
+
+
+# ── The wrap that nearby approval carries (I-47.11) ───────────────────────────────────────────
+
+
+def test_wrap_to_answers_the_body_it_put_and_the_channel_record_adds_the_ring() -> None:
+    from polaris_key.keyring import parse_wrap_record
+
+    s = FakeServer()
+    a, _ = device(s)
+    made = a.keyring.create()
+    b, bkeys = device(s)
+    body = a.keyring.wrap_to(b.core.device_id, bkeys.ensure().agree_key)
+    assert body.put_json() == s.bodies[-1]
+    assert (body.ring_id, body.epoch, body.kid) == (made.ring_id, 1, made.root_kid)
+    parsed = parse_wrap_record(body.channel_record())
+    assert parsed == body
+    # The wrap is a ciphertext but is kept out of every repr.
+    assert body.enc not in repr(body) and body.ct not in repr(body)
+
+
+def test_adopt_wrap_opens_the_channel_copy_and_the_servers_copy_never_replaces_it() -> None:
+    s = FakeServer()
+    a, _ = device(s)
+    made = a.keyring.create()
+    b, bkeys = device(s)
+    record = a.keyring.wrap_to(b.core.device_id, bkeys.ensure().agree_key).channel_record()
+    r = b.keyring.adopt_wrap(record)
+    assert (r.kind, r.ring_id, r.epoch) == ("unlocked", made.ring_id, 1)
+    assert b.keyring.unlocked and b.keyring.codec.kid == made.root_kid
+    assert b.keyring.pin() is not None and b.keyring.pin().root_kid == made.root_kid  # type: ignore[union-attr]
+    env = a.keyring.codec.seal("saves", "slot", {"x": 1})
+    assert b.keyring.codec.open("saves", "slot", env).value == {"x": 1}
+    # A server copy that differs is ignored: the held root stays, and the normal unlock agrees.
+    s.wraps[b.core.device_id]["ct"] = b64url_encode(bytes(48))
+    assert b.keyring.unlock().reason == "unusable-wrap"
+    assert b.keyring.unlocked and b.keyring.codec.open("saves", "slot", env).value == {"x": 1}
+
+
+def test_adopt_wrap_reads_the_ring_afresh_and_refuses_a_ring_epoch_or_kid_that_differs() -> None:
+    s = FakeServer()
+    a, _ = device(s)
+    a.keyring.create()
+    b, bkeys = device(s)
+    good = a.keyring.wrap_to(b.core.device_id, bkeys.ensure().agree_key)
+    n = len(s.requests)
+    for bad in (
+        {"ring_id": "rg_" + "A" * 22},
+        {"epoch": 2},
+        {"kid": "00" * 16},
+    ):
+        from dataclasses import replace
+
+        r = b.keyring.adopt_wrap(replace(good, **bad).channel_record())
+        assert r.kind == "locked" and not b.keyring.unlocked, bad
+    # Each attempt read the ring first (a fresh GET), whatever the record claimed.
+    assert len(s.requests) >= n + 3 and all(q.method == "GET" for q in s.requests[n:])
+
+
+def test_adopt_wrap_of_a_wrap_for_another_device_or_a_tampered_one_stays_locked() -> None:
+    from dataclasses import replace
+
+    s = FakeServer()
+    a, _ = device(s)
+    a.keyring.create()
+    b, bkeys = device(s)
+    c, ckeys = device(s)
+    for_c = a.keyring.wrap_to(c.core.device_id, ckeys.ensure().agree_key)
+    assert b.keyring.adopt_wrap(for_c.channel_record()).reason == "unusable-wrap"
+    for_b = a.keyring.wrap_to(b.core.device_id, bkeys.ensure().agree_key)
+    ct = bytearray(b64url_decode(for_b.ct))
+    ct[0] ^= 1
+    assert b.keyring.adopt_wrap(replace(for_b, ct=b64url_encode(bytes(ct))).channel_record()).reason == "unusable-wrap"
+    assert not b.keyring.unlocked
+
+
+def test_adopt_wrap_refuses_a_ring_that_is_not_the_pinned_one() -> None:
+    s = FakeServer()
+    a, _ = device(s)
+    a.keyring.create()
+    b, bkeys = device(s)
+    # B pinned an earlier ring.
+    b.keyring._write_pin("rg_" + "B" * 22, 1, "11" * 16)
+    record = a.keyring.wrap_to(b.core.device_id, bkeys.ensure().agree_key).channel_record()
+    r = b.keyring.adopt_wrap(record)
+    assert r.kind == "ring-changed" and not b.keyring.unlocked
+
+
+@pytest.mark.parametrize(
+    "record",
+    [
+        b"",
+        b"not json",
+        b"[]",
+        b"x" * 3000,
+        b'{"ringId":"rg_AAAAAAAAAAAAAAAAAAAAAA","epoch":1,"kid":"00000000000000000000000000000000","kem":32,"enc":"a","ct":"b","extra":1}',
+        b'{"ringId":"nope","epoch":1,"kid":"00000000000000000000000000000000","kem":32,"enc":"a","ct":"b"}',
+        b'{"ringId":"rg_AAAAAAAAAAAAAAAAAAAAAA","epoch":0,"kid":"00000000000000000000000000000000","kem":32,"enc":"a","ct":"b"}',
+        b'{"ringId":"rg_AAAAAAAAAAAAAAAAAAAAAA","epoch":1,"kid":"zz","kem":32,"enc":"a","ct":"b"}',
+        b'{"ringId":"rg_AAAAAAAAAAAAAAAAAAAAAA","epoch":1,"kid":"00000000000000000000000000000000","kem":16,"enc":"a","ct":"b"}',
+        b'{"ringId":"rg_AAAAAAAAAAAAAAAAAAAAAA","epoch":true,"kid":"00000000000000000000000000000000","kem":32,"enc":"a","ct":"b"}',
+        b"\xff\xfe",
+    ],
+)
+def test_a_malformed_wrap_record_is_refused_before_any_request(record: bytes) -> None:
+    from polaris_key.keyring import parse_wrap_record
+
+    assert parse_wrap_record(record) is None
+    s = FakeServer()
+    b, _ = device(s)
+    assert b.keyring.adopt_wrap(record).reason == "unusable-wrap" and s.requests == []

@@ -25,6 +25,9 @@ with the keys of the verified request; ``deny`` is sent only after a matched cod
 A 404 is read through a fresh discovery (N11) by the vouch's finish step. Sign-out stops the approver (the
 facade's sign-out hook, through Cloud Connect's order); nothing is left listening after ``stop()``.
 
+After ``approved`` the approver wraps its key ring root to the verified request's agreement key, PUTs that
+wrap and sends the same bytes over the channel as ``KEYRING_WRAP`` (once; skipped without a root).
+
 Nothing here prints or keeps the handle, the proofs, the keys, the code or the token in a ``repr``.
 """
 
@@ -40,7 +43,10 @@ from ..constants_generated import ErrorCode
 from ..core.errors import PolarisError
 from .nearby import NearbyApproveResult, NearbyCredentials, NearbyRoutes
 
-__all__ = ["NearbyApprovalStep", "NearbyAsk", "start_nearby_approver"]
+__all__ = ["KEYRING_WRAP_RECORD", "NearbyApprovalStep", "NearbyAsk", "start_nearby_approver"]
+
+#: The Sync record the wrap travels in (§15.6, ``KEYRING_WRAP``).
+KEYRING_WRAP_RECORD = 0x0030
 
 #: The ``NearbyApproval`` states (ui-matrix), the steps a ``pick`` can end in.
 STEPS = (
@@ -65,6 +71,8 @@ class NearbyApprovalStep:
     device_label: Optional[str] = None
     choices: Optional[Dict[str, Any]] = None
     retry_after_seconds: Optional[int] = None
+    #: ``approved``: this device's key ring wrap went to the new device (the channel copy and the server's).
+    wrap_sent: bool = False
     _choose: Optional[Callable[[Dict[str, Any]], "NearbyApprovalStep"]] = field(default=None, repr=False)
     _cancel: Optional[Callable[[], "NearbyApprovalStep"]] = field(default=None, repr=False)
 
@@ -89,10 +97,13 @@ class NearbyAsk:
         approval: Any,
         routes: NearbyRoutes,
         creds: Callable[[], NearbyCredentials],
+        keyring: Optional[Callable[[], Any]] = None,
     ) -> None:
         self._approval = approval
         self._routes = routes
         self._creds = creds
+        self._keyring = keyring
+        self._wrapped = False
         self._lock = threading.Lock()
         self._request: Any = None
         self._done = False
@@ -195,7 +206,7 @@ class NearbyAsk:
         self._done = True
         if r.kind == "approved":
             # The Worker bound D whatever the LAN says: VOUCH_RESULT is D's display, the poll its authority.
-            return NearbyApprovalStep("approved", device_label=r.device_label)
+            return NearbyApprovalStep("approved", device_label=r.device_label, wrap_sent=self._send_wrap())
         if r.kind == "denied":
             return NearbyApprovalStep("denied")
         code, status = r.code, r.status
@@ -208,6 +219,30 @@ class NearbyAsk:
         if status == 429 or code == ErrorCode.RATE_LIMITED:
             return NearbyApprovalStep("rate-limited", retry_after_seconds=r.retry_after_seconds)
         return NearbyApprovalStep("expired")
+
+    def _send_wrap(self) -> bool:
+        """After ``approved``, once: wrap the root to the verified request's agreement key (and only that
+        one), PUT it for the server's copy, and send the same wrap over the channel (``KEYRING_WRAP``).
+        Skipped without a root (the new device opens a ring with its recovery code), without a key ring,
+        or when the Worker refuses the PUT (nothing is sent over the channel then)."""
+        if self._wrapped or self._keyring is None:
+            return False
+        vr = self._request
+        try:
+            ring = self._keyring()
+            if not ring.unlocked:
+                ring.unlock()
+            if not ring.unlocked:
+                return False
+            body = ring.wrap_to(vr.device_id, vr.agree_key)
+        except PolarisError:
+            return False
+        self._wrapped = True
+        try:
+            self._approval.send_record(KEYRING_WRAP_RECORD, body.channel_record())
+        except Exception:
+            pass  # the LAN session ended: the server's copy stands
+        return True
 
     def _choose(self, choice: Dict[str, Any]) -> NearbyApprovalStep:
         with self._lock:
@@ -230,12 +265,13 @@ def start_nearby_approver(
     routes: NearbyRoutes,
     creds: Callable[[], NearbyCredentials],
     handler: Callable[[NearbyAsk], None],
+    keyring: Optional[Callable[[], Any]] = None,
     **options: Any,
 ) -> Any:
     """``cloud_connect.nearby.on_request`` with each session wrapped as an :class:`NearbyAsk`. Returns the
     handle (``stop``, ``pause``, ``resume``, ``set_prompt``, ``reopen``, ``status``)."""
 
     def wrapped(approval: Any) -> None:
-        handler(NearbyAsk(approval, routes, creds))
+        handler(NearbyAsk(approval, routes, creds, keyring))
 
     return nearby.on_request(wrapped, **options)

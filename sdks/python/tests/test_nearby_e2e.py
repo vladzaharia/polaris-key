@@ -23,6 +23,7 @@ from polaris_key.identity.sign_in import SignedInIdentity
 from helpers import BASE_URL, PRODUCT, make_client
 from nearby_fixtures import memory_keys, until
 from test_connect_lan import Network
+from test_keyring import FakeServer as KeyRing
 
 BASE = f"{BASE_URL}/{PRODUCT}"
 M_ID = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
@@ -46,6 +47,8 @@ class StubWorker:
         self.choose_first = False
         self.next_handle = 0
         self.proof_failures: List[str] = []
+        #: The key ring routes (WIRE-CONTRACT-V5 §13.11), served by the key ring tests' fake.
+        self.ring = KeyRing()
 
     def doc(self) -> Dict[str, Any]:
         return {
@@ -88,6 +91,8 @@ class StubWorker:
         path = r.url.path
         if path.endswith("/.well-known/polaris.json"):
             return httpx.Response(200, json=self.doc())
+        if "/devices/keyring" in path:
+            return self.ring(r)
         body: Dict[str, Any] = json.loads(r.content) if r.content else {}
         name = path.rsplit("/", 1)[-1]
         with self.lock:
@@ -202,7 +207,7 @@ class World:
     def _client(self, token: Optional[str], device_id: str) -> Any:
         from polaris_key.devices.store import InMemoryStore
 
-        store = InMemoryStore(PRODUCT)
+        store = InMemoryStore(PRODUCT, device_id=device_id)
         if token:
             store.set_token(token)
         c = make_client(
@@ -401,3 +406,67 @@ def test_no_secret_is_in_a_repr_on_either_side(w: World) -> None:
     texts = [repr(s), repr(s.code), repr(ask), repr(w.m.identity), repr(w.d.identity), repr(s.approvers)]
     for t in texts:
         assert code not in t and "nr_" not in t and D_TOKEN not in t and M_TOKEN not in t
+
+
+# ── The key ring wrap (I-47.11) ─────────────────────────────────────────────────────────────
+
+
+def approved_d(w: World) -> Any:
+    """D asks, M approves; D's poll has signed it in. Returns D's session."""
+    s = w.start_d()
+    code = w.tap(s)
+    ask = w.asks[0]
+    step = ask.pick(match(ask, code))
+    assert step.kind == "approved"
+    until(lambda: s.result == "approved")
+    poll_until(s)
+    return s, step
+
+
+def test_the_wrap_travels_over_the_channel_and_is_held_until_d_s_person_confirms(w: World) -> None:
+    w.register_m()
+    made = w.m.keyring.create()
+    w.approve()
+    s, step = approved_d(w)
+    assert step.wrap_sent is True
+    # M PUT the same wrap the server now holds for D, and sent it over the channel.
+    assert w.worker.ring.wraps[D_ID]["by"] == M_ID
+    # D has the sign-in but not the root: rule 12 holds the wrap until its person confirms the account.
+    assert w.d.keyring.unlocked is False and s._wrap is None
+    r = s.confirm_account()
+    assert (r.kind, r.ring_id) == ("unlocked", made.ring_id)
+    assert w.d.keyring.unlocked and s.keyring_result is r
+    env = w.m.keyring.codec.seal("saves", "slot", {"x": 1})
+    assert w.d.keyring.codec.open("saves", "slot", env).value == {"x": 1}
+    assert w.d.keyring.pin().root_kid == made.root_kid  # type: ignore[union-attr]
+
+
+def test_declining_the_account_leaves_d_locked_and_the_servers_copy_is_still_there(w: World) -> None:
+    w.register_m()
+    w.m.keyring.create()
+    w.approve()
+    s, _ = approved_d(w)
+    s.decline_account()
+    assert w.d.keyring.unlocked is False and s._wrap is None
+    # The normal unlock opens the server's copy later, when the person does confirm.
+    assert w.d.keyring.unlock().kind == "unlocked"
+
+
+def test_an_approver_with_no_root_sends_no_wrap_and_d_applies_none(w: World) -> None:
+    w.register_m()
+    w.approve()
+    s, step = approved_d(w)
+    assert step.wrap_sent is False and D_ID not in w.worker.ring.wraps
+    assert s.confirm_account() is None and w.d.keyring.unlocked is False
+    assert w.d.keyring.unlock().reason == "no-ring"
+
+
+def test_a_ring_the_channel_names_that_the_server_does_not_serve_is_not_applied(w: World) -> None:
+    w.register_m()
+    w.m.keyring.create()
+    w.approve()
+    s, _ = approved_d(w)
+    # The ring D reads afresh is another one than the wrap names (M reset, or a forged record).
+    w.worker.ring.ring["ringId"] = "rg_" + "Z" * 22  # type: ignore[index]
+    r = s.confirm_account()
+    assert r.kind == "locked" and r.reason == "unusable-wrap" and w.d.keyring.unlocked is False

@@ -18,8 +18,11 @@ the Worker's poll says: a token is ``signed_in`` (stored through the token manag
 sign-in stores it), ``timeout`` is ``expired``, a denial raises ``sign-in-denied``. :attr:`result` is what
 ``VOUCH_RESULT`` said over the LAN and is for display only: it never signs anyone in.
 
-A ``KEYRING_WRAP`` (record ``0x0030``) the approver sends is captured and held; it is applied after a
-sign-in the person confirmed (:meth:`confirm_account`), and dropped by :meth:`decline_account`. Nothing
+A ``KEYRING_WRAP`` (record ``0x0030``) the approver sends is captured and held; it is adopted into the key
+ring after a sign-in the person confirmed (:meth:`confirm_account`: the ring, epoch and ``kid`` are checked
+against a fresh read, and a server copy that differs never replaces it), and dropped by
+:meth:`decline_account`. With no channel copy nothing is applied during the hand-off (T21): the normal
+``keyring.unlock()`` opens the server's copy later. Nothing
 here prints or keeps the handle, the proofs, the code, the token or a wrap in a ``repr``.
 
 ``cancel()`` stops the polling and closes the LAN side (a request nobody collects simply lapses on the
@@ -99,6 +102,8 @@ class NearbyDeps:
     creds: Callable[[], NearbyCredentials]
     nearby: Callable[[], Any]
     supported: Callable[[str], bool]
+    #: ``client.keyring``, where the approver's ``KEYRING_WRAP`` is adopted (``None``: it is dropped).
+    keyring: Optional[Callable[[], Any]] = None
 
 
 def _unsupported(reason: str, detail: str, code: str) -> UnsupportedError:
@@ -120,6 +125,7 @@ class NearbySignInSession:
         routes: NearbyRoutes,
         expires_at: int,
         device_name: Optional[str],
+        keyring: Optional[Callable[[], Any]] = None,
     ) -> None:
         self.__started = started
         self._request = request
@@ -138,6 +144,11 @@ class NearbySignInSession:
         self._cancelled = threading.Event()
         self._lock = threading.Lock()
         self._wrap: Optional[bytes] = None
+        self._keyring = keyring
+        self._signed_in = False
+        self._confirmed = False
+        #: The key ring's answer to the channel copy of the wrap (``None`` until one was adopted).
+        self.keyring_result: Optional[Any] = None
         self._closed = False
         self._off_record = request.on_record(self._on_record)
 
@@ -253,6 +264,9 @@ class NearbySignInSession:
                     status=r.status,
                 )
             if kind == "signed_in":
+                self._signed_in = True
+                if self._confirmed:
+                    self._apply_wrap()
                 return SignInOutcome(
                     kind=SIGNED_IN,
                     subject=r.subject,
@@ -288,10 +302,32 @@ class NearbySignInSession:
             left -= step
 
     # ── After the sign-in ───────────────────────────────────────────────────────────
-    def confirm_account(self) -> None:
+    def confirm_account(self) -> Optional[Any]:
         """The person confirmed that the signed-in account is theirs: the records held from the approver
-        (the key ring's wrap) are released. It counts for this session only; it is not a standing consent."""
+        are released and the key ring's wrap, if one came over the LAN, is adopted
+        (:meth:`~polaris_key.keyring.KeyringClient.adopt_wrap`, which checks it against a fresh read of the
+        ring). It counts for this session only; it is not a standing consent. Answers the key ring's
+        :class:`~polaris_key.keyring.UnlockResult` (also :attr:`keyring_result`), or ``None`` when no wrap
+        came over the channel: nothing is applied then, and the normal ``keyring.unlock()`` opens the
+        server's copy later. Call it after the sign-in settled."""
         self._request.confirm_account()
+        self._confirmed = True
+        return self._apply_wrap()
+
+    def _apply_wrap(self) -> Optional[Any]:
+        """Adopt the channel copy of the wrap once, after a sign-in the person confirmed. A failure to read
+        the ring is not an error here: the server's copy is the fallback."""
+        if not (self._signed_in and self._confirmed) or self._keyring is None:
+            return None
+        with self._lock:
+            wrap, self._wrap = self._wrap, None
+        if wrap is None:
+            return None
+        try:
+            self.keyring_result = self._keyring().adopt_wrap(wrap)
+        except PolarisError:
+            self.keyring_result = None
+        return self.keyring_result
 
     def decline_account(self) -> None:
         """The person said "not you" (or the screen timed out): every held record is dropped and the LAN
@@ -364,4 +400,5 @@ def start_nearby_sign_in(
         routes=nd.routes,
         expires_at=ctx.now() + int(math.ceil(started.expires_in)),
         device_name=label,
+        keyring=nd.keyring,
     )

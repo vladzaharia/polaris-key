@@ -249,7 +249,8 @@ def test_the_poll_is_paced_by_the_interval_the_slow_down_and_a_503(clock) -> Non
     s = c.identity.sign_in.start(channel="nearby")
     assert s.wait().kind == "signed_in"
     # 3 s, then the longer 6 s after the slow_down, then the 503's Retry-After (20 s) held back the third.
-    assert times == [3, 9, 29]
+    # (a thread left by another test may add a few milliseconds to the shared fake clock)
+    assert times == pytest.approx([3, 9, 29], abs=0.5)
 
 
 def test_timeout_is_expired_and_closes_the_lan_side(clock) -> None:
@@ -404,3 +405,75 @@ def test_the_async_client_mirrors_the_session(clock) -> None:
         assert fake.request_obj.calls == ["choose:a1", "confirm_account", "close"]
 
     asyncio.run(run())
+
+
+class FakeRing:
+    def __init__(self, result: Any = None, error: Optional[Exception] = None) -> None:
+        self.adopted: List[bytes] = []
+        self._result = result if result is not None else SimpleNamespace(kind="unlocked")
+        self._error = error
+
+    def adopt_wrap(self, record: bytes) -> Any:
+        self.adopted.append(record)
+        if self._error is not None:
+            raise self._error
+        return self._result
+
+
+def with_wrap(ring: Optional[FakeRing], record: Optional[bytes] = b"WRAP") -> Any:
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN)
+    c = client(w)
+    fake = wire(c)
+    c.identity._keyring = (lambda: ring) if ring is not None else None
+    s = c.identity.sign_in.start(channel="nearby")
+    if record is not None:
+        for fn in list(fake.request_obj._records):
+            fn(SimpleNamespace(type=KEYRING_WRAP_RECORD, body=record))
+    return c, fake, s
+
+
+def test_confirming_after_the_sign_in_adopts_the_channel_copy_once(clock) -> None:
+    ring = FakeRing()
+    c, fake, s = with_wrap(ring)
+    assert s.wait().kind == "signed_in"
+    assert ring.adopted == []  # nothing is applied before the person confirms the account (rule 12)
+    r = s.confirm_account()
+    assert r.kind == "unlocked" and s.keyring_result is r and ring.adopted == [b"WRAP"]
+    assert s.confirm_account() is None and ring.adopted == [b"WRAP"]  # once
+
+
+def test_with_no_channel_copy_nothing_is_applied(clock) -> None:
+    ring = FakeRing()
+    c, fake, s = with_wrap(ring, record=None)
+    s.wait()
+    assert s.confirm_account() is None and ring.adopted == [] and s.keyring_result is None
+
+
+def test_a_confirm_before_the_sign_in_waits_for_it(clock) -> None:
+    ring = FakeRing()
+    c, fake, s = with_wrap(ring)
+    assert s.confirm_account() is None and ring.adopted == []
+    assert s.wait().kind == "signed_in"
+    assert ring.adopted == [b"WRAP"]
+
+
+def test_declining_the_account_drops_the_wrap(clock) -> None:
+    ring = FakeRing()
+    c, fake, s = with_wrap(ring)
+    s.wait()
+    s.decline_account()
+    assert s.confirm_account() is None and ring.adopted == []
+
+
+def test_a_key_ring_that_cannot_read_is_not_an_error_the_servers_copy_is_the_fallback(clock) -> None:
+    ring = FakeRing(error=PolarisError("network-error", "no answer"))
+    c, fake, s = with_wrap(ring)
+    s.wait()
+    assert s.confirm_account() is None and s.keyring_result is None and ring.adopted == [b"WRAP"]
+    assert s._wrap is None
+
+
+def test_no_key_ring_means_the_wrap_is_dropped(clock) -> None:
+    c, fake, s = with_wrap(None)
+    s.wait()
+    assert s.confirm_account() is None

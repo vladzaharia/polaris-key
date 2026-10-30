@@ -16,6 +16,8 @@ from .client import (
     RingPin,
     SyncCodec,
     UnlockResult,
+    WrapBody,
+    parse_wrap_record,
 )
 
 __all__ = [
@@ -32,4 +34,6 @@ __all__ = [
     "RingPin",
     "SyncCodec",
     "UnlockResult",
+    "WrapBody",
+    "parse_wrap_record",
 ]

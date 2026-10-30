@@ -94,6 +94,7 @@ class IdentityClient:
         register_nearby_keys: Optional[Callable[[NearbyCredentials], None]] = None,
         nearby_signer: Optional[Callable[[], Any]] = None,
         cloud_nearby: Optional[Callable[[], Any]] = None,
+        keyring: Optional[Callable[[], Any]] = None,
     ) -> None:
         self._ctx = ctx
         self._tokens = tokens
@@ -134,6 +135,7 @@ class IdentityClient:
         self._nearby = NearbyNamespace(ctx, self._discover, nearby_runtime, self._start_nearby_approver)
         self._nearby_signer = nearby_signer
         self._cloud_nearby = cloud_nearby
+        self._keyring = keyring
         self._nearby_runtime = nearby_runtime
         #: The nearby route client (``nearby/start``, ``poll``, ``approve``): the session (D) and the
         #: approver (M) of later slices drive it; a host does not call it.
@@ -164,6 +166,7 @@ class IdentityClient:
             supported=lambda role: self._nearby_runtime is not None
             and nearby is not None
             and bool(self._nearby_runtime(role)),
+            keyring=self._keyring,
         )
         return start_nearby_sign_in(deps, self._deps, **opts)
 
@@ -182,7 +185,12 @@ class IdentityClient:
             # This device's name in the other device's list (§12.7.1); never an account identifier.
             opts["label"] = self._ctx.device_label(None) or None
         return start_nearby_approver(
-            nearby=nearby, routes=self._nearby_routes, creds=self._nearby_credentials, handler=handler, **opts
+            nearby=nearby,
+            routes=self._nearby_routes,
+            creds=self._nearby_credentials,
+            handler=handler,
+            keyring=self._keyring,
+            **opts,
         )
 
     def _store_identity(self, who: Optional[SignedInIdentity]) -> None:
