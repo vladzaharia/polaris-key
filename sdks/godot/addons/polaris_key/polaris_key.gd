@@ -77,7 +77,7 @@ const BOOT_SCENE := "res://addons/polaris_key/ui/boot/pkey_boot.tscn"
 var core: PKeyCore = null
 ## The Cloud Connect client (services/connect/client.gd): `identity()`, `list_devices()`, `current()`,
 ## `discovery_keys()` and `leave()`, with the LAN and relay halves following. Null until configure().
-var connect: PKeyConnectClient = null
+var cloud_connect: PKeyConnectClient = null
 var _ring_hook_added := false
 ## The device principal's surface (services/devices.gd); null until configure().
 var devices: PKeyDevices = null
@@ -229,9 +229,9 @@ func _build_connect(opts: PKeyOptions, keys: Object) -> void:
 	var state := opts.connect_state
 	if state == null:
 		state = PKeyConnectState.new(core.product, PKeyBackupExclusion.root(opts.store_root))
-	connect = PKeyConnectClient.new(core, state, keys)
-	connect.devices = devices
-	connect.allow_ephemeral_keys = opts.allow_ephemeral_keys
+	cloud_connect = PKeyConnectClient.new(core, state, keys)
+	cloud_connect.devices = devices
+	cloud_connect.allow_ephemeral_keys = opts.allow_ephemeral_keys
 
 
 ## The sign-out chain (A-3): Cloud Sync flushes, signs the machine out, forgets the ring, purges, in

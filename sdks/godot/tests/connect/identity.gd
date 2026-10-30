@@ -543,12 +543,12 @@ func _devices(t: PKeyTestContext, core: PKeyCore) -> void:
 	t.check("account_required passes through", not refused.ok and String(refused.code) == "account_required")
 
 
-# ── PolarisKey.connect ───────────────────────────────────────────────────────────────────
+# ── PolarisKey.cloud_connect ───────────────────────────────────────────────────────────────────
 
 func _facade(t: PKeyTestContext) -> void:
 	var sdk := PKeyTestFixtures.new_sdk()
-	var before: Variant = sdk.get("connect")
-	t.check("PolarisKey.connect is null until configure()", before == null)
+	var before: Variant = sdk.get("cloud_connect")
+	t.check("PolarisKey.cloud_connect is null until configure()", before == null)
 	var keys := PKeyDeviceKeyStore.for_tests(PRODUCT, _scratch.path_join("facade"))
 	var opts := PKeyTestFixtures.options(_server.base_url(), PKeyMemoryStore.new(ME, TOKEN), _clock, PRODUCT, _trust)
 	opts.device_keys = keys
@@ -556,8 +556,8 @@ func _facade(t: PKeyTestContext) -> void:
 	opts.ring_vault = PKeySyncRingVault.new(PRODUCT, _scratch.path_join("facade-vault"), true)
 	opts.allow_ephemeral_keys = true
 	t.check("configure() builds it", sdk.configure(opts).ok)
-	var client: Variant = sdk.get("connect")
-	t.check("PolarisKey.connect is the Connect client over the shared keys and devices", \
+	var client: Variant = sdk.get("cloud_connect")
+	t.check("PolarisKey.cloud_connect is the Connect client over the shared keys and devices", \
 			client is PKeyConnectClient and client.allow_ephemeral_keys and client.devices == sdk.devices)
 	var pub := _public(keys)
 	var body := {"ring": _ring(SUB, 1, [pub, X]), "certificate": _cert(1, SUB, ME, pub), "discKeys": [_k(1)]}
@@ -566,4 +566,20 @@ func _facade(t: PKeyTestContext) -> void:
 	await sdk.start()
 	var r: PKeyResult = await client.identity()
 	t.check("identity() through the facade", r.ok and r.detail["epoch"] == 1 and _calls().has("GET /connect/identity"), str(_calls()))
+	_signal_idiom(t, sdk)
 	sdk.queue_free()
+
+
+## The usual Godot idiom, `PolarisKey.connect("signal", callable)`, still reaches Object.connect on the
+## autoload: the Connect client must not be called `connect`. Typed as Node and untyped.
+func _signal_idiom(t: PKeyTestContext, sdk: Node) -> void:
+	var hits := []
+	var typed: Node = sdk
+	var untyped = sdk
+	t.check("PolarisKey.connect(signal, callable) connects, typed", \
+			typed.connect("state_changed", func(s: Dictionary) -> void: hits.append(["typed", s])) == OK)
+	t.check("PolarisKey.connect(signal, callable) connects, untyped", \
+			untyped.connect("state_changed", func(s: Dictionary) -> void: hits.append(["untyped", s])) == OK)
+	sdk.emit_signal("state_changed", {"probe": 1})
+	t.check("both handlers ran", hits.size() == 2 and hits[0][0] == "typed" and hits[1][0] == "untyped" and hits[0][1] == {"probe": 1})
+	t.check("Object.connect is not shadowed by a property", not ("connect" in sdk.get_property_list().map(func(p: Dictionary) -> String: return p["name"])))

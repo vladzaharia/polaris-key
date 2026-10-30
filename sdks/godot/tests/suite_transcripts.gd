@@ -50,7 +50,7 @@ extends RefCounted
 # (with the verified file's `size` and `sha256`), `refused` for a wire or SDK error code
 # (PKeyConstants.ERROR_CODE_VALUES) with its `code`, else `error`.
 #
-# `connectIdentity` and `connectDevices` (CC-14.1b, `connect.identity`) are PolarisKey.connect.identity(refresh)
+# `connectIdentity` and `connectDevices` (CC-14.1b, `connect.identity`) are PolarisKey.cloud_connect.identity(refresh)
 # and list_devices() over a memory state record (PKeyOptions.connect_state) and the fixture device keys of
 # `args.keyLabel` (format.ts: the Ed25519 seed is SHA-256(label), the agreement key is SHA-256(label +
 # ":agree") with the top bit of its last byte clear). A step whose label differs from the one before
@@ -475,7 +475,7 @@ static func _relay_ticket(sdk: Node, out: Dictionary) -> void:
 ## `connect.identity()` and `connect.list_devices()` (CC-14.1b, `connect.identity`); see the header.
 static func _connect_step(sdk: Node, step: Dictionary, out: Dictionary) -> void:
 	# `connect` is also a method of Node: read the client by name so the call stays dynamic.
-	var client: PKeyConnectClient = sdk.get("connect")
+	var client: PKeyConnectClient = sdk.get("cloud_connect")
 	var label := String(step["args"]["keyLabel"])
 	if sdk.get_meta("pkey_connect_label", "") != label:
 		# A different label is a different key pair: the next call registers it.
