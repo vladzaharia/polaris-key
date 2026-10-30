@@ -82,6 +82,7 @@ from ..connect.dial import dial_race
 from ..connect.errors import LanError
 from ..connect.lan import Admitted, GatedProtocol, admit_transport, listen_socket
 from ..connect.lan_judge import PendingLimiter, text_verdict
+from ..connect.nearby import ApproveAnswerInput
 from ..constants_generated import ErrorCode
 from .device_keys import DeviceKeyPort
 from .peer_advert import advert_epoch, parse_txt, product_tag
@@ -263,18 +264,6 @@ class NearbyApproverStatus(NamedTuple):
     #: Why it stopped, when it did.
     reason: Optional[str]
     prompt: bool
-
-
-@dataclass(frozen=True)
-class ApproveAnswerInput:
-    """The answer of ``nearby/approve`` as the host read it (§15.6.1 rule 6)."""
-
-    #: The HTTP status, or ``None`` when there was no answer.
-    http: Optional[int]
-    #: The body text, or ``None``.
-    body: Optional[str]
-    #: The host's fresh read of discovery: does it still name ``nearby`` and ``nearbyApprove``?
-    discovery_nearby: bool
 
 
 class FinishOutcome(NamedTuple):

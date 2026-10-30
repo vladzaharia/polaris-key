@@ -34,7 +34,7 @@ import httpx
 
 from .backend import BackendClient
 from .core.device_keys import DeviceKeyPort
-from .connect import CloudConnect, ConnectClient
+from .connect import CloudConnect, ConnectClient, NearbyDeps
 from .keyring import KeyringClient
 from .commerce import CommerceClient
 from .cloud_sync.api import CloudSyncApi, CloudSyncClient
@@ -77,6 +77,7 @@ from .devices.client import (
     RegisterResult,
 )
 from .devices.facts import ProbeDeclaration
+from .identity.account import identity_fragment_from
 from .identity.client import IdentityClient
 from .distribution import DistributionClient
 from .discovery import (
@@ -335,7 +336,19 @@ class PolarisKeyClient:
         #: Cloud Connect (WIRE-CONTRACT-V5 §15): LAN and relay behind one facade. Nothing starts until
         #: ``cloud_connect.start()``: no thread, no socket.
         self.cloud_connect = CloudConnect(
-            self.connect, lambda: self._discovery_doc, apply_trust=self._apply_peer_trust, now=self.core.now
+            self.connect,
+            lambda: self._discovery_doc,
+            apply_trust=self._apply_peer_trust,
+            now=self.core.now,
+            # Nearby approval (CC-15) reads Identity's discovery, never Connect's, and works with Connect off.
+            nearby=NearbyDeps(
+                slug=self.product,
+                now=self.core.now,
+                require_identity=lambda: self.core.require_service("identity", Feature.IDENTITY_NEARBY),
+                identity=self._nearby_identity,
+                signed_in=lambda: self.identity.current() is not None,
+                signer=self.connect.nearby_signer,
+            ),
         )
         # Signing out first stops Cloud Connect (the sessions, the relay and the LAN service are this
         # person's devices' business), then forgets the held roster, certificate and K_disc (the device
@@ -533,11 +546,26 @@ class PolarisKeyClient:
                 self._cache.patch(**patch)
         return r
 
+    def _nearby_identity(self, fresh: bool) -> Optional[Dict[str, Any]]:
+        """The Identity fragment of discovery for nearby approval; loaded again first when ``fresh`` (or
+        when none is held). ``None`` while Identity is off or discovery cannot be read."""
+        if fresh or self._discovery_doc is None:
+            try:
+                self.discover()
+            except Exception:
+                pass
+        return identity_fragment_from(self._discovery_doc)
+
     def _stop_cloud_connect(self) -> None:
-        """The sign-out hook: stop Cloud Connect. A host callback that holds the Connect thread cannot hold
+        """The sign-out hook: stop Cloud Connect, then the nearby adverts and requests (G18: after
+        Connect, before the device leaves it). A host callback that holds the Connect thread cannot hold
         the sign-out past the bound: the transports are force-cancelled and sign-out goes on."""
         try:
             self.cloud_connect.stop()
+        except Exception:
+            pass
+        try:
+            self.cloud_connect.nearby.stop_all()
         except Exception:
             pass
 
@@ -545,6 +573,10 @@ class PolarisKeyClient:
         """Stop Cloud Connect, the refresh thread and release the HTTP client. Safe to call twice."""
         try:
             self.cloud_connect.stop()
+        except Exception:
+            pass
+        try:
+            self.cloud_connect.nearby.stop_all()
         except Exception:
             pass
         self._timer_stop.set()
