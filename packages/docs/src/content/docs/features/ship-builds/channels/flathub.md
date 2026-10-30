@@ -4,7 +4,7 @@ sidebar:
 title: "Flathub"
 description: "Declare a Flathub app in .pkey/distribution and let the publish step open the update pull request to its flathub repository."
 type: "reference"
-lastReviewed: "2026-10-24"
+lastReviewed: "2026-10-28"
 ---
 
 Flathub updates are pull requests to `flathub/<appId>`. The publish step moves each `extra-data` source of the app's manifest to the new build and refreshes the MetaInfo. The checker JSON Flathub's `x-checker-data` reads is on [Install sources](/docs/features/ship-builds/channels/feeds/#flathub).
@@ -32,3 +32,5 @@ After that first submission, `channels: auto` runs `pkey channel sync` after eac
 - **MetaInfo screenshots come only from Polaris Key's image host.** A MetaInfo never names your own screenshot URLs or a download blob. Until hosted copies of your listing images are served, it has no `<screenshots>` and the step warns; Flathub requires at least one, so add them in the pull request yourself.
 - **The listing fills the MetaInfo.** A missing required field or one over the limit stops the step with the field named.
 - **A dry run needs no token.** The manifest update is then shown as the MetaInfo only.
+
+In the console, the channel's page (**Ship builds → Channel setup → Flathub**) shows its status and releases.

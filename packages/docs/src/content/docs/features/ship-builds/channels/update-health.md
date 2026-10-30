@@ -4,7 +4,7 @@ sidebar:
 title: "Update health"
 description: "The update outcome events devices report, the funnel the console shows per rollout, the opt-in halt-only auto-halt on revert and boot-rollback rates, and Sentry alerts that open halt candidates an operator confirms — with the SDK tagging convention."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 ---
 
 After a release reaches a device, the device says what happened: it was offered the update,
@@ -155,7 +155,7 @@ To connect a Sentry organization:
 1. In Sentry, create an **internal integration** with the **Alert Rule Action** and webhooks
    enabled, and set its webhook URL to `https://key.plrs.im/<product>/distribution/hooks/sentry`.
 2. Store its **client secret** as a channel credential of kind `sentry-integration`
-   (**Ship builds → Channel credentials**; the Health page links there while Sentry is not
+   (**Ship builds → Credentials**; the Health page links there while Sentry is not
    connected). Without one, the hook answers not-found.
 3. Add the integration as an action on an issue alert rule.
 

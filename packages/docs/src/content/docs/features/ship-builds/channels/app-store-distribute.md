@@ -1,8 +1,8 @@
 ---
 title: "Distribute on the App Store"
-description: "Send a build to TestFlight and the App Store, push the store listing, manage in-app purchases, and read the App Store page of a product."
+description: "Send a build to TestFlight and the App Store, push the store listing, manage in-app purchases, and read the App Store channel page of a product."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 sidebar:
   order: 6.5
 ---
@@ -14,7 +14,7 @@ This page continues [App Store](/docs/features/ship-builds/channels/app-store/):
 The Distribute flow takes a build of the pinned app through TestFlight and App Review from the
 console API, under the same `/manage/api/products/<slug>/distribution/connectors/asc/` prefix.
 Uploading the build stays in CI; everything after the upload is here. In the console it is the
-**Ship builds → App Store** page ([App Store: Distribute](/docs/features/ship-builds/channels/app-store/)).
+**Ship builds → Channel setup → App Store → Releases** tab (the Distribute flow; [App Store: Distribute](/docs/features/ship-builds/channels/app-store/)).
 
 | `GET`                                 | Answers                                                                                                                                                                                                                                                                                                                      |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -143,9 +143,9 @@ refuses them (409 `first_iap_portal`). The review screenshot is added in App Sto
 
 ## App Store: Distribute and App Store products
 
-Two console pages drive a product's App Store app through the
-[App Store Connect connector](/docs/features/ship-builds/channels/app-store/): **Ship builds →
-App Store** takes a build to TestFlight and the App Store, and **Commerce → In-app purchases** creates
+Two console areas drive a product's App Store app through the
+[App Store Connect connector](/docs/features/ship-builds/channels/app-store/): **Ship builds → Channel setup → App Store → Releases**
+takes a build to TestFlight and the App Store, and **Commerce → In-app purchases** creates
 the In-App Purchases the [commerce bridge](/docs/features/commerce/) maps to license
 flags. Both act only on the app the product is pinned to, and both are for platform admins.
 
@@ -155,11 +155,11 @@ a step fails halfway or the connection drops, confirming again resumes from what
 happened instead of repeating it.
 
 When the product has no usable App Store Connect connector (no key, no pin, or a channel that
-names no app) both pages say why and link to **Channel credentials**.
+names no app) the Releases tab and Setup say why and point to the channel's **Setup** tab.
 
-## The App Store page
+## The Releases tab
 
-The page has the **Distribute** flow on the left and, on the right, what App Store Connect has now:
+On **Ship builds → Channel setup → App Store → Releases**, the tab has the **Distribute** flow on the left and, on the right, what App Store Connect has now:
 the app's newest versions with their state, and its open review submissions. The step, the build
 and the version are kept in the URL, so a refresh or a shared link opens the same place, and an
 earlier step that is not finished yet comes first.

@@ -2,7 +2,7 @@
 title: "Choose a channel"
 description: "Pick where a build reaches customers, then follow the page for that channel."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 sidebar:
   order: 1
 ---
@@ -148,8 +148,8 @@ A manifest that names `release` and `update` without `distribution` is refused w
 - **A console section**, shown only while Distribution is on: the
   [Matrix](/docs/features/ship-builds/channels/) (releases × channels, with a drawer per cell holding
   its readiness and rollout controls), **Rollouts**, **Channel setup** (capabilities, storefront
-  feed URLs and the distribution keys), **Access** (delivery access per deliverable), **Health**
-  (the funnel, the auto-halt and the Sentry candidates) and **Channel credentials**. The
+  feed URLs and, per channel, its own page), **Access** (delivery access per deliverable), **Health**
+  (the funnel, the auto-halt and the Sentry candidates) and **Credentials**. The
   Release → Distribution → Update chain is shown on **Core → Services**.
 
 With Distribution off, a product serves no downloads at all: every byte route and alias answers
@@ -252,6 +252,21 @@ The audit actions are `distribution.outlet.capabilities` and
 `distribution.outlet.capabilities.revert`. A removed channel answers 404 to both writes, and the
 `outletCapabilities` hook answers `null` for it.
 
+## The channel page
+
+Every channel has one page in the console: **Ship builds → Channel setup**, then the channel. Its
+tabs show only what applies to the channel:
+
+- **Status**: delivery state, what needs attention, platforms.
+- **Releases**: the channel's releases and rollouts. On App Store it also holds the
+  [Distribute flow](/docs/features/ship-builds/channels/app-store-distribute/).
+- **Listing**: the store listing and its fit, for stores that take one.
+- **Sales**: purchases and the product map, for stores that sell.
+- **Setup**: the store keys and, where the store has a connector, its controls.
+
+The Docs button opens the channel's own page below, or this page for a channel without one
+(AltStore, F-Droid, Obtainium, TestFlight, web, app installer, Play testing and AltStore PAL).
+
 ## Channel credentials
 
 A store connector signs in to its store with an **channel credential** — an App Store Connect API
@@ -260,7 +275,7 @@ in Core, in their own sealed table, and Distribution is the only service that ca
 (`core/outletCredentials.ts`, held to that by a test); every open is audited. The JWTs and access
 tokens a connector mints from them (`core/outletTokens.ts`) are cached, sealed, and keyed by a
 non-secret version of the credential, so the cache is checked first and a credential is opened
-only when a fresh token is needed. Operators set them in **Ship builds → Channel credentials** — see
+only when a fresh token is needed. Operators set a store's keys on its channel page, **Setup** tab (**Ship builds → Channel setup**); keys that belong to no channel stay on **Ship builds → Credentials**. See
 Channel credentials (platform admins). The first connector is
 the [App Store Connect connector](/docs/features/ship-builds/channels/app-store/), then the
 [Google Play connector](/docs/features/ship-builds/channels/google-play/) and the read-only
@@ -340,8 +355,8 @@ release off every surface, yank it or pin the release track under **Ship builds 
   see [Delivery access](/docs/features/ship-builds/channels/delivery/).
 - **Health** is [update health](/docs/features/ship-builds/channels/update-health/): the funnel per
   rollout, the auto-halt and the Sentry halt candidates.
-- **Channel credentials** holds the store keys the connectors use and the Sentry integration
-  secret; see Channel credentials (platform admins). Its
+- **Credentials** holds the keys that belong to no channel, such as the Sentry integration
+  secret; each store's own keys are on its channel page, **Setup** tab; see Channel credentials (platform admins). Its
   **Store connectors** cards show each connector's state, which key it uses (the product's own or
   the platform's team key, see Store connections) and its
   configuration actions: App Store Connect **Release this version**, **TestFlight public link**

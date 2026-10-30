@@ -2,7 +2,7 @@
 title: "Polaris Locker: the built-in storefront"
 description: "Ship builds → Storefronts → Polaris Locker: readiness, how Polaris Locker lists the product, who it is shown to, the ways to add it, group labels, a persona preview and 28 days of analytics."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 sidebar:
   order: 15
 ---

@@ -4,7 +4,7 @@ sidebar:
 title: "Homebrew"
 description: "Declare your Homebrew tap in .pkey/distribution and let the publish step open the pull request that updates the cask or formula."
 type: "reference"
-lastReviewed: "2026-10-24"
+lastReviewed: "2026-10-28"
 ---
 
 Homebrew is your own tap, a GitHub repository. The publish step writes the cask or formula for the track's newest release and opens a pull request to the tap.
@@ -32,3 +32,5 @@ With `channels: auto`, an app `release publish` is followed by `pkey channel syn
 - **A formula** (`Formula/<homebrewFormula>.rb`) takes a `.tar.gz` or `.zip` for macOS and Linux (`on_macos`, `on_linux`, `on_arm`, `on_intel`) and installs `--command` (default the formula name). Linux counts only once the formula is declared.
 
 Sync takes neither flag, so to set them run the step yourself: `pkey storefront homebrew pr --channel stable --command dice` (as the Action's `command: storefront homebrew pr`).
+
+In the console, the channel's page (**Ship builds → Channel setup → Homebrew**) shows its status and releases.

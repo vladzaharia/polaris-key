@@ -4,7 +4,7 @@ sidebar:
 title: "Steam storefront"
 description: "What Polaris Key does for a product on Steam: reads the app's builds and branches, sets a build live on a named branch, and, for the store page Steam lets no API edit, a copy card, the generated asset pack and a per-app checklist."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 ---
 
 Steam has no listing API. None of the Steamworks Web API's 33 interfaces edits a store page, so
@@ -28,7 +28,7 @@ The app is the `appId` of the product's `steam` channel in `.pkey/distribution` 
 id when there are several). A product being set up for Steam, with no Steam channel yet, uses the
 app a platform admin assigned to it in Store connections.
 
-The key is the product's own `steam-publisher-key` channel credential, pinned to that app id. With
+The key is the product's own `steam-publisher-key` channel credential, pinned to that app id and set on the channel page's **Setup** tab (**Ship builds → Channel setup → Steam**). With
 no key of its own, the product uses the platform's Steam group key (`steam.publisher-key`), and only
 for the app assigned to it. A key pinned to another app is never used. Without an app and a key,
 the Steam page says what is missing and makes no Steam call.
@@ -57,7 +57,7 @@ kind of attention item on Ship. More in [Commerce](/docs/features/commerce/#stor
 
 ## Builds and branches
 
-**Builds** lists the app's branches with the build live on each, the newest builds, and, for each
+On the channel page, **Releases** lists the app's branches with the build live on each, the newest builds, and, for each
 release track the channel's `branches` map declares, the build on its branch. The default branch is
 `public`.
 

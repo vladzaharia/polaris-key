@@ -2,7 +2,7 @@
 title: "Storefronts"
 description: "Ship builds → Storefronts: every store's capabilities from its adapter, and the Add to storefronts flow (prerequisites, listing, assets, plan, run, submit and release) that provisions a product onto them, resumably from the ledger."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 sidebar:
   order: 15
 ---
@@ -34,7 +34,7 @@ One tile per store, with:
 - **Not connected** or **Connection failing** when the team connection needs attention, and
   nothing when it is healthy.
 
-**Set up** opens the flow for that store alone. Store connections' **Set up** on an assigned app
+A tile's store name opens that channel's page, with its status, releases, listing, sales and setup. **Set up** opens the flow for that store alone. Store connections' **Set up** on an assigned app
 does the same.
 
 **Polaris Locker**, the storefront built into the platform (its Discover and
