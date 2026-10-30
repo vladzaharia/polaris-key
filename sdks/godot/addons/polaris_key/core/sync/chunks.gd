@@ -15,10 +15,6 @@ extends RefCounted
 ##
 ## `root` is the 32-byte ring root in E2E mode and `null` in server mode (ids only; an object is
 ## sealed under the ring, so `seal` and `open` need a root).
-##
-## The engine's AES-256-GCM here takes at most `PKeySyncAesGcm.MAX_BYTES` (64 KiB) a call, so an
-## object whose body is larger answers the reason `unsupported` (a seal answers an empty array)
-## instead of a wrong `auth`; U-23.G2 raises the cap (D-10).
 
 const OBJECT_VERSION := 0x01
 const CODEC_RAW := 0
@@ -70,7 +66,7 @@ static func _chunk_key(root: PackedByteArray, collection: String, id: PackedByte
 
 ## Seals `body` (the chunk for codec 0, one zstd frame for codec 1) as the object for `id`. The
 ## caller computed `id` from the plaintext; `open` checks it again. An empty array means refusal:
-## a bad root, id or codec, or a body over the AES-GCM cap.
+## a bad root, id or codec, or a body over 1 MiB.
 static func seal(root: PackedByteArray, collection: String, id: PackedByteArray, codec: int, body: PackedByteArray) -> PackedByteArray:
 	if root.size() != PKeySyncHkdf.ROOT_BYTES or id.size() != ID_BYTES:
 		return PackedByteArray()
@@ -124,8 +120,7 @@ static func zstd_content_size(f: PackedByteArray) -> int:
 ## "codec": int}` or `{"ok": false, "reason": r}`. The checks run in this order: `shape`,
 ## `version`, `codec`, `auth` (the tag, which covers the codec and the id), `nonce`, `decode` /
 ## `size` (the zstd frame must declare a content size of at most `SYNC_CDC_MAX_BYTES`, checked
-## before any decode), and last `id` (the keyed hash of the plaintext is `id`). `unsupported` is
-## this engine's own reason (see the file comment). `decode` is a `Callable(frame, size) ->
+## before any decode), and last `id` (the keyed hash of the plaintext is `id`). `decode` is a `Callable(frame, size) ->
 ## PackedByteArray` for a codec 1 body; the default is the engine's zstd (`PKeyPackZstd`).
 static func open(root: PackedByteArray, collection: String, id: PackedByteArray, object: PackedByteArray, decode: Callable = Callable()) -> Dictionary:
 	if object.size() < OBJECT_MIN_BYTES:
@@ -137,8 +132,11 @@ static func open(root: PackedByteArray, collection: String, id: PackedByteArray,
 		return _bad("codec")
 	if id.size() != ID_BYTES or root.size() != PKeySyncHkdf.ROOT_BYTES:
 		return _bad("auth")
+	# One AES-GCM call takes 1 MiB, the largest chunk (and, for codec 1, the largest stored frame
+	# a writer emits: it uses raw when zstd is not smaller). A longer body is refused as `size`
+	# without a tag check, where client-core would fail the tag or the plaintext size.
 	if object.size() - OBJECT_MIN_BYTES > PKeySyncAesGcm.MAX_BYTES:
-		return _bad("unsupported")
+		return _bad("size")
 	var aad := object.slice(0, 2)
 	aad.append_array(id)
 	var key := _chunk_key(root, collection, id)

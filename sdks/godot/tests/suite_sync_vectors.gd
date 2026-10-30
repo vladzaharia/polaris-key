@@ -2,20 +2,20 @@ extends RefCounted
 # Cloud Sync end-to-end primitives over the generator-owned mirror of conformance/corpus/v2/
 # sync-vectors.json (WIRE-CONTRACT-V5 §13.10, U-40.1): the the settings-size sections (primitives, AES-256-GCM, the
 # envelope, HPKE, wrap, recovery, adopt, U-40.5) and, from U-23.G1, the chunker, the chunk objects and
-# the manifest (cdcCases, cdcEditCases, deltaCases, chunkCases, manifestCases). Sections that need the
-# file stream or the transfer planner are typed N/A below, by name, and the suite
-# fails on a section that is in neither list, so a new corpus section is noticed.
+# the manifest (cdcCases, cdcEditCases, deltaCases, chunkCases, manifestCases). From U-23.G2 the file
+# stream with its ranged open and the transfer planner (fileStreamCases, transferPlanCases) run in
+# suite_sync_files. A section that is neither run, run elsewhere nor typed N/A below fails the suite,
+# so a new corpus section is noticed.
 
 const VECTORS := "res://tests/corpus/v2/sync-vectors.json"
 
 ## Implemented sections.
 const RUN := ["hkdfCases", "blindCases", "canonicalJsonCases", "recoveryCodeCases", "envelopeCases", "hpkeAnchor", "wrapCases", "adoptCases",
 		"cdcCases", "cdcEditCases", "deltaCases", "chunkCases", "manifestCases"]
-## Typed N/A: the section needs a primitive this slice does not ship.
-const NOT_APPLICABLE := {
-	"transferPlanCases": "needs the transfer planner (U-23.G2)",
-	"fileStreamCases": "needs the file stream (U-23.G2); GDScript AES-GCM refuses over 64 KiB until the 1 MiB-per-call cap (D-10)",
-}
+## Run by suite_sync_files (the file stream is big enough to be a suite of its own).
+const RUN_ELSEWHERE := ["fileStreamCases", "transferPlanCases"]
+## Typed N/A: a section whose primitive this lane does not ship (none now).
+const NOT_APPLICABLE := {}
 ## Members of the file that are not sections.
 const META := ["syncVectorsVersion", "description", "constants", "ringId"]
 
@@ -32,7 +32,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	t.check("syncVectorsVersion is 1", d.get("syncVectorsVersion") == 1)
 	_constants = d["constants"]
 	for k in d:
-		if META.has(k) or RUN.has(k):
+		if META.has(k) or RUN.has(k) or RUN_ELSEWHERE.has(k):
 			continue
 		if NOT_APPLICABLE.has(k):
 			t.info("N/A %s: %s" % [k, NOT_APPLICABLE[k]])
@@ -267,6 +267,9 @@ const GCM_GENERATED := [
 	[6, 100, 0, "dccfc53f97d18418d790f7b9c1bda95b1872cc4a00594fecf90be8d3bfb9970e"],
 	[7, 8192, 13, "c786d39a3561125d5c60f3cc4639d7c293e0e39c4df4ec826d8be6ec74158999"],
 	[8, 65536, 0, "bf67f08359cf5a0b4d607e9e985e337f32920a5351cdbec136c2a308be7cfc50"],
+	# U-23.G2 (D-10): a whole file segment in one call, with a file header as the AAD.
+	[9, 1048576, 64, "ed83240442c3290253fcdb5f82631fe850a440059f0eca7a057df9e06c8f0107"],
+	[10, 1048575, 0, "d839150e91d26a92f2f2adf74e0241fb9bf5e549435eb2421cef19000b82cef9"],
 ]
 
 
@@ -320,9 +323,8 @@ func _aes_gcm(t: PKeyTestContext, d: Dictionary) -> void:
 	t.check("a 16-byte key is refused", PKeySyncAesGcm.seal(k.slice(0, 16), n, m).is_empty())
 	t.check("an 11-byte nonce is refused", PKeySyncAesGcm.seal(k, n.slice(0, 11), m).is_empty())
 	t.check("a 13-byte nonce is refused", PKeySyncAesGcm.seal(k, _gen(13, 1, 0, 0), m).is_empty())
-	t.check("65537 bytes are refused", PKeySyncAesGcm.seal(k, n, _gen(65537, 1, 0, 0)).is_empty())
-	t.check("65536 bytes are accepted", PKeySyncAesGcm.seal(k, n, _gen(65536, 1, 0, 0)).size() == 65536 + 16)
-	t.check("an open of 65537 bytes is refused", PKeySyncAesGcm.open(k, n, _gen(65537 + 16, 1, 0, 0)) == null)
+	t.check("1 MiB + 1 bytes are refused", PKeySyncAesGcm.seal(k, n, _gen(PKeySyncAesGcm.MAX_BYTES + 1, 1, 0, 0)).is_empty())
+	t.check("an open of 1 MiB + 1 bytes is refused", PKeySyncAesGcm.open(k, n, _gen(PKeySyncAesGcm.MAX_BYTES + 1 + 16, 1, 0, 0)) == null)
 	t.check("an empty message opens to empty", (PKeySyncAesGcm.open(k, n, PKeySyncAesGcm.seal(k, n, PackedByteArray())) as PackedByteArray).is_empty())
 	_aes_gcm_timing(t, k, n)
 
@@ -377,6 +379,29 @@ func _aes_gcm_timing(t: PKeyTestContext, k: PackedByteArray, n: PackedByteArray)
 	var ratio := float(maxi(best_first, best_last)) / float(maxi(1, mini(best_first, best_last)))
 	t.info("tag compare, 4096 bytes x20: mismatch first %d us, last %d us, ratio %.3f" % [best_first, best_last, ratio])
 	t.check("tag compare time does not depend on the mismatch position", ratio < 1.5, "ratio %.3f" % ratio)
+	_aes_gcm_timing_segment(t, k, n)
+
+
+## D-10: one call takes a whole 1 MiB file segment. The numbers go to the log (CC-13 measured about
+## 1.6 MB/s, so 32 MiB, the lane cap, takes about 20 s). The only assertion is an order-of-magnitude
+## guard (30 s a call, 50 times the CC-13 figure), so a loaded machine does not fail it but a
+## regression to a quadratic path does.
+func _aes_gcm_timing_segment(t: PKeyTestContext, k: PackedByteArray, n: PackedByteArray) -> void:
+	var pt := _gen(PKeySyncAesGcm.MAX_BYTES, 31, 3, 1)
+	var aad := _gen(64, 1, 0, 0)
+	var t0 := Time.get_ticks_usec()
+	var sealed := PKeySyncAesGcm.seal(k, n, pt, aad)
+	var seal_us := Time.get_ticks_usec() - t0
+	t0 = Time.get_ticks_usec()
+	var o: Variant = PKeySyncAesGcm.open(k, n, sealed, aad)
+	var open_us := Time.get_ticks_usec() - t0
+	t.check("1 MiB seals and opens in one call", sealed.size() == pt.size() + 16 and o != null and (o as PackedByteArray) == pt)
+	var mbps_seal := pt.size() / float(seal_us)
+	var mbps_open := pt.size() / float(open_us)
+	t.info("aes-gcm 1 MiB: seal %.0f ms (%.2f MB/s), open %.0f ms (%.2f MB/s)" % [seal_us / 1000.0, mbps_seal, open_us / 1000.0, mbps_open])
+	t.info("aes-gcm 32 MiB lane cap: about %.0f s a file" % (32.0 * seal_us / 1000000.0))
+	t.check("1 MiB seals in under 30 s (order-of-magnitude guard)", seal_us < 30000000, "%d us" % seal_us)
+	t.check("1 MiB opens in under 30 s (order-of-magnitude guard)", open_us < 30000000, "%d us" % open_us)
 
 
 # ── U-40.5: envelope, HPKE, wrap, recovery blob, adopt ───────────────────────────────────────────
@@ -653,12 +678,18 @@ func _chunks(t: PKeyTestContext, rows: Array) -> void:
 	t.check("seal refuses a short root", PKeySyncChunks.seal(root.slice(0, 31), "saves", cid, 0, plain).is_empty())
 	t.check("chunk_id refuses a short root", PKeySyncChunks.chunk_id(root.slice(0, 31), "saves", plain).is_empty())
 	t.check("an object under another collection is refused as auth", PKeySyncChunks.open(root, "other", cid, obj).get("reason") == "auth")
+	# The largest chunk (SYNC_CDC_MAX_BYTES = 1 MiB) is one AES-GCM call (D-10).
+	var top := _gen(PKeyConstants.SYNC_CDC_MAX_BYTES, 3, 0, 1)
+	var top_id := PKeySyncChunks.chunk_id(root, "saves", top)
+	var top_obj := PKeySyncChunks.seal(root, "saves", top_id, 0, top)
+	t.check("a 1 MiB chunk seals", top_obj.size() == top.size() + PKeySyncChunks.OBJECT_MIN_BYTES)
+	t.check("a 1 MiB chunk opens", PKeySyncChunks.open(root, "saves", top_id, top_obj).get("ok", false))
 	var big := _gen(PKeySyncAesGcm.MAX_BYTES + 1, 3, 0, 1)
-	t.check("a body over the AES-GCM cap is not sealed", PKeySyncChunks.seal(root, "saves", PKeySyncChunks.chunk_id(root, "saves", big), 0, big).is_empty())
+	t.check("a body over 1 MiB is not sealed", PKeySyncChunks.seal(root, "saves", PKeySyncChunks.chunk_id(root, "saves", big), 0, big).is_empty())
 	var long_obj := PackedByteArray([1, 0])
 	long_obj.resize(2 + 12 + PKeySyncAesGcm.MAX_BYTES + 1 + 16)
 	long_obj[0] = 1
-	t.check("an object over the AES-GCM cap is unsupported, not auth", PKeySyncChunks.open(root, "saves", cid, long_obj).get("reason") == "unsupported")
+	t.check("an object with a body over 1 MiB is refused as size", PKeySyncChunks.open(root, "saves", cid, long_obj).get("reason") == "size")
 	t.check("id_bytes reads 64 lowercase hex characters", PKeySyncChunks.id_bytes(cid.hex_encode()) == cid)
 	t.check("id_bytes refuses uppercase", PKeySyncChunks.id_bytes(cid.hex_encode().to_upper()) == null)
 	t.check("id_bytes refuses a trailing newline", PKeySyncChunks.id_bytes(cid.hex_encode() + "\n") == null)
@@ -795,3 +826,4 @@ func _delta_have(rows: Dictionary, h: Dictionary) -> Array:
 	for r in _delta_side(rows, h):
 		out.append(r["id"])
 	return out
+

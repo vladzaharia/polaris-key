@@ -924,7 +924,8 @@ store's `dh`. The root, the code and every key print as redacted.
 
 - **Crypto in GDScript.** The engine has no AES-GCM, so values seal with AES-256-GCM over the
   engine's AES block cipher and a constant-time GHASH: about 7 ms for 8 KiB in the editor, at most
-  64 KiB per call (a setting is at most 8 KiB). Files stay native-only.
+  1 MiB per call (a file segment), about 1 MB/s. A synced file is at most 32 MiB on desktop (about
+  30 s to seal); on iOS and Android files wait for the native lanes.
 - **Device keys.** The ring opens its wrap with the product's own device key store under
   `store_root`, or the one you give as `PKeyOptions.device_keys`.
 
