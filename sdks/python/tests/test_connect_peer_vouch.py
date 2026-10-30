@@ -101,11 +101,11 @@ def test_label_is_omitted_when_hello_had_none_and_then_a_label_is_refused(port: 
 
 
 def test_the_label_is_compared_to_a_hello_the_session_already_cleaned(port: Any) -> None:
-    # A zero-width space between a base letter and a combining acute. One cleaning drops the space and
-    # keeps the two marks apart; a second cleaning composes them into one letter.
+    # A zero-width space between a base letter and a combining acute (N2). The strip comes before NFC,
+    # so one cleaning composes the letter and a second one changes nothing.
     raw = "e\u200b\u0301x"
     once = clean_label(raw)
-    assert once is not None and clean_label(once) != once
+    assert once == "\u00e9x" and clean_label(once) == once
     b = _build(port, VouchHello(label=raw, platform="linux"))
     ok = verify(b, H, VouchHello(label=once, platform="linux"), hello_cleaned=True)
     assert ok is not None and ok.label == once

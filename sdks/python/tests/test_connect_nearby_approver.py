@@ -850,9 +850,9 @@ def _raise(_a: Any) -> None:
 # -- N2: the VOUCH_REQ label against a cleaned HELLO label ----------------------------------------
 
 
-def test_an_honest_d_whose_label_does_not_clean_twice_the_same_way_still_verifies(env: Env) -> None:
+def test_an_honest_d_whose_label_has_an_invisible_between_base_and_mark_still_verifies(env: Env) -> None:
     env.start()
-    # A zero-width space between a base letter and a combining acute: cleaning twice differs.
+    # A zero-width space between a base letter and a combining acute: the strip comes before NFC (N2).
     d = env.dial(label="e\u200b\u0301x")
     d.wait_for(lambda: d.hello is not None)
     d.start_sas()
@@ -861,7 +861,7 @@ def test_an_honest_d_whose_label_does_not_clean_twice_the_same_way_still_verifie
     d.show_and_request()
     a = env.approvals[0]
     r = pick(a, shown_of(a, d))
-    assert r.request == REQUEST and r.label == "éx"
+    assert r.request == REQUEST and r.label == "\u00e9x"
 
 
 # -- secrets (G19) --------------------------------------------------------------------------------
