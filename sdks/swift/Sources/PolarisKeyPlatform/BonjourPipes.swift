@@ -80,6 +80,12 @@ public final class UnauthenticatedLimiter: @unchecked Sendable {
     public static let defaultPerAddress = 4
     public static let defaultPerGroup = 16
 
+    /// The mode-v approver's pool (§15.6.1 rule 2): one waiting session per source address, two per group,
+    /// eight in all (twice the four sessions the handshake limiter lets wait on a code).
+    public static func approver() -> UnauthenticatedLimiter {
+        UnauthenticatedLimiter(total: 8, perAddress: 1, perGroup: 2)
+    }
+
     public struct Slot: Sendable, Hashable {
         fileprivate let id: Int
         fileprivate let address: String
@@ -207,6 +213,7 @@ public enum BonjourRegistration {
         private var isClosed = false
         private var releaseSlot: (() -> Void)?
         private var authenticated = false
+        private var established = false
         public let remoteAddress: String
 
         fileprivate init(conn: NWConnection, queue: DispatchQueue, remote: String, release: (() -> Void)?) {
@@ -256,9 +263,16 @@ public enum BonjourRegistration {
             freeSlot()
         }
 
-        /// The pre-auth deadline: closes the socket unless the session was admitted. Idempotent.
+        /// The transport is up but the person has not answered yet (the mode-v approver, §15.6.1 rule 2): the
+        /// 30 s pre-auth clock stops, and the socket keeps its slot until `markAuthenticated()` or its end.
+        public func markEstablished() {
+            lock.withLock { established = true }
+        }
+
+        /// The pre-auth deadline: closes the socket unless the session was admitted or its transport is up.
+        /// Idempotent.
         fileprivate func closeUnlessAuthenticated() {
-            if lock.withLock({ authenticated }) { return }
+            if lock.withLock({ authenticated || established }) { return }
             shut()
         }
 
