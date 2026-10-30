@@ -12,9 +12,10 @@
  * a warning or refused.
  */
 
-import type {
-  ReservedDisplayNamesMode,
-  ValidationOptions,
+import {
+  checkDisplayName,
+  type ReservedDisplayNamesMode,
+  type ValidationOptions,
 } from "@polaris-key/manifest";
 import type { Db } from "../../db/types.js";
 import type { SettingsEnv } from "../platformSettings.js";
@@ -107,4 +108,33 @@ export async function displayCheckOptions(
     extraTerms: await reservedDisplayTerms(env, db),
     approved: await displayNameApproved(env, db, slug),
   };
+}
+
+/**
+ * The app name a screen or an email may show before the person consents (DISPLAY-NAME-INVISIBLE
+ * D-8): `name` when it passes {@link checkDisplayName} for this product, else the slug, the
+ * neutral frame. It is the same answer in both `identity.reservedDisplayNames` modes: the mode
+ * decides what is accepted at write time, never what a person is shown. Every surface that prints
+ * a product or listing name to an end user goes through this.
+ */
+export async function shownAppName(
+  env: SettingsEnv,
+  db: Db,
+  slug: string,
+  name: string,
+): Promise<string> {
+  const check = await displayCheckOptions(env, db, slug);
+  return checkDisplayName(name, check) === null ? name : slug;
+}
+
+/** The developer's name a screen may show: `name` when it passes the same check, else `null`. */
+export async function shownDeveloperName(
+  env: SettingsEnv,
+  db: Db,
+  slug: string,
+  name: string | null | undefined,
+): Promise<string | null> {
+  if (!name) return null;
+  const check = await displayCheckOptions(env, db, slug);
+  return checkDisplayName(name, check) === null ? name : null;
 }

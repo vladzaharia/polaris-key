@@ -439,6 +439,24 @@ const deviceLicense = async (deviceId: string) =>
 // ── the device-code flow ────────────────────────────────────────────────────────────────────
 
 describe("I-26 device-code flow", () => {
+  it.each([
+    ["a reserved name", "Google Play"],
+    ["a Hangul filler", "Acme\u3164"],
+  ])(
+    "draws an app named with %s by its slug (DISPLAY-NAME-INVISIBLE)",
+    async (_what, name) => {
+      await db.run("UPDATE products SET name = ? WHERE slug = ?", name, "djdl");
+      product = (await loadProduct(env, db, "djdl"))!;
+      await insertLic({ id: "lic_std", tier: "std", account: accountId });
+      const flow = await startDeviceFlow();
+      await callback(flow.state, flow.nonce, flow.binder);
+      const page = await readChooser(flow.binder!);
+      expect(page.res.status).toBe(200);
+      expect(page.html).toContain("djdl");
+      expect(page.html).not.toContain(name);
+    },
+  );
+
   it("shows the chooser instead of minting, and binds the device to the pick", async () => {
     await insertLic({ id: "lic_std", tier: "std", account: accountId });
     const before = await licenseCount();

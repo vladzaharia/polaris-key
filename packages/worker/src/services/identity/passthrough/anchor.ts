@@ -26,6 +26,7 @@ import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { resolveProductSetting } from "../../../core/settings/resolve.js";
 import type { ProductPublic } from "../../../core/products.js";
 import { getTier } from "../../../core/licensing/store.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 import { customerTierOf } from "../../../core/licensing/implicitTier.js";
 import { rankAnchorCandidates } from "../../../core/licensing/anchor.js";
 
@@ -94,7 +95,11 @@ export async function licenseConsentItem(
   return {
     kind: "license",
     anchor: {
-      name: shown?.label ?? product.name,
+      name:
+        shown?.label ??
+        (settings
+          ? await shownAppName(settings.env, db, product.slug, product.name)
+          : product.slug),
       tierName: shown?.label ?? null,
       term: best.expiresAt ?? "perpetual",
       // The seat this device would take: the next one, or none when this licence has none free.

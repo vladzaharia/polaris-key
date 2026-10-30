@@ -67,6 +67,7 @@ import { sameOriginDecisionPost } from "./deviceFlow.js";
 import { hostOrigin } from "../../../core/hosts.js";
 import { redirectToApprove } from "./deviceApproval.js";
 import { decodeReplacePick, isReplaceGroup } from "../licenseChoice.js";
+import { shownDeveloperName } from "../../../core/accounts/reservedDisplayNames.js";
 import { flowView, listingDeveloper } from "./pages.js";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
 
@@ -473,14 +474,19 @@ export async function renderChooser(
   if (!minted.ok) return startAgainPage();
   const action = choosePath(req, product);
   // The app's strip on every step of the chooser (identity.refusals): who is asking, and where.
-  const developer = await listingDeveloper(hooks);
+  const developer = await shownDeveloperName(
+    env,
+    db,
+    product.slug,
+    await listingDeveloper(hooks),
+  );
   const shown = pageApp(
     await appForPage({ product, env, db, hooks }).catch(() => ({
-      name: product.name,
+      name: product.slug,
     })),
   );
   const passport = {
-    name: product.name,
+    name: shown.app.name,
     iconUrl: shown.app.iconUrl,
     artUrl: shown.app.artUrl ?? null,
     action: "wants you to sign in",
@@ -503,7 +509,7 @@ export async function renderChooser(
             action,
             token,
             device: device.label,
-            productName: product.name,
+            productName: shown.app.name,
             thisDevice: isDeviceCodeFlow(c.flow)
               ? c.deviceLabel
               : "this browser",
@@ -537,7 +543,7 @@ export async function renderChooser(
       body:
         (isDeviceCodeFlow(c.flow) ? approvalFacts(req, c.flow, now) : "") +
         chooserBody({
-          productName: product.name,
+          productName: shown.app.name,
           deviceLabel: c.deviceLabel,
           action,
           token,

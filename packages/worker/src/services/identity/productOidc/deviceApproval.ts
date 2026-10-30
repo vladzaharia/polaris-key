@@ -14,8 +14,7 @@
 // a forwarded copy reaches the flow only through the binder.
 
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
-import { checkDisplayName } from "@polaris-key/manifest";
-import { displayCheckOptions } from "../../../core/accounts/reservedDisplayNames.js";
+import { shownDeveloperName } from "../../../core/accounts/reservedDisplayNames.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import { hashKey, randomId } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
@@ -536,17 +535,18 @@ async function approvalApp(
   developer: string | null;
   imgOrigin: string | null;
 }> {
-  const raw = await appForPage({ product, env, db, hooks }).catch(() => ({
-    name: product.name,
+  // `appForPage` already returns the checked name (the slug when it fails the display rules).
+  const named = await appForPage({ product, env, db, hooks }).catch(() => ({
+    name: product.slug,
     iconUrl: null,
     artUrl: null,
   }));
-  const developer = await listingDeveloper(hooks);
-  const check = await displayCheckOptions(env, db, product.slug);
-  const named = {
-    ...raw,
-    name: checkDisplayName(raw.name, check) === null ? raw.name : product.slug,
-  };
+  const developer = await shownDeveloperName(
+    env,
+    db,
+    product.slug,
+    await listingDeveloper(hooks),
+  );
   const shown = pageApp(named);
   return {
     app: {
@@ -554,10 +554,7 @@ async function approvalApp(
       iconUrl: shown.app.iconUrl ?? null,
       artUrl: shown.app.artUrl ?? null,
     },
-    developer:
-      developer && checkDisplayName(developer, check) === null
-        ? developer
-        : null,
+    developer,
     imgOrigin: shown.imgOrigin,
   };
 }

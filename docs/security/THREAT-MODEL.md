@@ -10263,16 +10263,26 @@ user code. WIRE-CONTRACT-V4 §12.7 is the normative form; plans/PX-W13.md §6 is
 closes S-16 §5.4 items 13 and 14 (app impersonation on the card, and spoofed device names).
 
 - **Spoofed app names.** `@polaris-key/manifest`'s `checkDisplayName` refuses `product.name`,
-  `listing.name` and `listing.developerName` text that holds a control, zero-width or bidi code
-  point or starts or ends with whitespace (`invalid_display_text`, always an error), and reports
+  `listing.name` and `listing.developerName` text that holds a control, format, invisible or bidi
+  code point (the refused set `DISPLAY_NAME_REFUSED`, Unicode 16.0: soft hyphen, Hangul fillers,
+  U+2800, line and paragraph separators, the joiners), starts with a variation selector or tag
+  (`DISPLAY_NAME_KEPT`, valid only after another code point), or starts or ends with whitespace
+  (`invalid_display_text`, always an error), and reports
   a name that contains a reserved term (`reserved_display_name`). The terms are Polaris Key,
   plrs, Apple, App Store, Google, Google Play, Steam, Valve, Epic Games, Microsoft, Xbox,
-  PlayStation, Nintendo and itch.io. A name is compared as a skeleton: NFKD with marks dropped,
-  lowercased, Cyrillic and Greek look-alikes and `0`, `1`, `rn`, `vv` folded, split on anything
+  PlayStation, Nintendo and itch.io. A name is compared as a skeleton: refused and kept code
+  points deleted first (so `Ste<tag>am` and `Steam<VS16>` still read `steam`), NFKD with marks
+  dropped, lowercased, Cyrillic and Greek look-alikes and `0`, `1`, `rn`, `vv` folded, split on anything
   that is not a letter or digit, and matched as whole words or as a multi-word term written as one
-  word. The same function runs at ingest (link, resync, deploy hook), on console listing edits,
-  and again when the card renders. A failing app name renders as the product slug with
-  `nameVerified: false`, and a failing developer name is dropped. The render-time check also
+  word. The same function runs at ingest (link, resync, deploy hook), on console listing edits
+  and renames, and again wherever an end user is shown the name. A failing app name renders as
+  the product slug (the sign-in card also sets `nameVerified: false`), and a failing developer
+  name is dropped. The surfaces that check at render time are the sign-in card
+  (`passthrough/client.ts`), `appForPage` (the authorize and refusal pages, the device-code
+  entry, confirmation, approval, denial and signed-in pages), the licence chooser's passport and
+  body, the callback's "no access" page and the consent card's licence anchor, through
+  `shownAppName` and `shownDeveloperName` (`core/accounts/reservedDisplayNames.ts`). A page
+  that cannot reach the database draws the slug, never `product.name`. The render-time check also
   covers names written before the rule existed and names accepted in `warn` mode. The system
   product `polaris-key` is exempt from the reserved check, never from the text check. Residual:
   the confusable map is a heuristic. A look-alike outside it ("Stéäm" with an unlisted

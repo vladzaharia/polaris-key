@@ -22,6 +22,7 @@ import {
   typedCode,
 } from "../../../core/deviceEntry.js";
 import { appForPage } from "../../../core/brandPage.js";
+import { shownDeveloperName } from "../../../core/accounts/reservedDisplayNames.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import { randomToken } from "../../../platform/random.js";
 import { parseFlowRecord, tryParseJson } from "../../../platform/json.js";
@@ -188,9 +189,18 @@ async function appFor(
   product: Product,
   ctx: DevicePageContext | undefined,
 ): Promise<{ name: string; iconUrl: string | null; developer: string | null }> {
-  if (!ctx) return { name: product.name, iconUrl: null, developer: null };
+  // Without a database the name cannot be checked: the slug is the neutral frame.
+  if (!ctx) return { name: product.slug, iconUrl: null, developer: null };
   const app = await appForPage({ product, env, db: ctx.db, hooks: ctx.hooks });
-  return { ...app, developer: await listingDeveloper(ctx.hooks) };
+  return {
+    ...app,
+    developer: await shownDeveloperName(
+      env,
+      ctx.db,
+      product.slug,
+      await listingDeveloper(ctx.hooks),
+    ),
+  };
 }
 
 /** The decision the confirmation form posts (`decision=approve|deny`). Absent or unknown reads
