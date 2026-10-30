@@ -26,6 +26,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional
 
+from ..constants_generated import ErrorCode, Feature, UnsupportedReason
+from ..core.caps import Unsupported, UnsupportedError
 from .account import (
     Account,
     AttachResult,
@@ -51,6 +53,7 @@ from .auto_sign_in import (
 )
 from .choice import ChoiceClient
 from .nearby import NearbyCredentials, NearbyRoutes
+from .nearby_session import NearbyDeps, NearbySignInSession, start_nearby_sign_in
 from .redirect import RedirectSession, start_redirect_sign_in
 from ..core.context import CoreContext
 from ..core.token import TokenManager
@@ -88,6 +91,8 @@ class IdentityClient:
         nearby_runtime: Optional[Callable[[str], bool]] = None,
         refresh_discovery: Optional[Callable[[], Optional[Dict[str, Any]]]] = None,
         register_nearby_keys: Optional[Callable[[NearbyCredentials], None]] = None,
+        nearby_signer: Optional[Callable[[], Any]] = None,
+        cloud_nearby: Optional[Callable[[], Any]] = None,
     ) -> None:
         self._ctx = ctx
         self._tokens = tokens
@@ -121,16 +126,45 @@ class IdentityClient:
             load_discovery=discover,
             write_subject=self._account.write_subject,
         )
-        self._sign_in = SignInNamespace(self._start_sign_in, self._start_redirect)
+        self._sign_in = SignInNamespace(self._start_sign_in, self._start_redirect, self._start_nearby_sign_in)
         self._choice = ChoiceClient(self._deps)
         self._discover = discover or (lambda: None)
         self._license_id = license_id or (lambda: None)
         self._nearby = NearbyNamespace(ctx, self._discover, nearby_runtime)
+        self._nearby_signer = nearby_signer
+        self._cloud_nearby = cloud_nearby
+        self._nearby_runtime = nearby_runtime
         #: The nearby route client (``nearby/start``, ``poll``, ``approve``): the session (D) and the
         #: approver (M) of later slices drive it; a host does not call it.
         self._nearby_routes = NearbyRoutes(
             self._deps, refresh_discovery=refresh_discovery, register_keys=register_nearby_keys
         )
+
+    def _nearby_credentials(self) -> NearbyCredentials:
+        """D's (and M's) device id, key port and bearer for the nearby routes."""
+        if self._nearby_signer is None:
+            raise UnsupportedError(
+                Unsupported(
+                    Feature.IDENTITY_NEARBY,
+                    UnsupportedReason.RUNTIME,
+                    "this client has no device keys for nearby sign-in",
+                ),
+                ErrorCode.NEARBY_UNSUPPORTED,
+            )
+        port, device_id = self._nearby_signer()
+        return NearbyCredentials(device_id=device_id, keys=port, token=self._tokens.current)
+
+    def _start_nearby_sign_in(self, **opts: Any) -> NearbySignInSession:
+        nearby = self._cloud_nearby
+        deps = NearbyDeps(
+            routes=self._nearby_routes,
+            creds=self._nearby_credentials,
+            nearby=nearby if nearby is not None else (lambda: None),
+            supported=lambda role: self._nearby_runtime is not None
+            and nearby is not None
+            and bool(self._nearby_runtime(role)),
+        )
+        return start_nearby_sign_in(deps, self._deps, **opts)
 
     def _store_identity(self, who: Optional[SignedInIdentity]) -> None:
         self._identity = who

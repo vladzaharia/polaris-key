@@ -286,6 +286,12 @@ class PolarisKeyClient:
             wipe_local=lambda: self.license.wipe_local(),
             loaded_discovery=lambda: self._discovery_doc,
             refresh_discovery=self._refresh_discovery,
+            # Nearby sign-in (I-47): D's keys come from Connect's signer, the LAN half is Cloud Connect's
+            # nearby engine, and this runtime can browse unless the client has no transport.
+            nearby_signer=lambda: self.connect.nearby_signer(),
+            cloud_nearby=lambda: self.cloud_connect.nearby,
+            nearby_runtime=lambda role: not self.core.local_only,
+            register_nearby_keys=self._register_nearby_keys,
             license_id=lambda: self.license.get_license_id(),
             emit=self.events.emit,
             # Sign-out and deactivation both end in `identity.forget()`: the root and its pin go with them.
@@ -664,6 +670,11 @@ class PolarisKeyClient:
             "values": {k: e.value for k, e in entries.items()},
             "locked": [k for k, e in entries.items() if e.state in ("enforced", "hidden")],
         }
+
+    def _register_nearby_keys(self, creds: Any) -> None:
+        """M's answer to a 409 ``device_keys_required`` from ``nearby/approve``: register this device's
+        keys (``PUT devices/keys``). Only this client's own keys can be registered."""
+        self.devices.register_keys(creds.keys, allow_ephemeral=self.connect._allow_ephemeral)
 
     def _refresh_discovery(self) -> Optional[Dict[str, Any]]:
         """Discovery read again now (nearby approval reads a 404 against it, N11): the new document, or

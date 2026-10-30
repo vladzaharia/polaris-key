@@ -39,7 +39,7 @@ TOKEN_ANSWER = {
     "scope": "email",
     "schemaVersion": 1,
     "device": {"id": "D" * 32},
-    "license": {"id": "lic_n1"},
+    "license": {"id": "lic_n1", "name": "Ada", "email": "ada@example.com"},
     "subject": SUBJECT,
 }
 
@@ -390,6 +390,7 @@ def test_a_409_with_no_way_to_register_is_just_the_answer() -> None:
     need = httpx.Response(409, json={"error": {"code": "device_keys_required"}})
     w = Fake(nearby_discovery(), approve=need)
     c = client(w)
+    routes(c)._register_keys = None
     r = routes(c).approve(creds(c, "m-1", "pkeyt_m", "M" * 32), **approve_args(c))
     assert r.kind == "refused" and r.answer.keys_retried is False and len(w.nearby_calls()) == 1
 

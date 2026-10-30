@@ -44,7 +44,7 @@ from ..core.errors import PolarisError
 from ..core.models import HEADER_DEVICE
 from .account import identity_fragment_from
 from .redirect import parse_token_answer
-from .sign_in import SignInDeps
+from .sign_in import SignedInIdentity, SignInDeps
 
 __all__ = [
     "NEARBY_POLL_INTERVAL_SECONDS",
@@ -132,6 +132,8 @@ class NearbyPollResult:
     subject: Optional[str] = None
     scope: Optional[str] = None
     license_id: Optional[str] = None
+    #: ``signed_in``: the name and e-mail of the account the token answer shows (display data), or ``None``.
+    identity: Optional[SignedInIdentity] = None
 
 
 @dataclass(frozen=True)
@@ -402,16 +404,24 @@ class NearbyRoutes:
             raise PolarisError(ErrorCode.BAD_RESPONSE, "nearby poll answered without a complete sign-in.")
         assert answer.access_token is not None and answer.subject is not None
         deps = self._deps
+        lic = answer.license
+        shown = lic if isinstance(lic, dict) else {}
+        name = shown.get("name") if isinstance(shown.get("name"), str) and shown.get("name") else None
+        email = shown.get("email") if isinstance(shown.get("email"), str) and shown.get("email") else None
+        identity = SignedInIdentity(name=name, email=email) if (name or email) else None
         deps.tokens.set(answer.access_token, "signin", person_initiated=True)
-        deps.store_identity(None)
+        deps.store_identity(identity)
         if deps.write_subject is not None:
             deps.write_subject(answer.subject)
         deps.on_acquired()
         deps.emit("identity", change="signed_in", subject=answer.subject)
-        lic = answer.license
-        license_id = lic.get("id") if isinstance(lic, dict) and isinstance(lic.get("id"), str) else None
+        license_id = shown.get("id") if isinstance(shown.get("id"), str) else None
         return NearbyPollResult(
-            kind="signed_in", subject=answer.subject, scope=answer.scope, license_id=license_id
+            kind="signed_in",
+            subject=answer.subject,
+            scope=answer.scope,
+            license_id=license_id,
+            identity=identity,
         )
 
     # ── M: approve ──────────────────────────────────────────────────────────────────

@@ -175,6 +175,43 @@ class _AsyncSignInSession:
             raise
 
 
+class _AsyncNearbySignInSession(_AsyncSignInSession):
+    """An async view of a :class:`~polaris_key.identity.nearby_session.NearbySignInSession`: ``wait``,
+    ``choose``, ``cancel``, ``confirm_account``, ``decline_account`` and ``close`` are coroutines (the LAN
+    calls block on the Connect loop); ``approvers``, ``code``, ``result`` and the ``on_*`` listeners return
+    at once, and the listeners run on the Connect thread, not the event loop."""
+
+    async def wait(  # type: ignore[override]
+        self,
+        timeout: Optional[float] = None,
+        *,
+        once: bool = False,
+        cancel_token: Any = None,
+    ) -> Any:
+        try:
+            return await _to_thread(self._session.wait, timeout, once=once, cancel_token=cancel_token)
+        except asyncio.CancelledError:
+            # Stop the polling now; closing the LAN side waits for the Connect loop, so it goes off-loop.
+            self._session._cancelled.set()
+            asyncio.get_running_loop().run_in_executor(None, self._session.close)
+            raise
+
+    async def choose(self, approver_id: str) -> Any:
+        return await _to_thread(self._session.choose, approver_id)
+
+    async def cancel(self) -> None:
+        await _to_thread(self._session.cancel)
+
+    async def confirm_account(self) -> None:
+        await _to_thread(self._session.confirm_account)
+
+    async def decline_account(self) -> None:
+        await _to_thread(self._session.decline_account)
+
+    async def close(self) -> None:
+        await _to_thread(self._session.close)
+
+
 class _AsyncSignInNamespace:
     def __init__(self, target: Any) -> None:
         self._target = target
@@ -182,8 +219,11 @@ class _AsyncSignInNamespace:
     def start(self, **opts: Any) -> GuardedCoroutine:
         """``identity.sign_in.start(**opts)``, awaited; answers an async session."""
 
-        async def run() -> _AsyncSignInSession:
-            return _AsyncSignInSession(await _to_thread(self._target.start, **opts))
+        async def run() -> Any:
+            session = await _to_thread(self._target.start, **opts)
+            if getattr(session, "channel", None) == "nearby":
+                return _AsyncNearbySignInSession(session)
+            return _AsyncSignInSession(session)
 
         return GuardedCoroutine(run(), "identity.sign_in.start")
 

@@ -525,21 +525,28 @@ class SignInNamespace:
         self,
         start: Callable[..., SignInSession],
         start_redirect: Optional[Callable[..., Any]] = None,
+        start_nearby: Optional[Callable[..., Any]] = None,
     ) -> None:
         self._start = start
         self._start_redirect = start_redirect
+        self._start_nearby = start_nearby
 
     def start(self, channel: str = "device-code", **opts: Any) -> Any:
         """Start a sign-in. ``channel="device-code"`` (the default) takes ``device_name``,
         ``login_hint``, ``name_hint``, ``purpose``, ``scope`` and ``license_choice`` and answers a
         :class:`SignInSession`. ``channel="redirect"`` takes the same plus the required https
         ``redirect_uri`` and answers a :class:`~polaris_key.identity.redirect.RedirectSession`
-        with ``authorize_url`` and ``complete(callback_url)``. Any other channel answers the typed
-        ``version`` N/A (loopback, scheme and claimed-HTTPS redirects are I-15's)."""
+        with ``authorize_url`` and ``complete(callback_url)``. ``channel="nearby"`` (``device_name``) is the
+        new device's side of nearby sign-in and answers a
+        :class:`~polaris_key.identity.nearby_session.NearbySignInSession`: the typed N/A when the product
+        or this runtime does not serve it. Any other channel answers the typed ``version`` N/A (loopback,
+        scheme and claimed-HTTPS redirects are I-15's)."""
         if channel == "device-code":
             return self._start(**opts)
         if channel == "redirect" and self._start_redirect is not None:
             return self._start_redirect(**opts)
+        if channel == "nearby" and self._start_nearby is not None:
+            return self._start_nearby(**opts)
         raise UnsupportedError(
             Unsupported(
                 Feature.IDENTITY_REDIRECT_WEB,
