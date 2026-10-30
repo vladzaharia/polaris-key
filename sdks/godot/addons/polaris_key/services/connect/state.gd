@@ -9,7 +9,9 @@ extends RefCounted
 ## `user://pkey/<product>/connect.v1`, never in the clear:
 ##
 ##   sealed        with a native sealer (Keychain, Keystore, DPAPI) the file is `"PKSL" || 0x01 ||
-##                 blob`, sealed under the platform key with context `pkey-connect/1 state`.
+##                 blob`, sealed under the platform key with context `pkey-connect/1 state/<product>`
+##                 (the product is in it so that another product's blob does not open: on Windows the
+##                 context is the DPAPI entropy).
 ##   encrypted     without one (Linux has none) it is the engine-encrypted file; that is OBFUSCATION,
 ##                 not protection (its key derives from `OS.get_unique_id()`, the product and a salt
 ##                 beside the file), as for the Sync root (`PKeySyncRingVault`).
@@ -138,7 +140,7 @@ func _no_seal_possible() -> bool:
 
 
 func _seal_context() -> PackedByteArray:
-	return "pkey-connect/1 state".to_utf8_buffer()
+	return ("pkey-connect/1 state/%s" % product).to_utf8_buffer()
 
 
 func _store_bytes(rec: PackedByteArray) -> PKeyResult:

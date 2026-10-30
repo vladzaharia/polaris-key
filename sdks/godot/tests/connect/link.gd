@@ -32,6 +32,10 @@ func run(t: PKeyTestContext) -> void:
 	await _rules(t)
 	await _lost_pipe(t)
 	await _tcp(t)
+	await _backpressure(t)
+	await _budget(t)
+	await _send_failure(t)
+	await _destroy(t)
 	await _small_things(t)
 
 
@@ -252,7 +256,7 @@ func _rules(t: PKeyTestContext) -> void:
 	t.check("rules: 29.999 s into a handshake is still open", rb.closed.is_empty())
 	now[0] = 30000
 	pump.poll_once()
-	t.check("rules: 30 s closes handshake_failed", rb.closed == [[&"handshake_failed", false]], str(rb.closed))
+	t.check("rules: 30 s closes peer_timeout (V5, R-6G N7)", rb.closed == [[&"peer_timeout", false]], str(rb.closed))
 	# Established links have no handshake deadline.
 	pipes = PKeyPeerMemoryPipe.pair()
 	now[0] = 0
@@ -274,7 +278,7 @@ func _rules(t: PKeyTestContext) -> void:
 	rb = Rec.new().watch(made[1])
 	now[0] = 5000
 	pump.poll_once()
-	t.check("rules: the deadline is an option", rb.closed == [[&"handshake_failed", false]])
+	t.check("rules: the deadline is an option", rb.closed == [[&"peer_timeout", false]])
 
 
 func _lost_pipe(t: PKeyTestContext) -> void:
@@ -400,3 +404,286 @@ func _small_things(t: PKeyTestContext) -> void:
 	pump.remove(made[0])
 	pump.remove(made[1])
 	t.check("small: and can be removed", pump.count() == 0)
+
+
+# ── R-6G fixes ───────────────────────────────────────────────────────────────────────────────
+
+
+## A loopback TCP connection: [dialled raw peer, accepted pipe, listener]. The caller stops the listener.
+func _tcp_raw(t: PKeyTestContext) -> Array:
+	var server := TCPServer.new()
+	if server.listen(0, "127.0.0.1") != OK:
+		t.check("a loopback listener opens", false)
+		return []
+	var flooder := StreamPeerTCP.new()
+	flooder.connect_to_host("127.0.0.1", server.get_local_port())
+	await _wait_until(func() -> bool:
+		flooder.poll()
+		return server.is_connection_available() and flooder.get_status() == StreamPeerTCP.STATUS_CONNECTED, 300)
+	var accepted := server.take_connection()
+	return [flooder, PKeyPeerTcpPipe.from_peer(accepted) if accepted != null else null, server]
+
+
+## B1: a pipe that is not read holds one chunk and no more; the kernel's window closes on the sender.
+func _backpressure(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var raw := await _tcp_raw(t)
+	if raw.is_empty() or raw[1] == null:
+		t.check("backpressure: a loopback pair opens", false)
+		return
+	var flooder: StreamPeerTCP = raw[0]
+	var pipe: PKeyPeerTcpPipe = raw[1]
+	var chunk := PackedByteArray()
+	chunk.resize(1 << 20)
+	chunk.fill(7)
+	var total := 32 << 20
+	var sent := 0
+	var worst := 0
+	for f in 150:
+		while sent < total:
+			var r := flooder.put_partial_data(chunk)
+			if r[0] != OK or r[1] == 0:
+				break
+			sent += r[1]
+		pipe.poll()
+		worst = maxi(worst, pipe.buffered())
+		await tree.process_frame
+	t.check("backpressure: an unread pipe holds at most one chunk (%d)" % worst, worst <= PKeyPeerTcpPipe.READ_CHUNK and worst > 0, str(worst))
+	t.check("backpressure: and the sender's window closed: it could not push 32 MiB (%d sent)" % sent, sent < total, str(sent))
+	# Reading releases it: everything arrives, in the end.
+	var got := 0
+	var spins := 0
+	while (got < sent or sent < total) and spins < 4000:
+		while sent < total:
+			var r2 := flooder.put_partial_data(chunk)
+			if r2[0] != OK or r2[1] == 0:
+				break
+			sent += r2[1]
+		pipe.poll()
+		got += pipe.read().size()
+		spins += 1
+		if spins % 16 == 0:
+			await tree.process_frame
+	t.check("backpressure: reading releases it and every byte arrives", got == sent and sent >= total, "%d %d" % [got, sent])
+	flooder.disconnect_from_host()
+	pipe.abort()
+	(raw[2] as TCPServer).stop()
+
+	# The same through an established link that is paused.
+	var server := TCPServer.new()
+	server.listen(0, "127.0.0.1")
+	var dial := PKeyPeerTcpPipe.dial("127.0.0.1", server.get_local_port())
+	await _wait_until(func() -> bool: return server.is_connection_available(), 300)
+	var answer := PKeyPeerTcpPipe.from_peer(server.take_connection())
+	var pump := PKeyPeerPump.new(tree, false)
+	var made := _links(pump, [dial, answer])
+	var la: PKeyPeerLink = made[0]
+	var lb: PKeyPeerLink = made[1]
+	var rb := Rec.new().watch(lb)
+	la.start()
+	await _wait_until(func() -> bool: return la.is_established() and lb.is_established(), 800)
+	lb.pause(true)
+	var piece := PackedByteArray()
+	piece.resize(100000)
+	piece.fill(9)
+	for i in 3:
+		la.send_record(0x0100, piece)
+	var most := 0
+	for f in 60:
+		await tree.process_frame
+		most = maxi(most, answer.buffered())
+	t.check("backpressure: a paused link leaves what the peer sends in the kernel (%d held)" % most, rb.records.is_empty() and most <= PKeyPeerTcpPipe.READ_CHUNK, str(most))
+	lb.pause(false)
+	await _wait_until(func() -> bool: return rb.records.size() == 3, 1200)
+	t.check("backpressure: resumed, all three arrive whole and in order", rb.records.size() == 3 and rb.records[2][1] == piece)
+	la.destroy()
+	lb.destroy()
+	server.stop()
+
+
+## N1: a link takes only BUDGET_BYTES of frames (at least one) or BUDGET_USEC a poll and leaves the
+## rest in a backlog; the pump takes its links in turn within its own budget.
+func _budget(t: PKeyTestContext) -> void:
+	var pump := PKeyPeerPump.new(null, false)
+	var pipes := PKeyPeerMemoryPipe.pair()
+	# A clock that never moves: only the byte budget acts.
+	var frozen := func() -> int: return 0
+	var made := _links(pump, pipes, {"usec": frozen})
+	var la: PKeyPeerLink = made[0]
+	var lb: PKeyPeerLink = made[1]
+	var rb := Rec.new().watch(lb)
+	await la.start()
+	for i in 10:
+		pump.poll_once()
+	var body := PackedByteArray()
+	body.resize(1000)
+	for i in 40:
+		body[0] = i
+		la.send_record(0x0100, body)
+	pump.poll_once()
+	var first := rb.records.size()
+	t.check("budget: one poll feeds about 16 KiB of 41 KB, not all of it (%d records)" % first, first >= 16 and first <= 18, str(first))
+	t.check("budget: the pipe is not read again while a backlog waits", (pipes[1] as PKeyPeerMemoryPipe).read().is_empty())
+	var polls := 1
+	while rb.records.size() < 40 and polls < 10:
+		pump.poll_once()
+		polls += 1
+	var in_order := true
+	for i in rb.records.size():
+		in_order = in_order and rb.records[i][1][0] == i
+	t.check("budget: the rest follows in two more polls, in order (%d polls)" % polls, rb.records.size() == 40 and in_order and polls == 3, str(polls))
+	# Pausing stops the backlog too.
+	for i in 40:
+		la.send_record(0x0100, body)
+	pump.poll_once()
+	var held := rb.records.size()
+	lb.pause(true)
+	for i in 5:
+		pump.poll_once()
+	t.check("budget: a paused link works through none of its backlog", rb.records.size() == held and held < 80)
+	lb.pause(false)
+	for i in 6:
+		pump.poll_once()
+	t.check("budget: and takes it all when resumed", rb.records.size() == 80)
+
+	# The time budget, with a clock that spends 7 ms per reading: one frame a poll.
+	var ticks := [0]
+	var clock := func() -> int:
+		ticks[0] += 7000
+		return ticks[0]
+	pipes = PKeyPeerMemoryPipe.pair()
+	made = _links(pump, pipes, {"usec": clock})
+	la = made[0]
+	lb = made[1]
+	rb = Rec.new().watch(lb)
+	await la.start()
+	for i in 10:
+		pump.poll_once()
+	for i in 5:
+		la.send_record(0x0100, PackedByteArray([i]))
+	pump.poll_once()
+	t.check("budget: a link that has spent its time takes one frame", rb.records.size() == 1, str(rb.records.size()))
+	for i in 6:
+		pump.poll_once()
+	t.check("budget: and the rest on the following polls", rb.records.size() == 5)
+
+	# The pump: five links, a clock that spends 5 ms a reading and a budget of 8 ms: two links a round.
+	var spent := [0]
+	var tick := func() -> int:
+		spent[0] += 5000
+		return spent[0]
+	var rounds := PKeyPeerPump.new(null, false)
+	rounds.clock_usec = tick
+	var links: Array[CountLink] = []
+	for i in 5:
+		var link := CountLink.new(PKeyPeerMemoryPipe.new(), {})
+		links.append(link)
+		rounds.add(link)
+	rounds.poll_once()
+	t.check("budget: a pump round stops when its time is spent", links.map(func(l: CountLink) -> int: return l.polls) == [1, 1, 0, 0, 0])
+	rounds.poll_once()
+	t.check("budget: the next round starts where it stopped", links.map(func(l: CountLink) -> int: return l.polls) == [1, 1, 1, 1, 0])
+	rounds.poll_once()
+	t.check("budget: so every link is served in turn", links.map(func(l: CountLink) -> int: return l.polls) == [2, 1, 1, 1, 1])
+	var quick := PKeyPeerPump.new(null, false)
+	var more: Array[CountLink] = []
+	for i in 5:
+		var link := CountLink.new(PKeyPeerMemoryPipe.new(), {})
+		more.append(link)
+		quick.add(link)
+	quick.poll_once()
+	t.check("budget: a quick round polls them all", more.all(func(l: CountLink) -> bool: return l.polls == 1))
+
+
+## A link that only counts how often it is polled.
+class CountLink extends PKeyPeerLink:
+	var polls := 0
+
+
+	func poll() -> bool:
+		polls += 1
+		return true
+
+
+## A pipe that wraps another and can be told to refuse every write (a full queue).
+class RefusingPipe extends PKeyPeerPipe:
+	var inner: PKeyPeerPipe
+	var refuse := false
+
+
+	func poll() -> void:
+		inner.poll()
+
+
+	func read() -> PackedByteArray:
+		return inner.read()
+
+
+	func write(bytes: PackedByteArray) -> bool:
+		return false if refuse else inner.write(bytes)
+
+
+	func is_open() -> bool:
+		return inner.is_open()
+
+
+	func close() -> void:
+		inner.close()
+
+
+	func abort() -> void:
+		inner.abort()
+
+
+	func is_finished() -> bool:
+		return inner.is_finished()
+
+
+## N2: a write the pipe refuses ends the link peer_busy and refuses later sends.
+func _send_failure(t: PKeyTestContext) -> void:
+	var pump := PKeyPeerPump.new(null, false)
+	var pipes := PKeyPeerMemoryPipe.pair()
+	var wrapped := RefusingPipe.new()
+	wrapped.inner = pipes[0]
+	var made := _links(pump, [wrapped, pipes[1]])
+	var la: PKeyPeerLink = made[0]
+	var ra := Rec.new().watch(la)
+	await la.start()
+	for i in 10:
+		pump.poll_once()
+	t.check("send failure: established", la.is_established())
+	wrapped.refuse = true
+	var lost := la.send_record(0x0100, "x".to_utf8_buffer())
+	t.check("send failure: the send that met a full queue answers ok (the session cannot know)", lost.ok)
+	var again := la.send_record(0x0100, "y".to_utf8_buffer())
+	t.check("send failure: later sends are refused", not again.ok and again.code == &"state")
+	pump.poll_once()
+	t.check("send failure: the link ends peer_busy at its next poll", ra.closed == [[&"peer_busy", false]], str(ra.closed))
+	for i in 3:
+		pump.poll_once()
+	t.check("send failure: once", ra.closed.size() == 1)
+
+
+## N3: destroy() runs the session's teardown: an approver's slot is released.
+func _destroy(t: PKeyTestContext) -> void:
+	var pump := PKeyPeerPump.new(null, false)
+	var pipes := PKeyPeerMemoryPipe.pair()
+	var limiter := PKeyPeerLimiter.new(5, 4)
+	var hello := {"platform": "test", "app": "demo"}
+	var d := PKeyPeerLink.create(pipes[0], {"mode": "p", "role": "initiator", "slug": PKeyTestPeers.SLUG, "static_key": PKeyTestPeers.random32(), "hello": hello, "caps": ["app/1"]}, {"pump": pump})
+	var approver := {"mode": "p", "role": "responder", "slug": PKeyTestPeers.SLUG, "static_key": PKeyTestPeers.random32(), "hello": hello, "caps": ["app/1"], "admission": limiter}
+	var m := PKeyPeerLink.create(pipes[1], approver, {"pump": pump})
+	if not t.check("destroy: two mode p links", d.ok and m.ok):
+		return
+	var ld: PKeyPeerLink = d.detail
+	var lm: PKeyPeerLink = m.detail
+	pump.add(ld)
+	pump.add(lm)
+	var rm := Rec.new().watch(lm)
+	await ld.start()
+	for i in 12:
+		pump.poll_once()
+	t.check("destroy: the approver holds a slot while the code is shown", limiter.pending() == 1 and rm.sas.size() == 1, str(limiter.pending()))
+	lm.destroy()
+	t.check("destroy: destroy() releases it and closes the session", limiter.pending() == 0 and lm.session.is_closed() and rm.closed == [[&"peer_bye", false]])
+	ld.destroy()

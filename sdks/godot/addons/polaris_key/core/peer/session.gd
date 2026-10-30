@@ -46,6 +46,15 @@ extends RefCounted
 ## Everything after the transport exists runs inline. A secret is held in a PackedByteArray and
 ## filled with zeros when it is replaced or the session ends (best effort).
 ##
+## Not built here, for CC-15b before any mode v consumer exists (R-6G): the VOUCH flow guard (the SAS
+## commit is made at HELLO instead of being held, the direction and order table of VOUCH_REQ and
+## VOUCH_RESULT, the failure budget) and the NFC step of HELLO labels. Only mode a is wired to a host.
+##
+## Bounds on unauthenticated or hostile input (R-6G): a responder reads a first message of at most
+## FIRST_MESSAGE_MAX bytes (a longer one closes `peer_bad_frame`, silently, with no AEAD run); an
+## admitted peer's RING is worked on at most once in RING_GAP_SECONDS, and RING_DROP_LIMIT dropped ones
+## close the session `peer_busy`. `abort()` ends a session with no CLOSE and no event.
+##
 ## Errors are values: `create` and `send_record` answer a PKeyResult; a session failure is a
 ## `closed` event whose `code` is one of the `peer_*` close codes or `handshake_failed` (nothing is
 ## sent for that one). No key, nonce, ticket or certificate is put in `str()`.
@@ -66,6 +75,14 @@ const SAS_DEADLINE_SECONDS := 120.0
 ## Section 15.6: records held before the person's confirmation, modes v and p, and their bytes.
 const MAX_QUEUED := 16
 const MAX_QUEUED_BYTES := 16 * 1024
+## The most a responder reads of a first message (R-6G B2): ephemeral key, tag and 256 bytes of
+## payload. A real one is 55 bytes (`{"v":1}`); a longer one is refused before any HKDF or AEAD runs,
+## so an unauthenticated peer cannot make the main thread open a frame of its choosing.
+const FIRST_MESSAGE_MAX := 32 + 16 + 256
+## At most one RING is worked on per this many seconds and session (R-6G B4): each costs up to two
+## Ed25519 verifies. The rest are dropped, and RING_DROP_LIMIT of them in a window close the session.
+const RING_GAP_SECONDS := 10.0
+const RING_DROP_LIMIT := 8
 const DEFAULT_REKEY_MESSAGES := 1 << 20
 const DEFAULT_REKEY_SECONDS := 3600.0
 const VOUCH_CAP := "vouch/1"
@@ -110,6 +127,10 @@ var _clock_started := false
 var _transport_deadline := INF
 var _sas_deadline := INF
 var _expires_at := 0
+var _ring_at := -INF
+var _ring_dropped := 0
+var _aborted := false
+var _wipe_pending := false
 # SAS state
 var _n_d := PackedByteArray()
 var _n_m := PackedByteArray()
@@ -278,6 +299,23 @@ func close(code: StringName = PEER_BYE) -> void:
 	_fail(code, false)
 
 
+## End the session now, with no CLOSE and no `closed` event (the link that owns it reports the end):
+## the clocks stop, an approver's limiter slot is released, and the secrets are wiped (when a step is
+## running, at its end). Nothing the session says after this reaches the host.
+func abort() -> void:
+	if _phase == &"closed" and _aborted:
+		return
+	_aborted = true
+	_phase = &"closed"
+	_stop_clock()
+	_held = []
+	_queue = []
+	if _busy:
+		_wipe_pending = true
+	else:
+		_wipe()
+
+
 ## Modes v and p: the person confirmed the code. Opens the session, sends `CONFIRM` in mode p and
 ## delivers the host records held meanwhile. Any other time it closes the session `peer_not_allowed`.
 func confirm_sas() -> void:
@@ -331,6 +369,9 @@ func _drain() -> void:
 		if code != &"":
 			_fail(code, false)
 	_busy = false
+	if _wipe_pending:
+		_wipe_pending = false
+		_wipe()
 	if _pending_close != &"":
 		var late := _pending_close
 		_pending_close = &""
@@ -435,6 +476,9 @@ func _write_third(hs: PKeyPeerNoise.Handshake) -> StringName:
 ## Message 1 of a responder: in mode a the discovery keys are tried in turn (G2), the current then
 ## the previous. No static DH runs before the tag verifies, and a failed tag closes silently.
 func _on_first_message(noise: PackedByteArray) -> StringName:
+	if noise.size() > FIRST_MESSAGE_MAX:
+		# Nothing is sent and no HKDF or AEAD runs over a frame nobody has authenticated (R-6G B2).
+		return PEER_BAD_FRAME
 	var keys: Array = []
 	if _mode == "a":
 		for i in 2:
@@ -655,6 +699,14 @@ func _push_ring() -> StringName:
 
 
 func _on_ring(body: PackedByteArray) -> StringName:
+	# One RING in RING_GAP_SECONDS is worked on; the rest are dropped without a parse or a verify, and a
+	# peer that keeps sending them is closed (R-6G B4). The host refetches through `ring_wanted`.
+	var t := _mono()
+	if t - _ring_at < RING_GAP_SECONDS:
+		_ring_dropped += 1
+		return PEER_BUSY if _ring_dropped >= RING_DROP_LIMIT else &""
+	_ring_at = t
+	_ring_dropped = 0
 	var a := _account
 	var o: Variant = PKeyPeerPayload.parse_strict_object(body)
 	if o == null or not (o as Dictionary).get("ring") is String:
@@ -789,6 +841,9 @@ func _wipe() -> void:
 		_tp.send.wipe()
 		_tp.receive.wipe()
 	_hs = null
+	# Let go of the discovery keys and the roster this session was handed (a copy of a shared
+	# PackedByteArray cannot be zeroed in place; dropping the references is what is cheap).
+	_account = {}
 	_n_d.fill(0)
 	_n_m.fill(0)
 	if _static is PackedByteArray:
@@ -796,7 +851,8 @@ func _wipe() -> void:
 
 
 func _emit(event: Dictionary) -> void:
-	_on_event.call(event)
+	if not _aborted:
+		_on_event.call(event)
 
 
 # -- clocks --------------------------------------------------------------------------------------

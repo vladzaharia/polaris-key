@@ -10,7 +10,12 @@ extends RefCounted
 ##  - a frame longer than HANDSHAKE_FRAME_MAX (16 KiB) before the session is established closes it
 ##    `handshake_failed`; a zero-length frame, wherever it occurs, closes it `peer_bad_frame`;
 ##  - a link that has not established within HANDSHAKE_MS (30 s, a monotonic clock) is closed
-##    `handshake_failed`;
+##    `peer_timeout`;
+##  - work per poll is bounded (R-6G N1): frames are fed to the session until BUDGET_BYTES of them or
+##    BUDGET_USEC have gone in, at least one; the rest wait in a backlog, and the pipe is not read again
+##    until the backlog is empty, so what a busy peer sends waits in the transport, not in memory;
+##  - a write the pipe refuses (its queue is full) ends the link `peer_busy` and refuses later sends
+##    (R-6G N2): a frame is never lost under a counter that went on;
 ##  - a pipe that goes away under a live session closes it, and the `closed` signal then says
 ##    `connection_lost`; frames that arrived before the pipe closed are still handled first;
 ##  - backpressure: `pause(true)` stops reading the pipe, so the peer's data waits in the transport;
@@ -38,6 +43,9 @@ signal closed(code: StringName, by_peer: bool)
 
 const HANDSHAKE_FRAME_MAX := 16384
 const HANDSHAKE_MS := 30000
+## Frame bytes and microseconds one poll spends on one link (the first frame is always taken).
+const BUDGET_BYTES := 16384
+const BUDGET_USEC := 6000
 const CONNECTION_LOST := &"connection_lost"
 
 var session: PKeyPeerSession
@@ -51,6 +59,9 @@ var _ended := false
 var _lost := false
 var _paused := false
 var _destroyed := false
+var _backlog: Array = []
+var _send_failed := false
+var _usec: Callable
 
 
 ## A link over `pipe` for the session `session_options` describe (see PKeyPeerSession; `send` and
@@ -76,6 +87,7 @@ static func create(pipe: PKeyPeerPipe, session_options: Dictionary, options := {
 func _init(pipe: PKeyPeerPipe, options := {}) -> void:
 	_pipe = pipe
 	_mono_ms = options.get("mono_ms", Callable())
+	_usec = options.get("usec", Callable())
 	_deadline_ms = _mono() + int(options.get("handshake_ms", HANDSHAKE_MS))
 
 
@@ -107,6 +119,8 @@ func is_paused() -> bool:
 
 ## Send one host record. See PKeyPeerSession.send_record.
 func send_record(type: int, body: PackedByteArray) -> PKeyResult:
+	if _send_failed:
+		return PKeyResult.failure(&"state", "The connection cannot take more.")
 	return session.send_record(type, body)
 
 
@@ -119,6 +133,9 @@ func close(code: StringName = PKeyPeerSession.PEER_BYE) -> void:
 func destroy() -> void:
 	_destroyed = true
 	_pipe.abort()
+	_backlog = []
+	# The session lets go of its clocks, its approver slot and its secrets (R-6G N3).
+	session.abort()
 	if not _ended:
 		_ended = true
 		closed.emit(PKeyPeerSession.PEER_BYE, false)
@@ -133,9 +150,11 @@ func poll() -> bool:
 		_read()
 		if not _ended and _deadline_ms > 0 and _mono() >= _deadline_ms:
 			_deadline_ms = 0
-			session.close(PKeyPeerSession.HANDSHAKE_FAILED)
+			session.close(PKeyPeerSession.PEER_TIMEOUT)
+		if not _ended and _send_failed and not _lost and _pipe.is_open():
+			session.close(PKeyPeerSession.PEER_BUSY)
 		session.tick()
-		if not _ended and not _lost and not _pipe.is_open():
+		if not _ended and not _lost and _backlog.is_empty() and not _pipe.is_open():
 			_lost = true
 			session.close(PKeyPeerSession.PEER_BYE)
 	if _ended:
@@ -147,25 +166,40 @@ func poll() -> bool:
 func _read() -> void:
 	if _paused:
 		return
-	var chunk := _pipe.read()
-	if chunk.is_empty():
-		return
-	var cut := _reader.push(chunk)
-	if not cut["ok"]:
-		session.close(PKeyPeerSession.PEER_BAD_FRAME)
-		return
-	for frame: PackedByteArray in cut["frames"]:
+	if _backlog.is_empty():
+		var chunk := _pipe.read()
+		if chunk.is_empty():
+			return
+		var cut := _reader.push(chunk)
+		if not cut["ok"]:
+			session.close(PKeyPeerSession.PEER_BAD_FRAME)
+			return
+		_backlog = cut["frames"]
+	var began := _micros()
+	var bytes := 0
+	while not _backlog.is_empty() and not _paused and not _ended:
+		var frame: PackedByteArray = _backlog.pop_front()
 		if not _established and frame.size() > HANDSHAKE_FRAME_MAX:
+			_backlog = []
 			session.close(PKeyPeerSession.HANDSHAKE_FAILED)
 			return
 		# The session queues what it cannot take yet and keeps the order.
 		session.receive(frame)
+		bytes += frame.size()
+		if bytes >= BUDGET_BYTES or _micros() - began >= BUDGET_USEC:
+			break
+	if _ended:
+		_backlog = []
+
+
+func _micros() -> int:
+	return int(_usec.call()) if _usec.is_valid() else Time.get_ticks_usec()
 
 
 func _on_send(noise: PackedByteArray) -> void:
 	var frame := PKeyPeerFrame.encode(noise)
-	if not frame.is_empty():
-		_pipe.write(frame)
+	if not frame.is_empty() and not _pipe.write(frame):
+		_send_failed = true
 
 
 func _on_event(e: Dictionary) -> void:

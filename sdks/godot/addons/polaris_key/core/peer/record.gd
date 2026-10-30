@@ -119,8 +119,10 @@ class Assembler extends RefCounted:
 	var _open_type := -1
 	var _parts: Array[PackedByteArray] = []
 	var _size := 0
-	## Set while a chain of an unknown non-critical type is being dropped.
+	## Set while a chain of an unknown non-critical type is being dropped, and how many records of it
+	## were seen: a dropped chain is a chain, so it is bounded by the same record count (R-6G N6).
 	var _dropping := -1
+	var _dropped := 0
 
 
 	func _init(mode: String) -> void:
@@ -166,9 +168,7 @@ class Assembler extends RefCounted:
 			return _close(refused)
 		var more := (flags & PKeyPeerRecord.FLAG_MORE) != 0
 		if _dropping >= 0:
-			if not more:
-				_dropping = -1
-			return {"kind": &"ignored"}
+			return _drop(more)
 		var row := PKeyPeerRecord.row_of(type)
 		if row.is_empty():
 			return _unknown(type, more)
@@ -183,12 +183,24 @@ class Assembler extends RefCounted:
 		return _finish(type, int(row[4]))
 
 
+	## One more record of a chain being dropped: ignored, and bounded like any chain.
+	func _drop(more: bool) -> Dictionary:
+		_dropped += 1
+		if _dropped > PKeyPeerRecord.MAX_CHAIN_RECORDS:
+			return _close(PKeyPeerRecord.CLOSE_BAD_FRAME)
+		if not more:
+			_dropping = -1
+			_dropped = 0
+		return {"kind": &"ignored"}
+
+
 	## A type outside the table: critical closes, otherwise it is dropped, MORE chain and all.
 	func _unknown(type: int, more: bool) -> Dictionary:
 		if (type & 0x8000) != 0:
 			return _close(PKeyPeerRecord.CLOSE_UNKNOWN_CRITICAL)
 		if more:
 			_dropping = type
+			_dropped = 1
 		return {"kind": &"ignored"}
 
 

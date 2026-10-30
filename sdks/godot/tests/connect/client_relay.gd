@@ -192,6 +192,18 @@ func _state_store(t: PKeyTestContext) -> void:
 			raw.slice(0, 4).get_string_from_ascii() == "PKSL" and raw[4] == 1 \
 			and raw.get_string_from_utf8().find("discKeys") == -1)
 	t.check("the sealer saw the connect context", sealer.calls.size() >= 2)
+	# R-6G B3: the context names the product, so a blob sealed for one product does not open for another
+	# (on Windows the context is the DPAPI entropy).
+	var other_dir := _scratch.path_join("other-product")
+	DirAccess.make_dir_recursive_absolute(other_dir)
+	var moved := FileAccess.open(other_dir.path_join("connect.v1"), FileAccess.WRITE)
+	moved.store_buffer(raw)
+	moved.close()
+	var other := PKeyConnectState.new("other-product", _scratch, false, sealer)
+	var foreign := other.read()
+	t.check("a blob sealed for one product does not open for another", not foreign.ok and foreign.code == PKeyDeviceKeyStore.KEYS_UNREADABLE)
+	t.check("and it still opens for its own", (sealed.read().detail as PKeyConnectState.Record).encode() == rec.encode())
+	other.clear()
 	sealer.fault_open = true
 	t.check("a sealer that cannot open fails, not as none", not sealed.read().ok)
 	sealer.fault_open = false

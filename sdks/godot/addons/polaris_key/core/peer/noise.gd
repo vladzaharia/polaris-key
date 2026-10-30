@@ -540,4 +540,5 @@ class Handshake extends RefCounted:
 		PKeyPeerNoise._wipe(_e)
 		PKeyPeerNoise._wipe(_psk)
 		PKeyPeerNoise._wipe(_s_raw)
+		PKeyPeerNoise._wipe(_ck)
 		return PKeyResult.failure(code) if code != &"" else PKeyResult.success()

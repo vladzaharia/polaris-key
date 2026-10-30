@@ -2,8 +2,9 @@
 class_name PKeyPeerTcpPipe
 extends PKeyPeerPipe
 ## A `PKeyPeerPipe` over a `StreamPeerTCP` (CC-14.10a), non-blocking both ways. Reads take at most
-## 64 KiB a poll; writes go to a queue of at most 16 MiB that `poll` flushes with partial puts, so a
-## slow peer never blocks a frame. `close` lets the queue drain, for at most a second, so the CLOSE
+## 64 KiB a poll, and none while a chunk is still waiting unread (so a paused link leaves the rest in
+## the kernel and the peer's window closes); writes go to a queue of at most 16 MiB that `poll`
+## flushes with partial puts, so a slow peer never blocks a frame. `close` lets the queue drain, for at most a second, so the CLOSE
 ## record that names a session's end reaches the peer before the socket drops.
 ##
 ## The socket is left alone until `poll` finds it connected: a dial that is still connecting is
@@ -106,12 +107,19 @@ func remote_address() -> String:
 	return _peer.get_connected_host() if _peer != null else ""
 
 
+## Bytes pulled from the socket and not yet read.
+func buffered() -> int:
+	return _in.size()
+
+
 func remote_port() -> int:
 	return _peer.get_connected_port() if _peer != null else 0
 
 
 func _pull() -> void:
-	var n := mini(_peer.get_available_bytes(), READ_CHUNK)
+	# At most one chunk waits unread. A paused link reads nothing, so the rest stays in the kernel,
+	# whose window then closes on the peer (R-6G B1); without this a paused link buffered every byte.
+	var n := mini(_peer.get_available_bytes(), READ_CHUNK - _in.size())
 	if n <= 0:
 		return
 	var got := _peer.get_partial_data(n)

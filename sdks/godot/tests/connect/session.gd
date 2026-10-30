@@ -343,7 +343,7 @@ func _not_admitted(t: PKeyTestContext) -> void:
 	var started := Time.get_ticks_msec()
 	w["link_a"].start()
 	var late: PKeyResult = await w["att_a"].wait_opened()
-	var refused: bool = not late.ok and late.detail["close_code"] == &"handshake_failed"
+	var refused: bool = not late.ok and late.detail["close_code"] == &"peer_timeout"
 	t.check("refused: a silent peer is given up on at the deadline", refused and Time.get_ticks_msec() - started >= 100, "%s %d" % [late.detail, Time.get_ticks_msec() - started])
 	_drop(w)
 

@@ -25,6 +25,9 @@ func run(t: PKeyTestContext) -> void:
 	await _raw_peer(t)
 	await _key_port(t)
 	await _busy_step(t)
+	await _first_message_cap(t)
+	await _ring_flood(t)
+	await _abort(t)
 
 
 func _a() -> Dictionary:
@@ -182,7 +185,7 @@ func _discovery_keys(t: PKeyTestContext) -> void:
 	t.check("keys: a key of the wrong length is no key", a.closes() == [[&"handshake_failed", false]])
 
 	# A responder never answers a first message that is not a Noise message at all.
-	for junk in [PackedByteArray(), PackedByteArray([1]), PKeyTestPeers.random32(), _zeros(100), _zeros(65536)]:
+	for junk in [PackedByteArray(), PackedByteArray([1]), PKeyTestPeers.random32(), _zeros(100), _zeros(PKeyPeerSession.FIRST_MESSAGE_MAX)]:
 		b = PKeyTestPeers.account_side("responder", _b(), [current])
 		await b.session.receive(junk)
 		t.check("keys: a %d-byte first message is refused silently" % junk.size(), b.out.is_empty() and b.closes() == [[&"handshake_failed", false]])
@@ -268,12 +271,15 @@ func _ring_and_revocation(t: PKeyTestContext) -> void:
 	await a.session.start()
 	await PKeyTestPeers.pump(a, b)
 	for pushed_ring in [ring1, ring2, PKeyTestPeers.ring(9, [_a(), _b()], PKeyTestPeers.OTHER_SUB)]:
+		b.mono_value += PKeyPeerSession.RING_GAP_SECONDS
 		a.session.send_record(PKeyPeerRecord.RING, PKeyJson.stringify({"ring": pushed_ring}).to_utf8_buffer())
 		await PKeyTestPeers.pump(a, b)
 	t.check("ring: an older, an equal and another account's roster are ignored", b.of(&"ring").is_empty() and b.session.is_open() and a.session.is_open())
+	b.mono_value += PKeyPeerSession.RING_GAP_SECONDS
 	a.session.send_record(PKeyPeerRecord.RING, PKeyJson.stringify({"ring": "not.a.jws"}).to_utf8_buffer())
 	await PKeyTestPeers.pump(a, b)
 	t.check("ring: a roster that does not verify is ignored", b.of(&"ring").is_empty() and b.session.is_open())
+	b.mono_value += PKeyPeerSession.RING_GAP_SECONDS
 	a.session.send_record(PKeyPeerRecord.RING, "{\"ring\":5}".to_utf8_buffer())
 	await PKeyTestPeers.pump(a, b)
 	t.check("ring: a body that is no roster closes peer_bad_frame", b.closes() == [[&"peer_bad_frame", false]], str(b.closes()))
@@ -616,3 +622,135 @@ func _busy_step(t: PKeyTestContext) -> void:
 	await tree.process_frame
 	await tree.process_frame
 	t.check("busy: the queued message is handled after the first, in order", b.out.size() == 1 and b.closes() == [[&"handshake_failed", false]], str(b.closes()))
+
+
+## A crypto port that counts the AEAD opens and the ladders it is asked for.
+class OpenCountingCrypto extends PKeyPeerCrypto:
+	var opens := 0
+	var ladders := 0
+
+
+	func x25519(private_key: PackedByteArray, peer_public: PackedByteArray) -> Variant:
+		ladders += 1
+		return super.x25519(private_key, peer_public)
+
+
+	func aes_gcm_open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
+		opens += 1
+		return super.aes_gcm_open(key, nonce, aad, sealed)
+
+
+## R-6G B2: a responder reads no more than FIRST_MESSAGE_MAX bytes of a first message, and runs no HKDF
+## or AEAD over a longer one; nothing is sent.
+func _first_message_cap(t: PKeyTestContext) -> void:
+	t.check("first message: the cap is the ephemeral key, a tag and 256 bytes", PKeyPeerSession.FIRST_MESSAGE_MAX == 304)
+	var good := PKeyTestPeers.account_side("initiator", _a(), [_disc])
+	await good.session.start()
+	var real: PackedByteArray = good.out[0]
+	t.check("first message: a real one is far under the cap", real.size() < 100, str(real.size()))
+	var control := OpenCountingCrypto.new()
+	var b := PKeyTestPeers.account_side("responder", _b(), [_disc], "", 1, {"crypto": control})
+	await b.session.receive(real)
+	t.check("first message: a real one is opened (the counter works)", control.opens >= 1 and not b.out.is_empty(), "%d" % control.opens)
+	for n in [PKeyPeerSession.FIRST_MESSAGE_MAX + 1, 1000, PKeyPeerLink.HANDSHAKE_FRAME_MAX, 65535]:
+		var counting := OpenCountingCrypto.new()
+		var r := PKeyTestPeers.account_side("responder", _b(), [_disc], "", 1, {"crypto": counting})
+		var big := PackedByteArray(real)
+		big.resize(n)
+		await r.session.receive(big)
+		t.check("first message: %d bytes close peer_bad_frame, say nothing, run no AEAD or ladder" % n, \
+				r.closes() == [[&"peer_bad_frame", false]] and r.out.is_empty() and counting.opens == 0 and counting.ladders == 0, \
+				"%s %d %d" % [r.closes(), counting.opens, counting.ladders])
+	# At the cap it is still read (and fails its tag silently).
+	var edge := OpenCountingCrypto.new()
+	var e := PKeyTestPeers.account_side("responder", _b(), [_disc], "", 1, {"crypto": edge})
+	var at_cap := PackedByteArray(real)
+	at_cap.resize(PKeyPeerSession.FIRST_MESSAGE_MAX)
+	await e.session.receive(at_cap)
+	t.check("first message: at the cap it is read, and a bad tag closes silently", e.closes() == [[&"handshake_failed", false]] and e.out.is_empty() and edge.opens >= 1)
+	# Modes v and p are bound the same way.
+	var pb := PKeyTestPeers.side("p", "responder", PKeyTestPeers.random32())
+	var big_p := PackedByteArray(real)
+	big_p.resize(5000)
+	await pb.session.receive(big_p)
+	t.check("first message: in mode p too", pb.closes() == [[&"peer_bad_frame", false]] and pb.out.is_empty())
+
+
+## Counts how often a session reads the held roster, which is the first thing a RING it works on does.
+class RingCounter extends RefCounted:
+	var calls := 0
+	var inner: Callable
+
+
+	func held() -> Variant:
+		calls += 1
+		return inner.call()
+
+
+## R-6G B4: one RING in RING_GAP_SECONDS is worked on per session; the rest are dropped without a
+## parse or a verify; RING_DROP_LIMIT of them in a window close the session peer_busy.
+func _ring_flood(t: PKeyTestContext) -> void:
+	var ring2: String = _pair2["ring"]
+	var body := PKeyJson.stringify({"ring": "not.a.jws"}).to_utf8_buffer()
+	var a := PKeyTestPeers.account_side("initiator", _a(), [_disc], ring2, 2)
+	var b := PKeyTestPeers.account_side("responder", _b(), [_disc], ring2, 2)
+	await a.session.start()
+	await PKeyTestPeers.pump(a, b)
+	var counter := RingCounter.new()
+	counter.inner = Callable(b, "held_ring")
+	b.session._account["held_ring"] = Callable(counter, "held")
+	var before := counter.calls
+	a.session.send_record(PKeyPeerRecord.RING, body)
+	await PKeyTestPeers.pump(a, b)
+	t.check("ring flood: the first RING is worked on", counter.calls == before + 1 and b.session.is_open())
+	for i in PKeyPeerSession.RING_DROP_LIMIT - 1:
+		a.session.send_record(PKeyPeerRecord.RING, body)
+		await PKeyTestPeers.pump(a, b)
+	t.check("ring flood: the next seven are dropped, unworked, and the session stays open", counter.calls == before + 1 and b.session.is_open() and b.closes().is_empty(), str(b.closes()))
+	a.session.send_record(PKeyPeerRecord.RING, body)
+	await PKeyTestPeers.pump(a, b)
+	t.check("ring flood: the eighth dropped closes peer_busy", b.closes() == [[&"peer_busy", false]] and counter.calls == before + 1, str(b.closes()))
+	t.check("ring flood: and the sender is told", a.closes() == [[&"peer_busy", true]])
+	# A window: after the gap one more is worked on, and the drop count starts again.
+	a = PKeyTestPeers.account_side("initiator", _a(), [_disc], ring2, 2)
+	b = PKeyTestPeers.account_side("responder", _b(), [_disc], ring2, 2)
+	await a.session.start()
+	await PKeyTestPeers.pump(a, b)
+	counter = RingCounter.new()
+	counter.inner = Callable(b, "held_ring")
+	b.session._account["held_ring"] = Callable(counter, "held")
+	before = counter.calls
+	for i in 6:
+		a.session.send_record(PKeyPeerRecord.RING, body)
+		await PKeyTestPeers.pump(a, b)
+	t.check("ring flood: six in a window cost one", counter.calls == before + 1 and b.session.is_open())
+	b.mono_value += PKeyPeerSession.RING_GAP_SECONDS
+	for i in 6:
+		a.session.send_record(PKeyPeerRecord.RING, body)
+		await PKeyTestPeers.pump(a, b)
+	t.check("ring flood: after the gap one is worked on again, and the count starts over", counter.calls == before + 2 and b.session.is_open() and b.closes().is_empty(), str(b.closes()))
+	# A real, newer roster is still taken when it is the one in the window.
+	b.mono_value += PKeyPeerSession.RING_GAP_SECONDS
+	var older := PKeyTestPeers.account_side("initiator", _a(), [_disc], _pair["ring"], 1)
+	var newer := PKeyTestPeers.account_side("responder", _b(), [_disc], ring2, 2)
+	await older.session.start()
+	await PKeyTestPeers.pump(older, newer)
+	t.check("ring flood: a real roster in the first window is still surfaced", older.of(&"ring").size() == 1 and older.of(&"ring")[0]["epoch"] == 2)
+
+
+## N3: abort() ends a session with no CLOSE and no event, releases the approver's slot and wipes.
+func _abort(t: PKeyTestContext) -> void:
+	var limiter := PKeyPeerLimiter.new(5, 4)
+	var m := PKeyTestPeers.side("p", "responder", PKeyTestPeers.random32(), {"admission": limiter})
+	var d := PKeyTestPeers.side("p", "initiator", PKeyTestPeers.random32())
+	await d.session.start()
+	await m.session.receive(d.out.pop_front())
+	t.check("abort: an approver holds a slot while the code is awaited", limiter.pending() == 1)
+	var events := m.events.size()
+	m.session.abort()
+	var quiet := m.events.size() == events and m.of(&"closed").is_empty()
+	t.check("abort: the slot is released, the session is closed, nothing is sent or reported", limiter.pending() == 0 and m.session.is_closed() and quiet)
+	m.session.abort()
+	t.check("abort: twice is nothing", limiter.pending() == 0)
+	await m.session.receive(PackedByteArray([1, 2, 3]))
+	t.check("abort: and a message after it is ignored", m.events.size() == events and m.out.size() == 1)

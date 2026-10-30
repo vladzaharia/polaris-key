@@ -9,6 +9,11 @@ extends RefCounted
 ## that answers false from `poll()` is finished and is let go. The pump listens to the tree only while
 ## it holds a link. `poll_once()` does one round by hand (tests, and hosts with no tree).
 ##
+## Budget (R-6G N1). A round stops once FRAME_BUDGET_USEC have gone into it (every link is polled at
+## least once over a few rounds: the next round starts where this one stopped), and each link takes only
+## a bounded share of its own backlog (see PKeyPeerLink), so a peer that floods a link cannot hold the
+## game's frame. What is not read stays in the transport.
+##
 ## Offloading. `offload(work)` is the session's `offload` option: a coroutine that runs `work` (a
 ## Callable that touches only what it was handed) as a `WorkerThreadPool` task and answers its
 ## result. At most MAX_TASKS tasks run at once, so a burst of unauthenticated sockets (32 are
@@ -21,6 +26,7 @@ extends RefCounted
 ## 35 ms in the editor (CC-13); JWS checks and the AEAD of the transport run on the calling thread.
 
 const MAX_TASKS := 2
+const FRAME_BUDGET_USEC := 8000
 
 ## The number of tasks running now and the most that ever ran together (a test reads them).
 var in_flight := 0
@@ -30,11 +36,15 @@ var last_thread := 0
 ## How many tasks ran, and how many ran inline.
 var tasks_run := 0
 var inline_run := 0
+## How long one round may take, and the clock it reads (Callable() -> microseconds; empty: the engine's).
+var frame_budget_usec := FRAME_BUDGET_USEC
+var clock_usec: Callable
 
 var _tree: SceneTree
 var _threads: bool
 var _links: Array[PKeyPeerLink] = []
 var _listening := false
+var _start := 0
 
 
 ## `tree` null: the running main loop, when it is a SceneTree. `threads` false forces the inline mode.
@@ -70,13 +80,32 @@ func count() -> int:
 	return _links.size()
 
 
-## One round: every link polled once; the finished ones are let go.
+## One round: the links polled in turn, from where the last round stopped, until the budget is spent;
+## the finished ones are let go.
 func poll_once() -> void:
-	for link in _links.duplicate():
-		if not link.poll():
+	var order := _links.duplicate()
+	var n := order.size()
+	if n > 0:
+		var began := _micros()
+		var finished: Array[PKeyPeerLink] = []
+		var polled := 0
+		while polled < n:
+			var link: PKeyPeerLink = order[(_start + polled) % n]
+			polled += 1
+			if not link.poll():
+				finished.append(link)
+			if polled < n and _micros() - began >= frame_budget_usec:
+				break
+		_start = (_start + polled) % n
+		for link in finished:
 			_links.erase(link)
+		_start = _start % maxi(1, _links.size())
 	if _links.is_empty():
 		_unlisten()
+
+
+func _micros() -> int:
+	return int(clock_usec.call()) if clock_usec.is_valid() else Time.get_ticks_usec()
 
 
 ## Runs `work` off the main thread (inline without threads) and answers its result. A coroutine.
