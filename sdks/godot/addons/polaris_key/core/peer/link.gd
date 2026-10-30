@@ -15,7 +15,9 @@ extends RefCounted
 ##    BUDGET_USEC have gone in, at least one; the rest wait in a backlog, and the pipe is not read again
 ##    until the backlog is empty, so what a busy peer sends waits in the transport, not in memory;
 ##  - a write the pipe refuses (its queue is full) ends the link `peer_busy` and refuses later sends
-##    (R-6G N2): a frame is never lost under a counter that went on;
+##    (R-6G N2): a frame is never lost under a counter that went on. A transport that keeps its own queue
+##    (the relay) can also pass `can_send` (Callable(size) -> bool): a host message it refuses ends the
+##    session `peer_busy` before anything is encrypted;
 ##  - a pipe that goes away under a live session closes it, and the `closed` signal then says
 ##    `connection_lost`; frames that arrived before the pipe closed are still handled first;
 ##  - backpressure: `pause(true)` stops reading the pipe, so the peer's data waits in the transport;
@@ -62,6 +64,7 @@ var _destroyed := false
 var _backlog: Array = []
 var _send_failed := false
 var _usec: Callable
+var _can_send: Callable
 
 
 ## A link over `pipe` for the session `session_options` describe (see PKeyPeerSession; `send` and
@@ -88,6 +91,7 @@ func _init(pipe: PKeyPeerPipe, options := {}) -> void:
 	_pipe = pipe
 	_mono_ms = options.get("mono_ms", Callable())
 	_usec = options.get("usec", Callable())
+	_can_send = options.get("can_send", Callable())
 	_deadline_ms = _mono() + int(options.get("handshake_ms", HANDSHAKE_MS))
 
 
@@ -121,6 +125,11 @@ func is_paused() -> bool:
 func send_record(type: int, body: PackedByteArray) -> PKeyResult:
 	if _send_failed:
 		return PKeyResult.failure(&"state", "The connection cannot take more.")
+	# A transport with a queue of its own is asked first (CC-14.14): a message it cannot take is refused
+	# before it is encrypted, so the keys never advance for it, and the session ends `peer_busy`.
+	if _can_send.is_valid() and not bool(_can_send.call(body.size())):
+		session.close(PKeyPeerSession.PEER_BUSY)
+		return PKeyResult.failure(&"state", "The queue is full.")
 	return session.send_record(type, body)
 
 

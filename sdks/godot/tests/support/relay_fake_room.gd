@@ -31,15 +31,25 @@ func _to_string() -> String:
 	return "PKeyRelayFakeRoom(%d clients)" % clients.size()
 
 
-## The opener a service is given.
+## The opener a service is given: its sockets are the next device in `devices`.
 func opener(url: String, protocols: Array) -> PKeyConnectRelay.Socket:
+	var device: PackedByteArray = devices[mini(_next, devices.size() - 1)] if not devices.is_empty() else PackedByteArray()
+	_next += 1
+	return _open_as(url, protocols, device)
+
+
+## An opener for a service that is `device` in the room: every socket it opens is that device's. Several
+## services share one room this way.
+func opener_for(device: PackedByteArray) -> Callable:
+	return Callable(self, "_open_as").bind(device)
+
+
+func _open_as(url: String, protocols: Array, device: PackedByteArray) -> PKeyConnectRelay.Socket:
 	opens.append({"url": url, "protocols": protocols.duplicate()})
 	if protocols.size() > 1:
 		tickets.append(str(protocols[1]))
 	if refuse_open:
 		return null
-	var device: PackedByteArray = devices[mini(_next, devices.size() - 1)] if not devices.is_empty() else PackedByteArray()
-	_next += 1
 	var c := Client.new(self, device)
 	c.open_after = open_after
 	c.echo = echo

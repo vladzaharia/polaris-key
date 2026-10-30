@@ -702,6 +702,9 @@ func _dial_once(hosts: Array, port: int, ident: PKeyConnectClient.PeerSource) ->
 	var att: PKeyConnectChannel.Attachment = made["attachment"]
 	link.start()
 	var opened: PKeyResult = await att.wait_opened()
+	if opened.ok:
+		# Resumed from inside the session's own step: hand the caller a clean stack.
+		await _tree.process_frame
 	if not opened.ok:
 		link.destroy()
 		# A socket that was reset before the peer admitted us is an address that did not answer.

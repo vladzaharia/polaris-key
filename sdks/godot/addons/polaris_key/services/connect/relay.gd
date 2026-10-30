@@ -3,8 +3,8 @@ class_name PKeyConnectRelay
 extends RefCounted
 ## The relay half of Cloud Connect, socket side (CC-14.13; WIRE-CONTRACT-V5 section 15.7), ported from
 ## the socket half of sdk-node `connect/relay.ts` and the Python `connect/relay.py`. One WebSocket to
-## the account room carries envelopes (`PKeyPeerRelayCodec`). The peer sessions that ride the socket are
-## CC-14.14. Everything runs on the main thread, driven by `SceneTree.process_frame`.
+## the account room carries envelopes (`PKeyPeerRelayCodec`), and the peer sessions ride it (CC-14.14).
+## Everything runs on the main thread, driven by `SceneTree.process_frame`.
 ##
 ## Rules this file keeps:
 ##  - a ticket is single use and lives 60 seconds, so every connect fetches a new one (`ticket`, a
@@ -17,8 +17,19 @@ extends RefCounted
 ##    is refused;
 ##  - a message is at most 65,564 bytes; an envelope that fails its layout, or a text frame, closes the
 ##    socket with 1002 and is never answered (G14); each running service has one socket;
-##  - the room stamps `from`; this file never uses it for identity (CC-14.14 checks it against the
-##    certificate);
+##  - the room stamps `from`, and it is never trusted for identity: the certificate names the peer, and the
+##    two must agree or the session closes and the dial fails `wrong_peer` (G8);
+##  - every session is mode `a`: the relay builds each channel with the literal mode and `assert_relay_mode`
+##    refuses `v` and `p` (`mode_not_allowed`, G16); only the person's own roster devices may open a session,
+##    at most 64 at once and 4 per peer, and a short memory of ended sessions drops their late messages;
+##  - a session is a `PKeyPeerLink` over a `RelayPipe`: the room delivers whole Noise messages and the pipe
+##    frames them for the link, so the link's budget, deadlines, backpressure and teardown apply as on the
+##    LAN. The room has no flow control, so a peer that sends faster than the host reads ends `peer_busy` at
+##    the byte caps;
+##  - outgoing envelopes are paced (`PKeyConnectPacer`, D-9: a token bucket of 180 a second with a burst of 360;
+##    LIMIT 1 halves the rate for 10 seconds; an 8 MiB queue): a session message past the queue ends that
+##    session `peer_busy` and says so to the peer; control envelopes and the last records of a closing session
+##    are never refused;
 ##  - reconnects back off exponentially with jitter and a floor, and the backoff resets only after the
 ##    socket stayed up 30 seconds. `Retry-After` is capped at 3,600 seconds. A product that turned the
 ##    relay off, or a spent quota, ends the loop with a typed error; 4009 (replaced) stops without
@@ -36,6 +47,8 @@ extends RefCounted
 signal state_changed(status: Dictionary)
 signal members_changed(members: Array)
 signal notice(n: Dictionary)
+## An inbound session, once it is open and admitted.
+signal session_opened(session: PKeyConnectSession)
 
 const PROTOCOL := "pkey-relay.1"
 const MAX_MESSAGE := PKeyPeerRelayCodec.MAX_MESSAGE
@@ -53,6 +66,15 @@ const OPEN_SECONDS := 15.0
 const PACKETS_PER_FRAME := 32
 const IDENTITY_TTL_S := 30
 const CERT_MARGIN_S := 60
+## Sessions at once, handshakes and sessions with one device at once, and ended sessions remembered so that
+## a late message for one is dropped without work.
+const MAX_SESSIONS := 64
+const MAX_SESSIONS_PER_PEER := 4
+const ENDED_MEMORY := 256
+const HANDSHAKE_SECONDS := 30.0
+const MAX_SESSION_ID := 0xffffffff
+## Noise messages the room delivered and a paused link has not read: past this the session ends `peer_busy`.
+const MAX_PIPE_BUFFER := 9 * 1024 * 1024
 
 var _src: PKeyConnectLan.Source
 var _ticket: Callable
@@ -74,7 +96,12 @@ var _last_limit := 0
 var _last_code := -1
 var _not_member := 0
 var _id: Variant = null
-var _outbox: Array[PackedByteArray] = []
+var _pump: PKeyPeerPump
+var _budget: PKeyConnectSession.Budget
+var _pacer: PKeyConnectPacer
+var _outbox: PKeyConnectPacer.Outbox
+var _links: Dictionary = {}
+var _ended: Array[String] = []
 var _timer_gen := 0
 var _nap_cancel := false
 var _napping := false
@@ -88,7 +115,7 @@ var _aborted := false
 ## monotonic seconds), `random` (Callable() -> 0..1), `timer` (Callable(seconds, fn)), `tree`, `caps`,
 ## `label`, `backoff_base`, `backoff_max`, `backoff_min`, `stable_seconds`, `ping_seconds`,
 ## `open_seconds`, `max_sessions`, `max_pending_per_peer`, `handshake_seconds`, `rekey_messages`,
-## `rekey_seconds`, `budget`.
+## `rekey_seconds`, `budget`, `pump`, and the pacing: `rate` (envelopes a second), `burst`, `outbox_bytes`.
 func _init(source: PKeyConnectLan.Source, ticket: Callable, options := {}) -> void:
 	_src = source
 	_ticket = ticket
@@ -103,6 +130,10 @@ func _init(source: PKeyConnectLan.Source, ticket: Callable, options := {}) -> vo
 		"mono": Callable(self, "_mono"),
 	}, Callable(self, "_stored"), Callable(self, "_after"))
 	_docs.notice.connect(Callable(self, "_on_notice"))
+	_pump = options.get("pump", null) as PKeyPeerPump
+	if _pump == null:
+		_pump = PKeyPeerPump.new(_tree)
+	_budget = options.get("budget", null) as PKeyConnectSession.Budget
 
 
 func _to_string() -> String:
@@ -200,7 +231,13 @@ func stop() -> void:
 	_timer_gen += 1
 	_docs.close()
 	_enter("stopped")
+	# Each session says goodbye; the goodbyes leave unpaced, then the socket closes.
+	for rl: Rl in _links.values():
+		rl.link.close(PKeyPeerSession.PEER_BYE)
+	if _socket != null and _outbox != null:
+		_flush_all(_socket)
 	_close_socket(1000)
+	_on_socket_lost()
 	_nap_cancel = true
 
 
@@ -215,6 +252,8 @@ func abort() -> void:
 	_enter("stopped")
 	_socket = null
 	_open = false
+	for rl: Rl in _links.values():
+		rl.link.destroy()
 	_nap_cancel = true
 
 
@@ -342,7 +381,8 @@ func _session(grant: PKeyConnectClient.Grant) -> int:
 	_pong_at = opened_at
 	_last_limit = 0
 	_error = null
-	_outbox = []
+	_outbox = PKeyConnectPacer.Outbox.new(int(_o.get("outbox_bytes", PKeyConnectPacer.MAX_QUEUED_BYTES)))
+	_pacer = PKeyConnectPacer.new(float(_o.get("rate", PKeyConnectPacer.RATE)), float(_o.get("burst", PKeyConnectPacer.BURST)), Callable(self, "_mono"))
 	_enter("open")
 	_send_env({"op": &"list"})
 	var next_ping := opened_at + float(_o.get("ping_seconds", PING_SECONDS))
@@ -387,7 +427,8 @@ func _session(grant: PKeyConnectClient.Grant) -> int:
 	_open = false
 	if _socket == sock:
 		_socket = null
-	_outbox = []
+	_outbox = null
+	_pacer = null
 	var had := not _members.is_empty()
 	_members = {}
 	_on_socket_lost()
@@ -403,25 +444,40 @@ func _close_socket(code: int) -> void:
 		sock.close(code)
 
 
-## CC-14.14 ends the sessions that rode the socket here.
+## The socket is gone: every session ends without a word.
 func _on_socket_lost() -> void:
-	pass
+	for rl: Rl in _links.values():
+		rl.pipe.lost()
 
 
-## Send what is queued. CC-14.14 paces it.
+## Send what is queued, as fast as the pacer allows.
 func _flush(sock: Socket) -> void:
 	while not _outbox.is_empty():
-		var data: PackedByteArray = _outbox.pop_front()
-		if not sock.send(data):
+		if _pacer.try_take() > 0.0:
+			return
+		if not sock.send(_outbox.pop()):
 			return
 
 
-func _send_env(m: Dictionary) -> void:
-	if not _open:
-		return
+## Send everything queued now, ignoring the pace (the goodbyes of a stop).
+func _flush_all(sock: Socket) -> void:
+	while not _outbox.is_empty():
+		if not sock.send(_outbox.pop()):
+			return
+
+
+## Queue one envelope. False when it is refused: only a non-forced one past the queue's byte cap. While the
+## socket is not open an envelope is dropped (and counts as sent).
+func _send_env(m: Dictionary, force := true) -> bool:
+	if not _open or _outbox == null:
+		return true
 	var data := PKeyPeerRelayCodec.encode(m)
-	if not data.is_empty():
-		_outbox.append(data)
+	return data.is_empty() or _outbox.put(data, force)
+
+
+## A session's Noise message (the pipe's call): paced like all, forced only for a session that is closing.
+func _send_session(peer: PackedByteArray, session_id: int, noise: PackedByteArray, force: bool) -> bool:
+	return _send_env({"op": &"send", "to": peer, "session": session_id, "noise": noise}, force)
 
 
 ## One envelope from the room. False when it is refused (the socket then closes 1002).
@@ -460,14 +516,11 @@ func _handle(data: PackedByteArray) -> bool:
 	return true
 
 
-## CC-14.14: a message of a session.
-func _on_recv(_from: PackedByteArray, _session: int, _noise: PackedByteArray) -> void:
-	pass
-
-
-## CC-14.14: the room dropped a device, so its sessions end.
-func _on_gone(_device: PackedByteArray) -> void:
-	pass
+## The room dropped a device, so its sessions end without a word.
+func _on_gone(device: PackedByteArray) -> void:
+	for rl: Rl in _links.values():
+		if rl.peer == device:
+			rl.pipe.lost()
 
 
 func _limit(reason: int) -> void:
@@ -482,9 +535,193 @@ func _limit(reason: int) -> void:
 	_enter(_state)
 
 
-## CC-14.14: LIMIT 1 halves the pace.
-func _on_limit(_reason: int) -> void:
-	pass
+## LIMIT 1 halves the pace for ten seconds (D-9).
+func _on_limit(reason: int) -> void:
+	if reason == 1 and _pacer != null:
+		_pacer.halve()
+
+
+# ── sessions (CC-14.14) ──────────────────────────────────────────────────────────────────────
+
+
+## Refuses a mode the relay must never carry (`v`, `p`, anything else): `mode_not_allowed`. ok("a") for `a`.
+static func assert_relay_mode(mode: String) -> PKeyResult:
+	if mode != "a":
+		return PKeyConnectErrors.relay("mode_not_allowed", "Mode %s never crosses the relay; it is LAN only." % mode)
+	return PKeyResult.success("a")
+
+
+## Sessions that are open or opening now.
+func link_count() -> int:
+	return _links.size()
+
+
+## Dial a device of the person over the relay and run the handshake. ok with a PKeyConnectSession, or a relay
+## failure: `unknown_peer`, `busy`, `handshake_failed`, `wrong_peer`, or the reason the relay is not
+## connected. A coroutine.
+func dial(device_id: String) -> PKeyResult:
+	var up: PKeyResult = await ready()
+	if not up.ok:
+		return up
+	var checked := _check_target(device_id)
+	if checked.has("error"):
+		return checked["error"]
+	var peer: PackedByteArray = checked["peer"]
+	var rl := _make_link(peer, _new_session_id(peer), "initiator", checked["ident"])
+	if rl == null:
+		return PKeyConnectErrors.relay("busy", "Too many relay sessions are open.")
+	rl.link.start()
+	while rl.session == null and not rl.ended:
+		await rl.settled
+	if rl.session != null:
+		# Resumed from inside the session's own step: give the caller a clean stack, so that a close it
+		# asks for at once is not deferred behind that step.
+		await _tree.process_frame
+		return PKeyResult.success(rl.session)
+	return PKeyConnectErrors.relay(rl.why, "The peer was not admitted over the relay.", {"close_code": rl.close_code})
+
+
+## {peer, ident} for a device of the person that is not this one, else {error}.
+func _check_target(device_id: String) -> Dictionary:
+	var peer: Variant = PKeyPeerAdvert.device_id_bytes(device_id)
+	if peer == null:
+		return {"error": PKeyConnectErrors.relay("unknown_peer", "That is not a device id.")}
+	var ident: Variant = _identity(false)
+	if ident == null:
+		return {"error": PKeyConnectErrors.lan("no_identity", "No Cloud Connect identity is held.")}
+	var me: PKeyConnectClient.PeerSource = ident
+	if device_id == me.device_id or not me.roster.has(device_id):
+		return {"error": PKeyConnectErrors.relay("unknown_peer", "That device is not one of this person's devices.")}
+	return {"peer": peer, "ident": me}
+
+
+func _key(peer: PackedByteArray, session_id: int) -> String:
+	return "%s:%d" % [peer.hex_encode(), session_id]
+
+
+func _new_session_id(peer: PackedByteArray) -> int:
+	while true:
+		var raw := Crypto.new().generate_random_bytes(4)
+		var n := (raw[0] << 24) | (raw[1] << 16) | (raw[2] << 8) | raw[3]
+		var k := _key(peer, n)
+		if n <= MAX_SESSION_ID and not _links.has(k) and not _ended.has(k):
+			return n
+	return 0
+
+
+## A first message of a session the peer opened, or a later one of a session we know.
+func _on_recv(frm: PackedByteArray, session_id: int, noise: PackedByteArray) -> void:
+	var key := _key(frm, session_id)
+	var known: Rl = _links.get(key)
+	if known != null:
+		_deliver(known, noise)
+		return
+	if _ended.has(key):
+		return
+	# Only the person's own devices may open a session.
+	var ident: Variant = _identity(false)
+	if ident == null or _stopped or not _open:
+		return
+	var me: PKeyConnectClient.PeerSource = ident
+	var from_id := PKeyB64Url.encode(frm)
+	if from_id == me.device_id or not me.roster.has(from_id):
+		return
+	var pending := 0
+	for other: Rl in _links.values():
+		if not other.ended and other.peer == frm:
+			pending += 1
+	if pending >= int(_o.get("max_pending_per_peer", MAX_SESSIONS_PER_PEER)):
+		return
+	var rl := _make_link(frm, session_id, "responder", me)
+	if rl != null:
+		_deliver(rl, noise)
+
+
+## The room has no flow control: a session whose messages pile up unread ends `peer_busy`.
+func _deliver(rl: Rl, noise: PackedByteArray) -> void:
+	if not rl.pipe.deliver(noise):
+		rl.link.close(PKeyPeerSession.PEER_BUSY)
+
+
+## One session: a mode-a link over a RelayPipe, null when too many are open.
+func _make_link(peer: PackedByteArray, session_id: int, role: String, ident: PKeyConnectClient.PeerSource) -> Rl:
+	if _links.size() >= int(_o.get("max_sessions", MAX_SESSIONS)):
+		return null
+	var so := PKeyConnectChannel.session_options(ident, {
+		"role": role, "caps": _o.get("caps", ["app/1"]), "label": str(_o.get("label", "")), "ring": Callable(self, "_pushed"),
+		"now": _src.now, "mono": Callable(self, "_mono"), "rekey_messages": _o.get("rekey_messages", PKeyPeerSession.DEFAULT_REKEY_MESSAGES),
+		"rekey_seconds": _o.get("rekey_seconds", PKeyPeerSession.DEFAULT_REKEY_SECONDS),
+	})
+	if not assert_relay_mode(str(so["mode"])).ok:
+		return null
+	var pipe := RelayPipe.new()
+	pipe.peer = peer
+	pipe.session_id = session_id
+	pipe.sender = Callable(self, "_send_session")
+	var seconds := float(_o.get("handshake_seconds", HANDSHAKE_SECONDS))
+	var made := PKeyPeerLink.create(pipe, so, {
+		"pump": _pump, "handshake_ms": int(seconds * 1000.0), "mono_ms": Callable(self, "_mono_ms"), "can_send": Callable(self, "_has_room"),
+	})
+	if not made.ok:
+		return null
+	var rl := Rl.new()
+	rl.key = _key(peer, session_id)
+	rl.peer = peer
+	rl.session_id = session_id
+	rl.role = role
+	rl.pipe = pipe
+	rl.link = made.detail
+	pipe.closing = Callable(rl.link.session, "is_closed")
+	rl.attachment = PKeyConnectChannel.attach(rl.link, _docs, role, "relay", "relay", _budget)
+	rl.attachment.opened.connect(_on_opened.bind(rl.key))
+	rl.link.closed.connect(_on_link_closed.bind(rl.key))
+	_links[rl.key] = rl
+	_pump.add(rl.link)
+	return rl
+
+
+## Room for a host message of `size` bytes in the outgoing queue, asked BEFORE it is encrypted, so the session's
+## keys never advance for a message that was not queued (a refused one ends the session `peer_busy` and the
+## CLOSE that says so is the next message the peer can read).
+func _has_room(size: int) -> bool:
+	return _outbox != null and _outbox.room_for(size + 128 * (size / 60000 + 1))
+
+
+func _mono_ms() -> int:
+	return int(_mono() * 1000.0)
+
+
+## The link admitted the peer. The certificate, not the room's stamp, names it; they must agree (G8).
+func _on_opened(session: PKeyConnectSession, key: String) -> void:
+	var rl: Rl = _links.get(key)
+	if rl == null:
+		return
+	if session.peer_device_id != PKeyB64Url.encode(rl.peer):
+		rl.why = "wrong_peer"
+		session.close()
+		return
+	rl.session = session
+	rl.settled.emit()
+	if rl.role == "responder":
+		session_opened.emit(session)
+
+
+func _on_link_closed(code: StringName, _by_peer: bool, key: String) -> void:
+	var rl: Rl = _links.get(key)
+	if rl == null:
+		return
+	rl.ended = true
+	rl.close_code = code
+	_links.erase(key)
+	_remember_ended(key)
+	rl.settled.emit()
+
+
+## A short memory of ended sessions, so a late message for one is dropped without work.
+func _remember_ended(key: String) -> void:
+	_ended.append(key)
+	if _ended.size() > ENDED_MEMORY:
+		_ended.pop_front()
 
 
 # ── identity and documents ───────────────────────────────────────────────────────────────────
@@ -586,6 +823,101 @@ class Socket extends RefCounted:
 	## The close code the peer sent, or the one this side closed with; -1 for none.
 	func code() -> int:
 		return -1
+
+
+## One session inside the room.
+class Rl extends RefCounted:
+	signal settled
+
+	var key := ""
+	var peer := PackedByteArray()
+	var session_id := 0
+	var role := ""
+	var link: PKeyPeerLink
+	var pipe: RelayPipe
+	var attachment: PKeyConnectChannel.Attachment
+	var session: PKeyConnectSession
+	## Why a link that never admitted the peer ended: `handshake_failed`, or `wrong_peer`.
+	var why := "handshake_failed"
+	var ended := false
+	var close_code: StringName = &""
+
+
+	func _to_string() -> String:
+		return "PKeyConnectRelay.Rl(%d)" % session_id
+
+
+## The pipe of a relay session: the room delivers whole Noise messages (`deliver`) and takes whole ones
+## (`write` is what the link frames, un-framed here and sent as a SEND envelope through `sender`).
+class RelayPipe extends PKeyPeerPipe:
+	var peer := PackedByteArray()
+	var session_id := 0
+	## Callable(peer, session_id, noise, force) -> bool: queue a SEND; false when the queue refuses it.
+	var sender: Callable
+	## Callable() -> bool: the session is closing, so its last records are never refused.
+	var closing: Callable
+
+	var _in := PackedByteArray()
+	var _reader := PKeyPeerFrame.Reader.new()
+	var _open := true
+
+
+	func _to_string() -> String:
+		return "PKeyConnectRelay.RelayPipe()"
+
+
+	## One Noise message from the room. False when too much waits unread.
+	func deliver(noise: PackedByteArray) -> bool:
+		var frame := PKeyPeerFrame.encode(noise)
+		if frame.is_empty() or _in.size() + frame.size() > PKeyConnectRelay.MAX_PIPE_BUFFER:
+			return false
+		_in.append_array(frame)
+		return true
+
+
+	func read() -> PackedByteArray:
+		var out := _in
+		_in = PackedByteArray()
+		return out
+
+
+	func write(bytes: PackedByteArray) -> bool:
+		if not _open:
+			return false
+		var cut := _reader.push(bytes)
+		if not cut["ok"]:
+			return false
+		var force: bool = closing.is_valid() and bool(closing.call())
+		for noise: PackedByteArray in cut["frames"]:
+			if not bool(sender.call(peer, session_id, noise, force)):
+				return false
+		return true
+
+
+	func is_open() -> bool:
+		return _open or not _in.is_empty()
+
+
+	## The room dropped the peer or the socket went: the link ends `connection_lost`.
+	func lost() -> void:
+		_open = false
+
+
+	func close() -> void:
+		_open = false
+
+
+	func abort() -> void:
+		_open = false
+		_in = PackedByteArray()
+
+
+	func is_finished() -> bool:
+		return not _open
+
+
+	func remote_address() -> String:
+		return "relay"
 
 
 ## The real socket: a `WebSocketPeer`. Its `str()` shows nothing.
