@@ -1028,9 +1028,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     "displayText": {
-      "description": "A name the sign-in card shows: no control, zero-width or bidirectional-formatting character and no leading or trailing whitespace (invalid_display_text, PX-W13).",
+      "description": "A name the sign-in card shows: no control, invisible or bidirectional-formatting character, not starting with a variation selector and no leading or trailing whitespace (invalid_display_text). The pattern carries the Basic Multilingual Plane part; the validator also refuses the supplementary-plane code points.",
       "type": "string",
-      "pattern": "^(?!\\\\s)(?![\\\\s\\\\S]*\\\\s$)[^\\\\u0000-\\\\u001f\\\\u007f-\\\\u009f\\\\u061c\\\\u200b-\\\\u200f\\\\u202a-\\\\u202e\\\\u2060-\\\\u2064\\\\u2066-\\\\u2069\\\\ufeff]*$"
+      "pattern": "^(?![\\\\s\\\\ufe00-\\\\ufe0f\\\\u180b-\\\\u180d\\\\u180f])(?![\\\\s\\\\S]*\\\\s$)[^\\\\u0000-\\\\u001f\\\\u007f-\\\\u009f\\\\u00ad\\\\u034f\\\\u0600-\\\\u0605\\\\u061c\\\\u06dd\\\\u070f\\\\u0890\\\\u0891\\\\u08e2\\\\u115f\\\\u1160\\\\u17b4\\\\u17b5\\\\u180e\\\\u200b-\\\\u200f\\\\u2028-\\\\u202e\\\\u2060-\\\\u206f\\\\u2800\\\\u3164\\\\ud800-\\\\udfff\\\\ufeff\\\\uffa0\\\\ufff0-\\\\ufffb]*$"
     },
     "listing": {
       "description": "Store-page metadata. A per-outlet listing is merged over the document's.",
@@ -1657,9 +1657,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"
     },
     "displayName": {
-      "description": "A name the sign-in card shows: a label, with no control, zero-width or bidirectional-formatting character and no leading or trailing whitespace (invalid_display_text, PX-W13).",
+      "description": "A name the sign-in card shows: a label, with no control, invisible or bidirectional-formatting character, not starting with a variation selector and no leading or trailing whitespace (invalid_display_text). The pattern carries the Basic Multilingual Plane part; the validator also refuses the supplementary-plane code points.",
       "allOf": [{ "$ref": "#/$defs/label" }],
-      "pattern": "^(?!\\\\s)(?![\\\\s\\\\S]*\\\\s$)[^\\\\u0000-\\\\u001f\\\\u007f-\\\\u009f\\\\u061c\\\\u200b-\\\\u200f\\\\u202a-\\\\u202e\\\\u2060-\\\\u2064\\\\u2066-\\\\u2069\\\\ufeff]*$"
+      "pattern": "^(?![\\\\s\\\\ufe00-\\\\ufe0f\\\\u180b-\\\\u180d\\\\u180f])(?![\\\\s\\\\S]*\\\\s$)[^\\\\u0000-\\\\u001f\\\\u007f-\\\\u009f\\\\u00ad\\\\u034f\\\\u0600-\\\\u0605\\\\u061c\\\\u06dd\\\\u070f\\\\u0890\\\\u0891\\\\u08e2\\\\u115f\\\\u1160\\\\u17b4\\\\u17b5\\\\u180e\\\\u200b-\\\\u200f\\\\u2028-\\\\u202e\\\\u2060-\\\\u206f\\\\u2800\\\\u3164\\\\ud800-\\\\udfff\\\\ufeff\\\\uffa0\\\\ufff0-\\\\ufffb]*$"
     },
     "longText": {
       "description": "Longer human text: at most 2000 chars, no control characters.",
@@ -15794,21 +15794,8 @@ function walk(value, path37, depth) {
 // ../shared-protocol/dist/config.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/identity.js
+// ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
-
-// ../shared-protocol/dist/chunk-UBQJ4ZON.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-var DISPLAY_TEXT_STRIP = [
-  [0, 31],
-  [127, 159],
-  [1564, 1564],
-  [8203, 8207],
-  [8234, 8238],
-  [8288, 8292],
-  [8294, 8297],
-  [65279, 65279]
-];
 
 // ../shared-protocol/dist/chunk-6OFYMAM7.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -15850,9 +15837,6 @@ var CHANNEL_DEV = "dev";
 var CHANNEL_ALIASES = { staging: "beta", latest: "stable" };
 var CHANNEL_NAME_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$";
 var PR_CHANNEL_PATTERN = "^pr-?([0-9]+)$";
-
-// ../shared-protocol/dist/core.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // ../shared-protocol/dist/packs.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -15982,6 +15966,49 @@ var DELEGATED_KID_PATTERN = /^pkd1-[0-9a-f]{64}$/;
 // ../shared-manifest/dist/index.js
 var import_yaml2 = __toESM(require_dist(), 1);
 var import_yaml3 = __toESM(require_dist(), 1);
+var DISPLAY_NAME_REFUSED = [
+  [0, 31],
+  [127, 159],
+  [173, 173],
+  [847, 847],
+  [1536, 1541],
+  [1564, 1564],
+  [1757, 1757],
+  [1807, 1807],
+  [2192, 2193],
+  [2274, 2274],
+  [4447, 4448],
+  [6068, 6069],
+  [6158, 6158],
+  [8203, 8207],
+  [8232, 8238],
+  [8288, 8303],
+  [10240, 10240],
+  [12644, 12644],
+  [55296, 57343],
+  [65279, 65279],
+  [65440, 65440],
+  [65520, 65531],
+  [69821, 69821],
+  [69837, 69837],
+  [78896, 78911],
+  [113824, 113827],
+  [119155, 119162],
+  [917504, 917535],
+  [917632, 917759],
+  [918e3, 921599]
+];
+var DISPLAY_NAME_KEPT = [
+  [6155, 6157],
+  [6159, 6159],
+  [65024, 65039],
+  [917536, 917631],
+  [917760, 917999]
+];
+function inRanges2(cp3, ranges) {
+  for (const [lo, hi] of ranges) if (cp3 >= lo && cp3 <= hi) return true;
+  return false;
+}
 var DEFAULT_RESERVED_DISPLAY_NAMES_MODE = "warn";
 var DISPLAY_NAME_EXEMPT_SLUG = "polaris-key";
 var RESERVED_DISPLAY_TERMS = [
@@ -16042,6 +16069,9 @@ var CONFUSABLES = {
 function displayNameSkeleton(text3) {
   let s = "";
   for (const ch of text3) {
+    const cp3 = ch.codePointAt(0);
+    if (inRanges2(cp3, DISPLAY_NAME_REFUSED) || inRanges2(cp3, DISPLAY_NAME_KEPT))
+      continue;
     if (new RegExp("\\p{M}", "u").test(ch)) continue;
     if (!/[\p{L}\p{N}]/u.test(ch)) {
       s += " ";
@@ -16080,10 +16110,12 @@ function reservedDisplayTerm(text3, extraTerms = []) {
 }
 function invalidDisplayText(text3) {
   if (/^\s|\s$/u.test(text3)) return true;
+  let first = true;
   for (const ch of text3) {
     const cp3 = ch.codePointAt(0);
-    for (const [lo, hi] of DISPLAY_TEXT_STRIP)
-      if (cp3 >= lo && cp3 <= hi) return true;
+    if (inRanges2(cp3, DISPLAY_NAME_REFUSED)) return true;
+    if (first && inRanges2(cp3, DISPLAY_NAME_KEPT)) return true;
+    first = false;
   }
   return false;
 }
@@ -21777,7 +21809,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "product",
         "/product/name",
         "invalid_display_text",
-        "product.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace."
+        "product.name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace."
       );
     else if (name === "reserved" && mode === "error")
       add4(
@@ -21802,7 +21834,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "distribution",
         "/listing/name",
         "invalid_display_text",
-        "listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace."
+        "listing.name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace."
       );
     else if (listingName === "reserved" && mode === "error")
       add4(
@@ -21827,7 +21859,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "distribution",
         "/listing/developerName",
         "invalid_display_text",
-        "listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace."
+        "listing.developerName must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace."
       );
     else if (developer === "reserved" && mode === "error")
       add4(
@@ -21854,7 +21886,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "distribution",
           `/outlets/${id}/listing/name`,
           "invalid_display_text",
-          `outlets.${id}.listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`
+          `outlets.${id}.listing.name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace.`
         );
       if (verdict(l.developerName) === "invalid")
         add4(
@@ -21862,7 +21894,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "distribution",
           `/outlets/${id}/listing/developerName`,
           "invalid_display_text",
-          `outlets.${id}.listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`
+          `outlets.${id}.listing.developerName must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace.`
         );
     }
   }

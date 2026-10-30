@@ -488,9 +488,9 @@
       "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
     },
     "displayName": {
-      "description": "A name the sign-in card shows: a label, with no control, zero-width or bidirectional-formatting character and no leading or trailing whitespace (invalid_display_text, PX-W13).",
+      "description": "A name the sign-in card shows: a label, with no control, invisible or bidirectional-formatting character, not starting with a variation selector and no leading or trailing whitespace (invalid_display_text). The pattern carries the Basic Multilingual Plane part; the validator also refuses the supplementary-plane code points.",
       "allOf": [{ "$ref": "#/$defs/label" }],
-      "pattern": "^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000-\\u001f\\u007f-\\u009f\\u061c\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u2064\\u2066-\\u2069\\ufeff]*$"
+      "pattern": "^(?![\\s\\ufe00-\\ufe0f\\u180b-\\u180d\\u180f])(?![\\s\\S]*\\s$)[^\\u0000-\\u001f\\u007f-\\u009f\\u00ad\\u034f\\u0600-\\u0605\\u061c\\u06dd\\u070f\\u0890\\u0891\\u08e2\\u115f\\u1160\\u17b4\\u17b5\\u180e\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u206f\\u2800\\u3164\\ud800-\\udfff\\ufeff\\uffa0\\ufff0-\\ufffb]*$"
     },
     "longText": {
       "description": "Longer human text: at most 2000 chars, no control characters.",

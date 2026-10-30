@@ -2907,7 +2907,7 @@ function validateDocuments(
   }
 
   // PX-W13 (plans/PX-W13.md §3): the names the sign-in card shows an app by. Text with a control,
-  // zero-width or bidi code point is always refused; a reserved name is reported with the
+  // invisible or bidi code point (displayName.ts) is always refused; a reserved name is reported with the
   // platform's severity (`identity.reservedDisplayNames`, `warn` until the lead flips it). The
   // system product may call itself Polaris Key. Every emit site is literal so the generated
   // validation-codes page lists each field and severity.
@@ -2933,7 +2933,7 @@ function validateDocuments(
         "product",
         "/product/name",
         "invalid_display_text",
-        "product.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+        "product.name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace.",
       );
     else if (name === "reserved" && mode === "error")
       add(
@@ -2959,7 +2959,7 @@ function validateDocuments(
         "distribution",
         "/listing/name",
         "invalid_display_text",
-        "listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+        "listing.name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace.",
       );
     else if (listingName === "reserved" && mode === "error")
       add(
@@ -2985,7 +2985,7 @@ function validateDocuments(
         "distribution",
         "/listing/developerName",
         "invalid_display_text",
-        "listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+        "listing.developerName must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace.",
       );
     else if (developer === "reserved" && mode === "error")
       add(
@@ -3017,7 +3017,7 @@ function validateDocuments(
           "distribution",
           `/outlets/${id}/listing/name`,
           "invalid_display_text",
-          `outlets.${id}.listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`,
+          `outlets.${id}.listing.name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace.`,
         );
       if (verdict(l.developerName) === "invalid")
         add(
@@ -3025,7 +3025,7 @@ function validateDocuments(
           "distribution",
           `/outlets/${id}/listing/developerName`,
           "invalid_display_text",
-          `outlets.${id}.listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`,
+          `outlets.${id}.listing.developerName must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace.`,
         );
     }
   }

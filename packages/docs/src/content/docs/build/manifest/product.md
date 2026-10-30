@@ -87,10 +87,13 @@ The customer's sign-in card says "<App> wants you to sign in" and names the deve
 names an app is shown by are checked (): `product.name`, and the `.pkey/distribution`
 document's `listing.name` and `listing.developerName`.
 
-- **`invalid_display_text`** (always an error). The name holds a control character, a zero-width
-  character or a bidirectional-formatting character (an override such as U+202E, an isolate, a
-  mark), or it starts or ends with whitespace. Per-outlet listing names are held to this rule
-  too. The JSON Schemas carry it as a pattern, so editors flag it as you type.
+- **`invalid_display_text`** (always an error). The name holds a control, format, invisible or
+  bidirectional-formatting character, a line or paragraph separator, or U+2800 BRAILLE PATTERN
+  BLANK. Examples are U+202E, the zero-width characters including the joiner, the soft hyphen and
+  the Hangul fillers. A name is also refused if it starts with a variation selector or tag, or
+  starts or ends with whitespace. Emoji variation selectors (U+FE0F) and flag tag sequences are
+  allowed after another character. Per-outlet listing names follow this rule too. The JSON
+  Schemas carry its Basic Multilingual Plane part as a pattern, so editors flag it as you type.
 - **`reserved_display_name`**. The name contains a platform or store name as whole words:
   Polaris, Polaris Key, plrs, Apple, App Store, Google, Google Play, Steam, Valve, Epic Games,
   Microsoft, Xbox, PlayStation, Nintendo or itch.io. Case, width, accents, look-alike letters
@@ -100,7 +103,8 @@ document's `listing.name` and `listing.developerName`.
 validate` prints it and link and resync accept it); the platform setting
   `IDENTITY_RESERVED_DISPLAY_NAMES` (platform admins) turns
   it into an error after a window of two minor releases or 60 days, whichever is later. Either
-  way, the sign-in card shows such a product by its slug in a neutral frame.
+  way, the sign-in card shows such a product by its slug in a neutral frame. Invisible characters
+  are removed before comparing.
 
 ## Enabled services: `modules`
 
