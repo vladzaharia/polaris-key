@@ -27,6 +27,7 @@ import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.Feature
 import im.plrs.key.core.JsonText
+import im.plrs.key.core.PlatformBackupStore
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.ServiceSlug
@@ -154,6 +155,57 @@ public class IdentityClient(
     public fun installPlatformIdentity(provider: PlatformIdentityProvider?) {
         platformProvider.set(provider)
     }
+
+    internal val backupStore = java.util.concurrent.atomic.AtomicReference<PlatformBackupStore?>(null)
+    private val restoreInstalled = java.util.concurrent.atomic.AtomicBoolean(true)
+
+    /** Whether silent restore (rung 2 and its enrolment) is on: a store is installed, `restore` was asked for, and the call allows it. */
+    internal val restoreOn = java.util.concurrent.atomic.AtomicBoolean(true)
+
+    /**
+     * Install the OS-held backup silent restore (V5 section 12.11.8) keeps its item in: Block Store on Android
+     * (`:android` does this). With none installed, as on the JVM desktop, rung 2 is skipped and nothing is
+     * enrolled. [restore] false turns restore off for this client (the developer's opt-out): the next
+     * `autoSignIn()` deletes this app's item and sends `DELETE restore`; an `autoSignIn` with
+     * `AutoSignInOptions.restore = false` does the same for that launch.
+     */
+    @JvmOverloads
+    public fun installPlatformBackup(store: PlatformBackupStore?, restore: Boolean = true) {
+        backupStore.set(store)
+        restoreInstalled.set(restore)
+        restoreOn.set(restore)
+    }
+
+    /** Whether a backup store is installed (`installPlatformBackup`); with none, rung 2 is skipped. */
+    public val hasPlatformBackup: Boolean get() = backupStore.get() != null
+
+    internal fun applyRestoreOption(option: Boolean) {
+        restoreOn.set(restoreInstalled.get() && option)
+    }
+
+    /**
+     * Conformance replay only: the restore grant with the item the recorded step names; no enrolment follows.
+     * [proofValue] and [product] stand in for the step's `proofValue` and `product` args.
+     */
+    @ConformanceReplayOnly
+    @JvmOverloads
+    public suspend fun restoreRedeemRecorded(
+        restoreId: String,
+        secret: String,
+        proofValue: String? = null,
+        product: String? = null,
+    ): ExchangeOutcome {
+        val port = deviceKeys ?: return ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noDeviceKeys)
+        return redeemRestore(RestoreItem(restoreId, secret), port, replay = RestoreReplayOverrides(proofValue, product))
+    }
+
+    /** Conformance replay only: `POST restore` with the id the step holds (or none). */
+    @ConformanceReplayOnly
+    public suspend fun restoreEnrolRecorded(restoreId: String?): RestoreEnrolResult = enrolRestore(restoreId)
+
+    /** Conformance replay only: `DELETE restore`; true on 204. */
+    @ConformanceReplayOnly
+    public suspend fun restoreDeleteRecorded(): Boolean = deleteRestore()
 
     /** Whether a platform provider is installed (`installPlatformIdentity`): the sign-in form offers its row. */
     public val hasPlatformProvider: Boolean get() = platformProvider.get() != null
@@ -320,6 +372,7 @@ public class IdentityClient(
                 } else if (core.storeSignIn(token, subject, TokenSource.signin, personInitiated = true)) {
                     onSubject(subject)
                 }
+                afterSignIn()
                 onAcquired?.invoke()
                 SignInPoll.Ready(subject)
             }

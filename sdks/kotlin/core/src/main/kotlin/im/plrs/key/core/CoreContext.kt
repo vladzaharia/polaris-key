@@ -503,6 +503,45 @@ public class CoreContext(options: CoreOptions) {
         }
     }
 
+    // ── Silent restore state (I-49.11) ─────────────────────────────────────────────────────
+    // Two small facts about this install's restore key, kept in the store's state directory (never in
+    // the platform backup, and on Android in `noBackupFilesDir`): when the key was last checked, and
+    // whether a `DELETE restore` still has to reach the Worker. Neither is a secret.
+    private val restoreCheckedSlot: StateSlot by lazy {
+        store.stateDirectory?.let { FileStateSlot(File(it, "restore-checked")) } ?: MemoryStateSlot()
+    }
+    private val restoreDeleteSlot: StateSlot by lazy {
+        store.stateDirectory?.let { FileStateSlot(File(it, "restore-delete-pending")) } ?: MemoryStateSlot()
+    }
+
+    /** One slot operation: its answer, or [fallback] (after [onFail]) when the slot cannot be read or written. */
+    private suspend fun <T> restoreSlot(fallback: T, onFail: () -> Unit = {}, block: () -> T): T = try {
+        io { block() }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        onFail()
+        fallback
+    }
+
+    /** Seconds since the epoch of the last enrol or check that the Worker answered, or null. */
+    public suspend fun restoreCheckedAt(): Long? = restoreSlot(null) { restoreCheckedSlot.read()?.trim()?.toLongOrNull() }
+
+    public suspend fun setRestoreCheckedAt(seconds: Long?) {
+        restoreSlot(Unit, { warn("The restore state could not be saved.") }) { restoreCheckedSlot.write(seconds?.toString() ?: "") }
+    }
+
+    /** True while a `DELETE restore` is queued for the next launch. An unreadable slot reads as queued. */
+    public suspend fun restoreDeletePending(): Boolean = restoreSlot(true) {
+        val slot = restoreDeleteSlot
+        val text = slot.read()
+        if (text == null && slot is FileStateSlot && slot.file.exists()) true else text?.trim() == "1"
+    }
+
+    public suspend fun setRestoreDeletePending(on: Boolean) {
+        restoreSlot(Unit, { warn("The restore state could not be saved.") }) { restoreDeleteSlot.write(if (on) "1" else "") }
+    }
+
     /** Wipe every credential and artifact except the v4 update slices, which re-verify. */
     public suspend fun clearAll() {
         val carried = locked {

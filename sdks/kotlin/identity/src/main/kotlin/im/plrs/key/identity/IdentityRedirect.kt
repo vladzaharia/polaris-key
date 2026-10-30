@@ -491,6 +491,7 @@ internal suspend fun IdentityClient.redeemRedirect(pending: RedirectPending, cod
             }
         is TokenAnswer.Token -> {
             if (core.storeSignIn(answer.accessToken, answer.subject, TokenSource.signin, personInitiated = true)) onSubject(answer.subject)
+            afterSignIn()
             if (redirectAcquisitionSyncValue) onAcquired?.invoke()
             SignInOutcome.SignedIn(answer.subject, answer.scope, answer.license?.get("id").stringValue)
         }

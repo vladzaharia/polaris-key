@@ -2341,6 +2341,31 @@
     },
     {
       "sdk": "kotlin",
+      "path": "identity.installPlatformBackup",
+      "reason": "wiring: hands rung 2 of identity.autoSignIn its OS-held backup store (I-49.11) and the developer's opt-out; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.hasPlatformBackup",
+      "reason": "wiring: whether a backup store is installed (I-49.11); a property, not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.restoreRedeemRecorded",
+      "reason": "conformance replay only (ConformanceReplayOnly): the restore grant with the recorded item (I-49.12); rung 2 of identity.autoSignIn carries the row"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.restoreEnrolRecorded",
+      "reason": "conformance replay only (ConformanceReplayOnly): POST restore with the recorded id (I-49.12); not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.restoreDeleteRecorded",
+      "reason": "conformance replay only (ConformanceReplayOnly): DELETE restore (I-49.12); not an app verb"
+    },
+    {
+      "sdk": "kotlin",
       "path": "identity.useDeviceKeys",
       "reason": "wiring: hands the exchange proof its device key store; not an app verb"
     },

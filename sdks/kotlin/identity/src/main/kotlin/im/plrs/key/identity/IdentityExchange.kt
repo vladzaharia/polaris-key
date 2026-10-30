@@ -235,7 +235,7 @@ internal object IdentityExchange {
     fun handleOf(o: JsonObject): String? = o["linkHandle"].stringValue?.takeIf { HANDLE.matches(it) }
 }
 
-private suspend fun IdentityClient.discoverIfNeeded() {
+internal suspend fun IdentityClient.discoverIfNeeded() {
     if (core.discoveryDocument() == null) {
         try {
             core.discover()
@@ -261,8 +261,13 @@ private suspend fun IdentityClient.exchangeEndpoint(kind: ExchangeKind, name: St
     return url to null
 }
 
-private suspend fun IdentityClient.exchangePost(url: String, contentType: String, body: ByteArray): PolarisResponse = try {
-    core.request(url, method = "POST", headers = mapOf("content-type" to contentType), body = body)
+internal suspend fun IdentityClient.exchangePost(
+    url: String,
+    headers: Map<String, String>,
+    body: ByteArray?,
+    method: String = "POST",
+): PolarisResponse = try {
+    core.request(url, method = method, headers = headers, body = body)
 } catch (e: CancellationException) {
     throw e
 } catch (e: PolarisException) {
@@ -271,6 +276,9 @@ private suspend fun IdentityClient.exchangePost(url: String, contentType: String
 } catch (e: Exception) {
     throw PolarisException(ErrorCode.networkError, e.message ?: "network error", cause = e)
 }
+
+/** The `content-type` header of a body sent as [contentType]. */
+internal fun contentType(contentType: String): Map<String, String> = mapOf("content-type" to contentType)
 
 /** What `exchangeNonce` answered. */
 public sealed interface ExchangeNonceResult {
@@ -304,7 +312,7 @@ internal suspend fun IdentityClient.requestExchangeNonce(kind: ExchangeKind, por
         throw PolarisException(ErrorCode.deviceKeysUnreadable, "The device keys could not be read.")
     }
     val body = JsonObject(mapOf("signKey" to JsonPrimitive(keys.signKey), "agreeKey" to JsonPrimitive(keys.agreeKey))).toString()
-    val res = exchangePost(url, "application/json", body.toByteArray(Charsets.UTF_8))
+    val res = exchangePost(url, contentType("application/json"), body.toByteArray(Charsets.UTF_8))
     if (res.status == 200) {
         val nonce = IdentityExchange.nonceOf(JsonText.parseOrNull(res.text).objectValue)
             ?: throw PolarisException(ErrorCode.badResponse, "the nonce route answered without a nonce.")
@@ -314,11 +322,16 @@ internal suspend fun IdentityClient.requestExchangeNonce(kind: ExchangeKind, por
 }
 
 /** A non-200 answer as an outcome; a 5xx or a refusal throws. */
-private fun refusalOf(res: PolarisResponse): ExchangeOutcome {
+internal fun refusalOf(res: PolarisResponse): ExchangeOutcome {
     if (res.status >= 500) {
         // `503 unavailable`: the platform's key host or Google is unreachable (V5 section 12.11.7); retry later.
         if (IdentityExchange.errorCode(JsonText.parseOrNull(res.text).objectValue, res.status) == ErrorCode.unavailable) {
-            throw PolarisException(ErrorCode.unavailable, "the exchange is unavailable.", httpStatus = res.status, retryAfterSeconds = IdentityExchange.retryAfter(res, null))
+            throw PolarisException(
+                ErrorCode.unavailable,
+                "the exchange is unavailable.",
+                httpStatus = res.status,
+                retryAfterSeconds = IdentityExchange.retryAfter(res, null),
+            )
         }
         throw PolarisException(ErrorCode.serverError, "the exchange failed with status ${res.status}.")
     }
@@ -387,7 +400,19 @@ internal suspend fun IdentityClient.exchangeTokens(
         throw PolarisException(ErrorCode.invalidArgument, "The exchange proof could not be built.")
     }
     val form = IdentityExchange.form(core.product, subjectToken, spent, proof.signKey, proof.sig, IdentityExchange.subjectTokenType(kind))
-    val res = exchangePost(url, IdentityRedirect.TOKEN_CONTENT_TYPE, form.toByteArray(Charsets.UTF_8))
+    val res = exchangePost(url, contentType(IdentityRedirect.TOKEN_CONTENT_TYPE), form.toByteArray(Charsets.UTF_8))
+    return settleTokenAnswer(res, personInitiated, mayStore)
+}
+
+/**
+ * A token-route answer as an outcome, shared by the exchange and the restore grant: a refusal, a pending
+ * consent or choice, or a device token stored as a sign-in.
+ */
+internal suspend fun IdentityClient.settleTokenAnswer(
+    res: PolarisResponse,
+    personInitiated: Boolean,
+    mayStore: (suspend () -> Boolean)?,
+): ExchangeOutcome {
     if (res.status != 200) return refusalOf(res)
     val json = JsonText.parseOrNull(res.text)
     val o = json.objectValue ?: throw PolarisException(ErrorCode.badResponse, "the exchange answered without a readable body.")
@@ -430,6 +455,7 @@ internal suspend fun IdentityClient.exchangeTokens(
         throw SignedOutDuringExchange()
     }
     if (moved) onSubject(answer.subject)
+    afterSignIn()
     if (redirectAcquisitionSyncValue) onAcquired?.invoke()
     return ExchangeOutcome.SignedIn(answer.subject, answer.scope, answer.license?.get("id").stringValue, o["issued_token_type"].stringValue)
 }

@@ -75,6 +75,8 @@ public data class IdentityDiscovery(
     val endpoints: Map<String, String> = emptyMap(),
     /** `exchange`: present only when the product declares a platform kind (V5 section 12.11.6). */
     val exchange: IdentityExchangeDiscovery? = null,
+    /** `restore: true` with the `restore` endpoint: silent restore is served (V5 section 12.11.8). */
+    val restore: Boolean = false,
 ) {
     /** The authorize endpoint a redirect sign-in sends the browser to. */
     val authorize: String? get() = endpoints["authorize"]
@@ -133,6 +135,7 @@ public object Discovery {
             accountPortal = e["accountPortal"],
             endpoints = e,
             exchange = exchange(fragment.extras["exchange"].objectValue),
+            restore = fragment.extras["restore"].boolValue == true && !e["restore"].isNullOrEmpty(),
         )
     }
 
