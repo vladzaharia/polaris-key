@@ -2491,7 +2491,7 @@
     ]
   },
   "handshakePayloads": {
-    "note": "Handshake payloads (15.5): strict JSON of 15.1/1.2, an object, at most 8 KiB of UTF-8. Message 1 needs v = 1 and no cert; messages 2 and 3 need v = 1 and caps (at most 32 entries matching ^[a-z0-9]+/[0-9]+$). Mode a adds cert (a non-empty string; its verification is cases.json peerCertCases) and ring (an integer from 1 to 2^53 - 1); modes v and p refuse a cert. Unknown members are ignored. `payload` is the text, `payloadHex` the raw bytes where the text is not valid UTF-8, `payloadPad` the text prefix + count x fill + suffix. `want.caps` is the list as sent; the session uses `intersection`: the entries both lists hold, once each, in byte order.",
+    "note": "Handshake payloads (15.5): strict JSON of 15.1/1.2, an object, at most 8 KiB of UTF-8. Message 1 needs v = 1 (the integer token: 1.0 and 1e0 are refused) and no cert; messages 2 and 3 need v = 1 and caps (at most 32 entries matching ^[a-z0-9]+/[0-9]+$). Mode a adds cert (a non-empty string; its verification is cases.json peerCertCases) and ring (an integer token from 1 to 2^53 - 1); modes v and p refuse a cert. Unknown members are ignored. `payload` is the text, `payloadHex` the raw bytes where the text is not valid UTF-8, `payloadPad` the text prefix + count x fill + suffix. `want.caps` is the list as sent; the session uses `intersection`: the entries both lists hold, once each, in byte order.",
     "maxPayload": 8192,
     "payloads": [
       {
@@ -2548,6 +2548,22 @@
         "message": 1,
         "payload": "{}",
         "length": 2,
+        "want": { "ok": false }
+      },
+      {
+        "id": "msg1-version-1-point-0",
+        "mode": "a",
+        "message": 1,
+        "payload": "{\"v\":1.0}",
+        "length": 9,
+        "want": { "ok": false }
+      },
+      {
+        "id": "msg1-version-1-exponent",
+        "mode": "a",
+        "message": 1,
+        "payload": "{\"v\":1e0}",
+        "length": 9,
         "want": { "ok": false }
       },
       {
@@ -2627,6 +2643,46 @@
         "message": 2,
         "payload": "{\"v\":1,\"cert\":7,\"ring\":7,\"caps\":[\"app/1\"]}",
         "length": 42,
+        "want": { "ok": false }
+      },
+      {
+        "id": "a-version-1-point-0",
+        "mode": "a",
+        "message": 2,
+        "payload": "{\"v\":1.0,\"cert\":\"e30.e30.c2ln\",\"ring\":7,\"caps\":[\"app/1\"]}",
+        "length": 57,
+        "want": { "ok": false }
+      },
+      {
+        "id": "a-version-1-exponent",
+        "mode": "a",
+        "message": 3,
+        "payload": "{\"v\":1e0,\"cert\":\"e30.e30.c2ln\",\"ring\":7,\"caps\":[\"app/1\"]}",
+        "length": 57,
+        "want": { "ok": false }
+      },
+      {
+        "id": "v-version-1-point-0",
+        "mode": "v",
+        "message": 2,
+        "payload": "{\"v\":1.0,\"caps\":[\"vouch/1\"]}",
+        "length": 28,
+        "want": { "ok": false }
+      },
+      {
+        "id": "a-ring-7-point-0",
+        "mode": "a",
+        "message": 2,
+        "payload": "{\"v\":1,\"cert\":\"e30.e30.c2ln\",\"ring\":7.0,\"caps\":[\"app/1\"]}",
+        "length": 57,
+        "want": { "ok": false }
+      },
+      {
+        "id": "a-ring-7-exponent",
+        "mode": "a",
+        "message": 3,
+        "payload": "{\"v\":1,\"cert\":\"e30.e30.c2ln\",\"ring\":7e0,\"caps\":[\"app/1\"]}",
+        "length": 57,
         "want": { "ok": false }
       },
       {

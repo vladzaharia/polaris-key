@@ -484,11 +484,13 @@ export function refHandshakePayload(
     return no;
   }
   if (text.startsWith("\ufeff")) return no;
-  const parsed = refParseStrict(text);
+  const nonInteger = new Set<string>();
+  const parsed = refParseStrict(text, nonInteger);
   if (!parsed.ok) return no;
   const o = parsed.value;
   if (o === null || typeof o !== "object" || Array.isArray(o)) return no;
-  if (o.v !== 1) return no;
+  // v and ring are integer claims: a token with a fraction or an exponent part (1.0, 1e0) is not.
+  if (o.v !== 1 || nonInteger.has("v")) return no;
   if (message === 1) return "cert" in o ? no : { ok: true, caps: [] };
   const caps = o.caps;
   if (
@@ -500,7 +502,7 @@ export function refHandshakePayload(
   const list = caps as string[];
   if (mode !== "a") return "cert" in o ? no : { ok: true, caps: list };
   if (typeof o.cert !== "string" || o.cert === "") return no;
-  if (!isInt(o.ring) || o.ring < 1) return no;
+  if (!isInt(o.ring) || o.ring < 1 || nonInteger.has("ring")) return no;
   return { ok: true, caps: list, ring: o.ring, cert: o.cert };
 }
 

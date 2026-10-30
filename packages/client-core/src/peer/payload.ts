@@ -60,8 +60,12 @@ export function parseHandshakePayload(
 ): PayloadVerdict {
   const no: PayloadVerdict = { ok: false };
   if (bytes.length > MAX_HANDSHAKE_PAYLOAD) return no;
-  const o = parseStrictObject(bytes);
-  if (o === null || o.v !== 1) return no;
+  const scanned = parseStrictObjectScanned(bytes);
+  if (scanned === null) return no;
+  const { o, nonWireIntegers } = scanned;
+  // `v` and `ring` are integer claims (§3.1): `1.0` and `1e0` are not the integer 1 although
+  // `JSON.parse` reads them as one.
+  if (o.v !== 1 || nonWireIntegers.has("/v")) return no;
   if (message === 1) return "cert" in o ? no : { ok: true, caps: [] };
   const caps = o.caps;
   if (
@@ -73,7 +77,12 @@ export function parseHandshakePayload(
   const list = caps as string[];
   if (mode !== "a") return "cert" in o ? no : { ok: true, caps: list };
   if (typeof o.cert !== "string" || o.cert === "") return no;
-  if (typeof o.ring !== "number" || !Number.isSafeInteger(o.ring) || o.ring < 1)
+  if (
+    typeof o.ring !== "number" ||
+    !Number.isSafeInteger(o.ring) ||
+    o.ring < 1 ||
+    nonWireIntegers.has("/ring")
+  )
     return no;
   return { ok: true, caps: list, ring: o.ring, cert: o.cert };
 }
