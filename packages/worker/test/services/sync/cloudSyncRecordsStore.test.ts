@@ -237,7 +237,7 @@ describe.each(stores)("record methods: %s store", (_name, make) => {
 });
 
 describe("SqlStore: schema v3", () => {
-  it("migrates a v2 object: rows kept, record tables made, kid columns added", () => {
+  it("migrates a v2 object: rows kept, record tables made, kid columns added (and on to the current schema)", () => {
     const storage = new DoStorageMock();
     // Build a v2 object from the first two migration steps.
     for (const step of MIGRATIONS.slice(0, 2))
@@ -255,7 +255,7 @@ describe("SqlStore: schema v3", () => {
     expect(store.schemaVersion()).toBe(2);
     store.prepare(false);
     expect(store.schemaVersion()).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
     expect(store.getSetting("k", "user")?.value).toBe(5);
     const names = (
       storage.sql.db
@@ -266,6 +266,7 @@ describe("SqlStore: schema v3", () => {
     ).map((r) => r.name);
     expect(names).toEqual([
       "clients",
+      "files",
       "meta",
       "parked_records",
       "record_fields",
@@ -273,7 +274,10 @@ describe("SqlStore: schema v3", () => {
       "set_elements",
       "setting_members",
       "settings",
+      "ssec_keys",
       "tombstones",
+      "upload_parts",
+      "uploads",
     ]);
     for (const table of ["settings", "tombstones", "setting_members"]) {
       const cols = (
@@ -287,10 +291,10 @@ describe("SqlStore: schema v3", () => {
     expect(store.getRecord("saves", "s")?.version).toBe(2);
   });
 
-  it("a v4 store is refused, never rewritten", () => {
+  it("a v5 store is refused, never rewritten", () => {
     const store = new SqlTestStore();
-    store.setMeta("schema_version", "4");
+    store.setMeta("schema_version", "5");
     expect(() => store.prepare(true)).toThrow(/newer/);
-    expect(store.getMeta("schema_version")).toBe("4");
+    expect(store.getMeta("schema_version")).toBe("5");
   });
 });

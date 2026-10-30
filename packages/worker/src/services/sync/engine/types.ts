@@ -8,8 +8,11 @@
 import type {
   MutationResult,
   PushRequest,
+  SyncFileEnc,
+  SyncFileFormat,
   SyncJson,
   SyncScope,
+  SyncUploadMode,
 } from "@polaris-key/protocol/sync";
 
 /** The conflict policies a setting route can carry (§13.6; `union` is refused for settings). */
@@ -155,6 +158,71 @@ export interface ParkedRecord {
   parkedAt: number;
 }
 
+/**
+ * Where a stored file stands (schema v4, U-10): `live` is the one a record points at, `revision`
+ * an older version kept for `keepRevisions`, `parked` a file of a record an account merge parked.
+ */
+export type FileStatus = "live" | "revision" | "parked";
+
+/**
+ * One stored file of a record (U-10). `version` is the store sequence of the `finalize` that
+ * stored it (§13.8.1), so a record has at most one row per version. `objectKey` is the R2 key,
+ * and it is only ever read from here, never from a request. `ssecKid` names the SSE-C key
+ * (`ssec_keys`) the object is sealed under in server mode (D-8). `createdAt` is epoch ms.
+ */
+export interface StoredFile {
+  collection: string;
+  recordId: string;
+  version: number;
+  objectKey: string;
+  format: SyncFileFormat;
+  enc: SyncFileEnc;
+  size: number;
+  sha256: string;
+  status: FileStatus;
+  ssecKid?: string;
+  createdAt: number;
+  /** The clock owner of the write that stored it (the record stamp's `clientId`). */
+  clientId: string;
+}
+
+/** An upload's place in its life: `finalizing` is the window of a finalize in flight. */
+export type UploadState = "open" | "finalizing" | "done" | "aborted";
+
+/**
+ * One file upload session (U-10), from `begin` to `finalize`, `DELETE` or expiry. `baseVersion`
+ * is `begin`'s: a number (compare-and-swap), `"*"` (create-only) or `null` (unconditional).
+ * `reservedBytes` is what `begin` reserved against the quota; the `done` row keeps `resultJson`
+ * (the `finalize` answer) so a retry replays it. Times are epoch ms.
+ */
+export interface UploadRow {
+  uploadId: string;
+  collection: string;
+  recordId: string;
+  baseVersion: number | "*" | null;
+  mode: SyncUploadMode;
+  format: SyncFileFormat;
+  enc: SyncFileEnc;
+  size: number;
+  sha256: string;
+  partBytes: number | null;
+  multipartId: string | null;
+  reservedBytes: number;
+  deviceId: string;
+  createdAt: number;
+  expiresAt: number;
+  state: UploadState;
+  resultJson: string | null;
+}
+
+/** One part the object has received (a `single` upload is part 1). `etag` is R2's. */
+export interface UploadPart {
+  uploadId: string;
+  n: number;
+  etag: string;
+  bytes: number;
+}
+
 /** A removed `merge` field cell, named by where it lives and the clock of its removal. */
 export interface RemovedField {
   collection: string;
@@ -288,6 +356,42 @@ export interface SyncStore {
    */
   getEncryptionSince(): number | undefined;
   setEncryptionSince(seq: number): void;
+
+  // ---- files (schema v4, U-10) ----------------------------------------------------------------
+
+  /** One stored file of a record, by the `finalize` version that stored it. */
+  getFile(
+    collection: string,
+    recordId: string,
+    version: number,
+  ): StoredFile | undefined;
+  /** The file the record points at now (`status: "live"`), if any. */
+  liveFile(collection: string, recordId: string): StoredFile | undefined;
+  /** Inserts or replaces the row of (collection, recordId, version). */
+  putFile(row: StoredFile): void;
+  deleteFile(collection: string, recordId: string, version: number): void;
+  /** Every file of the record, any status, in ascending `version`. */
+  filesOf(collection: string, recordId: string): StoredFile[];
+  /** Every file row, in (collection, recordId, version) order. */
+  allFiles(): StoredFile[];
+  getUpload(uploadId: string): UploadRow | undefined;
+  /** Inserts or replaces the session. */
+  putUpload(row: UploadRow): void;
+  /** Removes the session and its parts. */
+  deleteUpload(uploadId: string): void;
+  /** Sessions whose `state` is `open` or `finalizing` and that have not expired at `nowMs`. */
+  openUploads(nowMs: number): UploadRow[];
+  /** Sessions with `expiresAt <= nowMs`, whatever their state, oldest first, at most `limit`. */
+  expiredUploads(nowMs: number, limit: number): UploadRow[];
+  getParts(uploadId: string): UploadPart[];
+  /** Inserts or replaces part `n` of the session. */
+  putPart(row: UploadPart): void;
+  /** The SSE-C key `kid` names, server mode only. */
+  getSsecKey(kid: string): Uint8Array | undefined;
+  putSsecKey(kid: string, key: Uint8Array): void;
+  deleteSsecKey(kid: string): void;
+  /** Every `[kid, key]` pair, for an absorb or an export of the files that reference them. */
+  allSsecKeys(): [string, Uint8Array][];
 }
 
 /**
@@ -302,6 +406,17 @@ export interface StoreUsage {
   records: number;
   recordBytes: number;
   bytes: number;
+  /**
+   * Files (U-10). Each is absent while zero, so a store that holds no file reads and compares
+   * as it did before them (`compactUsage`); `fileUsage` reads them with the zeros back.
+   * `files` counts the records' live files and `fileBytes` their stored bytes, `revisionBytes`
+   * the kept older versions (both inside `bytes`). `reservedBytes` is what open uploads have
+   * reserved: it is not stored yet, so it is outside `bytes`, but the quota check adds it.
+   */
+  files?: number;
+  fileBytes?: number;
+  revisionBytes?: number;
+  reservedBytes?: number;
 }
 
 /**

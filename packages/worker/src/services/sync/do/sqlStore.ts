@@ -13,6 +13,10 @@
  *   record_fields    v3: the cells of a `merge` record, live or removed (mirrors setting_members)
  *   set_elements     v3: the tagged elements of a `union` record, one row per live add tag
  *   parked_records   v3: a colliding `revision` record an account merge parked instead of overwriting
+ *   files            v4 (U-10): one row per (collection, record, version): the R2 key, size, hash, status
+ *   uploads          v4: one row per file upload session, from `begin` to the end of its retention
+ *   upload_parts     v4: the parts a session has received (a single `PUT` is part 1)
+ *   ssec_keys        v4: the SSE-C key of a server-mode file, referenced by `files.ssec_kid`
  *   (v3 also adds a nullable `kid` to settings, tombstones and setting_members: the envelope key id
  *   of a sealed write; rows written before it stay NULL and are not backfilled)
  *
@@ -25,6 +29,8 @@
  */
 
 import type { SyncJson, SyncScope } from "@polaris-key/protocol/sync";
+import { FileTables } from "./sqlFiles.js";
+import { SCHEMA_VERSION, MIGRATIONS } from "./sqlMigrations.js";
 import {
   readFloorAndKid,
   RecordTables,
@@ -36,14 +42,17 @@ import type {
   MemberCell,
   ParkedRecord,
   RemovedField,
+  StoredFile,
   StoredRecord,
   StoredSetting,
   StoreUsage,
   SyncStore,
+  UploadPart,
+  UploadRow,
 } from "../engine/types.js";
+import { compactUsage } from "../engine/usage.js";
 
-/** The schema version this build writes. A newer one in storage is refused, never rewritten. */
-export const SCHEMA_VERSION = 3;
+export { MIGRATIONS, SCHEMA_VERSION } from "./sqlMigrations.js";
 
 /** Rows the SQL API read and wrote for one operation. Counts only, never a value or a name. */
 export interface RowMeter {
@@ -56,74 +65,6 @@ export interface SqlHandle {
   sql: SqlStorage;
   transactionSync<T>(fn: () => T): T;
 }
-
-/** Steps to reach each version; `MIGRATIONS[n - 1]` takes a store from version n - 1 to n. */
-export const MIGRATIONS: readonly (readonly string[])[] = [
-  [
-    `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID`,
-    `CREATE TABLE IF NOT EXISTS settings (
-       scope TEXT NOT NULL, family TEXT NOT NULL, key TEXT NOT NULL,
-       version INTEGER NOT NULL, hlc TEXT NOT NULL, client_id TEXT NOT NULL,
-       value_json TEXT NOT NULL, is_merge INTEGER NOT NULL,
-       floor_hlc TEXT, floor_client TEXT,
-       PRIMARY KEY (scope, family, key)) WITHOUT ROWID`,
-    `CREATE INDEX IF NOT EXISTS settings_version ON settings (version)`,
-    `CREATE TABLE IF NOT EXISTS tombstones (
-       scope TEXT NOT NULL, family TEXT NOT NULL, key TEXT NOT NULL,
-       version INTEGER NOT NULL, hlc TEXT NOT NULL, client_id TEXT NOT NULL,
-       value_json TEXT NOT NULL, is_merge INTEGER NOT NULL,
-       floor_hlc TEXT, floor_client TEXT,
-       PRIMARY KEY (scope, family, key)) WITHOUT ROWID`,
-    `CREATE INDEX IF NOT EXISTS tombstones_version ON tombstones (version)`,
-    `CREATE TABLE IF NOT EXISTS setting_members (
-       ord INTEGER PRIMARY KEY AUTOINCREMENT,
-       scope TEXT NOT NULL, family TEXT NOT NULL, key TEXT NOT NULL, member TEXT NOT NULL,
-       value_json TEXT NOT NULL, removed INTEGER NOT NULL, hlc TEXT NOT NULL, client_id TEXT NOT NULL,
-       UNIQUE (scope, family, key, member))`,
-    `CREATE TABLE IF NOT EXISTS clients (
-       client_id TEXT PRIMARY KEY, device_id TEXT NOT NULL, last_mutation_id INTEGER NOT NULL) WITHOUT ROWID`,
-  ],
-  // v2 (U-05.9): when a client last pushed (epoch seconds), so an idle binding can expire.
-  // Existing rows start their idle clock at the migration.
-  [
-    `ALTER TABLE clients ADD COLUMN last_seen INTEGER NOT NULL DEFAULT 0`,
-    `UPDATE clients SET last_seen = CAST(strftime('%s', 'now') AS INTEGER)`,
-  ],
-  // v3 (U-09.3, plans/U-09-slices.md §2.1): Cloud Sync records, and the key id of sealed writes.
-  [
-    `CREATE TABLE IF NOT EXISTS records (
-       collection TEXT NOT NULL, id TEXT NOT NULL,
-       version INTEGER NOT NULL, hlc TEXT NOT NULL, client_id TEXT NOT NULL,
-       value_json TEXT NOT NULL, kind TEXT NOT NULL, deleted INTEGER NOT NULL,
-       floor_hlc TEXT, floor_client TEXT, kid TEXT,
-       PRIMARY KEY (collection, id)) WITHOUT ROWID`,
-    `CREATE INDEX IF NOT EXISTS records_version ON records (version)`,
-    `CREATE INDEX IF NOT EXISTS records_live ON records (collection, deleted)`,
-    `CREATE INDEX IF NOT EXISTS records_dead ON records (deleted, hlc, client_id)`,
-    `CREATE TABLE IF NOT EXISTS record_fields (
-       ord INTEGER PRIMARY KEY AUTOINCREMENT,
-       collection TEXT NOT NULL, id TEXT NOT NULL, field TEXT NOT NULL,
-       value_json TEXT NOT NULL, removed INTEGER NOT NULL, hlc TEXT NOT NULL, client_id TEXT NOT NULL,
-       kid TEXT,
-       UNIQUE (collection, id, field))`,
-    `CREATE INDEX IF NOT EXISTS record_fields_dead ON record_fields (removed, collection, hlc, client_id)`,
-    `CREATE TABLE IF NOT EXISTS set_elements (
-       collection TEXT NOT NULL, id TEXT NOT NULL, element_key TEXT NOT NULL,
-       element_json TEXT NOT NULL, add_tag INTEGER NOT NULL, kid TEXT,
-       PRIMARY KEY (collection, id, element_key, add_tag)) WITHOUT ROWID`,
-    `CREATE TABLE IF NOT EXISTS parked_records (
-       collection TEXT NOT NULL, id TEXT NOT NULL, from_subject TEXT NOT NULL, kind TEXT NOT NULL,
-       value_json TEXT, fields_json TEXT, elements_json TEXT,
-       hlc TEXT NOT NULL, client_id TEXT NOT NULL, kid TEXT, parked_at INTEGER NOT NULL,
-       PRIMARY KEY (collection, id, from_subject)) WITHOUT ROWID`,
-    `ALTER TABLE settings ADD COLUMN kid TEXT`,
-    `ALTER TABLE tombstones ADD COLUMN kid TEXT`,
-    `ALTER TABLE setting_members ADD COLUMN kid TEXT`,
-  ],
-];
-
-if (MIGRATIONS.length !== SCHEMA_VERSION)
-  throw new Error("sqlStore: SCHEMA_VERSION and MIGRATIONS disagree");
 
 interface SettingRow extends Row {
   scope: string;
@@ -151,6 +92,10 @@ interface MemberRow extends Row {
 export class SqlStore implements SyncStore {
   private schema: "unknown" | "absent" | "ready" = "unknown";
   private readonly recordTables = new RecordTables({
+    all: (q, ...b) => this.all(q, ...b),
+    run: (q, ...b) => this.run(q, ...b),
+  });
+  private readonly fileTables = new FileTables({
     all: (q, ...b) => this.all(q, ...b),
     run: (q, ...b) => this.run(q, ...b),
   });
@@ -311,13 +256,17 @@ export class SqlStore implements SyncStore {
   }
 
   getUsage(): StoreUsage {
-    return {
+    return compactUsage({
       settings: this.num("usage_settings"),
       settingsBytes: this.num("usage_settings_bytes"),
       records: this.num("usage_records"),
       recordBytes: this.num("usage_record_bytes"),
       bytes: this.num("usage_bytes"),
-    };
+      files: this.num("usage_files"),
+      fileBytes: this.num("usage_file_bytes"),
+      revisionBytes: this.num("usage_revision_bytes"),
+      reservedBytes: this.num("usage_reserved_bytes"),
+    });
   }
 
   setUsage(u: StoreUsage): void {
@@ -325,9 +274,14 @@ export class SqlStore implements SyncStore {
     this.setMeta("usage_settings_bytes", String(u.settingsBytes));
     // The record counters change only when a record does: a settings-only object (and every
     // object written before v3) writes no extra rows for them.
+    // The file counters follow the same rule (U-10): an object that never held a file writes none.
     for (const [key, n] of [
       ["usage_records", u.records],
       ["usage_record_bytes", u.recordBytes],
+      ["usage_files", u.files ?? 0],
+      ["usage_file_bytes", u.fileBytes ?? 0],
+      ["usage_revision_bytes", u.revisionBytes ?? 0],
+      ["usage_reserved_bytes", u.reservedBytes ?? 0],
     ] as const)
       if (this.num(key) !== n) this.setMeta(key, String(n));
     this.setMeta("usage_bytes", String(u.bytes));
@@ -647,6 +601,97 @@ export class SqlStore implements SyncStore {
   ): StoredRecord[] {
     if (!this.hasSchema()) return [];
     return this.recordTables.page(after, through, limit);
+  }
+
+  // ---- files (U-10; the rows are `sqlFiles.ts`'s) --------------------------------------------
+
+  getFile(
+    collection: string,
+    recordId: string,
+    version: number,
+  ): StoredFile | undefined {
+    if (!this.hasSchema()) return undefined;
+    return this.fileTables.get(collection, recordId, version);
+  }
+
+  liveFile(collection: string, recordId: string): StoredFile | undefined {
+    if (!this.hasSchema()) return undefined;
+    return this.fileTables.live(collection, recordId);
+  }
+
+  putFile(row: StoredFile): void {
+    this.requireWritable();
+    this.fileTables.put(row);
+  }
+
+  deleteFile(collection: string, recordId: string, version: number): void {
+    this.requireWritable();
+    this.fileTables.remove(collection, recordId, version);
+  }
+
+  filesOf(collection: string, recordId: string): StoredFile[] {
+    if (!this.hasSchema()) return [];
+    return this.fileTables.of(collection, recordId);
+  }
+
+  allFiles(): StoredFile[] {
+    if (!this.hasSchema()) return [];
+    return this.fileTables.all();
+  }
+
+  getUpload(uploadId: string): UploadRow | undefined {
+    if (!this.hasSchema()) return undefined;
+    return this.fileTables.upload(uploadId);
+  }
+
+  putUpload(row: UploadRow): void {
+    this.requireWritable();
+    this.fileTables.putUpload(row);
+  }
+
+  deleteUpload(uploadId: string): void {
+    this.requireWritable();
+    this.fileTables.removeUpload(uploadId);
+  }
+
+  openUploads(nowMs: number): UploadRow[] {
+    if (!this.hasSchema()) return [];
+    return this.fileTables.open(nowMs);
+  }
+
+  expiredUploads(nowMs: number, limit: number): UploadRow[] {
+    if (!this.hasSchema()) return [];
+    return this.fileTables.expired(nowMs, limit);
+  }
+
+  getParts(uploadId: string): UploadPart[] {
+    if (!this.hasSchema()) return [];
+    return this.fileTables.parts(uploadId);
+  }
+
+  putPart(row: UploadPart): void {
+    this.requireWritable();
+    this.fileTables.putPart(row);
+  }
+
+  getSsecKey(kid: string): Uint8Array | undefined {
+    if (!this.hasSchema()) return undefined;
+    return this.fileTables.ssecKey(kid);
+  }
+
+  putSsecKey(kid: string, key: Uint8Array): void {
+    this.requireWritable();
+    this.fileTables.putSsecKey(kid, key);
+  }
+
+  deleteSsecKey(kid: string): void {
+    this.requireWritable();
+    this.fileTables.removeSsecKey(kid);
+  }
+
+  allSsecKeys(): [string, Uint8Array][] {
+    if (!this.hasSchema()) return [];
+    return this.fileTables.allSsecKeys();
   }
 
   getParkedRecord(

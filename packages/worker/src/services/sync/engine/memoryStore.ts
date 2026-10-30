@@ -9,11 +9,15 @@ import type {
   ClientRecord,
   ParkedRecord,
   RemovedField,
+  StoredFile,
   StoredRecord,
   StoredSetting,
   StoreUsage,
   SyncStore,
+  UploadPart,
+  UploadRow,
 } from "./types.js";
+import { compactUsage } from "./usage.js";
 
 const cloneRow = (row: StoredSetting): StoredSetting => ({
   ...row,
@@ -62,6 +66,9 @@ const cloneRecord = (row: StoredRecord): StoredRecord => ({
 const recordId = (collection: string, id: string): string =>
   `${collection}\u0000${id}`;
 
+const fileId = (collection: string, id: string, version: number): string =>
+  `${collection}\u0000${id}\u0000${String(version).padStart(16, "0")}`;
+
 const cloneParked = (row: ParkedRecord): ParkedRecord => ({
   ...row,
   stamp: { ...row.stamp },
@@ -87,6 +94,10 @@ export class MemoryStore implements SyncStore {
   private since: number | undefined;
   private held = false;
   private seen = new Map<string, number>();
+  private files = new Map<string, StoredFile>();
+  private uploads = new Map<string, UploadRow>();
+  private parts = new Map<string, UploadPart>();
+  private ssec = new Map<string, Uint8Array>();
 
   constructor(private readonly clock: () => number = () => Date.now() / 1000) {}
 
@@ -109,6 +120,18 @@ export class MemoryStore implements SyncStore {
     const parked = new Map(
       [...this.parked].map(([k, v]) => [k, cloneParked(v)] as const),
     );
+    const files = new Map(
+      [...this.files].map(([k, v]) => [k, { ...v }] as const),
+    );
+    const uploads = new Map(
+      [...this.uploads].map(([k, v]) => [k, { ...v }] as const),
+    );
+    const parts = new Map(
+      [...this.parts].map(([k, v]) => [k, { ...v }] as const),
+    );
+    const ssec = new Map(
+      [...this.ssec].map(([k, v]) => [k, v.slice()] as const),
+    );
     try {
       return fn();
     } catch (e) {
@@ -122,6 +145,10 @@ export class MemoryStore implements SyncStore {
       this.settings = settings;
       this.records = records;
       this.parked = parked;
+      this.files = files;
+      this.uploads = uploads;
+      this.parts = parts;
+      this.ssec = ssec;
       throw e;
     }
   }
@@ -367,7 +394,7 @@ export class MemoryStore implements SyncStore {
   }
 
   setUsage(usage: StoreUsage): void {
-    this.usage = { ...usage };
+    this.usage = compactUsage(usage);
   }
 
   getWatermark(): number {
@@ -384,6 +411,112 @@ export class MemoryStore implements SyncStore {
 
   setEncryptionSince(seq: number): void {
     this.since = seq;
+  }
+
+  // ---- files (U-10) -------------------------------------------------------------------------
+
+  getFile(
+    collection: string,
+    recordId: string,
+    version: number,
+  ): StoredFile | undefined {
+    const f = this.files.get(fileId(collection, recordId, version));
+    return f ? { ...f } : undefined;
+  }
+
+  liveFile(collection: string, recordId: string): StoredFile | undefined {
+    return this.filesOf(collection, recordId).find((f) => f.status === "live");
+  }
+
+  putFile(row: StoredFile): void {
+    this.files.set(fileId(row.collection, row.recordId, row.version), {
+      ...row,
+    });
+  }
+
+  deleteFile(collection: string, recordId: string, version: number): void {
+    this.files.delete(fileId(collection, recordId, version));
+  }
+
+  filesOf(collection: string, recordId: string): StoredFile[] {
+    return this.allFiles().filter(
+      (f) => f.collection === collection && f.recordId === recordId,
+    );
+  }
+
+  allFiles(): StoredFile[] {
+    return [...this.files]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([, f]) => ({ ...f }));
+  }
+
+  getUpload(uploadId: string): UploadRow | undefined {
+    const u = this.uploads.get(uploadId);
+    return u ? { ...u } : undefined;
+  }
+
+  putUpload(row: UploadRow): void {
+    this.uploads.set(row.uploadId, { ...row });
+  }
+
+  deleteUpload(uploadId: string): void {
+    this.uploads.delete(uploadId);
+    for (const k of [...this.parts.keys()])
+      if (this.parts.get(k)?.uploadId === uploadId) this.parts.delete(k);
+  }
+
+  openUploads(nowMs: number): UploadRow[] {
+    return [...this.uploads.values()]
+      .filter(
+        (u) =>
+          (u.state === "open" || u.state === "finalizing") &&
+          u.expiresAt > nowMs,
+      )
+      .sort(
+        (a, b) =>
+          a.createdAt - b.createdAt || (a.uploadId < b.uploadId ? -1 : 1),
+      )
+      .map((u) => ({ ...u }));
+  }
+
+  expiredUploads(nowMs: number, limit: number): UploadRow[] {
+    return [...this.uploads.values()]
+      .filter((u) => u.expiresAt <= nowMs)
+      .sort(
+        (a, b) =>
+          a.expiresAt - b.expiresAt || (a.uploadId < b.uploadId ? -1 : 1),
+      )
+      .slice(0, limit)
+      .map((u) => ({ ...u }));
+  }
+
+  getParts(uploadId: string): UploadPart[] {
+    return [...this.parts.values()]
+      .filter((p) => p.uploadId === uploadId)
+      .sort((a, b) => a.n - b.n)
+      .map((p) => ({ ...p }));
+  }
+
+  putPart(row: UploadPart): void {
+    this.parts.set(`${row.uploadId}\u0000${row.n}`, { ...row });
+  }
+
+  getSsecKey(kid: string): Uint8Array | undefined {
+    return this.ssec.get(kid)?.slice();
+  }
+
+  putSsecKey(kid: string, key: Uint8Array): void {
+    this.ssec.set(kid, key.slice());
+  }
+
+  deleteSsecKey(kid: string): void {
+    this.ssec.delete(kid);
+  }
+
+  allSsecKeys(): [string, Uint8Array][] {
+    return [...this.ssec]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([k, v]) => [k, v.slice()]);
   }
 
   /** Sets the sequence (a test seeding a store from a pull's cursor). */
@@ -419,6 +552,14 @@ export class MemoryStore implements SyncStore {
         : {}),
       ...(this.parked.size > 0
         ? { parked: [...this.parked].sort(([a], [b]) => (a < b ? -1 : 1)) }
+        : {}),
+      ...(this.files.size > 0 ? { files: this.allFiles() } : {}),
+      ...(this.uploads.size > 0
+        ? {
+            uploads: [...this.uploads.values()].sort((a, b) =>
+              a.uploadId < b.uploadId ? -1 : 1,
+            ),
+          }
         : {}),
     };
   }

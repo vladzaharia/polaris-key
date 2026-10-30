@@ -83,6 +83,33 @@ export function rowCost(row: StoredSetting | undefined): RowCost {
   };
 }
 
+/** The four file counters of a `StoreUsage`, with the absent ones as zero. */
+export function fileUsage(u: StoreUsage): {
+  files: number;
+  fileBytes: number;
+  revisionBytes: number;
+  reservedBytes: number;
+} {
+  return {
+    files: u.files ?? 0,
+    fileBytes: u.fileBytes ?? 0,
+    revisionBytes: u.revisionBytes ?? 0,
+    reservedBytes: u.reservedBytes ?? 0,
+  };
+}
+
+/** `u` without any file counter that is zero: the shape a store with no file has always had. */
+export function compactUsage(u: StoreUsage): StoreUsage {
+  const { files, fileBytes, revisionBytes, reservedBytes, ...rest } = u;
+  return {
+    ...rest,
+    ...(files ? { files } : {}),
+    ...(fileBytes ? { fileBytes } : {}),
+    ...(revisionBytes ? { revisionBytes } : {}),
+    ...(reservedBytes ? { reservedBytes } : {}),
+  };
+}
+
 /** Moves the store's totals by the change from `prev` to `next`. */
 export function account(
   store: SyncStore,

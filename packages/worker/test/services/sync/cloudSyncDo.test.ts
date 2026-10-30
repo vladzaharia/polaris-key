@@ -13,13 +13,17 @@ import {
 import { formatHlc } from "../../../src/services/sync/engine/hlc.js";
 import type { Classification } from "../../../src/services/sync/engine/types.js";
 import type { CloudSyncReply } from "../../../src/services/sync/do/protocol.js";
-import { SCHEMA_VERSION } from "../../../src/services/sync/do/sqlStore.js";
+import {
+  MIGRATIONS,
+  SCHEMA_VERSION,
+} from "../../../src/services/sync/do/sqlStore.js";
 import {
   CloudSyncNamespaceMock,
   DoStorageMock,
   asCloudSyncNamespace,
   ERASED_LEFTOVERS,
   erasureLeftovers,
+  rowCounts,
 } from "../../cloudSyncDoMock.js";
 import { CloudSyncDO } from "../../../src/services/sync/do/cloudSyncDo.js";
 import type { Env } from "../../../src/platform/env.js";
@@ -151,6 +155,7 @@ describe("CloudSyncDO: lazy schema", () => {
     const inst = ns.instance(nameOf(P, ALICE));
     expect(tables(ns, nameOf(P, ALICE))).toEqual([
       "clients",
+      "files",
       "meta",
       "parked_records",
       "record_fields",
@@ -158,7 +163,10 @@ describe("CloudSyncDO: lazy schema", () => {
       "set_elements",
       "setting_members",
       "settings",
+      "ssec_keys",
       "tombstones",
+      "upload_parts",
+      "uploads",
     ]);
     const meta = Object.fromEntries(
       (
@@ -223,6 +231,71 @@ describe("CloudSyncDO: lazy schema", () => {
     );
     expect(refused.status).toBe(500);
     expect(await refused.json()).toEqual({ error: "unsupported_schema" });
+  });
+});
+
+describe("CloudSyncDO: schema v4 (files, U-10.4)", () => {
+  const request = (op: Record<string, unknown>) =>
+    new Request("https://do/", {
+      method: "POST",
+      body: JSON.stringify({ product: P, subject: ALICE, ...op }),
+    });
+
+  it("migrates a v3 object on its first read, with the file tables empty, and refuses v5", async () => {
+    const storage = new DoStorageMock();
+    for (const step of MIGRATIONS.slice(0, 3))
+      for (const stmt of step) storage.sql.exec(stmt);
+    storage.sql.exec(
+      `INSERT INTO meta (key, value) VALUES ('schema_version', '3'), ('product', '${P}'), ('subject', '${ALICE}')`,
+    );
+    const obj = new CloudSyncDO(
+      { storage } as unknown as DurableObjectState,
+      {} as Env,
+    );
+    const res = await obj.fetch(request({ op: "usage" }));
+    expect(res.status).toBe(200);
+    expect(
+      storage.sql.db
+        .prepare("SELECT value FROM meta WHERE key = 'schema_version'")
+        .get(),
+    ).toEqual({ value: "4" });
+    expect(
+      rowCounts(storage, ["files", "uploads", "upload_parts", "ssec_keys"]),
+    ).toEqual([0, 0, 0, 0]);
+    // Written by a build with a schema this one does not know: refused, left as it is.
+    storage.sql.exec(
+      "UPDATE meta SET value = '5' WHERE key = 'schema_version'",
+    );
+    const refused = await obj.fetch(request({ op: "usage" }));
+    expect(refused.status).toBe(500);
+    expect(await refused.json()).toEqual({ error: "unsupported_schema" });
+    expect(
+      storage.sql.db
+        .prepare("SELECT value FROM meta WHERE key = 'schema_version'")
+        .get(),
+    ).toEqual({ value: "5" });
+  });
+
+  it("an erased object keeps no file row, upload or SSE-C key", async () => {
+    const ns = new CloudSyncNamespaceMock();
+    ids = 1;
+    await push(ns, ALICE, [mut("a", "set", { value: 1 })], [LAST_WRITE]);
+    const db = ns.instance(nameOf(P, ALICE)).storage.sql.db;
+    db.exec(
+      `INSERT INTO files VALUES ('c', 'r', 1, 'u/p/s/o/x', 'whole', 'none', 5, '${"ab".repeat(32)}', 'live', 'k', 1, 'c1');
+       INSERT INTO uploads VALUES ('u1', 'c', 'r', NULL, 'single', 'whole', 'none', 5, '${"ab".repeat(32)}', NULL, NULL, 5, 'd', 1, 2, 'open', NULL);
+       INSERT INTO upload_parts VALUES ('u1', 1, 'e', 5);
+       INSERT INTO ssec_keys VALUES ('k', x'00');`,
+    );
+    const stub = asCloudSyncNamespace(ns).get(
+      asCloudSyncNamespace(ns).idFromName(nameOf(P, ALICE)),
+    );
+    const res = await stub.fetch("https://do/", {
+      method: "POST",
+      body: JSON.stringify({ product: P, subject: ALICE, op: "deleteAll" }),
+    });
+    expect(res.status).toBe(200);
+    expect(erasureLeftovers(ns, nameOf(P, ALICE))).toEqual(ERASED_LEFTOVERS);
   });
 });
 

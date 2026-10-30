@@ -14,6 +14,7 @@ import {
 } from "../../../src/services/sync/do/directory.js";
 import { syncProductPurge } from "../../../src/services/sync/productDeletion.js";
 import { ABSORBED_RETENTION_MS } from "../../../src/services/sync/do/cloudSyncDo.js";
+import { SCHEMA_VERSION } from "../../../src/services/sync/do/sqlStore.js";
 import {
   absorbCloudSync,
   deleteCloudSyncIfUnchanged,
@@ -686,7 +687,7 @@ describe("alarm robustness (U-05.9 N-items)", () => {
     raw.exec("UPDATE meta SET value = '1' WHERE key = 'schema_version'");
     w.ns.instance(NAME(A)).obj["store"].reset();
     await w.ns.fireAlarm(NAME(A));
-    expect(metaOf(w, NAME(A), "schema_version")).toBe("3");
+    expect(metaOf(w, NAME(A), "schema_version")).toBe(String(SCHEMA_VERSION));
     expect(await dirRow(w, A)).not.toBeNull();
   });
 });
