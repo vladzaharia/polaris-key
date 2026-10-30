@@ -16005,10 +16005,7 @@ var DISPLAY_NAME_KEPT = [
   [917536, 917631],
   [917760, 917999]
 ];
-function inRanges2(cp3, ranges) {
-  for (const [lo, hi] of ranges) if (cp3 >= lo && cp3 <= hi) return true;
-  return false;
-}
+var inRanges2 = (cp3, ranges) => ranges.some(([lo, hi]) => cp3 >= lo && cp3 <= hi);
 var DEFAULT_RESERVED_DISPLAY_NAMES_MODE = "warn";
 var DISPLAY_NAME_EXEMPT_SLUG = "polaris-key";
 var RESERVED_DISPLAY_TERMS = [

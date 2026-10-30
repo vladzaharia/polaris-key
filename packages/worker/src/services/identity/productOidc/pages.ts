@@ -21,6 +21,7 @@ import {
   renderBrandPage,
 } from "../../../core/brandHtml.js";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
+import { shownDeveloperName } from "../../../core/accounts/reservedDisplayNames.js";
 import type { Db } from "../../../db/types.js";
 import {
   ENTRY_FOOTER,
@@ -62,6 +63,16 @@ export function shownName(
   app?: { name: string } | undefined,
 ): string {
   return app?.name || product.slug;
+}
+
+/** The listing's developer name as a screen may show it: `null` when it fails the display rules. */
+export async function shownListingDeveloper(
+  env: Env,
+  db: Db,
+  slug: string,
+  hooks: ServiceHooks | undefined,
+): Promise<string | null> {
+  return shownDeveloperName(env, db, slug, await listingDeveloper(hooks));
 }
 
 /** What every step after the confirm shares: the TV variant and the app the confirm drew. */

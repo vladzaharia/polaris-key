@@ -5,20 +5,20 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { makeTestDb } from "../../helpers.js";
-import { KvMock } from "../../kvMock.js";
-import { NOW, seedProduct } from "../../seed.js";
-import { CONSOLE, envFor } from "../../releaseRoutesFixture.js";
-import type { Db } from "../../../src/db/types.js";
-import type { Env } from "../../../src/platform/env.js";
+import { consoleTestSession } from "../../consoleSessionHelper.js";
+import { getProduct } from "../../../src/core/products/store.js";
+import { productNameRefusal } from "../../../src/core/accounts/reservedDisplayNames.js";
 import { handleAdmin } from "../../../src/console/index.js";
+import type { Env } from "../../../src/platform/env.js";
+import type { Db } from "../../../src/db/types.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
 } from "../../../src/core/console/session.js";
-import { getProduct } from "../../../src/core/products/store.js";
-import { productNameRefusal } from "../../../src/core/accounts/reservedDisplayNames.js";
-import { consoleTestSession } from "../../consoleSessionHelper.js";
+import { KvMock } from "../../kvMock.js";
+import { NOW, seedProduct } from "../../seed.js";
+import { makeTestDb } from "../../helpers.js";
+import { CONSOLE, envFor } from "../../releaseRoutesFixture.js";
 
 let db: Db;
 let env: Env;

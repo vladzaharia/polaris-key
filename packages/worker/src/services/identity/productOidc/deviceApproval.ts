@@ -14,7 +14,6 @@
 // a forwarded copy reaches the flow only through the binder.
 
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
-import { shownDeveloperName } from "../../../core/accounts/reservedDisplayNames.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import { hashKey, randomId } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
@@ -66,7 +65,11 @@ import {
   rateLimited,
 } from "./config.js";
 import { sameOriginDecisionPost } from "./deviceFlow.js";
-import { deviceHtmlHeaders, listingDeveloper, type PageView } from "./pages.js";
+import {
+  deviceHtmlHeaders,
+  shownListingDeveloper,
+  type PageView,
+} from "./pages.js";
 
 /** A name inside a sentence, isolated so a right-to-left label cannot scramble the line. */
 function isolate(name: string): string {
@@ -541,12 +544,7 @@ async function approvalApp(
     iconUrl: null,
     artUrl: null,
   }));
-  const developer = await shownDeveloperName(
-    env,
-    db,
-    product.slug,
-    await listingDeveloper(hooks),
-  );
+  const developer = await shownListingDeveloper(env, db, product.slug, hooks);
   const shown = pageApp(named);
   return {
     app: {

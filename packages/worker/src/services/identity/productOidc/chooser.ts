@@ -67,8 +67,7 @@ import { sameOriginDecisionPost } from "./deviceFlow.js";
 import { hostOrigin } from "../../../core/hosts.js";
 import { redirectToApprove } from "./deviceApproval.js";
 import { decodeReplacePick, isReplaceGroup } from "../licenseChoice.js";
-import { shownDeveloperName } from "../../../core/accounts/reservedDisplayNames.js";
-import { flowView, listingDeveloper } from "./pages.js";
+import { flowView, shownListingDeveloper } from "./pages.js";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
 
 export { CHOICE_FIELDS };
@@ -474,12 +473,7 @@ export async function renderChooser(
   if (!minted.ok) return startAgainPage();
   const action = choosePath(req, product);
   // The app's strip on every step of the chooser (identity.refusals): who is asking, and where.
-  const developer = await shownDeveloperName(
-    env,
-    db,
-    product.slug,
-    await listingDeveloper(hooks),
-  );
+  const developer = await shownListingDeveloper(env, db, product.slug, hooks);
   const shown = pageApp(
     await appForPage({ product, env, db, hooks }).catch(() => ({
       name: product.slug,

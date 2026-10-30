@@ -78,13 +78,10 @@ export const DISPLAY_NAME_KEPT: readonly (readonly [number, number])[] = [
   [0xe0100, 0xe01ef],
 ];
 
-function inRanges(
+const inRanges = (
   cp: number,
   ranges: readonly (readonly [number, number])[],
-): boolean {
-  for (const [lo, hi] of ranges) if (cp >= lo && cp <= hi) return true;
-  return false;
-}
+): boolean => ranges.some(([lo, hi]) => cp >= lo && cp <= hi);
 
 /** The severity a reserved display name is reported with (`identity.reservedDisplayNames`). */
 export const RESERVED_DISPLAY_NAMES_MODES = ["warn", "error"] as const;
