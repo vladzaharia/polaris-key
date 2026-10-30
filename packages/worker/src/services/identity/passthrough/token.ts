@@ -37,9 +37,7 @@
  */
 
 import {
-  CHOICE_GRANT_TTL_SECONDS,
   TOKEN_EXCHANGE_GRANT_TYPE,
-  type PendingSignIn,
   type TokenResponse,
 } from "@polaris-key/protocol/identity";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
@@ -69,16 +67,12 @@ import {
   isValidClientDeviceId,
   licenseUsable,
   NO_LICENSE_ID,
-  registerDeviceBinding,
   shapeDevice,
   shapeLicense,
   validateDeviceToken,
 } from "../../../core/devices.js";
-import { getDevice } from "../../../core/devices/store.js";
-import type { DeviceRow } from "../../../core/repo.js";
 import { getLicense } from "../../../core/licensing/store.js";
 import { customerTierId } from "../../../core/licensing/implicitTier.js";
-import { rankAnchorCandidates } from "../../../core/licensing/anchor.js";
 import { appendAudit } from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
 import {
@@ -89,12 +83,14 @@ import {
 import { registerDeviceKeys } from "../../../core/devices/registerKeys.js";
 import { getAccountRow } from "../accounts/repo.js";
 import { redeemAuthorizationCode } from "./code.js";
-import { acceptsKeys, licenseChoiceView, offerFor } from "./choice.js";
-import { issueGrant } from "./grant.js";
 import { bindChoice, type BindRefusal, type BindResult } from "./bind.js";
+import { bindWithoutChoice, settleAppMode } from "./settle.js";
 import { launchGateOn } from "../../../core/settings/platformRead.js";
 import { handleExchange } from "./exchange.js";
 import { markFresh } from "./fresh.js";
+
+// `choice/complete` binds without a choice through the same function (settle.ts).
+export { bindWithoutChoice };
 
 /** The token endpoint: 30 a minute per client network, 10 per device id; both fail closed. */
 export const TOKEN_RATE = { bucket: "identityToken", limit: 30, windowSec: 60 };
@@ -356,56 +352,16 @@ export async function bindAndAnswer(
     });
   } else if (p.licenseChoice === "app" && product.services.license.enabled) {
     // App mode: the app runs the choice. If one is due, hand over the grant instead of a token.
-    const choiceCx = { env, db, product, now };
-    const offer = await offerFor(choiceCx, account.id, deviceId);
-    const due =
-      offer.candidates.length > 0 ||
-      offer.keep ||
-      (!offer.granted && acceptsKeys(product));
-    const only = offer.candidates[0];
-    const silent =
-      p.silentSingle === true &&
-      offer.candidates.length === 1 &&
-      !offer.keep &&
-      only !== undefined &&
-      only.state === "free";
-    if (silent && only) {
-      bound = await bindChoice(cx, who, deviceArgs, {
-        kind: "license",
-        licenseId: only.licenseId,
-      });
-    } else if (due) {
-      const grant = await issueGrant(
-        env,
-        {
-          product: product.slug,
-          accountId: account.id,
-          subject,
-          deviceId,
-          scope: p.scope,
-          ...(p.keys ? { keys: p.keys } : {}),
-          ...(p.fresh ? { fresh: true as const } : {}),
-        },
-        now,
-      );
-      const pending: PendingSignIn = {
-        status: "choose",
-        grant,
-        expiresIn: CHOICE_GRANT_TTL_SECONDS,
-        choices: await licenseChoiceView(choiceCx, req, account.id, {
-          deviceId,
-        }),
-      };
-      return withNoStore(json(pending));
-    } else {
-      bound = await bindWithoutChoice(
-        cx,
-        who,
-        deviceArgs,
-        keepable !== null,
-        proven !== null,
-      );
-    }
+    const settled = await settleAppMode(cx, who, deviceArgs, {
+      scope: p.scope,
+      ...(p.keys ? { keys: p.keys } : {}),
+      ...(p.fresh ? { fresh: true as const } : {}),
+      ...(p.silentSingle ? { silentSingle: true } : {}),
+      keepable: keepable !== null,
+      proven: proven !== null,
+    });
+    if (settled.kind === "choose") return withNoStore(json(settled.pending));
+    bound = settled.bound;
   } else {
     bound = await bindWithoutChoice(
       cx,
@@ -455,64 +411,6 @@ export async function bindAndAnswer(
   return withNoStore(
     json(await tokenBody(db, product, deviceId, p.scope, subject, bound)),
   );
-}
-
-/**
- * The cases where no choice rides on the code. In card mode Continue refused the press if a choice
- * was owed, so one still owed here means the offer changed since (a licence appeared): never
- * silent. The device's own proof keeps its licence; with none to choose, the device is bound
- * licence-less.
- */
-export async function bindWithoutChoice(
-  cx: { req: Request; env: Env; db: Db; product: Product; now: number },
-  who: { accountId: string; subject: string; email: string | null },
-  device: {
-    id: string;
-    metadata: ReturnType<typeof deviceMetadata>;
-    label: string | null;
-    held: { token: string; row: DeviceRow } | null;
-  },
-  keepable: boolean,
-  proven: boolean,
-): Promise<BindResult> {
-  const { env, db, product, now } = cx;
-  if (keepable && device.held)
-    return bindChoice(cx, who, device, { kind: "keep" });
-  if (product.services.license.enabled) {
-    const offer = await rankAnchorCandidates(db, product, who.accountId, now, {
-      deviceId: device.id,
-    });
-    if (offer.candidates.length > 0 || offer.keep)
-      return { ok: false, refusal: { reason: "license_choice_required" } };
-  }
-  const existing = await getDevice(db, product.slug, device.id);
-  if (existing && existing.license_id !== NO_LICENSE_ID)
-    return { ok: false, refusal: { reason: "license_choice_required" } };
-  // A licence-less device id that already holds a credential is taken over only by the device
-  // that presents it: registering rotates the token, so without the proof a person with any
-  // account could bind someone else's device id to theirs.
-  if (existing?.token_hash && !proven)
-    return { ok: false, refusal: { reason: "not_entitled" } };
-  const registered = await registerDeviceBinding(
-    env,
-    db,
-    product,
-    device.id,
-    now,
-    {
-      existing,
-      presented: null,
-      metadata: { ...device.metadata, label: device.label },
-      boundBy: "signin",
-      subject: who.subject,
-    },
-  );
-  return {
-    ok: true,
-    token: registered.token,
-    device: registered.device,
-    licenseId: NO_LICENSE_ID,
-  };
 }
 
 /** The `200` of `token` and of `choice/complete`: one shape (§12.5, §12.5.1). */
