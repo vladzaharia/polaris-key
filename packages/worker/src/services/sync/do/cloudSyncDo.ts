@@ -5,6 +5,7 @@ import type { Env } from "../../../platform/env.js";
 import { absorbSettings } from "../engine/absorb.js";
 import { applyPull, collectTombstones } from "../engine/pull.js";
 import { applyPush } from "../engine/push.js";
+import type { FileLimits } from "../engine/files.js";
 import { validatePush } from "../engine/validate.js";
 import type {
   CatalogMigrations,
@@ -32,6 +33,8 @@ import {
   markDirty,
   recordWrite,
 } from "./directory.js";
+import { fileAbort, fileBegin, fileStatus, type FileHost } from "./fileOps.js";
+import { fileStoreOf } from "./client.js";
 import { SCHEMA_VERSION, SqlStore } from "./sqlStore.js";
 import { knownPlatform } from "../../../core/devices/platformFamily.js";
 
@@ -87,6 +90,16 @@ const isLimits = (v: unknown): v is PushLimits =>
   ((v as PushLimits).usersAtCeiling === undefined ||
     typeof (v as PushLimits).usersAtCeiling === "boolean");
 
+const isFileLimits = (v: unknown): v is FileLimits =>
+  typeof v === "object" &&
+  v !== null &&
+  typeof (v as FileLimits).quotaBytes === "number" &&
+  Number.isFinite((v as FileLimits).quotaBytes) &&
+  ((v as FileLimits).productOverCeiling === undefined ||
+    typeof (v as FileLimits).productOverCeiling === "boolean") &&
+  ((v as FileLimits).usersAtCeiling === undefined ||
+    typeof (v as FileLimits).usersAtCeiling === "boolean");
+
 function migrationsOf(
   w: WireMigrations | undefined,
 ): CatalogMigrations | undefined {
@@ -122,12 +135,15 @@ export class CloudSyncDO implements DurableObject {
   private readonly now: () => number;
   private readonly db: () => Pick<Db, "batch" | "batchChanges">;
   private readonly flushTimeoutMs: number;
+  /** The file store, when the Worker has one (`SYNC_FILES`); read per call, never cached. */
+  private readonly bucket: () => R2Bucket | undefined;
 
   constructor(
     private readonly ctx: DurableObjectState,
     env: Env,
     opts: CloudSyncDoOptions = {},
   ) {
+    this.bucket = () => fileStoreOf(env);
     this.now = opts.now ?? Date.now;
     this.store = new SqlStore(ctx.storage, () => Math.floor(this.now() / 1000));
     this.db = opts.db ?? (() => new D1Db(env.DB));
@@ -276,7 +292,7 @@ export class CloudSyncDO implements DurableObject {
     if (
       (this.store.getMeta("absorbed_into") !== undefined ||
         this.store.getMeta("erased_at") !== undefined) &&
-      (op.op === "push" || op.op === "absorb")
+      (op.op === "push" || op.op === "absorb" || op.op === "fileBegin")
     )
       return objectError("absorbed", 410);
 
@@ -285,6 +301,10 @@ export class CloudSyncDO implements DurableObject {
         return this.push(op);
       case "pull":
         return this.pull(op);
+      case "fileBegin":
+      case "fileStatus":
+      case "fileAbort":
+        return this.fileOp(op);
       case "usage": {
         this.migrateIfBehind();
         return reply({
@@ -311,6 +331,46 @@ export class CloudSyncDO implements DurableObject {
       default:
         return reply({ error: "bad_request" }, 400);
     }
+  }
+
+  /** The file operations (`fileOps.ts`): their shape is checked here, their work is there. */
+  private async fileOp(
+    op: Extract<CloudSyncOp, { op: "fileBegin" | "fileStatus" | "fileAbort" }>,
+  ): Promise<Response> {
+    const named =
+      isName(op.collection) &&
+      isName(op.recordId) &&
+      (op.op === "fileBegin"
+        ? isName(op.uploadId) && isName(op.deviceId)
+        : isName(op.uploadId)) &&
+      typeof op.serverNow === "number";
+    if (!named) return reply({ error: "bad_request" }, 400);
+    const host: FileHost = {
+      store: this.store,
+      ctx: this.ctx,
+      bucket: this.bucket(),
+    };
+    if (op.op === "fileBegin") {
+      const r = op.request;
+      if (
+        !r ||
+        typeof r.size !== "number" ||
+        !Number.isSafeInteger(r.size) ||
+        r.size < 0 ||
+        typeof r.sha256 !== "string" ||
+        !(op.mode === "single" || op.mode === "multipart") ||
+        !isFileLimits(op.limits) ||
+        typeof op.maxRecords !== "number"
+      )
+        return reply({ error: "bad_request" }, 400);
+      const out = await fileBegin(host, op);
+      return reply(out.body, out.status);
+    }
+    const out =
+      op.op === "fileStatus"
+        ? await fileStatus(host, op)
+        : await fileAbort(host, op);
+    return reply(out.body, out.status);
   }
 
   /**

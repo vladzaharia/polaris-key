@@ -117,7 +117,7 @@ const conflict = (
 });
 
 /** A compare-and-swap mismatch: `"*"` against a live record, a number against any other version. */
-function casMismatch(
+export function casMismatch(
   prev: StoredRecord | undefined,
   baseVersion: number | "*",
 ): boolean {

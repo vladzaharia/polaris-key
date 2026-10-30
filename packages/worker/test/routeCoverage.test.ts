@@ -922,6 +922,9 @@ function concrete(template: string): string {
     code: "K7M-4QX-9TZ",
     // UK-04b: the Elements CDN module's file.
     file: "pk.js",
+    // U-10.5: a Cloud Sync file route (`/sync/files/{collection}/{id}/upload/{uploadId}`).
+    collection: "saves",
+    uploadId: `up_${"A".repeat(22)}`,
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

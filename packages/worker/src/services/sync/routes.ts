@@ -5,11 +5,18 @@
  *
  * U-05.12 adds the pull, `GET /<p>/sync` (path `""`). Every route takes the device bearer and is
  * unsigned; `auth: device` is declared here and enforced in the handler (`handlers/common.ts`).
- * U-05.13 adds the push, `POST /<p>/sync/ops`. The file routes are U-10's. A path no row matches is `null`
- * (Core's not-found).
+ * U-05.13 adds the push, `POST /<p>/sync/ops`. U-10 adds the file routes under
+ * `files/{collection}/{id}`; every one answers `404` while the launch gate `launch.syncFiles` is off
+ * (`handlers/files.ts`). A path no row matches is `null` (Core's not-found).
  */
 
 import { serviceRoutes } from "../../core/http/routes.js";
+import {
+  FILE_PARAMS,
+  handleFileBegin,
+  handleUploadAbort,
+  handleUploadStatus,
+} from "./handlers/files.js";
 import { handlePull } from "./handlers/pull.js";
 import { handlePush } from "./handlers/push.js";
 
@@ -33,5 +40,26 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
     auth: { kind: "device" },
     cors: true, // U-05.13, as the pull
     handler: (ctx) => handlePush(ctx),
+  },
+  // U-10.5: the file routes. Device bearer, browser-readable and writable like the push (a page's
+  // own device token is the credential); the gate, the principal and the limits are the handler's.
+  {
+    path: "files/:collection/:id/begin",
+    methods: ["POST"],
+    auth: { kind: "device" },
+    cors: true,
+    params: { collection: FILE_PARAMS.collection, id: FILE_PARAMS.id },
+    handler: (ctx, match) => handleFileBegin(ctx, match),
+  },
+  {
+    path: "files/:collection/:id/upload/:uploadId",
+    methods: ["GET", "DELETE"],
+    auth: { kind: "device" },
+    cors: true,
+    params: FILE_PARAMS,
+    handler: (ctx, match) =>
+      ctx.req.method === "DELETE"
+        ? handleUploadAbort(ctx, match)
+        : handleUploadStatus(ctx, match),
   },
 ]);

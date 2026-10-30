@@ -169,7 +169,11 @@ export function freshSqlStore(): { store: SqlStore; storage: DoStorageMock } {
 }
 
 export class CloudSyncNamespaceMock {
-  constructor(private readonly opts: CloudSyncDoOptions = {}) {}
+  constructor(
+    private readonly opts: CloudSyncDoOptions = {},
+    /** The environment each object is built with (its `SYNC_FILES` is read on every call). */
+    private readonly env: Env = {} as Env,
+  ) {}
   readonly instances = new Map<
     string,
     { obj: CloudSyncDO; storage: DoStorageMock }
@@ -195,7 +199,7 @@ export class CloudSyncNamespaceMock {
             // namespace already runs one operation at a time per object.
             blockConcurrencyWhile: <T>(fn: () => Promise<T>) => fn(),
           } as unknown as DurableObjectState,
-          {} as Env,
+          this.env,
           this.opts,
         ),
       };

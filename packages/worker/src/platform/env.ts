@@ -189,6 +189,15 @@ export interface Env {
    */
   LAUNCH_SYNC_E2E?: string;
   /**
+   * LG-1 launch gate for the Cloud Sync file routes (WIRE-CONTRACT-V5 §13.5). Off until the feature's security sign-off. A `[vars]` value, read
+   * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
+   * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the
+   * console says off. An unreadable store reads off.
+   * @inventory var jobs
+   * @editable LAUNCH_SYNC_FILES
+   */
+  LAUNCH_SYNC_FILES?: string;
+  /**
    * LG-1 launch gate for the Cloud Connect relay routes (none yet). Off until the feature's security sign-off. A `[vars]` value, read
    * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
    * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the

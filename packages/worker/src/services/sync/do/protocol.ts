@@ -8,8 +8,14 @@
  */
 
 import type { RecordJoin } from "../engine/absorbRecords.js";
-import type { PushRequest } from "@polaris-key/protocol/sync";
+import type {
+  BeginFileRequest,
+  PushRequest,
+  SyncUploadMode,
+  UploadStatus,
+} from "@polaris-key/protocol/sync";
 import type { PullOutcome } from "../engine/pull.js";
+import type { BeginRefusal, FileLimits } from "../engine/files.js";
 import type {
   Classification,
   FieldCell,
@@ -61,6 +67,40 @@ export type CloudSyncOp =
       family: string;
       /** `"e2e"`: sealed rows leave as `ct` and the answer names `encryptionSince` (§13.4). */
       encryption?: "e2e" | "server";
+    })
+  /**
+   * File uploads (U-10): the object owns the sessions and makes the R2 control calls; the Worker
+   * streams the bytes. `fileBegin` is checks 5 to 7 of the plan's §2.3 and the reservation; the
+   * Worker has made 1 to 4 and chosen the mode.
+   */
+  | (DoPin & {
+      op: "fileBegin";
+      /** A fresh session id (`up_` and 22 base64url characters), chosen by the Worker. */
+      uploadId: string;
+      deviceId: string;
+      collection: string;
+      recordId: string;
+      request: BeginFileRequest;
+      mode: Extract<SyncUploadMode, "single" | "multipart">;
+      partBytes?: number;
+      /** The matched declaration's `maxRecords`. */
+      maxRecords: number;
+      limits: FileLimits;
+      serverNow: number;
+    })
+  | (DoPin & {
+      op: "fileStatus";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      serverNow: number;
+    })
+  | (DoPin & {
+      op: "fileAbort";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      serverNow: number;
     })
   | (DoPin & { op: "usage" })
   | (DoPin & { op: "exportAll" })
@@ -135,10 +175,31 @@ export interface OpMeter {
 export type CloudSyncReply =
   | { op: "push"; outcome: PushOutcome; meter?: OpMeter }
   | { op: "pull"; outcome: PullOutcome; meter?: OpMeter }
+  | { op: "fileBegin"; outcome: FileBeginOutcome }
+  | { op: "fileStatus"; outcome: FileStatusOutcome }
+  | { op: "fileAbort"; outcome: FileAbortOutcome }
   | { op: "usage"; usage: StoreUsage; seq: number; empty: boolean }
   | { op: "exportAll"; document: ExportDocument | null }
   | { op: "absorb"; changed: number; skipped?: number; meter?: OpMeter }
   | { op: "deleteAll"; deleted: boolean };
+
+/** `begin`'s answer (`BeginFileResponse` less nothing: the Worker sends it as it is). */
+export type FileBeginOutcome =
+  | {
+      ok: true;
+      uploadId: string;
+      mode: SyncUploadMode;
+      partBytes?: number;
+      expiresAt: number;
+    }
+  | BeginRefusal;
+
+/** `404` for a session that is not this record's, is unknown or ended; `410` once it expired. */
+export type FileStatusOutcome =
+  | { ok: true; status: UploadStatus }
+  | { ok: false; error: "not_found" | "upload_expired" };
+
+export type FileAbortOutcome = { ok: true } | { ok: false; error: "not_found" };
 
 export type CloudSyncError = {
   error:

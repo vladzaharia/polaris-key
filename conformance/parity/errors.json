@@ -446,8 +446,7 @@
       "code": "revision_conflict",
       "kind": "wire",
       "service": "sync",
-      "description": "409 from POST /<p>/sync/files/{collection}/{id}/begin or /finalize: `baseVersion` no longer equals the record's version. Carries `server: {version}`; the client re-reads the record and begins again (WIRE-CONTRACT-V5 §13.8.1, §13.8.4, §13.9; U-10).",
-      "plannedBy": "U-10"
+      "description": "409 from POST /<p>/sync/files/{collection}/{id}/begin or /finalize: `baseVersion` no longer equals the record's version. Carries `server: {version}`; the client re-reads the record and begins again (WIRE-CONTRACT-V5 §13.8.1, §13.8.4, §13.9; U-10)."
     },
     {
       "code": "upload_mismatch",
@@ -460,8 +459,7 @@
       "code": "upload_expired",
       "kind": "wire",
       "service": "sync",
-      "description": "410: the file upload outlived `SYNC_UPLOAD_TTL_SECONDS` (86,400 s); the server aborted it and released its reservation, and the client begins again (WIRE-CONTRACT-V5 §13.8.2, §13.9; U-10).",
-      "plannedBy": "U-10"
+      "description": "410: the file upload outlived `SYNC_UPLOAD_TTL_SECONDS` (86,400 s); the server aborted it and released its reservation, and the client begins again (WIRE-CONTRACT-V5 §13.8.2, §13.9; U-10)."
     },
     {
       "code": "upload_incomplete",
@@ -474,8 +472,7 @@
       "code": "file_too_large",
       "kind": "wire",
       "service": "sync",
-      "description": "413 from a file `begin`: the file is over its collection's `files.maxBytes` (WIRE-CONTRACT-V5 §13.8.4, §13.9; U-10).",
-      "plannedBy": "U-10"
+      "description": "413 from a file `begin`: the file is over its collection's `files.maxBytes` (WIRE-CONTRACT-V5 §13.8.4, §13.9; U-10)."
     },
     {
       "code": "keyring_conflict",

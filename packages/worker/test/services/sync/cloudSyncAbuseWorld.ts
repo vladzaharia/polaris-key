@@ -7,6 +7,7 @@ import { formatHlc } from "../../../src/services/sync/engine/hlc.js";
 import type { SyncJson, SyncMutation } from "@polaris-key/protocol/sync";
 import { makeTestDb } from "../../helpers.js";
 import { KvMock } from "../../kvMock.js";
+import { asR2, type R2Mock } from "../../r2Mock.js";
 import {
   makeEnv,
   mkReq,
@@ -45,12 +46,18 @@ export interface World {
 }
 
 export async function world(
-  opts: { catalog?: unknown; gate?: "on" | "off" } = {},
+  opts: {
+    catalog?: unknown;
+    gate?: "on" | "off";
+    /** A file store for the Worker and the objects (U-10): `SYNC_FILES`. */
+    files?: R2Mock;
+  } = {},
 ): Promise<World> {
   const db = makeTestDb();
-  const ns = new CloudSyncNamespaceMock();
   const kv = new KvMock();
   const env = makeEnv(kv, []);
+  if (opts.files) env.SYNC_FILES = asR2(opts.files);
+  const ns = new CloudSyncNamespaceMock({}, env);
   env.CLOUD_SYNC = asCloudSyncNamespace(ns);
   if (opts.gate !== undefined) {
     (env as unknown as Record<string, string>).LAUNCH_SYNC_E2E = opts.gate;

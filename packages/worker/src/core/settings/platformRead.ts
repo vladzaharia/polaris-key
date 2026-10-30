@@ -47,6 +47,7 @@ export interface PlatformValues {
   "launch.identityExchange": "on" | "off";
   "launch.connect": "on" | "off";
   "launch.syncE2e": "on" | "off";
+  "launch.syncFiles": "on" | "off";
   "launch.relay": "on" | "off";
 }
 

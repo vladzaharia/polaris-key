@@ -34,6 +34,15 @@ export function cloudSyncObjectName(pin: DoPin): string {
   return `${pin.product}:${pin.subject}`;
 }
 
+/**
+ * The file store (`SYNC_FILES`), when the Worker has one. Here and not in the object's own files,
+ * because this is the module that reads bindings; the object receives it as a thunk
+ * (`cloudSyncDo.ts`, `fileOps.ts`) and names no environment member itself.
+ */
+export const fileStoreOf = (
+  env: Pick<Env, "SYNC_FILES">,
+): R2Bucket | undefined => env.SYNC_FILES;
+
 export class CloudSyncDoError extends Error {
   constructor(
     readonly status: number,
