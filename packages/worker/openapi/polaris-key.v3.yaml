@@ -10716,6 +10716,186 @@ paths:
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
+  /{product}/sync/files/{collection}/{id}:
+    get:
+      operationId: syncFileGet
+      tags: [sync]
+      summary: Download a record's file
+      description: >
+        U-10 (WIRE-CONTRACT-V5 §13.2, §13.8). The stored bytes of the record's file (the whole
+        ciphertext in end-to-end mode, the manifest in the `chunks` format), through the Worker
+        only: there is no public or presigned URL. `?version=` names a kept version (the
+        `version` a `finalize` or a pull's `file` returned, or one `…/revisions` lists); without
+        it, the live file. `application/octet-stream`, `Content-Disposition: attachment`,
+        `nosniff`, `no-store`; `ETag "<sha256>"` and `Repr-Digest` describe the whole file, also on
+        a `206`.
+
+        `Range` takes one `bytes` range and answers `206`; a start past the end is `416` with
+        `Content-Range: bytes */<size>`; a malformed or multiple range is ignored and the whole
+        file is served. `If-Range` with anything but the file's strong ETag serves the whole file.
+        A whole-file `GET` (a range that covers the whole file included) is one of 30 transfers a
+        device an hour; any other ranged `GET` is one of 600 requests a minute. A record with no
+        such file, a deleted record and a version that is not kept are `404`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+        - name: version
+          in: query
+          required: false
+          description: "A kept version of the file: a positive integer. Absent: the live file."
+          schema: { type: integer, minimum: 1 }
+        - name: Range
+          in: header
+          required: false
+          description: "One `bytes=<start>-<end>`, `bytes=<start>-` or `bytes=-<suffix>` range."
+          schema: { type: string }
+        - name: If-Range
+          in: header
+          required: false
+          description: "The file's strong ETag; any other validator serves the whole file."
+          schema: { type: string }
+      responses:
+        "200":
+          description: "The whole file."
+          headers:
+            ETag: { schema: { type: string } }
+            Repr-Digest: { schema: { type: string } }
+            Accept-Ranges: { schema: { type: string } }
+            Content-Disposition: { schema: { type: string } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206":
+          description: "The requested range, with `Content-Range`."
+          headers:
+            Content-Range: { schema: { type: string } }
+            ETag: { schema: { type: string } }
+            Repr-Digest: { schema: { type: string } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "400":
+          description: "`bad_request` — `version` is not a positive integer. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`account_required` (the body carries the `signInUrl`) or `attestation_required`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "416":
+          description: "A range that starts past the end of the file, with `Content-Range: bytes */<size>`."
+          headers:
+            Content-Range: { schema: { type: string } }
+        "429":
+          description: >
+            `rate_limited` — over 30 whole-file transfers an hour, or 600 ranged requests a
+            minute. NESTED.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: "`unavailable` (`Retry-After: 5`). NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightSyncFileGet
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/sync/files/{collection}/{id}/revisions:
+    get:
+      operationId: syncFileRevisions
+      tags: [sync]
+      summary: The kept versions of a record's file
+      description: >
+        U-10 (WIRE-CONTRACT-V5 §13.2). The older versions a record's file keeps for the
+        collection's `keepRevisions`, newest first; the live file is not among them. Each
+        `version` can be fetched with `GET …/{id}?version=`. Counted against the 600 requests a
+        device a minute. A record with no kept version answers an empty list.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+      responses:
+        "200":
+          description: "The kept versions."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncFileRevisionsResponse" }
+              examples:
+                kept:
+                  summary: test/services/sync/cloudSyncFilesGet.test.ts
+                  value:
+                    revisions:
+                      - {
+                          version: 9,
+                          size: 4096,
+                          sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          format: whole,
+                          createdAt: 1767225600000,
+                        }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`account_required` (the body carries the `signInUrl`) or `attestation_required`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: "`unavailable` (`Retry-After: 5`). NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightSyncFileRevisions
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
   # ── permanent aliases ─────────────────────────────────────────────────────────
   /{product}/appcast.xml:
     get:

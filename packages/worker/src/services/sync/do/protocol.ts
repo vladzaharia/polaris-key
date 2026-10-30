@@ -10,8 +10,10 @@
 import type { RecordJoin } from "../engine/absorbRecords.js";
 import type {
   BeginFileRequest,
+  FileRevision,
   FinalizeResponse,
   PushRequest,
+  SyncFileFormat,
   SyncUploadMode,
   UploadStatus,
 } from "@polaris-key/protocol/sync";
@@ -158,6 +160,23 @@ export type CloudSyncOp =
       uploadId: string;
       serverNow: number;
     })
+  /**
+   * The file a download streams (U-10.8): the record's live one, or the kept `version` (live or a
+   * revision). The object answers the R2 key, the size and the hash from its own rows, and, for a
+   * server-mode file under SSE-C, the key to open it with; the path never names a key.
+   */
+  | (DoPin & {
+      op: "fileResolve";
+      collection: string;
+      recordId: string;
+      version?: number;
+    })
+  /** The kept older versions of a record's file, newest first (U-10.8). */
+  | (DoPin & {
+      op: "fileRevisions";
+      collection: string;
+      recordId: string;
+    })
   | (DoPin & { op: "usage" })
   | (DoPin & { op: "exportAll" })
   /**
@@ -235,6 +254,8 @@ export type CloudSyncReply =
   | { op: "fileStatus"; outcome: FileStatusOutcome }
   | { op: "fileAbort"; outcome: FileAbortOutcome }
   | { op: "filePrepare"; outcome: FilePrepareOutcome }
+  | { op: "fileResolve"; outcome: FileResolveOutcome }
+  | { op: "fileRevisions"; outcome: FileRevisionsOutcome }
   | { op: "filePart"; outcome: FileAbortOutcome }
   | { op: "fileFinalizePrepare"; outcome: FinalizePrepareOutcome }
   | { op: "fileFinalizeCommit"; outcome: FinalizeCommitOutcome }
@@ -300,6 +321,26 @@ export type FinalizeCommitOutcome =
   | { ok: false; error: "not_found" }
   | { ok: false; error: "revision_conflict"; version: number }
   | { ok: false; error: "quota_exceeded"; scope: "collection" };
+
+/**
+ * What a download streams. `ssecKey` is the hex of the 32-byte SSE-C key the object is stored
+ * under (server mode, D-8); it travels from the object to the Worker and nowhere else.
+ */
+export type FileResolveOutcome =
+  | {
+      ok: true;
+      file: {
+        key: string;
+        version: number;
+        size: number;
+        sha256: string;
+        format: SyncFileFormat;
+        ssecKey?: string;
+      };
+    }
+  | { ok: false; error: "not_found" };
+
+export type FileRevisionsOutcome = { ok: true; revisions: FileRevision[] };
 
 export type FileAbortOutcome = { ok: true } | { ok: false; error: "not_found" };
 

@@ -35,6 +35,7 @@ import type {
   FinalizePrepareOutcome,
 } from "./protocol.js";
 import type { FinalizeResponse } from "@polaris-key/protocol/sync";
+import { hexEncode } from "../../../platform/bytes.js";
 import type { SqlStore } from "./sqlStore.js";
 
 /** What an operation hands back to `fetch`: a body in the object's protocol and a status. */
@@ -323,6 +324,71 @@ export function filePart(
       });
   });
   return ok({ op: "filePart", outcome: { ok: true } });
+}
+
+// ── download and revisions (U-10.8) ──────────────────────────────────────────────────────────
+
+/**
+ * The file a download streams: the record's live one, or the kept `version` (live or a revision).
+ * A parked file belongs to no live record, and a dead one is waiting to be collected: neither is
+ * served. The key comes from the row, never from the request.
+ */
+export function fileResolve(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "fileResolve" }>,
+): FileReply {
+  host.store.prepare(false);
+  const row =
+    op.version === undefined
+      ? host.store.liveFile(op.collection, op.recordId)
+      : host.store.getFile(op.collection, op.recordId, op.version);
+  if (!row || (row.status !== "live" && row.status !== "revision"))
+    return ok({
+      op: "fileResolve",
+      outcome: { ok: false, error: "not_found" },
+    });
+  const ssec =
+    row.ssecKid !== undefined ? host.store.getSsecKey(row.ssecKid) : undefined;
+  // A file under a key the object no longer holds cannot be opened: it is gone, not unreadable.
+  if (row.ssecKid !== undefined && !ssec)
+    return ok({
+      op: "fileResolve",
+      outcome: { ok: false, error: "not_found" },
+    });
+  return ok({
+    op: "fileResolve",
+    outcome: {
+      ok: true,
+      file: {
+        key: row.objectKey,
+        version: row.version,
+        size: row.size,
+        sha256: row.sha256,
+        format: row.format,
+        ...(ssec ? { ssecKey: hexEncode(ssec) } : {}),
+      },
+    },
+  });
+}
+
+/** The kept older versions of a record's file, newest first. The live file is not one of them. */
+export function fileRevisions(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "fileRevisions" }>,
+): FileReply {
+  host.store.prepare(false);
+  const revisions = host.store
+    .filesOf(op.collection, op.recordId)
+    .filter((f) => f.status === "revision")
+    .sort((a, b) => b.version - a.version)
+    .map((f) => ({
+      version: f.version,
+      size: f.size,
+      sha256: f.sha256,
+      format: f.format,
+      createdAt: f.createdAt,
+    }));
+  return ok({ op: "fileRevisions", outcome: { ok: true, revisions } });
 }
 
 // ── finalize (U-10.7) ────────────────────────────────────────────────────────────────────────

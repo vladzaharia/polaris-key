@@ -41,6 +41,8 @@ import {
   fileFinalizePrepare,
   filePart,
   filePrepare,
+  fileResolve,
+  fileRevisions,
   fileStatus,
   type FileHost,
 } from "./fileOps.js";
@@ -325,6 +327,27 @@ export class CloudSyncDO implements DurableObject {
       case "fileFinalizeCommit":
       case "fileFinalizeEnd":
         return this.fileOp(op);
+      case "fileResolve":
+      case "fileRevisions": {
+        if (
+          !isName(op.collection) ||
+          !isName(op.recordId) ||
+          (op.op === "fileResolve" &&
+            op.version !== undefined &&
+            !(Number.isSafeInteger(op.version) && op.version >= 1))
+        )
+          return reply({ error: "bad_request" }, 400);
+        const host: FileHost = {
+          store: this.store,
+          ctx: this.ctx,
+          bucket: this.bucket(),
+        };
+        const out =
+          op.op === "fileResolve"
+            ? fileResolve(host, op)
+            : fileRevisions(host, op);
+        return reply(out.body, out.status);
+      }
       case "usage": {
         this.migrateIfBehind();
         return reply({
