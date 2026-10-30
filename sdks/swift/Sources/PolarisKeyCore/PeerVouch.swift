@@ -164,7 +164,7 @@ public struct VouchDecoys: Sendable, Equatable {
 public enum PeerVouch {
     // MARK: VOUCH_REQ
 
-    private static func isRequest(_ s: String) -> Bool {
+    static func isRequest(_ s: String) -> Bool {
         let u = Array(s.utf8)
         return u.count == 25 && u[0] == 0x6E && u[1] == 0x72 && u[2] == 0x5F && u[3...].allSatisfy(urlSafe)
     }

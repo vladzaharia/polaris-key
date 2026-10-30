@@ -83,4 +83,56 @@ import PolarisKeyPlatform
             return Handle(listener, port: port)
         }
     }
+
+    /// D's network: a browse for `_pkeypeer._tcp`, the resolve that judges every address before any connect
+    /// (§15.4.1), and the dial, all through the Bonjour code mode a uses. D never listens.
+    public final class SystemNearbyRequesterNetwork: NearbyRequesterNetwork, @unchecked Sendable {
+        private let browseOptions: BonjourBrowseOptions
+        private let dialOptions: BonjourDialOptions
+
+        /// `peerToPeer` is AWDL (D-5), off by default. `allowLoopback` is for tests and same-host use.
+        public init(peerToPeer: Bool = false, allowLoopback: Bool = false) {
+            browseOptions = BonjourBrowseOptions(peerToPeer: peerToPeer)
+            dialOptions = BonjourDialOptions(
+                policy: BonjourDialPolicy(allowLoopback: allowLoopback), peerToPeer: peerToPeer)
+        }
+
+        public func browse(
+            accept: @escaping @Sendable (NearbyAdvert) -> Bool, onUp: @escaping @Sendable (NearbyAdvert) -> Void,
+            onDown: @escaping @Sendable (String) -> Void
+        ) throws -> @Sendable () -> Void {
+            @Sendable func advert(_ f: BonjourFound) -> NearbyAdvert {
+                NearbyAdvert(instance: f.instance, txt: f.txt, endpoint: f.endpoint)
+            }
+            let b = BonjourBrowse(options: browseOptions, acceptFound: { accept(advert($0)) })
+            do {
+                try b.start(onUp: { onUp(advert($0)) }, onDown: onDown, onError: { _ in })
+            } catch let e as BonjourBrowseError {
+                throw NearbyError.from(e)
+            }
+            return { b.stop() }
+        }
+
+        public func resolve(_ advert: NearbyAdvert) async throws -> [NearbyTarget] {
+            guard let endpoint = advert.endpoint as? BonjourEndpoint else { throw NearbyError.unavailable }
+            do {
+                return try await BonjourPipes.resolve(endpoint, options: dialOptions).map {
+                    NearbyTarget(address: $0.name, endpoint: $0)
+                }
+            } catch let e as BonjourPipeError {
+                throw NearbyError.from(e)
+            }
+        }
+
+        public func dial(_ target: NearbyTarget) async throws -> any PeerBytePipe {
+            guard let endpoint = target.endpoint as? BonjourEndpoint, let network = endpoint.network else {
+                throw NearbyError.unavailable
+            }
+            do {
+                return LanPipe(pipe: try await BonjourPipes.dial(network, options: dialOptions))
+            } catch let e as BonjourPipeError {
+                throw NearbyError.from(e)
+            }
+        }
+    }
 #endif

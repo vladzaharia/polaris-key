@@ -25,10 +25,10 @@ final class NBox<T: Sendable>: @unchecked Sendable {
 /// Poll `cond` until it holds, for at most `seconds`.
 func nearbyUntil(
     _ what: String = "", seconds: TimeInterval = 10, file: StaticString = #filePath, line: UInt = #line,
-    _ cond: @escaping () -> Bool
+    _ cond: @escaping () async -> Bool
 ) async {
     let end = Date().addingTimeInterval(seconds)
-    while !cond() {
+    while !(await cond()) {
         if Date() > end {
             XCTFail("timed out: \(what)", file: file, line: line)
             return
@@ -314,5 +314,78 @@ final class FakeApprove: @unchecked Sendable {
         return ok
             ? VouchApproveAnswer(http: 200, body: #"{"status":"approved","deviceLabel":null}"#, discoveryNearby: true)
             : VouchApproveAnswer(http: 404, body: nil, discoveryNearby: true)
+    }
+}
+
+// MARK: - The fake requester network
+
+/// D's side of the fake LAN: it "browses" the adverts of several fake approver networks and dials them over
+/// in-memory pipes.
+final class FakeRequesterNet: NearbyRequesterNetwork, @unchecked Sendable {
+    private struct Browser {
+        let accept: @Sendable (NearbyAdvert) -> Bool
+        let onUp: @Sendable (NearbyAdvert) -> Void
+        let onDown: @Sendable (String) -> Void
+    }
+    private let lock = NSLock()
+    private var browsers: [Int: Browser] = [:]
+    private var nextBrowser = 0
+    let dials = NBox(0)
+    let resolves = NBox(0)
+    let browseStops = NBox(0)
+    /// Make the next `browse` fail.
+    let failBrowse = NBox<NearbyError?>(nil)
+    /// Make every `resolve` fail.
+    let failResolve = NBox(false)
+
+    func browse(
+        accept: @escaping @Sendable (NearbyAdvert) -> Bool, onUp: @escaping @Sendable (NearbyAdvert) -> Void,
+        onDown: @escaping @Sendable (String) -> Void
+    ) throws -> @Sendable () -> Void {
+        if let e = failBrowse.value { throw e }
+        let id = lock.withLock { () -> Int in
+            nextBrowser += 1
+            browsers[nextBrowser] = Browser(accept: accept, onUp: onUp, onDown: onDown)
+            return nextBrowser
+        }
+        return { [self] in
+            lock.withLock { browsers[id] = nil }
+            browseStops.mutate { $0 += 1 }
+        }
+    }
+
+    /// An approver's advert shows up (or shows again) on the LAN.
+    func up(_ h: FakeAdvertHandle, txt: [String]? = nil) {
+        let ad = NearbyAdvert(instance: h.instance, txt: txt ?? h.txt, endpoint: h)
+        let bs = lock.withLock { Array(browsers.values) }
+        for b in bs where b.accept(ad) { b.onUp(ad) }
+    }
+
+    func up(_ net: FakeApproverNet) { for h in net.live { up(h) } }
+
+    func down(_ instance: String) {
+        let bs = lock.withLock { Array(browsers.values) }
+        for b in bs { b.onDown(instance) }
+    }
+
+    var browsing: Bool { lock.withLock { !browsers.isEmpty } }
+
+    /// One target per address; the endpoint is the advert's handle.
+    let addressesPerAdvert = NBox(1)
+
+    func resolve(_ advert: NearbyAdvert) async throws -> [NearbyTarget] {
+        resolves.mutate { $0 += 1 }
+        if failResolve.value { throw NearbyError.unavailable }
+        return (0..<addressesPerAdvert.value).map {
+            NearbyTarget(address: "192.168.1.\($0 + 2)", endpoint: advert.endpoint)
+        }
+    }
+
+    func dial(_ target: NearbyTarget) async throws -> any PeerBytePipe {
+        dials.mutate { $0 += 1 }
+        guard let h = target.endpoint as? FakeAdvertHandle, !h.stopped else { throw NearbyError.unavailable }
+        let (c, s) = MemEnd.pair()
+        h.onPipe(s)
+        return c
     }
 }

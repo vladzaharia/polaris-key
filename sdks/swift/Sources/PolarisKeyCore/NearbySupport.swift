@@ -196,9 +196,12 @@ public struct NearbyTarget: Sendable {
 
 /// Where D gets its network: browse, resolve and dial. D never listens (R-4).
 public protocol NearbyRequesterNetwork: Sendable {
-    /// Browse for `_pkeypeer._tcp`; returns the stop. Throws `NearbyError` when browsing cannot begin.
+    /// Browse for `_pkeypeer._tcp`; returns the stop. `accept` is asked before an advert takes a place in the
+    /// network's table, so adverts that are not an approver of this product never evict one that is. Throws
+    /// `NearbyError` when browsing cannot begin.
     func browse(
-        onUp: @escaping @Sendable (NearbyAdvert) -> Void, onDown: @escaping @Sendable (String) -> Void
+        accept: @escaping @Sendable (NearbyAdvert) -> Bool, onUp: @escaping @Sendable (NearbyAdvert) -> Void,
+        onDown: @escaping @Sendable (String) -> Void
     ) throws -> @Sendable () -> Void
     /// The addresses of an advert that may be dialled, in order, judged before any connect.
     func resolve(_ advert: NearbyAdvert) async throws -> [NearbyTarget]
