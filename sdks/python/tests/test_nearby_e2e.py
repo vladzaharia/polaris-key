@@ -17,6 +17,7 @@ import pytest
 
 from polaris_key import PolarisError
 from polaris_key.core.device_proof import DeviceProof, verify_device_proof
+from polaris_key.identity.nearby import _grant
 from polaris_key.identity.nearby_approver import NearbyAsk
 from polaris_key.identity.sign_in import SignedInIdentity
 
@@ -346,7 +347,7 @@ def test_a_deny_after_the_matched_code_makes_ds_poll_raise_sign_in_denied(w: Wor
     s = w.start_d()
     code = w.tap(s)
     ask = w.asks[0]
-    ask._request = ask._approval.pick(match(ask, code))  # the matched pick, without approving
+    ask._vouch = _grant(ask._approval.pick(match(ask, code)))  # the matched pick, without approving
     assert ask.deny().kind == "denied"
     with pytest.raises(PolarisError) as e:
         until(lambda: s.wait(once=True).kind != "pending", timeout=10)
@@ -439,6 +440,33 @@ def test_the_wrap_travels_over_the_channel_and_is_held_until_d_s_person_confirms
     env = w.m.keyring.codec.seal("saves", "slot", {"x": 1})
     assert w.d.keyring.codec.open("saves", "slot", env).value == {"x": 1}
     assert w.d.keyring.pin().root_kid == made.root_kid  # type: ignore[union-attr]
+
+
+def test_a_put_the_worker_refuses_does_not_take_the_channel_copy_with_it(w: World) -> None:
+    """V5 13.11.3: M seals, sends on the channel, then PUTs. A wrap already standing for D makes the PUT a
+    409 `keyring_conflict`, and D still opens the channel copy."""
+    w.register_m()
+    made = w.m.keyring.create()
+    w.worker.ring.wraps[D_ID] = {"epoch": 1, "kid": "x", "kem": 32, "enc": "x", "ct": "x", "by": "elsewhere"}
+    w.approve()
+    s, step = approved_d(w)
+    assert step.kind == "approved" and step.wrap_sent is True
+    assert w.worker.ring.wraps[D_ID]["by"] == "elsewhere"  # the PUT was refused
+    r = s.confirm_account()
+    assert (r.kind, r.ring_id) == ("unlocked", made.ring_id) and w.d.keyring.unlocked
+
+
+def test_declining_the_account_signs_d_out_and_leaves_it_locked(w: World) -> None:
+    w.register_m()
+    w.m.keyring.create()
+    w.approve()
+    s, _ = approved_d(w)
+    assert w.d._tokens.current is not None
+    s.decline_account()
+    # Signed out (the Worker accepted it): the flag is set and the token is no longer a sign-in's.
+    assert "POST signout" in w.worker.calls
+    assert w.d._tokens.explicit_sign_out is True and w.d._tokens.provenance != "signin"
+    assert w.d.keyring.unlocked is False and s.wrap == "none"
 
 
 def test_declining_the_account_leaves_d_locked_and_the_servers_copy_is_still_there(w: World) -> None:

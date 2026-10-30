@@ -641,10 +641,23 @@ def test_adopt_wrap_opens_the_channel_copy_and_the_servers_copy_never_replaces_i
     assert b.keyring.pin() is not None and b.keyring.pin().root_kid == made.root_kid  # type: ignore[union-attr]
     env = a.keyring.codec.seal("saves", "slot", {"x": 1})
     assert b.keyring.codec.open("saves", "slot", env).value == {"x": 1}
-    # A server copy that differs is ignored: the held root stays, and the normal unlock agrees.
+    # A server copy that differs is ignored: the held root stays, and the normal unlock answers unlocked.
     s.wraps[b.core.device_id]["ct"] = b64url_encode(bytes(48))
-    assert b.keyring.unlock().reason == "unusable-wrap"
+    assert b.keyring.unlock().kind == "unlocked"
     assert b.keyring.unlocked and b.keyring.codec.open("saves", "slot", env).value == {"x": 1}
+
+
+def test_seal_wrap_to_stores_nothing_and_put_wrap_stores_exactly_those_bytes() -> None:
+    s = FakeServer()
+    a, _ = device(s)
+    a.keyring.create()
+    b, bkeys = device(s)
+    n = len(s.requests)
+    body = a.keyring.seal_wrap_to(b.core.device_id, bkeys.ensure().agree_key)
+    assert not [q for q in s.requests[n:] if q.method == "PUT"] and b.core.device_id not in s.wraps
+    a.keyring.put_wrap(b.core.device_id, body)
+    assert s.wraps[b.core.device_id]["ct"] == body.ct
+    assert b.keyring.adopt_wrap(body.channel_record()).kind == "unlocked"
 
 
 def test_adopt_wrap_reads_the_ring_afresh_and_refuses_a_ring_epoch_or_kid_that_differs() -> None:

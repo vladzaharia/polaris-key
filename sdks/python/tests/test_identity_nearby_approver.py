@@ -17,7 +17,8 @@ import pytest
 from polaris_key import PolarisError
 from polaris_key.core.caps import UnsupportedError
 from polaris_key.core.peer_nearby import FinishOutcome
-from polaris_key.identity.nearby_approver import NearbyApprovalStep, NearbyAsk
+from polaris_key.identity.nearby import _grant
+from polaris_key.identity.nearby_approver import MAX_ASKS, NearbyApprovalStep, NearbyAsk
 
 from test_identity_nearby import HANDLE, Fake, client, nearby_discovery, queue
 from test_transcripts import _FixtureKeys
@@ -232,7 +233,7 @@ def test_deny_after_a_matched_pick_sends_deny_for_the_requests_own_handle() -> N
     approval = FakeApproval(request_for(c))
     fake.handler(approval)
     ask = asks[0]
-    ask._request = approval.request  # as a matched pick leaves it
+    ask._vouch = _grant(approval.request)  # as a matched pick leaves it
     assert ask.deny().kind == "denied"
     assert approves(w)[0]["body"]["decision"] == "deny" and approves(w)[0]["body"]["request"] == HANDLE
 
@@ -339,23 +340,34 @@ def test_the_async_client_mirrors_available_and_on_request() -> None:
 
 
 class FakeRing:
-    """The key ring client's side of a wrap: a root held or not, and what ``wrap_to`` was asked."""
+    """The key ring client's side of a wrap: a root held or not, and what it was asked, in order."""
 
-    def __init__(self, unlocked: bool = True, unlocks_to: bool = True, put: Optional[Exception] = None) -> None:
+    def __init__(
+        self, unlocked: bool = True, seal: Optional[Exception] = None, put: Optional[Exception] = None
+    ) -> None:
         self.unlocked = unlocked
-        self._unlocks_to = unlocks_to
+        self._seal = seal
         self._put = put
         self.calls: List[Any] = []
+        #: seal, send, put: the order V5 13.11.3 fixes (the approval's send_record joins it).
+        self.order: List[str] = []
 
-    def unlock(self) -> Any:
+    def unlock(self) -> Any:  # M never opens its own wrap on its own
         self.calls.append("unlock")
-        self.unlocked = self._unlocks_to
+        self.unlocked = True
 
-    def wrap_to(self, device_id: str, agree_key: str) -> Any:
-        self.calls.append(("wrap_to", device_id, agree_key))
+    def seal_wrap_to(self, device_id: str, agree_key: str) -> Any:
+        self.calls.append(("seal_wrap_to", device_id, agree_key))
+        self.order.append("seal")
+        if self._seal is not None:
+            raise self._seal
+        return SimpleNamespace(channel_record=lambda: b"WRAP-RECORD")
+
+    def put_wrap(self, device_id: str, body: Any) -> None:
+        self.calls.append(("put_wrap", device_id))
+        self.order.append("put")
         if self._put is not None:
             raise self._put
-        return SimpleNamespace(channel_record=lambda: b"WRAP-RECORD")
 
 
 def with_ring(w: Fake, ring: Optional[FakeRing]) -> Any:
@@ -366,7 +378,10 @@ def with_ring(w: Fake, ring: Optional[FakeRing]) -> Any:
     c.identity.nearby.on_request(asks.append)
     approval = FakeApproval(request_for(c))
     sent: List[Any] = []
-    approval.send_record = lambda t, b: sent.append((t, b))  # type: ignore[attr-defined]
+    approval.send_record = lambda t, b: (  # type: ignore[attr-defined]
+        sent.append((t, b)),
+        ring.order.append("send") if ring is not None else None,
+    )
     fake.handler(approval)
     return c, approval, asks[0], sent
 
@@ -374,34 +389,41 @@ def with_ring(w: Fake, ring: Optional[FakeRing]) -> Any:
 APPROVED = httpx.Response(200, json={"status": "approved", "deviceLabel": "New phone"})
 
 
-def test_after_approved_the_root_is_wrapped_to_the_verified_requests_agree_key_and_sent_once() -> None:
+def test_after_approved_the_root_is_sealed_for_the_verified_requests_agree_key_sent_then_put_once() -> None:
     ring = FakeRing()
     c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), ring)
     step = ask.pick("482 913")
     k = _FixtureKeys("d-1").ensure()
     assert step.kind == "approved" and step.wrap_sent is True
-    assert ring.calls == [("wrap_to", D_ID, k.agree_key)]
+    assert ring.calls == [("seal_wrap_to", D_ID, k.agree_key), ("put_wrap", D_ID)]
     assert sent == [(0x0030, b"WRAP-RECORD")]
+    # V5 13.11.3: seal, send on the channel, and only then PUT the same wrap.
+    assert ring.order == ["seal", "send", "put"]
     assert ask._send_wrap() is False and len(sent) == 1  # once
 
 
-def test_a_locked_ring_is_unlocked_first_and_with_no_root_no_wrap_is_sent() -> None:
-    ring = FakeRing(unlocked=False, unlocks_to=True)
-    c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), ring)
-    assert ask.pick("482 913").wrap_sent is True and ring.calls[0] == "unlock"
-    ring = FakeRing(unlocked=False, unlocks_to=False)
+def test_m_sends_no_wrap_when_it_holds_no_root_and_never_unlocks_on_its_own() -> None:
+    ring = FakeRing(unlocked=False)
     c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), ring)
     step = ask.pick("482 913")
-    assert (step.kind, step.wrap_sent) == ("approved", False) and sent == [] and ring.calls == ["unlock"]
+    assert (step.kind, step.wrap_sent) == ("approved", False) and sent == [] and ring.calls == []
 
 
-def test_no_key_ring_or_a_refused_put_sends_nothing_over_the_channel() -> None:
+def test_no_key_ring_sends_nothing_and_a_failed_seal_sends_nothing() -> None:
     c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), None)
     assert ask.pick("482 913").wrap_sent is False and sent == []
+    ring = FakeRing(seal=PolarisError("invalid-options", "no root"))
+    c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), ring)
+    step = ask.pick("482 913")
+    assert (step.kind, step.wrap_sent) == ("approved", False) and sent == [] and ring.order == ["seal"]
+
+
+def test_a_refused_put_does_not_take_the_channel_copy_with_it() -> None:
     ring = FakeRing(put=PolarisError("keyring_conflict", "a wrap exists", status=409))
     c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=APPROVED), ring)
     step = ask.pick("482 913")
-    assert (step.kind, step.wrap_sent) == ("approved", False) and sent == []
+    assert (step.kind, step.wrap_sent) == ("approved", True)
+    assert sent == [(0x0030, b"WRAP-RECORD")] and ring.order == ["seal", "send", "put"]
 
 
 def test_a_wrap_is_sent_only_after_approved_never_for_a_refusal_or_a_deny() -> None:
@@ -410,7 +432,7 @@ def test_a_wrap_is_sent_only_after_approved_never_for_a_refusal_or_a_deny() -> N
     assert ask.pick("482 913").kind == "not-nearby"
     ring2 = FakeRing()
     c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=httpx.Response(204)), ring2)
-    ask._request = approval.request
+    ask._vouch = _grant(approval.request)
     assert ask.deny().kind == "denied"
     assert ring.calls == [] and ring2.calls == [] and sent == []
 
@@ -423,4 +445,56 @@ def test_a_session_that_ended_still_leaves_the_servers_copy() -> None:
         raise RuntimeError("closed")
 
     approval.send_record = gone  # type: ignore[attr-defined]
-    assert ask.pick("482 913").wrap_sent is True and len(ring.calls) == 1
+    assert ask.pick("482 913").wrap_sent is True
+    assert ring.order == ["seal", "put"]  # the channel failed; the server's copy is the fallback
+
+
+def test_a_host_cannot_build_an_ask_and_a_forged_one_cannot_approve() -> None:
+    w = Fake(nearby_discovery(), approve=APPROVED)
+    c = client(w, token="pkeyt_m")
+    wire(c)
+    approval = FakeApproval(request_for(c))
+    with pytest.raises(TypeError):
+        NearbyAsk(approval, c.identity._nearby_routes, c.identity._nearby_credentials)  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        NearbyAsk(approval, c.identity._nearby_routes, c.identity._nearby_credentials, None, _key=object())
+    assert approves(w) == []
+
+
+def test_deny_before_a_matched_pick_never_reaches_approve_even_with_a_request_attribute_set() -> None:
+    w = Fake(nearby_discovery(), approve=httpx.Response(204))
+    c, fake, approval, (ask,) = make(w)
+    ask._request = approval.request  # the old private attribute is no longer the gate
+    assert ask.deny().kind == "denied"
+    assert approves(w) == [] and approval.calls == ["decline"]
+
+
+def test_a_lost_mint_asks_again_for_the_choices_at_most_three_times() -> None:
+    lost = httpx.Response(409, json={"error": {"code": "license_choice_required"}})
+    choices = {"state": "choose", "choices": [{"id": "lic_1"}]}
+    w = Fake(
+        nearby_discovery(),
+        approve=queue(lost, httpx.Response(200, json={"status": "choose", "choices": choices})),
+    )
+    finishes = iter([FinishOutcome(wait="choice"), FinishOutcome(wait="choice")])
+    c = client(w, token="pkeyt_m")
+    fake = wire(c)
+    asks: List[NearbyAsk] = []
+    c.identity.nearby.on_request(asks.append)
+    approval = FakeApproval(request_for(c), finish=lambda a: next(finishes))
+    fake.handler(approval)
+    step = asks[0].pick("482 913")
+    # The first answer was a lost mint (the machine still waits for a choice): the second shows the licences.
+    assert step.kind == "choose" and step.choices == choices
+    assert [x["body"]["decision"] for x in approves(w)] == ["approve", "approve"]
+
+    always = httpx.Response(409, json={"error": {"code": "license_choice_required"}})
+    w2 = Fake(nearby_discovery(), approve=always)
+    c2 = client(w2, token="pkeyt_m")
+    fake2 = wire(c2)
+    asks2: List[NearbyAsk] = []
+    c2.identity.nearby.on_request(asks2.append)
+    approval2 = FakeApproval(request_for(c2), finish=lambda a: FinishOutcome(wait="choice"))
+    fake2.handler(approval2)
+    assert asks2[0].pick("482 913").kind == "expired"
+    assert len(approves(w2)) == MAX_ASKS and approval2.closed

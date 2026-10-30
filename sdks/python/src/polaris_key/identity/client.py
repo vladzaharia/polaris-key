@@ -167,6 +167,7 @@ class IdentityClient:
             and nearby is not None
             and bool(self._nearby_runtime(role)),
             keyring=self._keyring,
+            sign_out=self.sign_out,
         )
         return start_nearby_sign_in(deps, self._deps, **opts)
 

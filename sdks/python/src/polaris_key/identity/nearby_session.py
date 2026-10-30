@@ -104,6 +104,8 @@ class NearbyDeps:
     supported: Callable[[str], bool]
     #: ``client.keyring``, where the approver's ``KEYRING_WRAP`` is adopted (``None``: it is dropped).
     keyring: Optional[Callable[[], Any]] = None
+    #: ``identity.sign_out``: a declined account signs the device out again (V5 §15.6.1 rule 12).
+    sign_out: Optional[Callable[[], Any]] = None
 
 
 def _unsupported(reason: str, detail: str, code: str) -> UnsupportedError:
@@ -126,6 +128,7 @@ class NearbySignInSession:
         expires_at: int,
         device_name: Optional[str],
         keyring: Optional[Callable[[], Any]] = None,
+        sign_out: Optional[Callable[[], Any]] = None,
     ) -> None:
         self.__started = started
         self._request = request
@@ -145,6 +148,9 @@ class NearbySignInSession:
         self._lock = threading.Lock()
         self._wrap: Optional[bytes] = None
         self._keyring = keyring
+        self._sign_out = sign_out
+        self._wrap_state = "none"
+        self._on_wrap: List[Callable[[str], None]] = []
         self._signed_in = False
         self._confirmed = False
         #: The key ring's answer to the channel copy of the wrap (``None`` until one was adopted).
@@ -265,8 +271,6 @@ class NearbySignInSession:
                 )
             if kind == "signed_in":
                 self._signed_in = True
-                if self._confirmed:
-                    self._apply_wrap()
                 return SignInOutcome(
                     kind=SIGNED_IN,
                     subject=r.subject,
@@ -309,10 +313,38 @@ class NearbySignInSession:
         ring). It counts for this session only; it is not a standing consent. Answers the key ring's
         :class:`~polaris_key.keyring.UnlockResult` (also :attr:`keyring_result`), or ``None`` when no wrap
         came over the channel: nothing is applied then, and the normal ``keyring.unlock()`` opens the
-        server's copy later. Call it after the sign-in settled."""
-        self._request.confirm_account()
-        self._confirmed = True
+        server's copy later. Raises ``sign-in-failed`` before the poll has signed this device in: there is
+        no account to confirm yet, and nothing is released."""
+        if not self._signed_in:
+            raise PolarisError(ErrorCode.SIGN_IN_FAILED, "Nothing to confirm: the device is not signed in.")
+        try:
+            # The engine hands over the records it held, on this thread, before this returns.
+            self._request.confirm_account()
+        except Exception:
+            pass  # the chosen session is gone: no records, the server copy is the fallback
+        # Only now is a wrap that arrives later taken as it comes (``_on_record``).
+        with self._lock:
+            self._confirmed = True
         return self._apply_wrap()
+
+    @property
+    def wrap(self) -> str:
+        """What became of the wrap the approver sent: ``none`` until one arrives and is taken, then
+        ``applied`` (the key ring opened it) or ``refused``."""
+        return self._wrap_state
+
+    def on_wrap(self, fn: Callable[[str], None]) -> Callable[[], None]:
+        """Call ``fn`` with the :attr:`wrap` state each time it changes (not on the Connect thread, and a
+        failure inside ``fn`` is swallowed). Returns the unsubscribe."""
+        with self._lock:
+            self._on_wrap.append(fn)
+
+        def off() -> None:
+            with self._lock:
+                if fn in self._on_wrap:
+                    self._on_wrap.remove(fn)
+
+        return off
 
     def _apply_wrap(self) -> Optional[Any]:
         """Adopt the channel copy of the wrap once, after a sign-in the person confirmed. A failure to read
@@ -323,18 +355,36 @@ class NearbySignInSession:
             wrap, self._wrap = self._wrap, None
         if wrap is None:
             return None
+        state = "refused"
         try:
             self.keyring_result = self._keyring().adopt_wrap(wrap)
+            if getattr(self.keyring_result, "kind", None) == "unlocked":
+                state = "applied"
         except PolarisError:
             self.keyring_result = None
+        with self._lock:
+            self._wrap_state = state
+            listeners = list(self._on_wrap)
+        for fn in listeners:
+            try:
+                fn(state)
+            except Exception:
+                pass
         return self.keyring_result
 
     def decline_account(self) -> None:
-        """The person said "not you" (or the screen timed out): every held record is dropped and the LAN
-        session closes."""
+        """The person said "not you" (or the screen timed out): every held record is dropped, the LAN
+        session closes and the device signs out again (V5 §15.6.1 rule 12: it keeps no key and no token of
+        an account that is not theirs). Safe to call more than once."""
         with self._lock:
             self._wrap = None
-        self._request.decline_account()
+        try:
+            self._request.decline_account()
+        finally:
+            self.close()
+            if self._signed_in and self._sign_out is not None:
+                self._signed_in = False
+                self._sign_out()
 
     def close(self) -> None:
         """Close the LAN side. Idempotent; a failure to close is not an error."""
@@ -356,6 +406,11 @@ class NearbySignInSession:
         if getattr(rec, "type", None) == KEYRING_WRAP_RECORD:
             with self._lock:
                 self._wrap = bytes(rec.body)
+                late = self._signed_in and self._confirmed
+            if late:
+                # The person already confirmed: take the wrap as it arrives, off the Connect thread (the
+                # key ring checks it against a fresh read of the ring over the network).
+                threading.Thread(target=self._apply_wrap, name="pkey-nearby-wrap", daemon=True).start()
 
 
 def _view(a: Any) -> NearbyApprover:
@@ -401,4 +456,5 @@ def start_nearby_sign_in(
         expires_at=ctx.now() + int(math.ceil(started.expires_in)),
         device_name=label,
         keyring=nd.keyring,
+        sign_out=nd.sign_out,
     )

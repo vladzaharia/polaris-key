@@ -502,13 +502,23 @@ class KeyringClient:
                 served_created_at=ring.created_at,
             )
         if offered is not None:
-            if offered.ring_id != ring.ring_id:
+            if offered.ring_id != ring.ring_id or offered.epoch != ring.epoch or offered.kid != ring.root_kid:
                 return UnlockResult("locked", reason="unusable-wrap")
             wrap = KeyringWrapInfo(
                 epoch=offered.epoch, kid=offered.kid, kem=offered.kem, enc=offered.enc, ct=offered.ct
             )
         if wrap is None:
             return UnlockResult("locked", reason="no-wrap")
+        held = self._held
+        if (
+            held is not None
+            and held.ring_id == ring.ring_id
+            and held.epoch == ring.epoch
+            and held.kid.hex() == ring.root_kid
+        ):
+            # A root already held for this ring and epoch is never replaced, and the wrap (the channel
+            # copy or the server's) is not opened again: the answer is "unlocked".
+            return UnlockResult("unlocked", ring_id=ring.ring_id, epoch=ring.epoch)
         keys = self._keys
         kid = _unhex(ring.root_kid)
         enc = _unb64(wrap.enc, sc.HPKE_ENC_BYTES)
@@ -557,8 +567,18 @@ class KeyringClient:
         """Wrap the root to another device of the same person (``PUT .../wraps/{deviceId}``).
         ``agree_key`` is that device's X25519 key (raw bytes or base64url), from the nearby approval:
         the host decides when to call this, and the Worker accepts a wrap only from a device that
-        holds one itself. Answers the :class:`WrapBody` that was PUT (its ``channel_record()`` is the
-        ``KEYRING_WRAP`` to send over the nearby channel; nothing is sent after a refused PUT)."""
+        holds one itself. Answers the :class:`WrapBody` that was PUT. A nearby approver uses the two
+        halves instead (:meth:`seal_wrap_to`, then :meth:`put_wrap`), so that it sends the
+        ``KEYRING_WRAP`` before the ``PUT`` (V5 §13.11.3)."""
+        sent = self.seal_wrap_to(device_id, agree_key)
+        self.put_wrap(device_id, sent)
+        return sent
+
+    def seal_wrap_to(self, device_id: str, agree_key: Union[bytes, str]) -> WrapBody:
+        """The first half of :meth:`wrap_to`: seal the root to ``agree_key`` for ``device_id`` and answer
+        the :class:`WrapBody`, storing nothing. The approver sends its ``channel_record()`` over the
+        nearby channel first, then stores the same bytes with :meth:`put_wrap`, so a refused or failed
+        ``PUT`` cannot take the channel copy with it."""
         h = self._need()
         if not _device_ok(device_id):
             raise _bad_arg("A device id is required.")
@@ -569,9 +589,14 @@ class KeyringClient:
             w = sc.wrap_root(pub, self._wrap_context(h.ring_id, h.epoch, device_id), h.kid, h.root)
         except ValueError:
             raise _bad_arg("The agreement key is not usable.") from None
-        sent = WrapBody(h.ring_id, h.epoch, h.kid.hex(), sc.HPKE_KEM_X25519, b64url_encode(w.enc), b64url_encode(w.ct))
-        self._send("PUT", f"devices/keyring/wraps/{quote(device_id, safe='')}", sent.put_json())
-        return sent
+        return WrapBody(h.ring_id, h.epoch, h.kid.hex(), sc.HPKE_KEM_X25519, b64url_encode(w.enc), b64url_encode(w.ct))
+
+    def put_wrap(self, device_id: str, body: WrapBody) -> None:
+        """The second half of :meth:`wrap_to`: ``PUT .../wraps/{deviceId}`` with a wrap
+        :meth:`seal_wrap_to` made."""
+        if not _device_ok(device_id):
+            raise _bad_arg("A device id is required.")
+        self._send("PUT", f"devices/keyring/wraps/{quote(device_id, safe='')}", body.put_json())
 
     def remove_wrap(self, device_id: str) -> None:
         """``DELETE .../wraps/{deviceId}``: the Worker removes a device's own wrap only."""

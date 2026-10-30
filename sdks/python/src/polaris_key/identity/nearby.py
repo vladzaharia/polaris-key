@@ -31,6 +31,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import weakref
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Optional
 
@@ -171,6 +172,43 @@ class NearbyApproveResult:
     status: Optional[int] = None
     retry_after_seconds: Optional[int] = None
     answer: Optional[NearbyApproveAnswer] = None
+
+
+@dataclass(frozen=True, eq=False)
+class _Vouch:
+    """The permit: D's verified ``VOUCH_REQ`` for a session whose person picked the matching code (V5
+    §15.6.1 rule 10). ``NearbyRoutes.approve`` takes nothing else. ``eq=False`` makes it compare by identity,
+    so a copy is a different object, and :data:`_GRANTS` holds only what :func:`_grant` made. Not exported:
+    only ``NearbyAsk.pick`` (nearby_approver.py) mints one, right after a code matched."""
+
+    request: str = field(repr=False)
+    device_id: str
+    sign_key: str
+    agree_key: str
+
+    def __repr__(self) -> str:
+        return "<VerifiedVouch>"
+
+    def __reduce__(self) -> Any:
+        raise TypeError("a nearby vouch cannot be pickled or copied")
+
+
+#: Every permit :func:`_grant` made and no other object. Weak, so a permit lives as long as its approval.
+_GRANTS: "weakref.WeakSet[_Vouch]" = weakref.WeakSet()
+
+
+def _grant(vouch: Any) -> _Vouch:
+    """Mark the ``VouchRequest`` that ``pick()`` returned for a matched code as the one ``approve`` may be
+    called with: a frozen copy of its handle, device id and keys, kept in a set no other module writes. Called
+    by ``NearbyAsk.pick`` only (and by a test that replays a recording)."""
+    permit = _Vouch(
+        request=vouch.request,
+        device_id=vouch.device_id,
+        sign_key=vouch.sign_key,
+        agree_key=vouch.agree_key,
+    )
+    _GRANTS.add(permit)
+    return permit
 
 
 def _json(res: httpx.Response) -> Dict[str, Any]:
@@ -428,19 +466,23 @@ class NearbyRoutes:
     def approve(
         self,
         creds: NearbyCredentials,
+        vouch: Any,
         *,
-        request: str,
-        device_id: str,
-        sign_key: str,
-        agree_key: str,
         decision: str = "approve",
         choice: Optional[Dict[str, Any]] = None,
     ) -> NearbyApproveResult:
-        """``POST …/nearby/approve`` from M. ``request``, ``device_id``, ``sign_key`` and ``agree_key`` are
-        exactly what D's verified ``VOUCH_REQ`` named (the Worker compares them with what D sent on
-        ``start``); ``decision`` is ``"approve"`` or ``"deny"``; ``choice`` is ``{"kind": "license",
+        """``POST …/nearby/approve`` from M. ``vouch`` is the permit of a matched pick (V5 §15.6.1 rule 10:
+        no silent approval): the request handle, device id and keys are taken from it and from nothing else,
+        so they are exactly what D's verified ``VOUCH_REQ`` named (the Worker compares them with what D sent
+        on ``start``). Loose ids, a forged or copied object and ``None`` raise ``invalid-options`` and send
+        nothing. ``decision`` is ``"approve"`` or ``"deny"``; ``choice`` is ``{"kind": "license",
         "licenseId": …}`` or ``{"kind": "create"}`` after a ``choose``. A 409 ``device_keys_required``
         registers M's keys once and retries once."""
+        if type(vouch) is not _Vouch or vouch not in _GRANTS:
+            raise PolarisError(
+                ErrorCode.INVALID_OPTIONS, "nearby: approve needs the vouch of a code the person matched."
+            )
+        request, device_id, sign_key, agree_key = vouch.request, vouch.device_id, vouch.sign_key, vouch.agree_key
         if decision not in ("approve", "deny"):
             raise PolarisError(ErrorCode.INVALID_OPTIONS, 'nearby: decision must be "approve" or "deny".')
         if not (isinstance(sign_key, str) and _KEY.match(sign_key) and isinstance(agree_key, str) and _KEY.match(agree_key)):

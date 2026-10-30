@@ -375,7 +375,7 @@ def test_the_keyring_wrap_is_held_and_dropped_by_decline(clock) -> None:
     assert s._wrap == b"wrap-bytes"
     assert "wrap-bytes" not in repr(s)
     s.decline_account()
-    assert s._wrap is None and fake.request_obj.calls[-1] == "decline_account"
+    assert s._wrap is None and fake.request_obj.calls[-2:] == ["decline_account", "close"]
 
 
 def test_identity_off_refuses_the_wait(clock) -> None:
@@ -449,20 +449,66 @@ def test_with_no_channel_copy_nothing_is_applied(clock) -> None:
     assert s.confirm_account() is None and ring.adopted == [] and s.keyring_result is None
 
 
-def test_a_confirm_before_the_sign_in_waits_for_it(clock) -> None:
+def test_a_confirm_before_the_poll_signed_in_raises_and_releases_nothing(clock) -> None:
+    """V5 15.6.1 rule 12: the person confirms the account AFTER the poll answers its token. An early call
+    must not release the held records or the wrap, and the later sign-in must not adopt it silently."""
     ring = FakeRing()
     c, fake, s = with_wrap(ring)
-    assert s.confirm_account() is None and ring.adopted == []
+    with pytest.raises(PolarisError) as e:
+        s.confirm_account()
+    assert e.value.code == "sign-in-failed"
+    assert "confirm_account" not in fake.request_obj.calls and ring.adopted == []
     assert s.wait().kind == "signed_in"
-    assert ring.adopted == [b"WRAP"]
+    assert ring.adopted == []  # still unconfirmed
+    assert s.confirm_account().kind == "unlocked" and ring.adopted == [b"WRAP"]
 
 
-def test_declining_the_account_drops_the_wrap(clock) -> None:
+def test_declining_the_account_drops_the_wrap_and_signs_the_device_out(clock) -> None:
+    """Rule 12: on a decline D signs out, discards the session and every held record, and keeps no key."""
     ring = FakeRing()
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=True))
+    c = client(w)
+    fake = wire(c)
+    c.identity._keyring = lambda: ring
+    s = c.identity.sign_in.start(channel="nearby")
+    for fn in list(fake.request_obj._records):
+        fn(SimpleNamespace(type=KEYRING_WRAP_RECORD, body=b"WRAP"))
+    assert s.wait().kind == "signed_in"
+    assert c._tokens.current is not None
+    s.decline_account()
+    assert c._tokens.current is None and c._tokens.explicit_sign_out is True
+    assert [x for x in w.calls if x["path"].endswith("/signout")]
+    assert fake.request_obj.calls[-2:] == ["decline_account", "close"]
+    with pytest.raises(PolarisError):  # a signed-out device has nothing to confirm
+        s.confirm_account()
+    assert ring.adopted == []
+    s.decline_account()  # safe to call again: no second sign-out
+    assert len([x for x in w.calls if x["path"].endswith("/signout")]) == 1
+
+
+def test_a_wrap_that_arrives_after_the_confirmation_is_adopted_at_once(clock) -> None:
+    import threading
+
+    ring = FakeRing()
+    c, fake, s = with_wrap(ring, record=None)
+    assert s.wait().kind == "signed_in"
+    seen: List[str] = []
+    done = threading.Event()
+    s.on_wrap(lambda state: (seen.append(state), done.set()))
+    assert s.confirm_account() is None and s.wrap == "none"
+    for fn in list(fake.request_obj._records):
+        fn(SimpleNamespace(type=KEYRING_WRAP_RECORD, body=b"LATE"))
+    assert done.wait(5)
+    assert ring.adopted == [b"LATE"] and seen == ["applied"] and s.wrap == "applied"
+
+
+def test_the_wrap_state_is_refused_when_the_ring_does_not_open_it(clock) -> None:
+    ring = FakeRing(result=SimpleNamespace(kind="locked"))
     c, fake, s = with_wrap(ring)
     s.wait()
-    s.decline_account()
-    assert s.confirm_account() is None and ring.adopted == []
+    assert s.wrap == "none"
+    s.confirm_account()
+    assert s.wrap == "refused"
 
 
 def test_a_key_ring_that_cannot_read_is_not_an_error_the_servers_copy_is_the_fallback(clock) -> None:

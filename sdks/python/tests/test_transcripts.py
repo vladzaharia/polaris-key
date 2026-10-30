@@ -86,6 +86,7 @@ import re
 import shutil
 import tempfile
 import time
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urljoin, urlsplit
 
@@ -114,7 +115,7 @@ from polaris_key.core.models import ReleaseRecordDoc
 from polaris_key.core.store import CacheRecord
 from polaris_key.devices.keys import create_device_key_store
 from polaris_key.identity.account import identity_fragment_from
-from polaris_key.identity.nearby import NearbyCredentials, NearbyStarted
+from polaris_key.identity.nearby import NearbyCredentials, NearbyStarted, _grant
 from polaris_key.update.packs import chunk_range_fetch
 
 MANIFEST = load_manifest("sdks/python/parity.json")
@@ -325,15 +326,12 @@ def _nearby_step(
             agree = _FixtureKeys(str(args["agreeKeyLabel"])).ensure().agree_key if "agreeKeyLabel" in args else dk.agree_key
             started = session.get("nearbyStarted")
             request = args.get("request") or (started.request if started is not None else None)
-            r = routes.approve(
-                m,
-                request=str(request),
-                device_id=own,
-                sign_key=dk.sign_key,
-                agree_key=agree,
-                decision=str(args["decision"]),
-                choice=args.get("choice"),
+            # The replay vouches for what the recording sent (it may carry other keys than D's): the permit
+            # is made here, in the test, because no route offers one.
+            vouch = _grant(
+                SimpleNamespace(request=str(request), device_id=own, sign_key=dk.sign_key, agree_key=agree)
             )
+            r = routes.approve(m, vouch, decision=str(args["decision"]), choice=args.get("choice"))
             out["result"] = r.kind
             if r.kind == "approved":
                 out["deviceLabel"] = r.device_label

@@ -10,8 +10,12 @@ so it runs here on its own."""
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import json
+import pickle
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -25,6 +29,9 @@ from polaris_key.identity.nearby import (
     NearbyRefused,
     NearbyStarted,
     NearbyUnavailable,
+    _GRANTS,
+    _grant,
+    _Vouch,
 )
 
 from helpers import BASE_URL, PRODUCT, make_client
@@ -156,8 +163,8 @@ def test_nothing_is_sent_when_discovery_names_no_nearby_or_not_the_endpoint() ->
     w = Fake(nearby_discovery(approve=False))
     c = client(w)
     r = routes(c).approve(
-        creds(c, token="pkeyt_m"), request=HANDLE, device_id="D" * 32,
-        sign_key=_FixtureKeys("d").ensure().sign_key, agree_key=_FixtureKeys("d").ensure().agree_key,
+        creds(c, token="pkeyt_m"),
+        vouch(device_id="D" * 32, sign_key=_FixtureKeys("d").ensure().sign_key, agree_key=_FixtureKeys("d").ensure().agree_key),
     )
     assert r.kind == "unavailable" and w.nearby_calls() == []
 
@@ -179,8 +186,8 @@ def test_start_404_is_unavailable_and_sticks_for_a_later_404() -> None:
     assert routes(c).start(d).reason == "gate"
     k = d.keys.ensure()
     r = routes(c).approve(
-        creds(c, "m-1", "pkeyt_m", "M" * 32), request=HANDLE, device_id=d.device_id,
-        sign_key=k.sign_key, agree_key=k.agree_key,
+        creds(c, "m-1", "pkeyt_m", "M" * 32),
+        vouch(device_id=d.device_id, sign_key=k.sign_key, agree_key=k.agree_key),
     )
     assert r.kind == "unavailable" and r.answer.http == 404
     assert isinstance(routes(c).poll(d, started_by(c, d)), NearbyUnavailable)
@@ -192,8 +199,8 @@ def test_a_404_without_that_is_a_refusal_and_finish_reads_discovery_afresh() -> 
     c = client(w)
     k = _FixtureKeys("d").ensure()
     r = routes(c).approve(
-        creds(c, "m-1", "pkeyt_m", "M" * 32), request=HANDLE, device_id="D" * 32,
-        sign_key=k.sign_key, agree_key=k.agree_key,
+        creds(c, "m-1", "pkeyt_m", "M" * 32),
+        vouch(device_id="D" * 32, sign_key=k.sign_key, agree_key=k.agree_key),
     )
     assert (r.kind, r.status, r.code) == ("refused", 404, "not_found")
     # The finish step reads `{"code": …}` whatever the Worker's spelling, and the 404 against fresh discovery.
@@ -214,8 +221,8 @@ def test_a_fresh_read_that_fails_is_not_read_as_still_named() -> None:
     c.identity._nearby_routes._refresh = lambda: None
     k = _FixtureKeys("d").ensure()
     r = routes(c).approve(
-        creds(c, "m-1", "pkeyt_m", "M" * 32), request=HANDLE, device_id="D" * 32,
-        sign_key=k.sign_key, agree_key=k.agree_key,
+        creds(c, "m-1", "pkeyt_m", "M" * 32),
+        vouch(device_id="D" * 32, sign_key=k.sign_key, agree_key=k.agree_key),
     )
     assert routes(c).answer_for_finish(r).discovery_nearby is False
 
@@ -321,11 +328,19 @@ def approve_args(c: Any) -> Dict[str, Any]:
     return dict(request=HANDLE, device_id="D" * 32, sign_key=k.sign_key, agree_key=k.agree_key)
 
 
+def vouch(**kw: Any) -> Any:
+    """The permit a matched pick earns (nearby_approver.py makes it there; no route offers one, so the
+    tests make it the same way)."""
+    base = dict(request=HANDLE, device_id="D" * 32, sign_key="", agree_key="")
+    base.update(kw)
+    return _grant(SimpleNamespace(**base))
+
+
 def test_approve_sends_m_s_id_bearer_and_exactly_the_requests_keys() -> None:
     w = Fake(nearby_discovery(), approve=ok(status="approved", deviceLabel="Console"))
     c = client(w)
     m = creds(c, "m-1", "pkeyt_m", "M" * 32)
-    r = routes(c).approve(m, **approve_args(c))
+    r = routes(c).approve(m, vouch(**approve_args(c)))
     assert (r.kind, r.device_label) == ("approved", "Console")
     call = w.nearby_calls()[0]
     assert call["auth"] == "Bearer pkeyt_m"
@@ -344,12 +359,12 @@ def test_approve_choose_deny_and_the_choice() -> None:
     )
     c = client(w)
     m = creds(c, "m-1", "pkeyt_m", "M" * 32)
-    r = routes(c).approve(m, **approve_args(c))
+    r = routes(c).approve(m, vouch(**approve_args(c)))
     assert (r.kind, r.choices) == ("choose", choices)
-    r = routes(c).approve(m, choice={"kind": "license", "licenseId": "lic_1"}, **approve_args(c))
+    r = routes(c).approve(m, vouch(**approve_args(c)), choice={"kind": "license", "licenseId": "lic_1"})
     assert (r.kind, r.device_label) == ("approved", None)
     assert w.nearby_calls()[1]["body"]["choice"] == {"kind": "license", "licenseId": "lic_1"}
-    r = routes(c).approve(m, decision="deny", **approve_args(c))
+    r = routes(c).approve(m, vouch(**approve_args(c)), decision="deny")
     assert r.kind == "denied" and w.nearby_calls()[2]["body"]["decision"] == "deny"
 
 
@@ -357,7 +372,7 @@ def test_approve_choose_deny_and_the_choice() -> None:
 def test_approve_refusals_are_results_and_the_finish_body_is_flat(code: str) -> None:
     w = Fake(nearby_discovery(), approve=httpx.Response(403, json={"error": {"code": code}}))
     c = client(w)
-    r = routes(c).approve(creds(c, "m-1", "pkeyt_m", "M" * 32), **approve_args(c))
+    r = routes(c).approve(creds(c, "m-1", "pkeyt_m", "M" * 32), vouch(**approve_args(c)))
     assert (r.kind, r.status, r.code) == ("refused", 403, code)
     assert json.loads(r.answer.body or "{}") == {"code": code}
     assert routes(c).answer_for_finish(r).discovery_nearby is True  # only a 404 reads it
@@ -370,7 +385,7 @@ def test_a_409_device_keys_required_registers_once_and_retries_once() -> None:
     c = client(w)
     routes(c)._register_keys = lambda creds_: registered.append(creds_.device_id)
     m = creds(c, "m-1", "pkeyt_m", "M" * 32)
-    r = routes(c).approve(m, **approve_args(c))
+    r = routes(c).approve(m, vouch(**approve_args(c)))
     assert r.kind == "approved" and r.answer.keys_retried is True
     assert registered == ["M" * 32] and len(w.nearby_calls()) == 2
 
@@ -381,7 +396,7 @@ def test_a_second_409_is_the_answer_and_never_loops() -> None:
     w = Fake(nearby_discovery(), approve=need)
     c = client(w)
     routes(c)._register_keys = lambda creds_: registered.append(creds_.device_id)
-    r = routes(c).approve(creds(c, "m-1", "pkeyt_m", "M" * 32), **approve_args(c))
+    r = routes(c).approve(creds(c, "m-1", "pkeyt_m", "M" * 32), vouch(**approve_args(c)))
     assert (r.kind, r.status, r.code) == ("refused", 409, "device_keys_required")
     assert r.answer.keys_retried is True and len(registered) == 1 and len(w.nearby_calls()) == 2
 
@@ -391,7 +406,7 @@ def test_a_409_with_no_way_to_register_is_just_the_answer() -> None:
     w = Fake(nearby_discovery(), approve=need)
     c = client(w)
     routes(c)._register_keys = None
-    r = routes(c).approve(creds(c, "m-1", "pkeyt_m", "M" * 32), **approve_args(c))
+    r = routes(c).approve(creds(c, "m-1", "pkeyt_m", "M" * 32), vouch(**approve_args(c)))
     assert r.kind == "refused" and r.answer.keys_retried is False and len(w.nearby_calls()) == 1
 
 
@@ -400,7 +415,7 @@ def test_approve_needs_a_credential_and_well_formed_inputs() -> None:
     c = client(w)
     no_token = creds(c, "m-1", None, "M" * 32)
     with pytest.raises(PolarisError) as e:
-        routes(c).approve(no_token, **approve_args(c))
+        routes(c).approve(no_token, vouch(**approve_args(c)))
     assert e.value.code == "no-token"
     m = creds(c, "m-1", "pkeyt_m", "M" * 32)
     for bad in (
@@ -410,7 +425,35 @@ def test_approve_needs_a_credential_and_well_formed_inputs() -> None:
         dict(approve_args(c), device_id=""),
         dict(approve_args(c), decision="maybe"),
     ):
+        decision = bad.pop("decision", "approve")
         with pytest.raises(PolarisError) as e:
-            routes(c).approve(m, **bad)
+            routes(c).approve(m, vouch(**bad), decision=decision)
         assert e.value.code == "invalid-options"
     assert w.nearby_calls() == []
+
+
+def test_approve_takes_only_the_permit_of_a_matched_pick() -> None:
+    """V5 15.6.1 rule 10: loose ids and keys, a forged object, a copy and None are refused, sending nothing."""
+    w = Fake(nearby_discovery(), approve=ok(status="approved", deviceLabel="Console"))
+    c = client(w)
+    m = creds(c, "m-1", "pkeyt_m", "M" * 32)
+    granted = vouch(**approve_args(c))
+    loose = SimpleNamespace(**approve_args(c))
+    forged = _Vouch(**approve_args(c))
+    assert forged not in _GRANTS
+    for v in (None, {}, approve_args(c), loose, forged, dataclasses.replace(granted), "nr_" + "A" * 22):
+        with pytest.raises(PolarisError) as e:
+            routes(c).approve(m, v)
+        assert e.value.code == "invalid-options", v
+    # Loose ids as keywords (the old signature) are not accepted either.
+    with pytest.raises(TypeError):
+        routes(c).approve(m, **approve_args(c))  # type: ignore[call-arg]
+    # A permit cannot be copied or pickled into another.
+    for dup in (copy.copy, copy.deepcopy, pickle.dumps):
+        with pytest.raises(TypeError):
+            dup(granted)
+    assert w.nearby_calls() == []
+    assert routes(c).approve(m, granted).kind == "approved"
+    assert len(w.nearby_calls()) == 1
+    # What is sent is what was granted: and the permit shows nothing of it.
+    assert HANDLE not in repr(granted)
