@@ -2396,6 +2396,11 @@
     },
     {
       "sdk": "kotlin",
+      "path": "cloudConnect.nearby",
+      "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .onRequest); not a verb"
+    },
+    {
+      "sdk": "kotlin",
       "path": "client.cloudSync",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
@@ -6452,7 +6457,7 @@
         "python": {},
         "swift": {},
         "kotlin": {
-          "planned": "CC-15"
+          "spelling": "CloudNearby.request"
         }
       },
       "layer": "client",
@@ -6472,7 +6477,7 @@
         "python": {},
         "swift": {},
         "kotlin": {
-          "planned": "CC-15"
+          "spelling": "CloudNearby.onRequest"
         }
       },
       "layer": "client",
