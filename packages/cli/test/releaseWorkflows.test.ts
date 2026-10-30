@@ -88,56 +88,6 @@ const NPM_TIERS = [
   "npm-tier-4",
   "npm-tier-5",
 ];
-/**
- * The one dated exception to "no tag gate, no drift skip" (2026-10-29): a deliverable that
- * publishes from release tags only. The system product's manifest is applied by the production
- * deploy hook at a vX.Y.Z tag, so a main publish of a deliverable added to `.pkey/release.yaml`
- * since the last tag fails `unknown_deliverable`, and that red main blocks the tag deploy that
- * would declare it. publish-sdks.yml passes `publish-on` for exactly these ids, and its drift and
- * install-closure steps `--skip` exactly these ids off a tag. Remove the entry (and the workflow
- * lines it names) after v0.10.0's deploy; the entry may not grow.
- */
-const TEMPORARY_TAG_ONLY: Record<string, string> = {
-  "npm.elements":
-    "until the v0.10.0 deploy declares it (system product manifest applies only at a tag) — remove after v0.10.0",
-};
-/** The `--skip` ids a workflow step's command names (inside or outside a `${{ }}` expression). */
-function skippedIds(run: string | undefined): string[] {
-  return [...(run ?? "").matchAll(/--skip\s+([\w.,-]+)/g)].flatMap((m) =>
-    m[1]!.split(","),
-  );
-}
-/** `!startsWith(github.ref, 'refs/tags/v') && '--skip <ids>' || ''`: off a tag only. */
-function skipOffTagsOnly(run: string | undefined): boolean {
-  return (run ?? "")
-    .split("${{")
-    .slice(1)
-    .filter((e) => e.includes("--skip"))
-    .every((e) =>
-      /^\s*!startsWith\(github\.ref, 'refs\/tags\/v'\) && '--skip /.test(e),
-    );
-}
-/** The deliverable ids a call gates with `publish-on` (one `matrix.x == 'v' && 'tags' || 'always'`). */
-function tagOnlyDeliverables(job: Job): string[] {
-  const on = job.with?.["publish-on"];
-  if (on === undefined) return [];
-  const m =
-    /^\$\{\{ matrix\.(\w+) == '([\w.-]+)' && 'tags' \|\| 'always' \}\}$/.exec(
-      String(on),
-    );
-  if (!m)
-    throw new Error(
-      `publish-on must be \`matrix.<key> == '<value>' && 'tags' || 'always'\` (got ${String(on)})`,
-    );
-  const d = /^([a-z]+)\.\$\{\{ matrix\.(\w+) \}\}$/.exec(
-    String(job.with?.deliverable ?? ""),
-  );
-  if (!d || d[2] !== m[1])
-    throw new Error(
-      "publish-on must test the key the deliverable is built from",
-    );
-  return [`${d[1]}.${m[2]}`];
-}
 const LEGACY = [
   "release.yml",
   "release-python.yml",
@@ -395,54 +345,28 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
         "maven.server-ktor",
       ]),
     );
-    const allowed = Object.keys(TEMPORARY_TAG_ONLY);
-    // The only tag gate: publish-on, naming exactly the allowed deliverables.
-    const gated = publishCalls()
-      .filter((c) => c.file === PUBLISH_SDKS)
-      .flatMap((c) => tagOnlyDeliverables(c.job));
-    expect(gated.sort()).toEqual([...allowed].sort());
-    for (const c of publishCalls().filter((c) => c.file !== PUBLISH_SDKS))
+    // No tag gate and no drift skip: every deliverable publishes on every build.
+    for (const c of publishCalls())
       expect(c.job.with?.["publish-on"], c.id).toBeUndefined();
-    // The only drift skip: off a tag, naming exactly the allowed deliverables.
     const check = (wf.jobs.drift!.steps ?? []).find((s) =>
       s.run?.includes("tools/feed-drift.mjs"),
     );
-    expect(skippedIds(check?.run).sort()).toEqual([...allowed].sort());
-    expect(skipOffTagsOnly(check?.run)).toBe(true);
+    expect(check?.run).not.toContain("--skip");
     expect(check?.env?.SKIP).toBeUndefined();
     const closure = (wf.jobs["npm-install"]!.steps ?? []).find((s) =>
       s.run?.includes("tools/feed-closure.mjs"),
     );
-    expect(skippedIds(closure?.run).sort()).toEqual([...allowed].sort());
-    expect(skipOffTagsOnly(closure?.run)).toBe(true);
-  });
-
-  it("the tag-only exception names one dated deliverable and nothing else", () => {
-    expect(Object.keys(TEMPORARY_TAG_ONLY)).toEqual(["npm.elements"]);
-    expect(TEMPORARY_TAG_ONLY["npm.elements"]).toMatch(
-      /remove after v0\.10\.0/,
-    );
-    // The exception is a real deliverable of a tier call, not a stale name.
-    const called = publishCalls()
-      .filter((c) => c.file === PUBLISH_SDKS)
-      .flatMap((c) => calledDeliverables(c.job));
-    for (const id of Object.keys(TEMPORARY_TAG_ONLY))
-      expect(called, id).toContain(id);
-  });
-
-  it("publish-package.yml turns publish-on: tags into a no-op success off a tag", () => {
+    expect(closure?.run).not.toContain("--skip");
     const pub = workflow("publish-package.yml");
-    const input = (pub.on as { workflow_call: { inputs: Record<string, any> } })
-      .workflow_call.inputs["publish-on"];
-    expect(input.default).toBe("always");
-    const steps = pub.jobs.publish!.steps ?? [];
-    const publish = steps.find((s) => s.id === "publish");
-    expect(publish?.if).toBe(
-      "inputs.publish-on != 'tags' || startsWith(github.ref, 'refs/tags/v')",
-    );
-    // No job-level `if` (a skipped job would skip its dependents): the job still succeeds.
+    expect(
+      (pub.on as { workflow_call: { inputs: Record<string, any> } })
+        .workflow_call.inputs["publish-on"],
+    ).toBeUndefined();
+    expect(
+      pub.jobs.publish!.steps!.find((s) => s.id === "publish")?.if,
+    ).toBeUndefined();
+    // No job-level `if` (a skipped job would skip its dependents).
     expect(pub.jobs.publish!.if).toBeUndefined();
-    expect(raw("publish-package.yml")).toContain("always | tags) ;;");
   });
 
   it("the legacy release workflows and Changesets are gone", () => {
@@ -914,7 +838,6 @@ describe("the publisher's guard (P0-52: main, a v* tag, or npm-repair.yml's back
         env: {
           PATH: process.env.PATH ?? "",
           RELEASE_TAG: "",
-          PUBLISH_ON: "always",
           ...env,
         },
       });
@@ -953,20 +876,6 @@ describe("the publisher's guard (P0-52: main, a v* tag, or npm-repair.yml's back
         CHANNEL: "main",
       }),
     ).toMatch(/from main and from v\* release tags only/);
-  });
-
-  it("accepts publish-on: always and tags, and refuses anything else", async () => {
-    const main = {
-      ...push,
-      GITHUB_REF: "refs/heads/main",
-      VERSION: "0.9.1-main.4",
-      CHANNEL: "main",
-    };
-    expect(await guard({ ...main, PUBLISH_ON: "always" })).toBeNull();
-    expect(await guard({ ...main, PUBLISH_ON: "tags" })).toBeNull();
-    expect(await guard({ ...main, PUBLISH_ON: "tag" })).toMatch(
-      /publish-on is always or tags/,
-    );
   });
 
   it("backfills a release tag's version on its channel, from a manual dispatch on main, npm only", async () => {

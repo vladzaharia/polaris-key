@@ -269,14 +269,6 @@ jobs:
       dir: ${{ matrix.package }}
       version: ${{ needs.version.outputs.version }}
       channel: ${{ needs.version.outputs.channel }}
-      # TEMPORARY, the one tag-only deliverable (2026-10-29): npm.elements publishes from release
-      # tags only until the v0.10.0 deploy declares it. The system product's manifest is applied
-      # by the deploy hook at a vX.Y.Z tag only, and a main publish of an undeclared deliverable
-      # fails (unknown_deliverable), which would block the tag deploy that declares it. Off a tag
-      # publish-package.yml skips the publish step and succeeds. Remove this line, the matching
-      # `--skip npm.elements` below and in the drift job, and TEMPORARY_TAG_ONLY in
-      # releaseWorkflows.test.ts after v0.10.0.
-      publish-on: ${{ matrix.package == 'elements' && 'tags' || 'always' }}
 
   # What an adopter's first install gets, once the whole set is on the feed (P0-52), each in an
   # empty directory with only the scope line of /docs/build/install-from-feeds/: pnpm 11 with its
@@ -302,7 +294,7 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: >-
           node tools/feed-closure.mjs --origin https://pkg.plrs.im --owner polaris-key
-          --ecosystem npm --version "$VERSION" --complete --timeout 600 ${{ !startsWith(github.ref, 'refs/tags/v') && '--skip npm.elements' || '' }}
+          --ecosystem npm --version "$VERSION" --complete --timeout 600
       - name: pnpm 11, its defaults
         run: |
           dir="$RUNNER_TEMP/pnpm-11"
@@ -801,7 +793,7 @@ jobs:
           CHANNEL: ${{ needs.version.outputs.channel }}
         run: >-
           node tools/feed-drift.mjs --origin https://pkg.plrs.im --owner polaris-key
-          --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600 ${{ !startsWith(github.ref, 'refs/tags/v') && '--skip npm.elements' || '' }}
+          --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600
       # P0-52: every @polaris-key pin of every package at this version is a version the feed
       # lists. Only this version's broken pins fail the run; a broken pin on an older version is
       # a warning here and an error in the daily feed-closure.yml. It runs after a red drift
