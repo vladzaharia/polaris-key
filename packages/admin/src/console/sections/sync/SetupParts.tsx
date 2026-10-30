@@ -12,7 +12,8 @@ import type {
   SyncUsageResponse,
 } from "../../../api.js";
 import { cn } from "../../../lib/cn.js";
-import { CLOUD_SYNC_DEFAULTS } from "@polaris-key/catalog";
+import { CLOUD_SYNC_DEFAULTS, cloudSyncEncryption } from "@polaris-key/catalog";
+import { ENCRYPTION_LABEL } from "../../../lib/encryption.js";
 import { formatCount } from "../../../lib/format.js";
 import { DescriptionList } from "../../../ui/DescriptionList.js";
 import { Button } from "../../../ui/Button.js";
@@ -157,7 +158,7 @@ export function TotalStorage({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="min-w-0 grow basis-full sm:basis-0">
+        <div className="min-w-0 grow basis-full sm:basis-48">
           <p className="font-medium text-fg-strong">Total storage</p>
           <p className="text-sm text-fg-muted">
             {ceiling.source === "default"
@@ -266,7 +267,7 @@ export function TierRows({
             key={t.id}
             className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3"
           >
-            <div className="min-w-0 grow basis-full sm:basis-0">
+            <div className="min-w-0 grow basis-full sm:basis-48">
               <p className="font-medium text-fg-strong [overflow-wrap:anywhere]">
                 <Link
                   to={r.tier(slug, t.id)}
@@ -289,7 +290,7 @@ export function TierRows({
         );
       })}
       <li className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
-        <div className="min-w-0 grow basis-full sm:basis-0">
+        <div className="min-w-0 grow basis-full sm:basis-48">
           <p className="font-medium text-fg-strong">Without a license</p>
         </div>
         <p className="tabular-nums text-fg-strong">
@@ -366,6 +367,10 @@ export function WhatSyncs({
         <DescriptionList
           columns={2}
           items={[
+            {
+              term: "Encryption",
+              detail: ENCRYPTION_LABEL[cloudSyncEncryption(catalog)],
+            },
             {
               term: "Keys per person",
               detail: `Up to ${formatCount(CLOUD_SYNC_DEFAULTS.settings.maxKeys)}`,

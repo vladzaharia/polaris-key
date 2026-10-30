@@ -255,7 +255,7 @@ export function CloudSyncSetupPage({
               {drawn.quota && !readFailed ? (
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <div className="min-w-0 grow basis-full sm:basis-0">
+                    <div className="min-w-0 grow basis-full sm:basis-48">
                       <p className="flex flex-wrap items-center gap-2 font-medium text-fg-strong">
                         Default <PlatformPill />
                       </p>

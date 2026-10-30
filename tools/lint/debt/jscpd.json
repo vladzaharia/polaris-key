@@ -488,12 +488,6 @@
     "packages/admin/src/console/sections/storefronts/components/StoreTiles.tsx": {
       "jscpd:duplicate": 2
     },
-    "packages/admin/src/console/sections/sync/CloudSyncSetup.tsx": {
-      "jscpd:duplicate": 1
-    },
-    "packages/admin/src/console/sections/sync/SetupParts.tsx": {
-      "jscpd:duplicate": 1
-    },
     "packages/admin/src/console/sections/update/pages/UpdateChannelsPage.tsx": {
       "jscpd:duplicate": 3
     },

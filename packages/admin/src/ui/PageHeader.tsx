@@ -211,10 +211,17 @@ export function PageHeader({
     desktopMenu.length > 0 ||
     mobileMenu.length > 0;
 
+  // A lone primary action (no cluster to share the row with) sits beside the title from 36 rem of
+  // header, not 42: at 200 % text on a desktop the header is 37 rem, and a row of its own costs a
+  // masthead 35 px over its budget.
+  const loneAction = !hasCluster && !trailing;
   const primaryEl = primaryAction ? (
     <div
       className={cn(
-        "col-span-2 sm:@2xl:col-span-1 sm:@2xl:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto sm:@max-2xl:justify-self-end",
+        "col-span-2 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto",
+        loneAction
+          ? "sm:@xl:col-span-1 sm:@xl:row-start-1 sm:@max-xl:justify-self-end"
+          : "sm:@2xl:col-span-1 sm:@2xl:row-start-1 sm:@max-2xl:justify-self-end",
         trailing
           ? "sm:@2xl:col-start-2"
           : cn(
@@ -223,7 +230,7 @@ export function PageHeader({
               hasCluster
                 ? "sm:@max-2xl:short:row-start-2"
                 : "sm:@max-2xl:short:row-start-1",
-              hasCluster ? "sm:@2xl:col-start-3" : "sm:@2xl:col-start-2",
+              hasCluster ? "sm:@2xl:col-start-3" : "sm:@xl:col-start-2",
             ),
       )}
     >

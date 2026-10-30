@@ -1014,6 +1014,29 @@ const TEXT200_CASES = [
   "global:platform-members?edit-areas",
   "global:platform-members?edit-roles",
 ];
+/**
+ * The pages the desktop-at-200%-text rows open: settings-template pages, App sign-in first. The
+ * sidebar starts as a rail there (under 80 rem of window), so the content column keeps its room.
+ */
+const DESKTOP_TEXT200_1440 = [
+  "djdl:app-sign-in",
+  "djdl:settings",
+  "djdl:services",
+  "djdl:portal",
+  "djdl:settings-members",
+  "djdl:catalog-edit",
+  "djdl:integration",
+  "djdl:sync-setup",
+  "global:sign-in-methods",
+];
+const DESKTOP_TEXT200_1280 = [
+  "djdl:app-sign-in",
+  "djdl:settings",
+  "djdl:services",
+  "djdl:portal",
+  "djdl:settings-members",
+  "djdl:catalog-edit",
+];
 /** The product Members tab, with the check that no name breaks inside a word (ST-31.14). */
 const MEMBERS_TAB = ["djdl:settings-members", "djdl:settings-members?words"];
 /** The Members drawer's views (ST-31.12). */
@@ -1146,6 +1169,23 @@ const VIEWPORTS: {
           ...TEXT200_CASES,
         ],
       },
+      // CX-APPSIGNIN-200: 200 % text on a desktop window (WCAG 1.4.4). App sign-in's content column
+      // once collapsed to 2-62 px here, because its side rail was a fixed rem track chosen by a
+      // viewport breakpoint; the phone row above could not see it.
+      ...[
+        {
+          label: "desktop-text200-1280",
+          width: 1280,
+          height: 800,
+          only: DESKTOP_TEXT200_1280,
+        },
+        {
+          label: "desktop-text200-1440",
+          width: 1440,
+          height: 900,
+          only: DESKTOP_TEXT200_1440,
+        },
+      ].map((v) => ({ ...v, rootFontPercent: 200 })),
       // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses and
       // Services.
       // UI-KITS.md §7.1's small landscape (a phone on its side, a split window): 640 × 360.
