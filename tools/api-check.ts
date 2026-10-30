@@ -474,6 +474,47 @@ export function removedPattern(r: Removed, doc: Api): RegExp {
   );
 }
 
+/** One line of a scanned file that a removed-name row can still report on (or that reports an
+ *  empty `api-allow`). `fence` is `undefined` outside Markdown, else the open fence's language
+ *  (`null` outside any fence). */
+interface ScanLine {
+  line: string;
+  n: number;
+  fence: string | null | undefined;
+  /** An `api-allow:` with no reason. */
+  bad: boolean;
+  /** Neither this line nor the one before carries an `api-allow:` with a reason. */
+  live: boolean;
+}
+
+/** Walk a file's lines once: Markdown fences, `api-allow` markers and the line before it. Fence
+ *  marker lines are dropped (they are never scanned and reset the allow marker). */
+function prepareLines(text: string, md: boolean): ScanLine[] {
+  const out: ScanLine[] = [];
+  let fence: string | null = null; // lang of the open fence
+  let prevAllowed = false;
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]!;
+    if (md) {
+      const f = /^\s*(`{3,}|~{3,})\s*([\w+-]*)/.exec(line);
+      if (f) {
+        fence = fence === null ? f[2]!.toLowerCase() : null;
+        prevAllowed = false;
+        continue;
+      }
+    }
+    const allow = /api-allow:(.*)$/.exec(line);
+    const allowed = allow !== null && allow[1]!.trim() !== "";
+    const bad = allow !== null && !allowed;
+    const live = !allowed && !prevAllowed;
+    prevAllowed = allowed;
+    if (bad || live)
+      out.push({ line, n: i + 1, fence: md ? fence : undefined, bad, live });
+  }
+  return out;
+}
+
 /** Rule 2: removed names in SDK sources and consumers. */
 function checkRemoved(root: string, doc: Api): string[] {
   const out: string[] = [];
@@ -495,6 +536,9 @@ function checkRemoved(root: string, doc: Api): string[] {
     const i = rel.lastIndexOf(".");
     return i < 0 ? "" : rel.slice(i);
   };
+  // Everything about a line that does not depend on the removed row, computed once per file
+  // (a row used to re-read, re-split and re-match every file).
+  const linesOf = new Map<string, ScanLine[]>();
   for (const r of doc.removed) {
     const fam = FAMILY[r.sdk]!;
     const re = removedPattern(r, doc);
@@ -518,30 +562,23 @@ function checkRemoved(root: string, doc: Api): string[] {
         )
           continue;
       }
-      const lines = readFileSync(join(root, rel), "utf8").split("\n");
-      let fence: string | null = null; // lang of the open fence
-      let prevAllowed = false;
-      lines.forEach((line, i) => {
-        let inScope = true;
-        if (md) {
-          const f = /^\s*(`{3,}|~{3,})\s*([\w+-]*)/.exec(line);
-          if (f) {
-            fence = fence === null ? f[2]!.toLowerCase() : null;
-            prevAllowed = false;
-            return;
-          }
-          inScope = fence !== null && fenceLangs.includes(fence);
-        }
-        const allow = /api-allow:(.*)$/.exec(line);
-        const allowed = allow !== null && allow[1]!.trim() !== "";
-        if (allow !== null && !allowed)
-          out.push(`[rule 8] ${rel}:${i + 1}: api-allow needs a reason`);
-        if (inScope && !allowed && !prevAllowed && re.test(line))
+      let prepared = linesOf.get(rel);
+      if (prepared === undefined) {
+        prepared = prepareLines(readFileSync(join(root, rel), "utf8"), md);
+        linesOf.set(rel, prepared);
+      }
+      for (const c of prepared) {
+        if (c.bad) out.push(`[rule 8] ${rel}:${c.n}: api-allow needs a reason`);
+        if (
+          c.live &&
+          (c.fence === undefined ||
+            (c.fence !== null && fenceLangs.includes(c.fence))) &&
+          re.test(c.line)
+        )
           out.push(
-            `[rule 8] ${rel}:${i + 1}: removed ${r.sdk} name "${r.from}" (${r.package})${to ? `; use ${to}` : ""}`,
+            `[rule 8] ${rel}:${c.n}: removed ${r.sdk} name "${r.from}" (${r.package})${to ? `; use ${to}` : ""}`,
           );
-        prevAllowed = allowed;
-      });
+      }
     }
   }
   return [...new Set(out)];
