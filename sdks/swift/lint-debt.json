@@ -248,7 +248,7 @@
       "swift-format:Indentation": 7
     },
     "sdks/swift/Sources/PolarisKeyUI/Kit/Mac/SettingsPane.swift": {
-      "swift-format:AddLines": 4,
+      "swift-format:AddLines": 3,
       "swift-format:Indentation": 1
     },
     "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/AccountScreens.swift": {

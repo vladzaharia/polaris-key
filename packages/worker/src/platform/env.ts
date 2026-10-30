@@ -60,6 +60,18 @@ export interface Env {
    */
   CONNECT_RELAY?: DurableObjectNamespace;
   /**
+   * Cloud Sync's file store (U-10.1, plans/U-10-U-11a-slices.md D-9): one R2 bucket per
+   * environment holding the bytes of a record's file and its revisions (and, with U-37, the
+   * delta chunks), under `u/<principal>/...`. OPTIONAL: unbound, there is no file store, so
+   * discovery says `files: false` and `endpoints.files: null` and the file routes answer
+   * `404`. A bound bucket serves nothing until the operator's launch gate `launch.syncFiles`
+   * is on. The bucket is private like `BLOBS`: no public or custom domain, every byte goes
+   * through the Worker. `wrangler.toml` binds it per environment once the owner has created
+   * the bucket (a deploy fails on a missing one).
+   * @inventory binding stores
+   */
+  SYNC_FILES?: R2Bucket;
+  /**
    * Update-health counters (P6-03, `src/core/updateHealthDo.ts`): one object per (product,
    * deliverable, release), reached only through `core/updateHealth.ts`. OPTIONAL: unbound, the
    * report still stores its `updates` but counts nothing, and the funnel and auto-halt read no

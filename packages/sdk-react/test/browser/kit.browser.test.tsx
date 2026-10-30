@@ -582,7 +582,11 @@ async function gateToast(
   root = createRoot(host);
   root.render(
     <PolarisKeyProvider config={{ productSlug: "tidewater", adapter }}>
-      <Kit.PolarisKeyGate theme={{ product: PRODUCT, colorScheme: scheme }}>
+      {/* The in-page sign-in path (the web default is the portal); its fallback is what this pins. */}
+      <Kit.PolarisKeyGate
+        addIn="app"
+        theme={{ product: PRODUCT, colorScheme: scheme }}
+      >
         <main data-host-content="">
           <p>The app</p>
         </main>

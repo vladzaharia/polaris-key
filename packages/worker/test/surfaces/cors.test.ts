@@ -235,9 +235,10 @@ describe("preflight (OPTIONS)", () => {
     expect(res.status).toBe(204);
     expect(acHeaders(res)).toEqual({
       "access-control-allow-origin": LISTED,
-      "access-control-allow-methods": "GET, POST, PATCH, DELETE",
+      "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE",
       "access-control-allow-headers":
-        "Authorization, Content-Type, Range, If-None-Match, If-Range, X-PKey-Device, " +
+        "Authorization, Content-Type, Range, If-None-Match, If-Range, Content-Digest, " +
+        "X-PKey-Device, " +
         "X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, " +
         "X-PKey-Arch",
       "access-control-max-age": "600",
@@ -245,7 +246,7 @@ describe("preflight (OPTIONS)", () => {
     expect(res.headers.get("Vary")).toBe("Origin");
     expect(res.headers.get("Access-Control-Allow-Credentials")).toBeNull();
     // The constants are what the worker sends; pin them to the brief's spelling once.
-    expect(CORS_ALLOW_METHODS).toBe("GET, POST, PATCH, DELETE");
+    expect(CORS_ALLOW_METHODS).toBe("GET, POST, PATCH, PUT, DELETE");
     expect(CORS_MAX_AGE).toBe("600");
     expect(CORS_ALLOW_HEADERS.split(", ")).toContain("Authorization");
   });

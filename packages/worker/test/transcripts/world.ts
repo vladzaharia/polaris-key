@@ -14,6 +14,7 @@ import {
 import { setServices } from "../../src/core/products/store.js";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
+import { asR2, R2Mock } from "../r2Mock.js";
 import { makeEnv, seedLicenseWithKey, seedProduct, seedTier } from "../seed.js";
 import { pinEnvironment, type Pinned } from "./determinism.js";
 import type { Transcript } from "./format.js";
@@ -61,11 +62,14 @@ export async function pinned<T>(
   }
 }
 
-/** An empty world: migrations applied, no product. */
+/** An empty world: migrations applied, no product. `SYNC_FILES` is an empty `R2Mock` (U-10.3), so
+ *  the file transcripts (U-10.12) find Cloud Sync's file store bound; nothing reads it before. */
 export function emptyWorld(): World {
   const db = makeTestDb();
   const kv = new KvMock();
-  return { db, kv, env: makeEnv(kv, [PRODUCT]) };
+  const env = makeEnv(kv, [PRODUCT]);
+  env.SYNC_FILES = asR2(new R2Mock());
+  return { db, kv, env };
 }
 
 /**

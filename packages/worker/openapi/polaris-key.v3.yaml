@@ -23805,12 +23805,12 @@ components:
           schema: { type: string }
           example: https://diceroll.gg
         Access-Control-Allow-Methods:
-          schema: { type: string, const: "GET, POST, PATCH, DELETE" }
+          schema: { type: string, const: "GET, POST, PATCH, PUT, DELETE" }
         Access-Control-Allow-Headers:
           description: Listed explicitly (a `*` would not cover `Authorization`).
           schema:
             type: string
-            const: "Authorization, Content-Type, Range, If-None-Match, If-Range, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch"
+            const: "Authorization, Content-Type, Range, If-None-Match, If-Range, Content-Digest, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch"
         Access-Control-Max-Age:
           schema: { type: string, const: "600" }
         Vary:

@@ -59,7 +59,11 @@ func _outcome(t: PKeyTestContext) -> void:
 	t.check("choice: the authorize URL asks license_choice=app", _param(s.authorize_url, "license_choice") == "app", s.authorize_url)
 	bed.tokens = [B.json(200, {"status": "choose", "grant": GRANT, "expiresIn": 300, "choices": VIEW})]
 	var o := await s.complete(_callback(bed, _param(s.authorize_url, "state")))
-	t.check("choice: the choose answer is the license_choice outcome", o.ok and o.kind == PKeySignInOutcome.KIND_LICENSE_CHOICE and o.grant == GRANT and o.expires_in == 300.0 and o.choices.has("choices"), str(o))
+	t.check(
+		"choice: the choose answer is the license_choice outcome",
+		o.ok and o.kind == PKeySignInOutcome.KIND_LICENSE_CHOICE and o.grant == GRANT and o.expires_in == 300.0 and o.choices.has("choices"),
+		str(o),
+	)
 	t.check("choice: nothing is stored and the grant is not printed", bed.sdk.core.tokens.current() == "" and not str(o).contains(GRANT))
 	bed.free_all()
 	# Without choice endpoints the request does not ask, and a choose answer is refused.
@@ -88,12 +92,24 @@ func _calls(t: PKeyTestContext) -> void:
 	var d := await choice.devices(GRANT, "lic_a")
 	t.check("choice: devices() is the view and sends licenseId", d.ok and d.view["devices"].size() == 1 and bed.choice_requests[1]["body"] == {"grant": GRANT, "licenseId": "lic_a"}, str(d))
 	var c := await choice.complete(GRANT, {"kind": "license", "license_id": "lic_a", "replace_device_id": "D1"})
-	t.check("choice: complete() sends the choice in wire spelling", bed.choice_requests[2]["body"] == {"grant": GRANT, "choice": {"kind": "license", "licenseId": "lic_a", "replaceDeviceId": "D1"}}, str(bed.choice_requests[2]["body"]))
-	t.check("choice: complete() is ok with licence, subject and entries", c.ok and c.license_id == "lic_a" and c.subject == "ps_abc" and c.key_entries == {"used": 1, "limit": 10} and not c.attachable, str(c))
+	t.check(
+		"choice: complete() sends the choice in wire spelling",
+		bed.choice_requests[2]["body"] == {"grant": GRANT, "choice": {"kind": "license", "licenseId": "lic_a", "replaceDeviceId": "D1"}},
+		str(bed.choice_requests[2]["body"]),
+	)
+	t.check(
+		"choice: complete() is ok with licence, subject and entries",
+		c.ok and c.license_id == "lic_a" and c.subject == "ps_abc" and c.key_entries == {"used": 1, "limit": 10} and not c.attachable,
+		str(c),
+	)
 	t.check("choice: complete() stored the token and the subject", bed.sdk.core.tokens.current() == TOKEN_NEW and bed.sdk.core.cache.subject == "ps_abc")
 	var keep := await choice.complete(GRANT, {"kind": "keep"})
 	t.check("choice: keep gives attachable", keep.ok and keep.attachable, str(keep))
-	t.check("choice: keep sends the device's bearer and the other choices send none", bed.choice_requests[3]["headers"].get("authorization", "") == "Bearer " + TOKEN_NEW, str(bed.choice_requests[3]["headers"]))
+	t.check(
+		"choice: keep sends the device's bearer and the other choices send none",
+		bed.choice_requests[3]["headers"].get("authorization", "") == "Bearer " + TOKEN_NEW,
+		str(bed.choice_requests[3]["headers"]),
+	)
 	t.check("choice: a licence choice sent no bearer", not bed.choice_requests[2]["headers"].has("authorization"), str(bed.choice_requests[2]["headers"]))
 	var bad := await choice.complete(GRANT, {"kind": "license"})
 	t.check("choice: a license choice without an id is invalid-argument and sends nothing", bad.code == &"invalid-argument" and bed.choice_requests.size() == 4, str(bad))
@@ -112,11 +128,19 @@ func _refusals(t: PKeyTestContext) -> void:
 	}
 	var choice: PKeyIdentityChoice = bed.sdk.identity.choice
 	var l := await choice.licenses(GRANT)
-	t.check("choice: a refusal is a result carrying the fresh view", not l.ok and l.kind == PKeyChoiceResult.KIND_REFUSED and l.code == &"license_choice_required" and l.view.has("choices") and l.http_status == 409, str(l))
+	t.check(
+		"choice: a refusal is a result carrying the fresh view",
+		not l.ok and l.kind == PKeyChoiceResult.KIND_REFUSED and l.code == &"license_choice_required" and l.view.has("choices") and l.http_status == 409,
+		str(l),
+	)
 	var d := await choice.devices(GRANT, "lic_a")
 	t.check("choice: rate_limited carries retry_after_seconds", d.kind == PKeyChoiceResult.KIND_REFUSED and d.code == &"rate_limited" and d.retry_after_seconds == 8, str(d))
 	var c := await choice.complete(GRANT, {"kind": "key", "key": "pkey_abc"})
-	t.check("choice: key_entry_limit carries entries, manage_url and sign_in_url", c.code == &"key_entry_limit" and c.key_entries == {"used": 10, "limit": 10} and c.manage_url.ends_with("/portal") and c.sign_in_url.ends_with("/in"), str(c))
+	t.check(
+		"choice: key_entry_limit carries entries, manage_url and sign_in_url",
+		c.code == &"key_entry_limit" and c.key_entries == {"used": 10, "limit": 10} and c.manage_url.ends_with("/portal") and c.sign_in_url.ends_with("/in"),
+		str(c),
+	)
 	t.check("choice: a refused complete keeps the token and stores nothing", bed.sdk.core.tokens.current() == B.TOKEN)
 	var x := await choice.cancel(GRANT)
 	t.check("choice: a 5xx is failed (server-error), not a refusal", x.kind == PKeyChoiceResult.KIND_FAILED and x.code == PKeyErrors.SERVER_ERROR, str(x))
@@ -128,7 +152,11 @@ func _refusals(t: PKeyTestContext) -> void:
 func _unavailable(t: PKeyTestContext) -> void:
 	var bed := await _bed(B.TOKEN, false)
 	var l: PKeyChoiceResult = await bed.sdk.identity.choice.licenses(GRANT)
-	t.check("choice: no choice endpoint is service-unavailable and nothing is sent", l.kind == PKeyChoiceResult.KIND_FAILED and l.code == PKeyErrors.SERVICE_UNAVAILABLE and bed.choice_requests.is_empty(), str(l))
+	t.check(
+		"choice: no choice endpoint is service-unavailable and nothing is sent",
+		l.kind == PKeyChoiceResult.KIND_FAILED and l.code == PKeyErrors.SERVICE_UNAVAILABLE and bed.choice_requests.is_empty(),
+		str(l),
+	)
 	bed.free_all()
 	bed = await _bed(B.TOKEN)
 	var root := "https://evil.example/djdl/identity"

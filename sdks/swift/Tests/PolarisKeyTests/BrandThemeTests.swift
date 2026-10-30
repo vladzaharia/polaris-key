@@ -94,7 +94,9 @@
             let native = PolarisPalette.native
             XCTAssertEqual(native.accent, .accentColor)
             XCTAssertEqual(native.textStrong, .primary)
-            XCTAssertEqual(native.textMuted, .secondary)
+            // SWUI-A11Y-2: the system's secondary label, except where AppKit's falls under the 4.5:1
+            // floor (BRAND.md §9 rule 1), where it is 68 % of the primary label.
+            XCTAssertEqual(native.textMuted, .nativeMutedText)
             XCTAssertTrue(native.prefersMaterials)
             XCTAssertFalse(PolarisPalette.brandDark.prefersMaterials)
             XCTAssertEqual(PolarisPalette.standard(.native, for: .light), native)

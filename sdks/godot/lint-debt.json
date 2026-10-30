@@ -522,9 +522,6 @@
     "sdks/godot/tests/identity/test_account.gd": {
       "gdlint:max-line-length": 7
     },
-    "sdks/godot/tests/identity/test_choice.gd": {
-      "gdlint:max-line-length": 6
-    },
     "sdks/godot/tests/identity/test_confirm.gd": {
       "gdlint:max-line-length": 4
     },
