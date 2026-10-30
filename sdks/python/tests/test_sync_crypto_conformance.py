@@ -245,7 +245,9 @@ def test_chunk(c: Dict[str, Any]) -> None:
         return
     if c["kind"] == "pair":
         assert c["rawNonceHex"] != c["zstdNonceHex"]
-        for obj_hex, nonce_hex, codec in ((c["rawObjectHex"], c["rawNonceHex"], 0), (c["zstdObjectHex"], c["zstdNonceHex"], 1)):
+        raw = (c["rawObjectHex"], c["rawNonceHex"], 0)
+        zstd = (c["zstdObjectHex"], c["zstdNonceHex"], 1)
+        for obj_hex, nonce_hex, codec in (raw, zstd):
             obj = H(obj_hex)
             assert obj[2:14].hex() == nonce_hex
             o = sf.open_chunk(root, c["collection"], H(c["idHex"]), obj, _ZSTD)
@@ -546,7 +548,11 @@ def _stored(row: Dict[str, Any]) -> "tuple[bytes, bytes, str]":
     return apply_ops(_sealed(base), row["mutate"]), H(base["rootHex"]), base["collection"]
 
 
-@pytest.mark.parametrize("r", [x for x in _FILE_ROWS if x["kind"] == "open"], ids=[x["id"] for x in _FILE_ROWS if x["kind"] == "open"])
+_OPEN_ROWS = [x for x in _FILE_ROWS if x["kind"] == "open"]
+_RANGE_ROWS = [x for x in _FILE_ROWS if x["kind"] == "range"]
+
+
+@pytest.mark.parametrize("r", _OPEN_ROWS, ids=ids(_OPEN_ROWS))
 def test_file_open(r: Dict[str, Any]) -> None:
     stream, root, coll = _stored(r)
     coll_key = sc.derive_coll_key(root, r.get("openCollection", coll))
@@ -572,7 +578,7 @@ def test_file_open(r: Dict[str, Any]) -> None:
         assert piecewise() == want["reason"]
 
 
-@pytest.mark.parametrize("r", [x for x in _FILE_ROWS if x["kind"] == "range"], ids=[x["id"] for x in _FILE_ROWS if x["kind"] == "range"])
+@pytest.mark.parametrize("r", _RANGE_ROWS, ids=ids(_RANGE_ROWS))
 def test_file_range(r: Dict[str, Any]) -> None:
     stream, root, coll = _stored(r)
     reads: List[List[int]] = []
@@ -583,7 +589,8 @@ def test_file_range(r: Dict[str, Any]) -> None:
 
     want = r["expect"]
     try:
-        got = sf.open_file_range(sc.derive_coll_key(root, coll), sc.derive_kid(root), read, len(stream), r["start"], r["end"])
+        coll_key, kid = sc.derive_coll_key(root, coll), sc.derive_kid(root)
+        got = sf.open_file_range(coll_key, kid, read, len(stream), r["start"], r["end"])
     except sf.FileStreamError as e:
         assert want == {"result": "invalid", "reason": e.reason}
         return

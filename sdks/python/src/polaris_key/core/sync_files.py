@@ -31,7 +31,7 @@ import hmac
 import os
 import struct
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, Iterator, List, Optional
+from typing import Callable, Iterable, Iterator, List, Optional, Union
 
 from ..constants_generated import (
     SYNC_CDC_AVG_BYTES,
@@ -66,7 +66,9 @@ __all__ = [
     "seal_chunk",
     "OpenedChunk",
     "open_chunk",
+    "ChunkZstdDecode",
     "zstd_content_size",
+    "decode_zstd_chunk",
     "MANIFEST_MAGIC",
     "MANIFEST_VERSION",
     "MANIFEST_HEADER_BYTES",
@@ -294,6 +296,25 @@ def zstd_content_size(f: bytes) -> Optional[int]:
     return v + 256 if flag == 1 else v
 
 
+def decode_zstd_chunk(body: bytes, decode: Optional[ChunkZstdDecode]) -> Union[bytes, str]:
+    """The plaintext of a codec 1 body, or the reason it is refused (``"decode"`` or ``"size"``). The
+    frame's declared content size (at most 1 MiB) is read and checked before anything is decoded, so
+    a bomb costs nothing. No decoder, a frame that declares no size, a decoder that raises and one
+    that answers another length are all ``"decode"``."""
+    size = zstd_content_size(body)
+    if size is None or decode is None:
+        return "decode"
+    if size > SYNC_CDC_MAX_BYTES:
+        return "size"
+    try:
+        plain = bytes(decode(body, size))
+    except Exception:  # noqa: BLE001 - any failure of the caller's decoder is "decode"
+        return "decode"
+    if len(plain) != size:
+        return "decode"
+    return plain
+
+
 def open_chunk(
     root: bytes,
     collection: str,
@@ -327,17 +348,10 @@ def open_chunk(
     if codec == CHUNK_CODEC_RAW:
         plain = body
     else:
-        size = zstd_content_size(body)
-        if size is None or decode is None:
-            return _bad("decode")
-        if size > SYNC_CDC_MAX_BYTES:
-            return _bad("size")
-        try:
-            plain = bytes(decode(body, size))
-        except Exception:
-            return _bad("decode")
-        if len(plain) != size:
-            return _bad("decode")
+        plain_or_reason = decode_zstd_chunk(body, decode)
+        if isinstance(plain_or_reason, str):
+            return _bad(plain_or_reason)
+        plain = plain_or_reason
     if len(plain) > SYNC_CDC_MAX_BYTES:
         return _bad("size")
     if not hmac.compare_digest(chunk_id(root, collection, plain), bytes(chunk)):
@@ -490,7 +504,8 @@ def encode_file_header(kid: bytes, salt: bytes) -> bytes:
         raise ValueError("kid length")
     if len(salt) != FILE_SALT_BYTES:
         raise ValueError("salt length")
-    return struct.pack("<8sHHI", FILE_STREAM_MAGIC, FILE_STREAM_VERSION, 0, FILE_SEGMENT_BYTES) + bytes(kid) + bytes(salt)
+    head = struct.pack("<8sHHI", FILE_STREAM_MAGIC, FILE_STREAM_VERSION, 0, FILE_SEGMENT_BYTES)
+    return head + bytes(kid) + bytes(salt)
 
 
 def sealed_file_size(plain_size: int) -> int:
