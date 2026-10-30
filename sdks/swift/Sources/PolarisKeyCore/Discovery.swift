@@ -166,16 +166,21 @@ public struct IdentityDiscovery: Sendable, Equatable {
     /// The platform sign-in kinds the product accepts (WIRE-CONTRACT-V5 §12.11), or nil when the
     /// document publishes none.
     public let exchange: IdentityExchangeDiscovery?
+    /// Silent restore (WIRE-CONTRACT-V5 §12.11.8): `restore: true`, published only while Identity,
+    /// the product setting and the launch gate allow it.
+    public let restore: Bool
 
     public init(
         issuer: String? = nil, account: Bool = false, keyEntryLimit: Int? = nil,
-        endpoints: [String: String] = [:], exchange: IdentityExchangeDiscovery? = nil
+        endpoints: [String: String] = [:], exchange: IdentityExchangeDiscovery? = nil,
+        restore: Bool = false
     ) {
         self.issuer = issuer
         self.account = account
         self.keyEntryLimit = keyEntryLimit
         self.endpoints = endpoints
         self.exchange = exchange
+        self.restore = restore
     }
 
     init(_ fragment: ServiceFragment) {
@@ -184,7 +189,8 @@ public struct IdentityDiscovery: Sendable, Equatable {
             account: fragment.extras["account"]?.boolValue == true,
             keyEntryLimit: fragment.extras["keyEntryLimit"]?.intValue,
             endpoints: fragment.endpoints,
-            exchange: IdentityExchangeDiscovery(fragment.extras["exchange"]))
+            exchange: IdentityExchangeDiscovery(fragment.extras["exchange"]),
+            restore: fragment.extras["restore"]?.boolValue == true)
     }
 
     /// The authorize endpoint a redirect sign-in sends the browser to.
@@ -215,6 +221,8 @@ public struct IdentityDiscovery: Sendable, Equatable {
     public var nonce: String? { endpoints["nonce"] }
     /// `POST`: the link offer (§12.11.4).
     public var link: String? { endpoints["link"] }
+    /// `POST` enrols or checks this device's restore key, `DELETE` revokes it (§12.11.8).
+    public var restoreEndpoint: String? { endpoints["restore"] }
 }
 
 /// `identity.exchange` of the discovery document (§12.11): which providers the product accepts.

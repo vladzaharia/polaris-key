@@ -1,7 +1,8 @@
 // `client.identity.autoSignIn()`: the automatic sign-in ladder (CC-01-auto-sign-in §1, I-44.2).
 //
 //   rung 1  a stored credential and a licence: `signedIn`, no network
-//   rung 2  silent restore (I-49): skipped here
+//   rung 2  silent restore (I-49, Restore.swift): the platform backup's restore item, redeemed with
+//           the `restore` grant; any refusal falls to rung 3
 //   rung 3  the platform provider, silently, over a fresh Worker nonce, then `exchange`
 //   rung 4  the provider's one OS sheet (`prompt: .optional`), then `exchange`
 //   rung 5+ are the app's: the regular sign-in form is `needsSignIn` / `unavailable`
@@ -29,6 +30,9 @@
 //     signs the device out through `signOut()`. If the Worker cannot be reached the flag stays
 //     unset and the check repeats at the next launch.
 //   - Device keys are the device's identity, not account state: sign-out keeps them.
+//   - Silent restore: while the flag is set rung 2 does not run and nothing is enrolled. Sign-out
+//     revokes the key (`DELETE restore`, queued for the next launch when the Worker cannot be reached),
+//     deletes the synchronizable item and keeps the flag. A queued delete is sent before any other call.
 //   - Cancelling the task rethrows `CancellationError`; nothing else throws.
 //
 // Nothing here logs, prints or keeps a token, a grant or a link handle; the result redacts them.
@@ -105,10 +109,21 @@ public struct AutoSignInOptions: Sendable {
     /// The provider to use; nil uses the one installed on the client (`installPlatformIdentity`).
     public var provider: (any PlatformIdentityProvider)?
     public var prompt: AutoSignInPrompt
+    /// Silent restore (rung 2), on by default. False skips rung 2, never enrols, and revokes the
+    /// device's key and deletes this app's restore item (`DELETE restore`).
+    public var restore: Bool
+    /// The Keychain access group of the restore item (`TEAMID.group`, I-49 D-7). Nil is the app's own
+    /// group; pass the team-wide one to let a developer's apps share the item.
+    public var backupAccessGroup: String?
 
-    public init(provider: (any PlatformIdentityProvider)? = nil, prompt: AutoSignInPrompt = .never) {
+    public init(
+        provider: (any PlatformIdentityProvider)? = nil, prompt: AutoSignInPrompt = .never,
+        restore: Bool = true, backupAccessGroup: String? = nil
+    ) {
         self.provider = provider
         self.prompt = prompt
+        self.restore = restore
+        self.backupAccessGroup = backupAccessGroup
     }
 }
 
@@ -163,6 +178,13 @@ extension IdentityClient {
 
     /// Run the ladder. A refusal is a result; only cancelling the task throws.
     public func autoSignIn(_ options: AutoSignInOptions = AutoSignInOptions()) async throws -> AutoSignInResult {
+        restoreSetup.with {
+            $0.enabled = options.restore
+            $0.accessGroup = options.backupAccessGroup
+        }
+        // A DELETE queued by an earlier launch goes before any other call.
+        await restoreFlushPending()
+        if !options.restore { await restoreOptOut() }
         let provider = options.provider ?? platformProvider.current
         if let provider, await provider.credentialRevoked() { await signOutAfterRevocation(provider) }
         let generation = await core.signOutGeneration
@@ -172,10 +194,15 @@ extension IdentityClient {
             await core.cache().license != nil
         {
             let id = await core.cache().license?.doc.licenseId
+            if options.restore { await restoreDailyCheck() }
             return .signedIn(SignInReady(subject: subjectValue.current, licenseId: id))
         }
         // Signed out on purpose: rungs 2-4 stay quiet.
         if await core.explicitSignOut() { return .needsSignIn(linkHandle: nil, reason: .signedOut) }
+
+        // Rung 2: the restore item of the platform backup. Needs no platform provider.
+        if options.restore, let result = try await restoreRung(generation: generation) { return result }
+
         // No platform identity here (no provider installed): the regular form is next.
         guard let provider else { return .needsSignIn(linkHandle: nil, reason: .noCredential) }
 
@@ -198,9 +225,10 @@ extension IdentityClient {
 
     /// Called by `signOut()` once the Worker accepted it: no silent rung runs until the next
     /// person-started sign-in, and the platform forgets its session.
-    func markSignedOut(_ provider: (any PlatformIdentityProvider)? = nil) async {
+    func markSignedOut(_ provider: (any PlatformIdentityProvider)? = nil, serverRevoked: Bool = true) async {
         await core.bumpSignOutGeneration()
         await core.setExplicitSignOut(true)
+        await restoreAfterSignOut(serverRevoked: serverRevoked)
         await (provider ?? platformProvider.current)?.signOutCleanup()
     }
 
@@ -294,7 +322,7 @@ extension IdentityClient {
     /// `signOut()`; with none, only the local state.
     private func signOutAfterRevocation(_ provider: any PlatformIdentityProvider) async {
         if await core.token == nil {
-            await markSignedOut(provider)
+            await markSignedOut(provider, serverRevoked: false)
         } else {
             _ = try? await signOut(cleaningUp: provider)
         }

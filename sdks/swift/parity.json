@@ -197,9 +197,8 @@
       "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in §1, I-44): a stored sign-in, then the platform provider's silent mode where it has one (Apple has none; Game Center is I-44.5), then its one sheet under prompt: .optional; every refusal is a result."
     },
     "identity.restore": {
-      "status": "planned",
-      "wp": "I-49",
-      "note": "Rung 2 of autoSignIn() and the PlatformBackupStore restore item (I-49.9, I-49.10)."
+      "status": "implemented",
+      "note": "Rung 2 of autoSignIn() (PolarisKeyIdentity/Restore.swift): the restore grant over the PlatformBackupStore item (the umbrella's RestoreBackup.swift adapter), enrolment after every completed sign-in and once a day on rung 1, sign-out deletion (DELETE restore queued for the next launch, the synchronizable item, the signed-out flag), AutoSignInOptions.restore and backupAccessGroup (I-49.9). The restore-* transcripts and discovery-identity-restore are replayed (I-49.10)."
     },
     "identity.link": {
       "status": "planned",

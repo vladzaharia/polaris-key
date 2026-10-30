@@ -252,6 +252,7 @@ public struct ChoiceNamespace: Sendable {
         if client.redirectAcquisitionSync.current { await client.onAcquired?() }
         client.announceSubject(subject, previous: previous)
         client.notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
+        await client.restoreSignInCompleted()
         let object = body?.objectValue ?? [:]
         let wire = (try? JSONEncoder().encode(object["keyEntries"] ?? .null))
             .flatMap { try? JSONDecoder().decode(KeyEntries.Wire.self, from: $0) }
