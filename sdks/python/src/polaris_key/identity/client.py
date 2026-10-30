@@ -50,6 +50,7 @@ from .auto_sign_in import (
     run_auto_sign_in,
 )
 from .choice import ChoiceClient
+from .nearby import NearbyCredentials, NearbyRoutes
 from .redirect import RedirectSession, start_redirect_sign_in
 from ..core.context import CoreContext
 from ..core.token import TokenManager
@@ -85,6 +86,8 @@ class IdentityClient:
         emit: Optional[Callable[..., Any]] = None,
         on_forget: Optional[Callable[[], Any]] = None,
         nearby_runtime: Optional[Callable[[str], bool]] = None,
+        refresh_discovery: Optional[Callable[[], Optional[Dict[str, Any]]]] = None,
+        register_nearby_keys: Optional[Callable[[NearbyCredentials], None]] = None,
     ) -> None:
         self._ctx = ctx
         self._tokens = tokens
@@ -123,6 +126,11 @@ class IdentityClient:
         self._discover = discover or (lambda: None)
         self._license_id = license_id or (lambda: None)
         self._nearby = NearbyNamespace(ctx, self._discover, nearby_runtime)
+        #: The nearby route client (``nearby/start``, ``poll``, ``approve``): the session (D) and the
+        #: approver (M) of later slices drive it; a host does not call it.
+        self._nearby_routes = NearbyRoutes(
+            self._deps, refresh_discovery=refresh_discovery, register_keys=register_nearby_keys
+        )
 
     def _store_identity(self, who: Optional[SignedInIdentity]) -> None:
         self._identity = who

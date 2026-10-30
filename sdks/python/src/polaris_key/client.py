@@ -284,6 +284,7 @@ class PolarisKeyClient:
             discover=self._discovery_or_load,
             wipe_local=lambda: self.license.wipe_local(),
             loaded_discovery=lambda: self._discovery_doc,
+            refresh_discovery=self._refresh_discovery,
             license_id=lambda: self.license.get_license_id(),
             emit=self.events.emit,
             # Sign-out and deactivation both end in `identity.forget()`: the root and its pin go with them.
@@ -631,6 +632,15 @@ class PolarisKeyClient:
             "values": {k: e.value for k, e in entries.items()},
             "locked": [k for k, e in entries.items() if e.state in ("enforced", "hidden")],
         }
+
+    def _refresh_discovery(self) -> Optional[Dict[str, Any]]:
+        """Discovery read again now (nearby approval reads a 404 against it, N11): the new document, or
+        ``None`` when it could not be read (never the stale one)."""
+        try:
+            result = self.discover()
+        except Exception:
+            return None
+        return self._discovery_doc if isinstance(result, DiscoveryOk) else None
 
     def _discovery_or_load(self) -> Optional[Dict[str, Any]]:
         """The discovery document, loaded once when this session has none (the account verbs
