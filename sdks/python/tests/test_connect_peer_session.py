@@ -302,6 +302,19 @@ def test_hello_display_data_is_cleaned() -> None:
     assert b.of(Established)[0].hello.label == "Café TV"
 
 
+def test_hello_label_padded_with_invisible_blanks_shows_as_the_plain_label() -> None:
+    A, B = Dev(ID_A), Dev(ID_B)
+    k = _rnd()
+    a = Side("initiator", A, [k])
+    a.s._hello["label"] = "Ana's Switch\u3164\u2800"
+    a.s._hello["app"] = "\u3164\u200b"
+    b = Side("responder", B, [k])
+    a.s.start()
+    pump(a, b)
+    est = b.of(Established)[0]
+    assert est.hello.label == "Ana's Switch" and est.hello.app == "Unknown"
+
+
 def test_a_hello_over_4_kib_is_fine_in_mode_a() -> None:
     A, B = Dev(ID_A), Dev(ID_B)
     k = _rnd()

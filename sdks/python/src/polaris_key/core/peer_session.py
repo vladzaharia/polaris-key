@@ -29,12 +29,11 @@ import json
 import re
 import threading
 import time
-import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 from .b64url import b64url_encode
-from .device_label import normalize_device_label
+from .device_label import clean_display_label
 from .jws import TrustSet
 from .peer_cert import PeerSession as CertSession
 from .peer_cert import admit_peer, replace_ring, ring_expired, verify_ring
@@ -676,10 +675,11 @@ class PeerSession:
             return None
         if isinstance(mm, bool) or not isinstance(mm, int) or mm < 1 or mm > _MAX_SAFE_INTEGER:
             return None
-        # Display data from an unauthenticated peer: NFC, controls and bidi stripped, 64 code points. An
-        # ``app`` with nothing left, and a ``platform`` that is not a known shape, show as "Unknown".
-        clean = normalize_device_label(unicodedata.normalize("NFC", label)) if isinstance(label, str) else None
-        shown_app = normalize_device_label(unicodedata.normalize("NFC", app)) or _UNKNOWN_DISPLAY
+        # Display data from an unauthenticated peer, cleaned as a device label with NFC after the
+        # strip (§15.6): blanks and invisible code points gone, 64 code points. An ``app`` with
+        # nothing left, and a ``platform`` that is not a known shape, show as "Unknown".
+        clean = clean_display_label(label) if isinstance(label, str) else None
+        shown_app = clean_display_label(app) or _UNKNOWN_DISPLAY
         shown_platform = platform if _PLATFORM_DISPLAY.fullmatch(platform) else _UNKNOWN_DISPLAY
         return PeerHello(shown_platform, shown_app, mm, clean)
 
