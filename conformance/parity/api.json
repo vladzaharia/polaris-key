@@ -2385,6 +2385,16 @@
       "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .onRequest); not a verb"
     },
     {
+      "sdk": "node",
+      "path": "identity.nearby",
+      "reason": "the accessor of the identity nearby namespace (identity.nearby.available, .onRequest; I-47.2); not a verb"
+    },
+    {
+      "sdk": "node",
+      "path": "identity.nearbyRoutes",
+      "reason": "internal: the nearby HTTP routes under the sign-in and approver sessions (I-47.4); no host calls it, and approve refuses a call without a matched pick"
+    },
+    {
       "sdk": "python",
       "path": "cloudConnect.nearby",
       "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .on_request); not a verb"

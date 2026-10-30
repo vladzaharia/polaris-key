@@ -500,6 +500,21 @@ export class KeyringClient {
     deviceId: string,
     agreeKey: Uint8Array | string,
   ): Promise<KeyringWrapBody> {
+    const body = await this.sealWrapTo(deviceId, agreeKey);
+    await this.putWrap(deviceId, body);
+    return body;
+  }
+
+  /**
+   * The first half of {@link wrapTo}: seal the root to `agreeKey` for `deviceId` and answer the
+   * wrap, without storing it. A nearby approver sends this over the channel first and then stores
+   * the same bytes with {@link putWrap} (V5 §13.11.3), so a refused or failed `PUT` cannot take
+   * the channel copy with it.
+   */
+  async sealWrapTo(
+    deviceId: string,
+    agreeKey: Uint8Array | string,
+  ): Promise<KeyringWrapBody> {
     const h = this.#need();
     if (deviceId === "" || /[/?#\s]/.test(deviceId))
       throw badArg("A device id is required.");
@@ -514,14 +529,25 @@ export class KeyringClient {
       h.kid,
       h.root,
     );
-    const put = { epoch: h.epoch, kid: hex(h.kid), ...wireWrap(w) };
+    // The same wrap, with its ring, is what a nearby approver also sends over the channel.
+    return {
+      ringId: h.ringId,
+      epoch: h.epoch,
+      kid: hex(h.kid),
+      ...wireWrap(w),
+    };
+  }
+
+  /** The second half of {@link wrapTo}: `PUT .../wraps/{deviceId}` with a wrap `sealWrapTo` made. */
+  async putWrap(deviceId: string, body: KeyringWrapBody): Promise<void> {
+    if (deviceId === "" || /[/?#\s]/.test(deviceId))
+      throw badArg("A device id is required.");
+    const { ringId: _ring, ...put } = body;
     await this.#send(
       "PUT",
       `devices/keyring/wraps/${encodeURIComponent(deviceId)}`,
       put,
     );
-    // The same wrap, with its ring, is what a nearby approver also sends over the channel.
-    return { ringId: h.ringId, ...put };
   }
 
   /** `DELETE .../wraps/{deviceId}`: the Worker removes a device's own wrap only. */

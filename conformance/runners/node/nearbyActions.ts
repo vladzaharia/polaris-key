@@ -54,8 +54,6 @@ export interface RoutesLike {
   signProof: ((port: never, f: ProofFields) => Promise<string>) | undefined;
   start(o: { deviceName?: string }): Promise<StartedLike>;
   poll(s: StartedLike): Promise<Record<string, unknown> & { kind: string }>;
-  /** The permit for a vouch built from the recording (a replay-only seam, see nearby.ts). */
-  grantForReplay(v: Record<string, unknown>): object;
   approve(
     v: object,
     d: { decision: unknown; choice?: unknown },
@@ -88,6 +86,12 @@ export interface NearbyStepContext {
   m(step: Step): Promise<NearbyReplayParty>;
   /** Whether D holds a token now. */
   tokenHeld(): boolean;
+  /**
+   * The permit for a vouch built from the recording, which may carry other keys than D's to prove
+   * the Worker refuses them. The replay imports `grantApproval` by source path: the package entry
+   * and the routes do not offer it, so no host can approve without a matched pick.
+   */
+  grant(v: Record<string, unknown>): object;
 }
 
 type Observed = Record<string, JsonValue>;
@@ -181,7 +185,7 @@ export async function nearbyAction(c: NearbyStepContext): Promise<Observed> {
         ? fixtureKeys(a.agreeKeyLabel).agreeKey
         : d.keys.agreeKey;
     // The replay vouches for what the recording sent (it may carry other keys than D's).
-    const vouch = m.routes.grantForReplay({
+    const vouch = c.grant({
       request: a.request,
       deviceId: t.initial.deviceId,
       signKey: d.keys.signKey,

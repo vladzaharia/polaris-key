@@ -34,11 +34,12 @@ export function entitlement(value: unknown, at = nowSec()): ManagedEntry {
 export async function signedLicense(
   entitlements: Record<string, unknown>,
   at = nowSec(),
+  deviceId = DEVICE,
 ): Promise<string> {
   const doc: LicenseDoc = {
     iss: ISSUER,
     aud: PRODUCT,
-    deviceId: DEVICE,
+    deviceId,
     issuedAt: at,
     expiresAt: at + 3600,
     graceUntil: at + 30 * 86400,

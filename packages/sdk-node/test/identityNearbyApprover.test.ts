@@ -532,17 +532,34 @@ describe("onRequest: the key ring wrap (I-47.10)", () => {
     ct: "c",
   };
 
-  function ring(o: { unlocked?: boolean; fail?: boolean } = {}) {
+  function ring(
+    o: { unlocked?: boolean; fail?: boolean; failPut?: boolean } = {},
+  ) {
     const calls: [string, string][] = [];
+    /** The order the three steps ran in; the approval's `sendRecord` joins it through `trace`. */
+    const order: string[] = [];
     const keyring: NearbyApproverKeyring = {
       unlocked: o.unlocked ?? true,
-      wrapTo: async (id, key) => {
+      sealWrapTo: async (id, key) => {
         calls.push([id, key]);
-        if (o.fail) throw new Error("conflict");
+        order.push("seal");
+        if (o.fail) throw new Error("locked");
         return BODY;
       },
+      putWrap: async () => {
+        order.push("put");
+        if (o.failPut) throw new Error("keyring_conflict");
+      },
     };
-    return { keyring, calls };
+    const trace = (a: FakeApproval): FakeApproval => {
+      const send = a.sendRecord.bind(a);
+      a.sendRecord = async (t, b) => {
+        order.push("send");
+        await send(t, b);
+      };
+      return a;
+    };
+    return { keyring, calls, order, trace };
   }
 
   const sentWraps = (a: FakeApproval) =>
@@ -626,6 +643,24 @@ describe("onRequest: the key ring wrap (I-47.10)", () => {
     expect(a.sent).toHaveLength(1);
   });
 
+  it("follows V5 13.11.3: seal, send on the channel, then PUT the same wrap", async () => {
+    const { keyring, order, trace } = ring();
+    const w = await approver({ [APPROVE]: approved }, "pkeyt_m", keyring);
+    const { ask: s } = await ask(w, trace(new FakeApproval()));
+    expect(await s.pick(RIGHT)).toEqual({ kind: "approved" });
+    expect(order).toEqual(["seal", "send", "put"]);
+  });
+
+  it("a refused PUT does not take the channel copy with it", async () => {
+    const { keyring, order, trace } = ring({ failPut: true });
+    const w = await approver({ [APPROVE]: approved }, "pkeyt_m", keyring);
+    const a = trace(new FakeApproval());
+    const { ask: s } = await ask(w, a);
+    expect(await s.pick(RIGHT)).toEqual({ kind: "approved" });
+    expect(order).toEqual(["seal", "send", "put"]);
+    expect(sentWraps(a)).toEqual([[0x0030, BODY]]);
+  });
+
   it("a failed wrap, or a failed send, leaves the approval standing", async () => {
     const failing = ring({ fail: true });
     const w = await approver(
@@ -648,7 +683,7 @@ describe("onRequest: the key ring wrap (I-47.10)", () => {
   });
 
   it("a channel that ended still gets the server copy of the wrap", async () => {
-    const { keyring, calls } = ring();
+    const { keyring, calls, order } = ring();
     const w = await approver({ [APPROVE]: approved }, "pkeyt_m", keyring);
     const a = new FakeApproval();
     a.finishError = new LanError("closed", "gone");
@@ -658,5 +693,6 @@ describe("onRequest: the key ring wrap (I-47.10)", () => {
     const { ask: s } = await ask(w, a);
     expect(await s.pick(RIGHT)).toEqual({ kind: "approved" });
     expect(calls).toHaveLength(1);
+    expect(order).toEqual(["seal", "put"]);
   });
 });

@@ -739,6 +739,23 @@ describe("keyring: the wrap a nearby approver sends (KEYRING_WRAP, I-47.10)", ()
     expect(put1.body).not.toHaveProperty("ringId");
   });
 
+  it("sealWrapTo stores nothing; putWrap then stores exactly those bytes (the nearby order: seal, send, PUT)", async () => {
+    const s = new FakeRing();
+    const a = await device(s, A);
+    const b = await device(s, B);
+    await a.client.keyring.create();
+    const bKeys = await b.keys.ensure();
+    s.reqs.length = 0;
+    const body = await a.client.keyring.sealWrapTo(B, bKeys.agreeKey);
+    expect(s.reqs.filter((r) => r.method === "PUT")).toEqual([]);
+    expect(s.wraps.has(B)).toBe(false);
+    await a.client.keyring.putWrap(B, body);
+    const { ringId: _ring, ...put } = body;
+    expect(s.reqs.filter((r) => r.method === "PUT")).toHaveLength(1);
+    expect(s.wraps.get(B)).toMatchObject(put);
+    expect((await b.client.keyring.adoptWrap(body)).kind).toBe("unlocked");
+  });
+
   it("adoptWrap opens the channel copy against a fresh read of the ring and pins it", async () => {
     const { s, b, body, sealed } = await wrapped();
     // The server copy is not needed: the channel copy is.

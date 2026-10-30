@@ -416,15 +416,6 @@ export class NearbyRoutes {
     };
   }
 
-  /**
-   * @internal Conformance replay only (reached through a typed cast, like {@link signProof}): the
-   * permit for a vouch the replay builds from a recording, which may carry other keys than D's to
-   * prove the Worker refuses them. Nothing in the SDK calls it.
-   */
-  grantForReplay(v: VouchRequest): VerifiedVouch {
-    return grantApproval(v);
-  }
-
   // ── M ───────────────────────────────────────────────────────────────────────────────────
 
   /**

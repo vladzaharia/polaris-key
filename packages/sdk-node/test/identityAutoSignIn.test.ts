@@ -3,7 +3,7 @@
 // sign-out flag survives a restart and fails closed, and `nearby.available()` is a pure read of
 // discovery plus the runtime. Node answers `signedIn`, `needsSignIn` and `unavailable` only.
 
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { nearbyAvailable } from "../src/identity/autoSignIn.js";
@@ -12,9 +12,15 @@ import {
   FixedStore,
   identityDiscovery,
   json,
-  seededClient,
+  seededClient as seed,
+  signedLicense,
   type Handler,
 } from "./parityFixtures.js";
+
+// Rung 1 needs a cached licence as well as a sign-in token (as Swift, Kotlin and Python ask).
+const LICENSE = await signedLicense({});
+const seededClient = (o: Parameters<typeof seed>[0] = {}) =>
+  seed({ license: LICENSE, ...o });
 
 const SUBJECT = "ps_QQMMVm-ciTWvmWEIfhAVgQ";
 const BASE = "https://k.test/djdl";
@@ -125,6 +131,16 @@ describe("autoSignIn(): rung 1", () => {
     client.close();
   });
 
+  it("a sign-in token without a cached licence is not rung 1 (the six-kind result is the same in every SDK)", async () => {
+    const { client } = await seed({ token: null, extra, routes: routes() });
+    await signIn(client);
+    expect(await client.identity.autoSignIn()).toEqual({
+      kind: "needsSignIn",
+      reason: "no_credential",
+    });
+    client.close();
+  });
+
   it("any other token replaces the mark: a key activation is not a sign-in", async () => {
     const { client, dir, store } = await seededClient({
       token: null,
@@ -144,6 +160,33 @@ describe("autoSignIn(): rung 1", () => {
       reason: "no_credential",
     });
     again.client.close();
+    client.close();
+  });
+
+  it("a token that is not a sign-in drops the mark BEFORE it is written, so a crash between them cannot leave a sign-in mark on it", async () => {
+    const { client, store } = await seededClient({
+      token: null,
+      extra,
+      routes: routes(),
+    });
+    await signIn(client);
+    const file = join(stateOf(client), "sign-in.json");
+    const marked = (): boolean => {
+      try {
+        return readFileSync(file, "utf8").includes('"signin"');
+      } catch {
+        return false;
+      }
+    };
+    expect(marked()).toBe(true);
+    const seen: boolean[] = [];
+    const set = store.setToken.bind(store);
+    store.setToken = async (t) => {
+      seen.push(marked());
+      await set(t);
+    };
+    await tokensOf(client).set("pkeyt_key", "activate");
+    expect(seen).toEqual([false]);
     client.close();
   });
 

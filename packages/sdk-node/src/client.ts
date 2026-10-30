@@ -315,8 +315,10 @@ export class PolarisKeyClient {
         signer: () => this.connect.nearbySigner(),
         registerKeys: (port) => this.devices.registerKeys(port),
         refreshDiscovery: async () => {
-          await this.discover().catch(() => undefined);
-          return this.discoveryDoc;
+          // A read that failed says nothing about nearby, so it never falls back to the old
+          // document (N11: only a fresh read that still names `nearby` keeps a 404 an expiry).
+          const r = await this.discover().catch(() => null);
+          return r !== null && r.kind === "ok" ? this.discoveryDoc : null;
         },
         lan: () => this.cloudConnect.nearby,
         keyring: () => this.keyring,

@@ -157,8 +157,9 @@ export interface AutoSignInDeps {
 export async function runAutoSignIn(
   deps: AutoSignInDeps,
 ): Promise<AutoSignInResult> {
-  // Rung 1 needs no network and no discovery: a token a sign-in produced is a sign-in.
-  if (deps.signedIn()) {
+  // Rung 1 needs no network and no discovery: a token a sign-in produced, with a cached licence
+  // (as Swift, Kotlin and Python ask), is a sign-in.
+  if (deps.signedIn() && deps.licenseId() !== null) {
     const subject = await readStoredSubject(deps.ctx.dirs.state).catch(
       () => null,
     );

@@ -179,16 +179,20 @@ export class TokenManager {
         : keepSignIn || source === "reacquire"
           ? this.fromSignIn
           : false;
+    // The mark and the token never disagree for long: a mark that is going away is dropped before
+    // the token changes, and a mark that is going to exist is written after it, so a crash between
+    // the two leaves "no sign-in" rather than a sign-in mark on a token that is not one.
+    if (!this.fromSignIn) await this.marks?.stored(false);
     await this.store.setToken(token);
-    await this.marks?.stored(this.fromSignIn);
+    if (this.fromSignIn) await this.marks?.stored(true);
   }
 
   async clear(): Promise<void> {
     this.token = null;
     this.tokenSource = null;
     this.fromSignIn = false;
-    await this.store.clearToken();
     await this.marks?.stored(false);
+    await this.store.clearToken();
   }
 
   /** Re-arm the single-attempt budget. Called once at the top of each `sync()`. */

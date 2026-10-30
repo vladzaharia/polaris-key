@@ -99,10 +99,15 @@ import type {
   WireMutation,
 } from "@polaris-key/client-core/cloud-sync";
 import { signJws } from "@polaris-key/jws";
+import type { VouchRequest } from "@polaris-key/client-core/peer";
 // The host's own transport (U-06.2). The package does not export it, so the runner reads the
 // built file: the replay must go through the bearer, the `X-PKey-*` headers and the byte caps the
 // host uses, not through a copy of them.
 import { sendSync } from "../../../packages/sdk-node/dist/cloudSync/transport.js";
+// The permit of a matched nearby pick. Neither the package entry nor the routes offer it; the
+// replay reads the built module the client under test was built from (one module instance, so its
+// permits are the ones the routes check).
+import { grantApproval } from "../../../packages/sdk-node/dist/identity/nearby.js";
 import {
   fixtureKeys,
   nearbyAction,
@@ -1233,6 +1238,7 @@ async function act(
           }),
           m: (s) => session.nearbyM!(s),
           tokenHeld: () => store.token !== null,
+          grant: (v) => grantApproval(v as unknown as VouchRequest),
         }),
       );
       break;

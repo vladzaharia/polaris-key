@@ -28,10 +28,10 @@
 //    error. The session prints as its shape only;
 //  - every approver label is cleaned again before it is listed: it comes from an unverified peer.
 
-import { PolarisError } from "@polaris-key/client-core";
+import { PolarisError, UnsupportedError } from "@polaris-key/client-core";
 import { guarded } from "../connect/session.js";
 import { cleanLabel, type VouchStatus } from "@polaris-key/client-core/peer";
-import { ErrorCode } from "../constants.generated.js";
+import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
 import { printAs } from "../core/redact.js";
 import type {
@@ -39,6 +39,7 @@ import type {
   NearbyRequest,
   NearbyRequestOptions,
 } from "../connect/nearbyRequester.js";
+import { lanRuntimeSupported } from "./autoSignIn.js";
 import type { NearbyPoll, NearbyRoutes, NearbyStarted } from "./nearby.js";
 import {
   sleep,
@@ -86,6 +87,9 @@ export interface NearbySessionDeps {
   lan: () => NearbyLan;
   /** `identity.signOut()`: a declined account signs the device out again. */
   signOut: () => Promise<unknown>;
+  /** @internal Test seam: whether this runtime can browse the LAN (default: the optional
+   *  `multicast-dns` dependency loads). */
+  runtime?: () => Promise<boolean>;
   /** @internal Test seam: the wait between polls (default: a timer that honours the signals). */
   pause?: typeof sleep;
 }
@@ -426,6 +430,18 @@ export async function startNearbySignIn(
   opts: NearbySignInOptions,
 ): Promise<NearbySignInSession> {
   if (opts.signal?.aborted) throw opts.signal.reason;
+  // An unsupported runtime never calls a route for it (V5 §15.6.1 rule 10): the dependency is
+  // checked before `nearby/start` makes a Worker request that nothing could answer.
+  if (!(await (deps.runtime ?? lanRuntimeSupported)()))
+    throw new UnsupportedError(
+      {
+        supported: false,
+        feature: Feature.identityNearby,
+        reason: "dependency",
+        detail: "multicast-dns is not installed; LAN discovery is off.",
+      },
+      ErrorCode.nearbyUnsupported,
+    );
   const started = await deps.routes.start(
     opts.deviceName !== undefined ? { deviceName: opts.deviceName } : {},
   );

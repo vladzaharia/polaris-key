@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { format, inspect } from "node:util";
 import { describe, expect, it } from "vitest";
+import type { VouchRequest } from "@polaris-key/client-core/peer";
 import {
   doctor,
   loadTranscripts,
@@ -158,6 +159,7 @@ async function replayNearby(t: Transcript): Promise<void> {
           return partyOf(c, keys, true);
         },
         tokenHeld: () => dClient.hasToken,
+        grant: (v) => grantApproval(v as unknown as VouchRequest),
       });
     }
     server.endStep();
@@ -505,6 +507,28 @@ describe("nearby routes: the rules", () => {
     });
   });
 
+  it("a fresh discovery read that fails does not fall back to the old document (N11)", async () => {
+    let up = true;
+    const w = await routes(
+      {
+        "POST /djdl/identity/nearby/approve": () =>
+          json({ error: { code: "not_found" } }, 404),
+        "GET /djdl/.well-known/polaris.json": (r) =>
+          up ? discovery(FULL)(r) : new Response("down", { status: 503 }),
+      },
+      "pkeyt_m",
+    );
+    await w.client.discover();
+    up = false;
+    // The stale document still names nearby, but a failed read says nothing about it.
+    expect(
+      await w.r.approve(vouchOf("d"), { decision: "approve" }),
+    ).toMatchObject({
+      kind: "unavailable",
+      finish: { http: 404, discoveryNearby: false },
+    });
+  });
+
   it("approve takes only a granted vouch: loose ids and keys, a forged object and a copy are refused, sending nothing", async () => {
     const w = await routes(
       {
@@ -513,6 +537,11 @@ describe("nearby routes: the rules", () => {
       },
       "pkeyt_m",
     );
+    // No seam on the routes mints a permit: a host that reaches them cannot approve without a pick.
+    expect(
+      Object.getOwnPropertyNames(Object.getPrototypeOf(w.r)),
+    ).not.toContain("grantForReplay");
+    expect("grantForReplay" in (w.r as object)).toBe(false);
     const granted = vouchOf("d");
     const loose = {
       request: REQ,

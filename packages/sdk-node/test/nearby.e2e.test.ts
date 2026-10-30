@@ -311,7 +311,7 @@ afterEach(async () => {
 
 /** A device with no credential: no sign-in, no token. */
 async function makeD(w: NearbyStub, n: string): Promise<PolarisKeyClient> {
-  const c = await makeClient(w, n, dirs, { noToken: true });
+  const c = await makeClient(w, n, dirs, { noToken: true, licensed: true });
   // The acquisition sync after a sign-in is pinned by the sync transcripts, not here.
   (c.identity as unknown as { onAcquired: () => Promise<void> }).onAcquired =
     async () => undefined;
@@ -563,7 +563,7 @@ describe("nearby sign-in: the key ring wrap (KEYRING_WRAP)", () => {
     expect(d.keyring.unlocked).toBe(false);
   });
 
-  it("a wrap the Worker refuses does not undo the approval", async () => {
+  it("a wrap the Worker refuses does not undo the approval, nor take the channel copy with it (V5 13.11.3: seal, send, then PUT)", async () => {
     const x = await withRing();
     const { w, d } = x;
     w.wraps.set(devId("2"), { epoch: 1, kid: "x", kem: 32, enc: "x", ct: "x" });
@@ -571,7 +571,8 @@ describe("nearby sign-in: the key ring wrap (KEYRING_WRAP)", () => {
     expect(step).toEqual({ kind: "approved" });
     expect(await s.wait({ once: true })).toMatchObject({ kind: "signedIn" });
     await s.confirmAccount();
-    expect(d.keyring.unlocked).toBe(false);
+    // The PUT conflicted (a wrap already stands for D), but the wrap went over the channel first.
+    expect(d.keyring.unlocked).toBe(true);
   });
 });
 

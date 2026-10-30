@@ -97,7 +97,10 @@ export interface NearbyApproverLan {
 /** The key ring, as the approver uses it: it holds the root or it does not. */
 export interface NearbyApproverKeyring {
   readonly unlocked: boolean;
-  wrapTo(deviceId: string, agreeKey: string): Promise<object>;
+  /** Seal the root to a device's agreement key; nothing is stored. */
+  sealWrapTo(deviceId: string, agreeKey: string): Promise<object>;
+  /** Store a wrap `sealWrapTo` made (`PUT`): the fallback when the channel copy is lost. */
+  putWrap(deviceId: string, body: object): Promise<void>;
 }
 
 export interface NearbyApproverDeps {
@@ -150,23 +153,28 @@ class Decision {
     private readonly keyring: NearbyApproverKeyring | undefined,
   ) {}
 
-  /** Once, after `approved`: store the wrap for the new device and send it over the channel. */
+  /**
+   * Once, after `approved` (V5 §13.11.3): seal the wrap for the new device, send it over the
+   * channel, and only then store the same bytes on the Worker. A refused or failed `PUT` cannot
+   * take the channel copy with it, and a lost channel leaves the stored copy as the fallback.
+   */
   async #wrap(): Promise<void> {
     const ring = this.keyring;
     if (this.#wrapped || ring === undefined || !ring.unlocked) return;
     this.#wrapped = true;
+    // The ids and the key are the verified request's, which `approve` just confirmed.
+    const { deviceId, agreeKey } = this.r;
+    let body: object;
     try {
-      // The ids and the key are the verified request's, which `approve` just confirmed.
-      const body = await ring.wrapTo(this.r.deviceId, this.r.agreeKey);
-      await this.a
-        .sendRecord(
-          KEYRING_WRAP,
-          new TextEncoder().encode(JSON.stringify(body)),
-        )
-        .catch(() => undefined);
+      body = await ring.sealWrapTo(deviceId, agreeKey);
     } catch {
-      // No wrap (a conflict, a locked ring, the network): the approval stands.
+      return; // No wrap (a locked ring): the approval stands.
     }
+    await this.a
+      .sendRecord(KEYRING_WRAP, new TextEncoder().encode(JSON.stringify(body)))
+      .catch(() => undefined);
+    // A conflict or the network: the channel copy, if it arrived, still stands.
+    await ring.putWrap(deviceId, body).catch(() => undefined);
   }
 
   /** One `nearby/approve` for the verified request, then the answer to the LAN session. */

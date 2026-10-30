@@ -8,14 +8,19 @@ import { base64UrlEncodeBytes, signJws } from "@polaris-key/jws";
 import { ISSUER } from "@polaris-key/protocol/core";
 import { PolarisKeyClient } from "../src/client.js";
 import { createNodeDeviceKeyStore } from "../src/devices/deviceKeys.js";
-import { InMemoryStore } from "../src/core/store.js";
+import { CACHE_VERSION, InMemoryStore } from "../src/core/store.js";
 import type {
   MdnsAdapter,
   MdnsAdvert,
   MdnsFound,
   MdnsHandle,
 } from "../src/connect/mdns.js";
-import { TEST_KID, TEST_PEM, TEST_PUB } from "./parityFixtures.js";
+import {
+  signedLicense,
+  TEST_KID,
+  TEST_PEM,
+  TEST_PUB,
+} from "./parityFixtures.js";
 
 export const PRODUCT = "djdl";
 export const BASE = "https://k.test";
@@ -230,12 +235,20 @@ export async function makeClient(
     trustRefresh?: boolean;
     /** A device with no credential (and so not known to the Worker's token table). */
     noToken?: boolean;
+    /** A licence document cached for this device: the "licence" half of autoSignIn()'s rung 1
+     *  (the acquisition sync that would fetch it after a sign-in is not part of these tests). */
+    licensed?: boolean;
   } = {},
 ): Promise<PolarisKeyClient> {
   const deviceId = devId(n);
   const store = Object.assign(new InMemoryStore(), {
     getDeviceId: async () => deviceId,
   });
+  if (extra.licensed === true)
+    await store.writeCache({
+      v: CACHE_VERSION,
+      docs: { license: await signedLicense({}, undefined, deviceId) },
+    });
   if (extra.noToken !== true) {
     worker.add(deviceId, tokenOf(n));
     await store.setToken(tokenOf(n));

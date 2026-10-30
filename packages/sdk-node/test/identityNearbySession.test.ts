@@ -110,6 +110,7 @@ function sessionOn(
       lan: () => ({ request: async () => req }),
       signOut: async () => undefined,
       pause: noPause,
+      runtime: async () => true,
       ...over,
     },
     { channel: "nearby", ...opts },
@@ -190,6 +191,20 @@ const ready: Handler = () =>
   });
 
 describe("nearby sign-in session: start", () => {
+  it("an unsupported runtime throws nearby-unsupported before any route is called (V5 15.6.1 rule 10)", async () => {
+    const { client, seen } = await nearbyClient({
+      "GET /djdl/.well-known/polaris.json": identityDiscovery(FRAGMENT),
+      "POST /djdl/identity/nearby/start": () =>
+        json({ request: REQ, expiresIn: 300, interval: 3 }, 201),
+    });
+    const before = seen.length;
+    await expect(
+      sessionOn(client, new FakeRequest(), { runtime: async () => false }),
+    ).rejects.toMatchObject({ code: "nearby-unsupported" });
+    expect(seen.length).toBe(before);
+    expect(seen.some((s) => s.path.endsWith("/nearby/start"))).toBe(false);
+  });
+
   it("starts the request, then the LAN request with its handle, label and life", async () => {
     const w = await world(pending, { deviceName: "Den" });
     expect(w.order).toEqual(["start", `request:${REQ}:Den:300`]);

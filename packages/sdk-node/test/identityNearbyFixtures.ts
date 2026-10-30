@@ -1,7 +1,12 @@
 // Shared fixtures for the nearby identity tests (I-47.6, I-47.7): a client wired to a fake Worker
 // that serves the nearby routes' discovery, with the fixture device keys of a label.
 
-import { identityDiscovery, json, seededClient } from "./parityFixtures.js";
+import {
+  identityDiscovery,
+  json,
+  seededClient,
+  signedLicense,
+} from "./parityFixtures.js";
 import type { Handler } from "./parityFixtures.js";
 import { fixtureKeys } from "../../../conformance/runners/node/nearbyActions.js";
 
@@ -24,6 +29,8 @@ export async function nearbyClient(
 ) {
   const r = await seededClient({
     token: o.token ?? null,
+    // The licence half of autoSignIn()'s rung 1 (the acquisition sync after a sign-in is stubbed).
+    license: await signedLicense({}),
     extra: {
       expectedServices: ["license", "config", "identity"] as never,
       deviceName: "",
