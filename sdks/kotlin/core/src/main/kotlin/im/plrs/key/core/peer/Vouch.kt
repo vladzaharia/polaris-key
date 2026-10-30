@@ -289,7 +289,7 @@ public fun finishMap(r: ApproveAnswer): FinishAction {
 /** Draws that may be rejected before a generator that cannot produce a value is given up on. */
 private const val MAX_DRAWS = 256
 
-private fun uniformBelow(n: Int, random: (Int) -> ByteArray): Int {
+internal fun uniformBelow(n: Int, random: (Int) -> ByteArray): Int {
     val limit = (DRAW_SPAN / n) * n
     repeat(MAX_DRAWS) {
         val x = ByteBuffer.wrap(random(DRAW_BYTES)).int.toLong() and DRAW_MASK

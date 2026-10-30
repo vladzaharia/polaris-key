@@ -33,6 +33,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.security.SecureRandom
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 const val SLUG = "djdl"
 const val D_ID = "NEARBYDEVICEZZZZZZZZZZZZZZZZZZZD"
@@ -98,8 +101,8 @@ class MemNetwork(private val at: String = "127.0.0.1") : MdnsAdapter {
     }
 }
 
-/** Timers a test fires by hand. */
-class FakeTimers {
+/** Timers a test fires by hand; with [only], other delays run for real. */
+class FakeTimers(private val only: Double? = null) {
     class T(val seconds: Double, val fn: () -> Unit) {
         @Volatile var live = true
     }
@@ -107,10 +110,16 @@ class FakeTimers {
     val all = CopyOnWriteArrayList<T>()
 
     val timer: (Double, () -> Unit) -> (() -> Unit) = { seconds, fn ->
-        val t = T(seconds, fn)
-        all += t
-        val cancel: () -> Unit = { t.live = false }
-        cancel
+        if (only != null && seconds != only) {
+            val f = real.schedule({ fn() }, (seconds * 1000).toLong(), TimeUnit.MILLISECONDS)
+            val cancel: () -> Unit = { f.cancel(false) }
+            cancel
+        } else {
+            val t = T(seconds, fn)
+            all += t
+            val cancel: () -> Unit = { t.live = false }
+            cancel
+        }
     }
 
     fun live(seconds: Double): List<T> = all.filter { it.live && it.seconds == seconds }
@@ -121,6 +130,10 @@ class FakeTimers {
             t.live = false
             t.fn()
         }
+    }
+
+    private companion object {
+        val real: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "test-timers").apply { isDaemon = true } }
     }
 }
 

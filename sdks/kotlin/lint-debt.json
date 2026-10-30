@@ -1038,6 +1038,16 @@
       "detekt:naming.EnumNaming": 7,
       "ktlint:standard:enum-entry-name-case": 7
     },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/nearby/NearbyRequester.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 5,
+      "detekt:exceptions.TooGenericExceptionCaught": 5,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 1
+    },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/Base64UrlTest.kt": {
       "detekt:exceptions.SwallowedException": 1,
       "detekt:style.MaxLineLength": 1,
