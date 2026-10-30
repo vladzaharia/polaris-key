@@ -2651,7 +2651,7 @@ devices expire on the same horizon.
   bytes, RFC 5869), the 32-byte discovery key as the input keying material and the label as info.
 - Message 1's payload is `{"v":1}`.
 - Payloads are strict JSON of at most 8 KiB.
-  - **Payload rules (`peer-matrix.json` `handshakePayloads`).** A payload is one JSON object under §1.2 (no byte order mark). Message 1 needs `v` = 1 and no `cert`. Messages 2 and 3 need `v` = 1 and `caps`; in mode `a` also a non-empty string `cert` and an integer `ring` of at least 1 that is a safe integer; in modes `v` and `p` a `cert` refuses. Unknown members are ignored. The session's capabilities are the entries both sides list, once each, in byte order.
+  - **Payload rules (`peer-matrix.json` `handshakePayloads`).** A payload is one JSON object under §1.2 (no byte order mark). Message 1 needs `v` = 1 and no `cert`. Messages 2 and 3 need `v` = 1 and `caps`; `v` and `ring` are integer claims (§3.1), so a token written `1.0` or `1e0` is not the integer; in mode `a` also a non-empty string `cert` and an integer `ring` of at least 1 that is a safe integer; in modes `v` and `p` a `cert` refuses. Unknown members are ignored. The session's capabilities are the entries both sides list, once each, in byte order.
 - `caps` holds at most 32 entries matching `^[a-z0-9]+/[0-9]+$`. v1 defines `ring/1`, `trust/1`,
   `cand/1`, `vouch/1` and `app/1`. The session uses the intersection.
 
