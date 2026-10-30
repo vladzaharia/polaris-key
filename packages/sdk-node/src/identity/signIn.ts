@@ -102,14 +102,14 @@ export const SLOW_DOWN_STEP_SECONDS = 5;
 const MAX_TIMER_MS = 2 ** 31 - 1;
 
 /** The seconds `wait` actually sleeps: never under one second and never past the code's life. */
-function pollDelay(interval: number, expiresIn: number): number {
+export function pollDelay(interval: number, expiresIn: number): number {
   const ceiling = Number.isFinite(expiresIn) && expiresIn >= 1 ? expiresIn : 1;
   if (!Number.isFinite(interval)) return interval > 0 ? ceiling : 1;
   return Math.min(Math.max(interval, 1), ceiling);
 }
 
 /** Transient failures `wait` rides out at the current interval: the network and a 5xx. */
-const TRANSIENT = new Set<string>([
+export const TRANSIENT = new Set<string>([
   ErrorCode.networkError,
   ErrorCode.serverError,
 ]);
@@ -512,7 +512,7 @@ function shown(v: unknown): ShownIdentity | null {
 
 /** Wait `seconds`, or reject with a signal's reason when it aborts first. A wait longer than
  *  one timer can hold is chained, so it never collapses into Node's 1 ms overflow fallback. */
-function sleep(
+export function sleep(
   seconds: number,
   ...signals: (AbortSignal | undefined)[]
 ): Promise<void> {

@@ -318,6 +318,7 @@ export class PolarisKeyClient {
           await this.discover().catch(() => undefined);
           return this.discoveryDoc;
         },
+        lan: () => this.cloudConnect.nearby,
       },
     );
     this.release = new ReleaseClient(

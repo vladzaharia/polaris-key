@@ -37,6 +37,12 @@ import {
 import { ChoiceClient } from "./choice.js";
 import { NearbyRoutes } from "./nearby.js";
 import {
+  startNearbySignIn,
+  type NearbyLan,
+  type NearbySignInOptions,
+  type NearbySignInSession,
+} from "./nearbySession.js";
+import {
   nearbyAvailable,
   runAutoSignIn,
   SignInState,
@@ -117,6 +123,8 @@ export interface NearbyBinding {
   registerKeys(port: DeviceKeyPort): Promise<unknown>;
   /** Load discovery again and answer it (N11). */
   refreshDiscovery(): Promise<ProductDiscoveryDocument | null>;
+  /** The LAN half of nearby approval (`cloudConnect.nearby`). */
+  lan(): NearbyLan;
 }
 
 /** Raised after a sign-in mints a credential; the facade syncs. */
@@ -280,10 +288,33 @@ export class IdentityClient {
   get signIn(): {
     start(opts: DeviceCodeSignInOptions): Promise<DeviceCodeSession>;
     start(opts: RedirectSignInOptions): Promise<RedirectSession>;
+    start(opts: NearbySignInOptions): Promise<NearbySignInSession>;
   } {
     const start = (
-      opts: DeviceCodeSignInOptions | RedirectSignInOptions,
-    ): Promise<DeviceCodeSession | RedirectSession> => {
+      opts:
+        | DeviceCodeSignInOptions
+        | RedirectSignInOptions
+        | NearbySignInOptions,
+    ): Promise<DeviceCodeSession | RedirectSession | NearbySignInSession> => {
+      if (opts.channel === "nearby") {
+        const b = this.nearbyBinding;
+        if (b === null)
+          return Promise.reject(
+            new PolarisError(
+              ErrorCode.serviceUnavailable,
+              "nearby approval is not set up on this client.",
+            ),
+          );
+        return startNearbySignIn(
+          {
+            ctx: this.ctx,
+            routes: this.nearbyRoutes,
+            lan: () => b.lan(),
+            signOut: () => this.signOut(),
+          },
+          opts,
+        );
+      }
       if (opts.channel === "redirect")
         return startRedirectSignIn(
           {
@@ -323,6 +354,7 @@ export class IdentityClient {
       start: {
         (opts: DeviceCodeSignInOptions): Promise<DeviceCodeSession>;
         (opts: RedirectSignInOptions): Promise<RedirectSession>;
+        (opts: NearbySignInOptions): Promise<NearbySignInSession>;
       };
     };
   }
