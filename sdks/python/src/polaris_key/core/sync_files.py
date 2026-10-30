@@ -1,10 +1,14 @@
-"""Cloud Sync file primitives, part I (U-22.8; WIRE-CONTRACT-V5 §13.8.3, §13.10.2): the
-content-defined chunker ``pkey-sync-cdc/1``, chunk ids and ``pkey-sync-chunk/1`` objects, and the
-``pkey-sync-chunks/1`` manifest. Pure functions over ``bytes``; no I/O, no state.
+"""Cloud Sync file primitives (U-22.8, U-22.9; WIRE-CONTRACT-V5 §13.8, §13.10.2, §13.10.4).
 
-A port of ``packages/client-core/src/sync/{cdc,chunks,manifest}.ts``, pinned by
-``conformance/corpus/v2/sync-vectors.json`` (``cdcCases``, ``cdcEditCases``, ``deltaCases``,
-``chunkCases``, ``manifestCases``). The file stream and the transfer plan are U-22.9.
+Part I (U-22.8): the content-defined chunker ``pkey-sync-cdc/1``, chunk ids and
+``pkey-sync-chunk/1`` objects, and the ``pkey-sync-chunks/1`` manifest. Part II (U-22.9): the
+``pkey-sync-file/1`` stream (sealed and opened a segment at a time, with ranged opens), the
+reassembly check, and the upload planner. Pure functions over ``bytes``; no I/O, no state. A
+source is any iterable of ``bytes`` pieces, and a ranged open reads through a callable.
+
+A port of ``packages/client-core/src/sync/{cdc,chunks,manifest,fileStream,transferPlan}.ts``,
+pinned by ``conformance/corpus/v2/sync-vectors.json`` (``cdcCases``, ``cdcEditCases``,
+``deltaCases``, ``chunkCases``, ``manifestCases``, ``fileStreamCases``, ``transferPlanCases``).
 
 Rules this module keeps:
 
@@ -24,6 +28,8 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
+import struct
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Iterator, List, Optional
 
@@ -31,8 +37,15 @@ from ..constants_generated import (
     SYNC_CDC_AVG_BYTES,
     SYNC_CDC_GEAR_SEED,
     SYNC_CDC_MAX_BYTES,
+    SYNC_DELTA_MIN_FILE_BYTES,
     SYNC_FILE_MAX_BYTES,
+    SYNC_FILE_SEGMENT_BYTES,
     SYNC_MAX_CHUNKS_PER_FILE,
+    SYNC_MAX_PARTS,
+    SYNC_PART_MAX_BYTES,
+    SYNC_PART_MIN_BYTES,
+    SYNC_PART_ROUND_BYTES,
+    SYNC_SINGLE_PUT_MAX_BYTES,
 )
 from . import sync_crypto as sc
 
@@ -63,6 +76,27 @@ __all__ = [
     "ParsedManifest",
     "encode_manifest",
     "parse_manifest",
+    "FILE_STREAM_MAGIC",
+    "FILE_STREAM_VERSION",
+    "FILE_HEADER_BYTES",
+    "FILE_SEGMENT_BYTES",
+    "FILE_TAG_BYTES",
+    "FILE_SALT_BYTES",
+    "FileStreamError",
+    "encode_file_header",
+    "sealed_file_size",
+    "plain_file_size",
+    "seal_file_stream",
+    "seal_file",
+    "open_file_stream",
+    "OpenedFile",
+    "open_file",
+    "open_file_range_stream",
+    "open_file_range",
+    "verify_reassembly",
+    "TransferPlan",
+    "plan_transfer",
+    "part_range",
 ]
 
 # ── pkey-sync-cdc/1 ─────────────────────────────────────────────────────────────────────────────
@@ -413,3 +447,336 @@ def parse_manifest(data: bytes) -> ParsedManifest:
         ok=True,
         manifest=ChunkManifest(plain_size=plain_size, plain_sha256=b[32:64], records=records),
     )
+
+
+# ── pkey-sync-file/1 (§13.10.4) ─────────────────────────────────────────────────────────────────
+#
+#   header, 64 bytes little-endian: "PKSYNCF1", version u16 (1), flags u16 (0), segmentBytes u32
+#     (1 MiB), kid (16 bytes), salt (32 bytes)
+#   segment i: AES-256-GCM(K_file, nonce = u8(last) | 0x00 0x00 0x00 | u64be(i), aad = header,
+#     the segment's plaintext), so 16 bytes longer than its plaintext
+#
+# Every segment but the last holds exactly 1 MiB of plaintext; the last holds 1..1 MiB, except
+# that an empty file is one empty last segment. The end of the stream says which segment is last,
+# so a truncated stream, a dropped or reordered segment and a missing last flag all fail the tag.
+# Nothing here holds a whole file: the sealer and the opener keep at most one segment and the
+# piece in hand, and a ranged open reads and decrypts only the segments it needs.
+
+FILE_STREAM_MAGIC = b"PKSYNCF1"
+FILE_STREAM_VERSION = 1
+FILE_HEADER_BYTES = 64
+#: The only segment size ``pkey-sync-file/1`` defines.
+FILE_SEGMENT_BYTES = SYNC_FILE_SEGMENT_BYTES
+FILE_TAG_BYTES = 16
+FILE_SALT_BYTES = 32
+_KID_BYTES = sc.SYNC_KID_BYTES
+
+
+class FileStreamError(Exception):
+    """A stream the reader refuses. ``reason`` is, in the order a reader checks: ``shape`` (under
+    64 bytes, no segment, or a tail shorter than a tag), ``magic``, ``version``, ``flags``,
+    ``segmentSize``, ``kid``, then ``size`` (an empty last segment after others), ``auth`` (a
+    segment fails its tag: truncation, reordering, a missing last flag, a tampered header),
+    ``range`` (a ranged open outside the file), and the reassembly checks ``plainSize`` and
+    ``plainSha256``. Nothing about the bytes is put in the message."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__("pkey-sync-file/1: " + reason)
+        self.reason = reason
+
+
+def encode_file_header(kid: bytes, salt: bytes) -> bytes:
+    if len(kid) != _KID_BYTES:
+        raise ValueError("kid length")
+    if len(salt) != FILE_SALT_BYTES:
+        raise ValueError("salt length")
+    return struct.pack("<8sHHI", FILE_STREAM_MAGIC, FILE_STREAM_VERSION, 0, FILE_SEGMENT_BYTES) + bytes(kid) + bytes(salt)
+
+
+def sealed_file_size(plain_size: int) -> int:
+    """The sealed size of a plaintext of ``plain_size`` bytes."""
+    if isinstance(plain_size, bool) or not isinstance(plain_size, int) or plain_size < 0:
+        raise ValueError("plain size")
+    segments = max(1, -(-plain_size // FILE_SEGMENT_BYTES))
+    return FILE_HEADER_BYTES + plain_size + segments * FILE_TAG_BYTES
+
+
+def plain_file_size(sealed_size: int) -> Optional[int]:
+    """The plaintext size a sealed size implies, or ``None`` when no stream has that size."""
+    if isinstance(sealed_size, bool) or not isinstance(sealed_size, int):
+        return None
+    body = sealed_size - FILE_HEADER_BYTES
+    whole = FILE_SEGMENT_BYTES + FILE_TAG_BYTES
+    if body < FILE_TAG_BYTES:
+        return None
+    full, rest = divmod(body, whole)
+    if rest == 0:
+        return full * FILE_SEGMENT_BYTES
+    if rest < FILE_TAG_BYTES:
+        return None
+    # An empty last segment is only the empty file.
+    if rest == FILE_TAG_BYTES and full > 0:
+        return None
+    return full * FILE_SEGMENT_BYTES + (rest - FILE_TAG_BYTES)
+
+
+def _segment_nonce(index: int, last: bool) -> bytes:
+    return bytes([1 if last else 0, 0, 0, 0]) + index.to_bytes(8, "big")
+
+
+def seal_file_stream(
+    coll_key: bytes,
+    kid: bytes,
+    source: Iterable[bytes],
+    fixed_salt: Optional[bytes] = None,
+) -> Iterator[bytes]:
+    """Seals ``source`` as a ``pkey-sync-file/1`` stream, yielding the header and then one sealed
+    segment at a time. ``kid`` is ``derive_kid(root)`` and ``coll_key`` is ``K_coll``. Every seal
+    draws a fresh random 32-byte salt from the platform generator (§13.10.2), never one derived
+    from the content: a salt names one file version, and reusing it under the same ``coll_key``
+    repeats ``K_file`` and every nonce. ``fixed_salt`` is for known-answer vectors only."""
+    salt = fixed_salt if fixed_salt is not None else os.urandom(FILE_SALT_BYTES)
+    header = encode_file_header(kid, salt)
+    key = sc.derive_file_key(coll_key, salt)
+
+    def run() -> Iterator[bytes]:
+        yield header
+        buf = bytearray()
+        index = 0
+        for part in source:
+            buf += part
+            # Hold one byte back so the final segment is known to be last.
+            while len(buf) > FILE_SEGMENT_BYTES:
+                yield sc.aes_gcm_seal(key, _segment_nonce(index, False), header, bytes(buf[:FILE_SEGMENT_BYTES]))
+                del buf[:FILE_SEGMENT_BYTES]
+                index += 1
+        yield sc.aes_gcm_seal(key, _segment_nonce(index, True), header, bytes(buf))
+
+    return run()
+
+
+def seal_file(coll_key: bytes, kid: bytes, plain: bytes, fixed_salt: Optional[bytes] = None) -> bytes:
+    """:func:`seal_file_stream` over one buffer, concatenated. For files that fit in memory."""
+    return b"".join(seal_file_stream(coll_key, kid, [plain], fixed_salt))
+
+
+def _parse_header(b: bytes, kid: bytes) -> "tuple[bytes, bytes]":
+    if len(b) < FILE_HEADER_BYTES:
+        raise FileStreamError("shape")
+    if b[0:8] != FILE_STREAM_MAGIC:
+        raise FileStreamError("magic")
+    if int.from_bytes(b[8:10], "little") != FILE_STREAM_VERSION:
+        raise FileStreamError("version")
+    if int.from_bytes(b[10:12], "little") != 0:
+        raise FileStreamError("flags")
+    if int.from_bytes(b[12:16], "little") != FILE_SEGMENT_BYTES:
+        raise FileStreamError("segmentSize")
+    if len(kid) != _KID_BYTES or not hmac.compare_digest(bytes(b[16:32]), bytes(kid)):
+        raise FileStreamError("kid")
+    return bytes(b[:FILE_HEADER_BYTES]), bytes(b[32:FILE_HEADER_BYTES])
+
+
+def open_file_stream(coll_key: bytes, kid: bytes, source: Iterable[bytes]) -> Iterator[bytes]:
+    """Opens a sealed stream, yielding each segment's plaintext once its tag has verified. Raises
+    :class:`FileStreamError`. Truncation is only known at the end, so a caller that writes the
+    plaintext out treats it as provisional until the iterator finishes without raising. ``kid`` is
+    ``derive_kid(root)``; a stream sealed under another ring is refused as ``kid``."""
+    pieces = iter(source)
+    buf = bytearray()
+    ended = False
+
+    def fill(until: int) -> None:
+        nonlocal ended
+        while not ended and len(buf) < until:
+            try:
+                buf.extend(next(pieces))
+            except StopIteration:
+                ended = True
+
+    def take(n: int) -> bytes:
+        out = bytes(buf[:n])
+        del buf[:n]
+        return out
+
+    fill(FILE_HEADER_BYTES)
+    if len(buf) < FILE_HEADER_BYTES:
+        raise FileStreamError("shape")
+    header, salt = _parse_header(take(FILE_HEADER_BYTES), kid)
+    key = sc.derive_file_key(coll_key, salt)
+    whole = FILE_SEGMENT_BYTES + FILE_TAG_BYTES
+
+    index = 0
+    while True:
+        # One byte beyond a whole segment proves the segment is not the last.
+        fill(whole + 1)
+        if len(buf) > whole:
+            plain = sc.aes_gcm_open(key, _segment_nonce(index, False), header, take(whole))
+            if plain is None:
+                raise FileStreamError("auth")
+            yield plain
+            index += 1
+            continue
+        if len(buf) < FILE_TAG_BYTES:
+            raise FileStreamError("shape")
+        if len(buf) == FILE_TAG_BYTES and index > 0:
+            raise FileStreamError("size")
+        plain = sc.aes_gcm_open(key, _segment_nonce(index, True), header, take(len(buf)))
+        if plain is None:
+            raise FileStreamError("auth")
+        yield plain
+        return
+
+
+@dataclass(frozen=True)
+class OpenedFile:
+    """The result of :func:`open_file`: ``ok`` with ``plain``, or the ``reason`` (a
+    :class:`FileStreamError` reason). The plaintext is the caller's own data; it is left out of the
+    ``repr``."""
+
+    ok: bool
+    plain: bytes = field(default=b"", repr=False)
+    reason: Optional[str] = None
+
+
+def open_file(coll_key: bytes, kid: bytes, sealed: bytes) -> OpenedFile:
+    """:func:`open_file_stream` over one buffer, concatenated; a refusal carries its ``reason``."""
+    try:
+        return OpenedFile(ok=True, plain=b"".join(open_file_stream(coll_key, kid, [bytes(sealed)])))
+    except FileStreamError as e:
+        return OpenedFile(ok=False, reason=e.reason)
+
+
+#: Reads ``length`` bytes of the stored file at ``offset``; a short answer is a ``size`` refusal.
+RangeReader = Callable[[int, int], bytes]
+
+
+def open_file_range_stream(
+    coll_key: bytes,
+    kid: bytes,
+    read: RangeReader,
+    sealed_size: int,
+    start: int,
+    end: int,
+) -> Iterator[bytes]:
+    """Opens bytes ``[start, end)`` of the plaintext of a stored stream of ``sealed_size`` bytes,
+    yielding the pieces in order. It reads the header and then only the segments that overlap the
+    range, each verified as a whole; the last-segment flag comes from ``sealed_size``, so a server
+    that lies about the size or drops a tail fails the tag. ``end`` past the plaintext is
+    ``range``."""
+    plain_size = plain_file_size(sealed_size)
+    if plain_size is None:
+        raise FileStreamError("shape")
+    if (
+        isinstance(start, bool)
+        or isinstance(end, bool)
+        or not isinstance(start, int)
+        or not isinstance(end, int)
+        or start < 0
+        or start > end
+        or end > plain_size
+    ):
+        raise FileStreamError("range")
+
+    def fetch(offset: int, length: int) -> bytes:
+        b = bytes(read(offset, length))
+        if len(b) != length:
+            raise FileStreamError("size")
+        return b
+
+    header, salt = _parse_header(fetch(0, FILE_HEADER_BYTES), kid)
+    if start == end:
+        return
+    key = sc.derive_file_key(coll_key, salt)
+    whole = FILE_SEGMENT_BYTES + FILE_TAG_BYTES
+    segments = max(1, -(-plain_size // FILE_SEGMENT_BYTES))
+    first = start // FILE_SEGMENT_BYTES
+    last = (end - 1) // FILE_SEGMENT_BYTES
+    for i in range(first, last + 1):
+        is_last = i == segments - 1
+        plain_len = plain_size - i * FILE_SEGMENT_BYTES if is_last else FILE_SEGMENT_BYTES
+        sealed = fetch(FILE_HEADER_BYTES + i * whole, plain_len + FILE_TAG_BYTES)
+        plain = sc.aes_gcm_open(key, _segment_nonce(i, is_last), header, sealed)
+        if plain is None:
+            raise FileStreamError("auth")
+        frm = max(start, i * FILE_SEGMENT_BYTES) - i * FILE_SEGMENT_BYTES
+        to = min(end, i * FILE_SEGMENT_BYTES + plain_len) - i * FILE_SEGMENT_BYTES
+        yield plain[frm:to]
+
+
+def open_file_range(
+    coll_key: bytes,
+    kid: bytes,
+    read: RangeReader,
+    sealed_size: int,
+    start: int,
+    end: int,
+) -> bytes:
+    """:func:`open_file_range_stream`, concatenated."""
+    return b"".join(open_file_range_stream(coll_key, kid, read, sealed_size, start, end))
+
+
+def verify_reassembly(source: Iterable[bytes], plain_size: int, plain_sha256: bytes) -> Iterator[bytes]:
+    """Passes the plaintext of a reassembled file through while hashing it, and at the end checks
+    the length and SHA-256 the chunk manifest declared (``ChunkManifest.plain_size`` /
+    ``plain_sha256``). Raises ``plainSize`` or ``plainSha256`` after the last piece; the caller
+    discards what it wrote (a file is not usable until this iterator finishes). Never holds the
+    file."""
+    if plain_size > SYNC_FILE_MAX_BYTES:
+        raise FileStreamError("plainSize")
+    digest = hashlib.sha256()
+    n = 0
+    for part in source:
+        n += len(part)
+        # Stop a source that overruns before it can write the rest of a runaway file.
+        if n > plain_size:
+            raise FileStreamError("plainSize")
+        digest.update(part)
+        yield part
+    if n != plain_size:
+        raise FileStreamError("plainSize")
+    if not hmac.compare_digest(digest.digest(), bytes(plain_sha256)):
+        raise FileStreamError("plainSha256")
+
+
+# ── The upload planner (§13.8.1) ────────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class TransferPlan:
+    """``mode`` is ``too_large`` (over 1 GiB), ``chunks`` (``files.delta`` and at least 1 MiB;
+    never multipart), ``single`` (at most 16 MiB: one PUT) or ``multipart`` (``part_bytes`` =
+    clamp(8 MiB .. 64 MiB, ceil(size / 9,999) up to a MiB)). ``part_bytes`` and ``parts`` are
+    ``None`` except for ``multipart``."""
+
+    mode: str
+    part_bytes: Optional[int] = None
+    parts: Optional[int] = None
+
+
+def plan_transfer(size: int, delta: bool) -> TransferPlan:
+    """The mode of a file transfer from its stored size (the sealed size in E2E mode) and the
+    collection's ``files.delta``. ``begin`` answers the same numbers; a client plans first so it
+    can pick ``format`` and slice parts."""
+    if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+        raise ValueError("transfer size")
+    if size > SYNC_FILE_MAX_BYTES:
+        return TransferPlan("too_large")
+    if delta and size >= SYNC_DELTA_MIN_FILE_BYTES:
+        return TransferPlan("chunks")
+    if size <= SYNC_SINGLE_PUT_MAX_BYTES:
+        return TransferPlan("single")
+    per_part = -(-size // SYNC_MAX_PARTS)
+    rounded = -(-per_part // SYNC_PART_ROUND_BYTES) * SYNC_PART_ROUND_BYTES
+    part_bytes = min(max(SYNC_PART_MIN_BYTES, rounded), SYNC_PART_MAX_BYTES)
+    return TransferPlan("multipart", part_bytes, -(-size // part_bytes))
+
+
+def part_range(plan: TransferPlan, size: int, n: int) -> "tuple[int, int]":
+    """Part ``n`` (from 1) of a multipart plan as a half-open byte range ``(start, end)`` of the
+    stored file."""
+    if plan.mode != "multipart" or plan.part_bytes is None or plan.parts is None:
+        raise ValueError("not a multipart plan")
+    if isinstance(n, bool) or not isinstance(n, int) or n < 1 or n > plan.parts:
+        raise ValueError("part number")
+    start = (n - 1) * plan.part_bytes
+    return start, min(size, start + plan.part_bytes)

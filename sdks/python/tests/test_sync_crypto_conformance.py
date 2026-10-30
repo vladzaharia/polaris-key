@@ -2,8 +2,7 @@
 """The Cloud Sync E2E crypto against ``conformance/corpus/v2/sync-vectors.json`` (U-38.3;
 WIRE-CONTRACT-V5 §13.10, §13.11): hkdfCases, envelopeCases, blindCases, hpkeAnchor, wrapCases,
 recoveryCodeCases, adoptCases and canonicalJsonCases, and (U-22.8) cdcCases, cdcEditCases,
-deltaCases, chunkCases and manifestCases. The file-stream and transfer-plan sections are U-22.9
-and are not read here (the table is inert to a runner that skips them).
+deltaCases, chunkCases and manifestCases, and (U-22.9) fileStreamCases and transferPlanCases.
 """
 
 from __future__ import annotations
@@ -412,3 +411,226 @@ def test_manifest_refuses_the_first_violation() -> None:
     b = bytearray(sf.encode_manifest(sf.ChunkManifest(0, sha, [])))
     b[24:32] = b"\xff" * 8
     assert sf.parse_manifest(bytes(b)).reason == "size"
+
+
+# ── U-22.9: the file stream and the transfer plan ─────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("c", V["transferPlanCases"], ids=ids(V["transferPlanCases"]))
+def test_transfer_plan(c: Dict[str, Any]) -> None:
+    p = sf.plan_transfer(c["size"], c["delta"])
+    want = c["expect"]
+    assert (p.mode, p.part_bytes, p.parts) == (want["mode"], want["partBytes"], want["parts"])
+
+
+def test_transfer_plan_refuses_nonsense_and_slices_parts() -> None:
+    for bad in (-1, True, 1.5):
+        with pytest.raises(ValueError):
+            sf.plan_transfer(bad, False)  # type: ignore[arg-type]
+    size = 20 * 1024 * 1024 + 5
+    plan = sf.plan_transfer(size, False)
+    assert plan.mode == "multipart" and plan.parts == 3
+    assert sf.part_range(plan, size, 1) == (0, plan.part_bytes)
+    assert sf.part_range(plan, size, 3) == (2 * plan.part_bytes, size)  # type: ignore[operator]
+    for n in (0, 4, True):
+        with pytest.raises(ValueError):
+            sf.part_range(plan, size, n)  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        sf.part_range(sf.plan_transfer(10, False), 10, 1)
+
+
+def _file_plain(label: str, length: int) -> bytes:
+    """The plaintext of a seal row: SHA-256 counter blocks of the label (the file's recipe)."""
+    out = bytearray()
+    n = 0
+    while len(out) < length:
+        out += hashlib.sha256(("pkey-sync vector file " + label).encode() + n.to_bytes(4, "big")).digest()
+        n += 1
+    return bytes(out[:length])
+
+
+_FSTRIDE = sf.FILE_SEGMENT_BYTES + sf.FILE_TAG_BYTES
+
+
+def _segment_span(stream: bytes, i: int) -> "tuple[int, int]":
+    a = sf.FILE_HEADER_BYTES + i * _FSTRIDE
+    return a, min(len(stream), a + _FSTRIDE)
+
+
+def apply_ops(stream: bytes, ops: List[Dict[str, Any]]) -> bytes:
+    b = bytes(stream)
+    for o in ops:
+        op = o["op"]
+        if op == "truncate":
+            b = b[: o["length"]]
+        elif op == "dropSegment":
+            x, y = _segment_span(b, o["index"])
+            b = b[:x] + b[y:]
+        elif op == "swapSegments":
+            lo, hi = sorted((o["a"], o["b"]))
+            x1, y1 = _segment_span(b, lo)
+            x2, y2 = _segment_span(b, hi)
+            b = b[:x1] + b[x2:y2] + b[y1:x2] + b[x1:y1] + b[y2:]
+        elif op == "appendSegment":
+            x, y = _segment_span(b, o["from"])
+            b = b + b[x:y]
+        elif op == "xor":
+            m = bytearray(b)
+            m[o["offset"]] ^= o["value"]
+            b = bytes(m)
+        elif op == "setHex":
+            m = bytearray(b)
+            raw = H(o["hex"])
+            m[o["offset"] : o["offset"] + len(raw)] = raw
+            b = bytes(m)
+        else:
+            b = b + H(o["hex"])
+    return b
+
+
+_FILE_ROWS: List[Dict[str, Any]] = V["fileStreamCases"]
+_SEAL_ROWS = {r["id"]: r for r in _FILE_ROWS if r["kind"] == "seal"}
+_STREAMS: Dict[str, bytes] = {}
+
+
+def _sealed(row: Dict[str, Any]) -> bytes:
+    if row["id"] not in _STREAMS:
+        root = H(row["rootHex"])
+        _STREAMS[row["id"]] = sf.seal_file(
+            sc.derive_coll_key(root, row["collection"]),
+            sc.derive_kid(root),
+            _file_plain(row["plain"]["label"], row["plain"]["length"]),
+            H(row["saltHex"]),
+        )
+    return _STREAMS[row["id"]]
+
+
+def _pieces(b: bytes, step: int) -> List[bytes]:
+    return [b[at : at + step] for at in range(0, len(b), step)]
+
+
+@pytest.mark.parametrize("r", list(_SEAL_ROWS.values()), ids=list(_SEAL_ROWS))
+def test_file_seal(r: Dict[str, Any]) -> None:
+    root = H(r["rootHex"])
+    coll_key, kid, salt = sc.derive_coll_key(root, r["collection"]), sc.derive_kid(root), H(r["saltHex"])
+    plain = _file_plain(r["plain"]["label"], r["plain"]["length"])
+    want = r["expect"]
+    assert hashlib.sha256(plain).hexdigest() == want["plainSha256Hex"]
+    sealed = sf.seal_file(coll_key, kid, plain, salt)
+    assert len(sealed) == want["sealedSize"] == sf.sealed_file_size(len(plain))
+    assert sf.plain_file_size(len(sealed)) == len(plain)
+    assert sealed[:64].hex() == want["headerHex"]
+    assert hashlib.sha256(sealed).hexdigest() == want["sealedSha256Hex"]
+    if "sealedHex" in want:
+        assert sealed.hex() == want["sealedHex"]
+    # The same bytes from a source that arrives in awkward pieces.
+    streamed = b"".join(sf.seal_file_stream(coll_key, kid, _pieces(plain, 100_003), salt))
+    assert hashlib.sha256(streamed).hexdigest() == want["sealedSha256Hex"]
+    _STREAMS[r["id"]] = sealed
+
+
+def test_file_sizes() -> None:
+    row = next(r for r in _FILE_ROWS if r["kind"] == "sizes")
+    for p, s in row["plainToSealed"]:
+        assert sf.sealed_file_size(p) == s
+    for s, p in row["sealedToPlain"]:
+        assert sf.plain_file_size(s) == p
+    for bad in (-1, True, 1.5):
+        with pytest.raises(ValueError):
+            sf.sealed_file_size(bad)  # type: ignore[arg-type]
+    assert sf.plain_file_size(True) is None  # type: ignore[arg-type]
+
+
+def _stored(row: Dict[str, Any]) -> "tuple[bytes, bytes, str]":
+    base = _SEAL_ROWS[row["base"]]
+    return apply_ops(_sealed(base), row["mutate"]), H(base["rootHex"]), base["collection"]
+
+
+@pytest.mark.parametrize("r", [x for x in _FILE_ROWS if x["kind"] == "open"], ids=[x["id"] for x in _FILE_ROWS if x["kind"] == "open"])
+def test_file_open(r: Dict[str, Any]) -> None:
+    stream, root, coll = _stored(r)
+    coll_key = sc.derive_coll_key(root, r.get("openCollection", coll))
+    kid = H(r["expectKidHex"]) if "expectKidHex" in r else sc.derive_kid(root)
+    whole = sf.open_file(coll_key, kid, stream)
+
+    # Streamed in awkward pieces: the verdict does not depend on how it arrives.
+    def piecewise() -> str:
+        out = bytearray()
+        try:
+            for p in sf.open_file_stream(coll_key, kid, _pieces(stream, 300_007)):
+                out += p
+        except sf.FileStreamError as e:
+            return e.reason
+        return hashlib.sha256(bytes(out)).hexdigest()
+
+    want = r["expect"]
+    if want["result"] == "ok":
+        assert whole.ok and hashlib.sha256(whole.plain).hexdigest() == want["plainSha256Hex"]
+        assert piecewise() == want["plainSha256Hex"]
+    else:
+        assert not whole.ok and whole.reason == want["reason"]
+        assert piecewise() == want["reason"]
+
+
+@pytest.mark.parametrize("r", [x for x in _FILE_ROWS if x["kind"] == "range"], ids=[x["id"] for x in _FILE_ROWS if x["kind"] == "range"])
+def test_file_range(r: Dict[str, Any]) -> None:
+    stream, root, coll = _stored(r)
+    reads: List[List[int]] = []
+
+    def read(offset: int, length: int) -> bytes:
+        reads.append([offset, length])
+        return stream[offset : offset + length]
+
+    want = r["expect"]
+    try:
+        got = sf.open_file_range(sc.derive_coll_key(root, coll), sc.derive_kid(root), read, len(stream), r["start"], r["end"])
+    except sf.FileStreamError as e:
+        assert want == {"result": "invalid", "reason": e.reason}
+        return
+    assert want["result"] == "ok"
+    assert len(got) == want["length"] and hashlib.sha256(got).hexdigest() == want["sha256Hex"]
+    assert reads == want["reads"]
+
+
+def test_file_stream_error_names_no_bytes() -> None:
+    e = sf.FileStreamError("auth")
+    assert e.reason == "auth" and str(e) == "pkey-sync-file/1: auth"
+
+
+def test_seal_file_uses_a_fresh_salt_every_time() -> None:
+    root = bytes(range(32))
+    ck, kid = sc.derive_coll_key(root, "saves"), sc.derive_kid(root)
+    a, b = sf.seal_file(ck, kid, b"same"), sf.seal_file(ck, kid, b"same")
+    assert a[32:64] != b[32:64] and a != b
+    assert sf.open_file(ck, kid, a).plain == b"same"
+    with pytest.raises(ValueError):
+        sf.encode_file_header(kid[:15], bytes(32))
+    with pytest.raises(ValueError):
+        sf.encode_file_header(kid, bytes(31))
+
+
+def test_verify_reassembly_checks_length_and_hash_after_the_last_piece() -> None:
+    data = bytes(range(200))
+    good = hashlib.sha256(data).digest()
+    assert b"".join(sf.verify_reassembly([data[:50], data[50:]], 200, good)) == data
+
+    def reason(pieces: List[bytes], size: int, digest: bytes) -> str:
+        try:
+            list(sf.verify_reassembly(pieces, size, digest))
+        except sf.FileStreamError as e:
+            return e.reason
+        return "ok"
+
+    assert reason([data[:199]], 200, good) == "plainSize"
+    assert reason([data, b"x"], 200, good) == "plainSize"
+    assert reason([data[:-1] + b"x"], 200, good) == "plainSha256"
+    assert reason([b""], sf.SYNC_FILE_MAX_BYTES + 1, good) == "plainSize"
+    # An overrun stops at once: the second piece is never taken from the source.
+    taken: List[int] = []
+
+    def source() -> Any:
+        for i, p in enumerate([data, b"x", b"y"]):
+            taken.append(i)
+            yield p
+
+    assert reason(source(), 200, good) == "plainSize" and taken == [0, 1]
