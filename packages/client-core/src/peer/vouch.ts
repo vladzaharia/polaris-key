@@ -169,9 +169,9 @@ export interface VerifyVouchRequestOptions {
   hello: VouchHello;
   /**
    * `hello` is the `HELLO` the session already cleaned (what `PeerHello` carries): it is compared
-   * as it is. Without this the label is cleaned again, and the cleaning is not idempotent (an
-   * invisible mark between a base and a combining mark can change a second time), so an honest
-   * D would be refused.
+   * as it is. Without this the label is cleaned once more, which changes nothing now that the
+   * cleaning is idempotent (DEVICE-LABEL-STRIP); the flag stays as a safeguard against a cleaner
+   * that is not.
    */
   helloCleaned?: boolean;
   body: Uint8Array;
