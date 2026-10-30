@@ -37,7 +37,8 @@ static func hmac(key: PackedByteArray, data: PackedByteArray) -> PackedByteArray
 	var c := HMACContext.new()
 	if c.start(HashingContext.HASH_SHA256, key) != OK:
 		return PackedByteArray()
-	if c.update(data) != OK:
+	# The engine refuses an update of nothing; an empty message is a valid MAC input.
+	if not data.is_empty() and c.update(data) != OK:
 		return PackedByteArray()
 	return c.finish()
 
