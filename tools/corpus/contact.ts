@@ -9,6 +9,9 @@ import {
   REF_CONTACT_BODY_MAX,
   REF_MAX_CONTACTS,
   REF_MAX_CONTACT_CATS,
+  REF_MAX_PENDING,
+  REF_MAX_SECRETS,
+  REF_PENDING_SECONDS,
   REF_TICKET_BODY_MAX,
   type ExchangeEvent,
   type RefContact,
@@ -20,6 +23,12 @@ import {
   refContactInstance,
   refContactRid,
   refContactSecret,
+  refContactStore,
+  refListener,
+  refPin,
+  type StoreOp,
+  type RefStore,
+  type ListenerIn,
   refContactTicketBody,
   refContactTxt,
 } from "./reference/contact.js";
@@ -34,6 +43,7 @@ import {
   sha256,
 } from "./reference/noise.js";
 import { cat, refAdvertEpoch, utf8 } from "./reference/peerMatrix.js";
+import { buildNoiseVectors } from "./noise.js";
 
 const hex = bytesHex;
 const b64u = (b: Uint8Array): string => Buffer.from(b).toString("base64url");
@@ -93,6 +103,20 @@ function buildSecrets(): unknown[] {
     { id: "byte-order-not-text-order", h, nD, nM, a: kHigh, b: kLow },
     { id: "byte-order-not-text-order-swapped", h, nD, nM, a: kLow, b: kHigh },
   ];
+  // The inputs a real pairing has (§15.10): h is the handshake hash of noise-vectors.json's mode-p
+  // handshake and the nonces are peer-matrix.json `sas` row p-0's, so a port that wires the
+  // session to the formula checks the whole chain, not the formula with free material.
+  const nv = buildNoiseVectors() as {
+    handshakes: { mode: string; handshakeHash: string }[];
+  };
+  rows.push({
+    id: "real-pairing-inputs",
+    h: hexBytes(nv.handshakes.find((x) => x.mode === "p")!.handshakeHash),
+    nD: sha256(utf8("pkey-peer/1 matrix vector nD 0")),
+    nM: sha256(utf8("pkey-peer/1 matrix vector nM 0")),
+    a: kA,
+    b: kB,
+  });
   return rows.map((r) => {
     const secret = refContactSecret(r.h, r.nD, r.nM, unb64u(r.a), unb64u(r.b));
     const [lo, hi] =
@@ -288,6 +312,9 @@ type StepIn =
   | { event: "timeout" };
 
 function buildExchange(): unknown[] {
+  const sixtyFour = Array.from({ length: REF_MAX_CONTACTS }, (_, i) =>
+    agree(`held ${i}`),
+  );
   const K = agree("peer");
   const OWN = agree("own");
   const good = JSON.stringify({
@@ -301,6 +328,30 @@ function buildExchange(): unknown[] {
   const peer = { event: "peer-confirm" } as const;
   const contact = (body: string): StepIn => ({ event: "peer-contact", body });
   const timeout = { event: "timeout" } as const;
+  const heldRows: [string, StepIn[], string[]][] = [
+    // The peer's key is one the host holds: stored pending, at any count.
+    ["repair-held-peer-is-pending", [own, peer, contact(good)], [K]],
+    ["new-peer-with-others-held", [own, peer, contact(good)], [agree("other")]],
+    [
+      "repair-at-64-is-pending",
+      [own, peer, contact(good)],
+      [...sixtyFour.slice(1), K],
+    ],
+    [
+      "new-peer-at-63-is-stored",
+      [own, peer, contact(good)],
+      sixtyFour.slice(1),
+    ],
+    // At 64 a new peer is refused when its CONTACT is read; nothing is stored.
+    ["new-peer-at-64-refused", [own, peer, contact(good)], sixtyFour],
+    // A body that breaks the rules is still peer_bad_frame, at any count.
+    ["invalid-body-at-64", [own, peer, contact("{}")], sixtyFour],
+    [
+      "after-full-refusal-nothing-happens",
+      [own, peer, contact(good), peer],
+      sixtyFour,
+    ],
+  ];
   const rows: [string, StepIn[]][] = [
     ["own-confirms-first", [own, peer, contact(good)]],
     ["peer-confirms-first", [peer, own, contact(good)]],
@@ -323,7 +374,10 @@ function buildExchange(): unknown[] {
     ["timeout-before-any-confirm-is-quiet", [timeout]],
     ["after-close-nothing-happens", [peer, peer, own, contact(good)]],
   ];
-  return rows.map(([id, steps]) => {
+  return [
+    ...rows.map(([id, steps]): [string, StepIn[], string[]] => [id, steps, []]),
+    ...heldRows,
+  ].map(([id, steps, held]) => {
     const events: ExchangeEvent[] = steps.map((s) =>
       s.event === "peer-contact"
         ? { event: "peer-contact", body: utf8(s.body) }
@@ -332,10 +386,278 @@ function buildExchange(): unknown[] {
     return {
       id,
       own: OWN,
+      held,
       steps,
-      // One entry per step: what this side sends then, and where it closes or stores. `sends` are
-      // the records `CONFIRM` and `CONTACT`; `close` is the code this side closes with.
-      want: refContactExchange(events, OWN),
+      // One entry per step: what this side sends then, and where it closes or stores. `sends`
+      // are the records `CONFIRM` and `CONTACT`; `close` is the code this side closes with;
+      // `stored.pending` is true when the peer's key is one the host holds (`held`).
+      want: refContactExchange(events, OWN, held),
+    };
+  });
+}
+
+// ── the contact list, pending contacts ───────────────────────────────────────
+
+/**
+ * Keys and secrets here are small integers n: the 32 bytes all equal to n (the key's wire
+ * spelling is base64url of them). `start` lists the held contacts as `[key, secret]`.
+ */
+function buildStore(): unknown[] {
+  type Pair = [number, number];
+  const full = Array.from(
+    { length: REF_MAX_CONTACTS },
+    (_, i): Pair => [i + 1, i + 1],
+  );
+  const pair = (
+    key: number,
+    secret: number,
+    now: number,
+    label?: string,
+  ): StoreOp => ({
+    op: "pair",
+    agreeKey: b64u(new Uint8Array(32).fill(key)),
+    secret: String(secret),
+    ...(label !== undefined ? { label } : {}),
+    now,
+  });
+  const promote = (key: number): StoreOp => ({
+    op: "promote",
+    agreeKey: b64u(new Uint8Array(32).fill(key)),
+  });
+  const drop = (now: number): StoreOp => ({ op: "drop", now });
+  const rows: {
+    id: string;
+    start: Pair[];
+    startPending?: [number, number, number][];
+    ops: StoreOp[];
+  }[] = [
+    { id: "new-peer-is-active", start: [], ops: [pair(1, 101, 10)] },
+    {
+      id: "held-peer-is-pending",
+      start: [
+        [1, 1],
+        [2, 2],
+      ],
+      ops: [pair(1, 101, 10)],
+    },
+    {
+      id: "full-refuses-a-new-peer",
+      start: full,
+      ops: [pair(200, 200, 10)],
+    },
+    {
+      id: "full-allows-a-re-pair",
+      start: full,
+      ops: [pair(5, 201, 10)],
+    },
+    {
+      id: "newer-pending-replaces-older-of-the-same-key",
+      start: [[1, 1]],
+      ops: [pair(1, 101, 10), pair(1, 102, 20)],
+    },
+    {
+      id: "promote-replaces-in-the-held-place",
+      start: [
+        [1, 1],
+        [2, 2],
+        [3, 3],
+      ],
+      ops: [pair(2, 102, 10, "New"), promote(2)],
+    },
+    {
+      id: "promote-without-pending-changes-nothing",
+      start: [
+        [1, 1],
+        [2, 2],
+      ],
+      ops: [promote(2), promote(9)],
+    },
+    {
+      id: "promote-takes-only-its-key",
+      start: [
+        [1, 1],
+        [2, 2],
+      ],
+      ops: [pair(1, 101, 10), pair(2, 102, 11), promote(2)],
+    },
+    {
+      id: "pending-drops-after-24h",
+      start: [[1, 1]],
+      ops: [
+        pair(1, 101, 1000),
+        drop(1000 + REF_PENDING_SECONDS - 1),
+        drop(1000 + REF_PENDING_SECONDS),
+      ],
+    },
+    {
+      id: "ninth-pending-drops-the-oldest",
+      start: Array.from({ length: 10 }, (_, i): Pair => [i + 1, i + 1]),
+      ops: Array.from({ length: REF_MAX_PENDING + 1 }, (_, i) =>
+        pair(i + 1, 101 + i, 1000 + i),
+      ),
+    },
+    {
+      id: "trial-order-is-held-then-pending-at-72",
+      start: full,
+      ops: Array.from({ length: REF_MAX_PENDING }, (_, i) =>
+        pair(i + 1, 101 + i, 1000 + i),
+      ),
+    },
+    {
+      id: "a-pair-after-a-promote-starts-again",
+      start: [[1, 1]],
+      ops: [pair(1, 101, 10), promote(1), pair(1, 102, 20)],
+    },
+  ];
+  return rows.map((r) => {
+    const startState: RefStore = {
+      active: r.start.map(([k, sec]) => ({
+        agreeKey: b64u(new Uint8Array(32).fill(k)),
+        secret: String(sec),
+      })),
+      pending: [],
+    };
+    return {
+      id: r.id,
+      start: r.start,
+      ops: r.ops.map((o) =>
+        o.op === "pair"
+          ? {
+              op: "pair",
+              key: [...unb64u(o.agreeKey)][0],
+              secret: Number(o.secret),
+              ...(o.label !== undefined ? { label: o.label } : {}),
+              now: o.now,
+            }
+          : o.op === "promote"
+            ? { op: "promote", key: [...unb64u(o.agreeKey)][0] }
+            : o,
+      ),
+      want: refContactStore(startState, r.ops).map((w) => ({
+        ...(w.result !== undefined ? { result: w.result } : {}),
+        active: w.active.map(Number),
+        pending: w.pending.map(Number),
+        order: w.order.map(Number),
+      })),
+    };
+  });
+}
+
+// ── the shared listener ──────────────────────────────────────────────────────
+
+function buildListener(): unknown[] {
+  const rows: ({ id: string } & ListenerIn)[] = [
+    {
+      id: "current-account-key-first",
+      account: ["k", "k"],
+      contacts: ["c", "c", "c"],
+      opens: { mode: "a", key: 0 },
+      limiter: "admit",
+    },
+    {
+      id: "previous-account-key",
+      account: ["k", "k"],
+      contacts: ["c"],
+      opens: { mode: "a", key: 1 },
+      limiter: "admit",
+    },
+    {
+      id: "absent-key-is-skipped",
+      account: [null, "k"],
+      contacts: ["c"],
+      opens: { mode: "a", key: 1 },
+      limiter: "admit",
+    },
+    {
+      id: "contact-after-both-account-keys",
+      account: ["k", "k"],
+      contacts: ["c", "c", "c"],
+      opens: { mode: "c", contact: 2 },
+      limiter: "admit",
+    },
+    {
+      id: "contact-only-host",
+      account: null,
+      contacts: ["c", "c"],
+      opens: { mode: "c", contact: 1 },
+      limiter: "admit",
+    },
+    {
+      id: "limiter-refuses-before-any-contact-secret",
+      account: ["k", "k"],
+      contacts: ["c", "c"],
+      opens: { mode: "c", contact: 0 },
+      limiter: "refuse",
+    },
+    {
+      id: "limiter-does-not-touch-an-account-peer",
+      account: ["k", "k"],
+      contacts: ["c", "c"],
+      opens: { mode: "a", key: 0 },
+      limiter: "refuse",
+    },
+    {
+      id: "nothing-opens-it",
+      account: ["k", "k"],
+      contacts: ["c", "c"],
+      opens: null,
+      limiter: "admit",
+    },
+    {
+      id: "nothing-opens-it-no-contacts",
+      account: ["k", "k"],
+      contacts: [],
+      opens: null,
+      limiter: "admit",
+    },
+    {
+      id: "last-of-72-is-tried",
+      account: null,
+      contacts: Array.from({ length: REF_MAX_SECRETS }, () => "c"),
+      opens: { mode: "c", contact: REF_MAX_SECRETS - 1 },
+      limiter: "admit",
+    },
+  ];
+  return rows.map(({ id, ...i }) => ({ id, ...i, want: refListener(i) }));
+}
+
+// ── the pin ──────────────────────────────────────────────────────────────────
+
+function buildPin(): unknown[] {
+  const K1 = mat("pin peer 1");
+  const K2 = mat("pin peer 2");
+  const flip = (b: Uint8Array): Uint8Array => {
+    const c = b.slice();
+    c[31] = c[31]! ^ 1;
+    return c;
+  };
+  const rows: [
+    string,
+    "initiator" | "responder",
+    Uint8Array[],
+    number,
+    Uint8Array,
+  ][] = [
+    ["initiator-key-matches", "initiator", [K1], 0, K1],
+    ["responder-key-matches", "responder", [K1, K2], 1, K2],
+    ["initiator-key-differs", "initiator", [K1], 0, K2],
+    ["responder-key-differs", "responder", [K1], 0, K2],
+    ["one-bit-differs", "responder", [K1], 0, flip(K1)],
+    // The pin is against the contact whose secret opened the session, not against any held key.
+    ["another-held-contacts-key", "responder", [K1, K2], 0, K2],
+  ];
+  return rows.map(([id, role, held, matched, remote]) => {
+    const ok = refPin(b64u(held[matched]!), remote);
+    return {
+      id,
+      role,
+      held: held.map(b64u),
+      matched,
+      remoteStatic: b64u(remote),
+      // The initiator checks after message 2, the responder after message 3; before the transport
+      // exists nothing is sent.
+      checkedAfter: role === "initiator" ? 2 : 3,
+      want: ok ? { ok: true } : { ok: false, close: "peer_revoked", sends: 0 },
     };
   });
 }
@@ -441,26 +763,26 @@ function buildAdverts(): unknown {
   // Two contacts with the same secret: the first in held order wins.
   const twin = { ...a, keyText: a.keyText };
   brow("held-order-first-wins", [a, twin], NOW, inst(a, 0));
-  // The 65th contact is never tried.
-  const many = Array.from({ length: REF_MAX_CONTACTS + 1 }, (_, i) =>
+  // The 73rd secret (64 held and 8 pending make 72) is never tried.
+  const many = Array.from({ length: REF_MAX_SECRETS + 1 }, (_, i) =>
     contactOf(`many ${i}`),
   );
   brow(
-    "contact-64-is-tried",
-    many.slice(0, REF_MAX_CONTACTS),
+    "secret-72-is-tried",
+    many.slice(0, REF_MAX_SECRETS),
     NOW,
-    inst(many[REF_MAX_CONTACTS - 1]!, 0),
+    inst(many[REF_MAX_SECRETS - 1]!, 0),
   );
-  brow("contact-65-is-not-tried", many, NOW, inst(many[REF_MAX_CONTACTS]!, 0));
+  brow("secret-73-is-not-tried", many, NOW, inst(many[REF_MAX_SECRETS]!, 0));
   brow(
-    "contact-64-previous-epoch",
-    many.slice(0, REF_MAX_CONTACTS),
+    "secret-72-previous-epoch",
+    many.slice(0, REF_MAX_SECRETS),
     NOW,
-    inst(many[REF_MAX_CONTACTS - 1]!, 1),
+    inst(many[REF_MAX_SECRETS - 1]!, 1),
   );
   return {
     epochSeconds: 900,
-    maxContacts: REF_MAX_CONTACTS,
+    maxSecrets: REF_MAX_SECRETS,
     maxLive: 8,
     names,
     txt: txt.map(([id, entries]) => ({
@@ -593,10 +915,13 @@ export function buildContact(): unknown {
     if (!refX25519LowOrder(hexBytes(REF_X25519_LOW_ORDER_HEX[k]!)))
       throw new Error("contact: low-order reference");
   return {
-    note: "Inter-account links (15.10, 15.7 contact rooms, 15.4 the contact advert). `secrets`: the contact secret, HKDF-SHA256(salt = h, ikm = nD || nM, info = 'pkey-peer/1 contact' || 0x00 || lo || hi), 32 bytes, with h, nD, nM in lower-case hex and the two agreeKeys in the 43-character wire spelling; lo and hi are the 32 raw key bytes by unsigned byte order, so swapping the keys changes nothing and the order is not that of the text. `bodies`: a CONTACT body, `{id, body | bodyHex | bodyPad, length, own?, want}`; `want` is `{ok:false}` or `{ok, agreeKey, label?, cats}`; `own` is the reader's own agreeKey (an equal one refuses). `categories`: a link's categories, the entries both lists hold, once each, in byte order. `exchange`: one side's pairing events in order, `{id, own, steps, want}`; a step is own-confirm, peer-confirm, peer-contact (with its `body` text) or timeout (30 s after this side's CONFIRM, with no CONTACT read yet); `want` has one entry per step with what that step makes this side send (`CONFIRM`, `CONTACT`), the code it closes with, and the contact it stores; after a close nothing more happens. `adverts`: `names` (the instance p1- and the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 cdisc' || 0x00 || u64be(epoch) || the advertiser's 32 agreeKey bytes)), `txt` (parseContactTxt: v=1 and m=c, no h) and `browse` (which held contact an instance belongs to, in the current or previous epoch, among the first 64 contacts, in held order). `rooms`: `rid` (base64url of the first 16 bytes of HKDF-SHA256(salt empty, ikm secret, info 'pkey-peer/1 room')) and `alias` (the first 24 bytes of SHA-256(rid bytes || deviceId bytes) as 48 hex characters; rid is its 16 decoded bytes and deviceId its 24). `tickets`: the contact ticket-request body, strict JSON of at most 256 bytes with exactly `room` = 'c' and a canonical 22-character `rid`. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+    note: "Inter-account links (15.10, 15.7 contact rooms, 15.4 the contact advert). `secrets` (the row real-pairing-inputs uses the handshake hash of noise-vectors.json mode-p and the nonces of the sas row p-0): the contact secret, HKDF-SHA256(salt = h, ikm = nD || nM, info = 'pkey-peer/1 contact' || 0x00 || lo || hi), 32 bytes, with h, nD, nM in lower-case hex and the two agreeKeys in the 43-character wire spelling; lo and hi are the 32 raw key bytes by unsigned byte order, so swapping the keys changes nothing and the order is not that of the text. `bodies`: a CONTACT body, `{id, body | bodyHex | bodyPad, length, own?, want}`; `want` is `{ok:false}` or `{ok, agreeKey, label?, cats}`; `own` is the reader's own agreeKey (an equal one refuses). `categories`: a link's categories, the entries both lists hold, once each, in byte order. `exchange`: one side's pairing events in order, `{id, own, steps, want}`; a step is own-confirm, peer-confirm, peer-contact (with its `body` text) or timeout (30 s after this side's CONFIRM, with no CONTACT read yet); `want` has one entry per step with what that step makes this side send (`CONFIRM`, `CONTACT`), the code it closes with, and the contact it stores; after a close nothing more happens. `held` lists the agreeKey of every active contact the host holds: a peer in it is a re-pair and `stored.pending` is true, at any count; a peer not in it is stored (`pending` false) unless 64 are held, when the side closes `peer_not_allowed` at the CONTACT and stores nothing; a body that breaks the rules is `peer_bad_frame` first. `adverts`: `names` (the instance p1- and the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 cdisc' || 0x00 || u64be(epoch) || the advertiser's 32 agreeKey bytes)), `txt` (parseContactTxt: v=1 and m=c, no h) and `browse` (which held contact an instance belongs to, in the current or previous epoch, among the first 72 secrets: the held contacts in held order, then the pending ones). `store`: the contact list with pending contacts (15.10): keys and secrets are small integers n, the 32 bytes all equal to n; `start` is the held contacts as [key, secret]; `ops` are pair (a pairing result: a new peer is active, or refused when 64 are held; a held peer is stored pending, one pending per key, at most 8, the oldest goes), promote (a handshake under a pending secret passed the pin: it replaces the held contact of its key in place) and drop (pending contacts stored 86400 s ago or earlier go); `want` is, per op, the result of a pair, the secrets held in order, the pending secrets in the order stored, and `order`, the held then the pending, at most 72, which is the order a responder tries secrets and a browser tests names. `listener`: the shared listener's trial of message 1 (15.5, 15.10): `account` lists the discKeys (null = none; only the first two are tried) or is null for a host without an account; `contacts` lists the secrets in `order`; `opens` names the one key whose tag verifies; `limiter` is what the contact-trial limiter says; `want.tried` is every key a tag was tried under in order (`a:<i>` account key, `c:<i>` contact), `hit` the key that decided, `slot` whether the connection still holds a limiter slot after message 1 (a contact hit holds it until message 3; a refused or failed trial holds none) and `close` the silent end (`peer_busy` when the limiter refused before any contact secret was tried, `handshake_failed` when no tag verified). `pin`: the remote static key against the agreeKey of the contact whose secret opened the session: a mismatch is `peer_revoked` and nothing is sent; the initiator checks after message 2, the responder after message 3. `rooms`: `rid` (base64url of the first 16 bytes of HKDF-SHA256(salt empty, ikm secret, info 'pkey-peer/1 room')) and `alias` (the first 24 bytes of SHA-256(rid bytes || deviceId bytes) as 48 hex characters; rid is its 16 decoded bytes and deviceId its 24). `tickets`: the contact ticket-request body, strict JSON of at most 256 bytes with exactly `room` = 'c' and a canonical 22-character `rid`. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
     constants: {
       maxContacts: REF_MAX_CONTACTS,
       maxCats: REF_MAX_CONTACT_CATS,
+      maxPending: REF_MAX_PENDING,
+      maxSecrets: REF_MAX_SECRETS,
+      pendingSeconds: REF_PENDING_SECONDS,
       bodyMax: REF_CONTACT_BODY_MAX,
       ticketBodyMax: REF_TICKET_BODY_MAX,
       maxLiveAdverts: 8,
@@ -608,6 +933,9 @@ export function buildContact(): unknown {
     bodies: buildBodies(),
     categories: buildCategories(),
     exchange: buildExchange(),
+    store: buildStore(),
+    listener: buildListener(),
+    pin: buildPin(),
     adverts: buildAdverts(),
     rooms: buildRooms(),
     tickets: buildTickets(),

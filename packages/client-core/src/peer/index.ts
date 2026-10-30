@@ -132,6 +132,7 @@ export {
   contactAlias,
   contactCategories,
   contactInstance,
+  contactPin,
   contactRid,
   contactSecret,
   contactTrialOrder,

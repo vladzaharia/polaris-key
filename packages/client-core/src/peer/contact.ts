@@ -381,6 +381,17 @@ export function contactTrialOrder(
   ].slice(0, MAX_CONTACT_SECRETS);
 }
 
+// ── The pin ──────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Mode c (§15.10): the remote static key must be the agreeKey of the contact whose secret opened
+ * the session. The initiator asks after message 2, the responder after message 3; a `false`
+ * ends the session as `peer_revoked` with nothing sent.
+ */
+export function contactPin(held: string, remoteStatic: Uint8Array): boolean {
+  return base64UrlEncodeBytes(remoteStatic) === held;
+}
+
 // ── The LAN advert ───────────────────────────────────────────────────────────────────────────
 
 /** A contact the device holds: its secret and the peer's agreeKey (32 raw bytes). */

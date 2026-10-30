@@ -63,6 +63,7 @@ import {
   ContactExchange,
   MAX_CONTACT_SECRETS,
   buildContact,
+  contactPin,
   contactSecret,
   type ContactBody,
   type ExchangeEvent,
@@ -644,10 +645,7 @@ export class PeerSession {
     let peerDeviceId: string | undefined;
     if (mode === "c") {
       // The pin (§15.10): the peer must be the key the contact was made with. Nothing is sent.
-      if (
-        base64UrlEncodeBytes(remote) !==
-        this.o.contacts![this.contactIdx]!.agreeKey
-      )
+      if (!contactPin(this.o.contacts![this.contactIdx]!.agreeKey, remote))
         throw new SessionFail("peer_revoked");
     }
     if (mode === "a") {

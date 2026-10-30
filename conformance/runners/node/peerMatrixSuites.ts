@@ -14,7 +14,23 @@
 // A row an engine cannot run fails; it is never skipped (notes/A7 §5).
 
 import { describe, expect, it } from "vitest";
+import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import {
+  HandshakeLimiter,
+  MAX_CONTACT_SECRETS,
+  MAX_PENDING_CONTACTS,
+  NoiseHandshake,
+  PENDING_CONTACT_SECONDS,
+  PeerChannel,
+  contactPin,
+  contactTrialOrder,
+  dropStalePending,
+  peerNoiseProtocol,
+  promoteContact,
+  storeContact,
+  webCryptoNoisePorts,
+  type NoisePorts,
+  type StoredContact,
   RecordAssembler,
   accountInstance,
   advertEpoch,
@@ -562,6 +578,9 @@ function contact(m: PeerMatrix): void {
       expect(c.constants).toEqual({
         maxContacts: MAX_CONTACTS,
         maxCats: MAX_CONTACT_CATS,
+        maxPending: MAX_PENDING_CONTACTS,
+        maxSecrets: MAX_CONTACT_SECRETS,
+        pendingSeconds: PENDING_CONTACT_SECONDS,
         bodyMax: CONTACT_BODY_MAX,
         ticketBodyMax: CONTACT_TICKET_BODY_MAX,
         maxLiveAdverts: MAX_LIVE_CONTACT_ADVERTS,
@@ -598,7 +617,7 @@ function contact(m: PeerMatrix): void {
     });
     it("exchange", () => {
       for (const r of c.exchange) {
-        const x = new ContactExchange(r.own);
+        const x = new ContactExchange(r.own, r.held);
         r.steps.forEach((s: any, i: number) => {
           // eslint-disable-line @typescript-eslint/no-explicit-any
           const e: ExchangeEvent =
@@ -608,6 +627,147 @@ function contact(m: PeerMatrix): void {
           expect(x.step(e), `${r.id} step ${i}`).toEqual(r.want[i]);
         });
         expect(r.want, r.id).toHaveLength(r.steps.length);
+      }
+    });
+    it("store", () => {
+      // Keys and secrets are small integers n: 32 bytes all equal to n.
+      const fill = (n: number): Uint8Array => new Uint8Array(32).fill(n);
+      const keyText = (n: number): string => base64UrlEncodeBytes(fill(n));
+      for (const r of c.store) {
+        let list: StoredContact[] = r.start.map(([k, sec]: number[]) => ({
+          agreeKey: keyText(k!),
+          secret: fill(sec!),
+          cats: [],
+        }));
+        r.ops.forEach((o: any, i: number) => {
+          // eslint-disable-line @typescript-eslint/no-explicit-any
+          const want = r.want[i];
+          let result: string | undefined;
+          if (o.op === "pair") {
+            const v = storeContact(
+              list,
+              {
+                agreeKey: keyText(o.key),
+                secret: fill(o.secret),
+                ...(o.label !== undefined ? { label: o.label } : {}),
+                cats: [],
+              },
+              o.now,
+            );
+            if (v.ok) {
+              list = v.contacts;
+              result = v.pending ? "pending" : "active";
+            } else result = "full";
+          } else if (o.op === "promote")
+            list = promoteContact(list, keyText(o.key));
+          else list = dropStalePending(list, o.now);
+          const ids = (l: StoredContact[]): number[] =>
+            l.map((x) => x.secret[0]!);
+          const got = {
+            ...(result !== undefined ? { result } : {}),
+            active: ids(list.filter((x) => x.pendingSince === undefined)),
+            pending: ids(list.filter((x) => x.pendingSince !== undefined)),
+            order: ids(contactTrialOrder(list)),
+          };
+          expect(got, `${r.id} op ${i}`).toEqual(want);
+        });
+      }
+    });
+    it("pin", () => {
+      for (const r of c.pin) {
+        const ok = contactPin(r.held[r.matched], unb64(r.remoteStatic));
+        expect(
+          ok ? { ok: true } : { ok: false, close: "peer_revoked", sends: 0 },
+          r.id,
+        ).toEqual(r.want);
+      }
+    });
+    it("listener", async () => {
+      // Real message 1s: the responder is a PeerChannel with the row's keys. Each tag attempt is
+      // one AEAD open, so the opens counted while message 1 is read are the keys tried.
+      const slug = "djdl";
+      for (const r of c.listener) {
+        let opens = 0;
+        const ports: NoisePorts = {
+          ...webCryptoNoisePorts,
+          aead: {
+            ...webCryptoNoisePorts.aead,
+            open: (...a: Parameters<NoisePorts["aead"]["open"]>) => {
+              opens++;
+              return webCryptoNoisePorts.aead.open(...a);
+            },
+          },
+        };
+        const random = (): Uint8Array => webCryptoNoisePorts.random(32);
+        const keys: Uint8Array[] = (r.account ?? []).map(random);
+        const secrets: Uint8Array[] = r.contacts.map(random);
+        // The key that opens message 1, if any, and its mode.
+        let psk: Uint8Array | undefined;
+        let mode: PeerMode = "c";
+        if (r.opens === null) psk = random();
+        else if (r.opens.mode === "a") {
+          mode = "a";
+          psk = await peerPsk(keys[r.opens.key]!, slug);
+        } else psk = secrets[r.opens.contact]!;
+        const limiter = new HandshakeLimiter(
+          r.limiter === "refuse" ? 0 : 99,
+          1,
+          () => 0,
+        );
+        const out: Uint8Array[] = [];
+        const events: { type: string; code?: string }[] = [];
+        const ch = new PeerChannel({
+          mode: r.account !== null ? "a" : "c",
+          role: "responder",
+          slug,
+          staticKey: random(),
+          ports,
+          hello: { platform: "t", app: "a" },
+          send: (n) => out.push(n),
+          onEvent: (e) => events.push(e as any), // eslint-disable-line @typescript-eslint/no-explicit-any
+          admission: limiter,
+          ...(r.account !== null
+            ? {
+                account: {
+                  trust: {},
+                  expectedAud: slug,
+                  certJws: "",
+                  ownSub: "ps_x",
+                  ownDeviceId: "x".repeat(32),
+                  heldRing: () => null,
+                  discKeys: (r.account as (string | null)[]).map((k, i) =>
+                    k === null ? null : keys[i]!,
+                  ),
+                },
+              }
+            : {}),
+          ...(r.contacts.length > 0
+            ? {
+                contacts: secrets.map((secret) => ({
+                  secret,
+                  agreeKey: base64UrlEncodeBytes(random()),
+                })),
+              }
+            : {}),
+        });
+        const init = new NoiseHandshake({
+          role: "initiator",
+          protocol: peerNoiseProtocol(mode),
+          prologue: peerPrologue(slug, mode),
+          psk,
+          staticKey: random(),
+        });
+        const m1 = await init.writeMessage(utf8('{"v":1}'));
+        await ch.receive(m1);
+        expect(opens, `${r.id} keys tried`).toBe(r.want.tried.length);
+        const closed = events.find((e) => e.type === "closed");
+        expect(closed?.code ?? null, `${r.id} close`).toBe(r.want.close);
+        expect(out.length, `${r.id} answered`).toBe(
+          r.want.hit === null ? 0 : 1,
+        );
+        // A contact trial holds its slot until message 3: a limiter of one waiting shows it.
+        if (r.limiter === "admit")
+          expect(limiter.begin() === null, `${r.id} slot`).toBe(r.want.slot);
       }
     });
     it("advert names", async () => {

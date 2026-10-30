@@ -22,6 +22,10 @@ import {
 
 export const REF_MAX_CONTACTS = 64;
 export const REF_MAX_CONTACT_CATS = 8;
+export const REF_MAX_PENDING = 8;
+export const REF_PENDING_SECONDS = 86_400;
+/** The secrets a responder tries and a browser tests: held contacts and pending ones. */
+export const REF_MAX_SECRETS = REF_MAX_CONTACTS + REF_MAX_PENDING;
 export const REF_CONTACT_BODY_MAX = 4096;
 export const REF_TICKET_BODY_MAX = 256;
 const CAT_RE = /^[a-z0-9-]{1,32}$/;
@@ -141,14 +145,20 @@ export type ExchangeEvent =
 
 export interface ExchangeStepResult {
   sends: ("CONFIRM" | "CONTACT")[];
-  close?: "peer_bad_frame" | "peer_timeout";
-  stored?: { agreeKey: string; label?: string; cats: string[] };
+  close?: "peer_bad_frame" | "peer_timeout" | "peer_not_allowed";
+  stored?: {
+    agreeKey: string;
+    label?: string;
+    cats: string[];
+    pending: boolean;
+  };
 }
 
 /** Feed the events of one side in order: what each sends, and where it closes or stores. */
 export function refContactExchange(
   events: ExchangeEvent[],
   own?: string,
+  held: readonly string[] = [],
 ): ExchangeStepResult[] {
   let ownConfirmed = false;
   let peerConfirmed = false;
@@ -195,11 +205,19 @@ export function refContactExchange(
           bad();
           break;
         }
+        // A peer already held is a re-pair, at any count; a new one needs room.
+        const isHeld = held.includes(v.agreeKey);
+        if (!isHeld && held.length >= REF_MAX_CONTACTS) {
+          r.close = "peer_not_allowed";
+          dead = true;
+          break;
+        }
         peerContact = true;
         r.stored = {
           agreeKey: v.agreeKey,
           ...(v.label !== undefined ? { label: v.label } : {}),
           cats: v.cats,
+          pending: isHeld,
         };
         break;
       }
@@ -261,8 +279,9 @@ export interface ContactHit {
   epochBack: 0 | 1;
 }
 
-/** Which contact an instance belongs to: the first of the first 64 contacts, in held order,
- *  that matches in the current or the previous epoch. At most 128 HMACs. */
+/** Which contact an instance belongs to: the first of the first 72 secrets (held contacts, then
+ *  pending ones), in that order, that matches in the current or the previous epoch. At most 144
+ *  HMACs. */
 export function refContactBrowse(
   instance: string,
   contacts: readonly RefContact[],
@@ -270,7 +289,7 @@ export function refContactBrowse(
 ): ContactHit | null {
   if (!refInstanceShape(instance)) return null;
   const epoch = refAdvertEpoch(now);
-  for (let i = 0; i < contacts.length && i < REF_MAX_CONTACTS; i++)
+  for (let i = 0; i < contacts.length && i < REF_MAX_SECRETS; i++)
     for (const epochBack of [0, 1] as const)
       if (
         refContactInstance(
@@ -327,4 +346,150 @@ export function refContactTicketBody(bytes: Uint8Array): TicketBodyVerdict {
   if (typeof rid !== "string" || !RID_RE.test(rid)) return no;
   if (!refCanonicalB64url(rid) || unb64u(rid).length !== 16) return no;
   return { ok: true, rid };
+}
+
+// ── The contact list (§15.10, "pending contacts") ────────────────────────────
+
+export interface RefStored {
+  agreeKey: string;
+  secret: string;
+  label?: string;
+  /** Unix seconds a pending contact was stored. */
+  since?: number;
+}
+
+export interface RefStore {
+  /** The held contacts, in held order. */
+  active: RefStored[];
+  /** The pending contacts, in the order they were stored (at most one per key). */
+  pending: RefStored[];
+}
+
+export type StoreOp =
+  | {
+      op: "pair";
+      agreeKey: string;
+      secret: string;
+      label?: string;
+      now: number;
+    }
+  | { op: "promote"; agreeKey: string }
+  | { op: "drop"; now: number };
+
+export interface StoreStepResult {
+  /** Of a `pair`: where the contact went. */
+  result?: "active" | "pending" | "full";
+  active: string[];
+  pending: string[];
+  /** The order secrets are tried and browsed in: held, then pending. */
+  order: string[];
+}
+
+/** Apply `ops` in order to `start`; the state after each op, as secret ids. */
+export function refContactStore(
+  start: RefStore,
+  ops: readonly StoreOp[],
+): StoreStepResult[] {
+  const active = start.active.map((c) => ({ ...c }));
+  let pending = start.pending.map((c) => ({ ...c }));
+  const out: StoreStepResult[] = [];
+  for (const o of ops) {
+    let result: StoreStepResult["result"];
+    if (o.op === "pair") {
+      const c: RefStored = {
+        agreeKey: o.agreeKey,
+        secret: o.secret,
+        ...(o.label !== undefined ? { label: o.label } : {}),
+      };
+      if (active.some((a) => a.agreeKey === o.agreeKey)) {
+        // The same peer again: held stays; one pending per key; the oldest of 8 goes.
+        pending = pending.filter((p) => p.agreeKey !== o.agreeKey);
+        pending.push({ ...c, since: o.now });
+        while (pending.length > REF_MAX_PENDING) {
+          let at = 0;
+          for (let i = 1; i < pending.length; i++)
+            if (pending[i]!.since! < pending[at]!.since!) at = i;
+          pending.splice(at, 1);
+        }
+        result = "pending";
+      } else if (active.length >= REF_MAX_CONTACTS) result = "full";
+      else {
+        active.push(c);
+        result = "active";
+      }
+    } else if (o.op === "promote") {
+      const at = pending.findIndex((p) => p.agreeKey === o.agreeKey);
+      if (at >= 0) {
+        const p = pending.splice(at, 1)[0]!;
+        const slot = active.findIndex((a) => a.agreeKey === o.agreeKey);
+        const { since: _s, ...fresh } = p;
+        void _s;
+        if (slot >= 0) active[slot] = fresh;
+        else active.push(fresh);
+      }
+    } else {
+      pending = pending.filter((p) => o.now - p.since! < REF_PENDING_SECONDS);
+    }
+    const ids = (l: RefStored[]): string[] => l.map((c) => c.secret);
+    out.push({
+      ...(result !== undefined ? { result } : {}),
+      active: ids(active),
+      pending: ids(pending),
+      order: [...ids(active), ...ids(pending)].slice(0, REF_MAX_SECRETS),
+    });
+  }
+  return out;
+}
+
+// ── The shared listener (§15.5 responder rules, §15.10) ──────────────────────
+
+export interface ListenerIn {
+  /** The device has an account: its discKeys (current, previous; null = none) are tried. */
+  account: (string | null)[] | null;
+  /** The contact secrets, in `order` (at most 72). */
+  contacts: string[];
+  /** Which key opens message 1, if any. */
+  opens: { mode: "a"; key: number } | { mode: "c"; contact: number } | null;
+  /** What the limiter says to a contact trial. */
+  limiter: "admit" | "refuse";
+}
+
+export interface ListenerOut {
+  /** Every key a tag was tried under, in order: `a:<i>` or `c:<i>`. */
+  tried: string[];
+  /** The mode and index that decided, or null. */
+  hit: string | null;
+  /** A limiter slot is held while the connection waits for message 3 (a contact hit only). */
+  slot: boolean;
+  /** Silent in every case: nothing is sent. */
+  close: "handshake_failed" | "peer_busy" | null;
+}
+
+export function refListener(i: ListenerIn): ListenerOut {
+  const tried: string[] = [];
+  if (i.account !== null) {
+    for (let k = 0; k < Math.min(2, i.account.length); k++) {
+      if (i.account[k] === null) continue;
+      tried.push(`a:${k}`);
+      if (i.opens?.mode === "a" && i.opens.key === k)
+        return { tried, hit: `a:${k}`, slot: false, close: null };
+    }
+  }
+  if (i.contacts.length === 0)
+    return { tried, hit: null, slot: false, close: "handshake_failed" };
+  if (i.limiter === "refuse")
+    return { tried, hit: null, slot: false, close: "peer_busy" };
+  for (let k = 0; k < Math.min(REF_MAX_SECRETS, i.contacts.length); k++) {
+    tried.push(`c:${k}`);
+    if (i.opens?.mode === "c" && i.opens.contact === k)
+      return { tried, hit: `c:${k}`, slot: true, close: null };
+  }
+  return { tried, hit: null, slot: false, close: "handshake_failed" };
+}
+
+// ── The pin (§15.10) ─────────────────────────────────────────────────────────
+
+/** The remote static key must equal the agreeKey of the contact that opened the session. */
+export function refPin(held: string, remoteStatic: Uint8Array): boolean {
+  return Buffer.from(remoteStatic).toString("base64url") === held;
 }
