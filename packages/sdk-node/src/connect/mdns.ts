@@ -31,7 +31,13 @@
 //  - the tables of instances and addresses are bounded, entries expire after five minutes, and
 //    when full the least recently refreshed entry is evicted, so a flood cannot stop discovery;
 //  - a peer whose PTR TTL lapses without a refresh is reported down, like a goodbye (TTL 0);
-//  - query replies are sent at most once a second per socket.
+//  - query replies are sent at most once a second per socket;
+//  - a query from a port other than 5353 is a legacy query (RFC 6762 §6.7): the answer goes by
+//    unicast to the querier's address and port, with the query's ID, the matching questions
+//    repeated, no cache-flush bit and a TTL of 10 s. It is sent only to a source the response rules
+//    above would hear (on a connected subnet of the receiving interface, a link-local one with that
+//    interface's zone), so the responder cannot be aimed at an off-link address; it counts against
+//    the same once-a-second gap as a multicast reply.
 
 import { networkInterfaces, type NetworkInterfaceInfo } from "node:os";
 import { createSocket } from "node:dgram";
@@ -48,6 +54,11 @@ export const MAX_INTERFACES = 8;
 const ENTRY_TTL_MS = 5 * 60_000;
 const REPLY_GAP_MS = 1000;
 const TTL = 120;
+/** The TTL of a legacy unicast answer (RFC 6762 §6.7: at most 10 s). */
+export const LEGACY_TTL = 10;
+const MDNS_PORT = 5353;
+/** Questions a legacy answer repeats, at most: the reply stays small whatever the query holds. */
+const MAX_REPEATED = 4;
 const SWEEP_MS = 5000;
 
 export interface MdnsAdvert {
@@ -86,7 +97,12 @@ export interface MdnsAdapter {
 /** The part of a `multicast-dns` instance this adapter uses. */
 export interface MdnsSocket {
   on(event: string, fn: (...args: any[]) => void): unknown;
-  respond(packet: unknown, cb?: (err?: Error | null) => void): void;
+  /** With `rinfo` the packet goes to that address and port alone (a legacy unicast answer). */
+  respond(
+    packet: unknown,
+    rinfo?: { address: string; port: number } | ((err?: Error | null) => void),
+    cb?: (err?: Error | null) => void,
+  ): void;
   query(packet: unknown, cb?: (err?: Error | null) => void): void;
   destroy(cb?: () => void): void;
 }
@@ -334,6 +350,29 @@ export function sourceInSubnets(
   return nets.some((n) => inCidr(source, n));
 }
 
+/**
+ * May a datagram from `from` (an address, with its zone when link-local) be heard on the socket of
+ * `iface` (null: the IPv4 socket)? RFC 6762 §11: it is inside a connected subnet of the receiving
+ * interface; a link-local source also carries that interface's zone (one with none, or another, and
+ * any link-local source on the IPv4 socket, are not ours). The same test gates a response we learn
+ * from and a legacy query we answer.
+ */
+export function heardOn(
+  from: string,
+  iface: MdnsInterface | null,
+  subnets4: () => string[],
+): boolean {
+  const { addr, zone } = splitZone(from);
+  if (!sourceInSubnets(addr, iface === null ? subnets4() : iface.nets))
+    return false;
+  const canon = canonIp(addr);
+  return !(
+    canon !== null &&
+    isLinkLocal(foldMapped(canon)) &&
+    (iface === null || zone === null || zone !== iface.zone)
+  );
+}
+
 async function defaultSocket(): Promise<MdnsSocket> {
   let mod: any;
   try {
@@ -406,7 +445,13 @@ export class MulticastDnsAdapter implements MdnsAdapter {
     const addrs = (
       this.o.addresses ?? (() => ownAddresses(this.o.allowLoopback === true))
     )().filter((x) => isLanAddress(x, this.o.allowLoopback === true));
-    const records = (ttl: number, iface: MdnsInterface | null): Answer[] => [
+    const loop = this.o.allowLoopback === true;
+    const subnets4 = this.o.subnets ?? (() => ownSubnets(loop));
+    const records = (
+      ttl: number,
+      iface: MdnsInterface | null,
+      legacy = false,
+    ): Answer[] => [
       { name: PEER_SERVICE, type: "PTR", ttl, data: fqdn(a.instance) },
       {
         name: fqdn(a.instance),
@@ -422,7 +467,7 @@ export class MulticastDnsAdapter implements MdnsAdapter {
       {
         name: fqdn(a.instance),
         type: "TXT",
-        ttl: ttl === 0 ? 0 : 4500,
+        ttl: ttl === 0 ? 0 : legacy ? ttl : 4500,
         data: [...a.txt],
       },
       // An A record leaves on the IPv4 socket and an AAAA on the interface's own: a browser
@@ -449,21 +494,46 @@ export class MulticastDnsAdapter implements MdnsAdapter {
       s.on("error", () => undefined);
       s.on("warning", () => undefined);
       let lastReply = -Infinity;
-      s.on("query", (q: { questions?: { name: string; type: string }[] }) => {
-        const hit = (q.questions ?? []).some((x) => {
-          const n = foldName(x.name);
-          return (
-            n === PEER_SERVICE ||
-            n === fqdn(a.instance) ||
-            n === hostOf(a.instance)
-          );
-        });
-        const t = Date.now();
-        if (hit && t - lastReply >= REPLY_GAP_MS) {
+      s.on(
+        "query",
+        (
+          q: { id?: number; questions?: { name: string; type: string }[] },
+          rinfo?: { address?: string; port?: number },
+        ) => {
+          const hits = (q.questions ?? []).filter((x) => {
+            const n = foldName(x.name);
+            return (
+              n === PEER_SERVICE ||
+              n === fqdn(a.instance) ||
+              n === hostOf(a.instance)
+            );
+          });
+          if (hits.length === 0) return;
+          // A query from another port is a legacy one (RFC 6762 §6.7): it is answered to its
+          // sender alone, and only if that sender is on this link.
+          const legacy =
+            typeof rinfo?.port === "number" && rinfo.port !== MDNS_PORT;
+          if (
+            legacy &&
+            (typeof rinfo?.address !== "string" ||
+              !heardOn(rinfo.address, iface, subnets4))
+          )
+            return;
+          const t = Date.now();
+          if (t - lastReply < REPLY_GAP_MS) return;
           lastReply = t;
-          s.respond({ answers: records(TTL, iface) });
-        }
-      });
+          if (legacy)
+            s.respond(
+              {
+                id: q.id ?? 0,
+                questions: hits.slice(0, MAX_REPEATED),
+                answers: records(LEGACY_TTL, iface, true),
+              },
+              { address: rinfo!.address!, port: rinfo!.port! },
+            );
+          else s.respond({ answers: records(TTL, iface) });
+        },
+      );
       s.respond({ answers: records(TTL, iface) });
     }
     const again = setTimeout(() => {
@@ -637,18 +707,8 @@ export class MulticastDnsAdapter implements MdnsAdapter {
           // A response with no source, or from outside the link's subnets, teaches nothing.
           const from = rinfo?.address;
           if (typeof from !== "string") return;
-          const { addr: src, zone: sourceZone } = splitZone(from);
-          if (!sourceInSubnets(src, iface === null ? subnets4() : iface.nets))
-            return;
-          // A link-local source names its link: the zone it carries must be the interface this
-          // socket is on, and one with no zone, or another, is not ours.
-          const canon = canonIp(src);
-          if (
-            canon !== null &&
-            isLinkLocal(foldMapped(canon)) &&
-            (iface === null || sourceZone === null || sourceZone !== iface.zone)
-          )
-            return;
+          if (!heardOn(from, iface, subnets4)) return;
+          const { addr: src } = splitZone(from);
           learn(
             [...(res.answers ?? []), ...(res.additionals ?? [])],
             src,
