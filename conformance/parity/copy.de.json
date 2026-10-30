@@ -537,6 +537,10 @@
       "title": "Verschlüsselung erforderlich",
       "message": "Diese App braucht verschlüsselten Sync, der gerade nicht verfügbar ist. Der Sync bleibt aus."
     },
+    "sync-file-invalid": {
+      "title": "Datei nicht geöffnet",
+      "message": "Die synchronisierte Datei hat die Prüfung nicht bestanden und wurde nicht verwendet. Versuchen Sie es erneut."
+    },
     "invalid-options": {
       "title": "App nicht eingerichtet",
       "message": "Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler."

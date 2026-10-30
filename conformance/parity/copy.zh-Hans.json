@@ -537,6 +537,10 @@
       "title": "需要加密",
       "message": "此应用需要加密同步，但目前不可用。同步将保持关闭。"
     },
+    "sync-file-invalid": {
+      "title": "无法打开文件",
+      "message": "同步的文件未通过校验，因此未使用。请重试。"
+    },
     "invalid-options": {
       "title": "应用未设置",
       "message": "应用的许可功能未正确设置。请联系开发者。"

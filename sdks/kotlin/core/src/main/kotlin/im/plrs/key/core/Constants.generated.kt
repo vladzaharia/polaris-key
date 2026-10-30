@@ -145,6 +145,7 @@ public object ErrorCode {
     public const val syncLocked: String = "sync-locked"
     public const val recoveryCodeInvalid: String = "recovery-code-invalid"
     public const val syncEncryptionPinned: String = "sync-encryption-pinned"
+    public const val syncFileInvalid: String = "sync-file-invalid"
     public const val invalidOptions: String = "invalid-options"
     public const val invalidArgument: String = "invalid-argument"
     public const val invokeNotAllowed: String = "invoke-not-allowed"
@@ -356,6 +357,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "sync-locked",
     "recovery-code-invalid",
     "sync-encryption-pinned",
+    "sync-file-invalid",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -567,6 +569,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "sync-locked" to "client",
     "recovery-code-invalid" to "client",
     "sync-encryption-pinned" to "client",
+    "sync-file-invalid" to "client",
     "invalid-options" to "client",
     "invalid-argument" to "client",
     "invoke-not-allowed" to "client",
@@ -1492,6 +1495,20 @@ public val EVENT_KIND_VALUES: List<String> = listOf(
     "packs",
     "store",
     "cloudSync",
+)
+
+/** The variants of a Cloud Sync file transfer event, on the client's `events` stream under the `cloudSync` kind (U-22, U-23), in camelCase in every SDK: `transferProgress` (bytes done and total), `transferDone`, `transferFailed` (a code; a cancelled transfer is a state, not a failure). */
+public object TransferEvent {
+    public const val transferprogress: String = "transferProgress"
+    public const val transferdone: String = "transferDone"
+    public const val transferfailed: String = "transferFailed"
+}
+
+/** Every `TransferEvent` value, in source order. */
+public val TRANSFER_EVENT_VALUES: List<String> = listOf(
+    "transferProgress",
+    "transferDone",
+    "transferFailed",
 )
 
 /** The `X-PKey-*` request header names (wire contract v3 §5). */

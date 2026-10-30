@@ -13,9 +13,21 @@
 //     envelope that does not open is `invalid`; its row falls through to the document.
 //   - `seq` is the change's `version` (§13.10.7), set on plaintext rows only.
 //
-// Scope: settings (the `$settings` collection). A record change or mutation is outside this
-// slice: a record mutation is refused with `invalid-options`, and a record change carrying a
-// `ct` reads as `invalid`.
+// Records (U-22.0; §13.10.4, "Record names"). A record's collection travels in the clear and its
+// id, field and element names only blinded (`blind("record" | "field" | "element", c, name)`).
+// Every sealed record value shares `K_coll(c)`, so the envelope's `k` places it:
+//   value    `k = id`                              wire name `blind("record", c, id)`
+//   field    `k = id U+0000 field`                 and `blind("field", c, field)`
+//   element  `k = id U+0000 canonicalJson(e)`      and `blind("element", c, canonicalJson(e))`
+// A pulled record opens only when the id is blinded and the `k` inside the envelope re-blinds to
+// every wire name it came under, so a Worker cannot place a sealed value under another record,
+// field or element. A conflict copy carries no names and opens under the mutation's own record.
+// A record tombstone names its id blinded; it maps back only for a record the machine holds
+// (`recordKeys`). The collection `$settings` and the namespace `$` are never a record collection.
+//
+// Scope: settings (the `$settings` collection) and records of every shape (value, field,
+// element). The Swift, Kotlin and Godot ports seal a scalar record value only (D-2); on a
+// shared input they behave alike, and they refuse what this module seals beyond a value.
 
 import { base64UrlDecode, base64UrlEncodeBytes } from "@polaris-key/jws";
 import type {
@@ -28,7 +40,7 @@ import type {
 import { PolarisError } from "../errors.js";
 import { hasOwn } from "../own.js";
 import { isBlindedName, type BlindKind } from "./blind.js";
-import type { OpenedValue, SyncJson } from "./envelope.js";
+import { canonicalJson, type OpenedValue, type SyncJson } from "./envelope.js";
 
 /** The collection every setting is sealed under. */
 export const SETTINGS_COLLECTION = "$settings";
@@ -76,6 +88,9 @@ export interface OpenPullContext {
   /** Open-setting keys the machine already holds: a tombstone names a key blinded, and only
    *  these can be mapped back. */
   openKeys?: Iterable<string>;
+  /** The `[collection, id]` of the records the machine already holds: a record tombstone names
+   *  its id blinded, and only these can be mapped back. */
+  recordKeys?: Iterable<readonly [string, string]>;
 }
 
 const locked = (): PolarisError =>
@@ -108,6 +123,28 @@ function fromCt(ct: unknown): Uint8Array | null {
 export const memberEnvelopeName = (setting: string, member: string): string =>
   `${setting}\0${member}`;
 
+/** The envelope name of a `merge` record's field (§13.10.4): the id, U+0000, the field. */
+export const fieldEnvelopeName = (id: string, field: string): string =>
+  `${id}\0${field}`;
+
+/** The envelope name of a `union` record's element (§13.10.4): the id, U+0000, the element's
+ *  canonical JSON. */
+export const elementEnvelopeName = (id: string, canonical: string): string =>
+  `${id}\0${canonical}`;
+
+/**
+ * `[collection, id]` when `v` is a pair of non-empty strings that can name a record: no U+0000
+ * (the blind input has no length prefix) and not in the `$` namespace of the settings collection.
+ */
+export function recordRef(v: unknown): [string, string] | null {
+  if (!Array.isArray(v) || v.length !== 2) return null;
+  const [c, id] = v as unknown[];
+  if (typeof c !== "string" || typeof id !== "string") return null;
+  if (c === "" || id === "" || hasNul(c) || hasNul(id) || c.startsWith("$"))
+    return null;
+  return [c, id];
+}
+
 // ── Push ─────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -138,8 +175,10 @@ async function sealMutation(
   declared: ReadonlySet<string>,
 ): Promise<Json> {
   const target = m.target;
+  if (isObj(target) && "record" in target)
+    return sealRecordMutation(m, target, codec);
   if (!isObj(target) || typeof target.setting !== "string")
-    throw refuse("only a setting mutation can be sealed");
+    throw refuse("only a setting or a record mutation can be sealed");
   if ("ct" in m || "field" in m || "element" in m)
     throw refuse("mutation carries a member this codec does not seal");
   const setting = target.setting;
@@ -187,6 +226,92 @@ async function sealMutation(
     default:
       throw refuse("unsupported operation");
   }
+}
+
+/** The canonical JSON of an element, or a refusal: a number or text that cannot be spelled
+ *  identically everywhere is never sent. */
+function canonical(e: Json): string {
+  try {
+    return canonicalJson(e as SyncJson);
+  } catch {
+    throw refuse("an element cannot be spelled canonically");
+  }
+}
+
+/**
+ * A record mutation (§13.10.4). `set` seals the value under `k = id`; `setField` under
+ * `id U+0000 field`; `add` seals the element under `id U+0000 canonicalJson(e)`. `delete`,
+ * `removeField` and `remove` carry no value. Every name goes blinded, the collection in the clear.
+ */
+async function sealRecordMutation(
+  m: { [k: string]: Json },
+  target: { [k: string]: Json },
+  codec: HostCodec,
+): Promise<Json> {
+  const ref = recordRef(target.record);
+  if (ref === null) throw refuse("a record reference is malformed");
+  const [c, id] = ref;
+  if ("ct" in m)
+    throw refuse("mutation carries a member this codec does not seal");
+  const absent = (...names: string[]): void => {
+    for (const n of names)
+      if (n in m)
+        throw refuse("mutation carries a member its operation does not take");
+  };
+  const out: { [k: string]: Json } = { ...m };
+  const field = (): string => {
+    if (typeof m.field !== "string" || m.field === "" || hasNul(m.field))
+      throw refuse("a field name is empty or holds U+0000");
+    return m.field;
+  };
+  const element = (): Json => {
+    if (m.element === undefined) throw refuse("an element is missing");
+    return m.element;
+  };
+  switch (m.op) {
+    case "set":
+      absent("field", "element", "member");
+      if (m.value === undefined) throw refuse("set needs a value");
+      delete out.value;
+      out.ct = toCt(await codec.seal(c, id, m.value as SyncJson));
+      break;
+    case "delete":
+      absent("value", "field", "element", "member");
+      break;
+    case "setField": {
+      absent("element", "member");
+      const f = field();
+      if (m.value === undefined) throw refuse("setField needs a value");
+      delete out.value;
+      out.field = await codec.blind("field", c, f);
+      out.ct = toCt(
+        await codec.seal(c, fieldEnvelopeName(id, f), m.value as SyncJson),
+      );
+      break;
+    }
+    case "removeField":
+      absent("value", "element", "member");
+      out.field = await codec.blind("field", c, field());
+      break;
+    case "add": {
+      absent("value", "field", "member");
+      const e = element();
+      const name = canonical(e);
+      out.element = await codec.blind("element", c, name);
+      out.ct = toCt(
+        await codec.seal(c, elementEnvelopeName(id, name), e as SyncJson),
+      );
+      break;
+    }
+    case "remove":
+      absent("value", "field", "member");
+      out.element = await codec.blind("element", c, canonical(element()));
+      break;
+    default:
+      throw refuse("unsupported operation");
+  }
+  out.target = { ...target, record: [c, await codec.blind("record", c, id)] };
+  return out;
 }
 
 // ── Pull ─────────────────────────────────────────────────────────────────────────────────────
@@ -243,11 +368,17 @@ export async function openPull(
 
   if (Array.isArray(body.tombstones)) {
     const names = await openKeyNames(codec, ctx.openKeys);
-    out.tombstones = body.tombstones.map((t) =>
-      isObj(t) && typeof t.setting === "string" && names.has(t.setting)
-        ? { ...t, setting: names.get(t.setting)! }
-        : t,
-    );
+    const records = await recordNames(codec, ctx.recordKeys);
+    out.tombstones = body.tombstones.map((t) => {
+      if (!isObj(t)) return t;
+      if (typeof t.setting === "string" && names.has(t.setting))
+        return { ...t, setting: names.get(t.setting)! };
+      const served = servedRecord(t.record);
+      const id = served === null ? undefined : records.get(served.key);
+      return served !== null && id !== undefined
+        ? { ...t, record: [served.collection, id] }
+        : t;
+    });
   }
 
   // Renames come from the app only; a served map or `renamedTo` could swap values between keys.
@@ -278,8 +409,18 @@ export async function openPull(
       }
       if (r.status === "conflict" && isObj(r.server)) {
         const id = r.mutationId;
-        const expect = conflictSetting(ctx.mutations, id);
-        const o = await openCopy(r.server, expect, codec, ctx);
+        const target = conflictTarget(ctx.mutations, id);
+        // A record mutation's copy opens under that mutation's own record; anything else is a
+        // setting (a mutation the host cannot place opens as invalid).
+        const o =
+          target !== null && "record" in target
+            ? await openRecordCopy(r.server, recordRef(target.record), codec)
+            : await openCopy(
+                r.server,
+                target !== null && "setting" in target ? target.setting : null,
+                codec,
+                ctx,
+              );
         clean.server = o.entry;
         if (typeof id === "number") (opened.conflicts ??= {})[id] = o.row;
       }
@@ -292,13 +433,21 @@ export async function openPull(
   return { body: out, opened };
 }
 
+/** The target of mutation `id`, or null when the host did not say. */
+function conflictTarget(
+  ms: ReadonlyArray<WireMutation> | undefined,
+  id: Json | undefined,
+): WireMutation["target"] | null {
+  return ms?.find((x) => x.mutationId === id)?.target ?? null;
+}
+
 /** The plaintext setting name of mutation `id`, or null when the host did not say. */
 function conflictSetting(
   ms: ReadonlyArray<WireMutation> | undefined,
   id: Json | undefined,
 ): string | null {
-  const m = ms?.find((x) => x.mutationId === id);
-  return m && "setting" in m.target ? m.target.setting : null;
+  const t = conflictTarget(ms, id);
+  return t !== null && "setting" in t ? t.setting : null;
 }
 
 async function openKeyNames(
@@ -308,6 +457,34 @@ async function openKeyNames(
   const map = new Map<string, string>();
   for (const k of keys ?? [])
     map.set(await codec.blind("setting", SETTINGS_COLLECTION, k), k);
+  return map;
+}
+
+/** The lookup key of a collection and a (blinded) id: a NUL no collection name holds. */
+const recordKey = (c: string, id: string): string => `${c}\0${id}`;
+
+/** A served `[collection, id]` as a lookup key: any pair of strings, not only a usable record. */
+function servedRecord(v: unknown): { collection: string; key: string } | null {
+  if (!Array.isArray(v) || v.length !== 2) return null;
+  const [c, id] = v as unknown[];
+  if (typeof c !== "string" || typeof id !== "string") return null;
+  return { collection: c, key: recordKey(c, id) };
+}
+
+/** Blinded record id (with its collection) to plaintext id, for the records the machine holds. */
+async function recordNames(
+  codec: HostCodec,
+  keys: Iterable<readonly [string, string]> | undefined,
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  for (const k of keys ?? []) {
+    const ref = recordRef(k);
+    if (ref !== null)
+      map.set(
+        recordKey(ref[0], await codec.blind("record", ref[0], ref[1])),
+        ref[1],
+      );
+  }
   return map;
 }
 
@@ -324,6 +501,8 @@ const invalidRow = (e: Entry): Opened => {
   const out = stripped(e);
   delete out.value;
   delete out.members;
+  delete out.fields;
+  delete out.elements;
   return { entry: out, row: { invalid: true } };
 };
 
@@ -333,17 +512,173 @@ async function openChange(
   ctx: OpenPullContext,
 ): Promise<Opened> {
   if (typeof c.setting === "string") return openSettingChange(c, codec, ctx);
-  // A record change: this slice seals no records, so a sealed one cannot be read.
+  if ("record" in c) return openRecordChange(c, codec, ctx);
+  // Neither a setting nor a record: a sealed one cannot be placed.
   if ("ct" in c) return invalidRow(c);
   return plainRow(c);
 }
 
 function plainRow(c: Entry): Opened {
+  // Sealed cells with no `ct` are not a plaintext row: only the host's open can read them.
+  if (Array.isArray(c.fields) || Array.isArray(c.elements))
+    return invalidRow(c);
   const entry = stripped(c);
   return {
     entry,
     row: typeof c.version === "number" ? { seq: c.version } : {},
   };
+}
+
+/** The sealed shape of a record row: one `ct`, sealed `fields`, or sealed `elements`. */
+function recordShape(e: Entry): "ct" | "fields" | "elements" | "plain" | null {
+  const shapes = [
+    "ct" in e ? "ct" : null,
+    Array.isArray(e.fields) ? "fields" : null,
+    Array.isArray(e.elements) ? "elements" : null,
+  ].filter((x) => x !== null);
+  if (shapes.length === 0) return "plain";
+  return shapes.length === 1
+    ? (shapes[0] as "ct" | "fields" | "elements")
+    : null;
+}
+
+/** A sealed record row's entry: the placed `[collection, id]` and the value it opened to. */
+function sealedRecord(
+  e: Entry,
+  record: [string, string] | Json,
+  value: Json,
+): Opened {
+  const entry = stripped(e);
+  delete entry.fields;
+  delete entry.elements;
+  entry.record = record as Json;
+  entry.value = value;
+  return { entry, row: { sealed: true } };
+}
+
+/**
+ * A record change. A plaintext row is legacy (the machine judges its `seq`, §13.10.7). A sealed
+ * one needs a blinded id and opens only when every envelope's `k` re-blinds to the names the row
+ * came under; the row then carries the plaintext id and the opened value (a `merge` record's
+ * object, a `union` record's array in the served order).
+ */
+async function openRecordChange(
+  c: Entry,
+  codec: HostCodec,
+  ctx: OpenPullContext,
+): Promise<Opened> {
+  const shape = recordShape(c);
+  if (shape === "plain") return plainRow(c);
+  const ref = recordRef(c.record);
+  if (shape === null || ref === null || !isBlindedName(ref[1]))
+    return invalidRow(c);
+  const [collection, served] = ref;
+  if (shape === "ct") {
+    const env = fromCt(c.ct);
+    if (env === null) return invalidRow(c);
+    const r = await codec.openAny(collection, env);
+    if (!r.ok || r.name === "" || hasNul(r.name)) return invalidRow(c);
+    if ((await codec.blind("record", collection, r.name)) !== served)
+      return invalidRow(c);
+    return sealedRecord(c, [collection, r.name], r.value as Json);
+  }
+  const cells = await openCells(c, shape, collection, null, codec);
+  if (cells === null) return invalidRow(c);
+  let id = cells.id;
+  if (id === null) {
+    // No cell names the record, so the id comes from a record the machine holds, if any.
+    const held = await recordNames(codec, ctx.recordKeys);
+    id = held.get(recordKey(collection, served)) ?? null;
+  } else if ((await codec.blind("record", collection, id)) !== served)
+    return invalidRow(c);
+  return sealedRecord(c, [collection, id ?? served], cells.value);
+}
+
+/** A conflict's server copy of the record `rec` of the mutation: opened under that id. */
+async function openRecordCopy(
+  e: Entry,
+  rec: [string, string] | null,
+  codec: HostCodec,
+): Promise<Opened> {
+  const shape = recordShape(e);
+  if (shape === "plain") return plainRow(e);
+  if (shape === null || rec === null) return invalidRow(e);
+  const [collection, id] = rec;
+  if (shape === "ct") {
+    const env = fromCt(e.ct);
+    if (env === null) return invalidRow(e);
+    const r = await codec.open(collection, id, env, []);
+    if (!r.ok) return invalidRow(e);
+    const entry = stripped(e);
+    entry.value = r.value as Json;
+    return { entry, row: { sealed: true } };
+  }
+  const cells = await openCells(e, shape, collection, id, codec);
+  if (cells === null) return invalidRow(e);
+  const entry = stripped(e);
+  delete entry.fields;
+  delete entry.elements;
+  entry.value = cells.value;
+  return { entry, row: { sealed: true } };
+}
+
+/**
+ * Opens the sealed cells of a `merge` record (`fields`) or a `union` record (`elements`). Each
+ * envelope's `k` splits at its first U+0000 into the id and the cell name; the cell's blinded
+ * name must be what the row carries (and, for an element, the opened value must spell the name),
+ * and every cell must name the same id (`expectId`, when the caller knows it). `id` is null for
+ * a record with no cells.
+ */
+async function openCells(
+  e: Entry,
+  shape: "fields" | "elements",
+  collection: string,
+  expectId: string | null,
+  codec: HostCodec,
+): Promise<{ id: string | null; value: Json } | null> {
+  const kind = shape === "fields" ? "field" : "element";
+  const cells = e[shape] as Json[];
+  let id: string | null = expectId;
+  const names = new Set<string>();
+  const fields: { [k: string]: Json } = {};
+  const elements: Json[] = [];
+  for (const cell of cells) {
+    if (!isObj(cell)) return null;
+    const wire = cell[kind];
+    if (typeof wire !== "string" || !isBlindedName(wire)) return null;
+    const env = fromCt(cell.ct);
+    if (env === null) return null;
+    const r = await codec.openAny(collection, env);
+    if (!r.ok) return null;
+    const cut = r.name.indexOf("\0");
+    if (cut <= 0) return null;
+    const cellId = r.name.slice(0, cut);
+    const name = r.name.slice(cut + 1);
+    if (name === "" || hasNul(name)) return null;
+    if (id !== null && cellId !== id) return null;
+    id = cellId;
+    if ((await codec.blind(kind, collection, name)) !== wire) return null;
+    if (names.has(name)) return null;
+    names.add(name);
+    if (kind === "field") {
+      Object.defineProperty(fields, name, {
+        value: r.value as Json,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    } else {
+      let spelled: string;
+      try {
+        spelled = canonicalJson(r.value);
+      } catch {
+        return null;
+      }
+      if (spelled !== name) return null;
+      elements.push(r.value as Json);
+    }
+  }
+  return { id, value: kind === "field" ? fields : elements };
 }
 
 async function openSettingChange(

@@ -537,6 +537,10 @@
       "title": "Cifrado obligatorio",
       "message": "Esta app necesita sincronización cifrada, que ahora no está disponible. La sincronización sigue desactivada."
     },
+    "sync-file-invalid": {
+      "title": "Archivo no abierto",
+      "message": "El archivo sincronizado no superó la comprobación y no se usó. Inténtalo de nuevo."
+    },
     "invalid-options": {
       "title": "App no configurada",
       "message": "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador."

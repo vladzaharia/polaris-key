@@ -28,6 +28,7 @@ __all__ = [
     "CloudSyncFile",
     "CloudSyncStateFile",
     "is_catalog_shape",
+    "write_bytes_atomic",
     "write_json_atomic",
 ]
 
@@ -50,16 +51,17 @@ def is_catalog_shape(v: Any) -> bool:
     )
 
 
-def write_json_atomic(path: str, value: Any) -> None:
-    """Write ``value`` to ``path``: temp file (exclusive, 0600) in the same directory, fsync, rename."""
+def write_bytes_atomic(path: str, data: bytes) -> None:
+    """Write ``data`` to ``path``: temp file (exclusive, 0600) in the same directory, fsync, rename. The
+    directory is created (0700) when needed."""
     directory = os.path.dirname(path) or "."
     os.makedirs(directory, mode=0o700, exist_ok=True)
     tmp = f"{path}.{secrets.token_hex(12)}.tmp"
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(tmp, flags, 0o600)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(value, f, separators=(",", ":"), allow_nan=False)
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, path)
@@ -77,6 +79,11 @@ def write_json_atomic(path: str, value: Any) -> None:
             os.close(dfd)
     except OSError:
         pass
+
+
+def write_json_atomic(path: str, value: Any) -> None:
+    """Write ``value`` to ``path`` as compact JSON, atomically (:func:`write_bytes_atomic`)."""
+    write_bytes_atomic(path, json.dumps(value, separators=(",", ":"), allow_nan=False).encode("utf-8"))
 
 
 def _read_json(path: str) -> Any:
