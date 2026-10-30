@@ -8,7 +8,9 @@ over the identity client, the LAN service, the relay and the sessions they open.
 - ``devices()``: the person's devices as the Worker lists them (display data);
 - ``open(device_id)``: a session to one device, LAN first, the relay after a bounded LAN attempt;
 - ``on_channel(fn)``: sessions other devices opened to this one, on either path;
-- ``stop()``: close the sessions, the relay and the LAN service.
+- ``stop()``: close the sessions, the relay and the LAN service;
+- ``nearby``: approval of a device with no sign-in by a signed-in device nearby (mode ``v``, CC-15):
+  ``nearby.request()`` on the new device, ``nearby.on_request()`` on the approver.
 
 The services run on the Connect loop (D-3), one private asyncio loop on a daemon thread; every method here
 is a plain blocking call from the host's thread, and ``AsyncClient`` mirrors them as coroutines. Callbacks
@@ -39,6 +41,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional
 from .client import ConnectClient, ConnectDevice
 from .errors import LanError, RelayError
 from .loop import connect_loop
+from .nearby import CloudNearby, NearbyDeps
 
 if TYPE_CHECKING:  # the transports import asyncio and sockets: only when Connect starts
     from .channel import ConnectNotice
@@ -109,7 +112,9 @@ class CloudConnect:
         *,
         apply_trust: Optional[Callable[[str], Any]] = None,
         now: Optional[Callable[[], int]] = None,
+        nearby: Optional[NearbyDeps] = None,
     ) -> None:
+        self._nearby = CloudNearby(nearby)
         self._now = now
         self._connect = connect
         self._discovery = discovery
@@ -164,6 +169,12 @@ class CloudConnect:
         return self._gate
 
     # -- the API ------------------------------------------------------------------------------------
+
+    @property
+    def nearby(self) -> CloudNearby:
+        """Nearby approval (CC-15): ``request()`` on the new device, ``on_request()`` on the approver. Gated
+        by the Identity service's discovery, never by Connect: it works with Connect off."""
+        return self._nearby
 
     def status(self) -> CloudConnectStatus:
         relay = self._relay
