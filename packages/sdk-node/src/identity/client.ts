@@ -10,7 +10,7 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { rm } from "node:fs/promises";
-import { PolarisError } from "@polaris-key/client-core";
+import { PolarisError, type DeviceKeyPort } from "@polaris-key/client-core";
 import { DEVICE_POLL_DENIED } from "@polaris-key/protocol/identity";
 import { readJson, writeJson } from "../core/jsonFile.js";
 import { ErrorCode, Feature } from "../constants.generated.js";
@@ -35,6 +35,7 @@ import {
   type ShownIdentity,
 } from "./signIn.js";
 import { ChoiceClient } from "./choice.js";
+import { NearbyRoutes } from "./nearby.js";
 import {
   nearbyAvailable,
   runAutoSignIn,
@@ -107,6 +108,17 @@ export function openInBrowser(
   });
 }
 
+/** What nearby approval needs of the rest of the client, bound lazily (Cloud Connect is built
+ *  after Identity). */
+export interface NearbyBinding {
+  /** This device's keys (made when none exist) and its `X-PKey-Device` value. */
+  signer(): Promise<{ port: DeviceKeyPort; deviceId: string }>;
+  /** `devices.registerKeys(port)`. */
+  registerKeys(port: DeviceKeyPort): Promise<unknown>;
+  /** Load discovery again and answer it (N11). */
+  refreshDiscovery(): Promise<ProductDiscoveryDocument | null>;
+}
+
 /** Raised after a sign-in mints a credential; the facade syncs. */
 export type SignInAcquiredListener = () => Promise<void>;
 
@@ -131,6 +143,8 @@ export class IdentityClient {
     private readonly licenseId: () => string | null = () => null,
     /** Runs after the identity is forgotten: the facade drops the key ring's root and pin. */
     private readonly onForget: () => Promise<void> | void = () => undefined,
+    /** Nearby approval's device keys and discovery refresh; absent, nearby answers the typed N/A. */
+    private readonly nearbyBinding: NearbyBinding | null = null,
   ) {
     this.identityFile = join(ctx.dirs.state, "identity.json");
     this.signInState = new SignInState(ctx.dirs.state);
@@ -154,6 +168,33 @@ export class IdentityClient {
 
   private readonly account: Account;
   private readonly signInState: SignInState;
+  #routes: NearbyRoutes | undefined;
+
+  /** The nearby HTTP routes, for the sign-in and approver sessions. @internal */
+  get nearbyRoutes(): NearbyRoutes {
+    const b = this.nearbyBinding;
+    return (this.#routes ??= new NearbyRoutes({
+      ctx: this.ctx,
+      tokens: this.tokens,
+      discovery: (fresh) =>
+        fresh && b !== null ? b.refreshDiscovery() : this.loadDiscovery(),
+      signer: () =>
+        b !== null
+          ? b.signer()
+          : Promise.reject(
+              new PolarisError(
+                ErrorCode.serviceUnavailable,
+                "nearby approval is not set up on this client.",
+              ),
+            ),
+      registerKeys: (port) =>
+        b !== null ? b.registerKeys(port) : Promise.resolve(),
+      onAcquired: this.onAcquired,
+      storeIdentity: (who) => this.storeIdentity(who),
+      licenseId: this.licenseId,
+      emit: this.emit,
+    }));
+  }
   private choiceClient: ChoiceClient | undefined;
 
   /**

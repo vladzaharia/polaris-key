@@ -217,8 +217,10 @@ export async function nearbyAvailable(
   try {
     const names = ENDPOINTS[o.role];
     if (names === undefined) return false;
+    // Discovery first: the service table comes from it once it is loaded.
+    const doc = await deps.discovery();
     deps.ctx.requireService("identity", Feature.identityNearby);
-    const f = identityFragmentFrom(await deps.discovery());
+    const f = identityFragmentFrom(doc);
     if (f === null || f.nearby !== true) return false;
     const ep = f.endpoints as unknown as Record<string, string | undefined>;
     if (!names.every((k) => typeof ep[k] === "string" && ep[k] !== ""))

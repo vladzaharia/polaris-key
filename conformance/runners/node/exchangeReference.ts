@@ -27,6 +27,8 @@ export const b64u = (b: Uint8Array): string =>
 export interface DeviceKeys {
   signKey: string;
   agreeKey: string;
+  /** The 64-byte Ed25519 signature by the signing key over `message`. */
+  sign(message: Uint8Array): Uint8Array;
   proof(o: {
     purpose: string;
     product: string;
@@ -53,6 +55,7 @@ export function deviceKeys(label: string): DeviceKeys {
   return {
     signKey: b64u(raw),
     agreeKey: b64u(agree),
+    sign: (message) => sign(null, Buffer.from(message), priv),
     proof(o) {
       const lines = [
         "pkey-proof/1",

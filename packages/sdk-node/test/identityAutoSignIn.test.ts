@@ -10,6 +10,7 @@ import { nearbyAvailable } from "../src/identity/autoSignIn.js";
 import { CoreContext } from "../src/core/context.js";
 import {
   FixedStore,
+  identityDiscovery,
   json,
   seededClient,
   type Handler,
@@ -27,18 +28,7 @@ const ENDPOINTS = {
   attach: `${BASE}/identity/attach`,
 };
 
-const discovery =
-  (fragment: Record<string, unknown> | null): Handler =>
-  () =>
-    json({
-      product: "djdl",
-      services: {
-        identity:
-          fragment === null
-            ? { enabled: false }
-            : { enabled: true, configured: true, ...fragment },
-      },
-    });
+const discovery = identityDiscovery;
 
 function routes(over: Record<string, Handler> = {}): Record<string, Handler> {
   return {
@@ -89,6 +79,12 @@ async function restart(dir: string, store: FixedStore, over = routes()) {
   });
 }
 
+/** The client's token manager (private: reached through a cast, as the replay runners do). */
+const tokensOf = (
+  c: Client,
+): { set(t: string, s: string): Promise<void>; clear(): Promise<void> } =>
+  (c as unknown as { tokens: ReturnType<typeof tokensOf> }).tokens;
+
 const stateOf = (c: Client): string =>
   (c.identity as unknown as { ctx: { dirs: { state: string } } }).ctx.dirs
     .state;
@@ -136,11 +132,7 @@ describe("autoSignIn(): rung 1", () => {
       routes: routes(),
     });
     await signIn(client);
-    const tokens = (
-      client as unknown as {
-        tokens: { set(t: string, s: string): Promise<void> };
-      }
-    ).tokens;
+    const tokens = tokensOf(client);
     await tokens.set("pkeyt_key", "activate");
     expect(await client.identity.autoSignIn()).toMatchObject({
       kind: "needsSignIn",
@@ -162,14 +154,7 @@ describe("autoSignIn(): rung 1", () => {
       routes: routes(),
     });
     await signIn(client);
-    const tokens = (
-      client as unknown as {
-        tokens: {
-          set(t: string, s: string): Promise<void>;
-          clear(): Promise<void>;
-        };
-      }
-    ).tokens;
+    const tokens = tokensOf(client);
     await tokens.set("pkeyt_next", "reacquire");
     expect((await client.identity.autoSignIn()).kind).toBe("signedIn");
     expect(await client.identity.attach({ confirm: true })).toMatchObject({

@@ -310,6 +310,15 @@ export class PolarisKeyClient {
       () => this.cache.state.license?.doc.licenseId ?? null,
       // Sign-out and deactivation both end in `identity.forget()`: the root and its pin go with them.
       () => this.keyring.forget(),
+      // Nearby approval (I-47.4): the device keys, the keys route and a fresh discovery read.
+      {
+        signer: () => this.connect.nearbySigner(),
+        registerKeys: (port) => this.devices.registerKeys(port),
+        refreshDiscovery: async () => {
+          await this.discover().catch(() => undefined);
+          return this.discoveryDoc;
+        },
+      },
     );
     this.release = new ReleaseClient(
       this.core,

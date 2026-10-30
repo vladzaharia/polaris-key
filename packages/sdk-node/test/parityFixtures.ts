@@ -149,3 +149,20 @@ export async function seededClient(
   await client.init();
   return { client, store, seen: server.seen, dir };
 }
+
+/** A discovery handler whose Identity fragment is `fragment` (merged over `enabled`/`configured`),
+ *  or Identity off for `null`. */
+export function identityDiscovery(
+  fragment: Record<string, unknown> | null,
+): Handler {
+  return () =>
+    json({
+      product: PRODUCT,
+      services: {
+        identity:
+          fragment === null
+            ? { enabled: false }
+            : { enabled: true, configured: true, ...fragment },
+      },
+    });
+}

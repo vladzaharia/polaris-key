@@ -61,12 +61,6 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import {
-  createHash,
-  createPrivateKey,
-  createPublicKey,
-  sign as edSign,
-} from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -109,6 +103,15 @@ import { signJws } from "@polaris-key/jws";
 // built file: the replay must go through the bearer, the `X-PKey-*` headers and the byte caps the
 // host uses, not through a copy of them.
 import { sendSync } from "../../../packages/sdk-node/dist/cloudSync/transport.js";
+import {
+  fixtureKeys,
+  nearbyAction,
+  nearbyDiscovery,
+  nearbyClientOptions,
+  nearbyFacts,
+  type NearbyReplayParty,
+  type RoutesLike,
+} from "./nearbyActions.js";
 import {
   applies,
   doctor,
@@ -287,6 +290,8 @@ interface Session {
   redirect: RedirectSession | null;
   /** The label of the fixture keys the client holds (`connectIdentity`). */
   keyLabel?: string;
+  /** Nearby approval (`identity.nearby`): D is this replay's client, M is built per approve. */
+  nearbyM?: (step: Step) => Promise<NearbyReplayParty>;
   /** The first ring a `keyringCreate` made: the one a later `keyringAdopt` takes the root of. */
   firstRingId?: string;
   /** The next mutation id a `cloudSyncPush` generates (one past the last the Worker answered). */
@@ -760,33 +765,7 @@ async function keyringStep(
  * clear. The agreement key has no private half here, so `dh` answers nothing; identity needs none.
  */
 function fixtureKeyPort(label: string): DeviceKeyPort {
-  const seed = createHash("sha256").update(label).digest();
-  const priv = createPrivateKey({
-    key: Buffer.concat([
-      Buffer.from("302e020100300506032b657004220420", "hex"),
-      seed,
-    ]),
-    format: "der",
-    type: "pkcs8",
-  });
-  const jwk = createPublicKey(priv).export({ format: "jwk" });
-  const signKey = jwk.x as string;
-  const agree = createHash("sha256").update(`${label}:agree`).digest();
-  agree[31]! &= 0x7f;
-  const keys = {
-    signKey,
-    agreeKey: agree.toString("base64url"),
-    generation: 1,
-  };
-  return {
-    ensure: async () => keys,
-    publicKeys: async () => keys,
-    sign: async (m) => new Uint8Array(edSign(null, Buffer.from(m), priv)),
-    dh: async () => null,
-    rotate: async () => keys,
-    persistence: () => "durable",
-    wipe: async () => undefined,
-  };
+  return fixtureKeys(label) as unknown as DeviceKeyPort;
 }
 
 /** `client.connect` (CC-06.4, `connect.identity`): the identity and the device list. */
@@ -989,6 +968,14 @@ async function act(
       break;
     case "discover":
       out.result = (await client.discover()).kind;
+      // identity.nearby: whether the discovery just loaded names nearby approval.
+      if (session.transcript.features.includes("identity.nearby"))
+        Object.assign(
+          out,
+          nearbyFacts(
+            (client as unknown as { discoveryDoc: unknown }).discoveryDoc,
+          ),
+        );
       // core.presentation (HA-13): the member the client exposes after this discovery.
       out.presentation = client.presentation() as JsonValue;
       // ui.cli.portal (DISC-01): the core.portal member the client holds after this discovery.
@@ -1226,6 +1213,30 @@ async function act(
         },
       );
       break;
+    case "nearbyStart":
+    case "nearbyPoll":
+    case "nearbyApprove": {
+      // identity.nearby (I-47.4): the HTTP routes under the nearby sessions, `identity.nearbyRoutes`
+      // (typed cast: it is internal). D is this client; M a second one the replay builds.
+      const first = session.transcript.steps.find(
+        (s) => typeof s.args.keyLabel === "string",
+      )!;
+      Object.assign(
+        out,
+        await nearbyAction({
+          t: session.transcript,
+          step,
+          d: () => ({
+            routes: (client.identity as unknown as { nearbyRoutes: RoutesLike })
+              .nearbyRoutes,
+            keys: fixtureKeys(String(first.args.keyLabel)),
+          }),
+          m: (s) => session.nearbyM!(s),
+          tokenHeld: () => store.token !== null,
+        }),
+      );
+      break;
+    }
     default:
       throw new Error(`unknown action ${step.action}`);
   }
@@ -1266,6 +1277,9 @@ async function replay(t: Transcript): Promise<void> {
     );
   }
   let currentStep: Step | null = null;
+  let stepIndex = -1;
+  // identity.nearby (I-47.4): two devices, the fixture keys of the first step's `keyLabel`.
+  const nearby = t.features.includes("identity.nearby");
   const syncWire: SyncWire = { etag: null, retryAfter: null };
   // The standard discovery answer, for a transcript that loads discovery nowhere itself.
   let discoverySteps = t.steps.some((s) => s.action === "discover");
@@ -1276,6 +1290,16 @@ async function replay(t: Transcript): Promise<void> {
   ) => {
     const url = new URL(input instanceof Request ? input.url : String(input));
     const step = currentStep;
+    if (
+      nearby &&
+      url.pathname === discoveryPath &&
+      step &&
+      !step.exchanges.items.some((x) => x.request.path === discoveryPath)
+    )
+      return new Response(JSON.stringify(nearbyDiscovery(t, stepIndex)), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     if (
       !discoverySteps &&
       url.pathname === discoveryPath &&
@@ -1304,13 +1328,15 @@ async function replay(t: Transcript): Promise<void> {
   }) as typeof fetch;
   const services =
     t.initial.services ??
-    (u
-      ? ["release", "distribution", "update"]
-      : usesAccount(t)
-        ? ["license", "config", "identity"]
-        : usesRedirect(t)
-          ? ["identity"]
-          : undefined);
+    (nearby
+      ? ["license", "config", "identity"]
+      : u
+        ? ["release", "distribution", "update"]
+        : usesAccount(t)
+          ? ["license", "config", "identity"]
+          : usesRedirect(t)
+            ? ["identity"]
+            : undefined);
   const client = new PolarisKeyClient({
     productSlug: t.product,
     baseUrl: t.baseUrl,
@@ -1323,7 +1349,16 @@ async function replay(t: Transcript): Promise<void> {
     deviceName: t.initial.deviceName ?? "",
     stateDir,
     // The key ring's device keys: a memory store, since the replay registers none.
-    keyring: { deviceKeys: createNodeDeviceKeyStore({ memory: true }) },
+    keyring: {
+      deviceKeys: nearby
+        ? fixtureKeyPort(
+            String(
+              t.steps.find((s) => typeof s.args.keyLabel === "string")!.args
+                .keyLabel,
+            ),
+          )
+        : createNodeDeviceKeyStore({ memory: true }),
+    },
     // The presentation cache (HA-13) too, so a replay never writes into the developer's home.
     cacheDir: stateDir,
     ...(services ? { expectedServices: services as never } : {}),
@@ -1346,7 +1381,7 @@ async function replay(t: Transcript): Promise<void> {
       : {}),
   });
   client.devices.fingerprint = () => FINGERPRINT;
-  if (usesRedirect(t))
+  if (usesRedirect(t) || nearby)
     // The redirect recordings pin the token exchange alone. The acquisition sync a sign-in
     // raises (trust fetch, documents, report) is pinned by the sync transcripts, so it is not
     // replayed here.
@@ -1361,9 +1396,42 @@ async function replay(t: Transcript): Promise<void> {
     redirect: null,
     syncWire,
   };
+  const approvers: PolarisKeyClient[] = [];
+  if (nearby)
+    session.nearbyM = async (s) => {
+      // M: the signed-in approver of this step, a second device with its own id, token and keys.
+      const keys = fixtureKeys(String(s.args.approverKeyLabel));
+      const m = new PolarisKeyClient(
+        nearbyClientOptions(t, {
+          store: new TranscriptStore(
+            String(s.args.approverDeviceId),
+            String(s.args.approverToken),
+          ),
+          fetchImpl,
+          dir: join(stateDir, "approver"),
+          keys,
+        }) as never,
+      );
+      approvers.push(m);
+      await m.init();
+      // M read discovery while the gate was still on; only a fresh read sees it go off.
+      const at = stepIndex;
+      stepIndex = 0;
+      await m.discover();
+      stepIndex = at;
+      (
+        m.identity as unknown as { onAcquired: () => Promise<void> }
+      ).onAcquired = async () => undefined;
+      return {
+        routes: (m.identity as unknown as { nearbyRoutes: RoutesLike })
+          .nearbyRoutes,
+        keys,
+      };
+    };
   for (let i = 0; i < t.steps.length; i += 1) {
     const step = server.beginStep(i);
     currentStep = step;
+    stepIndex = i;
     vi.setSystemTime((step.now ?? t.now) * 1000);
     const observed = await act(client, store, step, session);
     server.endStep();
@@ -1374,6 +1442,7 @@ async function replay(t: Transcript): Promise<void> {
       ).toEqual(want);
   }
   client.close();
+  for (const m of approvers) m.close();
 }
 
 afterEach(() => {
