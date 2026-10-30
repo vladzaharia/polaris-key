@@ -49,7 +49,7 @@ import {
   tagAdd,
 } from "./recordSets.js";
 import { envelopeKid } from "./sealed.js";
-import { accountRecord, recordCost } from "./usage.js";
+import { accountRecord, fileUsage, recordCost } from "./usage.js";
 import type {
   Classification,
   PushLimits,
@@ -160,7 +160,8 @@ function commit(
     else if (
       limits &&
       (limits.quotaBytes <= 0 ||
-        usage.bytes + Math.max(dBytes, 0) > limits.quotaBytes)
+        usage.bytes + fileUsage(usage).reservedBytes + Math.max(dBytes, 0) >
+          limits.quotaBytes)
     )
       scope = "user";
     if (scope !== null)

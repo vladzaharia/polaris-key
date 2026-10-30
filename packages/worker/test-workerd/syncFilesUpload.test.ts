@@ -8,9 +8,13 @@
 // into `put` and `uploadPart`. R2 needs the length up front, so the order of the two matters, and
 // only workerd shows whether it is right.
 
-import { env } from "cloudflare:test";
+import { env, runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
-import { callCloudSync } from "../src/services/sync/do/client.js";
+import {
+  callCloudSync,
+  cloudSyncObjectName,
+} from "../src/services/sync/do/client.js";
+import { streamSha256 } from "../src/core/assets/blobs.js";
 import { fileObjectKey } from "../src/services/sync/engine/files.js";
 import {
   fixedLength,
@@ -203,4 +207,120 @@ describe("the upload path under workerd (U-10.6)", () => {
     });
     expect(await bucket().head(key)).toBeNull();
   });
+
+  it(
+    "finalizes a multipart upload: R2 completes the parts, the object hashes to the declared value, the record moves",
+    R2_LANE,
+    async () => {
+      const pin = { product: PRODUCT, subject: "sub_finalize" };
+      const uploadId = "up_CCCCCCCCCCCCCCCCCCCCCC";
+      const partBytes = 5 * 1024 * 1024;
+      const file = bytesOf(partBytes + 1000, 11);
+      const sha = await sha256Hex(file);
+      await callCloudSync<"fileBegin">(env, pin, {
+        op: "fileBegin",
+        uploadId,
+        deviceId: "d1",
+        collection: "saves",
+        recordId: "slot-1",
+        request: {
+          size: file.length,
+          sha256: sha,
+          format: "whole",
+          enc: "none",
+          baseVersion: "*",
+        },
+        mode: "multipart",
+        partBytes,
+        maxRecords: 16,
+        limits: { quotaBytes: 1_000_000_000 },
+        serverNow: NOW,
+      });
+      const address = {
+        collection: "saves",
+        recordId: "slot-1",
+        uploadId,
+        serverNow: NOW,
+      };
+      const prepared = await callCloudSync<"filePrepare">(env, pin, {
+        op: "filePrepare",
+        ...address,
+      });
+      if (!prepared.outcome.ok) throw new Error("not prepared");
+      const { key, multipartId } = prepared.outcome;
+      const mp = bucket().resumeMultipartUpload(key, multipartId as string);
+      for (const [n, body] of [
+        [2, file.subarray(partBytes)],
+        [1, file.subarray(0, partBytes)],
+      ] as const) {
+        const hashed = hashBody(chunked(body));
+        const part = await mp.uploadPart(
+          n,
+          fixedLength(hashed.stream, body.length),
+        );
+        expect(await hashed.digest).toBe(await sha256Hex(body.slice()));
+        await callCloudSync<"filePart">(env, pin, {
+          op: "filePart",
+          ...address,
+          n,
+          etag: part.etag,
+          bytes: body.length,
+        });
+      }
+
+      // Finalize: complete in R2, hash the stored object, commit.
+      const claimed = await callCloudSync<"fileFinalizePrepare">(env, pin, {
+        op: "fileFinalizePrepare",
+        ...address,
+      });
+      expect(claimed.outcome).toMatchObject({
+        ok: true,
+        verify: { key, size: file.length },
+      });
+      const stored = await bucket().get(key);
+      if (!stored) throw new Error("no completed object");
+      expect((await streamSha256(stored.body)).sha256).toBe(sha);
+      const committed = await callCloudSync<"fileFinalizeCommit">(env, pin, {
+        op: "fileFinalizeCommit",
+        ...address,
+        deviceId: "d1",
+        clientId: "c_AAAAAAAAAAAAAAAAAAAAAA",
+        maxRecords: 16,
+      });
+      if (!committed.outcome.ok) throw new Error("not committed");
+      expect(committed.outcome.result).toMatchObject({
+        size: file.length,
+        sha256: sha,
+        format: "whole",
+      });
+      // A repeat is the stored answer, charged once.
+      const again = await callCloudSync<"fileFinalizePrepare">(env, pin, {
+        op: "fileFinalizePrepare",
+        ...address,
+      });
+      expect(again.outcome).toEqual({
+        ok: true,
+        replay: committed.outcome.result,
+      });
+
+      const stub = env.CLOUD_SYNC.get(
+        env.CLOUD_SYNC.idFromName(cloudSyncObjectName(pin)),
+      );
+      const usage = await runInDurableObject(stub, async (_o, state) => ({
+        files: state.storage.sql
+          .exec("SELECT status, size FROM files")
+          .toArray(),
+        records: state.storage.sql
+          .exec("SELECT version, value_json FROM records")
+          .toArray(),
+      }));
+      expect(usage.files).toEqual([{ status: "live", size: file.length }]);
+      expect(usage.records).toEqual([
+        { version: committed.outcome.result.version, value_json: "null" },
+      ]);
+      const u = await callCloudSync<"usage">(env, pin, { op: "usage" });
+      expect(u.usage).toMatchObject({ files: 1, fileBytes: file.length });
+      expect(u.usage.reservedBytes ?? 0).toBe(0);
+    },
+  );
 });

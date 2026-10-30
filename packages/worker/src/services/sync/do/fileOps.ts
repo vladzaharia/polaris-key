@@ -17,9 +17,13 @@ import type { UploadStatus } from "@polaris-key/protocol/sync";
 import {
   checkBegin,
   commitBegin,
+  commitFinalize,
+  FINALIZE_LEASE_MS,
   fileObjectKey,
+  finalizeLease,
   releaseUpload,
 } from "../engine/files.js";
+import { markDirty } from "./directory.js";
 import type { SyncStore, UploadRow } from "../engine/types.js";
 import type {
   CloudSyncError,
@@ -27,13 +31,18 @@ import type {
   CloudSyncReply,
   DoPin,
   FilePrepareOutcome,
+  FinalizeCommitOutcome,
+  FinalizePrepareOutcome,
 } from "./protocol.js";
+import type { FinalizeResponse } from "@polaris-key/protocol/sync";
 import type { SqlStore } from "./sqlStore.js";
 
 /** What an operation hands back to `fetch`: a body in the object's protocol and a status. */
 export interface FileReply {
   body: CloudSyncReply | CloudSyncError;
   status: number;
+  /** The write changed what the directory reports: the caller marks the flush due. */
+  dirty?: boolean;
 }
 
 /** What the file operations need from the object. */
@@ -314,4 +323,181 @@ export function filePart(
       });
   });
   return ok({ op: "filePart", outcome: { ok: true } });
+}
+
+// ── finalize (U-10.7) ────────────────────────────────────────────────────────────────────────
+
+/** The parts a session still lacks, as part numbers. A single upload is one part. */
+function missingParts(host: FileHost, u: UploadRow): number[] {
+  const need =
+    u.mode === "multipart" && u.partBytes !== null
+      ? Math.ceil(u.size / u.partBytes)
+      : 1;
+  const have = new Set(host.store.getParts(u.uploadId).map((p) => p.n));
+  const out: number[] = [];
+  for (let n = 1; n <= need; n++) if (!have.has(n)) out.push(n);
+  return out;
+}
+
+/**
+ * Takes the object to the state `finalize` hashes it in. A multipart upload is completed in R2
+ * (its parts, in order, with the etags the object recorded). A repeat after a crash finds the
+ * upload completed already, and the object stands. `absent`: no object is there; `size`: it is not
+ * the declared length; `down`: R2 did not answer.
+ */
+async function sealObject(
+  host: FileHost,
+  pin: DoPin,
+  u: UploadRow,
+): Promise<"ok" | "absent" | "size" | "down"> {
+  const bucket = host.bucket;
+  if (!bucket) return "down";
+  const key = fileObjectKey(pin, u.uploadId);
+  try {
+    if (u.mode === "multipart" && u.multipartId !== null) {
+      const parts = host.store
+        .getParts(u.uploadId)
+        .map((p) => ({ partNumber: p.n, etag: p.etag }));
+      try {
+        await bucket.resumeMultipartUpload(key, u.multipartId).complete(parts);
+      } catch (e) {
+        // Completed already (a retry after a crash): the object is what counts.
+        if (!(await bucket.head(key))) throw e;
+      }
+    }
+    const head = await bucket.head(key);
+    if (head === null) return "absent";
+    return head.size === u.size ? "ok" : "size";
+  } catch {
+    return "down";
+  }
+}
+
+/**
+ * Claims the session for a `finalize` and makes its object ready to hash. A session that already
+ * finished answers its stored result (`replay`: idempotent per `uploadId`, nothing is charged
+ * twice); one being finished by another call, inside its lease, is `busy`; one with parts missing
+ * lists them; an expired one is collected.
+ */
+export function fileFinalizePrepare(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "fileFinalizePrepare" }>,
+): Promise<FileReply> {
+  return host.ctx.blockConcurrencyWhile(async () => {
+    host.store.prepare(false);
+    const answer = (outcome: FinalizePrepareOutcome) =>
+      ok({ op: "fileFinalizePrepare", outcome });
+    const u = sessionOf(host, op);
+    if (!u || u.state === "aborted")
+      return answer({ ok: false, error: "not_found" });
+    if (u.state === "done" && u.resultJson !== null)
+      return answer({
+        ok: true,
+        replay: JSON.parse(u.resultJson) as FinalizeResponse,
+      });
+    if (u.expiresAt <= op.serverNow) {
+      await collectExpired(host, op);
+      return answer({ ok: false, error: "upload_expired" });
+    }
+    if (
+      u.state === "finalizing" &&
+      finalizeLease(u) + FINALIZE_LEASE_MS > op.serverNow
+    )
+      return answer({ ok: false, busy: true });
+    const missing = missingParts(host, u);
+    if (missing.length > 0) return answer({ ok: false, missing });
+    const sealed = await sealObject(host, op, u);
+    if (sealed === "size") {
+      // R2 holds bytes of another length than the upload declared: they can never verify.
+      if (!(await discard(host, op, u))) return refuse("unavailable", 503);
+      return answer({ ok: false, mismatch: true });
+    }
+    if (sealed === "absent" && u.mode === "single") {
+      // The object is not there, so part 1 is not either.
+      host.store.transaction(() => host.store.deletePart(u.uploadId, 1));
+      return answer({ ok: false, missing: [1] });
+    }
+    if (sealed !== "ok") return refuse("unavailable", 503);
+    host.store.transaction(() =>
+      host.store.putUpload({
+        ...u,
+        state: "finalizing",
+        resultJson: JSON.stringify({ lease: op.serverNow }),
+      }),
+    );
+    return answer({
+      ok: true,
+      verify: {
+        key: fileObjectKey(op, u.uploadId),
+        size: u.size,
+        sha256: u.sha256,
+        mode: u.mode,
+      },
+    });
+  });
+}
+
+/**
+ * The record write. Only a session this call claimed is committed; a refusal (the record changed
+ * since `begin`, `maxRecords` reached) ends the upload: its object is deleted and its reservation
+ * released, because a new `baseVersion` needs a new `begin`.
+ */
+export function fileFinalizeCommit(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "fileFinalizeCommit" }>,
+): Promise<FileReply> {
+  return host.ctx.blockConcurrencyWhile(async () => {
+    host.store.prepare(false);
+    const answer = (
+      outcome: FinalizeCommitOutcome,
+      dirty = false,
+    ): FileReply => ({
+      ...ok({ op: "fileFinalizeCommit", outcome }),
+      ...(dirty ? { dirty } : {}),
+    });
+    const u = sessionOf(host, op);
+    if (!u) return answer({ ok: false, error: "not_found" });
+    // Already committed by a call that came first: the same answer.
+    if (u.state === "done" && u.resultJson !== null)
+      return answer({
+        ok: true,
+        result: JSON.parse(u.resultJson) as FinalizeResponse,
+      });
+    if (u.state !== "finalizing")
+      return answer({ ok: false, error: "not_found" });
+    const out = host.store.transaction(() => {
+      const committed = commitFinalize(host.store, {
+        upload: u,
+        objectKey: fileObjectKey(op, u.uploadId),
+        clientId: op.clientId,
+        maxRecords: op.maxRecords,
+        nowMs: op.serverNow,
+      });
+      if (committed.ok) markDirty(host.store);
+      return committed;
+    });
+    if (out.ok) return answer({ ok: true, result: out.result }, true);
+    if (!(await discard(host, op, u))) return refuse("unavailable", 503);
+    return answer(out);
+  });
+}
+
+/** Gives the claim up. `discard`: the bytes did not verify, so the upload ends; else it reopens. */
+export function fileFinalizeEnd(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "fileFinalizeEnd" }>,
+): Promise<FileReply> {
+  return host.ctx.blockConcurrencyWhile(async () => {
+    host.store.prepare(false);
+    const u = sessionOf(host, op);
+    if (u && u.state === "finalizing") {
+      if (op.discard) {
+        if (!(await discard(host, op, u))) return refuse("unavailable", 503);
+      } else
+        host.store.transaction(() =>
+          host.store.putUpload({ ...u, state: "open", resultJson: null }),
+        );
+    }
+    return ok({ op: "fileFinalizeEnd", outcome: { ok: true } });
+  });
 }

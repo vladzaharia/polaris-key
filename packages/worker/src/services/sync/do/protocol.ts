@@ -10,6 +10,7 @@
 import type { RecordJoin } from "../engine/absorbRecords.js";
 import type {
   BeginFileRequest,
+  FinalizeResponse,
   PushRequest,
   SyncUploadMode,
   UploadStatus,
@@ -117,6 +118,39 @@ export type CloudSyncOp =
       bytes?: number;
       serverNow: number;
     })
+  /**
+   * `finalize` in three steps (U-10.7): `Prepare` checks the parts, completes a multipart upload in
+   * R2 and takes the session's claim; the Worker then streams the stored object through SHA-256;
+   * `Commit` is the record write (`engine/files.ts` `commitFinalize`). `End` gives the claim up:
+   * back to open for a retry, or discarding the upload when its bytes did not verify.
+   */
+  | (DoPin & {
+      op: "fileFinalizePrepare";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      serverNow: number;
+    })
+  | (DoPin & {
+      op: "fileFinalizeCommit";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      deviceId: string;
+      /** The clientId-shaped name the write is stamped with (derived from the device). */
+      clientId: string;
+      /** The matched declaration's `maxRecords`. */
+      maxRecords: number;
+      serverNow: number;
+    })
+  | (DoPin & {
+      op: "fileFinalizeEnd";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      discard: boolean;
+      serverNow: number;
+    })
   | (DoPin & {
       op: "fileAbort";
       collection: string;
@@ -202,6 +236,9 @@ export type CloudSyncReply =
   | { op: "fileAbort"; outcome: FileAbortOutcome }
   | { op: "filePrepare"; outcome: FilePrepareOutcome }
   | { op: "filePart"; outcome: FileAbortOutcome }
+  | { op: "fileFinalizePrepare"; outcome: FinalizePrepareOutcome }
+  | { op: "fileFinalizeCommit"; outcome: FinalizeCommitOutcome }
+  | { op: "fileFinalizeEnd"; outcome: FileAbortOutcome }
   | { op: "usage"; usage: StoreUsage; seq: number; empty: boolean }
   | { op: "exportAll"; document: ExportDocument | null }
   | { op: "absorb"; changed: number; skipped?: number; meter?: OpMeter }
@@ -236,6 +273,33 @@ export type FilePrepareOutcome =
       multipartId: string | null;
     }
   | { ok: false; error: "not_found" | "upload_expired" };
+
+/**
+ * `replay` is the stored answer of a session that already finished (no second charge); `verify`
+ * is the object to hash; `busy` is a `finalize` of the same session in flight; `mismatch` is an object of another length than declared (the upload ended); `missing` lists the
+ * part numbers that are not there. Not written as `error: "<code>"`, which the registry scan reads.
+ */
+export type FinalizePrepareOutcome =
+  | { ok: true; replay: FinalizeResponse }
+  | {
+      ok: true;
+      verify: {
+        key: string;
+        size: number;
+        sha256: string;
+        mode: SyncUploadMode;
+      };
+    }
+  | { ok: false; busy: true }
+  | { ok: false; mismatch: true }
+  | { ok: false; missing: number[] }
+  | { ok: false; error: "not_found" | "upload_expired" };
+
+export type FinalizeCommitOutcome =
+  | { ok: true; result: FinalizeResponse }
+  | { ok: false; error: "not_found" }
+  | { ok: false; error: "revision_conflict"; version: number }
+  | { ok: false; error: "quota_exceeded"; scope: "collection" };
 
 export type FileAbortOutcome = { ok: true } | { ok: false; error: "not_found" };
 

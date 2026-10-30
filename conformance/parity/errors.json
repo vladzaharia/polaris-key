@@ -464,8 +464,7 @@
       "code": "upload_incomplete",
       "kind": "wire",
       "service": "sync",
-      "description": "409 from POST /<p>/sync/files/{collection}/{id}/finalize: parts or chunks are still missing. `missing` lists them; the client uploads those and finalizes again (WIRE-CONTRACT-V5 §13.8.4, §13.9; U-10, U-37).",
-      "plannedBy": "U-10"
+      "description": "409 from POST /<p>/sync/files/{collection}/{id}/finalize: parts or chunks are still missing. `missing` lists them; the client uploads those and finalizes again (WIRE-CONTRACT-V5 §13.8.4, §13.9; U-10, U-37)."
     },
     {
       "code": "file_too_large",

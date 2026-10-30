@@ -42301,6 +42301,75 @@
     "cookies": [],
     "body": "21:d2dfdc9511fbeaa0"
   },
+  "cors GET /djdl/sync/files/a1/a1/finalize": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors GET+origin /djdl/sync/files/a1/a1/finalize": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors OPTIONS+origin+preflight /djdl/sync/files/a1/a1/finalize": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE",
+      "access-control-allow-headers": "Authorization, Content-Type, Range, If-None-Match, If-Range, Content-Digest, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch",
+      "access-control-max-age": "600"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors GET+other /djdl/sync/files/a1/a1/finalize": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors OPTIONS+other+preflight /djdl/sync/files/a1/a1/finalize": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors OPTIONS /djdl/sync/files/a1/a1/finalize": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors POST+body+origin /djdl/sync/files/a1/a1/finalize": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
+    },
+    "cookies": [],
+    "body": "21:d2dfdc9511fbeaa0"
+  },
   "cors GET /djdl/sync/files/a1/a1/upload/a1": {
     "status": 404,
     "headers": {

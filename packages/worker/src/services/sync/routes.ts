@@ -17,6 +17,7 @@ import {
   handleUploadAbort,
   handleUploadStatus,
 } from "./handlers/files.js";
+import { handleFinalize } from "./handlers/fileFinalize.js";
 import { handlePartPut, handleUploadPut } from "./handlers/fileUpload.js";
 import { handlePull } from "./handlers/pull.js";
 import { handlePush } from "./handlers/push.js";
@@ -77,5 +78,14 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
     cors: true,
     params: FILE_PARAMS,
     handler: (ctx, match) => handlePartPut(ctx, match),
+  },
+  // U-10.7: the commit of an upload.
+  {
+    path: "files/:collection/:id/finalize",
+    methods: ["POST"],
+    auth: { kind: "device" },
+    cors: true,
+    params: { collection: FILE_PARAMS.collection, id: FILE_PARAMS.id },
+    handler: (ctx, match) => handleFinalize(ctx, match),
   },
 ]);

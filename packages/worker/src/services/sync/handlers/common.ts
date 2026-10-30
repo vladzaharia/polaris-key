@@ -173,9 +173,9 @@ export async function liveRefusal(
 }
 
 /** A retryable answer for an object that could not serve the request right now. */
-export function retryable(): Response {
+export function retryable(afterSeconds = 5): Response {
   const res = wireError(503, "unavailable");
-  res.headers.set("retry-after", "5");
+  res.headers.set("retry-after", String(afterSeconds));
   return res;
 }
 

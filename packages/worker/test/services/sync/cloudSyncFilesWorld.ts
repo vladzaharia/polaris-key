@@ -6,6 +6,7 @@
 import { createHash } from "node:crypto";
 import { dispatch } from "../../../src/dispatch.js";
 import { invalidatePlatformSettings } from "../../../src/core/platformSettings.js";
+import { NOW } from "../../seed.js";
 import { R2Mock } from "../../r2Mock.js";
 import {
   BASE,
@@ -180,6 +181,59 @@ export function breakLimiter(w: Pick<World, "env">): void {
   const down = { fetch: () => Promise.reject(new Error("object reset")) };
   const ns = { idFromName: (name: string) => ({ name }), get: () => down };
   w.env.RL = ns as unknown as DurableObjectNamespace;
+}
+
+/** The device's licence carries these entitlement values. */
+export function entitle(
+  w: World,
+  entitlements: Record<string, unknown>,
+): Promise<void> {
+  const granted = Object.entries(entitlements).map(([name, value]) => [
+    name,
+    { state: "enforced", value, updatedAt: NOW },
+  ]);
+  return w.db.run(
+    "UPDATE licenses SET overrides_json = ? WHERE product = ?",
+    JSON.stringify({
+      config: {},
+      secrets: {},
+      entitlements: Object.fromEntries(granted),
+    }),
+    SLUG,
+  );
+}
+
+/** The device's licence grants `bytes` of Cloud Sync storage (`pkey.cloudSync.bytes`). */
+export const setQuota = (w: World, bytes: number): Promise<void> =>
+  entitle(w, { "pkey.cloudSync.bytes": bytes });
+
+/** `POST …/finalize` for an upload. */
+export const finalize = (
+  w: FilesWorld,
+  collection: string,
+  id: string,
+  uploadId: string,
+): Promise<Response> =>
+  call(w, "POST", filesPath(collection, id, "finalize"), {
+    json: { uploadId },
+  });
+
+/** Rows of a query on the person's object (the SQL is the test's, never a request's). */
+export function rows(w: World, sql: string): Record<string, unknown>[] {
+  const inst = w.ns.instances.get(`${SLUG}:${w.subject}`);
+  if (!inst) throw new Error("no object");
+  return inst.storage.sql.db.prepare(sql).all() as Record<string, unknown>[];
+}
+
+/** The person's usage counters as the object keeps them. */
+export function usageOf(w: World): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const r of rows(
+    w,
+    "SELECT key, value FROM meta WHERE key LIKE 'usage_%'",
+  ))
+    out[(r.key as string).replace(/^usage_/, "")] = Number(r.value);
+  return out;
 }
 
 /** One upload session row, straight from the person's object. */

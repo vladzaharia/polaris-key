@@ -159,6 +159,40 @@ export async function fileCall(
 }
 
 /**
+ * A file route's handler: the method gate and the front door (`fileCall`) in front of `run`, which
+ * receives the resolved caller. Every file route is built with it, so none can skip a step.
+ */
+export function fileHandler<T = undefined>(
+  opts: {
+    method: "POST" | "GET" | "PUT" | "DELETE";
+    write: boolean;
+    limiter: "files" | "parts";
+    /** A JSON body under `cap` bytes, `parse`d to `T` (null: `400 bad_request`). */
+    body?: { cap: number; parse: (v: unknown) => T | null };
+  },
+  run: (
+    ctx: ServiceContext,
+    match: RouteMatch,
+    call: FileCall,
+    body: T,
+  ) => Promise<Response>,
+): (ctx: ServiceContext, match: RouteMatch) => Promise<Response> {
+  return async (ctx, match) => {
+    if (ctx.req.method !== opts.method)
+      return wireError(405, "method_not_allowed");
+    const call = await fileCall(ctx, match, opts);
+    if (call instanceof Response) return call;
+    if (!opts.body) return run(ctx, match, call, undefined as T);
+    const raw = await readJsonBody(ctx.req, opts.body.cap);
+    if (raw instanceof Response) return raw;
+    const body = opts.body.parse(raw);
+    return body === null
+      ? wireError(400, ErrorCode.BadRequest)
+      : run(ctx, match, call, body);
+  };
+}
+
+/**
  * Calls the person's object. A `410 absorbed` (the subject was merged away while the request ran)
  * re-resolves the principal and tries once more; a device that now belongs to someone else, or to
  * a subject the old one was not merged into, is `account_required`, exactly as the push does.
@@ -198,7 +232,7 @@ export async function withObject<T>(
 }
 
 /** The product's active catalog, or a `503` when it cannot be read (it cannot classify). */
-async function readCatalog(
+export async function readCatalog(
   ctx: ServiceContext,
 ): Promise<
   { catalog: Catalog | null; row: { catalog_json: string } | null } | Response
@@ -214,34 +248,45 @@ async function readCatalog(
 
 const NO_STORE = { "cache-control": "no-store" } as const;
 
-// ── POST …/begin ─────────────────────────────────────────────────────────────────────────────
-
-export async function handleFileBegin(
-  ctx: ServiceContext,
-  match: RouteMatch,
-): Promise<Response> {
-  const { req, env, db, product } = ctx;
-  if (req.method !== "POST") return wireError(405, "method_not_allowed");
-  const call = await fileCall(ctx, match, { write: true, limiter: "files" });
-  if (call instanceof Response) return call;
-  const { caller, collection, id } = call;
-
-  // The body, under its cap.
+/** A JSON body under `cap` bytes: the value, or the `413`/`400` to answer with. */
+export async function readJsonBody(
+  req: Request,
+  cap: number,
+): Promise<unknown | Response> {
   let text: string;
   try {
-    text = await readBodyText(req, BEGIN_BODY_CAP);
+    text = await readBodyText(req, cap);
   } catch (e) {
     if (e instanceof BodyTooLargeError) return wireError(413, "body_too_large");
     throw e;
   }
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    return JSON.parse(text) as unknown;
   } catch {
     return wireError(400, ErrorCode.BadRequest);
   }
-  const request = parseBegin(parsed);
-  if (request === null) return wireError(400, ErrorCode.BadRequest);
+}
+
+// ── POST …/begin ─────────────────────────────────────────────────────────────────────────────
+
+export const handleFileBegin = fileHandler(
+  {
+    method: "POST",
+    write: true,
+    limiter: "files",
+    body: { cap: BEGIN_BODY_CAP, parse: parseBegin },
+  },
+  fileBegin,
+);
+
+async function fileBegin(
+  ctx: ServiceContext,
+  _match: RouteMatch,
+  call: FileCall,
+  request: BeginFileRequest,
+): Promise<Response> {
+  const { env, db, product } = ctx;
+  const { caller, collection, id } = call;
 
   // §2.3 checks 1 to 4, against the catalog.
   const loaded = await readCatalog(ctx);

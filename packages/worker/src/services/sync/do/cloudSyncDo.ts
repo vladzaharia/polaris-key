@@ -36,6 +36,9 @@ import {
 import {
   fileAbort,
   fileBegin,
+  fileFinalizeCommit,
+  fileFinalizeEnd,
+  fileFinalizePrepare,
   filePart,
   filePrepare,
   fileStatus,
@@ -302,7 +305,9 @@ export class CloudSyncDO implements DurableObject {
       (op.op === "push" ||
         op.op === "absorb" ||
         op.op === "fileBegin" ||
-        op.op === "filePart")
+        op.op === "filePart" ||
+        op.op === "fileFinalizePrepare" ||
+        op.op === "fileFinalizeCommit")
     )
       return objectError("absorbed", 410);
 
@@ -316,6 +321,9 @@ export class CloudSyncDO implements DurableObject {
       case "fileAbort":
       case "filePrepare":
       case "filePart":
+      case "fileFinalizePrepare":
+      case "fileFinalizeCommit":
+      case "fileFinalizeEnd":
         return this.fileOp(op);
       case "usage": {
         this.migrateIfBehind();
@@ -355,7 +363,10 @@ export class CloudSyncDO implements DurableObject {
           | "fileStatus"
           | "fileAbort"
           | "filePrepare"
-          | "filePart";
+          | "filePart"
+          | "fileFinalizePrepare"
+          | "fileFinalizeCommit"
+          | "fileFinalizeEnd";
       }
     >,
   ): Promise<Response> {
@@ -399,12 +410,22 @@ export class CloudSyncDO implements DurableObject {
       const out = filePart(host, op);
       return reply(out.body, out.status);
     }
+    if (op.op === "fileFinalizeCommit" && !isName(op.clientId))
+      return reply({ error: "bad_request" }, 400);
     const out =
       op.op === "fileStatus"
         ? await fileStatus(host, op)
         : op.op === "filePrepare"
           ? await filePrepare(host, op)
-          : await fileAbort(host, op);
+          : op.op === "fileFinalizePrepare"
+            ? await fileFinalizePrepare(host, op)
+            : op.op === "fileFinalizeCommit"
+              ? await fileFinalizeCommit(host, op)
+              : op.op === "fileFinalizeEnd"
+                ? await fileFinalizeEnd(host, op)
+                : await fileAbort(host, op);
+    // A finalize moved the directory's numbers: a flush is due.
+    if (out.dirty) await this.scheduleFlush();
     return reply(out.body, out.status);
   }
 

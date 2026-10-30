@@ -10581,6 +10581,141 @@ paths:
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
+  /{product}/sync/files/{collection}/{id}/finalize:
+    post:
+      operationId: syncFileFinalize
+      tags: [sync]
+      summary: Finish a file upload
+      description: >
+        U-10 (WIRE-CONTRACT-V5 §13.8.1). Makes an upload the record's file. The server checks that
+        every part is there (`409 upload_incomplete` with `missing`), completes a multipart upload
+        in R2, streams the stored object through SHA-256 and compares size and hash with what
+        `begin` declared (`400 upload_mismatch`, and the upload ends). Then it is a record write:
+        `begin`'s `baseVersion` is checked again against the record as it is now, so any write to
+        the record since `begin` is `409 revision_conflict` carrying the server's `version`
+        (the upload ends; a new `baseVersion` needs a new `begin`). The record's `version` moves to
+        a new store sequence, which the answer returns; a create-only `finalize` of a missing record
+        makes a record with no value. The previous file stays as a revision. The stored bytes are
+        charged and the reservation released.
+
+        Idempotent per `uploadId`: a repeat answers the same body and charges nothing. A client
+        writes the file first and the record's metadata second, on the `version` returned here
+        (§11.5). A `finalize` of the same upload still in flight is `503 unavailable` (`Retry-After:
+        1`). `403 quota_exceeded` with `scope: collection` when the record would be a create past
+        `maxRecords`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SyncFileFinalizeRequest" }
+            examples:
+              finalize:
+                summary: test/services/sync/cloudSyncFilesFinalize.test.ts
+                value: { uploadId: up_AAAAAAAAAAAAAAAAAAAAAA }
+      responses:
+        "200":
+          description: "The file, and the record's new `version`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncFilePointer" }
+              examples:
+                stored:
+                  summary: test/services/sync/cloudSyncFilesFinalize.test.ts
+                  value:
+                    {
+                      version: 8,
+                      size: 1048576,
+                      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                      format: whole,
+                    }
+        "400":
+          description: >
+            `upload_mismatch` (the stored size or SHA-256 is not the declared one; the upload
+            ends), `collection_unknown`, or `bad_request` — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                mismatch: { value: { error: { code: upload_mismatch } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `account_required` (the body carries the `signInUrl`), `attestation_required`, or
+            `quota_exceeded` with `scope: collection`.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: >
+            `upload_incomplete` (parts are missing; `missing` lists their numbers) or
+            `revision_conflict` (the record changed since `begin`; the server's `version` rides
+            beside `error`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/SyncFileUploadIncomplete" }
+                  - { $ref: "#/components/schemas/SyncFileRevisionConflict" }
+              examples:
+                incomplete:
+                  summary: test/services/sync/cloudSyncFilesFinalize.test.ts
+                  value: { error: { code: upload_incomplete }, missing: [2] }
+                conflict:
+                  summary: test/services/sync/cloudSyncFilesFinalize.test.ts
+                  value:
+                    {
+                      error: { code: revision_conflict },
+                      server: { version: 9 },
+                    }
+        "410":
+          description: "`upload_expired`. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "413":
+          description: "`body_too_large`. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: >
+            `writes_paused` (`Retry-After: 300`) or `unavailable` (`Retry-After: 5`, or 1 while the
+            same upload's `finalize` is in flight). NESTED.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightSyncFileFinalize
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
   # ── permanent aliases ─────────────────────────────────────────────────────────
   /{product}/appcast.xml:
     get:

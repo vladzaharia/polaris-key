@@ -25,6 +25,7 @@ import {
   bytesOf,
   call,
   count,
+  entitle,
   errorCode,
   filesPath,
   filesWorld,
@@ -55,22 +56,6 @@ const opened = async (
 /** What open uploads have reserved, as the object keeps it. */
 const reserved = (w: FilesWorld): number =>
   Number(meta(w, "usage_reserved_bytes") ?? 0);
-
-const entitle = (w: FilesWorld, entitlements: Record<string, unknown>) =>
-  w.db.run(
-    "UPDATE licenses SET overrides_json = ? WHERE product = ?",
-    JSON.stringify({
-      config: {},
-      secrets: {},
-      entitlements: Object.fromEntries(
-        Object.entries(entitlements).map(([k, value]) => [
-          k,
-          { state: "enforced", value, updatedAt: NOW },
-        ]),
-      ),
-    }),
-    SLUG,
-  );
 
 /** A record written through the push, so a `begin` has a version to compare. */
 async function putRecord(

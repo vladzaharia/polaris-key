@@ -18,11 +18,18 @@ import {
   SYNC_SINGLE_PUT_MAX_BYTES,
   SYNC_UPLOAD_TTL_SECONDS,
   type BeginFileRequest,
+  type FinalizeResponse,
   type SyncUploadMode,
 } from "@polaris-key/protocol/sync";
+import { formatHlc } from "./hlc.js";
 import { casMismatch } from "./records.js";
-import type { SyncStore, UploadRow } from "./types.js";
-import { fileUsage } from "./usage.js";
+import type {
+  StoredFile,
+  StoredRecord,
+  SyncStore,
+  UploadRow,
+} from "./types.js";
+import { accountRecord, fileUsage } from "./usage.js";
 
 // ── The transfer plan (§13.8.1) ──────────────────────────────────────────────────────────────
 
@@ -192,4 +199,133 @@ export function releaseUpload(store: SyncStore, upload: UploadRow): UploadRow {
   const ended: UploadRow = { ...upload, state: "aborted", reservedBytes: 0 };
   store.putUpload(ended);
   return ended;
+}
+
+// ── finalize (§13.8.1, GF2, GF3) ─────────────────────────────────────────────────────────────
+
+/** A session that is finishing holds its claim this long (ms); after it another `finalize` may take over. */
+export const FINALIZE_LEASE_MS = 60_000;
+
+/** The claim a `finalizing` session carries in `resultJson`, as epoch ms; 0 for none. */
+export function finalizeLease(upload: UploadRow): number {
+  if (upload.state !== "finalizing" || upload.resultJson === null) return 0;
+  try {
+    const lease = (JSON.parse(upload.resultJson) as { lease?: unknown }).lease;
+    return typeof lease === "number" ? lease : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Moves the file counters for a new live file replacing `prev` (which becomes a kept revision) and
+ * releases the session's reservation. `bytes` grows by the new file only: the old one was counted
+ * already and keeps counting as a revision.
+ */
+function accountFile(
+  store: SyncStore,
+  prev: StoredFile | undefined,
+  next: StoredFile,
+  released: number,
+): void {
+  const u = store.getUsage();
+  const f = fileUsage(u);
+  store.setUsage({
+    ...u,
+    bytes: u.bytes + next.size,
+    files: f.files + (prev ? 0 : 1),
+    fileBytes: f.fileBytes + next.size - (prev?.size ?? 0),
+    revisionBytes: f.revisionBytes + (prev?.size ?? 0),
+    reservedBytes: Math.max(0, f.reservedBytes - released),
+  });
+}
+
+export interface FinalizeInput {
+  upload: UploadRow;
+  objectKey: string;
+  /** The write's clock owner: a clientId-shaped name derived from the device (the file routes carry none). */
+  clientId: string;
+  maxRecords: number;
+  nowMs: number;
+}
+
+export type FinalizeCommit =
+  | { ok: true; result: FinalizeResponse }
+  | { ok: false; error: "revision_conflict"; version: number }
+  | { ok: false; error: "quota_exceeded"; scope: "collection" };
+
+/**
+ * The commit of a verified upload: a record write (GF2). It re-checks `begin`'s `baseVersion`
+ * against the record as it is now (GF3: any write in between is a conflict), takes the next store
+ * sequence as the record's `version` and the file's, makes the stored file the live one (the
+ * previous live file stays as a revision), charges its bytes and releases the reservation. A
+ * create-only `finalize` of a missing record makes a record with no value. The session becomes
+ * `done` and keeps the answer, so a repeat of `finalize` replays it and charges nothing.
+ *
+ * The caller runs this in one transaction and has checked the bytes. A refusal writes nothing.
+ */
+export function commitFinalize(
+  store: SyncStore,
+  input: FinalizeInput,
+): FinalizeCommit {
+  const { upload } = input;
+  const prev = store.getRecord(upload.collection, upload.recordId);
+  if (upload.baseVersion !== null && casMismatch(prev, upload.baseVersion))
+    return {
+      ok: false,
+      error: "revision_conflict",
+      version: prev?.version ?? 0,
+    };
+  const create = prev === undefined || prev.deleted;
+  if (create && store.liveRecordCount(upload.collection) >= input.maxRecords)
+    return { ok: false, error: "quota_exceeded", scope: "collection" };
+
+  const version = store.nextSeq();
+  // The record keeps its content and its clock: a file is not an HLC-ordered edit of the value.
+  const row: StoredRecord =
+    prev && !prev.deleted
+      ? { ...prev, version }
+      : {
+          collection: upload.collection,
+          id: upload.recordId,
+          version,
+          stamp: { hlc: formatHlc(input.nowMs, 0), clientId: input.clientId },
+          deleted: false,
+          kind: "value",
+          value: null,
+        };
+  store.putRecord(row);
+  accountRecord(store, prev, row);
+
+  const before = store.liveFile(upload.collection, upload.recordId);
+  if (before) store.putFile({ ...before, status: "revision" });
+  const file: StoredFile = {
+    collection: upload.collection,
+    recordId: upload.recordId,
+    version,
+    objectKey: input.objectKey,
+    format: upload.format,
+    enc: upload.enc,
+    size: upload.size,
+    sha256: upload.sha256,
+    status: "live",
+    createdAt: input.nowMs,
+    clientId: input.clientId,
+  };
+  store.putFile(file);
+  accountFile(store, before, file, upload.reservedBytes);
+
+  const result: FinalizeResponse = {
+    version,
+    size: file.size,
+    sha256: file.sha256,
+    format: file.format,
+  };
+  store.putUpload({
+    ...upload,
+    state: "done",
+    reservedBytes: 0,
+    resultJson: JSON.stringify(result),
+  });
+  return { ok: true, result };
 }
