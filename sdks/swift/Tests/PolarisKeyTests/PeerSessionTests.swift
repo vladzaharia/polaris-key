@@ -324,6 +324,19 @@ final class PeerSessionTests: XCTestCase {
         XCTAssertEqual(b.established.first?.hello.label, "Caf\u{E9} TV")
     }
 
+    /// §15.6 / DEVICE-LABEL-STRIP: invisible blanks pad nothing, and an `app` that is only invisible shows as Unknown.
+    func testHelloPaddedWithInvisibleBlanksShowsAsThePlainLabel() async {
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
+        let k = rnd()
+        let a = Side(.initiator, A, [k], label: "Ana's Switch\u{3164}\u{2800}", app: "\u{3164}\u{200B}")
+        let b = Side(.responder, B, [k])
+        await a.s.start()
+        await pump(a, b)
+        XCTAssertEqual(b.established.first?.hello.label, "Ana's Switch")
+        XCTAssertEqual(b.established.first?.hello.app, "Unknown")
+    }
+
     /// §15.6: the 4 KiB HELLO bound is for modes v and p; the account mode's HELLO is authenticated.
     /// Its `app` is still cleaned to 64 code points.
     func testModeAHelloIsNotCappedAtFourKiBButAppIsCleaned() async {

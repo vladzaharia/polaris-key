@@ -1,6 +1,50 @@
 {
-  "deviceLabelVersion": 1,
-  "description": "Device labels (WIRE-CONTRACT-V4 section 12.7.1, plans/PX-W13.md section 2.1). Every SDK normalises the label it sends as `deviceName` (device-code sign-in, licence activation, registration), and the Worker normalises it again on receipt: (1) map U+0009-000D, U+0085, U+00A0, U+2028, U+2029 and U+3000 to U+0020; (2) delete U+0000-001F, U+007F-009F, U+061C, U+200B-200F, U+202A-202E, U+2060-2064, U+2066-2069 and U+FEFF; (3) collapse runs of U+0020 to one and trim both ends; (4) keep at most 64 code points (`DEVICE_LABEL_MAX_CODEPOINTS`; code points, never UTF-16 units) and trim a trailing space the cut exposes; (5) an empty result is no label: `expect: null`, the member is omitted and the Worker stores NULL. No Unicode normalisation; nothing is ever rejected. Each runner asserts its `normalizeDeviceLabel` maps every `raw` to `expect`. Non-ASCII code points are written escaped. Append-only: a new row keeps `deviceLabelVersion`; a changed row or rule bumps it.",
+  "deviceLabelVersion": 2,
+  "description": "Device labels (WIRE-CONTRACT-V5 section 12.7.1, plans/PX-W13.md section 2.1, DEVICE-LABEL-STRIP). Every SDK normalises the label it sends as `deviceName` (device-code sign-in, licence activation, registration), and the Worker normalises it again on receipt: (1) map every White_Space code point (U+0009-000D, U+0085, U+00A0, U+1680, U+2000-200A, U+2028, U+2029, U+202F, U+205F, U+3000) and U+2800 to U+0020; (2) delete every control (Cc), format character (Cf), default-ignorable code point and surrogate as of Unicode 16.0; (3) collapse runs of U+0020 to one and trim both ends; (4) keep at most 64 code points (`DEVICE_LABEL_MAX_CODEPOINTS`; code points, never UTF-16 units) and trim a trailing space the cut exposes; (5) an empty result is no label: `expect: null`, the member is omitted and the Worker stores NULL. No Unicode normalisation; nothing is ever rejected. Cleaning a cleaned label changes nothing. `ranges` holds the step 1 set (`space`, without U+0020) and the step 2 set (`strip`) as inclusive [lo, hi] pairs of code points, ascending; the strip pairs keep the C0 and C1 blocks whole, and step 1 runs first, so a code point in both is a space. Each runner asserts its own tables equal `ranges`, that its `normalizeDeviceLabel` maps every `cases` `raw` to `expect`, and that every `expect` is a fixed point. `helloCases` is the same cleaner for a peer's HELLO `label` and `app` (section 15.6): steps 1 and 2, then NFC, then steps 3 to 5, counting the 64 code points after NFC. An SDK with no NFC and no peer session skips `helloCases` by name. Non-ASCII code points are written escaped. Append-only: a new row keeps `deviceLabelVersion`; a changed row or rule bumps it.",
+  "ranges": {
+    "space": [
+      [9, 13],
+      [133, 133],
+      [160, 160],
+      [5760, 5760],
+      [8192, 8202],
+      [8232, 8233],
+      [8239, 8239],
+      [8287, 8287],
+      [10240, 10240],
+      [12288, 12288]
+    ],
+    "strip": [
+      [0, 31],
+      [127, 159],
+      [173, 173],
+      [847, 847],
+      [1536, 1541],
+      [1564, 1564],
+      [1757, 1757],
+      [1807, 1807],
+      [2192, 2193],
+      [2274, 2274],
+      [4447, 4448],
+      [6068, 6069],
+      [6155, 6159],
+      [8203, 8207],
+      [8234, 8238],
+      [8288, 8303],
+      [12644, 12644],
+      [55296, 57343],
+      [65024, 65039],
+      [65279, 65279],
+      [65440, 65440],
+      [65520, 65531],
+      [69821, 69821],
+      [69837, 69837],
+      [78896, 78911],
+      [113824, 113827],
+      [119155, 119162],
+      [917504, 921599]
+    ]
+  },
   "cases": [
     {
       "id": "ascii-plain",
@@ -150,6 +194,206 @@
       "id": "empty-absent",
       "description": "The empty string is no label.",
       "raw": "",
+      "expect": null
+    },
+    {
+      "id": "zs-en-em-spaces",
+      "description": "Step 1: the Zs spaces U+2000-2005 (en, em, three-per-em, four-per-em, six-per-em, figure) become spaces.",
+      "raw": "A\u2000B\u2001C\u2002D\u2003E\u2004F\u2005G",
+      "expect": "A B C D E F G"
+    },
+    {
+      "id": "zs-thin-hair-spaces",
+      "description": "Step 1: the Zs spaces U+2006-200A (six-per-em, figure, punctuation, thin and hair among them) become spaces.",
+      "raw": "A\u2006B\u2007C\u2008D\u2009E\u200aF",
+      "expect": "A B C D E F"
+    },
+    {
+      "id": "zs-narrow-nbsp-mmsp-ogham",
+      "description": "Step 1: the narrow no-break space (U+202F), the medium mathematical space (U+205F) and the Ogham space mark (U+1680) become spaces.",
+      "raw": "A\u202fB\u205fC\u1680D",
+      "expect": "A B C D"
+    },
+    {
+      "id": "braille-blank",
+      "description": "Step 1: U+2800 BRAILLE PATTERN BLANK is not White_Space but renders blank; it becomes a space, and the trailing one is trimmed.",
+      "raw": "Ana\u2800Switch\u2800",
+      "expect": "Ana Switch"
+    },
+    {
+      "id": "mixed-blanks-collapse",
+      "description": "Steps 1 and 3: a space, the braille blank, the ideographic space and an em space collapse to one space.",
+      "raw": "Ana \u2800\u3000\u2003Switch",
+      "expect": "Ana Switch"
+    },
+    {
+      "id": "invisible-padding-spoof",
+      "description": "Step 2 (RED-N N3): the braille blank, the Hangul filler and a zero-width space after a name leave no trace, so padding cannot push text out of view.",
+      "raw": "Ana's iPhone\u2800\u3164\u200b",
+      "expect": "Ana's iPhone"
+    },
+    {
+      "id": "hangul-fillers",
+      "description": "Step 2: the Hangul fillers U+3164, U+115F, U+1160 and U+FFA0 are default-ignorable and deleted, not spaced.",
+      "raw": "Ana\u3164\u115f\u1160\uffa0Switch",
+      "expect": "AnaSwitch"
+    },
+    {
+      "id": "hangul-filler-only-absent",
+      "description": "Steps 2 and 5: a label of one Hangul filler (the invisible-name trick) is absent.",
+      "raw": "\u3164",
+      "expect": null
+    },
+    {
+      "id": "soft-hyphen-cgj",
+      "description": "Step 2: the soft hyphen (U+00AD) and the combining grapheme joiner (U+034F) are deleted.",
+      "raw": "Liv\u00ading\u034f",
+      "expect": "Living"
+    },
+    {
+      "id": "arabic-format-controls",
+      "description": "Step 2: the Arabic format characters U+0600-0605, U+06DD, U+070F, U+0890, U+0891 and U+08E2 are deleted.",
+      "raw": "A\u0600\u0605B\u06ddC\u070fD\u0890\u0891\u08e2",
+      "expect": "ABCD"
+    },
+    {
+      "id": "khmer-mongolian-ignorables",
+      "description": "Step 2: the Khmer inherent vowels (U+17B4-17B5) and the Mongolian free variation selectors and vowel separator (U+180B-180F) are deleted.",
+      "raw": "A\u17b4\u17b5B\u180b\u180c\u180d\u180e\u180fC",
+      "expect": "ABC"
+    },
+    {
+      "id": "word-joiner-block-rest",
+      "description": "Step 2: the rest of the U+2060-206F block, unassigned U+2065 and the deprecated formatting characters U+206A-206F, is deleted.",
+      "raw": "A\u2065B\u206aC\u206fD",
+      "expect": "ABCD"
+    },
+    {
+      "id": "variation-selectors",
+      "description": "Step 2: variation selectors U+FE00-FE0F are deleted, which turns a heart emoji into its text form; the space between the words stays.",
+      "raw": "\u2764\ufe0f TV\ufe0e",
+      "expect": "\u2764 TV"
+    },
+    {
+      "id": "ideographic-variation",
+      "description": "Step 2: an ideographic variation selector (U+E0100, astral) is deleted.",
+      "raw": "\u845b\udb40\udd00",
+      "expect": "\u845b"
+    },
+    {
+      "id": "tag-characters",
+      "description": "Step 2: the tag characters U+E0001 and U+E0020-E007F, which a flag-emoji sequence uses to name a subdivision, are deleted, leaving the black flag.",
+      "raw": "\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc73\udb40\udc63\udb40\udc74\udb40\udc7f\udb40\udc01",
+      "expect": "\ud83c\udff4"
+    },
+    {
+      "id": "unassigned-ignorables",
+      "description": "Step 2: unassigned default-ignorable code points (U+FFF0-FFF8, and U+E0000 and U+E0FFF at the ends of the tag block) are deleted.",
+      "raw": "A\ufff0B\ufff8C\udb40\udc00D\udb43\udfff",
+      "expect": "ABCD"
+    },
+    {
+      "id": "interlinear-annotation",
+      "description": "Step 2: the interlinear annotation anchor, separator and terminator (U+FFF9-FFFB) are deleted.",
+      "raw": "A\ufff9B\ufffaC\ufffb",
+      "expect": "ABC"
+    },
+    {
+      "id": "astral-format-controls",
+      "description": "Step 2: the astral format characters U+110BD, U+110CD, U+13430-1343F, U+1BCA0-1BCA3 and U+1D173-1D17A are deleted.",
+      "raw": "A\ud804\udcbdB\ud804\udccdC\ud80d\udc30D\ud80d\udc3fE\ud82f\udca0F\ud834\udd73G\ud834\udd7a",
+      "expect": "ABCDEFG"
+    },
+    {
+      "id": "range-neighbours-kept-bmp",
+      "description": "The code points next to a BMP range are kept: U+00AC, U+00AE, U+115E, U+1161, U+17B3, U+17B6, U+2801, U+3163, U+3165, U+FE10 and U+FFA1.",
+      "raw": "\u00ac\u00ae\u115e\u1161\u17b3\u17b6\u2801\u3163\u3165\ufe10\uffa1",
+      "expect": "\u00ac\u00ae\u115e\u1161\u17b3\u17b6\u2801\u3163\u3165\ufe10\uffa1"
+    },
+    {
+      "id": "range-neighbours-kept-astral",
+      "description": "The code points next to an astral range are kept: U+110BC, U+110BE, U+1D172, U+1D17B and U+E1000.",
+      "raw": "\ud804\udcbc\ud804\udcbe\ud834\udd72\ud834\udd7b\udb44\udc00",
+      "expect": "\ud804\udcbc\ud804\udcbe\ud834\udd72\ud834\udd7b\udb44\udc00"
+    },
+    {
+      "id": "cut-after-invisibles",
+      "description": "The limit applies after step 2: 70 letters, each followed by a Hangul filler, are 70 code points once cleaned and are cut to 64.",
+      "raw": "A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164A\u3164",
+      "expect": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    {
+      "id": "no-nfc-after-strip",
+      "description": "There is no NFC step in 12.7.1: after the zero-width space goes, e and the combining acute accent stay two code points (the HELLO rule of 15.6 composes them: hello-strip-then-nfc).",
+      "raw": "e\u200b\u0301",
+      "expect": "e\u0301"
+    }
+  ],
+  "helloCases": [
+    {
+      "id": "hello-plain",
+      "description": "An ordinary label is unchanged.",
+      "raw": "Ana's Switch",
+      "expect": "Ana's Switch"
+    },
+    {
+      "id": "hello-nfd-to-nfc",
+      "description": "NFC composes a decomposed letter: e and a combining diaeresis (U+0308) become U+00EB.",
+      "raw": "Zoe\u0308's Mac",
+      "expect": "Zo\u00eb's Mac"
+    },
+    {
+      "id": "hello-strip-then-nfc",
+      "description": "The N2 regression: the zero-width space is deleted (step 2) before NFC, so e and the combining acute accent compose to U+00E9 in one pass, and a second pass changes nothing.",
+      "raw": "e\u200b\u0301",
+      "expect": "\u00e9"
+    },
+    {
+      "id": "hello-filler-then-nfc",
+      "description": "A Hangul filler between a and a combining grave accent is deleted first, so the two compose to U+00E0.",
+      "raw": "a\u3164\u0300",
+      "expect": "\u00e0"
+    },
+    {
+      "id": "hello-vs-then-nfc",
+      "description": "A variation selector between A and a combining ring above is deleted first, so the two compose to U+00C5.",
+      "raw": "A\ufe0f\u030a",
+      "expect": "\u00c5"
+    },
+    {
+      "id": "hello-singletons",
+      "description": "NFC maps the singletons OHM SIGN (U+2126) and ANGSTROM SIGN (U+212B) to omega (U+03A9) and A with ring above (U+00C5).",
+      "raw": "\u2126 \u212b",
+      "expect": "\u03a9 \u00c5"
+    },
+    {
+      "id": "hello-space-before-nfc",
+      "description": "Step 1 maps an en space to a space.",
+      "raw": "A\u2000B",
+      "expect": "A B"
+    },
+    {
+      "id": "hello-nfc-expands",
+      "description": "The cut counts code points after NFC: U+0958 becomes U+0915 U+093C, so 63 letters and U+0958 are 65 code points and the cut keeps U+0915 alone.",
+      "raw": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u0958",
+      "expect": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u0915"
+    },
+    {
+      "id": "hello-nfc-shrinks",
+      "description": "NFC can shrink a label below the cut: 64 pairs of e and a combining acute accent are 128 code points before NFC and 64 after, so all of them stay.",
+      "raw": "e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301",
+      "expect": "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9"
+    },
+    {
+      "id": "hello-spoof-padding",
+      "description": "A Hangul filler and the braille blank after a name leave no trace (N3).",
+      "raw": "Ana's Switch\u3164\u2800",
+      "expect": "Ana's Switch"
+    },
+    {
+      "id": "hello-only-invisible",
+      "description": "Only invisible code points: nothing is left, so the label is absent (the host shows no label, or Unknown for an app).",
+      "raw": "\u3164\u200b\ufe0f",
       "expect": null
     }
   ]

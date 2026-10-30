@@ -466,6 +466,32 @@ describe("PATCH /api/licenses/:p/:id/devices/:deviceId (G6)", () => {
     expect((await getDevice(db, "djdl", "dev-1"))?.label).toBeNull();
   });
 
+  it("cleans a name like every device label, and refuses one that is only blanks (DEVICE-LABEL-STRIP)", async () => {
+    const { db, env, owner, path } = await fixture();
+    // Wide spaces collapse; a filler, the braille blank and a variation selector go. (Format
+    // characters, tags among them, are refused outright by the existing check.)
+    const res = await call(env, db, "PATCH", path, owner, {
+      label: "Ana\u2003\u2003Switch\u3164\u2800\ufe0f",
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ device: { label: "Ana Switch" } });
+    expect((await getDevice(db, "djdl", "dev-1"))?.label).toBe("Ana Switch");
+    // A non-empty value with nothing visible left is refused, with the existing message, and the
+    // stored name stays.
+    for (const label of ["\u3164", "\u2800\u2800", "\ufe0f"]) {
+      const refused = await call(env, db, "PATCH", path, owner, { label });
+      expect(refused.status).toBe(422);
+      expect(await refused.json()).toMatchObject({
+        error: "bad_request",
+        message: expect.stringContaining("plain text"),
+      });
+    }
+    expect((await getDevice(db, "djdl", "dev-1"))?.label).toBe("Ana Switch");
+    // Plain whitespace still clears the name.
+    const cleared = await call(env, db, "PATCH", path, owner, { label: "   " });
+    expect(await cleared.json()).toMatchObject({ device: { label: null } });
+  });
+
   it("is 404 for someone else's licence, a device of another licence and a portal-off product", async () => {
     const { db, env, licenseId, owner, path } = await fixture();
     const stranger = await portalSession(env, db, "stranger@example.com");

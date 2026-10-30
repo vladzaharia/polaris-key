@@ -1,24 +1,34 @@
 class_name PKeyDeviceLabel
 extends RefCounted
-## The device label (WIRE-CONTRACT-V4 §12.7.1, plans/PX-W13.md §2.1), pinned by
-## `device-label.json`: the human name of this device the sign-in page shows ("Living room TV"),
-## sent as `deviceName` on device-code sign-in, licence activation and registration. Display data
-## only; no server decision reads it. The Worker applies the same normalisation on receipt:
+## The device label (WIRE-CONTRACT-V5 §12.7.1, plans/PX-W13.md §2.1), pinned by
+## `device-label.json` (`deviceLabelVersion` 2): the human name of this device the sign-in page
+## shows ("Living room TV"), sent as `deviceName` on device-code sign-in, licence activation and
+## registration. Display data only; no server decision reads it. The Worker applies the same
+## normalisation on receipt:
 ##
-##   1. map the whitespace controls (U+0009-000D, U+0085, U+00A0, U+2028, U+2029, U+3000) to a
-##      space;
-##   2. delete the controls, zero-width and bidi code points;
+##   1. map every White_Space code point and U+2800 to a space;
+##   2. delete the controls, format characters, default-ignorable code points and surrogates;
 ##   3. collapse runs of spaces to one, then trim;
 ##   4. keep at most DEVICE_LABEL_MAX_CODEPOINTS code points (a Godot String is UTF-32, so one
 ##      character is one code point), and trim a space the cut exposes;
 ##   5. an empty result is no label ("").
 ##
-## No Unicode normalisation (Godot has none); nothing is ever rejected.
+## No Unicode normalisation (Godot has none); nothing is ever rejected. The peer HELLO cleaner
+## (§15.6, steps 1 and 2, NFC, then 3 to 5) is not here: Godot has no peer session yet, and it
+## needs an NFC Godot lacks (CC-14 owns that, and the corpus `helloCases`).
 
-const _SPACE := [[0x0009, 0x000D], [0x0085, 0x0085], [0x00A0, 0x00A0], [0x2028, 0x2029], [0x3000, 0x3000]]
-const _STRIP := [
-	[0x0000, 0x001F], [0x007F, 0x009F], [0x061C, 0x061C], [0x200B, 0x200F],
-	[0x202A, 0x202E], [0x2060, 0x2064], [0x2066, 0x2069], [0xFEFF, 0xFEFF],
+## Frozen at Unicode 16.0 as inclusive [lo, hi] pairs; the corpus `ranges` section pins both.
+const SPACE_RANGES := [
+	[0x0009, 0x000D], [0x0085, 0x0085], [0x00A0, 0x00A0], [0x1680, 0x1680], [0x2000, 0x200A],
+	[0x2028, 0x2029], [0x202F, 0x202F], [0x205F, 0x205F], [0x2800, 0x2800], [0x3000, 0x3000],
+]
+const STRIP_RANGES := [
+	[0x0000, 0x001F], [0x007F, 0x009F], [0x00AD, 0x00AD], [0x034F, 0x034F], [0x0600, 0x0605],
+	[0x061C, 0x061C], [0x06DD, 0x06DD], [0x070F, 0x070F], [0x0890, 0x0891], [0x08E2, 0x08E2],
+	[0x115F, 0x1160], [0x17B4, 0x17B5], [0x180B, 0x180F], [0x200B, 0x200F], [0x202A, 0x202E],
+	[0x2060, 0x206F], [0x3164, 0x3164], [0xD800, 0xDFFF], [0xFE00, 0xFE0F], [0xFEFF, 0xFEFF],
+	[0xFFA0, 0xFFA0], [0xFFF0, 0xFFFB], [0x110BD, 0x110BD], [0x110CD, 0x110CD], [0x13430, 0x1343F],
+	[0x1BCA0, 0x1BCA3], [0x1D173, 0x1D17A], [0xE0000, 0xE0FFF],
 ]
 
 
@@ -34,9 +44,9 @@ static func normalize(raw: String) -> String:
 	var kept := PackedInt32Array()
 	for i in raw.length():
 		var cp := raw.unicode_at(i)
-		if _in(cp, _SPACE):
+		if _in(cp, SPACE_RANGES):
 			cp = 0x20
-		elif _in(cp, _STRIP):
+		elif _in(cp, STRIP_RANGES):
 			continue
 		if cp == 0x20 and (kept.is_empty() or kept[kept.size() - 1] == 0x20):
 			continue

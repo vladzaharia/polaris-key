@@ -74,6 +74,7 @@ class PeerChannelTest {
         disc: List<ByteArray?>,
         var held: HeldRing? = null,
         label: String? = null,
+        app: String = "demo",
         rekeyMessages: Int = 1 shl 20,
         rekeySeconds: Double = 3600.0,
     ) {
@@ -84,7 +85,7 @@ class PeerChannelTest {
         val s = PeerChannel(
             role, "djdl", dev.stat,
             AccountContext(signer.trust, "djdl", dev.cert, sub, dev.id, { held }, disc),
-            HelloInfo("test", "demo", label),
+            HelloInfo("test", app, label),
             { out.add(it) }, { events.add(it) },
             caps = listOf("app/1", "ring/1"), now = { wall }, mono = { clock },
             rekeyMessages = rekeyMessages, rekeySeconds = rekeySeconds,
@@ -266,6 +267,18 @@ class PeerChannelTest {
         a.s.start()
         pump(a, b)
         assertEquals("Café TV", b.of<SessionEvent.Established>().single().hello.label)
+    }
+
+    @Test
+    fun helloPaddedWithInvisibleBlanksShowsAsThePlainLabel() = runBlocking {
+        val k = rnd()
+        val a = Side(NoiseRole.initiator, Dev(idA, 1), listOf(k), label = "Ana's Switch\u3164\u2800", app = "\u3164\u200B")
+        val b = Side(NoiseRole.responder, Dev(idB, 2), listOf(k))
+        a.s.start()
+        pump(a, b)
+        val hello = b.of<SessionEvent.Established>().single().hello
+        assertEquals("Ana's Switch", hello.label)
+        assertEquals("Unknown", hello.app)
     }
 
     @Test

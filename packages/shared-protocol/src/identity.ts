@@ -57,6 +57,64 @@ export const DISPLAY_TEXT_STRIP: readonly (readonly [number, number])[] = [
   [0xfeff, 0xfeff],
 ];
 
+/**
+ * §12.7.1 step 1 (`deviceLabelVersion` 2): the code points a device label maps to U+0020 before
+ * anything else — every White_Space code point except U+0020 itself, and U+2800 BRAILLE PATTERN
+ * BLANK. The table is `ranges.space` of `device-label.json`. Inclusive `[first, last]` ranges.
+ * `DISPLAY_TEXT_SPACE` stays as it was, for the manifest rule.
+ */
+export const DEVICE_LABEL_SPACE: readonly (readonly [number, number])[] = [
+  [0x0009, 0x000d],
+  [0x0085, 0x0085],
+  [0x00a0, 0x00a0],
+  [0x1680, 0x1680],
+  [0x2000, 0x200a],
+  [0x2028, 0x2029],
+  [0x202f, 0x202f],
+  [0x205f, 0x205f],
+  [0x2800, 0x2800],
+  [0x3000, 0x3000],
+];
+
+/**
+ * §12.7.1 step 2 (`deviceLabelVersion` 2): the code points a device label drops — every control
+ * (Cc), format character (Cf), default-ignorable code point and surrogate, as of Unicode 16.0.
+ * The table is `ranges.strip` of `device-label.json`, frozen as ranges so every runtime agrees,
+ * Godot's included. The C0 and C1 blocks are listed whole; step 1 has already mapped the
+ * whitespace controls among them. Inclusive `[first, last]` ranges. `DISPLAY_TEXT_STRIP` stays as
+ * it was, for the manifest rule `invalid_display_text` and the published schemas.
+ */
+export const DEVICE_LABEL_STRIP: readonly (readonly [number, number])[] = [
+  [0x0000, 0x001f],
+  [0x007f, 0x009f],
+  [0x00ad, 0x00ad],
+  [0x034f, 0x034f],
+  [0x0600, 0x0605],
+  [0x061c, 0x061c],
+  [0x06dd, 0x06dd],
+  [0x070f, 0x070f],
+  [0x0890, 0x0891],
+  [0x08e2, 0x08e2],
+  [0x115f, 0x1160],
+  [0x17b4, 0x17b5],
+  [0x180b, 0x180f],
+  [0x200b, 0x200f],
+  [0x202a, 0x202e],
+  [0x2060, 0x206f],
+  [0x3164, 0x3164],
+  [0xd800, 0xdfff],
+  [0xfe00, 0xfe0f],
+  [0xfeff, 0xfeff],
+  [0xffa0, 0xffa0],
+  [0xfff0, 0xfffb],
+  [0x110bd, 0x110bd],
+  [0x110cd, 0x110cd],
+  [0x13430, 0x1343f],
+  [0x1bca0, 0x1bca3],
+  [0x1d173, 0x1d17a],
+  [0xe0000, 0xe0fff],
+];
+
 /** §12.7.2: an opaque sign-in request handle, `rq_` and 16 random bytes in base64url. */
 export const REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$";
 

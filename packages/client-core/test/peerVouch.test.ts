@@ -100,12 +100,14 @@ describe("VOUCH_REQ", () => {
     expect(await verify(body, H, { platform: "linux" })).toBeNull();
   });
 
-  it("compares the label to a HELLO the session already cleaned (cleaning is not idempotent)", async () => {
-    // Raw label: a zero-width space between a base letter and a combining acute. One cleaning drops
-    // the space and keeps the two marks apart; a second cleaning composes them into one letter.
+  it("compares the label to a HELLO the session already cleaned", async () => {
+    // Raw label: a zero-width space between a base letter and a combining acute. The cleaning
+    // drops the space before NFC, so one pass composes them and a second changes nothing
+    // (DEVICE-LABEL-STRIP). The comparison against the cleaned HELLO label stays as a safeguard.
     const raw = "e\u200b\u0301x";
     const once = cleanLabel(raw)!;
-    expect(cleanLabel(once)).not.toBe(once);
+    expect(once).toBe("\u00e9x");
+    expect(cleanLabel(once)).toBe(once);
     const b = await buildVouchRequest({
       port,
       slug: SLUG,
