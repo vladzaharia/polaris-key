@@ -110,7 +110,15 @@ def _auto_step_view(ctx: Context, auto: Mapping[str, Any], args: Mapping[str, An
     focus and one way on (Continue)."""
     step = auto.get("step")
     account = _mapping(ctx.input.get("account"))
-    a = {**args, "provider": provider, "tier": account.get("tier"), "code": auto.get("code")}
+    # The approvers D can tap before it shows a code (display data from an unverified peer: the flow cleans
+    # their labels), with the code once one is chosen.
+    a = {
+        **args,
+        "provider": provider,
+        "tier": account.get("tier"),
+        "code": auto.get("code"),
+        "approvers": list(auto["approvers"]) if isinstance(auto.get("approvers"), (list, tuple)) else None,
+    }
 
     def view(state: str, copy: _Copy, primary: Optional[str] = None, tone: Optional[str] = None) -> View:
         return make_view(ctx, "SignIn", state, copy, args=a, primary=primary, tone=tone, focus="heading")
@@ -205,7 +213,14 @@ def nearby_approval_view(ctx: Context) -> View:
     if not ctx.on("identity"):
         return hidden_view(ctx, "NearbyApproval")
     n = _mapping(ctx.input.get("nearbyApproval"))
-    args = {"device": n.get("device"), "product": identity_text(ctx).name}
+    # The codes the person taps (ask) and the licenses it can give (choose) are the host's data.
+    args = {
+        "device": n.get("device"),
+        "product": identity_text(ctx).name,
+        "codes": list(n["codes"]) if isinstance(n.get("codes"), (list, tuple)) else None,
+        "choices": list(n["choices"]) if isinstance(n.get("choices"), (list, tuple)) else None,
+        "create": True if n.get("create") is True else None,
+    }
     step = n.get("step")
 
     def outcome(state: str, copy: _Copy, primary: Optional[str], tone: Optional[str] = None) -> View:

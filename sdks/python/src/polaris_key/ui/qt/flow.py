@@ -20,10 +20,13 @@ The routes::
 from __future__ import annotations
 
 import dataclasses
+import os
+import sys
 import threading
 import time
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
+from ...core.peer_display import clean_label
 from ..core import ui_activate, ui_devices, ui_gate, ui_signin
 from ..core.identity import ResolvedIdentity
 from ..core.ui_activate import parse_key
@@ -37,6 +40,14 @@ __all__ = ["GateFlow", "default_open_url", "with_copy"]
 _BLOCKED = frozenset(("revoked", "expired", "version-too-old", "version-too-new", "channel-not-entitled"))
 #: How often the code's countdown is redrawn.
 _TICK_MS = 1000
+#: Nearby sign-in (I-47.14; plans/I-47-slices.md D-5): an approver that answers within 2 s keeps it going, a
+#: lone one is chosen after 3 s, else nearby is cancelled and the regular sign-in is shown. How often the
+#: approvers are looked at, and the file in the state directory that says a browse worked here (macOS: the
+#: Local Network prompt has been seen).
+NEARBY_LISTEN_S = 2.0
+NEARBY_LONE_S = 3.0
+_NEARBY_TICK_MS = 200
+_NEARBY_BROWSED = "nearby-browsed"
 
 
 def with_copy(view: View, *add: str, primary: Optional[str] = None) -> View:
@@ -89,6 +100,18 @@ class _Session:
         self.browser_opened: Optional[bool] = None
         self.copied = False
         self.error: Optional[str] = None
+        #: ``browser`` (device code or browser) or ``nearby`` (I-47.14). A nearby attempt's phase is
+        #: ``prompt`` (macOS names the Local Network prompt first), ``looking``, ``pick`` (several
+        #: approvers answered), ``waiting`` (the code is shown), ``done`` (the poll signed in and the
+        #: person confirms the account), ``denied``, ``failed`` or ``expired``.
+        self.kind = "browser"
+        self.nearby: Any = None
+        self.started = 0.0
+        self.lone_since: Optional[float] = None
+        self.choosing = False
+        self.code: Optional[str] = None
+        self.labels: Tuple[str, ...] = ()
+        self.result: Any = None
 
 
 class GateFlow:
@@ -108,6 +131,8 @@ class GateFlow:
         clipboard: Any = None,
         device_name: Optional[str] = None,
         now: Callable[[], float] = time.time,
+        clock: Callable[[], float] = time.monotonic,
+        os_name: Optional[str] = None,
     ) -> None:
         self.client = client
         self.kit = kit
@@ -119,6 +144,10 @@ class GateFlow:
         self._clipboard = clipboard or _Clipboard()
         self._device_name = device_name
         self._now = now
+        #: The clock the nearby windows count on, and the operating system (macOS names the Local Network
+        #: prompt before the first browse); tests set both.
+        self._clock = clock
+        self._os = os_name or sys.platform
         self._given = dict(capabilities or {})
         self._free_tier = bool(offers_free_tier)
         self.caps = self._capabilities(self._given, self._free_tier)
@@ -140,6 +169,9 @@ class GateFlow:
         self._ticker = qt.QtCore.QTimer(kit.bridge)
         self._ticker.setInterval(_TICK_MS)
         self._ticker.timeout.connect(self._tick)
+        self._nearby_timer = qt.QtCore.QTimer(kit.bridge)
+        self._nearby_timer.setInterval(_NEARBY_TICK_MS)
+        self._nearby_timer.timeout.connect(self._nearby_tick)
         # Back from Replace a device in the browser: try the key once more (DL6).
         app = qt.QtGui.QGuiApplication.instance()
         self._app = app
@@ -296,6 +328,8 @@ class GateFlow:
     def _render_signin(self) -> Tuple[View, Any]:
         s = self.session
         sign: Dict[str, Any] = {"presentation": "inline", "replace": "browser", "channel": "browser"}
+        if s is not None and s.kind == "nearby" and s.phase not in ("denied", "failed", "expired"):
+            return self._render_nearby(s, sign)
         if s is None:  # step 1: the methods
             extra = {"error": {"code": self.error_code}} if self.error_code else {}
             return self._show(ui_signin.sign_in_view(context_of(self._input(signIn=sign, **extra))), None)
@@ -327,6 +361,29 @@ class GateFlow:
             sign["outcome"] = "expired"
             view = ui_signin.sign_in_view(context_of(self._input(signIn=sign)))
         return self._show(with_copy(view, *add) if add else view, data)
+
+    def _render_nearby(self, s: _Session, sign: Dict[str, Any]) -> Tuple[View, Any]:
+        """Nearby sign-in's screens: the prompt (macOS), the first seconds, the approvers to pick from, the
+        code to tap, and the account to confirm."""
+        add: List[str] = ["common.cancel"]  # Cancel returns to the chooser
+        if s.phase == "prompt":
+            view = ui_signin.sign_in_view(context_of(self._input(signIn=sign, autoSignIn={"step": "nearby-prompt"})))
+            return self._show(view, None)
+        if s.phase == "done":
+            who = getattr(s.result, "identity", None)
+            email = getattr(who, "email", None) or getattr(who, "name", None) or ""
+            view = ui_signin.sign_in_view(context_of(self._input(signIn=sign, autoSignIn={"step": "nearby-done", "email": email})))
+            return self._show(view, None)
+        if s.phase in ("looking",):
+            view = ui_signin.sign_in_handoff_view(context_of(self._input(signIn=sign)))
+            return self._show(with_copy(view, *add), None)
+        auto: Dict[str, Any] = {"step": "nearby-wait"}
+        if s.code:
+            auto["code"] = s.code
+        else:
+            auto["approvers"] = list(s.labels)
+        view = ui_signin.sign_in_view(context_of(self._input(signIn=sign, autoSignIn=auto)))
+        return self._show(with_copy(view, *add), None)
 
     # device limit
     def _render_limit(self) -> Tuple[View, Any]:
@@ -366,6 +423,10 @@ class GateFlow:
             "a11y.copyAddress": self.copy_link,
             "signin.again": self.begin_sign_in,
             "signInHandoff.newCode": self.new_code,
+            "common.continue": self.nearby_continue,
+            "common.notNow": self.nearby_not_now,
+            "signin.nearby.code": self.use_code,
+            "signin.nearby.notYou": self.nearby_not_you,
             "activate.submit": self.submit_key,
             "common.paste": self.paste,
             "common.cancel": self.back,
@@ -373,6 +434,9 @@ class GateFlow:
             "deviceLimit.openBrowser": self.open_manage,
             "status.renew": self.open_renew,
         }.get(key)
+        if key.startswith("nearby.pick.") and key[len("nearby.pick."):].isdigit():
+            self.nearby_pick(int(key[len("nearby.pick."):]))
+            return True
         if key == "common.tryAgain" and self.route == "limit":
             self.submit_key()
             return True
@@ -498,8 +562,217 @@ class GateFlow:
             self.begin_sign_in()
             return
         self._stop_session()
+        if self._offers_nearby():
+            # Nearby first (D-5, D-10): the person's other devices, then the regular sign-in. Whether
+            # this product and runtime take part is asked off the GUI thread; the button waits meanwhile.
+            self.pending = "signin"
+            self.redraw()
+            self._run(self._nearby_probe, self._nearby_probed)
+            return
         self.route, self.error_code = "signin", None
         self.redraw()
+
+    # nearby sign-in (I-47.14)
+    def _offers_nearby(self) -> bool:
+        return self.can_sign_in and hasattr(getattr(self.client, "identity", None), "nearby")
+
+    def _nearby_probe(self) -> bool:
+        try:
+            return bool(self.client.identity.nearby.available(role="requester"))
+        except Exception:
+            return False
+
+    def _state_dir(self) -> Optional[str]:
+        try:
+            return str(self.client.core.dirs.state)
+        except Exception:
+            return None
+
+    def _browsed(self) -> bool:
+        state = self._state_dir()
+        return state is not None and os.path.exists(os.path.join(state, _NEARBY_BROWSED))
+
+    def _mark_browsed(self) -> None:
+        state = self._state_dir()
+        if state is None:
+            return
+        try:
+            os.makedirs(state, exist_ok=True)
+            with open(os.path.join(state, _NEARBY_BROWSED), "w", encoding="utf-8") as f:
+                f.write("1\n")
+        except OSError:
+            pass  # not remembered: the next sign-in explains the prompt again
+
+    def _nearby_probed(self, ok: Any, error: Optional[BaseException]) -> None:
+        self.pending = None
+        if error is not None or not ok:
+            self.route, self.error_code = "signin", None  # not on offer here: the regular sign-in
+            self.redraw()
+            return
+        if self._os == "darwin" and not self._browsed():
+            # macOS asks for the Local Network on the first browse: say why before it does (D-A14).
+            session = self.session = _Session(False)
+            session.kind, session.phase = "nearby", "prompt"
+            self.route, self.error_code = "signin", None
+            self.redraw()
+            return
+        self._start_nearby()
+
+    def _start_nearby(self) -> None:
+        self._stop_session()
+        self.route, self.error_code = "signin", None
+        session = self.session = _Session(False)
+        session.kind, session.phase, session.started = "nearby", "looking", self._clock()
+        self.redraw()
+        name = self._device_name
+        self._run(
+            lambda: self.client.identity.sign_in.start(channel="nearby", device_name=name),
+            lambda nearby, error: self._nearby_started(session, nearby, error),
+        )
+
+    def _nearby_started(self, session: _Session, nearby: Any, error: Optional[BaseException]) -> None:
+        if session is not self.session:
+            return
+        if error is not None:
+            self._nearby_handoff()  # the product serves none or this runtime cannot take part
+            return
+        session.nearby = nearby
+        self._mark_browsed()
+        self._nearby_timer.start()
+        self._run(
+            lambda: nearby.wait(cancel_token=session.cancel),
+            lambda result, err: self._nearby_signed_in(session, result, err),
+        )
+
+    def _approvers(self, session: _Session) -> List[Any]:
+        try:
+            return list(session.nearby.approvers)
+        except Exception:
+            return []
+
+    def _nearby_tick(self) -> None:
+        """Every 200 ms: what the approvers do. None within 2 s hands over to the regular sign-in; one is
+        chosen after 3 s; several are listed to pick from."""
+        session = self.session
+        if session is None or session.kind != "nearby" or session.nearby is None or session.phase not in ("looking", "pick"):
+            self._nearby_timer.stop()
+            return
+        found = self._approvers(session)
+        now = self._clock()
+        if not found and now - session.started >= NEARBY_LISTEN_S:
+            self._nearby_handoff()
+            return
+        if len(found) == 1:
+            session.lone_since = session.lone_since if session.lone_since is not None else now
+            if now - session.lone_since >= NEARBY_LONE_S:
+                self._nearby_choose(session, found[0])
+        else:
+            session.lone_since = None
+        labels = tuple(clean_label(str(getattr(a, "label", None) or getattr(a, "platform", None) or "")) for a in found) if len(found) >= 2 else ()
+        if labels != session.labels:
+            session.labels = labels
+            session.phase = "pick" if labels else "looking"
+            self.redraw()
+
+    def nearby_pick(self, number: int) -> None:
+        """The person tapped the numbered approver (the list is 1-based)."""
+        session = self.session
+        if session is None or session.kind != "nearby" or session.nearby is None:
+            return
+        found = self._approvers(session)
+        if 1 <= number <= len(found):
+            self._nearby_choose(session, found[number - 1])
+
+    def _nearby_choose(self, session: _Session, approver: Any) -> None:
+        if session.choosing or session.code is not None:
+            return
+        session.choosing = True
+
+        def done(code: Any, error: Optional[BaseException]) -> None:
+            if session is not self.session:
+                return
+            session.choosing = False
+            if error is not None:
+                return  # the device left: stay on the list
+            session.code, session.phase = str(code), "waiting"
+            self._nearby_timer.stop()
+            self.redraw()
+
+        self._run(lambda: session.nearby.choose(approver.id), done)
+
+    def _nearby_handoff(self) -> None:
+        """Nobody nearby answered (or nearby cannot start): cancel it and show the regular sign-in."""
+        self._stop_session()
+        self.route, self.error_code = "signin", None
+        self.redraw()
+
+    def _nearby_signed_in(self, session: _Session, result: Any, error: Optional[BaseException]) -> None:
+        if session is not self.session:
+            return
+        self._nearby_timer.stop()
+        if error is not None:
+            session.phase = "denied" if getattr(error, "code", None) == "sign-in-denied" else "failed"
+        else:
+            kind = getattr(result, "kind", "error")
+            if kind == "cancelled":
+                return
+            if kind == "signed_in":
+                # The account is shown and the person says it is theirs before anything from the other
+                # device is acted on (V5 §15.6.1 rule 12).
+                session.phase, session.result = "done", result
+            else:
+                session.phase = "expired" if kind == "expired" else "failed"
+        self.redraw()
+
+    def nearby_continue(self) -> None:
+        """Continue: past the Local Network explanation, or "this is my account"."""
+        session = self.session
+        if session is None or session.kind != "nearby":
+            return
+        if session.phase == "prompt":
+            self._start_nearby()
+        elif session.phase == "done":
+            nearby, result = session.nearby, session.result
+            self._run(
+                lambda: nearby.confirm_account() if nearby is not None else None,
+                lambda _r, _e: self._nearby_confirmed(session, result),
+            )
+
+    def _nearby_confirmed(self, session: _Session, result: Any) -> None:
+        if session is not self.session:
+            return
+        self._stop_session()
+        try:
+            session.nearby.close()  # the LAN side stayed open for the wrap until the account was confirmed
+        except Exception:
+            pass
+        self.route = "welcome" if self.has_welcome else "activate"
+        self.redraw()
+        self._on_status()
+        if self.on_signed_in is not None:
+            self.on_signed_in(result)
+
+    def nearby_not_now(self) -> None:
+        """Not now: the regular sign-in, and nothing is browsed."""
+        session = self.session
+        if session is not None and session.kind == "nearby" and session.phase == "prompt":
+            self._nearby_handoff()
+
+    def nearby_not_you(self) -> None:
+        """Not you?: the held records are dropped and the device signs out (V5 §15.6.1 rule 12)."""
+        session = self.session
+        if session is None or session.kind != "nearby" or session.phase != "done":
+            return
+        nearby = session.nearby
+
+        def after(_r: Any, _e: Optional[BaseException]) -> None:
+            if session is not self.session:
+                return
+            self._stop_session()
+            self.route = "status" if self.status in _BLOCKED else self._first_route()
+            self.redraw()
+
+        self._run(lambda: nearby.decline_account() if nearby is not None else None, after)
 
     def begin_sign_in(self) -> None:
         """Step 2: ask for a code, open the browser and wait. A TV or a console has no browser to
@@ -619,8 +892,15 @@ class GateFlow:
         session, self.session = self.session, None
         self._generation += 1
         self._ticker.stop()
+        self._nearby_timer.stop()
         if session is not None:
             session.cancel.set()
+            # A nearby attempt that is left closes its LAN side (a request nobody collects just lapses).
+            if session.kind == "nearby" and session.nearby is not None and session.phase != "done":
+                try:
+                    session.nearby.cancel()
+                except Exception:
+                    pass
 
     # ── threads ─────────────────────────────────────────────────────────────────────────────
     def _run(self, fn: Callable[[], Any], done: Callable[[Any, Optional[BaseException]], None]) -> None:
