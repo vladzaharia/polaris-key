@@ -167,6 +167,13 @@ export interface VerifyVouchRequestOptions {
   h: Uint8Array;
   /** What D's `HELLO` showed; the request must show the same after cleaning. */
   hello: VouchHello;
+  /**
+   * `hello` is the `HELLO` the session already cleaned (what `PeerHello` carries): it is compared
+   * as it is. Without this the label is cleaned again, and the cleaning is not idempotent (an
+   * invisible mark between a base and a combining mark can change a second time), so an honest
+   * D would be refused.
+   */
+  helloCleaned?: boolean;
   body: Uint8Array;
 }
 
@@ -191,7 +198,11 @@ export async function verifyVouchRequest(
   });
   if (!proven) return null;
   const helloLabel =
-    o.hello.label === undefined ? null : cleanLabel(o.hello.label);
+    o.hello.label === undefined
+      ? null
+      : o.helloCleaned === true
+        ? o.hello.label
+        : cleanLabel(o.hello.label);
   if (p.label !== helloLabel) return null;
   if (p.platform !== cleanPlatform(o.hello.platform)) return null;
   const { sig: _sig, ...shown } = p;

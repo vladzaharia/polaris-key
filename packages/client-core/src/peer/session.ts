@@ -706,6 +706,12 @@ export class PeerSession {
     if (type === RECORD.SAS_COMMIT && !initiator && this.sasStep === 0) {
       const c = parseSasBody("c", body);
       if (c === null) throw new SessionFail("peer_bad_frame");
+      // Mode v: the code deadline counts from D's choice, as D's does from `startSas()`; a session
+      // held while D's person looked at the list keeps its whole 120 s on this end too.
+      if (this.o.mode === "v") {
+        this.sasCancel?.();
+        this.sasCancel = this.guard(SAS_DEADLINE_SECONDS);
+      }
       this.commit = encodeSasValue(c);
       this.nM = this.ports.random(32);
       await this.emitRecords(RECORD.SAS_NONCE, sasBody("nM", this.nM));

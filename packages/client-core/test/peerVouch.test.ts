@@ -12,6 +12,7 @@ import {
   approverInstance,
   buildVouchRequest,
   buildVouchResult,
+  cleanLabel,
   createWebDeviceKeyStore,
   decoyCodes,
   finishMap,
@@ -97,6 +98,50 @@ describe("VOUCH_REQ", () => {
     expect((await verify(b, H, { platform: "linux" }))?.label).toBeNull();
     expect(await verify(b, H, HELLO)).toBeNull();
     expect(await verify(body, H, { platform: "linux" })).toBeNull();
+  });
+
+  it("compares the label to a HELLO the session already cleaned (cleaning is not idempotent)", async () => {
+    // Raw label: a zero-width space between a base letter and a combining acute. One cleaning drops
+    // the space and keeps the two marks apart; a second cleaning composes them into one letter.
+    const raw = "e\u200b\u0301x";
+    const once = cleanLabel(raw)!;
+    expect(cleanLabel(once)).not.toBe(once);
+    const b = await buildVouchRequest({
+      port,
+      slug: SLUG,
+      h: H,
+      request: REQUEST,
+      deviceId: DEVICE,
+      hello: { label: raw, platform: "linux" },
+    });
+    // The approver holds the label HELLO produced: comparing it as it is accepts the honest D.
+    const ok = await verifyVouchRequest({
+      slug: SLUG,
+      h: H,
+      hello: { label: once, platform: "linux" },
+      helloCleaned: true,
+      body: b,
+    });
+    expect(ok?.label).toBe(once);
+    // A different label is still refused.
+    expect(
+      await verifyVouchRequest({
+        slug: SLUG,
+        h: H,
+        hello: { label: "Other", platform: "linux" },
+        helloCleaned: true,
+        body: b,
+      }),
+    ).toBeNull();
+    // A raw HELLO (the corpus rows) is still cleaned once.
+    expect(
+      await verifyVouchRequest({
+        slug: SLUG,
+        h: H,
+        hello: { label: raw, platform: "linux" },
+        body: b,
+      }),
+    ).not.toBeNull();
   });
 
   it("is bound to one session: another h refuses it", async () => {
