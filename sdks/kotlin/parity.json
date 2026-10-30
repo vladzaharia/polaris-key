@@ -238,10 +238,9 @@
       "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in \u00a71, I-45): a stored sign-in, the platform provider silently, then its one sheet; every refusal is a result."
     },
     "identity.restore": {
-      "status": "planned",
-      "wp": "I-49",
+      "status": "implemented",
       "except": [{ "runtime": "jvm", "reason": "runtime" }],
-      "note": "Rung 2 on Android over Block Store (I-49.11, I-49.12); JVM desktop has no backup item."
+      "note": "Rung 2 of autoSignIn on Android over Block Store (I-49.11): redeem, enrol after a sign-in and daily, sign-out deletion with a retry queue, AutoSignInOptions.restore and AndroidOptions.restore; the six restore transcripts are replayed (I-49.12). JVM desktop has no backup item."
     },
     "identity.link": {
       "status": "planned",
