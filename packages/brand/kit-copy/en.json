@@ -3033,6 +3033,11 @@
       "role": "body",
       "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting."
     },
+    "signin.cli.nearbyKey": {
+      "value": "c use a code instead · Esc cancel",
+      "role": "body",
+      "note": "Terminal sign-in (SIGN-IN.md §4.15), nearby: the keys line while the code waits for a tap on the other device. Plain text, no formatting."
+    },
     "signin.cli.headless": {
       "value": "No browser on this computer. Use a code instead:",
       "role": "body",
@@ -3327,6 +3332,11 @@
       "value": "Activate, sign in, devices and updates",
       "role": "body",
       "note": "Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it."
+    },
+    "cli.help.devicesApprove": {
+      "value": "Approve a device signing in nearby",
+      "role": "body",
+      "note": "Terminal help: what 'devices approve' does."
     },
     "cli.gate.needs": {
       "value": "{command} needs a license",

@@ -3715,6 +3715,11 @@ msgstr "열리지 않았다면 {url}에 접속하세요"
 msgid "signin.cli.keys"
 msgstr "Enter 다시 열기 · c 코드 사용 · Esc 취소"
 
+#. c use a code instead · Esc cancel
+#. Terminal sign-in (SIGN-IN.md §4.15), nearby: the keys line while the code waits for a tap on the other device. Plain text, no formatting.
+msgid "signin.cli.nearbyKey"
+msgstr "c 코드로 대신하기 · Esc 취소"
+
 #. No browser on this computer. Use a code instead:
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
 msgid "signin.cli.headless"
@@ -4036,6 +4041,11 @@ msgstr "라이선스"
 #. Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it.
 msgid "cli.help.namespace"
 msgstr "활성화, 로그인, 기기 및 업데이트"
+
+#. Approve a device signing in nearby
+#. Terminal help: what 'devices approve' does.
+msgid "cli.help.devicesApprove"
+msgstr "근처 기기의 로그인 승인"
 
 #. {command} needs a license
 #. Terminal: the title when a host command that needs a license is refused because the person has none (needs-activation), and the first line of the inline activate flow. {command} is the command they ran, such as 'export'.

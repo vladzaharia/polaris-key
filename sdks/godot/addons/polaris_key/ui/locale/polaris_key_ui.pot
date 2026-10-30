@@ -3723,6 +3723,11 @@ msgstr ""
 msgid "signin.cli.keys"
 msgstr ""
 
+#. c use a code instead · Esc cancel
+#. Terminal sign-in (SIGN-IN.md §4.15), nearby: the keys line while the code waits for a tap on the other device. Plain text, no formatting.
+msgid "signin.cli.nearbyKey"
+msgstr ""
+
 #. No browser on this computer. Use a code instead:
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
 msgid "signin.cli.headless"
@@ -4044,6 +4049,11 @@ msgstr ""
 #. Activate, sign in, devices and updates
 #. Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it.
 msgid "cli.help.namespace"
+msgstr ""
+
+#. Approve a device signing in nearby
+#. Terminal help: what 'devices approve' does.
+msgid "cli.help.devicesApprove"
 msgstr ""
 
 #. {command} needs a license

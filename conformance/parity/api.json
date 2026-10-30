@@ -6490,6 +6490,390 @@
           "type": "json"
         }
       ]
+    },
+    {
+      "id": "identity.nearby.available",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "returns": "bool",
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.nearby.onRequest",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "handler",
+          "type": "listener"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "returns": "json",
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.approvers",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "json",
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.onApprovers",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "fn",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.code",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "string",
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.result",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "string",
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.onResult",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "fn",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.choose",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ],
+      "returns": "json",
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.confirmAccount",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "returns": "json",
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.declineAccount",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.wrap",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "string",
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.onWrap",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "fn",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "python": {
+          "planned": "I-47",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
     }
   ],
   "removed": [

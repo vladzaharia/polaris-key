@@ -69,6 +69,9 @@
 // for the key-entry limit and a license another account holds (Activate states `key-entry-limit`
 // and `license-owned`, SignIn `key-refused`, which replace the stacked `rejected` rows: no field,
 // lede or paste; Sign in, then the add-key page); and the done step's `signin.return.signedInTier`.
+// The `cli` family gains `devices approve` (I-47.1, additive within version 7: Swift, Kotlin and
+// Godot do not run the family): an end-user verb, so the default mount and help rows list it, and
+// the `login` outcomes `sign-in-nearby` and `sign-in-nearby-handoff` and the `approve-*` outcomes.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -4627,6 +4630,7 @@ export const CLI_EXIT = {
 export const CLI_END_USER = [
   "activate",
   "deactivate",
+  "devices approve",
   "devices deauthorize",
   "devices list",
   "devices rename",
@@ -4727,6 +4731,24 @@ export const CLI_SITUATIONS: Readonly<Record<string, string>> = {
     "`login`: the device-code poll answers `error` with `reason: access_denied`.",
   "sign-in-failed":
     "`login`: the device-code poll answers a bare `error` (no `reason`).",
+  "sign-in-nearby":
+    "`login` on an interactive terminal, nearby on: an approver answers within 2 s, the code is shown and the person taps it on the other device. With `--json` nearby never starts (no browse, no LAN request): the device-code flow runs and signs in.",
+  "sign-in-nearby-handoff":
+    "`login` on an interactive terminal, nearby on: no approver answers within 2 s, so nearby is cancelled and the regular sign-in runs and signs in.",
+  "approve-approved":
+    "`devices approve` on an interactive terminal, signed in: a device nearby asks, the person taps the code it shows (one of three) and the device is signed in.",
+  "approve-mismatch":
+    "`devices approve`: the person taps a code the other device does not show; the request is denied.",
+  "approve-denied":
+    "`devices approve`: the person chooses Deny; the request is denied.",
+  "approve-not-nearby":
+    "`devices approve`: the Worker answers that the device that asked is not on this network (`not_nearby`).",
+  "approve-unsupported":
+    "`devices approve` on a runtime that cannot take part in the nearby handshake (CC-15 answers `nearby-unsupported`).",
+  "approve-account-required":
+    "`devices approve` on a device that is signed out: there is no account to approve for.",
+  "approve-json":
+    "`devices approve --json`: both sides need a person, so the run is refused before anything starts.",
 };
 
 /** What `activate` with no key may find on stdin (DL16). */
@@ -5377,6 +5399,63 @@ function cliFamily(): CliFamily {
       { mark: "fail", exit: 1, error: "sign-in-failed", stdout: "screen" },
       { exit: 1, error: "sign-in-failed" },
     ),
+    // Nearby (I-47.1, D-5, D-10): first on an interactive run, never under `--json`.
+    ...outcome(
+      "sign-in-nearby",
+      "login",
+      { mark: "ok", exit: 0, error: null, stdout: "screen" },
+      { exit: 0, error: null },
+    ),
+    ...outcome("sign-in-nearby-handoff", "login", {
+      mark: "ok",
+      exit: 0,
+      error: null,
+      stdout: "screen",
+    }),
+    // `devices approve` exits 0 only when a device was approved. Deny is the person's choice, like
+    // a cancel: no mark. The rest are triangles (DL6); a person can retry or sign in.
+    ...outcome("approve-approved", "devices approve", {
+      mark: "ok",
+      exit: 0,
+      error: null,
+      stdout: "screen",
+    }),
+    ...outcome("approve-mismatch", "devices approve", {
+      mark: "warn",
+      exit: 1,
+      error: null,
+      stdout: "screen",
+    }),
+    ...outcome("approve-denied", "devices approve", {
+      exit: 1,
+      error: null,
+      stdout: "screen",
+    }),
+    ...outcome("approve-not-nearby", "devices approve", {
+      mark: "warn",
+      exit: 1,
+      error: null,
+      stdout: "screen",
+    }),
+    ...outcome("approve-unsupported", "devices approve", {
+      mark: "warn",
+      exit: 1,
+      error: null,
+      stdout: "screen",
+    }),
+    ...outcome("approve-account-required", "devices approve", {
+      mark: "warn",
+      exit: 1,
+      error: null,
+      stdout: "screen",
+      fix: ["login"],
+    }),
+    // Only the --json run exists: a text run of this verb is every other row.
+    {
+      name: "approve-json, --json",
+      input: { verb: "devices approve", situation: "approve-json", json: true },
+      expect: { exit: 2, error: "usage", stdout: "result" },
+    },
   ];
   const noKey = (copy: string, withinMs?: number): CliStdinExpect => ({
     read: "none",
