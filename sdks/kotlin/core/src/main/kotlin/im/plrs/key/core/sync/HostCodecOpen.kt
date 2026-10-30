@@ -34,8 +34,50 @@ internal class HostCodecOpen(private val codec: SyncCodecPort, private val alias
 
     fun change(c: JsonObject): OpenedEntry {
         val served = c["setting"].stringValue
-        // A record change: this slice seals no records, so a sealed one cannot be read.
-        return if (served == null) (if (c.containsKey("ct")) HostRow.invalid(c) else HostRow.plain(c)) else settingChange(c, served)
+        return when {
+            served != null -> settingChange(c, served)
+
+            c.containsKey("record") -> recordChange(c)
+
+            // Neither a setting nor a record: a sealed one cannot be placed.
+            c.containsKey("ct") -> HostRow.invalid(c)
+
+            else -> HostRow.plain(c)
+        }
+    }
+
+    /**
+     * A record change: `{record: [collection, id], ct, version}`. A sealed `merge` or `union` change (`fields`,
+     * `elements`) is outside the scalar codec and reads as invalid; a plaintext row is legacy (the machine checks
+     * its `seq` against `encryptionSince`). A sealed id is accepted only when it is blinded and the `k` inside the
+     * envelope re-blinds to it (HC-5); it is then replaced by the id.
+     */
+    private fun recordChange(c: JsonObject): OpenedEntry {
+        val ref = HostRecord.ref(c["record"])
+        val opened = if (ref != null && SyncBlind.isBlindedName(ref.second)) {
+            HostRow.fromCt(c["ct"])?.let { codec.openAny(ref.first, it) as? SyncEnvelope.Opened.Ok }
+        } else {
+            null
+        }
+        val honest = opened != null && opened.name.isNotEmpty() && !HostCodec.hasNul(opened.name) &&
+            codec.blind(SyncBlind.Kind.Record, ref!!.first, opened.name) == ref.second
+        return when {
+            c["fields"] is JsonArray || c["elements"] is JsonArray -> HostRow.invalid(c)
+            !c.containsKey("ct") -> HostRow.plain(c)
+            honest -> HostRow.sealed(c, mapOf("record" to HostRecord.pair(ref!!.first, opened!!.name), "value" to opened.value))
+            else -> HostRow.invalid(c)
+        }
+    }
+
+    /** A conflict's server copy of the record [rec] of the mutation: one `ct`, opened under that id. */
+    fun recordCopy(e: JsonObject, rec: Pair<String, String>): OpenedEntry {
+        val r = HostRow.fromCt(e["ct"])?.let { codec.open(rec.first, rec.second, it, emptyList()) as? SyncEnvelope.Opened.Ok }
+        return when {
+            e["fields"] is JsonArray || e["elements"] is JsonArray -> HostRow.invalid(e)
+            !e.containsKey("ct") -> HostRow.plain(e)
+            r != null -> HostRow.sealed(e, mapOf("value" to r.value))
+            else -> HostRow.invalid(e)
+        }
     }
 
     private fun settingChange(c: JsonObject, served: String): OpenedEntry {

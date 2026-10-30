@@ -39,6 +39,7 @@ internal object HostCodecSeal {
     }
 
     fun mutation(m: JsonObject, codec: SyncCodecPort, declared: Set<String>): JsonObject {
+        if (m["target"].objectValue?.containsKey("record") == true) return record(m, codec)
         val c = context(m, codec, declared)
         when (m["op"].stringValue) {
             "set" -> set(c)
@@ -48,6 +49,37 @@ internal object HostCodecSeal {
             else -> HostCodec.refuseIf(true, "unsupported operation")
         }
         return JsonObject(c.out)
+    }
+
+    /**
+     * A record mutation (scalar value, D-2): `set` seals the value under the collection with `k = id`; `delete`
+     * carries none. Either sends the id blinded. The collection travels in the clear (section 13.10.2).
+     */
+    private fun record(m: JsonObject, codec: SyncCodecPort): JsonObject {
+        val target = m["target"].objectValue!!
+        val ref = HostRecord.ref(target["record"])
+        HostCodec.refuseIf(ref == null, "a record reference is malformed")
+        HostCodec.refuseIf(
+            m.containsKey("ct") || m.containsKey("field") || m.containsKey("element") || m.containsKey("member"),
+            "mutation carries a member this codec does not seal",
+        )
+        val (collection, id) = ref!!
+        val out = m.toMutableMap()
+        when (m["op"].stringValue) {
+            "set" -> {
+                val value = m["value"]
+                HostCodec.refuseIf(value == null, "set needs a value")
+                out.remove("value")
+                out["ct"] = JsonPrimitive(Base64Url.encode(codec.seal(collection, id, value!!)))
+            }
+
+            "delete" -> HostCodec.refuseIf(m.containsKey("value"), "delete carries no value")
+
+            else -> HostCodec.refuseIf(true, "unsupported operation")
+        }
+        val blinded = codec.blind(SyncBlind.Kind.Record, collection, id)
+        out["target"] = JsonObject(target + ("record" to HostRecord.pair(collection, blinded)))
+        return JsonObject(out)
     }
 
     private fun set(c: SealCtx) {

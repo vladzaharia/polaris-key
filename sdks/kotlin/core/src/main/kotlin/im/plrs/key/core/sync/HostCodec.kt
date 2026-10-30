@@ -16,10 +16,15 @@
 //  - HC-6: a locked codec refuses with `sync-locked` before anything is sealed, so nothing is sent; a
 //    seal failure throws, so nothing is sent.
 //
-// Scope: settings (the `$settings` collection). A record mutation is refused with `invalid-options`; a
-// record change carrying a `ct` reads as `invalid`. Nothing here logs or prints a value, a name or a
-// root: errors name a rule, never content. Names compare as UTF-16 code units (equal to code points
-// for well-formed text), never by canonical equivalence.
+// Scope: settings (the `$settings` collection), and records with a scalar value (D-2: saves are
+// `revision` records; U-23.K3). A record value is sealed under its collection with `k = id`, its id travels
+// as `blind("record", collection, id)`, and a pulled record opens only when the `k` inside the envelope
+// re-blinds to the id on the wire (section 13.10.4), so a Worker cannot place a sealed value under another
+// record. A record mutation other than `set` and `delete` (a `merge` field, a `union` element) and a sealed
+// `merge` or `union` change (`fields`, `elements`) are outside this codec: a mutation is refused with
+// `invalid-options` and a change reads as `invalid`. Nothing here logs or prints a value, a name or a root:
+// errors name a rule, never content. Names compare as UTF-16 code units (equal to code points for
+// well-formed text), never by canonical equivalence.
 
 package im.plrs.key.core.sync
 
@@ -106,14 +111,17 @@ public object HostCodec {
      * [mutations] are the plaintext mutations of the request the answer belongs to (a conflict's server copy
      * carries no name, so it opens against the mutation's own setting). [aliases] are the renames the app
      * declares, never taken from the body. [openKeys] are the open-setting keys the machine already holds: a
-     * tombstone names a key blinded, and only these map back.
+     * tombstone names a key blinded, and only these map back. [recordKeys] are the `(collection, id)` pairs of
+     * the records the machine holds, which a record tombstone's blinded id maps back to likewise.
      */
+    @Suppress("LongParameterList")
     public fun openPull(
         body: JsonElement,
         codec: SyncCodecPort,
         mutations: List<JsonElement> = emptyList(),
         aliases: Map<String, String> = emptyMap(),
         openKeys: Collection<String> = emptyList(),
+        recordKeys: Collection<Pair<String, String>> = emptyList(),
     ): SyncOpenedPull {
         if (codec.locked) throw locked()
         val b = body as? JsonObject ?: return SyncOpenedPull(body, OpenedBody())
@@ -125,7 +133,7 @@ public object HostCodec {
             out["changes"] = JsonArray(opened.mapIndexed { i, r -> r?.first ?: list[i] })
             changes = opened.map { it?.second }
         }
-        b["tombstones"].arrayValue?.let { out["tombstones"] = JsonArray(HostCodecResults.tombstones(it, codec, openKeys)) }
+        b["tombstones"].arrayValue?.let { out["tombstones"] = JsonArray(HostCodecResults.tombstones(it, codec, openKeys, recordKeys)) }
         // Renames come from the app only; a served map or `renamedTo` could swap values between keys.
         if (b.containsKey("aliases")) out["aliases"] = JsonObject(aliases.mapValues { JsonPrimitive(it.value) })
         var conflicts: Map<Long, OpenedRow?> = emptyMap()
