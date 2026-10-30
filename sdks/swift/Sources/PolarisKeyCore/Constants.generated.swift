@@ -1541,7 +1541,7 @@ public let PLAN_MATRIX_VERSION = 2
 public let SYNC_SCENARIOS_VERSION = 4
 
 /// `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
-public let DEVICE_LABEL_VERSION = 1
+public let DEVICE_LABEL_VERSION = 2
 
 /// `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.
 public let PRESENTATION_MATRIX_VERSION = 1
