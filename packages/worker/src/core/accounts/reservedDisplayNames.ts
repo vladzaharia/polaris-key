@@ -138,3 +138,17 @@ export async function shownDeveloperName(
   const check = await displayCheckOptions(env, db, slug);
   return checkDisplayName(name, check) === null ? name : null;
 }
+
+/**
+ * A product row as a notice names it: the same row with `name` replaced by the checked name
+ * (`shownAppName`), or `null` when there is no row. Emails take their product name from here, so a
+ * subject and the sender name ("<App> via Polaris Locker") agree.
+ */
+export async function shownProductRow<T extends { slug: string; name: string }>(
+  env: SettingsEnv,
+  db: Db,
+  row: T | null | undefined,
+): Promise<(T & { name: string }) | null> {
+  if (!row) return null;
+  return { ...row, name: await shownAppName(env, db, row.slug, row.name) };
+}

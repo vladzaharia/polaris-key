@@ -101,6 +101,7 @@ import {
   type PortalHooksFor,
 } from "./api.js";
 import { presentationFor } from "./library.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 
 // ── The claim rules ─────────────────────────────────────────────────────────────────────────
 
@@ -528,7 +529,7 @@ export async function handleClaimKey(
     db,
     session.email,
     licenseAddedNotice({
-      productName: product.name,
+      productName: await shownAppName(env, db, product.slug, product.name),
       productSlug: product.slug,
       origin,
     }),
@@ -878,7 +879,9 @@ export async function handleKeyReissue(
     now,
   });
   const notice = licenseKeyReplacedNotice({
-    productName: license.product_name,
+    productName: license.product_name
+      ? await shownAppName(env, db, product, license.product_name)
+      : license.product_name,
     productSlug: product,
     origin: new URL(req.url).origin,
   });

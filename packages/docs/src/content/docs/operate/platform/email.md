@@ -17,14 +17,14 @@ Use this when people report "We can't send email right now", a code does not arr
 
 Every send goes through one function that applies these checks in order. The first one that fails decides what the person sees.
 
-| Check                | What it does                                                                                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| The `EMAIL` binding  | Without it, the send answers `email_unavailable`.                                                                                                            |
-| The sender name      | A product whose display name and slug are both refused answers `email_unavailable`.                                                                          |
-| Apple private relay  | A `@privaterelay.appleid.com` recipient gets `email_unavailable` until the sender domains are registered with Apple and `EMAIL_APPLE_RELAY` is `registered`. |
-| The suppression list | A suppressed recipient is never sent to. The caller answers as if it had sent.                                                                               |
-| The product cap      | Sign-in mail started through a product is capped at 500 a day by default. Platform mail is never capped.                                                     |
-| The provider         | Quota, rate, an unverified sender or an outage answers `email_unavailable`.                                                                                  |
+| Check                | What it does                                                                                                                                                                                                                     |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The `EMAIL` binding  | Without it, the send answers `email_unavailable`.                                                                                                                                                                                |
+| The sender name      | The `<App>` is the product's display name when it passes the display-name rules, otherwise its slug; the subject and body use the same name. A product whose display name and slug are both refused answers `email_unavailable`. |
+| Apple private relay  | A `@privaterelay.appleid.com` recipient gets `email_unavailable` until the sender domains are registered with Apple and `EMAIL_APPLE_RELAY` is `registered`.                                                                     |
+| The suppression list | A suppressed recipient is never sent to. The caller answers as if it had sent.                                                                                                                                                   |
+| The product cap      | Sign-in mail started through a product is capped at 500 a day by default. Platform mail is never capped.                                                                                                                         |
+| The provider         | Quota, rate, an unverified sender or an outage answers `email_unavailable`.                                                                                                                                                      |
 
 When a send answers `email_unavailable`, the login card offers another sign-in method.
 

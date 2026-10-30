@@ -178,6 +178,47 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
     );
   });
 
+  it.each([
+    ["a reserved name", "Google Play"],
+    ["a Hangul filler", "Mossgarden\u3164"],
+  ])(
+    "delivery.email names a product with %s by its slug, in the subject and the sender (DISPLAY-NAME-INVISIBLE)",
+    async (_what, name) => {
+      await db.run("UPDATE products SET name = ? WHERE slug = ?", name, "djdl");
+      const res = await create({
+        email: "holder@example.com",
+        delivery: { email: true },
+      });
+      expect(res.status).toBe(201);
+      const m = sent[0]!;
+      expect(m.from.name).toBe("djdl via Polaris Locker");
+      expect(m.subject).toBe("Your djdl license");
+      expect(m.text).not.toContain(name);
+      expect(m.html).not.toContain(name);
+    },
+  );
+
+  it.each([
+    ["a reserved name", "Google Play"],
+    ["a Hangul filler", "Mossgarden\u3164"],
+  ])(
+    "an invitation for a product with %s names it by its slug (DISPLAY-NAME-INVISIBLE)",
+    async (_what, name) => {
+      await identityOn();
+      await db.run("UPDATE products SET name = ? WHERE slug = ?", name, "djdl");
+      const res = await create({
+        email: "holder@example.com",
+        key: false,
+        delivery: { invite: true },
+      });
+      expect(res.status).toBe(201);
+      const m = sent[0]!;
+      expect(m.from.name).toBe("djdl via Polaris Locker");
+      expect(m.subject).toContain("djdl");
+      expect(m.subject).not.toContain(name);
+    },
+  );
+
   it("delivery.email without an email is refused, and creates nothing", async () => {
     const res = await create({ delivery: { email: true } });
     expect(res.status).toBe(422);

@@ -34,6 +34,7 @@ import {
   sendWindowRefusal,
   type EmailFailure,
 } from "./keyEmail.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 
 /** What the answer reports for an invitation: `sent`, or `failed` with the reason. */
 export interface InviteEmailResult {
@@ -86,8 +87,9 @@ export async function emailLicenseInvitation(
   const { env, db, product, now } = ctx;
   try {
     const { origin, signInUrl, downloadUrl } = await emailLinks(ctx);
+    const shown = await shownAppName(env, db, product.slug, product.name);
     const message = licenseInvitationEmail({
-      productName: product.name,
+      productName: shown,
       holderName: license.name,
       address: to,
       signInUrl,
@@ -103,7 +105,7 @@ export async function emailLicenseInvitation(
         sender: {
           kind: "passthrough",
           product: product.slug,
-          displayName: product.name,
+          displayName: shown,
         },
         to,
         ...message,
