@@ -71,6 +71,7 @@ class NearbyApproverTest {
         clock: FakeClock? = null,
         maxPendingPerAddress: Int = 1,
         allowLoopback: Boolean = true,
+        handshakeSeconds: Double = 30.0,
         mdns: MdnsAdapter = net,
         onStopped: ((NearbyStopReason) -> Unit)? = { stops += it },
         onNotice: ((ApprovalNotice) -> Unit)? = { notices += it },
@@ -83,6 +84,7 @@ class NearbyApproverTest {
         mdns = mdns,
         host = "127.0.0.1",
         allowLoopback = allowLoopback,
+        handshakeSeconds = handshakeSeconds,
         maxPendingPerAddress = maxPendingPerAddress,
         timer = timers.timer,
         mono = clock?.mono ?: { System.nanoTime() / 1e9 },
@@ -92,7 +94,7 @@ class NearbyApproverTest {
         o: NearbyApproverOptions = options(),
         source: ApproverSource = src,
         handler: (NearbyApproval) -> Unit = { approvals += it },
-    ): NearbyApproverHandle = runBlocking { NearbyApprover.start(source, handler, o) }.also { handles += it }
+    ): NearbyApproverHandle = runBlocking { NearbyApprover.start(source, { handler(it) }, o) }.also { handles += it }
 
     /** A D that dialled and said HELLO; the person has not chosen. */
     private fun held(auto: Boolean = false): RawD = runBlocking {
@@ -496,6 +498,20 @@ class NearbyApproverTest {
     }
 
     @Test
+    fun theHandshakeWindowDoesNotEndAnEstablishedSessionThatNobodyPickedYet() = runBlocking<Unit> {
+        // The pre-authentication clock (the gate's and the link's) ends at HELLO: a session held for D's person
+        // to choose, or for M's person to pick, lives on its own 120 s code deadline.
+        start(options(handshakeSeconds = 0.4))
+        val d = held()
+        settle(1200)
+        assertNull(d.closed)
+        val unchosen = RawD.dial(net, scope)
+        ds += unchosen
+        unchosen.waitFor { unchosen.closed != null }
+        assertNull(unchosen.hello)
+    }
+
+    @Test
     fun allowsTwoWaitingConnectionsFromOneSlash24NotThree() = runBlocking<Unit> {
         start(options(maxPendingPerAddress = 4))
         val d1 = held()
@@ -787,8 +803,7 @@ class NearbyApproverTest {
         val h = start(options(onStopped = { throw IllegalStateException("host bug") }))
         signedIn = false
         timers.fire(300.0)
-        until { h.status().state == NearbyState.stopped }
-        assertEquals(0, adverts().size)
+        until { h.status().state == NearbyState.stopped && adverts().isEmpty() }
         signedIn = true
         start(options(prompt = false, background = true, onNotice = { throw IllegalStateException("host bug") }))
         val d = chosen()

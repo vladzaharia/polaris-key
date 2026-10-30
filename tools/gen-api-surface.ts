@@ -474,6 +474,7 @@ const KOTLIN_TYPE: Record<string, string> = {
   packs: "PacksClient",
   presentation: "PresentationSource",
   cloudConnect: "CloudConnect",
+  CloudNearby: "CloudNearby",
   cloudSync: "CloudSyncClient",
 };
 /** Rows built by the Android and Desktop bootstrap objects (PolarisKeyAndroid, PolarisKeyDesktop): not on the client, and the Android module is not in the JVM build. */
@@ -536,6 +537,7 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.release.ReleaseClient`,
     `import im.plrs.key.sdk.BackendClient`,
     `import im.plrs.key.sdk.CloudConnect`,
+    `import im.plrs.key.sdk.CloudNearby`,
     `import im.plrs.key.sdk.CloudSyncClient`,
     `import im.plrs.key.sdk.CloudSyncHostOptions`,
     `import im.plrs.key.sdk.CommerceClient`,

@@ -95,6 +95,11 @@ public class LinkHandlers<H>(
     public val onEnded: () -> Unit = {},
     /** Modes v and p: the code both screens show (CC-15). */
     public val onSas: (PeerLinkPort, SessionEvent.Sas) -> Unit = { _, _ -> },
+    /**
+     * Modes v and p: the peer has no device id, so an established session is the transport and the HELLO, and
+     * the handshake deadline ends there. Mode a admits by certificate and leaves this false.
+     */
+    public val anonymous: Boolean = false,
 )
 
 /** The frame-and-event glue between one [PeerChannel] and one [PeerPipe]. */
@@ -103,11 +108,6 @@ public class PeerLink<H>(
     private val scope: CoroutineScope,
     private val handlers: LinkHandlers<H>,
     handshakeSeconds: Double = HANDSHAKE_SECONDS,
-    /**
-     * Modes v and p: the peer has no device id, so an established session is the transport and the HELLO,
-     * and the handshake deadline ends there. Mode a admits by certificate and leaves this false.
-     */
-    private val anonymous: Boolean = false,
     build: (send: (ByteArray) -> Unit, onEvent: (SessionEvent) -> Unit) -> PeerChannel,
 ) : PeerLinkPort {
     private val lock = Any()
@@ -269,7 +269,7 @@ public class PeerLink<H>(
     private fun onEvent(e: SessionEvent) {
         when (e) {
             is SessionEvent.Established -> {
-                if (e.peerDeviceId == null && !anonymous) return
+                if (e.peerDeviceId == null && !handlers.anonymous) return
                 deadline?.cancel()
                 deadline = null
                 open = true

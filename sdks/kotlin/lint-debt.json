@@ -1960,6 +1960,13 @@
       "detekt:style.ReturnCount": 1,
       "detekt:style.ThrowsCount": 2
     },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudNearby.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 3,
+      "detekt:exceptions.TooGenericExceptionCaught": 5,
+      "detekt:style.ThrowsCount": 2
+    },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncApi.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,
       "detekt:complexity.LongParameterList": 1,
@@ -2083,8 +2090,7 @@
       "ktlint:standard:spacing-between-declarations-with-comments": 6
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyFutures.kt": {
-      "detekt:complexity.TooManyFunctions": 1,
-      "ktlint:standard:import-ordering": 1
+      "detekt:complexity.TooManyFunctions": 1
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/SyncKeyring.kt": {
       "detekt:complexity.TooManyFunctions": 1
@@ -2130,6 +2136,10 @@
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/ConnectLanTest.kt": {
       "detekt:exceptions.SwallowedException": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/ConnectNearbyTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 1
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/ConnectRelaySessionTest.kt": {
       "detekt:complexity.LongParameterList": 1

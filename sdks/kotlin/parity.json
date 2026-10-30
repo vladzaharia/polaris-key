@@ -252,7 +252,7 @@
     "identity.nearby": {
       "status": "planned",
       "wp": "I-45",
-      "note": "Nearby approval (I-40.8 transcripts, I-45)."
+      "note": "Nearby approval (I-40.8 transcripts, I-45). CC-15 built the LAN half: the vouch codecs, the mode-v session hooks, the approver and requester over MdnsAdapter and TcpPipe, and client.cloudConnect.nearby (PeerMatrixVouchTest runs the 78 request, 26 result, 30 flow and 29 finish rows on JCA and Tink; NearbyApproverTest, NearbyRequesterTest and ConnectNearbyTest cover the rest). Android answers nearby-unsupported until an mDNS adapter is passed (CC-15b). The routes stay with I-45."
     },
     "identity.keyentry": {
       "status": "implemented",

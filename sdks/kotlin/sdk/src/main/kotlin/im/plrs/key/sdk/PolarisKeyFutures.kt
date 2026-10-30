@@ -18,8 +18,18 @@ import im.plrs.key.core.FetchedFile
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.RegisterResult
 import im.plrs.key.core.SyncResult
-import im.plrs.key.core.sync.SyncStatus
 import im.plrs.key.core.UpdateCheck
+import im.plrs.key.core.peer.nearby.ApproveAnswerInput
+import im.plrs.key.core.peer.nearby.ChosenCode
+import im.plrs.key.core.peer.nearby.FinishOutcome
+import im.plrs.key.core.peer.nearby.NearbyApproval
+import im.plrs.key.core.peer.nearby.NearbyApprovalHandler
+import im.plrs.key.core.peer.nearby.NearbyApproverHandle
+import im.plrs.key.core.peer.nearby.NearbyApproverOptions
+import im.plrs.key.core.peer.nearby.NearbyRequest
+import im.plrs.key.core.peer.nearby.NearbyRequestOptions
+import im.plrs.key.core.peer.nearby.PickOutcome
+import im.plrs.key.core.sync.SyncStatus
 import im.plrs.key.identity.AttachResult
 import im.plrs.key.identity.AutoSignInOptions
 import im.plrs.key.identity.AutoSignInResult
@@ -188,6 +198,57 @@ public class PolarisKeyFutures @JvmOverloads constructor(
 
     /** `cloudConnect.refreshPeers()`. */
     public fun cloudConnectRefreshPeers(): CompletableFuture<List<CloudPeer>> = call { client.cloudConnect.refreshPeers() }
+
+    // ── Nearby approval (CC-15) ──────────────────────────────────────────────────────────────
+
+    /**
+     * `cloudConnect.nearby.request(options)`: D browses for approvers. The typed N/A (`nearby-unsupported`,
+     * `service-unavailable`) completes the future exceptionally with a PolarisException.
+     */
+    public fun nearbyRequest(options: NearbyRequestOptions): CompletableFuture<NearbyRequest> = call { client.cloudConnect.nearby.request(options) }
+
+    /** `request.choose(id)`: the person tapped this approver; answers D's code to show. */
+    public fun nearbyChoose(request: NearbyRequest, id: String): CompletableFuture<ChosenCode> = call { request.choose(id) }
+
+    /** `request.confirmAccount()`: the person confirmed the signed-in account; held records are handed over. */
+    public fun nearbyConfirmAccount(request: NearbyRequest): CompletableFuture<Unit> = call { request.confirmAccount() }
+
+    /** `request.declineAccount()`: the person declined; every held record is dropped. */
+    public fun nearbyDeclineAccount(request: NearbyRequest): CompletableFuture<Unit> = call { request.declineAccount() }
+
+    /** `request.close()`: end the request. */
+    public fun nearbyClose(request: NearbyRequest): CompletableFuture<Unit> = call { request.close() }
+
+    /** `cloudConnect.nearby.onRequest(handler, options)`: M advertises and hands each session to [handler]. */
+    public fun nearbyOnRequest(handler: NearbyApprovalHandler, options: NearbyApproverOptions): CompletableFuture<NearbyApproverHandle> =
+        call { client.cloudConnect.nearby.onRequest(handler, options) }
+
+    /** `approver.stop()`, `.pause()`, `.resume()`, `.setPrompt(open)` and `.reopen()`. */
+    public fun nearbyStop(approver: NearbyApproverHandle): CompletableFuture<Unit> = call { approver.stop() }
+
+    public fun nearbyPause(approver: NearbyApproverHandle): CompletableFuture<Unit> = call { approver.pause() }
+
+    public fun nearbyResume(approver: NearbyApproverHandle): CompletableFuture<Unit> = call { approver.resume() }
+
+    public fun nearbySetPrompt(approver: NearbyApproverHandle, open: Boolean): CompletableFuture<Unit> = call { approver.setPrompt(open) }
+
+    public fun nearbyReopen(approver: NearbyApproverHandle): CompletableFuture<Unit> = call { approver.reopen() }
+
+    /** `approval.pick(code)`: the person picked a code. */
+    public fun nearbyPick(approval: NearbyApproval, code: String): CompletableFuture<PickOutcome> = call { approval.pick(code) }
+
+    /** `approval.decline()`: "None of these match". */
+    public fun nearbyDecline(approval: NearbyApproval): CompletableFuture<Unit> = call { approval.decline() }
+
+    /** `approval.finish(answer)`: give the answer of `nearby/approve` back. */
+    public fun nearbyFinish(approval: NearbyApproval, answer: ApproveAnswerInput): CompletableFuture<FinishOutcome> = call { approval.finish(answer) }
+
+    /** `approval.sendRecord(type, body)`: a Sync record (`0x0030` to `0x003F`) to D, after `approved`. */
+    public fun nearbySendRecord(approval: NearbyApproval, type: Int, body: ByteArray): CompletableFuture<Unit> =
+        call { approval.sendRecord(type, body) }
+
+    /** `approval.close()`: the host leaves; the session closes `peer_bye`. */
+    public fun nearbyCloseApproval(approval: NearbyApproval): CompletableFuture<Unit> = call { approval.close() }
 
     // ── Channels, links, tags ────────────────────────────────────────────────────────────────
 

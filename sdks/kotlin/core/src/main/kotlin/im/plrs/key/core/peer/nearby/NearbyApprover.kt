@@ -209,6 +209,11 @@ public interface NearbyApproval {
     public fun onClose(fn: (SessionEvent.Closed) -> Unit): () -> Unit
 }
 
+/** Called with each session that reaches the code stage while the prompt is open. A fun interface, so Java passes a lambda too. */
+public fun interface NearbyApprovalHandler {
+    public fun onApproval(approval: NearbyApproval)
+}
+
 /** The handle of a running approver. */
 public interface NearbyApproverHandle {
     /** Stop for good: the advert, the listener and every session. Nothing brings them back. */
@@ -348,7 +353,7 @@ private class Live(val socket: Socket, val slot: GateSlot, val st: RawNoiseStati
 
 public class NearbyApprover private constructor(
     private val src: ApproverSource,
-    private val handler: (NearbyApproval) -> Unit,
+    private val handler: NearbyApprovalHandler,
     private val o: NearbyApproverOptions,
     parent: CoroutineScope?,
 ) : NearbyApproverHandle {
@@ -693,8 +698,9 @@ public class NearbyApprover private constructor(
                 onRecord = { _, type, body -> holder[0]?.let { record(it, type, body) } },
                 onClosed = { c -> holder[0]?.let { closed(it, c) } },
                 onSas = { _, e -> holder[0]?.let { sas(it, e) } },
+                anonymous = true,
             )
-            val link = PeerLink(TcpPipe(socket), scope, handlers, o.handshakeSeconds, anonymous = true) { send, onEvent ->
+            val link = PeerLink(TcpPipe(socket), scope, handlers, o.handshakeSeconds) { send, onEvent ->
                 PeerChannel(
                     NoiseRole.responder, src.slug, st, null,
                     HelloInfo(o.platform, src.slug, o.label),
@@ -842,7 +848,7 @@ public class NearbyApprover private constructor(
         val codes = decoyCodes(checkNotNull(next.sas), o.random).codes.map(::sasDisplay)
         val approval = approval(next, codes)
         try {
-            handler(approval)
+            handler.onApproval(approval)
         } catch (e: Exception) {
             endAsync(next, PeerCloseCode.peer_bye)
         }
@@ -1002,7 +1008,7 @@ public class NearbyApprover private constructor(
          */
         public suspend fun start(
             src: ApproverSource,
-            handler: (NearbyApproval) -> Unit,
+            handler: NearbyApprovalHandler,
             options: NearbyApproverOptions,
             parent: CoroutineScope? = null,
         ): NearbyApprover {

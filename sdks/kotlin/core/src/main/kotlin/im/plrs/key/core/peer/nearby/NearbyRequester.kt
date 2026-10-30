@@ -383,8 +383,9 @@ public class NearbyRequester private constructor(private val src: RequesterSourc
             onRecord = { _, type, body -> if (e === chosen) record(type, body) },
             onClosed = { cl -> sessionEnded(e, cl) },
             onSas = { _, ev -> sas(e, ev) },
+            anonymous = true,
         )
-        e.link = PeerLink(TcpPipe(sock), scope, handlers, o.handshakeSeconds, anonymous = true) { send, onEvent ->
+        e.link = PeerLink(TcpPipe(sock), scope, handlers, o.handshakeSeconds) { send, onEvent ->
             PeerChannel(
                 NoiseRole.initiator, src.slug, st, null,
                 HelloInfo(o.platform, src.slug, o.label), send, onEvent,

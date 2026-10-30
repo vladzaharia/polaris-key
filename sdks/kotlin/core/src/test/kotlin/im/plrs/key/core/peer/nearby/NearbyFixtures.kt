@@ -211,8 +211,9 @@ class RawD private constructor(private val o: RawDOptions, val keys: DeviceKeyPo
                     d.code = e.code
                     if (o.auto) scope.launch { d.showAndRequest() }
                 },
+                anonymous = true,
             )
-            d.link = PeerLink(pipe, scope, handlers, 30.0, anonymous = true) { send, onEvent ->
+            d.link = PeerLink(pipe, scope, handlers, 30.0) { send, onEvent ->
                 PeerChannel(
                     NoiseRole.initiator, SLUG, RawNoiseStatic(randomBytes(32)), null,
                     HelloInfo(peerHostPlatform(), SLUG, o.label), send, onEvent,
