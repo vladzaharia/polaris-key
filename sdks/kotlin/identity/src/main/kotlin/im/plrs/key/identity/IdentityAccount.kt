@@ -156,7 +156,9 @@ internal class IdentityAccount(
         val url = fragment()?.takeIf { it.account }?.signout ?: return SignOutResult.Unavailable
         // A ladder already running must not store a token after this point.
         core.bumpSignOutGeneration()
-        // Nothing may be lost to a sign-out: each hook finishes, or throws and the sign-out stops.
+        // Nothing may be lost to a sign-out: each hook finishes, or throws and the sign-out stops. The last hook is the
+        // client's own: the restore item goes and the key is revoked (sent, or queued) before the Worker is asked,
+        // whatever it answers.
         for (hook in hooks()) hook()
         val token = core.token()
         var released = false

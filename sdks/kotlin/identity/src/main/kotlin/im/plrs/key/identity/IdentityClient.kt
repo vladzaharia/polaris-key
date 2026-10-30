@@ -139,7 +139,8 @@ public class IdentityClient(
     private val sleep: suspend (Long) -> Unit = sleep ?: { seconds -> delay(seconds * 1000) }
     internal val beforeSignOut = java.util.concurrent.CopyOnWriteArrayList<BeforeSignOutHook>()
     internal val platformProvider = java.util.concurrent.atomic.AtomicReference<PlatformIdentityProvider?>(null)
-    private val account = IdentityAccount(core, opener, { beforeSignOut.toList() }, onSubject, onSignedOut) { markSignedOut() }
+    private val revokeRestore: BeforeSignOutHook = { restoreSignOut() }
+    private val account = IdentityAccount(core, opener, { beforeSignOut.toList() + revokeRestore }, onSubject, onSignedOut) { markSignedOut() }
 
     @Volatile
     private var deviceKeys: DeviceKeyPort? = deviceKeys
@@ -157,6 +158,13 @@ public class IdentityClient(
     }
 
     internal val backupStore = java.util.concurrent.atomic.AtomicReference<PlatformBackupStore?>(null)
+
+    /** One restore write at a time: an enrolment and a sign-out's revocation never interleave. */
+    internal val restoreLock = kotlinx.coroutines.sync.Mutex()
+
+    /** Where rung 1's daily check runs, off the sign-in's path. */
+    internal val restoreScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
+    internal val dailyCheck = java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>(null)
     private val restoreInstalled = java.util.concurrent.atomic.AtomicBoolean(true)
 
     /** Whether silent restore (rung 2 and its enrolment) is on: a store is installed, `restore` was asked for, and the call allows it. */

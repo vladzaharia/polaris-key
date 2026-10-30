@@ -598,17 +598,36 @@ class AutoSignInTest {
         var enrolBody: String? = null
         var deleteStatus = 204
         var deleteFails = false
-        val log = ArrayList<String>()
+        var signOutStatus = 200
+        var signOutOffline = false
+        var discoveryOffline = false
+        var enrolFails = false
+
+        /** When set, `POST restore` says it started, then waits to be released. */
+        var enrolStarted: java.util.concurrent.CountDownLatch? = null
+        var enrolRelease: java.util.concurrent.CountDownLatch? = null
+        val log = java.util.Collections.synchronizedList(ArrayList<String>())
         fun script(complete: String): (PolarisRequest) -> PolarisResponse? = { r ->
             val form = r.body?.let { String(it, Charsets.UTF_8) }
             when {
+                r.path == "/djdl/.well-known/polaris.json" && discoveryOffline -> throw java.io.IOException("offline")
+
+                r.path == "/djdl/identity/signout" -> {
+                    log += "signout"
+                    if (signOutOffline) throw java.io.IOException("offline")
+                    respond(signOutStatus, """{"released":false}""")
+                }
+
                 r.path == "/djdl/identity/token" && form?.contains("grant-type%3Arestore") == true -> {
                     log += "grant"
                     grantBody?.let { respond(grantStatus, it) } ?: throw java.io.IOException("offline")
                 }
 
                 r.path == "/djdl/identity/restore" && r.method == "POST" -> {
+                    enrolStarted?.countDown()
+                    enrolRelease?.await()
                     log += "enrol:" + (form ?: "")
+                    if (enrolFails) throw java.io.IOException("offline")
                     respond(enrolStatus, enrolBody ?: "")
                 }
 
@@ -863,7 +882,7 @@ class AutoSignInTest {
         backup.set(restoreKey, item(rid1, rsecret1))
         val w = restoreWorld(r, backup, withLicense = true)
         w.client.signOut()
-        assertEquals(listOf("delete"), r.log)
+        assertEquals(listOf("delete", "signout"), r.log)
         assertNull(readItem(backup))
         assertTrue(w.core.explicitSignOut())
     }
@@ -875,19 +894,19 @@ class AutoSignInTest {
         backup.set(restoreKey, item(rid1, rsecret1))
         val w = restoreWorld(r, backup, withLicense = true)
         w.client.signOut()
-        assertEquals(listOf("delete"), r.log)
+        assertEquals(listOf("delete", "signout"), r.log)
         assertNull(readItem(backup))
         assertTrue(w.core.restoreDeletePending())
         // Next launch: the queued revocation is the first call, ahead of any other.
         r.deleteFails = false
         val before = w.transport.requests().size
         w.client.autoSignIn()
-        assertEquals(listOf("delete", "delete"), r.log)
+        assertEquals(listOf("delete", "signout", "delete"), r.log)
         assertFalse(w.core.restoreDeletePending())
         assertEquals("DELETE", w.transport.requests()[before].method)
         // It is sent once.
         w.client.autoSignIn()
-        assertEquals(2, r.log.size)
+        assertEquals(3, r.log.size)
     }
 
     @Test
@@ -914,17 +933,20 @@ class AutoSignInTest {
         val w = restoreWorld(r, backup, withLicense = true, now = { clock })
         // First launch: never checked, so it checks (the held id is this device's: current, nothing written).
         assertTrue(w.client.autoSignIn() is AutoSignInResult.SignedIn)
+        w.client.awaitDailyRestoreCheck()
         assertEquals(listOf("""enrol:{"restoreId":"$rid1"}"""), r.log)
         assertEquals(rid1, readItem(backup)!!.restoreId)
         // Within 24 h: rung 1 is silent.
         clock += 86_399
         w.client.autoSignIn()
+        w.client.awaitDailyRestoreCheck()
         assertEquals(1, r.log.size)
         // After 24 h: checked again; the Worker rotates (a key older than 90 days): the new item is written.
         clock += 2
         r.enrolStatus = 201
         r.enrolBody = enrolled(rid3, rsecret3)
         w.client.autoSignIn()
+        w.client.awaitDailyRestoreCheck()
         assertEquals(2, r.log.size)
         assertEquals(rid3, readItem(backup)!!.restoreId)
     }
@@ -934,6 +956,7 @@ class AutoSignInTest {
         val r = Restore().apply { enrolBody = enrolled(rid2, rsecret2) }
         val w = restoreWorld(r, UnavailablePlatformBackupStore(), withLicense = true)
         assertTrue(w.client.autoSignIn() is AutoSignInResult.SignedIn)
+        w.client.awaitDailyRestoreCheck()
         assertTrue(r.log.isEmpty())
     }
 
@@ -946,10 +969,143 @@ class AutoSignInTest {
         val backup = InMemoryPlatformBackupStore()
         val w = restoreWorld(r, backup, withLicense = true)
         assertTrue(w.client.autoSignIn() is AutoSignInResult.SignedIn)
+        w.client.awaitDailyRestoreCheck()
         assertNull(readItem(backup))
         assertNull(w.core.restoreCheckedAt())
         w.client.autoSignIn()
+        w.client.awaitDailyRestoreCheck()
         assertEquals(2, r.log.size)
+    }
+
+    private fun assertSignOutFails(w: World) {
+        org.junit.Assert.assertThrows(im.plrs.key.core.PolarisException::class.java) { runBlocking { w.client.signOut() } }
+    }
+
+    @Test
+    fun aQueuedDeleteSurvivesALaunchWhereDiscoveryCannotBeLoaded() = runBlocking {
+        val r = Restore().apply { discoveryOffline = true }
+        val w = restoreWorld(r, InMemoryPlatformBackupStore(), withLicense = true)
+        w.core.setRestoreDeletePending(true)
+        // Offline relaunch: no discovery document, so the revocation cannot be built yet. The flag stays.
+        w.client.autoSignIn()
+        assertTrue(r.log.isEmpty())
+        assertTrue(w.core.restoreDeletePending())
+        // Back online: the first call of the launch is the queued DELETE, and then the flag is gone.
+        r.discoveryOffline = false
+        w.client.autoSignIn()
+        assertEquals("delete", r.log.first())
+        assertFalse(w.core.restoreDeletePending())
+    }
+
+    @Test
+    fun aQueuedDeleteForARestoreThatIsNotServedUsesTheTokenEndpointsSibling() = runBlocking {
+        val r = Restore()
+        val w = restoreWorld(r, InMemoryPlatformBackupStore(), withLicense = true, served = false)
+        w.core.setRestoreDeletePending(true)
+        w.client.autoSignIn()
+        assertEquals(listOf("delete"), r.log)
+        assertFalse(w.core.restoreDeletePending())
+        assertEquals("/djdl/identity/restore", w.transport.requests().first { it.method == "DELETE" }.path)
+    }
+
+    @Test
+    fun theGateOffStillSendsDeleteOnSignOutButNeverEnrols() = runBlocking {
+        val r = Restore().apply { enrolBody = enrolled(rid2, rsecret2) }
+        val backup = InMemoryPlatformBackupStore()
+        backup.set(restoreKey, item(rid1, rsecret1))
+        val w = restoreWorld(r, backup, withLicense = true, served = false)
+        w.client.enrolRestoreIfDue(force = true)
+        assertTrue(r.log.isEmpty())
+        w.client.signOut()
+        assertEquals(listOf("delete", "signout"), r.log)
+        assertNull(readItem(backup))
+    }
+
+    @Test
+    fun signOutDeletesTheItemAndSendsDeleteWhenTheWorkerRefusesIt() = runBlocking {
+        val r = Restore().apply { signOutStatus = 500 }
+        val backup = InMemoryPlatformBackupStore()
+        backup.set(restoreKey, item(rid1, rsecret1))
+        val w = restoreWorld(r, backup, withLicense = true)
+        assertSignOutFails(w)
+        // The revocation goes first (the bearer is still there); the item is gone though the sign-out failed.
+        assertEquals(listOf("delete", "signout"), r.log)
+        assertNull(readItem(backup))
+        assertFalse(w.core.restoreDeletePending())
+        assertFalse(w.core.explicitSignOut())
+    }
+
+    @Test
+    fun signOutDeletesTheItemAndQueuesTheDeleteWhenNothingCanBeReached() = runBlocking {
+        val r = Restore().apply {
+            signOutOffline = true
+            deleteFails = true
+        }
+        val backup = InMemoryPlatformBackupStore()
+        backup.set(restoreKey, item(rid1, rsecret1))
+        val w = restoreWorld(r, backup, withLicense = true)
+        assertSignOutFails(w)
+        assertNull(readItem(backup))
+        assertTrue(w.core.restoreDeletePending())
+        assertNull(w.core.restoreCheckedAt())
+    }
+
+    @Test
+    fun theDailyCheckIsDetachedAndNeverDelaysTheSignInResult() = runBlocking {
+        val r = Restore().apply {
+            enrolBody = enrolled(rid2, rsecret2)
+            enrolStarted = java.util.concurrent.CountDownLatch(1)
+            enrolRelease = java.util.concurrent.CountDownLatch(1)
+        }
+        val backup = InMemoryPlatformBackupStore()
+        val w = restoreWorld(r, backup, withLicense = true)
+        // The Worker holds the POST; an inline check would never return here.
+        val res = kotlinx.coroutines.withTimeout(10_000) { w.client.autoSignIn() }
+        assertTrue(res is AutoSignInResult.SignedIn)
+        assertTrue(r.enrolStarted!!.await(10, java.util.concurrent.TimeUnit.SECONDS))
+        assertNull(readItem(backup))
+        r.enrolRelease!!.countDown()
+        w.client.awaitDailyRestoreCheck()
+        assertEquals(rid2, readItem(backup)!!.restoreId)
+        assertEquals(1_700_000_000L, w.core.restoreCheckedAt())
+    }
+
+    @Test
+    fun aDetachedCheckThatFailsIsSwallowedAndTriedAgainAtTheNextLaunch() = runBlocking {
+        val r = Restore().apply {
+            enrolFails = true
+            enrolBody = enrolled(rid2, rsecret2)
+        }
+        val backup = InMemoryPlatformBackupStore()
+        val w = restoreWorld(r, backup, withLicense = true)
+        assertTrue(w.client.autoSignIn() is AutoSignInResult.SignedIn)
+        w.client.awaitDailyRestoreCheck()
+        assertNull(w.core.restoreCheckedAt())
+        r.enrolFails = false
+        assertTrue(w.client.autoSignIn() is AutoSignInResult.SignedIn)
+        w.client.awaitDailyRestoreCheck()
+        assertEquals(rid2, readItem(backup)!!.restoreId)
+    }
+
+    @Test
+    fun aSignOutDuringTheDetachedCheckWaitsForItThenRevokesWhatItEnrolled() = runBlocking {
+        val r = Restore().apply {
+            enrolBody = enrolled(rid2, rsecret2)
+            enrolStarted = java.util.concurrent.CountDownLatch(1)
+            enrolRelease = java.util.concurrent.CountDownLatch(1)
+        }
+        val backup = InMemoryPlatformBackupStore()
+        val w = restoreWorld(r, backup, withLicense = true)
+        assertTrue(w.client.autoSignIn() is AutoSignInResult.SignedIn)
+        assertTrue(r.enrolStarted!!.await(10, java.util.concurrent.TimeUnit.SECONDS))
+        val out = kotlinx.coroutines.GlobalScope.async(kotlinx.coroutines.Dispatchers.Default) { w.client.signOut() }
+        // Sign-out is queued behind the enrolment: it cannot delete the item before the item exists.
+        kotlinx.coroutines.delay(200)
+        r.enrolRelease!!.countDown()
+        out.await()
+        w.client.awaitDailyRestoreCheck()
+        assertEquals(listOf("enrol:{}", "delete", "signout"), r.log)
+        assertNull(readItem(backup))
     }
 
     @Test

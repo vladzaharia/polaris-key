@@ -515,20 +515,25 @@ public class CoreContext(options: CoreOptions) {
     }
 
     /** One slot operation: its answer, or [fallback] (after [onFail]) when the slot cannot be read or written. */
-    private suspend fun <T> restoreSlot(fallback: T, onFail: () -> Unit = {}, block: () -> T): T = try {
+    private suspend fun <T> restoreSlot(fallback: T, onFail: (Exception) -> Unit = {}, block: () -> T): T = try {
         io { block() }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        onFail()
+    } catch (e: java.io.IOException) {
+        onFail(e)
         fallback
+    } catch (e: SecurityException) {
+        onFail(e)
+        fallback
+    }
+
+    private fun restoreSaveFailed(cause: Exception) {
+        warn("The restore state could not be saved (${cause::class.java.simpleName}).")
     }
 
     /** Seconds since the epoch of the last enrol or check that the Worker answered, or null. */
     public suspend fun restoreCheckedAt(): Long? = restoreSlot(null) { restoreCheckedSlot.read()?.trim()?.toLongOrNull() }
 
     public suspend fun setRestoreCheckedAt(seconds: Long?) {
-        restoreSlot(Unit, { warn("The restore state could not be saved.") }) { restoreCheckedSlot.write(seconds?.toString() ?: "") }
+        restoreSlot(Unit, ::restoreSaveFailed) { restoreCheckedSlot.write(seconds?.toString() ?: "") }
     }
 
     /** True while a `DELETE restore` is queued for the next launch. An unreadable slot reads as queued. */
@@ -539,7 +544,7 @@ public class CoreContext(options: CoreOptions) {
     }
 
     public suspend fun setRestoreDeletePending(on: Boolean) {
-        restoreSlot(Unit, { warn("The restore state could not be saved.") }) { restoreDeleteSlot.write(if (on) "1" else "") }
+        restoreSlot(Unit, ::restoreSaveFailed) { restoreDeleteSlot.write(if (on) "1" else "") }
     }
 
     /** Wipe every credential and artifact except the v4 update slices, which re-verify. */

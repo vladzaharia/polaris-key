@@ -18,8 +18,9 @@
 //     do not run: nothing silent signs the person back in. The next explicit sign-in (a token
 //     stored from a sign-in) clears it. A stored session (rung 1) is the person's own and is not
 //     touched by the flag.
-//   - `signOut()` also deletes the restore item and sends `DELETE restore` (queued for the next launch when it cannot
-//     be delivered). The flag lives in the store's no-backup state directory, outside Android Auto Backup.
+//   - `signOut()` also deletes the restore item and sends `DELETE restore` before it asks the Worker, and whatever the
+//     Worker answers (queued for the next launch when it cannot be delivered). The flag lives in the store's no-backup
+//     state directory, outside Android Auto Backup.
 //   - A provider that reports its credential revoked at launch signs the device out through
 //     `signOut()`. If the Worker cannot be reached the flag stays unset and the check repeats at
 //     the next launch.
@@ -154,8 +155,8 @@ internal suspend fun IdentityClient.runAutoSignIn(options: AutoSignInOptions): A
     if (core.token() != null && core.tokenProvenance() == TokenProvenance.signin) {
         val license = core.cache().license
         if (license != null) {
-            // The daily check that the key is current (and its rotation at 90 days); best effort, never an error.
-            enrolRestoreIfDue(force = false)
+            // The daily check that the key is current (and its rotation at 90 days): detached, never an error.
+            launchDailyRestoreCheck(generation)
             return AutoSignInResult.SignedIn(core.storedSubject(), license.doc.licenseId)
         }
     }
@@ -204,11 +205,9 @@ internal suspend fun IdentityClient.runProviderSignIn(): AutoSignInResult {
     }
 }
 
-/** Called by `signOut()` once the Worker accepted it. */
+/** Called by `signOut()` once the Worker accepted it (the restore key was revoked before the Worker was asked). */
 internal suspend fun IdentityClient.markSignedOut() {
     core.setExplicitSignOut(true)
-    // The restore item goes whatever the Worker answered; the revocation is sent, or queued for the next launch.
-    restoreSignOut()
     platformProvider.get()?.let { safeCleanup(it) }
 }
 
@@ -287,6 +286,8 @@ private fun unavailable(outcome: ExchangeOutcome): AutoSignInResult =
 private suspend fun IdentityClient.signOutAfterRevocation(provider: PlatformIdentityProvider) {
     if (core.token() == null) {
         core.setExplicitSignOut(true)
+        // No bearer to revoke with: the item goes and the queued flag is dropped (the key is inert; other revocations reach it).
+        restoreSignOut()
         safeCleanup(provider)
     } else {
         try {
