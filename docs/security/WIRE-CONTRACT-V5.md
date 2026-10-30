@@ -2221,6 +2221,8 @@ A catalog declares collections in `cloudSync.collections`: `name` (the key chars
 
 A record, its metadata included, is at most 64 KiB; a thumbnail (about 32 KiB decoded) is a field, not a second file, so a pull of 16 slots is at most about 1 MiB. At the first sign-in a client pushes its local records as ordinary create-only mutations (`baseVersion: "*"`); there is no attach prompt.
 
+**A save's file (U-22).** A save is a `saves` record with one file (§13.8), written in this order so no save is ever torn: the client uploads the file (`begin`, the bytes, `finalize`, which creates the record or bumps its `version` and answers it), then pushes the metadata `set` with `baseVersion` equal to the `version` that `finalize` answered. Between the two steps a reader still holds the old metadata and finds its file among the revisions (§13.8.1), so no save reads torn. In E2E mode the metadata carries the file binding of §13.10.4; in server mode it carries none, since the server holds the plaintext and is trusted with it. A saved game's `formatVersion` is an app-level number, never read by the server: a client reads a save whose `formatVersion` is above the app's `saveFormatVersion` as `newerFormat` and does not open its file.
+
 ### 13.8 Files on records (U-10, U-37)
 
 Any record may carry one file. A file travels in one of three modes, chosen by the server at `begin` from the size and the collection, and every mode ends in the same idempotent `finalize`.
@@ -2258,28 +2260,29 @@ Any record may carry one file. A file travels in one of three modes, chosen by t
 
 Each code is registered in `conformance/parity/errors.json` by the package that first emits it. `upload_mismatch`, `revision_conflict`, `quota_exceeded`, `entitlement_required`, `collection_unknown`, `rate_limited`, `not_found` and `body_too_large` are reused by the file routes.
 
-| Code                                     | Kind and HTTP                 | Package    | Note                                                                                       |
-| ---------------------------------------- | ----------------------------- | ---------- | ------------------------------------------------------------------------------------------ |
-| `account_required`                       | wire 403                      | I-09       | no principal; `signInUrl` additive                                                         |
-| `cursor_expired`                         | wire 410                      | U-05       | the cursor is older than the 90-day tombstone horizon                                      |
-| `client_mismatch`                        | wire 409                      | U-05       | the `clientId` belongs to another device                                                   |
-| `value_invalid`, `op_invalid_for_policy` | wire result                   | U-05       |                                                                                            |
-| `setting_not_synced`                     | wire result                   | U-05       | a declared non-`config` or `local` key, or the wrong scope                                 |
-| `quota_exceeded`                         | wire result, or 403 for files | U-05       | `scope` is `user`, `collection` (`maxRecords`, a create only, U-09) or `product`           |
-| `writes_paused`                          | wire 503                      | U-05       | `cloudSync.writesPaused` is on; `Retry-After` gives the seconds to wait (300 when absent)  |
-| `attestation_required`                   | wire 403                      | U-05       | the existing Core code, now also for a Cloud Sync write                                    |
-| `collection_unknown`                     | wire result                   | U-09       |                                                                                            |
-| `entitlement_required`                   | wire result, or 403 for files | U-09, U-10 | a collection's `requires` (not for `delete`), or files under a quota with `files: false`   |
-| `revision_conflict`                      | wire 409                      | U-10       |                                                                                            |
-| `upload_mismatch`                        | wire 400                      | U-10       |                                                                                            |
-| `encryption_mismatch`                    | wire result, or 400 on begin  | U-09, U-10 | `ct` on a server product, `value` or an unblinded name on an E2E product, or a wrong `enc` |
-| `upload_expired`                         | wire 410                      | U-10       | the upload outlived `SYNC_UPLOAD_TTL_SECONDS`                                              |
-| `upload_incomplete`                      | wire 409                      | U-10, U-37 | `finalize` with parts or chunks missing; `missing` lists them                              |
-| `file_too_large`                         | wire 413                      | U-10       | the file is over its collection's `files.maxBytes`                                         |
-| `keyring_conflict`                       | wire 409                      | U-36       | a ring or a wrap already exists (§13.11)                                                   |
-| `sync-locked`                            | client                        | U-33       | the device holds no root for the current ring (§11.5)                                      |
-| `recovery-code-invalid`                  | client                        | U-33       | the recovery code's checksum or its unwrap failed (§13.11.4)                               |
-| `sync-encryption-pinned`                 | client                        | U-33       | the app requires E2E and the Worker offers server mode (§11.5)                             |
+| Code                                     | Kind and HTTP                 | Package    | Note                                                                                                                  |
+| ---------------------------------------- | ----------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| `account_required`                       | wire 403                      | I-09       | no principal; `signInUrl` additive                                                                                    |
+| `cursor_expired`                         | wire 410                      | U-05       | the cursor is older than the 90-day tombstone horizon                                                                 |
+| `client_mismatch`                        | wire 409                      | U-05       | the `clientId` belongs to another device                                                                              |
+| `value_invalid`, `op_invalid_for_policy` | wire result                   | U-05       |                                                                                                                       |
+| `setting_not_synced`                     | wire result                   | U-05       | a declared non-`config` or `local` key, or the wrong scope                                                            |
+| `quota_exceeded`                         | wire result, or 403 for files | U-05       | `scope` is `user`, `collection` (`maxRecords`, a create only, U-09) or `product`                                      |
+| `writes_paused`                          | wire 503                      | U-05       | `cloudSync.writesPaused` is on; `Retry-After` gives the seconds to wait (300 when absent)                             |
+| `attestation_required`                   | wire 403                      | U-05       | the existing Core code, now also for a Cloud Sync write                                                               |
+| `collection_unknown`                     | wire result                   | U-09       |                                                                                                                       |
+| `entitlement_required`                   | wire result, or 403 for files | U-09, U-10 | a collection's `requires` (not for `delete`), or files under a quota with `files: false`                              |
+| `revision_conflict`                      | wire 409                      | U-10       |                                                                                                                       |
+| `upload_mismatch`                        | wire 400                      | U-10       |                                                                                                                       |
+| `encryption_mismatch`                    | wire result, or 400 on begin  | U-09, U-10 | `ct` on a server product, `value` or an unblinded name on an E2E product, or a wrong `enc`                            |
+| `upload_expired`                         | wire 410                      | U-10       | the upload outlived `SYNC_UPLOAD_TTL_SECONDS`                                                                         |
+| `upload_incomplete`                      | wire 409                      | U-10, U-37 | `finalize` with parts or chunks missing; `missing` lists them                                                         |
+| `file_too_large`                         | wire 413                      | U-10       | the file is over its collection's `files.maxBytes`                                                                    |
+| `keyring_conflict`                       | wire 409                      | U-36       | a ring or a wrap already exists (§13.11)                                                                              |
+| `sync-locked`                            | client                        | U-33       | the device holds no root for the current ring (§11.5)                                                                 |
+| `recovery-code-invalid`                  | client                        | U-33       | the recovery code's checksum or its unwrap failed (§13.11.4)                                                          |
+| `sync-encryption-pinned`                 | client                        | U-33       | the app requires E2E and the Worker offers server mode (§11.5)                                                        |
+| `sync-file-invalid`                      | client                        | U-22       | a downloaded file fails a segment tag, the manifest, a chunk id, `plainSha256`, a length or the §13.10.4 file binding |
 
 No longer used: `setting_unknown` (open settings have no unknown key; `setting_not_synced` replaces it), `store_requires_flag` (`entitlement_required` replaces it), `access_denied` (its three reasons are gone), and the client codes `setting-locked` and `setting-unknown` (`managed_by_admin` and `bad_request` already ship).
 
@@ -2341,6 +2344,8 @@ Every symmetric key seals one plaintext, so the nonce is a constant (12 zero byt
 | A `union` element | `id ‖ U+0000 ‖ canonicalJson(e)` | the record id and `blind("element", c, canonicalJson(e))` |
 
 `id`, `field` and `canonicalJson(e)` are the plaintext names, not the blinded forms; a record id is in the key charset (§8), so it holds no U+0000 and `k` splits unambiguously at the first one. A sealed element's `v` is the element `e`. The reader opens the envelope, splits `k`, recomputes the blinded forms with `blind` (§13.10.3) and compares them with the names on the wire; a difference makes the value `invalid`. A client that holds only the blinded id learns the plaintext `id` from `k`. The envelope is `33 + len(P) + 16` bytes, which is why the server's shape check is `(length − 49) mod 64 = 0`. `SYNC_E2E_OVERHEAD_BYTES` is 113 (49 of envelope and at most 64 of padding): budgets (256 keys, 64 KiB, 8 KiB, §13.1) are charged on `envelopeBytes − 113`, so they keep their meaning, while the quota charges the stored bytes.
+
+**The file binding (U-22).** A record's file is chosen by the server, and `K_file` rests on `K_coll(c)` and the header's salt, so nothing in the file stream ties it to a record. In E2E mode the sealed value of a `saves` record is therefore a JSON object that carries, under the reserved key `"$file"`, `{sha256, size, format}`: the lowercase hex SHA-256 of the stored bytes (the ciphertext; for `chunks` the stored manifest), their length (at least 1), and `whole` or `chunks` (§13.8.1). It is the `sha256` and `size` that `finalize` answered, and it sits inside the envelope, so the server cannot read or alter it. A writer refuses metadata that already holds the key `$file`. A reader opens the record first, then downloads only the file revision whose `sha256`, `size` and `format` equal the binding (the current file or a kept revision); no match, or a value with no binding, means the record has no readable file there, whatever the server attaches. A Worker therefore cannot point one slot's record at another's file, show a new file under old metadata, or attach a file to a record that has none. Every later failure of a downloaded file (a segment tag, the manifest, a chunk id, `plainSha256`, a length) is the client error `sync-file-invalid`, and a cancelled transfer is a transfer state, never an error. A server-mode record has no binding.
 
 **`pkey-sync-file/1`** seals a file as a stream of segments:
 

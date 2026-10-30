@@ -537,6 +537,10 @@
       "title": "Crittografia obbligatoria",
       "message": "Questa app richiede la sincronizzazione crittografata, al momento non disponibile. La sincronizzazione resta disattivata."
     },
+    "sync-file-invalid": {
+      "title": "File non aperto",
+      "message": "Il file sincronizzato non ha superato il controllo e non è stato usato. Riprova."
+    },
     "invalid-options": {
       "title": "App non configurata",
       "message": "La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore."

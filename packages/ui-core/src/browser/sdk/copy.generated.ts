@@ -609,6 +609,10 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "This app needs encrypted sync, which isn't available right now. Sync stays off.",
   },
+  "sync-file-invalid": {
+    title: "File not opened",
+    message: "The synced file failed its check, so it wasn't used. Try again.",
+  },
   "invalid-options": {
     title: "App not set up",
     message:

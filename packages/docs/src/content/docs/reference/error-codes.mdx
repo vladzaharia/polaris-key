@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 17 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
-(207 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+(208 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -129,6 +129,7 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `sync-locked` | `sync` | Cloud Sync E2E: this device holds no root for the current key ring, so it cannot read or write synced values until it is unlocked by a nearby device, the recovery code or a platform backup (WIRE-CONTRACT-V5 §11.5, §13.11). | [Help](/docs/help/messages/accounts/#sync-locked) |
 | `recovery-code-invalid` | `sync` | Cloud Sync E2E: the recovery code's checksum or its unwrap failed (WIRE-CONTRACT-V5 §13.11.4). | [Help](/docs/help/messages/accounts/#recovery-code-invalid) |
 | `sync-encryption-pinned` | `sync` | Cloud Sync E2E: the app requires end-to-end encryption and the Worker offers server mode, or none; sync stays off rather than downgrade (WIRE-CONTRACT-V5 §11.5, §13.10.6). | [Help](/docs/help/messages/other/#sync-encryption-pinned) |
+| `sync-file-invalid` | `sync` | Cloud Sync files: a downloaded file failed a check the server could have caused (a segment tag, the manifest, a chunk id, plainSha256, a length, or the file binding of an end-to-end save) (WIRE-CONTRACT-V5 §13.10.4). A cancelled transfer is a transfer state, not this error. | developer only |
 | `invalid-options` | `core` | The client's options failed validation when it was constructed or configured (Godot: at configure): a bad product slug, version, base URL or pin, an invalid outlet, or a pinned release key that is also a trust pin. Godot's `config.set_value` also answers it for a value its catalog schema refuses and for a secret key, the refusal the other SDKs and `sync-scenarios.json` name with the canonical `bad_request`; Godot's runners map that canonical code to this one. | developer only |
 | `invalid-argument` | `core` | The Electron desktop bridge refused a call because an argument was missing, of the wrong type, or out of bounds (an absolute or escaping download path, an unknown store or kind). One spelling for every verb; the renderer adapter surfaces it as a typed error. | developer only |
 | `invoke-not-allowed` | `core` | The Electron desktop bridge's generic invoke named a service method the host does not expose to the renderer. | developer only |
