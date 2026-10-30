@@ -15,6 +15,7 @@ import {
   type TransferJournalRecord,
   type UploadRequest,
 } from "../src/sync/index.js";
+import { fail, hex, MIB, noise, ok } from "./syncTransferFixtures.js";
 import type {
   BeginFileRequest,
   BeginFileResponse,
@@ -23,24 +24,7 @@ import type {
   UploadStatus,
 } from "@polaris-key/protocol/sync";
 
-const MIB = 1024 * 1024;
-const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
-
-// Deterministic filler; xorshift32 so each seed is a different file.
-const noise = (length: number, seed = 1): Uint8Array => {
-  let x = seed * 2_654_435_761 || 1;
-  return Uint8Array.from({ length }, () => {
-    x ^= x << 13;
-    x ^= x >>> 17;
-    x ^= x << 5;
-    return x & 0xff;
-  });
-};
-
 type Reply<T> = FileReply<T>;
-const fail = (status: number, code: string, extra: object = {}): Reply<never> =>
-  ({ ok: false, status, code, ...extra }) as Reply<never>;
-const ok = <T>(value: T): Reply<T> => ({ ok: true, value });
 
 /** A fake U-10 server behind the FileTransport port: parts in any order, digests checked. */
 class FakeServer implements FileTransport {
@@ -188,6 +172,14 @@ class FakeServer implements FileTransport {
     };
     return ok(u.done);
   };
+
+  // Chunks and downloads are driven by syncTransferChunks.test.ts.
+  planChunks = async (): Promise<Reply<never>> => {
+    throw new Error("unused");
+  };
+  putChunk = this.planChunks;
+  getFile = this.planChunks;
+  getChunk = this.planChunks;
 
   bytes(uploadId: string): Uint8Array {
     const u = this.uploads.get(uploadId)!;

@@ -15,3 +15,5 @@ export * from "./transferPlan.js";
 export * from "./hostCodec.js";
 export * from "./transferJournal.js";
 export * from "./transfer.js";
+export * from "./chunkCache.js";
+export * from "./transferCodec.js";

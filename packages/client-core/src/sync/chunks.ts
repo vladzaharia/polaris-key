@@ -151,6 +151,31 @@ export function zstdContentSize(f: Uint8Array): number | null {
 }
 
 /**
+ * Decodes the body of a codec 1 chunk: one zstd frame whose declared content size (at most
+ * `SYNC_CDC_MAX_BYTES`) is checked before anything is decoded, so a bomb costs nothing. `decode`
+ * absent, a frame with no declared size, a throw and an answer of another length are `decode`.
+ */
+export async function decodeZstdChunk(
+  body: Uint8Array,
+  decode?: ChunkZstdDecode,
+): Promise<
+  { ok: true; plain: Uint8Array } | { ok: false; reason: "decode" | "size" }
+> {
+  const size = zstdContentSize(body);
+  if (size === null || decode === undefined)
+    return { ok: false, reason: "decode" };
+  if (size > SYNC_CDC_MAX_BYTES) return { ok: false, reason: "size" };
+  let plain: Uint8Array;
+  try {
+    plain = await decode(body, size);
+  } catch {
+    return { ok: false, reason: "decode" };
+  }
+  if (plain.length !== size) return { ok: false, reason: "decode" };
+  return { ok: true, plain };
+}
+
+/**
  * Opens the object for `id` in `collection`. The checks run in the order of `ChunkInvalid`:
  * shape, version, codec, the tag (which covers the codec and the id), the zstd frame (it must
  * declare a content size of at most `SYNC_CDC_MAX_BYTES`, or `size`), and last that the keyed
@@ -197,16 +222,9 @@ export async function openChunk(
   if (codec === CHUNK_CODEC_RAW) {
     plain = body;
   } else {
-    const size = zstdContentSize(body);
-    if (size === null || decode === undefined)
-      return { ok: false, reason: "decode" };
-    if (size > SYNC_CDC_MAX_BYTES) return { ok: false, reason: "size" };
-    try {
-      plain = await decode(body, size);
-    } catch {
-      return { ok: false, reason: "decode" };
-    }
-    if (plain.length !== size) return { ok: false, reason: "decode" };
+    const d = await decodeZstdChunk(body, decode);
+    if (!d.ok) return d;
+    plain = d.plain;
   }
   if (plain.length > SYNC_CDC_MAX_BYTES) return { ok: false, reason: "size" };
   const got = await chunkId(port, root, collection, plain);
