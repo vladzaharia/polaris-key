@@ -137,6 +137,20 @@ async function ask(
   return r;
 }
 
+/** D lists M, the person taps it; returns what D's `onClose` hears. */
+async function chooseAndWatch(
+  d: PolarisKeyClient,
+  net: MemoryMdnsNetwork,
+  fake: FakeNearbyWorker,
+): Promise<string[]> {
+  const r = await ask(d, net, fake);
+  await until(() => r.approvers.length === 1);
+  const closes: string[] = [];
+  r.onClose((c) => closes.push(c));
+  await r.choose(r.approvers[0]!.id);
+  return closes;
+}
+
 const showing = (a: NearbyApproval, code: string): string =>
   a.codes.find((c) => c.replace(" ", "") === code.replace(" ", ""))!;
 
@@ -210,11 +224,7 @@ describe("nearby approval, two clients over the fake LAN", () => {
     expect([...net.adverts.values()].some((a) => a.txt.includes("m=v"))).toBe(
       true,
     );
-    const r = await ask(d, net, fake);
-    await until(() => r.approvers.length === 1);
-    const closes: string[] = [];
-    r.onClose((c) => closes.push(c));
-    const { code: _code } = await r.choose(r.approvers[0]!.id);
+    const closes = await chooseAndWatch(d, net, fake);
     await until(() => approvals.length === 1);
     await m.cloudConnect.stopForSignOut();
     expect([...net.adverts.values()].some((a) => a.txt.includes("m=v"))).toBe(
@@ -251,5 +261,96 @@ describe("gating", () => {
         ...LOOP,
       }),
     ).rejects.toMatchObject({ code: "account_required" });
+  });
+});
+
+describe("sign-out reaches every handle (B1, B2)", () => {
+  const adverts = (net: MemoryMdnsNetwork) =>
+    [...net.adverts.values()].filter((a) => a.txt.includes("m=v"));
+
+  it("a stopAll that lands while onRequest is still starting leaves no advert", async () => {
+    const { m, net } = await world();
+    const pending = m.cloudConnect.nearby.onRequest(() => undefined, {
+      prompt: true,
+      mdns: net.adapter(),
+      ...LOOP,
+    });
+    const outcome = pending.then(
+      (h) => {
+        handles.push(h);
+        return "started";
+      },
+      (e: { code?: string }) => e.code ?? "error",
+    );
+    // The sign-out lands before the start resolved.
+    await m.cloudConnect.nearby.stopAll();
+    expect(await outcome).toBe("account_required");
+    expect(adverts(net)).toHaveLength(0);
+  });
+
+  it("a stopAll that lands while request() is starting closes the request", async () => {
+    const { d, net, fake } = await world();
+    const { port, deviceId } = await d.connect.nearbySigner();
+    await fake.register(REQUEST, port, deviceId);
+    const pending = d.cloudConnect.nearby.request({
+      request: REQUEST,
+      mdns: net.adapter(),
+      allowLoopback: true,
+    });
+    const outcome = pending.then(
+      (r) => {
+        requests.push(r);
+        return "started";
+      },
+      () => "refused",
+    );
+    await d.cloudConnect.nearby.stopAll();
+    expect(await outcome).toBe("refused");
+  });
+
+  it("the handle of a stopped approver cannot pause or resume the advert back", async () => {
+    const { m, net } = await world();
+    const h = await approve(m, net, []);
+    await m.cloudConnect.nearby.stopAll();
+    expect(adverts(net)).toHaveLength(0);
+    await h.pause();
+    await h.resume();
+    await h.reopen();
+    await h.setPrompt(false);
+    await h.setPrompt(true);
+    expect(adverts(net)).toHaveLength(0);
+    expect(h.status().state).toBe("stopped");
+  });
+
+  it("sign-out closes the sessions even when the advert's stop hangs", async () => {
+    const { m, d, net, fake } = await world();
+    const base = net.adapter();
+    let stopCalled = false;
+    const approvals: NearbyApproval[] = [];
+    const h = await m.cloudConnect.nearby.onRequest((a) => approvals.push(a), {
+      prompt: true,
+      mdns: {
+        ...base,
+        advertise: async (a) => {
+          await base.advertise(a);
+          return {
+            stop: () => {
+              stopCalled = true;
+              return new Promise<void>(() => undefined);
+            },
+          };
+        },
+      },
+      ...LOOP,
+    });
+    handles.push(h);
+    const closes = await chooseAndWatch(d, net, fake);
+    await until(() => approvals.length === 1);
+    const t0 = Date.now();
+    await m.cloudConnect.stopForSignOut(100);
+    expect(Date.now() - t0).toBeLessThan(3000);
+    expect(stopCalled).toBe(true);
+    await until(() => closes.length === 1);
+    expect(h.status().state).toBe("stopped");
   });
 });

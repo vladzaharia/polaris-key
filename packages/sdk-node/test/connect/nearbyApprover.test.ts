@@ -190,7 +190,7 @@ describe("holding and the prompt", () => {
   });
 
   it("with the prompt closed a session raises a notice and takes no pick", async () => {
-    const h = await start({ prompt: false });
+    const h = await start({ prompt: false, background: true });
     const d = await chosen();
     await until(() => notices.length === 1);
     expect(approvals).toHaveLength(0);
@@ -455,5 +455,362 @@ describe("the accept limits", () => {
     await d2.waitFor(() => d2.closed !== null);
     expect(d2.hello).toBeNull();
     expect(d1.closed).toBeNull();
+  });
+});
+
+// ── CC-15 red round: B1, B2, B3 and N4 to N10 ───────────────────────────────────────────────────
+
+/** The code on M's screen that is D's. */
+const shownOf = (a: NearbyApproval, d: RawD): string =>
+  a.codes.find((c) => c.replace(" ", "") === String(d.code).padStart(6, "0"))!;
+
+/** A D that dialled and said HELLO; the person has not chosen. */
+async function held(): Promise<RawD> {
+  const d = await RawD.dial(net, { auto: false });
+  ds.push(d);
+  await d.waitFor(() => d.hello !== null);
+  return d;
+}
+
+/** Every call that could bring an advert back. */
+async function reviveAll(h: NearbyApproverHandle): Promise<void> {
+  await h.pause();
+  await h.resume();
+  await h.reopen();
+  await h.setPrompt(false);
+  await h.setPrompt(true);
+}
+
+/** Two declined prompts spend the failure budget (two in 10 minutes) and stop the advert. */
+async function spendBudget(): Promise<void> {
+  for (let i = 0; i < 2; i++) {
+    const n = approvals.length;
+    const d = await chosen();
+    await until(() => approvals.length === n + 1);
+    await approvals[n]!.decline();
+    await d.waitFor(() => d.closed !== null);
+  }
+  await until(() => stops.length >= 1);
+}
+
+describe("a stopped advert stays stopped (B1)", () => {
+  it("pause() and resume() do not revive a budget stop or overwrite its reason", async () => {
+    const h = await start({ mono: () => 100 });
+    await spendBudget();
+    expect(h.status()).toMatchObject({ state: "stopped", reason: "budget" });
+    await h.pause();
+    expect(h.status()).toMatchObject({ state: "stopped", reason: "budget" });
+    await h.resume();
+    expect(h.status()).toMatchObject({ state: "stopped", reason: "budget" });
+    expect(approverAdverts(net)).toHaveLength(0);
+  });
+
+  it("reopen() and the screen opening again still clear a budget stop", async () => {
+    const h = await start({ mono: () => 100 });
+    await spendBudget();
+    await h.reopen();
+    expect(h.status().state).toBe("advertising");
+    await spendBudget();
+    expect(h.status().state).toBe("stopped");
+    await h.setPrompt(false);
+    await h.setPrompt(true);
+    expect(h.status()).toMatchObject({ state: "advertising", reason: null });
+    expect(approverAdverts(net)).toHaveLength(1);
+  });
+
+  it("a sign-out stop is final: pause, resume, reopen and setPrompt revive nothing", async () => {
+    const h = await start();
+    signedIn = false;
+    fire(300_000);
+    await until(() => stops.length === 1);
+    signedIn = true;
+    await reviveAll(h);
+    expect(h.status()).toMatchObject({
+      state: "stopped",
+      reason: "signed-out",
+    });
+    expect(approverAdverts(net)).toHaveLength(0);
+  });
+
+  it("stop() is final", async () => {
+    const h = await start();
+    await h.stop();
+    await reviveAll(h);
+    expect(h.status()).toMatchObject({ state: "stopped", reason: "host" });
+    expect(approverAdverts(net)).toHaveLength(0);
+  });
+
+  it("pause() works only from advertising; resume() only from the host's own pause", async () => {
+    const h = await start();
+    await h.resume();
+    expect(h.status().state).toBe("advertising");
+    expect(approverAdverts(net)).toHaveLength(1);
+    await h.pause();
+    await h.pause();
+    expect(h.status()).toMatchObject({ state: "paused", reason: "host" });
+    await h.resume();
+    expect(h.status().state).toBe("advertising");
+    expect(approverAdverts(net)).toHaveLength(1);
+  });
+
+  it("resume() reads signedIn and discovery again", async () => {
+    const h = await start();
+    await h.pause();
+    signedIn = false;
+    await h.resume();
+    expect(h.status()).toMatchObject({
+      state: "stopped",
+      reason: "signed-out",
+    });
+    expect(stops).toEqual(["signed-out"]);
+    expect(approverAdverts(net)).toHaveLength(0);
+
+    signedIn = true;
+    const h2 = await start();
+    await h2.pause();
+    served = false;
+    await h2.resume();
+    expect(h2.status()).toMatchObject({
+      state: "stopped",
+      reason: "discovery",
+    });
+    expect(approverAdverts(net)).toHaveLength(0);
+  });
+});
+
+describe("stopping and renewing (B2, B3)", () => {
+  it("stop() does not wait behind a renewal whose sign-in check hangs", async () => {
+    let hang = false;
+    let release!: () => void;
+    const h = await NearbyApprover.start(
+      {
+        ...src,
+        signedIn: () =>
+          hang
+            ? new Promise<boolean>((r) => (release = () => r(true)))
+            : Promise.resolve(true),
+      },
+      () => undefined,
+      {
+        prompt: true,
+        mdns: net.adapter(),
+        host: "127.0.0.1",
+        allowLoopback: true,
+        timer,
+      },
+    );
+    handles.push(h);
+    const d = await chosen();
+    hang = true;
+    fire(300_000);
+    await new Promise((r) => setTimeout(r, 30));
+    let done = false;
+    void h.stop().then(() => (done = true));
+    await until(() => done, 1000);
+    expect(approverAdverts(net)).toHaveLength(0);
+    await d.waitFor(() => d.closed !== null);
+    expect(h.status()).toMatchObject({ state: "stopped", reason: "host" });
+    // The renewal answers late: it brings nothing back.
+    release();
+    await new Promise((r) => setTimeout(r, 60));
+    expect(approverAdverts(net)).toHaveLength(0);
+    expect(h.status().state).toBe("stopped");
+  });
+
+  it("a renewal that fails stops the advert with onStopped, and re-arms nothing stale", async () => {
+    const base = net.adapter();
+    let n = 0;
+    const h = await start({
+      mdns: {
+        ...base,
+        advertise: async (a) => {
+          if (++n >= 2) throw new Error("interface down");
+          return base.advertise(a);
+        },
+      },
+    });
+    fire(300_000);
+    await until(() => stops.length === 1);
+    expect(stops).toEqual(["discovery"]);
+    expect(h.status()).toMatchObject({ state: "stopped", reason: "discovery" });
+    expect(approverAdverts(net)).toHaveLength(0);
+    expect(timers.filter((t) => t.live && t.ms === 300_000)).toHaveLength(0);
+  });
+
+  it("a renewal whose sign-in check hangs is bounded and counts as signed out", async () => {
+    const h = await NearbyApprover.start(
+      { ...src, signedIn: () => new Promise<boolean>(() => undefined) },
+      () => undefined,
+      {
+        prompt: true,
+        mdns: net.adapter(),
+        host: "127.0.0.1",
+        allowLoopback: true,
+        timer,
+        onStopped: (w) => stops.push(w),
+      },
+    );
+    handles.push(h);
+    fire(300_000);
+    await until(() => timers.some((t) => t.live && t.ms === 15_000));
+    fire(15_000);
+    await until(() => stops.length === 1);
+    expect(stops).toEqual(["signed-out"]);
+  });
+});
+
+describe("the prompt and the budget (N4, N5, N6)", () => {
+  it("counts a peer that closes after the prompt showed, before the answer", async () => {
+    await start({ mono: () => 100 });
+    const d1 = await chosen();
+    await until(() => approvals.length === 1);
+    await d1.close();
+    await until(() => ds.length > 0 && d1.closed !== null);
+    expect(stops).toEqual([]);
+    const d2 = await chosen();
+    await until(() => approvals.length === 2);
+    await d2.close();
+    await until(() => stops.length === 1);
+    expect(stops).toEqual(["budget"]);
+  });
+
+  it("does not count a peer that closes before any prompt showed", async () => {
+    await start({ mono: () => 100 });
+    for (let i = 0; i < 3; i++) {
+      const d = await RawD.dial(net, { auto: false });
+      ds.push(d);
+      await d.waitFor(() => d.hello !== null);
+      await d.close();
+      await d.waitFor(() => d.closed !== null);
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    expect(stops).toEqual([]);
+  });
+
+  it("holds the next prompt until the picked session finishes", async () => {
+    await start({ maxPendingPerAddress: 4 });
+    const d1 = await chosen();
+    await until(() => approvals.length === 1);
+    const d2 = await chosen();
+    await d1.showAndRequest();
+    const a = approvals[0]!;
+    expect(await a.pick(shownOf(a, d1))).toMatchObject({ request: REQUEST });
+    // The first is picked and not finished: the second waits with no code on the screen.
+    await new Promise((r) => setTimeout(r, 80));
+    expect(approvals).toHaveLength(1);
+    expect(d2.closed).toBeNull();
+    await a.finish({ http: 204, body: null, discoveryNearby: true });
+    await until(() => approvals.length === 2);
+  });
+
+  it("holds the next prompt while the picked session is open, and shows it when it closes", async () => {
+    await start({ maxPendingPerAddress: 4 });
+    const d1 = await chosen();
+    await until(() => approvals.length === 1);
+    await chosen();
+    await d1.showAndRequest();
+    const a = approvals[0]!;
+    await a.pick(shownOf(a, d1));
+    await new Promise((r) => setTimeout(r, 60));
+    expect(approvals).toHaveLength(1);
+    await a.close();
+    await until(() => approvals.length === 2);
+  });
+
+  it("allows two waiting connections from one /24, not three", async () => {
+    await start({ maxPendingPerAddress: 4 });
+    const d1 = await held();
+    const d2 = await held();
+    const d3 = await RawD.dial(net, { auto: false });
+    ds.push(d3);
+    await d3.waitFor(() => d3.closed !== null);
+    expect(d3.hello).toBeNull();
+    expect(d1.closed).toBeNull();
+    expect(d2.closed).toBeNull();
+  });
+});
+
+describe("background approval and host callbacks (N10)", () => {
+  it("prompt:false needs an explicit background:true", async () => {
+    await expect(
+      NearbyApprover.start(src, () => undefined, {
+        prompt: false,
+        mdns: net.adapter(),
+        host: "127.0.0.1",
+        allowLoopback: true,
+      }),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+    expect(approverAdverts(net)).toHaveLength(0);
+  });
+
+  it("closing the screen of a foreground approver stops the advert until it opens again", async () => {
+    const h = await start();
+    const d = await chosen();
+    await until(() => approvals.length === 1);
+    await h.setPrompt(false);
+    expect(h.status()).toMatchObject({ state: "paused", prompt: false });
+    expect(approverAdverts(net)).toHaveLength(0);
+    await d.waitFor(() => d.closed !== null);
+    await h.setPrompt(true);
+    expect(h.status().state).toBe("advertising");
+    expect(approverAdverts(net)).toHaveLength(1);
+  });
+
+  it("a background approver keeps advertising when the screen closes", async () => {
+    const h = await start({ background: true });
+    await h.setPrompt(false);
+    expect(h.status().state).toBe("advertising");
+  });
+
+  it("a throwing onClose cannot keep the next prompt from showing", async () => {
+    await start({ maxPendingPerAddress: 4 });
+    const d1 = await chosen();
+    await until(() => approvals.length === 1);
+    approvals[0]!.onClose(() => {
+      throw new Error("host bug");
+    });
+    await chosen();
+    await d1.close();
+    await until(() => approvals.length === 2);
+  });
+
+  it("a throwing onStopped or onNotice cannot keep the advert up", async () => {
+    const h = await start({
+      onStopped: () => {
+        throw new Error("host bug");
+      },
+    });
+    signedIn = false;
+    fire(300_000);
+    await until(() => h.status().state === "stopped");
+    expect(approverAdverts(net)).toHaveLength(0);
+    signedIn = true;
+    await start({
+      prompt: false,
+      background: true,
+      onNotice: () => {
+        throw new Error("host bug");
+      },
+    });
+    const d = await chosen();
+    await new Promise((r) => setTimeout(r, 60));
+    expect(d.closed).toBeNull();
+  });
+});
+
+describe("N2: the VOUCH_REQ label against a cleaned HELLO label", () => {
+  it("an honest D whose label does not clean twice the same way still verifies", async () => {
+    await start();
+    // A zero-width space between a base letter and a combining acute: cleaning twice differs.
+    const d = await RawD.dial(net, { auto: false, label: "e\u200b\u0301x" });
+    ds.push(d);
+    await d.waitFor(() => d.hello !== null);
+    await d.startSas();
+    await d.waitFor(() => d.code !== null);
+    await until(() => approvals.length === 1);
+    await d.showAndRequest();
+    const a = approvals[0]!;
+    const r = await a.pick(shownOf(a, d));
+    expect(r).toMatchObject({ request: REQUEST, label: "e\u0301x" });
   });
 });

@@ -9,14 +9,23 @@
 //    a listener of its own, and the instance and the port are both new at every listen and every
 //    300 s (the old listener closes at once; a session past the transport stays);
 //  - it stands only while the device is signed in, discovery names `nearby` and `nearbyApprove`,
-//    and the host opened the prompt or allowed background approval; it stops on `pause()`, on
-//    `stop()`, when the device signs out, when discovery loses `nearby` and when the failure
-//    budget is spent (two prompted failures in 10 minutes), and then only `reopen()` or
-//    `setPrompt(true)` starts it again;
+//    and the host opened the prompt or allowed background approval (`background: true`, required
+//    with `prompt: false`); it stops on `pause()`, on `stop()`, when the device signs out, when
+//    discovery loses `nearby`, when a renewal fails and when the failure budget is spent (two
+//    prompted failures in 10 minutes). `stop()`, a sign-out, a lost discovery and a failed renewal
+//    are final: no later call brings the advert back. A budget stop is cleared by `reopen()` or
+//    `setPrompt(true)` only; `pause()` works from `advertising` only, and `resume()` only from the
+//    host's own pause, after signedIn and discovery are read again;
+//  - `stop()` and the sign-out do not wait for a renewal or a queued call: the state, the
+//    listener, the advert and the sessions go down at once, and `destroy()` drops the sockets;
 //  - accept is the mode-a gate (lanGate.ts): the same verdict on the socket's own addresses, the
 //    same pending limits, and here one waiting session per source address;
-//  - one prompt at a time. A session that reaches the code stage meanwhile waits with no code
-//    shown and its 120 s deadline running. With the prompt closed a session only raises a notice;
+//  - one prompt at a time, held until the picked session finishes or closes. A session that
+//    reaches the code stage meanwhile waits with no code shown and its 120 s deadline running.
+//    With the prompt closed a session only raises a notice. A prompt that was shown and whose peer
+//    then closes before the person answered counts as a failure;
+//  - the host's callbacks (`onNotice`, `onStopped`, `onClose`) are called inside a guard: a throw
+//    cannot skip the cleanup that follows;
 //  - a wrong pick, "None of these match", the host's close and the deadline end the session before
 //    `VOUCH_REQ` is delivered, and no route is called;
 //  - `finish()` is refused unless the person picked the right code on this session and
@@ -58,6 +67,7 @@ import {
 import {
   LanError,
   SocketLink,
+  guarded,
   nearbyHello,
   type SessionClosed,
 } from "./session.js";
@@ -76,7 +86,17 @@ export interface ApproverSource {
 export interface NearbyApproverOptions {
   /** The "Approve a nearby device" screen is open. Without it a session raises `onNotice` only. */
   prompt: boolean;
-  /** This device's label in `HELLO` (display data; optional). */
+  /**
+   * The person allowed background approval (and the system permission is granted). Required with
+   * `prompt: false`; with it the advert stands while the screen is closed and a session raises
+   * `onNotice`. Without it, closing the screen (`setPrompt(false)`) pauses the advert.
+   */
+  background?: boolean;
+  /**
+   * This device's label in `HELLO` (display data; optional). It is shown on the other device, so
+   * name the device (`"Ana's laptop"`); never use an account identifier (an email address, a user
+   * id) as the label.
+   */
   label?: string;
   /** Called with a session that wants approval while the prompt is closed: no code, no pick. */
   onNotice?: (n: ApprovalNotice) => void;
@@ -140,7 +160,12 @@ export type FinishOutcome =
 
 /** One session asking for approval, as the host's handler sees it. */
 export interface NearbyApproval {
-  /** What D's `HELLO` showed. Unauthenticated: show it as reported by the device. */
+  /**
+   * What D's `HELLO` showed. Unauthenticated display data: any device on the network can send any
+   * label, and the cleaning leaves some invisible blanks, so a label can look empty or like
+   * another device's. Show it as "reported by the device" beside the platform and the codes,
+   * never as proof of who is asking; the person's pick of the matching code is the only check.
+   */
   readonly label: string | null;
   readonly platform: string;
   /** The three codes, in the order to show them, each like `123 456`. */
@@ -164,18 +189,22 @@ export interface NearbyApproval {
 }
 
 export interface NearbyApproverHandle {
-  /** Stop for good: the advert, the listener and every session. */
+  /** Stop for good: the advert, the listener and every session. Nothing brings them back. */
   stop(): Promise<void>;
-  /** Stop advertising and close live sessions until `resume()`. */
+  /** Stop advertising and close live sessions until `resume()`. Works from `advertising` only. */
   pause(): Promise<void>;
+  /**
+   * Start again after the host's own `pause()`. It reads sign-in and discovery again first, and
+   * does nothing after a stop, a sign-out or a spent budget.
+   */
   resume(): Promise<void>;
   /**
    * The "Approve a nearby device" screen opens (true) or closes (false). Opening it also counts
-   * the failure budget from zero and starts a stopped advert again; closing it ends the prompt
-   * that is showing.
+   * the failure budget from zero and starts a stopped (budget) or paused advert again; closing it
+   * ends the prompt that is showing and, without `background`, pauses the advert.
    */
   setPrompt(open: boolean): Promise<void>;
-  /** Count the failure budget from zero and start the advert again. */
+  /** Count the failure budget from zero and start a budget-stopped advert again. */
   reopen(): Promise<void>;
   status(): NearbyApproverStatus;
 }
@@ -183,6 +212,10 @@ export interface NearbyApproverHandle {
 const HELD_REQUEST_S = 30;
 const KEEP_OPEN_S = 300;
 const RENEW_S = 300;
+/** The most a renewal waits on the host's sign-in or discovery read. */
+const CHECK_MS = 15_000;
+/** Waiting sessions from one /24 or /64 (§15.6.1 rule 2). */
+const PER_GROUP = 2;
 const MAX_SESSIONS = 8;
 /** Waiting sessions at once, and handshakes a minute (§15.6.1 rule 2). */
 const WAITING = 4;
@@ -232,6 +265,8 @@ class Live {
   picked = false;
   keysRetried = false;
   dead = false;
+  /** This module ended the session (a pick, a close, the host, a pause): not the peer's doing. */
+  local = false;
   pick: Promise<VouchRequest | "mismatch" | "invalid"> | null = null;
   readonly request = deferred<VouchRequest | "invalid">();
   readonly closers = new Set<(c: SessionClosed) => void>();
@@ -264,9 +299,14 @@ export class NearbyApprover implements NearbyApproverHandle {
   #gen: Generation | null = null;
   #cancelRenew: (() => void) | null = null;
   #prompt: boolean;
+  readonly #background: boolean;
   #state: NearbyApproverStatus["state"] = "stopped";
   #reason: NearbyStopReason | null = null;
   #work: Promise<unknown> = Promise.resolve();
+  /** A stop that nothing undoes: `stop()`, a sign-out, lost discovery, a failed renewal. */
+  #final = false;
+  /** Bumped by every halt; an `#advertise` or a check that began before it gives up. */
+  #epoch = 0;
 
   private constructor(
     src: ApproverSource,
@@ -277,6 +317,7 @@ export class NearbyApprover implements NearbyApproverHandle {
     this.#handler = handler;
     this.#o = o;
     this.#prompt = o.prompt;
+    this.#background = o.background === true;
     this.#random = o.random ?? systemRandom;
     this.#timer = o.timer ?? defaultTimer;
     this.#mono = o.mono ?? ((): number => performance.now() / 1000);
@@ -294,7 +335,12 @@ export class NearbyApprover implements NearbyApproverHandle {
     src: ApproverSource,
     handler: (a: NearbyApproval) => void,
     o: NearbyApproverOptions,
-  ): Promise<NearbyApproverHandle> {
+  ): Promise<NearbyApprover> {
+    if (!o.prompt && o.background !== true)
+      throw new LanError(
+        "bad_input",
+        "Without the prompt, background approval must be allowed (background: true).",
+      );
     const a = new NearbyApprover(src, handler, o);
     await a.#advertise();
     return a;
@@ -306,24 +352,40 @@ export class NearbyApprover implements NearbyApproverHandle {
 
   // ── The handle ──────────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Final, and not queued: the state, the listener, the advert and the sessions go down at once,
+   * so a renewal that hangs on the host's reads cannot hold a sign-out back.
+   */
   stop(): Promise<void> {
-    return this.#serial(() => this.#halt("stopped", "host"));
+    this.#final = true;
+    return this.#halt("stopped", "host");
+  }
+
+  /** Drop everything now, with no goodbye (the sign-out bound's force path). */
+  destroy(): void {
+    this.#final = true;
+    void this.#halt("stopped", "host").catch(() => undefined);
+    for (const l of [...this.#live]) l.link.destroy();
   }
 
   pause(): Promise<void> {
-    return this.#serial(() => this.#halt("paused", "host"));
+    return this.#serial(async () => {
+      if (this.#final || this.#state !== "advertising") return;
+      await this.#halt("paused", "host");
+    });
   }
 
   resume(): Promise<void> {
     return this.#serial(async () => {
-      if (this.#state !== "paused") return;
-      await this.#advertise();
+      if (this.#final || this.#state !== "paused" || this.#reason !== "host")
+        return;
+      await this.#restart();
     });
   }
 
   setPrompt(open: boolean): Promise<void> {
     return this.#serial(async () => {
-      if (open === this.#prompt) return;
+      if (this.#final || open === this.#prompt) return;
       this.#prompt = open;
       if (!open) {
         // The screen closed: the prompt that is showing ends, and the others go passive.
@@ -331,21 +393,28 @@ export class NearbyApprover implements NearbyApproverHandle {
         this.#active = null;
         if (live !== null && !live.picked) await this.#end(live, "peer_bye");
         for (const l of this.#queue) l.noticed = false;
+        // Without background approval nothing stands for a closed screen.
+        if (!this.#background && this.#state === "advertising")
+          await this.#halt("paused", "host");
         this.#pump();
         return;
       }
       this.#budget.reopen();
-      if (this.#state === "stopped" && this.#reason === "budget")
-        await this.#advertise();
+      if (
+        (this.#state === "stopped" && this.#reason === "budget") ||
+        (this.#state === "paused" && this.#reason === "host")
+      )
+        await this.#restart();
       this.#pump();
     });
   }
 
   reopen(): Promise<void> {
     return this.#serial(async () => {
+      if (this.#final) return;
       this.#budget.reopen();
       if (this.#state === "stopped" && this.#reason === "budget")
-        await this.#advertise();
+        await this.#restart();
     });
   }
 
@@ -355,16 +424,54 @@ export class NearbyApprover implements NearbyApproverHandle {
     return run;
   }
 
+  /** A host read that may hang or fail: past `CHECK_MS`, or on a throw, it reads as "no". */
+  #check(read: () => Promise<boolean>): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      const cancel = this.#timer(() => resolve(false), CHECK_MS);
+      read().then(
+        (v) => {
+          cancel();
+          resolve(v);
+        },
+        () => {
+          cancel();
+          resolve(false);
+        },
+      );
+    });
+  }
+
+  /**
+   * Start the advert again from a pause or a budget stop, after reading sign-in and discovery
+   * again. A stop, or a halt that landed meanwhile, wins.
+   */
+  async #restart(): Promise<void> {
+    if (this.#budget.stopped) {
+      if (this.#state === "paused") await this.#halt("stopped", "budget");
+      return;
+    }
+    const epoch = this.#epoch;
+    const signed = await this.#check(() => this.#src.signedIn());
+    if (this.#final || epoch !== this.#epoch) return;
+    if (!signed) return this.#halt("stopped", "signed-out");
+    const served = await this.#check(() => this.#src.nearbyServed());
+    if (this.#final || epoch !== this.#epoch) return;
+    if (!served) return this.#halt("stopped", "discovery");
+    await this.#advertise();
+  }
+
   // ── The advert ──────────────────────────────────────────────────────────────────────────────
 
   /** A new listener, port and instance; the old generation retires. Starts the renewal clock. */
   async #advertise(): Promise<void> {
     const o = this.#o;
+    const epoch = this.#epoch;
     const gate = new AcceptGate({
       allowLoopback: o.allowLoopback,
       // One waiting session per source address (rule 2); the limiter below caps the waiting ones.
       maxPending: WAITING * 2,
       maxPendingPerAddress: o.maxPendingPerAddress ?? 1,
+      maxPendingPer64: PER_GROUP,
       handshakeMs: o.handshakeMs,
     });
     const limiter = new HandshakeLimiter(PER_MINUTE, WAITING, this.#mono);
@@ -373,11 +480,12 @@ export class NearbyApprover implements NearbyApproverHandle {
       if (gen !== null) this.#accept(gen, s);
       else s.destroy();
     });
+    let adv: MdnsHandle | null = null;
     try {
       const port = (server.address() as { port: number }).port;
       const instance = approverInstance(this.#random);
       const h = await productTag(this.#src.slug, advertEpoch(this.#src.now()));
-      const adv = await this.#mdns.advertise({
+      adv = await this.#mdns.advertise({
         instance,
         port,
         txt: ["v=1", "m=v", `h=${h}`],
@@ -386,6 +494,14 @@ export class NearbyApprover implements NearbyApproverHandle {
     } catch (e) {
       server.close();
       throw e;
+    }
+    if (epoch !== this.#epoch) {
+      // A stop landed while this was starting: what it made is torn down, not kept.
+      gen.retired = true;
+      server.close();
+      gate.destroyPending();
+      await adv.stop().catch(() => undefined);
+      return;
     }
     const old = this.#gen;
     this.#gen = gen;
@@ -402,11 +518,20 @@ export class NearbyApprover implements NearbyApproverHandle {
   async #renew(): Promise<void> {
     await this.#serial(async () => {
       if (this.#state !== "advertising") return;
-      const signed = await this.#src.signedIn().catch(() => false);
+      const epoch = this.#epoch;
+      const signed = await this.#check(() => this.#src.signedIn());
+      if (epoch !== this.#epoch) return;
       if (!signed) return this.#halt("stopped", "signed-out");
-      const served = await this.#src.nearbyServed().catch(() => false);
+      const served = await this.#check(() => this.#src.nearbyServed());
+      if (epoch !== this.#epoch) return;
       if (!served) return this.#halt("stopped", "discovery");
-      await this.#advertise();
+      try {
+        await this.#advertise();
+      } catch {
+        // The advert cannot be renewed (the network interface went away, the port is gone): it
+        // must not stand on, unrenewed and unchecked. It stops, and the host hears why.
+        if (epoch === this.#epoch) await this.#halt("stopped", "discovery");
+      }
     });
   }
 
@@ -418,28 +543,34 @@ export class NearbyApprover implements NearbyApproverHandle {
     await g.adv.stop().catch(() => undefined);
   }
 
-  async #halt(
-    state: "stopped" | "paused",
-    reason: NearbyStopReason,
-  ): Promise<void> {
+  /**
+   * Take everything down. The state, the listener and the session closes happen before the first
+   * await, so a caller that does not wait still has them done.
+   */
+  #halt(state: "stopped" | "paused", reason: NearbyStopReason): Promise<void> {
+    this.#epoch++;
+    if (state === "stopped" && reason !== "budget") this.#final = true;
     this.#cancelRenew?.();
     this.#cancelRenew = null;
     const g = this.#gen;
     this.#gen = null;
     this.#state = state;
     this.#reason = reason;
+    const work: Promise<unknown>[] = [];
     if (g !== null) {
       g.retired = true;
       g.server.close();
       // A connection short of the transport is dropped; the sessions past it hear `peer_bye`.
       g.gate.destroyPending({ keepUp: true });
-      await g.adv.stop().catch(() => undefined);
+      work.push(g.adv.stop().catch(() => undefined));
     }
-    await Promise.all([...this.#live].map((l) => this.#end(l, "peer_bye")));
+    for (const l of [...this.#live]) work.push(this.#end(l, "peer_bye"));
     this.#queue = [];
     this.#active = null;
-    // The host's own stop and pause need no word back.
-    if (reason !== "host") this.#o.onStopped?.(reason);
+    return Promise.all(work).then(() => {
+      // The host's own stop and pause need no word back.
+      if (reason !== "host") guarded(() => this.#o.onStopped?.(reason));
+    });
   }
 
   // ── Sessions ────────────────────────────────────────────────────────────────────────────────
@@ -531,6 +662,8 @@ export class NearbyApprover implements NearbyApproverHandle {
             ...(hello.label !== undefined ? { label: hello.label } : {}),
             platform: hello.platform,
           },
+          // `HELLO` was cleaned when the session read it; cleaning it again is not idempotent.
+          helloCleaned: true,
           body,
         });
       } catch {
@@ -556,10 +689,10 @@ export class NearbyApprover implements NearbyApproverHandle {
     this.#live.delete(live);
     this.#queue = this.#queue.filter((l) => l !== live);
     live.request.resolve("invalid");
-    // A 120 s deadline that ran out on a prompt that was shown counts (rule 2).
-    if (live.shown && !live.picked && c.code === "peer_timeout" && !c.byPeer)
-      this.#failure();
-    for (const f of [...live.closers]) f(c);
+    // A prompt that was shown and ended before the person answered, by anything but this module
+    // (the 120 s deadline, the peer closing or the connection dropping), counts (rule 2).
+    if (live.shown && !live.picked && !live.local) this.#failure();
+    for (const f of [...live.closers]) guarded(() => f(c));
     if (this.#active === live) {
       this.#active = null;
       this.#pump();
@@ -569,6 +702,7 @@ export class NearbyApprover implements NearbyApproverHandle {
   /** Close a session with `code`; resolves when it is down. */
   async #end(live: Live, code: PeerCloseCode): Promise<void> {
     if (live.dead) return;
+    live.local = true;
     await live.channel.close(code).catch(() => undefined);
   }
 
@@ -588,10 +722,12 @@ export class NearbyApprover implements NearbyApproverHandle {
       for (const l of this.#queue)
         if (!l.noticed) {
           l.noticed = true;
-          this.#o.onNotice?.({
-            label: l.hello?.label ?? null,
-            platform: l.hello?.platform ?? "",
-          });
+          guarded(() =>
+            this.#o.onNotice?.({
+              label: l.hello?.label ?? null,
+              platform: l.hello?.platform ?? "",
+            }),
+          );
         }
       return;
     }
@@ -663,7 +799,8 @@ export class NearbyApprover implements NearbyApproverHandle {
     }
     live.picked = true;
     live.slot.settle();
-    this.#release(live);
+    // The prompt slot stays with this session until it finishes or closes: the next waiting
+    // session shows no code meanwhile.
     // The session stays for records after `approved`, and no longer than 300 s past the pick.
     live.cancels.push(
       this.#timer(
@@ -718,6 +855,8 @@ export class NearbyApprover implements NearbyApproverHandle {
       await live.channel.sendRecord(rec.type, rec.body).catch(() => {
         throw new LanError("closed", "The session is closed.");
       });
+      // Finished: the next waiting session may show its codes.
+      this.#release(live);
       if (act.send !== "approved") await this.#end(live, "peer_bye");
       return { sent: act.send };
     }
@@ -725,6 +864,7 @@ export class NearbyApprover implements NearbyApproverHandle {
       if (act.wait === "keys") live.keysRetried = true;
       return act;
     }
+    this.#release(live);
     await this.#end(live, "peer_bye");
     if (act.stopAdvert)
       void this.#serial(() => this.#halt("stopped", "discovery"));

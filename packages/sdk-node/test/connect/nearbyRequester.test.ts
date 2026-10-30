@@ -16,6 +16,7 @@ import {
   type NearbyRequest,
   type RequesterSource,
 } from "../../src/connect/nearbyRequester.js";
+import { defaultTimer } from "../../src/connect/channel.js";
 import { MemoryMdnsNetwork, T0, until } from "../lanFixtures.js";
 import {
   D_ID,
@@ -83,6 +84,20 @@ afterEach(async () => {
   await Promise.all(approvers.splice(0).map((a) => a.h.stop()));
   vi.useRealTimers();
 });
+
+/** A timer that records what is scheduled; with `only`, other delays run for real. */
+function capturedTimers(only?: number) {
+  const timers: { fn: () => void; ms: number; live: boolean }[] = [];
+  const timer = (fn: () => void, ms: number): (() => void) => {
+    if (only !== undefined && ms !== only) return defaultTimer(fn, ms);
+    const t = { fn, ms, live: true };
+    timers.push(t);
+    return () => {
+      t.live = false;
+    };
+  };
+  return { timers, timer };
+}
 
 const realCode = (a: NearbyApproval, code: string): string =>
   a.codes.find((c) => c.replace(" ", "") === code.replace(" ", ""))!;
@@ -238,17 +253,9 @@ describe("the account gate", () => {
 
 describe("the end", () => {
   it("expires at expiresIn: the sessions close peer_bye and onClose says expired", async () => {
-    const timers: { fn: () => void; ms: number; live: boolean }[] = [];
+    const { timers, timer } = capturedTimers();
     const m = await approver("Ana's laptop");
-    const r = await request({
-      timer: (fn, ms) => {
-        const t = { fn, ms, live: true };
-        timers.push(t);
-        return () => {
-          t.live = false;
-        };
-      },
-    });
+    const r = await request({ timer });
     await until(() => r.approvers.length === 1);
     const closes: string[] = [];
     r.onClose((c) => closes.push(c));
@@ -265,5 +272,116 @@ describe("the end", () => {
     await until(() => r.approvers.length === 1);
     ac.abort();
     await until(() => r.closed);
+  });
+});
+
+// ── CC-15 red round: N1, N8 and N10 ─────────────────────────────────────────────────────────────
+
+/** A new approver appears after the answer: it is not dialled, listed or choosable. */
+async function expectNoMoreDials(r: NearbyRequest): Promise<void> {
+  const mal = await approver("Mal");
+  await new Promise((res) => setTimeout(res, 150));
+  expect(r.approvers).toEqual([]);
+  expect(mal.approvals).toHaveLength(0);
+  await expect(r.choose("ap_ffffffffffff")).rejects.toMatchObject({
+    reason: "closed",
+  });
+}
+
+describe("N1: one answer per request", () => {
+  it("after approved, a later approver is not dialled, listed or choosable", async () => {
+    const { r, a } = await vouched();
+    await a.close();
+    await until(() => r.approvers.length === 0);
+    await expectNoMoreDials(r);
+  });
+
+  it("after confirmAccount, a later approver is not dialled or choosable either", async () => {
+    const { r, a } = await vouched();
+    await r.confirmAccount();
+    await a.close();
+    await expectNoMoreDials(r);
+  });
+});
+
+describe("N8: an idle unchosen session is replaced after 20 s", () => {
+  it("closes it peer_bye and dials the approver again", async () => {
+    const { timers, timer } = capturedTimers(20_000);
+    await approver("Ana's laptop");
+    const r = await request({ timer });
+    await until(() => r.approvers.length === 1);
+    const first = r.approvers[0]!.id;
+    const idle = timers.filter((t) => t.live);
+    expect(idle).toHaveLength(1);
+    idle[0]!.fn();
+    await until(
+      () => r.approvers.length === 1 && r.approvers[0]!.id !== first,
+      3000,
+    );
+    await expect(r.choose(first)).rejects.toMatchObject({
+      reason: "unknown_peer",
+    });
+  });
+
+  it("starts no idle clock on a session the person chose", async () => {
+    const { timers, timer } = capturedTimers(20_000);
+    const m = await approver("Ana's laptop");
+    const r = await request({ timer });
+    await until(() => r.approvers.length === 1);
+    await r.choose(r.approvers[0]!.id);
+    await until(() => m.approvals.length === 1);
+    expect(timers.filter((t) => t.live)).toHaveLength(0);
+  });
+});
+
+describe("N10: the request is checked when it starts", () => {
+  it.each([
+    ["a handle that is not nr_ and 22 characters", { request: "nr_short" }],
+    ["a request that is not a string", { request: 7 as unknown as string }],
+    ["a label that is not a string", { label: 7 as unknown as string }],
+    ["a label of 300 characters", { label: "x".repeat(300) }],
+    ["an expiresIn of 0", { expiresIn: 0 }],
+    ["a negative expiresIn", { expiresIn: -5 }],
+    ["an expiresIn that is not a number", { expiresIn: Number.NaN }],
+  ])("refuses %s", async (_name, o) => {
+    await expect(request(o)).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+  });
+
+  it("clamps expiresIn to 300 s", async () => {
+    const seen: number[] = [];
+    const r = await request({
+      expiresIn: 9_999,
+      timer: (fn, ms) => {
+        seen.push(ms);
+        return defaultTimer(fn, ms);
+      },
+    });
+    expect(seen).toContain(300_000);
+    expect(seen).not.toContain(9_999_000);
+    void r;
+  });
+
+  it("a throwing host callback cannot skip the cleanup", async () => {
+    const m = await approver("Ana's laptop");
+    const r = await request();
+    await until(() => r.approvers.length === 1);
+    const lists: number[] = [];
+    r.onApprovers(() => {
+      throw new Error("host bug");
+    });
+    r.onApprovers((l) => lists.push(l.length));
+    r.onClose(() => {
+      throw new Error("host bug");
+    });
+    const closed: string[] = [];
+    await r.choose(r.approvers[0]!.id);
+    await until(() => m.approvals.length === 1);
+    m.approvals[0]!.onClose((c) => closed.push(c.code));
+    expect(lists.length).toBeGreaterThan(0);
+    await expect(r.close()).resolves.toBeUndefined();
+    await until(() => closed.length === 1);
+    expect(r.closed).toBe(true);
   });
 });

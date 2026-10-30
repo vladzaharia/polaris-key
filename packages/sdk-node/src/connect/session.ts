@@ -60,7 +60,8 @@ export type LanErrorReason =
   | "too_large"
   | "bad_type"
   | "not_started"
-  | "not_picked";
+  | "not_picked"
+  | "bad_input";
 
 /** The registered client code of each reason. */
 const LAN_CODE: Record<LanErrorReason, string> = {
@@ -76,6 +77,7 @@ const LAN_CODE: Record<LanErrorReason, string> = {
   too_large: ErrorCode.invalidArgument,
   bad_type: ErrorCode.invalidArgument,
   not_picked: ErrorCode.invalidArgument,
+  bad_input: ErrorCode.invalidArgument,
 };
 
 export class LanError extends PolarisError {
@@ -91,6 +93,18 @@ export class LanError extends PolarisError {
     this.closeCode = options?.closeCode;
   }
   readonly closeCode: SessionCloseCode | undefined;
+}
+
+/**
+ * Call a host callback so that a throw cannot skip the cleanup that follows it (nearby approval:
+ * the callbacks are the host's, and a bug there must not leave a session or an advert up).
+ */
+export function guarded(fn: () => void): void {
+  try {
+    fn();
+  } catch {
+    // The host's bug is the host's; the module's own state is already settled.
+  }
 }
 
 /** Why a session ended: a client-core code, or the socket going away. */

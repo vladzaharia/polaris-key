@@ -15,6 +15,12 @@
 //  - the code on D's screen is D's confirmation, then `VOUCH_REQ` goes out;
 //  - `0x0030` to `0x003F` are held, 16 records and 16 KiB, until the person confirms the signed-in
 //    account (`confirmAccount`, rule 12); a decline or a close drops them all;
+//  - a session held and not chosen for 20 s is closed `peer_bye` and replaced, so one approver
+//    cannot sit on a dial slot;
+//  - one answer per request: once `VOUCH_RESULT` said `approved`, or `confirmAccount()` ran, no
+//    other approver is dialled or chosen. `confirmAccount()` is for the session that was chosen;
+//  - the request and the label are checked when the request starts; `expiresIn` is at most 300 s;
+//  - the host's callbacks run inside a guard: a throw cannot skip the cleanup that follows;
 //  - the browse and the wait for `VOUCH_RESULT` end at `expiresIn` (300 s), then every session
 //    closes `peer_bye`; the request handle, `sig`, `h` and the nonces are in no message.
 
@@ -45,6 +51,7 @@ import {
 import {
   LanError,
   SocketLink,
+  guarded,
   nearbyHello,
   type SessionClosed,
 } from "./session.js";
@@ -61,11 +68,15 @@ export interface RequesterSource {
 export interface NearbyRequestOptions {
   /** The handle from `nearby/start` (`nr_…`). */
   request: string;
-  /** This device's label in `HELLO` and `VOUCH_REQ` (display data; optional). */
+  /**
+   * This device's label in `HELLO` and `VOUCH_REQ` (display data; optional; a string of at most
+   * 256 characters). It is shown on the approving device: name the device, and never use an
+   * account identifier (an email address, a user id) as the label.
+   */
   label?: string;
   /** Aborting closes the request. */
   signal?: AbortSignal;
-  /** Seconds the request lives (default 300, from `nearby/start`'s `expiresIn`). */
+  /** Seconds the request lives (default and most 300, from `nearby/start`'s `expiresIn`). */
   expiresIn?: number;
   mdns?: MdnsAdapter;
   allowLoopback?: boolean;
@@ -106,7 +117,11 @@ export interface NearbyRequest {
    * `peer_bye`; answers D's code to show, and sends `VOUCH_REQ` once it is shown.
    */
   choose(id: string): Promise<{ code: string }>;
-  /** The person confirmed that the signed-in account is theirs: held records go to `onRecord`. */
+  /**
+   * The person confirmed that the signed-in account is theirs: held records go to `onRecord`. It
+   * counts for the session that was chosen and answered `approved`; it is not a standing consent,
+   * and after it (or after `approved`) no other approver can be chosen.
+   */
   confirmAccount(): Promise<void>;
   /** The person declined, or the screen timed out: every held record is dropped and the session closes. */
   declineAccount(): Promise<void>;
@@ -119,6 +134,11 @@ const MAX_LIST = 8;
 const EXPIRES_S = 300;
 const TRIES_PER_ADVERT = 3;
 const REDIAL_MS = 250;
+/** A held session nobody chose is replaced after this long. */
+const IDLE_MS = 20_000;
+const LABEL_MAX = 256;
+/** `nearby/start`'s handle (the same pattern client-core checks in a `VOUCH_REQ`). */
+const REQUEST_RE = /^nr_[A-Za-z0-9_-]{22}$/;
 
 const systemRandom = (n: number): Uint8Array =>
   globalThis.crypto.getRandomValues(new Uint8Array(n));
@@ -142,6 +162,8 @@ interface Entry {
     reject(e: LanError): void;
   } | null;
   closed: boolean;
+  /** Cancels the idle clock. */
+  idle: (() => void) | null;
 }
 
 export class NearbyRequester implements NearbyRequest {
@@ -159,6 +181,8 @@ export class NearbyRequester implements NearbyRequest {
   #flow: VouchFlow | null = null;
   #result: VouchStatus | null = null;
   #ended = false;
+  /** `approved` came, or the account was confirmed: this request has its answer. */
+  #answered = false;
   #cancels: (() => void)[] = [];
   readonly #onApprovers = new Set<
     (list: readonly NearbyApproverInfo[]) => void
@@ -181,13 +205,12 @@ export class NearbyRequester implements NearbyRequest {
   static async start(
     src: RequesterSource,
     o: NearbyRequestOptions,
-  ): Promise<NearbyRequest> {
+  ): Promise<NearbyRequester> {
+    const expiresIn = NearbyRequester.#checked(o);
     const r = new NearbyRequester(src, o);
     const signer = await src.signer();
     r.#signer = signer;
-    r.#cancels.push(
-      r.#timer(() => void r.#expire(), (o.expiresIn ?? EXPIRES_S) * 1000),
-    );
+    r.#cancels.push(r.#timer(() => void r.#expire(), expiresIn * 1000));
     if (o.signal !== undefined) {
       if (o.signal.aborted) {
         await r.close();
@@ -211,6 +234,26 @@ export class NearbyRequester implements NearbyRequest {
   }
 
   #signer: { port: DeviceKeyPort; deviceId: string } | null = null;
+
+  /** The request and the label are the host's input: refuse a bad one now, not at the tap. */
+  static #checked(o: NearbyRequestOptions): number {
+    if (typeof o.request !== "string" || !REQUEST_RE.test(o.request))
+      throw new LanError("bad_input", "The request handle is not valid.");
+    if (
+      o.label !== undefined &&
+      (typeof o.label !== "string" || o.label.length > LABEL_MAX)
+    )
+      throw new LanError("bad_input", "The label is not valid.");
+    const n = o.expiresIn ?? EXPIRES_S;
+    if (typeof n !== "number" || !Number.isFinite(n) || n <= 0)
+      throw new LanError("bad_input", "expiresIn must be above 0.");
+    return Math.min(n, EXPIRES_S);
+  }
+
+  /** Call every listener inside a guard. */
+  static #each<T>(set: Set<(v: T) => void>, v: T): void {
+    for (const f of [...set]) guarded(() => f(v));
+  }
 
   get approvers(): readonly NearbyApproverInfo[] {
     // Once the person chose, the list is over.
@@ -253,7 +296,7 @@ export class NearbyRequester implements NearbyRequest {
   // ── Browse and dial ─────────────────────────────────────────────────────────────────────────
 
   async #found(f: MdnsFound): Promise<void> {
-    if (this.#ended || this.#chosen !== null) return;
+    if (this.#ended || this.#answered || this.#chosen !== null) return;
     const txt = parseTxt(f.txt);
     if (!txt.ok || txt.mode !== "v") return;
     // The product tag of this epoch or the last: an advert of another product is not ours.
@@ -294,6 +337,7 @@ export class NearbyRequester implements NearbyRequest {
   #pump(): void {
     while (
       !this.#ended &&
+      !this.#answered &&
       this.#chosen === null &&
       this.#active.size < MAX_DIALS
     ) {
@@ -319,7 +363,7 @@ export class NearbyRequester implements NearbyRequest {
       this.#later();
       return;
     }
-    if (this.#ended || this.#chosen !== null) {
+    if (this.#ended || this.#answered || this.#chosen !== null) {
       socket.destroy();
       this.#active.delete(c.instance);
       return;
@@ -355,6 +399,7 @@ export class NearbyRequester implements NearbyRequest {
       code: null,
       codeWait: null,
       closed: false,
+      idle: null,
     };
     ref.e = e;
     this.#entries.set(id, e);
@@ -367,8 +412,7 @@ export class NearbyRequester implements NearbyRequest {
   }
 
   #list(): void {
-    const list = this.approvers;
-    for (const f of [...this.#onApprovers]) f(list);
+    NearbyRequester.#each(this.#onApprovers, this.approvers);
   }
 
   // ── A session's events ──────────────────────────────────────────────────────────────────────
@@ -379,6 +423,8 @@ export class NearbyRequester implements NearbyRequest {
         // The one-time static key has done its work.
         e.key.fill(0);
         e.hello = ev.hello;
+        // Held and not chosen for 20 s: replaced, so one approver cannot sit on a dial slot.
+        e.idle = this.#timer(() => this.#replace(e), IDLE_MS);
         this.#list();
         break;
       case "sas":
@@ -392,6 +438,15 @@ export class NearbyRequester implements NearbyRequest {
       default:
         break;
     }
+  }
+
+  #replace(e: Entry): void {
+    e.idle = null;
+    if (e === this.#chosen || e.closed || this.#ended) return;
+    // The advert gets its try back: this is not a failure of the approver.
+    const c = this.#candidates.get(e.instance);
+    if (c !== undefined && c.tries > 0) c.tries--;
+    void e.link.channel.close("peer_bye").catch(() => undefined);
   }
 
   #record(type: number, body: Uint8Array): void {
@@ -411,15 +466,18 @@ export class NearbyRequester implements NearbyRequest {
       const got = parseVouchResult(r.body);
       if ("refuse" in got) return;
       this.#result = got.status;
-      for (const f of [...this.#onResult]) f(got.status);
+      if (got.status === "approved") this.#answered = true;
+      NearbyRequester.#each(this.#onResult, got.status);
     } else if (r.type >= 0x0030 && r.type <= 0x003f) {
-      for (const f of [...this.#onRecord]) f({ type: r.type, body: r.body });
+      NearbyRequester.#each(this.#onRecord, { type: r.type, body: r.body });
     }
   }
 
   #ended_(e: Entry, c: SessionClosed): void {
     if (e.closed) return;
     e.closed = true;
+    e.idle?.();
+    e.idle = null;
     e.key.fill(0);
     this.#entries.delete(e.id);
     this.#active.delete(e.instance);
@@ -431,12 +489,12 @@ export class NearbyRequester implements NearbyRequest {
       this.#chosen = null;
       this.#flow = null;
       if (!this.#ended) {
-        for (const f of [...this.#onClose]) f(c.code);
-        if (this.#result === null) this.#later();
+        NearbyRequester.#each(this.#onClose, c.code);
+        if (this.#result === null && !this.#answered) this.#later();
       }
     } else {
       this.#list();
-      if (!this.#ended) this.#later();
+      if (!this.#ended && !this.#answered) this.#later();
     }
   }
 
@@ -444,6 +502,8 @@ export class NearbyRequester implements NearbyRequest {
 
   async choose(id: string): Promise<{ code: string }> {
     if (this.#ended) throw new LanError("closed", "The request is closed.");
+    if (this.#answered)
+      throw new LanError("closed", "The request has its answer.");
     if (this.#chosen !== null)
       throw new LanError("not_started", "An approver is already chosen.");
     const e = this.#entries.get(id);
@@ -455,6 +515,8 @@ export class NearbyRequester implements NearbyRequest {
     const signer = this.#signer;
     if (signer === null) throw new LanError("not_started", "Not started.");
     this.#chosen = e;
+    e.idle?.();
+    e.idle = null;
     const flow = e.link.channel.vouch;
     if (flow === null) throw new LanError("closed", "The session is closed.");
     this.#flow = flow;
@@ -498,6 +560,7 @@ export class NearbyRequester implements NearbyRequest {
   async confirmAccount(): Promise<void> {
     const flow = this.#flow;
     if (flow === null) throw new LanError("not_started", "Nobody is chosen.");
+    this.#answered = true;
     const v = flow.confirmAccount();
     if (!v.ok) {
       await this.#chosen?.link.channel.close(v.close);
@@ -523,20 +586,25 @@ export class NearbyRequester implements NearbyRequest {
     return this.#stop(null);
   }
 
+  /** Drop every socket now, with no goodbye (the sign-out bound's force path). */
+  destroy(): void {
+    void this.#stop(null).catch(() => undefined);
+    for (const e of [...this.#entries.values()]) e.link.destroy();
+  }
+
   async #stop(why: "expired" | null): Promise<void> {
     if (this.#ended) return;
     const chosen = this.#chosen !== null;
     this.#ended = true;
     for (const c of this.#cancels.splice(0)) c();
     if (why !== null || chosen)
-      for (const f of [...this.#onClose]) f(why ?? "peer_bye");
+      NearbyRequester.#each(this.#onClose, why ?? "peer_bye");
     const browse = this.#browse;
     this.#browse = null;
-    await browse?.stop().catch(() => undefined);
-    await Promise.all(
-      [...this.#entries.values()].map((e) =>
-        e.link.channel.close("peer_bye").catch(() => undefined),
-      ),
+    // The sessions close before the browse is awaited: a browse that hangs cannot hold them up.
+    const closes = [...this.#entries.values()].map((e) =>
+      e.link.channel.close("peer_bye").catch(() => undefined),
     );
+    await Promise.all([browse?.stop().catch(() => undefined), ...closes]);
   }
 }

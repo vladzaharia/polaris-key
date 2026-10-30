@@ -121,8 +121,10 @@ const unsupported = (
  * `nearby/start`, `poll` and `approve` and gives the answers to the handles.
  */
 export class CloudNearby {
-  readonly #approvers = new Set<NearbyApproverHandle>();
-  readonly #requests = new Set<NearbyRequest>();
+  readonly #approvers = new Set<NearbyApprover>();
+  readonly #requests = new Set<NearbyRequester>();
+  /** Bumped by every `stopAll`: a start that began before it must not outlive it. */
+  #epoch = 0;
 
   constructor(private readonly deps: NearbyDeps | null) {}
 
@@ -158,44 +160,57 @@ export class CloudNearby {
   /**
    * D, the device with no sign-in: browse for approvers nearby and list them for the person to tap
    * (`choose`). `request` is the handle `nearby/start` answered. Throws the typed N/A when the
-   * product serves no nearby approval or this runtime cannot browse.
+   * product serves no nearby approval or this runtime cannot browse, and a closed error when a
+   * sign-out (`stopAll`) landed while it was starting.
    */
   async request(o: NearbyRequestOptions): Promise<NearbyRequest> {
+    const epoch = this.#epoch;
     await this.#fragment(true, ["nearbyStart", "nearbyPoll"]);
     const d = this.deps!;
     for (const r of this.#requests) if (r.closed) this.#requests.delete(r);
+    if (epoch !== this.#epoch)
+      throw new LanError("closed", "Nearby approval was stopped.");
+    let r: NearbyRequester;
     try {
-      const r = await NearbyRequester.start(
+      r = await NearbyRequester.start(
         { slug: d.slug, now: () => d.now(), signer: () => d.signer() },
         o,
       );
-      this.#requests.add(r);
-      return r;
     } catch (e) {
       return CloudNearby.#wrap(e);
     }
+    if (epoch !== this.#epoch) {
+      await r.close().catch(() => undefined);
+      throw new LanError("closed", "Nearby approval was stopped.");
+    }
+    this.#requests.add(r);
+    return r;
   }
 
   /**
    * M, a signed-in device: advertise while the person has "Approve a nearby device" open
    * (`prompt: true`) or has allowed background approval with the permission granted
-   * (`prompt: false`), and hand each session that reaches the code to `handler`. Returns the
-   * handle that stops, pauses and resumes it. Throws `account_required` when the device is
-   * signed out, and the typed N/A when the product serves no nearby approval.
+   * (`prompt: false` with `background: true`), and hand each session that reaches the code to
+   * `handler`. Returns the handle that stops, pauses and resumes it. Throws `account_required`
+   * when the device is signed out (also when the sign-out landed while this was starting), and the
+   * typed N/A when the product serves no nearby approval.
    */
   async onRequest(
     handler: (a: NearbyApproval) => void,
     o: NearbyApproverOptions,
   ): Promise<NearbyApproverHandle> {
+    const epoch = this.#epoch;
     await this.#fragment(true, ["nearbyApprove"]);
     const d = this.deps!;
-    if (!(await d.signedIn()))
-      throw new PolarisError(
+    const signedOut = (): PolarisError =>
+      new PolarisError(
         ErrorCode.accountRequired,
         "Sign in before approving a nearby device.",
       );
+    if (!(await d.signedIn()) || epoch !== this.#epoch) throw signedOut();
+    let h: NearbyApprover;
     try {
-      const h = await NearbyApprover.start(
+      h = await NearbyApprover.start(
         {
           slug: d.slug,
           now: () => d.now(),
@@ -209,33 +224,48 @@ export class CloudNearby {
         handler,
         o,
       );
-      this.#approvers.add(h);
-      return {
-        stop: async () => {
-          this.#approvers.delete(h);
-          await h.stop();
-        },
-        pause: () => h.pause(),
-        resume: () => h.resume(),
-        setPrompt: (open) => h.setPrompt(open),
-        reopen: () => h.reopen(),
-        status: () => h.status(),
-      };
     } catch (e) {
       return CloudNearby.#wrap(e);
     }
+    // The sign-out may have landed while the advert was starting, before the handle was kept.
+    if (epoch !== this.#epoch || !(await d.signedIn().catch(() => false))) {
+      await h.stop().catch(() => undefined);
+      throw signedOut();
+    }
+    this.#approvers.add(h);
+    return {
+      stop: async () => {
+        this.#approvers.delete(h);
+        await h.stop();
+      },
+      pause: () => h.pause(),
+      resume: () => h.resume(),
+      setPrompt: (open) => h.setPrompt(open),
+      reopen: () => h.reopen(),
+      status: () => h.status(),
+    };
   }
 
   /** Stop every advert and close every request. The sign-out step; also `client.close()`. */
   async stopAll(): Promise<void> {
+    this.#epoch++;
     const hs = [...this.#approvers];
     const rs = [...this.#requests];
-    this.#approvers.clear();
-    this.#requests.clear();
     await Promise.all([
       ...hs.map((h) => h.stop().catch(() => undefined)),
       ...rs.map((r) => r.close().catch(() => undefined)),
     ]);
+    for (const h of hs) this.#approvers.delete(h);
+    for (const r of rs) this.#requests.delete(r);
+  }
+
+  /** The sign-out bound ran out: drop every socket and listener now, with no goodbye. */
+  forceStop(): void {
+    this.#epoch++;
+    for (const h of this.#approvers) h.destroy();
+    for (const r of this.#requests) r.destroy();
+    this.#approvers.clear();
+    this.#requests.clear();
   }
 }
 
@@ -363,7 +393,8 @@ export class CloudConnect {
   async stopForSignOut(boundMs: number = SIGN_OUT_BOUND_MS): Promise<void> {
     if (await stopWithin(() => this.stop(), boundMs)) this.#forceStop();
     // Then the nearby adverts and sessions (after Connect, before the device leaves it).
-    await stopWithin(() => this.#nearby.stopAll(), boundMs);
+    if (await stopWithin(() => this.#nearby.stopAll(), boundMs))
+      this.#nearby.forceStop();
   }
 
   #forceStop(): void {
