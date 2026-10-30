@@ -1,12 +1,14 @@
 # @pkey-feature sync.keyring
 """The Cloud Sync E2E crypto against ``conformance/corpus/v2/sync-vectors.json`` (U-38.3;
 WIRE-CONTRACT-V5 §13.10, §13.11): hkdfCases, envelopeCases, blindCases, hpkeAnchor, wrapCases,
-recoveryCodeCases, adoptCases and canonicalJsonCases. cdc, chunk, file-stream, manifest and transfer-plan sections are
-other work packages and are not read here (the table is inert to a runner that skips them).
+recoveryCodeCases, adoptCases and canonicalJsonCases, and (U-22.8) cdcCases, cdcEditCases,
+deltaCases, chunkCases and manifestCases. The file-stream and transfer-plan sections are U-22.9
+and are not read here (the table is inert to a runner that skips them).
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Dict, List
@@ -14,6 +16,10 @@ from typing import Any, Dict, List
 import pytest
 
 from polaris_key.core import sync_crypto as sc
+from polaris_key.core import sync_files as sf
+from polaris_key.update.packs.zstd import select_python_zstd
+
+_ZSTD = select_python_zstd()[0].decode
 
 _PATH = Path(__file__).resolve().parents[3] / "conformance" / "corpus" / "v2" / "sync-vectors.json"
 V: Dict[str, Any] = json.loads(_PATH.read_text(encoding="utf-8"))
@@ -176,3 +182,233 @@ def test_canonical_json_refuses_ints_beyond_2_pow_53() -> None:
     for v in (2**53 + 1, 2**70, -(2**53) - 1):
         with pytest.raises(ValueError):
             sc.canonical_json(v)
+
+
+# ── U-22.8: the chunker, chunk objects and manifest ───────────────────────────────────────────
+
+
+def _counter_bytes(label: str, length: int) -> bytes:
+    """SHA-256 counter blocks of a label, cut to ``length`` (the recipe in the file's description)."""
+    out = bytearray()
+    n = 0
+    while len(out) < length:
+        out += hashlib.sha256(label.encode() + n.to_bytes(4, "big")).digest()
+        n += 1
+    return bytes(out[:length])
+
+
+def cdc_input(i: Dict[str, Any]) -> bytes:
+    if i["kind"] == "byte":
+        return bytes([i["value"]]) * i["length"]
+    return _counter_bytes("pkey-sync vector cdc " + i["label"], i["length"])
+
+
+def _cut(buf: bytes, avg: int, piece: int) -> List[bytes]:
+    chunker = sf.CdcChunker(sf.cdc_params(avg))
+    out: List[bytes] = []
+    for at in range(0, len(buf), piece):
+        out += chunker.push(buf[at : at + piece])
+    return out + chunker.finish()
+
+
+@pytest.mark.parametrize("c", V["cdcCases"], ids=ids(V["cdcCases"]))
+def test_cdc(c: Dict[str, Any]) -> None:
+    assert sf.cdc_params(c["avg"]) == sf.CdcParams(c["avg"], c["min"], c["max"])
+    data = cdc_input(c["input"])
+    # Whole, then in awkward pieces: the cuts do not depend on how the input arrives.
+    for piece in (len(data) or 1, 1000, 65537):
+        assert [len(x) for x in _cut(data, c["avg"], piece)] == c["lens"]
+    assert list(map(len, sf.cdc_stream([data[:7], b"", data[7:]], sf.cdc_params(c["avg"])))) == c["lens"]
+
+
+def test_cdc_parameters() -> None:
+    assert sf.SYNC_CDC_PARAMS == sf.CdcParams(256 * 1024, 64 * 1024, 1024 * 1024)
+    for bad in (0, 32, 1000):
+        with pytest.raises(ValueError):
+            sf.cdc_params(bad)
+
+
+def test_cdc_emits_copies() -> None:
+    c = sf.CdcChunker(sf.cdc_params(1024))
+    first = c.push(bytes(4096))
+    assert len(first) == 1
+    c.push(bytes([9]) * 4096)
+    assert first[0] == bytes(4096)
+
+
+@pytest.mark.parametrize("c", V["chunkCases"], ids=ids(V["chunkCases"]))
+def test_chunk(c: Dict[str, Any]) -> None:
+    root = H(c["rootHex"])
+    if c["kind"] == "id":
+        plain = H(c["plainHex"])
+        assert sf.chunk_id_hex(root, c["collection"], plain) == c["e2eIdHex"]
+        assert sf.chunk_id_hex(None, c["collection"], plain) == c["serverIdHex"]
+        return
+    if c["kind"] == "pair":
+        assert c["rawNonceHex"] != c["zstdNonceHex"]
+        for obj_hex, nonce_hex, codec in ((c["rawObjectHex"], c["rawNonceHex"], 0), (c["zstdObjectHex"], c["zstdNonceHex"], 1)):
+            obj = H(obj_hex)
+            assert obj[2:14].hex() == nonce_hex
+            o = sf.open_chunk(root, c["collection"], H(c["idHex"]), obj, _ZSTD)
+            assert o.ok and o.plain.hex() == c["plainHex"] and o.codec == codec
+        return
+    got = sf.open_chunk(root, c["collection"], H(c["idHex"]), H(c["objectHex"]), _ZSTD)
+    want = c["expect"]
+    if want["result"] == "ok":
+        assert got.ok and got.plain.hex() == want["plainHex"] and got.codec == want["codec"]
+    else:
+        assert not got.ok and got.reason == want["reason"]
+    if "seal" in c:
+        sealed = sf.seal_chunk(root, c["collection"], H(c["idHex"]), c["seal"]["codec"], H(c["seal"]["bodyHex"]))
+        assert sealed.hex() == c["objectHex"]
+
+
+def test_chunk_decode_failure_modes() -> None:
+    """A missing decoder, a decoder that raises and one that lies about the length are all ``decode``;
+    a declared size over 1 MiB is ``size`` and the decoder is never called."""
+    root = bytes(range(32))
+    a = b"A"
+    frame = bytes([0x28, 0xB5, 0x2F, 0xFD, 0x20, 1, 0x09, 0, 0, 0x41])
+    assert sf.zstd_content_size(frame) == 1
+    cid = sf.chunk_id(root, "saves", a)
+    obj = sf.seal_chunk(root, "saves", cid, sf.CHUNK_CODEC_ZSTD, frame)
+
+    def boom(_f: bytes, _n: int) -> bytes:
+        raise ValueError("bad frame")
+
+    assert sf.open_chunk(root, "saves", cid, obj, lambda _f, _n: a).codec == 1
+    assert sf.open_chunk(root, "saves", cid, obj).reason == "decode"
+    assert sf.open_chunk(root, "saves", cid, obj, boom).reason == "decode"
+    assert sf.open_chunk(root, "saves", cid, obj, lambda _f, _n: b"AA").reason == "decode"
+
+    called: List[int] = []
+    bomb = bytes([0x28, 0xB5, 0x2F, 0xFD, 0xA0]) + (2 * 1024 * 1024).to_bytes(4, "little") + bytes(8)
+    obj2 = sf.seal_chunk(root, "saves", cid, sf.CHUNK_CODEC_ZSTD, bomb)
+    assert sf.open_chunk(root, "saves", cid, obj2, lambda f, n: called.append(n) or a).reason == "size"
+    assert called == []
+
+
+def test_zstd_content_size_header_widths() -> None:
+    def hdr(fhd: int, *rest: int) -> bytes:
+        return bytes([0x28, 0xB5, 0x2F, 0xFD, fhd, *rest])
+
+    assert sf.zstd_content_size(hdr(0x20, 200)) == 200
+    assert sf.zstd_content_size(hdr(0x60, 1, 0)) == 257
+    assert sf.zstd_content_size(hdr(0xA0, 0, 0, 16, 0)) == 1 << 20
+    assert sf.zstd_content_size(hdr(0x00, 0x10, 1)) is None
+    assert sf.zstd_content_size(bytes([1, 2, 3, 4, 5, 6])) is None
+
+
+def test_chunk_object_layout_and_refusals_in_order() -> None:
+    root = bytes(range(32))
+    plain = bytes(range(200))
+    cid = sf.chunk_id(root, "saves", plain)
+    obj = sf.seal_chunk(root, "saves", cid, 0, plain)
+    assert len(obj) == 2 + 12 + len(plain) + 16 and obj[:2] == bytes([1, 0])
+    assert sf.seal_chunk(root, "saves", cid, 0, plain) == obj  # deterministic
+    assert sf.open_chunk(root, "saves", cid, obj).plain == plain
+    assert sf.open_chunk(root, "saves", cid, obj[:29]).reason == "shape"
+    assert sf.open_chunk(root, "saves", cid, bytes([2, 9]) + obj[2:]).reason == "version"
+    assert sf.open_chunk(root, "saves", cid, bytes([1, 2]) + obj[2:]).reason == "codec"
+    assert sf.open_chunk(root, "saves", cid, obj[:-1] + bytes([obj[-1] ^ 1])).reason == "auth"
+    assert sf.open_chunk(bytes(32), "saves", cid, obj).reason == "auth"
+    assert sf.open_chunk(root, "saves", cid[:31], obj).reason == "auth"
+    with pytest.raises(ValueError):
+        sf.seal_chunk(root, "saves", cid, 2, plain)
+    with pytest.raises(ValueError):
+        sf.seal_chunk(root, "saves", cid[:5], 0, plain)
+    assert sf.chunk_id_bytes(cid.hex()) == cid
+    assert sf.chunk_id_bytes("AB") is None and sf.chunk_id_bytes("A" * 64) is None
+
+
+@pytest.mark.parametrize("c", V["manifestCases"], ids=ids(V["manifestCases"]))
+def test_manifest(c: Dict[str, Any]) -> None:
+    parsed = sf.parse_manifest(H(c["manifestHex"]))
+    want = c["expect"]
+    if want["result"] == "invalid":
+        assert not parsed.ok and parsed.reason == want["reason"]
+        return
+    assert parsed.ok and parsed.manifest is not None
+    m = parsed.manifest
+    assert m.plain_size == want["plainSize"]
+    assert m.plain_sha256.hex() == want["plainSha256Hex"]
+    assert [{"idHex": r.id.hex(), "plainLen": r.plain_len} for r in m.records] == want["records"]
+    assert sf.encode_manifest(m).hex() == c["manifestHex"]
+
+
+def apply_edit(base: bytes, e: Dict[str, Any]) -> bytes:
+    piece = _counter_bytes("pkey-sync vector cdc-edit " + e["label"], e["length"])
+    tail = base[e["at"] :] if e["op"] == "insert" else base[e["at"] + e["length"] :]
+    mid = b"" if e["op"] == "delete" else piece
+    return base[: e["at"]] + mid + tail
+
+
+@pytest.mark.parametrize("c", V["cdcEditCases"], ids=ids(V["cdcEditCases"]))
+def test_cdc_edit(c: Dict[str, Any]) -> None:
+    root = H(c["rootHex"])
+    base = cdc_input(c["base"])
+    edited = apply_edit(base, c["edit"])
+    for buf, lens, id_list, manifest_hex in (
+        (base, c["baseLens"], c["baseIdsHex"], c["baseManifestHex"]),
+        (edited, c["editedLens"], c["editedIdsHex"], c["editedManifestHex"]),
+    ):
+        chunks = _cut(buf, c["avg"], 65537)
+        assert [len(x) for x in chunks] == lens
+        assert [sf.chunk_id_hex(root, c["collection"], x) for x in chunks] == id_list
+        parsed = sf.parse_manifest(H(manifest_hex))
+        assert parsed.ok and parsed.manifest is not None
+        m = parsed.manifest
+        assert m.plain_size == len(buf)
+        assert m.plain_sha256 == hashlib.sha256(buf).digest()
+        assert [r.id.hex() for r in m.records] == id_list
+        assert [r.plain_len for r in m.records] == lens
+        assert sf.encode_manifest(m).hex() == manifest_hex
+    have = set(c["baseIdsHex"])
+    kept = [i for i, x in enumerate(c["editedIdsHex"]) if x in have]
+    changed = [i for i, x in enumerate(c["editedIdsHex"]) if x not in have]
+    assert kept == c["keptIndexes"] and changed == c["changedIndexes"]
+
+
+def _manifest_records(w: Dict[str, Any]) -> List[Dict[str, Any]]:
+    row = next(e for e in V["cdcEditCases"] if e["id"] == w["row"])
+    key = "baseManifestHex" if w["side"] == "base" else "editedManifestHex"
+    parsed = sf.parse_manifest(H(row[key]))
+    assert parsed.ok and parsed.manifest is not None
+    return [{"id": r.id.hex(), "plainLen": r.plain_len} for r in parsed.manifest.records]
+
+
+@pytest.mark.parametrize("c", V["deltaCases"], ids=ids(V["deltaCases"]))
+def test_delta(c: Dict[str, Any]) -> None:
+    have = set(c["have"]["idsHex"]) if "idsHex" in c["have"] else {r["id"] for r in _manifest_records(c["have"])}
+    move: Dict[str, int] = {}
+    for r in _manifest_records(c["want"]):
+        if r["id"] not in have and r["id"] not in move:
+            move[r["id"]] = r["plainLen"]
+    assert list(move.keys()) == c["moveIdsHex"]
+    assert sum(move.values()) == c["moveBytes"]
+
+
+def test_manifest_refuses_the_first_violation() -> None:
+    sha = bytes(range(32))
+
+    def rec(n: int, ln: int) -> sf.ManifestRecord:
+        return sf.ManifestRecord(id=bytes([n]) * 32, plain_len=ln)
+
+    base = sf.encode_manifest(sf.ChunkManifest(20, sha, [rec(1, 10), rec(2, 10)]))
+
+    def edit(at: int, val: int) -> str:
+        b = bytearray(base)
+        b[at] = val
+        return sf.parse_manifest(bytes(b)).reason or "ok"
+
+    assert sf.parse_manifest(base[:10]).reason == "shape"
+    assert edit(0, 0) == "magic" and edit(8, 2) == "version" and edit(10, 40) == "recordSize"
+    assert edit(12, 1) == "flags" and edit(20, 1) == "reserved" and edit(16, 3) == "length"
+    b = bytearray(base)
+    b[16:18] = b"\xff\xff"
+    assert sf.parse_manifest(bytes(b)).reason == "count"
+    assert edit(64 + 36, 1) == "record" and edit(64 + 32, 0) == "chunkLen" and edit(24, 21) == "size"
+    # A plainSize beyond 2^53 is refused, not rounded into range.
+    b = bytearray(sf.encode_manifest(sf.ChunkManifest(0, sha, [])))
+    b[24:32] = b"\xff" * 8
+    assert sf.parse_manifest(bytes(b)).reason == "size"
