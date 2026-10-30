@@ -319,6 +319,7 @@ export class PolarisKeyClient {
           return this.discoveryDoc;
         },
         lan: () => this.cloudConnect.nearby,
+        keyring: () => this.keyring,
       },
     );
     this.release = new ReleaseClient(

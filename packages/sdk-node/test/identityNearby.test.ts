@@ -35,6 +35,7 @@ import {
 } from "../../../conformance/runners/node/nearbyActions.js";
 import { PolarisKeyClient } from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
+import { grantApproval } from "../src/identity/nearby.js";
 import {
   identityDiscovery,
   json,
@@ -254,7 +255,10 @@ async function routes(over: Record<string, Handler>, token: string | null) {
             interval: number;
           }>;
           poll(s: object): Promise<{ kind: string; interval?: number }>;
-          approve(a: object): Promise<{
+          approve(
+            v: object,
+            d: object,
+          ): Promise<{
             kind: string;
             status?: number;
             code?: string;
@@ -269,6 +273,17 @@ async function routes(over: Record<string, Handler>, token: string | null) {
     ).nearbyRoutes,
   };
 }
+
+/** The vouch a matched pick earned for the device with these fixture keys. */
+const vouchOf = (label: string) =>
+  grantApproval({
+    request: REQ,
+    deviceId: D_ID,
+    signKey: fixtureKeys(label).signKey,
+    agreeKey: fixtureKeys(label).agreeKey,
+    label: null,
+    platform: "linux",
+  });
 
 const startOk: Handler = () =>
   json({ request: REQ, expiresIn: 300, interval: 3 }, 201);
@@ -436,22 +451,16 @@ describe("nearby routes: the rules", () => {
         "pkeyt_m",
       );
     };
-    const input = {
-      request: REQ,
-      deviceId: D_ID,
-      signKey: fixtureKeys("d").signKey,
-      agreeKey: fixtureKeys("d").agreeKey,
-      decision: "approve",
-    };
+    const input = vouchOf("d");
     const once = await mk(false);
-    expect(await once.r.approve(input)).toMatchObject({
+    expect(await once.r.approve(input, { decision: "approve" })).toMatchObject({
       kind: "approved",
       deviceLabel: "Den",
     });
     expect({ calls, puts }).toEqual({ calls: 2, puts: 1 });
 
     const twice = await mk(true);
-    const r = await twice.r.approve(input);
+    const r = await twice.r.approve(input, { decision: "approve" });
     expect(r).toMatchObject({ kind: "refused", status: 409 });
     // One retry and no more; finish() must close, not ask for another round.
     expect({ calls, puts }).toEqual({ calls: 2, puts: 1 });
@@ -470,14 +479,8 @@ describe("nearby routes: the rules", () => {
       },
       "pkeyt_m",
     );
-    const input = {
-      request: REQ,
-      deviceId: D_ID,
-      signKey: fixtureKeys("d").signKey,
-      agreeKey: fixtureKeys("d").agreeKey,
-      decision: "approve",
-    };
-    const a = await w.r.approve(input);
+    const input = vouchOf("d");
+    const a = await w.r.approve(input, { decision: "approve" });
     expect(a).toMatchObject({
       kind: "refused",
       status: 403,
@@ -490,28 +493,54 @@ describe("nearby routes: the rules", () => {
     });
     status = 404;
     body = { error: { code: "not_found" } };
-    expect(await w.r.approve(input)).toMatchObject({
+    expect(await w.r.approve(input, { decision: "approve" })).toMatchObject({
       kind: "refused",
       status: 404,
       finish: { http: 404, discoveryNearby: true },
     });
     named = false;
-    expect(await w.r.approve(input)).toMatchObject({
+    expect(await w.r.approve(input, { decision: "approve" })).toMatchObject({
       kind: "unavailable",
       finish: { http: 404, discoveryNearby: false },
     });
   });
 
+  it("approve takes only a granted vouch: loose ids and keys, a forged object and a copy are refused, sending nothing", async () => {
+    const w = await routes(
+      {
+        "POST /djdl/identity/nearby/approve": () =>
+          new Response(null, { status: 204 }),
+      },
+      "pkeyt_m",
+    );
+    const granted = vouchOf("d");
+    const loose = {
+      request: REQ,
+      deviceId: D_ID,
+      signKey: fixtureKeys("d").signKey,
+      agreeKey: fixtureKeys("d").agreeKey,
+      label: null,
+      platform: "linux",
+    };
+    for (const v of [loose, { ...granted }, structuredClone(loose), {}, null])
+      await expect(
+        w.r.approve(v as never, { decision: "approve" }),
+      ).rejects.toMatchObject({ code: "invalid-options" });
+    expect(w.seen.some((s) => s.path.endsWith("/nearby/approve"))).toBe(false);
+    // The granted object is frozen, so what was granted is what is sent.
+    expect(Object.isFrozen(granted)).toBe(true);
+    expect(await w.r.approve(granted, { decision: "approve" })).toMatchObject({
+      kind: "denied",
+    });
+    expect(
+      w.seen.filter((s) => s.path.endsWith("/nearby/approve")),
+    ).toHaveLength(1);
+  });
+
   it("approve needs M to be signed in, and sends the ids and keys it was given", async () => {
     const out = await routes({}, null);
     await expect(
-      out.r.approve({
-        request: REQ,
-        deviceId: D_ID,
-        signKey: "a",
-        agreeKey: "b",
-        decision: "deny",
-      }),
+      out.r.approve(vouchOf("a"), { decision: "deny" }),
     ).rejects.toMatchObject({ code: "account_required" });
 
     const w = await routes(
@@ -525,14 +554,9 @@ describe("nearby routes: the rules", () => {
       signKey: fixtureKeys("x").signKey,
       agreeKey: fixtureKeys("x").agreeKey,
     };
-    expect(
-      await w.r.approve({
-        request: REQ,
-        deviceId: D_ID,
-        ...keys,
-        decision: "deny",
-      }),
-    ).toMatchObject({ kind: "denied", finish: { http: 204 } });
+    expect(await w.r.approve(vouchOf("x"), { decision: "deny" })).toMatchObject(
+      { kind: "denied", finish: { http: 204 } },
+    );
     const sent = JSON.parse(
       w.seen.find((s) => s.path.endsWith("/nearby/approve"))!.body!,
     );

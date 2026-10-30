@@ -52,6 +52,10 @@ class NearbyStub extends MultiWorker {
   approves: Record<string, unknown>[] = [];
   keysPuts = 0;
   signouts = 0;
+  /** The key ring routes (§13.11.2), reduced: one ring, a wrap per device. */
+  ringRow: { ringId: string; rootKid: string } | null = null;
+  wraps = new Map<string, Record<string, unknown>>();
+  wrapPuts: string[] = [];
 
   constructor() {
     super();
@@ -89,6 +93,8 @@ class NearbyStub extends MultiWorker {
       }
       if (path === "devices/keys" && init?.method === "PUT") this.keysPuts++;
       const deviceId = headers.get("x-pkey-device") ?? "";
+      if (path.startsWith("devices/keyring"))
+        return this.#keyring(path, init?.method ?? "GET", headers, body, j);
       if (path === "identity/nearby/start")
         return this.#start(deviceId, body, j);
       if (path === "identity/nearby/poll") return this.#poll(deviceId, body, j);
@@ -96,6 +102,53 @@ class NearbyStub extends MultiWorker {
         return this.#approve(headers, body, j);
       return base(input, init);
     }) as typeof fetch;
+  }
+
+  #keyring(
+    path: string,
+    method: string,
+    h: Headers,
+    b: Record<string, unknown>,
+    j: (b: unknown, s?: number) => Response,
+  ): Response {
+    const me = this.tokens.get(
+      (h.get("authorization") ?? "").replace("Bearer ", ""),
+    );
+    if (me === undefined) return j({ error: { code: "unauthorized" } }, 401);
+    if (method === "GET" && path === "devices/keyring")
+      return j({
+        ring: this.ringRow && {
+          ...this.ringRow,
+          epoch: 1,
+          state: "active",
+          createdAt: 1,
+          recovery: { set: false },
+          adopted: [],
+        },
+        wrap: this.wraps.get(me) ?? null,
+      });
+    if (method === "POST" && path === "devices/keyring") {
+      if (this.ringRow) return j({ error: { code: "keyring_conflict" } }, 409);
+      this.ringRow = { ringId: String(b.ringId), rootKid: String(b.rootKid) };
+      this.wraps.set(me, {
+        epoch: 1,
+        kid: b.rootKid,
+        by: me,
+        ...(b.wrap as object),
+      });
+      return j({ ringId: b.ringId, epoch: 1 }, 201);
+    }
+    const w = /^devices\/keyring\/wraps\/(.+)$/.exec(path);
+    if (w && method === "PUT") {
+      const target = decodeURIComponent(w[1]!);
+      if (!this.wraps.has(me)) return j({ error: { code: "forbidden" } }, 403);
+      if (this.wraps.has(target))
+        return j({ error: { code: "keyring_conflict" } }, 409);
+      this.wraps.set(target, { ...b, by: me });
+      this.wrapPuts.push(target);
+      return new Response(null, { status: 204 });
+    }
+    return j({}, 404);
   }
 
   async #proof(
@@ -322,6 +375,14 @@ async function atChoice() {
   return { w, d, s, step };
 }
 
+/** D taps M, M taps the matching code: returns D's session and what M's tap came to. */
+async function tapped(x: { d: PolarisKeyClient; asks: NearbyAsk[] }) {
+  const { s, code } = await dTaps(x.d);
+  await until(() => x.asks.length === 1);
+  const step = await x.asks[0]!.pick(showing(x.asks[0]!, code));
+  return { s, step };
+}
+
 describe("nearby sign-in, D and M through the Identity API", () => {
   it("lists, taps, matches, approves, and D's own poll signs it in", async () => {
     const { w, m, d, asks } = await world();
@@ -431,10 +492,9 @@ describe("nearby sign-in, D and M through the Identity API", () => {
   });
 
   it("declining the account signs D out again", async () => {
-    const { w, d, asks } = await world();
-    const { s, code } = await dTaps(d);
-    await until(() => asks.length === 1);
-    await asks[0]!.pick(showing(asks[0]!, code));
+    const x = await world();
+    const { w, d } = x;
+    const { s } = await tapped(x);
     await s.wait({ once: true });
     expect(d.hasToken).toBe(true);
     await s.declineAccount();
@@ -443,6 +503,75 @@ describe("nearby sign-in, D and M through the Identity API", () => {
       kind: "needsSignIn",
       reason: "signed_out",
     });
+  });
+});
+
+describe("nearby sign-in: the key ring wrap (KEYRING_WRAP)", () => {
+  /** M holds the ring's root and a sealed value; D has nothing. */
+  async function withRing() {
+    const x = await world();
+    await x.m.keyring.create({ recovery: false });
+    const sealed = await x.m.keyring.codec.seal("notes", "n1", { x: 1 });
+    return { ...x, sealed };
+  }
+
+  it("M wraps the root to the new device once; D opens it only after confirming the account", async () => {
+    const x = await withRing();
+    const { w, m, d, sealed } = x;
+    const { s, step } = await tapped(x);
+    expect(step).toEqual({ kind: "approved" });
+    // M stored the wrap for D (the fallback) and sent the same one over the channel.
+    expect(w.wrapPuts).toEqual([devId("2")]);
+    expect(m.keyring.unlocked).toBe(true);
+
+    // D's poll signs it in; the root is not D's until the person confirms the account.
+    expect(await s.wait({ once: true })).toMatchObject({ kind: "signedIn" });
+    expect(d.keyring.unlocked).toBe(false);
+    expect(s.wrap).toBe("none");
+    await s.confirmAccount();
+    await until(() => s.wrap === "applied");
+    expect(d.keyring.unlocked).toBe(true);
+    expect(await d.keyring.codec.open("notes", "n1", sealed)).toMatchObject({
+      ok: true,
+      value: { x: 1 },
+    });
+    expect(await d.keyring.pin()).toMatchObject({ ringId: w.ringRow!.ringId });
+    // Exactly one wrap, to D's id.
+    expect(w.wrapPuts).toHaveLength(1);
+  });
+
+  it("declining the account keeps the root off the device", async () => {
+    const x = await withRing();
+    const { s } = await tapped(x);
+    await s.wait({ once: true });
+    await s.declineAccount();
+    const { d } = x;
+    expect(d.keyring.unlocked).toBe(false);
+    expect(s.wrap).toBe("none");
+    expect(await d.keyring.pin()).toBeNull();
+  });
+
+  it("an M that holds no root sends no wrap, and D is signed in all the same", async () => {
+    const x = await world();
+    const { w, d } = x;
+    const { s, step } = await tapped(x);
+    expect(step).toEqual({ kind: "approved" });
+    expect(w.wrapPuts).toEqual([]);
+    expect(await s.wait({ once: true })).toMatchObject({ kind: "signedIn" });
+    await s.confirmAccount();
+    expect(s.wrap).toBe("none");
+    expect(d.keyring.unlocked).toBe(false);
+  });
+
+  it("a wrap the Worker refuses does not undo the approval", async () => {
+    const x = await withRing();
+    const { w, d } = x;
+    w.wraps.set(devId("2"), { epoch: 1, kid: "x", kem: 32, enc: "x", ct: "x" });
+    const { s, step } = await tapped(x);
+    expect(step).toEqual({ kind: "approved" });
+    expect(await s.wait({ once: true })).toMatchObject({ kind: "signedIn" });
+    await s.confirmAccount();
+    expect(d.keyring.unlocked).toBe(false);
   });
 });
 

@@ -16,12 +16,14 @@ import type {
 import type { NearbyRoutes } from "../src/identity/nearby.js";
 import {
   startNearbySignIn,
+  type NearbyKeyring,
   type NearbySessionDeps,
   type NearbySignInOptions,
   type NearbySignInSession,
 } from "../src/identity/nearbySession.js";
 import type { CoreContext } from "../src/core/context.js";
 import { identityDiscovery, json } from "./parityFixtures.js";
+import { until } from "./lanFixtures.js";
 import type { Handler } from "./parityFixtures.js";
 import { FRAGMENT, REQ, nearbyClient } from "./identityNearbyFixtures.js";
 import type { VouchStatus } from "@polaris-key/client-core/peer";
@@ -68,6 +70,9 @@ class FakeRequest implements NearbyRequest {
   async choose(id: string): Promise<{ code: string }> {
     this.chosen.push(id);
     return { code: "482 913" };
+  }
+  emitRecord(r: NearbyRecord): void {
+    for (const f of this.#record) f(r);
   }
   async confirmAccount(): Promise<void> {
     this.confirmed++;
@@ -127,6 +132,7 @@ async function world(
     deviceName?: string;
     discovery?: Record<string, unknown>;
     extra?: Record<string, Handler>;
+    keyring?: NearbyKeyring;
   } = {},
 ): Promise<World> {
   const order: string[] = [];
@@ -156,6 +162,7 @@ async function world(
     req,
     {
       signOut,
+      ...(o.keyring ? { keyring: o.keyring } : {}),
       lan: () => ({
         request: async (opts: NearbyRequestOptions) => {
           order.push(
@@ -378,21 +385,74 @@ describe("nearby sign-in session: the poll decides", () => {
 describe("nearby sign-in session: the account is confirmed first (rule 12)", () => {
   const WRAP = new Uint8Array([1, 2, 3, 4]);
 
-  it("holds records until confirmAccount(), keeps the wrap, ignores other Sync records", async () => {
-    const w = await world(ready);
+  /** A key ring that records what it was given, and answers `kind`. */
+  function ring(kind = "unlocked") {
+    const taken: number[][] = [];
+    const keyring: NearbyKeyring = {
+      adoptWrap: async (r) => (taken.push([...r]), { kind }),
+    };
+    return { keyring, taken };
+  }
+
+  it("holds records until confirmAccount(), then gives the wrap to the key ring and nothing else", async () => {
+    const { keyring, taken } = ring();
+    const w = await world(ready, { keyring });
     await w.session.wait();
     w.req.held = [
       { type: 0x0031, body: new Uint8Array([9]) },
       { type: 0x0030, body: WRAP },
     ];
-    expect(w.session.takeWrap()).toBeNull();
+    expect(taken).toEqual([]);
+    expect(w.session.wrap).toBe("none");
     await w.session.confirmAccount();
     expect(w.req.confirmed).toBe(1);
-    expect(w.session.takeWrap()).toEqual(WRAP);
-    expect(w.session.takeWrap()).toBeNull();
-    // Again: nothing more is asked of the LAN.
+    expect(taken).toEqual([[1, 2, 3, 4]]);
+    expect(w.session.wrap).toBe("applied");
+    // The wrap is in: nothing more is expected on the channel.
+    expect(w.req.closed).toBe(true);
+    // Again: nothing more is asked of the LAN or the ring.
     await w.session.confirmAccount();
     expect(w.req.confirmed).toBe(1);
+    expect(taken).toHaveLength(1);
+  });
+
+  it("a wrap that arrives after the confirmation is taken as it arrives", async () => {
+    const { keyring, taken } = ring();
+    const w = await world(ready, { keyring });
+    const states: string[] = [];
+    w.session.onWrap((s) => states.push(s));
+    await w.session.wait();
+    await w.session.confirmAccount();
+    expect(taken).toEqual([]);
+    w.req.emitRecord({ type: 0x0030, body: WRAP });
+    await until(() => states.length === 1);
+    expect(states).toEqual(["applied"]);
+    expect(taken).toEqual([[1, 2, 3, 4]]);
+  });
+
+  it("a wrap the key ring refuses, or a key ring that throws, leaves the device signed in with the state refused", async () => {
+    const throwing: NearbyKeyring = {
+      adoptWrap: async () => {
+        throw new Error("offline");
+      },
+    };
+    for (const keyring of [ring("locked").keyring, throwing]) {
+      const w = await world(ready, { keyring });
+      await w.session.wait();
+      w.req.held = [{ type: 0x0030, body: WRAP }];
+      await w.session.confirmAccount();
+      expect(w.session.wrap).toBe("refused");
+      expect(w.client.hasToken).toBe(true);
+      expect(w.req.closed).toBe(false);
+    }
+  });
+
+  it("with no key ring the wrap is dropped", async () => {
+    const w = await world(ready);
+    await w.session.wait();
+    w.req.held = [{ type: 0x0030, body: WRAP }];
+    await w.session.confirmAccount();
+    expect(w.session.wrap).toBe("none");
   });
 
   it("confirming before the device is signed in is refused", async () => {
@@ -404,14 +464,17 @@ describe("nearby sign-in session: the account is confirmed first (rule 12)", () 
   });
 
   it("declining drops the wrap, closes the LAN half and signs out", async () => {
-    const w = await world(ready);
+    const { keyring, taken } = ring();
+    const w = await world(ready, { keyring });
     await w.session.wait();
     w.req.held = [{ type: 0x0030, body: WRAP }];
     await w.session.declineAccount();
     expect(w.req.declined).toBe(1);
     expect(w.req.closed).toBe(true);
     expect(w.signOut).toHaveBeenCalledTimes(1);
-    expect(w.session.takeWrap()).toBeNull();
+    // A wrap that was never confirmed never reaches the key ring.
+    expect(taken).toEqual([]);
+    expect(w.session.wrap).toBe("none");
   });
 
   it("declining before a sign-in signs nothing out", async () => {

@@ -29,6 +29,7 @@
 //  - every approver label is cleaned again before it is listed: it comes from an unverified peer.
 
 import { PolarisError } from "@polaris-key/client-core";
+import { guarded } from "../connect/session.js";
 import { cleanLabel, type VouchStatus } from "@polaris-key/client-core/peer";
 import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
@@ -69,8 +70,18 @@ export interface NearbyLan {
   request(o: NearbyRequestOptions): Promise<NearbyRequest>;
 }
 
+/** The key ring, as the session uses it: it takes the wrap a nearby approver sent. */
+export interface NearbyKeyring {
+  adoptWrap(record: Uint8Array): Promise<{ kind: string }>;
+}
+
+/** What became of the `KEYRING_WRAP` M sent over the LAN. */
+export type NearbyWrapState = "none" | "applied" | "refused";
+
 export interface NearbySessionDeps {
   ctx: CoreContext;
+  /** Where the wrap goes (absent: a wrap is dropped, the normal `unlock()` works later). */
+  keyring?: NearbyKeyring;
   routes: NearbyRoutes;
   lan: () => NearbyLan;
   /** `identity.signOut()`: a declined account signs the device out again. */
@@ -107,6 +118,9 @@ export class NearbySignInSession {
   #signedIn = false;
   #confirmed = false;
   #wrap: Uint8Array | null = null;
+  #wrapState: NearbyWrapState = "none";
+  #applying: Promise<void> = Promise.resolve();
+  readonly #onWrap = new Set<(s: NearbyWrapState) => void>();
   #lanOpen = true;
   /** The next poll is not before this (epoch ms): the pacing starts at `start`. */
   #notBefore: number;
@@ -130,7 +144,11 @@ export class NearbySignInSession {
     this.#notBefore = Date.now() + started.interval * 1000;
     this.#unsub.push(
       req.onRecord((r) => {
-        if (r.type === KEYRING_WRAP) this.#wrap = new Uint8Array(r.body);
+        if (r.type !== KEYRING_WRAP) return;
+        this.#wrap = new Uint8Array(r.body);
+        // The engine hands records over only after `confirmAccount()`; a wrap that comes later
+        // than the confirmation is taken as it arrives.
+        if (this.#confirmed) this.#apply();
       }),
     );
     printAs(this, () => ({
@@ -313,6 +331,43 @@ export class NearbySignInSession {
     await this.#req.close().catch(() => undefined);
   }
 
+  /** What became of the wrap M sent: `none` until one arrives and is taken (or refused). */
+  get wrap(): NearbyWrapState {
+    return this.#wrapState;
+  }
+
+  onWrap(fn: (s: NearbyWrapState) => void): () => void {
+    this.#onWrap.add(fn);
+    return () => this.#onWrap.delete(fn);
+  }
+
+  /** Open the held wrap through the key ring (once), never throwing into the LAN callback. */
+  #apply(): void {
+    const body = this.#wrap;
+    const ring = this.#deps.keyring;
+    this.#wrap = null;
+    if (body === null) return;
+    // No key ring here: the wrap is dropped, and the normal `unlock()` works later.
+    if (ring === undefined) return void body.fill(0);
+    this.#applying = this.#applying.then(async () => {
+      let state: NearbyWrapState = "refused";
+      try {
+        state =
+          (await ring.adoptWrap(body)).kind === "unlocked"
+            ? "applied"
+            : "refused";
+      } catch {
+        // The ring refused or the Worker could not be asked: the device stays locked.
+      } finally {
+        body.fill(0);
+      }
+      this.#wrapState = state;
+      for (const f of [...this.#onWrap]) guarded(() => f(state));
+      // Nothing else is expected on the channel once the wrap is in.
+      if (state === "applied") await this.#closeLan();
+    });
+  }
+
   /**
    * The person has seen the signed-in account (`wait()` answered `identity`) and says it is theirs
    * (§15.6.1 rule 12). Only now does the engine hand over the records M sent. Throws when the
@@ -332,6 +387,9 @@ export class NearbySignInSession {
     } catch {
       // The chosen session is gone: no records, the server copy is the fallback.
     }
+    // A wrap held until now is taken (the key ring checks it against a fresh read of the ring).
+    this.#apply();
+    await this.#applying;
   }
 
   /**
@@ -339,17 +397,11 @@ export class NearbySignInSession {
    * device signs out (rule 12). Safe to call more than once.
    */
   async declineAccount(): Promise<void> {
+    this.#wrap?.fill(0);
     this.#wrap = null;
     await this.#req.declineAccount().catch(() => undefined);
     await this.#closeLan();
     if (this.#signedIn) await this.#deps.signOut();
-  }
-
-  /** The wrap M sent over the LAN, once the account is confirmed; null before. @internal */
-  takeWrap(): Uint8Array | null {
-    const w = this.#wrap;
-    this.#wrap = null;
-    return w;
   }
 }
 

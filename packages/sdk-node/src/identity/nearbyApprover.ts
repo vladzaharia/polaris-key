@@ -27,7 +27,12 @@
 //  - the answer is given to the LAN session (`finish`), which sends the one `VOUCH_RESULT`;
 //    M's 409 keys registration retries once inside the route client and never loops here, and a
 //    licence choice is asked at most as often as the Worker asks;
-//  - the approver stops on sign-out and with `stop()`: nothing is left listening (CC-15, G18).
+//  - the approver stops on sign-out and with `stop()`: nothing is left listening (CC-15, G18);
+//  - the wrap (V5 §13.11.3): once the Worker answered `approved`, and only if this device holds
+//    the root, M wraps it to the new device's `agreeKey` from the verified `VOUCH_REQ` (and to no
+//    other key), stores that wrap (`PUT .../wraps/{deviceId}`: the server copy is the fallback) and
+//    sends the same wrap once as `KEYRING_WRAP`. A failure of either leaves the approval as it
+//    is: the new device is signed in, and unlocks with the normal route.
 
 import { PolarisError } from "@polaris-key/client-core";
 import { cleanLabel } from "@polaris-key/client-core/peer";
@@ -40,7 +45,12 @@ import type {
 } from "../connect/nearbyApprover.js";
 import { LanError } from "../connect/session.js";
 import type { LicenseChoiceView } from "./choice.js";
-import type { NearbyApproveAnswer, NearbyRoutes } from "./nearby.js";
+import {
+  grantApproval,
+  type NearbyApproveAnswer,
+  type NearbyRoutes,
+  type VerifiedVouch,
+} from "./nearby.js";
 
 /** What happens after the person taps a code, or a choice. */
 export type NearbyApprovalStep =
@@ -84,15 +94,24 @@ export interface NearbyApproverLan {
   ): Promise<NearbyApproverHandle>;
 }
 
+/** The key ring, as the approver uses it: it holds the root or it does not. */
+export interface NearbyApproverKeyring {
+  readonly unlocked: boolean;
+  wrapTo(deviceId: string, agreeKey: string): Promise<object>;
+}
+
 export interface NearbyApproverDeps {
   routes: NearbyRoutes;
   lan: () => NearbyApproverLan;
+  /** Absent, or locked: no wrap is sent, and the new device unlocks by another route. */
+  keyring?: NearbyApproverKeyring;
 }
+
+/** `KEYRING_WRAP`, the Sync record that carries a wrap of the root over the nearby channel. */
+const KEYRING_WRAP = 0x0030;
 
 /** A licence choice is asked again (a lost mint) at most this often in one pick. */
 const MAX_ASKS = 3;
-
-type Verified = Exclude<Awaited<ReturnType<NearbyApproval["pick"]>>, string>;
 
 /** The step a Worker answer is, once `finish()` has sent what it sends. */
 function stepOf(a: NearbyApproveAnswer): NearbyApprovalStep {
@@ -122,11 +141,33 @@ function stepOf(a: NearbyApproveAnswer): NearbyApprovalStep {
 }
 
 class Decision {
+  #wrapped = false;
+
   constructor(
     private readonly routes: NearbyRoutes,
     private readonly a: NearbyApproval,
-    private readonly r: Verified,
+    private readonly r: VerifiedVouch,
+    private readonly keyring: NearbyApproverKeyring | undefined,
   ) {}
+
+  /** Once, after `approved`: store the wrap for the new device and send it over the channel. */
+  async #wrap(): Promise<void> {
+    const ring = this.keyring;
+    if (this.#wrapped || ring === undefined || !ring.unlocked) return;
+    this.#wrapped = true;
+    try {
+      // The ids and the key are the verified request's, which `approve` just confirmed.
+      const body = await ring.wrapTo(this.r.deviceId, this.r.agreeKey);
+      await this.a
+        .sendRecord(
+          KEYRING_WRAP,
+          new TextEncoder().encode(JSON.stringify(body)),
+        )
+        .catch(() => undefined);
+    } catch {
+      // No wrap (a conflict, a locked ring, the network): the approval stands.
+    }
+  }
 
   /** One `nearby/approve` for the verified request, then the answer to the LAN session. */
   async run(
@@ -137,11 +178,7 @@ class Decision {
     const { r, a } = this;
     let answer: NearbyApproveAnswer;
     try {
-      answer = await this.routes.approve({
-        request: r.request,
-        deviceId: r.deviceId,
-        signKey: r.signKey,
-        agreeKey: r.agreeKey,
+      answer = await this.routes.approve(r, {
         decision,
         ...(choice !== undefined ? { choice } : {}),
       });
@@ -159,7 +196,11 @@ class Decision {
     } catch (e) {
       // The LAN session ended meanwhile. The Worker's answer stands: an approval is an approval,
       // and the new device's own poll signs it in.
-      if (e instanceof LanError) return stepOf(answer);
+      if (e instanceof LanError) {
+        // The Worker's `approved` stands; the stored wrap is the fallback for the lost channel.
+        if (answer.kind === "approved") await this.#wrap();
+        return stepOf(answer);
+      }
       throw e;
     }
     if ("wait" in out) {
@@ -174,6 +215,7 @@ class Decision {
       await a.close().catch(() => undefined);
       return { kind: "expired" };
     }
+    if (answer.kind === "approved") await this.#wrap();
     return stepOf(answer);
   }
 
@@ -200,7 +242,11 @@ class Decision {
   }
 }
 
-function askOf(routes: NearbyRoutes, a: NearbyApproval): NearbyAsk {
+function askOf(
+  routes: NearbyRoutes,
+  a: NearbyApproval,
+  keyring: NearbyApproverKeyring | undefined,
+): NearbyAsk {
   const codes = a.codes as unknown as [string, string, string];
   let picked: Promise<NearbyApprovalStep> | null = null;
   let declined = false;
@@ -216,7 +262,10 @@ function askOf(routes: NearbyRoutes, a: NearbyApproval): NearbyAsk {
         if (r === "mismatch") return { kind: "mismatch" } as const;
         // The request did not verify: nothing was approved, and the session is closed.
         if (r === "invalid") return { kind: "expired" } as const;
-        return new Decision(routes, a, r).run("approve");
+        // The matched code and the verified request earn the permit; nothing else does.
+        return new Decision(routes, a, grantApproval(r), keyring).run(
+          "approve",
+        );
       })()),
     deny: async () => {
       if (picked !== null || declined) return;
@@ -238,5 +287,7 @@ export function onNearbyRequest(
   handler: (ask: NearbyAsk) => void,
   o: NearbyApproverOptions,
 ): Promise<NearbyApproverHandle> {
-  return deps.lan().onRequest((a) => handler(askOf(deps.routes, a)), o);
+  return deps
+    .lan()
+    .onRequest((a) => handler(askOf(deps.routes, a, deps.keyring)), o);
 }

@@ -695,3 +695,165 @@ describe("keyring: the pin (a changed ring is never adopted silently)", () => {
     expect(await a.client.keyring.pin()).toBeNull();
   });
 });
+
+describe("keyring: the wrap a nearby approver sends (KEYRING_WRAP, I-47.10)", () => {
+  const A = "DEVICEAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  const B = "DEVICEBBBBBBBBBBBBBBBBBBBBBBBBBB";
+  const bytes = (o: unknown): Uint8Array =>
+    new TextEncoder().encode(JSON.stringify(o));
+
+  /** A holds the ring and a sealed value; it wraps the root to B and sends the body. */
+  async function wrapped() {
+    const s = new FakeRing();
+    const a = await device(s, A);
+    const b = await device(s, B);
+    await a.client.keyring.create();
+    const sealed = await a.client.keyring.codec.seal("notes", "n1", { x: 1 });
+    const bKeys = await b.keys.ensure();
+    const body = await a.client.keyring.wrapTo(B, bKeys.agreeKey);
+    return { s, a, b, body, sealed };
+  }
+
+  it("wrapTo answers the wrap it stored, with its ring: the body of the KEYRING_WRAP record", async () => {
+    const { s, body, a } = await wrapped();
+    const stored = s.wraps.get(B)!;
+    const { ringId, ...put } = body;
+    expect(put).toEqual({
+      epoch: stored.epoch,
+      kid: stored.kid,
+      kem: stored.kem,
+      enc: stored.enc,
+      ct: stored.ct,
+    });
+    expect(ringId).toBe((await a.client.keyring.pin())!.ringId);
+    expect(Object.keys(body).sort()).toEqual([
+      "ct",
+      "enc",
+      "epoch",
+      "kem",
+      "kid",
+      "ringId",
+    ]);
+    // The PUT is what the Worker saw: no ring id in it.
+    const put1 = s.reqs.find((r) => r.method === "PUT")!;
+    expect(put1.body).not.toHaveProperty("ringId");
+  });
+
+  it("adoptWrap opens the channel copy against a fresh read of the ring and pins it", async () => {
+    const { s, b, body, sealed } = await wrapped();
+    // The server copy is not needed: the channel copy is.
+    s.wraps.delete(B);
+    s.reqs.length = 0;
+    expect(await b.client.keyring.adoptWrap(bytes(body))).toMatchObject({
+      kind: "unlocked",
+      ringId: body.ringId,
+    });
+    expect(s.reqs.map((r) => `${r.method} ${r.path}`)).toEqual(["GET /"]);
+    expect(b.client.keyring.unlocked).toBe(true);
+    expect(await b.client.keyring.pin()).toEqual({
+      ringId: body.ringId,
+      epoch: body.epoch,
+      rootKid: body.kid,
+    });
+    expect(
+      await b.client.keyring.codec.open("notes", "n1", sealed),
+    ).toMatchObject({ ok: true, value: { x: 1 } });
+  });
+
+  it("takes the body wrapTo returned as an object as well", async () => {
+    const { b, body } = await wrapped();
+    expect((await b.client.keyring.adoptWrap(body)).kind).toBe("unlocked");
+  });
+
+  it("a record that does not match the served ring, or does not parse, opens nothing", async () => {
+    const { b, body } = await wrapped();
+    const flip = (v: string): string =>
+      v.slice(0, -1) + (v.endsWith("A") ? "B" : "A");
+    const bad: [string, Uint8Array][] = [
+      ["another ring", bytes({ ...body, ringId: "rg_" + "x".repeat(22) })],
+      ["another epoch", bytes({ ...body, epoch: body.epoch + 1 })],
+      ["another kid", bytes({ ...body, kid: "00".repeat(32) })],
+      ["another kem", bytes({ ...body, kem: 16 })],
+      ["a string kem", bytes({ ...body, kem: "x25519" })],
+      ["a tampered ciphertext", bytes({ ...body, ct: flip(body.ct) })],
+      ["a tampered key", bytes({ ...body, enc: flip(body.enc) })],
+      ["a missing member", bytes({ ringId: body.ringId, epoch: body.epoch })],
+      ["not JSON", new TextEncoder().encode("{nope")],
+      ["a list", bytes([body])],
+      ["empty", new Uint8Array(0)],
+      ["too long", new Uint8Array(5000).fill(32)],
+    ];
+    for (const [name, record] of bad) {
+      const r = await b.client.keyring.adoptWrap(record);
+      expect(r, name).toMatchObject({
+        kind: "locked",
+        reason: "unusable-wrap",
+      });
+      expect(b.client.keyring.unlocked, name).toBe(false);
+    }
+    expect(await b.client.keyring.pin()).toBeNull();
+  });
+
+  it("a wrap to another device's key does not open", async () => {
+    const { s, a, body } = await wrapped();
+    const c = await device(s, "DEVICECCCCCCCCCCCCCCCCCCCCCCCCCC");
+    expect(await c.client.keyring.adoptWrap(body)).toMatchObject({
+      kind: "locked",
+      reason: "unusable-wrap",
+    });
+    expect(c.client.keyring.unlocked).toBe(false);
+    void a;
+  });
+
+  it("no ring on the Worker: locked, nothing opened", async () => {
+    const { s, b, body } = await wrapped();
+    s.ring = null;
+    expect(await b.client.keyring.adoptWrap(body)).toEqual({
+      kind: "locked",
+      reason: "no-ring",
+    });
+  });
+
+  it("a ring other than the pinned one is ring-changed, and the held root stays", async () => {
+    const s = new FakeRing();
+    const victim = await device(s, B);
+    await victim.client.keyring.create();
+    const attacker = await device(s, A);
+    await attacker.client.keyring.reset();
+    const body = await attacker.client.keyring.wrapTo(
+      B,
+      (await victim.keys.ensure()).agreeKey,
+    );
+    const mine = victim.client.keyring.codec.kid;
+    const r = await victim.client.keyring.adoptWrap(bytes(body));
+    expect(r.kind).toBe("ring-changed");
+    // Still on the old root, and still pinned to the old ring.
+    expect(victim.client.keyring.codec.kid).toBe(mine);
+    expect(victim.client.keyring.unlocked).toBe(true);
+    expect((await victim.client.keyring.pin())!.ringId).not.toBe(body.ringId);
+  });
+
+  it("keeps the channel copy over a server copy that differs", async () => {
+    const { s, b, body, sealed } = await wrapped();
+    expect((await b.client.keyring.adoptWrap(body)).kind).toBe("unlocked");
+    // The server's copy is replaced by one that cannot open.
+    s.wraps.set(B, { ...s.wraps.get(B)!, ct: "AAAA" });
+    expect(await b.client.keyring.unlock()).toMatchObject({
+      kind: "unlocked",
+    });
+    expect(b.client.keyring.unlocked).toBe(true);
+    expect(
+      await b.client.keyring.codec.open("notes", "n1", sealed),
+    ).toMatchObject({ ok: true });
+  });
+
+  it("needs a token, with a typed error, and sends nothing", async () => {
+    const { s, b, body } = await wrapped();
+    (
+      b.client as unknown as { tokens: { clear(): Promise<void> } }
+    ).tokens.clear();
+    s.reqs.length = 0;
+    expect(await codeOf(b.client.keyring.adoptWrap(body))).toBe("no-token");
+    expect(s.reqs).toEqual([]);
+  });
+});

@@ -38,6 +38,7 @@ import { ChoiceClient } from "./choice.js";
 import { NearbyRoutes } from "./nearby.js";
 import {
   onNearbyRequest,
+  type NearbyApproverKeyring,
   type NearbyApproverLan,
   type NearbyAsk,
 } from "./nearbyApprover.js";
@@ -47,6 +48,7 @@ import type {
 } from "../connect/nearbyApprover.js";
 import {
   startNearbySignIn,
+  type NearbyKeyring,
   type NearbyLan,
   type NearbySignInOptions,
   type NearbySignInSession,
@@ -134,6 +136,8 @@ export interface NearbyBinding {
   refreshDiscovery(): Promise<ProductDiscoveryDocument | null>;
   /** The LAN half of nearby approval (`cloudConnect.nearby`). */
   lan(): NearbyLan & NearbyApproverLan;
+  /** The key ring: a wrap sent to a new device, a wrap taken from the channel. */
+  keyring(): NearbyKeyring & NearbyApproverKeyring;
 }
 
 /** Raised after a sign-in mints a credential; the facade syncs. */
@@ -277,7 +281,7 @@ export class IdentityClient {
           ),
         );
       return onNearbyRequest(
-        { routes: this.nearbyRoutes, lan: () => b.lan() },
+        { routes: this.nearbyRoutes, lan: () => b.lan(), keyring: b.keyring() },
         handler,
         o,
       );
@@ -346,6 +350,7 @@ export class IdentityClient {
             ctx: this.ctx,
             routes: this.nearbyRoutes,
             lan: () => b.lan(),
+            keyring: b.keyring(),
             signOut: () => this.signOut(),
           },
           opts,

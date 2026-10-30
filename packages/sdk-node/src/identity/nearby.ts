@@ -21,6 +21,7 @@
 //    longer names nearby, otherwise it stays a refusal (an unknown, expired or decided request);
 //  - the request handle, the proofs and the token are in no print, repr or error message.
 
+import type { VouchRequest } from "@polaris-key/client-core/peer";
 import {
   PolarisError,
   UnsupportedError,
@@ -90,14 +91,43 @@ export type NearbyPoll =
       identity: ShownIdentity;
     };
 
-/** What `approve` takes: exactly what D's verified `VOUCH_REQ` carried, and the decision. */
-export interface NearbyApproveInput {
-  request: string;
-  deviceId: string;
-  signKey: string;
-  agreeKey: string;
+declare const GRANTED: unique symbol;
+
+/**
+ * The verified `VOUCH_REQ` of a session whose person picked the matching code (`pick()` of
+ * CC-15's approval, V5 §15.6.1 rule 10). `approve` takes nothing else: it is not built from a
+ * handle and keys, and only {@link grantApproval} makes one. A frozen copy, so what was granted is
+ * what is sent.
+ */
+export type VerifiedVouch = Readonly<VouchRequest> & {
+  readonly [GRANTED]: true;
+};
+
+/** The decisions of a granted vouch. */
+export interface NearbyDecision {
   decision: "approve" | "deny";
   choice?: NearbyChoiceInput;
+}
+
+const grants = new WeakSet<object>();
+
+/**
+ * The permit: mark the `VouchRequest` that `pick()` returned for a matched code, on a live
+ * session, as the one `nearby/approve` may be called with. Only the approver (nearbyApprover.ts)
+ * calls it, right after `pick()`; a permit is a frozen copy, kept in a set no other module can
+ * reach, so an object built any other way is refused by {@link NearbyRoutes.approve}.
+ */
+export function grantApproval(v: VouchRequest): VerifiedVouch {
+  const permit = Object.freeze({
+    request: v.request,
+    deviceId: v.deviceId,
+    signKey: v.signKey,
+    agreeKey: v.agreeKey,
+    label: v.label,
+    platform: v.platform,
+  });
+  grants.add(permit);
+  return permit as VerifiedVouch;
 }
 
 /** One `nearby/approve` answer (§12.11.5). Every variant carries what `finish()` takes. */
@@ -386,6 +416,15 @@ export class NearbyRoutes {
     };
   }
 
+  /**
+   * @internal Conformance replay only (reached through a typed cast, like {@link signProof}): the
+   * permit for a vouch the replay builds from a recording, which may carry other keys than D's to
+   * prove the Worker refuses them. Nothing in the SDK calls it.
+   */
+  grantForReplay(v: VouchRequest): VerifiedVouch {
+    return grantApproval(v);
+  }
+
   // ── M ───────────────────────────────────────────────────────────────────────────────────
 
   /**
@@ -394,7 +433,16 @@ export class NearbyRoutes {
    * device_keys_required` registers the keys and retries once. A refusal is an answer, not a
    * throw; only a missing endpoint, a missing sign-in and a transport failure throw.
    */
-  async approve(a: NearbyApproveInput): Promise<NearbyApproveAnswer> {
+  async approve(
+    a: VerifiedVouch,
+    d: NearbyDecision,
+  ): Promise<NearbyApproveAnswer> {
+    // No silent approval: only a vouch the approver granted after a matched pick goes out.
+    if (!grants.has(a))
+      throw new PolarisError(
+        ErrorCode.invalidOptions,
+        "Nearby approval is refused: the person has not picked the matching code on this session.",
+      );
     const url = await this.#endpoint("nearbyApprove");
     const { ctx, tokens } = this.#d;
     const bearer = tokens.current;
@@ -427,8 +475,8 @@ export class NearbyRoutes {
               deviceId: a.deviceId,
               signKey: a.signKey,
               agreeKey: a.agreeKey,
-              decision: a.decision,
-              ...(a.choice !== undefined ? { choice: a.choice } : {}),
+              decision: d.decision,
+              ...(d.choice !== undefined ? { choice: d.choice } : {}),
               proof,
             }),
           },

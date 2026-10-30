@@ -15,7 +15,10 @@ import type {
   NearbyApproval,
 } from "../src/connect/nearbyApprover.js";
 import { LanError } from "../src/connect/session.js";
-import { onNearbyRequest } from "../src/identity/nearbyApprover.js";
+import {
+  onNearbyRequest,
+  type NearbyApproverKeyring,
+} from "../src/identity/nearbyApprover.js";
 import type {
   NearbyApprovalStep,
   NearbyAsk,
@@ -101,6 +104,7 @@ interface Approver {
 async function approver(
   worker: Record<string, Handler>,
   token: string | null = "pkeyt_m",
+  keyring?: NearbyApproverKeyring,
 ): Promise<Approver> {
   const { client, seen } = await nearbyClient(worker, {
     token,
@@ -113,6 +117,7 @@ async function approver(
   await onNearbyRequest(
     {
       routes,
+      ...(keyring ? { keyring } : {}),
       lan: () => ({
         onRequest: async (h) => {
           deliver = h;
@@ -514,5 +519,144 @@ describe("onRequest: nothing secret is printed", () => {
       expect(out).not.toContain(REQ);
       expect(out).not.toContain(proof);
     }
+  });
+});
+
+describe("onRequest: the key ring wrap (I-47.10)", () => {
+  const BODY = {
+    ringId: "rg_" + "r".repeat(22),
+    epoch: 1,
+    kid: "ab".repeat(32),
+    kem: 32,
+    enc: "e",
+    ct: "c",
+  };
+
+  function ring(o: { unlocked?: boolean; fail?: boolean } = {}) {
+    const calls: [string, string][] = [];
+    const keyring: NearbyApproverKeyring = {
+      unlocked: o.unlocked ?? true,
+      wrapTo: async (id, key) => {
+        calls.push([id, key]);
+        if (o.fail) throw new Error("conflict");
+        return BODY;
+      },
+    };
+    return { keyring, calls };
+  }
+
+  const sentWraps = (a: FakeApproval) =>
+    a.sent.map((r) => [r.type, JSON.parse(new TextDecoder().decode(r.body))]);
+
+  it("after approved, wraps to the verified request's device and key, and sends the same wrap once", async () => {
+    const { keyring, calls } = ring();
+    const w = await approver({ [APPROVE]: approved }, "pkeyt_m", keyring);
+    const { ask: s, a } = await ask(w);
+    expect(await s.pick(RIGHT)).toEqual({ kind: "approved" });
+    expect(calls).toEqual([[VOUCH.deviceId, VOUCH.agreeKey]]);
+    expect(sentWraps(a)).toEqual([[0x0030, BODY]]);
+    // VOUCH_RESULT went first: the wrap follows the approval.
+    expect(a.sentResults).toEqual(["approved"]);
+    // Asking again never wraps again.
+    await s.pick(RIGHT);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("sends no wrap when the root is not held here", async () => {
+    const { keyring, calls } = ring({ unlocked: false });
+    const w = await approver({ [APPROVE]: approved }, "pkeyt_m", keyring);
+    const { ask: s, a } = await ask(w);
+    expect(await s.pick(RIGHT)).toEqual({ kind: "approved" });
+    expect(calls).toEqual([]);
+    expect(a.sent).toEqual([]);
+  });
+
+  it("sends no wrap without a key ring", async () => {
+    const w = await approver({ [APPROVE]: approved });
+    const { ask: s, a } = await ask(w);
+    await s.pick(RIGHT);
+    expect(a.sent).toEqual([]);
+  });
+
+  it("wraps to nobody unless the Worker approved: a wrong pick, a refusal, a denial, a lost mint", async () => {
+    for (const handler of [
+      () => json({ error: { code: "not_nearby" } }, 403),
+      () => json({ error: { code: "device_limit" } }, 403),
+      () => json({ error: { code: "not_found" } }, 404),
+      () => new Response(null, { status: 204 }),
+      () => json({ error: { code: "license_choice_required" } }, 409),
+    ] as Handler[]) {
+      const { keyring, calls } = ring();
+      const w = await approver({ [APPROVE]: handler }, "pkeyt_m", keyring);
+      const { ask: s, a } = await ask(w);
+      await s.pick(RIGHT);
+      expect(calls).toEqual([]);
+      expect(a.sent).toEqual([]);
+    }
+    const { keyring, calls } = ring();
+    const w = await approver({ [APPROVE]: approved }, "pkeyt_m", keyring);
+    const { ask: s } = await ask(w);
+    expect(await s.pick("111 111")).toEqual({ kind: "mismatch" });
+    expect(calls).toEqual([]);
+  });
+
+  it("a licence choice wraps once, after the final approve", async () => {
+    const { keyring, calls } = ring();
+    let first = true;
+    const w = await approver(
+      {
+        [APPROVE]: (r) => {
+          const b = JSON.parse(r.body!);
+          if (first && b.choice === undefined) {
+            first = false;
+            return json({ status: "choose", choices: { state: "choose" } });
+          }
+          return approved({} as never);
+        },
+      },
+      "pkeyt_m",
+      keyring,
+    );
+    const { ask: s, a } = await ask(w);
+    const step = await s.pick(RIGHT);
+    if (step.kind !== "choose") throw new Error(step.kind);
+    expect(calls).toEqual([]);
+    await step.choose({ kind: "create" });
+    expect(calls).toHaveLength(1);
+    expect(a.sent).toHaveLength(1);
+  });
+
+  it("a failed wrap, or a failed send, leaves the approval standing", async () => {
+    const failing = ring({ fail: true });
+    const w = await approver(
+      { [APPROVE]: approved },
+      "pkeyt_m",
+      failing.keyring,
+    );
+    const { ask: s, a } = await ask(w);
+    expect(await s.pick(RIGHT)).toEqual({ kind: "approved" });
+    expect(a.sent).toEqual([]);
+
+    const ok = ring();
+    const w2 = await approver({ [APPROVE]: approved }, "pkeyt_m", ok.keyring);
+    const b = new FakeApproval();
+    b.sendRecord = async () => {
+      throw new LanError("closed", "gone");
+    };
+    const { ask: s2 } = await ask(w2, b);
+    expect(await s2.pick(RIGHT)).toEqual({ kind: "approved" });
+  });
+
+  it("a channel that ended still gets the server copy of the wrap", async () => {
+    const { keyring, calls } = ring();
+    const w = await approver({ [APPROVE]: approved }, "pkeyt_m", keyring);
+    const a = new FakeApproval();
+    a.finishError = new LanError("closed", "gone");
+    a.sendRecord = async () => {
+      throw new LanError("closed", "gone");
+    };
+    const { ask: s } = await ask(w, a);
+    expect(await s.pick(RIGHT)).toEqual({ kind: "approved" });
+    expect(calls).toHaveLength(1);
   });
 });

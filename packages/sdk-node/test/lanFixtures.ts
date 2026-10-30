@@ -241,6 +241,7 @@ export async function makeClient(
     await store.setToken(tokenOf(n));
   }
   const stateDir = tmpDir(dirs);
+  const keys = createNodeDeviceKeyStore({ product: PRODUCT, stateDir });
   const client = new PolarisKeyClient({
     productSlug: PRODUCT,
     baseUrl: BASE,
@@ -252,9 +253,9 @@ export async function makeClient(
     store,
     fetchImpl: worker.fetch,
     stateDir,
-    connect: {
-      deviceKeys: createNodeDeviceKeyStore({ product: PRODUCT, stateDir }),
-    },
+    // One key store for Connect and the key ring: both are this device's identity.
+    connect: { deviceKeys: keys },
+    keyring: { deviceKeys: keys },
   });
   await client.init();
   return client;

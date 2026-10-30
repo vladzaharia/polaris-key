@@ -54,8 +54,11 @@ export interface RoutesLike {
   signProof: ((port: never, f: ProofFields) => Promise<string>) | undefined;
   start(o: { deviceName?: string }): Promise<StartedLike>;
   poll(s: StartedLike): Promise<Record<string, unknown> & { kind: string }>;
+  /** The permit for a vouch built from the recording (a replay-only seam, see nearby.ts). */
+  grantForReplay(v: Record<string, unknown>): object;
   approve(
-    a: Record<string, unknown>,
+    v: object,
+    d: { decision: unknown; choice?: unknown },
   ): Promise<Record<string, unknown> & { kind: string }>;
 }
 export interface ProofFields {
@@ -177,11 +180,16 @@ export async function nearbyAction(c: NearbyStepContext): Promise<Observed> {
       typeof a.agreeKeyLabel === "string"
         ? fixtureKeys(a.agreeKeyLabel).agreeKey
         : d.keys.agreeKey;
-    const r = await m.routes.approve({
+    // The replay vouches for what the recording sent (it may carry other keys than D's).
+    const vouch = m.routes.grantForReplay({
       request: a.request,
       deviceId: t.initial.deviceId,
       signKey: d.keys.signKey,
       agreeKey,
+      label: null,
+      platform: "linux",
+    });
+    const r = await m.routes.approve(vouch, {
       decision: a.decision,
       ...(a.choice !== undefined ? { choice: a.choice } : {}),
     });
