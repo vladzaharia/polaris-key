@@ -1,5 +1,5 @@
 // WIRE-CONTRACT-V5 §15.5 and §15.6: one `pkey-peer/1` session, per mode (a account, v approver,
-// p pair). It owns no socket: Noise messages come in through `receive` (already de-framed) and go
+// p pair, c contact). It owns no socket: Noise messages come in through `receive` (already de-framed) and go
 // out through the `send` callback, so the same machine runs over TCP, the relay or memory.
 //
 // Order: Noise XX (XXpsk0 in mode a) with the payload rules of §15.5; in mode a each side verifies
@@ -7,8 +7,17 @@
 // which must be the first record; then, in modes v and p, the commit-reveal SAS. Nothing is
 // delivered to the host (`record` events) before that. Every failure ends the session; before the
 // transport exists nothing is sent, after it a CLOSE record names the code.
+//
+// Mode c (§15.10) is mode a without a certificate: XXpsk0 under a contact's secret, the device's
+// agreeKey as the static key, no code. The remote static key must equal the contact's agreeKey. A
+// mode-p session can also run the contact exchange (`exchange`): after both CONFIRMs each side
+// sends CONTACT, and the session answers with a `contact` event carrying the new secret.
 
-import { base64UrlEncodeBytes, type TrustSet } from "@polaris-key/jws";
+import {
+  base64UrlDecode,
+  base64UrlEncodeBytes,
+  type TrustSet,
+} from "@polaris-key/jws";
 import { cleanApp, cleanLabel, cleanPlatform } from "./display.js";
 import { admitPeer, replaceRing, ringExpired, verifyRing } from "./cert.js";
 import {
@@ -49,6 +58,16 @@ import {
   encodeSasValue,
 } from "./sas.js";
 import { VOUCH_CAP, VouchFlow } from "./vouch.js";
+import {
+  CONTACT_EXCHANGE_SECONDS,
+  ContactExchange,
+  MAX_CONTACTS,
+  buildContact,
+  contactSecret,
+  type ContactBody,
+  type ExchangeEvent,
+  type ExchangeStep,
+} from "./contact.js";
 
 const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
 const NONE = new Uint8Array(0);
@@ -82,14 +101,41 @@ export interface AccountContext {
   discKeys: readonly (Uint8Array | null)[];
 }
 
+/** A contact the device holds (mode c): its secret and the peer's agreeKey. */
+export interface ContactLink {
+  /** The 32-byte contact secret, the PSK. */
+  secret: Uint8Array;
+  /** The peer's agreeKey, 43 canonical base64url characters: the remote static key must equal it. */
+  agreeKey: string;
+}
+
+/** This device's side of the contact exchange (mode p, §15.10). */
+export interface ContactOffer {
+  /** This device's own agreeKey, 43 canonical base64url characters. */
+  agreeKey: string;
+  label?: string;
+  /** The data categories this side's person approved (at most 8, `^[a-z0-9-]{1,32}$`). */
+  cats: readonly string[];
+}
+
 export interface PeerSessionOptions {
   mode: PeerMode;
   role: "initiator" | "responder";
   slug: string;
-  /** The X25519 private key: the device's agreeKey in mode a, a one-time key in v and p. */
+  /** The X25519 private key: the device's agreeKey in modes a and c, a one-time key in v and p. */
   staticKey: Uint8Array;
   /** Mode a only. */
   account?: AccountContext;
+  /**
+   * Mode c only: the contacts the device holds for the product, in the order it holds them, at
+   * most 64. The initiator names exactly one. The responder tries each secret in order.
+   */
+  contacts?: readonly ContactLink[];
+  /**
+   * Mode p only: take part in the contact exchange. The session then owns `CONFIRM` and
+   * `CONTACT` and ends it with a `contact` event; without it the host sees both as records.
+   */
+  exchange?: ContactOffer;
   /** Capabilities this side offers. */
   caps?: readonly string[];
   hello: { label?: string; platform: string; app: string; maxMessage?: number };
@@ -128,6 +174,8 @@ export type SessionEvent =
       remoteStatic: Uint8Array;
       /** Mode a: the admitted certificate's device id. */
       peerDeviceId?: string;
+      /** Mode c: the index, in `contacts`, of the contact the peer is. */
+      contactIndex?: number;
     }
   /** Modes v and p: the code both screens show; the host calls `confirmSas()` when the person agrees. */
   | { type: "sas"; code: number; display: string }
@@ -137,6 +185,12 @@ export type SessionEvent =
    * understand.
    */
   | { type: "record"; recordType: number; body: Uint8Array }
+  /**
+   * Mode p with `exchange`: the peer's valid `CONTACT`, read in order. `secret` is the new contact
+   * secret (key material: store it, never log it). The host stores the contact and closes
+   * `peer_bye`.
+   */
+  | ({ type: "contact"; secret: Uint8Array } & ContactBody)
   /** Mode a: a roster that replaced the held one at `epoch`; the host stores it. */
   | { type: "ring"; jws: string; epoch: number }
   /** Mode a: a `TRUST` document the peer sent. Not verified here; the host verifies it (V4 §1). */
@@ -196,13 +250,32 @@ export class PeerSession {
   private peerRemote: Uint8Array | null = null;
   private flow: VouchFlow | null = null;
   private hash: Uint8Array | null = null;
+  private contactIdx = -1;
+  private readonly xchg: ContactExchange | null;
 
   constructor(private readonly o: PeerSessionOptions) {
     if ((o.mode === "a") !== (o.account !== undefined))
       throw new RangeError("account context");
+    if (o.mode === "c") {
+      const n = o.contacts?.length ?? 0;
+      if (n < 1 || n > MAX_CONTACTS || (o.role === "initiator" && n !== 1))
+        throw new RangeError("contacts");
+      if (o.contacts!.some((c) => c.secret.length !== 32))
+        throw new RangeError("contacts");
+    } else if (o.contacts !== undefined) throw new RangeError("contacts");
+    if (o.exchange !== undefined && o.mode !== "p")
+      throw new RangeError("exchange is for mode p");
+    this.xchg =
+      o.exchange !== undefined
+        ? new ContactExchange(o.exchange.agreeKey)
+        : null;
     if (o.holdSas === true && (o.mode !== "v" || o.role !== "initiator"))
       throw new RangeError("holdSas is for the mode v initiator");
-    if (o.mode !== "a" && o.role === "responder" && o.admission === undefined)
+    if (
+      (o.mode === "v" || o.mode === "p") &&
+      o.role === "responder" &&
+      o.admission === undefined
+    )
       throw new RangeError("an approver needs an admission limiter");
     this.ports = o.ports ?? webCryptoNoisePorts;
     this.now = o.now ?? ((): number => Math.floor(Date.now() / 1000));
@@ -281,6 +354,16 @@ export class PeerSession {
       this.settle();
       if (this.o.mode === "p")
         await this.emitRecords(RECORD.CONFIRM, utf8("{}"));
+      if (this.xchg !== null) {
+        // The peer's CONTACT must follow within CONTACT_EXCHANGE_SECONDS of this CONFIRM.
+        this.cancels.push(
+          this.timer(
+            () => void this.run(() => this.exchangeStep({ event: "timeout" })),
+            CONTACT_EXCHANGE_SECONDS * 1000,
+          ),
+        );
+        await this.exchangeStep({ event: "own-confirm" });
+      }
       const q = this.queued;
       this.queued = [];
       for (const m of q)
@@ -300,7 +383,8 @@ export class PeerSession {
     if (this.started) return;
     this.started = true;
     this.transportCancel = this.guard(TRANSPORT_DEADLINE_SECONDS);
-    if (this.o.mode !== "a") this.sasCancel = this.guard(SAS_DEADLINE_SECONDS);
+    if (this.o.mode === "v" || this.o.mode === "p")
+      this.sasCancel = this.guard(SAS_DEADLINE_SECONDS);
   }
 
   /** The transport is up: its deadline ends. */
@@ -336,7 +420,12 @@ export class PeerSession {
       if (this.o.mode === "a" && key === undefined)
         throw new SessionFail("handshake_failed");
       this.startClock();
-      this.hs = await this.newHandshake(key);
+      if (this.o.mode === "c") this.contactIdx = 0;
+      this.hs = await this.newHandshake(
+        this.o.mode === "c"
+          ? this.o.contacts![0]!.secret
+          : await this.pskOf(key),
+      );
       this.o.send(await this.hs.writeMessage(payload1()));
       this.hsStep = 1;
     });
@@ -371,7 +460,8 @@ export class PeerSession {
       type === RECORD.SAS_COMMIT ||
       type === RECORD.SAS_NONCE ||
       type === RECORD.SAS_REVEAL ||
-      (type === RECORD.CONFIRM && this.o.mode === "p")
+      (type === RECORD.CONFIRM && this.o.mode === "p") ||
+      (type === RECORD.CONTACT && this.xchg !== null)
     )
       return Promise.reject(new Error("record owned by the session"));
     if (body.length > this.maxSend)
@@ -422,15 +512,22 @@ export class PeerSession {
     this.o.onEvent({ type: "closed", code, byPeer });
   }
 
-  private async newHandshake(
+  /** The mode-a PSK of a discovery key; undefined in modes v and p. */
+  private async pskOf(
     discKey: Uint8Array | undefined,
-  ): Promise<NoiseHandshake> {
+  ): Promise<Uint8Array | undefined> {
+    return this.o.mode === "a"
+      ? await peerPsk(discKey!, this.o.slug)
+      : undefined;
+  }
+
+  private newHandshake(psk: Uint8Array | undefined): NoiseHandshake {
     const { mode, slug } = this.o;
     return new NoiseHandshake({
       role: this.o.role,
       protocol: peerNoiseProtocol(mode),
       prologue: peerPrologue(slug, mode),
-      psk: mode === "a" ? await peerPsk(discKey!, slug) : undefined,
+      psk,
       staticKey: this.o.staticKey,
       ports: this.ports,
     });
@@ -449,17 +546,24 @@ export class PeerSession {
   private async onHandshake(noise: Uint8Array): Promise<void> {
     const { mode, role } = this.o;
     if (role === "responder" && this.hs === null) {
-      // Message 1. In mode a try the current then the previous discovery key; a failed tag
+      // Message 1. In mode a try the current then the previous discovery key; in mode c try each
+      // contact's secret in held order (no DH happens before the tag); a failed tag on every one
       // closes silently.
       const keys: (Uint8Array | null | undefined)[] =
-        mode === "a" ? this.o.account!.discKeys.slice(0, 2) : [undefined];
+        mode === "a"
+          ? this.o.account!.discKeys.slice(0, 2)
+          : mode === "c"
+            ? this.o.contacts!.map((c) => c.secret)
+            : [undefined];
       let payload: Uint8Array | null = null;
-      for (const k of keys) {
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
         if (k === null) continue;
         try {
-          const h = await this.newHandshake(k);
+          const h = this.newHandshake(mode === "c" ? k : await this.pskOf(k));
           payload = await h.readMessage(noise);
           this.hs = h;
+          if (mode === "c") this.contactIdx = i;
           break;
         } catch {
           /* try the next key */
@@ -483,6 +587,14 @@ export class PeerSession {
     if (!verdict.ok) throw new SessionFail("handshake_failed");
     const remote = hs.remoteStatic!;
     let peerDeviceId: string | undefined;
+    if (mode === "c") {
+      // The pin (§15.10): the peer must be the key the contact was made with. Nothing is sent.
+      if (
+        base64UrlEncodeBytes(remote) !==
+        this.o.contacts![this.contactIdx]!.agreeKey
+      )
+        throw new SessionFail("peer_revoked");
+    }
     if (mode === "a") {
       const a = this.o.account!;
       const held = a.heldRing();
@@ -589,17 +701,23 @@ export class PeerSession {
       const p = this.pending!;
       this.pending = null;
       this.hash = this.hs!.handshakeHash.slice();
-      this.phase = this.o.mode === "a" ? "open" : "sas";
+      const direct = this.o.mode === "a" || this.o.mode === "c";
+      this.phase = direct ? "open" : "sas";
       this.o.onEvent({
         type: "established",
         caps,
         hello,
-        helloAuthenticated: this.o.mode === "a",
+        helloAuthenticated: direct,
         remoteStatic: p.remote,
         peerDeviceId: p.peerDeviceId,
+        ...(this.o.mode === "c" ? { contactIndex: this.contactIdx } : {}),
       });
       if (this.o.mode === "a") await this.pushRing();
-      else if (this.o.role === "initiator" && this.o.holdSas !== true) {
+      else if (
+        !direct &&
+        this.o.role === "initiator" &&
+        this.o.holdSas !== true
+      ) {
         // D commits first, unless the host holds the code back until it picks this approver.
         await this.commitSas();
       }
@@ -643,6 +761,20 @@ export class PeerSession {
       case RECORD.SAS_REVEAL:
         await this.onSas(type, body);
         return;
+      case RECORD.CONFIRM:
+      case RECORD.CONTACT:
+        if (this.xchg !== null) {
+          // With the exchange on, the session owns both. Only after the code is shown.
+          if (this.phase !== "sas-shown" && this.phase !== "open")
+            throw new SessionFail("peer_not_allowed");
+          await this.exchangeStep(
+            type === RECORD.CONFIRM
+              ? { event: "peer-confirm" }
+              : { event: "peer-contact", body },
+          );
+          return;
+        }
+        break;
       case RECORD.RING:
         await this.onRing(body);
         return;
@@ -743,6 +875,27 @@ export class PeerSession {
     this.sasDone = true;
     this.phase = "sas-shown";
     this.o.onEvent({ type: "sas", code, display: sasDisplay(code) });
+  }
+
+  /** Run one event through the contact exchange and act on what it says. */
+  private async exchangeStep(e: ExchangeEvent): Promise<void> {
+    const x = this.xchg!;
+    const r: ExchangeStep = x.step(e);
+    if (r.close !== undefined) throw new SessionFail(r.close);
+    // CONFIRM is sent by confirmSas itself; only CONTACT is the exchange's to send.
+    if (r.sends.includes("CONTACT"))
+      await this.emitRecords(RECORD.CONTACT, buildContact(this.o.exchange!));
+    if (r.stored !== undefined) {
+      const own = base64UrlDecode(this.o.exchange!.agreeKey);
+      const secret = await contactSecret(
+        this.hs!.handshakeHash,
+        this.nD!,
+        this.nM!,
+        own,
+        base64UrlDecode(r.stored.agreeKey),
+      );
+      this.o.onEvent({ type: "contact", secret, ...r.stored });
+    }
   }
 
   private async pushRing(): Promise<void> {

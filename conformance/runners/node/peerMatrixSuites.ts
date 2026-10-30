@@ -49,6 +49,25 @@ import {
   buildVouchResult,
   finishMap,
   parseVouchResult,
+  CONTACT_BODY_MAX,
+  CONTACT_EXCHANGE_SECONDS,
+  CONTACT_LEASE_BYTES,
+  CONTACT_ROOM_IDLE_SECONDS,
+  CONTACT_TICKET_BODY_MAX,
+  ContactExchange,
+  MAX_CONTACT_CATS,
+  MAX_CONTACTS,
+  MAX_LIVE_CONTACT_ADVERTS,
+  browseContactInstance,
+  contactAlias,
+  contactCategories,
+  contactInstance,
+  contactRid,
+  contactSecret,
+  parseContact,
+  parseContactTicketBody,
+  parseContactTxt,
+  type ExchangeEvent,
   verifyVouchRequest,
   type VouchRecord,
   type VouchStatus,
@@ -517,6 +536,122 @@ function vouch(m: PeerMatrix): void {
   });
 }
 
+/** The 32 or 43 raw bytes of a base64url string (padding optional). */
+const unb64 = (s: string): Uint8Array =>
+  Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
+    c.charCodeAt(0),
+  );
+
+/** A body row's bytes: hex, a text, or a prefix, a filler and a suffix. */
+function rowBytes(r: any): Uint8Array {
+  // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (r.bodyHex !== undefined) return unhex(r.bodyHex);
+  if (r.bodyPad !== undefined)
+    return utf8(
+      r.bodyPad.prefix +
+        r.bodyPad.fill.repeat(r.bodyPad.count) +
+        r.bodyPad.suffix,
+    );
+  return utf8(r.body);
+}
+
+function contact(m: PeerMatrix): void {
+  describe("peer-matrix contact", () => {
+    const c = m.contact;
+    it("constants", () => {
+      expect(c.constants).toEqual({
+        maxContacts: MAX_CONTACTS,
+        maxCats: MAX_CONTACT_CATS,
+        bodyMax: CONTACT_BODY_MAX,
+        ticketBodyMax: CONTACT_TICKET_BODY_MAX,
+        maxLiveAdverts: MAX_LIVE_CONTACT_ADVERTS,
+        leaseBytes: CONTACT_LEASE_BYTES,
+        roomIdleSeconds: CONTACT_ROOM_IDLE_SECONDS,
+        exchangeSeconds: CONTACT_EXCHANGE_SECONDS,
+      });
+    });
+    it("secrets", async () => {
+      for (const r of c.secrets)
+        expect(
+          hex(
+            await contactSecret(
+              unhex(r.h),
+              unhex(r.nD),
+              unhex(r.nM),
+              unb64(r.agreeKeyA),
+              unb64(r.agreeKeyB),
+            ),
+          ),
+          r.id,
+        ).toBe(r.secret);
+    });
+    it("bodies", () => {
+      for (const r of c.bodies) {
+        const b = rowBytes(r);
+        expect(b.length, r.id).toBe(r.length);
+        expect(parseContact(b, r.own), r.id).toEqual(r.want);
+      }
+    });
+    it("categories", () => {
+      for (const r of c.categories)
+        expect(contactCategories(r.local, r.remote), r.id).toEqual(r.want);
+    });
+    it("exchange", () => {
+      for (const r of c.exchange) {
+        const x = new ContactExchange(r.own);
+        r.steps.forEach((s: any, i: number) => {
+          // eslint-disable-line @typescript-eslint/no-explicit-any
+          const e: ExchangeEvent =
+            s.event === "peer-contact"
+              ? { event: "peer-contact", body: utf8(s.body) }
+              : s;
+          expect(x.step(e), `${r.id} step ${i}`).toEqual(r.want[i]);
+        });
+        expect(r.want, r.id).toHaveLength(r.steps.length);
+      }
+    });
+    it("advert names", async () => {
+      expect(c.adverts.epochSeconds).toBe(900);
+      for (const r of c.adverts.names)
+        expect(
+          await contactInstance(unhex(r.secret), unb64(r.agreeKey), r.epoch),
+          r.id,
+        ).toBe(r.instance);
+    });
+    it("advert txt", () => {
+      for (const r of c.adverts.txt)
+        expect(parseContactTxt(r.entries), r.id).toEqual(r.want);
+    });
+    it("advert browse", async () => {
+      for (const r of c.adverts.browse)
+        expect(
+          await browseContactInstance(
+            r.instance,
+            r.contacts.map((k: { secret: string; agreeKey: string }) => ({
+              secret: unhex(k.secret),
+              agreeKey: unb64(k.agreeKey),
+            })),
+            r.now,
+          ),
+          r.id,
+        ).toEqual(r.want);
+    });
+    it("room ids and aliases", async () => {
+      for (const r of c.rooms.rid)
+        expect(await contactRid(unhex(r.secret)), r.id).toBe(r.rid);
+      for (const r of c.rooms.alias)
+        expect(hex(await contactAlias(r.rid, r.deviceId)), r.id).toBe(r.alias);
+    });
+    it("tickets", () => {
+      for (const r of c.tickets) {
+        const b = rowBytes(r);
+        expect(b.length, r.id).toBe(r.length);
+        expect(parseContactTicketBody(b), r.id).toEqual(r.want);
+      }
+    });
+  });
+}
+
 /** Keys of the matrix that are not sections. */
 const META = new Set(["peerMatrixVersion", "description"]);
 
@@ -535,6 +670,7 @@ const SUITES: {
   { sections: ["lanAddresses"], run: lanAddresses },
   { sections: ["mdnsAnswers"], run: mdnsAnswers },
   { sections: ["vouch"], run: vouch },
+  { sections: ["contact"], run: contact },
 ];
 
 /** Register every suite whose sections the matrix has, and fail on a section no suite covers. */

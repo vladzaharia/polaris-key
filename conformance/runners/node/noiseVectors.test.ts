@@ -297,9 +297,10 @@ describe("noise vectors: handshakes", () => {
     it(`${h.id}: derivations, every message byte for byte, rekey`, async () => {
       expect(peerNoiseProtocol(h.mode)).toBe(h.protocol);
       expect(hex(peerPrologue(h.slug, h.mode))).toBe(h.prologue);
-      if (h.psk !== undefined) {
+      if (h.mode === "a") {
         // The mode-a PSK is HKDF(salt empty, ikm discovery key, info), V5 §15.5. The vector's
-        // discovery key is SHA-256 of a label.
+        // discovery key is SHA-256 of a label. Mode c's PSK is the contact secret itself; its
+        // derivation is peer-matrix.json `contact.secrets`.
         const kDisc = new Uint8Array(
           await crypto.subtle.digest(
             "SHA-256",
@@ -353,8 +354,13 @@ describe("noise vectors: handshakes", () => {
     });
   }
 
-  it("the three modes cover a, v and p", () => {
-    expect(V.handshakes.map((h) => h.mode).sort()).toEqual(["a", "p", "v"]);
+  it("the four modes cover a, c, p and v", () => {
+    expect(V.handshakes.map((h) => h.mode).sort()).toEqual([
+      "a",
+      "c",
+      "p",
+      "v",
+    ]);
   });
 });
 
@@ -390,8 +396,8 @@ describe("noise vectors: failures", () => {
     });
   }
 
-  it("covers the 15 failure rows", () => {
-    expect(V.failures).toHaveLength(15);
+  it("covers the 19 failure rows", () => {
+    expect(V.failures).toHaveLength(19);
   });
 });
 
