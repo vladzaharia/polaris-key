@@ -812,9 +812,9 @@ class NearbyApproverTest {
     }
 
     @Test
-    fun anHonestDWhoseLabelDoesNotCleanTwiceTheSameWayStillVerifies() = runBlocking<Unit> {
+    fun anHonestDWhoseLabelHasAnInvisibleBetweenBaseAndMarkStillVerifies() = runBlocking<Unit> {
         start()
-        // A zero-width space between a base letter and a combining acute: cleaning twice differs.
+        // A zero-width space between a base letter and a combining acute: the strip comes before NFC (N2).
         val d = RawD.dial(net, scope, RawDOptions(label = "e\u200b\u0301x"))
         ds += d
         d.waitFor { d.hello != null }
@@ -825,6 +825,6 @@ class NearbyApproverTest {
         val a = approvals[0]
         val r = (a.pick(shownOf(a, d)) as PickOutcome.Verified).request
         assertEquals(REQUEST, r.request)
-        assertEquals("e\u0301x", r.label)
+        assertEquals("\u00e9x", r.label)
     }
 }

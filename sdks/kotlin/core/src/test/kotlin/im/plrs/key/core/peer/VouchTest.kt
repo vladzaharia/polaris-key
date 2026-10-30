@@ -78,11 +78,12 @@ class VouchTest {
 
     @Test
     fun comparesTheLabelToAHelloTheSessionAlreadyCleaned() {
-        // A zero-width space between a base letter and a combining acute: one cleaning drops the space and
-        // keeps the marks apart; a second cleaning composes them into one letter.
+        // A zero-width space between a base letter and a combining acute (N2). The strip comes before NFC,
+        // so one cleaning composes the letter and a second one changes nothing.
         val raw = "e\u200b\u0301x"
         val once = cleanLabel(raw)!!
-        assertTrue(cleanLabel(once) != once)
+        assertEquals("\u00e9x", once)
+        assertEquals(once, cleanLabel(once))
         val b = runBlocking { buildVouchRequest(port, slug, h, request, device, VouchHello(raw, "linux")) }
         val ok = verifyVouchRequest(slug, h, VouchHello(once, "linux"), b, helloCleaned = true)
         assertEquals(once, ok?.label)
