@@ -25,7 +25,7 @@ import {
   type BrowserSessionSubject,
 } from "../browserSession.js";
 import { noticeOrigin } from "../accounts/libraryNotice.js";
-import { readBinder } from "../licenseChoice.js";
+import { appModeAccount, readBinder } from "../licenseChoice.js";
 import {
   attachClaimedLicenses,
   claimPlatformSubject,
@@ -302,22 +302,41 @@ export async function handleAuthCallback(
   // I-26: on a `provider: platform` product, a person whose Polaris Key account already owns a
   // usable licence chooses which one this device uses; nothing is minted here. Without the
   // trigger this returns null and the sign-in continues exactly as before.
-  const chooser = await beginLicenseChoice(
-    req,
-    env,
-    db,
-    product,
-    oidc,
-    state,
-    stateKey,
-    flow,
-    identity,
-    now,
-  );
+  // UK-42.22 (§12.10.1): a device start that asked `licenseChoice: "app"`, with an account to
+  // settle for, leaves the choice to the app. The legacy chooser never opens, and the flow is not
+  // refused for lacking an entitlement of its own: what the device may bind is decided at the
+  // bind, from the account's offer.
+  const appAccount =
+    flow.appChoice === true &&
+    isDeviceCodeFlow(flow) &&
+    product.services.license.enabled
+      ? await appModeAccount(
+          db,
+          product.slug,
+          oidc.row.provider,
+          oidc.issuer,
+          identity.sub,
+          flow.claimAccount,
+        )
+      : null;
+  const chooser = appAccount
+    ? null
+    : await beginLicenseChoice(
+        req,
+        env,
+        db,
+        product,
+        oidc,
+        state,
+        stateKey,
+        flow,
+        identity,
+        now,
+      );
   if (chooser) return chooser;
 
   if (isDeviceCodeFlow(flow)) {
-    if (await identityRefusal(db, product, identity, now)) {
+    if (!appAccount && (await identityRefusal(db, product, identity, now))) {
       await deleteArtefact(env, stateKey);
       // A person in a browser gets a page, never raw JSON.
       return signInRefusalPage(

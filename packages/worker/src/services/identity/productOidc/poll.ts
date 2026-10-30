@@ -12,6 +12,18 @@ import { getLicense, getLicenseBySub } from "../../../core/licensing/store.js";
 import { getDevice } from "../../../core/devices/store.js";
 import { authorizeDevice } from "../../../core/licensing/authz.js";
 import { noticeOrigin } from "../accounts/libraryNotice.js";
+import { appModeAccount } from "../licenseChoice.js";
+import { getAccountRow } from "../accounts/repo.js";
+import { deviceMetadata, NO_LICENSE_ID } from "../../../core/devices.js";
+import { subjectForOrNull } from "../../../core/accounts/accountSubjects.js";
+import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
+import { appendAudit } from "../../../core/audit.js";
+import { randomId } from "../../../platform/crypto.js";
+import { settleAppMode, type Settled } from "../passthrough/settle.js";
+import { bindChoice } from "../passthrough/bind.js";
+import { offerFor } from "../passthrough/choice.js";
+import { mintAccountLicense } from "../passthrough/mint.js";
+import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { attachClaimedLicenses } from "../accounts/platformMigration.js";
 import {
   consumeArtefact,
@@ -162,6 +174,8 @@ export async function pollAuthFlow(
   ask: DevicePollAsk = NO_ASK,
   /** The origin the library notice links to (the request's); `null`: no notice. */
   origin: string | null = null,
+  /** The poll's own request, which an app-mode settle needs (§12.10.1). `null`: card mode. */
+  req: Request | null = null,
 ): Promise<Response> {
   if (!state || !deviceId)
     return errorResponse(400, "bad_request", "missing state/device");
@@ -238,6 +252,34 @@ export async function pollAuthFlow(
           });
         }
       }
+      // UK-42.22 (§12.10.1): the start asked `licenseChoice: "app"` and there is an account to
+      // settle for. The licence choice is the app's, so the identity's own licence is never
+      // minted here: the flow is redeemed and the device either gets the grant (`choose`) or binds
+      // as `token` binds with no choice due.
+      const appAccountId =
+        flow.appChoice === true && req && product.services.license.enabled
+          ? await appModeAccount(
+              db,
+              product.slug,
+              (await getOidcConfig(db, product.slug))?.provider ?? null,
+              platformOidcConfig(env)?.issuer ?? "",
+              identity.sub,
+              flow.claimAccount,
+            )
+          : null;
+      if (appAccountId && req) {
+        if (flow.claimAccount)
+          await attachClaimedLicenses(env, db, flow.claimAccount, now, origin);
+        redeemed = await consumeArtefact(env, stateKey);
+        if (!redeemed) return json({ status: "timeout" });
+        return await settleDevicePoll(
+          { req, env, db, product, now },
+          flow,
+          appAccountId,
+          deviceId,
+          identity,
+        );
+      }
       // The device may already hold a seat on a licence that is not this identity's and that this
       // flow cannot take over (the same rule `authorizeDevice` applies). Decided BEFORE the
       // activation, so a refused sign-in leaves no licence behind. Same generic answer (D8).
@@ -289,6 +331,87 @@ export async function pollAuthFlow(
     // who confirmed and signed in as themselves binds the device to THEIR account, and the
     // player must be able to see that). Device-code flows only.
     ...(flow.identity ? { identity: shownIdentity(flow.identity) } : {}),
+  });
+}
+
+/**
+ * The app-mode end of a device-code poll (WIRE-CONTRACT-V5 §12.10.1), after the flow was redeemed:
+ * the grant the app finishes the choice with, or a device bound as `token` binds with no choice
+ * due. A refusal is final (rule 6) and a throw is transient (rule 5, the caller puts the flow back).
+ */
+async function settleDevicePoll(
+  cx: { req: Request; env: Env; db: Db; product: Product; now: number },
+  flow: FlowRecord,
+  accountId: string,
+  deviceId: string,
+  identity: OidcIdentity,
+): Promise<Response> {
+  const { req, env, db, product, now } = cx;
+  const account = await getAccountRow(db, accountId);
+  // The account may have been disabled or erased while the flow waited (N9): nothing is bound.
+  if (
+    !account ||
+    account.status !== "active" ||
+    (await erasureVerdict(env, now, account.id)) !== "clear"
+  )
+    return json({ status: "error" });
+  const subject = await subjectForOrNull(db, account.id, product.slug, now);
+  if (subject === null) return json({ status: "error" });
+  const who = { accountId: account.id, subject, email: account.primary_email };
+  const device = {
+    id: deviceId,
+    metadata: deviceMetadata(req),
+    label: normalizeDeviceLabel(flow.deviceName),
+    held: null,
+  };
+  // The poll is the press that creates the account's first licence, as Continue is on the web
+  // redirect: no candidate, nothing to keep, and the policy grants one. The mint is under the
+  // account's claim; losing it, or a licence that appeared meanwhile, is a transient failure and
+  // the retry sees the winner's licence (a candidate, hence a choice).
+  let settled: Settled | null = null;
+  const offer = await offerFor(cx, account.id, deviceId);
+  if (offer.candidates.length === 0 && !offer.keep && offer.granted) {
+    const minted = await mintAccountLicense(cx, account.id, "first", deviceId);
+    if (minted.kind === "lost" || minted.kind === "candidate")
+      throw new Error("first licence raced");
+    if (minted.kind === "minted")
+      settled = {
+        kind: "bound",
+        bound: await bindChoice(cx, who, device, {
+          kind: "license",
+          licenseId: minted.license.id,
+        }),
+      };
+  }
+  settled ??= await settleAppMode(cx, who, device, {
+    scope: [],
+    via: "device",
+    keepable: false,
+    proven: false,
+  });
+  if (settled.kind === "choose") return json(settled.pending);
+  if (!settled.bound.ok) return json({ status: "error" });
+  await appendAudit(db, {
+    product: product.slug,
+    id: randomId("aud"),
+    at: now,
+    actor_sub: subject,
+    actor_name: null,
+    actor_email: null,
+    action: "signin.devicecode",
+    target_kind: "device",
+    target_id: deviceId,
+    parent_id:
+      settled.bound.licenseId === NO_LICENSE_ID
+        ? null
+        : settled.bound.licenseId,
+    summary: "Signed in a device through device code",
+  });
+  return json({
+    status: "ready",
+    token: settled.bound.token,
+    schemaVersion: product.schemaVersion,
+    identity: shownIdentity(identity),
   });
 }
 
@@ -477,12 +600,18 @@ export async function handleAuthDevicePoll(
         typeof body.attachLicense === "boolean" ? body.attachLicense : null,
     },
     noticeOrigin(env, req),
+    req,
   );
   const bodyOut = (await res
     .clone()
     .json()
     .catch(() => null)) as { status?: string } | null;
-  if (bodyOut?.status === "ready" || bodyOut?.status === "timeout") {
+  // `choose` spends the flow too (§12.10.1): the grant is the only thing left to poll for.
+  if (
+    bodyOut?.status === "ready" ||
+    bodyOut?.status === "timeout" ||
+    bodyOut?.status === "choose"
+  ) {
     await deleteArtefact(env, deviceKey);
     await deleteUserCodeIndex(env, product.slug, deviceFlow.userCode);
   }

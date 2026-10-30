@@ -96,6 +96,10 @@ export interface FlowRecord {
   customerOk?: boolean;
   /** The label the device-code client sent (`deviceName`), for the chooser and its audit row. */
   deviceName?: string;
+  /** UK-42.22 (§12.10.1): the start asked `licenseChoice: "app"`. With an account to settle for
+   *  (`appModeAccount`) the legacy chooser never opens and the poll answers `choose`. Absent: card
+   *  mode, exactly as every flow was. */
+  appChoice?: true;
   /** I-26: the chooser is open. Nothing completes, and the poll answers `pending`, until the
    *  person's choice is recorded. */
   choiceOpen?: boolean;

@@ -284,6 +284,7 @@ paths:
                         configured: true
                         issuer: https://key.plrs.im/djdl/identity
                         account: true
+                        deviceChoice: true
                         keyEntryLimit: 10
                         endpoints:
                           session: https://key.plrs.im/djdl/identity/session
@@ -8400,7 +8401,7 @@ paths:
       tags: [identity]
       summary: Poll the device-code flow
       description: >
-        Four flow states, all at HTTP 200 unless noted: `pending` (nothing confirmed yet),
+        Five flow states, all at HTTP 200 unless noted: `pending` (nothing confirmed yet),
         `ready` (with the minted `pkeyt_` token), `timeout` (the flow record is gone,
         including immediately after a `ready`, which deletes it) and `error`, which names a
         reason only for a refusal (WIRE-CONTRACT-V4 §12.10, below). The body names `deviceCode` (the spelling `state` is
@@ -8442,6 +8443,18 @@ paths:
         answers the bare `error`, then `timeout`. A refusal at the mint is never a 503: it
         answers the bare `error` once and drops the flow. A client treats every 5xx on the poll
         as transient.
+
+
+        **`choose`** (UK-42.22, WIRE-CONTRACT-V5 §12.10.1) is answered only to a start that sent
+        `licenseChoice: "app"`, for a product that runs License, when a licence choice is due: the
+        account holds a candidate, the device runs on a licence outside the list (`keep`), or it
+        holds none and the product accepts keys. It carries a pending sign-in grant (`grant`,
+        300 s, bound to the flow's device, `via: device`) and the `choices` view, and the flow is
+        spent: the poll after it is `timeout`, and a client stops at `choose` and finishes with the
+        four `identity/choice` routes. That grant cannot list a licence's devices or Replace. With
+        no choice due the poll answers `ready` after binding as `token` does with no choice due. It
+        is never answered in card mode (absent or `card`), nor when no account can be found for
+        the signed-in identity: those polls are exactly the ones above.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: Authorization
@@ -8498,6 +8511,19 @@ paths:
                     schemaVersion: 1
                     identity: { name: Player, email: player@example.com }
                 timeout: { value: { status: timeout } }
+                choose:
+                  summary: test/services/identity/deviceChoicePoll.test.ts — a licence choice is due; the flow is spent
+                  value:
+                    status: choose
+                    grant: sg_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
+                    expiresIn: 300
+                    choices:
+                      state: choose
+                      choices: []
+                      keep: true
+                      preselected: null
+                      create: null
+                      getLicense: null
                 error:
                   summary: the sign-in failed after approval; the cause is not said
                   value: { status: error }
@@ -9249,7 +9275,8 @@ paths:
         the code (`X-PKey-Device` is required). JSON body, `no-store`, nested Polaris errors.
         Only while the product's Identity service is on.
         Answers only for a FULL licence in the grant's view whose Replace is allowed; every other
-        id gets the one `404`. Spends one read.
+        id gets the one `404`. Spends one read. A grant earned by a device code (`choose` from
+        `deviceAuthPoll`, WIRE-CONTRACT-V5 §12.5.1 rule 5) lists no devices: always the `404`.
       security: []
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -9314,7 +9341,10 @@ paths:
         `consent` in the body (`400 bad_request` without it, the grant left open); the consent
         row is written in the same press that binds the device. `choice.kind` is `license` (with an optional
         `replaceDeviceId`, committed in one batch with the device claim), `keep` (needs the device's own
-        `Authorization: Bearer`), `create` or `key`. A key is PX-W9's app key entry, counted once
+        `Authorization: Bearer`), `create` or `key`. A grant earned by a device code cannot Replace
+        (WIRE-CONTRACT-V5 §12.5.1 rule 5): a `replaceDeviceId` is `409 license_choice_required`
+        with a `view` whose rows have `replace: null`, and the grant stays open.
+        A key is PX-W9's app key entry, counted once
         with the device claim, and refuses with `license_owned` and `key_entry_limit`. A refusal the
         person can retry (`device_limit` with a fresh `view`, a lost mint, a wrong key) leaves
         the grant open for the time it has left.
@@ -29925,10 +29955,12 @@ components:
       properties:
         status:
           type: string
-          enum: [pending, confirm, ready, timeout, error]
+          enum: [pending, confirm, ready, timeout, error, choose]
           description: >
             `confirm` is `deviceAuthPoll` only, answered to a poll that asked to confirm the
             identity (`confirmIdentity` / `attachLicense`) once the player has signed in.
+            `choose` is `deviceAuthPoll` only, answered to a start that sent
+            `licenseChoice: "app"` when a licence choice is due (WIRE-CONTRACT-V5 §12.10.1).
         reason:
           type: string
           enum: [access_denied]
@@ -29950,6 +29982,14 @@ components:
           properties:
             name: { type: string }
             email: { type: string }
+        grant:
+          type: string
+          pattern: "^sg_[A-Za-z0-9_-]{43}$"
+          description: Present only on `choose` — the pending sign-in grant (`PendingSignIn`).
+        expiresIn:
+          type: integer
+          description: Present only on `choose` — the grant's lifetime in seconds (300).
+        choices: { $ref: "#/components/schemas/LicenseChoiceView" }
         attachable:
           type: boolean
           description: >

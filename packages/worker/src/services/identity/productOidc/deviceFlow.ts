@@ -156,6 +156,7 @@ export async function handleAuthDeviceStart(
       startPlace: (({ country, label }) => ({ country, label }))(
         requestLocation(req),
       ),
+      appChoice: parsed.hints?.licenseChoice === "app",
     },
   );
   if (flow instanceof Response) return flow;

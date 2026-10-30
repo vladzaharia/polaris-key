@@ -76,6 +76,28 @@ export async function identityWorld(): Promise<World> {
   return w;
 }
 
+/**
+ * The same product with the PLATFORM sign-in (`provider: platform`) and the I-17 claim on: the
+ * callback lands the verified subject on a Polaris Locker account (`claimAccount`), which is the
+ * account an app-mode device-code sign-in settles for (UK-42.22, WIRE-CONTRACT-V5 §12.10.1). The
+ * platform IdP is the same mocked issuer.
+ */
+export async function platformIdentityWorld(): Promise<World> {
+  const w = await productWorld(IDENTITY);
+  await seedTier(w.db, PRODUCT, "pro");
+  w.env.PLATFORM_OIDC_ISSUER = IDP_ISSUER;
+  w.env.PLATFORM_OIDC_CLIENT_ID = IDP_CLIENT_ID;
+  w.env.PLATFORM_OIDC_MIGRATION = "claim";
+  await w.db.run(
+    "INSERT INTO oidc_config (product, provider, redirect_uris_json, group_role_map_json) VALUES (?,?,?,?)",
+    PRODUCT,
+    "platform",
+    JSON.stringify([`${BASE_URL}/${PRODUCT}/identity/auth/callback`]),
+    JSON.stringify({ players: { role: "user", tier: "pro" } }),
+  );
+  return w;
+}
+
 /** A request from the player's BROWSER, outside the recording: no device headers, no bearer. */
 async function browser(
   w: World,
@@ -115,6 +137,7 @@ export async function playerSignsIn(
   now: number,
   verificationUriComplete: string,
   decision: "approve" | "deny" = "approve",
+  player: typeof PLAYER & { email_verified?: boolean } = PLAYER,
 ): Promise<void> {
   const complete = new URL(verificationUriComplete);
   const userCode = complete.searchParams.get("user_code")!;
@@ -140,7 +163,7 @@ export async function playerSignsIn(
   // The confirming browser holds the flow's binder; the callback must come back with it.
   const binder = (confirmed.headers.get("set-cookie") ?? "").split(";")[0]!;
 
-  const idToken = await signIdToken(PLAYER, nonce, now);
+  const idToken = await signIdToken(player, nonce, now);
   const callback = await answerTokenExchange(idToken, () =>
     browser(
       w,

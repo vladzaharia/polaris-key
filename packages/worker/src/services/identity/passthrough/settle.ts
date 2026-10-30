@@ -66,6 +66,8 @@ export interface SettleFacts {
   keys?: DeviceKeyPair;
   /** A same-device grant: the grant carries `fresh`, and `choice/complete` marks the step-up. */
   fresh?: true;
+  /** The grant is earned by a device code: it cannot list devices or Replace (§12.5.1 rule 5). */
+  via?: "device";
   /** The exchange found the person's consent standing: one free licence binds with no tap. */
   silentSingle?: boolean;
   /** Whether the device's own live token proved it (the rule `bindWithoutChoice` reads). */
@@ -120,6 +122,7 @@ export async function settleAppMode(
         scope: facts.scope,
         ...(facts.keys ? { keys: facts.keys } : {}),
         ...(facts.fresh ? { fresh: true as const } : {}),
+        ...(facts.via ? { via: facts.via } : {}),
       },
       now,
     );
@@ -131,6 +134,7 @@ export async function settleAppMode(
         expiresIn: CHOICE_GRANT_TTL_SECONDS,
         choices: await licenseChoiceView(choiceCx, req, who.accountId, {
           deviceId: device.id,
+          ...(facts.via === "device" ? { withholdReplace: true } : {}),
         }),
       },
     };

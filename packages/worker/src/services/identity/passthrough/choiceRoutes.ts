@@ -227,14 +227,19 @@ export async function handleChoice(
         ? fail(429, "rate_limited")
         : invalidGrant();
     const cx = { env, db, product, now };
+    // A device-code grant (§12.5.1 rule 5): the view withholds Replace, and the devices of a
+    // licence are not listed at all (the same `404` as any licence that is not replaceable).
+    const viaDevice = spent.record.via === "device";
     if (action === "licenses")
       return noStore(
         json(
           await licenseChoiceView(cx, req, spent.record.accountId, {
             deviceId,
+            ...(viaDevice ? { withholdReplace: true } : {}),
           }),
         ),
       );
+    if (viaDevice) return fail(404, ErrorCode.NotFound);
     const licenseId = (body as Partial<ChoiceDevicesRequest>).licenseId;
     // One 404 for a licence that is unknown, another account's, not full, or not replaceable.
     const view =
@@ -274,6 +279,21 @@ export async function handleChoice(
       ? fail(409, ErrorCode.LicenseChoiceRequired)
       : fail(400, ErrorCode.BadRequest);
   }
+  // A device-code grant cannot Replace (§12.5.1 rule 5): nothing is taken or burned, and the view
+  // it gets back withholds Replace.
+  if (
+    early.record.via === "device" &&
+    choice?.kind === "license" &&
+    choice.replaceDeviceId !== undefined
+  )
+    return fail(409, ErrorCode.LicenseChoiceRequired, {
+      view: await licenseChoiceView(
+        { env, db, product, now },
+        req,
+        early.record.accountId,
+        { deviceId, withholdReplace: true },
+      ),
+    });
   // A key is an online oracle for licence keys: each attempt is a read of the grant's budget.
   if (choice?.kind === "key") {
     const spent = await spendRead(env, product.slug, grant as string, deviceId);
@@ -365,7 +385,10 @@ export async function handleChoice(
               { env, db, product, now },
               req,
               account.id,
-              { deviceId },
+              {
+                deviceId,
+                ...(taken.via === "device" ? { withholdReplace: true } : {}),
+              },
             ),
           }
         : {};
