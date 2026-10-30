@@ -1002,6 +1002,9 @@
       "detekt:style.ReturnCount": 8,
       "ktlint:standard:enum-entry-name-case": 3
     },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/lan/AcceptGate.kt": {
+      "detekt:exceptions.SwallowedException": 1
+    },
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/lan/JvmMdns.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 2,
       "detekt:complexity.TooManyFunctions": 1,
@@ -1019,6 +1022,21 @@
     },
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/lan/TcpPipe.kt": {
       "detekt:exceptions.SwallowedException": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/nearby/NearbyApprover.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 14,
+      "detekt:exceptions.TooGenericExceptionCaught": 11,
+      "detekt:naming.EnumNaming": 7,
+      "detekt:style.ReturnCount": 3,
+      "detekt:style.ThrowsCount": 2,
+      "ktlint:standard:enum-entry-name-case": 7
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/nearby/NearbyErrors.kt": {
+      "detekt:naming.EnumNaming": 7,
+      "ktlint:standard:enum-entry-name-case": 7
     },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/Base64UrlTest.kt": {
       "detekt:exceptions.SwallowedException": 1,
@@ -1150,6 +1168,17 @@
     },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/lan/JvmMdnsTest.kt": {
       "detekt:exceptions.SwallowedException": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/nearby/NearbyApproverTest.kt": {
+      "detekt:complexity.LargeClass": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:style.UseCheckOrError": 1
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/nearby/NearbyFixtures.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:style.ReturnCount": 1
     },
     "sdks/kotlin/core/src/testFixtures/kotlin/im/plrs/key/core/testing/Fixtures.kt": {
       "detekt:complexity.LongParameterList": 2,

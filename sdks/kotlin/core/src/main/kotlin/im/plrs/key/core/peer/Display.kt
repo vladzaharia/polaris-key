@@ -21,3 +21,14 @@ internal fun cleanPlatform(raw: String): String = if (PLATFORM_DISPLAY.matches(r
 
 /** The app name, cleaned like a label; "Unknown" when nothing is left. */
 internal fun cleanApp(raw: String): String = cleanLabel(raw) ?: UNKNOWN_DISPLAY
+
+/** The `platform` a mode-v `HELLO` carries (display data): `android`, `darwin`, `win32` or `linux`. */
+public fun peerHostPlatform(): String {
+    if (System.getProperty("java.vendor").orEmpty().contains("Android")) return "android"
+    val os = System.getProperty("os.name").orEmpty().lowercase()
+    return when {
+        os.startsWith("mac") -> "darwin"
+        os.startsWith("win") -> "win32"
+        else -> "linux"
+    }
+}
