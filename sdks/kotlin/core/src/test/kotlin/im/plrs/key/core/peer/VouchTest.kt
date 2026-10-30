@@ -133,6 +133,12 @@ class VouchTest {
         assertFalse(parseVouchRequest(body)!!.toString().contains(request))
     }
 
+    @Test
+    fun theCloseCodesAreTheRegistrysPeerKind() {
+        val registry = im.plrs.key.core.ERROR_CODE_KINDS.filterValues { it == "peer" }.keys
+        assertEquals(registry, PeerCloseCode.values().map { it.name }.toSet())
+    }
+
     // -- VOUCH_RESULT -------------------------------------------------------------------------
 
     @Test
