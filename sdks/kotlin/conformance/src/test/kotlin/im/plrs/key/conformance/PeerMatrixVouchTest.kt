@@ -52,7 +52,7 @@ class PeerMatrixVouchTest : ConformanceSuite() {
 
     @Test
     fun hasTheRows() {
-        assertEquals(78, rows("requests").size)
+        assertEquals(80, rows("requests").size)
         assertEquals(26, rows("results").size)
         assertEquals(30, rows("flows").size)
         assertEquals(29, rows("finish").size)
@@ -84,7 +84,7 @@ class PeerMatrixVouchTest : ConformanceSuite() {
                 f.equal("peer_bad_frame", r.s("close")) { "$id close" }
             }
         }
-        f.done(78)
+        f.done(80)
     }
 
     private fun JsonObject.obj(name: String): JsonObject = this[name]!!.obj

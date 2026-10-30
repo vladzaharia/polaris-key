@@ -1,7 +1,8 @@
-// The accept gate the LAN transports share (CC-15.K2; WIRE-CONTRACT-V5 sections 15.4.1 and 15.6.1 rule 2).
-// Mode a (`ConnectLan.kt` in :sdk) and the mode-v approver ([im.plrs.key.core.peer.nearby.NearbyApprover])
-// admit an inbound socket by the same rule: [socketVerdict] on the socket's own addresses and the
-// [PendingLimiter]. Mirrors sdk-node's `connect/lanGate.ts`.
+// The accept gate of the mode-v approver (CC-15.K2; WIRE-CONTRACT-V5 sections 15.4.1 and 15.6.1 rule 2).
+// [im.plrs.key.core.peer.nearby.NearbyApprover] admits an inbound socket by the same rule as mode a:
+// [socketVerdict] on the socket's own addresses and the [PendingLimiter]. Mode a (`ConnectLan.kt` in
+// :sdk) does not use this class: it keeps its own glue around the same two (a follow-up moves it onto this
+// gate). Mirrors sdk-node's `connect/lanGate.ts`.
 //
 // Rules this file keeps:
 // - an accepted socket is judged before a byte is read; one that fails, or one refused for capacity, is
