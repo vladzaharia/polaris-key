@@ -2115,7 +2115,7 @@ The answers are §12.11.3's, less `interstitial_required` with `no_link`: a `200
 
 A deletion this list misses leaves no working key: step 7 refuses a key whose enrolling device is no longer authorized and signed in as the key's account.
 
-Every deletion and `DELETE` runs whatever the state of Identity, the product setting or the launch gate, and so does the 180-day maintenance. Only `POST` and the grant are gated. The operator has a "purge all restore keys" action on the launch gate, which deletes every row and is audited.
+Every deletion and `DELETE` runs whatever the state of Identity, the product setting or the launch gate, and so does the 180-day maintenance. Only `POST` and the grant are gated. The operator has a "purge restore keys" action per product (step-up, the product's slug typed), which deletes that product's restore keys and restore marks and is audited.
 
 The account export lists `{createdAt, checkedAt}` per key and never the hash.
 
