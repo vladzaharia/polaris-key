@@ -349,7 +349,16 @@
         "interrupt": "`activate` on an interactive terminal with no key: Ctrl-C at the key prompt.",
         "sign-in-cancelled": "`login` on an interactive terminal: Esc while it waits for the browser.",
         "sign-in-denied": "`login`: the device-code poll answers `error` with `reason: access_denied`.",
-        "sign-in-failed": "`login`: the device-code poll answers a bare `error` (no `reason`)."
+        "sign-in-failed": "`login`: the device-code poll answers a bare `error` (no `reason`).",
+        "sign-in-nearby": "`login` on an interactive terminal, nearby on: an approver answers within 2 s, the code is shown and the person taps it on the other device. With `--json` nearby never starts (no browse, no LAN request): the device-code flow runs and signs in.",
+        "sign-in-nearby-handoff": "`login` on an interactive terminal, nearby on: no approver answers within 2 s, so nearby is cancelled and the regular sign-in runs and signs in.",
+        "approve-approved": "`devices approve` on an interactive terminal, signed in: a device nearby asks, the person taps the code it shows (one of three) and the device is signed in.",
+        "approve-mismatch": "`devices approve`: the person taps a code the other device does not show; the request is denied.",
+        "approve-denied": "`devices approve`: the person chooses Deny; the request is denied.",
+        "approve-not-nearby": "`devices approve`: the Worker answers that the device that asked is not on this network (`not_nearby`).",
+        "approve-unsupported": "`devices approve` on a runtime that cannot take part in the nearby handshake (CC-15 answers `nearby-unsupported`).",
+        "approve-account-required": "`devices approve` on a device that is signed out: there is no account to approve for.",
+        "approve-json": "`devices approve --json`: both sides need a person, so the run is refused before anything starts."
       },
       "stdinKinds": {
         "tty": "A terminal, on an interactive run.",
@@ -14237,6 +14246,7 @@
       "endUser": [
         "activate",
         "deactivate",
+        "devices approve",
         "devices deauthorize",
         "devices list",
         "devices rename",
@@ -14274,6 +14284,7 @@
           "mounted": [
             "activate",
             "deactivate",
+            "devices approve",
             "devices deauthorize",
             "devices list",
             "devices rename",
@@ -14298,6 +14309,7 @@
           "mounted": [
             "license activate",
             "license deactivate",
+            "license devices approve",
             "license devices deauthorize",
             "license devices list",
             "license devices rename",
@@ -14387,6 +14399,7 @@
           "mounted": [
             "license activate",
             "license deactivate",
+            "license devices approve",
             "license devices deauthorize",
             "license devices list",
             "license devices rename",
@@ -14422,6 +14435,7 @@
           "mounted": [
             "activate",
             "deactivate",
+            "devices approve",
             "devices deauthorize",
             "devices list",
             "devices rename",
@@ -14449,7 +14463,12 @@
             "update check"
           ],
           "error": null,
-          "skipped": ["devices deauthorize", "devices list", "devices rename"],
+          "skipped": [
+            "devices approve",
+            "devices deauthorize",
+            "devices list",
+            "devices rename"
+          ],
           "hidden": []
         }
       },
@@ -14473,6 +14492,7 @@
           "mounted": [
             "activate",
             "deactivate",
+            "devices approve",
             "devices deauthorize",
             "devices list",
             "devices rename",
@@ -14503,6 +14523,7 @@
               "commands": [
                 "activate",
                 "deactivate",
+                "devices approve",
                 "devices deauthorize",
                 "devices list",
                 "devices rename",
@@ -14534,6 +14555,7 @@
               "commands": [
                 "activate",
                 "deactivate",
+                "devices approve",
                 "devices deauthorize",
                 "devices list",
                 "devices rename",
@@ -14587,6 +14609,7 @@
               "commands": [
                 "activate",
                 "deactivate",
+                "devices approve",
                 "devices deauthorize",
                 "devices list",
                 "devices rename",
@@ -14609,6 +14632,7 @@
               "commands": [
                 "activate",
                 "deactivate",
+                "devices approve",
                 "devices deauthorize",
                 "devices list",
                 "devices rename",
@@ -16809,6 +16833,117 @@
           "json": true
         },
         "expect": { "exit": 1, "error": "sign-in-failed", "stdout": "result" }
+      },
+      {
+        "name": "sign-in-nearby",
+        "input": {
+          "verb": "login",
+          "situation": "sign-in-nearby",
+          "json": false
+        },
+        "expect": { "mark": "ok", "exit": 0, "error": null, "stdout": "screen" }
+      },
+      {
+        "name": "sign-in-nearby, --json",
+        "input": {
+          "verb": "login",
+          "situation": "sign-in-nearby",
+          "json": true
+        },
+        "expect": { "exit": 0, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "sign-in-nearby-handoff",
+        "input": {
+          "verb": "login",
+          "situation": "sign-in-nearby-handoff",
+          "json": false
+        },
+        "expect": { "mark": "ok", "exit": 0, "error": null, "stdout": "screen" }
+      },
+      {
+        "name": "approve-approved",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-approved",
+          "json": false
+        },
+        "expect": { "mark": "ok", "exit": 0, "error": null, "stdout": "screen" }
+      },
+      {
+        "name": "approve-mismatch",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-mismatch",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen"
+        }
+      },
+      {
+        "name": "approve-denied",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-denied",
+          "json": false
+        },
+        "expect": { "exit": 1, "error": null, "stdout": "screen" }
+      },
+      {
+        "name": "approve-not-nearby",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-not-nearby",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen"
+        }
+      },
+      {
+        "name": "approve-unsupported",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-unsupported",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen"
+        }
+      },
+      {
+        "name": "approve-account-required",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-account-required",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen",
+          "fix": ["login"]
+        }
+      },
+      {
+        "name": "approve-json, --json",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-json",
+          "json": true
+        },
+        "expect": { "exit": 2, "error": "usage", "stdout": "result" }
       }
     ],
     "stdin": [

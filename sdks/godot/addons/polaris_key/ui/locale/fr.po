@@ -3733,6 +3733,11 @@ msgstr "S’il ne s’est pas ouvert, rendez-vous sur {url}"
 msgid "signin.cli.keys"
 msgstr "Entrée rouvrir · c utiliser un code · Échap annuler"
 
+#. c use a code instead · Esc cancel
+#. Terminal sign-in (SIGN-IN.md §4.15), nearby: the keys line while the code waits for a tap on the other device. Plain text, no formatting.
+msgid "signin.cli.nearbyKey"
+msgstr "c utiliser un code à la place · Échap annuler"
+
 #. No browser on this computer. Use a code instead:
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
 msgid "signin.cli.headless"
@@ -4056,6 +4061,11 @@ msgstr "Licence"
 #. Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it.
 msgid "cli.help.namespace"
 msgstr "Activation, connexion, appareils et mises à jour"
+
+#. Approve a device signing in nearby
+#. Terminal help: what 'devices approve' does.
+msgid "cli.help.devicesApprove"
+msgstr "Approuver la connexion d'un appareil à proximité"
 
 #. {command} needs a license
 #. Terminal: the title when a host command that needs a license is refused because the person has none (needs-activation), and the first line of the inline activate flow. {command} is the command they ran, such as 'export'.
