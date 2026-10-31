@@ -2133,9 +2133,9 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     service: "identity",
     area: "identity.platformSignIn",
     rbacArea: "keys",
-    label: "Play Games web client id",
+    label: "Play Games server client id",
     description:
-      "The web client of the Play Games game server credential. Its client secret is set under Keys & secrets.",
+      "The Web client id of the game server credential. Set its secret in Credentials.",
     keywords: ["play games", "pgs", "google", "oauth", "server client"],
     docs: "/docs/features/sign-in/",
     ownership: "claimable",

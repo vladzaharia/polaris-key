@@ -25,9 +25,13 @@ import { Select } from "../../../../ui/Select.js";
 import { Textarea } from "../../../../ui/Textarea.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
+import { useQuery } from "@tanstack/react-query";
+import { reads } from "../../../data/reads.js";
 import { useOutlets } from "../data.js";
+import { channelsOfKind } from "../model/channelScope.js";
 import {
   describe,
+  enterThe,
   KIND,
   kindLabel,
   pinField,
@@ -43,11 +47,14 @@ export function SetCredentialDrawer({
   channelScoped,
   channelName,
   alsoUsedBy,
+  fixedKindValue,
   onClose,
 }: {
   slug: string;
   existing: OutletCredentialInfo[];
   rotate: OutletCredentialInfo | null;
+  /** Open with this kind chosen and fixed (a link from Platform sign-in). */
+  fixedKindValue?: string;
   /** The kinds this drawer offers. */
   kinds: readonly KindSpec[];
   /** On a channel's own page the channel is known: no channel field. */
@@ -60,9 +67,14 @@ export function SetCredentialDrawer({
   const outlets = useOutlets(slug);
   const [kind, setKind] = React.useState<OutletCredentialKind | null>(
     (rotate?.kind as OutletCredentialKind | undefined) ??
+      (fixedKindValue as OutletCredentialKind | undefined) ??
       (kinds.length === 1 ? (kinds[0]!.value as OutletCredentialKind) : null),
   );
-  const [id, setId] = React.useState(rotate?.id ?? "");
+  const [id, setId] = React.useState(
+    rotate?.id ??
+      (fixedKindValue ? (KIND.get(fixedKindValue)?.defaultId ?? "") : ""),
+  );
+  const idTouched = React.useRef(false);
   const [outletId, setOutletId] = React.useState<string | null>(
     rotate?.outletId ?? null,
   );
@@ -76,6 +88,26 @@ export function SetCredentialDrawer({
   const [confirmRotate, setConfirmRotate] = React.useState(false);
 
   const spec = kind ? KIND.get(kind) : undefined;
+  // A kind that serves no channel has no channel to bind: the Worker ignores it.
+  const noChannel = kind !== null && channelsOfKind(kind).length === 0;
+  const pinSetting = useQuery({
+    ...reads.productSettings(slug, spec?.pinFromSetting?.area ?? ""),
+    enabled: Boolean(spec?.pinFromSetting) && !rotate,
+  });
+  const pinTouched = React.useRef(false);
+  // A new credential starts with its usual ID and the id the product's setting already names.
+  React.useEffect(() => {
+    if (rotate || idTouched.current || !spec?.defaultId) return;
+    setId(spec.defaultId);
+  }, [rotate, spec]);
+  const fromSetting = spec?.pinFromSetting
+    ? pinSetting.data?.settings?.find((x) => x.key === spec.pinFromSetting!.key)
+        ?.value
+    : undefined;
+  React.useEffect(() => {
+    if (!pinTouched.current && typeof fromSetting === "string")
+      setPin(fromSetting);
+  }, [fromSetting]);
   const generating = Boolean(spec?.generate && generate);
   const reused = !rotate && existing.find((c) => c.id === id.trim());
 
@@ -87,9 +119,8 @@ export function SetCredentialDrawer({
         "Use up to 64 lowercase letters, digits, dots, dashes or underscores, e.g. asc-team-key.";
     if (spec && !generating)
       for (const f of spec.fields)
-        if (!(values[f.key] ?? "").trim()) e[f.key] = `Enter the ${f.label}.`;
-    if (spec?.pin && !rotate && !pin.trim())
-      e.pin = `Enter the ${spec.pin.label}.`;
+        if (!(values[f.key] ?? "").trim()) e[f.key] = enterThe(f.label);
+    if (spec?.pin && !rotate && !pin.trim()) e.pin = enterThe(spec.pin.label);
     return e;
   };
 
@@ -110,7 +141,8 @@ export function SetCredentialDrawer({
                   ),
           };
       if (spec.pin && pin.trim()) body.pin = pin.trim();
-      if (!rotate || outletId !== rotate.outletId) body.outletId = outletId;
+      if (!noChannel && (!rotate || outletId !== rotate.outletId))
+        body.outletId = outletId;
       const credentialId = rotate?.id ?? id.trim();
       await mutate("putOutletCredential", slug, credentialId, body);
       toast.success(
@@ -137,23 +169,42 @@ export function SetCredentialDrawer({
     }
   };
 
+  const formRef = React.useRef<HTMLFormElement>(null);
   const submit = (e: React.FormEvent): void => {
     e.preventDefault();
     const found = validate();
     setErrors(found);
-    if (Object.keys(found).length) return;
+    if (Object.keys(found).length) {
+      // Focus the first field that needs attention, once the errors are on screen.
+      window.setTimeout(() => {
+        formRef.current
+          ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+          ?.focus();
+      }, 0);
+      return;
+    }
     if (rotate || reused) setConfirmRotate(true);
     else void send();
   };
 
   const copy = failure ? describe(failure) : null;
+  // One kind to offer, or one chosen by the link: say it, do not ask.
+  const fixedKind = rotate
+    ? undefined
+    : fixedKindValue
+      ? KIND.get(fixedKindValue)
+      : kinds.length === 1
+        ? kinds[0]
+        : undefined;
   const title = rotate
     ? `Rotate “${rotate.id}”`
-    : channelName
-      ? `Set a ${channelName} key`
-      : "Set a channel credential";
-  // One kind to offer: say it, do not ask.
-  const fixedKind = !rotate && kinds.length === 1 ? kinds[0] : undefined;
+    : fixedKind?.setTitle
+      ? fixedKind.setTitle
+      : channelName
+        ? `Set a ${channelName} key`
+        : channelScoped
+          ? "Set a channel credential"
+          : "Set a credential";
 
   return (
     <Drawer
@@ -165,6 +216,7 @@ export function SetCredentialDrawer({
       description="Values are sent once and never shown again."
     >
       <form
+        ref={formRef}
         noValidate
         onSubmit={submit}
         className="flex min-h-0 flex-1 flex-col"
@@ -205,12 +257,12 @@ export function SetCredentialDrawer({
           )}
           {spec ? (
             <>
-              {!rotate ? (
+              {!rotate && !spec.defaultId ? (
                 <FormField<string>
                   name="id"
                   label="Credential ID"
                   required
-                  help="Lowercase, e.g. asc-team-key."
+                  help={`Lowercase, e.g. ${spec.defaultId ?? "asc-team-key"}.`}
                   value={id}
                   onChange={setId}
                   error={errors.id}
@@ -223,7 +275,10 @@ export function SetCredentialDrawer({
                       mono
                       autoComplete="off"
                       spellCheck={false}
-                      onValueChange={setId}
+                      onValueChange={(v) => {
+                        idTouched.current = true;
+                        setId(v);
+                      }}
                       aria-describedby={field["aria-describedby"]}
                       aria-invalid={field["aria-invalid"]}
                       aria-required
@@ -240,7 +295,7 @@ export function SetCredentialDrawer({
                   {kindLabel(reused.kind)}).
                 </Callout>
               ) : null}
-              {channelScoped ? null : (
+              {channelScoped || noChannel ? null : (
                 <FormField<string | null>
                   name="outlet"
                   label="Channel"
@@ -268,6 +323,40 @@ export function SetCredentialDrawer({
                   label="Generate the secret"
                   description="The Worker creates a random secret and keeps it; Webhook setup hands it to Apple. Recommended."
                 />
+              ) : null}
+              {spec.pinFirst && spec.pin ? (
+                <FormField<string>
+                  name="pin"
+                  label={spec.pin.label}
+                  required={!rotate}
+                  help={
+                    rotate
+                      ? `${spec.pin.help} Leave blank to keep the current pin.`
+                      : spec.pin.help
+                  }
+                  value={pin}
+                  onChange={setPin}
+                  error={errors.pin}
+                  announceError
+                >
+                  {(field) => (
+                    <Input
+                      id={field.id}
+                      value={pin}
+                      mono
+                      inputMode={spec.pin!.inputMode}
+                      autoComplete="off"
+                      spellCheck={false}
+                      onValueChange={(v) => {
+                        pinTouched.current = true;
+                        setPin(v);
+                      }}
+                      aria-describedby={field["aria-describedby"]}
+                      aria-invalid={field["aria-invalid"]}
+                      aria-required={!rotate || undefined}
+                    />
+                  )}
+                </FormField>
               ) : null}
               {!generating
                 ? spec.fields.map((f) => (
@@ -328,7 +417,7 @@ export function SetCredentialDrawer({
                     </FormField>
                   ))
                 : null}
-              {spec.pin ? (
+              {!spec.pinFirst && spec.pin ? (
                 <FormField<string>
                   name="pin"
                   label={spec.pin.label}
@@ -351,10 +440,42 @@ export function SetCredentialDrawer({
                       inputMode={spec.pin!.inputMode}
                       autoComplete="off"
                       spellCheck={false}
-                      onValueChange={setPin}
+                      onValueChange={(v) => {
+                        pinTouched.current = true;
+                        setPin(v);
+                      }}
                       aria-describedby={field["aria-describedby"]}
                       aria-invalid={field["aria-invalid"]}
                       aria-required={!rotate || undefined}
+                    />
+                  )}
+                </FormField>
+              ) : null}
+              {!rotate && spec.defaultId ? (
+                <FormField<string>
+                  name="id"
+                  label="Credential ID"
+                  required
+                  help={`Lowercase, e.g. ${spec.defaultId ?? "asc-team-key"}.`}
+                  value={id}
+                  onChange={setId}
+                  error={errors.id}
+                  announceError
+                >
+                  {(field) => (
+                    <Input
+                      id={field.id}
+                      value={id}
+                      mono
+                      autoComplete="off"
+                      spellCheck={false}
+                      onValueChange={(v) => {
+                        idTouched.current = true;
+                        setId(v);
+                      }}
+                      aria-describedby={field["aria-describedby"]}
+                      aria-invalid={field["aria-invalid"]}
+                      aria-required
                     />
                   )}
                 </FormField>
@@ -387,7 +508,9 @@ export function SetCredentialDrawer({
             rotate ?? existing.find((c) => c.id === id.trim()) ?? null,
             alsoUsedBy,
           ),
-          "Connectors use the new value from their next call.",
+          noChannel
+            ? "The new value is used from the next request."
+            : "Connectors use the new value from their next call.",
         ]}
         confirmLabel="Rotate credential"
         describeError={describe}

@@ -339,7 +339,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/distribution/components/CredentialForms.tsx": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 6
     },
     "packages/admin/src/console/sections/distribution/components/RolloutDialogs.tsx": {
       "jscpd:duplicate": 2
@@ -630,7 +630,7 @@
       "jscpd:duplicate": 3
     },
     "packages/admin/test/channelSetup.test.tsx": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 2
     },
     "packages/admin/test/commerceIdentity.test.tsx": {
       "jscpd:duplicate": 4
@@ -753,10 +753,10 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/test/outletCredentials.test.tsx": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 2
     },
     "packages/admin/test/overview.test.tsx": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 12
     },
     "packages/admin/test/packViews.test.tsx": {
       "jscpd:duplicate": 2
@@ -946,9 +946,6 @@
     },
     "packages/admin/test/settingsAll.test.tsx": {
       "jscpd:duplicate": 4
-    },
-    "packages/admin/test/settingsLayout.test.tsx": {
-      "jscpd:duplicate": 1
     },
     "packages/admin/test/settingsSearch.test.tsx": {
       "jscpd:duplicate": 1
