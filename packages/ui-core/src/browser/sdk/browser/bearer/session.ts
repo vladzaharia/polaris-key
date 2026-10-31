@@ -1811,6 +1811,35 @@ export class BearerSession {
   }
 
   /**
+   * One authenticated request under `/<p>/` for the Cloud Sync file routes (U-22.6): the device
+   * bearer and the seven `X-PKey-*` headers, no cookie, and no redirect followed (a 3xx or the
+   * opaque redirect of one is the caller's refusal). The body is bytes or text and the caller's
+   * signal is its deadline: a transfer's time grows with its size, so there is no fixed one here.
+   */
+  async fileFetch(
+    path: string,
+    init: {
+      method: string;
+      headers: Record<string, string>;
+      body?: Uint8Array | string;
+      signal?: AbortSignal;
+    },
+  ): Promise<Response> {
+    await this.init();
+    return this.opts.fetchImpl(this.url(path), {
+      method: init.method,
+      credentials: "omit",
+      redirect: "manual",
+      headers: this.headers({
+        ...init.headers,
+        authorization: `Bearer ${this.requireToken()}`,
+      }),
+      ...(init.body !== undefined ? { body: init.body as BodyInit } : {}),
+      ...(init.signal ? { signal: init.signal } : {}),
+    });
+  }
+
+  /**
    * `PUT /<p>/devices/keys` (CC-03.2) with the port's public keys and a `keys` proof, as Node's
    * `devices.registerKeys`. Resending is safe. A memory-only port is refused unless
    * `allowEphemeral`; the private halves never leave the port.

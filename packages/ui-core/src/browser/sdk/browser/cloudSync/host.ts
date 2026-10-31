@@ -120,6 +120,8 @@ export interface BrowserSyncHostDeps {
   channel: TabChannel;
   /** Diagnostics; never given a value or a secret. */
   log?: (message: string) => void;
+  /** Run by `purge()` after the record is gone: the file journal and chunk cache go with it. */
+  onPurge?: () => Promise<void>;
   /** Test seams: the clock, and the page events (`pagehide`, `pageshow`). */
   clock?: { now: () => number };
   page?: {
@@ -1020,6 +1022,9 @@ export class BrowserCloudSyncHost {
     try {
       await this.#withStateLock(() => removeSyncState(this.#deps.store));
     } finally {
+      await this.#deps.onPurge?.().catch(() => {
+        this.#deps.log?.("cloud sync: the file state could not be deleted");
+      });
       this.#deps.channel.post({ t: "purge" });
       this.#noteStatus();
     }
