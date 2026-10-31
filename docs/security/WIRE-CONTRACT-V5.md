@@ -2125,7 +2125,7 @@ The account export lists `{createdAt, checkedAt}` per key and never the hash.
 
 **Client rung.** A client tries the grant (rung 2 of the sign-in ladder) after a stored sign-in misses, with no explicit sign-out, when discovery names `restore` and the app's option allows it.
 
-- **Sign-out.** An explicit sign-out sets a flag in storage that no backup carries (outside iCloud Keychain and Android Auto Backup). Only an interactive sign-in clears it, and while it is set the client skips rung 2 and does not enrol. The client then deletes its item and sends `DELETE restore`. When that cannot reach the Worker, the client queues it and retries at the next launch, before any other call.
+- **Sign-out.** An explicit sign-out sets a flag in storage that no backup carries (outside iCloud Keychain and Android Auto Backup). Only an interactive sign-in clears it, and while it is set the client skips rung 2 and does not enrol. The client then deletes its item and sends `DELETE restore`. It does so whatever the Worker's sign-out answers, and also when discovery cannot be loaded; a sign-out that cannot reach the Worker reports a network error. A platform backup call that does not answer within a bound counts as an unavailable store. When that cannot reach the Worker, the client queues it and retries at the next launch, before any other call. With no bearer, the DELETE stays queued until a sign-in provides one.
 - **Answers.** On `invalid_grant` an Android client deletes its item; an Apple client does not, because a synchronizable delete reaches every device. On `429`, `503`, a network failure or an unavailable store it leaves the item and goes on. When the key was consumed and the sign-in was then refused (above), the client falls to rung 3 of the ladder. A client never logs the secret.
 
 **Deployed clients and workers.** The Worker deploys first with the gate off. A client that predates this subsection ignores `restore` and never enrols. A client of this version against an older Worker finds no member, skips the rung and never enrols. After a rollback the table goes unread and items in backups stay inert (`unsupported_grant_type` counts as a failed rung); after a roll-forward, keys younger than 180 days work again.
@@ -2474,11 +2474,11 @@ A device with no root is `locked` (§11.5). It reads the ring (`GET`) to learn `
 On by default, with a developer opt-out, a device keeps `R` in a synchronizable platform item so a new device of the same person restores silently.
 
 - **Apple:** an iCloud Keychain item (`kSecAttrSynchronizable`), service `pkey-sync:<product>`, account `<subject>:<ringId>`.
-- **Android:** Block Store with `setShouldBackupToCloud(true)`, only when `isEndToEndEncryptionAvailable()`.
+- **Android:** Block Store, entry `pkey-sync-<product>`, one per product, whose value names the subject and the ring. It reaches the cloud (`setShouldBackupToCloud(true)`) only when `isEndToEndEncryptionAvailable()`; otherwise it stays on the device and moves only device to device.
 
 A sign-out keeps the root backup item: deleting a synchronizable keychain item deletes it on every device of that Apple ID. Only Reset encryption, Start over or account deletion removes it. A platform without a backup API (web, Node, Python, JVM desktop) relies on the recovery code and nearby approval.
 
-The silent-restore key (§12.11.8) is a separate item, service `pkey-restore:<product>`. A sign-out deletes it and never touches the root item.
+The silent-restore key (§12.11.8) is a separate item, service `pkey-restore:<product>` (Android: `pkey-restore-<product>`). A sign-out deletes it and never touches the root item.
 
 #### 13.11.6 Rotation
 
