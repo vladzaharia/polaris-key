@@ -357,19 +357,23 @@ export class PolarisKeyClient {
         ...opts.connect,
       },
     );
-    this.cloudConnect = new CloudConnect(this.connect, {
-      slug: this.product,
-      now: () => this.core.now(),
-      requireIdentity: () =>
-        this.core.requireService("identity", Feature.identityNearby),
-      identity: async (fresh) => {
-        if (fresh || this.discoveryDoc === null)
-          await this.discover().catch(() => undefined);
-        return identityFragmentFrom(this.discoveryDoc);
+    this.cloudConnect = new CloudConnect(
+      this.connect,
+      {
+        slug: this.product,
+        now: () => this.core.now(),
+        requireIdentity: () =>
+          this.core.requireService("identity", Feature.identityNearby),
+        identity: async (fresh) => {
+          if (fresh || this.discoveryDoc === null)
+            await this.discover().catch(() => undefined);
+          return identityFragmentFrom(this.discoveryDoc);
+        },
+        signedIn: async () => (await this.identity.current()) !== null,
+        signer: () => this.connect.nearbySigner(),
       },
-      signedIn: async () => (await this.identity.current()) !== null,
-      signer: () => this.connect.nearbySigner(),
-    });
+      join(this.core.dirs.state, "transfer"),
+    );
     this.cloudSyncHost = new CloudSyncHost(
       {
         ctx: this.core,
@@ -469,6 +473,7 @@ export class PolarisKeyClient {
     this.update.onUpdateAvailable = (check) =>
       this.events.safeEmit("updateAvailable", check);
     this.license.onDeactivated = async () => {
+      await this.cloudConnect.transfer.purge().catch(() => undefined);
       await this.keyring.forget();
       await this.identity.forget();
       await this.cloudSyncApi.onDeactivated().catch(() => undefined);

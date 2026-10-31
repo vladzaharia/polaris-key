@@ -319,6 +319,8 @@ class RelayLink {
           this.role,
           "relay",
           "relay",
+          null,
+          e.remoteStatic,
         );
         this.cb.onEstablished(this.#session);
         this.#settle.resolve(this.#session);

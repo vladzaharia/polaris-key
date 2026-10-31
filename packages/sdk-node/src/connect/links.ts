@@ -23,6 +23,7 @@
 //  - the order is LAN, then the contact relay, as for the person's own devices (cloudConnect.ts).
 
 import { UnsupportedError } from "@polaris-key/client-core";
+import { base64UrlDecode } from "@polaris-key/jws";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import { printAs } from "../core/redact.js";
 import type { ConnectClient } from "./client.js";
@@ -56,7 +57,15 @@ export class CloudLinks {
   #relayOn = false;
   #follow: (() => void) | null = null;
 
-  constructor(private readonly connect: ConnectClient) {
+  constructor(
+    private readonly connect: ConnectClient,
+    private readonly hooks: {
+      /** A session the links opened or accepted (Direct Transfer takes it). */
+      adopt?: (s: ConnectSession) => void;
+      /** Links were deleted: their peers' agreeKeys (32 raw bytes each). */
+      removed?: (agreeKeys: Uint8Array[]) => Promise<void>;
+    } = {},
+  ) {
     printAs(this, () => ({ links: "CloudLinks" }));
   }
 
@@ -92,12 +101,20 @@ export class CloudLinks {
    */
   async remove(id: string): Promise<boolean> {
     let found = false;
+    const gone: Uint8Array[] = [];
     await this.connect.updateContacts((rows) => {
       const next = rows.filter((r) => contactId(r.agreeKey) !== id);
       found = next.length !== rows.length;
+      for (const r of rows)
+        if (contactId(r.agreeKey) === id)
+          gone.push(base64UrlDecode(r.agreeKey));
       return found ? next : null;
     });
-    if (found) await this.#reconcile();
+    if (found) {
+      await this.#reconcile();
+      // What the peer sent and was not finished is not kept for a link that is gone.
+      await this.hooks.removed?.(gone).catch(() => undefined);
+    }
     return found;
   }
 
@@ -242,6 +259,7 @@ export class CloudLinks {
   }
 
   #track(s: ConnectSession): ConnectSession {
+    this.hooks.adopt?.(s);
     this.#sessions.add(s);
     s.onClose(() => this.#sessions.delete(s));
     return s;

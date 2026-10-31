@@ -37,6 +37,9 @@ import { serialQueue, type ConnectNotice } from "./channel.js";
 import type { ConnectClient, ConnectDevice } from "./client.js";
 import { ContactRelay } from "./contactRelay.js";
 import { CloudLinks } from "./links.js";
+import { contactId } from "./contacts.js";
+import { CloudTransfer } from "./transfer.js";
+import { PartialStore } from "./transferStore.js";
 import type { LanOptions, LanPeer, LanService } from "./lan.js";
 import { MdnsUnavailableError } from "./mdns.js";
 import {
@@ -299,14 +302,35 @@ export class CloudConnect {
 
   readonly #nearby: CloudNearby;
   readonly #links: CloudLinks;
+  readonly #transfer: CloudTransfer;
   #contactRelay: ContactRelay | null = null;
 
   constructor(
     private readonly connect: ConnectClient,
     nearby: NearbyDeps | null = null,
+    /** Where partial files of received transfers are kept (`<state>/transfer`); null for none. */
+    transferDir: string | null = null,
   ) {
     this.#nearby = new CloudNearby(nearby);
-    this.#links = new CloudLinks(connect);
+    this.#transfer = new CloudTransfer({
+      store: transferDir === null ? null : new PartialStore(transferDir),
+      openDevice: (id) => this.open(id),
+      openLink: (id) => this.#links.open(id),
+      hasLink: async (id) =>
+        (await connect.contactRows()).some((r) => contactId(r.agreeKey) === id),
+    });
+    this.#links = new CloudLinks(connect, {
+      adopt: (s) => this.#transfer.adopt(s),
+      removed: (keys) =>
+        Promise.all(keys.map((k) => this.#transfer.purgePeer(k))).then(
+          () => undefined,
+        ),
+    });
+  }
+
+  /** Direct Transfer (CC-20.3): `send(peer, source)`, `onOffer(handler)`, `onResult(fn)`. */
+  get transfer(): CloudTransfer {
+    return this.#transfer;
   }
 
   /** Inter-account links (CC-19): `pair`, `list`, `remove`, `setReachable`, `open`, `onLink`. */
@@ -426,6 +450,8 @@ export class CloudConnect {
    */
   async stopForSignOut(boundMs: number = SIGN_OUT_BOUND_MS): Promise<void> {
     if (await stopWithin(() => this.stop(), boundMs)) this.#forceStop();
+    // The partial files of received transfers go with the session (they are the peer's bytes).
+    await stopWithin(() => this.#transfer.purge(), boundMs);
     // Then the nearby adverts and sessions (after Connect, before the device leaves it).
     if (await stopWithin(() => this.#nearby.stopAll(), boundMs))
       this.#nearby.forceStop();
@@ -542,6 +568,7 @@ export class CloudConnect {
   }
 
   #track(s: ConnectSession): ConnectSession {
+    this.#transfer.adopt(s);
     this.#sessions.add(s);
     s.onClose(() => this.#sessions.delete(s));
     return s;

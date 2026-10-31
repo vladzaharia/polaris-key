@@ -2390,6 +2390,11 @@
       "reason": "the accessor of the links namespace (cloudConnect.links.pair, .list, .remove, .open, .onLink); not a verb"
     },
     {
+      "sdk": "node",
+      "path": "cloudConnect.transfer",
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb. CC-20.8 owns the verb rows"
+    },
+    {
       "sdk": "python",
       "path": "cloudConnect.links",
       "reason": "the accessor of the links namespace (cloud_connect.links.pair, .list, .remove, .open, .onLink); not a verb"

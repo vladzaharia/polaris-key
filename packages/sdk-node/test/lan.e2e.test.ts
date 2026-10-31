@@ -108,7 +108,7 @@ describe("LAN discovery and sessions", () => {
     const { out, inn } = await pair(la, lb);
     expect(out.peerDeviceId).toBe(A);
     expect(inn.peerDeviceId).toBe(B);
-    expect(out.caps).toEqual(["app/1"]);
+    expect(out.caps).toEqual(["app/1", "xfer/1"]);
     expect(out.role).toBe("initiator");
 
     await out.send(utf8("hello from b"));

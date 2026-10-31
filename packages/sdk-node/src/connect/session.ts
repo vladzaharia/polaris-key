@@ -20,6 +20,7 @@ import { printAs } from "../core/redact.js";
 import {
   FrameReader,
   PeerChannel,
+  XFER_CAP,
   encodeFrame,
   type ClosedReason,
   type PeerHello,
@@ -133,6 +134,17 @@ export interface ChannelLink {
   refuses?(bytes: number): boolean;
 }
 
+/** Records of `xfer/1` held until the transfer layer binds (a peer sends one `OFFER` and waits). */
+const XFER_QUEUE_MAX = 16;
+
+/** What `ConnectSession.xferPort` hands the transfer layer. @internal */
+export interface XferPort {
+  peerKey: Uint8Array;
+  send(type: number, body: Uint8Array): Promise<void>;
+  close(code: "peer_bye" | "peer_busy"): void;
+  bind(sink: (type: number, body: Uint8Array) => void): void;
+}
+
 /** Which path a session took (WIRE-CONTRACT-V5 §15.7: the relay is the fallback). */
 export type SessionPath = "lan" | "relay";
 
@@ -147,6 +159,11 @@ export class ConnectSession {
   #closed: SessionClosed | null = null;
   #bytes = 0;
   readonly #link: ChannelLink;
+  #peerKey: Uint8Array | null = null;
+  #xferSend: ((type: number, body: Uint8Array) => Promise<void>) | null = null;
+  #xferSink: ((type: number, body: Uint8Array) => void) | null = null;
+  #xferQueue: { type: number; body: Uint8Array }[] = [];
+  #xferTaken = false;
 
   /** @internal */
   constructor(
@@ -159,8 +176,21 @@ export class ConnectSession {
     readonly path: SessionPath = "lan",
     /** The link a mode-`c` session runs over (§15.10); null for the person's own devices. */
     readonly contact: ContactRef | null = null,
+    /** The peer's authenticated static key (its certificate's agreeKey, or the pinned contact key). */
+    remoteStatic: Uint8Array | null = null,
   ) {
     this.#link = link;
+    // Direct Transfer (§15.11): when both sides listed `xfer/1`, the six record types are taken at
+    // once, so none reaches the channel before a reader exists. `bind` hands them to the transfer
+    // layer; until then a small queue holds them.
+    if (remoteStatic !== null && caps.includes(XFER_CAP)) {
+      this.#peerKey = remoteStatic.slice();
+      try {
+        this.#xferSend = link.channel.attachXfer((t, b) => this.#xferIn(t, b));
+      } catch {
+        this.#xferSend = null;
+      }
+    }
     // The link holds the channel and with it the discovery keys: never printed.
     printAs(this, () => ({
       session: "ConnectSession",
@@ -198,6 +228,39 @@ export class ConnectSession {
   sendRecord(type: number, body: Uint8Array): Promise<void> {
     if (this.#link.refuses?.(body.length) === true) return Promise.resolve();
     return this.#link.channel.sendRecord(type, body);
+  }
+
+  #xferIn(type: number, body: Uint8Array): void {
+    if (this.#closed !== null) return;
+    if (this.#xferSink !== null) return this.#xferSink(type, body);
+    if (this.#xferQueue.length >= XFER_QUEUE_MAX) {
+      void this.#link.channel.close("peer_busy");
+      return;
+    }
+    this.#xferQueue.push({ type, body });
+  }
+
+  /**
+   * The transfer layer's hold on this session (§15.11): the peer's key, a writer and a binder for
+   * the reader. Once, and only when both sides listed `xfer/1`; null otherwise. @internal
+   */
+  xferPort(): XferPort | null {
+    if (this.#xferSend === null || this.#peerKey === null || this.#xferTaken)
+      return null;
+    this.#xferTaken = true;
+    const send = this.#xferSend;
+    return {
+      peerKey: this.#peerKey.slice(),
+      send: (type, body) =>
+        this.#link.refuses?.(body.length) === true
+          ? Promise.resolve()
+          : send(type, body),
+      close: (code) => void this.close(code).catch(() => undefined),
+      bind: (sink) => {
+        this.#xferSink = sink;
+        for (const r of this.#xferQueue.splice(0)) sink(r.type, r.body);
+      },
+    };
   }
 
   /** The next message; rejects when the session closes with none waiting. */
@@ -408,6 +471,7 @@ export class SocketLink {
           this.#o.socket.remoteAddress ?? "",
           "lan",
           ref ?? null,
+          e.remoteStatic,
         );
         this.#o.onEstablished?.(this.#session);
         this.#settle.resolve(this.#session);
