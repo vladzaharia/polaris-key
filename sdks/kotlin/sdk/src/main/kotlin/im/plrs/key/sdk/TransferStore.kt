@@ -47,7 +47,7 @@ private val REF = Regex("[0-9a-f]{64}")
 internal const val TRANSFER_DISK_RESERVE_BYTES: Long = 256 * MIB
 
 /** The most the kept partials and the space reserved for transfers in flight may add up to, by default. */
-internal const val TRANSFER_QUOTA_BYTES: Long = 8L * 1024 * MIB
+internal const val TRANSFER_QUOTA_BYTES: Long = 4L * 1024 * MIB
 
 internal class TransferStore(
     root: File,
@@ -252,10 +252,16 @@ internal class TransferStore(
         val tmp = Files.createTempFile(parent.toPath(), ".pkey-xfer-", ".tmp")
         try {
             if (from != null) Files.copy(from.toPath(), tmp, StandardCopyOption.REPLACE_EXISTING)
+            // Never over an existing file: a hard link fails if the destination appeared after the accept.
             try {
-                Files.move(tmp, to.toPath(), StandardCopyOption.ATOMIC_MOVE)
-            } catch (e: java.nio.file.AtomicMoveNotSupportedException) {
-                throw IOException("the destination volume cannot rename atomically", e)
+                Files.createLink(to.toPath(), tmp)
+            } catch (e: java.nio.file.FileAlreadyExistsException) {
+                throw IOException("the destination exists", e)
+            } catch (e: UnsupportedOperationException) {
+                Files.copy(tmp, to.toPath())
+            } catch (e: IOException) {
+                if (to.exists()) throw e
+                Files.copy(tmp, to.toPath())
             }
         } finally {
             Files.deleteIfExists(tmp)

@@ -2235,9 +2235,9 @@
       "detekt:complexity.NestedBlockDepth": 1,
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.ExceptionRaisedInUnexpectedLocation": 1,
-      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.SwallowedException": 3,
       "detekt:style.LoopWithTooManyJumpStatements": 2,
-      "detekt:style.ThrowsCount": 3,
+      "detekt:style.ThrowsCount": 4,
       "ktlint:standard:blank-line-between-when-conditions": 7
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/BackendTest.kt": {

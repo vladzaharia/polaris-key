@@ -531,4 +531,27 @@ internal class CloudTransferTest {
         waitFor("the receiving session to close") { r.sb.closed != null }
         assertEquals("the partial is kept", 1, partFiles(b.state).size)
     }
+
+    @Test
+    fun aDestinationCreatedAfterTheAcceptIsNotOverwritten() = bounded {
+        val r = rigs.connect(scope(), caps = xfer)
+        val a = Side()
+        val b = Side()
+        a.transfer.bind(r.sa)
+        b.transfer.bind(r.sb)
+        val dst = File(dir(), "late.bin")
+        b.transfer.onOffer { OfferDecision.Accept(dst) }
+        val src = Probe(content(200_000), "x", stallAt = 2)
+        val h = a.transfer.send(r.sa, src)
+        waitFor("the transfer to run") { src.offsets.size >= 2 }
+        dst.writeText("mine")
+        src.release.complete(Unit)
+        try {
+            h.await()
+            fail("the delivery must fail")
+        } catch (e: LanException) {
+            assertEquals(LanErrorReason.closed, e.reason)
+        }
+        assertEquals("mine", dst.readText())
+    }
 }
