@@ -101,7 +101,7 @@ describe("login: nearby first", () => {
     expect([LISTEN_MS, LONE_MS]).toEqual([2000, 3000]);
   });
 
-  it("shows the code as 482 913 with the a11y line, then the account, and Enter confirms it", async () => {
+  it("shows the code as 482 913, then the account, and Enter confirms it", async () => {
     const s = new FakeNearbySession([ANA]);
     let wait = "";
     const { result, text } = await run(
@@ -117,7 +117,11 @@ describe("login: nearby first", () => {
     // The poll answered at once in this fake, so the screen at rest is the done step.
     expect(wait).toContain("Signed in as mara@fennick.studio");
     expect(wait).toContain("Enter continue");
-    expect(wait).toContain("n not you?");
+    expect(wait).toContain("n or Esc not you, sign out");
+    // Still held: the active mark, not the check (UXR-47 B2). The check is the committed frame.
+    expect(wait).toContain("◆  Signed in as");
+    expect(wait).not.toContain("✓");
+    expect(text).toContain("✓  Signed in as mara@fennick.studio");
     expect(result.exitCode).toBe(EXIT.ok);
     expect(result.state).toBe("signedIn");
     expect(s.chosen).toEqual(["a1"]);
@@ -126,19 +130,24 @@ describe("login: nearby first", () => {
     expect(text).toContain("Signed in as mara@fennick.studio");
   });
 
-  it("the code view: the code, the a11y line, c use a code instead", async () => {
+  it("the code view: the chosen device, the code once, a short wait line, c use a code instead", async () => {
     const s = new FakeNearbySession([ANA], { signedInAfterChoose: false });
     let shown = "";
     await run({ interactive: true, fastDelay: true }, async (h) => {
       const done = loginFlow(h.ctx, nearby(s));
-      await until(() => plain(h.screen.text()).includes("Code to tap"));
+      await until(() => plain(h.screen.text()).includes("Tap this code there"));
       shown = plain(h.screen.text());
       h.stdin.press("escape");
       return done;
     });
     expect(shown).toContain("Approve on your other device");
     expect(shown).toContain("482 913");
-    expect(shown).toContain("Code to tap: 482 913");
+    // The code once: its screen reader line is its a11y name, never a second visible row (UXR-47 B3).
+    expect(shown).not.toContain("Code to tap");
+    expect(shown.split("482 913")).toHaveLength(2);
+    expect(shown).toContain("Open Tidewater Studio on Ana's laptop.");
+    expect(shown).toContain("Waiting…");
+    expect(shown).not.toContain("approve it on the other device");
     expect(shown).toContain("c use a code instead");
     expect(shown).not.toContain("browser");
   });
@@ -149,7 +158,7 @@ describe("login: nearby first", () => {
       { interactive: true, fastDelay: true },
       async (h) => {
         const done = loginFlow(h.ctx, nearby(s));
-        await until(() => plain(h.screen.text()).includes("n not you?"));
+        await until(() => plain(h.screen.text()).includes("not you, sign out"));
         h.stdin.press("n");
         return done;
       },
@@ -166,7 +175,7 @@ describe("login: nearby first", () => {
     const s = new FakeNearbySession([ANA]);
     await run({ interactive: true, fastDelay: true }, async (h) => {
       const done = loginFlow(h.ctx, nearby(s));
-      await until(() => plain(h.screen.text()).includes("n not you?"));
+      await until(() => plain(h.screen.text()).includes("not you, sign out"));
       h.stdin.press("escape");
       return done;
     });
@@ -185,15 +194,35 @@ describe("login: nearby first", () => {
       // No automatic choice with two devices to pick from.
       expect(s.chosen).toEqual([]);
       h.stdin.press("2");
-      await until(() => plain(h.screen.text()).includes("Code to tap"));
+      await until(() => plain(h.screen.text()).includes("Tap this code there"));
       code = plain(h.screen.text());
       h.stdin.press("escape");
       return done;
     });
     expect(list).toContain("1  Ana's laptop");
     expect(list).toContain("2  Ben's phone");
+    // The hint shows the real range (UXR-47 B5).
+    expect(list).toContain("1-2 choose a device");
+    expect(list).not.toContain("1-9");
     expect(s.chosen).toEqual(["a2"]);
     expect(code).toContain("482 913");
+  });
+
+  it("a lone approver shows its row during the 3 s wait, and 1 skips the wait", async () => {
+    const s = new FakeNearbySession([ANA], { signedInAfterChoose: false });
+    let row = "";
+    await run({ interactive: true }, async (h) => {
+      const done = loginFlow(h.ctx, nearby(s));
+      await until(() => plain(h.screen.text()).includes("1  Ana's laptop"));
+      row = plain(h.screen.text());
+      expect(s.chosen).toEqual([]);
+      h.stdin.press("1");
+      await until(() => plain(h.screen.text()).includes("Tap this code there"));
+      h.stdin.press("escape");
+      return done;
+    });
+    expect(row).toContain("1 choose this device");
+    expect(s.chosen).toEqual(["a1"]);
   });
 
   it("c uses a code instead: nearby is cancelled and the device-code sign-in runs", async () => {
@@ -519,7 +548,7 @@ describe("devices approve", () => {
     expect(ask).toContain("1  111 111");
     expect(ask).toContain("2  482 913");
     expect(ask).toContain("3  777 777");
-    expect(ask).toContain("1-3 choose a code · d deny");
+    expect(ask).toContain("1-3 choose a code · d or Esc deny");
     expect(picks).toEqual(["777 777"]);
     expect(result.exitCode).toBe(EXIT.ok);
     expect(result.state).toBe("approved");
@@ -762,7 +791,7 @@ describe("devices approve", () => {
       expect(result.error).toBeUndefined();
       expect(text).toContain(
         state === "unsupported"
-          ? "Polaris Locker can't approve"
+          ? "Can't approve from this computer"
           : "tidewater login",
       );
     }

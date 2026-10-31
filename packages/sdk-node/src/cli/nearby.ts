@@ -3,9 +3,10 @@
 //
 //   nearbyLogin        `login`, the new device (D). On an interactive terminal it looks for the
 //                      person's other devices first. An approver that answers within 2 s is
-//                      listed (the one device after 3 s is chosen, several are picked by number),
-//                      its code is shown as `482 913` with the a11y line, and the person taps it
-//                      on the other device. `c` uses a code instead. Nothing answering in 2 s
+//                      listed (the one device after 3 s is chosen, 1 chooses it sooner, several
+//                      are picked by number), its code is shown as `482 913` and the person
+//                      taps it on the other device (the screen reader line is the code's a11y
+//                      name, never a visible row: UXR-47 B3). `c` uses a code instead. Nothing answering in 2 s
 //                      cancels nearby and the regular sign-in runs. After the poll signed in, the
 //                      account is shown: Enter confirms it, `n` (or Esc) signs out again.
 //   devicesApproveFlow `devices approve`, the signed-in device (M). It listens for up to 300 s,
@@ -250,6 +251,7 @@ export async function nearbyLogin(
   let code: string | null = session.code;
   let choosing = false;
   let loneGen = 0;
+  let chosen: NearbyApprover | null = null;
   let lastStage: Stage | null = null;
   let ended: "code" | "cancel" | "handoff" | null = null;
   let interrupt = false;
@@ -257,7 +259,7 @@ export async function nearbyLogin(
   const label = (a: NearbyApprover): string =>
     nameOf(a.label, nameOf(a.platform, t("part.newDevice")));
   const stage = (): Stage =>
-    code !== null ? "code" : list.length >= 2 ? "pick" : "looking";
+    code !== null ? "code" : list.length >= 1 ? "pick" : "looking";
   const screen = (): RailRow[] => {
     const rows: RailRow[] = [...hooks.header()];
     const s = stage();
@@ -265,15 +267,19 @@ export async function nearbyLogin(
     if (s === "code") {
       rows.push(
         {
-          ...textRow(t("signin.nearby.body", { app: ctx.product.name })),
+          ...textRow(
+            chosen === null
+              ? t("signin.nearby.body", { app: ctx.product.name })
+              : t("signin.nearby.bodyOn", {
+                  app: ctx.product.name,
+                  device: label(chosen),
+                }),
+          ),
           keep: true,
         },
         textRow(t("signin.nearby.match")),
         ...codeRows(ctx, code!),
-        // The same line a screen reader hears (a11y.nearbyCode).
-        textRow(t("a11y.nearbyCode", { code: code! }), ["muted"]),
-        ...gap(ctx),
-        spinner(t("signin.approve.waiting")),
+        spinner(t("signin.cli.nearbyWaiting")),
         hintsRow(ctx, t("signin.cli.nearbyKey")),
       );
     } else if (s === "pick") {
@@ -288,7 +294,16 @@ export async function nearbyLogin(
             ]),
           ),
         );
-      rows.push(...gap(ctx), hintsRow(ctx, t("signin.cli.nearbyPickKeys")));
+      const n = Math.min(list.length, 9);
+      rows.push(
+        ...gap(ctx),
+        hintsRow(
+          ctx,
+          n === 1
+            ? t("signin.cli.nearbyPickOneKeys")
+            : t("signin.cli.nearbyPickKeys", { n }),
+        ),
+      );
     } else {
       rows.push(
         spinner(t("signin.cli.nearbyLooking")),
@@ -316,9 +331,11 @@ export async function nearbyLogin(
     if (choosing || code !== null) return;
     choosing = true;
     try {
+      chosen = a;
       code = (await session.choose(a.id)).code;
     } catch {
       choosing = false; // the device left: stay on the list
+      chosen = null;
     }
     draw();
   };
@@ -447,7 +464,8 @@ export async function nearbyLogin(
   live = ctx.live();
   live.draw(() => [
     ...hooks.header(),
-    stepRow("ok", line),
+    // Still held: the active mark, not the check. The check is the committed frame (UXR-47 B2).
+    stepRow("active", line),
     hintsRow(ctx, t("signin.cli.nearbyDoneKeys")),
   ]);
   let confirmed = false;
@@ -466,7 +484,7 @@ export async function nearbyLogin(
   }
   if (confirmed) {
     await session.confirmAccount().catch(() => undefined);
-    finish([stepRow("ok", line), endRow(t("common.done"))]);
+    finish([stepRow("ok", line), endRow()]);
     return {
       exitCode: EXIT.ok,
       state: "signedIn",
@@ -513,7 +531,7 @@ function endOf(
       return {
         rows: [
           stepRow("ok", t("signin.nearby.approved", { device: title })),
-          endRow(t("common.done")),
+          endRow(),
         ],
         result: result(EXIT.ok, "approved", { device }),
       };
@@ -521,7 +539,7 @@ function endOf(
       return {
         rows: [
           stepRow("warn", t("signin.nearby.mismatch", { device })),
-          endRow(t("cli.nothingChanged")),
+          endRow(t("signin.nearby.expiredBody", { device })),
         ],
         result: result(EXIT.failed, "mismatch"),
       };
@@ -593,11 +611,11 @@ function accountRequired(ctx: KitContext): {
   return {
     rows: [
       stepRow("warn", ctx.copy.code("account_required", "title")),
-      textRow(ctx.copy.code("account_required", "message")),
+      // "Sign in" once: the title says why, the command row says what to run.
       ...commandRows(ctx, [
         {
           label: [{ text: cmd(ctx, "login"), style: ["strong"], keep: true }],
-          value: [{ text: t("cli.verb.login") }],
+          value: [{ text: t("signin.key.signIn") }],
         },
       ]),
       endRow(),
@@ -657,8 +675,8 @@ export async function devicesApproveFlow(
     if (c === ErrorCode.nearbyUnsupported) {
       const rows = [
         ...header(),
-        stepRow("warn", t("signin.cli.approveUnsupported")),
-        endRow(t("cli.nothingChanged")),
+        stepRow("warn", t("signin.cli.approveUnsupportedTitle")),
+        endRow(t("signin.cli.approveUnsupported")),
       ];
       ctx.rows(rows);
       return {
@@ -741,8 +759,8 @@ export async function devicesApproveFlow(
     show(() => [
       ...header(),
       stepRow("active", t("signin.nearby.ask", { device })),
-      textRow(t("signin.nearby.askBody")),
       textRow(t("signin.approve.warning"), ["muted"]),
+      textRow(t("signin.nearby.askBody")),
       ...gap(ctx),
       ...ask.codes.map((c, i) =>
         textRow([
@@ -805,7 +823,12 @@ export async function devicesApproveFlow(
             ]
           : []),
         ...gap(ctx),
-        hintsRow(ctx, t("signin.cli.approveChooseKeys")),
+        hintsRow(
+          ctx,
+          options.length === 1
+            ? t("signin.cli.approveChooseOneKeys")
+            : t("signin.cli.approveChooseKeys", { n: options.length }),
+        ),
       ]);
       for (;;) {
         const k = await keys.next();

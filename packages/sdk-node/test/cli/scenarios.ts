@@ -1802,7 +1802,20 @@ SCENARIOS.push(
     },
   },
   {
-    // The code to tap on the other device, with the line a screen reader hears.
+    // One device answered: its row shows during the 3 s wait, and 1 skips the wait (UXR-47 N1).
+    name: "sign-in-nearby-wait-pick-one",
+    opts: { interactive: true },
+    data: NEARBY,
+    run: async (h) => {
+      const done = loginFlow(h.ctx, nearbyClient(new FakeNearbySession([ANA])));
+      await settle();
+      h.snap();
+      h.stdin.press("escape");
+      await done;
+    },
+  },
+  {
+    // The code to tap on the other device, naming the device that was chosen.
     name: "sign-in-nearby-wait",
     opts: { interactive: true, fastDelay: true },
     data: NEARBY,
@@ -1829,6 +1842,18 @@ SCENARIOS.push(
       await settle();
       h.snap();
       h.stdin.press("return");
+      await done;
+    },
+  },
+  {
+    // "Not you?": n signs out again and says how to sign in (UXR-47 N8: Python has this golden).
+    name: "sign-in-nearby-done-signed-out",
+    opts: { interactive: true, fastDelay: true },
+    data: NEARBY,
+    run: async (h) => {
+      const done = loginFlow(h.ctx, nearbyClient(new FakeNearbySession([ANA])));
+      await settle();
+      h.stdin.press("n");
       await done;
     },
   },
