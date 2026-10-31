@@ -370,6 +370,7 @@ const SWIFT_UNASSERTED = new Set([
   "commerce.listening",
   "commerce.products",
   "config.decode",
+  "cloudSync.encryption", // CloudSyncOptions(encryption:), nested under PolarisKeyClientOptions.cloudSync
 ]);
 /** The handle's async properties: no key path reaches them, so each is read inside an async closure. */
 const SWIFT_ASYNC_HANDLE = new Set([

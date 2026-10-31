@@ -3755,7 +3755,8 @@
           "planned": "U-20"
         },
         "swift": {
-          "planned": "U-07"
+          "spelling": "CloudSyncOptions(encryption:)",
+          "reason": "an app-code option on PolarisKeyClientOptions.cloudSync, default .e2e"
         },
         "kotlin": {
           "path": "cloudSync.encryption"

@@ -507,8 +507,8 @@
       "wp": "U-41"
     },
     "sync.e2e": {
-      "status": "planned",
-      "wp": "U-07"
+      "status": "implemented",
+      "note": "Settings seal and open through the machine's E2E mode (CloudSyncOptions.encryption, default .e2e; app code only, never read from the Worker) over the key ring; guard (b) judges a conflict's server copy against the push's own cursor (X-1, the cursor is required). SyncScenariosTests replays every e2e scenario, e2e-conflict-plaintext-copy-refused included; SyncVectorsTests and HostCodecTests cover the vectors and the host codec."
     },
     "connect.identity": {
       "status": "implemented",
