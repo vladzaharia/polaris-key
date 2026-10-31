@@ -64,6 +64,13 @@ export const DIRECT_COMPONENT_STATE_FIXTURES: readonly ComponentStateFixture[] =
     fixture("About", "default", {
       bundle: { slug: "tidewater", name: "Tidewater Studio", version: "2.4.1" },
     }),
+    // The attach flow's waiting view: a device code to check in Polaris Locker (UK-42.22.13F).
+    // `AddToAccount` is a holder view the ComponentName union does not list.
+    fixture("AddToAccount" as ComponentName, "waiting", {
+      services: ["license", "identity"],
+      addToAccount: { step: "busy", deviceKind: "computer" },
+      deviceCode: { phase: "waiting", userCode: "WDJB-MJHT" },
+    }),
     fixture("ChannelPicker", "default", { services: ["release"] }),
     fixture("ChannelPicker", "locked", {
       services: ["release"],
