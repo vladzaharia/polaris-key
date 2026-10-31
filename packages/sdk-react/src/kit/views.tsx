@@ -245,6 +245,9 @@ function progressFor(c: KitCtx): ReactNode {
     )
       return progressBar(c, e.done / e.total);
   }
+  // A transfer's bar is determinate only with counted bytes (DL7).
+  if (view.component === "CloudSyncStatus" && view.state === "transferring")
+    return progressBar(c, input.cloudSync?.transfer?.fraction);
   const p = input.update?.progress;
   if (
     (view.component === "UpdatePrompt" && view.state === "downloading") ||
@@ -740,7 +743,7 @@ function statusGlyph(view: View): ReactNode {
         ? GLYPHS.offline()
         : s === "synced"
           ? GLYPHS.success()
-          : s === "syncing"
+          : s === "syncing" || s === "transferring"
             ? null
             : GLYPHS.warning();
   return null;
@@ -759,7 +762,9 @@ function statusOf(view: View): string {
     // A sync that failed for want of a sign-in is neutral, not a fault (DL6).
     return view.decisions.tone === "neutral"
       ? "neutral"
-      : view.state === "conflict" || view.state === "error"
+      : view.state === "conflict" ||
+          view.state === "error" ||
+          view.state === "transfer-failed"
         ? "warning"
         : view.state === "synced"
           ? "success"

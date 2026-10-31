@@ -77,6 +77,7 @@ const FAMILIES = [
   "settings",
   "paywall",
   "cloudSync",
+  "saveConflict",
   "holders",
 ] as const;
 
@@ -282,6 +283,7 @@ const COMPONENTS = {
   UnlockSync: kitComponent("UnlockSync"),
   RecoveryCode: kitComponent("RecoveryCode"),
   RingChange: kitComponent("RingChange"),
+  SaveConflict: kitComponent("SaveConflict"),
 } as unknown as Record<
   string,
   (p: Kit.KitProps & { children?: ReactNode; code?: string }) => ReactNode

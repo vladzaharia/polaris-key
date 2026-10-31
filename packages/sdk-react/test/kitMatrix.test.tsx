@@ -96,6 +96,7 @@ const FAMILIES = [
   "settings",
   "paywall",
   "cloudSync",
+  "saveConflict",
 ] as const;
 const en = new Copy({ tables: { en: KIT_COPY_EN } });
 
@@ -157,6 +158,7 @@ const COMPONENTS = {
   UnlockSync: kitComponent("UnlockSync"),
   RecoveryCode: kitComponent("RecoveryCode"),
   RingChange: kitComponent("RingChange"),
+  SaveConflict: kitComponent("SaveConflict"),
 } as unknown as Record<
   string,
   ((p: Kit.KitProps & { children?: ReactNode }) => ReactNode) | undefined

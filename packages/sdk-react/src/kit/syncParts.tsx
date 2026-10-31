@@ -348,6 +348,118 @@ function CodeBlock(props: { c: KitCtx; code: string }): ReactNode {
   );
 }
 
+/** One copy of the save, as a card: whose it is and when it was saved. */
+function saveCard(
+  c: KitCtx,
+  side: "local" | "remote",
+  keys: { who: string; when: string },
+): ReactNode {
+  return (
+    <li className="save-card" data-part="save-card" data-side={side}>
+      <span className="label" data-key={keys.who}>
+        {text(c, keys.who)}
+      </span>
+      {shown(c, keys.when) ? (
+        <span className="meta" data-key={keys.when}>
+          {text(c, keys.when)}
+        </span>
+      ) : null}
+    </li>
+  );
+}
+
+const KEPT_KEYS = [
+  "saveConflict.keptLocal",
+  "saveConflict.keptRemote",
+  "saveConflict.keptBoth",
+  "saveConflict.keptDeleted",
+];
+
+/** SaveConflict: the two copies, then the way on for each state. The choices are plain buttons
+ *  with no filled one (nothing is the default); Keep both stays on screen, unavailable and
+ *  described by its reason, while every slot is in use. */
+function SaveConflictBody(props: { c: KitCtx }): ReactNode {
+  const { c } = props;
+  const state = c.view.state;
+  if (state === "choose") {
+    const gone = shown(c, "saveConflict.deletedElsewhere");
+    const full = shown(c, "saveConflict.bothFull");
+    return (
+      <>
+        <ul className="save-cards" data-part="save-cards">
+          {saveCard(c, "local", {
+            who: "saveConflict.thisDevice",
+            when: "saveConflict.savedThis",
+          })}
+          {saveCard(c, "remote", {
+            who: gone
+              ? "saveConflict.deletedElsewhere"
+              : shown(c, "saveConflict.otherDevice")
+                ? "saveConflict.otherDevice"
+                : "saveConflict.otherUnknown",
+            when: "saveConflict.savedOther",
+          })}
+        </ul>
+        <div
+          className="actions"
+          data-layout="stack"
+          data-part="actions"
+          role="group"
+          aria-labelledby="pk-title"
+        >
+          {button(c, "saveConflict.keepThis", "secondary")}
+          {button(
+            c,
+            gone ? "saveConflict.acceptDelete" : "saveConflict.keepOther",
+            "secondary",
+          )}
+          {shown(c, "saveConflict.keepBoth")
+            ? button(c, "saveConflict.keepBoth", "secondary", {
+                disabled: full,
+                describedBy: full ? "pk-both-full" : undefined,
+              })
+            : null}
+        </div>
+        {full ? (
+          <p
+            className="body note"
+            id="pk-both-full"
+            data-key="saveConflict.bothFull"
+          >
+            {text(c, "saveConflict.bothFull")}
+          </p>
+        ) : null}
+        {row(c, ["common.cancel"], { quiet: true })}
+      </>
+    );
+  }
+  if (state === "keeping")
+    return (
+      <p className="body" role="status" data-key="saveConflict.keeping">
+        {text(c, "saveConflict.keeping")}
+      </p>
+    );
+  if (state === "kept") {
+    const key = KEPT_KEYS.find((k) => shown(c, k));
+    return (
+      <>
+        {key ? (
+          <p className="body" role="status" data-key={key}>
+            {text(c, key)}
+          </p>
+        ) : null}
+        {row(c, ["common.done"])}
+      </>
+    );
+  }
+  return (
+    <>
+      {callout(c, ["saveConflict.failed"])}
+      {row(c, ["common.tryAgain", "common.cancel"], { quiet: true })}
+    </>
+  );
+}
+
 /** UnlockSync, RecoveryCode and RingChange draw their fields and actions here. `code` is the
  *  recovery code the host handed RecoveryCode (it is in no input). */
 export function syncContent(c: KitCtx, code: string): ReactNode {
@@ -382,6 +494,7 @@ function screenContent(c: KitCtx, code: string): ReactNode {
         {row(c, ["common.done"])}
       </>
     );
+  if (view.component === "SaveConflict") return <SaveConflictBody c={c} />;
   if (view.component === "RingChange")
     return (
       <>

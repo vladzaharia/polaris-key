@@ -34,6 +34,32 @@ export const SYNC_CSS = `
 .field[hidden] {
   display: none;
 }
+/* SaveConflict (U-22.K2): the two copies side by side, one under the other where the box is narrow
+   or the text large; neither is the default, so neither is stronger than the other. */
+.save-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--pk-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@container (max-width: 24rem) {
+  .save-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.save-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+  min-inline-size: 0;
+  padding: var(--pk-space-4);
+  border-radius: var(--pk-kit-radius-control);
+  background: var(--pk-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
+  overflow-wrap: anywhere;
+}
 .body.note {
   color: var(--pk-text-strong);
   font-weight: 500;
