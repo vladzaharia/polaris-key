@@ -71,7 +71,10 @@ final class GameCenterTests: XCTestCase {
         let s = GameCenterSignature(
             publicKeyURL: URL(string: "https://static.gc.apple.com/public-key/a.cer")!,
             signature: Data([9, 9, 9]), salt: Data([8, 8, 8]), timestamp: 5)
-        for text in ["\(s)", String(reflecting: s), String(describing: Mirror(reflecting: s).children.map { "\($0.value)" })] {
+        for text in [
+            "\(s)", String(reflecting: s),
+            String(describing: Mirror(reflecting: s).children.map { "\($0.value)" }),
+        ] {
             XCTAssertFalse(text.contains("CQkJ"))
             XCTAssertFalse(text.contains("09"))
         }

@@ -743,7 +743,7 @@ class CloudSyncTransferTest {
     fun aFileJournalNamesFilesByHashAtMode0600AndRefusesToBeSteered() {
         val dir = tempDir()
         val j = FileJournal(dir)
-        val evil = "../../etc/passwd"
+        val evil = "../../etc/pkey-journal-probe"
         val rec = record(evil).copy(mode = "multipart", partBytes = 2, size = 5, done = listOf(1, 2))
         j.put(evil, rec)
         val names = j.dir.list()!!.toList()
@@ -751,7 +751,7 @@ class CloudSyncTransferTest {
         assertEquals(69, names[0].length)
         assertEquals(PosixFilePermissionsOwner, perms(File(j.dir, names[0])))
         assertEquals(setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE), perms(j.dir))
-        assertFalse(File(dir, "../../etc/passwd").exists())
+        assertFalse(File(dir, "../../etc/pkey-journal-probe").exists())
         assertEquals(rec, parseJournalRecord(j.get(evil)))
         assertEquals(listOf(evil), j.list())
         File(j.dir, "evil.json").writeText("{}")
