@@ -638,6 +638,7 @@ async function fileRoute(
     path: url.pathname + url.search,
     headers,
     body: binary ? null : typeof init?.body === "string" ? init.body : null,
+    bytes: raw ?? null,
   });
   if (!item)
     return new Response("replay: no matching exchange", { status: 599 });
@@ -1868,12 +1869,12 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // connect.identity is CC-06.4's connect-identity* transcripts, replayed here (CC-09.1).
     // sync.records (U-09.10) stays planned here (D-2: v1 is saves only; `collection()` is C-26), so the
     // cloudsync-records-* transcripts, the Worker's record-engine conversations, are not replayed.
-    // sync.saves waits on U-22.5's machine change, so cloudsync-files-single (also tagged sync.saves) is not
-    // replayed yet. sync.files (U-10.12) and sync.files.delta (U-37) are U-22.6's: the other cloudsync-files-*
+    // sync.saves (SAVES.R) replays cloudsync-files-single (also tagged sync.saves) through the file transport.
+    // sync.files (U-10.12) and sync.files.delta (U-37) are U-22.6's: the other cloudsync-files-*
     // transcripts and cloudsync-chunks* replay through the file transport (cloudSyncFile, cloudSyncChunk).
     // identity.keyreturn is LK-SKIP's redirect-web-key-return* transcripts: replayed here (.6b).
     // identity.devicecode.choice is UK-42.22.5's holders-add-to-account-device, replayed here.
-    const plannedHere: string[] = ["sync.records", "sync.saves"];
+    const plannedHere: string[] = ["sync.records"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     // identity.gamecenter and identity.pgs are N/A on the web (parity.json), so exchange-gamecenter-*,

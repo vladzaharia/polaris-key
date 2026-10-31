@@ -15,6 +15,7 @@
 
 import {
   TransferEngine,
+  TransferError,
   chunkCacheBudget,
   type ChunkCache,
   type JournalStore,
@@ -54,7 +55,12 @@ export interface BrowserFiles {
   exclusive<T>(fn: () => Promise<T>): Promise<T>;
   /** Delete the journal, the chunk cache and the writer's identity (with the person). */
   purge(): Promise<void>;
+  /** True once `purge()` ran: the journal refuses and the cache answers nothing, so a transfer
+   *  still running cannot reopen the deleted database. Build a new layer for the next person. */
+  readonly purged: boolean;
 }
+
+const gone = (): TransferError => new TransferError("aborted");
 
 /** The file layer for one adapter. */
 export function createBrowserFiles(d: BrowserFilesDeps): BrowserFiles {
@@ -64,13 +70,30 @@ export function createBrowserFiles(d: BrowserFilesDeps): BrowserFiles {
       filesDbName(d.dbName),
       chunkCacheBudget(d.maxBytes ?? FILES_DEFAULT_MAX_BYTES),
     );
+  // After a purge a running transfer must not reopen the database it deleted: the journal ends the
+  // transfer (`aborted`), the cache forgets (a miss, a no-op).
+  let purged = false;
+  const journal: JournalStore = {
+    get: (id) => (purged ? Promise.reject(gone()) : store.journal.get(id)),
+    put: (id, r) =>
+      purged ? Promise.reject(gone()) : store.journal.put(id, r),
+    delete: (id) =>
+      purged ? Promise.reject(gone()) : store.journal.delete(id),
+    list: () => (purged ? Promise.reject(gone()) : store.journal.list()),
+  };
+  const cache: ChunkCache = {
+    get: async (id) => (purged ? null : store.cache.get(id)),
+    put: async (id, o) => (purged ? undefined : store.cache.put(id, o)),
+    delete: async (id) => (purged ? undefined : store.cache.delete(id)),
+    clear: async () => (purged ? undefined : store.cache.clear()),
+  };
   const transport = new BrowserFileTransport({
     product: d.product,
     request: d.fileFetch,
   });
   const engine = new TransferEngine({
     transport,
-    journal: store.journal,
+    journal,
     maxRetryAfterSeconds: FILES_MAX_RETRY_AFTER_SECONDS,
     ...(d.sleep ? { sleep: d.sleep } : {}),
   });
@@ -78,8 +101,8 @@ export function createBrowserFiles(d: BrowserFilesDeps): BrowserFiles {
   return {
     transport,
     engine,
-    journal: store.journal,
-    cache: store.cache,
+    journal,
+    cache,
     store,
     lockName,
     exclusive: <T>(fn: () => Promise<T>): Promise<T> =>
@@ -94,6 +117,12 @@ export function createBrowserFiles(d: BrowserFilesDeps): BrowserFiles {
           })
           .catch(reject);
       }),
-    purge: () => store.purge(),
+    get purged() {
+      return purged;
+    },
+    purge: () => {
+      purged = true;
+      return store.purge();
+    },
   };
 }

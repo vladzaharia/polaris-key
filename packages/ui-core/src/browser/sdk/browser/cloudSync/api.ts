@@ -22,7 +22,11 @@ import {
   type SyncEvent,
   type SyncStatus,
 } from "@polaris-key/client-core/cloud-sync";
-import type { CloudSyncClient, IdentityNote } from "../../core/cloudSync.js";
+import type {
+  BrowserSaves,
+  CloudSyncClient,
+  IdentityNote,
+} from "../../core/cloudSync.js";
 import type {
   ConfigSyncPort,
   LocalConfigEngine,
@@ -82,7 +86,9 @@ export function importMarker(
 
 export interface BrowserCloudSyncApiDeps {
   host: BrowserCloudSyncHost;
-  keyring: Pick<KeyringClient, "forget">;
+  keyring: Pick<KeyringClient, "forget"> & { lock?: () => unknown };
+  /** Cancel the save transfers and delete their journal and chunk cache (the saves layer). */
+  purgeSaves?: () => Promise<void>;
   config: Pick<LocalConfigEngine, "useSync" | "noteSyncChange" | "importable">;
   /** The signed-in person, null for none, undefined when it could not be read (a network failure
    *  is not a sign-out). */
@@ -321,6 +327,14 @@ export class BrowserCloudSyncApi {
    *  did; a failure is logged and never thrown. */
   async #forget(): Promise<void> {
     this.#forgot = true;
+    // The root leaves first (a save codec stops with it: `sync-locked`), then the save transfers
+    // (running writes, journal, chunk cache), and the pin goes with the rest.
+    await Promise.resolve(this.#d.keyring.lock?.()).catch(() => {
+      this.#d.log?.("cloud sync: the key ring could not be locked");
+    });
+    await (this.#d.purgeSaves?.() ?? Promise.resolve()).catch(() => {
+      this.#d.log?.("cloud sync: the save transfers could not be deleted");
+    });
     const ring = this.#d.keyring.forget().catch(() => {
       this.#d.log?.("cloud sync: the key ring pin could not be removed");
     });
@@ -353,9 +367,11 @@ export class BrowserCloudSyncApi {
 export function clientOf(
   api: BrowserCloudSyncApi,
   host: BrowserCloudSyncHost,
+  saves: BrowserSaves,
 ): CloudSyncClient {
   return {
     unsupported: null,
+    saves,
     host: async () => host,
     status: () => api.status(),
     flush: () => api.flush(),

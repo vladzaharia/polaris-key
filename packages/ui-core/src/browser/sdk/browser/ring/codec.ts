@@ -12,6 +12,7 @@ import {
   openValueAnyName,
   sealValue,
   type BlindKind,
+  type FileCodec,
   type HostCodec,
   type OpenedValue,
   type SyncJson,
@@ -26,7 +27,7 @@ export interface KeySource {
   ringKeys(): Promise<RingKeys | null>;
 }
 
-const locked = (): PolarisError =>
+export const locked = (): PolarisError =>
   new PolarisError(
     ErrorCode.syncLocked,
     "Cloud Sync is locked: there is no root",
@@ -75,5 +76,51 @@ export function ringCodec(src: KeySource): HostCodec {
       const k = await keys();
       return k.withRoot((p, root) => blind(p, root, kind, ctx, name));
     },
+  };
+}
+
+/**
+ * The file codec behind a liveness check. The inner codec's crypto port keeps the vault's root
+ * handle for as long as the codec lives, so a lock alone would not stop it: every method, and every
+ * piece of a stream, asks `live()` first and throws `sync-locked` once the ring has locked.
+ */
+export function guardFileCodec(
+  inner: FileCodec,
+  live: () => boolean,
+): FileCodec {
+  const check = (): void => {
+    if (!live()) throw locked();
+  };
+  const guard =
+    <A extends unknown[], R>(fn: (...a: A) => Promise<R>) =>
+    async (...a: A): Promise<R> => {
+      check();
+      const r = await fn(...a);
+      // A lock during the call: nothing it made leaves.
+      check();
+      return r;
+    };
+  const wrap = <S>(fn: (src: S) => AsyncGenerator<Uint8Array>) =>
+    async function* (src: S): AsyncGenerator<Uint8Array> {
+      check();
+      for await (const piece of fn(src)) {
+        check();
+        yield piece;
+      }
+      // A stream that ends after the lock ends in the refusal, not in a clean finish.
+      check();
+    };
+  return {
+    enc: inner.enc,
+    chunkId: guard(inner.chunkId),
+    chunkObjectBytes: (n) => (check(), inner.chunkObjectBytes(n)),
+    sealChunk: guard(inner.sealChunk),
+    openChunk: guard(inner.openChunk),
+    storedSize: (n) => (check(), inner.storedSize(n)),
+    plainSize: (n) => (check(), inner.plainSize(n)),
+    sealManifest: guard(inner.sealManifest),
+    openManifest: guard(inner.openManifest),
+    sealStream: wrap(inner.sealStream.bind(inner)),
+    openStream: wrap(inner.openStream.bind(inner)),
   };
 }

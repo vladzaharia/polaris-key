@@ -24,6 +24,11 @@ import type { RingCode, RingIdentity, RingStatus } from "../core/keyring.js";
 import type { KitAction } from "./component.js";
 import { kitComponent, type SyncScreenProps } from "./kitComponent.js";
 import { useSyncLock } from "../react/useKeyring.js";
+import type {
+  RangedSource,
+  SaveConflict as SaveConflictInfo,
+} from "@polaris-key/client-core/sync";
+import { useBoundConflict } from "./saveScreens.js";
 
 export type { SyncScreenProps };
 
@@ -311,6 +316,11 @@ function DrivenRing(props: RingChangeProps & { ring: Ring }): ReactNode {
 export type SaveKeep = "local" | "remote" | "both";
 
 export interface SaveConflictProps extends SyncScreenProps {
+  /** The local copy's bytes, for Keep this and Keep both (the host holds them; none is needed to
+   *  keep the other copy). Used when the screen follows the saves client itself. */
+  bytes?: (
+    conflict: SaveConflictInfo,
+  ) => Uint8Array | RangedSource | Promise<Uint8Array | RangedSource>;
   /** A choice was made (the host applies it and moves `input.saveConflict.step` on). */
   onKeep?: (keep: SaveKeep) => void;
   /** Try again, after a choice failed. */
@@ -328,21 +338,33 @@ const KEEPS: Readonly<Record<string, SaveKeep>> = {
   "saveConflict.keepBoth": "both",
 };
 
-/** The same save changed on two devices: pick the copy to keep. The plain part today, driven by
- *  `input.saveConflict`; the binding to the saves client follows U-22.7. With no conflict in the
- *  input it draws nothing. */
+/** The same save changed on two devices: pick the copy to keep. Given `input.saveConflict` it is
+ *  the plain part and the host drives it; given none, inside `<PolarisKeyProvider>`, it follows
+ *  the first conflict `adapter.cloudSync.saves` holds and settles it with `resolve` (the local
+ *  copy's bytes come from `bytes`). With no conflict it draws nothing. */
 export function SaveConflict(props: SaveConflictProps): ReactNode {
-  const { onKeep, onRetry, onCancel, onDone, ...rest } = props;
+  const { onKeep, onRetry, onCancel, onDone, bytes, ...rest } = props;
+  const bound = useBoundConflict(rest.input, bytes);
   return (
     <SaveConflict_
       {...rest}
+      {...(bound.input ? { input: bound.input } : {})}
       onAction={(a) => {
         rest.onAction?.(a);
         const keep = KEEPS[a.key];
-        if (keep) onKeep?.(keep);
-        else if (a.key === "common.tryAgain") onRetry?.();
-        else if (a.key === "common.cancel") onCancel?.();
-        else if (a.key === "common.done") onDone?.();
+        if (keep) {
+          onKeep?.(keep);
+          if (bound.input) bound.onKeep(keep);
+        } else if (a.key === "common.tryAgain") {
+          onRetry?.();
+          if (bound.input) bound.onRetry();
+        } else if (a.key === "common.cancel") {
+          onCancel?.();
+          if (bound.input) bound.onCancel();
+        } else if (a.key === "common.done") {
+          onDone?.();
+          if (bound.input) bound.onDone();
+        }
       }}
     />
   );
