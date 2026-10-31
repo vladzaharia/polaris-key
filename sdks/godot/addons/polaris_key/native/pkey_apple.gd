@@ -43,11 +43,15 @@ signal pack_ready(id: String, path: String)
 signal pack_failed(id: String, err: String)
 
 const NATIVE_CLASS := "PolarisKeyApple"
+## The opt-in Game Center extension's class (native/ios/build.sh with EXTENSION=gamecenter): GameKit is
+## linked by it alone, so a game that never asks for Game Center ships none.
+const GAME_CENTER_CLASS := "PolarisKeyGameCenter"
+const GAME_CENTER_META := "pkey_game_center_facade"
 ## The AppDistributor deadline (OUTLET_PLATFORM_DATA.deadlineMs; notes/S-06 rule 5).
 const DISTRIBUTOR_DEADLINE := 2.0
 
 ## The features that also run on macOS, through the desktop dylib: the Keychain and Sign in with Apple.
-const MACOS_FEATURES := [PKeyConstants.Feature.CORE_STORE, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN]
+const MACOS_FEATURES := [PKeyConstants.Feature.CORE_STORE, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, PKeyConstants.Feature.IDENTITY_GAMECENTER]
 
 ## The platform this answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var platform := ""
@@ -88,6 +92,23 @@ static func shared() -> PKeyApple:
 		if tree != null and tree.root != null:
 			tree.root.add_child.call_deferred(_shared)
 	return _shared
+
+
+## The facade of the opt-in Game Center extension (class PolarisKeyGameCenter): one per process,
+## polled by the tree like shared(). Its only call is gc_identity(). Without the extension every call
+## answers Unsupported (`dependency` on iOS and macOS, `runtime` elsewhere).
+static func game_center() -> PKeyApple:
+	# Held in the Engine's metadata: one more static variable would be one more lint finding.
+	var held = Engine.get_meta(GAME_CENTER_META, null)
+	if held == null or not is_instance_valid(held):
+		held = PKeyApple.new()
+		held.native_class = GAME_CENTER_CLASS
+		held.name = "PKeyGameCenter"
+		Engine.set_meta(GAME_CENTER_META, held)
+		var tree := Engine.get_main_loop() as SceneTree
+		if tree != null and tree.root != null:
+			tree.root.add_child.call_deferred(held)
+	return held
 
 
 ## The launch work (once per process; the PolarisKey autoload calls it on iOS):
@@ -172,8 +193,10 @@ func availability(feature := PKeyConstants.Feature.OUTLET_DETECT) -> PKeyResult:
 	if why == PKeyConstants.UnsupportedReason.RUNTIME:
 		return PKeyResult.unsupported(feature, why, "The Apple platform plugin runs on iOS, not %s." % (_platform() if _platform() != "" else "this platform"))
 	if why == PKeyConstants.UnsupportedReason.DEPENDENCY:
-		var lib := "libpkey_apple.dylib" if _platform() == PKeyConstants.Platform.MACOS else "pkey_apple.xcframework"
-		return PKeyResult.unsupported(feature, why, "The PolarisKeyApple GDExtension (%s) is not in this build." % lib)
+		var stem := "pkey_gamecenter" if native_class == GAME_CENTER_CLASS else "pkey_apple"
+		var lib := "lib%s.dylib" % stem if _platform() == PKeyConstants.Platform.MACOS else "%s.xcframework" % stem
+		var how := " (build it with EXTENSION=gamecenter and turn on polaris_key/game_center)" if native_class == GAME_CENTER_CLASS else ""
+		return PKeyResult.unsupported(feature, why, "The %s GDExtension (%s) is not in this build%s." % [native_class, lib, how])
 	return PKeyResult.success()
 
 
@@ -220,7 +243,8 @@ func call_async(q: Dictionary, wait_s := -1.0, feature := "") -> Dictionary:
 
 ## The shared-results key of request `req` on this instance's native side.
 func _key(req: int) -> String:
-	return "%d:%d" % [native.get_instance_id() if native != null else 0, req]
+	# The class names the extension: the Apple plugin and the Game Center extension count requests apart.
+	return "%d:%s:%d" % [native.get_instance_id() if native != null else 0, native_class if native == null else "", req]
 
 
 ## Drain the native event queue: results go to their awaiting call, the rest become signals.
@@ -402,6 +426,18 @@ func apple_remember(user_id: String) -> PKeyResult:
 ## Forget the stored Apple user id (sign-out).
 func apple_forget() -> PKeyResult:
 	return _wrap(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, call_sync({"op": "apple_forget"}, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN))
+
+
+# ── Game Center (I-48.6a; the Game Center provider drives this, on the game_center() facade) ──────
+
+## The signed-in local player's identity-verification parts for the exchange. detail has
+## `publicKeyUrl`, `signature` and `salt` (base64url), `timestamp` (a decimal string), `teamPlayerId`
+## and `bundleId`: secrets for about two minutes. PKeyGameCenterToken.encode() builds the `gc1.`
+## token from them. A failure is `platform-error` with detail.error `not_authenticated`,
+## `ids_not_persistent`, `unsupported`, `verification_failed` or `malformed`; the extension never
+## presents Game Center's sign-in.
+func gc_identity() -> PKeyResult:
+	return await _async(PKeyConstants.Feature.IDENTITY_GAMECENTER, {"op": "gc_identity"}, 30.0)
 
 
 # ── App Attest (P6-02; PolarisKey.devices.attest() drives these) ───────────────────────────────

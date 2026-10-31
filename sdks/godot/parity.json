@@ -221,8 +221,7 @@
       "note": "I-48.1/I-48.3: PolarisKey.identity.exchange.nonce(kind) and exchange(kind, token, nonce) over discovery's exchange member and nonce and token routes (the pkey-proof/1 exchange proof over the one device key store); the outcome is signed_in, confirm (completed through identity.choice.complete(grant, choice, consent)), choose, needs_sign_in or unavailable, and a refusal is a typed result. A 404, a discovery with no exchange member or memory-only keys is unavailable with no request. The nine exchange transcripts are replayed (suite_transcripts) over fixture device keys. The platform providers (Apple, Credential Manager, FedCM) are I-48.4 to I-48.8; desktop Linux and Windows have none."
     },
     "identity.gamecenter": {
-      "status": "planned",
-      "wp": "I-48",
+      "status": "implemented",
       "except": [
         {
           "runtime": "linux",
@@ -241,7 +240,7 @@
           "reason": "runtime"
         }
       ],
-      "note": "Game Center on iOS and macOS (I-48)."
+      "note": "I-48.6b: Game Center on iOS and macOS. The opt-in PolarisKeyGameCenter extension (EXTENSION=gamecenter on native/ios/build.sh and native/macos/build_apple.sh; GameKit is weak-linked there and nowhere else) returns the signed-in local player's raw identity-verification fields; PKeyGameCenterToken builds the gc1. token (Q-5) and PKeyGameCenterProvider hands it to the ladder, silently (it never presents Game Center's sign-in). The extension's presence in the project is the opt-in (Godot exports every GDExtension it finds); the export option polaris_key/game_center (off by default) adds the Game Center entitlement and warns when the two disagree. The three exchange-gamecenter transcripts are replayed. Real-device fields are the owner's check (OS-6)."
     },
     "identity.pgs": {
       "status": "planned",

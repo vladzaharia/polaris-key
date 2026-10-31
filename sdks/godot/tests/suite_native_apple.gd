@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature outlet.detect core.store packs.transport.apple commerce.receipt devices.attest identity.autosignin
+# @pkey-feature outlet.detect core.store packs.transport.apple commerce.receipt devices.attest identity.autosignin identity.gamecenter
 # The Apple platform plugin's GDScript side (P5-05), headless on every OS:
 #
 #   stubs     PKeyApple without the native class: every call answers Unsupported, reason
@@ -22,6 +22,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_stubs(t)
 	await _facade(t)
 	await _sign_in_with_apple(t)
+	await _game_center(t)
 	_keychain(t)
 	_export(t)
 	_export_entitlements(t)
@@ -333,6 +334,46 @@ func _sign_in_with_apple(t: PKeyTestContext) -> void:
 	mac.free()
 
 
+## Game Center (I-48.6b): the opt-in extension's facade and the provider over the fake plugin.
+func _game_center(t: PKeyTestContext) -> void:
+	var off := _apple("windows")
+	var r: PKeyResult = await off.gc_identity()
+	t.check("gc: off iOS and macOS the facade is Unsupported (runtime)", r.code == &"unsupported" and r.detail.get("reason") == "runtime")
+	var missing := _apple("ios")
+	missing.native_class = "PolarisKeyGameCenterMissingForTests"
+	r = await missing.gc_identity()
+	t.check("gc: without the extension it is Unsupported (dependency) and names the build switch", r.code == &"unsupported" and r.detail.get("reason") == "dependency")
+	missing.native_class = PKeyApple.GAME_CENTER_CLASS
+	r = await missing.gc_identity()
+	t.check("gc: the missing-extension message names EXTENSION=gamecenter", String(r.message).contains("EXTENSION=gamecenter") and String(r.message).contains("pkey_gamecenter"), r.message)
+	var mac := _apple("macos")
+	mac.native_class = PKeyApple.GAME_CENTER_CLASS
+	r = await mac.gc_identity()
+	t.check("gc: macOS without the dylib is dependency, not runtime", r.detail.get("reason") == "dependency" and String(r.message).contains("libpkey_gamecenter.dylib"), r.message)
+
+	var fake := PKeyFakeAppleNative.new()
+	var a := _apple("ios", fake)
+	a.native_class = PKeyApple.GAME_CENTER_CLASS
+	var p := PKeyGameCenterProvider.new(a)
+	t.check("gc: kind gamecenter, silent only", p.kind == "gamecenter" and p.has_silent() and not p.has_sheet())
+	var got: Dictionary = await p.silent("bm9uY2U", "")
+	t.check("gc: silent answers the gc1. token built from the raw fields", got.get("token") == PKeyGameCenterToken.encode(fake.gc_result) and str(got.get("token")).begins_with("gc1."))
+	var asked := fake.calls.filter(func(c): return c["op"] == "gc_identity")
+	t.check("gc: the request is just gc_identity (no nonce, nothing to present)", asked.size() == 1 and asked[0].keys() == ["op"])
+	t.check("gc: the sheet is unavailable and asks nobody", (await p.sheet("n", "")).has("unavailable") and fake.calls.filter(func(c): return c["op"] == "gc_identity").size() == 1)
+	for error in ["not_authenticated", "ids_not_persistent", "unsupported", "verification_failed", "malformed"]:
+		fake.gc_result = {"ok": false, "error": error}
+		got = await p.silent("n", "")
+		t.check("gc: %s is unavailable with no token" % error, got.has("unavailable") and not got.has("token") and str(got["unavailable"]).contains(error))
+	fake.gc_result = {"ok": true, "publicKeyUrl": "u", "signature": "AQID=", "salt": "UEtleQECAwQ", "timestamp": "1", "teamPlayerId": "t", "bundleId": "b"}
+	t.check("gc: malformed fields are unavailable", (await p.silent("n", "")).has("unavailable"))
+	t.check("gc: no revocation check, no sign-out state", not await p.credential_revoked())
+	a.free()
+	off.free()
+	missing.free()
+	mac.free()
+
+
 func _export_entitlements(t: PKeyTestContext) -> void:
 	var ex := PKeyAppleExport
 	var frag := ex.entitlement_fragments(true)
@@ -346,6 +387,16 @@ func _export_entitlements(t: PKeyTestContext) -> void:
 	t.check("export: the preset's own text is kept first, the entitlement follows", merged.begins_with(own) and merged.count("applesignin") == 1, merged)
 	t.check("export: merging twice adds nothing", ex.merge_entitlements(merged, frag) == merged)
 	t.check("export: the preset's own applesignin is not doubled", ex.merge_entitlements(key + "<array/>", frag) == key + "<array/>")
+	var both := ex.entitlement_fragments(true, true)
+	t.check("export: game center adds its entitlement as <true/>", both.size() == 2 and both[1] == "<key>com.apple.developer.game-center</key>\n<true/>")
+	t.check("export: game center alone adds just that one", ex.entitlement_fragments(false, true).size() == 1)
+	var present := func(_p: String): return true
+	var absent := func(_p: String): return false
+	t.check("export: the extension is installed where its .gdextension is", ex.extension_installed("ios", present) and not ex.extension_installed("ios", absent))
+	t.check("export: …and only on iOS and macOS", ex.extension_installed("macos", present) and not ex.extension_installed("linux", present))
+	t.check("export: option and extension agree is quiet", ex.game_center_warning(true, true) == "" and ex.game_center_warning(false, false) == "")
+	t.check("export: option on without the extension warns", ex.game_center_warning(true, false).contains("EXTENSION=gamecenter"))
+	t.check("export: the extension without the option warns that GameKit is linked", ex.game_center_warning(false, true).contains("GameKit is linked"))
 	t.check("export: macOS warns, iOS and off do not", ex.sign_in_warning(true, "macos") != "" and ex.sign_in_warning(true, "ios") == "" and ex.sign_in_warning(false, "macos") == "")
 
 

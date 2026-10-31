@@ -13,6 +13,11 @@
 # com.apple.developer.applesignin entitlement; the sideload preset leaves it off (the default) and
 # carries none.
 #
+# Game Center (I-48.6b): the store preset sets polaris_key/game_center=true and carries the
+# com.apple.developer.game-center entitlement; the sideload preset leaves it off (the default) and
+# carries none. The opt-in extension is exported exactly when pkey_gamecenter.xcframework is installed
+# in the addon (EXTENSION=gamecenter ./build.sh): Godot exports every GDExtension it finds.
+#
 #   GODOT_BIN   the 4.5+ editor (default: godot on PATH) with the iOS export templates installed
 #   BUILD=1     also build both projects for the device, unsigned (CODE_SIGNING_ALLOWED=NO)
 #   OUT         the work directory (default: sdks/godot/build/ios_export_check)
@@ -102,6 +107,7 @@ application/export_method_release=0
 polaris_key/outlet="$3"
 polaris_key/apple_background_assets="auto"
 polaris_key/apple_sign_in=$5
+polaris_key/game_center=$5
 
 EOF
 }
@@ -145,6 +151,20 @@ grep -q "already patched: no changes" "$OUT/logs/patch-store-again.log" || fail 
 # Sign in with Apple: the entitlement is there with the option on, and absent with it off.
 [ "$(pb "$S/PKeyExportCheck.entitlements" "com.apple.developer.applesignin:0")" = "Default" ] || fail "store: apple_sign_in=true did not add the applesignin entitlement"
 [ -z "$(pb "$L/PKeyExportCheck.entitlements" "com.apple.developer.applesignin")" ] || fail "sideload: has the applesignin entitlement with the option off"
+
+# Game Center: the entitlement follows the option; the opt-in extension ships only with it on.
+[ "$(pb "$S/PKeyExportCheck.entitlements" "com.apple.developer.game-center")" = "true" ] || fail "store: game_center=true did not add the game-center entitlement"
+[ -z "$(pb "$L/PKeyExportCheck.entitlements" "com.apple.developer.game-center")" ] || fail "sideload: has the game-center entitlement with the option off"
+if [ -d "$SDK/addons/polaris_key/native/ios/pkey_gamecenter.xcframework" ]; then
+  # Godot exports every GDExtension in the project and a plugin cannot keep one out: the extension's
+  # presence is the opt-in, so a project that has it ships it in both presets.
+  grep -q "pkey_gamecenter" "$OUT/store/PKeyExportCheck.xcodeproj/project.pbxproj" || fail "store: the installed Game Center extension is not in the project"
+  echo "export_check: the installed Game Center extension is exported (its presence is the opt-in)"
+else
+  ! grep -q "pkey_gamecenter" "$OUT/store/PKeyExportCheck.xcodeproj/project.pbxproj" || fail "store: GameKit extension in a project that did not install it"
+  ! grep -q "GameKit" "$OUT/store/PKeyExportCheck.xcodeproj/project.pbxproj" || fail "store: GameKit is linked without the opt-in extension"
+  echo "export_check: no Game Center extension installed, none exported, GameKit not linked"
+fi
 
 # Sideload: none of it.
 [ "$(pb "$L/PKeyExportCheck-Info.plist" PKeyAppleBackgroundAssets)" = "false" ] || fail "sideload: the export plugin did not mark Background Assets off"

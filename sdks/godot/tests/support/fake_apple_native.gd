@@ -35,6 +35,11 @@ var apple_supported := true
 var apple_result := {"ok": true, "token": "eyJ.apple.token", "userID": "001234.abcd"}
 var apple_user_id := ""
 var apple_state := "authorized"
+## Game Center (I-48.6a), the opt-in extension: the next `gc_identity` answer (without ev/req).
+var gc_result := {
+	"ok": true, "publicKeyUrl": "https://static.gc.apple.com/public-key/gc-prod-12.cer", "signature": "AQID", "salt": "UEtleQECAwQ",
+	"timestamp": "1699999995000", "teamPlayerId": "T:transcript-team-player-1", "bundleId": "com.acme.mac",
+}
 
 ## App Attest (P6-02): whether it runs here, the keys the "system" knows (generated ones are added;
 ## clear it to model a reinstall), and a failure code the next attest answers.
@@ -119,6 +124,8 @@ func cmd(json: String) -> String:
 			if op == "app_attest_assert":
 				return _later(op, {"ok": true, "keyId": key, "assertion": Marshalls.utf8_to_base64("assertion:%s" % key)})
 			return _later(op, {"ok": true, "keyId": key, "attestation": Marshalls.utf8_to_base64("attestation:%s:%s" % [key, q.get("requestHash")]), "generated": generated, "ms": 1})
+		"gc_identity":
+			return _later(op, gc_result.duplicate(true))
 		"apple_sign_in", "apple_credential_state", "apple_remember", "apple_forget":
 			if not apple_supported:
 				return JSON.stringify({"ok": false, "unsupported": true, "reason": "runtime", "detail": "fake: no Sign in with Apple"})
