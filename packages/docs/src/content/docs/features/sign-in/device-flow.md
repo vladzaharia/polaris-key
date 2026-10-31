@@ -119,7 +119,7 @@ The user-code page budget is per network (an IPv4 address or an IPv6 /64). There
 
 Node, Python, React, Swift, Kotlin and Godot drive this flow with `signIn.start({ channel: "device-code" })` (Python: `sign_in.start()`). The session holds `userCode`, both URLs, `expiresIn`, `interval` and `deviceName`, and keeps the device code private. `reopen()` opens the complete URL, `cancel()` stops the wait, and `wait()` polls at `interval`, honors `slow_down` and stops at `expiresIn`. It settles `signedIn`, `expired` or `cancelled`. `wait({ once: true })` makes one poll for a host that paces itself. A refusal throws `sign-in-denied` or `sign-in-failed`. Swift spells it `identity.signIn.start(_:)` and Godot `identity.sign_in.start()`; in Godot a refusal is an outcome of kind `denied` or `error`.
 
-App mode is built in Node, React and Python; Swift, Kotlin and Godot are in progress. The desktop bridge doesn't carry it yet, so a desktop app's Add goes to the Polaris Locker card.
+App mode is built in Node, React, Python, Swift, Kotlin and Godot. The desktop bridge doesn't carry it yet, so a desktop app's Add goes to the Polaris Locker card.
 
 See [Node](/docs/build/sdks/node/your-own-ui/#sign-in-and-who-signed-in), [Python](/docs/build/sdks/python/your-own-ui/#sign-in-and-who-signed-in), [Swift](/docs/build/sdks/swift/your-own-ui/#sign-in-and-who-signed-in), [Kotlin](/docs/build/sdks/kotlin/your-own-ui/#sign-in-and-who-signed-in) and [Godot](/docs/build/sdks/godot/your-own-ui/#sign-in-prompt-countdown-and-identity).
 
