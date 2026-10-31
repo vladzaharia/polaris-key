@@ -1061,7 +1061,9 @@ paths:
                 none: { value: { ring: null, wrap: null } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: No account is signed in on the device (`account_required`).
+          description: >
+            No account is signed in on the device (`account_required`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1103,7 +1105,9 @@ paths:
                 badRequest: { value: { error: { code: bad_request } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: No account is signed in on the device (`account_required`).
+          description: >
+            No account is signed in on the device (`account_required`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1169,6 +1173,7 @@ paths:
           description: >
             No account is signed in on the device (`account_required`), or the calling device
             holds no wrap and cannot deposit one for another (`forbidden`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1200,6 +1205,7 @@ paths:
           description: >
             No account is signed in on the device (`account_required`), or `deviceId` is another
             device (`forbidden`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1235,7 +1241,9 @@ paths:
               schema: { $ref: "#/components/schemas/KeyringRecovery" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: No account is signed in on the device (`account_required`).
+          description: >
+            No account is signed in on the device (`account_required`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1275,6 +1283,7 @@ paths:
           description: >
             No account is signed in on the device (`account_required`), or the device holds no
             wrap (`forbidden`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1330,6 +1339,7 @@ paths:
           description: >
             No account is signed in on the device (`account_required`), or the device holds no
             wrap (`forbidden`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1390,7 +1400,9 @@ paths:
               schema: { $ref: "#/components/schemas/WireError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: No account is signed in on the device (`account_required`).
+          description: >
+            No account is signed in on the device (`account_required`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }

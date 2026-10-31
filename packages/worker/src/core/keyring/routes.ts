@@ -69,6 +69,7 @@ import {
 } from "../accounts/accountSubjects.js";
 import { appendAudit } from "../audit.js";
 import { randomId } from "../../platform/crypto.js";
+import { keyringMinSdkRefusal } from "./minSdk.js";
 import { rateLimitOk } from "../rateLimit.js";
 import { sendSecurityNotice } from "../notify/send.js";
 import {
@@ -261,6 +262,9 @@ export async function handleKeyring(
   // LG-1: with the gate off the routes do not exist, whatever the product has enabled.
   if (!(await launchGateOn(env, db, "launch.syncE2e"))) return notFound();
   if (!(await keyringWanted(db, product))) return notFound();
+  // D-39b: an SDK build below its minimum is told to update, on every route (the read first).
+  const stale = await keyringMinSdkRefusal(req, env, db);
+  if (stale) return stale;
   if (!METHODS[target.kind].includes(req.method)) return methodNotAllowed();
 
   const valid = await validateDeviceToken(env, db, product, bearer(req), now);
