@@ -11,6 +11,7 @@
 
 import type { Context } from "../input.js";
 import type { SyncScreenName } from "../vocabulary.js";
+import { saveConflictView } from "./saveConflict.js";
 import { hiddenView, makeView, type View } from "../view.js";
 
 // ── CloudSyncStatus ────────────────────────────────────────────────────────────────────────────
@@ -23,7 +24,17 @@ export type CloudSyncState =
   | "error"
   | "locked"
   | "ring-changed"
+  | "transferring"
+  | "waiting"
+  | "transfer-failed"
   | "hidden";
+
+/** What a waiting transfer names, by its reason (default: the network). */
+const WAITING = {
+  network: "cloudSync.waitingNetwork",
+  battery: "cloudSync.waitingBattery",
+  background: "cloudSync.waitingBackground",
+} as const;
 
 /** A small Cloud Sync status. It never implies universal backup. */
 export function cloudSyncStatusView(
@@ -47,6 +58,34 @@ export function cloudSyncStatusView(
       copy: ["cloudSync.ringChanged", "common.review"],
       primary: "common.review",
       tone: "neutral",
+      focus: null,
+    });
+  // A pending transfer is never reported as synced, whatever `lastSynced` holds (UI-KITS Must not).
+  if (sync.state === "transferring") {
+    const t = sync.transfer;
+    const known = t?.size !== undefined && t.total !== undefined;
+    return makeView(ctx, "CloudSyncStatus", {
+      state: "transferring",
+      copy: ["cloudSync.transferring", known && "cloudSync.transferProgress"],
+      args: known ? { size: t.size, total: t.total } : {},
+      tone: null,
+      focus: null,
+    });
+  }
+  if (sync.state === "waiting")
+    return makeView(ctx, "CloudSyncStatus", {
+      state: "waiting",
+      copy: [WAITING[sync.reason ?? "network"]],
+      tone: "neutral",
+      focus: null,
+    });
+  // The transfer failed: Try again repeats it; the status never reads as an error of the account.
+  if (sync.state === "transfer-failed")
+    return makeView(ctx, "CloudSyncStatus", {
+      state: "transfer-failed",
+      copy: ["cloudSync.transferFailed", "common.tryAgain"],
+      primary: "common.tryAgain",
+      tone: "danger",
       focus: null,
     });
   const error = sync.state === "error";
@@ -239,4 +278,5 @@ export const SYNC_MODELS: Readonly<
   UnlockSync: unlockSyncView,
   RecoveryCode: recoveryCodeView,
   RingChange: ringChangeView,
+  SaveConflict: saveConflictView,
 };

@@ -60,6 +60,7 @@ describe(`${MATRIX_FILE}: the version`, () => {
     for (const family of [
       ...Object.keys(FAMILIES),
       "cloudSync",
+      "saveConflict",
       "theme",
       "i18n",
     ])
@@ -72,6 +73,9 @@ for (const [family, feature] of Object.entries({
   // U-42.0: the Cloud Sync screens. Only ui-core runs it for now: Swift, Kotlin, Godot and
   // Python name the families they implement, and learn this one with U-42.3 to U-42.5.
   cloudSync: "ui.settings",
+  // U-22.K0: the save screens (SaveConflict, CloudSyncStatus's transfer states). Same: ui-core only
+  // until the native kits learn them (U-23 K.3 to K.5).
+  saveConflict: "ui.settings",
 })) {
   const rows = matrix[family] as Row[];
   describe(`${MATRIX_FILE} ${family} (${feature})`, () => {

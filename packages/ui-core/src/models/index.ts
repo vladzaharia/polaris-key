@@ -94,6 +94,7 @@ export * from "./keyRefusal.js";
 export * from "./nearby.js";
 export * from "./gate.js";
 export * from "./holders.js";
+export * from "./saveConflict.js";
 export * from "./settings.js";
 export * from "./signIn.js";
 export * from "./update.js";
