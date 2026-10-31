@@ -31,9 +31,10 @@ internal suspend fun IdentityClient.deleteRestore(): Boolean {
 }
 
 /**
- * `DELETE restore` for a queued revocation, at the start of a launch. A flag that cannot be served (nothing to
- * authenticate with, or restore not served here: the key is inert and other revocations reach it) is dropped; one
- * that failed to reach the Worker stays, to be retried at the next launch.
+ * `DELETE restore` for a queued revocation, at the start of a launch. A flag with no bearer stays until a sign-in
+ * provides one; one that cannot reach the Worker (or find discovery) stays, to be retried at the next launch. It is
+ * dropped only when the Worker answered, or when restore is not served here (the key is inert and other revocations
+ * reach it).
  */
 internal suspend fun IdentityClient.sendQueuedDelete() {
     if (!core.restoreDeletePending()) return

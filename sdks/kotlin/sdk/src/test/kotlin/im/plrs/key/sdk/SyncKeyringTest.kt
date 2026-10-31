@@ -470,7 +470,7 @@ class SyncKeyringTest {
         override suspend fun cloudBackup(): Boolean = kotlinx.coroutines.awaitCancellation()
     }
 
-    @Test
+    @Test(timeout = 60_000)
     fun signOutCompletesWhileAnUnlockWaitsOnTheBackup() = runBlocking {
         val worker = Worker()
         val keys = newKeys()
