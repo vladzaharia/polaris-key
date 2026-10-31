@@ -674,7 +674,8 @@ final class SyncKeyringTests: XCTestCase {
         let served = SyncRingPin(ringId: r.second.ringId, epoch: 1, rootKid: r.second.rootKid)
         // An undecodable stored root.
         let junk = FaultyVault(Data("not a record".utf8))
-        let r1 = Reinstall(server: r.server, keys: r.keys, roots: RingRootStore(vault: junk), first: r.first, second: r.second)
+        let r1 = Reinstall(
+            server: r.server, keys: r.keys, roots: RingRootStore(vault: junk), first: r.first, second: r.second)
         let k1 = try await reinstalled(r1, store: InMemoryStore(productSlug: "djdl", deviceId: "dev_a"))
         let ok = try await k1.acceptRingChange(confirmed: served)
         XCTAssertEqual(ok, .unlocked(ringId: r.second.ringId, epoch: 1))
