@@ -345,7 +345,13 @@ func _render_plain(copy: Array, row: Array, args: Dictionary) -> void:
 ## over the strong licence line; "{app} will also get" over the profile and the pairwise line. A label
 ## draws only with its value, and a line missing an argument is not drawn.
 func _render_confirm(copy: Array, args: Dictionary, tier_known: bool, level: int) -> void:
-	cat_text(_lede, "signin.auto.confirm.as" if copy.has("signin.auto.confirm.as") else ("signin.auto.confirm.asApple" if copy.has("signin.auto.confirm.asApple") else ""), args)
+	# The account line is the model's one `signin.auto.confirm.as*` key, taken by prefix (never a fixed list).
+	var account := ""
+	for k in copy:
+		if String(k).begins_with("signin.auto.confirm.as"):
+			account = k
+			break
+	cat_text(_lede, account, args)
 	var value := ""
 	if copy.has("signin.consent.licenseLine"):
 		value = "signin.consent.licenseLine"
