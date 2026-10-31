@@ -30,12 +30,20 @@ signal finished(result: PKeySignInOutcome)
 signal closed()
 ## The player chose "Use a license key instead" (a pad-only device has no browser to open).
 signal use_key_requested()
+## The platform's own sign-in (Apple, Google) ended in an answer the gate draws: a consent to
+## confirm, a licence choice or a full licence (a PKeyAutoSignInResult). The dialog closes.
+signal platform_answer(result: PKeyAutoSignInResult)
 
 ## Shown on the sign-in page as the anti-phishing cue (WIRE-CONTRACT-V4 §12.7.1); empty: the
 ## SDK's `PKeyOptions.device_name`, else the device's model or OS.
 @export var device_name := ""
 ## Hold at the signed-in identity for the player's acceptance (and offer the licence attach).
 @export var confirm_identity := false
+## On iOS, macOS and Android the form's button is the platform's own sign-in (see begin()); false
+## keeps the device code and the redirect everywhere.
+@export var use_platform_row := true
+## The platform to pick the row for ("" is this build's; tests set it).
+var platform_override := ""
 ## Lead with the product's identity above the title.
 var show_product := true:
 	set(value):
@@ -396,6 +404,8 @@ func begin() -> void:
 	if _session != null:
 		_session.cancel()
 	var identity: PKeyIdentity = sdk.identity
+	if await _platform_row(identity):
+		return
 	var session: PKeySignInSession = await identity.sign_in.start({"device_name": device_name, "confirm_identity": confirm_identity})
 	if not is_instance_valid(self):
 		return
@@ -405,6 +415,35 @@ func begin() -> void:
 		return
 	show_prompt(session)
 	_follow(session)
+
+
+## On iOS, macOS and Android the form's button is the platform's own (Apple's account sheet, "Sign in
+## with Google"), then the Worker's exchange; anywhere else, or when the platform offers nothing, the
+## device code and the redirect stay. True when this handled the sign-in (it ended, or handed an
+## answer to the gate through `platform_answer`). A coroutine.
+func _platform_row(identity: PKeyIdentity) -> bool:
+	var where := platform_override if platform_override != "" else PKeyHeaders.update_platform()
+	var kind := PKeyPlatformProviders.row_kind(where)
+	if kind == "" or not use_platform_row:
+		return false
+	PKeyPlatformProviders.install(identity, where)
+	var r: PKeyAutoSignInResult = await identity.auto_sign_in({"row": kind, "explicit": true, "device_name": device_name})
+	if not is_instance_valid(self):
+		return true
+	match PKeyGateController.auto_action(r):
+		"signed-in":
+			show_result(PKeySignInOutcome.signed_in({}, "", true, null, r.subject))
+			return true
+		"confirm", "choose", "device-limit":
+			state = "cancelled"
+			platform_answer.emit(r)
+			closed.emit()
+			restore_opener()
+			return true
+	if r.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and r.reason == PKeyAutoSignInResult.REASON_CANCELLED:
+		_on_cancel()
+		return true
+	return false
 
 
 ## Wait on `session` and show what it settles on; `choose` shows "Is this you?" and returns, and

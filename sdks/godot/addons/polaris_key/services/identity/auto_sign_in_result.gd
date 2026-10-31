@@ -11,7 +11,8 @@ extends PKeyResult
 ##                  `identity.choice.*` finishes it.
 ##   needs_sign_in  no session and none to be had silently: `reason` is `no_link` (sign in, then
 ##                  offer the link; `link_handle` feeds it), `terms`, `signed_out` (the person
-##                  signed out on this device) or `no_credential` (the platform offered nothing).
+##                  signed out on this device), `no_credential` (the platform offered nothing) or
+##                  `cancelled` (the person dismissed the platform's sheet on a `row` sign-in).
 ##   device_limit   every seat is taken: `view` (the choice view, when sent) and `manage_url`.
 ##   unavailable    no exchange here, or the Worker refused: `code` is its wire code or
 ##                  `platform-identity-unavailable`. Show the regular form.
@@ -32,6 +33,8 @@ const REASON_NO_LINK := "no_link"
 const REASON_TERMS := "terms"
 const REASON_SIGNED_OUT := "signed_out"
 const REASON_NO_CREDENTIAL := "no_credential"
+## The person dismissed the platform's own sheet (a `row` sign-in).
+const REASON_CANCELLED := "cancelled"
 
 var kind: StringName = KIND_UNAVAILABLE
 ## signed_in: `stored` or `platform`.

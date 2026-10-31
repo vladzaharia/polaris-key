@@ -71,6 +71,11 @@ const LAYOUT := {
 	set(value):
 		also_gets = value
 		refresh_view()
+## The https page Replace opens on the device-limit step; empty names the fix in words instead.
+@export var manage_url := "":
+	set(value):
+		manage_url = value
+		refresh_view()
 ## The provider's name, or "" for the default.
 @export var provider := "":
 	set(value):
@@ -158,6 +163,8 @@ func _render() -> void:
 		auto["alsoGets"] = true
 	if code != "":
 		auto["code"] = code
+	if manage_url != "":
+		auto["manageUrl"] = manage_url
 	if tier != "":
 		inp["account"] = {"tier": tier}
 	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SignIn", inp)

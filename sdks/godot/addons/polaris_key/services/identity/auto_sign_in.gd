@@ -19,6 +19,11 @@ extends RefCounted
 ##       &"device_limit": ...    # every seat is taken (r.view, r.manage_url)
 ##       &"unavailable": ...     # no exchange here: the regular form
 ##
+## `opts.row` (an exchange kind) is the sign-in form's own button for that platform (Apple's plain
+## account sheet, Google's "Sign in with Google"): rungs 1, 3 and 4 are skipped, the provider's
+## `provider_row` runs once, and the person's dismissal is `needs_sign_in(cancelled)`. Pass `explicit`
+## with it. The kit's sign-in dialog does this on iOS, macOS and Android.
+##
 ## `opts`: prompt ("never", the default, or "optional"), kinds (an Array of exchange kinds to try),
 ## providers (use these instead of the installed ones), license_choice ("app", the default, or "card"),
 ## device_name, explicit (true: the person pressed a sign-in button, so the sign-out flag is lowered
@@ -76,6 +81,8 @@ func run(opts := {}) -> PKeyAutoSignInResult:
 	var installed := _installed(identity, opts)
 	await check_revoked(installed)
 	var generation := core.tokens.sign_out_generation
+	if opts.get("row") is String:
+		return await _row(core, installed, opts, generation)
 	var early = await _quiet_result(core, installed)
 	if early != null:
 		return early
@@ -83,6 +90,24 @@ func run(opts := {}) -> PKeyAutoSignInResult:
 	if plan.has("result"):
 		return plan["result"]
 	return await _rungs_three_and_four(plan["candidates"], plan["ctx"])
+
+
+## The form's own button for `opts.row`: the provider of that kind, through `provider_row`, once.
+func _row(core: PKeyCore, installed: Array, opts: Dictionary, generation: int) -> PKeyAutoSignInResult:
+	var only := opts.duplicate()
+	only["kinds"] = [opts["row"]]
+	var plan := await _plan(core, installed, only, generation)
+	if plan.has("result"):
+		return plan["result"]
+	var ctx: Dictionary = plan["ctx"]
+	var step := await _attempt(plan["candidates"][0], "row", ctx)
+	if step.get("result") != null:
+		return step["result"]
+	if step.get("cancelled") == true:
+		return PKeyAutoSignInResult.needs_sign_in(PKeyAutoSignInResult.REASON_CANCELLED, "", String(opts["row"]))
+	if ctx["failure"] != null:
+		return ctx["failure"]
+	return PKeyAutoSignInResult.needs_sign_in(PKeyAutoSignInResult.REASON_NO_CREDENTIAL, "", String(opts["row"]))
 
 
 ## Rungs 1 and 2, and the cases with no platform identity: the answer, or null to go on. A coroutine.
@@ -185,11 +210,14 @@ func _attempt(p: Object, mode: String, ctx: Dictionary) -> Dictionary:
 	var answer: Variant
 	if mode == "silent":
 		answer = await p.silent(nonce.nonce, audience)
+	elif mode == "row":
+		answer = await p.provider_row(nonce.nonce, audience) if p.has_method("provider_row") else await p.sheet(nonce.nonce, audience)
 	else:
 		answer = await p.sheet(nonce.nonce, audience)
-	var shown: bool = mode == "sheet" and not (answer is Dictionary and answer.has("unavailable"))
+	var shown: bool = mode != "silent" and not (answer is Dictionary and answer.has("unavailable"))
 	if not (answer is Dictionary) or not (answer.get("token") is String) or answer["token"] == "":
-		return {"shown": shown}  # cancelled, unavailable or malformed: nothing to exchange
+		# cancelled, unavailable or malformed: nothing to exchange
+		return {"shown": shown, "cancelled": answer is Dictionary and answer.get("cancelled") == true}
 	# A sign-out while the platform was prompting wins.
 	if core.tokens.sign_out_generation != ctx["generation"] or core.cache.explicit_sign_out:
 		return {"result": PKeyAutoSignInResult.needs_sign_in(PKeyAutoSignInResult.REASON_SIGNED_OUT, "", kind), "shown": shown}
