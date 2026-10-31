@@ -1401,9 +1401,13 @@ a new device and point the person at an account instead (PORTAL §4.6).
 2. **Enrolled.** A device is enrolled on a licence when the `devices` row for
    `(product, device_id)` has that `license_id` and `status = 'authorized'`. A browser session's
    device is `browser:<licenseId>`, so the `browser` surface counts at most once per enrolment.
+   That id is derived from the licence, not presented by the caller, so on
+   `identity/session/license` enrolment spares an entry from counting but not from step 3: a
+   licence in an account is refused there even when `browser:<licenseId>` is enrolled.
 3. **Order on the two device routes.**
    1. The rate limit, the key and the licence, unchanged.
-   2. An enrolled device is answered as before: never refused, never counted.
+   2. An enrolled device is answered as before: never refused (except by step 3 on
+      `identity/session/license`, rule 2), never counted.
    3. When `identity.keyEntryRefusals` is on and the licence is usable and in an account
       (`licenses.account_id IS NOT NULL`): the flat
       `403 {"error":"license_owned","message":…,"signInUrl":…}`. `signInUrl` is the product's

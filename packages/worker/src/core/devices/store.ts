@@ -229,6 +229,10 @@ export async function claimDeviceSeat(
     };
   } = {},
 ): Promise<boolean> {
+  if (opts.refuseOwnedLicense && opts.freeing)
+    throw new Error(
+      "claimDeviceSeat: refuseOwnedLicense and freeing are exclusive",
+    );
   await releaseDormantSeats(db, product, now, licenseId);
   const held = await db.first<{ seat_no: number | null }>(
     `SELECT seat_no FROM devices

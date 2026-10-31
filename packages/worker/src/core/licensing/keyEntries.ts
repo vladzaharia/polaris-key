@@ -323,8 +323,19 @@ export async function keyEntryGate(
   const { env, db } = ctx;
   const keyEntries = await keyEntryState(ctx, product, license.id);
   if (!keyEntries) return { kind: "off" };
-  if (await isEnrolled(db, product.slug, license.id, deviceId))
+  if (await isEnrolled(db, product.slug, license.id, deviceId)) {
+    // §12.2 rule 2. A browser session's device id is derived from the licence (`browser:<licenseId>`),
+    // never presented (CLIENT_DEVICE_ID has no `:`), so its enrolment says nothing about who holds
+    // the key: it spares the entry from counting, not from step 3.
+    if (
+      deviceId.startsWith("browser:") &&
+      licenseUsable(license, now) &&
+      (license.account_id ?? null) !== null &&
+      (await keyEntryRefusalsOn(env, db))
+    )
+      return { kind: "owned" };
     return { kind: "admit", keyEntries, enrolled: true, guardOwned: false };
+  }
   if (licenseUsable(license, now)) {
     const owned = (license.account_id ?? null) !== null;
     if (

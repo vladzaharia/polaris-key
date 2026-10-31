@@ -46,7 +46,10 @@ import {
   handleToken,
 } from "../../src/services/license/activation.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
-import { handleBrowserSessionLicense } from "../../src/services/identity/browserSession.js";
+import {
+  createBrowserSession,
+  handleBrowserSessionLicense,
+} from "../../src/services/identity/browserSession.js";
 import { getOrCreateAccountByEmail } from "../../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
@@ -565,6 +568,71 @@ describe("browser entries (POST /<p>/identity/session/license)", () => {
     });
     expect(await countKeyEntries(db, SLUG, licenseId)).toBe(1);
   });
+
+  /** The sign-in return's call: enrols `browser:<licenseId>`, then the licence joins an account. */
+  async function enrolledThenOwned(): Promise<{
+    key: string;
+    licenseId: string;
+  }> {
+    const { key, licenseId } = await seedLicenseWithKey(db, SLUG, SEATS(5));
+    const license = (await getLicense(db, SLUG, licenseId))!;
+    const minted = await createBrowserSession(
+      env,
+      db,
+      productRef!,
+      license,
+      NOW,
+    );
+    if (!minted.ok) throw new Error(`session mint failed: ${minted.code}`);
+    await db.run(
+      "UPDATE licenses SET account_id = 'acct_x' WHERE product = ? AND id = ?",
+      SLUG,
+      licenseId,
+    );
+    return { key, licenseId };
+  }
+  const deviceRow = (licenseId: string) =>
+    db.first(
+      "SELECT token_hash, seat_no, bound_by, subject FROM devices WHERE product = ? AND device_id = ?",
+      SLUG,
+      `browser:${licenseId}`,
+    );
+
+  it("refuses a licence in an account with license_owned while refusals are on, even when its browser device is enrolled", async () => {
+    productRef = await setIdentity(true);
+    await setRefusals(true);
+    const { key, licenseId } = await enrolledThenOwned();
+    const before = await deviceRow(licenseId);
+    expect(before).not.toBeNull();
+    const entries = await countKeyEntries(db, SLUG, licenseId);
+
+    const res = await session(key, NOW + 60);
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({
+      error: "license_owned",
+      signInUrl: expect.any(String),
+    });
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(await deviceRow(licenseId)).toEqual(before);
+    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(entries);
+    expect(
+      await db.all(
+        "SELECT reason FROM license_refusals WHERE product = ? AND license_id = ?",
+        SLUG,
+        licenseId,
+      ),
+    ).toEqual([{ reason: "license_owned" }]);
+  });
+
+  it("with refusals off, an enrolled browser device on a licence in an account is admitted and not counted", async () => {
+    productRef = await setIdentity(true);
+    await setRefusals(false);
+    const { key, licenseId } = await enrolledThenOwned();
+    const entries = await countKeyEntries(db, SLUG, licenseId);
+    const res = await session(key, NOW + 60);
+    expect(res.status).toBe(201);
+    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(entries);
+  });
 });
 
 // ── The portal ──────────────────────────────────────────────────────────────────────────────
@@ -866,6 +934,23 @@ describe("an owned licence at the seat claim (CORE-SEAT-GUARD, §12.4.2 item 5)"
     );
     expect(await seats(licenseId)).toEqual([
       { device_id: "dev-a", seat_no: 1 },
+    ]);
+  });
+
+  it("claimDeviceSeat: a guarded claim refuses to combine with freeing", async () => {
+    await setIdentity(true);
+    const { licenseId } = await seedLicenseWithKey(db, SLUG, SEATS(5));
+    expect(await claimDeviceSeat(db, SLUG, licenseId, "dev-old", 5, NOW)).toBe(
+      true,
+    );
+    await expect(
+      claimDeviceSeat(db, SLUG, licenseId, "dev-new", 5, NOW, {
+        refuseOwnedLicense: true,
+        freeing: { deviceId: "dev-old", statements: [] },
+      }),
+    ).rejects.toThrow(/exclusive/);
+    expect(await seats(licenseId)).toEqual([
+      { device_id: "dev-old", seat_no: 1 },
     ]);
   });
 

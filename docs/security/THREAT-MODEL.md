@@ -6607,7 +6607,9 @@ paid for), the account (A6), and the device token (a bearer credential).
   attacker's account before the buyer's: by the attach (after signing in on a device that holds
   the key) or by the portal. Mitigations: the buyer email rule above; an owned licence never
   moves again by key, so the attacker's account cannot be displaced by a race but neither can it
-  take a licence already in the buyer's account; devices already enrolled keep working (step 2);
+  take a licence already in the buyer's account; devices already enrolled keep working (step 2; enrolled means an authorized row, so a device
+  whose seat was released for dormancy is still enrolled and takes a seat again when it re-enters
+  the key, and the owner removes it to end that);
   every attach writes `license.attach` on the licence (the subject and the device, never the
   account id) and the account's own history, and mails the licence's own address when the account
   has not verified it; the owner or the developer can detach and relink (I-12). Residual: a
@@ -6645,7 +6647,9 @@ paid for), the account (A6), and the device token (a bearer credential).
   treat each as new, which is the designed direction: more refusals, never fewer. A key holder
   can also present the id of a device enrolled on the licence; that is answered as the enrolled
   device only when the id holds an authorized row for that licence, which the key holder could
-  have created anyway.
+  have created anyway. The browser key session is the exception: its device `browser:<licenseId>`
+  is derived from the licence, not presented, so its enrolment does not admit a key to a licence
+  in an account (step 3 still applies; WIRE-CONTRACT-V5 §12.2 rule 2).
 - **Documents.** Attach, a sign-in binding, a sign-out and a counted entry leave every licence
   document unchanged (`test/surfaces/identityAccount.test.ts` compares them), so no install's offline
   grace or entitlements move.
