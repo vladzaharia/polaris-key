@@ -344,7 +344,7 @@ public actor CloudSyncHost {
         var entries: [JSONValue] = []
         for e in list {
             guard let k = e.objectValue?["key"]?.stringValue,
-                k.range(of: SYNC_KEY_PATTERN, options: .regularExpression) != nil, seen.insert(k).inserted
+                wholeMatches(SYNC_KEY_PATTERN, k) != nil, seen.insert(k).inserted
             else { continue }
             entries.append(e)
         }

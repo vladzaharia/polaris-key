@@ -925,7 +925,7 @@ public final class CloudSyncMachine {
 
     func freshClientId() throws -> String {
         let cid = newClientId()
-        guard cid.range(of: SYNC_CLIENT_ID_PATTERN, options: .regularExpression) != nil else {
+        guard wholeMatches(SYNC_CLIENT_ID_PATTERN, cid) != nil else {
             throw SyncMachineError.badClientId
         }
         return cid

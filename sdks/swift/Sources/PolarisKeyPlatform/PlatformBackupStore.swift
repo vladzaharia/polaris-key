@@ -184,7 +184,7 @@ import Foundation
         static func validProduct(_ s: String) -> Bool { SecureStore.validProduct(s) }
 
         static func validComponent(_ s: String) -> Bool {
-            s.range(of: componentPattern, options: .regularExpression) != nil
+            wholeASCII(componentPattern, s)
         }
 
         /// A JSON object of at most `maxValueBytes`.

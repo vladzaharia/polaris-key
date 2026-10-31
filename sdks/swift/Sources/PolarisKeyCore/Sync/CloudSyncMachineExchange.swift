@@ -45,8 +45,8 @@ private func sameValue(_ a: SyncOp, _ b: SyncOp) -> Bool {
 /// A conflict copy the client may compare: opened sealed (not unreadable, not plaintext).
 private func decidable(_ r: SyncRow) -> Bool { !r.bad && r.plain == nil }
 
-private func parseHLC(_ h: String) -> (Int, Int)? {
-    guard h.range(of: SYNC_HLC_PATTERN, options: .regularExpression) != nil,
+func parseHLC(_ h: String) -> (Int, Int)? {
+    guard wholeMatches(SYNC_HLC_PATTERN, h) != nil,
         let ms = Int(h.prefix(12), radix: 16), let c = Int(h.suffix(4), radix: 16)
     else { return nil }
     return (ms, c)
