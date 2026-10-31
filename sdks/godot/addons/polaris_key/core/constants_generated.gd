@@ -1094,7 +1094,7 @@ const PRESENTATION_MATRIX_VERSION := 1
 const PORTAL_MATRIX_VERSION := 1
 
 ## `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-const UI_MATRIX_VERSION := 8
+const UI_MATRIX_VERSION := 9
 
 ## `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 const BACKEND_MATRIX_VERSION := 1
@@ -1556,7 +1556,7 @@ static func capabilities() -> Dictionary:
 		"identity.attach": {"status": "implemented", "service": "identity", "na": []},
 		"identity.account": {"status": "implemented", "service": "identity", "na": []},
 		"identity.redirect.web": {"status": "implemented", "service": "identity", "na": []},
-		"identity.redirect.native": {"status": "planned", "service": "identity", "na": []},
+		"identity.redirect.native": {"status": "implemented", "service": "identity", "na": []},
 		"identity.choice": {"status": "implemented", "service": "identity", "na": []},
 		"identity.devicecode.choice": {"status": "implemented", "service": "identity", "na": []},
 		"identity.signin.hints": {"status": "implemented", "service": "identity", "na": []},
@@ -1635,4 +1635,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "55d2745d298d7641b8b6ece6fea15c4512114ef9ad1b13aa09fd9bc109154abe"
+const CAPABILITY_DIGEST := "6ec1bcb362e8620b45a748f77cf11e9e2ee218082d3a4035b0adaac7835edf57"

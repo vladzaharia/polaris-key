@@ -1599,7 +1599,7 @@ public let PRESENTATION_MATRIX_VERSION = 1
 public let PORTAL_MATRIX_VERSION = 1
 
 /// `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-public let UI_MATRIX_VERSION = 8
+public let UI_MATRIX_VERSION = 9
 
 /// `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 public let BACKEND_MATRIX_VERSION = 1
@@ -2057,7 +2057,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.files": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.files.delta": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.e2e.recovery": CapabilityRow(status: "planned", service: "sync", na: []),
-    "sync.transfer.background": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.transfer.background": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.e2e": CapabilityRow(status: "implemented", service: "sync", na: []),
     "connect.identity": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.noise": CapabilityRow(status: "implemented", service: "connect", na: []),
@@ -2161,4 +2161,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "c4c7ef396618f033621905bbd9c987735f6d52e95180333bd2439350d739838d"
+public let CAPABILITY_DIGEST = "dc43a5c34577b3bd043ae3f9a367b479b5b56478d5e31d91a4fa7c4717b09704"

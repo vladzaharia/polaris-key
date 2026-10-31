@@ -1696,7 +1696,7 @@ export const PRESENTATION_MATRIX_VERSION = 1;
 export const PORTAL_MATRIX_VERSION = 1;
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-export const UI_MATRIX_VERSION = 8;
+export const UI_MATRIX_VERSION = 9;
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 export const BACKEND_MATRIX_VERSION = 1;
@@ -2248,9 +2248,9 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [],
   },
   "identity.redirect.native": {
-    status: "planned",
+    status: "implemented",
     service: "identity",
-    na: [],
+    na: [{ runtime: "web", reason: "runtime" }],
   },
   "identity.choice": { status: "implemented", service: "identity", na: [] },
   "identity.devicecode.choice": {
@@ -2489,4 +2489,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "5f94c0457c2b7a4bc97d4052fb7a71f5541c8328ee54d92785cf14495124dc7d";
+  "874fa9e166f65fad4e65b598982de9b0c915ef645f58d9e5040007fa34c8280f";

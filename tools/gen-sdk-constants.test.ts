@@ -269,7 +269,7 @@ describe("the sources", () => {
       deviceLabelVersion: 2,
       presentationMatrixVersion: 1,
       portalMatrixVersion: 1,
-      uiMatrixVersion: 8,
+      uiMatrixVersion: 9,
       backendMatrixVersion: 1,
       contentCorpusVersion: 2,
     });
