@@ -7711,6 +7711,26 @@ msgstr "Verbindung beendet"
 msgid "core.codes.peer-closed.message"
 msgstr "Die Verbindung zum Gerät in der Nähe wurde beendet. Versuchen Sie es erneut."
 
+#. Transfer stopped
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transfer-cancelled.title"
+msgstr "Übertragung beendet"
+
+#. The transfer didn't finish. Nothing was received.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transfer-cancelled.message"
+msgstr "Die Übertragung wurde nicht abgeschlossen. Es wurde nichts empfangen."
+
+#. Not paired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link-unknown.title"
+msgstr "Nicht gekoppelt"
+
+#. That device is no longer paired with this one.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link-unknown.message"
+msgstr "Dieses Gerät ist nicht mehr mit diesem gekoppelt."
+
 #. Device no longer trusted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.peer_revoked.title"

@@ -163,6 +163,8 @@ export const ErrorCode = {
   nearbyUnsupported: "nearby-unsupported",
   peerHandshakeFailed: "peer-handshake-failed",
   peerClosed: "peer-closed",
+  transferCancelled: "transfer-cancelled",
+  linkUnknown: "link-unknown",
   peerRevoked: "peer_revoked",
   peerExpired: "peer_expired",
   peerBadFrame: "peer_bad_frame",
@@ -391,6 +393,8 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "nearby-unsupported",
   "peer-handshake-failed",
   "peer-closed",
+  "transfer-cancelled",
+  "link-unknown",
   "peer_revoked",
   "peer_expired",
   "peer_bad_frame",
@@ -621,6 +625,8 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "nearby-unsupported": "client",
   "peer-handshake-failed": "client",
   "peer-closed": "client",
+  "transfer-cancelled": "client",
+  "link-unknown": "client",
   peer_revoked: "peer",
   peer_expired: "peer",
   peer_bad_frame: "peer",
@@ -2151,7 +2157,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "connect.lan": { status: "implemented", service: "connect", na: [] },
   "connect.relay": { status: "implemented", service: "connect", na: [] },
   "connect.links": { status: "implemented", service: "connect", na: [] },
-  "connect.transfer": { status: "planned", service: "connect", na: [] },
+  "connect.transfer": { status: "implemented", service: "connect", na: [] },
   "connect.app": { status: "implemented", service: "connect", na: [] },
   "devices.fingerprint": { status: "implemented", service: "core", na: [] },
   "devices.facts": { status: "implemented", service: "core", na: [] },
@@ -2343,4 +2349,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "054bf7648c36c1e5df14a30df74deea1c21a714290c82d1d084da7f2cbbbecc9";
+  "841311864d7cfe210064f2bba60298aa6269c493a82fc7f3cd52f498b84ceadd";

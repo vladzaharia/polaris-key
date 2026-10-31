@@ -633,6 +633,14 @@
       "title": "Connessione terminata",
       "message": "La connessione con il dispositivo nelle vicinanze è terminata. Riprova."
     },
+    "transfer-cancelled": {
+      "title": "Trasferimento interrotto",
+      "message": "Il trasferimento non è stato completato. Non è stato ricevuto nulla."
+    },
+    "link-unknown": {
+      "title": "Non associato",
+      "message": "Quel dispositivo non è più associato a questo."
+    },
     "peer_revoked": {
       "title": "Dispositivo non più attendibile",
       "message": "L'altro dispositivo è stato rimosso dall'account. Non è stato condiviso nulla."

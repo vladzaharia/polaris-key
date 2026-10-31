@@ -154,6 +154,7 @@ class RoomLink {
           "relay",
           "relay",
           this.ref,
+          e.remoteStatic,
         );
         this.cb.onEstablished(this.#session, this);
         this.#settle.resolve(this.#session);

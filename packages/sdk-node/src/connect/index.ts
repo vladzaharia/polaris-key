@@ -69,3 +69,16 @@ export {
   type PairFailure,
   type PairedLink,
 } from "./pairing.js";
+export {
+  CloudTransfer,
+  TransferError,
+  type IncomingOffer,
+  type OfferDecision,
+  type OfferHandler,
+  type SendOptions,
+  type SentTransfer,
+  type TransferEvent,
+  type TransferPeer,
+  type TransferSource,
+} from "./transfer.js";
+export { PartialStore } from "./transferStore.js";

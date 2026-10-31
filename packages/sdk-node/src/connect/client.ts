@@ -212,6 +212,20 @@ export class ConnectClient {
     printAs(this, () => ({ connect: "CloudConnect" }));
   }
 
+  /**
+   * Called with the agreeKeys (32 raw bytes) of devices a newer roster no longer lists: what they
+   * left half-sent is not kept (§15.11, "Resume"). @internal
+   */
+  onRosterRemoved: ((agreeKeys: Uint8Array[]) => void) | null = null;
+
+  #rosterGone(prior: Ring | null, next: Ring): void {
+    if (prior === null || this.onRosterRemoved === null) return;
+    const gone = prior.devices
+      .filter((d) => !next.devices.some((n) => sameDevice(n, d)))
+      .map((d) => base64UrlDecode(d.agreeKey));
+    if (gone.length > 0) this.onRosterRemoved(gone);
+  }
+
   /** Use these device keys from now on. */
   useDeviceKeys(keys: DeviceKeyPort): void {
     this.#port = keys;
@@ -556,6 +570,7 @@ export class ConnectClient {
         prior !== null
           ? keysAfterRing(held.discKeys, prior, ring)
           : held.discKeys;
+      this.#rosterGone(prior, ring);
       const removed =
         prior !== null &&
         !prior.devices.every((d) => ring.devices.some((n) => sameDevice(n, d)));
@@ -840,6 +855,8 @@ export class ConnectClient {
         throw refuse("the roster differs at the held epoch");
     }
 
+    if (prior !== null && ring.epoch > prior.epoch)
+      this.#rosterGone(prior, ring);
     const keys =
       prior !== null && ring.epoch > prior.epoch
         ? keysAfterRing(a.discKeys, prior, ring)

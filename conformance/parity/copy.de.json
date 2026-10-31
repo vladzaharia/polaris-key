@@ -633,6 +633,14 @@
       "title": "Verbindung beendet",
       "message": "Die Verbindung zum Gerät in der Nähe wurde beendet. Versuchen Sie es erneut."
     },
+    "transfer-cancelled": {
+      "title": "Übertragung beendet",
+      "message": "Die Übertragung wurde nicht abgeschlossen. Es wurde nichts empfangen."
+    },
+    "link-unknown": {
+      "title": "Nicht gekoppelt",
+      "message": "Dieses Gerät ist nicht mehr mit diesem gekoppelt."
+    },
     "peer_revoked": {
       "title": "Gerät nicht mehr vertrauenswürdig",
       "message": "Das andere Gerät wurde aus dem Konto entfernt. Es wurde nichts geteilt."

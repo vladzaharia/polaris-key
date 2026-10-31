@@ -330,6 +330,8 @@ class RelayLink {
           this.role,
           "relay",
           "relay",
+          null,
+          e.remoteStatic,
         );
         this.#session.peerStatic = e.remoteStatic;
         this.cb.onEstablished(this.#session);

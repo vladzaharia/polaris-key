@@ -182,6 +182,8 @@ public let COPY_CODES: [String: CopyEntry] = [
     "nearby-unsupported": CopyEntry(title: "Nearby sign-in unavailable", message: "This device can't look for nearby devices here."),
     "peer-handshake-failed": CopyEntry(title: "Couldn't connect securely", message: "A secure connection to the nearby device couldn't be set up. Try again."),
     "peer-closed": CopyEntry(title: "Connection ended", message: "The connection to the nearby device ended. Try again."),
+    "transfer-cancelled": CopyEntry(title: "Transfer stopped", message: "The transfer didn't finish. Nothing was received."),
+    "link-unknown": CopyEntry(title: "Not paired", message: "That device is no longer paired with this one."),
     "peer_revoked": CopyEntry(title: "Device no longer trusted", message: "The other device was removed from the account. Nothing was shared."),
     "peer_expired": CopyEntry(title: "Device certificate expired", message: "The other device's certificate has expired. Refresh and try again."),
     "peer_bad_frame": CopyEntry(title: "Connection error", message: "The nearby device sent something unexpected. Try again."),

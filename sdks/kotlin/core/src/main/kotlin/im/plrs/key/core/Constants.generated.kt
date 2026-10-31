@@ -169,6 +169,8 @@ public object ErrorCode {
     public const val nearbyUnsupported: String = "nearby-unsupported"
     public const val peerHandshakeFailed: String = "peer-handshake-failed"
     public const val peerClosed: String = "peer-closed"
+    public const val transferCancelled: String = "transfer-cancelled"
+    public const val linkUnknown: String = "link-unknown"
     public const val peerRevoked: String = "peer_revoked"
     public const val peerExpired: String = "peer_expired"
     public const val peerBadFrame: String = "peer_bad_frame"
@@ -396,6 +398,8 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "nearby-unsupported",
     "peer-handshake-failed",
     "peer-closed",
+    "transfer-cancelled",
+    "link-unknown",
     "peer_revoked",
     "peer_expired",
     "peer_bad_frame",
@@ -623,6 +627,8 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "nearby-unsupported" to "client",
     "peer-handshake-failed" to "client",
     "peer-closed" to "client",
+    "transfer-cancelled" to "client",
+    "link-unknown" to "client",
     "peer_revoked" to "peer",
     "peer_expired" to "peer",
     "peer_bad_frame" to "peer",

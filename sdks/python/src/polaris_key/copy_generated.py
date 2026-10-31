@@ -196,6 +196,8 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "nearby-unsupported": CopyEntry("Nearby sign-in unavailable", "This device can't look for nearby devices here."),
         "peer-handshake-failed": CopyEntry("Couldn't connect securely", "A secure connection to the nearby device couldn't be set up. Try again."),
         "peer-closed": CopyEntry("Connection ended", "The connection to the nearby device ended. Try again."),
+        "transfer-cancelled": CopyEntry("Transfer stopped", "The transfer didn't finish. Nothing was received."),
+        "link-unknown": CopyEntry("Not paired", "That device is no longer paired with this one."),
         "peer_revoked": CopyEntry("Device no longer trusted", "The other device was removed from the account. Nothing was shared."),
         "peer_expired": CopyEntry("Device certificate expired", "The other device's certificate has expired. Refresh and try again."),
         "peer_bad_frame": CopyEntry("Connection error", "The nearby device sent something unexpected. Try again."),

@@ -633,6 +633,14 @@
       "title": "Conexión finalizada",
       "message": "La conexión con el dispositivo cercano ha finalizado. Inténtalo de nuevo."
     },
+    "transfer-cancelled": {
+      "title": "Transferencia detenida",
+      "message": "La transferencia no se completó. No se recibió nada."
+    },
+    "link-unknown": {
+      "title": "Sin vincular",
+      "message": "Ese dispositivo ya no está vinculado con este."
+    },
     "peer_revoked": {
       "title": "Dispositivo ya no es de confianza",
       "message": "El otro dispositivo se eliminó de la cuenta. No se compartió nada."

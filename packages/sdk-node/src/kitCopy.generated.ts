@@ -1697,6 +1697,12 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-closed.title": "Connection ended",
     "core.codes.peer-closed.message":
       "The connection to the nearby device ended. Try again.",
+    "core.codes.transfer-cancelled.title": "Transfer stopped",
+    "core.codes.transfer-cancelled.message":
+      "The transfer didn't finish. Nothing was received.",
+    "core.codes.link-unknown.title": "Not paired",
+    "core.codes.link-unknown.message":
+      "That device is no longer paired with this one.",
     "core.codes.peer_revoked.title": "Device no longer trusted",
     "core.codes.peer_revoked.message":
       "The other device was removed from the account. Nothing was shared.",
@@ -3769,6 +3775,12 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-closed.title": "Verbindung beendet",
     "core.codes.peer-closed.message":
       "Die Verbindung zum Gerät in der Nähe wurde beendet. Versuchen Sie es erneut.",
+    "core.codes.transfer-cancelled.title": "Übertragung beendet",
+    "core.codes.transfer-cancelled.message":
+      "Die Übertragung wurde nicht abgeschlossen. Es wurde nichts empfangen.",
+    "core.codes.link-unknown.title": "Nicht gekoppelt",
+    "core.codes.link-unknown.message":
+      "Dieses Gerät ist nicht mehr mit diesem gekoppelt.",
     "core.codes.peer_revoked.title": "Gerät nicht mehr vertrauenswürdig",
     "core.codes.peer_revoked.message":
       "Das andere Gerät wurde aus dem Konto entfernt. Es wurde nichts geteilt.",
@@ -5828,6 +5840,12 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-closed.title": "Connexion terminée",
     "core.codes.peer-closed.message":
       "La connexion avec l'appareil à proximité s'est terminée. Réessayez.",
+    "core.codes.transfer-cancelled.title": "Transfert interrompu",
+    "core.codes.transfer-cancelled.message":
+      "Le transfert n'a pas abouti. Rien n'a été reçu.",
+    "core.codes.link-unknown.title": "Non associé",
+    "core.codes.link-unknown.message":
+      "Cet appareil n'est plus associé à celui-ci.",
     "core.codes.peer_revoked.title": "Appareil non fiable",
     "core.codes.peer_revoked.message":
       "L'autre appareil a été retiré du compte. Rien n'a été partagé.",
@@ -7875,6 +7893,12 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-closed.title": "Conexión finalizada",
     "core.codes.peer-closed.message":
       "La conexión con el dispositivo cercano ha finalizado. Inténtalo de nuevo.",
+    "core.codes.transfer-cancelled.title": "Transferencia detenida",
+    "core.codes.transfer-cancelled.message":
+      "La transferencia no se completó. No se recibió nada.",
+    "core.codes.link-unknown.title": "Sin vincular",
+    "core.codes.link-unknown.message":
+      "Ese dispositivo ya no está vinculado con este.",
     "core.codes.peer_revoked.title": "Dispositivo ya no es de confianza",
     "core.codes.peer_revoked.message":
       "El otro dispositivo se eliminó de la cuenta. No se compartió nada.",
@@ -9887,6 +9911,12 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-closed.title": "Conexão encerrada",
     "core.codes.peer-closed.message":
       "A conexão com o dispositivo próximo foi encerrada. Tente novamente.",
+    "core.codes.transfer-cancelled.title": "Transferência interrompida",
+    "core.codes.transfer-cancelled.message":
+      "A transferência não foi concluída. Nada foi recebido.",
+    "core.codes.link-unknown.title": "Não pareado",
+    "core.codes.link-unknown.message":
+      "Esse dispositivo não está mais pareado com este.",
     "core.codes.peer_revoked.title": "Dispositivo não é mais confiável",
     "core.codes.peer_revoked.message":
       "O outro dispositivo foi removido da conta. Nada foi compartilhado.",
@@ -11911,6 +11941,12 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-closed.title": "Connessione terminata",
     "core.codes.peer-closed.message":
       "La connessione con il dispositivo nelle vicinanze è terminata. Riprova.",
+    "core.codes.transfer-cancelled.title": "Trasferimento interrotto",
+    "core.codes.transfer-cancelled.message":
+      "Il trasferimento non è stato completato. Non è stato ricevuto nulla.",
+    "core.codes.link-unknown.title": "Non associato",
+    "core.codes.link-unknown.message":
+      "Quel dispositivo non è più associato a questo.",
     "core.codes.peer_revoked.title": "Dispositivo non più attendibile",
     "core.codes.peer_revoked.message":
       "L'altro dispositivo è stato rimosso dall'account. Non è stato condiviso nulla.",
@@ -13955,6 +13991,12 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-closed.title": "接続が終了しました",
     "core.codes.peer-closed.message":
       "近くのデバイスとの接続が終了しました。もう一度お試しください。",
+    "core.codes.transfer-cancelled.title": "転送が停止しました",
+    "core.codes.transfer-cancelled.message":
+      "転送は完了しませんでした。何も受信されていません。",
+    "core.codes.link-unknown.title": "ペアリングされていません",
+    "core.codes.link-unknown.message":
+      "そのデバイスはこのデバイスとペアリングされていません。",
     "core.codes.peer_revoked.title": "デバイスは信頼されなくなりました",
     "core.codes.peer_revoked.message":
       "相手のデバイスはアカウントから削除されました。何も共有されていません。",
@@ -15914,6 +15956,12 @@ export const KIT_COPY: Readonly<
     "core.codes.peer-closed.title": "연결이 종료됨",
     "core.codes.peer-closed.message":
       "근처 기기와의 연결이 종료되었습니다. 다시 시도하세요.",
+    "core.codes.transfer-cancelled.title": "전송 중단됨",
+    "core.codes.transfer-cancelled.message":
+      "전송이 완료되지 않았습니다. 수신된 항목이 없습니다.",
+    "core.codes.link-unknown.title": "페어링되지 않음",
+    "core.codes.link-unknown.message":
+      "해당 기기는 더 이상 이 기기와 페어링되어 있지 않습니다.",
     "core.codes.peer_revoked.title": "더 이상 신뢰할 수 없는 기기",
     "core.codes.peer_revoked.message":
       "상대 기기가 계정에서 제거되었습니다. 공유된 내용은 없습니다.",
@@ -17725,6 +17773,10 @@ export const KIT_COPY: Readonly<
       "无法与附近的设备建立安全连接。请重试。",
     "core.codes.peer-closed.title": "连接已结束",
     "core.codes.peer-closed.message": "与附近设备的连接已结束。请重试。",
+    "core.codes.transfer-cancelled.title": "传输已停止",
+    "core.codes.transfer-cancelled.message": "传输未完成，未收到任何内容。",
+    "core.codes.link-unknown.title": "未配对",
+    "core.codes.link-unknown.message": "该设备已不再与此设备配对。",
     "core.codes.peer_revoked.title": "设备不再受信任",
     "core.codes.peer_revoked.message":
       "对方设备已从账户中移除。未共享任何内容。",
