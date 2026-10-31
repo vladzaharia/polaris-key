@@ -34,8 +34,10 @@ import XCTest
         }
         func source() -> PeerSource {
             PeerSource(
-                slug: "djdl", trust: [:], sub: "ps_\(id.prefix(22))", deviceId: id, certJws: "", certExpiresAt: t0 + 100_000,
-                ringJws: "", ringEpoch: 1, roster: [id], keys: DiscoveryKeys(current: DiscoveryKey(base64url: Base64URL.encode(rnd()))!, previous: nil),
+                slug: "djdl", trust: [:], sub: "ps_\(id.prefix(22))", deviceId: id, certJws: "",
+                certExpiresAt: t0 + 100_000,
+                ringJws: "", ringEpoch: 1, roster: [id],
+                keys: DiscoveryKeys(current: DiscoveryKey(base64url: Base64URL.encode(rnd()))!, previous: nil),
                 agreePublic: Base64URL.decodeStrict(agreeKey)!, staticKey: PeerNoiseDeviceKey(store))
         }
     }
@@ -67,7 +69,9 @@ import XCTest
             let tag = "\(slot)"
             let (gone, ups, bs) = lock.withLock {
                 () -> ([String], [BonjourFound], [(@Sendable (BonjourFound) -> Void, @Sendable (String) -> Void)]) in
-                let old = adverts.filter { $0.value.owner == owner && $0.value.found.endpoint.name.hasSuffix("#" + tag) }.map(\.key)
+                let old = adverts.filter {
+                    $0.value.owner == owner && $0.value.found.endpoint.name.hasSuffix("#" + tag)
+                }.map(\.key)
                 for k in old { adverts[k] = nil }
                 var fs: [BonjourFound] = []
                 for a in list {
@@ -124,7 +128,9 @@ import XCTest
             return p
         }
         func advertise(_ advert: BonjourAdvert?) async {
-            dir.set(owner: ObjectIdentifier(self), slot: 0, adverts: advert.map { [$0] } ?? [], port: lock.withLock { port })
+            dir.set(
+                owner: ObjectIdentifier(self), slot: 0, adverts: advert.map { [$0] } ?? [], port: lock.withLock { port }
+            )
         }
         func advertiseContacts(_ adverts: [BonjourAdvert]) async {
             dir.set(owner: ObjectIdentifier(self), slot: 1, adverts: adverts, port: lock.withLock { port })
@@ -243,7 +249,8 @@ import XCTest
                 let key = Base64URL.encode(rnd())
                 _ = i
                 return ConnectLiveContact(
-                    id: ConnectContacts.id(key), agreeKey: key, agreeKeyBytes: Base64URL.decodeStrict(key)!, secret: rnd(),
+                    id: ConnectContacts.id(key), agreeKey: key, agreeKeyBytes: Base64URL.decodeStrict(key)!,
+                    secret: rnd(),
                     label: nil, cats: [], reachable: true, pending: false)
             }
             let dir = Directory()
@@ -383,18 +390,23 @@ import XCTest
     }
 
     final class ConnectContactRelayTests: XCTestCase {
-        private func relay(_ d: Dev, _ link: Link, _ contacts: Contacts, room: ContactFakeRoom, alias: Data, tickets: Counter)
+        private func relay(
+            _ d: Dev, _ link: Link, _ contacts: Contacts, room: ContactFakeRoom, alias: Data, tickets: Counter
+        )
             -> ConnectContactRelay
         {
             let src = lanSource(d, contacts)
             let grant = RelayGrant(
-                ticket: "pkeyrt_" + String(repeating: "a", count: 32), url: URL(string: "wss://key.example/djdl/connect/relay")!,
+                ticket: "pkeyrt_" + String(repeating: "a", count: 32),
+                url: URL(string: "wss://key.example/djdl/connect/relay")!,
                 protocolName: connectRelayProtocol, expiresAt: t0 + 60)
             return ConnectContactRelay(
-                source: ConnectContactRelaySource(lan: src, ticket: { _ in
-                    _ = tickets.bump()
-                    return .granted(grant)
-                }),
+                source: ConnectContactRelaySource(
+                    lan: src,
+                    ticket: { _ in
+                        _ = tickets.bump()
+                        return .granted(grant)
+                    }),
                 options: ConnectRelayOptions(opener: room.opener(alias: alias)))
         }
 
@@ -451,9 +463,11 @@ import XCTest
             let link = Link(a: try await Dev(idA), b: try await Dev(idB))
             let src = lanSource(link.a, Contacts([link.contactForA()]))
             let r = ConnectContactRelay(
-                source: ConnectContactRelaySource(lan: src, ticket: { _ in
-                    .relay(ConnectRelayError(.linksDisabled, "off", status: 403))
-                }),
+                source: ConnectContactRelaySource(
+                    lan: src,
+                    ticket: { _ in
+                        .relay(ConnectRelayError(.linksDisabled, "off", status: 403))
+                    }),
                 options: ConnectRelayOptions())
             await r.start()
             await until("room blocked") { await r.status().values.first?.state == .blocked }
@@ -515,7 +529,8 @@ import XCTest
             let peerKey = Base64URL.encode(rnd())
             let secret = rnd()
             let stored = try await c.connect.updateContacts { rows, now in
-                ConnectContacts.store(rows, agreeKey: peerKey, secret: secret, label: "Ben", cats: ["docs"], now: now)?.rows
+                ConnectContacts.store(rows, agreeKey: peerKey, secret: secret, label: "Ben", cats: ["docs"], now: now)?
+                    .rows
             }
             XCTAssertEqual(stored.count, 1)
             let id = ConnectContacts.id(peerKey)
@@ -563,7 +578,8 @@ import XCTest
             await serveIdentity(try await port.ensure())
             _ = await c.connect.identity(refresh: true)
             _ = try await c.connect.updateContacts { rows, now in
-                ConnectContacts.store(rows, agreeKey: Base64URL.encode(rnd()), secret: rnd(), label: nil, cats: [], now: now)?.rows
+                ConnectContacts.store(
+                    rows, agreeKey: Base64URL.encode(rnd()), secret: rnd(), label: nil, cats: [], now: now)?.rows
             }
             try await c.connect.leave()
             let rows = await c.connect.contactRows()
@@ -575,12 +591,15 @@ import XCTest
             let rec = ConnectRecord(
                 ring: "r", certificate: "c", discKeys: [Base64URL.encode(rnd())], registered: nil, storedAt: 1,
                 contacts: [
-                    ConnectContactRow(agreeKey: "short", secret: "short", label: nil, cats: [], createdAt: 1, reachable: true)
+                    ConnectContactRow(
+                        agreeKey: "short", secret: "short", label: nil, cats: [], createdAt: 1, reachable: true)
                 ])
-            XCTAssertThrowsError(try {
-                try state.save(rec)
-                _ = try state.load()
-            }()) { XCTAssertEqual($0 as? ConnectStateError, .unreadable) }
+            XCTAssertThrowsError(
+                try {
+                    try state.save(rec)
+                    _ = try state.load()
+                }()
+            ) { XCTAssertEqual($0 as? ConnectStateError, .unreadable) }
         }
 
         func testPairAndOpenAreTheTypedNAWhileLinksAreOff() async throws {
@@ -603,14 +622,16 @@ import XCTest
         func testTheContactTicketBodyAndTheRoomEcho() async throws {
             let c = try await client()
             let rid = "lXg0MgIHVN5qAmGFUen7vA"
-            let ok = #"{"ticket":"pkeyrt_\#(String(repeating: "a", count: 32))","url":"wss://key.example/djdl/connect/relay","protocol":"pkey-relay.1","expiresAt":\#(now + 60),"room":"c"}"#
+            let ok =
+                #"{"ticket":"pkeyrt_\#(String(repeating: "a", count: 32))","url":"wss://key.example/djdl/connect/relay","protocol":"pkey-relay.1","expiresAt":\#(now + 60),"room":"c"}"#
             await server.reply("/djdl/connect/relay/ticket", body: ok)
             guard case .granted = await c.connect.relayTicket(room: "c", rid: rid) else { return XCTFail("granted") }
             let sent = await server.requests(forPath: "/djdl/connect/relay/ticket").last
             XCTAssertEqual(sent?.headers["content-type"], "application/json")
             XCTAssertEqual(String(decoding: sent?.body ?? Data(), as: UTF8.self), #"{"rid":"\#(rid)","room":"c"}"#)
             // An older Worker ignores the body and answers an account ticket: unsupported, never used.
-            let old = #"{"ticket":"pkeyrt_\#(String(repeating: "a", count: 32))","url":"wss://key.example/djdl/connect/relay","protocol":"pkey-relay.1","expiresAt":\#(now + 60)}"#
+            let old =
+                #"{"ticket":"pkeyrt_\#(String(repeating: "a", count: 32))","url":"wss://key.example/djdl/connect/relay","protocol":"pkey-relay.1","expiresAt":\#(now + 60)}"#
             await server.reply("/djdl/connect/relay/ticket", body: old)
             guard case .relay(let e) = await c.connect.relayTicket(room: "c", rid: rid) else { return XCTFail("relay") }
             XCTAssertEqual(e.reason, .contactUnsupported)
@@ -618,10 +639,93 @@ import XCTest
             await server.reply("/djdl/connect/relay/ticket", body: ok)
             guard case .relay(let e2) = await c.connect.relayTicket() else { return XCTFail("relay") }
             XCTAssertEqual(e2.reason, .ticketInvalid)
-            await server.reply("/djdl/connect/relay/ticket", status: 403, body: #"{"error":{"code":"connect_links_disabled"}}"#)
-            guard case .relay(let e3) = await c.connect.relayTicket(room: "c", rid: rid) else { return XCTFail("relay") }
+            await server.reply(
+                "/djdl/connect/relay/ticket", status: 403, body: #"{"error":{"code":"connect_links_disabled"}}"#)
+            guard case .relay(let e3) = await c.connect.relayTicket(room: "c", rid: rid) else {
+                return XCTFail("relay")
+            }
             XCTAssertEqual(e3.reason, .linksDisabled)
             XCTAssertEqual(e3.status, 403)
+        }
+    }
+
+    // ── The pairing window, two devices end to end ───────────────────────────────────────────────
+
+    /// One person's device: its contact rows and the `PairSource` that stores into them.
+    private final class PairDevice: @unchecked Sendable {
+        let agreeKey: String
+        let rows = LockedValue<[ConnectContactRow]>([])
+        let linked = LockedValue<[PairedLink]>([])
+        let failed = LockedValue<[PairFailure]>([])
+        let codes = LockedValue<[String]>([])
+        init(_ d: Dev) { agreeKey = d.agreeKey }
+        var source: PairSource {
+            PairSource(
+                slug: "djdl", now: { Int(Date().timeIntervalSince1970) }, agreeKey: { self.agreeKey },
+                held: { self.rows.with { $0.filter { $0.pendingSince == nil }.map(\.agreeKey) } },
+                store: { key, secret, label, cats in
+                    self.rows.with { rows in
+                        guard
+                            let v = ConnectContacts.store(
+                                rows, agreeKey: key, secret: secret, label: label, cats: cats,
+                                now: Int(Date().timeIntervalSince1970))
+                        else { return nil }
+                        rows = v.rows
+                        return (ConnectContacts.id(key), v.pending)
+                    }
+                },
+                allowed: { true })
+        }
+        func options(_ dir: Directory, label: String, confirm: Bool) -> LinkPairOptions {
+            LinkPairOptions(
+                categories: ["docs"], label: label,
+                onCode: { offer in
+                    self.codes.with { $0.append(offer.code) }
+                    Task { confirm ? await offer.confirm() : await offer.decline() }
+                },
+                onLinked: { l in self.linked.with { $0.append(l) } },
+                onFailed: { f in self.failed.with { $0.append(f) } },
+                seconds: 30, network: FakeNet(dir))
+        }
+    }
+
+    final class ConnectLinksPairingWindowTests: XCTestCase {
+        func testTwoDevicesPairAndBothStoreTheSameContactSecret() async throws {
+            let a = PairDevice(try await Dev(idA))
+            let b = PairDevice(try await Dev(idB))
+            let dir = Directory()
+            let ha = try await LinkPairing.start(a.source, a.options(dir, label: "Ana", confirm: true))
+            let hb = try await LinkPairing.start(b.source, b.options(dir, label: "Ben", confirm: true))
+            await until("both devices linked") {
+                a.linked.with { !$0.isEmpty } && b.linked.with { !$0.isEmpty }
+            }
+            // Each person saw the same code, and each stored the other's key and name.
+            XCTAssertEqual(a.codes.with { $0 }.first, b.codes.with { $0 }.first)
+            XCTAssertEqual(a.rows.with { $0.map(\.agreeKey) }, [b.agreeKey])
+            XCTAssertEqual(b.rows.with { $0.map(\.agreeKey) }, [a.agreeKey])
+            XCTAssertEqual(a.rows.with { $0.first?.secret }, b.rows.with { $0.first?.secret })
+            XCTAssertEqual(a.rows.with { $0.first?.label }, "Ben")
+            XCTAssertEqual(b.rows.with { $0.first?.label }, "Ana")
+            XCTAssertEqual(a.linked.with { $0.first?.categories }, ["docs"])
+            XCTAssertTrue(a.failed.with { $0.isEmpty } && b.failed.with { $0.isEmpty })
+            await ha.stop()
+            await hb.stop()
+        }
+
+        func testOneDeclineStoresNothingOnEitherDevice() async throws {
+            let a = PairDevice(try await Dev(idA))
+            let b = PairDevice(try await Dev(idB))
+            let dir = Directory()
+            let ha = try await LinkPairing.start(a.source, a.options(dir, label: "Ana", confirm: true))
+            let hb = try await LinkPairing.start(b.source, b.options(dir, label: "Ben", confirm: false))
+            await until("both devices report the failure") {
+                a.failed.with { !$0.isEmpty } && b.failed.with { !$0.isEmpty }
+            }
+            XCTAssertTrue(a.rows.with { $0.isEmpty } && b.rows.with { $0.isEmpty })
+            XCTAssertTrue(a.linked.with { $0.isEmpty } && b.linked.with { $0.isEmpty })
+            XCTAssertEqual(b.failed.with { $0.first?.reason }, .declined)
+            await ha.stop()
+            await hb.stop()
         }
     }
 #endif

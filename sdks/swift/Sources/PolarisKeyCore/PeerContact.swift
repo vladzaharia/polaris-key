@@ -104,7 +104,9 @@ public enum PeerContacts {
     private static func isCat(_ s: String) -> Bool {
         let u = Array(s.unicodeScalars)
         return (1...32).contains(u.count)
-            && u.allSatisfy { ($0.value >= 0x61 && $0.value <= 0x7a) || ($0.value >= 0x30 && $0.value <= 0x39) || $0 == "-" }
+            && u.allSatisfy {
+                ($0.value >= 0x61 && $0.value <= 0x7a) || ($0.value >= 0x30 && $0.value <= 0x39) || $0 == "-"
+            }
     }
 
     private static func validCats(_ c: [String]) -> Bool {
@@ -138,7 +140,9 @@ public enum PeerContacts {
 
     // MARK: Body
 
-    private static func clean(_ raw: String) -> String? { normalizeDeviceLabel(raw.precomposedStringWithCanonicalMapping) }
+    private static func clean(_ raw: String) -> String? {
+        normalizeDeviceLabel(raw.precomposedStringWithCanonicalMapping)
+    }
 
     private static func quoted(_ s: String) -> String {
         let enc = JSONEncoder()
@@ -278,7 +282,9 @@ public enum PeerContacts {
 
     /// A handshake under a pending contact's secret passed the pin: it replaces the held contact.
     public static func promote(_ list: [StoredContact], agreeKey: String) -> [StoredContact] {
-        guard let pi = list.firstIndex(where: { $0.pendingSince != nil && $0.agreeKey == agreeKey }) else { return list }
+        guard let pi = list.firstIndex(where: { $0.pendingSince != nil && $0.agreeKey == agreeKey }) else {
+            return list
+        }
         var fresh = list[pi]
         fresh.pendingSince = nil
         var out: [StoredContact] = []
@@ -295,7 +301,8 @@ public enum PeerContacts {
 
     /// Active contacts in held order, then pending ones in the order stored, at most 72.
     public static func trialOrder(_ list: [StoredContact]) -> [StoredContact] {
-        Array((list.filter { $0.pendingSince == nil } + list.filter { $0.pendingSince != nil }).prefix(maxContactSecrets))
+        Array(
+            (list.filter { $0.pendingSince == nil } + list.filter { $0.pendingSince != nil }).prefix(maxContactSecrets))
     }
 
     /// Mode c: the remote static key must be the agreeKey of the contact whose secret opened the session.
@@ -345,7 +352,8 @@ public enum PeerContacts {
 
     public static func rid(secret: Data) -> String {
         Base64URL.encode(
-            PeerNoiseHash.hkdfSHA256(salt: Data(), ikm: secret, info: Data("pkey-peer/1 room".utf8), length: 32).prefix(16))
+            PeerNoiseHash.hkdfSHA256(salt: Data(), ikm: secret, info: Data("pkey-peer/1 room".utf8), length: 32).prefix(
+                16))
     }
 
     private static func ridBytes(_ rid: String) -> Data? {

@@ -263,7 +263,9 @@ actor ConnectContactRoom: RelayRoom, CustomStringConvertible, CustomReflectable 
         if code == 4003 {
             // The room is full, or links were switched off: a few tries, then stop.
             notMember += 1
-            if notMember >= 3 { return ConnectRelayError(.notMember, "The room does not admit this device.", closeCode: code) }
+            if notMember >= 3 {
+                return ConnectRelayError(.notMember, "The room does not admit this device.", closeCode: code)
+            }
             return nil
         }
         notMember = 0

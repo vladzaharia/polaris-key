@@ -145,16 +145,18 @@ import PolarisKeyCore
             self.lanAttempt = lanAttempt
             self.relayOn = relayOn
             if let lan {
-                unsub.append(lan.onContactSession { [weak self] s in
-                    guard let self else { return }
-                    Task { await self.inbound(s) }
-                })
+                unsub.append(
+                    lan.onContactSession { [weak self] s in
+                        guard let self else { return }
+                        Task { await self.inbound(s) }
+                    })
             }
             if let relay {
-                unsub.append(relay.onSession { [weak self] s in
-                    guard let self else { return }
-                    Task { await self.inbound(s) }
-                })
+                unsub.append(
+                    relay.onSession { [weak self] s in
+                        guard let self else { return }
+                        Task { await self.inbound(s) }
+                    })
             }
             // The list or the gate moved: end the sessions that no longer have a footing.
             unsub.append(
@@ -243,8 +245,9 @@ import PolarisKeyCore
                 store: { key, secret, label, cats in
                     var out: (id: String, pending: Bool)?
                     _ = try? await c.updateContacts { rows, now in
-                        guard let v = ConnectContacts.store(
-                            rows, agreeKey: key, secret: secret, label: label, cats: cats, now: now)
+                        guard
+                            let v = ConnectContacts.store(
+                                rows, agreeKey: key, secret: secret, label: label, cats: cats, now: now)
                         else { return nil }
                         out = (ConnectContacts.id(key), v.pending)
                         return v.rows
@@ -257,13 +260,16 @@ import PolarisKeyCore
             return h
         }
 
-        func open(_ id: String, relay relayOpt: Bool, lanAttempt attempt: TimeInterval?) async throws -> ConnectSession {
+        func open(_ id: String, relay relayOpt: Bool, lanAttempt attempt: TimeInterval?) async throws -> ConnectSession
+        {
             try await requireOn("open")
             if lan == nil && relay == nil { throw ConnectLanError(.notStarted, "Cloud Connect is not started.") }
             let rows = (await connect.contactRows()).filter { ConnectContacts.id($0.agreeKey) == id }
             if rows.isEmpty { throw ConnectLanError(.unknownPeer, "That is not a link on this device.") }
             // The newest secret first: the pending one of a re-pair, then the held one.
-            let order = rows.filter { $0.pendingSince != nil }.map { _ in true } + rows.filter { $0.pendingSince == nil }.map { _ in false }
+            let order =
+                rows.filter { $0.pendingSince != nil }.map { _ in true }
+                + rows.filter { $0.pendingSince == nil }.map { _ in false }
             var last: Error?
             for pending in order {
                 if let lan, await lan.currentContactPeers().contains(where: { $0.id == id && $0.pending == pending }) {
@@ -275,7 +281,8 @@ import PolarisKeyCore
                         track(s)
                         return s
                     case .failed(let e): last = e
-                    case .timedOut: last = ConnectLanError(.connectFailed, "The LAN attempt took too long; trying the relay.")
+                    case .timedOut:
+                        last = ConnectLanError(.connectFailed, "The LAN attempt took too long; trying the relay.")
                     }
                 }
                 if let relay, relayOpt, relayOn {

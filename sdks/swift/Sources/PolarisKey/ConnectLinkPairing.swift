@@ -234,7 +234,9 @@ import PolarisKeyPlatform
             func isCat(_ s: String) -> Bool {
                 let u = Array(s.unicodeScalars)
                 return (1...32).contains(u.count)
-                    && u.allSatisfy { ($0.value >= 0x61 && $0.value <= 0x7a) || ($0.value >= 0x30 && $0.value <= 0x39) || $0 == "-" }
+                    && u.allSatisfy {
+                        ($0.value >= 0x61 && $0.value <= 0x7a) || ($0.value >= 0x30 && $0.value <= 0x39) || $0 == "-"
+                    }
             }
             guard o.categories.count <= maxContactCats, o.categories.allSatisfy(isCat),
                 Set(o.categories).count == o.categories.count
@@ -242,7 +244,9 @@ import PolarisKeyPlatform
                 throw ConnectLanError(
                     .badType, "categories must be at most 8 distinct strings of a-z, 0-9 and '-' (1 to 32 characters).")
             }
-            if let l = o.label, l.unicodeScalars.count > 64 { throw ConnectLanError(.badType, "The label is not valid.") }
+            if let l = o.label, l.unicodeScalars.count > 64 {
+                throw ConnectLanError(.badType, "The label is not valid.")
+            }
             guard o.seconds > 0 else { throw ConnectLanError(.badType, "seconds must be above 0.") }
         }
 
@@ -359,7 +363,9 @@ import PolarisKeyPlatform
             l.pipe = pipe
             let id = ObjectIdentifier(l)
             live[id] = l
-            let key = (try? PeerNoiseRawStaticKey(privateKey: random(32))) ?? (try! PeerNoiseRawStaticKey(privateKey: Data(count: 32)))
+            let key =
+                (try? PeerNoiseRawStaticKey(privateKey: random(32)))
+                ?? (try! PeerNoiseRawStaticKey(privateKey: Data(count: 32)))
             let opts = PeerChannelOptions(
                 role: role, slug: src.slug, staticKey: key, admission: role == .responder ? limiter : nil, caps: [],
                 hello: (o.label, connectPlatformName, src.slug, nil), mode: .p,

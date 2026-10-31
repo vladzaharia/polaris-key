@@ -159,8 +159,10 @@ final class PeerContactCorpusTests: XCTestCase {
                 let w = want[i]
                 let tag = "\(r["id"]!.stringValue!) op \(i)"
                 XCTAssertEqual(result, w["result"]?.stringValue, tag)
-                XCTAssertEqual(ids(list.filter { $0.pendingSince == nil }), w["active"]!.arrayValue!.map { $0.intValue! }, tag)
-                XCTAssertEqual(ids(list.filter { $0.pendingSince != nil }), w["pending"]!.arrayValue!.map { $0.intValue! }, tag)
+                XCTAssertEqual(
+                    ids(list.filter { $0.pendingSince == nil }), w["active"]!.arrayValue!.map { $0.intValue! }, tag)
+                XCTAssertEqual(
+                    ids(list.filter { $0.pendingSince != nil }), w["pending"]!.arrayValue!.map { $0.intValue! }, tag)
                 XCTAssertEqual(ids(PeerContacts.trialOrder(list)), w["order"]!.arrayValue!.map { $0.intValue! }, tag)
             }
         }
@@ -170,7 +172,8 @@ final class PeerContactCorpusTests: XCTestCase {
         for r in rows("pin") {
             let held = r["held"]!.arrayValue!.map { $0.stringValue! }
             let ok = PeerContacts.pin(
-                held: held[r["matched"]!.intValue!], remoteStatic: Base64URL.decodeStrict(r["remoteStatic"]!.stringValue!)!)
+                held: held[r["matched"]!.intValue!],
+                remoteStatic: Base64URL.decodeStrict(r["remoteStatic"]!.stringValue!)!)
             XCTAssertEqual(ok, r["want"]!.objectValue!["ok"]!.boolValue, r["id"]!.stringValue!)
         }
     }
@@ -182,7 +185,8 @@ final class PeerContactCorpusTests: XCTestCase {
             XCTAssertEqual(
                 PeerContacts.instance(
                     secret: unhex(r["secret"]!.stringValue!),
-                    advertiserAgreeKey: Base64URL.decodeStrict(r["agreeKey"]!.stringValue!)!, epoch: r["epoch"]!.intValue!),
+                    advertiserAgreeKey: Base64URL.decodeStrict(r["agreeKey"]!.stringValue!)!,
+                    epoch: r["epoch"]!.intValue!),
                 r["instance"]!.stringValue, r["id"]!.stringValue!)
         }
         for r in a["txt"]!.arrayValue!.map({ $0.objectValue! }) {
@@ -198,9 +202,11 @@ final class PeerContactCorpusTests: XCTestCase {
             let keys = r["contacts"]!.arrayValue!.map { k -> ContactAdvertKey in
                 let o = k.objectValue!
                 return ContactAdvertKey(
-                    secret: unhex(o["secret"]!.stringValue!), agreeKey: Base64URL.decodeStrict(o["agreeKey"]!.stringValue!)!)
+                    secret: unhex(o["secret"]!.stringValue!),
+                    agreeKey: Base64URL.decodeStrict(o["agreeKey"]!.stringValue!)!)
             }
-            let hit = PeerContacts.browse(instance: r["instance"]!.stringValue!, contacts: keys, now: r["now"]!.intValue!)
+            let hit = PeerContacts.browse(
+                instance: r["instance"]!.stringValue!, contacts: keys, now: r["now"]!.intValue!)
             if let w = r["want"]?.objectValue {
                 XCTAssertEqual(hit?.contact, w["contact"]?.intValue, r["id"]!.stringValue!)
                 XCTAssertEqual(hit?.epochBack, w["epochBack"]?.intValue, r["id"]!.stringValue!)
@@ -213,7 +219,9 @@ final class PeerContactCorpusTests: XCTestCase {
     func testRoomsAndTickets() throws {
         let rooms = c["rooms"]!.objectValue!
         for r in rooms["rid"]!.arrayValue!.map({ $0.objectValue! }) {
-            XCTAssertEqual(PeerContacts.rid(secret: unhex(r["secret"]!.stringValue!)), r["rid"]!.stringValue, r["id"]!.stringValue!)
+            XCTAssertEqual(
+                PeerContacts.rid(secret: unhex(r["secret"]!.stringValue!)), r["rid"]!.stringValue, r["id"]!.stringValue!
+            )
         }
         for r in rooms["alias"]!.arrayValue!.map({ $0.objectValue! }) {
             XCTAssertEqual(
@@ -257,18 +265,21 @@ final class PeerContactCorpusTests: XCTestCase {
             let events = Box<[PeerSessionEvent]>([])
             let acct = account.map { a in
                 PeerAccountContext(
-                    trust: TrustSet(), expectedAud: slug, certJws: "", ownSub: "ps_x", ownDeviceId: String(repeating: "x", count: 32),
-                    heldRing: { nil }, discKeys: a.enumerated().map { $0.element.stringValue == nil ? nil : keys[$0.offset] })
+                    trust: TrustSet(), expectedAud: slug, certJws: "", ownSub: "ps_x",
+                    ownDeviceId: String(repeating: "x", count: 32),
+                    heldRing: { nil },
+                    discKeys: a.enumerated().map { $0.element.stringValue == nil ? nil : keys[$0.offset] })
             }
             let ch = try PeerChannel(
                 role: .responder, slug: slug, staticKey: PeerNoiseRawStaticKey(privateKey: rnd()), account: acct,
-                admission: limiter, contacts: secrets.map { PeerContactLink(secret: $0, agreeKey: Base64URL.encode(rnd())) },
+                admission: limiter,
+                contacts: secrets.map { PeerContactLink(secret: $0, agreeKey: Base64URL.encode(rnd())) },
                 hello: (nil, "t", "a", nil), send: { d in out.mutate { $0.append(d) } },
                 onEvent: { e in events.mutate { $0.append(e) } }, mode: acct != nil ? .a : .c)
-            let init_ = try PeerNoiseHandshake(
+            let handshakeInit = try PeerNoiseHandshake(
                 role: .initiator, protocol: peerNoiseProtocol(mode), prologue: peerPrologue(slug: slug, mode: mode),
                 staticKey: PeerNoiseRawStaticKey(privateKey: rnd()), psk: psk)
-            await ch.receive(try await init_.writeMessage(PeerPayload.payload1()))
+            await ch.receive(try await handshakeInit.writeMessage(PeerPayload.payload1()))
             let want = r["want"]!.objectValue!
             let closed = events.value.compactMap { e -> String? in
                 if case .closed(let c, _) = e { return c.rawValue } else { return nil }
@@ -342,7 +353,9 @@ final class PeerContactSessionTests: XCTestCase {
     /// Pair two devices (mode p with the exchange), return both secrets and the keys.
     private func pair(
         cats a: [String] = ["docs"], b: [String] = ["docs", "photos"], heldA: [String] = []
-    ) async throws -> (secretA: Data, secretB: Data, keyA: Data, keyB: Data, privA: Data, privB: Data, bodyA: ContactBody) {
+    ) async throws -> (
+        secretA: Data, secretB: Data, keyA: Data, keyB: Data, privA: Data, privB: Data, bodyA: ContactBody
+    ) {
         let privA = rnd()
         let privB = rnd()
         let pubA = try await PeerNoiseRawStaticKey(privateKey: privA).publicKey()
@@ -370,7 +383,8 @@ final class PeerContactSessionTests: XCTestCase {
         let p = try await pair()
         XCTAssertEqual(p.bodyA.cats, ["docs"])
         // Mode c: A dials B under the shared secret, each pinned to the other's key.
-        let a = await Side(.c, .initiator, key: p.privA, contacts: [PeerContactLink(secret: p.secretA, agreeKey: key(p.keyB))])
+        let a = await Side(
+            .c, .initiator, key: p.privA, contacts: [PeerContactLink(secret: p.secretA, agreeKey: key(p.keyB))])
         let b = await Side(
             .c, .responder, key: p.privB, contacts: [PeerContactLink(secret: p.secretB, agreeKey: key(p.keyA))])
         await a.ch.start()
@@ -393,7 +407,8 @@ final class PeerContactSessionTests: XCTestCase {
     func testPinRefusesAWrongKeyAndSendsNothing() async throws {
         let p = try await pair()
         let wrong = key(rnd())
-        let a = await Side(.c, .initiator, key: p.privA, contacts: [PeerContactLink(secret: p.secretA, agreeKey: wrong)])
+        let a = await Side(
+            .c, .initiator, key: p.privA, contacts: [PeerContactLink(secret: p.secretA, agreeKey: wrong)])
         let b = await Side(
             .c, .responder, key: p.privB, contacts: [PeerContactLink(secret: p.secretB, agreeKey: key(p.keyA))])
         await a.ch.start()
@@ -407,13 +422,14 @@ final class PeerContactSessionTests: XCTestCase {
         let p = try await pair()
         let others = (0..<5).map { _ in PeerContactLink(secret: rnd(), agreeKey: key(rnd())) }
         let b = await Side(
-            .c, .responder, key: p.privB, contacts: others + [PeerContactLink(secret: p.secretB, agreeKey: key(p.keyA))])
-        let a = await Side(.c, .initiator, key: p.privA, contacts: [PeerContactLink(secret: p.secretA, agreeKey: key(p.keyB))])
+            .c, .responder, key: p.privB, contacts: others + [PeerContactLink(secret: p.secretB, agreeKey: key(p.keyA))]
+        )
+        let a = await Side(
+            .c, .initiator, key: p.privA, contacts: [PeerContactLink(secret: p.secretA, agreeKey: key(p.keyB))])
         await a.ch.start()
         await pump(a, b)
         XCTAssertEqual(b.established.first?.contactIndex, 5)
     }
-
 
     func testRePairOfAHeldPeerIsPending() async throws {
         let privB = rnd()

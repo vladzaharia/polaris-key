@@ -219,7 +219,9 @@ extension ConnectClient {
     }
 
     /// Called when the contacts changed or the `interAccount` answer may have.
-    nonisolated func onContactsChanged(_ fn: @escaping @Sendable () -> Void) -> @Sendable () -> Void { contactChanges.add(fn) }
+    nonisolated func onContactsChanged(_ fn: @escaping @Sendable () -> Void) -> @Sendable () -> Void {
+        contactChanges.add(fn)
+    }
 
     /// Tell the listeners the contacts or the gate moved.
     public nonisolated func notifyContacts() { contactChanges.fire() }
