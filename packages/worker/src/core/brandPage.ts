@@ -20,6 +20,7 @@ import {
   hostedImageUrl,
   hostedImages,
 } from "./assets/hostedImages.js";
+import { shownAppName } from "./accounts/reservedDisplayNames.js";
 import { resolvePresentation } from "./presentation.js";
 import type { ProductPublic } from "./products.js";
 import type { ServiceHooks } from "./hooks.js";
@@ -115,7 +116,11 @@ export function codeRefusalPage(
   });
 }
 
-/** The app's display name and a small hosted icon (display data only, as discovery's). */
+/**
+ * The app's display name and a small hosted icon (display data only, as discovery's). The name is
+ * the checked one (`shownAppName`): a name that fails the display rules comes back as the slug, so
+ * no page that draws the app names it by an invisible, spoofed or reserved text.
+ */
 export async function appForPage(ctx: {
   product: Pick<ProductPublic, "slug" | "name" | "presentation">;
   env: Env;
@@ -151,5 +156,11 @@ export async function appForPage(ctx: {
   const artUrl = header
     ? hostedImageUrl(ctx.env, ctx.product.slug, header, 640)
     : null;
-  return { name: p?.name ?? ctx.product.name, iconUrl, artUrl };
+  const name = await shownAppName(
+    ctx.env,
+    ctx.db,
+    ctx.product.slug,
+    p?.name ?? ctx.product.name,
+  );
+  return { name, iconUrl, artUrl };
 }

@@ -57,7 +57,7 @@ import {
 import {
   deviceDeniedPage,
   type PageView,
-  listingDeveloper,
+  shownListingDeveloper,
   deviceGonePage,
   renderDeviceConfirmation,
   renderDeviceEntry,
@@ -188,9 +188,12 @@ async function appFor(
   product: Product,
   ctx: DevicePageContext | undefined,
 ): Promise<{ name: string; iconUrl: string | null; developer: string | null }> {
-  if (!ctx) return { name: product.name, iconUrl: null, developer: null };
-  const app = await appForPage({ product, env, db: ctx.db, hooks: ctx.hooks });
-  return { ...app, developer: await listingDeveloper(ctx.hooks) };
+  if (!ctx) return { name: product.slug, iconUrl: null, developer: null };
+  const { db, hooks } = ctx;
+  return {
+    ...(await appForPage({ product, env, db, hooks })),
+    developer: await shownListingDeveloper(env, db, product.slug, hooks),
+  };
 }
 
 /** The decision the confirmation form posts (`decision=approve|deny`). Absent or unknown reads

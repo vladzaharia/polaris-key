@@ -69,6 +69,10 @@ import {
   hostedImages,
 } from "../../../core/assets/hostedImages.js";
 import { presentationText } from "../../../core/presentation.js";
+import {
+  shownAppName,
+  shownDeveloperName,
+} from "../../../core/accounts/reservedDisplayNames.js";
 import { err, notFound, portalJson, type PortalHooksFor } from "./api.js";
 import { entitlementView } from "./entitlements.js";
 import { mediaUrlFor } from "./media.js";
@@ -222,7 +226,10 @@ async function presentationArt(
   };
 }
 
-/** The product's presentation, from its listing when Distribution has one (see file comment). */
+/**
+ * The product's presentation, from its listing when Distribution has one (see file comment). The
+ * name and developer are the checked ones (see `presentationOf`).
+ */
 export async function presentationFor(
   env: Env,
   db: Db,
@@ -230,6 +237,7 @@ export async function presentationFor(
   hooksFor: PortalHooksFor | undefined,
   now: number,
   surface: PresentationSurface,
+  opts: { raw?: boolean } = {},
 ): Promise<Presentation> {
   return presentationOf(
     env,
@@ -237,23 +245,35 @@ export async function presentationFor(
     product,
     await productListing(product, hooksFor, now),
     surface,
+    opts,
   );
 }
 
-/** The presentation from a listing already read (`productListing`), drawn for `surface`. */
+/**
+ * The presentation from a listing already read (`productListing`), drawn for `surface`. The name
+ * is the checked one (`shownAppName`: the slug when the stored name fails the display rules) and
+ * the developer name the checked one or `null`, because every caller prints them to a person,
+ * the claim preview and Discover before they consent included (DISPLAY-NAME-INVISIBLE B4). Only
+ * the client record asks for `raw`: it needs the stored name to judge `nameVerified` itself.
+ */
 export async function presentationOf(
   env: Env,
   db: Db,
   product: ProductPublic,
   listing: Record<string, unknown> | null,
   surface: PresentationSurface,
+  opts: { raw?: boolean } = {},
 ): Promise<Presentation> {
   const supportUrl = str(listing?.supportUrl);
   const supportEmail = str(listing?.supportEmail);
   const text = presentationText(product, listing);
   return {
-    name: text.name,
-    developerName: text.developerName,
+    name: opts.raw
+      ? text.name
+      : await shownAppName(env, db, product.slug, text.name),
+    developerName: opts.raw
+      ? text.developerName
+      : await shownDeveloperName(env, db, product.slug, text.developerName),
     tintColor: text.accent,
     website: str(listing?.website),
     ...(await presentationArt(env, db, product, listing, surface)),

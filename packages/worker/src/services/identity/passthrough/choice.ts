@@ -33,6 +33,7 @@ import type { ProductPublic } from "../../../core/products.js";
 import type { LicenseRow } from "../../../core/repo.js";
 import { seatActiveSince } from "../../../core/devices/store.js";
 import { getLicense, getTier } from "../../../core/licensing/store.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 import { customerTierOf } from "../../../core/licensing/implicitTier.js";
 import {
   rankAnchorCandidates,
@@ -136,7 +137,7 @@ async function tierLabel(cx: ChoiceCx, tierId: string | null): Promise<string> {
   const tier = tierId ? await getTier(cx.db, cx.product.slug, tierId) : null;
   return (
     (tierId ? customerTierOf({ tier_id: tierId }, tier)?.label : null) ??
-    cx.product.name
+    (await shownAppName(cx.env, cx.db, cx.product.slug, cx.product.name))
   );
 }
 

@@ -96,6 +96,7 @@ import {
   setRecovery,
   type WrapInput,
 } from "./store.js";
+import { shownAppName } from "../accounts/reservedDisplayNames.js";
 
 const RING_ID = new RegExp(SYNC_RING_ID_PATTERN);
 const KID = new RegExp(SYNC_KID_PATTERN);
@@ -542,7 +543,12 @@ async function emailAccount(
       null,
       notice({
         deviceLabel: c.device.label,
-        productName: c.product.name,
+        productName: await shownAppName(
+          c.env,
+          c.db,
+          c.product.slug,
+          c.product.name,
+        ),
         productSlug: c.product.slug,
         at: c.now,
         origin: new URL(c.req.url).origin,

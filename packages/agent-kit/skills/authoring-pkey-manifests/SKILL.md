@@ -300,8 +300,9 @@ table, `tools/services.json`.
 ### 6a. Name the product as itself (display names, PX-W13)
 
 - [ ] `product.name`, `listing.name` and `listing.developerName` are what the customer's sign-in
-      card shows ("<App> wants you to sign in"). A control, zero-width or bidi character, or a
-      leading or trailing space, is `invalid_display_text` (an error, also in the JSON Schemas).
+      card shows ("<App> wants you to sign in"). A control, invisible or bidi character, a name
+      that starts with a variation selector, or a leading or trailing space, is
+      `invalid_display_text` (an error, also in the JSON Schemas).
 - [ ] A platform or store name as whole words (Polaris Key, plrs, Apple, App Store, Google,
       Google Play, Steam, Valve, Epic Games, Microsoft, Xbox, PlayStation, Nintendo, itch.io,
       after folding case, width, accents, look-alikes and separators) is `reserved_display_name`:

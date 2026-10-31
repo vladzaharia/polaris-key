@@ -515,6 +515,7 @@ export function deviceReplacedNotice(input: {
  * carries no device id; the secure line is "sign out everywhere", which unbinds every device of
  * the account and so ends every restore key. The label is chosen by the new device, so it is shown
  * in quotes, and a label that looks like a link is replaced by "a new device".
+ * Callers must pass `productName` as `shownAppName(...)`, never the stored product name.
  */
 export function appDeviceApprovedNotice(input: {
   deviceLabel: string | null | undefined;

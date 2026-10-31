@@ -553,9 +553,6 @@
       "knip:exports": 5,
       "knip:types": 6
     },
-    "packages/worker/src/services/identity/signInSettings.ts": {
-      "knip:exports": 1
-    },
     "packages/worker/src/services/license/admin/keyEmail.ts": {
       "knip:exports": 1
     },

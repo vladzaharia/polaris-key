@@ -40,6 +40,7 @@ import {
 import type { AuditActor } from "../audit.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import { randomId } from "../../platform/crypto.js";
+import { productNameRefusal } from "../accounts/reservedDisplayNames.js";
 import {
   invalidatePlatformSettings,
   type SettingsEnv,
@@ -717,8 +718,14 @@ async function writeProduct(
 
   const plans: ProductPlan[] = [];
   for (let i = 0; i < writes.length; i++) {
-    const w = writes[i]!;
     const def = defs[i]!;
+    // The product's name is stored as it is judged: trimmed (DNI-G2).
+    const w =
+      def.key === "core.name" &&
+      (writes[i]!.op ?? "set") === "set" &&
+      typeof writes[i]!.value === "string"
+        ? { ...writes[i]!, value: (writes[i]!.value as string).trim() }
+        : writes[i]!;
     const op = w.op ?? "set";
     const before: ResolvedSetting = resolved.get(def.key) ?? {
       key: def.key,
@@ -830,6 +837,26 @@ async function writeProduct(
       ctx.env,
     );
     if (refused) return refused;
+    // The product's name is what every sign-in card and email calls the app (DISPLAY-NAME-INVISIBLE
+    // D-10), so every writer of it runs the console rename's rule; the name already stored is
+    // not judged again.
+    // Judge the name the write leaves, a Revert's restored snapshot included (DNI-G1).
+    if (
+      def.key === "core.name" &&
+      typeof after.value === "string" &&
+      after.value !== before.value
+    ) {
+      const problem = await productNameRefusal(
+        ctx.env,
+        ctx.db,
+        slug,
+        after.value,
+      );
+      if (problem)
+        return refuse(422, "invalid_value", problem.message, def.key, {
+          reason: problem.reason,
+        });
+    }
     if (op === "set") {
       const out = outOfBounds(def, w.value, await platformLinks(ctx, def));
       if (out)
