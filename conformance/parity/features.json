@@ -745,7 +745,18 @@
           "wp": "U-10"
         }
       ],
-      "allowedNa": [],
+      "allowedNa": [
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "Godot's GDScript AES-GCM lane seals about a MiB a second; the native lane (CC-14b) lifts it."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "Godot's GDScript AES-GCM lane seals about a MiB a second; the native lane (CC-14b) lifts it."
+        }
+      ],
       "note": "plans/CC-01-cloud-sync.md §2.7. The sync-files transcripts pin begin, parts, resume (`received`) and finalize."
     },
     {
@@ -765,7 +776,18 @@
           "wp": "U-37"
         }
       ],
-      "allowedNa": [],
+      "allowedNa": [
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "Godot's GDScript AES-GCM lane seals about a MiB a second; the native lane (CC-14b) lifts it."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "Godot's GDScript AES-GCM lane seals about a MiB a second; the native lane (CC-14b) lifts it."
+        }
+      ],
       "note": "plans/CC-01-cloud-sync.md §1.3. sync-vectors.json pins the cut points, chunk ids and objects (cdcCases, chunkCases); the transcripts pin the chunk routes (U-37)."
     },
     {

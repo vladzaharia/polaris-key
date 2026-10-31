@@ -1491,8 +1491,8 @@ static func capabilities() -> Dictionary:
 		"sync.saves": {"status": "planned", "service": "sync", "na": []},
 		"sync.keyring": {"status": "implemented", "service": "sync", "na": []},
 		"sync.records": {"status": "planned", "service": "sync", "na": []},
-		"sync.files": {"status": "planned", "service": "sync", "na": []},
-		"sync.files.delta": {"status": "planned", "service": "sync", "na": []},
+		"sync.files": {"status": "implemented", "service": "sync", "na": [{"runtime": "ios", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}]},
+		"sync.files.delta": {"status": "implemented", "service": "sync", "na": [{"runtime": "ios", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}]},
 		"sync.e2e.recovery": {"status": "planned", "service": "sync", "na": []},
 		"sync.transfer.background": {"status": "planned", "service": "sync", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"sync.e2e": {"status": "implemented", "service": "sync", "na": []},
@@ -1593,4 +1593,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "d95c22e41888f94b21f38aab070c3f3ff52ea164a743af29eac12d8cdf83e346"
+const CAPABILITY_DIGEST := "d5449e49033a13d95c7d43e21c0f5b1ef3c937e86cc53d78cbfc5a28919a94a8"

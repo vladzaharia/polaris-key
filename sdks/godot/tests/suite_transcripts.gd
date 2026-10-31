@@ -8,6 +8,7 @@ extends RefCounted
 # @pkey-feature license.manage identity.keyentry identity.redirect.web identity.signin.hints identity.choice
 # @pkey-feature release.fetch
 # @pkey-feature sync.keyring sync.settings
+# @pkey-feature sync.files sync.files.delta sync.saves
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -65,6 +66,7 @@ extends RefCounted
 
 const FLOOR := 4
 const SyncTypes := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
+const FilesTransport := preload("res://addons/polaris_key/services/cloud_sync/files_transport.gd")
 
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
@@ -286,6 +288,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["updatesPending"] = sdk.update.updater.events().size()
 		"cloudSyncPull", "cloudSyncPush":
 			await _cloud_sync(sdk, step, out)
+		"cloudSyncFile", "cloudSyncChunk":
+			await _cloud_file(sdk, step, out)
 		"browser":
 			if not sdk.has_meta("pkey_replay"):
 				await _cors(sdk, step)
@@ -972,6 +976,12 @@ static func _cloud_sync(sdk: Node, step: Dictionary, out: Dictionary) -> void:
 	if b.get("more") is bool:
 		out["more"] = b["more"]
 	out["empty"] = b.get("empty") == true
+	var deleted: Array = []
+	for t in (b.get("tombstones", []) as Array if b.get("tombstones") is Array else []):
+		if t is Dictionary and t.get("record") is Array and t["record"].size() == 2:
+			deleted.append("%s/%s" % [t["record"][0], t["record"][1]])
+	deleted.sort()
+	out["deletedRecords"] = deleted
 	var names_out: Array = []
 	for c in (b.get("changes", []) as Array if b.get("changes") is Array else []):
 		if c is Dictionary and c.get("setting") is String:
@@ -997,6 +1007,114 @@ static func _cloud_sync(sdk: Node, step: Dictionary, out: Dictionary) -> void:
 		for x in (b.get("results", []) as Array if b.get("results") is Array else []):
 			labels.append(_result_label(x) if x is Dictionary else "?")
 		out["results"] = labels
+
+
+## `cloudSyncFile` / `cloudSyncChunk` (WIRE-CONTRACT-V5 section 13.2, 13.8; format.ts): one file call, through
+## the Godot SDK's file transport (the typed routes of the transfer engine). The step's one recorded request
+## supplies what the engine would build (the `begin`/`finalize`/`plan` JSON, the PUT bytes); the transport
+## builds the URL and the headers, checks them against the allow-list and reads the answer under its caps.
+static func _file_ctx(core: PKeyCore) -> Dictionary:
+	return {"product": core.product, "token": core.tokens.current(), "headers": core.headers, "url": _join.bind(core.base_url)}
+
+
+## The file transport's paths start at the product (`/djdl/sync/files/...`), so the URL is the base and the path.
+static func _join(path: String, base: String) -> String:
+	return base + path
+
+
+static func _cloud_file(sdk: Node, step: Dictionary, out: Dictionary) -> void:
+	var args: Dictionary = step["args"]
+	var core: PKeyCore = sdk.core
+	var ft := FilesTransport.new(FilesTransport.make_transport(sdk), _file_ctx.bind(core))
+	var recorded: Dictionary = step["exchanges"]["items"][0]["request"]
+	var json: Variant = recorded["body"]["json"] if recorded.get("body") is Dictionary else null
+	var bytes := Marshalls.base64_to_raw(recorded["bodyBase64"]) if recorded.get("bodyBase64") is String else PackedByteArray()
+	# The digest the recording claims (a `mismatch` transcript sends bytes that are not the ones it names).
+	var claimed := String(recorded["headers"].get("content-digest", "")).trim_prefix("sha-256=:").trim_suffix(":")
+	var digest := Marshalls.base64_to_raw(claimed).hex_encode() if claimed != "" else (PKeySyncHkdf.sha256(bytes).hex_encode() if not bytes.is_empty() else "")
+	var target := {"collection": args["collection"], "record": args.get("id", "")}
+	var upload_id := ""
+	var at := String(recorded["path"]).find("/upload/")
+	if at >= 0:
+		upload_id = String(recorded["path"]).substr(at + 8).split("/")[0]
+	var op: String = args["op"]
+	var reply: Dictionary
+	match op:
+		"begin":
+			reply = await ft.begin(target, json)
+		"status":
+			reply = await ft.status(target, upload_id)
+		"put", "putManifest":
+			reply = await ft.put_single(target, upload_id, bytes, digest)
+		"part":
+			reply = await ft.put_part(target, upload_id, int(args["part"]), bytes, digest)
+		"putChunk":
+			reply = await ft.put_chunk(target, upload_id, args["chunk"], bytes, digest)
+		"abort":
+			reply = await ft.abort(target, upload_id)
+		"finalize":
+			reply = await ft.finalize(target, json)
+		"plan":
+			reply = await ft.plan_chunks(target, upload_id, json)
+		"download", "downloadManifest":
+			reply = await ft.get_file(target, {"version": args.get("version"), "range": null, "if_match": null})
+		"revisions":
+			reply = await ft.revisions(target)
+		"getChunk":
+			reply = await ft.get_chunk(args["collection"], args["chunk"])
+		_:
+			out["result"] = "unknown-op"
+			return
+	if not reply["ok"]:
+		out["result"] = "refused"
+		out["status"] = reply["status"]
+		out["code"] = reply["code"]
+		var rb: Variant = reply.get("body")
+		if rb is Dictionary:
+			if rb.get("missing") is Array:
+				out["missing"] = rb["missing"]
+			if rb.get("server") is Dictionary and rb["server"].has("version"):
+				out["serverVersion"] = rb["server"]["version"]
+		if reply.get("retry_after", -1.0) >= 0.0:
+			out["retryAfter"] = int(reply["retry_after"])
+		return
+	out["result"] = "ok"
+	out["status"] = ft.last_status
+	var v: Variant = reply["value"]
+	match op:
+		"begin":
+			out["mode"] = v["mode"]
+			if v.has("partBytes"):
+				out["partBytes"] = v["partBytes"]
+		"status":
+			for k in ["mode", "size", "received", "missing"]:
+				if v.has(k):
+					out[k] = v[k]
+		"finalize":
+			for k in ["version", "size", "sha256", "format"]:
+				out[k] = v[k]
+		"download", "downloadManifest":
+			var d: PackedByteArray = v["data"]
+			out["size"] = d.size()
+			out["sha256"] = PKeySyncHkdf.sha256(d).hex_encode()
+		"getChunk":
+			out["size"] = (v as PackedByteArray).size()
+			out["sha256"] = PKeySyncHkdf.sha256(v).hex_encode()
+		"revisions":
+			var versions: Array = []
+			var formats: Array = []
+			for r in v["revisions"]:
+				versions.append(r["version"])
+				formats.append(r.get("format"))
+			out["versions"] = versions
+			out["formats"] = formats
+		"plan":
+			var missing: Array = (v.get("missing", []) as Array).duplicate()
+			missing.sort()
+			out["missing"] = missing
+			var present: Array = (v.get("present", []) as Array).duplicate()
+			present.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+			out["present"] = present
 
 
 ## A CORS exchange (`cloudsync-cors`): the browser's own. The preflight is played as recorded; the
