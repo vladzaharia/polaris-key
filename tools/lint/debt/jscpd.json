@@ -1367,6 +1367,12 @@
     "packages/client-core/test/delegation.test.ts": {
       "jscpd:duplicate": 13
     },
+    "packages/client-core/test/hostCodec.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/client-core/test/hostCodecRecords.test.ts": {
+      "jscpd:duplicate": 4
+    },
     "packages/client-core/test/packFixtures.ts": {
       "jscpd:duplicate": 10
     },
@@ -3105,7 +3111,7 @@
       "jscpd:duplicate": 3
     },
     "packages/worker/test-workerd/cloudSync.test.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/worker/test-workerd/commerceCors.test.ts": {
       "jscpd:duplicate": 1
@@ -3597,7 +3603,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/services/identity/linkAssertionIssuer.test.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 5
     },
     "packages/worker/test/services/identity/obtainPaths.test.ts": {
       "jscpd:duplicate": 10
@@ -3774,7 +3780,7 @@
       "jscpd:duplicate": 10
     },
     "packages/worker/test/services/sync/cloudSyncMerge.test.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/worker/test/services/sync/cloudSyncPull.test.ts": {
       "jscpd:duplicate": 9
@@ -3816,7 +3822,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test/surfaces/accountOverrides.test.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 15
     },
     "packages/worker/test/surfaces/accounts.test.ts": {
       "jscpd:duplicate": 13
