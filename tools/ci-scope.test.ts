@@ -47,6 +47,7 @@ interface Job {
   "runs-on"?: string;
   outputs?: Record<string, string>;
   strategy?: { matrix?: unknown };
+  container?: { image?: string };
   steps?: Step[];
 }
 interface Workflow {
@@ -128,6 +129,7 @@ describe("lane selection", () => {
     expect(on(["sdks/swift/Sources/PolarisKeyCore/Client.swift"])).toEqual([
       "swift",
       "swift-floor",
+      "swift-linux",
     ]);
   });
 
@@ -308,6 +310,7 @@ describe("the changed files", () => {
     expect(files?.sort()).toEqual([moved, swift]);
     expect(selectLanes(scope, files).swift).toBe(true);
     expect(selectLanes(scope, files)["swift-floor"]).toBe(true);
+    expect(selectLanes(scope, files)["swift-linux"]).toBe(true);
   });
 
   it("names both paths of a rename that is not committed yet", () => {
@@ -362,6 +365,7 @@ describe("the ci-scope command", () => {
     const out = outputsOf(run.stdout);
     expect(out.swift).toBe("true");
     expect(out["swift-floor"]).toBe("true");
+    expect(out["swift-linux"]).toBe("true");
     expect(out.python).toBe("false");
     expect(out.full).toBe("false");
     expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(2);
@@ -431,8 +435,11 @@ describe("ci.yml reads the scope", () => {
     expect(ok.if).toBe("${{ always() }}");
     const others = Object.keys(jobs).filter(
       (id) =>
-        id !== "ci-ok" && id !== "swiftui-mac" && id !== "compose-desktop",
-    ); // swiftui-mac and compose-desktop are non-blocking until their baselines are committed (UK-08.8, UK-10.12);
+        id !== "ci-ok" &&
+        id !== "swiftui-mac" &&
+        id !== "compose-desktop" &&
+        id !== "swift-linux",
+    ); // swiftui-mac and compose-desktop are non-blocking until their baselines are committed (UK-08.8, UK-10.12); swift-linux until it has been green once;
     expect(needsOf(ok).sort()).toEqual(others.sort());
   });
 });
@@ -576,6 +583,28 @@ describe("a workflow's path filter covers the local actions its jobs use", () =>
       }
     },
   );
+});
+
+// The Swift SDK on Linux: advisory, pinned by digest, runs for the package's tree.
+describe("ci.yml builds the Swift SDK on Linux", () => {
+  const job = ci.jobs["swift-linux"]!;
+
+  it("is its own lane, non-blocking for CI OK", () => {
+    expect(job.if).toBe("needs.changes.outputs.swift-linux == 'true'");
+    expect(job["continue-on-error"]).toBe(true);
+    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain("swift-linux");
+    expect(on(["sdks/swift/Sources/PolarisKeyCore/Transport.swift"])).toContain(
+      "swift-linux",
+    );
+    expect(on(["packages/cli/src/index.ts"])).not.toContain("swift-linux");
+  });
+
+  it("pins the Swift image by digest and runs the redirect tests", () => {
+    expect(JSON.stringify(job.container)).toMatch(/@sha256:[0-9a-f]{64}/);
+    const steps = JSON.stringify(job.steps ?? []);
+    expect(steps).toContain("swift build");
+    expect(steps).toContain("DelegatedExchange|RedirectPolicy");
+  });
 });
 
 // UK-08.8: the SwiftUI kit's macOS renders (macos-26 and macos-15) run only for the kit's own tree,
