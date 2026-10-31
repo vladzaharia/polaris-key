@@ -143,6 +143,13 @@ export class RecordAssembler {
     null;
   /** Set once a non-critical unknown type opened a chain that is being dropped. */
   private dropping: number | null = null;
+  /**
+   * Set by the session once the capabilities are known (§15.11): whether `xfer/1` is in both
+   * payloads. While undefined the xfer types read as any other. When set, an xfer record without
+   * the capability is `peer_not_allowed`, and one with `MORE` set is `peer_bad_frame`.
+   */
+  xferAllowed: boolean | undefined = undefined;
+
   constructor(private readonly mode: RecordMode) {}
 
   push(r: PeerRecord): AssembleResult {
@@ -166,6 +173,10 @@ export class RecordAssembler {
       return { kind: "ignored" };
     }
     if (!row.modes.includes(this.mode)) return bad("peer_not_allowed");
+    if (row.name === "XFER" && this.xferAllowed !== undefined) {
+      if (!this.xferAllowed) return bad("peer_not_allowed");
+      if (more) return bad("peer_bad_frame");
+    }
     // The corpus (`more-empty-parts`) accepts an empty MORE record, so the chain's record count
     // is what bounds the work.
     const size = (this.open?.size ?? 0) + r.body.length;

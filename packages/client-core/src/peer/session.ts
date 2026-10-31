@@ -58,6 +58,7 @@ import {
   encodeSasValue,
 } from "./sas.js";
 import { VOUCH_CAP, VouchFlow } from "./vouch.js";
+import { XFER_CAP, isXferType } from "./xfer.js";
 import {
   CONTACT_EXCHANGE_SECONDS,
   ContactExchange,
@@ -257,6 +258,7 @@ export class PeerSession {
   private peerCertJws = "";
   private peerRemote: Uint8Array | null = null;
   private flow: VouchFlow | null = null;
+  private xfer: ((type: number, body: Uint8Array) => void) | null = null;
   private hash: Uint8Array | null = null;
   private contactIdx = -1;
   private readonly xchg: ContactExchange | null;
@@ -494,6 +496,7 @@ export class PeerSession {
       type === RECORD.SAS_COMMIT ||
       type === RECORD.SAS_NONCE ||
       type === RECORD.SAS_REVEAL ||
+      isXferType(type) ||
       (type === RECORD.CONFIRM && this.mode === "p") ||
       (type === RECORD.CONTACT && this.xchg !== null)
     )
@@ -501,6 +504,31 @@ export class PeerSession {
     if (body.length > this.maxSend)
       return Promise.reject(new Error("message too large"));
     return this.emitRecords(type, body);
+  }
+
+  /**
+   * The transfer port (§15.11): the one reader and writer of the six xfer record types. Records of
+   * those types reach `onRecord` instead of the host's `record` event, and `sendRecord` refuses
+   * them. Only once the session is `established` with `xfer/1` among its capabilities, and once.
+   * Returns the writer.
+   */
+  attachXfer(
+    onRecord: (type: number, body: Uint8Array) => void,
+  ): (type: number, body: Uint8Array) => Promise<void> {
+    if (
+      this.phase !== "open" ||
+      this.xfer !== null ||
+      !this.caps.includes(XFER_CAP)
+    )
+      throw new Error("transfers are not available on this session");
+    this.xfer = onRecord;
+    return (type, body) => {
+      if (this.phase !== "open" || !isXferType(type))
+        return Promise.reject(new Error("session not open"));
+      if (body.length > this.maxSend)
+        return Promise.reject(new Error("message too large"));
+      return this.emitRecords(type, body);
+    };
   }
 
   /** Close with a code; sends CLOSE when the transport exists. */
@@ -751,6 +779,7 @@ export class PeerSession {
       }
       const caps = capsIntersection(this.caps, this.peerCaps);
       this.caps = caps;
+      this.asm.xferAllowed = caps.includes(XFER_CAP);
       const p = this.pending!;
       this.pending = null;
       this.hash = this.hs!.handshakeHash.slice();
@@ -838,6 +867,13 @@ export class PeerSession {
         if (this.mode !== "a") throw new SessionFail("peer_not_allowed");
         await this.onRing(body);
         return;
+    }
+    if (isXferType(type)) {
+      // Direct Transfer: the caps were checked at the assembler; no port attached means the host
+      // listed the capability without a transfer layer behind it.
+      if (this.xfer === null) throw new SessionFail("peer_not_allowed");
+      this.xfer(type, body);
+      return;
     }
     // Everything else belongs to the host, and only once the code is settled.
     if (this.phase === "sas-shown") {
