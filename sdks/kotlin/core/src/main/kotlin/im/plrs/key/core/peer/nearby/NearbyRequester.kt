@@ -216,7 +216,7 @@ private const val SYNC_LAST = 0x003f
 /** `nearby/start`'s handle (the same pattern the vouch codecs check in a `VOUCH_REQ`). */
 private val REQUEST_RE = Regex("nr_[A-Za-z0-9_-]{22}")
 
-private class Candidate(val instance: String, val hosts: List<String>, val port: Int, var tries: Int)
+private class Candidate(val instance: String, val hosts: List<String>, val port: Int, var tries: Int, val socketFactory: javax.net.SocketFactory? = null)
 
 private class Entry(val id: String, val instance: String, val st: RawNoiseStatic) {
     lateinit var link: PeerLink<Unit>
@@ -338,7 +338,7 @@ public class NearbyRequester private constructor(private val src: RequesterSourc
         val hosts = f.hosts.filter { textVerdict(it, o.allowLoopback) }
         if (hosts.isEmpty()) return
         val had = candidates[f.instance]
-        candidates[f.instance] = Candidate(f.instance, hosts, f.port, had?.tries ?: 0)
+        candidates[f.instance] = Candidate(f.instance, hosts, f.port, had?.tries ?: 0, f.socketFactory)
         pump()
     }
 
@@ -360,7 +360,7 @@ public class NearbyRequester private constructor(private val src: RequesterSourc
 
     private suspend fun dial(c: Candidate) {
         val sock: Socket = try {
-            lanDialRaceTo(c.hosts, c.port, LanDialOptions(o.allowLoopback, (o.dialSeconds * MILLIS).toInt())).first
+            lanDialRaceTo(c.hosts, c.port, LanDialOptions(o.allowLoopback, (o.dialSeconds * MILLIS).toInt()).withSocketFactory(c.socketFactory)).first
         } catch (e: IOException) {
             active -= c.instance
             later()

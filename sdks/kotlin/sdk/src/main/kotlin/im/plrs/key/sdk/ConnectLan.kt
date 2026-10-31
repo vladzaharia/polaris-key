@@ -54,6 +54,7 @@ import im.plrs.key.core.peer.lan.PendingLimiter
 import im.plrs.key.core.peer.lan.TcpPipe
 import im.plrs.key.core.peer.lan.inetAddressOfLiteral
 import im.plrs.key.core.peer.lan.lanDialRaceTo
+import javax.net.SocketFactory
 import im.plrs.key.core.peer.lan.literalOfInetAddress
 import im.plrs.key.core.peer.lan.socketVerdict
 import im.plrs.key.core.peer.lan.textVerdict
@@ -101,6 +102,8 @@ public data class LanPeer(
     val port: Int,
     /** Other addresses the device announced from; a dial tries them after [host]. */
     val alternates: List<String> = emptyList(),
+    /** Opens the sockets for a dial of this device (Android: the found network's); null uses the default route. */
+    val socketFactory: SocketFactory? = null,
 )
 
 /**
@@ -329,7 +332,7 @@ internal class LanService private constructor(
         var failure: LanException? = null
         var opened: ConnectSession? = null
         while (left.isNotEmpty() && opened == null) {
-            val (pipe, host) = dial(left, peer.port)
+            val (pipe, host) = dial(left, peer.port, peer.socketFactory)
             try {
                 opened = openOnce(pipe, ident)
             } catch (e: LanException) {
@@ -365,9 +368,9 @@ internal class LanService private constructor(
     }
 
     /** The race of RFC 8305 over every announced address: the first connection that passes the verdict on its own addresses wins (G6). */
-    private suspend fun dial(hosts: List<String>, port: Int): Pair<TcpPipe, String> {
+    private suspend fun dial(hosts: List<String>, port: Int, factory: SocketFactory?): Pair<TcpPipe, String> {
         val (socket, host) = try {
-            lanDialRaceTo(hosts, port, LanDialOptions(o.allowLoopback, (o.dialSeconds * MILLIS).toInt()))
+            lanDialRaceTo(hosts, port, LanDialOptions(o.allowLoopback, (o.dialSeconds * MILLIS).toInt()).withSocketFactory(factory))
         } catch (e: IOException) {
             throw LanException(LanErrorReason.connect_failed, "The device did not answer.", e)
         }
@@ -583,7 +586,7 @@ internal class LanService private constructor(
             }
             return
         }
-        val peer = LanPeer(hit.deviceId, hosts[0], f.port, hosts.drop(1))
+        val peer = LanPeer(hit.deviceId, hosts[0], f.port, hosts.drop(1), f.socketFactory)
         synchronized(lock) { peerTable[hit.deviceId] = peer to f.instance }
         for (fn in onPeerFns) {
             try {

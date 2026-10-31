@@ -700,6 +700,8 @@ public class PeerChannel(
     private fun onPeerClose(body: ByteArray) {
         val code = parseStrictObject(body)?.get("code").stringValue
         phase = "closed"
+        // A peer's CLOSE ends the handshake: free its limiter slot and deadline (R-6K N5).
+        settle()
         transportDue = null
         certExpires = null
         wipe()

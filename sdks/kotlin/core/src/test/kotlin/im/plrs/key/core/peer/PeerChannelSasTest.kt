@@ -341,6 +341,21 @@ class PeerChannelSasTest {
     }
 
     @Test
+    fun aPeerCloseFreesTheResponderSlot() = runBlocking {
+        // R-6K N5: the approver's slot is released when the peer sends CLOSE, not only on its own close.
+        val lim = HandshakeLimiter(99, 1)
+        val m = Side(PeerMode.v, NoiseRole.responder, admission = lim)
+        val d = Side(PeerMode.v, NoiseRole.initiator)
+        d.s.start()
+        pump(d, m)
+        assertNull(lim.begin())
+        d.s.close()
+        pump(d, m)
+        assertEquals(listOf(true), m.closed().map { it.byPeer })
+        assertNotNull(lim.begin())
+    }
+
+    @Test
     fun theConfirmedSessionFreesItsSlotToo() = runBlocking {
         val lim = HandshakeLimiter(99, 1)
         val m = Side(PeerMode.v, NoiseRole.responder, admission = lim)
