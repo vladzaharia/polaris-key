@@ -20,16 +20,16 @@ import {
 import {
   forwardToRelay,
   leaseBytes,
+  purgeRelay,
 } from "../../../src/services/connect/do/client.js";
 import { ConnectRelayDO } from "../../../src/services/connect/do/relayDo.js";
 import { KvMock } from "../../kvMock.js";
-import { makeEnv } from "../../seed.js";
+import { makeEnv, seedProduct } from "../../seed.js";
 import {
   DAY,
   FakeSocket,
   FakeState,
   GiB,
-  alarmOf,
   dev,
   world,
 } from "./relayDoHarness.js";
@@ -39,11 +39,44 @@ const RID = "lXg0MgIHVN5qAmGFUen7vA";
 const RID2 = "6RpsJG2eU_l_4fHyu0rqyA";
 /** Person one is the harness's seeded person (devices 1 and 2); person two has no roster rows. */
 const S1 = "ps_AAAAAAAAAAAAAAAAAAAAAA";
-const S2 = "ps_BBBBBBBBBBBBBBBBBBBBBB";
+const S2 = "ps_BBBBBBBBBBBBBBBBBBBBBA";
 const D1 = dev(1);
 const D2 = dev(2);
 const D3 = dev(3);
 const D9 = dev(9);
+/** A person's roster: their devices, with keys (the rule `accountDeviceKeys` reads). */
+async function seedPerson(
+  w: ReturnType<typeof world>,
+  subject: string,
+  account: string,
+  devices: Uint8Array[],
+): Promise<void> {
+  await w.db.run(
+    "INSERT OR IGNORE INTO accounts (id, created_at, modified_at) VALUES (?, 1, 1)",
+    account,
+  );
+  await w.db.run(
+    "INSERT OR IGNORE INTO account_product_subjects (account_id, product, subject, created_at) VALUES (?, 'djdl', ?, 1)",
+    account,
+    subject,
+  );
+  for (const d of devices) {
+    const id = Buffer.from(d).toString("base64url");
+    await w.db.run(
+      `INSERT OR REPLACE INTO devices (product, device_id, license_id, status, first_seen, last_seen, subject)
+       VALUES ('djdl', ?, '', 'authorized', 1, 1, ?)`,
+      id,
+      subject,
+    );
+    await w.db.run(
+      `INSERT OR REPLACE INTO device_keys (product, device_id, sign_key, agree_key, key_seq, created_at)
+       VALUES ('djdl', ?, ?, ?, 1, 1)`,
+      id,
+      `sign${id}`,
+      `agree${id}`,
+    );
+  }
+}
 const b64 = (d: Uint8Array): string => Buffer.from(d).toString("base64url");
 
 interface Obj {
@@ -52,7 +85,7 @@ interface Obj {
   pairs: { client: FakeSocket; server: FakeSocket }[];
 }
 
-function cluster() {
+async function cluster() {
   const env = makeEnv(new KvMock());
   const w = world(env);
   const objects = new Map<string, Obj>();
@@ -107,6 +140,10 @@ function cluster() {
       },
     }),
   };
+  // Both people have devices (a person with no device leases nothing and loses their sockets).
+  await seedProduct(w.db, "djdl");
+  await seedPerson(w, S1, "acc1", [D1, D2, D3]);
+  await seedPerson(w, S2, "acc2", [D9]);
   return {
     env,
     w,
@@ -117,7 +154,7 @@ function cluster() {
     leaseCalls: () => calls.filter((c) => c.path === "/lease").length,
   };
 }
-type Cluster = ReturnType<typeof cluster>;
+type Cluster = Awaited<ReturnType<typeof cluster>>;
 
 const admission = (
   c: Cluster,
@@ -182,7 +219,7 @@ const accountRoom = (c: Cluster, subject: string) =>
 
 describe("contact rooms (CC-19.4)", () => {
   it("joins two people through the one namer and relays between aliases, never device ids", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     const b = await join(c, S2, D9);
     expect(a.res.status).toBe(200);
@@ -211,7 +248,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("charges the sender's account room, once per 1 MiB step, and nothing to the receiver", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     const b = await join(c, S2, D9);
     const aliasB = await aliasOf(D9);
@@ -246,22 +283,22 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("flushes a lease to the product's meter like any relay byte", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     await join(c, S2, D9);
     await a.room.obj.webSocketMessage(
       a.server as never,
       send(await aliasOf(D9)),
     );
-    await alarmOf(c.w, accountRoom(c, S1).obj);
+    await accountRoom(c, S1).obj.alarm();
     const row = await c.w.db.first<{ bytes: number }>(
       "SELECT bytes FROM connect_relay_daily WHERE product = 'djdl'",
     );
     expect(row?.bytes).toBe(MiB);
   });
 
-  it("keeps the subject and the device id out of storage; only aliases, leases and last-seen are written", async () => {
-    const c = cluster();
+  it("contact room at rest: the device id is in the socket attachment only, never in storage; only aliases, leases and last-seen are written", async () => {
+    const c = await cluster();
     const a = await join(c, S1, D1);
     await join(c, S2, D9);
     await a.room.obj.webSocketMessage(
@@ -292,10 +329,20 @@ describe("contact rooms (CC-19.4)", () => {
     for (const v of Object.values(croom.aliases as Record<string, object>))
       expect(Object.keys(v).sort()).toEqual(["lease", "seen"]);
     expect([...a.room.state.store.keys()].sort()).toEqual(["croom"]);
+    // The device id lives in the live socket's attachment (the alarm's roster check), in memory.
+    expect((a.server.attachment as { dev?: string }).dev).toBe(
+      Buffer.from(D1).toString("hex"),
+    );
+    // Not after a close, an alarm and a reconnect either.
+    await a.room.obj.webSocketClose(a.server as never, 1000);
+    await a.room.obj.alarm();
+    expect(JSON.stringify([...a.room.state.store.entries()])).not.toContain(
+      Buffer.from(D1).toString("hex"),
+    );
   });
 
   it("pins the first two aliases and closes a third device 4003", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     await join(c, S2, D9);
     const third = await join(c, S1, D2);
@@ -312,7 +359,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("lets a pinned device hold two sockets and replaces the oldest of a third (4009)", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a1 = await join(c, S1, D1);
     const a2 = await join(c, S1, D1);
     const a3 = await join(c, S1, D1);
@@ -322,7 +369,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("keeps an unspent lease across a reconnect: the sender is not charged again", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     const b = await join(c, S2, D9);
     const aliasA = await aliasOf(D1);
@@ -342,7 +389,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("clears the leases at the UTC day rollover and draws a fresh one", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     await join(c, S2, D9);
     const aliasB = await aliasOf(D9);
@@ -354,7 +401,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("answers LIMIT 2 and closes 4008 when the person's day cannot grant a lease", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1, { dayBytes: MiB });
     const b = await join(c, S2, D9);
     const aliasB = await aliasOf(D9);
@@ -373,7 +420,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("opening many contact rooms still draws on the one account room's day", async () => {
-    const c = cluster();
+    const c = await cluster();
     // Two rooms (two links of person one), a day of exactly one lease.
     const r1 = await join(c, S1, D1, { dayBytes: MiB }, RID);
     await join(c, S2, D9, {}, RID);
@@ -398,7 +445,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("answers LIMIT 3 when the product's month is spent, and LIMIT 4 when the relay is paused", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     await join(c, S2, D9);
     const aliasB = await aliasOf(D9);
@@ -424,7 +471,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("fails closed when the account room cannot be asked: LIMIT 4 and 4008", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     await join(c, S2, D9);
     c.failLeases();
@@ -438,13 +485,13 @@ describe("contact rooms (CC-19.4)", () => {
 
   it("is unreachable while either gate is off, and the alarm closes open sockets 4003 when one goes off", async () => {
     for (const gate of ["LAUNCH_RELAY", "LAUNCH_CONNECT_LINKS"]) {
-      const c = cluster();
+      const c = await cluster();
       (c.env as unknown as Record<string, string>)[gate] = "off";
       const off = await join(c, S1, D1);
       expect(off.res.status, gate).toBe(404);
       expect(off.room.pairs, gate).toHaveLength(0);
     }
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     const b = await join(c, S2, D9);
     (c.env as unknown as Record<string, string>).LAUNCH_CONNECT_LINKS = "off";
@@ -454,7 +501,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("pauses at the alarm: LIMIT 4 to everyone and 4008", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     const b = await join(c, S2, D9);
     await c.w.db.run(
@@ -470,7 +517,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("erases itself after 30 days with no socket: the pin, the aliases, their last-seen times and leases", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     const b = await join(c, S2, D9);
     await a.room.obj.webSocketMessage(
@@ -494,7 +541,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("wakes from hibernation with its pin, leases and sockets", async () => {
-    const c = cluster();
+    const c = await cluster();
     const a = await join(c, S1, D1);
     const b = await join(c, S2, D9);
     const aliasB = await aliasOf(D9);
@@ -508,7 +555,7 @@ describe("contact rooms (CC-19.4)", () => {
   });
 
   it("keeps account and contact admissions apart", async () => {
-    const c = cluster();
+    const c = await cluster();
     const contact = await join(c, S1, D1);
     // An admission that is not one is refused before anything is touched.
     const wrong = await contact.room.obj.fetch(
@@ -568,7 +615,7 @@ describe("the lease an account room grants (CC-19.4)", () => {
     );
 
   it("grants the step, then what is left of the day, then nothing, and records it as metered bytes", async () => {
-    const c = cluster();
+    const c = await cluster();
     const room = accountRoom(c, S1);
     const answers = [];
     for (let i = 0; i < 4; i++)
@@ -586,7 +633,7 @@ describe("the lease an account room grants (CC-19.4)", () => {
     expect(stored.dayUsed).toBe(3 * MiB);
     expect(stored.dayBytesQuota).toBe(3 * MiB);
     // A partial grant names the person's day.
-    const c2 = cluster();
+    const c2 = await cluster();
     const r2 = accountRoom(c2, S1);
     expect(await (await ask(r2.obj, { dayBytes: MiB / 2 })).json()).toEqual({
       granted: MiB / 2,
@@ -599,7 +646,7 @@ describe("the lease an account room grants (CC-19.4)", () => {
   });
 
   it("shares the day with the person's own relayed bytes", async () => {
-    const c = cluster();
+    const c = await cluster();
     const room = accountRoom(c, S1);
     expect(await (await ask(room.obj, { dayBytes: MiB })).json()).toEqual({
       granted: MiB,
@@ -617,7 +664,7 @@ describe("the lease an account room grants (CC-19.4)", () => {
   });
 
   it("refuses a bad body, another pair, a gate that is off and a tombstoned room", async () => {
-    const c = cluster();
+    const c = await cluster();
     const room = accountRoom(c, S1);
     for (const bad of [
       { n: 0 },
@@ -649,7 +696,7 @@ describe("the lease an account room grants (CC-19.4)", () => {
     expect((await ask(room.obj)).status).toBe(200);
     expect((await ask(room.obj, { subject: "ps_other" })).status).toBe(403);
     for (const gate of ["LAUNCH_RELAY", "LAUNCH_CONNECT_LINKS"]) {
-      const g = cluster();
+      const g = await cluster();
       (g.env as unknown as Record<string, string>)[gate] = "off";
       expect((await ask(accountRoom(g, S1).obj)).status, gate).toBe(404);
     }
@@ -664,9 +711,98 @@ describe("the lease an account room grants (CC-19.4)", () => {
   });
 
   it("is refused for the month when the product's ceiling is reached", async () => {
-    const c = cluster();
+    const c = await cluster();
     expect(
       await (await ask(accountRoom(c, S1).obj, { monthCeiling: 0 })).json(),
     ).toEqual({ granted: 0, reason: 3 });
+  });
+});
+
+describe("contact room roster reach (V5 §15.7)", () => {
+  const removeDevice = async (c: Cluster, d: Uint8Array): Promise<void> => {
+    await c.w.db.run(
+      "DELETE FROM device_keys WHERE device_id = ?",
+      Buffer.from(d).toString("base64url"),
+    );
+    await c.w.db.run(
+      "DELETE FROM devices WHERE device_id = ?",
+      Buffer.from(d).toString("base64url"),
+    );
+  };
+
+  it("contact room roster reach: a socket whose device left its person's devices closes 4003 within one alarm and the peer hears GONE", async () => {
+    const c = await cluster();
+    const a = await join(c, S1, D1);
+    const b = await join(c, S2, D9);
+    const aliasA = await aliasOf(D1);
+    await removeDevice(c, D1);
+    c.w.tick(60_000);
+    await a.room.obj.alarm();
+    expect(a.server.closed).toBe(4003);
+    expect(b.server.closed).toBeNull();
+    const gone = ops(b.server).flatMap((m) => (m.op === "gone" ? [m] : []));
+    expect(gone).toHaveLength(1);
+    // The device that stays keeps its socket.
+    c.w.tick(60_000);
+    await a.room.obj.alarm();
+    expect(b.server.closed).toBeNull();
+    void aliasA;
+  });
+
+  it("contact room roster reach: a person with no device left loses every contact socket within one alarm, and no lease re-creates the account room after the purge", async () => {
+    const c = await cluster();
+    const a = await join(c, S1, D1);
+    const b = await join(c, S2, D9);
+    const aliasB = await aliasOf(D9);
+    const a3 = await join(c, S1, D1, {}, RID2);
+    await join(c, S2, D9, {}, RID2);
+    await c.w.db.run(
+      "DELETE FROM device_keys WHERE device_id IN (SELECT device_id FROM devices WHERE subject = ?)",
+      S1,
+    );
+    await c.w.db.run("DELETE FROM devices WHERE subject = ?", S1);
+    await purgeRelay(c.env, "djdl", S1);
+    // Before the alarm: a send cannot lease, even after the tombstone, and creates no room.
+    c.w.tick(11 * 60_000);
+    await a.room.obj.webSocketMessage(a.server as never, send(aliasB));
+    expect(ops(b.server).filter((m) => m.op === "recv")).toHaveLength(0);
+    expect(accountRoom(c, S1).state.store.has("room")).toBe(false);
+    expect(accountRoom(c, S1).state.store.has("pending")).toBe(false);
+    expect(a.server.closed).toBe(4008); // the lease was refused
+    // Within one alarm every contact socket of the person is closed 4003.
+    await a3.room.obj.alarm();
+    expect(a3.server.closed).toBe(4003);
+    expect(b.server.closed).toBeNull();
+  });
+
+  it("contact room roster reach: an unreadable roster keeps the socket open twice and closes it at the third", async () => {
+    const c = await cluster();
+    const a = await join(c, S1, D1);
+    await join(c, S2, D9);
+    const room = c.get(contactObjectName("djdl", RID));
+    const real = c.w.db;
+    let broken = false;
+    // Gates and pause read through the settings copy; the roster is the only direct D1 read.
+    const flaky = room.state;
+    void flaky;
+    const failing = c.w.db.all.bind(c.w.db);
+    (c.w.db as unknown as { all: unknown }).all = (...args: unknown[]) =>
+      broken
+        ? Promise.reject(new Error("down"))
+        : (failing as (...a: unknown[]) => unknown)(...args);
+    broken = true;
+    await a.room.obj.alarm();
+    await a.room.obj.alarm();
+    expect(a.server.closed).toBeNull();
+    broken = false;
+    // A good read in between resets the count.
+    await a.room.obj.alarm();
+    broken = true;
+    await a.room.obj.alarm();
+    await a.room.obj.alarm();
+    expect(a.server.closed).toBeNull();
+    await a.room.obj.alarm();
+    expect(a.server.closed).toBe(4003);
+    void real;
   });
 });

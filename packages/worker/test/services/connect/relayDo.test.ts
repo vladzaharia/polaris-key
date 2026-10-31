@@ -663,3 +663,104 @@ describe("ConnectRelayDO: counting contact rooms (CC-19.3, V5 §15.7)", () => {
     expect(w.state.store.has("contactRooms")).toBe(false);
   });
 });
+
+describe("metering bounds: a room counts its bytes before it erases", () => {
+  const SUBJECT = "ps_AAAAAAAAAAAAAAAAAAAAAA";
+  const meter = async (w: ReturnType<typeof world>): Promise<number> =>
+    (await w.db.first<{ b: number | null }>(
+      "SELECT COALESCE(SUM(bytes), 0) AS b FROM connect_relay_daily",
+    ))!.b ?? 0;
+  const owing = async (w: ReturnType<typeof world>): Promise<number> => {
+    const p = (await w.state.storage.get("pending")) as
+      | Record<string, { bytes: number }>
+      | undefined;
+    return Object.values(p ?? {}).reduce((n, d) => n + d.bytes, 0);
+  };
+  const failingBatch = (w: ReturnType<typeof world>): Db =>
+    Object.assign(Object.create(w.db) as Db, {
+      batch: () => Promise.reject(new Error("d1 down")),
+    });
+
+  it("a room erased because its person has no device left counts its pending bytes first (the alarm)", async () => {
+    const w = world();
+    const room = await joined(w);
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    const owed = await owing(w);
+    expect(owed).toBeGreaterThan(1000);
+    await seedRoster(w, []);
+    w.state.alarmAt = null;
+    await room.alarm();
+    expect(w.state.store.has("room")).toBe(false);
+    expect(await meter(w)).toBe(owed);
+  });
+
+  it("a room erased because its person has no device left counts its pending bytes first (the poke)", async () => {
+    const w = world();
+    const room = await joined(w);
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    const owed = await owing(w);
+    await seedRoster(w, []);
+    const res = await room.fetch(
+      new Request("https://connect-relay.do/", {
+        method: "PUT",
+        body: JSON.stringify({ product: "djdl", subject: SUBJECT, epoch: 3 }),
+      }),
+    );
+    expect(res.status).toBe(204);
+    expect(w.state.store.has("room")).toBe(false);
+    expect(await meter(w)).toBe(owed);
+  });
+
+  it("a count that fails before the erase keeps the room, its bytes and the alarm for the retry", async () => {
+    const w = world();
+    const room = w.make({ db: () => failingBatch(w) });
+    await room.fetch(upgrade(adm(A)));
+    await room.fetch(upgrade(adm(B)));
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    await seedRoster(w, []);
+    // The poke swallows the failure.
+    const res = await room.fetch(
+      new Request("https://connect-relay.do/", {
+        method: "PUT",
+        body: JSON.stringify({ product: "djdl", subject: SUBJECT, epoch: 3 }),
+      }),
+    );
+    expect(res.status).toBe(204);
+    expect(await owing(w)).toBeGreaterThan(1000);
+    expect(w.state.store.has("room")).toBe(true);
+    // The alarm throws, so the runtime retries, with the bytes still owed.
+    w.state.alarmAt = null;
+    await expect(room.alarm()).rejects.toThrow();
+    expect(await owing(w)).toBeGreaterThan(1000);
+    // The next alarm (the database back) counts them and erases.
+    const owed = await owing(w);
+    await w.make().alarm();
+    expect(w.state.store.has("room")).toBe(false);
+    expect(await meter(w)).toBe(owed);
+  });
+
+  it("a purge counts pending bytes first, and still erases when the count fails", async () => {
+    const w = world();
+    const room = await joined(w);
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    const owed = await owing(w);
+    const ns = (r: ConnectRelayDO) =>
+      ({
+        idFromName: (n: string) => n,
+        get: () => ({ fetch: (q: Request) => r.fetch(q) }),
+      }) as unknown as DurableObjectNamespace;
+    await purgeRelay({ CONNECT_RELAY: ns(room) }, "djdl", SUBJECT);
+    expect([...w.state.store.keys()]).toEqual(["erasedAt"]);
+    expect(await meter(w)).toBe(owed);
+
+    // And when the count fails the room is erased anyway.
+    const w2 = world();
+    const room2 = w2.make({ db: () => failingBatch(w2) });
+    await room2.fetch(upgrade(adm(A)));
+    await room2.fetch(upgrade(adm(B)));
+    await room2.webSocketMessage(w2.pairs[0]!.server as never, send(B, 1000));
+    await purgeRelay({ CONNECT_RELAY: ns(room2) }, "djdl", SUBJECT);
+    expect([...w2.state.store.keys()]).toEqual(["erasedAt"]);
+    expect(w2.pairs.map((p) => p.server.closed)).toEqual([4003, 4003]);
+  });
+});

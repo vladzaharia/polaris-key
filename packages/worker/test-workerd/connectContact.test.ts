@@ -12,7 +12,9 @@ import {
   decodeRelay,
   encodeRelay,
 } from "@polaris-key/client-core/peer";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { D1Db } from "../src/db/d1.js";
+import { seedProduct } from "./seed.js";
 import {
   contactObjectName,
   relayObjectName,
@@ -23,7 +25,7 @@ import { forwardToRelay } from "../src/services/connect/do/client.js";
 const PRODUCT = "wd";
 const RID = "lXg0MgIHVN5qAmGFUen7vA";
 const S1 = "ps_AAAAAAAAAAAAAAAAAAAAAA";
-const S2 = "ps_BBBBBBBBBBBBBBBBBBBBBB";
+const S2 = "ps_BBBBBBBBBBBBBBBBBBBBBA";
 const dev = (n: number): Uint8Array => new Uint8Array(24).fill(n);
 const D1 = dev(1);
 const D2 = dev(2);
@@ -85,6 +87,42 @@ async function connect(
   ws.accept();
   return { ws, frames, closed };
 }
+
+beforeAll(async () => {
+  // Each person has a device: a lease for a person with none is refused.
+  const db = new D1Db(env.DB);
+  await seedProduct(env, db, PRODUCT, { schemaVersion: 1, entries: [] });
+  for (const [account, subject, d] of [
+    ["acc1", S1, D1],
+    ["acc2", S2, D2],
+  ] as const) {
+    await db.run(
+      "INSERT OR IGNORE INTO accounts (id, created_at, modified_at) VALUES (?, 1, 1)",
+      account,
+    );
+    await db.run(
+      "INSERT OR IGNORE INTO account_product_subjects (account_id, product, subject, created_at) VALUES (?, ?, ?, 1)",
+      account,
+      PRODUCT,
+      subject,
+    );
+    await db.run(
+      `INSERT OR REPLACE INTO devices (product, device_id, license_id, status, first_seen, last_seen, subject)
+       VALUES (?, ?, '', 'authorized', 1, 1, ?)`,
+      PRODUCT,
+      b64(d),
+      subject,
+    );
+    await db.run(
+      `INSERT OR REPLACE INTO device_keys (product, device_id, sign_key, agree_key, key_seq, created_at)
+       VALUES (?, ?, ?, ?, 1, 1)`,
+      PRODUCT,
+      b64(d),
+      `sign${b64(d)}`,
+      `agree${b64(d)}`,
+    );
+  }
+});
 
 async function until(ok: () => boolean): Promise<void> {
   for (let i = 0; i < 150 && !ok(); i++)

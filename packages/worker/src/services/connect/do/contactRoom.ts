@@ -9,11 +9,14 @@
  * time, plus the product and the product's month ceiling (neither names a person) and the day the
  * leases belong to. The subject and the device id of a connected device live only in the memory of
  * its live socket (the hibernation attachment, from the ticket) and are never written to storage;
- * the room does not even keep the device id after it computed the alias. `from`, `to`, MEMBERS and
+ * the device id stays in the socket attachment only, for the alarm's roster check, and is never
+ * stored. `from`, `to`, MEMBERS and
  * GONE carry the alias, `SHA-256(rid ‖ deviceId)[0..24]`, never the device id.
  *
  * Pin. The first two aliases that connect with a valid ticket are the members; a third is closed
- * 4003. There is no roster, no RING, and no re-derivation from the ring.
+ * 4003. There is no RING and the pinned aliases are never re-derived from a roster. At its alarm
+ * the room checks each open socket's device against its person's devices, read fresh by the
+ * admission rule: a socket whose device left closes 4003 and the peer hears GONE.
  *
  * Meter. Each sender pays for its own bytes from a lease: before a SEND is forwarded the room holds
  * lease for its bytes, and tops up from the sender's account room (`do/client.ts` `leaseBytes`) in
@@ -46,7 +49,8 @@ import {
   type LeaseDenied,
   type RelayOutput,
 } from "../relay/engine.js";
-import { RELAY_PROTOCOL, type Admission } from "./admission.js";
+import { accountDeviceKeys } from "../../../core/devices/keys.js";
+import { RELAY_PROTOCOL, deviceIdBytes, type Admission } from "./admission.js";
 import { leaseBytes } from "./client.js";
 
 const ALARM_MS = 60_000;
@@ -77,6 +81,8 @@ interface ContactAttachment {
   dayBytes: number;
   /** The licence service is on for the sender's product (decides the roster rule of its room). */
   seatsHeld: boolean;
+  /** The ticket's device, 48 hex: for the alarm's roster check; in the socket's memory only. */
+  dev?: string;
 }
 
 /** What the object hands the room. */
@@ -169,6 +175,7 @@ export class ContactRoom {
       subject: adm.subject,
       dayBytes: adm.ticket.dayBytes,
       seatsHeld: adm.seatsHeld,
+      dev: hexEncode(adm.ticket.device),
     } satisfies ContactAttachment);
 
     if (!refused) {
@@ -286,6 +293,16 @@ export class ContactRoom {
       } catch {
         readFailed = true;
       }
+      // Each open socket's device against its person's devices, read fresh (not the settings
+      // copy). Skipped when the room closes or pauses anyway; a failed read counts like the gates'.
+      let departed: WebSocket[] = [];
+      if (!readFailed && gatesOn && !paused) {
+        try {
+          departed = await this.departedSockets(rec.product, open, now);
+        } catch {
+          readFailed = true;
+        }
+      }
       const fails = readFailed
         ? ((await ctx.storage.get<number>("readFails")) ?? 0) + 1
         : 0;
@@ -321,6 +338,19 @@ export class ContactRoom {
         await this.carryOut(
           this.engine.step({ kind: "tick", now, paused: false }),
         );
+        // A device that left its person loses its socket (4003) and the peer hears GONE.
+        for (const ws of departed) {
+          const att = ws.deserializeAttachment() as ContactAttachment | null;
+          if (att)
+            await this.carryOut(
+              this.engine.step({ kind: "close", socket: att.id, now }),
+            );
+          try {
+            ws.close(RELAY_CLOSE.notMember, "closed");
+          } catch {
+            // Already closed.
+          }
+        }
       }
       for (const a of Object.values(rec.aliases)) a.seen = now;
       await this.saveLeases();
@@ -329,6 +359,43 @@ export class ContactRoom {
   }
 
   // ── helpers ────────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * The open sockets whose device is no longer one of their person's devices (the admission
+   * rule), or that carry no device. One roster read per distinct (subject, seatsHeld). Throws
+   * when a roster is unreadable.
+   */
+  private async departedSockets(
+    product: string,
+    open: WebSocket[],
+    now: number,
+  ): Promise<WebSocket[]> {
+    const rosters = new Map<string, Set<string>>();
+    const departed: WebSocket[] = [];
+    for (const ws of open) {
+      const att = ws.deserializeAttachment() as ContactAttachment | null;
+      if (!att) continue;
+      const key = `${att.seatsHeld ? 1 : 0}:${att.subject}`;
+      let roster = rosters.get(key);
+      if (!roster) {
+        const keys = await accountDeviceKeys(
+          this.host.db(),
+          product,
+          att.subject,
+          { seatsHeld: att.seatsHeld, now: Math.floor(now / 1000) },
+        );
+        roster = new Set(
+          keys.flatMap((k) => {
+            const b = deviceIdBytes(k.deviceId);
+            return b ? [hexEncode(b)] : [];
+          }),
+        );
+        rosters.set(key, roster);
+      }
+      if (!att.dev || !roster.has(att.dev)) departed.push(ws);
+    }
+    return departed;
+  }
 
   /** `launch.relay` and `launch.connectLinks` both on. Unreadable reads off, unless `throws`. */
   private async gatesOn(throws = false): Promise<boolean> {

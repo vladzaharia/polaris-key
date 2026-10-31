@@ -282,6 +282,15 @@ export class ConnectRelayDO implements DurableObject {
         // Already closed.
       }
     }
+    // Count what the room owes first, best effort: erasure never waits on the meter.
+    const product = pinned?.product ?? body.product;
+    if (typeof product === "string") {
+      try {
+        await this.flushPending(product);
+      } catch {
+        // The count is lost with the room; the erasure goes ahead.
+      }
+    }
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     await this.ctx.storage.put("erasedAt", this.now());
@@ -332,6 +341,9 @@ export class ConnectRelayDO implements DurableObject {
       !(await launchGateOn(this.env, this.db(), "launch.connectLinks"))
     )
       return new Response(null, { status: 404 });
+    const erasedAt = await this.ctx.storage.get<number>("erasedAt");
+    if (erasedAt !== undefined && this.now() - erasedAt < ERASED_MS)
+      return new Response(null, { status: 403 });
     const now = Math.floor(this.now() / 1000);
     const key = await hashKey(
       `contact-room:${product}:${subject}:${rid}`,
@@ -400,6 +412,16 @@ export class ConnectRelayDO implements DurableObject {
     const erasedAt = await this.ctx.storage.get<number>("erasedAt");
     if (erasedAt !== undefined && this.now() - erasedAt < ERASED_MS)
       return new Response(null, { status: 403 });
+    // A person with no device left leases nothing (and no lease re-creates an erased room).
+    try {
+      const keys = await accountDeviceKeys(this.db(), product, subject, {
+        seatsHeld,
+        now: Math.floor(this.now() / 1000),
+      });
+      if (keys.length === 0) return new Response(null, { status: 403 });
+    } catch {
+      return new Response(null, { status: 503 });
+    }
 
     if (
       (await platformSetting(
@@ -467,7 +489,11 @@ export class ConnectRelayDO implements DurableObject {
     }
     if (roster !== null) {
       if (roster.length === 0) {
-        await this.eraseRoom(RELAY_CLOSE.notMember);
+        try {
+          await this.eraseRoom(RELAY_CLOSE.notMember);
+        } catch {
+          // The owed bytes could not be counted: the room stays and the next alarm erases it.
+        }
         return new Response(null, { status: 204 });
       }
       await this.carryOut(
@@ -621,29 +647,8 @@ export class ConnectRelayDO implements DurableObject {
         );
       }
       // Flush the meter. A failure throws: the runtime retries, and `pending` stays owed.
-      const pending = (await this.ctx.storage.get<Pending>("pending")) ?? {};
-      const days = Object.keys(pending);
+      await this.flushPending(room.product);
       const db = this.db();
-      if (days.length > 0) {
-        await withTimeout(
-          db.batch(
-            days.map((d) => ({
-              sql: `INSERT INTO connect_relay_daily (product, day, bytes, sessions)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT (product, day) DO UPDATE SET
-                      bytes = bytes + excluded.bytes,
-                      sessions = sessions + excluded.sessions`,
-              params: [
-                room.product,
-                dayString(Number(d)),
-                pending[d]!.bytes,
-                pending[d]!.sessions,
-              ],
-            })),
-          ),
-        );
-        await this.ctx.storage.delete("pending");
-      }
       // The product's month, from the counters every room feeds.
       const { from, to } = monthStart(Math.floor(now / DAY_MS));
       const row = await withTimeout(
@@ -675,7 +680,39 @@ export class ConnectRelayDO implements DurableObject {
     }
   }
 
-  /** Close every socket and drop the room, the usage and the alarm (no tombstone). */
+  /**
+   * Write the owed metered bytes and sessions to the meter, then forget them. A failure throws
+   * (the bytes stay owed). Every path that erases the room calls this first.
+   */
+  private async flushPending(product: string): Promise<void> {
+    const pending = (await this.ctx.storage.get<Pending>("pending")) ?? {};
+    const days = Object.keys(pending);
+    if (days.length === 0) return;
+    await withTimeout(
+      this.db().batch(
+        days.map((d) => ({
+          sql: `INSERT INTO connect_relay_daily (product, day, bytes, sessions)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (product, day) DO UPDATE SET
+                  bytes = bytes + excluded.bytes,
+                  sessions = sessions + excluded.sessions`,
+          params: [
+            product,
+            dayString(Number(d)),
+            pending[d]!.bytes,
+            pending[d]!.sessions,
+          ],
+        })),
+      ),
+    );
+    await this.ctx.storage.delete("pending");
+  }
+
+  /**
+   * Close every socket, count the bytes the room owes, then drop the room, the usage and the
+   * alarm (no tombstone). A failed count throws before anything is erased: from the alarm the
+   * runtime retries, from the poke the next alarm erases.
+   */
   private async eraseRoom(code: number): Promise<void> {
     for (const ws of this.ctx.getWebSockets()) {
       try {
@@ -684,6 +721,7 @@ export class ConnectRelayDO implements DurableObject {
         // Already closed.
       }
     }
+    if (this.cached) await this.flushPending(this.cached.product);
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     this.cached = undefined;
