@@ -153,6 +153,7 @@ const COPY_CODES := {
 	"sync-locked": {"title": "Sync locked", "message": "Unlock sync on this device with your recovery code or another signed-in device."},
 	"recovery-code-invalid": {"title": "Recovery code not valid", "message": "That recovery code isn't right. Check it and try again."},
 	"sync-encryption-pinned": {"title": "Encryption required", "message": "This app needs encrypted sync, which isn't available right now. Sync stays off."},
+	"sync-file-invalid": {"title": "File not opened", "message": "The synced file failed its check, so it wasn't used. Try again."},
 	"invalid-options": {"title": "App not set up", "message": "The app's licensing isn't set up correctly. Contact the developer."},
 	"invalid-argument": {"title": "Request not accepted", "message": "The app sent a request the licensing bridge could not read. Contact the developer."},
 	"invoke-not-allowed": {"title": "Request not allowed", "message": "The app asked for something its licensing bridge does not offer. Contact the developer."},

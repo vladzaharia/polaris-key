@@ -159,6 +159,7 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "sync-locked" to CopyEntry("Sync locked", "Unlock sync on this device with your recovery code or another signed-in device."),
     "recovery-code-invalid" to CopyEntry("Recovery code not valid", "That recovery code isn't right. Check it and try again."),
     "sync-encryption-pinned" to CopyEntry("Encryption required", "This app needs encrypted sync, which isn't available right now. Sync stays off."),
+    "sync-file-invalid" to CopyEntry("File not opened", "The synced file failed its check, so it wasn't used. Try again."),
     "invalid-options" to CopyEntry("App not set up", "The app's licensing isn't set up correctly. Contact the developer."),
     "invalid-argument" to CopyEntry("Request not accepted", "The app sent a request the licensing bridge could not read. Contact the developer."),
     "invoke-not-allowed" to CopyEntry("Request not allowed", "The app asked for something its licensing bridge does not offer. Contact the developer."),

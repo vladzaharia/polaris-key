@@ -549,6 +549,10 @@
       "title": "Chiffrement requis",
       "message": "Cette app exige une synchronisation chiffrée, indisponible pour le moment. La synchronisation reste désactivée."
     },
+    "sync-file-invalid": {
+      "title": "Fichier non ouvert",
+      "message": "Le fichier synchronisé n'a pas passé la vérification et n'a pas été utilisé. Réessayez."
+    },
     "invalid-options": {
       "title": "App non configurée",
       "message": "La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur."

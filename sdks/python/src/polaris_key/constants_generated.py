@@ -74,6 +74,8 @@ __all__ = [
     "SETTING_VISIBILITY_VALUES",
     "EventKind",
     "EVENT_KIND_VALUES",
+    "TransferEvent",
+    "TRANSFER_EVENT_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -354,6 +356,7 @@ class ErrorCode:
     SYNC_LOCKED: Final = "sync-locked"
     RECOVERY_CODE_INVALID: Final = "recovery-code-invalid"
     SYNC_ENCRYPTION_PINNED: Final = "sync-encryption-pinned"
+    SYNC_FILE_INVALID: Final = "sync-file-invalid"
     INVALID_OPTIONS: Final = "invalid-options"
     INVALID_ARGUMENT: Final = "invalid-argument"
     INVOKE_NOT_ALLOWED: Final = "invoke-not-allowed"
@@ -568,6 +571,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "sync-locked",
     "recovery-code-invalid",
     "sync-encryption-pinned",
+    "sync-file-invalid",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -784,6 +788,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "sync-locked": "client",
         "recovery-code-invalid": "client",
         "sync-encryption-pinned": "client",
+        "sync-file-invalid": "client",
         "invalid-options": "client",
         "invalid-argument": "client",
         "invoke-not-allowed": "client",
@@ -1770,6 +1775,22 @@ EVENT_KIND_VALUES: Tuple[str, ...] = (
     "packs",
     "store",
     "cloudSync",
+)
+
+
+class TransferEvent:
+    """The variants of a Cloud Sync file transfer event, on the client's `events` stream under the `cloudSync` kind (U-22, U-23), in camelCase in every SDK: `transferProgress` (bytes done and total), `transferDone`, `transferFailed` (a code; a cancelled transfer is a state, not a failure)."""
+
+    TRANSFERPROGRESS: Final = "transferProgress"
+    TRANSFERDONE: Final = "transferDone"
+    TRANSFERFAILED: Final = "transferFailed"
+
+
+#: Every ``TransferEvent`` value, in source order.
+TRANSFER_EVENT_VALUES: Tuple[str, ...] = (
+    "transferProgress",
+    "transferDone",
+    "transferFailed",
 )
 
 

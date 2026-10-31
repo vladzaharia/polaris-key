@@ -292,6 +292,11 @@
         "store",
         "cloudSync"
       ]
+    },
+    {
+      "name": "transferEvent",
+      "description": "The variants of a Cloud Sync file transfer event, on the client's `events` stream under the `cloudSync` kind (U-22, U-23), in camelCase in every SDK: `transferProgress` (bytes done and total), `transferDone`, `transferFailed` (a code; a cancelled transfer is a state, not a failure).",
+      "values": ["transferProgress", "transferDone", "transferFailed"]
     }
   ]
 }

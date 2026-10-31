@@ -617,6 +617,15 @@ async function gateToast(
     field.dispatchEvent(new Event("input", { bubbles: true }));
     await frame();
     press("activate.submit");
+    if (kind === "entries") {
+      // A key with no account lands on ActivateDone (UK-42); the entries toast shows over the
+      // app once the person starts using it.
+      await until(
+        () =>
+          host!.querySelector('button[data-key="signin.done.start"]') !== null,
+      );
+      press("signin.done.start");
+    }
   } else {
     await until(
       () => host!.querySelector('[data-key="welcome.signIn"]') !== null,

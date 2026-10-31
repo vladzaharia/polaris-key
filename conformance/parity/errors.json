@@ -815,6 +815,12 @@
       "description": "Cloud Sync E2E: the app requires end-to-end encryption and the Worker offers server mode, or none; sync stays off rather than downgrade (WIRE-CONTRACT-V5 §11.5, §13.10.6)."
     },
     {
+      "code": "sync-file-invalid",
+      "kind": "client",
+      "service": "sync",
+      "description": "Cloud Sync files: a downloaded file failed a check the server could have caused (a segment tag, the manifest, a chunk id, plainSha256, a length, or the file binding of an end-to-end save) (WIRE-CONTRACT-V5 §13.10.4). A cancelled transfer is a transfer state, not this error."
+    },
+    {
       "code": "invalid-options",
       "kind": "client",
       "service": "core",
