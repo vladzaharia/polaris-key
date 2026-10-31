@@ -1,4 +1,5 @@
 extends RefCounted
+# @pkey-feature sync.e2e
 # Cloud Sync end-to-end primitives over the generator-owned mirror of conformance/corpus/v2/
 # sync-vectors.json (WIRE-CONTRACT-V5 §13.10, U-40.1): the the settings-size sections (primitives, AES-256-GCM, the
 # envelope, HPKE, wrap, recovery, adopt, U-40.5). Sections that need the chunker, the file stream or the
