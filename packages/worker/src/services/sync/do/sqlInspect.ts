@@ -3,8 +3,9 @@
  * file under its size budget.
  */
 import type { InspectedCollection } from "./protocol.js";
+import type { Row } from "./sqlRecords.js";
 
-type All = <T extends Record<string, unknown>>(q: string) => T[];
+type All = <T extends Row>(q: string) => T[];
 
 export interface InspectTables {
   collections: InspectedCollection[];

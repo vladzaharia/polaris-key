@@ -769,10 +769,7 @@ export class SqlStore implements SyncStore {
 
   /** The console's per-collection counters (U-11a.1); the queries are `sqlInspect.ts`'s. */
   inspectTables(): InspectTables {
-    return inspectTables(
-      (q) => this.all(q) as never /* rows typed at the call */,
-      this.hasSchema(),
-    );
+    return inspectTables(this.all.bind(this), this.hasSchema());
   }
 
   private hydrate(r: SettingRow, deleted: boolean): StoredSetting {

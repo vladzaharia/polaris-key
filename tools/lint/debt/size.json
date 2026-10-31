@@ -200,6 +200,9 @@
     "packages/worker/src/services/release/store.ts": {
       "size:over-800": 1
     },
+    "packages/worker/src/services/sync/do/sqlStore.ts": {
+      "size:over-800": 1
+    },
     "packages/worker/src/services/update/resolverCompare.ts": {
       "size:over-800": 1
     },
