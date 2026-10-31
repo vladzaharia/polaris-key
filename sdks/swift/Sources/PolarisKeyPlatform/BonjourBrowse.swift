@@ -189,6 +189,9 @@ struct BonjourTable {
         return [.down(instance)]
     }
 
+    /// The instances in the table.
+    var instances: [String] { order }
+
     mutating func clear() {
         order = []
         rows = [:]
@@ -275,7 +278,9 @@ public final class BonjourBrowse: Sendable {
         let (changes, up, down) = state.withLock {
             s -> ([BonjourTable.Change], (@Sendable (BonjourFound) -> Void)?, (@Sendable (String) -> Void)?) in
             guard s.running else { return ([], nil, nil) }
-            return (results.filter { accept($0.instance) }.flatMap { s.table.upsert($0) }, s.onUp, s.onDown)
+            // A name that is no longer accepted leaves the table first (a revoked device, an old epoch).
+            let retired = s.table.instances.filter { !accept($0) }.flatMap { s.table.remove($0) }
+            return (retired + results.filter { accept($0.instance) }.flatMap { s.table.upsert($0) }, s.onUp, s.onDown)
         }
         guard let up, let down else { return }
         deliver(changes, onUp: up, onDown: down)

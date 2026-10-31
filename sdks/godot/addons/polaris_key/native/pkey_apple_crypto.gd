@@ -65,22 +65,26 @@ func x25519(private_key: PackedByteArray, peer_public: PackedByteArray) -> Varia
 func aes_gcm_seal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
 	if key.size() != 32 or nonce.size() != 12 or aad.size() + plain.size() > MAX_BYTES:
 		return PackedByteArray()
-	var out := _body(_apple.cmd_bin("cx_seal", _gcm_input(key, nonce, aad, plain)))
+	var input := _gcm_input(key, nonce, aad, plain)
+	var out := _body(_apple.cmd_bin("cx_seal", input))
+	input.fill(0)
 	return out if out.size() == plain.size() + 16 else PackedByteArray()
 
 
 func aes_gcm_open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
 	if key.size() != 32 or nonce.size() != 12 or sealed.size() < 16 or aad.size() + sealed.size() > MAX_BYTES:
 		return null
-	var reply := _apple.cmd_bin("cx_open", _gcm_input(key, nonce, aad, sealed))
+	var input := _gcm_input(key, nonce, aad, sealed)
+	var reply := _apple.cmd_bin("cx_open", input)
+	input.fill(0)
 	if reply.is_empty() or reply[0] != OK:
 		reply.fill(0)
 		return null
 	return _body(reply)
 
 
-## key ‖ nonce ‖ aad length (u32 be) ‖ aad ‖ message. The key is in the buffer, so the caller of the
-## native entry owns clearing it; `cmd_bin` does not retain it.
+## key ‖ nonce ‖ aad length (u32 be) ‖ aad ‖ message. The key is in the buffer: the caller clears it
+## after `cmd_bin`, which does not retain it.
 static func _gcm_input(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, body: PackedByteArray) -> PackedByteArray:
 	var head := PackedByteArray()
 	head.resize(4)

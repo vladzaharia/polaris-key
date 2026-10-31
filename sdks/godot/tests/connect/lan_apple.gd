@@ -62,6 +62,7 @@ func run(t: PKeyTestContext) -> void:
 	_errors(t)
 	_advertise(t)
 	_pipes(t)
+	_fix_round(t)
 	_export(t)
 	for a in _apples:
 		a.free()
@@ -281,6 +282,23 @@ func _accepted(t: PKeyTestContext) -> void:
 	lane.poll()
 	lane.stop()
 	t.check("accepted: stop() ends the pipes and forgets the acceptor", lane.pipe_count() == 0 and got.back().is_finished() and fake.ops().has("bj_stop_all"))
+
+
+func _fix_round(t: PKeyTestContext) -> void:
+	var fake := FakeBin.new()
+	var lane := _lane(fake)
+	# R-6GN F3: another consumer's events are kept for it, not dropped.
+	fake.queued.append(["transfer_chunk", PackedByteArray([1])])
+	fake.queued.append(["bj_lost", JSON.stringify({"instance": A}).to_utf8_buffer()])
+	lane.poll()
+	var others: Array = lane._apple.poll_bin("transfer_")
+	t.check("fix: discovery takes only bj_ events and leaves the rest for their consumer", others.size() == 1 and others[0][0] == "transfer_chunk")
+	t.check("fix: and they are taken once", lane._apple.poll_bin("transfer_").is_empty() and lane._apple.poll_bin().is_empty())
+	# R-6GN F7 (GDScript half): a set that did not take must not leave the old one in force.
+	fake.reply["bj_accept"] = 3
+	var before := fake.ops().count("bj_accept")
+	t.check("fix: a refused accept set is reported and followed by an empty one", not lane.set_accepted([A]) and fake.ops().count("bj_accept") == before + 2
+			and (fake.calls[-1][1] as PackedByteArray).is_empty())
 
 
 func _export(t: PKeyTestContext) -> void:

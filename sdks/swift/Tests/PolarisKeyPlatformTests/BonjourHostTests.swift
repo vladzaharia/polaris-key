@@ -29,6 +29,13 @@ import XCTest
         func snapshot() -> [BonjourFound] { lock.withLock { snap } }
     }
 
+    private final class ConnBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private var all: [NWConnection] = []
+        func add(_ c: NWConnection) { lock.withLock { all.append(c) } }
+        func cancelAll() { lock.withLock { all.forEach { $0.cancel() } } }
+    }
+
     private final class Box: @unchecked Sendable {
         private let lock = NSLock()
         private var v = false
@@ -330,6 +337,80 @@ import XCTest
             XCTAssertNotNil(closed)
             _ = run(oa, "bj_stop_all", [])
             _ = run(ob, "bj_stop_all", [])
+        }
+
+        // MARK: fix round (R-6GN F1, F2, F7)
+
+        func testASendBetweenTheLastChunkAndTheEndOfTheDrainStartsANewDrainer() {
+            let s = PipeState(id: 1)
+            let nw = host.reserve()  // a table slot only; the state under test is standalone
+            XCTAssertNotNil(nw)
+            // PipeState.startDrain needs a pipe; the interleaving is the queue and flag, so use the flags.
+            XCTAssertEqual(s.enqueue(Data([1])), .queued)
+            XCTAssertTrue(s.testStartDrain())
+            XCTAssertNotNil(s.nextChunk())
+            XCTAssertNil(s.nextChunk(), "queue empty: the drainer is told so and the flag is cleared together")
+            // The send that lands now must start a drainer of its own.
+            XCTAssertEqual(s.enqueue(Data([2])), .queued)
+            XCTAssertTrue(s.testStartDrain(), "no lost wake-up")
+            XCTAssertNotNil(s.nextChunk())
+            XCTAssertFalse(s.testStartDrain(), "one drainer at a time while a chunk is out")
+        }
+
+        private let host = BonjourHost(sink: PlatformEventSink(), configurationCheck: { nil })
+
+        func testAGracefulCloseThatNeverDrainsIsReclaimed() async throws {
+            let sink = PlatformEventSink()
+            let h = BonjourHost(sink: sink, closeSeconds: 0.2, configurationCheck: { nil })
+            var ops: [String: PlatformBinaryOp] = [:]
+            h.register(into: &ops)
+            var held: [PipeState] = []
+            for _ in 0..<BonjourHost.maxPipes { held.append(h.reserve()!) }
+            XCTAssertNil(h.reserve(), "the table is full")
+            let id = idBytes(held[0].id)
+            // Queued bytes and no pipe to send them on: the close cannot complete by itself.
+            XCTAssertEqual(run(ops, "bj_send", id + [1, 2, 3]), [1])
+            XCTAssertEqual(run(ops, "bj_close", id + [0]), [1])
+            XCTAssertEqual(run(ops, "bj_send", id + [4]), [0], "closing takes no more writes")
+            try await Task.sleep(nanoseconds: 500_000_000)
+            XCTAssertTrue(held[0].isFinished)
+            XCTAssertNotNil(h.reserve(), "the slot came back")
+        }
+
+        func testAStalledWriteIsAbandonedAfterItsDeadline() async throws {
+            let listener = try NWListener(using: .tcp, on: .any)
+            let conns = ConnBox()
+            listener.newConnectionHandler = { c in
+                conns.add(c)
+                c.start(queue: .global())  // accepted and never read
+            }
+            let ready = DispatchSemaphore(value: 0)
+            listener.stateUpdateHandler = { if case .ready = $0 { ready.signal() } }
+            listener.start(queue: .global())
+            XCTAssertEqual(ready.wait(timeout: .now() + 5), .success)
+            let port = listener.port!
+            let pipe = try await BonjourPipes.dial(
+                .hostPort(host: "127.0.0.1", port: port),
+                options: BonjourDialOptions(policy: BonjourDialPolicy(allowLoopback: true)))
+            let t0 = Date()
+            let ok = await BonjourHost.write(pipe, Data(count: 64 << 20), seconds: 0.5)
+            XCTAssertFalse(ok)
+            XCTAssertLessThan(Date().timeIntervalSince(t0), 5)
+            listener.cancel()
+            conns.cancelAll()
+        }
+
+        func testARosterShrinkRetiresFoundRows() {
+            let m = make()
+            _ = run(m.ops, "bj_accept", names([1, 2]))
+            _ = run(m.ops, "bj_browse_start", json([:]))
+            m.driver.send(.upserted([row(1), row(2)]))
+            XCTAssertEqual(events(m.sink).map(\.0), ["bj_found", "bj_found"])
+            XCTAssertEqual(run(m.ops, "bj_accept", names([1])), [1])
+            let ev = events(m.sink)
+            XCTAssertEqual(ev.map(\.0), ["bj_lost"])
+            XCTAssertEqual(ev[0].1["instance"] as? String, inst(2))
+            XCTAssertEqual(run(m.ops, "bj_dial", json(["instance": inst(2)])), [0], "no longer dialable")
         }
     }
 

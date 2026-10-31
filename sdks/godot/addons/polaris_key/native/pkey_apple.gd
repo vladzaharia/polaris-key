@@ -49,6 +49,7 @@ const DISTRIBUTOR_DEADLINE := 2.0
 ## the longest op name.
 const BIN_MAX := 16 << 20
 const BIN_OP_MAX := 64
+const BIN_STASH := 1024
 
 ## The platform this answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var platform := ""
@@ -61,6 +62,8 @@ var native_class := NATIVE_CLASS
 var timeout_s := 30.0
 
 var _dropped := 0
+## Binary events drained and not yet taken by a consumer (see poll_bin).
+var _bin_stash: Array = []
 
 ## Results of asynchronous requests, keyed "<native id>:<req>", SHARED by every instance: the
 ## native queue is one per process, so whichever instance polls may drain another instance's
@@ -291,17 +294,32 @@ func cmd_bin(op: String, data: PackedByteArray) -> PackedByteArray:
 
 
 ## The binary events queued natively, oldest first: each [kind: String, data: PackedByteArray].
-## Malformed entries are dropped. Empty without the binary entry.
-func poll_bin() -> Array:
+## The native queue is one per process, so this instance keeps what it drained and a caller does not
+## take: with a `prefix`, only the events whose kind starts with it are returned (a consumer asks for
+## its own, "bj_" for discovery), and the rest wait here for another consumer. At most BIN_STASH events
+## wait, oldest dropped. Malformed entries are dropped. Empty without the binary entry.
+func poll_bin(prefix := "") -> Array:
 	var out := []
 	if not binary_available():
 		return out
 	var raw = native.call("poll_bin") if native != null else ClassDB.class_call_static(native_class, "poll_bin")
-	if not (raw is Array):
+	if raw is Array:
+		for e in raw:
+			if e is Array and e.size() == 2 and e[0] is String and e[1] is PackedByteArray:
+				_bin_stash.append(e)
+	if _bin_stash.size() > BIN_STASH:
+		_bin_stash = _bin_stash.slice(_bin_stash.size() - BIN_STASH)
+	if prefix == "":
+		out = _bin_stash
+		_bin_stash = []
 		return out
-	for e in raw:
-		if e is Array and e.size() == 2 and e[0] is String and e[1] is PackedByteArray:
+	var rest := []
+	for e in _bin_stash:
+		if (e[0] as String).begins_with(prefix):
 			out.append(e)
+		else:
+			rest.append(e)
+	_bin_stash = rest
 	return out
 
 

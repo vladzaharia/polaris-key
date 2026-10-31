@@ -61,9 +61,15 @@ import Foundation
         public static let maxPipes = 64
         public static let readWindow = 256 * 1024
         public static let maxQueuedBytes = 4 * 1024 * 1024
+        /// A write the peer does not take within this long ends the pipe.
+        public static let writeSeconds: TimeInterval = 10
+        /// After a graceful close is asked for, the pipe is aborted this long after if it is still up.
+        public static let closeSeconds: TimeInterval = 10
 
         let sink: PlatformEventSink
         private let allowLoopback: Bool
+        private let writeSeconds: TimeInterval
+        private let closeSeconds: TimeInterval
         private let makeDriver: @Sendable () -> (any BonjourBrowseDriver)?
         private let makeListener: @Sendable (Bool) -> BonjourListener
         private let configurationCheck: @Sendable () -> BonjourBrowseError?
@@ -80,11 +86,14 @@ import Foundation
             sink: PlatformEventSink,
             makeDriver: @escaping @Sendable () -> (any BonjourBrowseDriver)? = { nil },
             makeListener: (@Sendable (Bool) -> BonjourListener)? = nil, allowLoopback: Bool = false,
+            writeSeconds: TimeInterval = BonjourHost.writeSeconds, closeSeconds: TimeInterval = BonjourHost.closeSeconds,
             configurationCheck: (@Sendable () -> BonjourBrowseError?)? = nil
         ) {
             self.sink = sink
             self.makeDriver = makeDriver
             self.allowLoopback = allowLoopback
+            self.writeSeconds = writeSeconds
+            self.closeSeconds = closeSeconds
             self.makeListener =
                 makeListener ?? { BonjourListener(peerToPeer: $0, policy: BonjourDialPolicy(allowLoopback: allowLoopback)) }
             self.configurationCheck = configurationCheck ?? BonjourBrowse.processConfigurationCheck
@@ -208,6 +217,7 @@ import Foundation
             }
             let b = lock.withLock { () -> BonjourBrowse? in
                 allowed = names
+                endpoints = endpoints.filter { names.contains($0.key) }
                 return browse
             }
             b?.rescan()
@@ -410,24 +420,53 @@ import Foundation
             }
         }
 
-        /// One writer per pipe, in order. A write failure ends the pipe.
+        /// One writer per pipe, in order. A write failure or a write the peer does not take within
+        /// `writeSeconds` ends the pipe. `nextChunk` clears `draining` under the lock that finds the queue
+        /// empty, so a send that follows always starts a new drainer.
         private func drain(_ state: PipeState) {
             guard state.startDrain() else { return }
+            let seconds = writeSeconds
             Task.detached { [self] in
                 while let chunk = state.nextChunk() {
-                    do {
-                        try await state.pipe?.write(chunk)
+                    guard let pipe = state.pipe else { return }
+                    let wrote = await Self.write(pipe, chunk, seconds: seconds)
+                    if wrote {
                         state.sent(chunk.count)
-                    } catch {
+                    } else {
                         if state.finish() {
                             forget(state)
-                            emit("bj_closed", ["id": Int(state.id), "reason": "error"])
-                            state.pipe?.shutDown()
+                            emit("bj_closed", ["id": Int(state.id), "reason": "timeout"])
                         }
+                        pipe.shutDown()
                         return
                     }
                 }
-                if state.endDrain() { state.closeNow(); forget(state) }
+                if state.closeIfDrained() {
+                    state.closeNow()
+                    forget(state)
+                }
+            }
+        }
+
+        /// The write, or false if it failed or was not taken in time (the pipe is shut then, which
+        /// completes the pending send).
+        static func write(_ pipe: NWPipe, _ chunk: Data, seconds: TimeInterval) async -> Bool {
+            await withTaskGroup(of: Bool?.self) { group in
+                group.addTask { (try? await pipe.write(chunk)) != nil ? true : false }
+                group.addTask {
+                    try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                    return nil
+                }
+                var result = false
+                if let first = await group.next() {
+                    if let ok = first {
+                        result = ok
+                    } else {
+                        pipe.shutDown()  // timed out: ends the send
+                    }
+                }
+                group.cancelAll()
+                return result
             }
         }
 
@@ -454,6 +493,16 @@ import Foundation
                 state.abort()
             } else if state.requestClose() {
                 forget(state)
+            } else {
+                // What is queued gets `closeSeconds` to go out; then the pipe is dropped whatever its state.
+                let seconds = closeSeconds
+                Task.detached { [self] in
+                    try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                    if !state.isFinished {
+                        forget(state)
+                        state.abort()
+                    }
+                }
             }
             return [Self.ok]
         }
@@ -556,6 +605,15 @@ import Foundation
             }
         }
 
+        /// Tests start a drain without a pipe.
+        func testStartDrain() -> Bool {
+            lock.withLock {
+                guard !draining, !queue.isEmpty, !finished else { return false }
+                draining = true
+                return true
+            }
+        }
+
         func startDrain() -> Bool {
             lock.withLock {
                 guard !draining, !queue.isEmpty, pipe != nil, !finished else { return false }
@@ -564,21 +622,22 @@ import Foundation
             }
         }
 
+        /// The next chunk, or nil with `draining` cleared in the same critical section.
         func nextChunk() -> Data? {
             lock.withLock {
-                guard !finished, !queue.isEmpty else { return nil }
+                guard !finished, !queue.isEmpty else {
+                    draining = false
+                    return nil
+                }
                 return queue.removeFirst()
             }
         }
 
         func sent(_ n: Int) { lock.withLock { queuedBytes = max(0, queuedBytes - n) } }
 
-        /// The drain loop is done; true when a close was asked for and nothing is left to send.
-        func endDrain() -> Bool {
-            lock.withLock {
-                draining = false
-                return closing && queue.isEmpty && !finished
-            }
+        /// True when a close was asked for and nothing is queued or being written.
+        func closeIfDrained() -> Bool {
+            lock.withLock { closing && queue.isEmpty && !draining && !finished }
         }
 
         /// Close after the queue is sent. True when it can close now (nothing queued and not draining).

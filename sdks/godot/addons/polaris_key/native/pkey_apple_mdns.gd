@@ -121,15 +121,16 @@ func set_accepted(names: Array) -> bool:
 		data.append_array(str(n).to_utf8_buffer())
 	var r := _apple.cmd_bin("bj_accept", data)
 	_names_sent = not r.is_empty() and r[0] == BIN_OK
+	if not _names_sent:
+		# A set that did not take must not leave the old, possibly larger one in force.
+		_apple.cmd_bin("bj_accept", PackedByteArray())
 	return _names_sent
 
 
 ## Drain the native events and route them.
 func poll() -> void:
-	for e in _apple.poll_bin():
+	for e in _apple.poll_bin("bj_"):
 		var kind: String = e[0]
-		if not kind.begins_with("bj_"):
-			continue
 		if kind == "bj_data":
 			_data(e[1])
 			continue
