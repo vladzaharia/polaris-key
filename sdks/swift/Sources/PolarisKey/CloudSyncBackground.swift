@@ -209,7 +209,7 @@ public final class CloudSyncBackground: BulkChannel, TransferTaskCancelling, Bac
 
     #if canImport(Darwin)
         /// The live channel: a background session named for the product, registered for
-        /// `PolarisKey.handleBackgroundEvents`.
+        /// `PolarisKeyClient.handleBackgroundEvents`.
         public convenience init(
             product: String, stateDir: URL, journal: any JournalStore, tokens: BackgroundTokens,
             maxTaskAge: Double = CloudSyncBackground.defaultMaxTaskAge,
