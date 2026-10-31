@@ -243,8 +243,7 @@
       "note": "I-48.6b: Game Center on iOS and macOS. The opt-in PolarisKeyGameCenter extension (EXTENSION=gamecenter on native/ios/build.sh and native/macos/build_apple.sh; GameKit is weak-linked there and nowhere else) returns the signed-in local player's raw identity-verification fields; PKeyGameCenterToken builds the gc1. token (Q-5) and PKeyGameCenterProvider hands it to the ladder, silently (it never presents Game Center's sign-in). The extension's presence in the project is the opt-in (Godot exports every GDExtension it finds); the export option polaris_key/game_center (off by default) adds the Game Center entitlement and warns when the two disagree. The three exchange-gamecenter transcripts are replayed. Real-device fields are the owner's check (OS-6)."
     },
     "identity.pgs": {
-      "status": "planned",
-      "wp": "I-48",
+      "status": "implemented",
       "except": [
         {
           "runtime": "linux",
@@ -267,7 +266,7 @@
           "reason": "runtime"
         }
       ],
-      "note": "Play Games on Android (I-48)."
+      "note": "I-48.7a/.7b: Play Games on Android (play flavour). The plugin's pgs_code op asks Play Games v2 for a server auth code (requestServerSideAccess) when the player is already signed in and never starts Play Games' sign-in; pgs_sign_in is the sign-in form's row. PKeyPgsProvider hands the code to the ladder as the exchange's subject token. The Play Games library and the APP_ID meta-data arrive only with the export opt-in polaris_key/play_games (off by default), compileOnly in the AAR, so a game that does not sign in through Play Games ships none. The three exchange-pgs transcripts are replayed. A live requestServerSideAccess answer needs a Play Games app (owner)."
     },
     "identity.autosignin": {
       "status": "planned",

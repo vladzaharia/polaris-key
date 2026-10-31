@@ -591,6 +591,40 @@ func _gid(op: String, nonce: String, server_client_id: String) -> PKeyResult:
 	return _wrap(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, await call_async({"op": op, "nonce": nonce, "serverClientId": server_client_id}, 300.0))
 
 
+# ── Play Games (I-48.7b; the Play Games provider drives these) ───────────────────────────────
+
+## Why Play Games sign-in cannot run here in words, or "" when it can: `outlet` (the direct flavour),
+## `dependency` (the export carries no Play Games library: turn on polaris_key/play_games) or the
+## plugin's own unsupported reason.
+func play_games_unavailable_reason() -> String:
+	var why := unsupported_reason()
+	if why != "":
+		return why
+	if _cap("playGames") == true:
+		return ""
+	return PKeyConstants.UnsupportedReason.OUTLET if str(_cap("flavor")) == "direct" else PKeyConstants.UnsupportedReason.DEPENDENCY
+
+
+## Rung 3: a server auth code for the Worker's exchange when the player is already signed in to Play
+## Games; this never starts Play Games' sign-in. On success detail.code is the server auth code (a
+## secret). A failure is `platform-error` with detail.error `unavailable` and detail.reason a fixed
+## word (`not-authenticated`, `no-activity`, `refused`, `dependency`, `failed`).
+func pgs_code(server_client_id: String) -> PKeyResult:
+	return await _pgs({"op": "pgs_code", "serverClientId": server_client_id})
+
+
+## The sign-in form's row: Play Games' own sign-in, which may show its sheet. detail.authenticated.
+func pgs_sign_in() -> PKeyResult:
+	return await _pgs({"op": "pgs_sign_in"})
+
+
+func _pgs(q: Dictionary) -> PKeyResult:
+	var gate := availability(PKeyConstants.Feature.IDENTITY_PGS)
+	if not gate.ok:
+		return gate
+	return _wrap(PKeyConstants.Feature.IDENTITY_PGS, await call_async(q, 300.0))
+
+
 static func _apk_query(op: String, path: String, sha256: String, version_code: int) -> Dictionary:
 	var q := {"op": op, "path": path, "sha256": sha256}
 	if version_code >= 0:

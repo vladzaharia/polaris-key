@@ -310,10 +310,14 @@ static func _card_url_ok(raw: String) -> bool:
 ## only the members the answer carried. A 5xx is `server-error`. Nothing of the request is echoed.
 static func _refusal(status: int, r: PKeyResult, body: Variant) -> PKeyExchangeResult:
 	var b: Dictionary = body if body is Dictionary else {}
-	if status >= 500:
-		return PKeyExchangeResult.failed(PKeyErrors.SERVER_ERROR, "The exchange failed with status %d." % status, {"status": status})
 	var error = b.get("error")
 	var code = error.get("code") if error is Dictionary else error
+	# `503 unavailable` is the Worker's typed answer when the platform's key host or Google cannot be
+	# reached (V5 §12.11.7, Game Center and Play Games): a refusal to retry later, like Kotlin's. Any
+	# other 5xx is a server error.
+	var typed_unavailable: bool = status == 503 and code == PKeyConstants.ErrorCode.UNAVAILABLE
+	if status >= 500 and not typed_unavailable:
+		return PKeyExchangeResult.failed(PKeyErrors.SERVER_ERROR, "The exchange failed with status %d." % status, {"status": status})
 	var out := PKeyExchangeResult.refused(StringName(code if code is String and code != "" else "http_%d" % status), status)
 	var retry = b.get("retryAfter")
 	if PKeyClaims.is_number(retry) and not is_nan(float(retry)) and not is_inf(float(retry)) and float(retry) > 0.0:

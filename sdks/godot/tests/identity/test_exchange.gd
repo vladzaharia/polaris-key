@@ -201,9 +201,16 @@ func _refusals(t: PKeyTestContext) -> void:
 	bed.tokens = [B.json(403, {"error": "device_limit", "manageUrl": "https://key.plrs.im/portal"})]
 	var dl: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
 	t.check("exchange: device_limit carries the https manage_url", dl.code == &"device_limit" and dl.manage_url.ends_with("/portal"), str(dl))
-	bed.tokens = [B.json(503, {"error": "unavailable"})]
+	bed.tokens = [B.json(500, {"error": "internal_error"})]
 	var s: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
 	t.check("exchange: a 5xx is failed (server-error)", s.kind == PKeyExchangeResult.KIND_FAILED and s.code == PKeyErrors.SERVER_ERROR, str(s))
+	# V5 §12.11.7 (exchange-pgs-errors, exchange-gamecenter-errors): the Worker's typed 503 is a refusal to retry later.
+	bed.tokens = [B.json(503, {"error": "unavailable"})]
+	var down: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
+	t.check("exchange: a typed 503 unavailable is refused (unavailable)", down.kind == PKeyExchangeResult.KIND_REFUSED and down.code == &"unavailable", str(down))
+	bed.tokens = [B.json(503, {"error": "overloaded"})]
+	var other: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
+	t.check("exchange: any other 503 is failed (server-error)", other.kind == PKeyExchangeResult.KIND_FAILED and other.code == PKeyErrors.SERVER_ERROR, str(other))
 	bed.tokens = [B.json(404, {"error": "not_found"})]
 	var nf: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
 	t.check("exchange: a 404 is unavailable", nf.kind == PKeyExchangeResult.KIND_UNAVAILABLE and nf.code == &"not_found", str(nf))
@@ -211,7 +218,7 @@ func _refusals(t: PKeyTestContext) -> void:
 	var shape: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, "short")
 	t.check(
 		"exchange: an empty token or a malformed nonce is invalid-argument, unsent",
-		empty.code == &"invalid-argument" and shape.code == &"invalid-argument" and bed.token_requests.size() == 6,
+		empty.code == &"invalid-argument" and shape.code == &"invalid-argument" and bed.token_requests.size() == 8,
 		str(bed.token_requests.size()))
 	bed.free_all()
 

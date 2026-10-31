@@ -8,7 +8,7 @@ extends RefCounted
 # @pkey-feature license.manage identity.keyentry identity.redirect.web identity.signin.hints identity.choice
 # @pkey-feature release.fetch
 # @pkey-feature sync.keyring sync.settings
-# @pkey-feature identity.exchange identity.gamecenter
+# @pkey-feature identity.exchange identity.gamecenter identity.pgs
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -645,6 +645,9 @@ static func _exchange_step(sdk: Node, step: Dictionary, keys: PKeyFixtureDeviceK
 		# Game Center (I-48.6b): the recording holds the raw fields the extension returns; the token is
 		# the SDK's own gc1. encoder over them, and the recorded request body is matched exactly.
 		token = PKeyGameCenterToken.encode(a["gameCenter"])
+	elif a.get("serverAuthCode") is String:
+		# Play Games (I-48.7b): the server auth code is the subject token as it is.
+		token = a["serverAuthCode"]
 	var before: String = sdk.core.tokens.current()
 	var r: PKeyExchangeResult = await sdk.identity.exchange.exchange(String(a.get("kind", "")), token, String(a.get("nonce", "")))
 	match r.kind:

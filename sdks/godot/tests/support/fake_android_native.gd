@@ -49,12 +49,20 @@ var integrity_error := 0
 var google_libraries := true
 var google_result := {"ok": true, "token": "eyJ.google.token"}
 var google_signed_out := 0
+## Play Games (I-48.7a): whether the export carries the Play Games library, the next pgs_code answer
+## (without ev/req), and what the row's pgs_sign_in answers.
+var pgs_libraries := true
+var pgs_result := {"ok": true, "code": "4/transcript-server-auth-code"}
+var pgs_sign_in_result := {"ok": true, "authenticated": true}
 
 var calls: Array[Dictionary] = []
 var _queue: Array[Dictionary] = []
 var _req := 0
 
-const PLAY_OPS := ["iau_check", "iau_start", "iau_complete", "pad_state", "pad_fetch", "pad_location", "pad_remove", "pad_cancel", "pad_confirm", "integrity_prepare", "integrity_token"]
+const PLAY_OPS := [
+	"iau_check", "iau_start", "iau_complete", "pad_state", "pad_fetch", "pad_location", "pad_remove", "pad_cancel", "pad_confirm",
+	"integrity_prepare", "integrity_token", "pgs_code", "pgs_sign_in",
+]
 const DIRECT_OPS := ["pi_can_install", "pi_open_settings", "pi_verify", "pi_install", "pi_last", "pi_abandon_stale", "pi_constraints"]
 
 
@@ -94,7 +102,10 @@ func cmd(json: String) -> String:
 			_queue.clear()
 			return JSON.stringify({"ok": true, "dropped": 0, "events": out})
 		"capabilities":
-			return JSON.stringify({"ok": true, "protocol": 1, "flavor": flavor, "sdk": 34, "package": "gg.vlad.diceroll", "keystore": true, "inAppUpdates": flavor == "play", "assetPacks": flavor == "play", "packageInstaller": flavor == "direct", "playIntegrity": flavor == "play", "googleId": flavor == "play" and google_libraries})
+			var caps := {"ok": true, "protocol": 1, "flavor": flavor, "sdk": 34, "package": "gg.vlad.diceroll", "keystore": true}
+			caps.merge({"inAppUpdates": flavor == "play", "assetPacks": flavor == "play", "packageInstaller": flavor == "direct"})
+			caps.merge({"playIntegrity": flavor == "play", "playGames": flavor == "play" and pgs_libraries, "googleId": flavor == "play" and google_libraries})
+			return JSON.stringify(caps)
 		"install_source":
 			return JSON.stringify({"ok": true, "installer": installer, "initiator": installer, "initiatorCertSha256": null, "packageSource": 0, "updateOwner": null, "selfUpdated": false, "sdk": 34})
 		"ks_get":
@@ -122,6 +133,10 @@ func cmd(json: String) -> String:
 			if flavor != "play" or not google_libraries:
 				return _later(op, {"ok": false, "error": "unavailable", "reason": "outlet" if flavor != "play" else "dependency"})
 			return _later(op, google_result.duplicate(true))
+		"pgs_code", "pgs_sign_in":
+			if not pgs_libraries:
+				return _later(op, {"ok": false, "error": "unavailable", "reason": "dependency"})
+			return _later(op, (pgs_result if op == "pgs_code" else pgs_sign_in_result).duplicate(true))
 		"gid_sign_out":
 			google_signed_out += 1
 			return _later(op, {"ok": true, "cleared": true})
