@@ -26,6 +26,7 @@ import {
   APPLE_INTERMEDIATE_OID,
   APPLE_LEAF_OID,
   makeChain,
+  makeRsaChain,
   signX5cJws,
 } from "../test/x509Fixtures.js";
 import type { Env as WorkerEnv } from "../src/platform/env.js";
@@ -56,6 +57,25 @@ describe("workerd: X.509 and the App Store JWS", () => {
     const broken = await makeChain({ at: now, brokenLink: true });
     await expect(
       verifyChain(broken.chain, { ...policy, roots: [broken.root] }),
+    ).rejects.toThrow("bad certificate signature");
+  });
+
+  it("verifies an RSA chain (SHA-384, 2048-bit) only when the policy lists rsa", async () => {
+    const c = await makeRsaChain({ at: now, hash: "SHA-384" });
+    const policy = { roots: [c.root], at: now, length: 3 };
+    await expect(
+      verifyChain(c.chain, { ...policy, algorithms: ["rsa"] }),
+    ).resolves.toMatchObject({ leaf: { keyType: "rsa" } });
+    await expect(verifyChain(c.chain, policy)).rejects.toThrow(
+      "signature algorithm not allowed",
+    );
+    const broken = await makeRsaChain({ at: now, brokenLink: true });
+    await expect(
+      verifyChain(broken.chain, {
+        roots: [broken.root],
+        at: now,
+        algorithms: ["rsa"],
+      }),
     ).rejects.toThrow("bad certificate signature");
   });
 

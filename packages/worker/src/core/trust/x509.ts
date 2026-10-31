@@ -32,8 +32,12 @@
  * policy)` answering the leaf, its key and the whole parsed chain — `policy.understood` lists the
  * caller's known critical extension OIDs, `policy.leafDigitalSignature` the leaf's signing use.
  *
- * Algorithms: ECDSA on P-256 and P-384 with SHA-256 or SHA-384 — what Apple's App Store and App
- * Attest chains use. RSA is not supported (no caller needs it); a certificate using it refuses.
+ * Algorithms: a caller names the families it accepts in `policy.algorithms` (default
+ * `["ecdsa"]`: ECDSA on P-256 and P-384 with SHA-256 or SHA-384, what Apple's App Store and App
+ * Attest chains use). `"rsa"` adds RSASSA-PKCS1-v1_5 with SHA-256, SHA-384 or SHA-512 and a
+ * 2048 to 8192 bit modulus (Game Center's DigiCert chain). A certificate whose key or signature
+ * is outside the policy refuses; SHA-1 and MD5 signatures never verify. The RSA signature check
+ * is WebCrypto's, which compares the whole encoded digest (no lenient padding parse here).
  * No revocation check is made (Apple's library makes OCSP optional too); a revoked Apple
  * intermediate is an Apple-side emergency handled by re-pinning (THREAT-MODEL.md, the commerce
  * section).
@@ -114,7 +118,9 @@ const TAG_OCTET_STRING = 0x04;
 const TAG_OID = 0x06;
 const TAG_UTC_TIME = 0x17;
 const TAG_GENERALIZED_TIME = 0x18;
+const TAG_NULL = 0x05;
 const TAG_SEQUENCE = 0x30;
+const TAG_SET = 0x31;
 
 /** A DER BOOLEAN: exactly one byte, 0x00 or 0xff. */
 function derBoolean(node: DerNode): boolean {
@@ -207,6 +213,15 @@ export const OID = {
   p384: "1.3.132.0.34",
   ecdsaSha256: "1.2.840.10045.4.3.2",
   ecdsaSha384: "1.2.840.10045.4.3.3",
+  rsaEncryption: "1.2.840.113549.1.1.1",
+  rsaSha256: "1.2.840.113549.1.1.11",
+  rsaSha384: "1.2.840.113549.1.1.12",
+  rsaSha512: "1.2.840.113549.1.1.13",
+  extKeyUsage: "2.5.29.37",
+  codeSigning: "1.3.6.1.5.5.7.3.3",
+  commonName: "2.5.4.3",
+  organization: "2.5.4.10",
+  organizationalUnit: "2.5.4.11",
   basicConstraints: "2.5.29.19",
   keyUsage: "2.5.29.15",
 } as const;
@@ -222,7 +237,7 @@ export interface X509Certificate {
   tbs: Uint8Array;
   /** The outer signature algorithm OID. */
   signatureAlgorithm: string;
-  /** The DER ECDSA-Sig-Value from the signature BIT STRING. */
+  /** The signature BIT STRING's bytes: a DER ECDSA-Sig-Value, or the RSA signature. */
   signature: Uint8Array;
   issuer: Uint8Array;
   subject: Uint8Array;
@@ -230,7 +245,12 @@ export interface X509Certificate {
   notAfter: number;
   /** The whole SubjectPublicKeyInfo, as WebCrypto imports it. */
   spki: Uint8Array;
-  curve: "P-256" | "P-384";
+  /** The key family: ECDSA (with `curve`) or RSA (with `rsa`). */
+  keyType: "ecdsa" | "rsa";
+  /** The EC curve; `null` for an RSA key (never null under the default ECDSA-only policy). */
+  curve: "P-256" | "P-384" | null;
+  /** The RSA modulus size in bits and the public exponent; `null` for an EC key. */
+  rsa: { modulusBits: number; exponent: number } | null;
   extensions: Map<string, X509Extension>;
   /** basicConstraints: `ca` and `pathLen` (null = unlimited / absent). */
   ca: boolean;
@@ -239,7 +259,21 @@ export interface X509Certificate {
   keyCertSign: boolean | null;
   /** keyUsage bit 0 (digitalSignature); `null` when the extension is absent. */
   digitalSignature: boolean | null;
+  /** The extendedKeyUsage purposes (dotted OIDs); `null` when the extension is absent. */
+  extendedKeyUsage: string[] | null;
 }
+
+export type KeyAlgorithm = "ecdsa" | "rsa";
+
+/** The RSA key sizes accepted, in bits (the modulus's exact bit length). */
+export const RSA_MIN_BITS = 2048;
+export const RSA_MAX_BITS = 8192;
+
+const RSA_HASH: Record<string, "SHA-256" | "SHA-384" | "SHA-512"> = {
+  [OID.rsaSha256]: "SHA-256",
+  [OID.rsaSha384]: "SHA-384",
+  [OID.rsaSha512]: "SHA-512",
+};
 
 function algorithmOid(node: DerNode): string {
   const parts = derChildren(expect(node, TAG_SEQUENCE, "algorithm"));
@@ -250,17 +284,70 @@ function algorithmOid(node: DerNode): string {
     parts.length !== 1
   )
     fail("ecdsa algorithm with parameters");
+  // RSASSA-PKCS1-v1_5 identifiers carry an explicit NULL (RFC 4055 §5).
+  if (oid in RSA_HASH && (parts.length !== 2 || !isNull(parts[1]!)))
+    fail("rsa signature algorithm parameters");
   return oid;
 }
 
-/** Parse one DER certificate. Throws `X509Error` on anything it does not accept. */
-export function parseCertificate(der: Uint8Array): X509Certificate {
+const isNull = (n: DerNode): boolean =>
+  n.tag === TAG_NULL && n.value.length === 0;
+
+/** An RSAPublicKey (RFC 8017 A.1.1): a minimal positive odd modulus of 2048 to 8192 bits and a
+ *  minimal odd exponent of at least 65537 that fits 32 bits. */
+function parseRsaPublicKey(bytes: Uint8Array): {
+  modulusBits: number;
+  exponent: number;
+} {
+  const parts = derChildren(
+    expect(readDerExact(bytes), TAG_SEQUENCE, "rsa public key"),
+  );
+  if (parts.length !== 2) fail("rsa public key shape");
+  const posInt = (n: DerNode | undefined, what: string): Uint8Array => {
+    const v = expect(n, TAG_INTEGER, what).value;
+    if (v.length === 0 || v[0]! & 0x80) fail(`negative ${what}`);
+    if (v.length > 1 && v[0] === 0 && !(v[1]! & 0x80))
+      fail(`non-minimal ${what}`);
+    return v[0] === 0 ? v.subarray(1) : v;
+  };
+  const n = posInt(parts[0], "rsa modulus");
+  const e = posInt(parts[1], "rsa exponent");
+  if (n.length === 0 || n[0] === 0) fail("rsa modulus");
+  const modulusBits = (n.length - 1) * 8 + (32 - Math.clz32(n[0]!));
+  if (modulusBits < RSA_MIN_BITS || modulusBits > RSA_MAX_BITS)
+    fail("rsa modulus size");
+  if (!(n[n.length - 1]! & 1)) fail("rsa modulus is even");
+  if (e.length === 0 || e.length > 4 || !(e[e.length - 1]! & 1))
+    fail("rsa exponent");
+  const exponent = e.reduce((a, b) => a * 256 + b, 0);
+  if (exponent < 65537) fail("rsa exponent too small");
+  return { modulusBits, exponent };
+}
+
+/** Parse one DER certificate. Throws `X509Error` on anything it does not accept. `algorithms`
+ *  (default ECDSA only) names the key and signature families allowed. */
+export function parseCertificate(
+  der: Uint8Array,
+  algorithms: readonly KeyAlgorithm[] = ["ecdsa"],
+): X509Certificate {
+  const allowEc = algorithms.includes("ecdsa");
+  const allowRsa = algorithms.includes("rsa");
   const cert = derChildren(
     expect(readDerExact(der), TAG_SEQUENCE, "certificate"),
   );
   if (cert.length !== 3) fail("certificate shape");
   const tbsNode = expect(cert[0], TAG_SEQUENCE, "tbsCertificate");
   const signatureAlgorithm = algorithmOid(cert[1]!);
+  const sigFamily: KeyAlgorithm | null =
+    signatureAlgorithm === OID.ecdsaSha256 ||
+    signatureAlgorithm === OID.ecdsaSha384
+      ? "ecdsa"
+      : signatureAlgorithm in RSA_HASH
+        ? "rsa"
+        : null;
+  if (sigFamily === null) fail("unsupported signature algorithm");
+  if (sigFamily === "ecdsa" ? !allowEc : !allowRsa)
+    fail("signature algorithm not allowed");
   const signature = bitStringBytes(cert[2]!).bytes;
 
   const tbs = derChildren(tbsNode);
@@ -289,18 +376,27 @@ export function parseCertificate(der: Uint8Array): X509Certificate {
   const keyAlg = derChildren(
     expect(spkiParts[0], TAG_SEQUENCE, "key algorithm"),
   );
-  if (
-    decodeOid(expect(keyAlg[0], TAG_OID, "key oid").value) !== OID.ecPublicKey
-  )
-    fail("unsupported key type");
-  const curveOid = decodeOid(expect(keyAlg[1], TAG_OID, "curve").value);
-  const curve =
-    curveOid === OID.p256
-      ? "P-256"
-      : curveOid === OID.p384
-        ? "P-384"
-        : fail("unsupported curve");
-  bitStringBytes(spkiParts[1]!);
+  const keyOid = decodeOid(expect(keyAlg[0], TAG_OID, "key oid").value);
+  let keyType: "ecdsa" | "rsa";
+  let curve: "P-256" | "P-384" | null = null;
+  let rsa: { modulusBits: number; exponent: number } | null = null;
+  if (keyOid === OID.ecPublicKey && allowEc) {
+    keyType = "ecdsa";
+    if (keyAlg.length !== 2) fail("ec key algorithm shape");
+    const curveOid = decodeOid(expect(keyAlg[1], TAG_OID, "curve").value);
+    curve =
+      curveOid === OID.p256
+        ? "P-256"
+        : curveOid === OID.p384
+          ? "P-384"
+          : fail("unsupported curve");
+    bitStringBytes(spkiParts[1]!);
+  } else if (keyOid === OID.rsaEncryption && allowRsa) {
+    keyType = "rsa";
+    if (keyAlg.length !== 2 || !isNull(keyAlg[1]!))
+      fail("rsa key algorithm parameters");
+    rsa = parseRsaPublicKey(bitStringBytes(spkiParts[1]!).bytes);
+  } else return fail("unsupported key type");
 
   const extensions = new Map<string, X509Extension>();
   // The optional trailing fields, each at most once and in order: [1] issuerUniqueID, [2]
@@ -368,6 +464,18 @@ export function parseCertificate(der: Uint8Array): X509Certificate {
     digitalSignature = bytes.length > 0 && (bytes[0]! & 0x80) !== 0;
   }
 
+  let extendedKeyUsage: string[] | null = null;
+  const eku = extensions.get(OID.extKeyUsage);
+  if (eku) {
+    const purposes = derChildren(
+      expect(readDerExact(eku.value), TAG_SEQUENCE, "extKeyUsage"),
+    );
+    if (purposes.length === 0) fail("empty extKeyUsage");
+    extendedKeyUsage = purposes.map((p) =>
+      decodeOid(expect(p, TAG_OID, "key purpose").value),
+    );
+  }
+
   return {
     der,
     tbs: tbsNode.der,
@@ -378,13 +486,58 @@ export function parseCertificate(der: Uint8Array): X509Certificate {
     notBefore,
     notAfter,
     spki: spkiNode.der,
+    keyType,
     curve,
+    rsa,
     extensions,
     ca,
     pathLen,
     keyCertSign,
     digitalSignature,
+    extendedKeyUsage,
   };
+}
+
+/**
+ * Every value of the subject's attribute `oid` (`OID.commonName`, `OID.organization`,
+ * `OID.organizationalUnit`), in order. Only UTF8String, PrintableString and IA5String values are
+ * read, and a control character in one refuses; any other string type under the OID refuses
+ * rather than being skipped. No match answers `[]`: callers compare for exact equality.
+ */
+export function subjectAttributes(
+  cert: X509Certificate,
+  oid: string,
+): string[] {
+  const out: string[] = [];
+  for (const rdn of derChildren(
+    expect(readDerExact(cert.subject), TAG_SEQUENCE, "name"),
+  )) {
+    for (const atv of derChildren(expect(rdn, TAG_SET, "rdn"))) {
+      const parts = derChildren(expect(atv, TAG_SEQUENCE, "attribute"));
+      if (parts.length !== 2) fail("attribute shape");
+      if (decodeOid(expect(parts[0], TAG_OID, "attribute oid").value) !== oid)
+        continue;
+      const v = parts[1]!;
+      if (v.tag !== 0x0c && v.tag !== 0x13 && v.tag !== 0x16)
+        fail("unsupported attribute string type");
+      let text: string;
+      try {
+        text = new TextDecoder("utf-8", {
+          fatal: true,
+          ignoreBOM: true,
+        }).decode(v.value);
+      } catch {
+        return fail("bad attribute string");
+      }
+      // No C0 control characters or DEL (an embedded NUL must not truncate a comparison).
+      for (let k = 0; k < text.length; k++) {
+        const c = text.charCodeAt(k);
+        if (c < 0x20 || c === 0x7f) fail("control character in attribute");
+      }
+      out.push(text);
+    }
+  }
+  return out;
 }
 
 // ── Signatures ───────────────────────────────────────────────────────────────────────────────
@@ -414,6 +567,7 @@ export async function certificateKey(
 ): Promise<CryptoKey> {
   // A key that is not a valid curve point makes WebCrypto throw a DataError; that is a
   // refused certificate, not a crash.
+  if (cert.keyType !== "ecdsa" || !cert.curve) return fail("not an ec key");
   try {
     return await crypto.subtle.importKey(
       "spki",
@@ -431,12 +585,32 @@ async function signedBy(
   child: X509Certificate,
   issuer: X509Certificate,
 ): Promise<boolean> {
+  const rsaHash = RSA_HASH[child.signatureAlgorithm];
+  if (rsaHash) {
+    // An RSA signature needs an RSA issuer key, and is exactly one modulus long.
+    if (issuer.keyType !== "rsa" || !issuer.rsa) return fail("issuer key type");
+    if (child.signature.length !== Math.ceil(issuer.rsa.modulusBits / 8))
+      return fail("rsa signature length");
+    const key = await rsaCertificateKey(issuer, rsaHash);
+    try {
+      return await crypto.subtle.verify(
+        { name: "RSASSA-PKCS1-v1_5" },
+        key,
+        toArrayBuffer(child.signature),
+        toArrayBuffer(child.tbs),
+      );
+    } catch {
+      return fail("bad certificate signature");
+    }
+  }
   const hash =
     child.signatureAlgorithm === OID.ecdsaSha256
       ? "SHA-256"
       : child.signatureAlgorithm === OID.ecdsaSha384
         ? "SHA-384"
         : fail("unsupported signature algorithm");
+  if (issuer.keyType !== "ecdsa" || !issuer.curve)
+    return fail("issuer key type");
   const raw = ecdsaDerToRaw(
     child.signature,
     issuer.curve === "P-256" ? 32 : 48,
@@ -451,6 +625,25 @@ async function signedBy(
     );
   } catch {
     return fail("bad certificate signature");
+  }
+}
+
+/** The certificate's RSA public key as a WebCrypto RSASSA-PKCS1-v1_5 verify key for `hash`. */
+export async function rsaCertificateKey(
+  cert: X509Certificate,
+  hash: "SHA-256" | "SHA-384" | "SHA-512" = "SHA-256",
+): Promise<CryptoKey> {
+  if (cert.keyType !== "rsa") return fail("not an rsa key");
+  try {
+    return await crypto.subtle.importKey(
+      "spki",
+      toArrayBuffer(cert.spki),
+      { name: "RSASSA-PKCS1-v1_5", hash },
+      false,
+      ["verify"],
+    );
+  } catch {
+    return fail("invalid public key");
   }
 }
 
@@ -479,6 +672,14 @@ export interface ChainPolicy {
    * Absent = not checked.
    */
   leafDigitalSignature?: "require" | "ifPresent";
+  /** Key and signature families the chain may use, every certificate included. Default
+   *  `["ecdsa"]`, which leaves existing callers as they were; `"rsa"` is opt-in. */
+  algorithms?: readonly KeyAlgorithm[];
+  /** An extendedKeyUsage purpose OID the leaf must list (exact; anyExtendedKeyUsage does not
+   *  satisfy it). Setting it also lets the leaf mark that extension critical. */
+  leafExtendedKeyUsage?: string;
+  /** The hash the returned leaf key is imported for when the leaf is RSA (default SHA-256). */
+  leafRsaHash?: "SHA-256" | "SHA-384" | "SHA-512";
 }
 
 /** One extension's DER value (the extnValue contents) and criticality, or `null`. */
@@ -508,7 +709,8 @@ export async function verifyChain(
     fail("chain length");
   const last = chain[chain.length - 1]!;
   if (!policy.roots.some((r) => equalBytes(r, last))) fail("untrusted root");
-  const certs = chain.map(parseCertificate);
+  const algorithms = policy.algorithms ?? ["ecdsa"];
+  const certs = chain.map((c) => parseCertificate(c, algorithms));
   const understood = new Set([
     OID.basicConstraints,
     OID.keyUsage,
@@ -518,7 +720,11 @@ export async function verifyChain(
     if (policy.at < c.notBefore || policy.at > c.notAfter)
       fail("certificate not valid now");
     for (const [oid, ext] of c.extensions)
-      if (ext.critical && !understood.has(oid))
+      if (
+        ext.critical &&
+        !understood.has(oid) &&
+        !(k === 0 && oid === OID.extKeyUsage && policy.leafExtendedKeyUsage)
+      )
         fail("unknown critical extension");
     if (k > 0 && k < certs.length - 1)
       for (const oid of policy.intermediateOids ?? [])
@@ -526,6 +732,11 @@ export async function verifyChain(
   }
   for (const oid of policy.leafOids ?? [])
     if (!certs[0]!.extensions.has(oid)) fail("leaf oid missing");
+  if (
+    policy.leafExtendedKeyUsage !== undefined &&
+    !certs[0]!.extendedKeyUsage?.includes(policy.leafExtendedKeyUsage)
+  )
+    fail("leaf extended key usage");
   const leafDs = certs[0]!.digitalSignature;
   if (
     (policy.leafDigitalSignature === "require" && leafDs !== true) ||
@@ -549,7 +760,10 @@ export async function verifyChain(
   if (certs[0]!.ca && certs.length > 1) fail("leaf is a CA");
   return {
     leaf: certs[0]!,
-    key: await certificateKey(certs[0]!),
+    key:
+      certs[0]!.keyType === "rsa"
+        ? await rsaCertificateKey(certs[0]!, policy.leafRsaHash)
+        : await certificateKey(certs[0]!),
     chain: certs,
   };
 }

@@ -4733,6 +4733,8 @@
         "state": "confirm",
         "copy": [
           "signin.auto.confirm.as",
+          "signin.auto.confirm.asGameCenter",
+          "signin.auto.confirm.asPlayGames",
           "signin.auto.confirm.other",
           "signin.auto.confirm.primary",
           "signin.auto.confirm.title",
@@ -4766,6 +4768,8 @@
         "state": "confirm",
         "copy": [
           "signin.auto.confirm.as",
+          "signin.auto.confirm.asGameCenter",
+          "signin.auto.confirm.asPlayGames",
           "signin.auto.confirm.other",
           "signin.auto.confirm.primary",
           "signin.auto.confirm.title",

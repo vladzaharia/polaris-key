@@ -37,6 +37,16 @@ import PolarisKeyCore
 public enum ExchangeKind: String, Sendable, Equatable, CaseIterable {
     case google
     case apple
+    /// Game Center (§12.11.7): the `gc1.` token, a different `subject_token_type`.
+    case gamecenter
+
+    /// The grant's `subject_token_type`.
+    var subjectTokenType: String {
+        switch self {
+        case .google, .apple: return "urn:ietf:params:oauth:token-type:id_token"
+        case .gamecenter: return "urn:polaris-key:token-type:gamecenter-signature"
+        }
+    }
 }
 
 /// A nonce the Worker issued for one exchange: 300 seconds, spent by the first attempt. Printing
@@ -205,7 +215,6 @@ struct SignedOutDuringLadder: Error {}
 
 extension IdentityClient {
     static let exchangeGrantType = "urn:ietf:params:oauth:grant-type:token-exchange"
-    static let idTokenType = "urn:ietf:params:oauth:token-type:id_token"
 
     /// Ask the Worker for a nonce for `kind`, registering this device's public keys with it. Send
     /// the value to the platform, then pass it to `exchange(kind:subjectToken:nonce:)`.
@@ -265,7 +274,7 @@ extension IdentityClient {
             tokenHash: Base64URL.encode(Data(SHA256.hash(data: Data(subjectToken.utf8)))))
         let pairs: [(String, String)] = [
             ("grant_type", Self.exchangeGrantType), ("client_id", core.product),
-            ("subject_token", subjectToken), ("subject_token_type", Self.idTokenType),
+            ("subject_token", subjectToken), ("subject_token_type", kind.subjectTokenType),
             ("nonce", value), ("device_key", keys.signKey), ("proof", proof.sig),
         ]
         let form = pairs.map { "\(ManageLink.formEncode($0.0))=\(ManageLink.formEncode($0.1))" }

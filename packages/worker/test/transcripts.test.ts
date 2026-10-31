@@ -29,6 +29,13 @@ vi.mock("jose", async (importOriginal) => {
   return { ...actual, createRemoteJWKSet: () => idpKeyResolver };
 });
 
+// The Game Center scenarios run the real verifier against a fixture RSA chain (I-14.9): only
+// Apple's pinned trust anchors are swapped, and there is no runtime switch for that.
+vi.mock("../src/services/identity/providers/gameCenterAnchors.js", async () => {
+  const { gameCenterAnchors } = await import("./transcripts/gameChain.js");
+  return gameCenterAnchors();
+});
+
 describe("HTTP transcripts", () => {
   const rendered = new Map<string, string>();
 

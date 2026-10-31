@@ -241,6 +241,18 @@
 //                   sends nothing, a step with no exchanges, because the last discovery names no
 //                   `exchange` member (§12.11.6), or a 404 answers the nonce or token route, the
 //                   Worker having rolled the launch gate back after discovery)
+// Game kinds (I-14.9, WIRE-CONTRACT-V5 §12.11.7; `identity.gamecenter`, `identity.pgs`): `kind` may
+// also be "gamecenter" or "pgs", and the subject token is not recorded whole. `args.gameCenter` is
+// {publicKeyUrl, signature, salt, timestamp, teamPlayerId, bundleId}: `signature` and `salt` are
+// base64url, `timestamp` is Apple's, in milliseconds, and the rest are text. The SDK encodes the
+// `gc1.` token itself (six dot-joined fields after the prefix: base64url of the UTF-8 URL, the
+// signature, the salt, the decimal timestamp, base64url of the player id, base64url of the
+// bundle id), sends it with subject_token_type urn:polaris-key:token-type:gamecenter-signature,
+// and the recorded form is matched exactly, so the transcript pins the encoding. `args.serverAuthCode`
+// is the Play Games code, sent as it is with subject_token_type
+// urn:polaris-key:token-type:pgs-server-auth-code. The proof's token hash covers the encoded
+// token. A 503 from the Worker is `result` "refused" with `code` "unavailable" (a failure to retry
+// later; the rung itself is there).
 // A `confirm` or `choose` answer is completed by a `choiceComplete` step whose body (the
 // consent, the choice) is the one the recording sent; its `expect` is an exchange `ok`.
 // A `discover` step in these transcripts also pins `exchange` (the fragment's member or null)
@@ -255,7 +267,12 @@
 // handle's). The proof is `pkey-proof/1` with purpose `link`, the handle as value and `-` as the
 // token hash. `expect`: `result` "ok" with `linked` {kind, reach} ("global" | "developer"), or
 // "refused" with `status` and `code` (`step_up_required`, `link_conflict`, `not_found`,
-// `invalid_grant`). A transcript whose feature is `identity.link` is replayed only by an SDK
+// `invalid_grant`). A `link` step with no `args.linkHandle` links by token (I-14.9): the client
+// posts for a nonce, then `POST …/identity/link` with {subjectToken, subjectTokenType, nonce,
+// signKey, agreeKey, proof}; `args.subjectTokenType` and the token's own args (`serverAuthCode`
+// or `gameCenter`, see `exchange`) say what is sent, the proof's value is `<nonce>.<signKey>`
+// and its token hash covers the token. `linked.kind` may be "gamecenter" or "pgs" (reach
+// "developer"), and an offer lists them with reach "developer". A transcript whose feature is `identity.link` is replayed only by an SDK
 // that marks it implemented.
 // keyringGet / keyringCreate / keyringWrap / keyringUnwrap / keyringRecoverySet /
 // keyringRecoveryGet / keyringAdopt / keyringReset (U-36.4, WIRE-CONTRACT-V5 §13.11.2) — the
