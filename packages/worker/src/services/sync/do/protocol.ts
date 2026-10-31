@@ -123,6 +123,8 @@ export type CloudSyncOp =
       n: number;
       etag?: string;
       bytes?: number;
+      /** The key `filePrepare` answered, sent by the single route: used only to ask whether a file holds it. */
+      key?: string;
       serverNow: number;
     })
   /**
@@ -374,7 +376,7 @@ export type CloudSyncReply =
   | { op: "filePrepare"; outcome: FilePrepareOutcome }
   | { op: "fileResolve"; outcome: FileResolveOutcome }
   | { op: "fileRevisions"; outcome: FileRevisionsOutcome }
-  | { op: "filePart"; outcome: FileAbortOutcome }
+  | { op: "filePart"; outcome: FilePartOutcome }
   | { op: "fileFinalizePrepare"; outcome: FinalizePrepareOutcome }
   | { op: "fileFinalizeCommit"; outcome: FinalizeCommitOutcome }
   | { op: "fileFinalizeEnd"; outcome: FileAbortOutcome }
@@ -501,6 +503,11 @@ export type FileResolveOutcome =
 export type FileRevisionsOutcome = { ok: true; revisions: FileRevision[] };
 
 export type FileAbortOutcome = { ok: true } | { ok: false; error: "not_found" };
+
+/** `kept`: the refusal came from a stored file or a running finalize that holds the object, so the bytes stay. */
+export type FilePartOutcome =
+  | { ok: true }
+  | { ok: false; error: "not_found"; kept?: true };
 
 export type CloudSyncError = {
   error:

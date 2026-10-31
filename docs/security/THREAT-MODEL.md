@@ -8645,17 +8645,24 @@ page.
   A device gets 30 file transfers an hour (a `begin` or a whole-file `GET`) and 600 other file
   requests a minute. Size is checked against the collection's `files.maxBytes` before an object is
   touched. Quota never deletes.
-- **Compare-and-swap at finalize.** `begin` records `baseVersion`; `finalize` re-checks it inside
-  the person's object, so any write since is `409 revision_conflict` with the server's version and
-  the upload ends (its bytes are deleted, its reservation released). Two devices cannot both win,
-  and a stale writer cannot overwrite silently. `finalize` is idempotent per `uploadId`, and a
-  repeat charges nothing.
-- **Streamed SHA-256.** A single `PUT` goes to R2 create-only with the declared `sha256`, so R2
-  refuses bytes that do not hash to it and nothing is stored. A part is hashed on its way to R2 and
-  compared with its `Content-Digest`; a part that does not verify is forgotten. `finalize` streams
-  the assembled object through SHA-256 (no buffering) and checks size and hash against `begin`: a
-  mismatch is `400 upload_mismatch`, deletes the object and releases the reservation. The hash is
-  of what is stored, so in end-to-end mode the server never sees a plaintext hash.
+- **Compare-and-swap at finalize.** `begin` checks `baseVersion` (a number, `"*"` or absent) and
+  records it; `finalize` re-checks it inside the person's object, so any write since is
+  `409 revision_conflict` with the server's version and the upload ends (its bytes are deleted,
+  its reservation released). When `begin` carried a `baseVersion`, two devices cannot both win
+  and a stale writer cannot overwrite silently; an upload begun without one is an unconditional
+  write, and the file it replaces stays a revision. The SDKs' saves always send one. `finalize`
+  is idempotent per `uploadId` and a repeat charges nothing; a repeat that arrives while the first
+  is running is a retryable `503`.
+- **SHA-256 of what is stored.** A single `PUT` goes to R2 create-only with the declared
+  `sha256`, so R2 refuses bytes that do not hash to it and nothing is stored; a resend of one
+  that landed changes nothing. A part is hashed on its way to R2 and compared with its
+  `Content-Digest`; a part that does not verify is forgotten and must be resent. At `finalize` a
+  multipart object is completed and streamed through SHA-256 (no buffering); a single object is
+  accepted on the SHA-256 R2 checked at the `PUT`, and streamed when R2 holds none. Size and hash
+  must match `begin`: a mismatch is `400 upload_mismatch`, deletes the object and releases the
+  reservation. Bytes that land after their session closed are deleted, unless a stored file or a
+  running `finalize` holds that object. The hash is of what is stored, so in end-to-end mode the
+  server never sees a plaintext hash.
 - **T11 (amended), shredding with SSE-C per person.** Server-mode files (`enc: "none"`) are stored
   under a random SSE-C key per person, kept in the person's object, so deleting the object's rows
   makes every R2 copy unreadable. End-to-end files are ciphertext and take no SSE-C key. The flag
@@ -8684,6 +8691,14 @@ page.
   still bounds the work with the reservation, the open-uploads cap and the quota, so the exposure
   is request volume from an authenticated device during a limiter outage. Closing it would turn a
   limiter outage into a Cloud Sync outage.
+- **Residual (accepted), the server-mode save window.** A save is two writes: `finalize`, then
+  the metadata `set` on the `version` it answered (WIRE-CONTRACT-V5 §13.7). Both are
+  compare-and-swap and the file pointer moves only at a verified commit, so a committed save is
+  never partial, and a metadata `set` that loses is a conflict the client sees. Between the two
+  writes, and until the next save if the client stops between them, a pull shows the new file
+  with the previous save's metadata: the record's `version` equals its live file's, and the
+  previous file is the newest revision. End-to-end mode binds the metadata to its file
+  (§13.10.4); server mode has no binding, so a reader tells the pair apart by that version rule.
 - **Tests:** `test/services/sync/cloudSyncFiles{Begin,Upload,Finalize,Get,Gc,Store}.test.ts`,
   `cloudSyncDeletion.test.ts`, `cloudSyncMergeRecords.test.ts`, the `cloudsync-files-*`
   transcripts.

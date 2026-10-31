@@ -356,13 +356,16 @@ export class CloudSyncDO implements DurableObject {
       return objectError("pin_mismatch", 403);
     // An absorbed object (account merge) takes no write; only an erasure (`deleteAll`) and the
     // merge's own repeat delete get through. Reads answer empty.
+    // `filePart` on an erased object is answered (an empty object refuses it): the Worker then
+    // deletes the bytes that landed after the erasure. An absorbed object still answers 410.
     if (
       (this.store.getMeta("absorbed_into") !== undefined ||
         this.store.getMeta("erased_at") !== undefined) &&
       (op.op === "push" ||
         op.op === "absorb" ||
         op.op === "fileBegin" ||
-        op.op === "filePart" ||
+        (op.op === "filePart" &&
+          this.store.getMeta("absorbed_into") !== undefined) ||
         op.op === "fileChunkPlan" ||
         op.op === "chunkStored" ||
         op.op === "fileFinalizePrepare" ||

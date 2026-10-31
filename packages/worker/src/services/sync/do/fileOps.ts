@@ -496,8 +496,23 @@ export function filePart(
     u?.mode === "multipart" && u.partBytes !== null
       ? Math.ceil(u.size / u.partBytes)
       : 1;
-  if (!u || u.state !== "open" || u.expiresAt <= op.serverNow || op.n > parts)
-    return ok({ op: "filePart", outcome: { ok: false, error: "not_found" } });
+  if (!u || u.state !== "open" || u.expiresAt <= op.serverNow || op.n > parts) {
+    // A refusal tells the Worker its object belongs to no one, except when a running finalize or a
+    // stored file holds it. The key is only looked up here, never used to address R2.
+    const kept =
+      u?.state === "finalizing" ||
+      (op.key !== undefined &&
+        op.key.endsWith(`/o/${op.uploadId}`) &&
+        host.store.fileKeyInUse(op.key));
+    return ok({
+      op: "filePart",
+      outcome: {
+        ok: false,
+        error: "not_found",
+        ...(kept ? { kept: true as const } : {}),
+      },
+    });
+  }
   host.store.transaction(() => {
     if (op.etag === undefined) host.store.deletePart(u.uploadId, op.n);
     else

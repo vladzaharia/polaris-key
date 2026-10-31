@@ -22,12 +22,16 @@ import {
   call,
   digestHeader,
   errorCode,
+  filesPath,
   filesWorld,
+  finalize,
   meta,
   putBytes,
   setGate,
+  sha256Hex,
   uploadPath,
   uploadRow,
+  usageOf,
   type FilesWorld,
 } from "./cloudSyncFilesWorld.js";
 import { invalidatePlatformSettings } from "../../../src/core/platformSettings.js";
@@ -510,5 +514,73 @@ describe("the byte routes' front door", () => {
     expect(
       (await putBytes(w, uploadPath("saves", "s1", up.uploadId), bytes)).status,
     ).toBe(204);
+  });
+});
+
+describe("a single PUT that lands after its session left open", () => {
+  /** Runs `during` at the moment the next R2 `put` is called (the bytes are on their way). */
+  const atNextPut = (w: FilesWorld, during: () => Promise<void>) => {
+    const real = w.r2.put.bind(w.r2);
+    w.r2.put = async (...args: Parameters<typeof real>) => {
+      w.r2.put = real;
+      await during();
+      return real(...args);
+    };
+  };
+
+  it("a single PUT that lands after finalize keeps the stored file", async () => {
+    const { w, bytes, up, path } = await single(1000);
+    expect((await putBytes(w, path, bytes)).status).toBe(204);
+    const key = keyOf(w, up.uploadId);
+    let used: Record<string, number> = {};
+    atNextPut(w, async () => {
+      expect((await finalize(w, "saves", "s1", up.uploadId)).status).toBe(200);
+      used = usageOf(w);
+    });
+    const late = await putBytes(w, path, bytes);
+    expect(late.status).toBe(404);
+    expect(w.r2.keys()).toEqual([key]);
+    const got = await call(w, "GET", filesPath("saves", "s1", "").slice(0, -1));
+    expect(got.status).toBe(200);
+    expect(sha256Hex(new Uint8Array(await got.arrayBuffer()))).toBe(
+      sha256Hex(bytes),
+    );
+    expect(usageOf(w)).toEqual(used);
+  });
+
+  it("a single PUT that lands while finalize holds the session keeps the object, and the file commits", async () => {
+    const { w, bytes, up, path } = await single(1000);
+    expect((await putBytes(w, path, bytes)).status).toBe(204);
+    const key = keyOf(w, up.uploadId);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let held!: () => void;
+    const holding = new Promise<void>((r) => (held = r));
+    let running: Promise<Response> | undefined;
+    atNextPut(w, async () => {
+      // The finalize holds the session in `finalizing` while it checks the stored object.
+      // The object checks the stored object first (the claim is taken then); the Worker's own
+      // check is the second `head`, and that is where the finalize waits.
+      const head = w.r2.head.bind(w.r2);
+      let heads = 0;
+      w.r2.head = async (...a: Parameters<typeof head>) => {
+        if (++heads < 2) return head(...a);
+        w.r2.head = head;
+        held();
+        await gate;
+        return head(...a);
+      };
+      running = finalize(w, "saves", "s1", up.uploadId);
+      await holding;
+    });
+    const late = await putBytes(w, path, bytes);
+    expect(late.status).toBe(404);
+    expect(w.r2.keys()).toEqual([key]);
+    release();
+    expect((await running!).status).toBe(200);
+    expect(w.r2.keys()).toEqual([key]);
+    expect(
+      (await call(w, "GET", filesPath("saves", "s1", "").slice(0, -1))).status,
+    ).toBe(200);
   });
 });

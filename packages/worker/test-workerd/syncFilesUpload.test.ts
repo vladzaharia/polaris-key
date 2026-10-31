@@ -448,6 +448,8 @@ describe("delta files under workerd (U-37)", () => {
         serverNow: NOW,
       });
       await runDurableObjectAlarm(stub);
+      // The abort set the alarm to now and workerd already started it: wait for that run.
+      await runInDurableObject(stub, async () => undefined);
       expect(await bucket().head(key)).toBeNull();
       const rows = await runInDurableObject(
         stub,

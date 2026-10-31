@@ -27,7 +27,8 @@
  *      its `Content-Digest` afterwards; a part that does not verify is forgotten, because R2 may
  *      have replaced a good part of the same number with it.
  *   5. The object records the part. A session that closed meanwhile takes nothing, and a single
- *      object that landed in that window is deleted.
+ *      object that landed in that window is deleted, unless a stored file or a running finalize
+ *      holds it.
  */
 
 import { SYNC_SINGLE_PUT_MAX_BYTES } from "@polaris-key/protocol/sync";
@@ -36,7 +37,7 @@ import type { RouteMatch } from "../../../core/http/routes.js";
 import { checksumHex } from "../../../core/assets/blobs.js";
 import { notFound, wireError } from "../../../core/errors.js";
 import { callCloudSync } from "../do/client.js";
-import type { FilePrepareOutcome } from "../do/protocol.js";
+import type { FilePartOutcome, FilePrepareOutcome } from "../do/protocol.js";
 import { fileCall, withObject, type FileCall } from "./files.js";
 import { fixedLength, hashBody, parseContentDigest } from "./fileStream.js";
 import { retryable } from "./common.js";
@@ -107,8 +108,8 @@ async function recorded(
   ctx: ServiceContext,
   match: RouteMatch,
   call: FileCall,
-  part: { n: number; etag?: string; bytes?: number },
-): Promise<boolean | Response> {
+  part: { n: number; etag?: string; bytes?: number; key?: string },
+): Promise<FilePartOutcome | Response> {
   const out = await withObject(ctx, call.caller, (pin) =>
     callCloudSync<"filePart">(ctx.env, pin, {
       op: "filePart",
@@ -120,7 +121,7 @@ async function recorded(
     }),
   );
   if (out instanceof Response) return out;
-  return out.value.outcome.ok;
+  return out.value.outcome;
 }
 
 // ── PUT …/upload/{uploadId}: mode single ─────────────────────────────────────────────────────
@@ -173,11 +174,13 @@ export async function handleUploadPut(
     n: 1,
     etag,
     bytes: prep.size,
+    key: prep.key,
   });
   if (saved instanceof Response) return saved;
-  if (!saved) {
-    // The session closed while the bytes were on their way; they belong to no one.
-    await bucket.delete(prep.key).catch(() => undefined);
+  if (!saved.ok) {
+    // The session closed while the bytes were on their way; they belong to no one, unless a stored
+    // file or a running finalize holds the object.
+    if (!saved.kept) await bucket.delete(prep.key).catch(() => undefined);
     return notFound();
   }
   return new Response(null, { status: 204, headers: NO_STORE });
@@ -230,7 +233,7 @@ export async function handlePartPut(
 
   const saved = await recorded(ctx, match, call, { n, etag, bytes: expected });
   if (saved instanceof Response) return saved;
-  return saved
+  return saved.ok
     ? new Response(null, { status: 204, headers: NO_STORE })
     : notFound();
 }

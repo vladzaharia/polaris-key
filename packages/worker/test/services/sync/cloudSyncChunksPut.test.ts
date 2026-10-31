@@ -15,7 +15,9 @@ import {
   bytesOf,
   call,
   errorCode,
+  filesPath,
   filesWorld,
+  finalize,
   meta,
   rows,
   spendLimit,
@@ -33,6 +35,7 @@ import {
   plan,
   planned,
   putChunk,
+  putManifest,
   type TestChunk,
 } from "./cloudSyncChunksWorld.js";
 
@@ -341,5 +344,40 @@ describe("GET …/files/{collection}/chunks/{chunkId}", () => {
         })
       ).status,
     ).toBe(401);
+  });
+});
+
+describe("a manifest PUT that lands after its session left open", () => {
+  it("a manifest PUT that lands after finalize keeps the delta file's manifest", async () => {
+    const w = await filesWorld();
+    const manifest = manifestOf(4);
+    const a = chunkOf(1);
+    const up = await beginChunks(w, "delta", "slot", manifest);
+    await planned(w, "delta", "slot", up.uploadId, [a]);
+    expect((await putChunk(w, "delta", "slot", up.uploadId, a)).status).toBe(
+      204,
+    );
+    expect(
+      (await putManifest(w, "delta", "slot", up.uploadId, manifest)).status,
+    ).toBe(204);
+    const key = `u/${SLUG}/${w.subject}/o/${up.uploadId}`;
+    const real = w.r2.put.bind(w.r2);
+    w.r2.put = async (...args: Parameters<typeof real>) => {
+      w.r2.put = real;
+      expect((await finalize(w, "delta", "slot", up.uploadId)).status).toBe(
+        200,
+      );
+      return real(...args);
+    };
+    const late = await putManifest(w, "delta", "slot", up.uploadId, manifest);
+    expect(late.status).toBe(404);
+    expect(w.r2.keys()).toContain(key);
+    const got = await call(
+      w,
+      "GET",
+      filesPath("delta", "slot", "").slice(0, -1),
+    );
+    expect(got.status).toBe(200);
+    expect(new Uint8Array(await got.arrayBuffer())).toEqual(manifest);
   });
 });
