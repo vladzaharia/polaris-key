@@ -47,6 +47,13 @@ describe("device keys migration", () => {
     await ins("q", "d2");
   });
 
+  it("indexes the signing key per product", async () => {
+    const row = await makeTestDb().first<{ name: string }>(
+      "SELECT name FROM pragma_index_list('device_keys') WHERE name = 'idx_device_keys_sign'",
+    );
+    expect(row).toEqual({ name: "idx_device_keys_sign" });
+  });
+
   it("the index assertion names the index and the deployed schema satisfies it", async () => {
     const files = readdirSync(join(ROOT, "migrations"))
       .filter((f) => f.endsWith("_index_assertion.sql"))

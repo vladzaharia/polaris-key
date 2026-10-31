@@ -1,7 +1,7 @@
 // Device keys store (CC-03.1): upsert and rotation, the unique agreeKey, account listing, delete on
 // purge, and the `keys` proof of possession.
 import { describe, expect, it } from "vitest";
-import { base64UrlEncodeBytes } from "@polaris-key/jws";
+import { base64UrlDecode, base64UrlEncodeBytes } from "@polaris-key/jws";
 import { makeTestDb } from "../../helpers.js";
 import {
   DeviceKeysConflictError,
@@ -62,6 +62,12 @@ function agree(): string {
   const raw = crypto.getRandomValues(new Uint8Array(32));
   raw[31]! &= 0x7f;
   return b64(raw);
+}
+
+/** True when the key's top bit is set: it is not a canonical agreement key. */
+function b64FirstBitSet(k: string): boolean {
+  const raw = base64UrlDecode(k);
+  return (raw[31]! & 0x80) !== 0;
 }
 
 async function keys(): Promise<{
@@ -139,6 +145,106 @@ describe("device keys store", () => {
       { ...s, agreeKey: a.agreeKey },
       2,
     );
+  });
+
+  it("a key string is held by one device and one role per product", async () => {
+    const db = makeTestDb();
+    const a = await keys();
+    await upsertDeviceKeys(db, P, "dev_a", a, 1);
+    // Another device's signing key, as a signing key.
+    await expect(
+      upsertDeviceKeys(
+        db,
+        P,
+        "dev_b",
+        { ...(await keys()), signKey: a.signKey },
+        2,
+      ),
+    ).rejects.toBeInstanceOf(DeviceKeysConflictError);
+    // An agreement key equal to another device's signing key (one that reads as a valid agreement key).
+    let s = await signPair();
+    while (b64FirstBitSet(s.signKey)) s = await signPair();
+    await upsertDeviceKeys(
+      db,
+      P,
+      "dev_c",
+      { signKey: s.signKey, agreeKey: agree() },
+      3,
+    );
+    await expect(
+      upsertDeviceKeys(
+        db,
+        P,
+        "dev_b",
+        { signKey: (await signPair()).signKey, agreeKey: s.signKey },
+        4,
+      ),
+    ).rejects.toBeInstanceOf(DeviceKeysConflictError);
+    // One key in both roles.
+    await expect(
+      upsertDeviceKeys(
+        db,
+        P,
+        "dev_d",
+        { signKey: s.signKey, agreeKey: s.signKey },
+        5,
+      ),
+    ).rejects.toBeInstanceOf(DeviceKeysConflictError);
+    expect(await getDeviceKeys(db, P, "dev_b")).toBeNull();
+    expect(await getDeviceKeys(db, P, "dev_d")).toBeNull();
+    // Another product is a separate space.
+    await upsertDeviceKeys(
+      db,
+      "other",
+      "dev_b",
+      { ...(await keys()), signKey: a.signKey },
+      6,
+    );
+  });
+
+  it("a rotation that matched no row is refused when another set was stored, and kept unchanged for the same set", async () => {
+    const db = makeTestDb();
+    await upsertDeviceKeys(db, P, "dev_a", await keys(), 1);
+    const racing = (
+      write: (want: { signKey: string; agreeKey: string }) => string[],
+    ) => {
+      const wrapped = Object.create(db) as SqliteDb;
+      return (want: { signKey: string; agreeKey: string }) => {
+        wrapped.batchChanges = async (stmts) => {
+          const [sql, ...params] = write(want);
+          await db.run(sql!, ...params);
+          return db.batchChanges!(stmts);
+        };
+        return wrapped;
+      };
+    };
+    // A different set lands between the read and the write: the loser is refused.
+    const want = await keys();
+    const other = await keys();
+    const lose = racing(() => [
+      "UPDATE device_keys SET sign_key = ?, agree_key = ?, key_seq = key_seq + 1 WHERE product = ? AND device_id = ?",
+      other.signKey,
+      other.agreeKey,
+      P,
+      "dev_a",
+    ])(want);
+    await expect(
+      upsertDeviceKeys(lose, P, "dev_a", want, 2),
+    ).rejects.toBeInstanceOf(DeviceKeysInvalidError);
+    // The same set lands: the answer is correct, nothing changed here.
+    const same = racing(() => [
+      "UPDATE device_keys SET sign_key = ?, agree_key = ?, key_seq = key_seq + 1 WHERE product = ? AND device_id = ?",
+      want.signKey,
+      want.agreeKey,
+      P,
+      "dev_a",
+    ])(want);
+    await expect(
+      upsertDeviceKeys(same, P, "dev_a", want, 3),
+    ).resolves.toMatchObject({
+      changed: false,
+      rotated: false,
+    });
   });
 
   it("the unique index is the arbiter when the read-then-write loses a race", async () => {

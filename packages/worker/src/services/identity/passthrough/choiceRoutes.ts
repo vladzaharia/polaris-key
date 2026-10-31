@@ -61,7 +61,7 @@ import { markFresh } from "./fresh.js";
 import {
   DeviceKeysConflictError,
   DeviceKeysInvalidError,
-  agreeKeyHeldElsewhere,
+  deviceKeysHeldElsewhere,
   deviceSignKey,
 } from "../../../core/devices/keys.js";
 import { registerDeviceKeys } from "../../../core/devices/registerKeys.js";
@@ -326,12 +326,7 @@ export async function handleChoice(
     heldSignKey = await deviceSignKey(db, product.slug, deviceId);
     if (
       (heldSignKey !== null && heldSignKey !== taken.keys.signKey) ||
-      (await agreeKeyHeldElsewhere(
-        db,
-        product.slug,
-        taken.keys.agreeKey,
-        deviceId,
-      ))
+      (await deviceKeysHeldElsewhere(db, product.slug, taken.keys, deviceId))
     )
       return invalidGrant();
   }

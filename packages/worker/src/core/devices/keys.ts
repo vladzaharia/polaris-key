@@ -253,8 +253,8 @@ export interface UpsertResult {
  * re-registration continues the count and `keySeq` only increases. `popAt` is the `issuedAt` of the
  * proof behind the write: a change must carry one strictly newer than the last accepted for the
  * device, so a captured proof cannot be replayed. Throws `DeviceKeysInvalidError` for a bad key or a
- * stale proof and `DeviceKeysConflictError` when another device of the product holds the
- * `agreeKey`. Callers own the device check and the rate limit.
+ * stale proof and `DeviceKeysConflictError` when another device of the product holds either
+ * key string (in either role), or the two keys are equal. Callers own the device check and the rate limit.
  */
 export async function upsertDeviceKeys(
   db: Db,
@@ -271,12 +271,8 @@ export async function upsertDeviceKeys(
   heldSignKey?: string | null,
 ): Promise<UpsertResult> {
   if (!validateDeviceKeys(keys)) throw new DeviceKeysInvalidError();
-  const held = await db.first<{ device_id: string }>(
-    "SELECT device_id FROM device_keys WHERE product = ? AND agree_key = ?",
-    product,
-    keys.agreeKey,
-  );
-  if (held && held.device_id !== deviceId) throw new DeviceKeysConflictError();
+  if (await deviceKeysHeldElsewhere(db, product, keys, deviceId))
+    throw new DeviceKeysConflictError();
   const current = await getDeviceKeys(db, product, deviceId);
   if (
     current &&
@@ -291,17 +287,8 @@ export async function upsertDeviceKeys(
   ) {
     throw new DeviceKeysInvalidError();
   }
-  const floor = await db.first<{ pop_at: number | null }>(
-    "SELECT pop_at FROM device_key_floor WHERE product = ? AND device_id = ?",
-    product,
-    deviceId,
-  );
-  if (
-    popAt !== undefined &&
-    floor?.pop_at !== null &&
-    floor?.pop_at !== undefined &&
-    popAt <= floor.pop_at
-  ) {
+  const floorAt = await deviceKeyFloorPopAt(db, product, deviceId);
+  if (popAt !== undefined && floorAt !== null && popAt <= floorAt) {
     throw new DeviceKeysInvalidError();
   }
   const write: DbStatement = current
@@ -340,7 +327,9 @@ export async function upsertDeviceKeys(
         sql: `INSERT INTO device_key_floor (product, device_id, key_seq, pop_at)
               SELECT product, device_id, key_seq, ? FROM device_keys WHERE product = ? AND device_id = ?
               ON CONFLICT (product, device_id) DO UPDATE SET key_seq = excluded.key_seq,
-                pop_at = COALESCE(excluded.pop_at, device_key_floor.pop_at)`,
+                pop_at = CASE WHEN excluded.pop_at IS NULL THEN device_key_floor.pop_at
+                              WHEN device_key_floor.pop_at IS NULL THEN excluded.pop_at
+                              ELSE MAX(excluded.pop_at, device_key_floor.pop_at) END`,
         params: [popAt ?? null, product, deviceId],
       },
     ];
@@ -359,8 +348,11 @@ export async function upsertDeviceKeys(
     throw new DeviceKeysInvalidError();
   }
   // The guarded UPDATE matched nothing (a concurrent change moved the key): nothing was written,
-  // so nothing changed and no `keys` event is due.
+  // so nothing changed and no `keys` event is due. When the stored keys are not the requested
+  // ones, the write lost the race to a different set: refuse, so the device registers again.
   if (!wrote) {
+    if (after?.sign_key !== keys.signKey || after?.agree_key !== keys.agreeKey)
+      throw new DeviceKeysInvalidError();
     return {
       keySeq: after?.key_seq ?? current?.key_seq ?? 0,
       changed: false,
@@ -374,19 +366,44 @@ export async function upsertDeviceKeys(
   };
 }
 
-/** True when another device of the product already holds this agreement key. */
-export async function agreeKeyHeldElsewhere(
+/**
+ * True when registering `keys` for `deviceId` would repeat a key string in the product: the two
+ * keys are equal, or another device holds either string in either role.
+ */
+export async function deviceKeysHeldElsewhere(
   db: Db,
   product: string,
-  agreeKey: string,
+  keys: DeviceKeyPair,
   deviceId: string,
 ): Promise<boolean> {
-  const held = await db.first<{ device_id: string }>(
-    "SELECT device_id FROM device_keys WHERE product = ? AND agree_key = ?",
+  if (keys.signKey === keys.agreeKey) return true;
+  const held = await db.first<{ one: number }>(
+    `SELECT 1 AS one FROM device_keys
+      WHERE product = ? AND device_id <> ?
+        AND (agree_key IN (?, ?) OR sign_key IN (?, ?))
+      LIMIT 1`,
     product,
-    agreeKey,
+    deviceId,
+    keys.signKey,
+    keys.agreeKey,
+    keys.signKey,
+    keys.agreeKey,
   );
-  return held !== null && held.device_id !== deviceId;
+  return held !== null;
+}
+
+/** The `issuedAt` of the last accepted proof for the device (`null`: none recorded). */
+export async function deviceKeyFloorPopAt(
+  db: Db,
+  product: string,
+  deviceId: string,
+): Promise<number | null> {
+  const floor = await db.first<{ pop_at: number | null }>(
+    "SELECT pop_at FROM device_key_floor WHERE product = ? AND device_id = ?",
+    product,
+    deviceId,
+  );
+  return floor?.pop_at ?? null;
 }
 
 /** The delete as a statement, for a batch that removes the device (purge, licence delete). */
