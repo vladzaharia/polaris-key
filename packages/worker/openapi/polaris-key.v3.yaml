@@ -8846,7 +8846,15 @@ paths:
         changed scope), `403 interstitial_required` (no link yet, or unaccepted terms), and one
         byte-identical `400 invalid_grant` for every verifier failure. It is served only while the
         `launch.identityExchange` gate is on; off, its `grant_type` is `unsupported_grant_type`.
-        The rest of this text is the `authorization_code` grant. A form-encoded body
+        A third grant, `urn:polaris-key:grant-type:restore` (I-49.7, §12.11.8,
+        `RestoreTokenRequest`), signs a new device in with no click from the restore key its
+        platform backup carried: the key is checked against the product, its secret and a
+        `restore` proof, and used once. It answers as the exchange does, with `confirm` carrying no
+        provider and no address, and one byte-identical `400 invalid_grant` for every refusal up
+        to the account check; with the launch gate `launch.identityRestore` or the product setting
+        `identity.restore` off it is `unsupported_grant_type` and nothing is read or used. 10 calls
+        a minute per client network and 5 per device. The rest of this text is the
+        `authorization_code` grant. A form-encoded body
         (`application/x-www-form-urlencoded`; a JSON body is `invalid_request`) with `client_id`,
         `code`, `code_verifier` and, optionally, `redirect_uri` (compared exactly when sent) and
         `device_name`. Needs `X-PKey-Device`; the device metadata headers are read when present.
@@ -8868,6 +8876,7 @@ paths:
               oneOf:
                 - { $ref: "#/components/schemas/TokenRequest" }
                 - { $ref: "#/components/schemas/TokenExchangeRequest" }
+                - { $ref: "#/components/schemas/RestoreTokenRequest" }
       responses:
         "200":
           description: >
@@ -9454,6 +9463,107 @@ paths:
                 limited: { value: { error: { code: rate_limited } } }
     options:
       operationId: preflightIdentitySubject
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/restore:
+    post:
+      operationId: identityRestoreEnrol
+      tags: [identity]
+      summary: Enrol or check this device's silent-restore key (I-49.5)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.8. The device bearer with its `X-PKey-Device`. The body is JSON
+        `{restoreId?}`; an `restoreId` that is not `rk_` and 22 base64url characters is
+        `400 bad_request`. `200 {status: "current"}` only when `restoreId` is this device's own
+        live key for the device's subject and was made under 90 days ago (it moves `checkedAt`);
+        any other id, including another device's key for the same person, gets `201` with a new
+        `restoreId` and `secret` that replace this device's key. The secret is shown once and is
+        never stored. A subject holds at most 10 keys for a product. `403 account_required`
+        when the device holds no sign-in binding. With the launch gate `launch.identityRestore`
+        off, or the product setting `identity.restore` off, the route answers `404 not_found` and
+        reads nothing. NESTED errors. 20 calls a minute per client network and 10 a day per
+        device; both fail closed.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RestoreKeyRequest" }
+      responses:
+        "200":
+          description: "The device's key is current. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RestoreKeyCurrent" }
+              examples:
+                current: { value: { status: current } }
+        "201":
+          description: "A new key replaced this device's. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RestoreKeyIssued" }
+              examples:
+                issued:
+                  value:
+                    restoreId: rk_Zk8LqR8nT0sYp2vcEgHj6B
+                    secret: rs_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
+        "400":
+          description: No or malformed `X-PKey-Device`, or a malformed body (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: The device holds no sign-in binding (`account_required`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Over the network or the device limit — NESTED. Fails closed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    delete:
+      operationId: identityRestoreRevoke
+      tags: [identity]
+      summary: Revoke this device's silent-restore key (I-49.5)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.8. Only the device bearer with its `X-PKey-Device` is needed.
+        Deletes this device's key and answers `204` whether or not one existed, and whatever the
+        state of Identity's launch gate or the product setting: a revocation is never gated. 60
+        calls a minute per client network; fails open.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      responses:
+        "204":
+          description: "Revoked, or there was nothing to revoke. `cache-control: no-store`."
+        "400":
+          description: No or malformed `X-PKey-Device` (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: 60 calls per 60 s per client network — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityRestore
       tags: [identity]
       summary: CORS preflight
       description: >
@@ -29842,6 +29952,57 @@ components:
             type: string,
             description: The device's label; normalised as in §12.7.1.,
           }
+    RestoreTokenRequest:
+      type: object
+      description: >
+        `POST /{product}/identity/token` (I-49.7, §12.11.8): the form body of the restore grant.
+        `X-PKey-Device` is required. `proof` is the `restore` proof (§12.11.1): its fifth line is
+        `<restore_id>.<device_key>` and its sixth the base64url SHA-256 of `restore_secret`.
+      required:
+        - grant_type
+        - client_id
+        - restore_id
+        - restore_secret
+        - device_key
+        - agree_key
+        - proof
+      additionalProperties: false
+      properties:
+        grant_type:
+          { type: string, const: "urn:polaris-key:grant-type:restore" }
+        client_id: { type: string, description: The product slug. }
+        restore_id: { type: string, pattern: "^rk_[A-Za-z0-9_-]{22}$" }
+        restore_secret: { type: string, pattern: "^rs_[A-Za-z0-9_-]{43}$" }
+        device_key: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        agree_key: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        proof: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
+        license_choice: { type: string, enum: [app, card], default: app }
+        device_name:
+          {
+            type: string,
+            description: The device's label; normalised as in §12.7.1.,
+          }
+    RestoreKeyRequest:
+      type: object
+      description: "`POST /{product}/identity/restore` (I-49.5, §12.11.8). The body may be empty."
+      additionalProperties: false
+      properties:
+        restoreId: { type: string, pattern: "^rk_[A-Za-z0-9_-]{22}$" }
+    RestoreKeyCurrent:
+      type: object
+      description: The device's own key is live and under 90 days old (§12.11.8).
+      required: [status]
+      additionalProperties: false
+      properties:
+        status: { type: string, const: current }
+    RestoreKeyIssued:
+      type: object
+      description: A new key replaced the device's; the secret is shown once (§12.11.8).
+      required: [restoreId, secret]
+      additionalProperties: false
+      properties:
+        restoreId: { type: string, pattern: "^rk_[A-Za-z0-9_-]{22}$" }
+        secret: { type: string, pattern: "^rs_[A-Za-z0-9_-]{43}$" }
     TokenExchangeRequest:
       type: object
       description: >
@@ -29923,7 +30084,10 @@ components:
           type: object
           required: [provider, email]
           properties:
-            provider: { type: string, enum: [google, apple, gamecenter, pgs] }
+            provider:
+              type: [string, "null"]
+              enum: [google, apple, gamecenter, pgs, null]
+              description: "`null` with `email: null` on a restore's `confirm` (§12.11.8): it proves a key, not a provider token."
             email: { type: [string, "null"] }
         items:
           type: array

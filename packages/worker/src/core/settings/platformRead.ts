@@ -51,6 +51,8 @@ export interface PlatformValues {
   "launch.relay": "on" | "off";
   /** The rule document, unparsed: `parseAccessRules` (`core/rbac/ruleGrants.ts`) reads it. */
   "console.access": unknown;
+  "launch.identityRestore": "on" | "off";
+  "launch.gameSignIn": "on" | "off";
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;

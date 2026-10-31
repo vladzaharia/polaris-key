@@ -227,6 +227,7 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
         val o = json.objectValue
         val entries = o?.get("keyEntries").objectValue?.let { counts(it) }
         if (core.storeSignIn(answer.accessToken, answer.subject, TokenSource.signin, personInitiated = true)) client.onSubject(answer.subject)
+        client.afterSignIn()
         if (client.redirectAcquisitionSyncValue) client.onAcquired?.invoke()
         return ChoiceResult.Ok(
             ChoiceCompleted(

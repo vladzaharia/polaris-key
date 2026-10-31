@@ -1334,6 +1334,7 @@ async function replay(t: Transcript): Promise<void> {
             ? ({
                 kinds: [...ex.kinds],
                 ...(ex.google ? { google: { ...ex.google } } : {}),
+                ...(ex.pgs ? { pgs: { ...ex.pgs } } : {}),
               } as JsonValue)
             : null;
           observed.nonceEndpoint = ex !== null;
@@ -1581,7 +1582,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     const plannedHere: string[] = ["sync.records"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
-    const naHere = ["ui.cli.portal"];
+    // identity.gamecenter and identity.pgs are N/A on the web (parity.json), so exchange-gamecenter-*,
+    // exchange-pgs-* and link-game are skipped through the manifest.
+    const naHere = ["ui.cli.portal", "identity.gamecenter", "identity.pgs"];
     const expected = TRANSCRIPTS.filter(
       (t) =>
         !t.features.some((f) => plannedHere.includes(f) || naHere.includes(f)),

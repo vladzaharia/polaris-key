@@ -2,7 +2,8 @@
 
 /**
  * The token-exchange grant of `POST /<p>/identity/token` (I-13.4; WIRE-CONTRACT-V5 §12.11.3): an
- * app that holds a platform ID token (Google, Apple) trades it, with a nonce and a proof by its
+ * app that holds a platform token (a Google or Apple ID token; with `launch.gameSignIn` on, a Game
+ * Center signature or a Play Games server auth code, §12.11.7) trades it, with a nonce and a proof by its
  * device key, for the same answers `authorization_code` gives: a device token, a pending grant
  * (`choose`), or `403 interstitial_required`.
  *
@@ -32,11 +33,13 @@
  * identity for that time, so it is as sensitive as the token it replaces.
  */
 
-import type { ConfirmSignIn } from "@polaris-key/protocol/identity";
+import type {
+  ConfirmSignIn,
+  ExchangeKind,
+} from "@polaris-key/protocol/identity";
 import {
   CHOICE_GRANT_TTL_SECONDS,
   EXCHANGE_ISSUED_TOKEN_TYPE,
-  EXCHANGE_SUBJECT_TOKEN_TYPE,
   LINK_HANDLE_TTL_SECONDS,
 } from "@polaris-key/protocol/identity";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
@@ -46,8 +49,6 @@ import { hashKey, randomId } from "../../../platform/crypto.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
-import type { Product } from "../../../core/products.js";
-import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { ErrorCode, errorResponse } from "../../../core/errors.js";
 import { appendAudit } from "../../../core/audit.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
@@ -67,10 +68,15 @@ import { getDevice } from "../../../core/devices/store.js";
 import { loadProductPublic } from "../../../core/products.js";
 import { json } from "../../../core/errors.js";
 import { signIn } from "../accounts/signIn.js";
+import { rekeyLinkSubject } from "../accounts/repo.js";
 import { termsAccepted } from "../accounts/terms.js";
 import { productTerms } from "../productTerms.js";
 import { readPlatformSignIn } from "../platformSignIn.js";
-import { verifyNativeToken, type NativeIdentity } from "../providers/native.js";
+import {
+  servedTokenType,
+  verifySubjectToken,
+  type SubjectIdentity,
+} from "./subjectToken.js";
 import { resolveScope } from "./authorize.js";
 import {
   consumeExchangeNonce,
@@ -78,6 +84,11 @@ import {
   type ExchangeNonceRecord,
 } from "./nonce.js";
 import { bindAndAnswer, oauth, TOKEN_DEVICE_RATE } from "./token.js";
+import {
+  consentedScope,
+  consentView,
+  type NativeGrantContext,
+} from "./silent.js";
 import { issueGrant } from "./grant.js";
 import { clientRecordFor } from "./client.js";
 import { consentState } from "./routes.js";
@@ -88,7 +99,7 @@ export interface ExchangeLinkRecord {
   deviceId: string;
   /** Base64url SHA-256 of the raw signing key the exchange was proven with. */
   keyThumbprint: string;
-  kind: NativeIdentity["kind"];
+  kind: ExchangeKind;
   issuerKey: string;
   subject: string;
   tenantScopes: string[];
@@ -120,15 +131,9 @@ const refused = (): Response => oauth(400, ErrorCode.InvalidGrant);
 
 const FIELD_MAX = 4096;
 
-export async function handleExchange(ctx: {
-  req: Request;
-  env: Env;
-  db: Db;
-  product: Product;
-  now: number;
-  form: Map<string, string>;
-  settings?: SettingsRegistry | undefined;
-}): Promise<Response> {
+export async function handleExchange(
+  ctx: NativeGrantContext,
+): Promise<Response> {
   const { req, env, db, product, now, form, settings } = ctx;
   if (form.get("client_id") !== product.slug)
     return oauth(401, ErrorCode.InvalidClient);
@@ -138,8 +143,14 @@ export async function handleExchange(ctx: {
   const proof = form.get("proof");
   const choice = form.get("license_choice") ?? "app";
   const deviceId = req.headers.get(HEADER_DEVICE);
+  // A type this build does not serve (unknown, or a game type with its gate off) is one answer.
+  const tokenType = await servedTokenType(
+    env,
+    db,
+    form.get("subject_token_type"),
+  );
   if (
-    form.get("subject_token_type") !== EXCHANGE_SUBJECT_TOKEN_TYPE ||
+    !tokenType ||
     !subjectToken ||
     !nonce ||
     !deviceKey ||
@@ -189,14 +200,14 @@ export async function handleExchange(ctx: {
 
   const row = await getProduct(db, product.slug);
   if (!row) return refused();
-  let id: NativeIdentity;
+  let id: SubjectIdentity;
   try {
-    id = await verifyNativeToken(
-      subjectToken,
-      nonce,
-      await readPlatformSignIn(db, row),
-      env as unknown as Readonly<Record<string, unknown>>,
-    );
+    id = await verifySubjectToken(tokenType, subjectToken, nonce, {
+      env,
+      db,
+      product: product.slug,
+      audiences: await readPlatformSignIn(db, row),
+    });
   } catch (e) {
     // The provider being unreachable says nothing about the token; every other failure is the
     // one refusal, with the message dropped.
@@ -328,19 +339,10 @@ export async function handleExchange(ctx: {
       status: "confirm",
       grant,
       expiresIn: CHOICE_GRANT_TTL_SECONDS,
-      consent: {
-        client: {
-          appName: client.appName,
-          developerName: client.developerName,
-          iconUrl: client.iconUrl,
-          nameVerified: client.nameVerified,
-        },
-        as: { provider: id.kind, email: id.email },
-        items: consent.items,
-        scopeHash: consent.scopeHash,
-        firstTime: consent.firstTime,
-        changed: consent.changed,
-      },
+      consent: consentView(client, consent, {
+        provider: id.kind,
+        email: id.email,
+      }),
     };
     return noStore(json(body));
   }
@@ -352,10 +354,7 @@ export async function handleExchange(ctx: {
       subject: found.subject,
       email: found.email,
       deviceId,
-      // What the person consented to, never more: a narrowed consent stays narrowed.
-      scope: (resolveScope(undefined, product) ?? []).filter((c) =>
-        (consent.claims ?? []).includes(c),
-      ),
+      scope: consentedScope(product, consent),
       licenseChoice: choice,
       choice: null,
       deviceName: form.get("device_name") ?? undefined,
@@ -371,14 +370,14 @@ export async function handleExchange(ctx: {
   return answered.status === 200 ? withIssuedType(answered) : answered;
 }
 
-function noStore(res: Response): Response {
+export function noStore(res: Response): Response {
   res.headers.set("cache-control", "no-store");
   res.headers.set("pragma", "no-cache");
   return res;
 }
 
 /** A `TokenResponse` gains `issued_token_type`; a `choose` body (§12.5.1) is left as it is. */
-async function withIssuedType(res: Response): Promise<Response> {
+export async function withIssuedType(res: Response): Promise<Response> {
   const body = (await res.clone().json()) as Record<string, unknown>;
   if (body.status !== undefined) return res;
   const out = new Response(
@@ -397,44 +396,67 @@ async function findLinkedAccount(
   env: Env,
   db: Db,
   product: string,
-  id: NativeIdentity,
+  id: SubjectIdentity,
   now: number,
 ): Promise<
   | { accountId: string; subject: string; email: string | null }
   | null
   | "refused"
 > {
-  for (const tenantScope of id.tenantScopes) {
-    const r = await signIn(
-      db,
-      {
-        issuerKey: id.issuerKey,
-        tenantScope,
-        subject: id.subject,
-        kind: id.kind,
-        // A developer-scoped link was stored unverified on purpose (it brings no licences and joins
-        // nothing); a sign-in through it never touches the address or upgrades the flag.
-        email: tenantScope === "" ? id.email : null,
-        emailVerified: tenantScope === "" ? id.emailVerified : false,
-        amr: [id.kind],
-      },
-      now,
-      {
-        env,
-        linkedOnly: true,
-        product: { slug: product, tenantScopes: id.tenantScopes },
-      },
-    );
-    if (r.status === "signed_in") {
-      if (r.account.status !== "active" || !r.subject) return "refused";
-      return {
-        accountId: r.account.id,
-        subject: r.subject,
-        email: r.account.primary_email,
-      };
+  // Play Games: the player id first, then the id the player once had.
+  const subjects = [id.subject];
+  if (id.alternateSubject && id.alternateSubject !== id.subject)
+    subjects.push(id.alternateSubject);
+  for (const tenantScope of id.tenantScopes)
+    for (const subject of subjects) {
+      const r = await signIn(
+        db,
+        {
+          issuerKey: id.issuerKey,
+          tenantScope,
+          subject,
+          kind: id.kind,
+          // A developer-scoped link was stored unverified on purpose (it brings no licences and joins
+          // nothing); a sign-in through it never touches the address or upgrades the flag.
+          email: tenantScope === "" ? id.email : null,
+          emailVerified: tenantScope === "" ? id.emailVerified : false,
+          amr: [id.kind],
+        },
+        now,
+        {
+          env,
+          linkedOnly: true,
+          product: { slug: product, tenantScopes: id.tenantScopes },
+        },
+      );
+      if (r.status === "signed_in") {
+        if (r.account.status !== "active" || !r.subject) return "refused";
+        // A hit on the alternate id moves the link to the player id, so the next sign-in finds it
+        // under the id Google reports now. One statement; a link already under that id stays.
+        if (subject !== id.subject) {
+          if (await rekeyLinkSubject(db, r.linkId, subject, id.subject))
+            await appendAudit(db, {
+              product,
+              id: randomId("aud"),
+              at: now,
+              actor_sub: null,
+              actor_name: null,
+              actor_email: null,
+              action: "identity.link.rekeyed",
+              target_kind: "link",
+              target_id: r.linkId,
+              parent_id: null,
+              summary: `Moved a ${id.kind} sign-in to the player's current id`,
+            });
+        }
+        return {
+          accountId: r.account.id,
+          subject: r.subject,
+          email: r.account.primary_email,
+        };
+      }
+      if (r.status === "refused" && r.reason === "account_disabled")
+        return "refused";
     }
-    if (r.status === "refused" && r.reason === "account_disabled")
-      return "refused";
-  }
   return null;
 }

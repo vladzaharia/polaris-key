@@ -87,6 +87,8 @@ const OLD_CORS_SERVICE_PATHS = [
   "identity/attach",
   "identity/subject",
   "identity/signout",
+  // I-49.5: enrol and revoke a silent-restore key. Device bearer only (never ambient).
+  "identity/restore",
   // U-05.12, U-05.13: the Cloud Sync pull and push (device bearer, never ambient).
   "sync",
   "sync/ops",

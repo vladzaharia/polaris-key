@@ -10,7 +10,7 @@
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
 // @pkey-feature connect.relay
-// @pkey-feature identity.exchange sync.keyring sync.settings
+// @pkey-feature identity.exchange sync.keyring sync.settings identity.restore
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -355,11 +355,19 @@ enum SwiftReplay {
                     if let id = $0.googleServerClientId {
                         o["google"] = .object(["serverClientId": .string(id)])
                     }
+                    if let id = $0.pgsServerClientId {
+                        o["pgs"] = .object(["serverClientId": .string(id)])
+                    }
                     return .object(o)
                 } ?? .null
             out["nonceEndpoint"] = .bool(!(identity?.nonce ?? "").isEmpty)
+            // `identity.restore` (§12.11.6): the restore member and whether the endpoints name it.
+            out["restore"] = .bool(identity?.restore ?? false)
+            out["restoreEndpoint"] = .bool(!(identity?.restoreEndpoint ?? "").isEmpty)
         case "exchange":
             try await exchange(client, step: step, session: session, into: &out)
+        case "restoreRedeem", "restoreEnroll", "restoreDelete":
+            try await restore(client, step: step, session: session, server: server, into: &out)
         case "connectIdentity", "connectDevices":
             // `client.connect` (CC-06.4, `connect.identity`).
             let label = step.args["keyLabel"]?.stringValue ?? ""
@@ -532,7 +540,9 @@ enum SwiftReplay {
         out["services"] = .object(services)
         out["licenseStatus"] = .string(await client.status().status.rawValue)
         // The `exchange` verb reports its own, per step (the token it stored, not the store's).
-        if step.action != "exchange" { out["tokenHeld"] = .bool(await store.getToken() != nil) }
+        if step.action != "exchange", step.action != "restoreRedeem" {
+            out["tokenHeld"] = .bool(await store.getToken() != nil)
+        }
         return out
     }
 
@@ -662,7 +672,7 @@ enum SwiftReplay {
                 out["firstTime"] = .bool(pending.consent.firstTime)
                 out["changed"] = .bool(pending.consent.changed)
                 out["as"] = .object([
-                    "provider": .string(pending.consent.as.provider),
+                    "provider": pending.consent.as.provider.map(JSONValue.string) ?? .null,
                     "email": pending.consent.as.email.map(JSONValue.string) ?? .null,
                 ])
             case .choose: out["result"] = .string("choose")
@@ -688,6 +698,122 @@ enum SwiftReplay {
             throw ReplayError("exchange: a step that signed nobody in changed the held token")
         }
         out["tokenHeld"] = .bool(signedIn && heldAfter != nil)
+    }
+
+    /// `restoreRedeem` / `restoreEnroll` / `restoreDelete` (`identity.restore`, I-49.10): the restore
+    /// grant, the enrol route and the delete route of §12.11.8, one SDK call each. The backup item the
+    /// recording's client held is `args.restoreId` / `args.restoreSecret`; no backup store is installed, so
+    /// the replay writes no item and the only traffic is the recorded one. `args.product` addresses the
+    /// grant to another product (a second client over the same replay); `args.proofValue` replaces the
+    /// value the proof covers.
+    private static func restore(
+        _ client: PolarisKeyClient, step: Transcript.Step, session: ReplaySession, server: ReplayServer?,
+        into out: inout [String: JSONValue]
+    ) async throws {
+        let label = step.args["keyLabel"]?.stringValue ?? session.keyLabel ?? ""
+        if session.keyLabel != label {
+            session.keys.use(label: label)
+            session.keyLabel = label
+        }
+        switch step.action {
+        case "restoreEnroll":
+            do {
+                switch try await client.identity.restoreEnrolWire(restoreId: step.args["restoreId"]?.stringValue) {
+                case .enrolled(let id, let secret):
+                    out["result"] = .string("enrolled")
+                    out["restoreId"] = .string(id)
+                    out["secret"] = .string(secret)
+                case .current: out["result"] = .string("current")
+                case .unavailable: out["result"] = .string("unavailable")
+                case .refused(let code, let status):
+                    out["result"] = .string("refused")
+                    out["status"] = .int(status)
+                    out["code"] = .string(code)
+                }
+            } catch let e as PolarisError {
+                out["result"] = .string("error")
+                out["code"] = .string(e.code)
+            }
+        case "restoreDelete":
+            do {
+                out["result"] = .string(try await client.identity.restoreDeleteWire() ? "ok" : "error")
+            } catch let e as PolarisError {
+                out["result"] = .string("error")
+                out["code"] = .string(e.code)
+            }
+        default:
+            try await restoreRedeem(client, step: step, session: session, server: server, into: &out)
+        }
+    }
+
+    private static func restoreRedeem(
+        _ client: PolarisKeyClient, step: Transcript.Step, session: ReplaySession, server: ReplayServer?,
+        into out: inout [String: JSONValue]
+    ) async throws {
+        let item = RestoreItem(
+            restoreId: step.args["restoreId"]?.stringValue ?? "",
+            secret: step.args["restoreSecret"]?.stringValue ?? "")
+        var target = client
+        var closeTarget = false
+        if let product = step.args["product"]?.stringValue, product != client.product {
+            guard let server else { throw ReplayError("restoreRedeem for another product without a replay server") }
+            let transcript = await server.transcript
+            target = try await PolarisKeyClient.create(
+                options: PolarisKeyClientOptions(
+                    core: CoreOptions(
+                        productSlug: product, baseUrl: transcript.baseUrl, version: transcript.initial.version,
+                        pinnedKeys: transcript.trust,
+                        store: InMemoryStore(productSlug: product, deviceId: transcript.initial.deviceId),
+                        transport: OtherProductTransport(
+                            inner: ReplayTransport(server: server), product: product, base: transcript.baseUrl),
+                        requestTimeoutSeconds: 0, expectedServices: [.identity]),
+                    connect: ConnectOptions(keys: session.keys, store: .inMemory())))
+            target.identity.installRestoreStore(nil)
+            target.identity.redirectAcquisitionSync.set(false)
+            closeTarget = true
+        }
+        let heldBefore = await target.core.token
+        var signedIn = false
+        do {
+            let outcome = try await target.identity.redeemRestore(
+                item, proofValue: step.args["proofValue"]?.stringValue, ladderGeneration: nil)
+            switch outcome {
+            case .signedIn(let ready):
+                signedIn = true
+                out["result"] = .string("ok")
+                out["scope"] = ready.scope.map(JSONValue.string) ?? .null
+                out["subject"] = ready.subject.map(JSONValue.string) ?? .null
+                out["licenseId"] = ready.licenseId.map(JSONValue.string) ?? .null
+                out["issuedTokenType"] = .string("urn:polaris-key:token-type:device")
+            case .confirm(let pending):
+                out["result"] = .string("confirm")
+                out["firstTime"] = .bool(pending.consent.firstTime)
+                out["changed"] = .bool(pending.consent.changed)
+                out["as"] = .object([
+                    "provider": pending.consent.as.provider.map(JSONValue.string) ?? .null,
+                    "email": pending.consent.as.email.map(JSONValue.string) ?? .null,
+                ])
+            case .choose: out["result"] = .string("choose")
+            case .needsSignIn: out["result"] = .string("interstitial-required")
+            case .unavailable: out["result"] = .string("unavailable")
+            }
+        } catch let e as ExchangeError {
+            out["result"] = .string("refused")
+            out["status"] = .int(e.status)
+            out["code"] = .string(e.code)
+            if let retry = e.retryAfterSeconds { out["retryAfter"] = .int(retry) }
+        } catch let e as PolarisError {
+            out["result"] = .string("error")
+            out["code"] = .string(e.code)
+        }
+        // Per step, as the exchange reports it: this call stored a token; any other outcome leaves the
+        // token that was already held exactly as it was.
+        let heldAfter = await target.core.token
+        if !signedIn, heldAfter != heldBefore {
+            throw ReplayError("restoreRedeem: a step that signed nobody in changed the held token")
+        }
+        out["tokenHeld"] = .bool(signedIn && heldAfter != nil)
+        if closeTarget { await target.close() }
     }
 
     /// `choiceLicenses` / `choiceDevices` / `choiceComplete` / `choiceCancel`: `identity.choice`.
@@ -953,7 +1079,11 @@ enum SwiftReplay {
                     platform: u.platform, arch: u.arch))
         }
         // The redirect recordings hold the token exchange, not the sync a sign-in triggers after it.
-        if redirects || t.steps.contains(where: { ["exchange", "choiceComplete"].contains($0.action) }) {
+        // Nor the backup: a replay has no restore store, so the only restore traffic is the recorded one.
+        client.identity.installRestoreStore(nil)
+        if redirects
+            || t.steps.contains(where: { ["exchange", "choiceComplete", "restoreRedeem"].contains($0.action) })
+        {
             client.identity.redirectAcquisitionSync.set(false)
         }
         session.platform = t.initial.platform

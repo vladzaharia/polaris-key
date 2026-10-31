@@ -102,8 +102,18 @@ const FAIL_MODE: Record<string, FailMode> = {
   // single-use store operation; an outage refuses rather than lets a flood through.
   connectRelayTicket: "closed",
   connectRelayUpgrade: "closed",
+  // I-14.12b: the per-product budget of Play Games code redemptions, each an outbound call to
+  // Google; an outage refuses (the exchange answers its one invalid_grant).
+  pgsRedeem: "closed",
   identityLink: "closed",
   identityLinkDevice: "closed",
+  // I-49.5: silent restore. Enrolment mints a credential and the grant redeems one, so an outage
+  // refuses. The grant's two budgets live in `passthrough/restore.ts`.
+  identityRestoreKey: "closed",
+  identityRestoreKeyNet: "closed",
+  identityRestore: "closed",
+  identityRestoreDevice: "closed",
+  identityRestoreAccount: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
   // ST-30c.5: the console's passkey sign-in (challenge and assertion, per client network). The

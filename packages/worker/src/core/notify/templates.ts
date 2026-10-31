@@ -505,18 +505,44 @@ export function deviceReplacedNotice(input: {
 }
 
 /**
- * A nearby approval bound a device (WIRE-CONTRACT-V5 §12.11.5 rule 7): "Diceroll signed in on
- * Living room TV". Sent to the primary address only, so it is not a security notice (no "every
- * verified email" footer); the remedy is the product's devices page. The label may be null.
+ * An app signed in on a device without the person at that device: "Diceroll signed in on Living
+ * room TV". Sent to the primary address only, so it is not a security notice (no "every verified
+ * email" footer); the remedy is the product's devices page. The label may be null.
+ *
+ * `via: "restore"` (I-49.7; WIRE-CONTRACT-V5 §12.11.8): the sign-in came from a restore key in the
+ * person's platform backup, not from an approval. It is a security notice (every verified
+ * address gets it) whose action is "Sign out everywhere": that unbinds every device of the
+ * account, which ends every restore key. The label is chosen by the new device, so it is shown
+ * in quotes, and a label that looks like a link is replaced by "a new device".
  */
 export function appDeviceApprovedNotice(input: {
   deviceLabel: string | null | undefined;
   productName: string | null | undefined;
   productSlug: string;
   origin: string;
+  via?: "restore";
 }): NoticeMessage {
-  const device = displayValue(input.deviceLabel, "a new device");
   const name = displayValue(input.productName, "An app");
+  if (input.via === "restore") {
+    const label = displayValue(input.deviceLabel, "");
+    const device =
+      label === "" || /:\/\/|www\./i.test(label)
+        ? "a new device"
+        : `\u201c${label}\u201d`;
+    const signOut = appLink(input.origin, "account/sessions");
+    return buildNotice({
+      help: "app-device-approved",
+      subject: `${name} signed in on ${device} from your backup`,
+      paragraphs: [
+        "It used a key saved in your device backup.",
+        "If this wasn't you, sign out everywhere in Polaris Locker.",
+      ],
+      action: { label: "Sign out everywhere", url: signOut },
+      secureUrl: signOut,
+      origin: input.origin,
+    });
+  }
+  const device = displayValue(input.deviceLabel, "a new device");
   // Without a label there is nothing to name twice: "remove it".
   const it = displayValue(input.deviceLabel, "") === "" ? "it" : device;
   return buildNotice({

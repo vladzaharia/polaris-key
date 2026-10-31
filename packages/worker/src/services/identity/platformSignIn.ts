@@ -29,6 +29,9 @@ export interface PlatformSignInAudiences {
     /** The part that came from outlets (read-only in the console). */
     outletBundleIds: string[];
   };
+  /** Game Center sign-in; uses `apple.teamId` and `apple.bundleIds`. */
+  gameCenter: boolean;
+  playGames: { applicationId: string | null; serverClientId: string | null };
   nearby: boolean;
 }
 
@@ -74,6 +77,10 @@ export function reservedAudienceIn(
     ],
     ["identity.platformSignIn.google.clientIds", ps?.google?.clientIds],
     [
+      "identity.platformSignIn.playGames.serverClientId",
+      ps?.playGames?.serverClientId,
+    ],
+    [
       "identity.platformSignIn.apple.bundleIds",
       unionBundleIds(
         ps?.apple?.bundleIds ?? [],
@@ -117,6 +124,17 @@ export async function readPlatformSignIn(
         outletBundleIds,
       ),
       outletBundleIds,
+    },
+    gameCenter: at("identity.platformSignIn.gameCenter") as boolean,
+    playGames: {
+      applicationId:
+        (at("identity.platformSignIn.playGames.applicationId") as
+          | string
+          | null) ?? null,
+      serverClientId:
+        (at("identity.platformSignIn.playGames.serverClientId") as
+          | string
+          | null) ?? null,
     },
     nearby: at("identity.nearby") as boolean,
   };

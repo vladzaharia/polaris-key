@@ -1,7 +1,9 @@
 // `identity.autoSignIn()`: the automatic sign-in ladder (CC-01-auto-sign-in section 1, I-45.2).
 //
 //   rung 1  a stored credential and a licence: `SignedIn`, no network
-//   rung 2  silent restore (I-49): skipped here
+//   rung 2  silent restore (I-49.11, IdentityRestore.kt): the restore item from the platform backup, redeemed once;
+//           skipped without a backup store (the JVM desktop), with `AutoSignInOptions.restore = false`, after an
+//           explicit sign-out, or when discovery names no `restore`
 //   rung 3  the platform provider, silently, over a fresh Worker nonce, then `exchange`
 //   rung 4  the provider's one OS sheet (`prompt = OPTIONAL`), then `exchange`
 //   rung 5+ are the app's: the regular sign-in form is `NeedsSignIn` / `Unavailable`
@@ -16,6 +18,9 @@
 //     do not run: nothing silent signs the person back in. The next explicit sign-in (a token
 //     stored from a sign-in) clears it. A stored session (rung 1) is the person's own and is not
 //     touched by the flag.
+//   - `signOut()` also deletes the restore item and sends `DELETE restore` before it asks the Worker, and whatever the
+//     Worker answers (queued for the next launch when it cannot be delivered). The flag lives in the store's no-backup
+//     state directory, outside Android Auto Backup.
 //   - A provider that reports its credential revoked at launch signs the device out through
 //     `signOut()`. If the Worker cannot be reached the flag stays unset and the check repeats at
 //     the next launch.
@@ -77,6 +82,11 @@ public data class AutoSignInOptions @JvmOverloads constructor(
     /** The provider to use; null uses the one installed on the client (`installPlatformIdentity`). */
     val provider: PlatformIdentityProvider? = null,
     val prompt: AutoSignInPrompt = AutoSignInPrompt.NEVER,
+    /**
+     * Silent restore (rung 2), on by default. False skips the rung, never enrols, deletes this app's restore item
+     * and sends `DELETE restore`.
+     */
+    val restore: Boolean = true,
 )
 
 /** Why `autoSignIn` found no session. */
@@ -131,6 +141,10 @@ public sealed interface AutoSignInResult {
 }
 
 internal suspend fun IdentityClient.runAutoSignIn(options: AutoSignInOptions): AutoSignInResult {
+    applyRestoreOption(options.restore)
+    // A revocation that could not be delivered goes first, before any other call of this launch.
+    sendQueuedDelete()
+    if (!restoreOn.get()) restoreOptOut()
     val provider = options.provider ?: platformProvider.get()
     if (provider != null && safeRevoked(provider)) signOutAfterRevocation(provider)
 
@@ -140,10 +154,17 @@ internal suspend fun IdentityClient.runAutoSignIn(options: AutoSignInOptions): A
     // Rung 1: the stored session.
     if (core.token() != null && core.tokenProvenance() == TokenProvenance.signin) {
         val license = core.cache().license
-        if (license != null) return AutoSignInResult.SignedIn(core.storedSubject(), license.doc.licenseId)
+        if (license != null) {
+            // The daily check that the key is current (and its rotation at 90 days): detached, never an error.
+            launchDailyRestoreCheck(generation)
+            return AutoSignInResult.SignedIn(core.storedSubject(), license.doc.licenseId)
+        }
     }
     // Signed out on purpose: rungs 2-4 stay quiet.
     if (core.explicitSignOut()) return AutoSignInResult.NeedsSignIn(null, AutoSignInReason.SignedOut)
+    // Rung 2: silent restore.
+    // A signed-in answer has already enrolled the new key (`afterSignIn`); a confirm or choose enrols at `complete`.
+    restoreRung(generation)?.let { return it }
     // The JVM desktop has no provider: the regular form is next.
     if (provider == null) return AutoSignInResult.NeedsSignIn(null, AutoSignInReason.NoCredential)
 
@@ -164,7 +185,7 @@ internal suspend fun IdentityClient.runProviderSignIn(): AutoSignInResult {
             is ExchangeNonceResult.Issued -> n.nonce
             is ExchangeNonceResult.Ended -> return unavailable(n.outcome)
         }
-        val audience = core.discoveryDocument()?.identity?.exchange?.googleServerClientId
+        val audience = audienceFor(provider.kind)
         val subject = try {
             provider.providerSheet(nonce.value, audience)
         } catch (e: CancellationException) {
@@ -184,9 +205,10 @@ internal suspend fun IdentityClient.runProviderSignIn(): AutoSignInResult {
     }
 }
 
-/** Called by `signOut()` once the Worker accepted it. */
+/** Called by `signOut()` once the Worker accepted it (the restore key was revoked before the Worker was asked). */
 internal suspend fun IdentityClient.markSignedOut() {
     core.setExplicitSignOut(true)
+    restoreAfterSignOut()
     platformProvider.get()?.let { safeCleanup(it) }
 }
 
@@ -215,7 +237,7 @@ private suspend fun IdentityClient.attempt(provider: PlatformIdentityProvider, s
             is ExchangeNonceResult.Issued -> n.nonce
             is ExchangeNonceResult.Ended -> return unavailable(n.outcome)
         }
-        val audience = core.discoveryDocument()?.identity?.exchange?.googleServerClientId
+        val audience = audienceFor(provider.kind)
         val subject = try {
             if (silent) provider.silent(nonce.value, audience) else provider.sheet(nonce.value, audience)
         } catch (e: CancellationException) {
@@ -265,6 +287,8 @@ private fun unavailable(outcome: ExchangeOutcome): AutoSignInResult =
 private suspend fun IdentityClient.signOutAfterRevocation(provider: PlatformIdentityProvider) {
     if (core.token() == null) {
         core.setExplicitSignOut(true)
+        // No bearer to revoke with: the item goes and the revocation stays queued until a sign-in provides a bearer.
+        restoreSignOut()
         safeCleanup(provider)
     } else {
         try {
@@ -277,4 +301,10 @@ private suspend fun IdentityClient.signOutAfterRevocation(provider: PlatformIden
         // signOut() cleans up the installed provider; the one passed in the options is the one that reported it.
         if (provider !== platformProvider.get()) safeCleanup(provider)
     }
+}
+
+/** The client id the provider's token is issued for: Google's audience, or the Play Games server client id. */
+private suspend fun IdentityClient.audienceFor(kind: ExchangeKind): String? {
+    val exchange = core.discoveryDocument()?.identity?.exchange
+    return if (kind == ExchangeKind.pgs) exchange?.pgsServerClientId else exchange?.googleServerClientId
 }

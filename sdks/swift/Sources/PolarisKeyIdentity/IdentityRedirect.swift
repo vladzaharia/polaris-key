@@ -466,6 +466,7 @@ extension IdentityClient {
             if redirectAcquisitionSync.current { await onAcquired?() }
             announceSubject(subject, previous: previous)
             notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
+            await restoreSignInCompleted()
             return .ready(
                 SignInReady(
                     identity: nil, attached: nil, subject: subject, scope: scope,

@@ -217,6 +217,7 @@
         "issuer": "https://key.plrs.im/full/identity",
         "account": true,
         "keyEntryLimit": 10,
+        "restore": true,
         "endpoints": {
           "session": "https://key.plrs.im/full/identity/session",
           "sessionLicense": "https://key.plrs.im/full/identity/session/license",
@@ -236,6 +237,7 @@
           "attach": "https://key.plrs.im/full/identity/attach",
           "subject": "https://key.plrs.im/full/identity/subject",
           "signout": "https://key.plrs.im/full/identity/signout",
+          "restore": "https://key.plrs.im/full/identity/restore",
           "nonce": "https://key.plrs.im/full/identity/nonce",
           "link": "https://key.plrs.im/full/identity/link",
           "accountPortal": "https://key.plrs.im/#/p/full"

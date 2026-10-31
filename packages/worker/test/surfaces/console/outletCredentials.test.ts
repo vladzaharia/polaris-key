@@ -88,6 +88,8 @@ const VALUES: Record<OutletCredentialKind, Record<string, unknown>> = {
   },
   // P6-01: a placeholder 32-hex Steamworks publisher key, never a real one.
   "steam-publisher-key": { key: "0123456789ABCDEF0123456789ABCDEF" },
+  // I-14.4: a placeholder, never a real Web client secret.
+  "pgs-server-client": { clientSecret: "pgs-test-only-0000" },
 };
 
 /** The secret part of each value: none of it may ever appear in metadata or a response. */
@@ -99,6 +101,7 @@ const SECRET_PARTS: Record<OutletCredentialKind, string[]> = {
   "sentry-integration": ["sentry-test-only-0000"],
   "app-store-server-key": [P8.split("\n")[1]!],
   "steam-publisher-key": ["0123456789ABCDEF0123456789ABCDEF"],
+  "pgs-server-client": ["pgs-test-only-0000"],
 };
 
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -262,6 +265,7 @@ describe("outlet credentials: the admin API", () => {
       "asc-webhook-secret-1",
       "google-service-account-1",
       "ms-partner-center-1",
+      "pgs-server-client-1",
       "sentry-integration-1",
       "steam-publisher-key-1",
     ]);

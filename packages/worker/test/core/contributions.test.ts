@@ -75,6 +75,7 @@ describe("what the descriptors contribute", () => {
   it("is bound by mount.ts: stores, holder hooks, maintenance and deletion are all there", () => {
     expect(contributedSubjectStores().map(([n]) => n)).toEqual([
       "config.accountOverrides",
+      "identity.restore",
       "sync.cloudSync",
       "connect.rings",
     ]);
@@ -85,6 +86,7 @@ describe("what the descriptors contribute", () => {
       "core.entitlementEvents",
       "core.keyring",
       "core.provisionedSecretMoves",
+      "identity.restore",
       "sync.cloudSync",
     ]);
     expect(contributedLicenseHolders()).not.toBeNull();

@@ -16,10 +16,12 @@ import android.content.Context
 import im.plrs.key.core.DeviceKeySealer
 import im.plrs.key.core.DeviceKeyStore
 import im.plrs.key.core.FileDeviceKeyStorage
+import im.plrs.key.core.PlatformBackupStore
 import im.plrs.key.core.StoreException
 import im.plrs.key.platform.AndroidKeyStoreProvider
 import im.plrs.key.platform.KeyProvider
 import im.plrs.key.platform.KeystoreSealer
+import im.plrs.key.platform.PlatformBackup
 import im.plrs.key.platform.SecureStore
 import im.plrs.key.platform.SecureStoreException
 import im.plrs.key.sdk.PolarisKeyClientOptions
@@ -80,6 +82,20 @@ public fun androidSyncRootStorage(
     "pkey-sync-root/1/$productSlug".toByteArray(Charsets.UTF_8),
 )
 
-/** These client options with the Cloud Sync root in [androidSyncRootStorage], unless the host chose a storage. */
-internal fun PolarisKeyClientOptions.withAndroidKeyring(context: Context, productSlug: String): PolarisKeyClientOptions =
-    copy(keyring = keyring.copy(rootStorage = keyring.rootStorage ?: androidSyncRootStorage(context, productSlug)))
+/**
+ * These client options with the Cloud Sync root in [androidSyncRootStorage], unless the host chose a storage, and
+ * with the platform backup of the root (Block Store, U-39.10), unless the host chose a store or turned it off. The
+ * `direct` flavour has no Block Store, so it installs none and the ring falls through to its wrap or the recovery code.
+ */
+internal fun PolarisKeyClientOptions.withAndroidKeyring(context: Context, productSlug: String): PolarisKeyClientOptions = copy(
+    keyring = keyring.copy(
+        rootStorage = keyring.rootStorage ?: androidSyncRootStorage(context, productSlug),
+        backup = keyring.backup ?: androidRootBackup(context),
+    ),
+)
+
+/** Block Store as the root's backup on the `play` flavour; null where this build has none. */
+internal fun androidRootBackup(context: Context): PlatformBackupStore? {
+    val backup = PlatformBackup.create(context)
+    return if (backup.isSupported) AndroidPlatformBackupStore(backup) else null
+}

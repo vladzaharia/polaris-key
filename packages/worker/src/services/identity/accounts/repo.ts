@@ -314,6 +314,27 @@ export async function rekeyLegacyAccountLinks(
   );
 }
 
+/**
+ * Move a link to a new subject within its (issuer, tenant scope): one statement, so the link is
+ * under the old subject or the new one and never both. `OR IGNORE` leaves it where it is when the
+ * new subject already holds a link; `false` then.
+ */
+export async function rekeyLinkSubject(
+  db: Db,
+  linkId: string,
+  from: string,
+  to: string,
+): Promise<boolean> {
+  return (
+    (await db.runChanges(
+      `UPDATE OR IGNORE account_links SET subject = ? WHERE id = ? AND subject = ?`,
+      to,
+      linkId,
+      from,
+    )) > 0
+  );
+}
+
 export async function touchLink(
   db: Db,
   linkId: string,

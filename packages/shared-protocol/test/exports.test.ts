@@ -567,3 +567,111 @@ describe("@polaris-key/protocol layout", () => {
     );
   });
 });
+
+describe("@polaris-key/protocol/identity: silent restore (WIRE-CONTRACT-V5 §12.11.8)", () => {
+  it("pins the grant, the id and secret shapes and the limits", () => {
+    expect(identity.RESTORE_GRANT_TYPE).toBe(
+      "urn:polaris-key:grant-type:restore",
+    );
+    expect(identity.RESTORE_KEYS_MAX).toBe(10);
+    expect(identity.RESTORE_IDLE_DAYS).toBe(180);
+    expect(identity.RESTORE_CHECK_INTERVAL_SECONDS).toBe(86_400);
+    const id = new RegExp(identity.RESTORE_ID_PATTERN);
+    expect(id.test(`rk_${"A".repeat(22)}`)).toBe(true);
+    expect(id.test(`rk_${"A".repeat(21)}`)).toBe(false);
+    expect(id.test(`rk_${"A".repeat(22)}x`)).toBe(false);
+    expect(id.test(`rs_${"A".repeat(22)}`)).toBe(false);
+    const secret = new RegExp(identity.RESTORE_SECRET_PATTERN);
+    expect(secret.test(`rs_${"A".repeat(43)}`)).toBe(true);
+    expect(secret.test(`rs_${"A".repeat(42)}`)).toBe(false);
+    expect(secret.test(`rs_${"A".repeat(43)}=`)).toBe(false);
+    expect(secret.test(`rk_${"A".repeat(43)}`)).toBe(false);
+    // Service-scoped: not on the barrel.
+    expect("RESTORE_GRANT_TYPE" in barrel).toBe(false);
+  });
+
+  it("types the grant, the enrol route and the discovery members", () => {
+    const params: identity.RestoreTokenParams = {
+      grant_type: identity.RESTORE_GRANT_TYPE,
+      client_id: "djdl",
+      restore_id: `rk_${"A".repeat(22)}`,
+      restore_secret: `rs_${"A".repeat(43)}`,
+      device_key: "A".repeat(43),
+      agree_key: "B".repeat(43),
+      proof: "p",
+    };
+    expect(params.grant_type).toBe(identity.RESTORE_GRANT_TYPE);
+    const ok: identity.RestoreTokenResponse = {
+      access_token: "pkeyt_x",
+      token_type: "Bearer",
+      scope: "profile",
+      schemaVersion: 1,
+      device: {},
+      license: null,
+      subject: `ps_${"A".repeat(22)}`,
+      issued_token_type: identity.EXCHANGE_ISSUED_TOKEN_TYPE,
+    };
+    expect(ok.issued_token_type).toBe("urn:polaris-key:token-type:device");
+    const enrol: identity.RestoreKeyRequest = {};
+    expect(enrol.restoreId).toBeUndefined();
+    const current: identity.RestoreKeyResponse = { status: "current" };
+    const issued: identity.RestoreKeyResponse = {
+      restoreId: `rk_${"A".repeat(22)}`,
+      secret: `rs_${"A".repeat(43)}`,
+    };
+    expect("status" in current).toBe(true);
+    expect("secret" in issued).toBe(true);
+    const fragment: identity.RestoreDiscovery = {
+      restore: true,
+      endpoints: { restore: "https://key.plrs.im/djdl/identity/restore" },
+    };
+    const discovery: Pick<identity.IdentityDiscovery, "restore"> = fragment;
+    expect(discovery.restore).toBe(true);
+    // @ts-expect-error `restore` is the literal true, never false: absent means off.
+    const off: identity.RestoreDiscovery = { restore: false, endpoints: {} };
+    expect(off.restore).toBe(false);
+  });
+
+  it("types the restore results: confirm without a provider or address, terms only", () => {
+    const consent: identity.RestoreConsentView = {
+      client: {
+        appName: "Djdl",
+        developerName: null,
+        iconUrl: null,
+        nameVerified: false,
+      },
+      as: { provider: null, email: null },
+      items: [],
+      scopeHash: "0".repeat(64),
+      firstTime: true,
+      changed: false,
+    };
+    const confirm: identity.RestoreTokenResult = {
+      status: "confirm",
+      grant: `sg_${"A".repeat(43)}`,
+      expiresIn: 300,
+      consent,
+    };
+    const terms: identity.RestoreTokenResult = {
+      error: "interstitial_required",
+      reason: "terms",
+      url: "https://key.plrs.im/signin?product=djdl",
+    };
+    expect("consent" in confirm && confirm.consent.as.email).toBeNull();
+    expect("reason" in terms && terms.reason).toBe("terms");
+    const asOf = (v: identity.RestoreConsentView["as"]) => v;
+    // @ts-expect-error a restore view never names a provider.
+    asOf({ provider: "google", email: null });
+    // @ts-expect-error a restore view never carries an address.
+    asOf({ provider: null, email: "a@b.c" });
+    const terms2 = (b: identity.RestoreInterstitialRequiredBody) => b;
+    // @ts-expect-error a restore cannot be `no_link`: it has no link handle.
+    terms2({ error: "interstitial_required", reason: "no_link", url: "u" });
+    // The exchange's own view keeps a real provider.
+    const exchange: identity.ExchangeConsentView["as"] = {
+      provider: "apple",
+      email: null,
+    };
+    expect(exchange.provider).toBe("apple");
+  });
+});

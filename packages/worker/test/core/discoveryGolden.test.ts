@@ -67,6 +67,10 @@
  * `exchange` member only for a product that declares a platform sign-in kind (none here). Additive;
  * the transcripts `discovery-identity-exchange` and `exchange-gate-off` pin both.
  * I-13.9 added `endpoints.link` (`<base>/identity/link`) right after `nonce`, under the same gate.
+ * I-49.5 (WIRE-CONTRACT-V5 §12.11.8) added Identity's `restore: true` after `keyEntryLimit` and
+ * `endpoints.restore` (`<base>/identity/restore`) right after `signout`, while Identity, the
+ * product setting `identity.restore` and the launch gate `launch.identityRestore` all allow it (the
+ * gate is on in this suite's env). Additive; the identity transcripts pin both.
  */
 
 import { readFileSync } from "node:fs";

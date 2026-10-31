@@ -17,6 +17,10 @@
  *                     product's enablement of the contributing service.
  *   onDeviceChange    listeners told that a device was bound, unbound, removed or changed its keys
  *                     (R-7, `core/devices/lifecycle.ts`); run for every mounted service.
+ *   onServicesChange  listeners told that a write of a product's service enablement happened
+ *                     (`core/servicesTransitions.ts`), with the set before it when the writer
+ *                     knows it; run for every mounted service WHATEVER its enablement, because a
+ *                     switched-off service must still clean up what it stored.
  *   maintenance       the service's retention and reconciliation steps; `scheduled.ts` iterates
  *                     descriptors instead of importing them.
  *   keyring           whether the service needs the Core key ring for a product (U-36.2): Cloud
@@ -41,6 +45,7 @@ import type { MigrationJob } from "./migrate/job.js";
 import { CORE_MIGRATIONS } from "./migrate/coreJobs.js";
 import type { AuthorizationListener } from "./authorizationListeners.js";
 import type { DeviceChangeListener } from "./devices/lifecycle.js";
+import type { AuditActor } from "./audit.js";
 import type { SubjectStore } from "./accounts/subjectHooks.js";
 import type { LicenseHolderHooks } from "./licensing/licenseHolders.js";
 import type { ProductPublic } from "./products.js";
@@ -189,6 +194,25 @@ export type KeyringContributor = (ctx: {
   product: string;
 }) => Promise<boolean>;
 
+/**
+ * What a write of a product's service enablement tells a listener: the set now stored (`after`)
+ * and, when the writer saw it, the set the write replaced (`before`; `null` when it did not).
+ * Writers call it on EVERY write, so a listener is idempotent and decides for itself whether the
+ * change concerns it.
+ */
+export interface ServicesChange {
+  product: string;
+  before: ServicesMap | null;
+  after: ServicesMap;
+  actor: AuditActor;
+}
+
+/** A service's reaction to a services write. A throw reaches the writer, which reports it. */
+export type ServicesChangeListener = (
+  ctx: { db: Db; env: Env; now: number },
+  change: ServicesChange,
+) => Promise<void>;
+
 export interface ServiceContributions {
   keyring?: KeyringContributor;
   productDeletion?: ProductDeletionContributor;
@@ -213,6 +237,8 @@ export interface ServiceContributions {
   onAuthorization?: Readonly<Record<string, AuthorizationListener>>;
   /** Device lifecycle listeners (CC-03.3), by their stable name. */
   onDeviceChange?: Readonly<Record<string, DeviceChangeListener>>;
+  /** Service-enablement write listeners (I-49.8), by their stable name. */
+  onServicesChange?: Readonly<Record<string, ServicesChangeListener>>;
 }
 
 // ── the bound registry ──────────────────────────────────────────────────────────────────────
@@ -299,6 +325,13 @@ export async function keyringWanted(
 export function contributedDeviceChangeListeners(): DeviceChangeListener[] {
   return contributionsOf().flatMap(([, c]) =>
     Object.values(c.onDeviceChange ?? {}),
+  );
+}
+
+/** Every mounted service's service-enablement listeners, in canonical slug order. */
+export function contributedServicesChangeListeners(): ServicesChangeListener[] {
+  return contributionsOf().flatMap(([, c]) =>
+    Object.values(c.onServicesChange ?? {}),
   );
 }
 

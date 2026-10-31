@@ -88,6 +88,34 @@ describe("platform sign-in settings rows (I-42.2)", () => {
     });
   });
 
+  it("seeds Game Center and Play Games (I-14.3) and omit-clears them", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "acme");
+    await ingest(
+      db,
+      parsed({
+        platformSignIn: {
+          apple: { teamId: "ABCDE12345" },
+          gameCenter: true,
+          playGames: { applicationId: "123456789012", serverClientId: WEB },
+        },
+      }),
+    );
+    expect(
+      await readPlatformSignIn(db, { slug: "acme", created_at: NOW }),
+    ).toMatchObject({
+      gameCenter: true,
+      playGames: { applicationId: "123456789012", serverClientId: WEB },
+    });
+    await ingest(db, parsed(undefined), NOW + 1);
+    expect(
+      await readPlatformSignIn(db, { slug: "acme", created_at: NOW }),
+    ).toMatchObject({
+      gameCenter: false,
+      playGames: { applicationId: null, serverClientId: null },
+    });
+  });
+
   it("unions the App Store and TestFlight bundle ids, declared first", async () => {
     const m = parsed(DECLARED, OUTLETS);
     expect(outletAppleBundleIds(m.distribution)).toEqual([
@@ -127,6 +155,15 @@ describe("the platform's own clients are reserved audiences", () => {
       platformSignIn: { google: { serverClientId: PLATFORM_GOOGLE } },
     });
     expect(reservedAudienceIn(google, env)).toBe(PLATFORM_GOOGLE);
+    const play = parsed({
+      platformSignIn: {
+        playGames: {
+          applicationId: "123456789012",
+          serverClientId: PLATFORM_GOOGLE,
+        },
+      },
+    });
+    expect(reservedAudienceIn(play, env)).toBe(PLATFORM_GOOGLE);
     const apple = parsed(
       { platformSignIn: { apple: { teamId: "ABCDE12345" } } },
       {

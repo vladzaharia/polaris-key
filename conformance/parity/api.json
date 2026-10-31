@@ -297,6 +297,16 @@
         "file": "sdks/swift/Sources/PolarisKeyIdentity/SignIn.swift"
       },
       {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/swift/Sources/PolarisKeyIdentity/AutoSignIn.swift"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/swift/Sources/PolarisKeyIdentity/Restore.swift"
+      },
+      {
         "ns": "devices",
         "type": "DevicesClient",
         "file": "sdks/swift/Sources/PolarisKey/DevicesClient.swift"
@@ -2341,6 +2351,31 @@
     },
     {
       "sdk": "kotlin",
+      "path": "identity.installPlatformBackup",
+      "reason": "wiring: hands rung 2 of identity.autoSignIn its OS-held backup store (I-49.11) and the developer's opt-out; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.hasPlatformBackup",
+      "reason": "wiring: whether a backup store is installed (I-49.11); a property, not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.restoreRedeemRecorded",
+      "reason": "conformance replay only (ConformanceReplayOnly): the restore grant with the recorded item (I-49.12); rung 2 of identity.autoSignIn carries the row"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.restoreEnrolRecorded",
+      "reason": "conformance replay only (ConformanceReplayOnly): POST restore with the recorded id (I-49.12); not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.restoreDeleteRecorded",
+      "reason": "conformance replay only (ConformanceReplayOnly): DELETE restore (I-49.12); not an app verb"
+    },
+    {
+      "sdk": "kotlin",
       "path": "identity.useDeviceKeys",
       "reason": "wiring: hands the exchange proof its device key store; not an app verb"
     },
@@ -2363,6 +2398,26 @@
       "sdk": "kotlin",
       "path": "identity.signInWithProvider",
       "reason": "wiring: the kit's sign-in form runs the installed provider's sheet and exchange (personInitiated); apps use the kit or exchange()"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.installRestoreStoreFactory",
+      "reason": "wiring: hands rung 2 of identity.autoSignIn the platform backup store (the umbrella installs the Keychain one) (I-49.9); not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.installRestoreStore",
+      "reason": "wiring: hands rung 2 of identity.autoSignIn a backup store of the host's own (I-49.9); not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.installPlatformIdentity",
+      "reason": "wiring: hands the ladder its platform provider (I-44.3); apps pass a provider to identity.autoSignIn or install one at the umbrella"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.platformSession",
+      "reason": "wiring: hands the platform provider its session once a sign-in completes (I-44.3); not an app verb"
     },
     {
       "sdk": "swift",

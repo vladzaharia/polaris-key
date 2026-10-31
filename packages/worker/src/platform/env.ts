@@ -171,6 +171,15 @@ export interface Env {
    */
   LAUNCH_IDENTITY_EXCHANGE?: string;
   /**
+   * LG-1 launch gate for Game Center and Play Games sign-in on the token exchange (I-14). Off until the feature's security sign-off. A `[vars]` value, read
+   * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
+   * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the
+   * console says off. An unreadable store reads off.
+   * @inventory var jobs
+   * @editable LAUNCH_GAME_SIGN_IN
+   */
+  LAUNCH_GAME_SIGN_IN?: string;
+  /**
    * LG-1 launch gate for the Cloud Connect identity and devices routes. Off until the feature's security sign-off. A `[vars]` value, read
    * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
    * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the
@@ -206,6 +215,16 @@ export interface Env {
    * @editable LAUNCH_RELAY
    */
   LAUNCH_RELAY?: string;
+  /**
+   * LG-1 launch gate for silent restore (I-49): the restore enrol route, the restore grant on the
+   * identity token route and the discovery members. Off until the feature's security sign-off.
+   * Revocations never read it. A `[vars]` value, read only through the platform settings store
+   * (`core/settings/platformRead.ts`, `ceiling`): `off` is a hard off; `runtime` lets the console
+   * decide, default off; `on` means on unless the console says off. An unreadable store reads off.
+   * @inventory var jobs
+   * @editable LAUNCH_IDENTITY_RESTORE
+   */
+  LAUNCH_IDENTITY_RESTORE?: string;
   /**
    * The lazy-delta queue (P4-17; `pkey-deltas-<env>`). The main Worker only PRODUCES to it (the
    * nightly sweep's hot pairs); the consumer is its own Worker script (`wrangler.deltas.toml`,

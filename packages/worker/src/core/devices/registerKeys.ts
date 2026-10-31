@@ -21,6 +21,11 @@ export async function registerDeviceKeys(
   keys: DeviceKeyPair,
   popAt?: number,
   heldSignKey?: string | null,
+  /**
+   * How the keys came to be registered, for a listener that cares: `restore` is a sign-in by a
+   * silent-restore key (I-49.7, V5 §12.11.8). It changes nothing about the write.
+   */
+  via?: "restore",
 ): Promise<UpsertResult> {
   const r = await upsertDeviceKeys(
     ctx.db,
@@ -37,6 +42,7 @@ export async function registerDeviceKeys(
       deviceId,
       kind: "keys",
       keySeq: r.keySeq,
+      ...(via ? { via } : {}),
     });
   return r;
 }

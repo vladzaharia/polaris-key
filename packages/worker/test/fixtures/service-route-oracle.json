@@ -9626,6 +9626,102 @@
     "cookies": [],
     "body": "30:61b5f4a46397ebc3"
   },
+  "GET /djdl/identity/restore": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD /djdl/identity/restore": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST /djdl/identity/restore": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "POST+body /djdl/identity/restore": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "PUT /djdl/identity/restore": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT+body /djdl/identity/restore": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH /djdl/identity/restore": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH+body /djdl/identity/restore": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE /djdl/identity/restore": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "DELETE+body /djdl/identity/restore": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "OPTIONS /djdl/identity/restore": {
+    "status": 204,
+    "headers": {},
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "OPTIONS+body /djdl/identity/restore": {
+    "status": 204,
+    "headers": {},
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
   "GET /djdl/identity/session": {
     "status": 200,
     "headers": {

@@ -57,6 +57,13 @@ public data class AndroidOptions @JvmOverloads constructor(
      * names none (the operator usually configures it there). Digits only.
      */
     val playCloudProjectNumber: String? = null,
+    /**
+     * Silent restore (automatic sign-in rung 2, WIRE-CONTRACT-V5 section 12.11.8), on by default: a signed-in device keeps
+     * a restore key in Block Store (end-to-end encrypted in the cloud only where the device offers that, the `play`
+     * flavour) and a new device of the same person is signed in with no click. False installs no backup: the next
+     * `autoSignIn()` deletes this app's item and sends `DELETE restore`.
+     */
+    val restore: Boolean = true,
 )
 
 /** When Play's own signals make an update urgent (play build; PlayInstallDriver); null turns a signal off. */
@@ -147,9 +154,9 @@ public object PolarisKeyAndroid {
             ),
         )
         self.set(built)
-        // Warm the start now; any call that needs the state waits for it (or starts it itself).
-        built.startInBackground()
-        return built
+        // Rung 2 of the automatic sign-in ladder: the restore item lives in Block Store (D-5); `direct` answers unavailable.
+        built.identity.installPlatformBackup(AndroidPlatformBackupStore(ctx), restore = android.restore)
+        return built.also { it.startInBackground() } // Warm the start now; a call that needs the state waits for it.
     }
 
     /** [client], then `start()`: returns once the device id, token and cached documents are loaded. */
@@ -159,7 +166,6 @@ public object PolarisKeyAndroid {
     /** UpdateClientOptions' default methods, which the flavour's replace. */
     private val DEFAULT_METHODS = listOf(BinaryMethod.download)
 }
-
 
 /** The device's user-visible name (`Settings.Global.DEVICE_NAME`), else `Build.MODEL` (PX-W13). */
 internal fun androidDeviceName(context: Context): String? {

@@ -133,6 +133,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: "LAUNCH_IDENTITY_EXCHANGE",
   },
   {
+    name: "LAUNCH_GAME_SIGN_IN",
+    kind: "var",
+    area: "jobs",
+    optional: true,
+    editable: "LAUNCH_GAME_SIGN_IN",
+  },
+  {
     name: "LAUNCH_CONNECT",
     kind: "var",
     area: "jobs",
@@ -159,6 +166,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     area: "jobs",
     optional: true,
     editable: "LAUNCH_RELAY",
+  },
+  {
+    name: "LAUNCH_IDENTITY_RESTORE",
+    kind: "var",
+    area: "jobs",
+    optional: true,
+    editable: "LAUNCH_IDENTITY_RESTORE",
   },
   {
     name: "DELTA_QUEUE",

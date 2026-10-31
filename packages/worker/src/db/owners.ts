@@ -217,6 +217,10 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "portal_license_links",
     "portal_product_settings",
     "portal_audit",
+    // I-49.4 (plans/I-49-slices.md): the silent-restore keys (secrets as peppered hashes only)
+    // and the devices that signed in by restore.
+    "identity_restore_keys",
+    "identity_restore_origins",
   ],
 };
 

@@ -59,6 +59,11 @@ export interface GrantRecord {
    * `consent` and writes the app consent against this hash, the one the person was shown.
    */
   consent?: { scopeHash: string };
+  /**
+   * Earned by a silent-restore grant (I-49.7): `choice/complete` then marks the device as signed in
+   * by restore, registers its keys `via: "restore"`, audits `signin.restore` and sends the notice.
+   */
+  via?: "restore";
   /** Reads spent so far. */
   reads: number;
   /** Epoch seconds the grant ends, for restoring it after a retryable refusal. */

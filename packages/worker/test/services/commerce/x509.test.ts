@@ -25,6 +25,7 @@ import {
   makeChain,
   makeRoot,
   testKey,
+  x509Reason,
 } from "../../x509Fixtures.js";
 import { TEST_ROOT as here } from "../../paths.js";
 
@@ -37,15 +38,7 @@ const POLICY = (roots: Uint8Array[]) => ({
   intermediateOids: [APPLE_INTERMEDIATE_OID],
 });
 
-async function reason(p: Promise<unknown>): Promise<string> {
-  try {
-    await p;
-  } catch (e) {
-    if (e instanceof X509Error) return e.reason;
-    throw e;
-  }
-  return "accepted";
-}
+const reason = x509Reason;
 
 describe("core/x509 — chain verification", () => {
   it("accepts a well-formed Apple-shaped chain to a pinned root and returns the leaf key", async () => {
