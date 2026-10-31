@@ -236,7 +236,7 @@
       "gdlint:max-returns": 1
     },
     "sdks/godot/addons/polaris_key/services/cloud_sync/saves.gd": {
-      "gdlint:class-definitions-order": 2,
+      "gdlint:class-definitions-order": 4,
       "gdlint:max-returns": 3
     },
     "sdks/godot/addons/polaris_key/services/cloud_sync/saves_records.gd": {

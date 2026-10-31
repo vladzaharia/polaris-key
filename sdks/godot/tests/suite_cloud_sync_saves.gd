@@ -254,6 +254,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _conflicts(t)
 	await _delete(t)
 	await _pause_cancel(t)
+	await _stale_off_thread(t)
 	await _locked(t)
 	await _chunked(t)
 	await _unsupported(t)
@@ -610,6 +611,115 @@ func _pause_cancel(t: PKeyTestContext) -> void:
 		await tree.process_frame
 		spins += 1
 	t.check("cancel mid-upload: cancelled, the Worker's upload is released", c.outcome != null and c.outcome["state"] == "cancelled" and rig3["files"].aborted.size() == 1, str(c.outcome))
+
+
+# ── cancel is terminal; a result computed off-thread under an old root is thrown away ───────────
+
+func _stale_off_thread(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var gate := [false]
+	# cancel, then pause: cancel still settles
+	var rig = _rig(false)
+	rig["files"].before_put = func() -> void:
+		while not gate[0]:
+			await tree.process_frame
+	var h: PKeyTransfer = rig["saves"].write("a", _noise(100), {})
+	var spins := 0
+	while not rig["files"].calls.has("put") and spins < 600:
+		await tree.process_frame
+		spins += 1
+	var done := [false]
+	var cancelling := func() -> void:
+		await h.cancel()
+		done[0] = true
+	cancelling.call()
+	h.pause()
+	h.resume()
+	gate[0] = true
+	spins = 0
+	while not done[0] and spins < 600:
+		await tree.process_frame
+		spins += 1
+	t.check("cancel then pause: the cancel settles", done[0] and h.outcome["state"] == "cancelled", str(h.outcome))
+
+	# cancel a paused transfer, then resume in the same frame: still cancelled
+	var rig2 = _rig(false)
+	var gate2 := [false]
+	rig2["files"].before_put = func() -> void:
+		while not gate2[0]:
+			await tree.process_frame
+	var p: PKeyTransfer = rig2["saves"].write("a", _noise(100), {})
+	spins = 0
+	while not rig2["files"].calls.has("put") and spins < 600:
+		await tree.process_frame
+		spins += 1
+	p.pause()
+	gate2[0] = true
+	spins = 0
+	while p.state != "paused" and spins < 600:
+		await tree.process_frame
+		spins += 1
+	var done2 := [false]
+	var cancelling2 := func() -> void:
+		await p.cancel()
+		done2[0] = true
+	cancelling2.call()
+	p.resume()
+	spins = 0
+	while not done2[0] and spins < 600:
+		await tree.process_frame
+		spins += 1
+	t.check("cancel of a paused transfer, then resume: cancelled", done2[0] and p.outcome["state"] == "cancelled", str(p.state))
+
+	# purge with a paused transfer returns
+	var rig3 = _rig(false)
+	var gate3 := [false]
+	rig3["files"].before_put = func() -> void:
+		while not gate3[0]:
+			await tree.process_frame
+	var q: PKeyTransfer = rig3["saves"].write("a", _noise(100), {})
+	spins = 0
+	while not rig3["files"].calls.has("put") and spins < 600:
+		await tree.process_frame
+		spins += 1
+	q.pause()
+	gate3[0] = true
+	spins = 0
+	while q.state != "paused" and spins < 600:
+		await tree.process_frame
+		spins += 1
+	await rig3["saves"].purge()
+	t.check("purge with a paused transfer returns and the transfer is cancelled", q.outcome != null and q.outcome["state"] == "cancelled" and rig3["saves"].transfers().is_empty())
+
+	# a seal queued before a lock is discarded
+	var ring := Ring.new()
+	var g := Codec.Guarded.new(Codec.E2e.new(ring.root, "saves"), func() -> bool: return ring.locked)
+	var plain := _noise(200 * 1024)
+	var out := [null]
+	var sealing := func() -> void:
+		out[0] = await Transfer.codec_off(g, "seal_whole", [plain], plain.size(), PackedByteArray())
+	sealing.call()
+	ring.locked = true
+	spins = 0
+	while out[0] == null and spins < 2000:
+		await tree.process_frame
+		spins += 1
+	t.check("seal started before a lock: the result is thrown away and the codec says why", out[0] != null and out[0].is_empty() and g.tripped)
+	var ring2 := Ring.new()
+	var g2 := Codec.Guarded.new(Codec.E2e.new(ring2.root, "saves"), func() -> bool: return ring2.locked)
+	var sealed: PackedByteArray = g2.seal_whole(plain)
+	var res := [null]
+	var opening := func() -> void:
+		res[0] = await Transfer.codec_off(g2, "open_whole", [sealed], sealed.size(), {"ok": false, "reason": "locked"})
+	opening.call()
+	ring2.locked = true
+	spins = 0
+	while res[0] == null and spins < 2000:
+		await tree.process_frame
+		spins += 1
+	t.check("open started before a lock: nothing is handed on", res[0] == {"ok": false, "reason": "locked"})
+	# the sealed cache is keyed by the root generation
+	t.check("sealed cache: a different generation is not reused", PKeySaves.sealed_gen_of([PackedByteArray([1]), 3]) == 3 and PKeySaves.sealed_gen_of([null]) == null)
 
 
 # ── locked ──────────────────────────────────────────────────────────────────────────────────────

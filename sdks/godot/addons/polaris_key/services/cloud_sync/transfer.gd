@@ -103,6 +103,24 @@ static func off_thread(fn: Callable, size: int) -> Variant:
 	return out[0]
 
 
+## `codec.<method>(args)` off the main thread. A guarded codec (one with `inner()`) is asked on the main
+## thread before and after: if it went stale (locked or root replaced) meanwhile, the result is thrown away
+## and `failed` answered; the worker only runs the immutable inner codec.
+static func codec_off(codec: Object, method: String, args: Array, size: int, failed: Variant) -> Variant:
+	var target: Object = codec
+	var guarded := codec.has_method("inner")
+	if guarded:
+		if codec.locked():
+			return failed
+		target = codec.inner()
+		if target == null:
+			return failed
+	var r: Variant = await off_thread(func() -> Variant: return target.callv(method, args), size)
+	if guarded and codec.locked():
+		return failed
+	return r
+
+
 static func reply_ok(value: Variant = null) -> Dictionary:
 	return {"ok": true, "value": value}
 
@@ -757,7 +775,7 @@ func _send_chunk(ps: Dictionary, req: Dictionary, cut: Dictionary, unique: Dicti
 	# The file may have changed since it was cut: what is sent must still be the chunk named.
 	if plain.size() != rec["plain_len"] or not PKeySyncAesGcm.equal_constant_time(codec.chunk_id(plain), rec["id"]):
 		return _err("source-mismatch")
-	var obj: PackedByteArray = await off_thread(func() -> PackedByteArray: return codec.seal_chunk(rec["id"], plain), plain.size())
+	var obj: PackedByteArray = await codec_off(codec, "seal_chunk", [rec["id"], plain], plain.size(), PackedByteArray())
 	if obj.is_empty():
 		return _err("invalid")
 	var digest := _sha_hex(obj)
@@ -819,7 +837,7 @@ func _download_whole(ps: Dictionary, req: Dictionary) -> Dictionary:
 		at += data.size()
 	if ctx.finish().hex_encode() != req["sha256"]:
 		return _invalid("sha256")
-	var opened: Dictionary = await off_thread(func() -> Dictionary: return codec.open_whole(stored), stored.size())
+	var opened: Dictionary = await codec_off(codec, "open_whole", [stored], stored.size(), {"ok": false, "reason": "locked"})
 	if not opened["ok"]:
 		return _invalid(opened["reason"])
 	var plain: PackedByteArray = opened["plain"]
@@ -899,7 +917,7 @@ func _fetch_one(ps: Dictionary, req: Dictionary, codec, cache: Variant, rec: Dic
 	if cache != null:
 		var held: Variant = cache.get_object(id)
 		if held is PackedByteArray:
-			var o: Dictionary = await off_thread(func() -> Dictionary: return codec.open_chunk(rec["id"], held), held.size())
+			var o: Dictionary = await codec_off(codec, "open_chunk", [rec["id"], held], held.size(), {"ok": false, "reason": "locked"})
 			if o["ok"] and (o["plain"] as PackedByteArray).size() == rec["plain_len"]:
 				return {"ok": true, "plain": o["plain"]}
 			cache.delete(id)  # damage costs a fetch
@@ -912,7 +930,7 @@ func _fetch_one(ps: Dictionary, req: Dictionary, codec, cache: Variant, rec: Dic
 	var obj: PackedByteArray = got["value"]
 	if obj.size() > Codec.SERVER_CHUNK_MAX_STORED_BYTES:
 		return _invalid("chunk-size")
-	var opened: Dictionary = await off_thread(func() -> Dictionary: return codec.open_chunk(rec["id"], obj), obj.size())
+	var opened: Dictionary = await codec_off(codec, "open_chunk", [rec["id"], obj], obj.size(), {"ok": false, "reason": "locked"})
 	if not opened["ok"]:
 		return _invalid("chunk-" + str(opened["reason"]))
 	if (opened["plain"] as PackedByteArray).size() != rec["plain_len"]:

@@ -52,6 +52,12 @@ const COLLECTION := "saves"
 ## The key of the E2E binding inside a save's sealed metadata (D-3).
 const BINDING_KEY := "$file"
 const DEFAULT_MAX_BYTES := 33554432
+## How long `purge` waits for cancelled transfers to settle.
+const PURGE_WAIT_MS := 5000
+
+
+static func sealed_gen_of(sealed: Array) -> Variant:
+	return sealed[1] if sealed.size() > 1 else null
 
 ## `deps`:
 ##   records       saves_records.gd
@@ -527,8 +533,14 @@ func _attempt(
 		chunked["codec"] = codec
 		r = await _d["engine"].upload_chunked(chunked)
 	else:
+		# The sealed form is reused across a pause only under the root it was sealed with.
+		var gen: Variant = codec.get("root_generation")
+		if sealed[0] != null and sealed_gen_of(sealed) != gen:
+			sealed[0] = null
 		if sealed[0] == null:
 			sealed[0] = await _seal(codec, bytes)
+			sealed.resize(2)
+			sealed[1] = gen
 		var stored_bytes: PackedByteArray = sealed[0]
 		if soft.cancelled:
 			return {"state": "aborted"}
@@ -567,11 +579,8 @@ func _attempt(
 ## The whole file's stored form, sealed on a worker thread (the GDScript lane takes about a second a MiB).
 ## Empty when the ring locked before or during the seal.
 func _seal(codec: Object, plain: PackedByteArray) -> PackedByteArray:
-	var out: PackedByteArray = await Transfer.off_thread(func() -> PackedByteArray: return codec.seal_whole(plain), plain.size())
-	# The ring may have locked while the thread ran: nothing sealed under it is sent.
-	if codec.has_method("locked") and codec.locked():
-		return PackedByteArray()
-	return out
+	# The ring may lock or change its root while the thread runs: such a result is thrown away.
+	return await Transfer.codec_off(codec, "seal_whole", [plain], plain.size(), PackedByteArray())
 
 
 ## The first `<id>.copy`, `<id>.copy2`, ... that is not a save; null when all 16 slots are in use.
@@ -608,8 +617,14 @@ func purge() -> void:
 	var running := _live.duplicate()
 	_live.clear()
 	_d["records"].drop_all()
+	# Cancel is asked of each and waited for a bounded time: a transfer stuck in a call must not hold up
+	# the sign-out.
 	for t: PKeyTransfer in running:
-		await t.cancel()
+		t.cancel()
+	var tree := Engine.get_main_loop() as SceneTree
+	var deadline := Time.get_ticks_msec() + PURGE_WAIT_MS
+	while Time.get_ticks_msec() < deadline and running.any(func(t: PKeyTransfer) -> bool: return t.outcome == null):
+		await tree.process_frame
 	var files: Variant = _d.get("purge_files")
 	if files is Callable and (files as Callable).is_valid():
 		files.call()

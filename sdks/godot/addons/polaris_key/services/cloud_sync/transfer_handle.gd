@@ -55,18 +55,21 @@ static func settled(p_id: String, p_outcome: Dictionary) -> PKeyTransfer:
 
 
 func pause() -> void:
-	if state != "running":
+	if state != "running" or _wanted == "cancel":
 		return
 	_wanted = "pause"
 	_cancel.cancelled = true
 
 
 func resume() -> void:
+	if _wanted == "cancel":
+		return
 	if state == "paused" or _wanted == "pause":
 		_wanted = "run"
 
 
-## Stop and release the server's upload. Resolves once the transfer has settled.
+## Stop and release the server's upload. Resolves once the transfer has settled. Cancel is terminal:
+## `pause()` and `resume()` after it do nothing.
 func cancel() -> void:
 	if outcome != null:
 		return

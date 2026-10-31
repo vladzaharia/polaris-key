@@ -23,6 +23,8 @@ class Guarded:
 	extends RefCounted
 	var enc := "e2e"
 	var tripped := false
+	## The ring's root generation this codec was made at (0 when unknown).
+	var root_generation := 0
 	var _inner: Object
 	var _is_stale: Callable
 
@@ -43,6 +45,11 @@ class Guarded:
 			_inner = null
 			return true
 		return false
+
+	## The inner codec for a worker thread, or null when stale. The caller asks `locked()` again on the main
+	## thread when the work is done and throws the result away if it went stale.
+	func inner() -> Object:
+		return null if locked() else _inner
 
 	func chunk_id(plain: PackedByteArray) -> PackedByteArray:
 		return PackedByteArray() if locked() else _inner.chunk_id(plain)
@@ -83,7 +90,9 @@ static func e2e_for(port: Object, collection: String) -> Variant:
 		return null
 	return port.with_root(func(root: PackedByteArray) -> Variant:
 		var generation: int = port.root_generation()
-		return Guarded.new(E2e.new(root, collection), func() -> bool: return port.locked() or port.root_generation() != generation))
+		var g := Guarded.new(E2e.new(root, collection), func() -> bool: return port.locked() or port.root_generation() != generation)
+		g.root_generation = generation
+		return g)
 
 
 const SERVER_CHUNK_MAX_STORED_BYTES := 1048576 + 30
