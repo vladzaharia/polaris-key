@@ -830,6 +830,19 @@ describe("the game kinds on the link offer (I-14.8)", () => {
     expect(offered).not.toContain("gamecenter");
   });
 
+  it("pgsRedeemBudget answers rate_limited with Retry-After", async () => {
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    vi.mocked(verifyPlayGamesCode).mockResolvedValue({
+      ok: false,
+      reason: "rate_limited",
+    });
+    const res = await gameTokenForm(ada, PGS_SUBJECT_TOKEN_TYPE, "code");
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("60");
+    expect(await body(res)).toMatchObject({ error: { code: "rate_limited" } });
+    expect(await pgsRows()).toEqual([]);
+  });
+
   it("links Play Games through a token, scoped to the application", async () => {
     await markFresh(h.env, SLUG, DEVICE, ada.subject);
     playGamesIs(PGS_APP, PLAYER);

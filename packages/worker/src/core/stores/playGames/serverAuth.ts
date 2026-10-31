@@ -81,6 +81,9 @@ export type PgsResult =
   | { ok: true; playerId: string; alternatePlayerId: string | null }
   /** The code or the setup is refused: the exchange answers `invalid_grant`. */
   | { ok: false; reason: "invalid_grant"; detail: PgsRefusal }
+  /** The product's redemption budget is spent, or the limiter is down: the exchange answers
+   *  `429 rate_limited` with `Retry-After`. Says nothing about the code. */
+  | { ok: false; reason: "rate_limited"; detail: "rate_limited" }
   /** Google was unreachable or failed: the exchange answers `503 unavailable`. */
   | { ok: false; reason: "unavailable"; detail: "network" | "server" };
 
@@ -88,6 +91,11 @@ const refused = (detail: PgsRefusal): PgsResult => ({
   ok: false,
   reason: "invalid_grant",
   detail,
+});
+const budgetSpent = (): PgsResult => ({
+  ok: false,
+  reason: "rate_limited",
+  detail: "rate_limited",
 });
 const unavailable = (detail: "network" | "server"): PgsResult => ({
   ok: false,
@@ -239,8 +247,7 @@ export async function redeemAndVerify(
   const credentialId = await findCredentialId(db, product, serverClientId);
   if (credentialId === null) return refused("no_credential");
   // The per-product budget comes before the secret is opened or Google is called. Over the budget,
-  // or with the limiter unavailable, the answer is the same refusal as any other (the bucket fails
-  // closed).
+  // or with the limiter unavailable (the bucket fails closed), the answer is `rate_limited`.
   if (
     !(await rateLimitOk(
       env,
@@ -249,7 +256,7 @@ export async function redeemAndVerify(
       now,
     ))
   )
-    return refused("rate_limited");
+    return budgetSpent();
   const secret = await clientSecret(env, db, product, credentialId, now);
   if (secret === null) return refused("no_credential");
 

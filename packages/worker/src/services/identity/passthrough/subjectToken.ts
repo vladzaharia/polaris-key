@@ -23,7 +23,10 @@ import {
 } from "../../../core/oidc/client.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
-import { pgsServerCredentialReady } from "../../../core/stores/playGames/serverAuth.js";
+import {
+  PGS_REDEEM_LIMIT,
+  pgsServerCredentialReady,
+} from "../../../core/stores/playGames/serverAuth.js";
 import { launchGateOn } from "../../../core/settings/platformRead.js";
 import type { PlatformSignInAudiences } from "../platformSignIn.js";
 import { verifyGameCenterToken } from "../providers/gameCenter.js";
@@ -63,6 +66,17 @@ export interface SubjectIdentity {
   emailVerified: boolean;
 }
 
+/** The product's Play Games redemption budget is spent (or its limiter is down). */
+export class PgsBudgetError extends Error {
+  constructor() {
+    super("play games redemption budget");
+    this.name = "PgsBudgetError";
+  }
+}
+
+/** Seconds a caller waits before the budget's window (60 s, fixed) can have freed. */
+export const PGS_RETRY_AFTER_SECONDS = PGS_REDEEM_LIMIT.windowSec;
+
 /** Verify `token` as `type`. Throws `OidcVerifyError` (refused) or `OidcNetworkError` (host). */
 export async function verifySubjectToken(
   type: SubjectTokenType,
@@ -96,6 +110,7 @@ export async function verifySubjectToken(
   }
   const r = await verifyPlayGamesCode(env, db, product, audiences, token);
   if (!r.ok) {
+    if (r.reason === "rate_limited") throw new PgsBudgetError();
     if (r.reason === "unavailable")
       throw new OidcNetworkError("play games unavailable");
     throw new OidcVerifyError("play games refused");

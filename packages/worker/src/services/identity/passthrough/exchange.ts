@@ -73,6 +73,8 @@ import { termsAccepted } from "../accounts/terms.js";
 import { productTerms } from "../productTerms.js";
 import { readPlatformSignIn } from "../platformSignIn.js";
 import {
+  PGS_RETRY_AFTER_SECONDS,
+  PgsBudgetError,
   servedTokenType,
   verifySubjectToken,
   type SubjectIdentity,
@@ -211,6 +213,13 @@ export async function handleExchange(
   } catch (e) {
     // The provider being unreachable says nothing about the token; every other failure is the
     // one refusal, with the message dropped.
+    if (e instanceof PgsBudgetError) {
+      const res = oauth(429, "rate_limited", undefined, {
+        retryAfter: PGS_RETRY_AFTER_SECONDS,
+      });
+      res.headers.set("retry-after", String(PGS_RETRY_AFTER_SECONDS));
+      return res;
+    }
     if (e instanceof OidcNetworkError) return oauth(503, "unavailable");
     return refused();
   }

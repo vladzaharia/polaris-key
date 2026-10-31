@@ -50,7 +50,7 @@ export interface PlayGamesIdentity {
 
 export type PlayGamesOutcome =
   | { ok: true; identity: PlayGamesIdentity }
-  | { ok: false; reason: "invalid_grant" | "unavailable" };
+  | { ok: false; reason: "invalid_grant" | "unavailable" | "rate_limited" };
 
 export interface PlayGamesVerifyOpts {
   /** Unix seconds. */
