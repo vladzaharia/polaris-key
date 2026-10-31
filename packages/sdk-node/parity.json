@@ -1,12 +1,8 @@
 {
   "$schema": "../../conformance/parity/manifest.schema.json",
   "sdk": "node",
-  "runtimes": [
-    "node"
-  ],
-  "traits": [
-    "headless"
-  ],
+  "runtimes": ["node"],
+  "traits": ["headless"],
   "testRoots": [
     "packages/sdk-node/test",
     "packages/ui-core/test",
@@ -187,25 +183,19 @@
     },
     "identity.exchange": {
       "status": "na",
-      "runtime": [
-        "node"
-      ],
+      "runtime": ["node"],
       "reason": "runtime",
       "note": "No OS account to take a platform identity from (I-13). The Node conformance runner still replays the exchange transcripts with a reference client (exchangeTranscripts.test.ts)."
     },
     "identity.gamecenter": {
       "status": "na",
-      "runtime": [
-        "node"
-      ],
+      "runtime": ["node"],
       "reason": "runtime",
       "note": "Game Center exists only on Apple platforms. The Node conformance runner replays the transcripts with a reference client."
     },
     "identity.pgs": {
       "status": "na",
-      "runtime": [
-        "node"
-      ],
+      "runtime": ["node"],
       "reason": "runtime",
       "note": "Play Games runs only on Android. The Node conformance runner replays the transcripts with a reference client."
     },
@@ -216,9 +206,7 @@
     },
     "identity.link": {
       "status": "na",
-      "runtime": [
-        "node"
-      ],
+      "runtime": ["node"],
       "reason": "runtime",
       "note": "No OS account to offer a link from (I-43)."
     },
@@ -335,9 +323,7 @@
     },
     "packs.type.godot.zip": {
       "status": "na",
-      "runtime": [
-        "node"
-      ],
+      "runtime": ["node"],
       "reason": "runtime",
       "note": "P4-16: a godot.zip is mounted only by Godot's load_resource_pack."
     },
@@ -351,9 +337,7 @@
     },
     "packs.type.audio.bank": {
       "status": "na",
-      "runtime": [
-        "node"
-      ],
+      "runtime": ["node"],
       "reason": "runtime",
       "note": "P4-16: audio banks load through a game engine's middleware."
     },

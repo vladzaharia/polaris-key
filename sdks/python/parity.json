@@ -1,16 +1,9 @@
 {
   "$schema": "../../conformance/parity/manifest.schema.json",
   "sdk": "python",
-  "runtimes": [
-    "python"
-  ],
-  "traits": [
-    "headless"
-  ],
-  "testRoots": [
-    "sdks/python/tests",
-    "tools/gen-mirrors.test.ts"
-  ],
+  "runtimes": ["python"],
+  "traits": ["headless"],
+  "testRoots": ["sdks/python/tests", "tools/gen-mirrors.test.ts"],
   "features": {
     "core.verify": {
       "status": "implemented"
@@ -181,25 +174,19 @@
     },
     "identity.exchange": {
       "status": "na",
-      "runtime": [
-        "python"
-      ],
+      "runtime": ["python"],
       "reason": "runtime",
       "note": "No OS account to take a platform identity from (I-13); Python signs in by loopback or device code."
     },
     "identity.gamecenter": {
       "status": "na",
-      "runtime": [
-        "python"
-      ],
+      "runtime": ["python"],
       "reason": "runtime",
       "note": "Game Center exists only on Apple platforms."
     },
     "identity.pgs": {
       "status": "na",
-      "runtime": [
-        "python"
-      ],
+      "runtime": ["python"],
       "reason": "runtime",
       "note": "Play Games runs only on Android."
     },
@@ -210,9 +197,7 @@
     },
     "identity.link": {
       "status": "na",
-      "runtime": [
-        "python"
-      ],
+      "runtime": ["python"],
       "reason": "runtime",
       "note": "No OS account to offer a link from (I-43)."
     },
@@ -330,9 +315,7 @@
     },
     "packs.type.godot.zip": {
       "status": "na",
-      "runtime": [
-        "python"
-      ],
+      "runtime": ["python"],
       "reason": "runtime",
       "note": "P4-16: a godot.zip is mounted only by Godot's load_resource_pack."
     },
@@ -346,9 +329,7 @@
     },
     "packs.type.audio.bank": {
       "status": "na",
-      "runtime": [
-        "python"
-      ],
+      "runtime": ["python"],
       "reason": "runtime",
       "note": "P4-16: audio banks load through a game engine's middleware."
     },
