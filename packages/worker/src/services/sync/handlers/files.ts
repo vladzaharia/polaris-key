@@ -16,7 +16,8 @@
  *   3. A write only: `cloudSync.writesPaused` (`503`), then the device trust check
  *      (`cloudSyncWrite`).
  *   4. The limiter: `begin` is one of 30 transfers a device an hour, every other call one of 600
- *      requests a minute (`429 rate_limited`, both fail open).
+ *      requests a minute (`429 rate_limited`). When the limiter cannot be read, a write
+ *      answers `503 unavailable` (`Retry-After: 5`); the reads proceed unmetered.
  *   5. `begin` only: the body, then the plan's §2.3 checks 1 to 4 against the catalog (the object
  *      makes 5 to 7 against stored state).
  *
@@ -142,6 +143,7 @@ export async function fileCall(
     caller.access.subject,
     caller.device.device_id,
     now,
+    opts.write,
   );
   if (limited) return limited;
 

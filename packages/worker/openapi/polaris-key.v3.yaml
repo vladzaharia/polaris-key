@@ -11015,7 +11015,9 @@ paths:
         writes the file first and the record's metadata second, on the `version` returned here
         (§11.5). A `finalize` of the same upload still in flight is `503 unavailable` (`Retry-After:
         1`). `403 quota_exceeded` with `scope: collection` when the record would be a create past
-        `maxRecords`.
+        `maxRecords`, or with `scope: user` when a `chunks` upload names chunks whose last
+        reference went after its plan call and whose bytes no longer fit the person's quota (the
+        upload ends).
       security: [{ deviceToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }

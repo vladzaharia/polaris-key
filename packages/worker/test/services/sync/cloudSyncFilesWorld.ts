@@ -190,11 +190,46 @@ export function meta(w: World, key: string): string | undefined {
   return row?.value;
 }
 
-/** The rate limiter's Durable Object is down: every call rejects (the file limits fail open). */
-export function breakLimiter(w: Pick<World, "env">): void {
+/**
+ * The rate limiter's Durable Object is down: every call rejects (file reads proceed, file writes
+ * answer 503). Returns a function that brings the limiter back.
+ */
+export function breakLimiter(w: Pick<World, "env">): () => void {
+  const up = w.env.RL;
   const down = { fetch: () => Promise.reject(new Error("object reset")) };
   const ns = { idFromName: (name: string) => ({ name }), get: () => down };
   w.env.RL = ns as unknown as DurableObjectNamespace;
+  return () => {
+    w.env.RL = up;
+  };
+}
+
+/** Counts the R2 calls that create state (an object, an upload, a part) while `run` executes. */
+export async function r2Writes(
+  w: Pick<World, "env">,
+  run: () => Promise<void>,
+): Promise<number> {
+  const r2 = w.env.SYNC_FILES as unknown as Record<string, unknown>;
+  let n = 0;
+  const wrap = (name: string): (() => void) => {
+    const orig = r2[name] as (...a: unknown[]) => unknown;
+    r2[name] = (...a: unknown[]) => {
+      n++;
+      return orig.apply(r2, a);
+    };
+    return () => {
+      r2[name] = orig;
+    };
+  };
+  const undo = ["put", "createMultipartUpload", "resumeMultipartUpload"].map(
+    wrap,
+  );
+  try {
+    await run();
+  } finally {
+    for (const u of undo) u();
+  }
+  return n;
 }
 
 /** The device's licence carries these entitlement values. */

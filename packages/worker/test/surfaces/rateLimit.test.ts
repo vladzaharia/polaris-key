@@ -3,6 +3,7 @@ import {
   clientIp,
   clientNetwork,
   RL_SHARDS,
+  rateLimitCheck,
   rateLimitOk,
   rateLimitShard,
   shardIndex,
@@ -27,6 +28,37 @@ import { handleRegister } from "../../src/core/register.js";
 import { SERVICES } from "../../src/mount.js";
 import { serializeServices } from "../../src/core/services.js";
 import { setServices } from "../../src/core/products/store.js";
+
+describe("rateLimitCheck", () => {
+  const down = (fetch: () => Promise<Response>) => {
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    env.RL = {
+      idFromName: (name: string) => ({ name }),
+      get: () => ({ fetch }),
+    } as unknown as typeof env.RL;
+    return env;
+  };
+  const open = { bucket: "syncFilesDevice", id: "d", limit: 1, windowSec: 60 };
+  const closed = { bucket: "activate", id: "d", limit: 1, windowSec: 60 };
+
+  it("rateLimitCheck reports unavailable on a throw, a non-2xx and a malformed body, and rateLimitOk keeps each bucket's fail mode", async () => {
+    const modes: Array<() => Promise<Response>> = [
+      () => Promise.reject(new Error("reset")),
+      () => Promise.resolve(new Response("nope", { status: 500 })),
+      () => Promise.resolve(new Response(JSON.stringify({ ok: "yes" }))),
+      () => Promise.resolve(new Response("<html>")),
+    ];
+    for (const fetch of modes) {
+      const env = down(fetch);
+      expect(await rateLimitCheck(env, "djdl", open, NOW)).toBe("unavailable");
+      expect(await rateLimitOk(env, "djdl", open, NOW)).toBe(true);
+      expect(await rateLimitOk(env, "djdl", closed, NOW)).toBe(false);
+    }
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    expect(await rateLimitCheck(env, "djdl", open, NOW)).toBe("ok");
+    expect(await rateLimitCheck(env, "djdl", open, NOW)).toBe("limited");
+  });
+});
 
 describe("rateLimitOk", () => {
   it("allows up to the limit within a window, then blocks", async () => {

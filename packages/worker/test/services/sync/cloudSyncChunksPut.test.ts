@@ -12,10 +12,13 @@ import {
   SLUG,
   begin,
   beginBody,
+  breakLimiter,
   bytesOf,
   call,
   errorCode,
+  filesPath,
   filesWorld,
+  finalize,
   meta,
   rows,
   spendLimit,
@@ -33,6 +36,8 @@ import {
   plan,
   planned,
   putChunk,
+  putManifest,
+  writeChunked,
   type TestChunk,
 } from "./cloudSyncChunksWorld.js";
 
@@ -341,5 +346,78 @@ describe("GET …/files/{collection}/chunks/{chunkId}", () => {
         })
       ).status,
     ).toBe(401);
+  });
+});
+
+describe("a manifest PUT that lands after its session left open", () => {
+  it("a manifest PUT that lands after finalize keeps the delta file's manifest", async () => {
+    const w = await filesWorld();
+    const manifest = manifestOf(4);
+    const a = chunkOf(1);
+    const up = await beginChunks(w, "delta", "slot", manifest);
+    await planned(w, "delta", "slot", up.uploadId, [a]);
+    expect((await putChunk(w, "delta", "slot", up.uploadId, a)).status).toBe(
+      204,
+    );
+    expect(
+      (await putManifest(w, "delta", "slot", up.uploadId, manifest)).status,
+    ).toBe(204);
+    const key = `u/${SLUG}/${w.subject}/o/${up.uploadId}`;
+    const real = w.r2.put.bind(w.r2);
+    w.r2.put = async (...args: Parameters<typeof real>) => {
+      w.r2.put = real;
+      expect((await finalize(w, "delta", "slot", up.uploadId)).status).toBe(
+        200,
+      );
+      return real(...args);
+    };
+    const late = await putManifest(w, "delta", "slot", up.uploadId, manifest);
+    expect(late.status).toBe(404);
+    expect(w.r2.keys()).toContain(key);
+    const got = await call(
+      w,
+      "GET",
+      filesPath("delta", "slot", "").slice(0, -1),
+    );
+    expect(got.status).toBe(200);
+    expect(new Uint8Array(await got.arrayBuffer())).toEqual(manifest);
+  });
+});
+
+const planOf = (w: FilesWorld, uploadId: string, chunks: TestChunk[]) =>
+  plan(
+    w,
+    "delta",
+    "slot",
+    uploadId,
+    chunks.map((k) => [k.id, k.object.length]),
+  );
+
+describe("the chunk routes under a limiter that cannot be read (D-22)", () => {
+  // `rateLimitCheck`: a file call that writes refuses 503 when the limiter is unreadable.
+  it("the plan and a chunk PUT refuse with 503 when the limiter cannot be read, with no object or R2 call, and a chunk GET proceeds", async () => {
+    const w = await filesWorld();
+    const held = chunkOf(1);
+    await writeChunked(w, "delta", "old", manifestOf(1), [held]);
+    const fresh = chunkOf(2);
+    const up = await beginChunks(w, "delta", "slot", manifestOf(2));
+    await planned(w, "delta", "slot", up.uploadId, [fresh]);
+    const calls = vi.spyOn(w.ns, "get");
+    const put = vi.spyOn(w.r2, "put");
+    breakLimiter(w);
+    const before = calls.mock.calls.length;
+    const plan = await planOf(w, up.uploadId, [fresh]);
+    expect(plan.status).toBe(503);
+    expect(
+      (await putChunk(w, "delta", "slot", up.uploadId, fresh)).status,
+    ).toBe(503);
+    expect(put).not.toHaveBeenCalled();
+    expect(calls.mock.calls.length).toBe(before);
+    const read = await call(
+      w,
+      "GET",
+      `/${SLUG}/sync/files/delta/chunks/${held.id}`,
+    );
+    expect(read.status).toBe(200);
   });
 });

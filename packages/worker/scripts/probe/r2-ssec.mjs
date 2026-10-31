@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Does R2 accept SSE-C (`ssecKey`) on put, get, createMultipartUpload and uploadPart?
-// (U-10.1; plans/U-10-U-11a-slices.md §2.8, D-8.)
+// Does R2 accept and enforce SSE-C (`ssecKey`) on every call the file path makes (put, head, whole
+// and ranged get, multipart create, part, complete and abort, list, delete)?
+// (U-10.1; plans/U-10-U-11a-slices.md §2.8, D-8; U-44 F4.)
 //
 //   node scripts/probe/r2-ssec.mjs --bucket polaris-key-sync-files-staging --remote
 //   node scripts/probe/r2-ssec.mjs            # miniflare's local R2: proves call shapes only
@@ -8,12 +9,12 @@
 // `--remote` runs the probe against the named real bucket through wrangler's remote binding
 // (wrangler must be logged in, or CLOUDFLARE_API_TOKEN set, for the bucket's account). Without it
 // the probe runs on miniflare, which accepts the option and does not enforce it, so its verdict is
-// `fallback` by construction; only a remote run can say `supported`.
+// `unsupported` by construction; only a remote run can say `supported`.
 //
 // The probe writes under `probe/ssec/<random>/` and deletes what it wrote. It prints the verdict
 // and each check (never a key) and exits 0 for either verdict, 1 when it could not run.
-// `supported` ⇒ server-mode files use an R2 SSE-C key per file. `fallback` ⇒ they are sealed as
-// `pkey-sync-file/1` under the per-principal key (plan §1.8).
+// `supported` ⇒ server-mode files use an R2 SSE-C key per person. `unsupported` ⇒
+// `launch.syncFiles` stays off.
 
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";

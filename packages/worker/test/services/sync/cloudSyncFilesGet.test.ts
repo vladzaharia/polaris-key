@@ -22,6 +22,7 @@ import {
   filesPath,
   filesWorld,
   finalize,
+  meta,
   push,
   putBytes,
   rows,
@@ -465,11 +466,39 @@ describe("the limits", () => {
     expect((await get(w, "saves", "s1")).status).toBe(200);
   });
 
-  it("limiter down: it fails open", async () => {
+  it("downloads, status and abort proceed when the limiter cannot be read", async () => {
     const w = await filesWorld();
     await stored(w, "saves", "s1", bytesOf(100));
+    const open = await begin(w, "saves", "s2", beginBody(10));
+    const up = (await open.json()) as { uploadId: string };
+    const held = Number(meta(w, "usage_reserved_bytes") ?? 0);
+    expect(held).toBeGreaterThan(0);
     breakLimiter(w);
     expect((await get(w, "saves", "s1")).status).toBe(200);
+    expect((await rangeOf(w, "bytes=0-9")).status).toBe(206);
+    const path = uploadPath("saves", "s2", up.uploadId);
+    expect((await call(w, "GET", path)).status).toBe(200);
+    expect((await call(w, "DELETE", path)).status).toBe(204);
+    expect(Number(meta(w, "usage_reserved_bytes") ?? 0)).toBe(0);
+  });
+
+  it("a Range request answered whole because If-Range does not match is one of the 30 transfers an hour", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW * 1000);
+    const w = await filesWorld();
+    await stored(w, "saves", "s1", bytesOf(100));
+    await spendLimit(w, "syncFilesDevice", 28, 30, 3600);
+    const stale = (): Promise<Response> =>
+      get(w, "saves", "s1", {
+        headers: { range: "bytes=0-9", "if-range": '"stale"' },
+      });
+    const first = await stale();
+    expect(first.status).toBe(200);
+    expect((await first.arrayBuffer()).byteLength).toBe(100);
+    const res = await stale();
+    expect([res.status, await errorCode(res)]).toEqual([429, "rate_limited"]);
+    // A matching validator is an ordinary range on the minute bucket.
+    expect((await rangeOf(w, "bytes=0-9")).status).toBe(206);
   });
 });
 
