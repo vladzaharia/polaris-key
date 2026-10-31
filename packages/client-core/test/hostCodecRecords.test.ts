@@ -27,6 +27,7 @@ import {
   sealPush,
   sealValue,
   webCryptoSyncPort as port,
+  wireId,
   type HostCodec,
   type SyncJson,
 } from "../src/sync/index.js";
@@ -842,5 +843,14 @@ describe("record envelope rows (envelopeCases) through openPull", () => {
       codecOf(unhex(c.rootHex)),
     );
     expect((out.body as any).changes[0].record).toEqual(["saves", "slot-1"]);
+  });
+});
+
+describe("wireId (U-22.5)", () => {
+  it("blinds the record id in end-to-end mode and is the id in server mode", async () => {
+    expect(await wireId(null, "saves", "slot-1")).toBe("slot-1");
+    const wire = await wireId(codec, "saves", "slot-1");
+    expect(wire).toBe(await bl("record", "saves", "slot-1"));
+    expect(isBlindedName(wire)).toBe(true);
   });
 });
