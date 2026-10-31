@@ -5,6 +5,8 @@ package im.plrs.key.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -70,9 +72,10 @@ internal val TransferStates: Set<String> = setOf("transferring", "waiting", "tra
 /**
  * CloudSyncStatus while saves transfer: [screen] is `transferring` (the label, then its figures, and a
  * bar on its own row that is determinate only with a counted [fraction]), `waiting` (names its reason)
- * or `transfer-failed` (Try again, secondary, so it never competes with the host's primary). None of
+ * or `transfer-failed` (Try again, a text button, so it never competes with the host's primary). None of
  * them says Synced, whatever the last sync time was.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 public fun PolarisCloudSyncTransfer(
     screen: KitScreen,
@@ -90,10 +93,14 @@ public fun PolarisCloudSyncTransfer(
         ?: listOf("cloudSync.waitingNetwork", "cloudSync.waitingBattery", "cloudSync.waitingBackground").firstNotNullOfOrNull(lines::text).orEmpty()
     // The label comes first, its figures after it.
     val figures = lines.text("cloudSync.transferProgress")
-    val text = if (figures != null) "$label · $figures" else label
-    val (glyph, tint) = when (screen.state) {
-        "transfer-failed" -> PolarisSymbols.Warning to status.danger
-        "waiting" -> PolarisSymbols.Info to scheme.onSurfaceVariant
+    val (glyph, tint) = when {
+        screen.state == "transfer-failed" -> PolarisSymbols.Warning to status.danger
+
+        // A connection is the offline glyph; power or the background is information, never a warning.
+        screen.state == "waiting" && lines.has("cloudSync.waitingNetwork") -> PolarisGnome.networkOffline to scheme.onSurfaceVariant
+
+        screen.state == "waiting" -> PolarisSymbols.Info to scheme.onSurfaceVariant
+
         else -> PolarisSymbols.Refresh to scheme.onSurfaceVariant
     }
     PolarisSection(title = null, modifier = modifier) {
@@ -101,12 +108,7 @@ public fun PolarisCloudSyncTransfer(
             Modifier.fillMaxWidth().padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.controls),
             verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls),
         ) {
-            Row(
-                Modifier.fillMaxWidth().semantics(mergeDescendants = true) {
-                    liveRegion = LiveRegionMode.Polite
-                },
-                verticalAlignment = Alignment.Top,
-            ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 val line = with(LocalDensity.current) { MaterialTheme.typography.bodyLarge.lineHeight.toDp() }
                 Icon(
                     glyph,
@@ -115,11 +117,23 @@ public fun PolarisCloudSyncTransfer(
                     modifier = Modifier.padding(top = ((line - 20.dp) / 2).coerceAtLeast(0.dp)).size(20.dp),
                 )
                 Spacer(Modifier.width(PolarisSpace.controls))
-                Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface, modifier = Modifier.weight(1f))
+                // Only the label is a live region: a state change is announced once, byte updates are not.
+                FlowRow(Modifier.weight(1f)) {
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = scheme.onSurface,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                    if (figures != null) {
+                        Text(" · $figures", style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+                    }
+                }
             }
             // The bar takes its own full-width row at every size; determinate only with counted bytes.
-            if (screen.state == "transferring") PolarisProgressBar(fraction, text)
-            if (screen.state == "transfer-failed") PolarisSecondaryButton(lines.text("common.tryAgain").orEmpty(), onRetry)
+            // It reports its own range (no description), so the figures are not read twice.
+            if (screen.state == "transferring") PolarisProgressBar(fraction, null)
+            if (screen.state == "transfer-failed") PolarisTextButton(lines.text("common.tryAgain").orEmpty(), onRetry)
         }
     }
 }

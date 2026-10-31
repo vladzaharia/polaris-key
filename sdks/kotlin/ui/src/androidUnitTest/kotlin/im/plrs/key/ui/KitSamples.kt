@@ -303,6 +303,7 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     "saveConflict-choose" to { PolarisSaveConflict(saveScreen("choose")) },
     "saveConflict-choose-full" to { PolarisSaveConflict(saveScreen("choose", both = false)) },
     "saveConflict-choose-deleted" to { PolarisSaveConflict(saveScreen("choose", deleted = true)) },
+    "saveConflict-choose-newer" to { PolarisSaveConflict(saveScreen("choose", newer = "remote")) },
     "saveConflict-keeping" to { PolarisSaveConflict(saveScreen("keeping", keep = "local")) },
     "saveConflict-kept" to { PolarisSaveConflict(saveScreen("kept", keep = "both")) },
     "saveConflict-failed" to { PolarisSaveConflict(saveScreen("failed", keep = "remote")) },
@@ -413,11 +414,12 @@ internal fun syncScreen(component: KitComponent, member: String, vararg fields: 
 }
 
 /** A SaveConflict state as the `saveConflict` family writes it (the other device named; [deleted] is `remote: null`). */
-internal fun saveScreen(step: String, both: Boolean = true, deleted: Boolean = false, keep: String? = null): KitScreen {
+internal fun saveScreen(step: String, both: Boolean = true, deleted: Boolean = false, keep: String? = null, newer: String? = null): KitScreen {
     val text = buildString {
         append("""{"saveConflict":{"step":"$step","local":{"when":"today, 14:02"},""")
         append(if (deleted) """"remote":null,""" else """"remote":{"when":"yesterday, 21:40","device":"Maya's Steam Deck"},""")
         if (keep != null) append(""""keep":"$keep",""")
+        if (newer != null) append(""""newer":"$newer",""")
         append(""""bothAvailable":$both}}""")
     }
     return KitStates.resolve(

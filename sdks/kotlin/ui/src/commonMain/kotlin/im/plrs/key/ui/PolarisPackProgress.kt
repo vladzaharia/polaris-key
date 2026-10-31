@@ -116,13 +116,16 @@ public fun PolarisPackList(ui: PolarisPackProgressUi, modifier: Modifier = Modif
     }
 }
 
-/** A linear progress bar in the product's primary (never a service accent, UI-KITS.md 1.2); indeterminate when [fraction] is null. */
+/**
+ * A linear progress bar in the product's primary (never a service accent, UI-KITS.md 1.2); indeterminate
+ * when [fraction] is null. Without a [description] it reports its own range.
+ */
 @Composable
-internal fun PolarisProgressBar(fraction: Float?, description: String) {
+internal fun PolarisProgressBar(fraction: Float?, description: String?) {
     val color = MaterialTheme.colorScheme.primary
     if (fraction == null) {
         LinearProgressIndicator(
-            modifier = Modifier.fillMaxWidth().semantics { stateDescription = description },
+            modifier = Modifier.fillMaxWidth().semantics { description?.let { stateDescription = it } },
             color = color,
         )
     } else {
@@ -130,7 +133,7 @@ internal fun PolarisProgressBar(fraction: Float?, description: String) {
             progress = { fraction },
             modifier = Modifier.fillMaxWidth().semantics {
                 progressBarRangeInfo = ProgressBarRangeInfo(fraction, 0f..1f)
-                stateDescription = description
+                description?.let { stateDescription = it }
             },
             color = color,
             drawStopIndicator = {},

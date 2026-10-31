@@ -259,6 +259,8 @@ internal fun PolarisScaffold(
     navigationIcon: (@Composable () -> Unit)? = null,
     detail: (@Composable ColumnScope.() -> Unit)? = null,
     actions: (@Composable ColumnScope.() -> Unit)? = null,
+    /** The actions for this window, when only some windows pair them with the content in two panes (else [content] carries them). */
+    paneActions: ((PolarisWindow) -> (@Composable ColumnScope.() -> Unit)?)? = null,
     /** At large type (font scale 1.5 and up) the actions dock below the scrolling body, so the primary stays in the first viewport. */
     dockActionsAtLargeType: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
@@ -266,6 +268,7 @@ internal fun PolarisScaffold(
     val theme = PolarisTheme.current
     val artName = LocalPolarisArtName.current
     PolarisSurface(modifier) { window, maxHeight ->
+        val actions = actions ?: paneActions?.invoke(window)
         val logo = theme.logo?.takeIf { showLogo }
         if (LocalPolarisEmbedded.current) {
             // The detail pane of a list-detail screen: one start-aligned column that scrolls on its own.
@@ -675,10 +678,11 @@ internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polar
  * A screen title: a TalkBack heading, centred in a hero column and start-aligned on focused steps
  * and in panes. It steps up a role as the window grows (headline small on a phone, medium on a
  * tablet, large on a large window), so it always ranks clearly above the body; its lines are
- * balanced.
+ * balanced. A step whose title does not change (SaveConflict's choose, keeping and failed) passes its
+ * state as [key], so a screen reader lands on the heading again when the step does.
  */
 @Composable
-public fun PolarisTitle(text: String, modifier: Modifier = Modifier) {
+public fun PolarisTitle(text: String, modifier: Modifier = Modifier, key: Any? = text) {
     val window = polarisWindow
     val typography = MaterialTheme.typography
     // A screen reader reading by touch lands on the step's heading when the step appears (as the React
@@ -686,7 +690,7 @@ public fun PolarisTitle(text: String, modifier: Modifier = Modifier) {
     val requester = remember { FocusRequester() }
     val screenReader = rememberScreenReaderOn() && LocalPolarisInitialFocus.current
     if (screenReader) {
-        LaunchedEffect(text) { runCatching { requester.requestFocus() } }
+        LaunchedEffect(key) { runCatching { requester.requestFocus() } }
     }
     Text(
         text = text,

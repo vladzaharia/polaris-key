@@ -308,6 +308,7 @@ public fun PolarisKitScreen(
                 onRetry = { onAction(KitAction.retry) },
                 onCancel = { onAction(KitAction.cancel) },
                 onDone = { onAction(null) },
+                onChooseAgain = { onAction(KitAction.chooseAgain) },
                 catalog = catalog,
                 locale = locale,
             )
