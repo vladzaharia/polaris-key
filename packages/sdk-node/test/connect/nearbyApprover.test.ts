@@ -799,9 +799,10 @@ describe("background approval and host callbacks (N10)", () => {
 });
 
 describe("N2: the VOUCH_REQ label against a cleaned HELLO label", () => {
-  it("an honest D whose label does not clean twice the same way still verifies", async () => {
+  it("an honest D whose label has a base, an invisible mark and a combining mark still verifies", async () => {
     await start();
-    // A zero-width space between a base letter and a combining acute: cleaning twice differs.
+    // A zero-width space between a base letter and a combining acute. The cleaning deletes the
+    // space and then composes, so one pass gives U+00E9 and a second changes nothing.
     const d = await RawD.dial(net, { auto: false, label: "e\u200b\u0301x" });
     ds.push(d);
     await d.waitFor(() => d.hello !== null);
@@ -810,7 +811,28 @@ describe("N2: the VOUCH_REQ label against a cleaned HELLO label", () => {
     await until(() => approvals.length === 1);
     await d.showAndRequest();
     const a = approvals[0]!;
+    expect(a.label).toBe("\u00e9x");
     const r = await a.pick(shownOf(a, d));
-    expect(r).toMatchObject({ request: REQUEST, label: "e\u0301x" });
+    expect(r).toMatchObject({ request: REQUEST, label: "\u00e9x" });
+  });
+});
+
+describe("N3: invisible padding in a HELLO label", () => {
+  it("shows a filler- and blank-padded label as the plain one, and the VOUCH_REQ still verifies", async () => {
+    await start();
+    const d = await RawD.dial(net, {
+      auto: false,
+      label: "Ana's iPhone\u2800\u3164\u200b",
+    });
+    ds.push(d);
+    await d.waitFor(() => d.hello !== null);
+    await d.startSas();
+    await d.waitFor(() => d.code !== null);
+    await until(() => approvals.length === 1);
+    await d.showAndRequest();
+    const a = approvals[0]!;
+    expect(a.label).toBe("Ana's iPhone");
+    const r = await a.pick(shownOf(a, d));
+    expect(r).toMatchObject({ request: REQUEST, label: "Ana's iPhone" });
   });
 });

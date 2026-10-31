@@ -83,6 +83,8 @@ class Packet(NamedTuple):
     questions: List[Question]
     #: Answers followed by additionals (the authority section is decoded for bounds and dropped).
     answers: List[Record]
+    #: The header's query ID (a legacy unicast answer echoes it).
+    id: int = 0
 
 
 # --- parse -----------------------------------------------------------------------------------------
@@ -193,7 +195,7 @@ def parse_packet(data: bytes) -> Packet:
         raise MdnsPacketError("packet_too_large")
     if len(buf) < _HEADER.size:
         raise MdnsPacketError("truncated")
-    _id, flags, qd, an, ns, ar = _HEADER.unpack_from(buf, 0)
+    packet_id, flags, qd, an, ns, ar = _HEADER.unpack_from(buf, 0)
     if max(qd, an, ns, ar) > MAX_RECORDS:
         raise MdnsPacketError("too_many_records")
     pos = _HEADER.size
@@ -209,7 +211,7 @@ def parse_packet(data: bytes) -> Packet:
     answers, pos = _parse_records(buf, pos, an, True)
     _, pos = _parse_records(buf, pos, ns, False)
     extra, pos = _parse_records(buf, pos, ar, True)
-    return Packet(bool(flags & 0x8000), questions, answers + extra)
+    return Packet(bool(flags & 0x8000), questions, answers + extra, packet_id)
 
 
 # --- build -----------------------------------------------------------------------------------------
@@ -282,16 +284,25 @@ def build_query(questions: Sequence[Tuple[str, str]], packet_id: int = 0) -> byt
     return bytes(out)
 
 
-def build_response(answers: Sequence[Record]) -> bytes:
+def build_response(
+    answers: Sequence[Record],
+    packet_id: int = 0,
+    questions: Sequence[Tuple[str, str]] = (),
+    flush: bool = True,
+) -> bytes:
     """An authoritative response packet (flags 0x8400) holding ``answers``. Class IN; the
-    cache-flush bit is set on SRV, TXT, A and AAAA (unique records), never on the shared PTR."""
-    if len(answers) > MAX_RECORDS:
+    cache-flush bit is set on SRV, TXT, A and AAAA (unique records), never on the shared PTR, unless
+    ``flush`` is false. A legacy unicast answer (RFC 6762 section 6.7) passes the query's ``packet_id`` and
+    ``questions`` to repeat, and no cache-flush bit."""
+    if len(answers) > MAX_RECORDS or len(questions) > MAX_RECORDS:
         raise ValueError("too many records")
-    out = bytearray(_HEADER.pack(0, _RESPONSE_FLAGS, 0, len(answers), 0, 0))
+    out = bytearray(_HEADER.pack(packet_id & 0xFFFF, _RESPONSE_FLAGS, len(questions), len(answers), 0, 0))
+    for name, rtype in questions:
+        out += _encode_name(name) + struct.pack(">HH", _type_code(rtype), _IN)
     for r in answers:
         code = _type_code(r.type)
         rdata = _encode_rdata(code, r.data)
-        cls = _IN if code == _PTR else _IN | _CACHE_FLUSH
+        cls = _IN if code == _PTR or not flush else _IN | _CACHE_FLUSH
         out += _encode_name(r.name) + struct.pack(">HHIH", code, cls, int(r.ttl) & 0xFFFFFFFF, len(rdata))
         out += rdata
     if len(out) > MAX_PACKET:

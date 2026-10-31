@@ -115,5 +115,8 @@ public class KeystoreSealer(private val keys: KeyProvider, public val alias: Str
 
         /** The alias for [product]'s Cloud Sync root: its own Keystore key, so forgetting the root never touches the device keys. */
         public fun rootAliasFor(product: String): String = "pkey:${SecureStore.checkProductName(product)}:syncroot"
+
+        /** The alias for [product]'s Cloud Connect state (K_disc, the roster): its own Keystore key, apart from the device keys and the Sync root. */
+        public fun connectAliasFor(product: String): String = "pkey:${SecureStore.checkProductName(product)}:connect"
     }
 }

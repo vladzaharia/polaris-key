@@ -95,8 +95,12 @@ class SocketLink:
         handshake_seconds: float = HANDSHAKE_SECONDS,
         expect_peer: Optional[str] = None,
         peer_full: Optional[Callable[[str], bool]] = None,
+        on_event: Optional[Callable[[Any], None]] = None,
     ) -> None:
         self._loop = asyncio.get_running_loop()
+        #: Modes ``v`` and ``p`` (CC-15): the host owns the session. Every engine event but ``Closed`` goes
+        #: here, there is no ``ConnectSession``, and the handshake window ends at ``Established``.
+        self._on_event = on_event
         #: The device id a dialling side expects; the session is refused, before it is registered or
         #: announced, when the certificate names another.
         self._expect_peer = expect_peer
@@ -160,6 +164,15 @@ class SocketLink:
         """Initiator: write message 1."""
         self.channel.start()
         self._arm()
+
+    def destroy(self) -> None:
+        """Drop the socket now, with no goodbye (the sign-out bound's force path). Safe from the loop."""
+        try:
+            t = getattr(self._writer, "transport", None)
+            if t is not None:
+                t.abort()
+        except Exception:
+            pass
 
     def pause(self, on: bool) -> None:
         """Stop (True) or resume (False) reading from the socket. Safe from any thread."""
@@ -293,6 +306,17 @@ class SocketLink:
                 if not self.opened.done():
                     self.opened.set_result(None)
             h.on_event(e)
+            return
+        if self._on_event is not None:
+            if isinstance(e, Established):
+                self._open = True
+                if self._deadline is not None:
+                    self._deadline.cancel()
+                    self._deadline = None
+            if isinstance(e, Closed):
+                self._finish(Closed("connection_lost", False) if self._lost and not e.by_peer else e)
+            else:
+                self._on_event(e)
             return
         if isinstance(e, Established):
             # Mode c (§15.10) has no device id: the contact that opened the session names the peer.

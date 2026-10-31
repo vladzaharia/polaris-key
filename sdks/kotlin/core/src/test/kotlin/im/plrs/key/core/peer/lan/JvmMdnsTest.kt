@@ -16,16 +16,31 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.MulticastSocket
 
 class JvmMdnsTest {
     private val inst = "p1-abcdefghijklmnop"
     private val fq = "$inst.$PEER_SERVICE"
     private val host = "$inst.local"
 
-    private class FakeSocket(val onPacket: (ByteArray, String) -> Unit) : MdnsSocket {
+    private class FakeSocket(val deliver: (ByteArray, String, Int) -> Unit) : MdnsSocket {
         val sent = ArrayList<MdnsPacket>()
         val sent6 = ArrayList<Pair<String, MdnsPacket>>()
+
+        /** Packets sent to one address alone: the raw bytes, the host and the port. */
+        val unicast = ArrayList<Triple<ByteArray, String, Int>>()
         var closed = false
+
+        /** A datagram arrives from [src]:[port] (default: a multicast query's or response's port). */
+        fun onPacket(data: ByteArray, src: String, port: Int = MDNS_PORT) = deliver(data, src, port)
+
+        override fun sendTo(data: ByteArray, host: String, port: Int) {
+            unicast += Triple(data, host, port)
+        }
 
         override fun send(data: ByteArray) {
             sent += parseMdnsPacket(data)
@@ -216,6 +231,113 @@ class JvmMdnsTest {
         val before = r.sock.sent.size
         r.sock.onPacket(buildMdnsQuery(listOf(MdnsQuestion(name, MdnsType.PTR))), "10.0.0.9")
         return r.sock.sent.size - before
+    }
+
+    private val ask = buildMdnsQuery(listOf(MdnsQuestion(PEER_SERVICE, MdnsType.PTR)), 0x1234)
+
+    @Test
+    fun aQuerierOnAnEphemeralPortGetsAUnicastAnswerWithItsId() {
+        val r = Rig(addresses = { listOf("192.168.1.20") })
+        advertise(r)
+        val sent = r.sock.sent.size
+        r.sock.onPacket(ask, "192.168.1.30", 51234)
+        assertEquals(sent, r.sock.sent.size) // nothing to the group
+        assertEquals(1, r.sock.unicast.size)
+        val (data, host, port) = r.sock.unicast[0]
+        assertEquals("192.168.1.30" to 51234, host to port)
+        val p = parseMdnsPacket(data)
+        assertTrue(p.isResponse)
+        assertEquals(0x1234, p.id)
+        assertEquals(listOf(MdnsQuestion(PEER_SERVICE, MdnsType.PTR)), p.questions)
+        assertEquals(listOf(MdnsType.PTR, MdnsType.SRV, MdnsType.TXT, MdnsType.A), p.answers.map { it.type })
+        assertTrue(p.answers.all { it.ttl == 10L })
+        // No cache-flush bit: every answer's class is plain IN (0x0001), followed by the TTL 10.
+        val plain = byteArrayOf(0, 1, 0, 0, 0, 10)
+        val hits = (0..data.size - plain.size).count { i -> plain.indices.all { data[i + it] == plain[it] } }
+        assertEquals(4, hits)
+        r.close()
+    }
+
+    @Test
+    fun aQueryFromPort5353IsStillAnsweredByMulticast() {
+        val r = Rig(addresses = { listOf("192.168.1.20") })
+        advertise(r)
+        val sent = r.sock.sent.size
+        r.sock.onPacket(ask, "192.168.1.30", 5353)
+        assertEquals(sent + 1, r.sock.sent.size)
+        assertEquals(120L, r.sock.sent.last().answers[0].ttl)
+        assertTrue(r.sock.unicast.isEmpty())
+        r.close()
+    }
+
+    @Test
+    fun aLegacyQueryFromOffTheLinkOrAPrivilegedPortGetsNothing() {
+        val r = Rig(addresses = { listOf("192.168.1.20") })
+        advertise(r)
+        val sent = r.sock.sent.size
+        for (src in listOf("8.8.8.8", "100.64.0.5", "fe80::5%en0", "not an address")) r.sock.onPacket(ask, src, 51234)
+        r.sock.onPacket(ask, "8.8.8.8", 5353) // off the link, whatever its port
+        for (port in listOf(1, 53, 1023)) r.sock.onPacket(ask, "192.168.1.30", port)
+        assertTrue(r.sock.unicast.isEmpty())
+        assertEquals(sent, r.sock.sent.size)
+        // None of that used the second's reply slot.
+        r.sock.onPacket(ask, "192.168.1.30", 1024)
+        assertEquals(1, r.sock.unicast.size)
+        r.close()
+    }
+
+    @Test
+    fun aLegacyAnswerRepeatsOnlyOurQuestionsAndHonoursTheReplyGap() {
+        val r = Rig(addresses = { listOf("192.168.1.20") })
+        advertise(r)
+        r.sock.onPacket(buildMdnsQuery(listOf(MdnsQuestion("_other._tcp.local", MdnsType.PTR))), "192.168.1.30", 51234)
+        assertTrue(r.sock.unicast.isEmpty())
+        val mine = List(10) { MdnsQuestion(fq, MdnsType.SRV) }
+        r.sock.onPacket(buildMdnsQuery(listOf(MdnsQuestion("x.local", MdnsType.A)) + mine, 9), "192.168.1.30", 51234)
+        assertEquals(mine.take(4), parseMdnsPacket(r.sock.unicast[0].first).questions)
+        r.sock.onPacket(ask, "192.168.1.30", 51235)
+        assertEquals(1, r.sock.unicast.size)
+        r.t += 1.5
+        r.sock.onPacket(ask, "192.168.1.30", 51235)
+        assertEquals(2, r.sock.unicast.size)
+        r.close()
+    }
+
+    @Test
+    fun theRealSocketReportsTheSourcePortAndSendsUnicastOverLoopback() {
+        val server = MulticastSocket(null as InetSocketAddress?).also { it.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0)) }
+        val got = java.util.concurrent.LinkedBlockingQueue<Triple<ByteArray, String, Int>>()
+        val real = JvmMdnsSocket(server, emptyList(), emptyMap(), emptySet())
+        real.startReader { data, src, port -> got.add(Triple(data, src, port)) }
+        DatagramSocket(0, InetAddress.getByName("127.0.0.1")).use { client ->
+            client.soTimeout = 3000
+            client.send(DatagramPacket(ask, ask.size, InetAddress.getByName("127.0.0.1"), server.localPort))
+            val (data, src, port) = got.poll(3, java.util.concurrent.TimeUnit.SECONDS)!!
+            assertEquals("127.0.0.1" to client.localPort, src to port)
+            assertEquals(0x1234, parseMdnsPacket(data).id)
+            real.sendTo(buildMdnsResponse(listOf(ptr()), 0x1234, flush = false), src, port)
+            val buf = ByteArray(MDNS_MAX_PACKET)
+            val reply = DatagramPacket(buf, buf.size)
+            client.receive(reply)
+            assertEquals(server.localPort, reply.port) // from the responder's own socket
+            assertEquals(0x1234, parseMdnsPacket(reply.data.copyOf(reply.length)).id)
+        }
+        real.close()
+    }
+
+    @Test
+    fun anIpv6LegacyQueryIsAnsweredWithTheAaaaOfItsOwnLink() {
+        val r = Rig(addresses = { listOf("192.168.1.20") }, v6 = listOf(en0, wlan0))
+        advertise(r)
+        r.sock.onPacket(ask, "fe80::5%eth9", 51234)
+        r.sock.onPacket(ask, "fe80::5", 51234)
+        assertTrue(r.sock.unicast.isEmpty())
+        r.sock.onPacket(ask, "fe80::5%wlan0", 51234)
+        assertEquals(1, r.sock.unicast.size)
+        assertEquals("fe80::5%wlan0" to 51234, r.sock.unicast[0].second to r.sock.unicast[0].third)
+        val aaaa = parseMdnsPacket(r.sock.unicast[0].first).answers.filter { it.type == MdnsType.AAAA }
+        assertEquals(listOf("fe80::2"), aaaa.map { (it.data as MdnsData.Address).ip })
+        r.close()
     }
 
     @Test

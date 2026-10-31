@@ -17,11 +17,14 @@ from .cloud_connect import CloudConnect, CloudConnectStatus, CloudPeer
 from .contacts import ContactInfo, ContactRef
 from .errors import LanError, RelayError
 from .links import CloudLinks
+from .nearby import ApproveAnswerInput, CloudNearby, NearbyApproval, NearbyApproverHandle, NearbyDeps, NearbyRequest
 
 __all__ = [
+    "ApproveAnswerInput",
     "CloudConnect",
     "CloudConnectStatus",
     "CloudLinks",
+    "CloudNearby",
     "CloudPeer",
     "ConnectClient",
     "ConnectDevice",
@@ -33,6 +36,10 @@ __all__ = [
     "LinkOffer",
     "LinkPairHandle",
     "PAIR_WINDOW_SECONDS",
+    "NearbyApproval",
+    "NearbyApproverHandle",
+    "NearbyDeps",
+    "NearbyRequest",
     "PREV_DISC_KEY_SECONDS",
     "PairFailure",
     "PairedLink",

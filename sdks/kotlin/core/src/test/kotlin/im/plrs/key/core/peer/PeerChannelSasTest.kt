@@ -27,6 +27,7 @@ class PeerChannelSasTest {
         label: String? = null,
         admission: HandshakeLimiter? = if (role == NoiseRole.responder) HandshakeLimiter() else null,
         ports: NoisePorts = NoisePorts(),
+        holdSas: Boolean = false,
     ) {
         val events = ArrayList<SessionEvent>()
         val out = ArrayList<ByteArray>()
@@ -36,7 +37,7 @@ class PeerChannelSasTest {
             HelloInfo("test", "demo", label),
             { out.add(it) }, { events.add(it) },
             caps = listOf("app/1", "ring/1"), ports = ports, mono = { clock },
-            mode = mode, admission = admission,
+            mode = mode, admission = admission, holdSas = holdSas,
         )
 
         inline fun <reified T : SessionEvent> of(): List<T> = events.filterIsInstance<T>()
@@ -86,7 +87,9 @@ class PeerChannelSasTest {
         )
         m.s.receive(raw.writeMessage(payload1()))
         raw.readMessage(m.out.removeAt(0))
-        m.s.receive(raw.writeMessage("{\"v\":1,\"caps\":[]}".toByteArray()))
+        // Mode v needs `vouch/1` on both sides (N7); mode p lists nothing.
+        val caps = if (mode == PeerMode.v) "[\"vouch/1\"]" else "[]"
+        m.s.receive(raw.writeMessage("{\"v\":1,\"caps\":$caps}".toByteArray()))
         Raw(raw.transport(), raw.handshakeHash)
     }
 
@@ -114,7 +117,8 @@ class PeerChannelSasTest {
             assertEquals(sasDisplay(sd.code), sd.display)
             assertEquals(sd.code, sm.code)
             val est = d.of<SessionEvent.Established>().single()
-            assertEquals(listOf("app/1", "ring/1"), est.caps)
+            // Mode v lists `vouch/1` itself (N7).
+            assertEquals(if (mode == PeerMode.v) listOf("app/1", "ring/1", "vouch/1") else listOf("app/1", "ring/1"), est.caps)
             assertFalse(est.helloAuthenticated)
             try {
                 d.s.sendRecord(RecordType.VOUCH_REQ, ByteArray(0))
@@ -337,6 +341,21 @@ class PeerChannelSasTest {
     }
 
     @Test
+    fun aPeerCloseFreesTheResponderSlot() = runBlocking {
+        // R-6K N5: the approver's slot is released when the peer sends CLOSE, not only on its own close.
+        val lim = HandshakeLimiter(99, 1)
+        val m = Side(PeerMode.v, NoiseRole.responder, admission = lim)
+        val d = Side(PeerMode.v, NoiseRole.initiator)
+        d.s.start()
+        pump(d, m)
+        assertNull(lim.begin())
+        d.s.close()
+        pump(d, m)
+        assertEquals(listOf(true), m.closed().map { it.byPeer })
+        assertNotNull(lim.begin())
+    }
+
+    @Test
     fun theConfirmedSessionFreesItsSlotToo() = runBlocking {
         val lim = HandshakeLimiter(99, 1)
         val m = Side(PeerMode.v, NoiseRole.responder, admission = lim)
@@ -477,5 +496,182 @@ class PeerChannelSasTest {
         pump(d, m)
         val text = d.s.toString() + d.events + m.events
         assertFalse(text.contains(d.of<SessionEvent.Sas>().single().display))
+    }
+
+    // -- mode v hooks (CC-15): vouch/1, the handshake hash, holdSas and startSas --------------------
+
+    @Test
+    fun modeVListsVouch1ItselfAndExposesTheOrderGuardInModeVOnly() {
+        assertEquals(VouchRole.Requester, Side(PeerMode.v, NoiseRole.initiator).s.vouch?.role)
+        assertEquals(VouchRole.Approver, Side(PeerMode.v, NoiseRole.responder).s.vouch?.role)
+        assertNull(Side(PeerMode.p, NoiseRole.initiator).s.vouch)
+    }
+
+    @Test
+    fun handshakeHashIsTheSameOnBothEndsOnceEstablishedAndACopy() = runBlocking {
+        val (d, m) = pair(PeerMode.v)
+        try {
+            d.s.handshakeHash()
+            fail("not established yet")
+        } catch (e: IllegalStateException) {
+            assertEquals("session not established", e.message)
+        }
+        d.s.start()
+        pump(d, m)
+        val h = d.s.handshakeHash()
+        assertEquals(32, h.size)
+        assertTrue(h.contentEquals(m.s.handshakeHash()))
+        h.fill(0)
+        assertTrue(d.s.handshakeHash().contentEquals(m.s.handshakeHash()))
+    }
+
+    @Test
+    fun holdSasStopsAfterHelloAndStartSasSendsTheCommitAndTheCodeFollows() = runBlocking {
+        val d = Side(PeerMode.v, NoiseRole.initiator, holdSas = true)
+        val m = Side(PeerMode.v, NoiseRole.responder)
+        d.s.start()
+        pump(d, m)
+        assertEquals(1, d.of<SessionEvent.Established>().size)
+        assertEquals(1, m.of<SessionEvent.Established>().size)
+        assertTrue(d.of<SessionEvent.Sas>().isEmpty() && m.of<SessionEvent.Sas>().isEmpty())
+        assertFalse(d.s.closed || m.s.closed)
+        d.s.startSas()
+        pump(d, m)
+        assertEquals(d.of<SessionEvent.Sas>().single().code, m.of<SessionEvent.Sas>().single().code)
+        // A second start is refused and closes the session.
+        d.s.startSas()
+        assertEquals(listOf(SessionEvent.Closed("peer_not_allowed", false)), d.closed())
+    }
+
+    @Test
+    fun dRestartsItsCodeDeadlineAtStartSas() = runBlocking {
+        val d = Side(PeerMode.v, NoiseRole.initiator, holdSas = true)
+        val m = Side(PeerMode.v, NoiseRole.responder)
+        d.s.start()
+        pump(d, m)
+        // Held at HELLO: the deadline from the first byte stands.
+        assertEquals(SAS_DEADLINE_SECONDS.toDouble(), d.s.wakeIn()!!, 0.0)
+        d.clock = 100.0
+        assertEquals(20.0, d.s.wakeIn()!!, 0.0)
+        d.s.startSas()
+        assertEquals(SAS_DEADLINE_SECONDS.toDouble(), d.s.wakeIn()!!, 0.0)
+        d.clock = 100.0 + SAS_DEADLINE_SECONDS
+        d.s.tick()
+        assertEquals(listOf(SessionEvent.Closed("peer_timeout", false)), d.closed())
+    }
+
+    @Test
+    fun mRestartsItsCodeDeadlineWhenSasCommitArrives() = runBlocking {
+        val d = Side(PeerMode.v, NoiseRole.initiator, holdSas = true)
+        val m = Side(PeerMode.v, NoiseRole.responder)
+        d.s.start()
+        pump(d, m)
+        m.clock = 100.0
+        assertEquals(20.0, m.s.wakeIn()!!, 0.0)
+        d.s.startSas()
+        pump(d, m)
+        // The commit came at 100 s on M's clock: its 120 s count from there.
+        assertEquals(SAS_DEADLINE_SECONDS.toDouble(), m.s.wakeIn()!!, 0.0)
+        m.clock = 100.0 + SAS_DEADLINE_SECONDS
+        m.s.tick()
+        assertEquals(listOf(SessionEvent.Closed("peer_timeout", false)), m.closed())
+    }
+
+    @Test
+    fun modePKeepsItsDeadlineFromTheFirstByte() = runBlocking {
+        val (d, m) = pair(PeerMode.p)
+        d.s.start()
+        m.clock = 0.0
+        pump(d, m)
+        assertEquals(SAS_DEADLINE_SECONDS.toDouble(), m.s.wakeIn()!!, 0.0)
+    }
+
+    @Test
+    fun choosingOneOfTwoHeldApproversStartsTheSasOnThatSessionOnly() = runBlocking {
+        val d1 = Side(PeerMode.v, NoiseRole.initiator, holdSas = true)
+        val m1 = Side(PeerMode.v, NoiseRole.responder)
+        val d2 = Side(PeerMode.v, NoiseRole.initiator, holdSas = true)
+        val m2 = Side(PeerMode.v, NoiseRole.responder)
+        d1.s.start()
+        d2.s.start()
+        pump(d1, m1)
+        pump(d2, m2)
+        d1.s.startSas()
+        pump(d1, m1)
+        d2.s.close(PeerCloseCode.peer_bye)
+        pump(d2, m2)
+        assertEquals(1, m1.of<SessionEvent.Sas>().size)
+        assertEquals(0, m2.of<SessionEvent.Sas>().size)
+        assertEquals(listOf(SessionEvent.Closed("peer_bye", true)), m2.closed())
+    }
+
+    @Test
+    fun startSasIsRefusedBeforeEstablishedWithoutHoldSasAndHoldSasOutsideModeV() = runBlocking {
+        val early = Side(PeerMode.v, NoiseRole.initiator, holdSas = true)
+        early.s.start()
+        early.s.startSas()
+        assertEquals(listOf(SessionEvent.Closed("peer_not_allowed", false)), early.closed())
+        val (plain, m) = pair(PeerMode.v)
+        plain.s.start()
+        pump(plain, m)
+        plain.s.startSas()
+        assertEquals(listOf(SessionEvent.Closed("peer_not_allowed", false)), plain.closed())
+        for ((mode, role) in listOf(PeerMode.p to NoiseRole.initiator, PeerMode.v to NoiseRole.responder)) {
+            try {
+                Side(mode, role, holdSas = true)
+                fail("holdSas is for the mode v initiator")
+            } catch (e: IllegalArgumentException) {
+                assertEquals("holdSas is for the mode v initiator", e.message)
+            }
+        }
+    }
+
+    @Test
+    fun closesPeerNotAllowedAfterHelloAndBeforeAnySasRecordWhenThePeerLacksVouch1() = runBlocking {
+        val m = Side(PeerMode.v, NoiseRole.responder)
+        val raw = NoiseHandshake(
+            NoiseHandshakeOptions(
+                NoiseRole.initiator,
+                peerNoiseProtocol(PeerMode.v),
+                peerPrologue("djdl", PeerMode.v),
+                null,
+                RawNoiseStatic(
+                    ByteArray(32) {
+                        7
+                    },
+                ),
+            ),
+        )
+        m.s.receive(raw.writeMessage(payload1()))
+        raw.readMessage(m.out.removeAt(0))
+        m.s.receive(raw.writeMessage("{\"v\":1,\"caps\":[\"app/1\"]}".toByteArray()))
+        val tp = raw.transport()
+        val hello = "{\"platform\":\"t\",\"app\":\"a\",\"maxMessage\":1048576}".toByteArray()
+        m.s.receive(tp.send.encrypt(ByteArray(0), encodeRecord(PeerRecord(RecordType.HELLO, 0, hello))))
+        assertTrue(m.of<SessionEvent.Established>().isEmpty())
+        assertEquals(listOf(SessionEvent.Closed("peer_not_allowed", false)), m.closed())
+        // Its own HELLO, then CLOSE: no SAS record.
+        val types = m.out.map { o -> tp.receive.decrypt(ByteArray(0), o).let { ((it[0].toInt() and 0xff) shl 8) or (it[1].toInt() and 0xff) } }
+        assertEquals(listOf(RecordType.HELLO, RecordType.CLOSE), types)
+    }
+
+    @Test
+    fun anOpenMoreChainIsCappedAt16KibInModesVAndPButNotInModeA() {
+        for (mode in listOf(RecordMode.v, RecordMode.p)) {
+            val asm = RecordAssembler(mode)
+            // 16 KiB is the most an open chain may reach; one more byte closes.
+            val type = RecordType.HELLO
+            assertTrue(asm.push(PeerRecord(type, 1, ByteArray(MAX_VP_CHAIN_BYTES))) is AssembleResult.Pending)
+            val over = asm.push(PeerRecord(type, 0, ByteArray(1)))
+            assertEquals(PeerCloseCode.peer_bad_frame, (over as AssembleResult.Close).code)
+            // A single record under the cap is not a chain and is not capped by it.
+            val single = RecordAssembler(mode).push(PeerRecord(type, 0, ByteArray(MAX_RECORD_BODY)))
+            assertTrue(single is AssembleResult.Message)
+            // The first MORE record over the cap closes at once.
+            val first = RecordAssembler(mode).push(PeerRecord(type, 1, ByteArray(MAX_VP_CHAIN_BYTES + 1)))
+            assertEquals(PeerCloseCode.peer_bad_frame, (first as AssembleResult.Close).code)
+        }
+        val a = RecordAssembler(RecordMode.a)
+        assertTrue(a.push(PeerRecord(RecordType.HELLO, 1, ByteArray(MAX_VP_CHAIN_BYTES + 1))) is AssembleResult.Pending)
     }
 }

@@ -90,7 +90,9 @@ def test_both_sides_show_the_same_code_then_records_flow(mode: str) -> None:
     assert len(sd.display) == 7 and sd.display[3] == " " and sd.display == sas_display(sd.code)
     assert sd.code == sm.code
     est = d.of(Established)[0]
-    assert est.caps == ["app/1", "ring/1"] and est.hello_authenticated is False
+    # Mode v adds ``vouch/1`` itself (rule 1).
+    assert est.caps == (["app/1", "ring/1", "vouch/1"] if mode == "v" else ["app/1", "ring/1"])
+    assert est.hello_authenticated is False
     # The code is bound to the handshake hash, both nonces and the mode.
     assert sd.code == sas_value(d.s._hs.handshake_hash, d.s._n_d, d.s._n_m, mode)
     # Nothing flows until the person confirms; an inbound record is held, not refused.
@@ -277,6 +279,20 @@ def test_a_release_runs_once_and_a_closed_session_frees_its_slot() -> None:
     assert lim.begin() is not None and lim.begin() is None
 
 
+def test_a_peer_close_frees_the_responder_slot() -> None:
+    # R-6K N5: the slot is released when the peer sends CLOSE, not only on the responder's own close.
+    lim = HandshakeLimiter(99, 1)
+    m = Side("v", "responder", admission=lim)
+    d = Side("v", "initiator")
+    d.s.start()
+    pump(d, m)
+    assert lim.begin() is None
+    d.s.close()
+    pump(d, m)
+    assert [e.by_peer for e in m.of(Closed)] == [True]
+    assert lim.begin() is not None
+
+
 def test_the_code_deadline_ends_an_unconfirmed_session() -> None:
     d, m = Side("v", "initiator"), Side("v", "responder")
     d.s.start()
@@ -312,7 +328,7 @@ def test_the_first_record_must_be_hello_and_the_refusal_is_said() -> None:
     raw = NoiseHandshake("initiator", peer_noise_protocol("p"), peer_prologue("djdl", "p"), bytes([7]) * 32)
     m.s.receive(raw.write_message(payload1()))
     raw.read_message(m.out.pop(0))
-    m.s.receive(raw.write_message(b'{"v":1,"caps":[]}'))
+    m.s.receive(raw.write_message(b'{"v":1,"caps":["vouch/1"]}'))
     tp = raw.transport()
     m.s.receive(tp.send.encrypt(b"", encode_record(PeerRecord(RECORD["PING"], 0, bytes(8)))))
     assert m.of(Closed) == [Closed("peer_bad_frame", False)]
@@ -340,7 +356,7 @@ def test_corpus_commit_and_reveal_bodies_through_a_session(row: Dict[str, Any]) 
     raw = NoiseHandshake("initiator", peer_noise_protocol("v"), peer_prologue("djdl", "v"), bytes([7]) * 32)
     m.s.receive(raw.write_message(payload1()))
     raw.read_message(m.out.pop(0))
-    m.s.receive(raw.write_message(b'{"v":1,"caps":[]}'))
+    m.s.receive(raw.write_message(b'{"v":1,"caps":["vouch/1"]}'))
     tp = raw.transport()
     tp.receive.decrypt(b"", m.out.pop(0))  # the approver's HELLO
     hello = b'{"platform":"t","app":"a","maxMessage":1048576}'
@@ -365,7 +381,7 @@ def test_a_reveal_that_does_not_match_the_commitment_closes(row: Dict[str, Any])
     raw = NoiseHandshake("initiator", peer_noise_protocol("v"), peer_prologue("djdl", "v"), bytes([7]) * 32)
     m.s.receive(raw.write_message(payload1()))
     raw.read_message(m.out.pop(0))
-    m.s.receive(raw.write_message(b'{"v":1,"caps":[]}'))
+    m.s.receive(raw.write_message(b'{"v":1,"caps":["vouch/1"]}'))
     tp = raw.transport()
 
     def put(t: int, body: bytes) -> None:
@@ -407,7 +423,7 @@ def test_out_of_order_sas_records_close(records: List[Any]) -> None:
     raw = NoiseHandshake("initiator", peer_noise_protocol("v"), peer_prologue("djdl", "v"), bytes([7]) * 32)
     m.s.receive(raw.write_message(payload1()))
     raw.read_message(m.out.pop(0))
-    m.s.receive(raw.write_message(b'{"v":1,"caps":[]}'))
+    m.s.receive(raw.write_message(b'{"v":1,"caps":["vouch/1"]}'))
     tp = raw.transport()
 
     def put(t: int, body: bytes) -> None:
@@ -425,3 +441,132 @@ def test_no_host_record_is_delivered_before_the_code_is_confirmed() -> None:
     pump(d, m)
     assert d.of(Record) == [] and m.of(Record) == []
     assert not any(isinstance(e, Record) for e in d.events + m.events)
+
+
+# -- the vouch hooks of mode v (WIRE-CONTRACT-V5 §15.6.1) ---------------------------------------------
+
+
+def _only(x: Side, cls: Any) -> Any:
+    got = x.of(cls)
+    assert len(got) == 1
+    return got[0]
+
+
+def test_mode_v_lists_vouch_1_itself_and_exposes_the_order_guard_in_mode_v_only() -> None:
+    assert Side("v", "initiator").s.vouch.role == "requester"  # type: ignore[union-attr]
+    assert Side("v", "responder").s.vouch.role == "approver"  # type: ignore[union-attr]
+    assert Side("p", "initiator").s.vouch is None
+
+
+def test_handshake_hash_is_the_same_on_both_ends_once_established() -> None:
+    d, m = Side("v", "initiator"), Side("v", "responder")
+    with pytest.raises(RuntimeError):
+        d.s.handshake_hash()
+    d.s.start()
+    pump(d, m)
+    h = d.s.handshake_hash()
+    assert len(h) == 32 and h == m.s.handshake_hash() == bytes(d.s._hs.handshake_hash)  # type: ignore[union-attr]
+    # A public value, immutable bytes: nothing the caller does reaches the session, and no repr shows it.
+    assert isinstance(h, bytes) and h.hex() not in repr(d.s)
+
+
+def test_hold_sas_stops_after_hello_and_start_sas_sends_the_commit_then_the_code_follows() -> None:
+    d, m = Side("v", "initiator", hold_sas=True), Side("v", "responder")
+    d.s.start()
+    pump(d, m)
+    assert len(d.of(Established)) == 1 and len(m.of(Established)) == 1
+    assert d.of(Sas) == [] and m.of(Sas) == []
+    assert not d.s.closed and not m.s.closed
+    d.s.start_sas()
+    pump(d, m)
+    assert _only(d, Sas).code == _only(m, Sas).code
+    # A second start is refused and closes the session.
+    d.s.start_sas()
+    assert d.of(Closed) == [Closed("peer_not_allowed", False)]
+
+
+@pytest.mark.parametrize("who", ["D", "M"])
+def test_the_code_deadline_restarts_at_the_choice_d_at_start_sas_and_m_at_sas_commit(who: str) -> None:
+    d, m = Side("v", "initiator", hold_sas=True), Side("v", "responder")
+    mine = d if who == "D" else m
+    d.s.start()
+    pump(d, m)
+    # Held at HELLO: the code deadline from the first byte stands, and no commit has come.
+    d.clock[0] = m.clock[0] = 100
+    d.s.start_sas()
+    pump(d, m)
+    # 121 s from the first byte: the original deadline would have closed this session.
+    d.clock[0] = m.clock[0] = 121
+    d.s.tick()
+    m.s.tick()
+    assert not d.s.closed and not m.s.closed
+    # The new one stands 120 s from the choice.
+    d.clock[0] = m.clock[0] = 100 + SAS_DEADLINE_SECONDS
+    mine.s.tick()
+    assert mine.of(Closed) == [Closed("peer_timeout", False)]
+
+
+def test_a_held_session_keeps_the_original_deadline_until_the_choice() -> None:
+    d, m = Side("v", "initiator", hold_sas=True), Side("v", "responder")
+    d.s.start()
+    pump(d, m)
+    d.clock[0] = m.clock[0] = SAS_DEADLINE_SECONDS
+    d.s.tick()
+    m.s.tick()
+    assert d.of(Closed) == [Closed("peer_timeout", False)]
+    assert m.of(Closed) == [Closed("peer_timeout", False)]
+
+
+def test_choosing_one_of_two_held_approvers_starts_the_sas_on_that_session_only() -> None:
+    d1, m1 = Side("v", "initiator", hold_sas=True), Side("v", "responder")
+    d2, m2 = Side("v", "initiator", hold_sas=True), Side("v", "responder")
+    d1.s.start()
+    d2.s.start()
+    pump(d1, m1)
+    pump(d2, m2)
+    d1.s.start_sas()
+    pump(d1, m1)
+    d2.s.close("peer_bye")
+    pump(d2, m2)
+    assert len(m1.of(Sas)) == 1 and m2.of(Sas) == []
+    assert m2.of(Closed) == [Closed("peer_bye", True)]
+
+
+def test_start_sas_is_refused_early_without_hold_sas_and_hold_sas_is_for_the_mode_v_initiator_only() -> None:
+    early = Side("v", "initiator", hold_sas=True)
+    early.s.start()
+    early.s.start_sas()
+    assert early.of(Closed) == [Closed("peer_not_allowed", False)]
+    plain, m = Side("v", "initiator"), Side("v", "responder")
+    plain.s.start()
+    pump(plain, m)
+    plain.s.start_sas()
+    assert plain.of(Closed) == [Closed("peer_not_allowed", False)]
+    with pytest.raises(ValueError):
+        Side("p", "initiator", hold_sas=True)
+    with pytest.raises(ValueError):
+        Side("v", "responder", hold_sas=True)
+
+
+def test_a_peer_without_vouch_1_is_closed_peer_not_allowed_after_hello_and_before_any_sas_record() -> None:
+    m = Side("v", "responder")
+    raw = NoiseHandshake("initiator", peer_noise_protocol("v"), peer_prologue("djdl", "v"), bytes([7]) * 32)
+    m.s.receive(raw.write_message(payload1()))
+    raw.read_message(m.out.pop(0))
+    m.s.receive(raw.write_message(b'{"v":1,"caps":["app/1"]}'))
+    tp = raw.transport()
+    hello = b'{"platform":"t","app":"a","maxMessage":1048576}'
+    m.s.receive(tp.send.encrypt(b"", encode_record(PeerRecord(RECORD["HELLO"], 0, hello))))
+    assert m.of(Established) == []
+    assert m.of(Closed) == [Closed("peer_not_allowed", False)]
+    # Its own HELLO, then CLOSE: no SAS record.
+    seen = [int.from_bytes(tp.receive.decrypt(b"", out)[:2], "big") for out in m.out]
+    assert seen == [RECORD["HELLO"], RECORD["CLOSE"]]
+
+
+def test_the_peer_close_codes_equal_the_registrys_peer_kind() -> None:
+    from polaris_key.core.peer_frame import PEER_CLOSE_CODES
+
+    reg = json.loads((Path(__file__).resolve().parents[3] / "conformance" / "parity" / "errors.json").read_text())
+    peer = sorted(e["code"] for e in reg["codes"] if e["kind"] == "peer")
+    assert sorted(PEER_CLOSE_CODES) == peer and len(peer) == 8

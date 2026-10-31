@@ -1893,7 +1893,7 @@ SYNC_SCENARIOS_VERSION: Final[int] = 4
 
 
 #: `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
-DEVICE_LABEL_VERSION: Final[int] = 1
+DEVICE_LABEL_VERSION: Final[int] = 2
 
 
 #: `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.

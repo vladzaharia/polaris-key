@@ -204,7 +204,7 @@
     "identity.nearby": {
       "status": "planned",
       "wp": "I-47",
-      "note": "Nearby approval (I-40.8 transcripts, I-47). The Node conformance runner replays the nearby-* transcripts with a reference client (I-40.9)."
+      "note": "Nearby approval (I-40.8 transcripts, I-47). The Node conformance runner replays the nearby-* transcripts with a reference client (I-40.9). The LAN half is in (CC-15.P1 to P4: client.cloud_connect.nearby.request and on_request, the vouch rows of peer-matrix.json run in tests/test_connect_conformance.py); the routes and the kit screens follow in I-47."
     },
     "identity.keyentry": {
       "status": "implemented",
@@ -523,7 +523,7 @@
     },
     "connect.protocol": {
       "status": "implemented",
-      "note": "polaris_key.core peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter) and TrustManager.accept_peer; tests/test_connect_peer_*.py, test_connect_session.py and test_trust_accept_peer.py replay peer-matrix.json. HELLO display data from an unauthenticated peer (modes v and p, §15.6) is bounded as client-core does: a HELLO is at most 4 KiB, label and app are cleaned to 64 code points (an empty app is Unknown), a platform outside 32 characters of A-Z a-z 0-9 space . _ + - is Unknown, and at most 16 records and 16 KiB of bodies are held before the person confirms."
+      "note": "polaris_key.core peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter) and TrustManager.accept_peer; tests/test_connect_peer_*.py, test_connect_session.py and test_trust_accept_peer.py replay peer-matrix.json. HELLO display data from an unauthenticated peer (modes v and p, §15.6) is bounded as client-core does: a HELLO is at most 4 KiB, label and app are cleaned to 64 code points (an empty app is Unknown), a platform outside 32 characters of A-Z a-z 0-9 space . _ + - is Unknown, and at most 16 records and 16 KiB of bodies are held before the person confirms. The mode v vouch (CC-15.P1, WIRE-CONTRACT-V5 section 15.6.1): core/peer_vouch.py runs the peer-matrix vouch rows in tests/test_connect_conformance.py; both mode v payloads list vouch/1 and a peer without it is closed peer_not_allowed after HELLO; the engine holds the SAS until start_sas() for the initiator (hold_sas) and restarts the 120 s code deadline at the choice; an open MORE chain is capped at 16 KiB in modes v and p."
     },
     "connect.lan": {
       "status": "implemented",

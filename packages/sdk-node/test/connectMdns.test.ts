@@ -25,14 +25,23 @@ const SRC = { address: "192.168.1.20" };
 const HOST = `${INST}.local`;
 /** The connected IPv4 subnets of the fake machine. */
 const subnets = (): string[] => ["192.168.0.0/16"];
+/** The source of a multicast query (port 5353) from a neighbour. */
+const MCAST_FROM = { address: "192.168.1.30", port: 5353 };
 
 class FakeSocket extends EventEmitter implements MdnsSocket {
   responses: any[] = [];
   queries: any[] = [];
   destroyed = false;
-  respond(p: unknown, cb?: (e?: Error | null) => void): void {
-    this.responses.push(p);
-    cb?.();
+  /** Packets sent to one address alone (a legacy unicast answer): `{to, packet}`. */
+  unicast: { to: { address: string; port: number }; packet: any }[] = [];
+  respond(
+    p: unknown,
+    rinfo?: { address: string; port: number } | ((e?: Error | null) => void),
+    cb?: (e?: Error | null) => void,
+  ): void {
+    if (typeof rinfo === "object") this.unicast.push({ to: rinfo, packet: p });
+    else this.responses.push(p);
+    (typeof rinfo === "function" ? rinfo : cb)?.();
   }
   query(p: unknown, cb?: (e?: Error | null) => void): void {
     this.queries.push(p);
@@ -100,6 +109,7 @@ describe("MulticastDnsAdapter", () => {
     const a = new MulticastDnsAdapter({
       create: () => s,
       addresses: () => ["192.168.1.20", "8.8.8.8"],
+      subnets,
     });
     const h = await a.advertise({
       instance: INST,
@@ -125,14 +135,24 @@ describe("MulticastDnsAdapter", () => {
     // The host name is the instance name, not the machine's.
     expect(JSON.stringify(first)).not.toContain(require("node:os").hostname());
     const n = s.responses.length;
-    s.emit("query", {
-      questions: [{ name: "_other._tcp.local", type: "PTR" }],
-    });
+    s.emit(
+      "query",
+      { questions: [{ name: "_other._tcp.local", type: "PTR" }] },
+      MCAST_FROM,
+    );
     expect(s.responses).toHaveLength(n);
-    s.emit("query", { questions: [{ name: PEER_SERVICE, type: "PTR" }] });
+    s.emit(
+      "query",
+      { questions: [{ name: PEER_SERVICE, type: "PTR" }] },
+      MCAST_FROM,
+    );
     expect(s.responses).toHaveLength(n + 1);
     // Replies are sent at most once a second.
-    s.emit("query", { questions: [{ name: PEER_SERVICE, type: "PTR" }] });
+    s.emit(
+      "query",
+      { questions: [{ name: PEER_SERVICE, type: "PTR" }] },
+      MCAST_FROM,
+    );
     expect(s.responses).toHaveLength(n + 1);
     await h.stop();
     const bye = s.responses.at(-1).answers;
@@ -431,6 +451,211 @@ async function roundTrip(
   return found;
 }
 
+describe("legacy unicast answers (RFC 6762 section 6.7)", () => {
+  const ask = { id: 0x1234, questions: [{ name: PEER_SERVICE, type: "PTR" }] };
+  const legacyFrom = { address: "192.168.1.30", port: 51234 };
+  const advertise = async (
+    o: ConstructorParameters<typeof MulticastDnsAdapter>[0] = {},
+  ) => {
+    const s = new FakeSocket();
+    const h = await new MulticastDnsAdapter({
+      create: () => s,
+      addresses: () => ["192.168.1.20"],
+      subnets,
+      ...o,
+    }).advertise({ instance: INST, port: 4242, txt: ["v=1", "m=a"] });
+    return { s, h };
+  };
+
+  it("answers a querier on an ephemeral port by unicast, with its ID, the question and a short TTL", async () => {
+    const { s, h } = await advertise();
+    const n = s.responses.length;
+    s.emit("query", ask, legacyFrom);
+    expect(s.responses).toHaveLength(n); // nothing to the group
+    expect(s.unicast).toHaveLength(1);
+    const { to, packet } = s.unicast[0]!;
+    expect(to).toEqual(legacyFrom);
+    expect(packet.id).toBe(0x1234);
+    expect(packet.questions).toEqual(ask.questions);
+    expect(packet.answers.map((r: any) => r.type)).toEqual([
+      "PTR",
+      "SRV",
+      "TXT",
+      "A",
+    ]);
+    expect(packet.answers.every((r: any) => r.ttl === 10)).toBe(true);
+    expect(packet.answers.some((r: any) => r.flush === true)).toBe(false);
+    await h.stop();
+  });
+
+  it("still answers a query from port 5353 by multicast", async () => {
+    const { s, h } = await advertise();
+    const n = s.responses.length;
+    s.emit("query", ask, { address: "192.168.1.30", port: 5353 });
+    expect(s.responses).toHaveLength(n + 1);
+    expect(s.responses.at(-1).answers[0].ttl).toBe(120);
+    expect(s.unicast).toHaveLength(0);
+    await h.stop();
+  });
+
+  it("answers nothing to a source outside the connected subnets, or with no address", async () => {
+    const { s, h } = await advertise();
+    const n = s.responses.length;
+    s.emit("query", ask, { address: "8.8.8.8", port: 51234 });
+    s.emit("query", ask, { address: "10.9.9.9", port: 51234 });
+    s.emit("query", ask, { address: "fe80::5%en0", port: 51234 }); // a link-local source on the IPv4 socket
+    s.emit("query", ask, { port: 51234 });
+    s.emit("query", ask, { address: "8.8.8.8", port: 5353 }); // off the link, whatever its port
+    s.emit("query", ask); // no source at all
+    expect(s.unicast).toHaveLength(0);
+    expect(s.responses).toHaveLength(n);
+    // An off-scope query did not use the second's reply slot.
+    s.emit("query", ask, legacyFrom);
+    expect(s.unicast).toHaveLength(1);
+    await h.stop();
+  });
+
+  it("answers nothing to a legacy query from a port below 1024", async () => {
+    const { s, h } = await advertise();
+    const n = s.responses.length;
+    for (const port of [1, 53, 1023])
+      s.emit("query", ask, { ...legacyFrom, port });
+    expect(s.unicast).toHaveLength(0);
+    expect(s.responses).toHaveLength(n);
+    s.emit("query", ask, { ...legacyFrom, port: 1024 });
+    expect(s.unicast).toHaveLength(1);
+    await h.stop();
+  });
+
+  it("answers only its own names, and at most once a second", async () => {
+    const { s, h } = await advertise();
+    s.emit(
+      "query",
+      { id: 7, questions: [{ name: "_other._tcp.local", type: "PTR" }] },
+      legacyFrom,
+    );
+    expect(s.unicast).toHaveLength(0);
+    s.emit("query", ask, legacyFrom);
+    s.emit("query", { ...ask, id: 8 }, { ...legacyFrom, port: 51235 });
+    expect(s.unicast).toHaveLength(1);
+    await h.stop();
+  });
+
+  it("repeats only the questions it answers, a bounded number", async () => {
+    const { s, h } = await advertise();
+    const mine = Array.from({ length: 10 }, () => ({
+      name: FQDN,
+      type: "SRV",
+    }));
+    s.emit(
+      "query",
+      { id: 9, questions: [{ name: "x.local", type: "A" }, ...mine] },
+      legacyFrom,
+    );
+    expect(s.unicast[0]!.packet.questions).toEqual(mine.slice(0, 4));
+    await h.stop();
+  });
+
+  it("answers an IPv6 legacy query on the interface it came in on, and not one from another link", async () => {
+    const s4 = new FakeSocket();
+    const v6 = new Map<string, FakeSocket>();
+    const en0: MdnsInterface = {
+      name: "en0",
+      zone: "en0",
+      addresses: ["fe80::1"],
+      nets: ["fe80::1/64"],
+    };
+    const h = await new MulticastDnsAdapter({
+      create: () => s4,
+      addresses: () => ["192.168.1.20"],
+      subnets,
+      v6: {
+        interfaces: () => [en0],
+        create: (i) => {
+          const s = new FakeSocket();
+          v6.set(i.name, s);
+          return s;
+        },
+      },
+    }).advertise({ instance: INST, port: 4242, txt: ["v=1", "m=a"] });
+    const s = v6.get("en0")!;
+    s.emit("query", ask, { address: "fe80::5%wlan0", port: 51234 });
+    s.emit("query", ask, { address: "fe80::5", port: 51234 });
+    expect(s.unicast).toHaveLength(0);
+    s.emit("query", ask, { address: "fe80::5%en0", port: 51234 });
+    expect(s.unicast).toHaveLength(1);
+    expect(s.unicast[0]!.packet.answers.map((r: any) => r.type)).toContain(
+      "AAAA",
+    );
+    await h.stop();
+  });
+});
+
+describe("a legacy querier on real UDP sockets", () => {
+  it("gets a unicast answer from the responder with its ID and the question, over loopback", async (ctx) => {
+    const { createSocket } = await import("node:dgram");
+    const { createRequire } = await import("node:module");
+    const req = createRequire(
+      createRequire(import.meta.url).resolve("multicast-dns"),
+    );
+    const dns = req("dns-packet");
+    const mdns = createRequire(import.meta.url)("multicast-dns");
+    // A free port for the responder, in place of 5353, bound to loopback only (no multicast).
+    const probe = createSocket("udp4");
+    await new Promise<void>((r) => probe.bind(0, "127.0.0.1", () => r()));
+    const port = probe.address().port;
+    await new Promise<void>((r) => probe.close(() => r()));
+    const h = await new MulticastDnsAdapter({
+      create: () =>
+        mdns({
+          port,
+          ip: "127.0.0.1",
+          interface: "127.0.0.1",
+          multicast: false,
+        }),
+      addresses: () => ["127.0.0.1"],
+      allowLoopback: true,
+      subnets: () => ["127.0.0.0/8"],
+      v6: false,
+    }).advertise({ instance: INST, port: 4242, txt: ["v=1", "m=a"] });
+    const q = createSocket("udp4");
+    try {
+      await new Promise<void>((r) => q.bind(0, "127.0.0.1", () => r()));
+      const got = new Promise<any>((resolve, reject) => {
+        const t = setTimeout(
+          () => reject(new Error("no unicast answer")),
+          3000,
+        );
+        q.on("message", (m) => {
+          const p = dns.decode(m);
+          if (p.type !== "response" || p.id !== 0xbeef) return;
+          clearTimeout(t);
+          resolve(p);
+        });
+      });
+      q.send(
+        dns.encode({
+          type: "query",
+          id: 0xbeef,
+          questions: [{ name: PEER_SERVICE, type: "PTR" }],
+        }),
+        port,
+        "127.0.0.1",
+      );
+      const p = await got.catch((e) => {
+        ctx.skip(String(e));
+      });
+      if (p === undefined) return;
+      expect(p.questions.map((x: any) => x.name)).toEqual([PEER_SERVICE]);
+      expect(p.answers.every((r: any) => r.ttl === 10)).toBe(true);
+      expect(p.answers.some((r: any) => r.flush)).toBe(false);
+    } finally {
+      q.close();
+      await h.stop();
+    }
+  });
+});
+
 describe("multicast-dns on this machine", () => {
   it("advertises and browses over real multicast", async (ctx) => {
     // The packet's source is this machine's own address on the sending interface, so the advert
@@ -570,9 +795,11 @@ describe("IPv6: one socket per interface", () => {
     expect(kinds(v6.get("en0")!)).toEqual([`AAAA ${LL}`]);
     expect(kinds(v6.get("wlan0")!)).toEqual(["AAAA fe80::9"]);
     // A query on one socket is answered on that socket only.
-    v6.get("wlan0")!.emit("query", {
-      questions: [{ name: PEER_SERVICE.toUpperCase(), type: "PTR" }],
-    });
+    v6.get("wlan0")!.emit(
+      "query",
+      { questions: [{ name: PEER_SERVICE.toUpperCase(), type: "PTR" }] },
+      { address: "fe80::9%wlan0", port: 5353 },
+    );
     expect(v6.get("wlan0")!.responses).toHaveLength(2);
     expect(v6.get("en0")!.responses).toHaveLength(1);
     await h.stop();

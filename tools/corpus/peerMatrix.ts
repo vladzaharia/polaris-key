@@ -963,6 +963,10 @@ function buildPayloads(): unknown {
     { id: "msg1-version-2", mode: "a", message: 1, text: '{"v":2}' },
     { id: "msg1-version-string", mode: "a", message: 1, text: '{"v":"1"}' },
     { id: "msg1-version-missing", mode: "a", message: 1, text: "{}" },
+    // `v` is an integer claim: a number with a fraction or an exponent part is not the integer 1,
+    // whatever a JSON reader makes of it.
+    { id: "msg1-version-1-point-0", mode: "a", message: 1, text: '{"v":1.0}' },
+    { id: "msg1-version-1-exponent", mode: "a", message: 1, text: '{"v":1e0}' },
     {
       id: "msg1-cert-present",
       mode: "a",
@@ -988,6 +992,32 @@ function buildPayloads(): unknown {
     A(2, `{"v":1,"ring":7,"caps":["app/1"]}`, "a-cert-missing"),
     A(2, `{"v":1,"cert":"","ring":7,"caps":["app/1"]}`, "a-cert-empty"),
     A(2, `{"v":1,"cert":7,"ring":7,"caps":["app/1"]}`, "a-cert-not-string"),
+    A(
+      2,
+      `{"v":1.0,"cert":"${cert}","ring":7,"caps":["app/1"]}`,
+      "a-version-1-point-0",
+    ),
+    A(
+      3,
+      `{"v":1e0,"cert":"${cert}","ring":7,"caps":["app/1"]}`,
+      "a-version-1-exponent",
+    ),
+    {
+      id: "v-version-1-point-0",
+      mode: "v",
+      message: 2,
+      text: '{"v":1.0,"caps":["vouch/1"]}',
+    },
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":7.0,"caps":["app/1"]}`,
+      "a-ring-7-point-0",
+    ),
+    A(
+      3,
+      `{"v":1,"cert":"${cert}","ring":7e0,"caps":["app/1"]}`,
+      "a-ring-7-exponent",
+    ),
     A(2, `{"v":1,"cert":"${cert}","caps":["app/1"]}`, "a-ring-missing"),
     A(2, `{"v":1,"cert":"${cert}","ring":0,"caps":["app/1"]}`, "a-ring-zero"),
     A(
@@ -1245,7 +1275,7 @@ function buildPayloads(): unknown {
     want: refCapsIntersection(local!, remote!),
   }));
   return {
-    note: "Handshake payloads (15.5): strict JSON of 15.1/1.2, an object, at most 8 KiB of UTF-8. Message 1 needs v = 1 and no cert; messages 2 and 3 need v = 1 and caps (at most 32 entries matching ^[a-z0-9]+/[0-9]+$). Mode a adds cert (a non-empty string; its verification is cases.json peerCertCases) and ring (an integer from 1 to 2^53 - 1); modes v and p refuse a cert. Unknown members are ignored. `payload` is the text, `payloadHex` the raw bytes where the text is not valid UTF-8, `payloadPad` the text prefix + count x fill + suffix. `want.caps` is the list as sent; the session uses `intersection`: the entries both lists hold, once each, in byte order.",
+    note: "Handshake payloads (15.5): strict JSON of 15.1/1.2, an object, at most 8 KiB of UTF-8. Message 1 needs v = 1 (the integer token: 1.0 and 1e0 are refused) and no cert; messages 2 and 3 need v = 1 and caps (at most 32 entries matching ^[a-z0-9]+/[0-9]+$). Mode a adds cert (a non-empty string; its verification is cases.json peerCertCases) and ring (an integer token from 1 to 2^53 - 1); modes v and p refuse a cert. Unknown members are ignored. `payload` is the text, `payloadHex` the raw bytes where the text is not valid UTF-8, `payloadPad` the text prefix + count x fill + suffix. `want.caps` is the list as sent; the session uses `intersection`: the entries both lists hold, once each, in byte order.",
     maxPayload: REF_MAX_PAYLOAD,
     payloads,
     intersection,
@@ -2375,6 +2405,19 @@ function buildVouch(): unknown {
     edit: (b) => {
       b.v = "1";
     },
+    want: "version",
+  });
+
+  addReq({
+    id: "version-1-point-0",
+    note: "v is written 1.0: a number with a fraction part is not the integer 1, whatever a JSON reader makes of it.",
+    text: (t) => t.replace('"v":1,', '"v":1.0,'),
+    want: "version",
+  });
+  addReq({
+    id: "version-1-exponent",
+    note: "v is written 1e0: an exponent part is not an integer token either.",
+    text: (t) => t.replace('"v":1,', '"v":1e0,'),
     want: "version",
   });
 

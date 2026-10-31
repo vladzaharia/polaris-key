@@ -15,9 +15,10 @@ Modes ``v`` and ``p``: after HELLO the initiator (the device) commits to a nonce
 approver) answers with its own, the initiator reveals, and both show the same six-digit code. The
 host calls :meth:`PeerSession.confirm_sas` when the person agrees; until then host records from the
 peer are held (at most 16 records and 16 KiB of bodies, then ``peer_busy``). HELLO display data is
-unauthenticated there: a HELLO is at most 4 KiB, ``label`` and ``app`` are cleaned (NFC, controls and
-bidi stripped, 64 code points; an empty ``app`` is "Unknown"), and a ``platform`` that is not at most 32 of
-``A-Z a-z 0-9 space . _ + -`` is "Unknown". A responder in these modes needs a :class:`HandshakeLimiter`.
+unauthenticated there: a HELLO is at most 4 KiB, ``label`` and ``app`` are cleaned (blanks and invisible
+code points stripped, then NFC, 64 code points; an empty ``app`` is "Unknown"), and a ``platform`` that is
+not at most 32 of ``A-Z a-z 0-9 space . _ + -`` is "Unknown". A responder in these modes needs a
+:class:`HandshakeLimiter`.
 
 Mode ``c`` (§15.10) is mode ``a`` without a certificate: ``XXpsk0`` under a contact's secret, the device's
 agree key as the static key, no code. The remote static key must be the contact's agree key. A mode-``p``
@@ -31,13 +32,12 @@ Keys: the device's static private key is handed to the Noise engine only, as byt
 from __future__ import annotations
 
 import json
-import re
 import threading
 import time
-import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
+from ..constants_generated import ErrorCode
 from .b64url import b64url_decode, b64url_encode
 from .device_label import normalize_device_label
 from .jws import TrustSet
@@ -51,8 +51,10 @@ from .peer_contact import (
     contact_pin,
     contact_secret,
 )
+from .peer_display import clean_app, clean_label, clean_platform
 from .peer_frame import (
     MAX_PEER_MESSAGE_BYTES,
+    PEER_CLOSE_CODES,
     RECORD,
     PeerRecord,
     RecordAssembler,
@@ -85,6 +87,7 @@ from .peer_sas import (
     sas_reveal_ok,
     sas_value,
 )
+from .peer_vouch import VOUCH_CAP, VouchFlow
 
 __all__ = [
     "AccountContext",
@@ -114,22 +117,8 @@ _MAX_QUEUED = 16
 _MAX_QUEUED_BYTES = 16 * 1024
 #: §15.6: a HELLO in mode v or p is at most this many bytes.
 _MAX_UNVERIFIED_HELLO = 4096
-#: §15.6: ``platform`` is shown as sent only when it is up to 32 of these characters; else "Unknown".
-_PLATFORM_DISPLAY = re.compile(r"[A-Za-z0-9 ._+-]{1,32}")
-_UNKNOWN_DISPLAY = "Unknown"
 _MAX_SAFE_INTEGER = 2**53 - 1
-_KNOWN_CLOSE = frozenset(
-    {
-        "peer_revoked",
-        "peer_expired",
-        "peer_bad_frame",
-        "peer_unknown_critical",
-        "peer_not_allowed",
-        "peer_busy",
-        "peer_bye",
-        "peer_timeout",
-    }
-)
+_KNOWN_CLOSE = frozenset(PEER_CLOSE_CODES)
 _OWNED = frozenset(
     {
         RECORD["HELLO"],
@@ -376,6 +365,7 @@ class PeerSession:
         ports: Optional[NoisePorts] = None,
         now: Optional[Callable[[], int]] = None,
         mono: Optional[Callable[[], float]] = None,
+        hold_sas: bool = False,
         rekey_messages: int = 1 << 20,
         rekey_seconds: float = 3600,
     ) -> None:
@@ -404,6 +394,8 @@ class PeerSession:
                 raise ValueError("a contact responder needs an admission limiter")
         if exchange is not None and mode != "p":
             raise ValueError("exchange is for mode p")
+        if hold_sas and (mode != "v" or role != "initiator"):
+            raise ValueError("hold_sas is for the mode v initiator")
         if mode in ("v", "p") and role == "responder" and admission is None:
             raise ValueError("an approver needs an admission limiter")
         self._contacts: Optional[List[ContactLink]] = list(contacts) if contacts is not None else None
@@ -424,6 +416,14 @@ class PeerSession:
         self._on_event = on_event
         self._hello = dict(hello)
         self._caps: List[str] = list(caps)
+        # Both mode-v payloads list ``vouch/1`` (§15.6.1 rule 1); the host cannot leave it out.
+        self._flow: Optional[VouchFlow[Any]] = None
+        if mode == "v":
+            if VOUCH_CAP not in self._caps:
+                self._caps.append(VOUCH_CAP)
+            self._flow = VouchFlow("requester" if role == "initiator" else "approver")
+        self._hold_sas = hold_sas
+        self._hash: Optional[bytes] = None
         self._ports = ports
         self._rng = ports if ports is not None else _DEFAULT_PORTS
         self._now = now or _default_now
@@ -471,6 +471,20 @@ class PeerSession:
     def closed(self) -> bool:
         return self._phase == "closed"
 
+    @property
+    def vouch(self) -> Optional[VouchFlow[Any]]:
+        """Mode v: this session's order guard (§15.6.1), negotiated when the session is ``established``.
+        ``None`` in the other modes."""
+        return self._flow
+
+    def handshake_hash(self) -> bytes:
+        """The Noise handshake hash ``h``, a copy, once the session is ``established`` (§15.6.1 binds the
+        vouch to it). Raises before that. It is a public value; the one-time keys never leave the
+        handshake."""
+        if self._hash is None:
+            raise RuntimeError("session not established")
+        return bytes(self._hash)
+
     def wake_in(self) -> Optional[float]:
         """Seconds until the next deadline (the transport's, the peer certificate's expiry), 0 when one
         is due, ``None`` when there is none. The host calls :meth:`tick` then."""
@@ -496,13 +510,13 @@ class PeerSession:
             if (self._transport_due is not None and self._mono() >= self._transport_due) or (
                 self._sas_due is not None and self._mono() >= self._sas_due
             ):
-                self._fail("peer_timeout", False)
+                self._fail(ErrorCode.PEER_TIMEOUT, False)
             elif self._exchange_due is not None and self._mono() >= self._exchange_due:
                 # The peer's CONTACT must follow within CONTACT_EXCHANGE_SECONDS of this side's CONFIRM.
                 self._exchange_due = None
                 self._guard(lambda: self._exchange_step({"event": "timeout"}))
             elif self._cert_expires is not None and self._now() >= self._cert_expires:
-                self._fail("peer_expired", False)
+                self._fail(ErrorCode.PEER_EXPIRED, False)
 
     # -- public calls -----------------------------------------------------------------------------
 
@@ -545,7 +559,7 @@ class PeerSession:
                     if self._admission is not None and self._mode in ("v", "p"):
                         self._release = self._admission.begin()
                         if self._release is None:
-                            raise _Fail("peer_busy")
+                            raise _Fail(ErrorCode.PEER_BUSY)
                     self._start_clock()
                 if self._phase == "hs":
                     self._on_handshake(bytes(noise))
@@ -569,6 +583,27 @@ class PeerSession:
                 raise ValueError("message too large")
             self._emit(type_, bytes(body))
 
+    def start_sas(self) -> None:
+        """Mode v, ``hold_sas`` initiator: the person chose this approver; send ``SAS_COMMIT`` now and
+        start the 120 s code deadline over. Only once, only after ``established``; any other call closes
+        the session ``peer_not_allowed``."""
+        with self._lock:
+
+            def go() -> None:
+                if (
+                    not self._hold_sas
+                    or self._phase != "sas"
+                    or self._sas_step != 0
+                    or self._n_d is not None
+                ):
+                    raise _Fail(ErrorCode.PEER_NOT_ALLOWED)
+                # The code deadline counts from the person's choice, not from the first byte: a session
+                # held while the person looked at the list keeps its whole 120 s.
+                self._sas_due = self._mono() + SAS_DEADLINE_SECONDS
+                self._commit_sas()
+
+            self._guard(go)
+
     def confirm_sas(self) -> None:
         """Modes v and p: the person confirmed the code. Opens the session, sends ``CONFIRM`` in mode p
         and delivers the host records held meanwhile."""
@@ -576,7 +611,7 @@ class PeerSession:
 
             def go() -> None:
                 if self._phase != "sas-shown":
-                    raise _Fail("peer_not_allowed")
+                    raise _Fail(ErrorCode.PEER_NOT_ALLOWED)
                 self._phase = "open"
                 self._settle()
                 if self._mode == "p":
@@ -591,7 +626,7 @@ class PeerSession:
 
             self._guard(go)
 
-    def close(self, code: str = "peer_bye") -> None:
+    def close(self, code: str = ErrorCode.PEER_BYE) -> None:
         """Close with a code; sends CLOSE when the transport exists."""
         with self._lock:
             self._guard(lambda: self._fail(code, False))
@@ -604,7 +639,7 @@ class PeerSession:
         except _Fail as e:
             self._fail(e.code, False)
         except NoiseError:
-            self._fail("handshake_failed" if self._tp is None else "peer_bad_frame", False)
+            self._fail("handshake_failed" if self._tp is None else ErrorCode.PEER_BAD_FRAME, False)
         except Exception:
             self._fail("handshake_failed", False)
 
@@ -778,11 +813,11 @@ class PeerSession:
             self._event(RingWanted())
         adm = self._admit(cert, held[0] if held else None, remote)
         if not adm.admit or adm.cert is None:
-            raise _Fail("peer_revoked" if adm.reason == "peer_revoked" else "handshake_failed")
+            raise _Fail(ErrorCode.PEER_REVOKED if adm.reason == ErrorCode.PEER_REVOKED else "handshake_failed")
         self._peer_cert_jws = cert
         self._peer_remote = remote
         if adm.cert.expires_at - self._now() <= 0:
-            raise _Fail("peer_expired")
+            raise _Fail(ErrorCode.PEER_EXPIRED)
         self._cert_expires = adm.cert.expires_at
         self._peer_ring = peer_ring
         if adm.ring_sync == "request":
@@ -806,7 +841,7 @@ class PeerSession:
         plain = tp.receive.decrypt(_NONE, noise)
         rec = parse_record(plain)
         if rec is None:
-            raise _Fail("peer_bad_frame")
+            raise _Fail(ErrorCode.PEER_BAD_FRAME)
         r = self._asm.push(rec)
         if r.kind == "close":
             raise _Fail(r.code)
@@ -828,25 +863,32 @@ class PeerSession:
             return None
         if isinstance(mm, bool) or not isinstance(mm, int) or mm < 1 or mm > _MAX_SAFE_INTEGER:
             return None
-        # Display data from an unauthenticated peer: NFC, controls and bidi stripped, 64 code points. An
+        # Display data from an unauthenticated peer, cleaned as a device label (blanks and invisible code
+        # points stripped, then NFC, 64 code points; §15.6). An
         # ``app`` with nothing left, and a ``platform`` that is not a known shape, show as "Unknown".
-        clean = normalize_device_label(unicodedata.normalize("NFC", label)) if isinstance(label, str) else None
-        shown_app = normalize_device_label(unicodedata.normalize("NFC", app)) or _UNKNOWN_DISPLAY
-        shown_platform = platform if _PLATFORM_DISPLAY.fullmatch(platform) else _UNKNOWN_DISPLAY
-        return PeerHello(shown_platform, shown_app, mm, clean)
+        return PeerHello(
+            clean_platform(platform), clean_app(app), mm, clean_label(label) if isinstance(label, str) else None
+        )
 
     def _on_message(self, type_: int, body: bytes) -> None:
         if self._phase == "hello":
             # The first record each way is HELLO; anything else is refused and closed.
             if type_ != RECORD["HELLO"]:
-                raise _Fail("peer_bad_frame")
+                raise _Fail(ErrorCode.PEER_BAD_FRAME)
             hello = self._parse_hello(body)
             if hello is None or self._pending is None:
-                raise _Fail("peer_bad_frame")
+                raise _Fail(ErrorCode.PEER_BAD_FRAME)
             self._max_send = min(MAX_PEER_MESSAGE_BYTES, hello.max_message)
+            if self._flow is not None:
+                # Rule 1 (N7): without ``vouch/1`` on both sides, close before any SAS record.
+                verdict = self._flow.negotiate(self._caps, self._peer_caps)
+                if not verdict.ok:
+                    raise _Fail(str(verdict.close))
             self._caps = caps_intersection(self._caps, self._peer_caps)
             remote, device_id = self._pending
             self._pending = None
+            assert self._hs is not None
+            self._hash = bytes(self._hs.handshake_hash)
             account = self._mode == "a"
             direct = account or self._mode == "c"
             self._phase = "open" if direct else "sas"
@@ -867,14 +909,12 @@ class PeerSession:
             )
             if account:
                 self._push_ring()
-            elif not direct and self._role == "initiator":
-                # The device commits first.
-                self._n_d = self._rng.random(32)
-                self._emit(RECORD["SAS_COMMIT"], sas_body("c", sas_commit(self._n_d)))
-                self._sas_step = 1
+            elif not direct and self._role == "initiator" and not self._hold_sas:
+                # The device commits first, unless the host holds the code back until it picks this approver.
+                self._commit_sas()
             return
         if type_ == RECORD["HELLO"]:
-            raise _Fail("peer_bad_frame")
+            raise _Fail(ErrorCode.PEER_BAD_FRAME)
         if type_ == RECORD["PING"]:
             self._emit(RECORD["PONG"], body)
             return
@@ -890,8 +930,10 @@ class PeerSession:
             self._phase = "closed"
             self._transport_due = None
             self._cert_expires = None
+            self._settle()  # a peer's CLOSE ends the handshake: free its limiter slot (R-6K N5)
             self._wipe()
-            self._event(Closed(code if isinstance(code, str) and code in _KNOWN_CLOSE else "peer_bad_frame", True))
+            known = isinstance(code, str) and code in _KNOWN_CLOSE
+            self._event(Closed(code if isinstance(code, str) and known else ErrorCode.PEER_BAD_FRAME, True))
             return
         if type_ == RECORD["TRUST"]:
             if self._mode != "a":
@@ -899,7 +941,7 @@ class PeerSession:
             o = parse_strict_object(body)
             trust = o.get("trust") if o is not None else None
             if not isinstance(trust, str):
-                raise _Fail("peer_bad_frame")
+                raise _Fail(ErrorCode.PEER_BAD_FRAME)
             self._event(TrustUnverified(trust))
             return
         if type_ == RECORD["RING"]:
@@ -924,22 +966,31 @@ class PeerSession:
             # The peer may confirm first: hold the record (bounded) until this side's person does.
             held = sum(len(b) for _, b in self._queued)
             if len(self._queued) >= _MAX_QUEUED or held + len(body) > _MAX_QUEUED_BYTES:
-                raise _Fail("peer_busy")
+                raise _Fail(ErrorCode.PEER_BUSY)
             self._queued.append((type_, body))
             return
         if self._phase != "open":
-            raise _Fail("peer_not_allowed")
+            raise _Fail(ErrorCode.PEER_NOT_ALLOWED)
         self._event(Record(type_, body))
+
+    def _commit_sas(self) -> None:
+        self._n_d = self._rng.random(32)
+        self._emit(RECORD["SAS_COMMIT"], sas_body("c", sas_commit(self._n_d)))
+        self._sas_step = 1
 
     def _on_sas(self, type_: int, body: bytes) -> None:
         if self._phase != "sas" or self._sas_done:
-            raise _Fail("peer_bad_frame")
+            raise _Fail(ErrorCode.PEER_BAD_FRAME)
         initiator = self._role == "initiator"
         # Responder (the approver): COMMIT then REVEAL. Initiator (the device): NONCE.
         if type_ == RECORD["SAS_COMMIT"] and not initiator and self._sas_step == 0:
             c = parse_sas_body("c", body)
             if c is None:
-                raise _Fail("peer_bad_frame")
+                raise _Fail(ErrorCode.PEER_BAD_FRAME)
+            # Mode v: the code deadline counts from D's choice, as D's does from ``start_sas()``; a
+            # session held while D's person looked at the list keeps its whole 120 s on this end too.
+            if self._mode == "v":
+                self._sas_due = self._mono() + SAS_DEADLINE_SECONDS
             self._commit = encode_sas_value(c)
             self._n_m = self._rng.random(32)
             self._emit(RECORD["SAS_NONCE"], sas_body("nM", self._n_m))
@@ -948,7 +999,7 @@ class PeerSession:
         if type_ == RECORD["SAS_NONCE"] and initiator and self._sas_step == 1:
             n_m = parse_sas_body("nM", body)
             if n_m is None or self._n_d is None:
-                raise _Fail("peer_bad_frame")
+                raise _Fail(ErrorCode.PEER_BAD_FRAME)
             self._n_m = n_m
             self._emit(RECORD["SAS_REVEAL"], sas_body("nD", self._n_d))
             self._finish_sas()
@@ -957,11 +1008,11 @@ class PeerSession:
             n_d = parse_sas_body("nD", body)
             # sas_reveal_ok compares the commitment in constant time.
             if n_d is None or self._commit is None or not sas_reveal_ok(self._commit, encode_sas_value(n_d)):
-                raise _Fail("peer_bad_frame")
+                raise _Fail(ErrorCode.PEER_BAD_FRAME)
             self._n_d = n_d
             self._finish_sas()
             return
-        raise _Fail("peer_bad_frame")
+        raise _Fail(ErrorCode.PEER_BAD_FRAME)
 
     def _finish_sas(self) -> None:
         assert self._hs is not None and self._n_d is not None and self._n_m is not None
@@ -1014,7 +1065,7 @@ class PeerSession:
         o = parse_strict_object(body)
         ring = o.get("ring") if o is not None else None
         if not isinstance(ring, str):
-            raise _Fail("peer_bad_frame")
+            raise _Fail(ErrorCode.PEER_BAD_FRAME)
         held = a.held_ring()
         r = replace_ring(
             held[0] if held else None, ring, trust=a.trust, expected_aud=a.expected_aud, now=self._now()
@@ -1026,7 +1077,7 @@ class PeerSession:
         # The new roster may have dropped this peer.
         assert self._peer_remote is not None
         if not self._admit(self._peer_cert_jws, ring, self._peer_remote).admit:
-            raise _Fail("peer_revoked")
+            raise _Fail(ErrorCode.PEER_REVOKED)
 
     def _emit(self, type_: int, body: bytes) -> None:
         """Seal records onto the wire, in order, so a REKEY never interleaves."""

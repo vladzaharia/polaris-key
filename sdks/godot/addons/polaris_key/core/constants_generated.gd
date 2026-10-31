@@ -1054,7 +1054,7 @@ const PLAN_MATRIX_VERSION := 2
 const SYNC_SCENARIOS_VERSION := 4
 
 ## `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
-const DEVICE_LABEL_VERSION := 1
+const DEVICE_LABEL_VERSION := 2
 
 ## `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.
 const PRESENTATION_MATRIX_VERSION := 1

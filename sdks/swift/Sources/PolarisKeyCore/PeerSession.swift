@@ -176,6 +176,8 @@ public enum PeerChannelError: Error, Sendable, Equatable {
     /// A record type the session owns (HELLO, CLOSE, REKEY, the SAS records).
     case ownedRecord
     case messageTooLarge
+    /// `handshakeHash()` before the session is established.
+    case notEstablished
 }
 
 /// The approver's admission: at most `maxPerMinute` handshakes a minute (default 5) and at most
@@ -288,6 +290,14 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     private var peerCertJws = ""
     private var peerRemote: Data?
     private var pending: (remote: Data, deviceId: String?)?
+    /// Mode v: D stops after HELLO until its host calls `startSas()` (N9).
+    private let holdSas: Bool
+    /// The Noise handshake hash `h`, once the session is established (§15.6.1 binds the vouch to it).
+    private var hash: Data?
+
+    /// Mode v: this session's order guard (§15.6.1), negotiated when the session is `established`. nil in the
+    /// other modes.
+    public nonisolated let vouch: VouchFlow<VouchRecord>?
 
     // One call at a time: a handshake step awaits the key port, and another call must not
     // interleave with it.
@@ -302,7 +312,7 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         send: @escaping @Sendable (Data) -> Void, onEvent: @escaping @Sendable (PeerSessionEvent) -> Void,
         mode: PeerNoiseMode = .a, random: (@Sendable (Int) -> Data)? = nil, now: (@Sendable () -> Int)? = nil,
         mono: (@Sendable () -> TimeInterval)? = nil,
-        rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600
+        rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600, holdSas: Bool = false
     ) throws {
         guard (mode == .a) == (account != nil) else { throw PeerChannelError.mode }
         if mode == .c {
@@ -320,6 +330,8 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         self.contacts = contacts
         self.offer = exchange
         self.exchange = exchange.map { PeerContacts.Exchange(own: $0.agreeKey, held: $0.held) }
+        guard !holdSas || (mode == .v && role == .initiator) else { throw PeerChannelError.mode }
+        self.holdSas = holdSas
         self.mode = mode
         self.asm = PeerRecordAssembler(mode: PeerRecordMode(rawValue: mode.rawValue)!)
         self.admission = admission
@@ -328,7 +340,14 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         self.slug = slug
         self.staticKey = staticKey
         self.acct = account
-        self.caps = caps
+        // Both mode-v payloads list `vouch/1` (§15.6.1 rule 1); the host cannot leave it out.
+        if mode == .v {
+            self.caps = caps.contains(vouchCap) ? caps : caps + [vouchCap]
+            self.vouch = VouchFlow(role: role == .initiator ? .requester : .approver)
+        } else {
+            self.caps = caps
+            self.vouch = nil
+        }
         self.helloLabel = hello.label
         self.helloPlatform = hello.platform
         self.helloApp = hello.app
@@ -354,6 +373,13 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
 
     public var isOpen: Bool { phase == .open }
     public var closed: Bool { phase == .closed }
+
+    /// The Noise handshake hash `h`, a copy, once the session is `established` (§15.6.1 binds the vouch to
+    /// it). Throws before that. It is a public value; the one-time keys never leave the handshake.
+    public func handshakeHash() throws -> Data {
+        guard let h = hash else { throw PeerChannelError.notEstablished }
+        return Data(h)
+    }
 
     /// Seconds until the next deadline (the transport's, the peer certificate's expiry), 0 when one
     /// is due, nil when there is none. The host calls `tick()` then.
@@ -434,6 +460,19 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         }
         guard body.count <= maxSend else { throw PeerChannelError.messageTooLarge }
         try emit(type, body)
+    }
+
+    /// Mode v, `holdSas` initiator: the person chose this approver; send `SAS_COMMIT` now and start the 120 s
+    /// code deadline over. Only once, only after `established`; any other call closes the session
+    /// `peer_not_allowed`.
+    public func startSas() async {
+        await guarded { [self] in
+            guard holdSas, phase == .sas, sasStep == 0, nD == nil else { throw Fail(.peerNotAllowed) }
+            // The code deadline counts from the person's choice, not from the first byte: a session held
+            // while the person looked at the list keeps its whole 120 s.
+            sasDue = mono() + peerSasDeadlineSeconds
+            try commitSas()
+        }
     }
 
     /// Modes v and p: the person confirmed the code. Opens the session, sends `CONFIRM` in mode p
@@ -680,18 +719,6 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         }
     }
 
-    /// `platform` as sent when it is 1 to 32 of [A-Za-z0-9 ._+-], else "Unknown".
-    static func cleanPlatform(_ raw: String) -> String {
-        let u = Array(raw.utf8)
-        let ok =
-            (1...32).contains(u.count)
-            && u.allSatisfy { c in
-                (c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c == 0x20
-                    || c == 0x2E || c == 0x5F || c == 0x2B || c == 0x2D
-            }
-        return ok ? raw : peerUnknownDisplay
-    }
-
     private static func parseHello(_ body: Data, mode: PeerNoiseMode) -> PeerHello? {
         // Modes v and p take a HELLO from a peer that is not yet verified: 4 KiB at most (§15.6).
         if mode != .a && body.count > peerMaxUnverifiedHelloBytes { return nil }
@@ -702,12 +729,12 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         var label: String?
         if let l = o["label"] {
             guard case .string(let raw) = l else { return nil }
-            // Display data from the peer: NFC, controls and bidi stripped, 64 code points.
-            label = normalizeDeviceLabel(raw.precomposedStringWithCanonicalMapping)
+            // Display data from the peer, cleaned as a device label with NFC after the strip (§15.6).
+            label = cleanDisplayLabel(raw)
         }
         // `app` is cleaned like `label`; `platform` is shown only in the narrow character set.
-        let cleanApp = normalizeDeviceLabel(app.precomposedStringWithCanonicalMapping) ?? peerUnknownDisplay
-        return PeerHello(label: label, platform: cleanPlatform(platform), app: cleanApp, maxMessage: mm)
+        let cleanApp = cleanDisplayLabel(app) ?? peerUnknownDisplay
+        return PeerHello(label: label, platform: PeerDisplay.cleanPlatform(platform), app: cleanApp, maxMessage: mm)
     }
 
     private func onMessage(_ type: Int, _ body: Data) async throws {
@@ -717,7 +744,14 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
                 throw Fail(.peerBadFrame)
             }
             maxSend = min(peerMaxMessageBytes, hello.maxMessage)
+            if let vouch {
+                // Rule 1 (N7): without `vouch/1` on both sides, close before any SAS record.
+                if case .close(let c) = vouch.negotiate(local: caps, remote: peerCaps) {
+                    throw Fail(PeerClosedReason(c))
+                }
+            }
             caps = PeerPayload.capsIntersection(caps, peerCaps)
+            hash = try await hs?.handshakeHash
             pending = nil
             let account = mode == .a
             let direct = account || mode == .c
@@ -733,12 +767,9 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
                 try pushRing()
             } else if direct {
                 return
-            } else if role == .initiator {
-                // The device commits first.
-                let n = random(32)
-                nD = n
-                try emit(PeerRecordType.sasCommit, try PeerSAS.body(.c, PeerSAS.commit(n)))
-                sasStep = 1
+            } else if role == .initiator && !holdSas {
+                // The device commits first, unless the host holds the code back until it picks this approver.
+                try commitSas()
             }
             return
         }
@@ -829,12 +860,22 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         }
     }
 
+    private func commitSas() throws {
+        let n = random(32)
+        nD = n
+        try emit(PeerRecordType.sasCommit, try PeerSAS.body(.c, PeerSAS.commit(n)))
+        sasStep = 1
+    }
+
     private func onSas(_ type: Int, _ body: Data) async throws {
         guard phase == .sas, !sasDone else { throw Fail(.peerBadFrame) }
         let initiator = role == .initiator
         // Responder (the approver): COMMIT then REVEAL. Initiator (the device): NONCE.
         if type == PeerRecordType.sasCommit && !initiator && sasStep == 0 {
             guard let c = PeerSAS.parseBody(.c, body) else { throw Fail(.peerBadFrame) }
+            // Mode v: the code deadline counts from D's choice, as D's does from `startSas()`; a session held
+            // while D's person looked at the list keeps its whole 120 s on this end too.
+            if mode == .v { sasDue = mono() + peerSasDeadlineSeconds }
             commit = try PeerSAS.encodeValue(c)
             let n = random(32)
             nM = n

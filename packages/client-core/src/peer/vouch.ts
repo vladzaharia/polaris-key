@@ -21,7 +21,11 @@ import { signDeviceProof, type DeviceKeyPort } from "../deviceKeys.js";
 import type { RandomBytes } from "../identityRedirect.js";
 import { base32Lower } from "./advert.js";
 import { cleanLabel, cleanPlatform } from "./display.js";
-import { capsIntersection, parseStrictObject } from "./payload.js";
+import {
+  capsIntersection,
+  parseStrictObject,
+  parseStrictObjectScanned,
+} from "./payload.js";
 import { RECORD, type PeerCloseCode } from "./record.js";
 
 /** The capability both mode-v payloads list (rule 1). */
@@ -139,8 +143,11 @@ export interface ParsedVouchRequest {
 /** Strict JSON, size, shape and key checks; `null` means close `peer_bad_frame`. */
 export function parseVouchRequest(body: Uint8Array): ParsedVouchRequest | null {
   if (body.length > VOUCH_REQ_MAX) return null;
-  const o = parseStrictObject(body);
-  if (o === null || o.v !== 1) return null;
+  const scanned = parseStrictObjectScanned(body);
+  if (scanned === null) return null;
+  const o = scanned.o;
+  // `v` is the integer 1: `1.0` and `1e0` read as 1 in JavaScript and are refused here.
+  if (o.v !== 1 || scanned.nonWireIntegers.has("/v")) return null;
   const { request, deviceId, signKey, agreeKey, label, platform, sig } = o;
   if (typeof request !== "string" || !REQUEST_RE.test(request)) return null;
   if (typeof deviceId !== "string" || !DEVICE_RE.test(deviceId)) return null;
@@ -169,9 +176,9 @@ export interface VerifyVouchRequestOptions {
   hello: VouchHello;
   /**
    * `hello` is the `HELLO` the session already cleaned (what `PeerHello` carries): it is compared
-   * as it is. Without this the label is cleaned again, and the cleaning is not idempotent (an
-   * invisible mark between a base and a combining mark can change a second time), so an honest
-   * D would be refused.
+   * as it is. Without this the label is cleaned once more, which changes nothing now that the
+   * cleaning is idempotent (DEVICE-LABEL-STRIP); the flag stays as a safeguard against a cleaner
+   * that is not.
    */
   helloCleaned?: boolean;
   body: Uint8Array;

@@ -59,7 +59,7 @@ def test_row_counts() -> None:
     ) == 70
     s = M["sas"]
     assert len(s["commits"]) + len(s["codes"]) + len(s["reveals"]) + len(s["nonces"]) == 31
-    assert len(M["handshakePayloads"]["payloads"]) + len(M["handshakePayloads"]["intersection"]) == 76
+    assert len(M["handshakePayloads"]["payloads"]) + len(M["handshakePayloads"]["intersection"]) == 83
 
 
 # -- adverts ----------------------------------------------------------------------------------------

@@ -158,9 +158,10 @@ def test_each_socket_answers_a_query_for_the_host_at_most_once_a_second_and_a_go
     q = build_query([(HOST, "AAAA")])
 
     async def ask() -> None:
-        rig.v6["en0"].on_packet(q, "fe80::9")
-        rig.v6["en0"].on_packet(q, "fe80::9")  # within a second: no second reply
-        rig.v6["en1"].on_packet(q, "fe80::9")  # another socket has its own gap
+        # The real receiver gives a link-local source its arrival interface as the zone.
+        rig.v6["en0"].on_packet(q, "fe80::9%en0")
+        rig.v6["en0"].on_packet(q, "fe80::9%en0")  # within a second: no second reply
+        rig.v6["en1"].on_packet(q, "fe80::9%en1")  # another socket has its own gap
 
     before = (len(rig.v6["en0"].sent), len(rig.v6["en1"].sent), len(rig.v4[0].sent))
     run(ask())
@@ -459,7 +460,7 @@ def test_the_real_receiver_passes_only_the_interfaces_own_link_local_sources_wit
     from polaris_key.core.peer_mdns import _Receiver
 
     got: List[str] = []
-    r = _Receiver(lambda d, s: got.append(s), 4, "en0")
+    r = _Receiver(lambda d, s, port=0: got.append(s), 4, "en0")
     r.datagram_received(b"x", ("fe80::7", 5353, 0, 4))
     r.datagram_received(b"x", ("fe80::8", 5353, 0, 0))  # no scope
     r.datagram_received(b"x", ("fe80::9", 5353, 0, 5))  # another link

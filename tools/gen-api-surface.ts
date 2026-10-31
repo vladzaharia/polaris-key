@@ -285,6 +285,9 @@ function renderPython(api: Api): string {
       continue; // an instance attribute set in __init__
     } else if (r.handle) {
       attrs.push(`(${q(r.id)}, "ConfigSetting", ${q(r.name)})`);
+    } else if (r.id.startsWith("cloudConnect.nearby.")) {
+      // Nearby approval (CC-15): request and on_request live on `cloud_connect.nearby`.
+      attrs.push(`(${q(r.id)}, "CloudNearby", ${q(r.name)})`);
     } else if (r.id === "identity.signIn") {
       // sign_in is a property on the identity client; start is its one verb.
       attrs.push(`(${q(r.id)}, "IdentityClient", "sign_in")`);
@@ -318,6 +321,7 @@ from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
 from polaris_key.connect.links import CloudLinks
+from polaris_key.connect.nearby import CloudNearby
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
@@ -334,6 +338,7 @@ CLASSES = {
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
     "CloudLinks": CloudLinks,
+    "CloudNearby": CloudNearby,
 }
 
 ${list("ATTRS", attrs)}
@@ -449,6 +454,9 @@ function renderSwift(api: Api): string {
     } else if (r.id.startsWith("cloudConnect.links.")) {
       // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
       lines.push(`_ = CloudLinks.${ref}  // ${r.id}`);
+    } else if (r.id.startsWith("cloudConnect.nearby.")) {
+      // Nearby approval (CC-15): request and onRequest live on `cloudConnect.nearby`.
+      lines.push(`_ = CloudNearby.${ref}  // ${r.id}`);
     } else if (SWIFT_TYPE[r.ns]) {
       lines.push(`_ = ${SWIFT_TYPE[r.ns]}.${ref}  // ${r.id}`);
     }
@@ -488,6 +496,7 @@ const KOTLIN_TYPE: Record<string, string> = {
   packs: "PacksClient",
   presentation: "PresentationSource",
   cloudConnect: "CloudConnect",
+  CloudNearby: "CloudNearby",
   cloudSync: "CloudSyncClient",
 };
 /** Rows built by the Android and Desktop bootstrap objects (PolarisKeyAndroid, PolarisKeyDesktop): not on the client, and the Android module is not in the JVM build. */
@@ -554,6 +563,7 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.sdk.BackendClient`,
     `import im.plrs.key.sdk.CloudConnect`,
     `import im.plrs.key.sdk.CloudLinks`,
+    `import im.plrs.key.sdk.CloudNearby`,
     `import im.plrs.key.sdk.CloudSyncClient`,
     `import im.plrs.key.sdk.CloudSyncHostOptions`,
     `import im.plrs.key.sdk.CommerceClient`,

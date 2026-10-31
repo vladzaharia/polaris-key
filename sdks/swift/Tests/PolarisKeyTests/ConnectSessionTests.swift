@@ -331,7 +331,7 @@ final class ConnectSessionTests: XCTestCase {
         do {
             _ = try await h.opened(l)
             XCTFail("admitted")
-        } catch let e as ConnectLanError { XCTAssertEqual(e.closeCode, "handshake_failed") }
+        } catch let e as ConnectLanError { XCTAssertEqual(e.closeCode, "peer_timeout") }
         _ = pa
     }
 
@@ -379,6 +379,15 @@ final class ConnectSessionTests: XCTestCase {
         XCTAssertEqual(o.b.closed, ConnectSessionClosed(code: "peer_unknown_critical", byPeer: false))
         await eventually("a closed") { o.a.closed != nil }
         XCTAssertEqual(o.a.closed, ConnectSessionClosed(code: "peer_unknown_critical", byPeer: true))
+    }
+
+    func testAZeroLengthFrameInAnEstablishedSessionClosesPeerBadFrameAndThePeerIsTold() async throws {
+        let o = try await openPair()
+        try await o.pa.write(Data([0, 0]))  // what B's link reads: a frame of length zero (V5 15.6)
+        await eventually("b closed") { o.b.closed != nil }
+        XCTAssertEqual(o.b.closed, ConnectSessionClosed(code: "peer_bad_frame", byPeer: false))
+        await eventually("a closed") { o.a.closed != nil }
+        XCTAssertEqual(o.a.closed, ConnectSessionClosed(code: "peer_bad_frame", byPeer: true))
     }
 
     func testANonAppRecordIsIgnoredNotDelivered() async throws {
@@ -530,8 +539,9 @@ final class ConnectSessionTests: XCTestCase {
             jws == "bad"
                 ? PeerTrustResult(applied: false, reason: "invalid") : PeerTrustResult(applied: true, reason: nil)
         }
+        // The refresh gap runs on the monotonic clock (G12): the test drives it with the same counter.
         let src = ConnectPeerDocsSource(
-            now: { c.now.current }, refresh: refresh ? refreshFn : nil, adoptRing: adopt ? adoptFn : nil,
+            now: { 0 }, mono: { Double(c.now.current) }, refresh: refresh ? refreshFn : nil, adoptRing: adopt ? adoptFn : nil,
             applyTrust: trust ? trustFn : nil)
         let d = ConnectPeerDocs(
             source: src,
@@ -610,6 +620,43 @@ final class ConnectSessionTests: XCTestCase {
         await d.drain()
         XCTAssertEqual(
             notices.current.filter { $0.type == "trust" && $0.outcome == "applied" }.count, connectMaxDocsQueued)
+    }
+
+    func testATrustFloodIsCountedAgainstTheTotalAndBusyNoticesFollowTheMonotonicClock() async {
+        let gate = LockedValue(false)
+        let mono = LockedValue(100.0)
+        let trustFn: @Sendable (String) async -> PeerTrustResult = { _ in
+            while !gate.current { try? await Task.sleep(nanoseconds: 5_000_000) }
+            return PeerTrustResult(applied: true, reason: nil)
+        }
+        let ringFn: @Sendable (String) async -> RingAdoption = { _ in RingAdoption(stored: true, epoch: 2, reason: nil)
+        }
+        let notices = LockedValue<[ConnectNotice]>([])
+        // The wall clock never moves; only the monotonic one does.
+        let d = ConnectPeerDocs(
+            source: ConnectPeerDocsSource(
+                now: { 0 }, mono: { mono.current }, adoptRing: ringFn, applyTrust: trustFn))
+        d.onNotice { n in notices.with { $0.append(n) } }
+        func busy(_ kind: String) -> Int { notices.current.filter { $0.type == kind && $0.reason == "busy" }.count }
+        d.trust("t0")
+        for i in 1...3 { d.ring("r\(i)") }
+        for i in 1...3 { d.trust("t\(i)") }  // seven wait now: rings count against the TRUST limit
+        XCTAssertEqual(busy("trust"), 0)
+        d.trust("t4")  // refused although only four of the seven are TRUST: the last slot is RING's
+        XCTAssertEqual(busy("trust"), 1)
+        d.trust("t5")  // within the second: refused, not reported
+        XCTAssertEqual(busy("trust"), 1)
+        d.ring("r4")  // the eighth slot
+        XCTAssertEqual(busy("ring"), 0)
+        d.ring("r5")
+        XCTAssertEqual(busy("ring"), 1)
+        mono.set(101)
+        d.trust("t6")
+        d.ring("r6")
+        XCTAssertEqual(busy("trust"), 2)
+        XCTAssertEqual(busy("ring"), 2)
+        gate.set(true)
+        await d.drain()
     }
 
     func testCloseStopsQueuedJobsAndLateRefreshes() async {

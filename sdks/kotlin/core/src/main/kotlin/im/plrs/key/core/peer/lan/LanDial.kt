@@ -18,6 +18,7 @@ import kotlinx.coroutines.withTimeout
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
+import javax.net.SocketFactory
 
 /** Milliseconds between attempts. */
 public const val LAN_DIAL_STAGGER_MILLIS: Long = 250
@@ -37,6 +38,14 @@ public class LanDialOptions(
     internal val afterWin: () -> Unit = {},
     public val connector: (Socket, InetSocketAddress, Int) -> Unit = { s, a, t -> s.connect(a, t) },
 ) {
+    /** Opens each attempt's socket; null means a plain [Socket]. Set with [withSocketFactory]. */
+    public var socketFactory: SocketFactory? = null
+        private set
+
+    /** A copy of these options whose attempts open their sockets from [factory] (null: plain sockets). */
+    public fun withSocketFactory(factory: SocketFactory?): LanDialOptions =
+        LanDialOptions(allowLoopback, timeoutMillis, staggerMillis, afterWin, connector).also { it.socketFactory = factory }
+
     override fun toString(): String = "LanDialOptions"
 }
 
@@ -130,7 +139,7 @@ private fun connectJudged(r: Race, s: Socket, host: String) {
 
 private fun CoroutineScope.launchAttempt(r: Race, host: String) {
     launch(Dispatchers.IO) {
-        val s = Socket()
+        val s = runCatching { r.o.socketFactory?.createSocket() }.getOrNull() ?: Socket()
         val failure = runCatching { connectJudged(r, s, host) }.exceptionOrNull()
         if (failure == null) {
             r.win(s, host)

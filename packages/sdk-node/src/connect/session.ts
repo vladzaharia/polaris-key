@@ -126,6 +126,11 @@ export interface ChannelLink {
   readonly channel: PeerChannel;
   /** Stop (true) or resume (false) reading from the transport, where it can. */
   pause?(on: boolean): void;
+  /**
+   * A link with a bounded send queue: true when a send of `bytes` is refused, the link having ended
+   * `peer_busy` before anything was encrypted (so the keys do not advance for a dropped message).
+   */
+  refuses?(bytes: number): boolean;
 }
 
 /** Which path a session took (WIRE-CONTRACT-V5 §15.7: the relay is the fallback). */
@@ -175,6 +180,7 @@ export class ConnectSession {
       throw new LanError("bad_type", "Application types are 0x0100 to 0x7FFF.");
     if (this.#closed !== null)
       throw new LanError("closed", "The session is closed.");
+    if (this.#link.refuses?.(body.length) === true) return;
     try {
       await this.#link.channel.sendRecord(type, body);
     } catch (e) {
@@ -190,6 +196,7 @@ export class ConnectSession {
   /** Send a record of any type the session does not own (a peer document, a later transfer
    *  type). The channel refuses HELLO, CLOSE, REKEY and SAS records. @internal */
   sendRecord(type: number, body: Uint8Array): Promise<void> {
+    if (this.#link.refuses?.(body.length) === true) return Promise.resolve();
     return this.#link.channel.sendRecord(type, body);
   }
 
@@ -314,7 +321,7 @@ export class SocketLink {
   #deadline: NodeJS.Timeout;
   #ended = false;
   #lost = false;
-  /** Raw mode: the handshake is done (a frame may then be the full 65,535 bytes). */
+  /** The transport exists (a frame may then be the full 65,535 bytes, and a CLOSE can go out). */
   #up = false;
 
   readonly #o: SocketLinkOptions;
@@ -337,7 +344,7 @@ export class SocketLink {
       onEvent: (e) => this.#event(e),
     });
     this.#deadline = setTimeout(
-      () => this.#fail("handshake_failed", false),
+      () => this.#fail("peer_timeout"),
       o.handshakeMs ?? HANDSHAKE_MS,
     );
     this.#deadline.unref();
@@ -360,10 +367,10 @@ export class SocketLink {
   #data(chunk: Buffer): void {
     if (this.#ended) return;
     const frames = this.#reader.push(chunk);
-    if (frames === null) return this.#fail("peer_bad_frame", false);
+    if (frames === null) return this.#fail("peer_bad_frame");
     for (const f of frames) {
       if (this.#session === null && !this.#up && f.length > HANDSHAKE_FRAME_MAX)
-        return this.#fail("handshake_failed", false);
+        return this.#fail("handshake_failed");
       void this.channel.receive(f);
     }
   }
@@ -390,6 +397,7 @@ export class SocketLink {
             ? this.#o.contacts?.[e.contactIndex]
             : undefined;
         if (e.peerDeviceId === undefined && ref === undefined) break;
+        this.#up = true;
         clearTimeout(this.#deadline);
         this.#session = new ConnectSession(
           this,
@@ -429,15 +437,15 @@ export class SocketLink {
     }
   }
 
-  #fail(code: SessionCloseCode, byPeer: boolean): void {
+  /** The link ends itself: the closing side names its reason (§15.6; a zero-length frame is
+   *  `peer_bad_frame`, the handshake deadline `peer_timeout`). A CLOSE goes out only once the
+   *  transport exists. */
+  #fail(code: "peer_bad_frame" | "peer_timeout" | "handshake_failed"): void {
     if (this.#ended) return;
-    if (this.#session === null) {
-      // Not a live session: the channel has nothing to send.
-      this.#finish({ code, byPeer });
-      void this.channel.close("peer_bye");
-      return;
-    }
-    void this.channel.close("peer_bye");
+    // No transport yet: the channel has nothing to send. Past it the CLOSE goes out first, and
+    // the channel's `closed` event ends the link.
+    if (!this.#up) this.#finish({ code, byPeer: false });
+    void this.channel.close(code === "handshake_failed" ? "peer_bye" : code);
   }
 
   #finish(c: SessionClosed): void {

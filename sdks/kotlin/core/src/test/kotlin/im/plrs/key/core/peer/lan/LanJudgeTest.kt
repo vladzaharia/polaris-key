@@ -209,6 +209,29 @@ class LanJudgeTest {
     }
 
     @Test
+    fun theRaceOpensItsSocketsFromTheGivenFactory() {
+        server().use { srv ->
+            var made = 0
+            val factory = object : javax.net.SocketFactory() {
+                override fun createSocket(): Socket = Socket().also { made++ }
+
+                override fun createSocket(h: String?, p: Int): Socket = throw UnsupportedOperationException()
+
+                override fun createSocket(h: String?, p: Int, a: java.net.InetAddress?, lp: Int): Socket = throw UnsupportedOperationException()
+
+                override fun createSocket(a: java.net.InetAddress?, p: Int): Socket = throw UnsupportedOperationException()
+
+                override fun createSocket(a: java.net.InetAddress?, p: Int, la: java.net.InetAddress?, lp: Int): Socket = throw UnsupportedOperationException()
+            }
+            val o = LanDialOptions(true, 5000, 30) { s, _, _ -> s.connect(InetSocketAddress("127.0.0.1", srv.localPort)) }
+                .withSocketFactory(factory)
+            val (s, _) = runBlocking { lanDialRaceTo(listOf("10.0.0.1"), srv.localPort, o) }
+            assertEquals(1, made)
+            s.close()
+        }
+    }
+
+    @Test
     fun aConnectionThatWinsJustBeforeTheTimeoutIsClosed() {
         server().use { srv ->
             val sockets = CopyOnWriteArrayList<Socket>()

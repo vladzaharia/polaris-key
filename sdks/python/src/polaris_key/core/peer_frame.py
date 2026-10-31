@@ -5,12 +5,16 @@ from __future__ import annotations
 
 from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 
+from ..constants_generated import ERROR_CODE_KINDS, ErrorCode
+
 __all__ = [
     "FrameReader",
     "MAX_CHAIN_RECORDS",
     "MAX_FRAME",
     "MAX_PEER_MESSAGE_BYTES",
     "MAX_RECORD_BODY",
+    "MAX_VP_CHAIN_BYTES",
+    "PEER_CLOSE_CODES",
     "PeerRecord",
     "RECORD",
     "RECORD_TYPES",
@@ -43,7 +47,7 @@ def decode_frames(stream: bytes) -> Union[Tuple[List[bytes], bytes], str]:
     while n - i >= 2:
         length = (stream[i] << 8) | stream[i + 1]
         if length == 0:
-            return "peer_bad_frame"
+            return ErrorCode.PEER_BAD_FRAME
         if n - i - 2 < length:
             break
         frames.append(bytes(stream[i + 2 : i + 2 + length]))
@@ -94,8 +98,14 @@ class FrameReader:
 MAX_PEER_MESSAGE_BYTES = 1_048_576
 #: A Noise message is at most 65,535 bytes; 16 are the tag and 3 the record header.
 MAX_RECORD_BODY = 65535 - 16 - 3
+#: An open MORE chain in modes ``v`` and ``p`` (§15.6.1): their messages are a HELLO, the SAS records, a
+#: ``VOUCH_REQ`` and the held Sync records, all far under this, and the peer is not yet verified.
+MAX_VP_CHAIN_BYTES = 16_384
 #: Records in one MORE chain: a full 1 MiB message in the smallest records, plus one.
 MAX_CHAIN_RECORDS = -(-MAX_PEER_MESSAGE_BYTES // MAX_RECORD_BODY) + 1
+
+#: The channel close codes (§15.6, §15.9): the registry's ``peer`` kind, from the generated constants.
+PEER_CLOSE_CODES: Tuple[str, ...] = tuple(c for c, k in ERROR_CODE_KINDS.items() if k == "peer")
 
 RECORD: Dict[str, int] = {
     "HELLO": 0x8001,
@@ -214,33 +224,36 @@ class RecordAssembler:
 
     def push(self, r: PeerRecord) -> Assembled:
         if (r.flags & 0xFE) != 0:
-            return _bad("peer_bad_frame")
+            return _bad(ErrorCode.PEER_BAD_FRAME)
         more = (r.flags & 1) != 0
         if self._dropping is not None:
             if self._dropping != r.type:
-                return _bad("peer_bad_frame")
+                return _bad(ErrorCode.PEER_BAD_FRAME)
             if not more:
                 self._dropping = None
             return _IGNORED
         if self._open is not None and self._open[0] != r.type:
-            return _bad("peer_bad_frame")
+            return _bad(ErrorCode.PEER_BAD_FRAME)
         row = next((t for t in RECORD_TYPES if t.start <= r.type <= t.end), None)
         if row is None:
             if (r.type & 0x8000) != 0:
-                return _bad("peer_unknown_critical")
+                return _bad(ErrorCode.PEER_UNKNOWN_CRITICAL)
             if more:
                 self._dropping = r.type
             return _IGNORED
         if self._mode not in row.modes:
-            return _bad("peer_not_allowed")
+            return _bad(ErrorCode.PEER_NOT_ALLOWED)
         # An empty MORE record is accepted (corpus `more-empty-parts`), so the chain's record count
         # is what bounds the work.
         size = (self._open[2] if self._open else 0) + len(r.body)
         if size > MAX_PEER_MESSAGE_BYTES:
-            return _bad("peer_bad_frame")
+            return _bad(ErrorCode.PEER_BAD_FRAME)
+        # Modes v and p: a chain still open is capped far below the 1 MiB of a verified peer.
+        if (more or self._open is not None) and self._mode in ("v", "p") and size > MAX_VP_CHAIN_BYTES:
+            return _bad(ErrorCode.PEER_BAD_FRAME)
         parts = self._open[1] if self._open else []
         if len(parts) >= MAX_CHAIN_RECORDS:
-            return _bad("peer_bad_frame")
+            return _bad(ErrorCode.PEER_BAD_FRAME)
         parts.append(r.body)
         if more:
             self._open = (r.type, parts, size)
@@ -248,5 +261,5 @@ class RecordAssembler:
         self._open = None
         body = b"".join(parts)
         if row.body_len is not None and len(body) != row.body_len:
-            return _bad("peer_bad_frame")
+            return _bad(ErrorCode.PEER_BAD_FRAME)
         return Assembled("message", r.type, body)

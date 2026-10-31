@@ -100,12 +100,14 @@ describe("VOUCH_REQ", () => {
     expect(await verify(body, H, { platform: "linux" })).toBeNull();
   });
 
-  it("compares the label to a HELLO the session already cleaned (cleaning is not idempotent)", async () => {
-    // Raw label: a zero-width space between a base letter and a combining acute. One cleaning drops
-    // the space and keeps the two marks apart; a second cleaning composes them into one letter.
+  it("compares the label to a HELLO the session already cleaned", async () => {
+    // Raw label: a zero-width space between a base letter and a combining acute. The cleaning
+    // drops the space before NFC, so one pass composes them and a second changes nothing
+    // (DEVICE-LABEL-STRIP). The comparison against the cleaned HELLO label stays as a safeguard.
     const raw = "e\u200b\u0301x";
     const once = cleanLabel(raw)!;
-    expect(cleanLabel(once)).not.toBe(once);
+    expect(once).toBe("\u00e9x");
+    expect(cleanLabel(once)).toBe(once);
     const b = await buildVouchRequest({
       port,
       slug: SLUG,
@@ -166,6 +168,17 @@ describe("VOUCH_REQ", () => {
     expect(
       await verify(edit((o) => (o.signKey = otherKeys.signKey))),
     ).toBeNull();
+  });
+
+  it("refuses a v that is not written as the integer 1 (1.0, 1e0)", async () => {
+    const valid = text(body);
+    expect(valid).toContain('"v":1,');
+    for (const v of ["1.0", "1e0", "1E0", "10e-1"]) {
+      expect(
+        await verify(utf8(valid.replace('"v":1,', `"v":${v},`))),
+      ).toBeNull();
+    }
+    expect(await verify(utf8(valid))).not.toBeNull();
   });
 
   it("ignores unknown members and refuses a body over 4 KiB", async () => {

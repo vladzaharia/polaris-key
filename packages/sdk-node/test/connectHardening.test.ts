@@ -152,8 +152,10 @@ describe("finding 6: a pushed roster that removed a device", () => {
     let now = T0;
     let refreshes = 0;
     let fail = true;
+    // The refresh gap runs on the monotonic clock (G12): the wall clock is not consulted.
     const src = {
-      now: () => now,
+      now: () => 0,
+      mono: () => now,
       refresh: async () => {
         refreshes++;
         if (fail) throw new Error("offline");
@@ -178,11 +180,75 @@ describe("finding 6: a pushed roster that removed a device", () => {
 });
 
 describe("finding 7: floods from an authenticated peer", () => {
+  it("a TRUST flood leaves the last slot to a RING; busy notices run one a second per kind", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let mono = 100;
+    const adopted: string[] = [];
+    const src = {
+      now: () => T0,
+      mono: () => mono,
+      applyTrust: async () => {
+        await gate;
+        return { applied: false as const, reason: "bad" };
+      },
+      adoptRing: async (jws: string) => {
+        adopted.push(jws);
+        return { stored: false as const, reason: "epoch-not-higher" };
+      },
+    } as unknown as LanSource;
+    const docs = new PeerDocs(src, () => undefined);
+    const notes: ConnectNotice[] = [];
+    docs.onNotice((n) => notes.push(n));
+    const busy = (type: string): number =>
+      notes.filter(
+        (n) => n.type === type && "reason" in n && n.reason === "busy",
+      ).length;
+    for (let i = 0; i < 30; i++) docs.trust(`trust-${i}`); // seven wait, the rest are refused
+    expect(busy("trust")).toBe(1);
+    docs.ring("ring-a"); // the eighth slot is the roster's
+    expect(busy("ring")).toBe(0);
+    docs.ring("ring-b"); // and now all eight are taken
+    expect(busy("ring")).toBe(1);
+    docs.ring("ring-c");
+    expect(busy("ring")).toBe(1); // within the second: no second notice
+    docs.trust("trust-x");
+    expect(busy("trust")).toBe(1);
+    mono += 1;
+    docs.trust("trust-y");
+    docs.ring("ring-d");
+    expect(busy("trust")).toBe(2);
+    expect(busy("ring")).toBe(2);
+    release();
+    await sleep(20);
+    expect(adopted).toEqual(["ring-a"]);
+    docs.close();
+  });
+
+  it("the busy gap is read off the monotonic clock, not the wall clock", () => {
+    let wall = T0;
+    const src = {
+      now: () => wall,
+      mono: () => 7,
+    } as unknown as LanSource;
+    const docs = new PeerDocs(src, () => undefined);
+    const notes: ConnectNotice[] = [];
+    docs.onNotice((n) => notes.push(n));
+    for (let i = 0; i < 20; i++) docs.trust(`t-${i}`);
+    wall += 3600;
+    for (let i = 20; i < 40; i++) docs.trust(`t-${i}`);
+    expect(
+      notes.filter((n) => "reason" in n && n.reason === "busy"),
+    ).toHaveLength(1);
+    docs.close();
+  });
+
   it("bounds the pushed documents waiting, and refuses a repeat", async () => {
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
     const src = {
       now: () => T0,
+      mono: () => 5,
       adoptRing: async () => {
         await gate;
         return { stored: false as const, reason: "epoch-not-higher" };
@@ -195,8 +261,9 @@ describe("finding 7: floods from an authenticated peer", () => {
     const busy = notes.filter(
       (n) => n.outcome === "refused" && "reason" in n && n.reason === "busy",
     );
-    // Eight wait; the rest (new ones over the cap, and repeats of waiting ones) are refused at once.
-    expect(busy).toHaveLength(42);
+    // Eight wait; the rest (new ones over the cap, and repeats of waiting ones) are refused, and
+    // the refusal is one notice a second per kind (G11).
+    expect(busy).toHaveLength(1);
     release();
     await sleep(20);
     expect(

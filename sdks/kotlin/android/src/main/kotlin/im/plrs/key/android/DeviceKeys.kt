@@ -45,7 +45,7 @@ public class AndroidDeviceKeySealer(private val sealer: KeystoreSealer) : Device
  * so it is deferred to the storage's first (IO-dispatched) operation: building a client on the main thread
  * trips no StrictMode disk-read violation. The product name is still checked now.
  */
-private fun fileOrNoBackup(context: Context, productSlug: String, file: File?, name: String): () -> File {
+internal fun fileOrNoBackup(context: Context, productSlug: String, file: File?, name: String): () -> File {
     val slug = SecureStore.checkProductName(productSlug)
     return { file ?: File(context.noBackupFilesDir, "pkey/$slug/$name") }
 }

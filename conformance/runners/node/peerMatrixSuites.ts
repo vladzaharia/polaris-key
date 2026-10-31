@@ -510,7 +510,7 @@ function vouch(m: PeerMatrix): void {
       new Set(rows.map((r) => r.id)).size === rows.length;
     // Exact: a row added or dropped is a deliberate corpus change, never a silent one.
     it("has the rows", () => {
-      expect(v.requests.length).toBe(78);
+      expect(v.requests.length).toBe(80);
       expect(v.results.length).toBe(26);
       expect(v.flows.length).toBe(30);
       expect(v.finish.length).toBe(29);

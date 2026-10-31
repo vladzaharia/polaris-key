@@ -35,7 +35,13 @@
 // - one source may add at most [MDNS_NEW_PER_MINUTE] new names a minute (instances and host names alike), so
 //   a neighbour cannot churn the tables (its own entries, or the least recently refreshed real ones) by
 //   naming faster than that;
-// - query replies go out at most once a second; the packet parser's own limits live in the codec.
+// - query replies go out at most once a second; the packet parser's own limits live in the codec;
+// - a query from a port other than 5353 is a legacy query (RFC 6762 section 6.7): the answer goes by unicast
+//   to the querier's address and port, with the query's ID, the matching questions repeated, no cache-flush
+//   bit and a TTL of 10 s. A query is dropped, before it is parsed, unless its source is one the response
+//   rules above would hear, and a legacy one also unless its port is 1024 or higher, so the responder
+//   cannot be aimed at an off-link address or a service port; it counts against the same once-a-second
+//   gap. An IPv4 source gets the A records, an IPv6 one the AAAA records of the link it is on.
 //
 // One `MulticastSocket` on 5353 serves both families. It is bound with address reuse and joins
 // 224.0.0.251 on every interface that is up, multicast-capable, not loopback, and has a private IPv4
@@ -78,6 +84,15 @@ public const val MDNS_ENTRY_TTL_SECONDS: Double = 5 * 60.0
 private const val REPLY_GAP_SECONDS = 1.0
 private const val NETS_REFRESH_SECONDS = 10.0
 private const val TTL = 120L
+
+/** The TTL of a legacy unicast answer (RFC 6762 section 6.7: at most 10 s). */
+private const val LEGACY_TTL = 10L
+
+/** A legacy query is answered only from a port at or above this one. */
+private const val MIN_LEGACY_PORT = 1024
+
+/** Questions a legacy answer repeats, at most: the reply stays small whatever the query holds. */
+private const val MAX_REPEATED = 4
 private const val TXT_TTL = 4500L
 private const val ASK_QUESTIONS = 32
 private const val AGAIN_MILLIS = 1000L
@@ -161,7 +176,36 @@ public class JvmMdns(
         return subnets4(allowLoopback, picked) + links.flatMap { it.nets }
     }
 
-    private suspend fun openSocket(links: List<Mdns6Interface>, onPacket: (ByteArray, String) -> Unit): MdnsSocket {
+    /**
+     * RFC 6762 section 11: a source is on a connected subnet of an interface in use, or is link-local
+     * (on-link by definition) with the zone of a link in use. The zone is the arrival interface: the
+     * kernel reports it with a link-local source, so a source with none, or with an interface we did
+     * not join, is not ours. It gates a response we learn from and a query we answer alike.
+     */
+    private inner class Heard(val links: List<Mdns6Interface>) {
+        private val lock = Any()
+        private var nets: List<String> = emptyList()
+        private var netsAt = Double.NEGATIVE_INFINITY
+
+        fun onLink(src: LanAddr): Boolean {
+            val g = src.v6
+            return if (g != null && isLinkLocal(g)) src.zone != null && links.any { it.zone == src.zone } else inConnectedSubnet(src.text())
+        }
+
+        private fun inConnectedSubnet(text: String): Boolean {
+            val now = env.clock()
+            val current = synchronized(lock) {
+                if (now - netsAt > NETS_REFRESH_SECONDS) {
+                    nets = connected(links)
+                    netsAt = now
+                }
+                nets
+            }
+            return current.any { cidrContains(it, text) }
+        }
+    }
+
+    private suspend fun openSocket(links: List<Mdns6Interface>, onPacket: (ByteArray, String, Int) -> Unit): MdnsSocket {
         create?.let { return it.open(onPacket) }
         return openMulticastSocket(selectedInterfaces(), links, interfaces == null, onPacket)
     }
@@ -184,7 +228,8 @@ public class JvmMdns(
         fun records(ttl: Long, address: List<MdnsRecord>): List<MdnsRecord> = buildList {
             add(MdnsRecord(PEER_SERVICE, MdnsType.PTR, ttl, MdnsData.Ptr(fq)))
             add(MdnsRecord(fq, MdnsType.SRV, ttl, MdnsData.Srv(advert.port, host, 0, 0)))
-            add(MdnsRecord(fq, MdnsType.TXT, if (ttl == 0L) 0 else TXT_TTL, MdnsData.Txt(txt)))
+            // A legacy answer's TTL is short for every record; a normal one keeps the long TXT TTL.
+            add(MdnsRecord(fq, MdnsType.TXT, if (ttl == 0L || ttl == LEGACY_TTL) ttl else TXT_TTL, MdnsData.Txt(txt)))
             addAll(address)
         }
 
@@ -212,14 +257,40 @@ public class JvmMdns(
             }
         }
 
-        val names = setOf(PEER_SERVICE, fq, host)
-        val opened = openSocket(links) { data, _ ->
-            val p = try {
-                parseMdnsPacket(data)
-            } catch (e: MdnsPacketError) {
-                null
+        // RFC 6762 section 6.7: to the querier alone, with its ID, the questions we answer, no cache-flush
+        // bit and a short TTL. A v4 source gets the A records; a v6 one the AAAA records of the link it is on.
+        fun answerLegacy(p: MdnsPacket, src: LanAddr, port: Int, mine: List<MdnsQuestion>) {
+            val s = synchronized(lock) { if (closed) null else sock } ?: return
+            val v6 = src.v6
+            val address = if (v6 == null) {
+                addrs.map { MdnsRecord(host, MdnsType.A, LEGACY_TTL, MdnsData.Address(it)) }
+            } else {
+                val link = links.firstOrNull { if (isLinkLocal(v6)) it.zone == src.zone else it.nets.any { n -> cidrContains(n, src.text()) } }
+                link?.addresses?.take(MDNS_MAX_ADDRS)?.map { MdnsRecord(host, MdnsType.AAAA, LEGACY_TTL, MdnsData.Address(it)) }.orEmpty()
             }
-            if (p != null && !p.isResponse && p.questions.any { foldName(it.name) in names }) {
+            if (address.isEmpty()) return
+            val to = if (v6 != null && isLinkLocal(v6)) "${src.text()}%${src.zone}" else src.text()
+            attempt { s.sendTo(buildMdnsResponse(records(LEGACY_TTL, address), p.id, mine.take(MAX_REPEATED), flush = false), to, port) }
+        }
+
+        val names = setOf(PEER_SERVICE, fq, host)
+        val heard = Heard(links)
+        val opened = openSocket(links) { data, srcText, port ->
+            // A query from off the link, or from a privileged port that is not 5353, is dropped before it
+            // is parsed: it is answered by nobody.
+            val src = parseLanAddress(srcText)
+            val legacy = port != MDNS_PORT
+            val p = if (src == null || !heard.onLink(src) || (legacy && port < MIN_LEGACY_PORT)) {
+                null
+            } else {
+                try {
+                    parseMdnsPacket(data)
+                } catch (e: MdnsPacketError) {
+                    null
+                }
+            }
+            val mine = p?.questions?.filter { foldName(it.name) in names }.orEmpty()
+            if (p != null && src != null && !p.isResponse && mine.isNotEmpty()) {
                 val t = env.clock()
                 val reply = synchronized(lock) {
                     if (closed || t - lastReply < REPLY_GAP_SECONDS) {
@@ -229,7 +300,7 @@ public class JvmMdns(
                         true
                     }
                 }
-                if (reply) sendRecords(TTL)
+                if (reply && legacy) answerLegacy(p, src, port, mine) else if (reply) sendRecords(TTL)
             }
         }
         synchronized(lock) { sock = opened }
@@ -252,7 +323,7 @@ public class JvmMdns(
         val onUp: (MdnsFound) -> Unit,
         val onDown: (String) -> Unit,
         val accept: (String) -> Boolean,
-        val links: List<Mdns6Interface>,
+        val heard: Heard,
     ) {
         val lock = Any()
         val seen = LinkedHashMap<String, Entry>()
@@ -261,14 +332,12 @@ public class JvmMdns(
         var sock: MdnsSocket? = null
         var closed = false
         val jobs = ArrayList<Job>()
-        var nets: List<String> = emptyList()
-        var netsAt = Double.NEGATIVE_INFINITY
     }
 
     override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle {
         val links = links6()
-        val b = Browse(onUp, onDown, accept, links)
-        b.sock = openSocket(links) { data, src -> onPacket(b, data, src) }
+        val b = Browse(onUp, onDown, accept, Heard(links))
+        b.sock = openSocket(links) { data, src, _ -> onPacket(b, data, src) }
         ask(b)
         b.jobs += scope.launch {
             delay(AGAIN_MILLIS)
@@ -290,33 +359,10 @@ public class JvmMdns(
         }
     }
 
-    /**
-     * RFC 6762 section 11: the source is on a connected subnet of an interface in use, or is link-local
-     * (on-link by definition) with the zone of a link in use. The zone is the arrival interface: the
-     * kernel reports it with a link-local source, so a source with none, or with an interface we did
-     * not join, is not ours.
-     */
-    private fun onLink(b: Browse, src: LanAddr): Boolean {
-        val g = src.v6
-        return if (g != null && isLinkLocal(g)) src.zone != null && b.links.any { it.zone == src.zone } else inConnectedSubnet(b, src.text())
-    }
-
-    private fun inConnectedSubnet(b: Browse, text: String): Boolean {
-        val now = env.clock()
-        val nets = synchronized(b.lock) {
-            if (now - b.netsAt > NETS_REFRESH_SECONDS) {
-                b.nets = connected(b.links)
-                b.netsAt = now
-            }
-            b.nets
-        }
-        return nets.any { cidrContains(it, text) }
-    }
-
     private fun onPacket(b: Browse, data: ByteArray, srcText: String) {
         // A neighbour on the link only: an off-link datagram is never parsed.
         val src = parseLanAddress(srcText) ?: return
-        if (!onLink(b, src)) return
+        if (!b.heard.onLink(src)) return
         val p = try {
             parseMdnsPacket(data)
         } catch (e: MdnsPacketError) {
@@ -483,7 +529,7 @@ public class JvmMdns(
         for (d in downs) safely { b.onDown(d) }
         try {
             s.send(packet)
-            for (l in b.links) s.send6(packet, l.zone)
+            for (l in b.heard.links) s.send6(packet, l.zone)
         } catch (e: IOException) {
             // the network is gone for now
         }

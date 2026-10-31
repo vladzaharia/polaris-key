@@ -49,6 +49,10 @@ public struct PeerLinkHandlers: Sendable {
     public var onContact: (@Sendable (_ secret: Data, _ body: ContactBody, _ pending: Bool) -> Void)?
     /// Modes v and p: the code both screens show.
     public var onSas: (@Sendable (_ code: Int, _ display: String) -> Void)?
+    /// Modes v and p (CC-15): the host owns the session. Every event of the channel but `closed` goes here
+    /// (`established` included, with no certificate behind it), the handshake window ends at `established`,
+    /// and `opened()` is not used. `onClosed` still says how the link ended.
+    public var onSession: (@Sendable (PeerSessionEvent) -> Void)?
 
     public init(
         onEstablished: (@Sendable (PeerEstablished, String) -> Void)? = nil,
@@ -56,7 +60,8 @@ public struct PeerLinkHandlers: Sendable {
         onTrust: (@Sendable (String) -> Void)? = nil, onRingWanted: (@Sendable () -> Void)? = nil,
         onClosed: (@Sendable (PeerLinkClosed) -> Void)? = nil, onEnded: (@Sendable () -> Void)? = nil,
         onContact: (@Sendable (Data, ContactBody, Bool) -> Void)? = nil,
-        onSas: (@Sendable (Int, String) -> Void)? = nil
+        onSas: (@Sendable (Int, String) -> Void)? = nil,
+        onSession: (@Sendable (PeerSessionEvent) -> Void)? = nil
     ) {
         self.onContact = onContact
         self.onSas = onSas
@@ -67,6 +72,7 @@ public struct PeerLinkHandlers: Sendable {
         self.onRingWanted = onRingWanted
         self.onClosed = onClosed
         self.onEnded = onEnded
+        self.onSession = onSession
     }
 }
 
@@ -86,6 +92,9 @@ public struct PeerChannelOptions: Sendable {
     public var mono: (@Sendable () -> TimeInterval)?
     public var rekeyMessages: Int
     public var rekeySeconds: TimeInterval
+    /// Mode v, initiator: stop after HELLO until the host calls `startSas()` (N9).
+    public var holdSas: Bool
+    public var random: (@Sendable (Int) -> Data)?
 
     public init(
         role: PeerChannel.Role, slug: String, staticKey: any PeerNoiseStaticKey, account: PeerAccountContext? = nil,
@@ -93,7 +102,8 @@ public struct PeerChannelOptions: Sendable {
         hello: (label: String?, platform: String, app: String, maxMessage: Int?), mode: PeerNoiseMode = .a,
         contacts: [PeerContactLink] = [], exchange: PeerContactOffer? = nil,
         now: (@Sendable () -> Int)? = nil, mono: (@Sendable () -> TimeInterval)? = nil,
-        rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600
+        rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600, holdSas: Bool = false,
+        random: (@Sendable (Int) -> Data)? = nil
     ) {
         self.role = role
         self.slug = slug
@@ -109,6 +119,8 @@ public struct PeerChannelOptions: Sendable {
         self.mono = mono
         self.rekeyMessages = rekeyMessages
         self.rekeySeconds = rekeySeconds
+        self.holdSas = holdSas
+        self.random = random
     }
 }
 
@@ -187,8 +199,9 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
                 }) > peerLinkWriteMaxBytes {
                     oh.current?()
                 }
-            }, onEvent: { econt.yield($0) }, mode: o.mode,
-            now: o.now, mono: o.mono, rekeyMessages: o.rekeyMessages, rekeySeconds: o.rekeySeconds)
+            }, onEvent: { econt.yield($0) }, mode: o.mode, random: o.random,
+            now: o.now, mono: o.mono, rekeyMessages: o.rekeyMessages, rekeySeconds: o.rekeySeconds,
+            holdSas: o.holdSas)
         // The writer drains in order and closes the pipe once the link ends, so a CLOSE record is
         // flushed before the pipe goes.
         let p = pipe
@@ -216,7 +229,7 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         }
         deadline = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
-            if !Task.isCancelled { await self?.fail("handshake_failed") }
+            if !Task.isCancelled { await self?.fail("peer_timeout") }
         }
     }
 
@@ -254,6 +267,13 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
     /// Initiator: write message 1.
     public func start() async {
         await channel.start()
+        await arm()
+    }
+
+    /// Mode v, `holdSas` initiator: the person chose this approver. The channel restarts its code deadline,
+    /// so the link re-arms its wake-up.
+    public func startSas() async {
+        await channel.startSas()
         await arm()
     }
 
@@ -330,14 +350,32 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         await arm()
     }
 
+    /// The link ends itself: the closing side names its reason (V5 15.6; a zero-length frame is
+    /// `peer_bad_frame`, the handshake deadline `peer_timeout`). A CLOSE goes out only once the transport exists.
     private func fail(_ code: String) {
         if ended { return }
         // Not a live session: the channel has nothing to send.
         if !open { finish(PeerLinkClosed(code: code, byPeer: false)) }
-        closeSoon(.peerBye)
+        closeSoon(PeerCloseCode(rawValue: code) ?? .peerBye)
     }
 
     private func handle(_ e: PeerSessionEvent) {
+        if let raw = handlers.onSession {
+            switch e {
+            case .established:
+                deadline?.cancel()
+                deadline = nil
+                open = true
+                raw(e)
+            case .closed(let reason, let byPeer):
+                finish(
+                    PeerLinkClosed(
+                        code: lost && !byPeer && !overflowed ? "connection_lost" : reason.rawValue, byPeer: byPeer))
+            default:
+                raw(e)
+            }
+            return
+        }
         switch e {
         case .established(let est):
             guard est.peerDeviceId != nil || est.contactIndex != nil else { return }

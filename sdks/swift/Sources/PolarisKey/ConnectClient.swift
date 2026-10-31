@@ -168,13 +168,21 @@ public struct ConnectOptions: Sendable {
     /// default: without it a memory-only store is `invalid-options`, because keys that are gone
     /// at the next launch leave a dead entry in the person's roster.
     public var allowEphemeralKeys: Bool
+    /// The networks nearby approval (CC-15) runs on. Nil: Bonjour, through `PolarisKeyPlatform`. A host that
+    /// wants AWDL, or a test, supplies its own.
+    public var nearbyApproverNetwork: (any NearbyApproverNetwork)?
+    public var nearbyRequesterNetwork: (any NearbyRequesterNetwork)?
 
     public init(
-        keys: (any DeviceKeyPort)? = nil, store: ConnectStateStore? = nil, allowEphemeralKeys: Bool = false
+        keys: (any DeviceKeyPort)? = nil, store: ConnectStateStore? = nil, allowEphemeralKeys: Bool = false,
+        nearbyApproverNetwork: (any NearbyApproverNetwork)? = nil,
+        nearbyRequesterNetwork: (any NearbyRequesterNetwork)? = nil
     ) {
         self.keys = keys
         self.store = store
         self.allowEphemeralKeys = allowEphemeralKeys
+        self.nearbyApproverNetwork = nearbyApproverNetwork
+        self.nearbyRequesterNetwork = nearbyRequesterNetwork
     }
 }
 
@@ -309,6 +317,20 @@ public actor ConnectClient {
         case .success(let body):
             return await accept(body, keys: keys, registered: registered, held: record, store: store)
         }
+    }
+
+    /// D's device keys (made when none exist) and its `X-PKey-Device` value, for the vouch of nearby approval
+    /// (CC-15). Needs no sign-in, no roster and no Connect. Refuses a memory-only key store, as `identity()`
+    /// does, because keys that die with the process cannot be registered for the approval.
+    public func nearbySigner() async throws -> (port: any DeviceKeyPort, deviceId: String) {
+        let port = try keyPort()
+        if try await port.persistence() == .memory && !options.allowEphemeralKeys {
+            throw PolarisError(
+                code: ErrorCode.invalidOptions,
+                message: "The device key store is memory-only; set allowEphemeralKeys to use it.")
+        }
+        _ = try await port.ensure()
+        return (port, await core.deviceId)
     }
 
     /// The person's devices (`GET /<p>/connect/devices`).
