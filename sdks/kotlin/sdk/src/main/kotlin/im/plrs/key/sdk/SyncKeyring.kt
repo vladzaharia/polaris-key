@@ -14,8 +14,9 @@
 //  - The first root this client acquires (create, recover, unlock) pins `{ringId, epoch, rootKid}`
 //    (no secret). A served ring or wrap that differs is never opened: `unlock()` answers
 //    `RingChanged`, and only the recovery code (`recover`) or an explicit `acceptRingChange`
-//    re-pins. `forget()` drops the pin and the stored root; the sign-out hook calls it. The stored
-//    root is used only while it matches the pin.
+//    re-pins. With no pin, the stored root's `{ringId, epoch, kid}` is the pin. `forget()` drops the
+//    stored root, then the pin (a root that cannot be removed keeps the pin); the sign-out hook calls
+//    it. The stored root is used only while it matches the pin.
 //  - Where the root lives (the host may pass `KeyringOptions.rootStorage`): Android seals it with
 //    its own Keystore alias (`androidSyncRootStorage`); on a JVM desktop it is the owner-only 0600
 //    file the device keys use (the JVM has no OS keyring); with no state directory it is memory
@@ -151,12 +152,15 @@ public class SyncKeyring internal constructor(private val core: CoreContext, opt
     private suspend fun unlockSteps(accept: SyncRingPin?): SyncUnlockResult {
         val state = readState()
         val ring = state.ring ?: decided(SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoRing))
-        val pinned = vault.pin()
+        // An accept does not need the pin read; otherwise an unreadable pin is an error, not an absent one.
+        val pinned = if (accept == null) vault.pinChecked() else vault.pin()
+        // With no pin, the stored root's {ringId, epoch, kid} is the pin (an unreadable root is an error).
+        val anchor = pinned ?: if (accept == null) vault.loadChecked()?.let { SyncRingPin(it.ringId, it.epoch, it.kid) } else null
         // An accept holds only for the ring the person was shown; a ring that moved since is reported again.
-        val expected = accept ?: pinned
+        val expected = accept ?: anchor
         val served = SyncRingPin(ring.ringId, ring.epoch, ring.rootKid)
         if (expected != null && expected != served) {
-            decided(SyncUnlockResult.RingChanged(pinned ?: expected, served, ring.createdAt, state.wrap?.by))
+            decided(SyncUnlockResult.RingChanged(anchor ?: expected, served, ring.createdAt, state.wrap?.by))
         }
         val unlocked = SyncUnlockResult.Unlocked(ring.ringId, ring.epoch)
         val kid = unhex(ring.rootKid) ?: decided(UNUSABLE)
