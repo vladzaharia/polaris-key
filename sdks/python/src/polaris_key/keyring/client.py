@@ -29,7 +29,7 @@ import os
 import re
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, cast
 from urllib.parse import quote
 
 from ..constants_generated import ErrorCode
@@ -610,6 +610,15 @@ class KeyringClient:
         return opened
 
     # ── Internals ─────────────────────────────────────────────────────────────────────────────
+
+    def file_codec(self, collection: str) -> Any:
+        """The file codec of a collection, sealing with the ring's current root. The root is not exposed:
+        the codec reads the same buffer the ring zeroes on :meth:`lock`. Raises ``sync-locked`` while
+        locked."""
+        from ..cloud_sync.transfer_codec import E2eFileCodec
+
+        # The codec keeps the ring's own buffer (not a copy), so `lock()` zeroing it stops the codec.
+        return E2eFileCodec(cast(bytes, self._need().root), collection)
 
     def _need(self) -> _Held:
         h = self._held

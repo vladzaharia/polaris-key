@@ -3808,9 +3808,7 @@
       "feature": "sync.saves",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-22"
-        },
+        "python": {},
         "react": {
           "planned": "U-22",
           "shape": "hook",
@@ -3834,9 +3832,7 @@
       "feature": "sync.saves",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-22"
-        },
+        "python": {},
         "react": {
           "planned": "U-22",
           "shape": "hook",
@@ -3866,9 +3862,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-22"
-        },
+        "python": {},
         "react": {
           "planned": "U-22",
           "shape": "hook",
@@ -3902,9 +3896,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-22"
-        },
+        "python": {},
         "react": {
           "planned": "U-22",
           "shape": "hook",
@@ -3934,9 +3926,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-22"
-        },
+        "python": {},
         "react": {
           "planned": "U-22",
           "shape": "hook",
@@ -3966,9 +3956,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-22"
-        },
+        "python": {},
         "react": {
           "planned": "U-22",
           "shape": "hook",
@@ -3992,9 +3980,7 @@
       "feature": "sync.files",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-22"
-        },
+        "python": {},
         "react": {
           "planned": "U-22",
           "shape": "hook",
@@ -4018,9 +4004,7 @@
       "feature": "sync.files",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-22"
-        },
+        "python": {},
         "react": {
           "planned": "U-22",
           "shape": "hook",
@@ -4044,9 +4028,7 @@
       "feature": "sync.files",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-22"
-        },
+        "python": {},
         "react": {
           "planned": "U-22",
           "shape": "hook",
@@ -4070,9 +4052,7 @@
       "feature": "sync.files",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-22"
-        },
+        "python": {},
         "react": {
           "planned": "U-22",
           "shape": "hook",
@@ -4097,9 +4077,7 @@
       "enum": "transferEvent",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-22"
-        },
+        "python": {},
         "react": {
           "planned": "U-22",
           "shape": "hook",

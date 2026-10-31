@@ -476,8 +476,8 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "client.cloud_sync.saves (cloud_sync/saves.py, synchronous): list, read, write, delete, revisions and resolve, a port of client-core's SavesClient bound to the machine's records (rows keep the file pointer; put_at and remove_at at an exact version, one outcome each: the fileRecordCases family of sync-scenarios.json) and the Python file transport, journal and chunk cache under one TransferEngine (max_retry_after_seconds 3600). A write runs on its own thread: its handle has pause, resume, cancel and wait; client.cloud_sync.transfers() lists the writes in flight; transferProgress, transferDone and transferFailed arrive as cloudSync events. The journal and chunk cache go with the person. tests/test_cloud_sync_saves.py; the cloudsync-files-single transcript replays through the transport."
     },
     "sync.keyring": {
       "status": "implemented",
